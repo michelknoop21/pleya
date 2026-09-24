@@ -116,7 +116,9 @@ void main() {
     expect(titleText.style!.fontSize, closeTo(56 * panelScale, 0.05));
   });
 
-  testWidgets('SYS-3c: the detail rail reads the same scale the detail screen does', (tester) async {
+  testWidgets('SYS-3c/SYS-3e: the detail rail and its reservation read the scale the detail screen does', (
+    tester,
+  ) async {
     await SettingsService.getInstance();
 
     // Dezelfde twee dozen als de OVR1a-test hierboven: het paneel staat exact
@@ -256,6 +258,20 @@ void main() {
       hubTitle.style?.fontSize,
       closeTo(18 * panelScale, 0.05),
       reason: 'the rail scales off the nested box while the screen above it scales off the panel',
+    );
+    // SYS-3e: what the screen reserves for the rail has to be what the rail
+    // draws. The foreground's bottom edge sits `railTopPadding - gap` (12 - 4)
+    // into the rail block, both at the panel scale. With the reservation on
+    // the box scale it sat 32.3 px in, over the season chips, and the rail
+    // hung 1.2 px less of its bottom padding off the edge than it draws.
+    final railBlock = tester.getRect(find.ancestor(of: find.byType(TvBrowseRail), matching: find.byType(Column)).first);
+    final foreground = tester.getRect(
+      find.ancestor(of: find.text('The Show'), matching: find.byType(Positioned)).first,
+    );
+    expect(foreground.bottom - railBlock.top, closeTo(8 * panelScale, 0.5));
+    expect(
+      railBlock.bottom,
+      closeTo(nestedBoxSize.height + TvBrowseRailLayout.railBottomPaddingForScale(panelScale), 0.5),
     );
   });
 }

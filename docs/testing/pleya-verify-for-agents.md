@@ -80,9 +80,10 @@ fall back to a label-based or geometry-only assertion to work around a missing i
 For a `state:` assertion, use the field the widget itself renders from (a `state:` callback
 mirroring a real `bool`/`enum`), never a proxy that merely correlates with it. `assert:
 {state: {collapsed: !isCollapsed}}` (asserting the boolean *without inverting the bug*) is exactly
-the kind of false-PASS Fase 12 exists to catch; see `pleya_verify/scenarios/tvos.sidebar.collapse.yaml`
-for a fully commented, worked example, including why that scenario asserts on `state.collapsed`
-specifically instead of geometry alone.
+the kind of false-PASS Fase 12 exists to catch; see
+`pleya_verify/scenarios/tvos.nav.focus-switches-destination.yaml` for a commented example that
+asserts `state.active` after every press instead of where the ring is. Since DEC-120 that scenario
+is the reference gate DEC-081 named; `tvos.sidebar.collapse` went with the sidebar.
 
 For geometry assertions (`insideViewport`, `notOverlapping`, `minimumTapTarget`, `below`/`above`/
 `leftOf`/`rightOf`, `sameRow`/`sameColumn`), see `pleya_verify/geometry/SPEC.md` for the full

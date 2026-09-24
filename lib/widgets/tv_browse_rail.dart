@@ -373,10 +373,15 @@ class TvBrowseRailLayout {
     double tallPosterScale = 1.0,
     double widePosterScale = 1.0,
     bool includeNextHubPeek = true,
+    // The scale the rail renders at, `TvLayoutConstants.scaleOf` of its
+    // context (SYS-3c). A nested route's `size` is its content box, shorter
+    // than the panel, so deriving the scale from it reserves less than the
+    // rail draws (SYS-3d/SYS-3e). Omitted, it falls back to the box.
+    double? scale,
   }) {
     if (hubs.isEmpty) return 0;
 
-    final scale = scaleForSize(size);
+    scale ??= scaleForSize(size);
     final availableWidth = size.width - horizontalInsetForScale(scale);
     if (availableWidth <= 0) return 0;
 

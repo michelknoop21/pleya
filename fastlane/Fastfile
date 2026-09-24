@@ -547,8 +547,15 @@ rescue => e
   UI.important("Later herstellen met: fastlane attach_builds platform:#{platform} build:#{build_number}")
 end
 
+# Oude Verify-bundels en Pleya-archives opruimen vóór een nieuwe build
+# (PLEYA_KEEP_BUILDS=1 slaat over).
+def prune_old_builds
+  sh(File.join(PROJECT_ROOT, "scripts/prune_old_builds.sh"))
+end
+
 desc "iOS → TestFlight"
 lane :ios_beta do
+  prune_old_builds
   build_number = ensure_build_number("ios")
   flutter_sh("flutter build ios --config-only --release")
   patch_spm_min_ios
@@ -565,6 +572,7 @@ end
 
 desc "tvOS → TestFlight"
 lane :tvos_beta do
+  prune_old_builds
   build_number = ensure_build_number("appletvos")
   flutter_sh("flutter pub get")
   # tvOS bouwt op een eigen engine-fork (edde746/flutter-tvos) uit
@@ -592,6 +600,7 @@ end
 
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
+  prune_old_builds
   build_number = ensure_build_number("osx")
   flutter_sh("flutter build macos --config-only --release")
   # Buildnummer/-naam expliciet aan xcodebuild meegeven: DerivedData herprocesst

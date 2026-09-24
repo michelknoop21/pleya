@@ -107,6 +107,8 @@ void main() {
       expect(server.libraries, hasLength(1));
       final show = server.items.values.singleWhere((i) => i['kind'] == 'show');
       expect(show['title'], 'Testserie');
+      // VER8: Home's first rail is the TV way in to the show.
+      expect(server.hubs['recently_added'], [show['id']]);
       final season = server.items.values.singleWhere((i) => i['kind'] == 'season');
       expect(server.children[season['id']], hasLength(10));
       expect(season['child_count'], 10);

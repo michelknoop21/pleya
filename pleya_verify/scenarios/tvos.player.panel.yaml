@@ -6,7 +6,7 @@ target: tvos-sim
 # playback` measured; from `player.surface` on, this scenario is the new part.
 #
 # The player opens with its controls up and play/pause focused, so the first
-# Select pauses: the fixture clip lasts two seconds, and without the pause mpv
+# Select pauses: the fixture clip lasts fifteen seconds, and without the pause mpv
 # reaches its end and returns to the detail page before the panel is open (the
 # run of 23 September recorded exactly that; `tvos.player.loudness` pauses for
 # the same reason). RIGHT then walks the mounted transport buttons (skip
@@ -42,9 +42,10 @@ steps:
 
   # Pause first, then over to the tune button.
   # No wait for the ring first: an idb press takes one to two seconds to land,
-  # and the clip is two seconds long, so a press sent after polling for the
-  # focus arrives when mpv has already ended (run of 23 September). The press
-  # is queued now and lands on play/pause, which the next asserts check.
+  # and the clip was two seconds long, so a press sent after polling for the
+  # focus arrived when mpv had already ended (run of 23 September). The clip
+  # is fifteen seconds since VER7; the press still goes out first and lands on
+  # play/pause, which the next asserts check.
   - settle: 200
   - press: select
   - settle: 400

@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 import 'fake_process_runner.dart';
 
-const _scenarioListJson = '["../scenarios/macos.smoke.boot.yaml", "../scenarios/tvos.sidebar.collapse.yaml"]';
+const _scenarioListJson = '["../scenarios/macos.smoke.boot.yaml", "../scenarios/tvos.nav.focus-switches-destination.yaml"]';
 
 void main() {
   group('listScenarios', () {
@@ -16,10 +16,10 @@ void main() {
 
       final scenarios = await cli.listScenarios();
 
-      expect(scenarios.map((s) => s.name), ['macos.smoke.boot', 'tvos.sidebar.collapse']);
+      expect(scenarios.map((s) => s.name), ['macos.smoke.boot', 'tvos.nav.focus-switches-destination']);
       expect(scenarios.map((s) => s.path), [
         '../scenarios/macos.smoke.boot.yaml',
-        '../scenarios/tvos.sidebar.collapse.yaml',
+        '../scenarios/tvos.nav.focus-switches-destination.yaml',
       ]);
       expect(runner.calls.single, ['run', 'bin/verify.dart', 'list', 'scenarios', '--json']);
     });
@@ -77,9 +77,9 @@ void main() {
       final runResponse = jsonEncode({
         'ok': false,
         'result': 'FAILED',
-        'scenario': 'tvos.sidebar.collapse',
+        'scenario': 'tvos.nav.focus-switches-destination',
         'target': 'tvos-sim',
-        'bundle_dir': '.build/pleya-verify/tvos-sidebar-collapse-456',
+        'bundle_dir': '.build/pleya-verify/tvos-nav-focus-switches-destination-456',
         'failure_message': 'assert failed: state(nav.discover.collapsed): expected true',
         'exit_code': 1,
       });
@@ -89,11 +89,11 @@ void main() {
       });
       final cli = VerifyCli(runner: runner, runnerPackageDir: '/repo/pleya_verify/runner');
 
-      final outcome = await cli.runScenario('tvos.sidebar.collapse');
+      final outcome = await cli.runScenario('tvos.nav.focus-switches-destination');
 
       expect(outcome.ok, false);
       expect(outcome.result, 'FAILED');
-      expect(outcome.bundleDir, '.build/pleya-verify/tvos-sidebar-collapse-456');
+      expect(outcome.bundleDir, '.build/pleya-verify/tvos-nav-focus-switches-destination-456');
       expect(outcome.failureMessage, contains('expected true'));
     });
 
