@@ -30,6 +30,13 @@ Three things changed since:
   Jellyfin flow — so the mix-up is recoverable immediately, not after the wait.
 - A sign-in that does time out offers both a retry and that same Jellyfin route.
 
+## Screenshots (2.3.3, September 2026)
+
+iOS 2.8.0 was rejected once under 2.3.3 because the 13-inch iPad screenshots did not show
+the app in use. Both device sets were retaken on build 296 against the demo server above,
+so they only contain the royalty-free Blender films. Scripts and the capture rules live in
+`scripts/asc/`; the reply sent to the Resolution Center is in `app-review-reply-2026-09.md`.
+
 ## Operational
 
 The demo server must stay online until review completes — see the `asc-523-demo-server`
