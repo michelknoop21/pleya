@@ -88,8 +88,7 @@
     "increaseValue": "$label verhogen",
     "timedOut": "Dit duurde te lang. Probeer het opnieuw.",
     "online": "Online",
-    "offline": "Offline",
-    "timedOut": "Dit duurde te lang. Probeer het opnieuw."
+    "offline": "Offline"
   },
   "screens": {
     "licenses": "Licenties",
