@@ -27,6 +27,7 @@ import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
+import '../providers/discover_refresh_policy.dart';
 import '../providers/home_custom_rows_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
@@ -180,6 +181,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool _isAutoScrollPaused = false;
   bool _heroFocusPausedAutoScroll = false;
   bool _isTabVisible = true;
+  bool _appResumed = true;
+
+  /// Silent periodic refresh while Home is on screen and the app is in the
+  /// foreground, on every platform. Background refresh of a suspended app is
+  /// left to the resume path: iOS gives a suspended app no reliable run time.
+  late final _refreshTicker = HomeRefreshTicker(() => unawaited(_discover.refreshIfStale()));
+  void _syncRefreshTicker() => _refreshTicker.update(active: _isTabVisible && _appResumed);
 
   /// Cached in didChangeDependencies rather than read via
   /// PlatformDetector.isPhone(context) at each _startAutoScroll call: that
@@ -351,6 +359,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _updateHubKeys();
     unawaited(_discover.load());
     _startAutoScroll();
+    _syncRefreshTicker();
   }
 
   @override
@@ -621,6 +630,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _customRows?.removeListener(_onCustomRowsChanged);
     _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
+    _refreshTicker.dispose();
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
     _indicatorProgress.dispose();
@@ -633,13 +643,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appResumed = state == AppLifecycleState.resumed;
+    _syncRefreshTicker();
     if (state == AppLifecycleState.resumed) {
       // Restart auto-scroll only if discover tab is visible
       if (_isTabVisible && !_isAutoScrollPaused) _startAutoScroll();
-      // Refresh continue watching on mobile only
-      // (on desktop, "resumed" fires on every window focus gain)
+      // Mobile and Apple TV only (on desktop, "resumed" fires on every window
+      // focus gain; the ticker covers desktop). Continue Watching always, the
+      // other rows when they are older than the return threshold.
       if (Platform.isIOS || Platform.isAndroid) {
-        unawaited(_discover.refreshContinueWatching());
+        unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn));
       }
     } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
       // Stop animations to prevent scroll state corruption while backgrounded
@@ -739,6 +752,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // A flag on the still-mounted feed, not a dispose — coming back finds the
     // scroll position, the focused card and the active slide where they were.
     _tvFeedKey.currentState?.setDestinationActive(false);
+    _syncRefreshTicker();
     _autoScrollTimer?.cancel();
     _stopIndicatorProgress();
   }
@@ -747,6 +761,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void onTabShown() {
     _isTabVisible = true;
     _tvFeedKey.currentState?.setDestinationActive(true);
+    _syncRefreshTicker();
     if (!_isAutoScrollPaused) {
       _startAutoScroll();
     }
@@ -823,11 +838,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return 8.0; // Normal size
   }
 
-  // Public method to refresh content (for normal navigation)
+  // Public method to refresh content (for normal navigation): tab switch,
+  // back from the player or a detail page. Continue Watching always, the
+  // other rows silently when they are older than the return threshold.
   @override
   void refresh() {
-    // Only refresh Continue Watching in background, not full screen reload
-    unawaited(_discover.refreshContinueWatching());
+    unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn));
   }
 
   // Public method to fully reload all content (for profile switches)
