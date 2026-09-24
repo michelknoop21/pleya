@@ -145,11 +145,15 @@ func (s *Server) handleCancelJob(w http.ResponseWriter, r *http.Request) {
 	// die gaat nooit lopen en sluit hier af.
 	if before.Kind == JobScanLibrary && before.State == "pending" {
 		var args ScanJobArgs
-		if json.Unmarshal(before.Args, &args) == nil && args.ScanRunID != "" {
-			if runID, err := id.Parse(args.ScanRunID); err == nil {
-				if err := s.opts.Catalog.FinishScanRun(r.Context(), runID, "cancelled", catalog.ScanCounters{}); err != nil {
-					s.log.Warn("queued scan afsluiten na cancel mislukt", slog.String("error", err.Error()))
-				}
+		var runID id.ID
+		var perr error
+		if err := json.Unmarshal(before.Args, &args); err != nil {
+			s.log.Warn("scanjob na cancel heeft onleesbare argumenten", slog.String("job", jobID.String()), slog.String("error", err.Error()))
+		} else if args.ScanRunID != "" {
+			if runID, perr = id.Parse(args.ScanRunID); perr != nil {
+				s.log.Warn("scanjob na cancel heeft een onleesbare scanronde-id", slog.String("job", jobID.String()), slog.String("error", perr.Error()))
+			} else if err := s.opts.Catalog.FinishScanRun(r.Context(), runID, "cancelled", catalog.ScanCounters{}); err != nil {
+				s.log.Warn("queued scan afsluiten na cancel mislukt", slog.String("error", err.Error()))
 			}
 		}
 	}
@@ -218,6 +222,15 @@ func (s *Server) handleRetryJob(w http.ResponseWriter, r *http.Request) {
 		}
 		s.writeJobError(w, err, "duplicate_in_flight")
 		return
+	}
+	// Get en Retry zijn niet atomair: een gelijktijdige retry kan de job al
+	// hebben teruggezet, en dan draagt rec de ronde van de winnaar. Onze eigen
+	// queued rij zou dan voor altijd queued blijven.
+	if queuedRun != id.Nil {
+		var got ScanJobArgs
+		if json.Unmarshal(rec.Args, &got) != nil || got.ScanRunID != queuedRun.String() {
+			_ = s.opts.Catalog.DeleteQueuedScanRun(r.Context(), queuedRun)
+		}
 	}
 	s.auditEvent(r, auditRetryJob, jobID.String(), audit.OutcomeOK, map[string]any{"kind": rec.Kind})
 	writeJSON(w, http.StatusOK, jobWire(rec))
