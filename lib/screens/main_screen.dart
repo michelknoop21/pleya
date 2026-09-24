@@ -1888,7 +1888,8 @@ class _MainScreenState extends State<MainScreen>
   Future<void> _openProfilesFromShell() async {
     _isShowingProfileSelection = true;
     _setTvosMenuPassthrough(false);
-    await AccountUiActions.openProfiles(context);
+    // PROF1: on TV the switch is mockup 21's gate, not the management list.
+    await AccountUiActions.openProfiles(context, asGate: true);
     if (!mounted) return;
     _isShowingProfileSelection = false;
     _updateTvosMenuPassthrough();
