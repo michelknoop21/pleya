@@ -24,6 +24,11 @@ steps:
   - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
   - assert: {id: "settings.appearance.category[0]", insideViewport: true, state: {selected: true}}
   - snapshot: 00-display
+  # The page opens with the ring on its first row (Thema), the start
+  # `tvos.settings.appearance` counts its walk from; LEFT is the way into the
+  # category column (APP1).
+  - press: left
+  - wait_until: {focused: "settings.appearance.category[0]", timeout: 8000}
   - press: down
   - wait_until: {focused: "settings.appearance.category[1]", timeout: 8000}
   - press: select

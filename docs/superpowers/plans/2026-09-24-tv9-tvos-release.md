@@ -90,6 +90,14 @@ Op `main` na de drie merges:
 5. Controle "geen route zonder uitweg voor de focus": elke route uit §7 punt 4 heeft een journey
    met MENU terug, of staat als `HARDWARE ONLY` in de checklist.
 
+## Fase 2b: DENS1, density volgens Apple's HIG
+
+Toegevoegd op 24 september op verzoek van Michel ("oplossen, niet alleen checken"; "laat mijn keuzes
+uit het verleden los"). Branch `feat/tv9-density`, besluit DEC-130: instellingenvensters, seriedetail
+en filmdetail in Apple's tvOS-punten (`TvHig`). Tests die op de oude code falen, Verify-screenshots
+voor en na, goldens, ci_checks, PR en merge. De volledige Verify-suite uit fase 2 draait pas daarna,
+op de SHA met DENS1 erin.
+
 ## Fase 3: release-identiteit en archive
 
 1. Nieuwe branch voor de lane: `tvos_beta` bouwt en uploadt nu in één stap, en dat botst met §8.
