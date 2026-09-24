@@ -2,6 +2,8 @@ package scanner_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -13,6 +15,8 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
+	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -460,5 +464,72 @@ func (h *harness) untrustInodes() {
 		}},
 	}}); err != nil {
 		h.t.Fatal(err)
+	}
+}
+
+// Annuleren wordt gezien binnen één walk-stap: na de cancel levert de walk
+// hooguit nog één entry af en wordt er niet meer geprobed.
+func TestCancelStopsTheScanWithinOneWalkStep(t *testing.T) {
+	h := newHarness(t, "movies")
+	for i := 0; i < 6; i++ {
+		name := fmt.Sprintf("Film %d (200%d)", i, i)
+		testsupport.MakeVideo(t, h.path(name, name+".mkv"), 1)
+	}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+	var delivered, afterCancel atomic.Int32
+	h.walkOverride = func(wctx context.Context, root string, onEntry func(scanner.Entry) error, onProblem func(string, error)) error {
+		return scanner.Walk(wctx, root, func(e scanner.Entry) error {
+			n := delivered.Add(1)
+			if wctx.Err() != nil {
+				afterCancel.Add(1)
+			}
+			if n == 2 {
+				cancel(jobs.ErrCancelled)
+			}
+			return onEntry(e)
+		}, onProblem)
+	}
+	_, err := h.sc.ScanLibrary(ctx, h.lib, "manual")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("scan gaf %v, verwacht context.Canceled", err)
+	}
+	if afterCancel.Load() > 1 {
+		t.Fatalf("walk leverde na de annulering nog %d entries af", afterCancel.Load())
+	}
+	if h.prober.calls.Load() != 0 {
+		t.Fatalf("er is na de annulering nog %d keer geprobed", h.prober.calls.Load())
+	}
+	runID, _, _, err := h.store.LatestScanRun(context.Background(), h.lib.ID)
+	if err != nil || runID == id.Nil {
+		t.Fatal(err)
+	}
+	run, err := h.store.ScanRun(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.State != "cancelled" || run.FinishedAt == nil {
+		t.Fatalf("scan_runs staat op %q, finished_at %v; verwacht cancelled met tijdstip", run.State, run.FinishedAt)
+	}
+}
+
+func TestQueuedScanRunIsAdoptedByTheScan(t *testing.T) {
+	h := newHarness(t, "movies")
+	runID, err := h.store.CreateQueuedScanRun(context.Background(), h.lib.ID, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.sc.ScanLibraryRun(context.Background(), h.lib, "manual", runID); err != nil {
+		t.Fatal(err)
+	}
+	run, err := h.store.ScanRun(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.State != "succeeded" || run.FinishedAt == nil {
+		t.Fatalf("overgenomen rij eindigt op %+v", run)
+	}
+	if latest, _, _, err := h.store.LatestScanRun(context.Background(), h.lib.ID); err != nil || latest != runID {
+		t.Fatalf("laatste ronde is %v (%v), verwacht de overgenomen rij", latest, err)
 	}
 }

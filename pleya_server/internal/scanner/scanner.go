@@ -107,12 +107,24 @@ type Stats struct {
 
 // ScanLibrary leest één bibliotheek volledig in.
 func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger string) (Stats, error) {
+	return s.ScanLibraryRun(ctx, lib, trigger, id.Nil)
+}
+
+// ScanLibraryRun scant een bibliotheek en schrijft de voortgang in de gegeven
+// scan_runs-rij (queued, aangemaakt door POST /libraries/{id}/scan) of in een
+// nieuwe rij als runID leeg is (startup en schedule).
+func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigger string, runID id.ID) (Stats, error) {
 	roots, err := s.store.StorageLocations(ctx, lib.ID)
 	if err != nil {
 		return Stats{}, err
 	}
 
-	run, err := s.store.StartScanRun(ctx, lib.ID, trigger)
+	var run id.ID
+	if runID == id.Nil {
+		run, err = s.store.StartScanRun(ctx, lib.ID, trigger)
+	} else {
+		run, err = runID, s.store.BeginQueuedScanRun(ctx, runID)
+	}
 	if err != nil {
 		return Stats{}, err
 	}
@@ -163,7 +175,8 @@ func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger 
 		}
 	}
 	tracker.stop()
-	if err := s.store.FinishScanRun(ctx, run, state, stats.toCatalog()); err != nil {
+	// Na een annulering is ctx dood; de eindstand moet er toch in.
+	if err := s.store.FinishScanRun(context.WithoutCancel(ctx), run, state, stats.toCatalog()); err != nil {
 		log.Warn("scanronde afsluiten mislukt", slog.String("error", err.Error()))
 	}
 
@@ -244,6 +257,9 @@ func (s *Scanner) scanRoot(ctx context.Context, lib catalog.Library, root catalo
 	var measure inodeMeasurement
 
 	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		seenPaths = append(seenPaths, e.RelPath)
 		measure.observe(e, index, inodes)
 
@@ -491,6 +507,9 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 	touchedVersions := map[id.ID]bool{}
 
 	for i := range media {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		c := &media[i]
 		// Ook tijdens het analyseren, en niet alleen tijdens de wandeling. Op een
 		// bibliotheek van zesduizend afleveringen is dit veruit het langste stuk,
