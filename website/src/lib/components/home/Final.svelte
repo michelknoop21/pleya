@@ -1,8 +1,8 @@
 <script lang="ts">
-  let { cta }: { cta: { href: string; label: string; note: string } } = $props();
+  import { cta } from '$lib/config';
 </script>
 
-<section class="final">
+<section class="final" data-reveal>
   <div class="spill" aria-hidden="true"></div>
   <h2 class="wrap">Lights down.<br /><span class="grad">Library up.</span></h2>
   <p class="wrap">Private beta on iPhone, Apple TV and Mac.</p>

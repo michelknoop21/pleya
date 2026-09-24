@@ -1,5 +1,6 @@
-/* Homepage only. Everything nests under .home so the rules stay put when
-   SvelteKit keeps this stylesheet loaded after navigating to /docs. */
+/* Homepage and platform pages (/iphone, /apple-tv, /mac). Everything nests
+   under .home so the rules stay put when SvelteKit keeps this stylesheet
+   loaded after navigating to /docs. */
 .home {
   --ink: #f4f1ec;
   --muted: rgba(244, 241, 236, 0.66);
@@ -29,12 +30,6 @@
   .tv { border-radius: 0.7rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 50px 120px -40px #000; background: #111; }
   .phone { border-radius: 1.6rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 30px 70px -20px #000; background: #000; }
   .mac { border-radius: 0.8rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 40px 100px -40px #000; }
-
-  .top { position: absolute; inset: 0 0 auto; z-index: 5; }
-  .top .wrap { display: flex; align-items: center; justify-content: space-between; padding-block: 1.25rem; }
-  .top img { width: 6.4rem; }
-  .top nav { display: flex; gap: 1.5rem; font-size: 0.9rem; color: var(--muted); }
-  .top nav a:hover { color: var(--ink); }
 
   .cta { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.95rem 1.5rem; border-radius: 999px; background: var(--brand); color: #120d0a; font-weight: 600; }
   .cta:hover { filter: brightness(1.08); }
@@ -89,6 +84,7 @@
   .share { position: relative; padding-block: 8rem; overflow: hidden; }
   .share::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 55% at 85% 30%, rgba(255, 140, 40, 0.14), transparent 70%), radial-gradient(50% 50% at 10% 90%, rgba(229, 20, 15, 0.12), transparent 70%); pointer-events: none; }
   .share-grid { position: relative; display: grid; gap: 3rem; }
+  .share-shot { position: relative; margin-top: 3.5rem; max-width: 56rem; }
   .share .tag { display: inline-block; margin-left: 0.6rem; vertical-align: middle; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgba(255, 176, 32, 0.14); color: var(--amber); }
   .share .lede { margin-top: 1.4rem; }
   .routes { display: grid; gap: 1.4rem; }
@@ -108,6 +104,7 @@
   .links a { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size 0.3s ease; }
   .links a:hover { background-size: 100% 1px; }
   .links a::after { content: " \2197"; color: var(--amber); }
+  .links.internal a::after { content: none; }
 
   /* FAQ */
   .faq-list { margin-top: 2rem; max-width: 50rem; display: grid; gap: 0.4rem; }
@@ -126,6 +123,25 @@
   .final p { position: relative; margin: 1.2rem auto 0; max-width: 30rem; color: var(--muted); }
   .final .actions { position: relative; margin-top: 2rem; display: flex; flex-direction: column; align-items: center; }
 
+  /* Platform pages */
+  .pf-hero { position: relative; padding-top: 7rem; }
+  .pf-hero .hero-title { margin-top: 1rem; }
+  .pf-hero .lede { margin-top: 1.6rem; }
+  .pf-cta { margin-top: 2rem; }
+  .pf-hero figure { margin-top: 3rem; }
+  .pf-hero figure .phone { width: min(20rem, 70%); margin-inline: auto; }
+  .pf-feature { padding-block: 5rem; }
+  .pf-feature .wrap { display: grid; gap: 2.5rem; }
+  .pf-feature figure { display: flex; gap: 1.5rem; align-items: flex-end; }
+  .pf-feature figure .phone { width: min(16rem, 45%); }
+  .pf-feature .lede { margin-top: 1.4rem; }
+  .pf-feature .links { margin-top: 1.6rem; }
+  .pf-list { margin-top: 1.4rem; max-width: 34rem; display: grid; gap: 0.6rem; color: var(--muted); }
+  .pf-list li { padding-left: 1.1rem; position: relative; }
+  .pf-list li::before { content: ""; position: absolute; left: 0; top: 0.65em; width: 0.4rem; height: 1px; background: var(--amber); }
+  .phone.land { border-radius: 1.6rem; }
+  .pf-feature figure .phone.land { width: 100%; }
+
   @media (min-width: 768px) {
     --gutter: 2rem;
     .hero-row { grid-template-columns: 1.1fr 1fr; align-items: end; column-gap: 4rem; }
@@ -136,9 +152,12 @@
     .unified-grid { grid-template-columns: 0.9fr 1.1fr; gap: 5rem; }
     .share-grid { grid-template-columns: 0.9fr 1.1fr; gap: 5rem; align-items: start; }
     .reel-head { grid-template-columns: 1.1fr 1fr; align-items: end; column-gap: 4rem; }
+    .pf-feature .wrap { grid-template-columns: 0.9fr 1.1fr; align-items: center; gap: 5rem; }
+    .pf-feature.flip .wrap > figure { order: -1; }
+    .pf-feature:not(.flip) figure { justify-content: center; }
+    .pf-feature.text-only .wrap { grid-template-columns: minmax(0, 44rem); }
   }
   @media (max-width: 559px) {
-    .top nav a:not(:last-child) { display: none; }
     .hero-stage .phone { width: 23%; right: 3%; bottom: -18%; }
     .unified-shots .phone { width: 34%; left: -2%; }
     .unified-shots .cap { margin-left: 36%; }

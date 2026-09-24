@@ -19,6 +19,9 @@
 
       <!-- Links -->
       <nav class="footer-nav">
+        <a href="/iphone">iPhone</a>
+        <a href="/apple-tv">Apple TV</a>
+        <a href="/mac">Mac</a>
         <a href="/docs">Guide</a>
         <a href="/releases">Release notes</a>
         <a href="/privacy">Privacy Policy</a>
