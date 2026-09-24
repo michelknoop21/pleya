@@ -5,7 +5,7 @@
   import tvHome from '$lib/assets/home/tv-home.webp';
   import iosHome from '$lib/assets/home/ios-home.webp';
 
-  let { cta }: { cta: { href: string; label: string; note: string } } = $props();
+  import { cta } from '$lib/config';
 </script>
 
 <header class="top">

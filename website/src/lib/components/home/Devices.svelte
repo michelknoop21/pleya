@@ -13,7 +13,7 @@
       <img class="phone p1" src={iosMovies} width="603" height="1311" loading="lazy" alt="Pleya on iPhone: Movies, with a Because you watched row" />
       <img class="phone p2" src={iosDetail} width="603" height="1311" loading="lazy" alt="Pleya on iPhone: a film page with 4K, DV P8 and EAC3 Atmos labels and a Download button" />
     </figure>
-    <div class="trio">
+    <div class="trio" data-reveal>
       <div><h3>Downloads for the train</h3><p>Download films and episodes and watch them without a connection.</p></div>
       <div>
         <h3>Atmos on AirPods</h3>

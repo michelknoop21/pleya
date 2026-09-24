@@ -20,22 +20,22 @@
           Pleya Share turns the device holding the files into a small media server for your other Pleya devices. The
           shared folders show up as a library next to your servers.
         </p>
-        <ol class="share-steps">
+        <ol class="share-steps" data-reveal>
           <li>On the host: Settings, Pleya Share, Host, pick folders</li>
           <li>On the other device: Join, scan the QR code</li>
           <li>Stream, and keep separate watch positions per guest</li>
         </ol>
       </div>
-      <dl class="routes" aria-label="How the two devices find each other">
+      <dl class="routes" data-reveal aria-label="How the two devices find each other">
         {#each routes as [route, how] (route)}
           <div><dt>{route}</dt><dd>{how}</dd></div>
         {/each}
       </dl>
     </div>
-    <figure class="share-shot">
+    <figure class="share-shot" data-reveal>
       <img class="mac" src={macShare} width="1312" height="724" loading="lazy"
         alt="Pleya Share on a Mac: the host screen with a six-digit pairing code and a QR code for a shared folder" />
-      <figcaption class="cap">The host screen. Scan the QR code on the other device, or type the six digits. The code changes after each pairing.</figcaption>
+      <figcaption class="cap">The host screen, here on a Mac. Scan the QR code on the other device, or type the six digits. The code changes after each pairing.</figcaption>
     </figure>
   </div>
 </section>

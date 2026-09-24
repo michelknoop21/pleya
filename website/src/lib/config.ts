@@ -28,3 +28,15 @@ export const SOURCE_REPO_URL = FORK_SOURCE_URL.trim().length > 0 ? FORK_SOURCE_U
 
 /** Whether a real TestFlight link is available yet. */
 export const betaLinkReady = PUBLIC_TESTFLIGHT_URL.trim().length > 0;
+
+// Until a public TestFlight link exists the one action is the waitlist, a
+// pre-filled mail (there is no webhook). Filling PUBLIC_TESTFLIGHT_URL above
+// switches every CTA on the site to the beta.
+export const cta = betaLinkReady
+  ? { href: PUBLIC_TESTFLIGHT_URL, label: 'Join the TestFlight beta', note: 'Opens TestFlight for iPhone, Apple TV and Mac.' }
+  : {
+      href: `mailto:${WAITLIST_FALLBACK_EMAIL}?subject=${encodeURIComponent('Pleya waitlist')}&body=${encodeURIComponent('Please add me to the Pleya waitlist.')}`,
+      label: 'Join the waitlist',
+      note: 'Private TestFlight beta. The button opens your mail app with a pre-filled request.',
+    };
+export type Cta = typeof cta;
