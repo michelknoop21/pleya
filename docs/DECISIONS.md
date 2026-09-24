@@ -2926,3 +2926,28 @@ zijn voor deze maten niet meer leidend; waar ze kleiner tekenden dan 23 pt wint 
 toont. De globale klem van 0,85 blijft voor de rest van de app staan; de rails, catalogus en Home
 zijn niet omgezet. Wie die schermen op dezelfde manier wil corrigeren, rekent ze om naar `TvHig`
 in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.
+
+## DEC-131: iPhone-detail in één scroll, zonder de tabs van northstar 07
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Michel (24 september, met een schermfoto van het seriedetail op zijn iPhone): "maak het
+meer zoals tvOS maar dan mobiel, dus met beschrijving enz, maar dan niet achter tabs", en "ook voor
+films". Northstar 06 (filmdetail) is al één scrollende pagina: artwork, titel, metadata, Hervatten,
+Downloaden, bron, beschrijving, cast, acties. Northstar 07 (seriedetail) zet de beschrijving, cast
+en acties achter een tabstrip Afleveringen / Vergelijkbaar / Extra's / Details en laat de kop weg.
+DEC-090 maakt de 21 northstar-beelden leidend en vraagt voor elke afwijking een DEC.
+
+**Decision:** Film en serie krijgen op de iPhone dezelfde pagina, in de volgorde van northstar 06:
+voorvertoning, titel, tags, Afspelen of Hervatten, Downloaden (alleen film), bron, audio,
+beschrijving met cast- en regieregel, de actierij, en daaronder de blokken die het TV-detail als
+rails stapelt: Afleveringen (seizoenpil en rijen, alleen serie), Trailers & Extra's, Acteurs en
+"Meer zoals dit". De tabstrip van northstar 07 vervalt; `mobile_episodes_tab.dart` wordt
+`mobile_episodes_section.dart`. Northstar 07 blijft de referentie voor de afleveringrij zelf.
+
+**Consequences:** De seriepagina wordt langer en scrolt; niets staat meer twee tikken diep. De
+vertalingen `mobileDetail.similarTab` en `mobileDetail.extrasTab` zijn niet meer in gebruik. De
+Verify-scenario's `ios.detail.northstar` en `ios.detail-episodes.northstar` maken alleen
+schermafbeeldingen en veranderen niet; de comp `serie-detail-comp` (register rij 63) is hiermee
+achterhaald.
