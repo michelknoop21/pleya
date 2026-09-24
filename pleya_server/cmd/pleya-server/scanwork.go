@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/audit"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -16,18 +17,10 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 )
 
-// JobScanLibrary is de enige soort werk die PS-2 kent.
-const JobScanLibrary = "scan_library"
-
-type scanArgs struct {
-	LibraryID string `json:"library_id"`
-	Trigger   string `json:"trigger"`
-}
-
 // scanHandler voert een scanjob uit.
 func scanHandler(store *catalog.Store, sc *scanner.Scanner, log *slog.Logger) jobs.Handler {
 	return func(ctx context.Context, job jobs.Job) error {
-		var args scanArgs
+		var args api.ScanJobArgs
 		if err := json.Unmarshal(job.Args, &args); err != nil {
 			return fmt.Errorf("jobargumenten onleesbaar: %w", err)
 		}
@@ -42,7 +35,14 @@ func scanHandler(store *catalog.Store, sc *scanner.Scanner, log *slog.Logger) jo
 			return fmt.Errorf("bibliotheek %s: %w", args.LibraryID, err)
 		}
 
-		_, err = sc.ScanLibrary(ctx, lib, args.Trigger)
+		// Zonder ScanRunID (startup, schedule) maakt de scanner zelf een rij.
+		runID := id.Nil
+		if args.ScanRunID != "" {
+			if runID, err = id.Parse(args.ScanRunID); err != nil {
+				return fmt.Errorf("scanronde-id onleesbaar: %w", err)
+			}
+		}
+		_, err = sc.ScanLibraryRun(ctx, lib, args.Trigger, runID)
 		return err
 	}
 }
@@ -55,8 +55,8 @@ func scanHandler(store *catalog.Store, sc *scanner.Scanner, log *slog.Logger) jo
 // bibliotheek.
 func enqueueScans(ctx context.Context, runner *jobs.Runner, libs []catalog.Library, trigger string, log *slog.Logger) {
 	for _, lib := range libs {
-		_, queued, err := runner.Enqueue(ctx, JobScanLibrary,
-			scanArgs{LibraryID: lib.ID.String(), Trigger: trigger},
+		_, queued, err := runner.Enqueue(ctx, api.JobScanLibrary,
+			api.ScanJobArgs{LibraryID: lib.ID.String(), Trigger: trigger},
 			"scan:"+lib.ID.String(), time.Time{})
 		switch {
 		case err != nil:

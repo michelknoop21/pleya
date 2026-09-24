@@ -49,6 +49,11 @@ const (
 	// GET /storage/roots schrijft niets weg: het is een leesoperatie zoals
 	// GET /libraries, dat ook geen regel krijgt.
 	auditRecheckStorageRoots = "recheckStorageRoots"
+
+	// Scans en jobs (S2.4). De lees-endpoints schrijven niets weg.
+	auditStartScan = "startScan"
+	auditCancelJob = "cancelJob"
+	auditRetryJob  = "retryJob"
 )
 
 // auditEvent schrijft één regel over de aanvrager van deze aanvraag.

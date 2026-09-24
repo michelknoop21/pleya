@@ -1,6 +1,8 @@
 package api_test
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -114,6 +116,13 @@ type matrixFixture struct {
 	self      map[string]id.ID
 	other     id.ID  // het doel van een beheerhandeling: een bestaande gebruiker
 	libraryID string // een bestaande bibliotheek, voor de PATCH/DELETE-probes van S2.2
+
+	// S2.4: de laatste scan van libraryID, een afgeronde job (cancel geeft 409)
+	// en een pending scanjob met dedupe scan:<libraryID> (POST /scan geeft
+	// herhaalbaar 409, retry laat hem ongemoeid en geeft 200).
+	scanID       string
+	doneJobID    string
+	pendingJobID string
 }
 
 const (
@@ -259,6 +268,23 @@ func matrixProbes() []matrixProbe {
 		{row: 32, name: "POST /storage/roots/recheck", method: http.MethodPost,
 			path: fixedPath("/pleya/v1/storage/roots/recheck"), body: noBody,
 			ok: http.StatusAccepted, expect: adminSurface()},
+
+		{row: 33, name: "POST /libraries/{id}/scan", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/scan" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		{row: 34, name: "GET /scans", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/scans"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 35, name: "GET /scans/{id}", method: http.MethodGet,
+			path: func(f *matrixFixture) string { return "/pleya/v1/scans/" + f.scanID },
+			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 36, name: "GET /jobs", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/jobs"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 37, name: "POST /jobs/{id}/cancel", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/jobs/" + f.doneJobID + "/cancel" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
+		{row: 38, name: "POST /jobs/{id}/retry", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/jobs/" + f.pendingJobID + "/retry" },
+			body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
 }
 
@@ -311,6 +337,23 @@ func newMatrixFixture(e *env) *matrixFixture {
 	// en 30): e.libs[0] is "films", door newEnv zelf gesynct.
 	f.libraryID = e.libs[0].ID.String()
 	e.markDBManaged(e.t, f.libraryID)
+
+	ctx := context.Background()
+	runID, _, _, err := e.store.LatestScanRun(ctx, e.libs[0].ID)
+	if err != nil {
+		e.t.Fatalf("laatste scan van de fixturebibliotheek: %v", err)
+	}
+	f.scanID = runID.String()
+	f.doneJobID = id.New().String()
+	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, state, finished_at) VALUES ($1, 'storage_recheck_roots', 'succeeded', now())`, f.doneJobID); err != nil {
+		e.t.Fatal(err)
+	}
+	f.pendingJobID = id.New().String()
+	pendingArgs, _ := json.Marshal(api.ScanJobArgs{LibraryID: f.libraryID, Trigger: "manual"})
+	if _, err := e.pool.Exec(ctx, `INSERT INTO jobs (id, kind, args, dedupe_key, run_at) VALUES ($1, 'scan_library', $2, $3, now() + interval '1 day')`,
+		f.pendingJobID, pendingArgs, "scan:"+f.libraryID); err != nil {
+		e.t.Fatal(err)
+	}
 	return f
 }
 

@@ -141,11 +141,11 @@ type FFprobeStatus struct {
 
 // Server is de router met zijn afhankelijkheden.
 type Server struct {
-	opts    Options
-	log     *slog.Logger
-	limiter *limiter
-	mux     *http.ServeMux
-	now     func() time.Time
+	opts                       Options
+	log                        *slog.Logger
+	limiter                    *limiter
+	mux                        *http.ServeMux
+	now                        func() time.Time
 	missingTrustedProxyWarning sync.Once
 }
 
@@ -282,6 +282,15 @@ func (s *Server) routeTable() []route {
 		// zelfde vorm als hierboven.
 		{"GET " + p + "/storage/roots", s.authenticated(s.handleStorageRoots)},
 		{"POST " + p + "/storage/roots/recheck", s.authenticated(s.handleRecheckStorageRoots)},
+
+		// Scans en jobs (S2.4, J.3 venster 2, matrixregels 33 tot en met 38).
+		// Klasse admin, in de handler zoals hierboven.
+		{"POST " + p + "/libraries/{library_id}/scan", s.authenticated(s.handleStartScan)},
+		{"GET " + p + "/scans", s.authenticated(s.handleListScans)},
+		{"GET " + p + "/scans/{scan_id}", s.authenticated(s.handleGetScan)},
+		{"GET " + p + "/jobs", s.authenticated(s.handleListJobs)},
+		{"POST " + p + "/jobs/{job_id}/cancel", s.authenticated(s.handleCancelJob)},
+		{"POST " + p + "/jobs/{job_id}/retry", s.authenticated(s.handleRetryJob)},
 
 		{"GET " + p + "/libraries/{library_id}/items", s.authenticated(s.handleLibraryItems)},
 		{"GET " + p + "/items/{item_id}", s.authenticated(s.handleItem)},

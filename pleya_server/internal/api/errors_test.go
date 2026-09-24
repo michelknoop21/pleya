@@ -53,12 +53,13 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"library.config_managed":         {409, false},
 		"library.confirm_mismatch":       {409, false},
 		"storage.root_not_offered":       {400, false},
+		"job.not_cancellable":            {409, false},
 	}
 
 	// Deze tabel spiegelt hoofdstuk 7.1 voor zover deze server hem draait.
 	// settings.invalid_value kwam erbij met S1.2, server.confirm_mismatch met
 	// S1.3, auth.permission_not_allowed met S1.4, auth.scope_exceeds_role met
-	// S1.5, auth.origin_rejected met S1.8 en de vier bibliotheekcodes met S2.2,
+	// S1.5, auth.origin_rejected met S1.8 en de vier bibliotheekcodes met S2.2, job.not_cancellable met S2.4 (het achtste domein),
 	// elk samen met het endpoint dat hem stuurt: een code in het register
 	// zonder handler zou hier groen staan en in het contract een belofte zijn
 	// die niemand nakomt.

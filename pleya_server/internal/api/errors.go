@@ -110,6 +110,11 @@ const (
 	// kan ondertussen gekoppelde catalogusdata verwijderen.
 	CodeLibraryConfigManaged = "library.config_managed"
 
+	// CodeJobNotCancellable is het antwoord van POST /jobs/{id}/cancel op een job
+	// die al klaar is, en van POST /jobs/{id}/retry als dezelfde dedupe-sleutel al
+	// in de wachtrij staat. Opent het achtste foutdomein (J.3, S2.4, DEC-133).
+	CodeJobNotCancellable = "job.not_cancellable"
+
 	// CodeLibraryConfirmMismatch is het antwoord van DELETE /libraries/{id} op
 	// een ontbrekende of foute confirm (J.3, K rij 16, S2.2). Een eigen code in
 	// het domein library en niet server.confirm_mismatch: die laatste bestaat
@@ -210,6 +215,7 @@ var errorTable = map[string]struct {
 	CodeLibraryNotEmpty:        {http.StatusConflict, false},
 	CodeLibraryConfigManaged:   {http.StatusConflict, false},
 	CodeLibraryConfirmMismatch: {http.StatusConflict, false},
+	CodeJobNotCancellable:      {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},
 	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},

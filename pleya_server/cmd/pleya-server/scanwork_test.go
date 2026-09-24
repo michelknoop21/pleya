@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
@@ -43,7 +44,7 @@ func TestEnqueueStartupScansHonorsEachLibraryAndIncludesDBManagedRows(t *testing
 	var count int
 	var libraryID string
 	if err := pool.QueryRow(ctx, `
-		SELECT count(*), max(args->>'library_id') FROM jobs WHERE kind = $1`, JobScanLibrary).
+		SELECT count(*), max(args->>'library_id') FROM jobs WHERE kind = $1`, api.JobScanLibrary).
 		Scan(&count, &libraryID); err != nil {
 		t.Fatal(err)
 	}
