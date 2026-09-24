@@ -46,7 +46,7 @@
       Every screen on Apple TV is reachable with the Siri Remote's D-pad. These are captures from the current beta build,
       with a real library behind them.
     </p>
-    <p class="links"><a href="/apple-tv">Everything on Apple TV</a></p>
+    <p class="links internal"><a href="/apple-tv">Everything on Apple TV</a></p>
   </div>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div class="reel-viewport" data-reel tabindex="0" aria-label="Apple TV screens, scroll sideways">

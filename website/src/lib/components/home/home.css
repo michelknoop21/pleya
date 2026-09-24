@@ -104,6 +104,7 @@
   .links a { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size 0.3s ease; }
   .links a:hover { background-size: 100% 1px; }
   .links a::after { content: " \2197"; color: var(--amber); }
+  .links.internal a::after { content: none; }
 
   /* FAQ */
   .faq-list { margin-top: 2rem; max-width: 50rem; display: grid; gap: 0.4rem; }
@@ -133,7 +134,13 @@
   .pf-feature .wrap { display: grid; gap: 2.5rem; }
   .pf-feature figure { display: flex; gap: 1.5rem; align-items: flex-end; }
   .pf-feature figure .phone { width: min(16rem, 45%); }
+  .pf-feature .lede { margin-top: 1.4rem; }
+  .pf-feature .links { margin-top: 1.6rem; }
+  .pf-list { margin-top: 1.4rem; max-width: 34rem; display: grid; gap: 0.6rem; color: var(--muted); }
+  .pf-list li { padding-left: 1.1rem; position: relative; }
+  .pf-list li::before { content: ""; position: absolute; left: 0; top: 0.65em; width: 0.4rem; height: 1px; background: var(--amber); }
   .phone.land { border-radius: 1.6rem; }
+  .pf-feature figure .phone.land { width: 100%; }
 
   @media (min-width: 768px) {
     --gutter: 2rem;

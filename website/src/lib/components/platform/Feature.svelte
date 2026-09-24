@@ -19,7 +19,7 @@
       {@render children?.()}
     </div>
     <figure data-reveal>
-      {#each shots as s (s.src)}
+      {#each shots as s, i (i)}
         <img class={s.frame} class:land={s.land} src={s.src} width={s.w} height={s.h} loading="lazy" alt={s.alt} />
       {/each}
     </figure>
