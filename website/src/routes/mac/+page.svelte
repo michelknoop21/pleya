@@ -3,6 +3,10 @@
   import Feature from '$lib/components/platform/Feature.svelte';
   import macHome from '$lib/assets/home/mac-home.webp';
   import macShare from '$lib/assets/home/mac-share.webp';
+  import macSearch from '$lib/assets/home/mac-search.webp';
+  import macPlayer from '$lib/assets/home/mac-player.webp';
+  import macDetail from '$lib/assets/home/mac-detail.webp';
+  import macSettings from '$lib/assets/home/mac-settings.webp';
 </script>
 
 <Platform
@@ -14,7 +18,11 @@
   lede="The same library and watch progress as on your iPhone and Apple TV, in a window on your desk."
   shot={{ src: macHome, w: 1312, h: 822, alt: 'Pleya Discover on a Mac', frame: 'mac' }}
 >
-  <Feature kicker="Keyboard" heading="Cmd+F goes straight to Search." shots={[]}>
+  <Feature
+    kicker="Keyboard"
+    heading="Cmd+F goes straight to Search."
+    shots={[{ src: macSearch, w: 1312, h: 769, alt: 'Search on a Mac with results for "star", each with poster, year, runtime and server', frame: 'mac' }]}
+  >
     <p class="lede">
       On a Mac, Cmd+F opens Search directly. It looks through every connected server at once, on title, cast member or
       keyword.
@@ -25,7 +33,12 @@
     </ul>
   </Feature>
 
-  <Feature kicker="Player" heading="Keep it playing in a small window." shots={[]}>
+  <Feature
+    kicker="Player"
+    heading="Keep it playing in a small window."
+    flip
+    shots={[{ src: macPlayer, w: 1312, h: 822, alt: 'The Pleya player on a Mac, paused, with the timeline, playback controls and the Picture in Picture button', frame: 'mac' }]}
+  >
     <p class="lede">Picture in Picture keeps the video playing in a small window while you use other apps on your Mac.</p>
     <ul class="pf-list">
       <li>The gear icon in the player sets the playback speed, faster or slower.</li>
@@ -51,7 +64,12 @@
     <p class="links internal"><a href="/#share">How Pleya Share works</a></p>
   </Feature>
 
-  <Feature kicker="Details" heading="Switch from 4K to 1080p while it plays." shots={[]}>
+  <Feature
+    kicker="Details"
+    heading="Switch from 4K to 1080p while it plays."
+    flip
+    shots={[{ src: macDetail, w: 1312, h: 822, alt: 'A film detail page on a Mac with 4K, Dolby Vision and Atmos labels next to the year and runtime', frame: 'mac' }]}
+  >
     <p class="lede">
       A title can exist on your server in more than one quality, for example a 4K file and a 1080p one. Pleya picks one
       to start with. You can switch during playback through Version &amp; quality in the player.
@@ -63,7 +81,11 @@
     </p>
   </Feature>
 
-  <Feature kicker="Settings" heading="Change it on the Mac. The Apple TV follows." shots={[]}>
+  <Feature
+    kicker="Settings"
+    heading="Change it on the Mac. The Apple TV follows."
+    shots={[{ src: macSettings, w: 1312, h: 747, alt: 'Settings on a Mac with Sync Settings via iCloud switched on and the sync status line underneath', frame: 'mac' }]}
+  >
     <p class="lede">
       Settings sync through iCloud, so a new Apple device starts configured. A change made on your Mac reaches the Apple
       TV while both are open.
