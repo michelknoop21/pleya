@@ -21,7 +21,9 @@ instanceable as `id[instance]`).
 
 Three of the four scenarios the Pleya Verify Definition of Done requires
 (`tvos.sidebar.collapse`, `discover.layout`, `media-detail.episode-refresh`)
-land here in Fase 11. `tvos.library.filters` does not: the Pleya Server wire
+landed here in Fase 11; the sidebar one went with the sidebar, and DEC-120 moved
+its role to `tvos.nav.focus-switches-destination`. The fourth,
+`tvos.library.filters`, did not land: the Pleya Server wire
 contract carries no filter parameter or endpoint at all (G13 in
 `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`, not scheduled before a catalog
 phase or a contract question ahead of PS-7), so there is no real filter path

@@ -506,6 +506,8 @@ case "${1:-}" in
     ;;
   device) echo "$DEVICE" ;;
   build)
+    # Oude Verify-bundels en Pleya-archives eerst weg (PLEYA_KEEP_BUILDS=1 slaat over).
+    "$(dirname "$0")/prune_old_builds.sh" || true
     # Zelfde valkuil als in de tvos_beta-lane: tvOS bouwt op een eigen
     # engine-fork, en zonder deze stap faalt de build op "unable to resolve
     # module dependency: 'Flutter'" — een fout die nergens naar de oorzaak

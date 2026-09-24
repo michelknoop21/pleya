@@ -160,6 +160,28 @@ void main() {
       );
     });
 
+    test('SYS-3d/SYS-3e: an explicit scale reserves what the rail draws, not what the box implies', () {
+      // A nested route's box (1038x900) floors to 0.85; the panel it sits in
+      // (1038x1080) is 1.0, and the rail renders at the panel scale. The
+      // estimate has to follow the caller's scale, or the screen reserves less
+      // than the rail takes.
+      final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
+      final hub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
+      const box = Size(1038, 900);
+      const panel = Size(1038, 1080);
+      double estimate(Size size, {double? scale}) => TvBrowseRailLayout.estimateHeight(
+        size: size,
+        hubs: [hub],
+        density: LibraryDensity.max,
+        episodePosterMode: EpisodePosterMode.seriesPoster,
+        scale: scale,
+      );
+
+      expect(TvBrowseRailLayout.scaleForSize(box), isNot(closeTo(TvBrowseRailLayout.scaleForSize(panel), 0.001)));
+      expect(estimate(box, scale: TvBrowseRailLayout.scaleForSize(panel)), closeTo(estimate(panel), 0.001));
+      expect(estimate(box, scale: TvBrowseRailLayout.scaleForSize(panel)), greaterThan(estimate(box)));
+    });
+
     test('compact tall poster scale reduces browse rail height', () {
       final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
       final hub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
