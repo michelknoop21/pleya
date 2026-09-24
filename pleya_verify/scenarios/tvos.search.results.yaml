@@ -40,6 +40,9 @@ steps:
   - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 10000}
   - assert: {id: "tv.catalog.grid.item[search.movies.0]"}
   - assert: {id: "tv.catalog.grid.item[search.movies.1]"}
+  # VIS1/36 B: the count lives in the pill, and the results start under it.
+  - assert: {id: tv.search.pill, state: {count: "2 resultaten"}}
+  - assert: {id: "tv.catalog.grid[search.movies]", below: tv.search.pill}
   - settle: 1000
   - snapshot: 02-results
 

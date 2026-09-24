@@ -57,6 +57,8 @@ import '../widgets/tv/tv_unified_layout.dart';
 import '../widgets/tv/tv_unified_media_card.dart';
 import '../widgets/tv_virtual_keyboard.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
+import '../utils/layout_constants.dart';
+import 'tv/tv_search_pill.dart';
 import 'tv/tv_search_view.dart';
 import 'seerr/seerr_discover_screen.dart';
 import '../media/media_server_client.dart';
@@ -955,51 +957,29 @@ class _SearchScreenState extends State<SearchScreen>
       isSearching: _isSearching,
       total: total,
     );
-    final pill = ListenableBuilder(
-      listenable: _searchController,
-      builder: (context, _) {
-        final text = _searchController.text;
-        return InputDecorator(
-          decoration: pillInputDecoration(
-            context,
-            hintText: t.search.hint,
-            prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-            // 36 B puts "14 resultaten" inside the pill, at tertiary ink. It is
-            // a statement about the query, so it belongs to the field that
-            // holds the query rather than to a line above the first band.
-            suffixIcon: countLabel == null
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Text(
-                      countLabel,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: TvCatalogLayout.inkTertiary),
-                      ),
-                    ),
-                  ),
-          ),
-          isEmpty: text.isEmpty,
-          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-        );
-      },
-    );
+    // The pill starts on the content column the result bands start on (36 B).
+    final scale = TvLayoutConstants.scaleOf(context);
+    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+    final inset = grid.inset + TvCatalogLayout.cardContentInset(scale);
     return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+      padding: EdgeInsets.only(left: inset, right: inset, bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (nativePill)
-            FocusableButton(
-              focusNode: _searchFocusNode,
-              onPressed: _openNativeSearchEntry,
-              onNavigateLeft: _navigateToSidebar,
-              onNavigateDown: _handleTvKeyboardNavigateDown,
-              onBack: _handleTvKeyboardClose,
-              child: pill,
-            )
-          else
-            pill,
+          TvSearchPill(
+            controller: _searchController,
+            countLabel: countLabel,
+            wrap: nativePill
+                ? (pill) => FocusableButton(
+                    focusNode: _searchFocusNode,
+                    onPressed: _openNativeSearchEntry,
+                    onNavigateLeft: _navigateToSidebar,
+                    onNavigateDown: _handleTvKeyboardNavigateDown,
+                    onBack: _handleTvKeyboardClose,
+                    child: pill,
+                  )
+                : null,
+          ),
           // Apple TV gets no mic button: the mic is on the remote and dictates
           // the moment the system keyboard is up, which selecting the pill
           // already does. Android TV needs one — there the mic opens
