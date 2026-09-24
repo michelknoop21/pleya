@@ -108,6 +108,12 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   /// In-memory scan cache: file URI → MediaItem.
   final Map<String, MediaItem> _itemCache = {};
 
+  /// Set by [invalidateScanCache]; the scan in flight, so concurrent readers
+  /// share one pass; and the ids that pass has seen, to drop removed files.
+  bool _scanStale = false;
+  Future<List<MediaItem>>? _scanInFlight;
+  Set<String>? _scanSeen;
+
   /// In-memory library list (one library per configured root).
   late final List<MediaLibrary> _libraries;
 
@@ -267,6 +273,11 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
     return [];
   }
 
+  /// Marks the scan as out of date: the next read that needs the catalog
+  /// rescans the folder. The old items stay readable meanwhile, so a title
+  /// that is playing or open never disappears mid-rescan.
+  void invalidateScanCache() => _scanStale = true;
+
   @override
   Future<void> refreshLibraryMetadata(String libraryId) async {
     _itemCache.clear();
@@ -377,6 +388,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async {
+    if (_scanStale || _scanInFlight != null) await _scanLibrary(connection.id);
     final all = _itemCache.values
         .where((item) => item.kind == MediaKind.movie || item.kind == MediaKind.episode)
         .toList();
@@ -857,10 +869,18 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<List<MediaItem>> scanAllItems() => _scanLibrary(connection.id);
 
   /// Scan the configured directory and populate [_itemCache].
-  Future<List<MediaItem>> _scanLibrary(String libraryId) async {
-    if (_itemCache.isNotEmpty) return _itemCache.values.toList();
+  Future<List<MediaItem>> _scanLibrary(String libraryId) {
+    final inFlight = _scanInFlight;
+    if (inFlight != null) return inFlight;
+    if (_itemCache.isNotEmpty && !_scanStale) return Future.value(_itemCache.values.toList());
+    final rescan = _scanStale && _itemCache.isNotEmpty;
+    _scanStale = false;
+    return _scanInFlight = _runScan(libraryId, rescan: rescan).whenComplete(() => _scanInFlight = null);
+  }
 
+  Future<List<MediaItem>> _runScan(String libraryId, {required bool rescan}) async {
     await _loadWatchState();
+    if (rescan) _scanSeen = {};
 
     try {
       appLogger.i('LocalFolderClient: scan start for ${connection.displayName} (${connection.libraryType})');
@@ -876,6 +896,8 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
         // permanently serving an empty library from a dead path.
         lastScanError = SecureFolderService.instance.lastListError ?? 'unreadable: $rootUri';
         SecureFolderService.instance.forget(connection.id);
+        // A failed rescan keeps what the last good scan found and tries again.
+        if (rescan) return _keepAfterFailedRescan();
         return [];
       }
       lastScanError = children.isEmpty ? 'empty: $rootUri' : null;
@@ -914,19 +936,29 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
         }
       }
 
+      final seen = _scanSeen;
+      if (seen != null) _itemCache.removeWhere((id, _) => !seen.contains(id));
       _applyWatchStateToCache();
       appLogger.i('LocalFolderClient: scan done for ${connection.displayName} → ${_itemCache.length} items');
     } catch (e, st) {
       appLogger.w('LocalFolderClient: scan failed for $libraryId', error: e, stackTrace: st);
       lastScanError = '$e';
+      if (rescan) return _keepAfterFailedRescan();
       // A mid-scan failure would otherwise freeze a partial catalog for the
       // whole session (the isNotEmpty guard above). Drop the partial cache and
       // the resolved scope so the next call retries a full scan.
       _itemCache.clear();
       SecureFolderService.instance.forget(connection.id);
       return const [];
+    } finally {
+      _scanSeen = null;
     }
 
+    return _itemCache.values.toList();
+  }
+
+  List<MediaItem> _keepAfterFailedRescan() {
+    _scanStale = true;
     return _itemCache.values.toList();
   }
 
@@ -1254,6 +1286,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   void _cacheItem(MediaItem item) {
     _itemCache[item.id] = item;
+    _scanSeen?.add(item.id);
   }
 
   /// Seed an item into the in-memory catalog without a folder scan — used by
