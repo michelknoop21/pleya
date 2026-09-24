@@ -55,7 +55,7 @@ void main() {
       6,
       'the typed write helpers and the nullable-pref remove; every one of them ends in notifyMutation',
     ),
-    'lib/services/preferences/preference_sync_coordinator.dart': RawWriteRecord(
+    'lib/services/preferences/preference_remote_apply.dart': RawWriteRecord(
       WriteCategory.syncPreference,
       2,
       'applies remote entries and removes on a tombstone or an absent key; re-reporting those would echo',
