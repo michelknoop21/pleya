@@ -156,19 +156,26 @@ bedoeling is.
 
 `ALTER TABLE libraries ADD managed text NOT NULL DEFAULT 'config' CHECK (managed IN
 ('config','db'))`, `scan_interval_seconds int NULL`, `scan_on_start bool NULL`,
-`last_scan_run_id uuid NULL REFERENCES scan_runs ON DELETE SET NULL`. `jobs ADD
-cancel_requested_at timestamptz NULL`; `scan_runs.state` CHECK uitgebreid met `cancelled`
-(nieuwe CHECK, oude droppen). Backfill: alle bestaande rijen `config`; `last_scan_run_id` uit de
+`last_scan_run_id uuid NULL REFERENCES scan_runs ON DELETE SET NULL`. Backfill: alle bestaande rijen `config`; `last_scan_run_id` uit de
 laatste `scan_runs` per bibliotheek. Terugdraaien: kolommen droppen; een `db`-bibliotheek
 verdwijnt dan uit de configuratie bij herstart, dus de migratietest bewaakt dat 0009 zelf nooit
 een bibliotheek verwijdert en dat een `.env`-opstelling na 0009 dezelfde ids houdt (PS-11A
 criterium 2).
 
-### 0011 boeken
+### 0010 jobs annuleren (S2.4)
 
-Verschoven van `0010` naar `0011`: S2.4 claimt `0010` voor `jobs.cancel_requested_at` en de
-`scan_runs`-CHECK-uitbreiding (annuleren, retry en backoff op `probe_attempts`), en elke migratie
-erna schuift met deze reservering mee.
+`jobs ADD cancel_requested_at timestamptz NULL`; `scan_runs.state` CHECK uitgebreid met `queued`
+(nieuwe CHECK, oude droppen). Terugdraaien: kolom droppen en de CHECK terugzetten.
+
+### 0011 stream_loudness (loudness D1)
+
+Tabel `stream_loudness` per audiostroom, basis `pcm-native-tl31-drc0`; zie `docs/pleya-server-loudness-measurement-proposal.md`.
+
+### 0012 boeken
+
+Verschoven van `0010` naar `0012`: S2.4 claimt `0010` voor `jobs.cancel_requested_at` en de
+`scan_runs`-CHECK-uitbreiding (annuleren, retry en backoff op `probe_attempts`), loudness claimt
+`0011`, en elke migratie erna schuift met deze reserveringen mee.
 
 `libraries.kind` CHECK opnieuw met `books`. `publications` en `publication_files` zoals H.2, met
 `publications_library_added_idx (library_id, added_at DESC)`, `publications_grouping_uidx
@@ -179,14 +186,14 @@ geteld en gelogd wordt), `publication_id` CASCADE, `storage_location_id` RESTRIC
 Terugdraaien: tabellen droppen en de CHECK terugzetten, alleen als er geen `books`-rij is; de
 migratietest weigert anders.
 
-### 0012 itemmetadata
+### 0013 itemmetadata
 
 `media_items ADD summary text NULL, genres text[] NOT NULL DEFAULT '{}', genres_key text[] NOT NULL DEFAULT '{}' (casefold, trim), content_rating text
 NULL, people jsonb NULL, sidecar_seen_at timestamptz NULL`. Index `media_items_genres_gin` (GIN
 op `genres`), `media_items_library_year_idx (library_id, year)`. Backfill: geen; de eerstvolgende
 scan vult ze. Terugdraaien: kolommen droppen, geen dataverlies buiten de sidecarvelden.
 
-### 0013 zoekindexen
+### 0014 zoekindexen
 
 `CREATE EXTENSION IF NOT EXISTS pg_trgm` (vereist dat de databaserol dat mag; op de NAS-image is
 dat zo, en de migratie meldt een duidelijke fout als het niet mag), GIN-trigramindex op
@@ -194,27 +201,27 @@ dat zo, en de migratie meldt een duidelijke fout als het niet mag), GIN-trigrami
 expressie-index of een hulpkolom `authors_text`. Terugdraaien: indexen droppen; de query blijft
 correct, alleen trager.
 
-### 0014 leesvoortgang
+### 0015 leesvoortgang
 
 `reading_states` met `locator jsonb` in Readium-vorm (`href`, `type`, `locations{progression, totalProgression, position, partialCfi}`, `text?`) plus `publication_digest`, met `reading_states_user_updated_idx (user_id, updated_at DESC)
 WHERE finished = false`. FK's: `user_id` CASCADE (gebruiker weg is voortgang weg, zoals
 `watch_states`), `publication_id` CASCADE, `last_session_id` SET NULL. Terugdraaien: droppen.
 
-### 0015 tot 0020 (uitgebreide scope)
+### 0016 tot 0021 (uitgebreide scope)
 
-`0015_transcode_sessions` (sessie, versie, gebruiker, sessie-id, hwaccel, laatste heartbeat,
-map; index op heartbeat), `0016_collections_playlists` (`collections`, `collection_items`,
+`0016_transcode_sessions` (sessie, versie, gebruiker, sessie-id, hwaccel, laatste heartbeat,
+map; index op heartbeat), `0017_collections_playlists` (`collections`, `collection_items`,
 `collection_grants`, `playlists`, `playlist_items` met `position`; FK's cascade op eigenaar en
-item), `0017_personal` (`play_history`, `favorites`, `ratings`, `track_preferences`; alle op
-`user_id` cascade), `0018_metadata_candidates` (`metadata_candidates`, `metadata_corrections`,
+item), `0018_personal` (`play_history`, `favorites`, `ratings`, `track_preferences`; alle op
+`user_id` cascade), `0019_metadata_candidates` (`metadata_candidates`, `metadata_corrections`,
 `metadata_overrides` per veld met provenance, `artwork_candidates` met `pinned`, `external_ids`; `media_items` krijgt `studio`, `tagline`, `metadata_source`),
-`0019_downloads`, `0020_backups`. Elke migratie: geen backfill behalve `play_history` uit bestaande
+`0020_downloads`, `0021_backups`. Elke migratie: geen backfill behalve `play_history` uit bestaande
 `watch_states` (één rij per item met `watched = true`, gemarkeerd `source = 'backfill'`),
 terugdraaien door droppen, en de migratietest uit J.7 groen op de NAS-fixture.
 
 ## J.7 Migratietest
 
 `internal/migrate/migrate_test.go` krijgt een test die de NAS-fixture (schema 7, geanonimiseerd,
-461 films, 97 series, 3 gebruikers) laadt, 0008 tot 0014 toepast, en daarna asserteert: dezelfde
+461 films, 97 series, 3 gebruikers) laadt, 0008 tot 0015 toepast, en daarna asserteert: dezelfde
 `libraries.id` en `slug`, `managed = 'config'`, alle `watch_states` intact, `item_count` gelijk,
 `readyz` groen. Dezelfde test draait in CI op elke migratiecommit.
