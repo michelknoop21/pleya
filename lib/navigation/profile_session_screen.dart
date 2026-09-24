@@ -362,6 +362,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   database: context.read<AppDatabase>(),
                   profileId: activeId ?? '',
                   clientResolver: context.read<MultiServerProvider>().getClientForServer,
+                  enabledImportServerIds: context.read<TautulliProvider>().enabledImportServerIds,
                 )..start(),
                 dispose: (_, recorder) => recorder.dispose(),
               ),

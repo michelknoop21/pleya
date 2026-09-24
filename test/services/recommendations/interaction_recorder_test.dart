@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
@@ -88,5 +89,65 @@ void main() {
     );
     WatchStateNotifier().notifyProgress(item: item, viewOffset: 55 * 60000, duration: 100 * 60000, isFinal: true);
     expect(await rows(), hasLength(2));
+  });
+
+  test('a completed view after a partial within six hours keeps both rows', () async {
+    // The spec allows 1.4 for one title in one evening; the window only stops
+    // partials from stacking on each other.
+    WatchStateNotifier().notifyProgress(item: item, viewOffset: 60 * 60000, duration: 100 * 60000, isFinal: true);
+    await rows();
+    WatchStateNotifier().notifyWatched(item: item);
+    expect((await rows()).map((r) => r.eventType), ['partial', 'completed']);
+  });
+
+  test("another profile's row does not suppress the partial (DEC-062)", () async {
+    await db.insertMediaInteraction(
+      MediaInteractionsCompanion.insert(
+        profileId: 'p2',
+        globalKey: 's1:m1',
+        mediaKind: 'movie',
+        eventType: 'completed',
+        eventWeight: 1.0,
+        occurredAt: DateTime.now().millisecondsSinceEpoch - hour,
+      ),
+      profileId: 'p2',
+    );
+    WatchStateNotifier().notifyProgress(item: item, viewOffset: 60 * 60000, duration: 100 * 60000, isFinal: true);
+    expect((await rows()).single.eventType, 'partial');
+  });
+
+  group('an imported row inside the window', () {
+    Future<void> imported() => db.insertImportedInteractions([
+      MediaInteractionsCompanion.insert(
+        profileId: 'p1',
+        globalKey: 's1:m1',
+        mediaKind: 'movie',
+        eventType: 'completed',
+        eventWeight: 1.0,
+        occurredAt: DateTime.now().millisecondsSinceEpoch - hour,
+        source: const Value(kInteractionSourceTautulli),
+        sourceEventId: const Value('tautulli:s1:1'),
+        sourceServerId: const Value('s1'),
+      ),
+    ], profileId: 'p1');
+
+    test('from a disabled import server does not suppress the partial', () async {
+      await imported();
+      WatchStateNotifier().notifyProgress(item: item, viewOffset: 60 * 60000, duration: 100 * 60000, isFinal: true);
+      expect((await rows()).single.eventType, 'partial');
+    });
+
+    test('from an enabled import server does suppress it', () async {
+      await recorder.dispose();
+      recorder = InteractionRecorder(
+        database: db,
+        profileId: 'p1',
+        clientResolver: (_) => _FakeClient(),
+        enabledImportServerIds: () => {'s1'},
+      )..start();
+      await imported();
+      WatchStateNotifier().notifyProgress(item: item, viewOffset: 60 * 60000, duration: 100 * 60000, isFinal: true);
+      expect(await rows(), isEmpty, reason: 'rows() reads local rows only; no local partial was written');
+    });
   });
 }

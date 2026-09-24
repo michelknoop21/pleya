@@ -22,11 +22,19 @@ import 'tautulli_history_importer.dart' show kCrossSourceWindow, kPartialPercent
 /// Continue-Watching dismissal (weight -0.3), and a partial view
 /// ([kPartialWeight]) when a playback session ends between [kPartialPercent]
 /// and the watched threshold, at most once per title per [kCrossSourceWindow].
-/// An abandoned play below that percentage records nothing.
+/// An abandoned play below that percentage records nothing. The window only
+/// keeps partials from stacking: a partial followed by a completed view of the
+/// same title inside it keeps both rows, 1.4 for that title, which the spec
+/// allows.
 class InteractionRecorder {
   final AppDatabase _db;
   final String _profileId;
   final MediaServerClient? Function(ServerId serverId) _clientResolver;
+
+  /// Import servers whose rows count as evidence, the same set the taste
+  /// vector is scored from. A row from a disabled server must not suppress a
+  /// local partial.
+  final Set<String> Function() _enabledImportServerIds;
 
   StreamSubscription<WatchStateEvent>? _sub;
 
@@ -34,8 +42,15 @@ class InteractionRecorder {
   /// re-watch of the same item never re-fetches metadata.
   final Map<String, _Features> _featureCache = {};
 
-  InteractionRecorder({required AppDatabase database, required this._profileId, required this._clientResolver})
-    : _db = database;
+  InteractionRecorder({
+    required AppDatabase database,
+    required this._profileId,
+    required this._clientResolver,
+    Set<String> Function()? enabledImportServerIds,
+  }) : _db = database,
+       _enabledImportServerIds = enabledImportServerIds ?? _noImports;
+
+  static Set<String> _noImports() => const {};
 
   void start() {
     // No active profile → nothing to attribute interactions to; stay inert so
@@ -105,7 +120,13 @@ class InteractionRecorder {
     if (event.isNowWatched == true) return null;
     if (offset * 100 ~/ duration < kPartialPercent) return null;
     final since = DateTime.now().millisecondsSinceEpoch - kCrossSourceWindow.inMilliseconds;
-    if (await _db.hasPositiveInteractionSince(_profileId, event.globalKey, since)) return null;
+    final hasRecent = await _db.hasPositiveInteractionSince(
+      _profileId,
+      event.globalKey,
+      since,
+      enabledImportServerIds: _enabledImportServerIds(),
+    );
+    if (hasRecent) return null;
     return ('partial', kPartialWeight);
   }
 

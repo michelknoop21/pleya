@@ -492,9 +492,16 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Whether a positive row for [globalKey] exists at or after [sinceMs].
-  /// Any source counts: a Tautulli row imported an hour ago is as much proof
-  /// of the view as a local one.
-  Future<bool> hasPositiveInteractionSince(String profileId, String globalKey, int sinceMs) async {
+  /// Same scoring scope as the vector: a Tautulli row imported an hour ago is
+  /// as much proof of the view as a local one, but only while its server is in
+  /// [enabledImportServerIds]. A row the scorer ignores must not suppress one
+  /// it would count.
+  Future<bool> hasPositiveInteractionSince(
+    String profileId,
+    String globalKey,
+    int sinceMs, {
+    Set<String> enabledImportServerIds = const {},
+  }) async {
     final row =
         await (select(mediaInteractions)
               ..where(
@@ -502,7 +509,8 @@ class AppDatabase extends _$AppDatabase {
                     t.profileId.equals(profileId) &
                     t.globalKey.equals(globalKey) &
                     t.eventWeight.isBiggerThanValue(0) &
-                    t.occurredAt.isBiggerOrEqualValue(sinceMs),
+                    t.occurredAt.isBiggerOrEqualValue(sinceMs) &
+                    _scoringScope(enabledImportServerIds),
               )
               ..limit(1))
             .getSingleOrNull();
