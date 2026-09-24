@@ -1,67 +1,26 @@
 part of '../media_detail_screen.dart';
 
-/// The series-detail tabs (mockup 07): Afleveringen / Vergelijkbaar / Extra's
-/// / Details. Season selection reuses the exact
+/// The series' episodes block on the phone detail page (DEC-131): an
+/// "Afleveringen" heading, the season pill with its watched count, and the
+/// episode rows, inline under the header instead of behind mockup 07's tabs.
+/// Season selection reuses the exact
 /// `setState(() => _selectedSeasonIndex = index); _fetchSeasonEpisodes(index);`
 /// contract `_buildSeasonTabsContent` (`media_detail_screen.dart`) already
 /// uses for its horizontal tab row, so per-season pagination state
 /// (`_seasonEpisodePager`) stays intact when switching seasons here.
-extension _MobileEpisodesTab on _MediaDetailScreenState {
-  Widget _buildMobileEpisodesTabs(BuildContext context, MediaItem metadata) {
-    // The mobile tab strip needs shorter labels than the global Discover
-    // section's "More Like This"/"Trailers & Extras" (those stay unchanged
-    // for their own screens): mockup 07 shows "Vergelijkbaar"/"Extra's".
-    final tabs = [
-      t.libraries.groupings.episodes,
-      t.mobileDetail.similarTab,
-      t.mobileDetail.extrasTab,
-      t.common.details,
-    ];
-
-    return DefaultTabController(
-      length: tabs.length,
-      // A Builder so `context` below is a *descendant* of DefaultTabController
-      // (`.of(context)` on the outer context, from _buildMobileDetailScreen,
-      // would never find it); AnimatedBuilder listens to the controller
-      // itself so the IndexedStack actually rebuilds on every tab switch, not
-      // just once when the controller is first created.
-      child: Builder(
-        builder: (context) {
-          final controller = DefaultTabController.of(context);
-          return Column(
-            crossAxisAlignment: .start,
-            children: [
-              TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                tabs: [for (final label in tabs) Tab(text: label)],
-              ),
-              const SizedBox(height: 12),
-              // The tab views size themselves; a fixed-height shell keeps this
-              // sliver-hosted CustomScrollView from getting an unbounded height.
-              ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 400),
-                child: AnimatedBuilder(
-                  animation: controller,
-                  builder: (context, _) => IndexedStack(
-                    index: controller.index,
-                    children: [
-                      _buildMobileEpisodesTabContent(context, metadata),
-                      _buildMobileSimilarTabContent(context),
-                      _buildMobileExtrasTabContent(context),
-                      _buildMobileDetailsTabContent(context, metadata),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+extension _MobileEpisodesSection on _MediaDetailScreenState {
+  Widget _buildMobileEpisodesSection(BuildContext context, MediaItem metadata) {
+    return Column(
+      crossAxisAlignment: .start,
+      children: [
+        _buildMobileSectionTitle(context, t.libraries.groupings.episodes),
+        const SizedBox(height: 12),
+        _buildMobileEpisodesContent(context, metadata),
+      ],
     );
   }
 
-  Widget _buildMobileEpisodesTabContent(BuildContext context, MediaItem metadata) {
+  Widget _buildMobileEpisodesContent(BuildContext context, MediaItem metadata) {
     final showFlattened = _showEpisodesDirectly || metadata.isSeason;
 
     return Column(
@@ -152,56 +111,6 @@ extension _MobileEpisodesTab on _MediaDetailScreenState {
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
-      ],
-    );
-  }
-
-  Widget _buildMobileSimilarTabContent(BuildContext context) {
-    if (_relatedHubs.isEmpty) return _sectionEmpty(context, t.messages.noEpisodesFoundGeneral);
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        for (int i = 0; i < _relatedHubs.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          HubSection(
-            key: _relatedHubKeys[i],
-            hub: _relatedHubs[i],
-            icon: _getRelatedHubIcon(_relatedHubs[i]),
-            inset: true,
-            onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildMobileExtrasTabContent(BuildContext context) {
-    if (widget.isOffline || _extras == null || _extras!.isEmpty) {
-      return _sectionEmpty(context, t.messages.noEpisodesFoundGeneral);
-    }
-    return _buildExtrasSection();
-  }
-
-  Widget _buildMobileDetailsTabContent(BuildContext context, MediaItem metadata) {
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        _buildMobileSynopsisAndCredits(context, metadata),
-        if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildCastSection(metadata),
-        ],
-        if (metadata.studio != null || metadata.contentRating != null) ...[
-          const SizedBox(height: 16),
-          if (metadata.studio != null) ...[
-            _buildInfoRow(t.discover.studio, metadata.studio!),
-            const SizedBox(height: 12),
-          ],
-          if (metadata.contentRating != null)
-            _buildInfoRow(t.discover.rating, formatContentRating(metadata.contentRating)),
-        ],
-        const SizedBox(height: 16),
-        _buildMobileActionRow(context, metadata),
       ],
     );
   }

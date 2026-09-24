@@ -1,9 +1,12 @@
 part of '../media_detail_screen.dart';
 
-/// The mobile film/series detail presentation (northstar 06/07,
-/// `docs/assets/ios-unified/northstar/06-film-detail.png` and
-/// `07-serie-afleveringen.png`). iOS Unified 2026 workitem 5 (I6),
-/// `docs/unified-2026-closure.md` §5 row 5.
+/// The mobile film/series detail presentation: one scrolling page in the
+/// order of northstar 06 (`docs/assets/ios-unified/northstar/06-film-detail.png`)
+/// for films and series alike. Northstar 07's tab strip for a series is
+/// dropped on Michel's instruction (DEC-131); the episodes, extras, cast and
+/// related rows follow the header inline, the way the TV detail stacks its
+/// rails. iOS Unified 2026 workitem 5 (I6), `docs/unified-2026-closure.md`
+/// §5 row 5.
 ///
 /// This is presentation only. Every action it triggers (play, download,
 /// watchlist, rate, mark watched, source change) reuses the exact methods
@@ -48,33 +51,32 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                               child: Column(
                                 crossAxisAlignment: .start,
                                 children: [
-                                  // Mockup 07 opens a series on the Hervatten
-                                  // capsule and goes straight into the tabs:
-                                  // no 16:9 preview, no second title under the
-                                  // app bar's, no tags row, and no full-width
-                                  // Downloaden CTA (download lives per episode
-                                  // row instead). Those belong to 06, the film
-                                  // detail, which keeps them unchanged below.
-                                  if (!metadata.isShow) ...[
-                                    _buildMobilePreviewCard(context, metadata, client),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      metadata.displayTitle,
-                                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildMobileTagsRow(context, metadata),
-                                    const SizedBox(height: 16),
-                                  ],
+                                  // DEC-131: one scrolling page for film and
+                                  // series alike, the order of mockup 06.
+                                  // Mockup 07's tabs (Afleveringen /
+                                  // Vergelijkbaar / Extra's / Details) are
+                                  // gone; a series gets the same header and
+                                  // its episodes, extras, cast and related
+                                  // rows follow inline, like the TV detail.
+                                  _buildMobilePreviewCard(context, metadata, client),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    metadata.displayTitle,
+                                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildMobileTagsRow(context, metadata),
+                                  const SizedBox(height: 16),
                                   _buildMobilePrimaryCta(context, metadata),
+                                  // Downloading a series happens per episode
+                                  // row; the full-width capsule is the film's.
                                   if (!metadata.isShow) ...[
                                     const SizedBox(height: 10),
                                     _buildMobileDownloadCta(context, metadata),
                                   ],
-                                  // Kept for a series too: this is the only way
-                                  // to change source from the detail page, and
-                                  // it already draws nothing unless the item
-                                  // actually has alternative sources
+                                  // The only way to change source from the
+                                  // detail page; draws nothing unless the item
+                                  // has alternative sources
                                   // (`hasAlternativeSources`, action_buttons.dart).
                                   _buildUnifiedSourceLine(),
                                   if (_detailAudioTracks.isNotEmpty) ...[
@@ -82,27 +84,35 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                                     _buildMobileAudioSelector(),
                                   ],
                                   const SizedBox(height: 16),
-                                  if (metadata.isShow)
-                                    _buildMobileEpisodesTabs(context, metadata)
-                                  else ...[
-                                    _buildMobileSynopsisAndCredits(context, metadata),
-                                    const SizedBox(height: 16),
-                                    _buildMobileActionRow(context, metadata),
+                                  _buildMobileSynopsisAndCredits(context, metadata),
+                                  const SizedBox(height: 16),
+                                  _buildMobileActionRow(context, metadata),
+                                  if (metadata.isShow) ...[
+                                    const SizedBox(height: 24),
+                                    _buildMobileEpisodesSection(context, metadata),
                                   ],
-                                  // For a show, "Meer zoals dit" lives in the
-                                  // Vergelijkbaar tab instead (_buildMobileEpisodesTabs)
-                                  // so it isn't rendered twice.
-                                  if (!metadata.isShow)
-                                    for (int i = 0; i < _relatedHubs.length; i++) ...[
-                                      const SizedBox(height: 8),
-                                      HubSection(
-                                        key: _relatedHubKeys[i],
-                                        hub: _relatedHubs[i],
-                                        icon: _getRelatedHubIcon(_relatedHubs[i]),
-                                        inset: true,
-                                        onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
-                                      ),
-                                    ],
+                                  if (!widget.isOffline && _extras != null && _extras!.isNotEmpty) ...[
+                                    const SizedBox(height: 24),
+                                    _buildMobileSectionTitle(context, t.discover.extras, key: _extrasSectionKey),
+                                    const SizedBox(height: 12),
+                                    _buildExtrasSection(),
+                                  ],
+                                  if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
+                                    const SizedBox(height: 24),
+                                    _buildMobileSectionTitle(context, t.discover.cast, key: _castSectionKey),
+                                    const SizedBox(height: 12),
+                                    _buildCastSection(metadata),
+                                  ],
+                                  for (int i = 0; i < _relatedHubs.length; i++) ...[
+                                    const SizedBox(height: 16),
+                                    HubSection(
+                                      key: _relatedHubKeys[i],
+                                      hub: _relatedHubs[i],
+                                      icon: _getRelatedHubIcon(_relatedHubs[i]),
+                                      inset: true,
+                                      onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -487,6 +497,16 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           onPressed: () => unawaited(SharePlus.instance.share(ShareParams(text: metadata.displayTitle))),
         ),
       ],
+    );
+  }
+
+  /// Section heading over the inline episodes, extras and cast blocks: the
+  /// same `titleLarge` bold the tablet/desktop layout uses for its sections.
+  Widget _buildMobileSectionTitle(BuildContext context, String title, {Key? key}) {
+    return Text(
+      key: key,
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: .bold),
     );
   }
 }

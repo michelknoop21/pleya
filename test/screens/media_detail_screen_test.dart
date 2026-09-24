@@ -1623,7 +1623,7 @@ void main() {
       Color? capsuleColour(WidgetTester tester, Finder button) =>
           tester.widgetList<Material>(find.descendant(of: button, matching: find.byType(Material))).last.color;
 
-      testWidgets('a series opens on the capsule, without the film header (mockup 07)', (tester) async {
+      testWidgets('a series gets the film header and its episodes inline, no tabs (DEC-131)', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
         final client = _FakeMediaServerClient(
@@ -1636,12 +1636,15 @@ void main() {
 
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // The app bar carries the title; mockup 07 has no second one beneath it.
-        expect(find.text('The Show'), findsOneWidget);
-        // On a series, downloading is per episode row — not a full-width CTA.
+        // App bar title plus the headline under the preview card, like a film.
+        expect(find.text('The Show'), findsNWidgets(2));
+        // On a series, downloading is per episode row, not a full-width CTA.
         expect(find.widgetWithText(FilledButton, 'Download'), findsNothing);
-        // What follows the capsule is the tab row.
-        expect(find.byType(TabBar), findsOneWidget);
+        // No tab strip: the action row and the episodes block sit on the page.
+        expect(find.byType(TabBar), findsNothing);
+        expect(find.text('Share'), findsOneWidget);
+        expect(find.text('Episodes'), findsOneWidget);
+        expect(find.text('Episode S1E1'), findsOneWidget);
       });
 
       testWidgets('a film keeps its preview, second title and Download capsule (mockup 06)', (tester) async {
@@ -1699,7 +1702,7 @@ void main() {
         expect(decoration.color, isNot(tk.surface));
       });
 
-      testWidgets('NL tab strip reads Afleveringen · Vergelijkbaar · Extra\'s · Details (mockup 07)', (tester) async {
+      testWidgets('NL: the episodes block reads Afleveringen and no tab labels are left (DEC-131)', (tester) async {
         // nl is a deferred library (slang lazy loading): loading it for real
         // needs the real event loop, not testWidgets' fake-async zone.
         await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
@@ -1717,12 +1720,10 @@ void main() {
 
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // The global Discover labels ("Meer zoals dit" / "Trailers & Extra's")
-        // are too long for this tab strip and must not appear here — only
-        // the mobileDetail-scoped, tab-length translations.
-        final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-        final labels = tabBar.tabs.map((tab) => (tab as Tab).text).toList();
-        expect(labels, ['Afleveringen', 'Vergelijkbaar', "Extra's", 'Details']);
+        expect(find.byType(TabBar), findsNothing);
+        expect(find.text('Afleveringen'), findsOneWidget);
+        expect(find.text('Vergelijkbaar'), findsNothing);
+        expect(find.text('Details'), findsNothing);
       });
     });
   });

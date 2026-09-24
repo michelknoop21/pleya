@@ -146,7 +146,7 @@ import '../utils/error_message_utils.dart';
 part 'media_detail/action_buttons.dart';
 part 'media_detail/audio_selector.dart';
 part 'media_detail/mobile_detail_view.dart';
-part 'media_detail/mobile_episodes_tab.dart';
+part 'media_detail/mobile_episodes_section.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
 
