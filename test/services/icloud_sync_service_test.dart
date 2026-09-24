@@ -121,6 +121,31 @@ void main() {
     expect(kvs, snapshot);
   });
 
+  test('adopting a stamped remote record through the real hook sends nothing back', () async {
+    final settings = await SettingsService.getInstance();
+    final fake = FakeTransport();
+    final svc = ICloudSyncService.debugCreate(settings: settings, transport: fake);
+    await svc.enable();
+    await settings.write(SettingsService.subtitleFontSize, 44);
+    await pumpEventQueue();
+    fake.writes.clear();
+
+    final later = DateTime.now().toUtc().millisecondsSinceEpoch + 60 * 1000;
+    fake.store[g('subtitle_font_size')] = json.encode({'type': 'int', 'value': 61, 't': later, 'd': 'appletv'});
+    fake.controller.add(
+      RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [g('subtitle_font_size')]),
+    );
+    await pumpEventQueue();
+
+    expect(settings.read(SettingsService.subtitleFontSize), 61);
+    expect(
+      svc.coordinator.localRevision('subtitle_font_size')!.updatedAt,
+      later,
+      reason: 'the remote stamp is adopted',
+    );
+    expect(fake.writes, isEmpty, reason: 'an adopted record must not echo');
+  });
+
   test('remote removal (key absent in getAll) clears the local value', () async {
     final settings = await SettingsService.getInstance();
     final svc = ICloudSyncService.debugCreate(settings: settings);

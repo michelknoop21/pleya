@@ -178,6 +178,38 @@ void main() {
       expect(settings.prefs.getInt('subtitle_font_size'), isNull);
     });
 
+    test('an absent-key removal resets the stamp, so a later lower-stamped record still lands', () async {
+      final coordinator = await build();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      transport.store.remove(cloudKey);
+      await coordinator.applyRemoteKeys([cloudKey]);
+      expect(settings.prefs.getInt('subtitle_font_size'), isNull);
+
+      transport.store[cloudKey] = stamped('int', 70, 1000, 'appletv');
+      await coordinator.applyAllRemote();
+
+      expect(settings.prefs.getInt('subtitle_font_size'), 70, reason: 'a live stamp without a value must not block it');
+    });
+
+    test('on an equal timestamp the higher device id wins', () async {
+      final coordinator = await build();
+      final at = future();
+      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      transport.store[cloudKey] = stamped('int', 50, at, 'macmini');
+      await coordinator.applyAllRemote();
+
+      transport.store[cloudKey] = stamped('int', 60, at, 'appletv');
+      await coordinator.applyAllRemote();
+      expect(settings.prefs.getInt('subtitle_font_size'), 50, reason: "'appletv' sorts below 'macmini'");
+
+      transport.store[cloudKey] = stamped('int', 70, at, 'tv-zz');
+      await coordinator.applyAllRemote();
+      expect(settings.prefs.getInt('subtitle_font_size'), 70, reason: "'tv-zz' sorts above 'macmini'");
+      expect(coordinator.localRevision('subtitle_font_size')!.deviceId, 'tv-zz');
+    });
+
     test('a merge family merges regardless of the stamp', () async {
       final coordinator = await build();
       coordinator.serverIdPortability = (id) => id == 'plex';

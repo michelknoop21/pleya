@@ -532,6 +532,13 @@ class PreferenceSyncCoordinator {
 
   // ---- Availability ---------------------------------------------------------
 
+  /// Hold every send until [refreshAvailability] answers, without holding back
+  /// the stamp. The default status reads `disabled`, which `starting()`
+  /// promotes to `ready`, so a write in that window would report a send from a
+  /// device that may be signed out; `unavailable` makes [apply] stamp and stop.
+  void markAvailabilityUnknown() =>
+      _setStatus(status.value.copyWith(availability: PreferenceSyncAvailability.unavailable));
+
   /// Re-read whether the engine can run at all: the toggle, then the transport.
   ///
   /// Separate from health on purpose. "iCloud is signed out" is not a failure
@@ -663,6 +670,10 @@ class PreferenceSyncCoordinator {
           // `transport.remove`. It carries no stamp, so it is honoured as it
           // always was. This build never removes; it writes a tombstone.
           await _prefs.remove(targetKey);
+          // The stamp goes back to "unstamped, removed". Keeping the live stamp
+          // would make this device skip every later record stamped below it
+          // and leave the key empty for good.
+          await _adoptStamp(baseKey, (at: legacyRevisionAt, device: _noDevice, deleted: true));
           changed++;
           if (refresh != null) stale.add(refresh);
           continue;

@@ -2994,7 +2994,9 @@ in een `profileKeyedMap`, dan reist die ene verwijdering niet; het lokale revisi
 één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
 circa 40 KB); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
 waarden over tombstones terug, dus tot alle Apple-toestellen deze build hebben wisselen oud en
-nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Bewijs: unit tegen
+nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Een wijziging op een toestel met
+de vorige build wordt zonder stempel geschreven en verliest van elke sleutel die een nieuwer toestel
+gestempeld heeft, dus alle Apple-toestellen moeten tegelijk worden bijgewerkt. Bewijs: unit tegen
 `FakeTransport`; geen simulator kan cross-device KVS bewijzen; per punt geldt `CODE CLOSED · UNIT
 VERIFIED · HARDWARE OPEN` tot het recept in de spec §7 op twee toestellen is gedraaid. Register:
 `docs/icloud-sync-repair-register.md`.
