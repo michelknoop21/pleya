@@ -2926,3 +2926,75 @@ zijn voor deze maten niet meer leidend; waar ze kleiner tekenden dan 23 pt wint 
 toont. De globale klem van 0,85 blijft voor de rest van de app staan; de rails, catalogus en Home
 zijn niet omgezet. Wie die schermen op dezelfde manier wil corrigeren, rekent ze om naar `TvHig`
 in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.
+
+## DEC-131: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** De leesaudit van 24 september (`icloud-sync-audit.md`) toonde dat van de vier beloften
+van DEC-059 alleen de prune-bescherming bestond. `PreferenceSyncCoordinator.listen()` werd in
+productie nergens aangeroepen, dus geen `didChangeExternallyNotification` bereikte Dart en de
+engine was poll-on-foreground. De envelop werd lokaal gestempeld maar reisde niet en werd bij
+toepassen niet geraadpleegd; `reconcile()` schreef elke sleutel opnieuw, ook gelijke, waardoor een
+toestel dat later naar voren kwam een oudere waarde met een verse aankomsttijd over een nieuwere
+zette. Een lokale verwijdering werd door het andere toestel teruggezet. `disable()` gooide de
+transport weg en `enable()` maakte geen nieuwe. De status meldde "Last sent" terwijl iCloud
+uitgelogd was en een geslaagde reconcile wiste een quota-melding. De taalvoorkeur van het
+Pleya-profiel (DEC-096) stond als profiel-scoped geregistreerd terwijl haar opslag een global map
+met het profiel in de sleutel is, zodat zij inkomend op `user_<uuid>_pleya_profile_language_preferences`
+landde, een sleutel die niemand leest. Acht `JsonPref`-sleutels ontsnapten aan de registratieguard
+door een regex die geen generiek type met komma verdroeg. Het ontwerp staat in
+`docs/superpowers/specs/2026-09-24-icloud-sync-repair-design.md`.
+
+**Decision:** (1) De subscriptie op de transport is onvoorwaardelijk en wordt door `start()` en
+`debugCreate()` via één `_wire` gezet; `disable()` schakelt alleen de vlag en gooit niets weg. (2)
+Een v2-record draagt zijn stempel: `{"type","value","t","d"}`; een tombstone is `{"x":true,"t","d"}`.
+Een record zonder `t`/`d` is van de build vóór dit besluit en telt als `legacyRevisionAt`. De
+uitgebrachte build leest het formaat ongewijzigd en slaat tombstones over. (3) Bij toepassen wint
+een inkomend record alleen als zijn stempel wint volgens `PreferenceRevision.stampWins`; zijn
+beide kanten ongestempeld dan wint de store, zoals bij inschakelen en bij de cutover. Een winnende
+remote stempel wordt lokaal overgenomen. Merge-families blijven mergen; voor hen beslist de stempel
+niet. (4) `reconcile()` schrijft alleen wat lokaal strikt wint of in de store ontbreekt, en voor
+merge-families alleen bij een andere waarde. Een lokale `remove` schrijft een tombstone; reconcile
+herhaalt tombstones waar de store nog een ouder levend record heeft. (5) Onder v2 is er geen prune:
+`ownsCloudKey` geeft `false`, de prune-lus draait alleen voor het v1-pad dat
+`icloud_rolling_upgrade_test` bewaart. Een sleutel die de store heeft en dit toestel niet, is "nog
+niet gehad" en wordt overgenomen. (6) De guard die een lokale write tijdens een remote batch liet
+vallen gaat weg: de stempel ordent. (7) `_runReconcile` leest eerst `refreshAvailability()` en
+stopt buiten `ready`; `apply()` stopt na het lokale stempelen bij `unavailable`; `writeSucceeded`
+en `reconcileSucceeded` forceren geen `ready`; `reconcileSucceeded` laat `quota` staan. (8) Bij
+`accountChanged` (en beschikbaar) worden de lokale revisies en de v1-bootstrapmarker gewist, daarna
+leest de engine de store (die wint alles wat hij heeft) en duwt alleen wat het nieuwe account mist,
+met stempel 0. Niets lokaal wordt gewist. Een `initialSync`-notificatie wordt gevolgd door een
+reconcile onder de nieuwe trigger `ReconcileTrigger.initialSync`. (9)
+`pleya_profile_language_preferences` en `track_language_preferences` zijn `global` met de
+merge-familie `profileKeyedMap`: draagbaar is een mapsleutel waarvan de scope een uuid is (de Plex
+Home-uuid uit `StorageService.activeUserScope()`); `local-<uuid>` en leeg blijven thuis. Inkomend
+behoudt het toestel niet-draagbare entries en entries van scopes die de zender niet kent; voor
+gedeelde scopes vervangt de zender de set; bij een entry aan beide kanten met `updatedAt` wint de
+hoogste. (10) De registratieguard gebruikt `Pref(?:<[^()]*>)?\(\s*'`. Nieuw geregistreerd:
+`keyboard_shortcuts` en `keyboard_hotkeys` als global; `media_version_preferences`,
+`unified_source_preferences`, `preferred_unified_server` en `custom_shader_presets` als
+device-local; `tv_live_tv_capability` als runtime cache. `live_tv_default_favorites` wordt global.
+`default_quality_preset`, `buffer_size`, `mpv_config_text`, `mpv_config_presets`,
+`global_shader_preset`, `enable_discord_rpc`, `video_player_navigation_enabled` en
+`auto_check_updates_on_startup` synchroniseren niet meer maar blijven exporteerbaar
+(`_deviceBoundPref`). (11) De Swift-plugins leveren events via `DispatchQueue.main.async`.
+
+**Consequences:** Wat een gebruiker anders ziet: een wijziging op de Mac verschijnt op de Apple TV
+zonder herstart; een teruggezette instelling blijft teruggezet; de statusregel toont geen tijdstip
+als iCloud uitgelogd is; uit en weer aan werkt binnen één sessie; de taal van het Pleya-profiel
+volgt over toestellen heen. Wat niet is gebouwd: profielscope voor Jellyfin- en Pleya
+Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_order`, `library_*`
+en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale
+voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en
+`preferred_unified_server`. Bekende grenzen: verwijdert een toestel de laatste entry van een scope
+in een `profileKeyedMap`, dan reist die ene verwijdering niet; het lokale revisieblob groeit tot
+één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
+circa 40 KB); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
+waarden over tombstones terug, dus tot alle Apple-toestellen deze build hebben wisselen oud en
+nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Bewijs: unit tegen
+`FakeTransport`; geen simulator kan cross-device KVS bewijzen; per punt geldt `CODE CLOSED · UNIT
+VERIFIED · HARDWARE OPEN` tot het recept in de spec §7 op twee toestellen is gedraaid. Register:
+`docs/icloud-sync-repair-register.md`.
