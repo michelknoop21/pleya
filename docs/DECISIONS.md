@@ -2829,3 +2829,45 @@ De spiegel is een tussenstap, geen eindstand. `docs/upstream-decoupling-plan.md`
 spiegelen van exacte commits expliciet als voorkeursstap en het vendoren naar `plugins/` als
 eindbeeld; dat laatste haalt de laatste externe host uit het buildpad en heeft in deze repo al een
 precedent in `plugins/pleya_aware`.
+
+## DEC-119: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** `docs/unified-2026-closure.md` §5 zet iOS en tvOS in één volgorde met één
+hardware-eindronde en één releasegate (§6) voor beide platforms. Op 24 september, na de merge van
+TV8 (`76b83521`), is de tvOS-kant op code- en simulatorniveau rond, op een handvol besluiten na.
+Aan iOS-kant staan nog elf northstar-schermen en vier comps op OPEN of IN PROGRESS
+(`docs/ios-unified-implementation-register.md`): I7-children 11, 12 en 13, I8, I9a, I9b,
+IOS-HOME-AB en de visuele acceptatie I10. Wachten op dat spoor houdt een klare tvOS-build weken
+van de Apple TV af.
+
+**Decision:** Michel koos op 24 september voor tvOS eerst. Voor deze release geldt de releasegate
+alleen in de tvOS-kolom van §6, plus de regels die voor beide platforms gelden. De
+hardware-eindronde (§7) en de TestFlight-regel (§8) gelden onverkort: één SHA, één archive, en
+exact die archive gaat naar TestFlight. Het plan staat in
+`docs/superpowers/plans/2026-09-24-tv9-tvos-release.md`.
+
+**Consequences:** De iOS-stappen I7 tot en met I10 worden het volgende spoor en krijgen later hun
+eigen hardwareronde. Een iOS-build die in de tussentijd naar TestFlight gaat, valt niet onder deze
+DEC en claimt geen redesign-acceptatie.
+
+## DEC-120: De DEC-081-referentiegate gaat over op de topnavigatiescenario's
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** DEC-081 wees `tvos.sidebar.collapse` aan als referentiegate voor een toekomstige
+false-PASS-toets. De zijbalk is sindsdien vervangen door de topnavigatie, en in de volledige
+tvOS-suite van TV8 faalt het scenario op `"sidebar.rail" is not ready/present`
+(correctieronde VER6). Een gate die altijd rood is, bewijst niets.
+
+**Decision:** `tvos.nav.focus-switches-destination` wordt de referentiegate. Het scenario toetst
+na elke echte HID-druk een automation-state (`state: {active: true}` op de pil met focus en
+`active: false` op de vorige), dezelfde soort invariant die de sabotage in DEC-081 omdraaide.
+`tvos.nav.walk` dekt de route over alle pillen. `tvos.sidebar.collapse.yaml` verdwijnt, en de
+MCP-tests en docs die hem als voorbeeld noemen gaan naar het nieuwe scenario.
+
+**Consequences:** De false-PASS-matrix van DEC-081 blijft geldig; die hangt aan de runner, niet aan
+het scenario. Een nieuwe sabotageronde draait tegen de `active`-state van de navigatiepillen.

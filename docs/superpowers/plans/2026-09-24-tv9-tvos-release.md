@@ -12,7 +12,7 @@ archive naar TestFlight (§8).
 | Scope | tvOS eerst | De iOS-stappen I7 tot en met I10 volgen als eigen spoor. Wijkt af van de volgorde in §5, dus een DEC. |
 | VIS1 | naar 36 B | Zoekpil op ongeveer halve breedte, telling verticaal gecentreerd. |
 | VIS2 | naar 37 C | Seizoenchips op de kopregel "Afleveringen", aantal afleveringen erachter. |
-| VER1 | vervangen | Nieuwe DEC: `tvos.nav.walk` en `tvos.nav.focus-switches-destination` nemen de DEC-081-gate over, `tvos.sidebar.collapse` gaat weg. |
+| VER1 (nu VER6) | vervangen | Nieuwe DEC: `tvos.nav.walk` en `tvos.nav.focus-switches-destination` nemen de DEC-081-gate over, `tvos.sidebar.collapse` gaat weg. |
 | APP1 | focus repareren | LEFT vanuit elke rij in de rechterkolom gaat naar de actieve categorie. RIGHT vanuit een categorie gaat naar de eerste focusbare rij van die categorie. De omweg van zeven keer UP verdwijnt uit `tvos.settings.appearance`. Beide richtingen in tests en Verify. |
 | OFF6 | sectie behouden | Een rebind van hetzelfde profiel wist de geneste Mijn Pleya-route niet. Terug naar de hub alleen als de sectie na de nieuwe binding echt niet meer bestaat, met focus op de tegel van die sectie. |
 | PROF1 | `TvProfileGate` | Voor `nav.profile`, maar niet als `requireSelection: true`. In de app sluit Menu de route en keert de focus terug naar `nav.profile`. De launch-gate houdt zijn verplichte-selectiecontract, inclusief app-exit waar dat hoort. "Profielen beheren" blijft naar de bestaande beheerflow gaan. Geen tweede picker. |
