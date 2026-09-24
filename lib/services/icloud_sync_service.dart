@@ -95,9 +95,14 @@ class ICloudSyncService {
       onRemoteChangesApplied: onRemoteChangesApplied,
       onLocalStateChanged: settings.refreshListenables,
     )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
-    // Availability before the pipeline: until the first answer the status
-    // reads `disabled`, which `starting()` promotes to `ready`, so a mutation
-    // in that window would report a send from a signed-out device.
+    // The hook goes in before the availability check, so a write in that window
+    // is still stamped: an unstamped value loses to every stamped remote record.
+    // Only the send waits. Until the first answer the status would read
+    // `disabled`, which `starting()` promotes to `ready`, and a mutation would
+    // report a send from a signed-out device; reading `unavailable` makes
+    // apply() stamp and hold back instead. refreshAvailability() replaces it.
+    coordinator.status.value = coordinator.status.value.copyWith(availability: PreferenceSyncAvailability.unavailable);
+    BaseSharedPreferencesService.onMutation = coordinator.apply;
     await coordinator.refreshAvailability();
     final svc = _wire(settings, coordinator);
     // A key-value store can change while the process is suspended, and the

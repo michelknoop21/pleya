@@ -61,33 +61,6 @@ void main() {
 
       expect(PreferenceRevision.resolve(deletion, rewritten).value, 'x');
     });
-
-    test('a delete survives a round trip through the wire format', () {
-      final deletion = rev(null, 4242, 'macbook', deleted: true);
-      final parsed = PreferenceRevision.decode(deletion.encode());
-
-      expect(parsed, deletion);
-      expect(parsed!.deleted, isTrue);
-      expect(parsed.value, isNull);
-    });
-  });
-
-  group('encoding', () {
-    test('every SharedPreferences type survives a round trip', () {
-      for (final value in <Object>[true, 42, 3.5, 'text']) {
-        final parsed = PreferenceRevision.decode(rev(value, 1, 'd').encode());
-        expect(parsed?.value, value);
-      }
-      final list = PreferenceRevision.decode(rev(['a', 'b'], 1, 'd').encode());
-      expect(list?.value, ['a', 'b']);
-    });
-
-    test('a bare v1 value is not mistaken for an envelope', () {
-      expect(PreferenceRevision.decode('44'), isNull);
-      expect(PreferenceRevision.decode('{"type":"int","value":44}'), isNull);
-      expect(PreferenceRevision.decode('not json'), isNull);
-      expect(PreferenceRevision.decode(null), isNull);
-    });
   });
 
   group('which sources count as a user change', () {

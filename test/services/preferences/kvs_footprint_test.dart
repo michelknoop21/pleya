@@ -32,6 +32,11 @@ void main() {
 
   String typed(String type, Object? value) => json.encode({'type': type, 'value': value});
 
+  /// What a record costs since DEC-131: the typed value plus a stamp of the
+  /// shape the coordinator writes (a millisecond timestamp and a v4 uuid).
+  String enveloped(String type, Object? value) =>
+      json.encode({'type': type, 'value': value, 't': 1758700000000, 'd': '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e'});
+
   List<String> libraryKeys() => [
     for (var s = 0; s < servers; s++)
       for (var l = 0; l < librariesPerServer; l++) '$plexMachineId$s:$l',
@@ -54,9 +59,8 @@ void main() {
     return total;
   }
 
-  /// v2: namespaced keys, the same values. The envelope is not on the wire yet
-  /// for scalars, so this measures the key growth, which is the part that
-  /// worried us.
+  /// v2: namespaced keys, the same values. Measures the key growth alone; the
+  /// envelope's cost has its own test below.
   int v2Footprint() {
     const prefix = PreferenceSyncScope.cloudNamespacePrefix;
     var total = 0;
@@ -90,6 +94,26 @@ void main() {
       lessThan(kvsTotalBytes ~/ 2),
       reason: 'and it should leave at least half the store free, not squeak in',
     );
+  });
+
+  test('the envelope on every record still leaves half the store free', () {
+    var v2 = 0;
+    const prefix = PreferenceSyncScope.cloudNamespacePrefix;
+    for (var i = 0; i < globalPrefs; i++) {
+      v2 += bytesOf('${prefix}global/a_reasonably_long_preference_name_$i', enveloped('int', 42));
+    }
+    final libs = libraryKeys();
+    final profilePrefix = '${prefix}profile/$homeUuid/';
+    v2 += bytesOf('${profilePrefix}hidden_libraries', enveloped('string', json.encode(libs)));
+    v2 += bytesOf('${profilePrefix}library_order', enveloped('string', json.encode(libs)));
+    for (final lib in libs) {
+      v2 += bytesOf('${profilePrefix}library_sort_$lib', enveloped('string', '{"key":"titleSort","descending":false}'));
+      v2 += bytesOf('${profilePrefix}library_grouping_$lib', enveloped('string', 'movies'));
+      v2 += bytesOf('${profilePrefix}library_tab_$lib', enveloped('string', 'Recommended'));
+    }
+    // ignore: avoid_print
+    print('KVS footprint with envelope: v2 ${v2 ~/ 1024} KB, plus frozen v1 ${v1Footprint() ~/ 1024} KB');
+    expect(v1Footprint() + v2, lessThan(kvsTotalBytes ~/ 2));
   });
 
   test('the v2 key prefix is what grows, and the growth is bounded', () {

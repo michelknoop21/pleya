@@ -25,6 +25,9 @@ export 'preference_reconcile_scheduler.dart' show ReconcileTrigger;
 export 'preference_refresh.dart';
 export 'preference_sync_status.dart';
 
+/// A stamp as stored locally or read from a record.
+typedef _Stamp = ({int at, String device, bool deleted});
+
 /// Owns everything above the transport: mutation intake, policy, scope,
 /// conflict metadata, reconcile and status.
 ///
@@ -35,11 +38,12 @@ export 'preference_sync_status.dart';
 /// And it started its work with `unawaited(...)`, so a failed push had nowhere
 /// to be reported.
 ///
-/// The wire format is still v1 while the cloud-content migration waits for its
-/// own checkpoint: cloud keys are export base keys and values are the bare
-/// typed markers. [PreferenceRevision] and [PreferenceSyncScope.cloudKey] are
-/// built and tested, and go live together in A6, under the `__` namespace an
-/// older client provably leaves alone.
+/// Since DEC-131 the wire format carries the envelope: a record is
+/// `{"type","value","t","d"}` and a removal is a tombstone `{"x":true,"t","d"}`.
+/// Both live in the `__pleya_pref_v2/` namespace the previous build already
+/// reads; that build ignores `t` and `d` and skips a tombstone, so the formats
+/// coexist. A record without a stamp is one the previous build wrote and
+/// counts as [legacyRevisionAt].
 class PreferenceSyncCoordinator {
   PreferenceSyncCoordinator({
     required SharedPreferencesWithCache prefs,
@@ -244,18 +248,23 @@ class PreferenceSyncCoordinator {
       // switches profiles is covered, including the bootstrap and the cleanup.
       unawaited(requestReconcile(ReconcileTrigger.profileChanged));
     }
-    if (_applyingRemote && mutation.source == PreferenceSource.local) {
-      // A local write landing inside a remote-apply window is not an echo, but
-      // ordering it against the batch we are mid-way through is not worth the
-      // complexity: let the reconcile that follows pick it up.
-      return;
-    }
     if (!mutation.mayTravel) return;
 
     final baseKey = baseKeyOf(mutation.key);
     if (baseKey == null) return;
 
+    // Stamped before any gate that holds the send back. An unstamped local
+    // value loses to every stamped remote record (see [_remoteWins]), so a
+    // user's write that skipped the stamp would be overwritten by the next
+    // remote batch, however old that batch is.
     if (mutation.stampsUserChange) _stampRevision(baseKey, mutation);
+
+    if (_applyingRemote && mutation.source == PreferenceSource.local) {
+      // A local write landing inside a remote-apply window is not an echo. Its
+      // stamp is already down, so the batch loses to it on this key; the send
+      // is left to the reconcile that follows.
+      return;
+    }
 
     if (!_enabled()) return;
     final transport = _transport;
@@ -309,7 +318,7 @@ class PreferenceSyncCoordinator {
         _setStatus(status.value.countingSkipped(1));
         return;
       }
-      final encoded = json.encode(entry);
+      final encoded = _encodeRecord(entry, _localStamp(baseKey));
       final cap = transport.maxValueBytes;
       if (cap != null && encoded.length > cap) {
         // Oversize is reported, not swallowed. It also must not become a
@@ -353,6 +362,77 @@ class PreferenceSyncCoordinator {
   /// device to upgrade look like the most recent editor of every setting it
   /// touched. At zero, the first genuine change on any device wins.
   static const int legacyRevisionAt = 0;
+
+  /// The device a stamp-less record is attributed to. Any real id compares
+  /// above the empty string, which is exactly the tie we want unstamped local
+  /// values to lose (see [_remoteWins]).
+  static const String _noDevice = '';
+
+  _Stamp _localStamp(String baseKey) {
+    final entry = _revisions()[baseKey];
+    if (entry is Map && entry['t'] is int && entry['d'] is String) {
+      return (at: entry['t'] as int, device: entry['d'] as String, deleted: entry['x'] == true);
+    }
+    return (at: legacyRevisionAt, device: _noDevice, deleted: false);
+  }
+
+  /// Remember the stamp of a remote record this device just adopted, so the
+  /// next comparison is against it and the next local change stamps past it.
+  Future<void> _adoptStamp(String baseKey, _Stamp stamp) async {
+    final revisions = _revisions();
+    revisions[baseKey] = {'t': stamp.at, 'd': stamp.device, if (stamp.deleted) 'x': true};
+    await _prefs.setString(revisionStoreKey, json.encode(revisions));
+  }
+
+  /// Whether a remote record replaces what this device holds.
+  ///
+  /// A local value without a stamp counts as [legacyRevisionAt] on
+  /// [_noDevice], so it is older than any stamped remote record. Unstamped
+  /// means nobody wrote it through [apply] with a user source: a value from
+  /// before the revision store, a write made before `ICloudSyncService.start`
+  /// installed the hook (which happens before the first frame), or a
+  /// migration. Every write a user makes in this session is stamped, including
+  /// one during start-up and one inside a remote batch, so this rule never
+  /// overrules a choice made on this device.
+  ///
+  /// Two unstamped sides (a record from the previous build against a local
+  /// value nobody stamped) cannot be ordered, and the store wins: that is what
+  /// enabling sync always did and what the cutover chose.
+  static bool _remoteWins(_Stamp remote, _Stamp local) {
+    if (remote.at == legacyRevisionAt && local.at == legacyRevisionAt) return true;
+    return PreferenceRevision.stampWins(
+      at: remote.at,
+      device: remote.device,
+      deleted: remote.deleted,
+      overAt: local.at,
+      overDevice: local.device,
+      overDeleted: local.deleted,
+    );
+  }
+
+  String _encodeRecord(Map<String, dynamic> typed, _Stamp stamp) =>
+      json.encode({...typed, 't': stamp.at, 'd': stamp.device});
+
+  /// A wire record, or null when [raw] is not one. `type` is empty for a
+  /// tombstone. A missing stamp is the previous build's record.
+  ({String type, Object? value, _Stamp stamp})? _decodeRecord(String raw) {
+    try {
+      final m = json.decode(raw);
+      if (m is! Map) return null;
+      final deleted = m['x'] == true;
+      final type = m['type'];
+      if (!deleted && type is! String) return null;
+      final at = m['t'];
+      final device = m['d'];
+      return (
+        type: type is String ? type : '',
+        value: m['value'],
+        stamp: (at: at is int ? at : legacyRevisionAt, device: device is String ? device : _noDevice, deleted: deleted),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   void _stampRevision(String baseKey, PreferenceMutation mutation) {
     if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return;
@@ -408,8 +488,9 @@ class PreferenceSyncCoordinator {
     return PreferenceRevision(value: value, updatedAt: at, deviceId: device, deleted: deleted);
   }
 
-  @visibleForTesting
-  void debugClearRevisions() => unawaited(_prefs.remove(revisionStoreKey));
+  /// Forget every stamp. Used when the account under the store changes (the
+  /// stamps describe edits against another account's history) and by tests.
+  Future<void> clearRevisions() => _prefs.remove(revisionStoreKey);
 
   // ---- Reconciliation lifecycle ---------------------------------------------
 
@@ -574,22 +655,39 @@ class PreferenceSyncCoordinator {
           continue; // profile-scoped with no active profile to scope to
         }
 
-        final family = PreferenceSyncPolicyRegistry.policyFor(baseKey).refresh;
+        final refresh = PreferenceSyncPolicyRegistry.policyFor(baseKey).refresh;
 
         final raw = entry.value;
         if (raw == null) {
+          // Named in the event, gone from the store: the previous build's
+          // `transport.remove`. It carries no stamp, so it is honoured as it
+          // always was. This build never removes; it writes a tombstone.
           await _prefs.remove(targetKey);
           changed++;
-          if (family != null) stale.add(family);
+          if (refresh != null) stale.add(refresh);
           continue;
         }
-        final decoded = _decodeTyped(raw);
-        if (decoded == null) {
+        final record = _decodeRecord(raw);
+        if (record == null) {
           skipped++;
           continue;
         }
-        var value = decoded.$2;
-        final inbound = _merges.familyFor(baseKey)?.inbound;
+        final family = _merges.familyFor(baseKey);
+        if (family == null && !_remoteWins(record.stamp, _localStamp(baseKey))) {
+          skipped++;
+          continue; // this device's change is newer, or the same
+        }
+        if (record.stamp.deleted) {
+          if (_prefs.containsKey(targetKey)) {
+            await _prefs.remove(targetKey);
+            changed++;
+            if (refresh != null) stale.add(refresh);
+          }
+          await _adoptStamp(baseKey, record.stamp);
+          continue;
+        }
+        var value = record.value;
+        final inbound = family?.inbound;
         if (inbound != null) {
           // Not a replacement. What the family does with the two sides is the
           // family's business; for the server-scoped lists it keeps what the
@@ -597,10 +695,11 @@ class PreferenceSyncCoordinator {
           // wipe this device's local-folder libraries on every remote change.
           value = inbound(_prefs.get(targetKey), value);
         }
-        final ok = await SettingsExportService.writeTyped(_prefs, targetKey, decoded.$1, value);
+        final ok = await SettingsExportService.writeTyped(_prefs, targetKey, record.type, value);
         if (ok) {
           changed++;
-          if (family != null) stale.add(family);
+          if (refresh != null) stale.add(refresh);
+          if (family == null) await _adoptStamp(baseKey, record.stamp);
         } else {
           skipped++;
         }

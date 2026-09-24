@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// A synced preference value plus the metadata needed to settle a conflict.
 ///
 /// v1 carried the bare value, so reconcile could only pick by arrival order:
@@ -17,6 +15,9 @@ import 'dart:convert';
 /// last-writer-wins, so it trusts the device clock. A TV with a wrong clock
 /// wins or loses unfairly. A server-ordered revision needs a server, which is
 /// the Pleya Server transport, not this one.
+///
+/// The wire format itself lives in `PreferenceSyncCoordinator` (DEC-131); this
+/// class holds the comparison both sides of it share.
 class PreferenceRevision {
   const PreferenceRevision({required this.value, required this.updatedAt, required this.deviceId, this.deleted = false})
     : assert(deleted || value != null, 'a live revision carries a value');
@@ -43,49 +44,36 @@ class PreferenceRevision {
   /// is arbitrary but identical on both devices, so they converge instead of
   /// ping-ponging. A tombstone does not get special treatment beyond its
   /// timestamp: deleting at 10:00 and re-adding at 10:05 keeps the value.
-  bool winsOver(PreferenceRevision other) {
-    if (updatedAt != other.updatedAt) return updatedAt > other.updatedAt;
-    if (deviceId != other.deviceId) return deviceId.compareTo(other.deviceId) > 0;
+  bool winsOver(PreferenceRevision other) => stampWins(
+    at: updatedAt,
+    device: deviceId,
+    deleted: deleted,
+    overAt: other.updatedAt,
+    overDevice: other.deviceId,
+    overDeleted: other.deleted,
+  );
+
+  /// The rule behind [winsOver], on bare stamps. The coordinator compares a
+  /// wire record against a stored stamp without having a value for either side
+  /// at hand, and a live [PreferenceRevision] insists on one.
+  static bool stampWins({
+    required int at,
+    required String device,
+    required bool deleted,
+    required int overAt,
+    required String overDevice,
+    required bool overDeleted,
+  }) {
+    if (at != overAt) return at > overAt;
+    if (device != overDevice) return device.compareTo(overDevice) > 0;
     // Same instant, same device: prefer the tombstone, so a remove that
     // arrives alongside its own set does not leave the value behind.
-    return deleted && !other.deleted;
+    return deleted && !overDeleted;
   }
 
   /// Pick the surviving revision. Returns [b] only when it strictly wins, so
   /// resolving is stable when called repeatedly.
   static PreferenceRevision resolve(PreferenceRevision a, PreferenceRevision b) => b.winsOver(a) ? b : a;
-
-  Map<String, dynamic> toJson() => {if (!deleted) 'v': value, 't': updatedAt, 'd': deviceId, if (deleted) 'x': true};
-
-  String encode() => json.encode(toJson());
-
-  /// Parse a stored envelope. Returns null for anything that is not one, which
-  /// includes a bare v1 value: those are read by the legacy path, never here.
-  static PreferenceRevision? decode(String? raw) {
-    if (raw == null) return null;
-    try {
-      final decoded = json.decode(raw);
-      if (decoded is! Map) return null;
-      final at = decoded['t'];
-      final device = decoded['d'];
-      if (at is! int || device is! String) return null;
-      final deleted = decoded['x'] == true;
-      final value = decoded['v'];
-      if (!deleted && value == null) return null;
-      return PreferenceRevision(
-        value: deleted ? null : _normalize(value),
-        updatedAt: at,
-        deviceId: device,
-        deleted: deleted,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// JSON gives back `List<dynamic>`; SharedPreferences only stores
-  /// `List<String>`.
-  static Object? _normalize(Object? value) => value is List ? value.map((e) => e.toString()).toList() : value;
 
   @override
   bool operator ==(Object other) =>

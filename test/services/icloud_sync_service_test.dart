@@ -80,7 +80,7 @@ void main() {
     await settings.write(SettingsService.subtitleFontSize, 44);
     await pumpEventQueue();
 
-    expect(kvs[g('subtitle_font_size')], enc('int', 44));
+    expect(valueOf(kvs[g('subtitle_font_size')]), 44);
     expect(kvs.containsKey(g('icloud_sync_enabled')), isFalse);
   });
 
@@ -161,7 +161,7 @@ void main() {
       isNull,
       reason: 'volume describes the speakers in front of this device, not a preference to share',
     );
-    expect(kvs[g('seek_time_small')], enc('int', 5), reason: 'local-unique uploaded');
+    expect(valueOf(kvs[g('seek_time_small')]), 5, reason: 'local-unique uploaded');
     expect(kvs[PreferenceSyncCoordinator.v2MetaVersionKey], enc('int', PreferenceSyncCoordinator.v2FormatVersion));
   });
 
@@ -199,7 +199,7 @@ void main() {
       isTrue,
       reason: 'not our profile, so not ours to delete',
     );
-    expect(kvs[g('seek_time_small')], enc('int', 8));
+    expect(valueOf(kvs[g('seek_time_small')]), 8);
   });
 
   test('pushAll removes KVS keys that no longer exist locally, keeps meta and foreign keys', () async {
@@ -221,7 +221,7 @@ void main() {
 
     expect(kvs.containsKey(g('theme_mode')), isFalse);
     expect(kvs.containsKey('stale_key'), isTrue);
-    expect(kvs[g('seek_time_small')], enc('int', 8));
+    expect(valueOf(kvs[g('seek_time_small')]), 8);
     expect(kvs.containsKey(PreferenceSyncCoordinator.v2MetaVersionKey), isTrue);
   });
 
@@ -256,7 +256,10 @@ void main() {
     expect(svc.status.value.availability, PreferenceSyncAvailability.ready);
     expect(valueOf(fake.store[g('subtitle_font_size')]), 52, reason: 'outgoing still reaches the store');
 
-    fake.store[g('subtitle_font_size')] = enc('int', 63);
+    // Another device's later change. A stamp-less record would lose to the
+    // stamped local 52, so it carries one, as this build writes it.
+    final later = DateTime.now().toUtc().millisecondsSinceEpoch + 60 * 1000;
+    fake.store[g('subtitle_font_size')] = json.encode({'type': 'int', 'value': 63, 't': later, 'd': 'appletv'});
     fake.controller.add(
       RemotePreferenceChange(reason: RemoteChangeReason.serverChange, changedKeys: [g('subtitle_font_size')]),
     );
@@ -300,6 +303,29 @@ void main() {
     expect(fake.writes, isEmpty);
     expect(ICloudSyncService.instance!.status.value.lastSuccess, isNull);
     expect(ICloudSyncService.instance!.status.value.state, PreferenceSyncState.unavailable);
+  });
+
+  test('a write during start-up is stamped, and only its send waits for availability', () async {
+    final settings = await SettingsService.getInstance();
+    final storage = await StorageService.getInstance();
+    await settings.write(SettingsService.icloudSyncEnabled, true);
+    final fake = _GatedTransport();
+    ICloudSyncService.debugForceSupported = true;
+
+    final starting = ICloudSyncService.start(settings: settings, storage: storage, transport: fake);
+    while (!fake.asked) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    await settings.write(SettingsService.subtitleFontSize, 47);
+    expect(fake.writes, isEmpty, reason: 'availability is not known yet');
+    fake.gate.complete();
+    await starting;
+    await pumpEventQueue();
+
+    final stamp = ICloudSyncService.instance!.coordinator.localRevision('subtitle_font_size');
+    expect(stamp, isNotNull, reason: 'an unstamped value would lose to any stamped remote record');
+    expect(stamp!.updatedAt, greaterThan(PreferenceSyncCoordinator.legacyRevisionAt));
+    expect(valueOf(fake.store[g('subtitle_font_size')]), 47, reason: 'the boot reconcile carries it');
   });
 }
 
