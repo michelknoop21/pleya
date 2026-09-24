@@ -5,7 +5,7 @@ import 'package:pleya/screens/tv/tv_search_pill.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
 void main() {
-  Future<void> pumpPill(WidgetTester tester, {String? count}) async {
+  Future<void> pumpPill(WidgetTester tester, {String? count, String text = 'as', double width = 1000}) async {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
@@ -13,9 +13,9 @@ void main() {
           home: Scaffold(
             body: Center(
               child: SizedBox(
-                width: 1000,
+                width: width,
                 child: TvSearchPill(
-                  controller: TextEditingController(text: 'as'),
+                  controller: TextEditingController(text: text),
                   countLabel: count,
                 ),
               ),
@@ -45,6 +45,15 @@ void main() {
     final count = tester.getRect(find.text('2 resultaten'));
     expect(count.center.dy, moreOrLessEquals(pill.center.dy, epsilon: 0.5));
     expect(count.right, lessThan(pill.right));
+  });
+
+  testWidgets('keeps a long hint on one line', (tester) async {
+    // Two lines of the test font still fit the decorator's 48-point minimum,
+    // so the pill's height cannot show a wrap; the hint's own height can.
+    await pumpPill(tester, text: '');
+    final wide = tester.getSize(find.text(t.search.hint)).height;
+    await pumpPill(tester, text: '', width: 200);
+    expect(tester.getSize(find.text(t.search.hint)).height, wide);
   });
 
   testWidgets('shows no count while there is nothing to count', (tester) async {

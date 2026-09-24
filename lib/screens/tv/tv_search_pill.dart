@@ -58,7 +58,9 @@ class TvSearchPill extends StatelessWidget {
                       ),
                     ),
                   ),
-          ),
+            // Half a row is too narrow for some locales' hint on one line; a
+            // second line would make the pill taller than the one in 36 B.
+          ).copyWith(hintMaxLines: 1),
           isEmpty: text.isEmpty,
           child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
         );
