@@ -18,7 +18,12 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### Fixed
+- VIS1, VIS2 en PLR10 naar mockup 36 B, 37 C en 33
+- APP1, Uiterlijk-categorieën met semantische focusovergangen
+- OFF6, een rebind van hetzelfde profiel houdt de open sectie
+- PROF1, de profielknop opent de poort uit mockup 21
+- VIS1, de hint in de zoekpil blijft op één regel
 <!-- END GENERATED -->
 
 ### New
@@ -43,6 +48,36 @@ Nothing user-facing since the last published build.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
+
+## 2.8.0 · build 296 · 24 September 2026 · iPhone, iPad and Mac
+
+<!-- commit: 5b937630 -->
+
+### Fixed
+
+- **Signing in with Plex from your own Home profile no longer lands on an empty "Nothing to
+  borrow yet" page.** The app now recognizes when the target profile already has that Plex
+  account, through its own Home profile or a saved connection, and reconnects it directly
+  instead of routing through the borrow step.
+- **The collapsed sidebar on Mac now fades out the server name and arrow next to a server
+  icon**, the same way every other row already does when the sidebar is collapsed, instead of
+  leaving clipped text behind.
+
+## 2.8.0 · build 297 · 24 September 2026 · Apple TV
+
+<!-- commit: 5b937630 -->
+
+### Fixed
+
+- **Signing in with Plex from your own Home profile no longer lands on an empty "Nothing to
+  borrow yet" page.** The app now recognizes when the target profile already has that Plex
+  account, through its own Home profile or a saved connection, and reconnects it directly
+  instead of routing through the borrow step.
+
+### Notes
+
+- The collapsed-sidebar fix in build 296 is for the Mac and iPad rail; Apple TV does not use
+  that layout.
 
 ## 2.8.0 · build 295 · 24 September 2026 · iPhone and iPad
 

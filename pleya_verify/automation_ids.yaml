@@ -147,6 +147,9 @@ ids:
   - id: media-detail.play
     role: button
     instanceable: false
+  - id: tv.search.pill
+    role: field
+    instanceable: false
   - id: screen.my_pleya
     role: screen
     instanceable: false
