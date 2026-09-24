@@ -58,7 +58,7 @@
   >
     <p class="lede">My Pleya holds your watchlist, your downloads and your settings, with your profile at the top.</p>
     <p class="lede">
-      With more than one profile, Pleya opens on Who's watching?. A four-digit PIN locks a profile. It protects the
+      With more than one profile, Pleya first asks Who's watching? A four-digit PIN locks a profile. It protects the
       profile, not the app.
     </p>
   </Feature>

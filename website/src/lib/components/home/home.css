@@ -154,6 +154,8 @@
     .reel-head { grid-template-columns: 1.1fr 1fr; align-items: end; column-gap: 4rem; }
     .pf-feature .wrap { grid-template-columns: 0.9fr 1.1fr; align-items: center; gap: 5rem; }
     .pf-feature.flip .wrap > figure { order: -1; }
+    .pf-feature:not(.flip) figure { justify-content: center; }
+    .pf-feature.text-only .wrap { grid-template-columns: minmax(0, 44rem); }
   }
   @media (max-width: 559px) {
     .hero-stage .phone { width: 23%; right: 3%; bottom: -18%; }
