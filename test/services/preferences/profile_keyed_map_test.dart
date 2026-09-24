@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/pleya_profile_language_preferences.dart';
 import 'package:pleya/media/track_language_choice.dart';
 import 'package:pleya/profiles/profile.dart';
@@ -370,6 +373,96 @@ void main() {
       final otherDevice = enc({'$home|show7': TrackLanguageChoice(audioLanguage: 'nld', updatedAt: 100).toJson()});
       final merged = m(family.inbound(otherDevice, family.outbound!(raw, null)));
       expect(TrackLanguageChoice.fromJson(merged['$home|show7'] as Map<String, dynamic>).isEmpty, isTrue);
+    });
+
+    group('the cap', () {
+      final movie = MediaItem(id: 'fresh', backend: MediaBackend.plex, kind: MediaKind.movie);
+      final show = MediaItem(
+        id: 'ep1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.episode,
+        grandparentId: 'show7',
+        grandparentGuid: 'plex://show/abc',
+      );
+      const logical = 'show:guid:plex://show/abc';
+
+      Future<void> signIn() async {
+        await (await StorageService.getInstance()).setActiveProfileId(home);
+        settings = await SettingsService.getInstance();
+      }
+
+      Map<String, TrackLanguageChoice> stored() => settings.read(SettingsService.trackLanguagePreferences);
+      int liveIn(Map<String, dynamic> map) => map.values.where((v) => (v as Map).length > 1).length;
+
+      test('two devices at the cap converge to at most the cap of live entries', () async {
+        await signIn();
+        const cap = TrackPreferenceStore.maxEntries;
+        final deviceA = {
+          for (var i = 0; i < cap; i++)
+            '$home|a$i': TrackLanguageChoice(audioLanguage: 'nld', updatedAt: t0 + i).toJson(),
+        };
+        final deviceB = enc({
+          for (var i = 0; i < cap; i++)
+            '$home|b$i': TrackLanguageChoice(audioLanguage: 'eng', updatedAt: t0 + 1000 + i).toJson(),
+        });
+        // A receives B's full map: the union is twice the cap.
+        await settings.prefs.setString('track_language_preferences', family.inbound(enc(deviceA), deviceB)! as String);
+        expect(stored().values.where((c) => !c.isEmpty).length, 2 * cap);
+
+        // A's next write applies the cap, and its evictions become tombstones.
+        await TrackPreferenceStore.saveAudio(movie, language: 'fra');
+        final afterA = stored();
+        expect(afterA.values.where((c) => !c.isEmpty).length, cap);
+        expect(afterA['$home|a0']!.isEmpty, isTrue);
+        expect(afterA['$home|a0']!.updatedAt, t0 + 1, reason: 'one past the evicted entry, not now');
+
+        // What A sends and what B then holds stay within the cap.
+        final sent = m(family.outbound!(settings.prefs.getString('track_language_preferences'), deviceB));
+        expect(liveIn(sent), lessThanOrEqualTo(cap));
+        expect(liveIn(m(family.inbound(deviceB, enc(sent)))), lessThanOrEqualTo(cap));
+      });
+
+      test('tombstones do not count towards the cap and expired ones are removed locally', () async {
+        await signIn();
+        final fresh = t0 - 1000;
+        await settings.write(SettingsService.trackLanguagePreferences, {
+          '$home|gone': TrackLanguageChoice(updatedAt: fresh),
+          '$home|ancient': TrackLanguageChoice(updatedAt: 1),
+          '$home|live': TrackLanguageChoice(audioLanguage: 'nld', updatedAt: t0),
+        });
+
+        await TrackPreferenceStore.saveAudio(movie, language: 'fra');
+
+        final after = stored();
+        expect(after['$home|gone']?.updatedAt, fresh);
+        expect(after.containsKey('$home|ancient'), isFalse);
+        expect(after['$home|live']?.audioLanguage, 'nld');
+      });
+
+      test('clear writes no tombstone for a candidate key that never held an entry', () async {
+        await signIn();
+        await settings.write(SettingsService.trackLanguagePreferences, {
+          '$home|show7': TrackLanguageChoice(audioLanguage: 'nld', updatedAt: t0),
+        });
+
+        await TrackPreferenceStore.clear(show);
+
+        expect(stored().keys, ['$home|show7']);
+        expect(stored()['$home|show7']!.isEmpty, isTrue);
+      });
+
+      test('a write does not re-stamp an existing tombstone', () async {
+        await signIn();
+        final removedAt = t0 - 5000;
+        await settings.write(SettingsService.trackLanguagePreferences, {
+          '$home|show7': TrackLanguageChoice(updatedAt: removedAt),
+        });
+
+        await TrackPreferenceStore.saveAudio(show, language: 'fra');
+
+        expect(stored()['$home|show7']?.updatedAt, removedAt);
+        expect(stored()['$home|$logical']?.audioLanguage, 'fra');
+      });
     });
 
     test('a local profile removal just deletes the key', () async {

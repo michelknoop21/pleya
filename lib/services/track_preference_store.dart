@@ -225,7 +225,7 @@ class TrackPreferenceStore {
           _remove(next, '$scope|$key', now);
         }
         if (!removed) return;
-        await settings.write(SettingsService.trackLanguagePreferences, next);
+        await settings.write(SettingsService.trackLanguagePreferences, _capped(next));
       } catch (e) {
         appLogger.w('Failed to clear the remembered track languages', error: e);
       }
@@ -249,7 +249,7 @@ class TrackPreferenceStore {
         if (stored['$scope|$seriesKey']?.isEmpty != false) return;
         final next = Map<String, TrackLanguageChoice>.from(stored);
         _remove(next, '$scope|$seriesKey', DateTime.now().millisecondsSinceEpoch);
-        await settings.write(SettingsService.trackLanguagePreferences, next);
+        await settings.write(SettingsService.trackLanguagePreferences, _capped(next));
       } catch (e) {
         appLogger.w('Failed to clear a remembered track language', error: e);
       }
@@ -317,7 +317,7 @@ class TrackPreferenceStore {
 
         final next = Map<String, TrackLanguageChoice>.from(stored);
         for (final candidate in candidates) {
-          if ('$scope|$candidate' != key && next.containsKey('$scope|$candidate')) {
+          if ('$scope|$candidate' != key) {
             _remove(next, '$scope|$candidate', now);
           }
         }
@@ -338,7 +338,11 @@ class TrackPreferenceStore {
   /// stamped [now], which every reader here already skips and the
   /// `profileKeyedMap` merge settles by timestamp like any other entry
   /// (DEC-131). A scope that never leaves this device just loses the key.
+  ///
+  /// Only a live entry is removed: a key that never held one, or already holds
+  /// a tombstone, is left alone, so a removal is stamped once and ages out.
   static void _remove(Map<String, TrackLanguageChoice> entries, String key, int now) {
+    if (entries[key]?.isEmpty != false) return;
     if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key))) {
       entries[key] = TrackLanguageChoice(updatedAt: now);
     } else {
@@ -346,14 +350,27 @@ class TrackPreferenceStore {
     }
   }
 
-  /// Drops the least recently written live entries once they exceed
-  /// [maxEntries]. Tombstones do not count towards the cap, so a burst of
-  /// removals cannot push out the choices still in use; the merge family
-  /// expires them (`profileKeyedMapTombstoneLifetime`).
+  /// Keeps the [maxEntries] most recently written live entries and drops
+  /// tombstones older than `profileKeyedMapTombstoneLifetime`.
+  ///
+  /// Tombstones do not count towards the cap, so a burst of removals cannot
+  /// push out the choices still in use. An evicted entry of a scope that syncs
+  /// becomes a tombstone rather than vanishing: the merge is a union, so a key
+  /// that simply disappeared here would come back from the store, and the map
+  /// would grow to every device's history past the 100 KB ceiling. The
+  /// tombstone is stamped one past the evicted entry, not now, so an edit
+  /// another device made since still wins.
   static Map<String, TrackLanguageChoice> _capped(Map<String, TrackLanguageChoice> entries) {
-    final live = entries.entries.where((e) => !e.value.isEmpty).toList();
-    if (live.length <= maxEntries) return entries;
-    live.sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
-    return Map.fromEntries([...live.take(maxEntries), ...entries.entries.where((e) => e.value.isEmpty)]);
+    final expiredBefore = DateTime.now().millisecondsSinceEpoch - profileKeyedMapTombstoneLifetime.inMilliseconds;
+    final live = entries.entries.where((e) => !e.value.isEmpty).toList()
+      ..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
+    return {
+      for (final e in live.take(maxEntries)) e.key: e.value,
+      for (final e in live.skip(maxEntries))
+        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
+          e.key: TrackLanguageChoice(updatedAt: e.value.updatedAt + 1),
+      for (final e in entries.entries)
+        if (e.value.isEmpty && e.value.updatedAt >= expiredBefore) e.key: e.value,
+    };
   }
 }

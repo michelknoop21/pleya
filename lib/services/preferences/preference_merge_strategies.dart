@@ -170,6 +170,8 @@ bool _isPortableMapKey(String key) => PreferenceSyncScope.isPortableProfileScope
 const Duration profileKeyedMapTombstoneLifetime = Duration(days: 180);
 
 /// A tombstone is an entry holding its timestamp and nothing else.
+// An unseeded, all-default PleyaProfileLanguagePreferences also encodes as
+// {'u': ms}; expiring one after 180 days just drops defaults, so it is harmless.
 bool _isExpiredTombstone(Object? entry) {
   if (entry is! Map || entry.length != 1) return false;
   final u = entry['u'];
