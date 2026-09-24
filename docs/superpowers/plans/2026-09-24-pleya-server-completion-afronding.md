@@ -26,6 +26,8 @@
 - Model per taak: taken met een UI-, screenshot- of visueel oordeel (gemarkeerd **Model: opus**) draaien op Opus. Overige taken volgen de standaardkeuze van de SDD-skill.
 - Pushen naar de gedeelde branch gebeurt alleen in de laatste taak en na expliciete bevestiging.
 
+- **Minimaal (Michel, 24 september):** niet overengineren en geen grootschalige testsets. Per taak alleen de test die het acceptatiecriterium of een Review Focus-regel rood-groen bewijst, plus wat een bestaande gate afdwingt (autorisatiematrix, responsecaptures). Geen extra helpers, geen tests "voor de volledigheid". Waar een taak hieronder een **Minimaal**-blok heeft, gaat dat blok voor de teststappen van die taak.
+
 ## Review Focus
 
 1. Een retry waarbij meerdere servers offline zijn: de snackbar noemt de eerste werkelijk offline server, niet de eerste in de lijst en niet de laatste. Test in Taak 1.
@@ -560,6 +562,8 @@ export GO_IMAGE=pleya-server-test:go-ffmpeg
 
 ### Task 8: runner kan annuleren, opnieuw proberen en lezen
 
+**Minimaal:** schrijf alleen `TestCancelRunningJobStopsTheHandler`, `TestCancelFinishedJobIsRefused`, `TestRetryFailedJobRunsAgainFromZero` en `TestRequeueCancelsAJobWithACancelRequest`. Sla `TestCancelPendingJobFinishesItImmediately`, `TestRetryWhileSameDedupeKeyIsInFlightIsRefused` en `TestListPagesNewestFirst` over; `List` en de pending-cancel worden via de API-test van Taak 11 geraakt. `newRunnerWithPool` alleen toevoegen als de Requeue-test hem nodig heeft.
+
 **Files:**
 - Modify: `pleya_server/internal/jobs/jobs.go`
 - Test: `pleya_server/internal/jobs/jobs_test.go`
@@ -961,6 +965,8 @@ cd .. && git add pleya_server/internal/jobs/ && git commit -m "feat(pleya-server
 
 ### Task 9: de scanner stopt binnen één walk-stap en neemt een voorbereide rij over
 
+**Minimaal:** schrijf alleen `TestCancelStopsTheScanWithinOneWalkStep` en `TestQueuedScanRunIsAdoptedByTheScan`. Geen `store_scans_test.go` en geen `TestResetProbeAttemptsClearsTheLibrary`: de catalogusmethoden worden via de scanner- en API-tests geraakt, en de probe-reset via de retry-test van Taak 11. Stap 2 vervalt.
+
 **Files:**
 - Modify: `pleya_server/internal/scanner/scanner.go` (`ScanLibrary`, `scanRoot:246`, `processMedia:493`, afsluiten met `WithoutCancel`), `pleya_server/internal/scanner/progress.go:51-71`
 - Create: `pleya_server/internal/catalog/store_scans.go`
@@ -1289,6 +1295,8 @@ cd .. && git add pleya_server/internal/scanner/ pleya_server/internal/catalog/ &
 
 ### Task 10: contract, fixtures en de acht foutdomeinen
 
+**Minimaal:** drie fixtures (`scan.json`, `job.json`, `error_job_not_cancellable.json`); `error_library_scan_in_progress.json` vervalt. §17f in de spec blijft bij vijf zinnen. Geen nieuwe tests; de bestaande controles (`check_protocol.sh`, `api:check`, de Dart-fixturetest) zijn het bewijs.
+
 Deze taak raakt alleen contract en documentatie; `verify-protocol.sh` is pas na Taak 11 weer groen omdat de nieuwe schema's dan captures krijgen. `scripts/check_protocol.sh`, de web-typecheck en de Dart-fixturetest moeten in deze taak al groen zijn.
 
 **Files:**
@@ -1488,6 +1496,8 @@ git commit -m "feat(protocol): scans en jobs in venster 2, job als achtste foutd
 ```
 
 ### Task 11: de zes endpoints
+
+**Minimaal:** schrijf alleen `TestStartScanQueuesARunAndRefusesASecond` (zonder de cursor- en 404-controles) en `TestCancelQueuedScanMarksBothCancelled`, plus `TestRetryOfAScanJobResetsProbeAttemptsAndGetsAFreshRun` (het acceptatiecriterium). `TestFinishedScanReportsDoneAndShortPath` vervalt. De matrixrijen 33-38 en de captures van `Scan`, `ScanPage`, `Job` en `JobPage` blijven verplicht, want de gates dwingen ze af. `clampLimit` alleen als kleine functie in `handlers_scans.go`, zonder `handleAudit` aan te raken.
 
 **Files:**
 - Create: `pleya_server/internal/api/handlers_scans.go`, `pleya_server/internal/api/handlers_jobs.go`
@@ -2136,6 +2146,8 @@ git commit -m "feat(pleya-server): scans en jobs over HTTP, annuleren en retry (
 
 ### Task 12: backoff op `probe_attempts`
 
+**Minimaal:** de tabeltest `TestProbeBackoffDoublesAndCapsAtADay` en één scannertest `TestFailedProbeIsNotRepeatedBeforeTheBackoff`; niets meer.
+
 **Files:**
 - Modify: `pleya_server/internal/catalog/types.go:60-77` (`File` krijgt `ProbeAttempts int` en `LastProbeAt *time.Time`), `pleya_server/internal/catalog/store.go:203-230` (`LoadFileIndex` selecteert beide kolommen), `pleya_server/internal/scanner/scanner.go:415-430` (`judge`)
 - Test: `pleya_server/internal/scanner/scanner_test.go`, `pleya_server/internal/scanner/backoff_test.go`
@@ -2232,6 +2244,8 @@ cd .. && git add pleya_server/internal/scanner/ pleya_server/internal/catalog/ &
 ```
 
 ### Task 13: masterlijst, README, verify-local en gates ronde 2
+
+**Minimaal:** de uitbreiding van `verify-local.sh` (stap 2) vervalt; de API-tests dekken de endpoints al. Gates ronde 2 draait alleen wat Deel B raakt: `ci_checks.sh`, `flutter test test/pleya_server/`, Go volledig zonder SKIP, `check_protocol.sh`, `verify-protocol.sh`, web `check`/`api:check`/`test`/`build`, en `verify-local.sh`. Geen Pleya Verify en geen volledige `flutter test`: Deel B raakt geen UI.
 
 **Files:**
 - Modify: `docs/PLEYA-SERVER-MASTERLIST.md` (rij S2.4, "Stand in één blik", regel 46 telling, regel 21-28 kop), `pleya_server/README.md` (de nieuwe endpoints in de sectie die de beheer-API beschrijft), `pleya_server/CLAUDE.md` (de zin "Geen enkele CI-poort dekt deze map" is achterhaald: `.github/workflows/ci.yml:145-210` heeft een `pleya-server`-job; corrigeer die alinea), `pleya_server/scripts/verify-local.sh` (sectie 6: `POST /libraries/{id}/scan` geeft 202, `GET /scans` toont hem, `POST /jobs/{id}/cancel` op de afgeronde job geeft 409), `STATUS.md`, `docs/CHANGELOG.md`
