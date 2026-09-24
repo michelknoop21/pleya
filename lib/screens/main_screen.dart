@@ -2,12 +2,10 @@ import '../providers/watchlist_provider.dart';
 import 'watchlist_screen.dart';
 import 'my_pleya_screen.dart';
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
 import '../automation/automation_route_state.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
-import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
@@ -55,6 +53,7 @@ import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
 import '../mixins/tab_visibility_aware.dart';
+import 'main/mobile_tab_bar.dart';
 import '../navigation/navigation_tabs.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../profiles/active_profile_binder.dart';
@@ -2598,125 +2597,6 @@ class _MainScreenState extends State<MainScreen>
     };
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context, {required bool hideLabels}) {
-    final tabs = _getBottomNavigationTabs();
-    final projected = mainScreenSelectedBarTab(
-      currentTab: _currentTab,
-      isOffline: _isOffline,
-      barTabs: tabs.map((tab) => tab.id).toList(),
-      searchOrigin: _searchOpenedFromTab,
-    );
-    final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-
-    // The one place the bar's presentation is decided, the same shape as the
-    // Home boundary in `discover_screen.dart`: one `PlatformDetector` call
-    // here, an explicit value passed down, and no platform check inside the
-    // destinations. Fase 1 was an iPhone phase and this bar is shared with the
-    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-103).
-    final presentation = PlatformDetector.isPhone(context)
-        ? TabBarPresentation.unified2026
-        : TabBarPresentation.classic;
-    final isUnified = presentation == TabBarPresentation.unified2026;
-
-    final bar = NavigationBar(
-      selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
-      onDestinationSelected: (i) {
-        if (i < 0 || i >= tabs.length) return;
-        // Part of the fase-1 presentation, so it stays on the phone side: the
-        // iPad's bar behaves exactly as it did before fase 1.
-        if (isUnified && tabs[i].id != _currentTab) Haptics.light();
-        _selectTab(tabs[i].id);
-      },
-      labelBehavior: hideLabels
-          ? NavigationDestinationLabelBehavior.alwaysHide
-          : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
-    );
-    final navigationBar = isUnified
-        ? NavigationBarTheme(data: mobileTabBarTheme(NavigationBarTheme.of(context)), child: bar)
-        : bar;
-
-    // Netflix mobile: frosted near-black bar. Blur the content scrolling
-    // behind it; the translucent color comes from navigationBarTheme.
-    Widget frosted(Widget bar) => ClipRect(
-      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: bar),
-    );
-
-    Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
-
-    final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (tabs.isEmpty) return frosted(withNavBarAutomation(navigationBar));
-
-    return frosted(
-      withNavBarAutomation(
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (!constraints.hasBoundedWidth) return navigationBar;
-
-            final itemWidth = constraints.maxWidth / tabs.length;
-            final isRtl = Directionality.of(context) == TextDirection.rtl;
-
-            double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
-
-            return Stack(
-              children: [
-                navigationBar,
-                // The classic bar's solid red indicator above the active icon.
-                // The unified bar has none: there the active slot itself is
-                // red (fase 1 stap 9).
-                if (!isUnified && selectedIndex >= 0)
-                  Positioned(
-                    left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
-                    top: 0,
-                    width: 18,
-                    height: 3,
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
-                      ),
-                    ),
-                  ),
-                if (librariesIndex >= 0)
-                  Positioned(
-                    left: itemLeft(librariesIndex),
-                    top: 0,
-                    bottom: 0,
-                    width: itemWidth,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      excludeFromSemantics: true,
-                      onLongPress: () {
-                        Feedback.forLongPress(context);
-                        _showLibraryQuickPicker(context);
-                      },
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
-  /// resolves on both the mobile bar and the desktop/TV rail
-  /// ([SideNavigationRail] mounts the same id) — iOS Unified 2026 fase 1,
-  /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
-  NavigationDestination _withNavTabAutomation(NavigationTab tab, TabBarPresentation presentation) {
-    final destination = tab.toDestination(presentation: presentation);
-    final id = AutomationIds.navTab(tab.id);
-    Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
-    return NavigationDestination(
-      icon: wrap(destination.icon),
-      selectedIcon: destination.selectedIcon == null ? null : wrap(destination.selectedIcon!),
-      label: destination.label,
-      tooltip: destination.tooltip,
-      enabled: destination.enabled,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final useSideNav = PlatformDetector.shouldUseSideNavigation(context);
@@ -3051,9 +2931,42 @@ class _MainScreenState extends State<MainScreen>
                 pref: SettingsService.showNavBarLabels,
                 builder: (context, showNavBarLabels, _) {
                   final hideLabels = !showNavBarLabels;
+                  final tabs = _getBottomNavigationTabs();
+                  final projected = mainScreenSelectedBarTab(
+                    currentTab: _currentTab,
+                    isOffline: _isOffline,
+                    barTabs: tabs.map((tab) => tab.id).toList(),
+                    searchOrigin: _searchOpenedFromTab,
+                  );
+                  final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
+
+                  // The one place the bar's presentation is decided, the same shape as
+                  // the Home boundary in `discover_screen.dart`: one `PlatformDetector`
+                  // call here, an explicit value passed down, and no platform check
+                  // inside the destinations. Fase 1 was an iPhone phase and this bar is
+                  // shared with the iPad, so the iPad keeps the presentation it had
+                  // before fase 1 (DEC-103).
+                  final presentation = PlatformDetector.isPhone(context)
+                      ? TabBarPresentation.unified2026
+                      : TabBarPresentation.classic;
+                  final isUnified = presentation == TabBarPresentation.unified2026;
+
                   return NavigationBarTheme(
                     data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
-                    child: _buildBottomNavigationBar(context, hideLabels: hideLabels),
+                    child: MobileTabBar(
+                      tabs: tabs,
+                      currentIndex: selectedIndex,
+                      onDestinationSelected: (i) {
+                        if (i < 0 || i >= tabs.length) return;
+                        // Part of the fase-1 presentation, so it stays on the phone
+                        // side: the iPad's bar behaves exactly as it did before fase 1.
+                        if (isUnified && tabs[i].id != _currentTab) Haptics.light();
+                        _selectTab(tabs[i].id);
+                      },
+                      hideLabels: hideLabels,
+                      presentation: presentation,
+                      onLibraryLongPress: _showLibraryQuickPicker,
+                    ),
                   );
                 },
               ),
