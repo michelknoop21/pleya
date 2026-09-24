@@ -2452,6 +2452,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Because you watched ${title}'
 	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
 
+	/// en: 'Because you're watching ${title}'
+	String becauseYouAreWatching({required Object title}) => 'Because you\'re watching ${title}';
+
 	/// en: 'Recently Added Shows'
 	String get latestShows => 'Recently Added Shows';
 
@@ -7864,6 +7867,7 @@ extension on Translations {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
 			'discover.topRated' => 'Top Rated',
 			'discover.somethingDifferent' => 'Something Different',
@@ -8101,9 +8105,9 @@ extension on Translations {
 			'liveTv.favorites' => 'Favorites',
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
-			'liveTv.joinSession' => 'Join Session in Progress',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
@@ -8615,9 +8619,9 @@ extension on Translations {
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
-			'seerr.permissionAdmin' => 'Administrator',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.permissionAdmin' => 'Administrator',
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',

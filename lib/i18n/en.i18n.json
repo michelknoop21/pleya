@@ -838,6 +838,7 @@
     "minutesLeft": "${minutes} min left",
     "moreLikeThis": "More Like This",
     "becauseYouWatched": "Because you watched ${title}",
+    "becauseYouAreWatching": "Because you're watching ${title}",
     "latestShows": "Recently Added Shows",
     "topRated": "Top Rated",
     "somethingDifferent": "Something Different",

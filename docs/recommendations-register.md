@@ -13,8 +13,8 @@ een eindstatus.
 | ID | Werkitem | Status | SHA / bewijs |
 |----|----------|--------|--------------|
 | REC-1 | DEC-132, register, DEC-062-addendum | OPEN | |
-| REC-2 | D1: Tautulli-client volgt de gemonitorde server op detail en in "Nu aan het kijken"; P6; P8-kop | OPEN | code in d43ca8fa. Gedragswijziging: een oude Tautulli-koppeling zonder `machineIdentifier` op een profiel met twee beheerde servers heeft geen gemonitorde server meer, dus beide detailpagina's tonen de Plex-kijkers en geen regel "kijkt nu". Dat is de veilige kant: eerst kon zo'n koppeling kijkers van een andere titel tonen. |
-| REC-3 | D2 en D3: seeds uit het interactielog, capability `relatedHubs`, "Omdat je X kijkt" | OPEN | |
+| REC-2 | D1: Tautulli-client volgt de gemonitorde server op detail en in "Nu aan het kijken"; P6; P8-kop | CODE CLOSED | code in d43ca8fa, tests in 57530d97. Gedragswijziging: een oude Tautulli-koppeling zonder `machineIdentifier` op een profiel met twee beheerde servers heeft geen gemonitorde server meer, dus beide detailpagina's tonen de Plex-kijkers en geen regel "kijkt nu". Dat is de veilige kant: eerst kon zo'n koppeling kijkers van een andere titel tonen. |
+| REC-3 | D2 en D3: seeds uit het interactielog, capability `relatedHubs`, "Omdat je X kijkt" | CODE CLOSED | commit "feat(home): seeds voor Omdat je X keek uit het eigen kijklog". Bewijs: `affinity_engine_db_test.dart` groep `recentPositiveInteractions` (een rij per serie, alleen positief, binnen 30 dagen, nooit een ander profiel, geen uitgeschakelde importserver) en `discover_provider_test.dart` groep `seed rows from the interaction log` (titel per `completed`, geen fetch op een bron zonder `relatedHubs`, bekeken titels eruit, fallback bij een leeg log). Pleya Verify-regressie op het D2-geval volgt bij REC-9. |
 | REC-4 | Lokaal partieel signaal bij een eindstop; importer vergelijkt gewichten | OPEN | |
 | REC-5 | Related hubs van seeds vier tot zes als kandidatenlaag | OPEN | |
 | REC-6 | Jellyfin-geschiedenisimport | OPEN | |

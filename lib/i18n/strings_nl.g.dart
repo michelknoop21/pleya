@@ -1024,6 +1024,7 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
+	@override String becauseYouAreWatching({required Object title}) => 'Omdat je ${title} kijkt';
 	@override String get latestShows => 'Recent toegevoegde series';
 	@override String get topRated => 'Hoogst gewaardeerd';
 	@override String get somethingDifferent => 'Eens iets anders';
@@ -3810,6 +3811,7 @@ extension on TranslationsNl {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Omdat je ${title} kijkt',
 			'discover.latestShows' => 'Recent toegevoegde series',
 			'discover.topRated' => 'Hoogst gewaardeerd',
 			'discover.somethingDifferent' => 'Eens iets anders',
@@ -4047,9 +4049,9 @@ extension on TranslationsNl {
 			'liveTv.favorites' => 'Favorieten',
 			'liveTv.reorderFavorites' => 'Favorieten herordenen',
 			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
-			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Kijk vanaf het begin (${minutes} min geleden)',
 			'liveTv.watchLive' => 'Live kijken',
 			'liveTv.goToLive' => 'Ga naar live',
@@ -4561,9 +4563,9 @@ extension on TranslationsNl {
 			'trackers.services.simkl' => 'Simkl',
 			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
-			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			_ => null,
 		} ?? switch (path) {
+			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',
 			'trackers.oauthProxy.title' => ({required Object service}) => 'Aanmelden bij ${service}',

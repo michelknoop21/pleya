@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_hub.dart';
@@ -106,9 +107,14 @@ class _FakeRecommendationService implements RecommendationService {
   bool syncResult;
   int buildCalls = 0;
   int syncCalls = 0;
+  List<RecommendationSeed> seeds = const [];
+  List<MediaItem> lastHubItems = const [];
 
   @override
   String get profileId => 'p1';
+
+  @override
+  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, int? nowMs}) async => seeds.take(limit).toList();
 
   @override
   Future<List<MediaHub>> buildRows(
@@ -118,6 +124,7 @@ class _FakeRecommendationService implements RecommendationService {
     int? nowMs,
   }) async {
     buildCalls++;
+    lastHubItems = hubItems;
     return const [];
   }
 
@@ -189,7 +196,11 @@ class _FakeClient implements MediaServerClient {
 
   final String id;
   MediaItem? itemResult;
+  Map<String, MediaItem> itemsById = {};
   final List<String> fetchedIds = [];
+  List<MediaItem> recentlyWatched = const [];
+  Map<String, List<MediaHub>> relatedByItem = const {};
+  ServerCapabilities caps = ServerCapabilities.plex;
 
   @override
   ServerId get serverId => ServerId(id);
@@ -201,13 +212,19 @@ class _FakeClient implements MediaServerClient {
   MediaBackend get backend => MediaBackend.plex;
 
   @override
-  ServerCapabilities get capabilities => ServerCapabilities.plex;
+  ServerCapabilities get capabilities => caps;
 
   @override
   Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async {
     fetchedIds.add(id);
-    return itemResult;
+    return itemsById[id] ?? itemResult;
   }
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => recentlyWatched.take(limit).toList();
+
+  @override
+  Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => relatedByItem[id] ?? const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -774,6 +791,120 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(provider.hubs.map((h) => h.id), ['hub-1']);
       expect(aggregation.hubCalls, 1);
+    });
+  });
+
+  group('seed rows from the interaction log', () {
+    MediaItem movie(String id, {String server = 'server_1', int viewCount = 0}) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: id,
+      serverId: server,
+      serverName: 'Server',
+      viewCount: viewCount,
+    );
+
+    Future<DiscoverProvider> loadWith(_FakeRecommendationService service, List<_FakeClient> clients) async {
+      final manager = MultiServerManager();
+      for (final c in clients) {
+        manager.debugRegisterClientForTesting(c);
+      }
+      aggregation = _FakeAggregationService(manager);
+      multiServer = MultiServerProvider(manager, aggregation);
+      final p = DiscoverProvider(
+        multiServer,
+        hiddenLibraries,
+        libraries,
+        isProfileBinding: () => isBinding,
+        recommendations: service,
+      );
+      aggregation.onDeckResult = () => const [];
+      aggregation.hubsResult = () => const [];
+      await p.load();
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      return p;
+    }
+
+    Iterable<MediaHub> seedRows(DiscoverProvider p) => p.hubs.where((h) => h.identifier == 'home.becauseyouwatched');
+
+    test('a partial seed becomes "because you are watching", a completed one keeps the old title', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      client.itemsById = {'sev': movie('sev'), 'heat': movie('heat')};
+      client.relatedByItem = {
+        'sev': [
+          _hub('rel-sev', items: [movie('a'), movie('b'), movie('c')]),
+        ],
+        'heat': [
+          _hub('rel-heat', items: [movie('d'), movie('e'), movie('f')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [
+          RecommendationSeed(globalKey: 'server_1:sev', completed: false, occurredAtMs: now),
+          RecommendationSeed(globalKey: 'server_1:heat', completed: true, occurredAtMs: now - 1000),
+        ];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p).map((h) => h.title), [
+        t.discover.becauseYouAreWatching(title: 'sev'),
+        t.discover.becauseYouWatched(title: 'heat'),
+      ]);
+    });
+
+    test('a seed on a server without related hubs takes no slot and costs no fetch', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final pleya = _FakeClient(id: 'pleya_1')..caps = ServerCapabilities.local;
+      client.itemsById = {'heat': movie('heat')};
+      client.relatedByItem = {
+        'heat': [
+          _hub('rel', items: [movie('d'), movie('e'), movie('f')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [
+          RecommendationSeed(globalKey: 'pleya_1:42', completed: true, occurredAtMs: now),
+          RecommendationSeed(globalKey: 'server_1:heat', completed: true, occurredAtMs: now - 1000),
+        ];
+      final p = await loadWith(service, [client, pleya]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p), hasLength(1));
+      expect(pleya.fetchedIds, isEmpty);
+    });
+
+    test('finished titles are dropped from a seed row', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      client.itemsById = {'heat': movie('heat')};
+      client.relatedByItem = {
+        'heat': [
+          _hub('rel', items: [movie('seen', viewCount: 1), movie('d'), movie('e'), movie('f')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [RecommendationSeed(globalKey: 'server_1:heat', completed: true, occurredAtMs: now)];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      final row = seedRows(p).single;
+      expect(row.items.map((i) => i.id), isNot(contains('seen')));
+    });
+
+    test('an empty log falls back to the servers own recently watched list', () async {
+      client.recentlyWatched = [movie('old', viewCount: 1)];
+      client.relatedByItem = {
+        'old': [
+          _hub('rel', items: [movie('d'), movie('e'), movie('f')]),
+        ],
+      };
+      final p = await loadWith(_FakeRecommendationService(), [client]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p), hasLength(1));
+      expect(seedRows(p).single.title, t.discover.becauseYouWatched(title: 'old'));
     });
   });
 }

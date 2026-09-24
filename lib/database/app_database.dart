@@ -372,6 +372,37 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
           .get();
 
+  /// Newest positive interactions of one profile, one row per evidence key
+  /// (the series for an episode, the item for a movie), newest first. Same
+  /// scoring scope as the vector, so a disabled import server never seeds.
+  Future<List<MediaInteractionRow>> recentPositiveInteractions(
+    String profileId, {
+    required int sinceMs,
+    required double minWeight,
+    required int limit,
+    Set<String> enabledImportServerIds = const {},
+  }) async {
+    final rows =
+        await (select(mediaInteractions)
+              ..where(
+                (t) =>
+                    t.profileId.equals(profileId) &
+                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
+                    t.occurredAt.isBiggerOrEqualValue(sinceMs) &
+                    _scoringScope(enabledImportServerIds),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)]))
+            .get();
+    final seen = <String>{};
+    final out = <MediaInteractionRow>[];
+    for (final row in rows) {
+      if (!seen.add(row.seriesKey ?? row.globalKey)) continue;
+      out.add(row);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
   /// Counts interactions. Pass [enabledImportServerIds] to count exactly the
   /// rows the vector is built from; omit it for the storage-side count the
   /// retention cap is about.

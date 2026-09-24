@@ -838,6 +838,7 @@
     "minutesLeft": "${minutes} min over",
     "moreLikeThis": "Meer zoals dit",
     "becauseYouWatched": "Omdat je ${title} gekeken hebt",
+    "becauseYouAreWatching": "Omdat je ${title} kijkt",
     "latestShows": "Recent toegevoegde series",
     "topRated": "Hoogst gewaardeerd",
     "somethingDifferent": "Eens iets anders",

@@ -12,11 +12,14 @@ MediaInteractionsCompanion _row(
   double weight = 1.0,
   List<String> genres = const [],
   int? occurredAt,
+  String? seriesKey,
+  String eventType = 'completed',
 }) => MediaInteractionsCompanion.insert(
   profileId: profile,
   globalKey: globalKey,
+  seriesKey: Value(seriesKey),
   mediaKind: 'movie',
-  eventType: 'completed',
+  eventType: eventType,
   eventWeight: weight,
   // Default to "now" so retention pruning (365d) doesn't drop the row.
   occurredAt: occurredAt ?? DateTime.now().millisecondsSinceEpoch,
@@ -117,6 +120,67 @@ void main() {
       // vectorFor must detect the newer latestInteractionAt and recompute.
       final after = await engine.vectorFor('p1', nowMs: t1 + 1000);
       expect(after.of('genre', 'sci-fi'), greaterThan(0));
+    });
+  });
+
+  group('recentPositiveInteractions', () {
+    // Wall clock, not a constant: the 365-day retention prune on insert would
+    // otherwise drop every fixture row.
+    final now = DateTime.now().millisecondsSinceEpoch;
+    const day = Duration.millisecondsPerDay;
+
+    test('one row per evidence key, newest first, positives only, inside the window', () async {
+      await db.insertMediaInteraction(
+        _row('p1', 's:ep1', seriesKey: 's:show', occurredAt: now - 1 * day),
+        profileId: 'p1',
+      );
+      await db.insertMediaInteraction(
+        _row('p1', 's:ep2', seriesKey: 's:show', occurredAt: now - 2 * day, weight: 0.4, eventType: 'partial'),
+        profileId: 'p1',
+      );
+      await db.insertMediaInteraction(_row('p1', 's:film', occurredAt: now - 3 * day), profileId: 'p1');
+      await db.insertMediaInteraction(
+        _row('p1', 's:dismissed', occurredAt: now - 1 * day, weight: -0.3, eventType: 'skipped'),
+        profileId: 'p1',
+      );
+      await db.insertMediaInteraction(_row('p1', 's:old', occurredAt: now - 40 * day), profileId: 'p1');
+      // Another household member's viewing never seeds this profile (DEC-062).
+      await db.insertMediaInteraction(_row('p2', 's:theirs', occurredAt: now), profileId: 'p2');
+
+      final rows = await db.recentPositiveInteractions('p1', sinceMs: now - 30 * day, minWeight: 0.4, limit: 6);
+
+      expect(rows.map((r) => r.globalKey), [
+        's:ep1',
+        's:film',
+      ], reason: 'the show once, the dismissal, the old row and the other profile never');
+    });
+
+    test('an imported row on a disabled server is not a seed', () async {
+      await db.insertMediaInteraction(
+        MediaInteractionsCompanion.insert(
+          profileId: 'p1',
+          globalKey: 'pms:9',
+          mediaKind: 'movie',
+          eventType: 'completed',
+          eventWeight: 1.0,
+          occurredAt: now,
+          source: const Value('tautulli'),
+          sourceServerId: const Value('pms'),
+          sourceEventId: const Value('tautulli:pms:9'),
+        ),
+        profileId: 'p1',
+      );
+      expect(await db.recentPositiveInteractions('p1', sinceMs: now - 30 * day, minWeight: 0.4, limit: 6), isEmpty);
+      expect(
+        await db.recentPositiveInteractions(
+          'p1',
+          sinceMs: now - 30 * day,
+          minWeight: 0.4,
+          limit: 6,
+          enabledImportServerIds: const {'pms'},
+        ),
+        hasLength(1),
+      );
     });
   });
 }

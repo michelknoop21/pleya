@@ -29,12 +29,31 @@ const Duration kImportSourcesReadyTimeout = Duration(seconds: 20);
 /// already more than the feed ever needs.
 const int kMaxChainedSyncPasses = 3;
 
+/// How far back a title may lie to still headline a "Because you watched" row.
+const Duration kSeedWindow = Duration(days: 30);
+
+/// A partial view counts; a dismissal never does.
+const double kSeedMinWeight = 0.4;
+
+/// One title the feed may build a related row on.
+class RecommendationSeed {
+  /// The series key for an episode, the item's own global key otherwise.
+  final String globalKey;
+
+  /// False when the strongest recent evidence is a partial view: the title is
+  /// still being watched and the row says so.
+  final bool completed;
+  final int occurredAtMs;
+  const RecommendationSeed({required this.globalKey, required this.completed, required this.occurredAtMs});
+}
+
 /// Profile-scoped facade the discover feed uses to obtain personalized rows.
 /// Owns the affinity engine + candidate pool and gates on the user's
 /// `personalizedRecommendations` setting. Runs entirely off the counted
 /// aggregation paths, so it never affects the discover fetch-cost contract.
 class RecommendationService {
   final String profileId;
+  final AppDatabase _db;
   final AffinityEngine _affinity;
   final CandidatePool _candidates;
   final PersonalizedRowTitles _titles;
@@ -81,7 +100,8 @@ class RecommendationService {
     Set<String> Function()? enabledImportServerIds,
     this._importSourcesReady,
     this._importerFactory,
-  }) : _affinity = AffinityEngine(database),
+  }) : _db = database,
+       _affinity = AffinityEngine(database),
        _candidates = candidatePool ?? CandidatePool(),
        _enabledImportServerIds = enabledImportServerIds ?? _noImports;
 
@@ -111,6 +131,34 @@ class RecommendationService {
       return buildPersonalizedRows(taste, pool, titles: _titles, nowMs: now, excludeKeys: excludeKeys);
     } catch (e, s) {
       appLogger.w('RecommendationService: buildRows failed (leaving rows out)', error: e, stackTrace: s);
+      return const [];
+    }
+  }
+
+  /// Newest distinct titles with positive evidence, for the seed rows. Empty
+  /// when personalization is off or nothing qualifies; the caller then falls
+  /// back to the servers' own recently-watched lists.
+  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, int? nowMs}) async {
+    if (!_enabled) return const [];
+    try {
+      final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+      final rows = await _db.recentPositiveInteractions(
+        profileId,
+        sinceMs: now - kSeedWindow.inMilliseconds,
+        minWeight: kSeedMinWeight,
+        limit: limit,
+        enabledImportServerIds: _enabledImportServerIds(),
+      );
+      return [
+        for (final row in rows)
+          RecommendationSeed(
+            globalKey: row.seriesKey ?? row.globalKey,
+            completed: row.eventWeight >= 1.0,
+            occurredAtMs: row.occurredAt,
+          ),
+      ];
+    } catch (e, s) {
+      appLogger.w('RecommendationService: recentSeeds failed (no seeds)', error: e, stackTrace: s);
       return const [];
     }
   }
