@@ -1,7 +1,8 @@
 <link rel="stylesheet" href="../../../liquid-glass/src/tv-glass.css">
 <style>
-/* mockup 36 B (resultaten), een stap naar beneden gescrold: de eerste rij schuift onder
-   de topnav en de zoekpil door, zodat het glas iets heeft om te tonen */
+/* mockup 36 B (resultaten) in ruststand: de zoekpil onder de topnav, de resultaten
+   eronder. Het glas ligt hier op de donkere achtergrond; pas bij scrollen schuiven
+   posters eronderdoor. */
 .edge { position: absolute; left: 0; right: 0; top: 0; height: 150px; background: linear-gradient(180deg, rgba(20,20,20,.85) 40%, rgba(20,20,20,0)); z-index: 1; }
 .topnav { z-index: 2; }
 .page { padding: 0 var(--grid-inset); }
@@ -10,7 +11,7 @@
 .sf .q { font-size: 26px; color: var(--ink); }
 .sf .caret { width: 3px; height: 34px; background: var(--ink); margin-left: -16px; }
 .sf .n { margin-left: auto; font-size: 20px; color: rgba(255,255,255,.85); }
-.scroll { position: absolute; left: var(--grid-inset); top: -44px; }
+.scroll { position: absolute; left: var(--grid-inset); top: 262px; }
 .topnav .cluster.tvglass .search.on { width: 48px; height: 48px; border-radius: 999px; background: var(--ink); color: var(--bg); justify-content: center; align-items: center; margin-right: 22px; filter: none; }
 .topnav .cluster.tvglass .search.on .ic { filter: none; }
 .group-label { display: flex; align-items: baseline; gap: 18px; margin: 0 0 var(--focus-headroom); }
@@ -30,12 +31,12 @@
 <div class="scroll">
   <div class="group-label">Movies<span class="n">7</span></div>
   <div class="grid6">
-    <div class="card"><div class="art"><img src="{{art:caminandes-poster}}"></div><div class="t">Caminandes: Gran Dillama</div><div class="s">2013 · Animation</div></div>
+    <div class="card"><div class="art focus"><img src="{{art:caminandes-poster}}"></div><div class="t" style="font-weight:700">Caminandes: Gran Dillama</div><div class="s">2013 · Animation</div></div>
     <div class="card"><div class="art"><img src="{{art:charge-poster}}"></div><div class="t">Charge</div><div class="s">2022 · Action</div></div>
     <div class="card"><div class="art"><img src="{{art:coffeerun-poster}}"></div><div class="t">Coffee Run</div><div class="s">2020 · Animation</div></div>
     <div class="card"><div class="art"><img src="{{art:elephants-poster}}"></div><div class="t">Elephants Dream</div><div class="s">2006 · Science Fiction</div></div>
     <div class="card"><div class="art"><img src="{{art:sintel-poster}}"></div><div class="t">Sintel</div><div class="s">2010 · Fantasy</div></div>
     <div class="card"><div class="art"><img src="{{art:tears-poster}}"></div><div class="t">Tears of Steel</div><div class="s">2012 · Science Fiction</div></div>
-    <div class="card"><div class="art focus"><img src="{{art:dweebs-poster}}"></div><div class="t" style="font-weight:700">The Daily Dweebs</div><div class="s">2017 · Animation</div></div>
+    <div class="card"><div class="art"><img src="{{art:dweebs-poster}}"></div><div class="t">The Daily Dweebs</div><div class="s">2017 · Animation</div></div>
   </div>
 </div>

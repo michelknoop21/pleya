@@ -1,8 +1,8 @@
 # Liquid Glass-mockups, september 2026
 
-**Status: voorstel.** Deze set laat zien hoe Pleya eruitziet als de oppervlakken Liquid Glass
-worden, op iPhone en Apple TV. Er is niets over besloten; een DEC-nummer volgt pas bij
-goedkeuring. Layout, typografie, kleuren en maten komen uit de iOS-northstar
+**Status: goedgekeurd op 24 september 2026 ([DEC-122](DECISIONS.md#dec-122)).** Deze set laat
+zien hoe Pleya eruitziet als de oppervlakken Liquid Glass worden, op iPhone en Apple TV. Michel
+keurde de richting goed met één eis: goed contrast, zie de sectie Contrast hieronder. Layout, typografie, kleuren en maten komen uit de iOS-northstar
 (`docs/assets/ios-unified/northstar/`) en de goedgekeurde tvOS-mockups 30, 33 en 36. Alleen
 tabbalk, knoppen, zoekveld en spelerbediening zijn veranderd.
 
@@ -18,7 +18,7 @@ demoserver, geknipt uit de App Store-screenshots van 24 september 2026.
 | `LG-03-speler.png` | 2622×1206 | iPhone speler liggend. Terugspoelen, pauze en vooruitspoelen zijn glazen cirkels, tijdlijn en werkbalk zitten in één glazen plaat, rechtsboven een glazen capsule met cast, AirPlay en het menu. Lichte scène onder het glas. |
 | `LG-04-home.png` | 1920×1080 | Apple TV Home. De topbalk is een capsule van nepglas over de hero, focus op Home (witte pil, licht vergroot). |
 | `LG-05-spelerpaneel.png` | 1920×1080 | Apple TV spelerbalk, stand I van mockup 33 (bediening zichtbaar). Tijdlijn en knoppen staan op één nepglasplaat boven een lichte scène. |
-| `LG-06-zoeken.png` | 1920×1080 | Apple TV zoeken, mockup 36 B. De zoekpil is nepglas; de resultaten zijn een stuk omhoog gescrold zodat de lichte posters van Caminandes en Coffee Run onder pil en topbalk liggen. |
+| `LG-06-zoeken.png` | 1920×1080 | Apple TV zoeken, mockup 36 B. De zoekpil is nepglas, in ruststand: onder de topbalk, met de resultaten eronder en de focus op de eerste kaart. Pas bij scrollen schuiven posters onder pil en topbalk door. |
 | `LG-07-iphone-vergelijking.png` | 2593×2826 | Links Home van vandaag, rechts LG-01. |
 | `LG-08-appletv-vergelijking.png` | 3960×1210 | Links Home van vandaag, rechts LG-04. |
 
@@ -38,6 +38,21 @@ Op Apple TV bestaat dat pakket niet, dus daar is het glas een `BackdropFilter`: 
 verzadiging, iets dimmen, een witte tint en een lichtlijn bovenlangs. Geen rand die breekt. In
 LG-04 en LG-06 is het verschil met een donkere balk goed te zien, in LG-05 minder, omdat de plaat
 daar groot is en de scène achter de knoppen al rustig is.
+
+## Contrast
+
+Glas mag de leesbaarheid niet kosten. Dit is een eis bij de goedkeuring, geen wens.
+
+- Tekst en iconen op glas halen minstens 4,5:1 tegen wat eronder ligt, gemeten op de lichtste
+  scène die daar kan staan (Big Buck Bunny, Coffee Run). Wit op glas krijgt daarom altijd de
+  tekstschaduw uit de recepten hierboven; zonder schaduw zakt wit op de lichte Bunny-scène onder 3:1.
+- Het glas dempt wat erdoor schemert (`--lg-dim`) en zet een lichte donkere tint in de plaat zodra
+  de achtergrond licht is. In Flutter is dat een luminantiemeting van het beeld onder de plaat, of
+  een vaste tint van 22 tot 28 procent zwart als meten te duur is.
+- De focusring op Apple TV blijft wit met de bestaande ring-gap; op een witte pil (Home in LG-04)
+  vervalt de ring en telt de schaal plus schaduw als focus. Dat is de enige plek waar dat mag.
+- Het rode accent (voortgang, actieve tab) blijft dekkend; het gaat nooit door het glas heen.
+- Controle: elk scherm met glas krijgt in Pleya Verify een contrastmeting op de lichtste fixture.
 
 ## De CSS-recepten
 
