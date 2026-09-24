@@ -245,10 +245,34 @@ void main() {
       await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
       transport.available = false;
 
-      transport.controller.add(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
-      await Future<void>.delayed(Duration.zero);
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
 
       expect(coordinator.localRevision('subtitle_font_size'), isNotNull);
+    });
+
+    test('an edit made while signed out loses to the store where it holds the key, and keeps the rest', () async {
+      final coordinator = await build();
+      await settings.prefs.setInt('subtitle_font_size', 30);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 30));
+      final subtitleKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      final seekKey = coordinator.cloudKeyFor('seek_time_small')!;
+      expect(transport.store.containsKey(subtitleKey), isTrue);
+      expect(transport.store.containsKey(seekKey), isFalse);
+
+      transport.available = false;
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      await settings.prefs.setInt('seek_time_small', 5);
+      await coordinator.apply(const PreferenceMutation.set('seek_time_small', 5));
+
+      // Back into the same store. There is no account identity to tell it apart.
+      transport.available = true;
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+
+      expect(settings.prefs.getInt('subtitle_font_size'), 30, reason: 'the store held the key, so it wins');
+      expect(settings.prefs.getInt('seek_time_small'), 5, reason: 'the store lacked the key');
+      expect((json.decode(transport.store[seekKey]!) as Map)['value'], 5);
     });
 
     test('a sign-out does not pass for ready while availability is re-checked', () async {

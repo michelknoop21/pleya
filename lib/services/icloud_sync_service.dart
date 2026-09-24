@@ -225,6 +225,7 @@ class ICloudSyncService {
   @visibleForTesting
   Future<void> debugHandleEvent(Map<String, dynamic> event) async {
     final change = ICloudKvsTransport.translateEvent(event);
+    // ignore: invalid_use_of_visible_for_testing_member
     if (change != null) await _coordinator.handleRemoteChange(change);
   }
 

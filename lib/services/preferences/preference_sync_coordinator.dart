@@ -517,9 +517,8 @@ class PreferenceSyncCoordinator {
     }
   }
 
-  /// Drive the remote-event path without a stream. For tests and
-  /// `ICloudSyncService.debugHandleEvent`; not annotated `@visibleForTesting`
-  /// because that caller lives in `lib/`.
+  /// Drive the remote-event path without a stream. Test-only.
+  @visibleForTesting
   Future<void> handleRemoteChange(RemotePreferenceChange change) => _onRemoteChange(change);
 
   Future<void> applyAllRemote() async {

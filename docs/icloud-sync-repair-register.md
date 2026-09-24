@@ -18,7 +18,7 @@ Plan: `docs/superpowers/plans/2026-09-24-icloud-sync-repair.md`.
 | B6 | uit en weer aan binnen één sessie | OPEN | | |
 | B7 | status bij uitgelogd iCloud | OPEN | | |
 | B8 | quota-melding overleeft een reconcile | OPEN | | |
-| B9 | accountwissel leest eerst | OPEN | | |
+| B9 | accountwissel leest eerst; grens: een uitgelogd gemaakte wijziging verliest bij de volgende aanmelding (zelfde of ander account) van de store voor sleutels die de store heeft, een sleutel die de store mist houdt de lokale waarde | OPEN | | |
 | B10 | taalvoorkeur op de juiste sleutel | OPEN | | |
 | B11 | acht stille sleutels en de guard | OPEN | | |
 | B12 | profielscope Jellyfin en Pleya Server | DEFERRED | | DEC-131, Consequences |

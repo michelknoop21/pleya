@@ -3001,7 +3001,10 @@ voorkeur, ook een die nooit gezet was, dus het aantal sleutels in de store groei
 sleutel die het account ooit zag, per bibliotheek die ooit bestond, niet met de huidige staat
 (`kvs_footprint_test` telt dat mee); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
 waarden over tombstones terug, dus tot alle Apple-toestellen deze build hebben wisselen oud en
-nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Een wijziging op een toestel met
+nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Een wijziging die uitgelogd
+is gemaakt verliest bij de volgende aanmelding van de store voor elke sleutel die de store heeft,
+ook bij terugkeer naar hetzelfde account: de engine kent geen accountidentiteit, dus elke aanmelding
+wist de stempels. Een sleutel die de store mist houdt de lokale waarde. Een wijziging op een toestel met
 de vorige build wordt zonder stempel geschreven en verliest van elke sleutel die een nieuwer toestel
 gestempeld heeft, dus alle Apple-toestellen moeten tegelijk worden bijgewerkt. Bewijs: unit tegen
 `FakeTransport`; geen simulator kan cross-device KVS bewijzen; per punt geldt `CODE CLOSED · UNIT
