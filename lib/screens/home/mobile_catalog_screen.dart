@@ -48,6 +48,7 @@ import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
+import '../../utils/home_custom_row_labels.dart' show unifiedWatchFilterLabel;
 import '../../utils/language_codes.dart';
 import '../../widgets/app_icon.dart';
 import '../../utils/platform_detector.dart';
@@ -269,11 +270,12 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   }
 
   /// The right-hand half of the count row: what is actively narrowing the
-  /// result, or nothing at all. Genre and year only: server/library
-  /// restriction already shows on the sources chip, and repeating it here
-  /// would say the same thing twice.
+  /// result, or nothing at all. Every item filter, not the sources:
+  /// server/library restriction already shows on the sources chip, and
+  /// repeating it here would say the same thing twice.
   String? _filterSummary(UnifiedCatalogFilterSelection filters) {
     final parts = <String>[];
+    if (filters.watchState != UnifiedWatchFilter.all) parts.add(unifiedWatchFilterLabel(filters.watchState));
     if (filters.genres.isNotEmpty) parts.add((filters.genres.toList()..sort()).join(', '));
     if (filters.audioLanguages.isNotEmpty) {
       final languages = filters.audioLanguages.map((code) => languageDisplayName(code) ?? code).toList()..sort();
@@ -283,6 +285,7 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
       final years = filters.years.toList()..sort();
       parts.add(years.length == 1 ? '${years.first}' : '${years.first}-${years.last}');
     }
+    if (filters.officialRatings.isNotEmpty) parts.add(contentRatingLabels(filters.officialRatings).join(', '));
     return parts.isEmpty ? null : parts.join(' · ');
   }
 

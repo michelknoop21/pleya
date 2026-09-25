@@ -464,10 +464,11 @@ class TvCatalogLayout {
   /// [optionRowMinHeight], so arithmetic on these constants is exactly the
   /// reasoning that produced the gap.
   ///
-  /// Seven covers the widest rail the panel can build, since
-  /// `TvCatalogFilterSection` has six values and the rail lists all six. It is
-  /// not a comfortable margin: at the canonical surface seven rows give 297.5px
-  /// against 293.75px of rail, so 3.75px in total. That is why the invariant is
+  /// It went stale a second time when Leeftijd made the rail seven categories:
+  /// seven rows left 46px of rail off screen. Eight rows is also where the
+  /// canonical 1038x584 surface stops giving the zone more height (a ninth row
+  /// is clamped away by `_zoneHeight`), so the last few pixels come from
+  /// [filterRailGap] instead of from more rows. That is why the invariant is
   /// pinned by a test in `tv_catalog_foundation_test.dart` that measures the
   /// rail's scroll extent rather than by trusting these numbers to stay put. A
   /// change in row metrics is meant to turn that test red, not to be absorbed
@@ -477,7 +478,12 @@ class TvCatalogLayout {
   /// scrolling under `_FadingEdges`, which is the affordance that already says
   /// "there is more below", and the short categories keep quiet space under
   /// them rather than a cramped box.
-  static const int filterZoneRows = 7;
+  static const int filterZoneRows = 8;
+
+  /// Space between two categories in the filter rail. Tighter than
+  /// [optionRowGap], which the options column keeps: seven categories have to
+  /// fit the zone the canonical surface allows (see [filterZoneRows]).
+  static const double filterRailGap = 5;
 
   /// The count chip on a category that has active selections.
   static const double filterCountFontSize = 10.5;

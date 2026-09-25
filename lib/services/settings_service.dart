@@ -346,6 +346,10 @@ class SettingsService extends BaseSharedPreferencesService {
   static const enableHDR = BoolPref('enable_hdr', defaultValue: true);
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
+  ///
+  /// The device-wide key from before search recency became per profile. Only
+  /// the base name now: `SearchRecencyStore` reads and writes it under the
+  /// active profile's prefix and deletes this device-wide copy.
   static const searchHistory = StringListPref('search_history');
 
   /// The titles opened from a search result, most-recent first, each entry a
@@ -353,6 +357,7 @@ class SettingsService extends BaseSharedPreferencesService {
   /// desktop and mobile keep showing [searchHistory]'s query chips. Capped by
   /// `searchRecentsLimit` in `services/search_recents.dart`, which owns the
   /// read and write.
+  /// Base name only, same story as [searchHistory].
   static const searchRecentItems = StringListPref('search_recent_items');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
   static const seekTimeSmall = IntPref('seek_time_small', defaultValue: 10);
