@@ -1,8 +1,10 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import '../../services/device_performance.dart';
 import '../../services/settings_service.dart';
+import '../../utils/layout_constants.dart';
 import '../../utils/platform_detector.dart';
+import '../mono_tokens.dart';
 
 /// How a glass surface should render.
 ///
@@ -55,6 +57,9 @@ class GlassTokens {
   final Color tint;
   final double edge;
 
+  /// Width of the fake-tier rim in logical pixels.
+  final double edgeWidth;
+
   /// `LiquidGlassSettings.glassColor` on the real tier; [tint] when null.
   final Color? realTint;
 
@@ -64,8 +69,13 @@ class GlassTokens {
     required this.dim,
     required this.tint,
     required this.edge,
+    this.edgeWidth = defaultEdgeWidth,
     this.realTint,
   });
+
+  /// The rim width every plate had before VIS-0925-D, and still the default
+  /// off the TV.
+  static const double defaultEdgeWidth = 1.5;
 
   /// iPhone glass: blur 12, saturation 1.5, dim 0.78. Fixronde 1 replaced the
   /// white 14% tint with a dark fill: white text on a *white*-tinted plate
@@ -95,6 +105,46 @@ class GlassTokens {
         edge: 0,
         realTint: const Color(0x99000000),
       );
+
+  /// Apple TV glass for [context]'s theme (VIS-0925-D). [tv] and [tvPanel] are
+  /// one recipe for every theme, and the hardware photos of build 303 showed
+  /// what that does: in Light the black 50% plate dimmed by 0.8 is a flat grey
+  /// pill, in OLED the 40% white rim is all that is left against black.
+  ///
+  /// - Light: a white 60% plate with no dim, dark ink on it, no light rim
+  ///   (white on white is no rim).
+  /// - Dark: [tv] / [tvPanel] unchanged.
+  /// - OLED: the Dark plate with a 15% rim.
+  ///
+  /// The rim is 1.5 at [TvLayoutConstants.scaleOf], like every other TV
+  /// density token, instead of a fixed 1.5 logical pixels. [panel] is the
+  /// player panel: it sits over video with fixed white text, so it keeps its
+  /// dark plate in Light too and only takes the OLED rim and the scaled width.
+  /// The tier stays `fake` (DEC-122): this changes the recipe, not the renderer.
+  static GlassTokens tvFor(BuildContext context, {bool panel = false}) {
+    final tk = Theme.of(context).extension<MonoTokens>();
+    final edgeWidth = defaultEdgeWidth * TvLayoutConstants.scaleOf(context);
+    final base = panel ? const GlassTokens.tvPanel() : const GlassTokens.tv();
+    if (tk != null && tk.isLight && !panel) {
+      return GlassTokens(
+        blur: base.blur,
+        saturation: base.saturation,
+        dim: 1,
+        tint: const Color(0x99FFFFFF),
+        edge: 0,
+        edgeWidth: edgeWidth,
+      );
+    }
+    final oled = tk != null && tk.bg == const Color(0xFF000000);
+    return GlassTokens(
+      blur: base.blur,
+      saturation: base.saturation,
+      dim: base.dim,
+      tint: base.tint,
+      edge: oled ? 0.15 : base.edge,
+      edgeWidth: edgeWidth,
+    );
+  }
 
   /// Apple TV nepglas: blur 30, saturation 1.2, dim 0.80, the same dark plate
   /// tint as [phone] (black 50%, Fixronde 1/2) for the same contrast reason,

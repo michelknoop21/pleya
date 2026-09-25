@@ -13,6 +13,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/focus/focus_ring_border.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:pleya/focus/focus_memory_tracker.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -58,7 +59,7 @@ void main() {
 
   final destinations = buildTvDestinations(const TvNavConditions(hasLiveTv: false));
 
-  Future<void> pumpBar(WidgetTester tester, {required bool glass, bool scene = false}) async {
+  Future<void> pumpBar(WidgetTester tester, {required bool glass, bool scene = false, bool dark = true}) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -67,7 +68,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
-          theme: monoTheme(dark: true),
+          theme: monoTheme(dark: dark),
           home: InputModeTracker(
             child: RepaintBoundary(
               key: _kSceneKey,
@@ -117,7 +118,7 @@ void main() {
       .widgetList<AnimatedContainer>(find.descendant(of: item(id), matching: find.byType(AnimatedContainer)))
       .map((c) => c.foregroundDecoration)
       .whereType<ShapeDecoration>()
-      .any((d) => (d.shape as OutlinedBorder).side.color != Colors.transparent);
+      .any((d) => (d.shape as FocusRingBorder).ring.color != Colors.transparent);
 
   double pillScale(WidgetTester tester, TvDestinationId id) {
     final scales = find.descendant(of: item(id), matching: find.byType(AnimatedScale));
@@ -154,6 +155,19 @@ void main() {
     }
     final chip = tester.getCenter(find.byType(ProfileAvatar));
     expect(capsule.contains(chip), isFalse);
+  });
+
+  // VIS-0925-D: in Light the capsule is a white plate with dark ink, and the
+  // dark drop shadow that keeps light ink legible on the dark plate goes.
+  testWidgets('glas aan in Light: witte plaat, inactieve labels zonder schaduw', (tester) async {
+    await pumpBar(tester, glass: true, dark: false);
+    await tester.pumpAndSettle();
+    final surface = tester.widget<GlassSurface>(find.byType(GlassSurface));
+    expect(surface.tokens!.tint.computeLuminance(), greaterThan(0.9));
+    expect(surface.tokens!.edge, 0);
+    final inactive = destinations.firstWhere((id) => id != TvDestinationId.home && !id.isCompact);
+    final label = tester.widgetList<Text>(find.descendant(of: item(inactive), matching: find.byType(Text))).first;
+    expect(label.style?.shadows, isNull);
   });
 
   testWidgets('de schakelaar werkt live: capsule verschijnt en verdwijnt zonder herstart', (tester) async {

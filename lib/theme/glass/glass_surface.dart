@@ -35,10 +35,6 @@ class GlassSurface extends StatelessWidget {
   final Widget? legacy;
   final bool backdrop;
 
-  /// Fixed rim width for the fake-tier light edge ([GlassTokens.tv] and
-  /// [GlassTokens.control] have a non-zero [GlassTokens.edge]).
-  static const double _edgeWidth = 1.5;
-
   @override
   Widget build(BuildContext context) {
     final tier = glassTierFor(context);
@@ -130,7 +126,7 @@ Decoration _fakeGlassDecoration(ShapeBorder shape, GlassTokens t) {
   final highlighted = Color.alphaBlend(_kTopHighlight, t.tint);
   final rimmed = shape is OutlinedBorder && t.edge > 0
       ? shape.copyWith(
-          side: BorderSide(color: Color.fromRGBO(255, 255, 255, t.edge), width: GlassSurface._edgeWidth),
+          side: BorderSide(color: Color.fromRGBO(255, 255, 255, t.edge), width: t.edgeWidth),
         )
       : shape;
   return ShapeDecoration(

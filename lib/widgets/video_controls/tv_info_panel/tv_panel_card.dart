@@ -55,7 +55,7 @@ class TvPanelCard extends StatelessWidget {
     );
     return GlassSurface(
       shape: RoundedRectangleBorder(borderRadius: borderRadius),
-      tokens: const GlassTokens.tvPanel(),
+      tokens: GlassTokens.tvFor(context, panel: true),
       backdrop: false,
       legacy: legacy,
       child: Container(

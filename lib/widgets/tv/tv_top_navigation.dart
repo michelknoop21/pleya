@@ -234,7 +234,7 @@ class TvTopNavigation extends StatelessWidget {
               else
                 GlassSurface(
                   shape: const StadiumBorder(),
-                  tokens: const GlassTokens.tv(),
+                  tokens: GlassTokens.tvFor(context),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: TvTopNavLayout.glassCapsuleInset * scale),
                     child: cluster,

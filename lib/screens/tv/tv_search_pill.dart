@@ -78,7 +78,7 @@ class TvSearchPill extends StatelessWidget {
     );
     // LG-06: glass on puts the field on a capsule of tvOS fake glass. At rest
     // it sits on the page ground under the top bar; results scroll under it.
-    final pill = GlassSurface(shape: const StadiumBorder(), tokens: const GlassTokens.tv(), child: field);
+    final pill = GlassSurface(shape: const StadiumBorder(), tokens: GlassTokens.tvFor(context), child: field);
     return Align(
       alignment: Alignment.centerLeft,
       child: FractionallySizedBox(
