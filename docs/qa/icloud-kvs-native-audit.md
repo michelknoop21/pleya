@@ -100,9 +100,9 @@ branches.
 `storeDidChangeExternally` starts with `guard let sink = eventSink else { return }`, so a
 notification that arrives before the Dart side subscribes is dropped, and there is no buffer.
 
-That looks like a hole and is not one, provided the subscription exists. Until DEC-133 it did not:
+That looks like a hole and is not one, provided the subscription exists. Until DEC-134 it did not:
 `listen()` was defined and never called outside tests, so every notification was dropped and the
-engine was poll-on-foreground. Since DEC-133 `ICloudSyncService._wire` subscribes unconditionally
+engine was poll-on-foreground. Since DEC-134 `ICloudSyncService._wire` subscribes unconditionally
 at start, and `enable()` re-arms it. Every path that subscribes also reconciles, so a change missed
 during startup is read from the store moments later by a pass that does not depend on having seen
 the event. Adding a buffer would add a queue, a flush and an ordering question, to re-deliver
@@ -118,7 +118,7 @@ arrives at a Dart handler whose first line is `if (!_enabled()) return;`. The co
 callback; gating the native side would add a second switch that has to be kept in step with the
 first.
 
-## Changed in DEC-133: the sink is called on the main queue
+## Changed in DEC-134: the sink is called on the main queue
 
 Both observers (`storeDidChangeExternally` and `ubiquityIdentityDidChange`) now hand their payload
 to `emit`, which calls the sink inside `DispatchQueue.main.async`. `NotificationCenter` delivers on

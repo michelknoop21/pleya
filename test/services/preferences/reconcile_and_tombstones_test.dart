@@ -13,7 +13,7 @@ import 'package:pleya/services/settings_service.dart';
 import '../../test_helpers/prefs.dart';
 import 'fake_transport.dart';
 
-/// DEC-133 (4), (5) and (6). A reconcile writes what is newer here and nothing
+/// DEC-134 (4), (5) and (6). A reconcile writes what is newer here and nothing
 /// else; a removal is a tombstone the other device honours; nothing is pruned
 /// under v2; a local write during a remote batch is ordered by its stamp.
 void main() {

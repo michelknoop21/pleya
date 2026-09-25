@@ -204,7 +204,7 @@ wijziging waar dan ook wint).
 Wat dit wel doet: een lek van A naar B blijft mogelijk voor sleutels die B nog nooit had. Dat is de
 gekozen default uit de opdracht en de kant waar geen data verloren gaat. Wat het niet doet: lokale
 voorkeuren wissen of een tweede lokale namespace per account aanleggen. Een echte per-account-scheiding
-is een ontwerpronde op zich en wordt in DEC-133 als niet-gebouwd vastgelegd. `RemoteChangeReason.
+is een ontwerpronde op zich en wordt in DEC-134 als niet-gebouwd vastgelegd. `RemoteChangeReason.
 accountChanged` dekt ook uitloggen; dat pad stopt al op `unavailable` en verandert niet.
 
 Bijgesteld na de eindreview (minor 3): bij elke accountwissel wint de store in de twee taalkaarten
@@ -262,7 +262,7 @@ Besluit: niet in deze ronde. Een portable profielidentiteit voor deze backends v
 id-vorm (`<serverMachineId>/<userId>` voor Jellyfin, een server-uitgegeven id voor Pleya Server),
 een migratie van de `local-<uuid>`-profielen en de `user_<id>_`-prefixen die daaraan hangen, en
 raakt `ProfileRegistry`, `ActiveProfileBinder` en de exportre-scoping. Dat is een profielronde, geen
-syncbugfix. DEC-133 legt vast dat `hidden_libraries`, `library_order` en `library_*` voor deze
+syncbugfix. DEC-134 legt vast dat `hidden_libraries`, `library_order` en `library_*` voor deze
 profielen niet synchroniseren, en dat de taalvoorkeur na B10 wél reist voor Plex Home maar niet voor
 `local-`-profielen. De memory "Pleya Server altijd meenemen" blijft daarmee een open schuld met
 naam en vindplaats.
@@ -274,7 +274,7 @@ naam en vindplaats.
 | A1 event-sink op een niet-hoofdthread | nu fixen | Flutter eist de platformthread voor kanaalverkeer en logt anders `The '...' channel sent a message from native to Flutter on a non-platform thread`; `NotificationCenter` levert op de postende thread en Apple documenteert voor beide notificaties geen thread. Eén `DispatchQueue.main.async` in een gedeelde `emit(_:)` in drie identieke bestanden. Niet meetbaar in een unittest; bewijs is de Flutter-regel, `scripts/format_native.sh --check` en een diff die alleen de messenger-regels laat verschillen. |
 | A2 eerste write vóór de initiële download | nu fixen | Zodra B1 de `InitialSyncChange` aflevert, volgt na `applyRemoteKeys` een reconcile met de nieuwe trigger `ReconcileTrigger.initialSync` (ambient, dus op `_enabled()` gegaten). De lokale stempels winnen van wat de store nog niet had, dus wat het systeem weggooide wordt opnieuw geschreven. Drie regels plus een enumwaarde; de lijst triggers is "closed on purpose" en dit is een benoemd moment. |
 | A3 sleutelaantal richting 1024 | meten, niet fixen | `kvs_footprint_test` krijgt naast bytes een telling op hetzelfde zware account (4 profielen, 4 servers, 12 bibliotheken: 4 × 146 + 70 = 654 sleutels) met een assert onder 1024. Tombstones voegen geen sleutels toe: ze bezetten het slot dat de waarde al had. Een echte fix (per-bibliotheeksleutels samenvouwen tot één map per profiel) is een formaatwijziging en hoort niet in een herstelronde. |
-| A4 revisieblob groeit | vastleggen | Na B3 bevat het blob ook overgenomen remote stempels: hooguit één entry per sleutel die dit toestel ooit zag, dus begrensd door A3 (654 entries × ~60 bytes ≈ 40 KB, één JSON-decode per write). Tombstones moeten blijven staan. Geen opruiming; het plafond staat in DEC-133. |
+| A4 revisieblob groeit | vastleggen | Na B3 bevat het blob ook overgenomen remote stempels: hooguit één entry per sleutel die dit toestel ooit zag, dus begrensd door A3 (654 entries × ~60 bytes ≈ 40 KB, één JSON-decode per write). Tombstones moeten blijven staan. Geen opruiming; het plafond staat in DEC-134. |
 
 ## 5. Scopewijzigingen
 
@@ -374,12 +374,12 @@ Bij een rode rij: `curl ice.pleya.app/logs/<nummer>` volgens memory "Pleya-log t
 
 ## 8. Governance
 
-DEC-133 in `docs/DECISIONS.md`. Gecontroleerd op `3ad702d3`: `rg -n "^## DEC-" docs/DECISIONS.md`
+DEC-134 in `docs/DECISIONS.md`. Gecontroleerd op `3ad702d3`: `rg -n "^## DEC-" docs/DECISIONS.md`
 eindigt op DEC-130 en `rg "DEC-12[3-9]|DEC-13[1-9]" docs/` geeft niets; DEC-121 is door
 `feat/unified-desktop-ipad` geclaimd en DEC-122 door de Liquid Glass-ronde. Botsingsrisico:
 concurrente branches kunnen 123 tot 129 of 131 al gebruiken zonder dat `main` het weet; bij de
 merge wint wie eerst op `main` staat en de ander hernummert (zie "Main-sync 6 sep 2026" in het
-geheugen). DEC-133 bevat: de envelop op de draad met het achterwaarts leesbare formaat, tombstones
+geheugen). DEC-134 bevat: de envelop op de draad met het achterwaarts leesbare formaat, tombstones
 in plaats van prune onder v2, de accountwisselregel, `profileKeyedMap` met zijn bekende grens, B12
 als niet-gebouwd, de scopetabel uit §5, en het plafond uit A4.
 
@@ -387,7 +387,7 @@ Register: nieuw `docs/icloud-sync-repair-register.md`, één rij per B- en A-pun
 (`OPEN`, `CODE CLOSED`, `UNIT VERIFIED`, `HARDWARE OPEN`, `DEFERRED`), SHA en bewijsregel, aangelegd
 in taak 1 en gesloten in taak 8. De matrix `docs/qa/preference-sync-and-playback-matrix.md` krijgt
 een blok met het hardware-recept uit §7 en een correctie bij S6 (tombstone in plaats van remove);
-`docs/qa/icloud-kvs-native-audit.md` krijgt bij "buffering" de correctie dat `listen()` tot DEC-133
+`docs/qa/icloud-kvs-native-audit.md` krijgt bij "buffering" de correctie dat `listen()` tot DEC-134
 nergens liep.
 
 `docs/agents/workflow-evaluation.md` staat op 3 van 3 regels en krijgt niets.

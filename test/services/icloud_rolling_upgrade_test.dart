@@ -19,7 +19,7 @@ import 'preferences/fake_transport.dart';
 /// writes nothing there but its own version marker.
 ///
 /// These tests run the v1 code path that is still in this build
-/// (`useV2CloudFormat: false`), not a hand-written model. Since DEC-133 that
+/// (`useV2CloudFormat: false`), not a hand-written model. Since DEC-134 that
 /// path is no longer the released v1 algorithm byte for byte: it stamps its
 /// records and compares before it writes. What it still shares with the
 /// released build is the part tested here, the reserved `__` namespace in the

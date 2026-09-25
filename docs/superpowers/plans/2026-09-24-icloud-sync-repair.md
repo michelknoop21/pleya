@@ -59,7 +59,7 @@ ook al staat de code erbij: de implementer moet begrijpen waarom een assert red 
 
 ---
 
-### Task 1: Governance-documenten (DEC-133 en het register)
+### Task 1: Governance-documenten (DEC-134 en het register)
 
 **Files:**
 - Modify: `docs/DECISIONS.md` (append na DEC-130, regel 2900 e.v.)
@@ -67,19 +67,19 @@ ook al staat de code erbij: de implementer moet begrijpen waarom een assert red 
 
 **Interfaces:**
 - Consumes: de spec §3 tot §8.
-- Produces: het nummer `DEC-133` dat de code-comments in taak 3, 4, 5 en 6 noemen; de registerrijen
+- Produces: het nummer `DEC-134` dat de code-comments in taak 3, 4, 5 en 6 noemen; de registerrijen
   die taak 8 sluit.
 
-- [ ] **Step 1: Controleer dat DEC-133 vrij is**
+- [ ] **Step 1: Controleer dat DEC-134 vrij is**
 
-Run: `rg -n "DEC-133|DEC-12[3-9]" docs/`
+Run: `rg -n "DEC-134|DEC-12[3-9]" docs/`
 Expected: geen treffers. Is er wel een treffer, stop en meld het; hernummer niet zelf.
 
-- [ ] **Step 2: Schrijf DEC-133 onderaan `docs/DECISIONS.md`**
+- [ ] **Step 2: Schrijf DEC-134 onderaan `docs/DECISIONS.md`**
 
 ```markdown
 
-## DEC-133: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
+## DEC-134: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
 
 **Date:** 2026-09-24
 **Status:** accepted
@@ -157,9 +157,9 @@ VERIFIED · HARDWARE OPEN` tot het recept in de spec §7 op twee toestellen is g
 Schrijf `docs/icloud-sync-repair-register.md`:
 
 ```markdown
-# Herstelregister: iCloud-voorkeurensync (DEC-133)
+# Herstelregister: iCloud-voorkeurensync (DEC-134)
 
-Aangelegd op 24 september 2026 bij DEC-133. Eén rij per punt uit de audit van dezelfde dag. De
+Aangelegd op 24 september 2026 bij DEC-134. Eén rij per punt uit de audit van dezelfde dag. De
 statusladder is `OPEN`, `CODE CLOSED`, `UNIT VERIFIED`, `HARDWARE OPEN`, `DEFERRED`. Een rij krijgt
 bij `CODE CLOSED` de SHA, bij `UNIT VERIFIED` het testbestand, en houdt `HARDWARE OPEN` tot het
 recept uit de spec (§7) op twee ingelogde toestellen is gedraaid met datum, build en toestellen.
@@ -180,12 +180,12 @@ Plan: `docs/superpowers/plans/2026-09-24-icloud-sync-repair.md`.
 | B9 | accountwissel leest eerst | OPEN | | |
 | B10 | taalvoorkeur op de juiste sleutel | OPEN | | |
 | B11 | acht stille sleutels en de guard | OPEN | | |
-| B12 | profielscope Jellyfin en Pleya Server | DEFERRED | | DEC-133, Consequences |
+| B12 | profielscope Jellyfin en Pleya Server | DEFERRED | | DEC-134, Consequences |
 | B13 | lokale write tijdens remote batch | OPEN | | |
 | A1 | event-sink op de platformthread | OPEN | | |
 | A2 | reconcile na de initiële download | OPEN | | |
 | A3 | sleutelaantal gemeten | OPEN | | |
-| A4 | revisieblob begrensd | DEFERRED | | DEC-133, Consequences |
+| A4 | revisieblob begrensd | DEFERRED | | DEC-134, Consequences |
 
 ## Hardwareronde
 
@@ -202,7 +202,7 @@ Expected: beide bestanden verwijzen naar spec en plan die bestaan (`ls docs/supe
 
 ```bash
 git add docs/DECISIONS.md docs/icloud-sync-repair-register.md
-git commit -m "docs(sync): DEC-133 en het herstelregister voor de iCloud-voorkeurensync"
+git commit -m "docs(sync): DEC-134 en het herstelregister voor de iCloud-voorkeurensync"
 ```
 
 ---
@@ -359,7 +359,7 @@ Vervang in `lib/services/icloud_sync_service.dart` de methode `start` (regel 75-
   /// is on, reconcile. Safe to call on any platform; no-ops off Apple platforms.
   ///
   /// [transport] exists so a test can drive this exact path with a fake. It
-  /// was the missing piece of DEC-133's B1: the listener was only ever attached
+  /// was the missing piece of DEC-134's B1: the listener was only ever attached
   /// by tests calling `coordinator.listen()` themselves.
   static Future<void> start({
     required SettingsService settings,
@@ -558,7 +558,7 @@ import 'package:pleya/services/settings_service.dart';
 import '../../test_helpers/prefs.dart';
 import 'fake_transport.dart';
 
-/// DEC-133 (2) and (3). The envelope leaves the device with every record and
+/// DEC-134 (2) and (3). The envelope leaves the device with every record and
 /// decides on arrival. A record without a stamp is one the previous build
 /// wrote and counts as the oldest possible.
 void main() {
@@ -793,14 +793,14 @@ het draadformaat zelf en niets in `lib/` riep ze aan. Verwijder in
 `test/services/preferences/preference_revision_test.dart` de test `a delete survives a round trip
 through the wire format` en de hele groep `encoding`. Pas de klasse-doc aan: de zin over "the
 Pleya Server transport" blijft, voeg toe dat het draadformaat in `PreferenceSyncCoordinator` staat
-(DEC-133).
+(DEC-134).
 
 - [ ] **Step 4: Draadformaat-helpers in de coordinator**
 
 Vervang de klasse-doc regel 38-42 door:
 
 ```dart
-/// Since DEC-133 the wire format carries the envelope: a record is
+/// Since DEC-134 the wire format carries the envelope: a record is
 /// `{"type","value","t","d"}` and a removal is a tombstone `{"x":true,"t","d"}`.
 /// Both live in the `__pleya_pref_v2/` namespace the previous build already
 /// reads; that build ignores `t` and `d` and skips a tombstone, so the formats
@@ -998,7 +998,7 @@ op 57-59:
 ```dart
   String typed(String type, Object? value) => json.encode({'type': type, 'value': value});
 
-  /// What a record costs since DEC-133: the typed value plus a stamp of the
+  /// What a record costs since DEC-134: the typed value plus a stamp of the
   /// shape the coordinator writes (a millisecond timestamp and a v4 uuid).
   String enveloped(String type, Object? value) =>
       json.encode({'type': type, 'value': value, 't': 1758700000000, 'd': '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e'});
@@ -1082,7 +1082,7 @@ import 'package:pleya/services/settings_service.dart';
 import '../../test_helpers/prefs.dart';
 import 'fake_transport.dart';
 
-/// DEC-133 (4), (5) and (6). A reconcile writes what is newer here and nothing
+/// DEC-134 (4), (5) and (6). A reconcile writes what is newer here and nothing
 /// else; a removal is a tombstone the other device honours; nothing is pruned
 /// under v2; a local write during a remote batch is ordered by its stamp.
 void main() {
@@ -1288,7 +1288,7 @@ Vervang in `apply()` regel 269-275 door:
 ```dart
       if (mutation.operation == PreferenceOperation.remove) {
         // A removal is a first-class change. v1 lost it here: the hook only had
-        // a key, read `null` back, and stopped. Since DEC-133 it travels as a
+        // a key, read `null` back, and stopped. Since DEC-134 it travels as a
         // tombstone rather than as an absent key, so the other device can tell
         // "deleted" from "never had it".
         await transport.write(cloudKey, _encodeTombstone(_localStamp(baseKey)));
@@ -1299,7 +1299,7 @@ Vervang in `apply()` regel 269-275 door:
 
 Verwijder de guard regel 247-252 en het veld `_applyingRemote` (regel 100-102) met zijn twee
 toewijzingen in `applyEntries` (`_applyingRemote = true;` en het `finally`-blok; de `try` blijft
-niet nodig, haal hem weg). Vervang de veld-doc door niets; de reden staat in DEC-133 (6).
+niet nodig, haal hem weg). Vervang de veld-doc door niets; de reden staat in DEC-134 (6).
 
 - [ ] **Step 4: `reconcile()` zonder prune, met vergelijking en tombstones**
 
@@ -1310,7 +1310,7 @@ Vervang `ownsCloudKey` (regel 650-669) door:
   /// format, is entitled to delete.
   ///
   /// Under v2 the answer is always no. A removal travels as a tombstone since
-  /// DEC-133, so a record this device does not hold is one it has not seen
+  /// DEC-134, so a record this device does not hold is one it has not seen
   /// yet, never one it deleted. The v1 path keeps its prune for the
   /// rolling-upgrade test, which runs the released algorithm.
   bool ownsCloudKey(String cloudKey) {
@@ -1456,7 +1456,7 @@ never had is adopted on the next pull, not deleted` met body:
 
       await coordinator.reconcile();
 
-      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-133');
+      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-134');
       expect(transport.store.containsKey(cloudKey), isTrue);
 ```
 
@@ -1487,7 +1487,7 @@ de resterende `expect`s op het voortbestaan van `theme_mode` en `__pleya_pref_v3
 `test/services/icloud_sync_service_test.dart` (194-215): hernoem `pushAll removes KVS keys that no
 longer exist locally, keeps meta and foreign keys` naar `pushAll leaves keys this device lacks in the
 store, and keeps meta and foreign keys`; vervang `expect(kvs.containsKey(g('theme_mode')), isFalse);`
-door `expect(kvs.containsKey(g('theme_mode')), isTrue, reason: 'an import is local-first, and nothing is pruned since DEC-133');`.
+door `expect(kvs.containsKey(g('theme_mode')), isTrue, reason: 'an import is local-first, and nothing is pruned since DEC-134');`.
 Pas het commentaar erboven aan.
 
 - [ ] **Step 6: Draai**
@@ -1733,7 +1733,7 @@ import 'package:pleya/services/settings_service.dart';
 import '../../test_helpers/prefs.dart';
 import 'fake_transport.dart';
 
-/// DEC-133 (9). The two language maps are global preferences whose map keys
+/// DEC-134 (9). The two language maps are global preferences whose map keys
 /// carry the profile scope. A Plex Home uuid means the same profile everywhere;
 /// `local-<uuid>` and the empty scope belong to one device.
 void main() {
@@ -1981,7 +1981,7 @@ In `lib/services/preferences/preference_merge_strategies.dart`, in `PreferenceMe
 
 ```dart
   /// A JSON map whose keys are `{profileScope}` or `{profileScope}|{rest}`:
-  /// the two language preferences (DEC-096, DEC-133).
+  /// the two language preferences (DEC-096, DEC-134).
   static const String profileKeyedMap = 'profileKeyedMap';
 ```
 
@@ -1997,7 +1997,7 @@ Voeg toe (import `preference_sync_scope.dart` bovenaan), na `buildServerScopedLi
 /// lacks. An entry present on both sides is settled by `updatedAt` when both
 /// carry one, otherwise the side doing the merge keeps its own.
 ///
-/// Known limit (DEC-133): a device that removes the last entry of a scope no
+/// Known limit (DEC-134): a device that removes the last entry of a scope no
 /// longer "knows" that scope, so that final removal does not travel.
 PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
   name: PreferenceMergeFamilies.profileKeyedMap,
@@ -2075,7 +2075,7 @@ In `lib/services/preferences/preference_sync_policy.dart`: vervang `_profileLang
 plus zijn doc, regel 236-251) door:
 
 ```dart
-  /// The two language maps (DEC-096, DEC-133 (9)): one global preference each,
+  /// The two language maps (DEC-096, DEC-134 (9)): one global preference each,
   /// with the profile scope inside the map keys, exactly as
   /// `PleyaProfileLanguagePreferenceStore` and `TrackPreferenceStore` write
   /// them. Registering them as profile-scoped put the incoming value under a
@@ -2089,7 +2089,7 @@ plus zijn doc, regel 236-251) door:
 
   /// Bound to this device's hardware or installation, so it does not sync,
   /// but a file export is a deliberate act towards a device the user chose,
-  /// so it still exports (DEC-133 (10)).
+  /// so it still exports (DEC-134 (10)).
   static const PreferencePolicy _deviceBoundPref = PreferencePolicy(
     scope: PreferenceScopeKind.deviceLocal,
     icloudSyncable: false,
@@ -2106,11 +2106,11 @@ bevatten), `'video_player_navigation_enabled'` en `'enable_discord_rpc'` (deskto
 door:
 
 ```dart
-    // -- The two language maps (DEC-096, DEC-133).
+    // -- The two language maps (DEC-096, DEC-134).
     'pleya_profile_language_preferences': _profileKeyedMapPref,
     'track_language_preferences': _profileKeyedMapPref,
 
-    // -- JsonPref maps the guard could not see until DEC-133 (10).
+    // -- JsonPref maps the guard could not see until DEC-134 (10).
     'keyboard_shortcuts': _globalPref,
     'keyboard_hotkeys': _globalPref,
     // The chosen version index depends on what the server offers this device.
@@ -2127,7 +2127,7 @@ In `lib/services/track_preference_store.dart` regel 17-19 vervang door:
 
 ```dart
 /// Sits on [SettingsService.trackLanguagePreferences], a global map registered
-/// with the `profileKeyedMap` merge family (DEC-133): the Plex Home profile's
+/// with the `profileKeyedMap` merge family (DEC-134): the Plex Home profile's
 /// entries reach the user's other Apple devices, a local profile's stay here.
 ```
 
@@ -2247,12 +2247,12 @@ Expected: groen. Bewaar de laatste regel (`All tests passed!` met het aantal) vo
 - [ ] **Step 3: Matrix**
 
 In `docs/qa/preference-sync-and-playback-matrix.md`: zet bovenaan `Bijgewerkt: 2026-09-24, na
-DEC-133 (herstelronde iCloud-sync). Alle rijen blijven open tot de hardwareronde.` Wijzig bij S6 de
+DEC-134 (herstelronde iCloud-sync). Alle rijen blijven open tot de hardwareronde.` Wijzig bij S6 de
 kolom Verwacht in `De verwijdering bereikt het andere toestel als tombstone; een volgende foreground
 zet hem niet terug`. Voeg na blok 4 toe:
 
 ```markdown
-## Blok 5: herstelronde DEC-133 (hardware)
+## Blok 5: herstelronde DEC-134 (hardware)
 
 Recept in `docs/superpowers/specs/2026-09-24-icloud-sync-repair-design.md` §7. Twee toestellen,
 één iCloud-account, dezelfde TestFlight-build, schakelaar aan op beide.
@@ -2281,16 +2281,16 @@ is not one. Every path that subscribes also reconciles: `listen()` runs inside t
 triggers" door:
 
 ```markdown
-That looks like a hole and is not one, provided the subscription exists. Until DEC-133 it did not:
+That looks like a hole and is not one, provided the subscription exists. Until DEC-134 it did not:
 `listen()` was defined and never called outside tests, so every notification was dropped and the
-engine was poll-on-foreground. Since DEC-133 `ICloudSyncService._wire` subscribes unconditionally
+engine was poll-on-foreground. Since DEC-134 `ICloudSyncService._wire` subscribes unconditionally
 at start, and `enable()` re-arms it. Every path that subscribes also reconciles, so a change missed
 during startup is read from the store moments later by a pass that does not depend on having seen
 the event. Adding a buffer would add a queue, a flush and an ordering question, to re-deliver
 information the next read already carries.
 ```
 
-Voeg onder "Also deliberately not changed" een korte sectie toe dat de sink sinds DEC-133 via
+Voeg onder "Also deliberately not changed" een korte sectie toe dat de sink sinds DEC-134 via
 `DispatchQueue.main.async` loopt, met de reden uit taak 7.
 
 - [ ] **Step 5: Register en changelog**
@@ -2307,7 +2307,7 @@ status `UNIT VERIFIED`). Noteer onder "Hardwareronde" het aantal tests uit stap 
 In `docs/CHANGELOG.md` voeg bovenaan onder de inleiding toe:
 
 ```markdown
-## [2026-09-24] iCloud-voorkeurensync: herstelronde DEC-133
+## [2026-09-24] iCloud-voorkeurensync: herstelronde DEC-134
 
 Acht taken in `fix/icloud-sync`. De KVS-listener is in productie aangesloten, de revisie-envelop
 reist mee en beslist bij het toepassen, verwijderingen reizen als tombstone en de prune verdwijnt
@@ -2315,17 +2315,17 @@ onder v2, de status meldt geen verzending bij een uitgelogd iCloud en laat een q
 een accountwissel leest eerst, de taalvoorkeuren van het Pleya-profiel reizen als
 profiel-gesleutelde map, acht `JsonPref`-sleutels zijn geregistreerd en acht toestelgebonden
 instellingen synchroniseren niet meer. Bewijs: unit tegen `FakeTransport`; hardware open, recept in
-de spec. Zie DEC-133 en `docs/icloud-sync-repair-register.md`.
+de spec. Zie DEC-134 en `docs/icloud-sync-repair-register.md`.
 ```
 
 - [ ] **Step 6: Controleer de documenten en commit**
 
-Run: `rg -n "DEC-133" docs/qa/preference-sync-and-playback-matrix.md docs/qa/icloud-kvs-native-audit.md docs/icloud-sync-repair-register.md docs/CHANGELOG.md`
+Run: `rg -n "DEC-134" docs/qa/preference-sync-and-playback-matrix.md docs/qa/icloud-kvs-native-audit.md docs/icloud-sync-repair-register.md docs/CHANGELOG.md`
 Expected: elk bestand minstens één treffer. Meldt de anti-slop-hook treffers, herstel ze.
 
 ```bash
 git add test/services/preferences/kvs_footprint_test.dart docs/qa/preference-sync-and-playback-matrix.md docs/qa/icloud-kvs-native-audit.md docs/icloud-sync-repair-register.md docs/CHANGELOG.md
-git commit -m "docs(sync): matrix, native audit, register en changelog na de herstelronde DEC-133"
+git commit -m "docs(sync): matrix, native audit, register en changelog na de herstelronde DEC-134"
 ```
 
 ---

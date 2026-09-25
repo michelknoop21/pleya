@@ -4,7 +4,7 @@ Alles hieronder start als **open**. Een fake `MethodChannel` bewijst geen echte 
 toestellen, en unit- of widgettests bewijzen geen Apple TV-gedrag. Vul de uitkomst in met datum,
 build en toestel, niet met een vinkje.
 
-Bijgewerkt: 2026-09-24, na DEC-133 (herstelronde iCloud-sync). Alle rijen blijven open tot de hardwareronde.
+Bijgewerkt: 2026-09-24, na DEC-134 (herstelronde iCloud-sync). Alle rijen blijven open tot de hardwareronde.
 
 Eerder bijgewerkt: 2026-08-21, na fase A blok 2. Blok 2 voegde de blokken R en L toe.
 
@@ -160,7 +160,7 @@ Onder de iCloud-schakelaar staat één regel. Hij mag nooit beweren dat andere t
 | L6 | Een waarde boven de 100 KB | De melding dat iets te groot is, zonder te zeggen wát | open |
 | L7 | Ander toestel op een oudere Pleya | De compatibiliteitsmelding, náást de statusregel | open |
 
-## Blok 5: herstelronde DEC-133 (hardware)
+## Blok 5: herstelronde DEC-134 (hardware)
 
 Recept in `docs/superpowers/specs/2026-09-24-icloud-sync-repair-design.md` §7. Twee toestellen,
 één iCloud-account, dezelfde TestFlight-build, schakelaar aan op beide.

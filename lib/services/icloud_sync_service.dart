@@ -30,7 +30,7 @@ import 'storage_service.dart';
 ///   allow-by-default denylist, so a new preference no longer opts itself in;
 /// - a value that outgrows the transport cap is skipped, and the older copy
 ///   stays in the store. It used to be deleted, because the prune worked on
-///   absence from the push set; under v2 there is no prune (DEC-133);
+///   absence from the push set; under v2 there is no prune (DEC-134);
 /// - the write is awaited, so a transport failure lands in the status instead
 ///   of an unawaited future.
 ///
@@ -74,7 +74,7 @@ class ICloudSyncService {
   /// is on, reconcile. Safe to call on any platform; no-ops off Apple platforms.
   ///
   /// [transport] exists so a test can drive this exact path with a fake. It
-  /// was the missing piece of DEC-133's B1: the listener was only ever attached
+  /// was the missing piece of DEC-134's B1: the listener was only ever attached
   /// by tests calling `coordinator.listen()` themselves.
   static Future<void> start({
     required SettingsService settings,

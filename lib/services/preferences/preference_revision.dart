@@ -16,7 +16,7 @@
 /// wins or loses unfairly. A server-ordered revision needs a server, which is
 /// the Pleya Server transport, not this one.
 ///
-/// The wire format itself lives in `PreferenceSyncCoordinator` (DEC-133); this
+/// The wire format itself lives in `PreferenceSyncCoordinator` (DEC-134); this
 /// class holds the comparison both sides of it share.
 class PreferenceRevision {
   const PreferenceRevision({required this.value, required this.updatedAt, required this.deviceId, this.deleted = false})

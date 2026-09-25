@@ -4,7 +4,7 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
-## [2026-09-25] iCloud-voorkeurensync: tweede eindfixronde DEC-133
+## [2026-09-25] iCloud-voorkeurensync: tweede eindfixronde DEC-134
 
 Drie punten uit de herreview. Cloudsleutels passen nu binnen de 64 bytes die KVS per sleutel
 toestaat: het Plex Home-profiel-id en de `serverId:libraryId` staan er als korte hash in, de
@@ -18,7 +18,7 @@ Let op na de upgrade: voor een Plex Home-profiel wint het toestel dat als eerste
 `hidden_libraries` en `library_order`. Wie per toestel bewust een andere inrichting had, ziet die
 eenmalig overschreven. Staat in de releasenotes.
 
-## [2026-09-24] iCloud-voorkeurensync: herstelronde DEC-133
+## [2026-09-24] iCloud-voorkeurensync: herstelronde DEC-134
 
 Acht taken in `fix/icloud-sync`. De KVS-listener is in productie aangesloten, de revisie-envelop
 reist mee en beslist bij het toepassen, verwijderingen reizen als tombstone en de prune verdwijnt
@@ -26,7 +26,7 @@ onder v2, de status meldt geen verzending bij een uitgelogd iCloud en laat een q
 een accountwissel leest eerst, de taalvoorkeuren van het Pleya-profiel reizen als
 profiel-gesleutelde map, acht `JsonPref`-sleutels zijn geregistreerd en acht toestelgebonden
 instellingen synchroniseren niet meer. Bewijs: unit tegen `FakeTransport`; hardware open, recept in
-de spec. Zie DEC-133 en `docs/icloud-sync-repair-register.md`.
+de spec. Zie DEC-134 en `docs/icloud-sync-repair-register.md`.
 
 ## [2026-09-18] TV0: reconciliatie van de tvOS-closure-administratie
 

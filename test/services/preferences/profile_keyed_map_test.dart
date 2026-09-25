@@ -21,7 +21,7 @@ import 'package:pleya/services/track_preference_store.dart';
 import '../../test_helpers/prefs.dart';
 import 'fake_transport.dart';
 
-/// DEC-133 (9). The two language maps are global preferences whose map keys
+/// DEC-134 (9). The two language maps are global preferences whose map keys
 /// carry the profile scope. A Plex Home profile id built on the Plex account
 /// uuid means the same profile everywhere; `local-<uuid>`, the empty scope and
 /// an account connection that fell back to this device's client id belong to

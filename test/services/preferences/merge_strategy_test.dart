@@ -173,7 +173,7 @@ void main() {
       expect(
         transport.store.containsKey(coordinator.cloudKeyFor('subtitle_font_size')!),
         isFalse,
-        reason: 'without a read nothing can be compared, so nothing is sent (DEC-133)',
+        reason: 'without a read nothing can be compared, so nothing is sent (DEC-134)',
       );
     });
 
@@ -213,7 +213,7 @@ void main() {
 
       await coordinator.reconcile();
 
-      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-133');
+      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-134');
       expect(transport.store.containsKey(cloudKey), isTrue);
     });
   });

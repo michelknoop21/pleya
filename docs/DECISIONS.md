@@ -3010,7 +3010,7 @@ mislukte test), P7 (client per importpagina), P9 (`owned` voor een beheerd Home-
 Pleya Server-follow-ups `GET /items/{id}/related` en per-gebruiker watch-state. Register:
 `docs/recommendations-register.md`.
 
-## DEC-133: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
+## DEC-134: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
 
 **Date:** 2026-09-24
 **Status:** accepted

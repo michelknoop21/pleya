@@ -239,7 +239,7 @@ void main() {
 
       await coordinator.reconcile();
 
-      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-133');
+      expect(transport.removes, isEmpty, reason: 'absent locally means not seen yet, since DEC-134');
       expect(transport.store.containsKey(cloudKey), isTrue);
     });
 

@@ -41,7 +41,7 @@ void main() {
 
   String typed(String type, Object? value) => json.encode({'type': type, 'value': value});
 
-  /// What a record costs since DEC-133: the typed value plus a stamp of the
+  /// What a record costs since DEC-134: the typed value plus a stamp of the
   /// shape the coordinator writes (a millisecond timestamp and a v4 uuid).
   String enveloped(String type, Object? value) =>
       json.encode({'type': type, 'value': value, 't': 1758700000000, 'd': '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e'});
@@ -127,7 +127,7 @@ void main() {
   });
 
   test('tombstones for everything a reset touched and every library ever seen still fit', () {
-    // Since DEC-133 a removal is a tombstone and nothing clears it. A reset
+    // Since DEC-134 a removal is a tombstone and nothing clears it. A reset
     // tombstones every resettable preference, set or not, and a library that
     // disappears keeps its per-library tombstones. So the store holds a key
     // for every key the account ever saw: here the current libraries plus as

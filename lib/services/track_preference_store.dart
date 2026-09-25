@@ -20,7 +20,7 @@ import 'storage_service.dart';
 /// movie, so the next episode does not fall back to the server default.
 ///
 /// Sits on [SettingsService.trackLanguagePreferences], a global map registered
-/// with the `trackLanguageMap` merge family ([mergeFamily], DEC-133): the
+/// with the `trackLanguageMap` merge family ([mergeFamily], DEC-134): the
 /// `profileKeyedMap` merge with this store's cap after it. The Plex Home
 /// profile's entries reach the user's other Apple devices, a local profile's
 /// stay here.
@@ -343,7 +343,7 @@ class TrackPreferenceStore {
   /// reach the other devices, so it becomes a tombstone: an empty choice
   /// stamped [now], which every reader here already skips and the
   /// `profileKeyedMap` merge settles by timestamp like any other entry
-  /// (DEC-133). A scope that never leaves this device just loses the key.
+  /// (DEC-134). A scope that never leaves this device just loses the key.
   ///
   /// Only a live entry is removed: a key that never held one, or already holds
   /// a tombstone, is left alone, so a removal is stamped once and ages out.
