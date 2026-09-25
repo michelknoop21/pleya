@@ -1,0 +1,110 @@
+name: tvos.glass.player
+target: tvos-sim
+# The Apple TV player panel with Liquid Glass on (mockup LG-05, Liquid Glass
+# Task 9). Glass is switched on through Uiterlijk (see `tvos.glass.topnav`),
+# then the walk into the player is the one `tvos.player.panel` uses: two downs
+# from the hero to the first rail card, Select to the detail page, Select to
+# play. The first Select in the player pauses (the fixture clip is fifteen
+# seconds), four RIGHTs reach the tune button, Select opens the panel on Video.
+#
+# The panel is a GlassSurface without backdrop: mpv draws under the
+# FlutterView, so the snapshot is the evidence that the tinted plate renders
+# over the native video layer instead of going black.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # Glass on through Uiterlijk.
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
+  - press: right
+  - settle: 400
+  - press: down
+  - settle: 300
+  - press: down
+  - settle: 300
+  - press: down
+  - settle: 300
+  - press: down
+  - settle: 300
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.liquid_glass]", timeout: 5000}
+  - press: select
+  - settle: 500
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: true}}
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - press: menu
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  # Walking the bar switches the destination (tvos.nav.focus-switches-
+  # destination), so the ring on Home is Home on screen; Select would hand
+  # the remote to the content.
+  - walk: {direction: left, expect: [nav.movies, nav.series, nav.discover], timeout: 20000, settle: 800}
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 1500
+
+  # Into the player, as `tvos.player.panel`: the ring is on Home in the bar,
+  # the same place a cold start leaves it.
+  - assert: {id: nav.discover, focused: true}
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+  - settle: 200
+  - press: select
+  - settle: 400
+  - assert: {id: player.play_pause, state: {playing: false}}
+  - snapshot: 00-player-paused-glass
+  # The pause Select does not always keep the focus: in one run the trace went
+  # PlayPause -> no node and RIGHT landed on the timeline, in the next it
+  # stayed on PlayPause. Menu hides the controls (`key_events.dart`: TV back
+  # with controls up hides them) and UP brings them back with play/pause
+  # focused, which is a known start either way.
+  - press: menu
+  - settle: 600
+  - press: up
+  - settle: 500
+  - assert: {id: player.play_pause, focused: true}
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 250
+  - press: right
+  - settle: 300
+  - assert: {id: player.settings_button, focused: true}
+  - press: select
+  - wait_until: {id: player.panel, timeout: 5000}
+  - settle: 400
+  - assert: {id: player.panel, state: {tab: video, subView: none}}
+  - assert: {id: player.panel, insideViewport: true}
+  - assert: {id: "player.panel.tab[video]", state: {active: true}}
+  - snapshot: 01-panel-glass
+  - press: menu
+  - settle: 600
