@@ -31,7 +31,8 @@ BoxDecoration mobileDetailHeroScrim(Color bg) => BoxDecoration(
 /// The film-page hero with Liquid Glass on (mockup LG-02): the artwork over
 /// the full width behind the status bar, at least [kMobileDetailHeroFraction]
 /// of the screen high, with [title], [chips] and [actions] on the scrim at the
-/// bottom and [leading]/[trailing] floating at the top. Grows past that
+/// bottom. The top keeps room for [MobileDetailHeroBar], which the page pins
+/// above the scroll view so back and more stay reachable. Grows past that
 /// height instead of clipping when a long title wraps.
 class MobileDetailHero extends StatelessWidget {
   const MobileDetailHero({
@@ -39,8 +40,6 @@ class MobileDetailHero extends StatelessWidget {
     required this.artwork,
     required this.title,
     required this.chips,
-    required this.leading,
-    this.trailing = const [],
     required this.actions,
     @visibleForTesting this.debugTransparentForeground = false,
   });
@@ -48,8 +47,6 @@ class MobileDetailHero extends StatelessWidget {
   final Widget artwork;
   final String title;
   final List<String> chips;
-  final Widget leading;
-  final List<Widget> trailing;
   final Widget actions;
 
   /// Title and chip labels painted transparent (shadows kept), so the
@@ -93,13 +90,28 @@ class MobileDetailHero extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          top: mq.padding.top + 8,
-          left: 16,
-          right: 16,
-          child: GlassLayer(child: Row(children: [leading, const Spacer(), ...trailing])),
-        ),
       ],
+    );
+  }
+}
+
+/// The glass back/more row over the film page (LG-02). Not part of
+/// [MobileDetailHero]: the page pins it above its scroll view, so it stays on
+/// screen when the hero scrolls away (final review B5). A [Positioned]: place
+/// it directly in a [Stack].
+class MobileDetailHeroBar extends StatelessWidget {
+  const MobileDetailHeroBar({super.key, required this.leading, this.trailing = const []});
+
+  final Widget leading;
+  final List<Widget> trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 8,
+      left: 16,
+      right: 16,
+      child: GlassLayer(child: Row(children: [leading, const Spacer(), ...trailing])),
     );
   }
 }

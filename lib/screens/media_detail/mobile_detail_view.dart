@@ -101,7 +101,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
             onKeyEvent: _handleMediaDetailBackKey,
             child: Scaffold(
               body: glassHero
-                  ? content
+                  ? Stack(children: [content, _buildMobileGlassHeroBar(context, metadata)])
                   : SafeArea(
                       bottom: false,
                       child: Column(
@@ -391,17 +391,10 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     return '${t.downloads.downloadAction} $episodeLabel';
   }
 
-  /// The LG-02 hero: [MobileDetailHero] fed with this page's artwork, tags
-  /// and the same handlers the flat layout uses. The watchlist toggle moves
-  /// here from the action row, as a round glass button next to Download.
-  Widget _buildMobileGlassHero(BuildContext context, MediaItem metadata, MediaServerClient? client) {
+  /// The LG-02 back/more row, pinned over the page (see [MobileDetailHeroBar]).
+  Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata) {
     final trailer = _getPrimaryTrailer();
-    final (onList, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
-
-    return MobileDetailHero(
-      artwork: _buildMobileArtwork(context, metadata, client, maxWidth: 1200, maxHeight: 1600),
-      title: metadata.displayTitle,
-      chips: _mobileTagLabels(metadata),
+    return MobileDetailHeroBar(
       leading: GlassCircleButton(
         icon: Icons.arrow_back_rounded,
         tooltip: MaterialLocalizations.of(context).backButtonTooltip,
@@ -420,6 +413,19 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         ],
         if (!widget.isOffline) _buildMobileMoreButton(context, metadata, glass: true),
       ],
+    );
+  }
+
+  /// The LG-02 hero: [MobileDetailHero] fed with this page's artwork, tags
+  /// and the same handlers the flat layout uses. The watchlist toggle moves
+  /// here from the action row, as a round glass button next to Download.
+  Widget _buildMobileGlassHero(BuildContext context, MediaItem metadata, MediaServerClient? client) {
+    final (onList, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
+
+    return MobileDetailHero(
+      artwork: _buildMobileArtwork(context, metadata, client, maxWidth: 1200, maxHeight: 1600),
+      title: metadata.displayTitle,
+      chips: _mobileTagLabels(metadata),
       actions: Column(
         children: [
           _buildMobilePrimaryCta(context, metadata, glass: true),

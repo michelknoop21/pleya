@@ -222,6 +222,25 @@ void main() {
     expect(find.byIcon(Icons.bookmark_added_rounded), findsOneWidget);
   });
 
+  testWidgets('B5: terug en meer blijven in beeld na scrollen', (tester) async {
+    await _pumpDetail(tester, glass: true);
+    final l10n = MaterialLocalizations.of(tester.element(find.byType(MobileDetailHero)));
+    final back = find.byTooltip(l10n.backButtonTooltip);
+    final more = find.byTooltip(l10n.moreButtonTooltip);
+    final before = (tester.getRect(back), tester.getRect(more));
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+    await tester.pump();
+    final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+    expect(position.pixels, greaterThan(200), reason: 'the page must actually have scrolled');
+
+    // Same place on screen, and still the thing a tap there hits.
+    expect(tester.getRect(back), before.$1);
+    expect(tester.getRect(more), before.$2);
+    expect(back.hitTestable(), findsOneWidget);
+    expect(more.hitTestable(), findsOneWidget);
+  });
+
   testWidgets('contrast over Big Buck Bunny: titel, tags en glasknoppen', (tester) async {
     await glassPhone(tester, glass: true);
     const sceneKey = Key('scene');
@@ -238,55 +257,61 @@ void main() {
             color: Colors.black,
             child: Align(
               alignment: Alignment.topCenter,
-              child: MobileDetailHero(
-                debugTransparentForeground: true,
-                artwork: RawImage(image: _lightSceneImage, fit: BoxFit.cover),
-                title: _kTitle,
-                chips: const ['2008', 'G', '9min', '1080p', 'AAC 5.1'],
-                leading: GlassCircleButton(
-                  key: backKey,
-                  icon: Icons.arrow_back_rounded,
-                  tooltip: 'Back',
-                  foregroundColor: Colors.transparent,
-                  onPressed: () {},
-                ),
-                actions: Column(
-                  children: [
-                    GlassCapsuleButton(
-                      key: resumeKey,
-                      prominent: true,
-                      icon: Icons.play_arrow_rounded,
-                      label: 'Resume · 7m left',
+              child: Stack(
+                children: [
+                  MobileDetailHero(
+                    debugTransparentForeground: true,
+                    artwork: RawImage(image: _lightSceneImage, fit: BoxFit.cover),
+                    title: _kTitle,
+                    chips: const ['2008', 'G', '9min', '1080p', 'AAC 5.1'],
+                    actions: Column(
+                      children: [
+                        GlassCapsuleButton(
+                          key: resumeKey,
+                          prominent: true,
+                          icon: Icons.play_arrow_rounded,
+                          label: 'Resume · 7m left',
+                          foregroundColor: Colors.transparent,
+                          onPressed: () {},
+                        ),
+                        const SizedBox(height: 12),
+                        GlassLayer(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: GlassCapsuleButton(
+                                  key: downloadKey,
+                                  icon: Icons.download_rounded,
+                                  label: 'Download',
+                                  foregroundColor: Colors.transparent,
+                                  onPressed: () {},
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              GlassCircleButton(
+                                key: watchKey,
+                                size: GlassCapsuleButton.height,
+                                icon: Icons.add_rounded,
+                                tooltip: 'Add',
+                                foregroundColor: Colors.transparent,
+                                onPressed: () {},
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  MobileDetailHeroBar(
+                    leading: GlassCircleButton(
+                      key: backKey,
+                      icon: Icons.arrow_back_rounded,
+                      tooltip: 'Back',
                       foregroundColor: Colors.transparent,
                       onPressed: () {},
                     ),
-                    const SizedBox(height: 12),
-                    GlassLayer(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GlassCapsuleButton(
-                              key: downloadKey,
-                              icon: Icons.download_rounded,
-                              label: 'Download',
-                              foregroundColor: Colors.transparent,
-                              onPressed: () {},
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          GlassCircleButton(
-                            key: watchKey,
-                            size: GlassCapsuleButton.height,
-                            icon: Icons.add_rounded,
-                            tooltip: 'Add',
-                            foregroundColor: Colors.transparent,
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
