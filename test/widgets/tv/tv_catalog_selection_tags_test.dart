@@ -9,6 +9,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
+import 'package:pleya/utils/home_custom_row_labels.dart';
 import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_catalog_sort_panel.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
@@ -103,5 +104,24 @@ void main() {
     expect(labels(tvCatalogSelectionTags(filters: restricted, sort: UnifiedCatalogSort.titleAsc)), [
       sortLabel(UnifiedCatalogSort.titleAsc),
     ]);
+  });
+  test('the status tag names the chosen status, not always "Niet bekeken"', () {
+    for (final state in [UnifiedWatchFilter.unwatched, UnifiedWatchFilter.inProgress, UnifiedWatchFilter.watched]) {
+      final tags = tvCatalogSelectionTags(
+        filters: UnifiedCatalogFilterSelection(watchState: state),
+        sort: UnifiedCatalogSort.titleAsc,
+      );
+      expect(labels(tags).first, unifiedWatchFilterLabel(state), reason: state.name);
+    }
+    expect(unifiedWatchFilterLabel(UnifiedWatchFilter.inProgress), isNot(t.unifiedCatalog.filters.unwatched));
+  });
+
+  test('Leeftijd tags read as labels, each once, in age order', () {
+    final tags = tvCatalogSelectionTags(
+      filters: const UnifiedCatalogFilterSelection(officialRatings: {'gb/16', 'gb/12|12', '6', 'PG-13'}),
+      sort: UnifiedCatalogSort.titleAsc,
+      overflowAfter: null,
+    );
+    expect(labels(tags), ['6', '12', '16', 'PG-13', sortLabel(UnifiedCatalogSort.titleAsc)]);
   });
 }

@@ -71,6 +71,24 @@ void main() {
     expect(options.contentRatings.map((v) => (v.value, v.label)), [('gb/12', '12'), ('PG-13', 'PG-13')]);
   });
 
+  // Plex `gb/12` and Jellyfin `12` are the same "12"; two rows would each find
+  // nothing on the other server.
+  test('ratings with the same label merge into one choice carrying both values', () async {
+    final clients = {
+      'plex': _Client('plex', {
+        'contentRating': [MediaFilterValue(key: '/library/sections/1/all?contentRating=gb%2F12', title: 'gb/12')],
+      }),
+      'jf': _Client('jf', {
+        'contentRating': [MediaFilterValue(key: '12', title: '12'), MediaFilterValue(key: '6', title: '6')],
+      }),
+    };
+    final options = await loadUnifiedFilterOptions(
+      libraries: [_library('plex'), _library('jf')],
+      clientFor: (serverId) => clients[serverId.value],
+    );
+    expect(options.contentRatings.map((v) => (v.value, v.label)), [('6', '6'), ('12|gb/12', '12')]);
+  });
+
   test('a server without audio languages leaves the list empty, not padded', () async {
     final client = _Client('a', {
       'genre': [MediaFilterValue(key: 'Drama', title: 'Drama')],

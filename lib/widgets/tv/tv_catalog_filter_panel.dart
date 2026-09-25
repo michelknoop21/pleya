@@ -54,6 +54,7 @@ import '../../services/unified_catalog/source_cursor.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_filter_options.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/focus_utils.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/home_custom_row_labels.dart';
 import '../../utils/layout_constants.dart';
@@ -204,7 +205,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   /// omitting unavailable categories: opening on a category that is not in the
   /// rail would put the initial focus on nothing.
   TvCatalogFilterSection _resolveInitialSection() {
-    final available = _availableSections;
+    final available = _sections(placeholders: false);
     return available.contains(widget.initialSection) ? widget.initialSection : available.first;
   }
 
@@ -214,13 +215,16 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   /// cursor out of the merge, not by asking a backend to filter — so the rail
   /// is never empty and [_resolveInitialSection] always has something to fall
   /// back to.
-  List<TvCatalogFilterSection> get _availableSections => [
+  List<TvCatalogFilterSection> get _availableSections => _sections(placeholders: _isLoadingOptions);
+
+  List<TvCatalogFilterSection> _sections({required bool placeholders}) => [
     for (final section in _railOrder)
-      if (_supports(section) && _hasChoices(section)) section,
+      if (_supports(section) && (placeholders || _hasChoices(section))) section,
   ];
 
-  /// Audiotaal and Leeftijd only appear once the servers have named at least
-  /// one value. Jellyfin's `/Items/Filters` has no audio languages at all, so
+  /// Audiotaal and Leeftijd stay in the rail while the values load, so the
+  /// rail does not grow under the eye (a focused row keeps its place), and go
+  /// only once the servers have named no value at all. Jellyfin's `/Items/Filters` has no audio languages at all, so
   /// a Jellyfin-only catalog would otherwise show a category with nothing in
   /// it. Genre and Jaar keep their row and say "nothing to choose from": those
   /// every library has, and an empty one means something is wrong.
@@ -253,10 +257,22 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
       clientFor: (serverId) => clientFor(serverId.value),
     );
     if (!mounted) return;
+    final hadFocus = _railNodes[_active]?.hasFocus ?? false;
     setState(() {
       _options = options;
       _isLoadingOptions = false;
+      _active = _survivingSection(_active);
     });
+    // The row the focus was on may have gone with its placeholder; hand the
+    // focus to the row that took its place instead of letting it die.
+    if (hadFocus) FocusUtils.requestFocusAfterBuild(this, _railNodeFor(_active));
+  }
+
+  /// [section], or the nearest available row above it once it has gone.
+  TvCatalogFilterSection _survivingSection(TvCatalogFilterSection section) {
+    final available = _availableSections;
+    if (available.contains(section)) return section;
+    return _railOrder.take(_railOrder.indexOf(section)).lastWhere(available.contains, orElse: () => available.first);
   }
 
   void _toggleGenre(String genre) => setState(() => _draft = _draft.copyWith(genres: _toggled(_draft.genres, genre)));

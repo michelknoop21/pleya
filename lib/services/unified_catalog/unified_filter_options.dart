@@ -31,6 +31,7 @@ import '../../utils/app_logger.dart';
 import '../../utils/language_codes.dart';
 import '../plex_client.dart';
 import 'source_cursor.dart';
+import 'unified_catalog_filters.dart';
 
 /// The choices one filter panel offers, already unioned and ordered.
 class UnifiedFilterValue {
@@ -81,7 +82,7 @@ Future<UnifiedFilterOptions> loadUnifiedFilterOptions({
 }) async {
   final genres = <String>{};
   final audioLanguages = <String, String>{};
-  final contentRatings = <String, String>{};
+  final contentRatings = <String, Set<String>>{};
   final years = <int>{};
 
   await Future.wait([
@@ -101,18 +102,10 @@ Future<UnifiedFilterOptions> loadUnifiedFilterOptions({
   final sortedAudioLanguages = [
     for (final entry in audioLanguages.entries) UnifiedFilterValue(value: entry.key, label: entry.value),
   ]..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
-  // Numeric ages in age order ("6" before "12"), named ratings after them.
-  int byRating(UnifiedFilterValue a, UnifiedFilterValue b) {
-    final ageA = int.tryParse(a.label);
-    final ageB = int.tryParse(b.label);
-    if (ageA != null && ageB != null) return ageA.compareTo(ageB);
-    if (ageA != null || ageB != null) return ageA != null ? -1 : 1;
-    return a.label.toLowerCase().compareTo(b.label.toLowerCase());
-  }
-
   final sortedContentRatings = [
-    for (final entry in contentRatings.entries) UnifiedFilterValue(value: entry.key, label: entry.value),
-  ]..sort(byRating);
+    for (final entry in contentRatings.entries)
+      UnifiedFilterValue(value: (entry.value.toList()..sort()).join(contentRatingValueSeparator), label: entry.key),
+  ]..sort((a, b) => compareContentRatingLabels(a.label, b.label));
   return UnifiedFilterOptions(
     genres: sortedGenres,
     audioLanguages: sortedAudioLanguages,
@@ -126,7 +119,7 @@ Future<void> _collectFor({
   required MediaServerClient? Function(ServerId serverId) clientFor,
   required Set<String> genres,
   required Map<String, String> audioLanguages,
-  required Map<String, String> contentRatings,
+  required Map<String, Set<String>> contentRatings,
   required Set<int> years,
 }) async {
   final client = clientFor(library.serverId);
@@ -172,22 +165,23 @@ const String _audioLanguageKey = 'audioLanguage';
 const String _contentRatingKey = 'contentRating';
 const Set<String> _plexCategories = {_genreKey, _yearKey, _audioLanguageKey, _contentRatingKey};
 
-/// The value a rating filters on, keyed by what the backend sends back: a
-/// plain value on Jellyfin, and on Plex either the value or a path that
-/// carries it as `?contentRating=` (the shape `FiltersBottomSheet` already
-/// unpacks the same way).
-void _addContentRatings(List<MediaFilterValue>? values, Map<String, String> into) {
+/// Raw ratings grouped by their label. The raw value is what a backend filters
+/// on: a plain value on Jellyfin, and on Plex either the value or a path that
+/// carries it as `?contentRating=` or as its last segment (the shapes
+/// `FiltersBottomSheet` already unpacks). Grouping by label is what keeps
+/// Plex `gb/12` and Jellyfin `12` one "12" instead of two rows that each find
+/// nothing on the other server.
+void _addContentRatings(List<MediaFilterValue>? values, Map<String, Set<String>> into) {
   for (final value in values ?? const <MediaFilterValue>[]) {
     final key = value.key.trim();
     final rating = key.contains('?')
         ? (Uri.splitQueryString(key.substring(key.indexOf('?') + 1))[_contentRatingKey] ?? '')
         : key.startsWith('/')
-        ? key.split('/').last
+        ? Uri.decodeComponent(key.split('/').last)
         : key;
-    final title = value.title.trim();
-    final filterValue = rating.isNotEmpty ? rating : title;
-    if (filterValue.isEmpty) continue;
-    into.putIfAbsent(filterValue, () => title.isEmpty ? filterValue : title);
+    final raw = rating.isNotEmpty ? rating : value.title.trim();
+    if (raw.isEmpty || raw.contains(contentRatingValueSeparator)) continue;
+    into.putIfAbsent(contentRatingLabel(raw), () => <String>{}).add(raw);
   }
 }
 

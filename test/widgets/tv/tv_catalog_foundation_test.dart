@@ -82,17 +82,26 @@ Future<void> _activateByLabel(WidgetTester tester, String label, {int index = 0}
 /// [values] null means "never answers", which is how the loading state is
 /// reached without a timer or a real network.
 class _FilterValuesClient implements MediaServerClient {
-  _FilterValuesClient({required this.genres, this.audioLanguages = const [], this.contentRatings = const []});
+  _FilterValuesClient({
+    required this.genres,
+    this.audioLanguages = const [],
+    this.contentRatings = const [],
+    this.release,
+  });
 
   /// Null hangs forever; a list resolves immediately.
   final List<String>? genres;
   final List<String> audioLanguages;
   final List<String> contentRatings;
 
+  /// When set, the answer waits for it.
+  final Completer<void>? release;
+
   @override
-  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) {
+  Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) async {
     final answer = genres;
     if (answer == null) return Completer<LibraryFilterResult>().future;
+    await release?.future;
     return Future.value(
       LibraryFilterResult(
         filters: const [],
@@ -971,6 +980,7 @@ void main() {
       List<String> audioLanguages = const [],
       List<String> contentRatings = const [],
       Size size = const Size(1038, 584),
+      Completer<void>? release,
     }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
@@ -993,6 +1003,7 @@ void main() {
                     genres: const ['Drama'],
                     audioLanguages: audioLanguages,
                     contentRatings: contentRatings,
+                    release: release,
                   ),
                 ),
               ),
@@ -1030,6 +1041,26 @@ void main() {
         findsNothing,
         reason: 'nothing was withheld by a backend; there was just nothing to offer',
       );
+    });
+
+    // M4: the rail used to grow under the eye when the values arrived.
+    testWidgets('Audiotaal and Leeftijd hold their rows while loading, and a vanished row hands its focus on', (
+      tester,
+    ) async {
+      final release = Completer<void>();
+      await render(tester, libraries: mixed, section: TvCatalogFilterSection.status, release: release);
+      expect(find.text(t.libraries.filterCategories.audioLanguage), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.contentRating), findsOneWidget);
+
+      Focus.maybeOf(tester.element(find.text(t.unifiedCatalog.filters.contentRating)), scopeOk: true)!.requestFocus();
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvCatalogFilterRail.contentRating');
+
+      release.complete();
+      await tester.pumpAndSettle();
+      expect(find.text(t.libraries.filterCategories.audioLanguage), findsNothing);
+      expect(find.text(t.unifiedCatalog.filters.contentRating), findsNothing);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvCatalogFilterRail.year');
     });
 
     testWidgets('Leeftijd lists the server values and applies them as official ratings', (tester) async {

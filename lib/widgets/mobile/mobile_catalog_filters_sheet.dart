@@ -112,20 +112,23 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   }
 
   MobileCatalogFilterSection _resolveInitialSection() {
-    final available = _availableSections;
+    final available = _sections(placeholders: false);
     return available.contains(widget.initialSection) ? widget.initialSection : available.first;
   }
 
   /// Status/Genre/Jaar depend on the participating backends; Servers and
   /// Bibliotheken are always offered, because they are executed by leaving a
   /// cursor out of the merge rather than by asking a backend to filter.
-  List<MobileCatalogFilterSection> get _availableSections => [
+  List<MobileCatalogFilterSection> get _availableSections => _sections(placeholders: _isLoadingOptions);
+
+  List<MobileCatalogFilterSection> _sections({required bool placeholders}) => [
     for (final section in _railOrder)
-      if (_supports(section) && _hasChoices(section)) section,
+      if (_supports(section) && (placeholders || _hasChoices(section))) section,
   ];
 
-  /// Audiotaal and Leeftijd only appear once the servers have named at least
-  /// one value. Jellyfin's `/Items/Filters` has no audio languages at all, so
+  /// Audiotaal and Leeftijd stay in the rail while the values load, so the
+  /// rail does not grow under the eye (a focused row keeps its place), and go
+  /// only once the servers have named no value at all. Jellyfin's `/Items/Filters` has no audio languages at all, so
   /// a Jellyfin-only catalog would otherwise show a category with nothing in
   /// it. Genre and Jaar keep their row and say "nothing to choose from": those
   /// every library has, and an empty one means something is wrong.
@@ -154,6 +157,14 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     setState(() {
       _options = options;
       _isLoadingOptions = false;
+      // A placeholder row that turned out empty goes; if it was open, the
+      // nearest row above it opens instead.
+      final available = _availableSections;
+      if (!available.contains(_active)) {
+        _active = _railOrder
+            .take(_railOrder.indexOf(_active))
+            .lastWhere(available.contains, orElse: () => available.first);
+      }
     });
   }
 

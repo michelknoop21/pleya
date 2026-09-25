@@ -507,4 +507,19 @@ void main() {
     expect(find.text(t.unifiedCatalog.states.filterEmptyTitle), findsOneWidget);
     expect(find.text(t.unifiedCatalog.states.clearFilters), findsOneWidget);
   });
+  testWidgets('the count row names every active filter, Leeftijd included', (tester) async {
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(
+          filters: const UnifiedCatalogFilterSelection(genres: {'Horror'}, officialRatings: {'gb/12|12', '6'}),
+        ),
+      ),
+    );
+
+    await pumpCatalog(tester);
+    await settle(tester);
+
+    expect(find.textContaining('Horror · 6, 12'), findsOneWidget);
+  });
 }

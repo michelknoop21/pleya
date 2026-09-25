@@ -72,7 +72,7 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
     for (final language in filters.audioLanguages.toList()..sort())
       TvCatalogSelectionTag(languageDisplayName(language) ?? language),
     for (final year in filters.years.toList()..sort()) TvCatalogSelectionTag('$year'),
-    for (final rating in filters.officialRatings.toList()..sort()) TvCatalogSelectionTag(rating),
+    for (final rating in contentRatingLabels(filters.officialRatings)) TvCatalogSelectionTag(rating),
     if (sourcesLabel != null) TvCatalogSelectionTag(sourcesLabel),
   ];
 

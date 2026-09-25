@@ -38,7 +38,7 @@ List<String> homeCustomRowFilterParts(HomeCustomRow row) {
   return [
     if (filters.genres.isNotEmpty) (filters.genres.toList()..sort()).join(', '),
     if (filters.years.isNotEmpty) (filters.years.toList()..sort()).join(', '),
-    if (filters.officialRatings.isNotEmpty) (filters.officialRatings.toList()..sort()).join(', '),
+    if (filters.officialRatings.isNotEmpty) contentRatingLabels(filters.officialRatings).join(', '),
     if (filters.watchState != UnifiedWatchFilter.all) unifiedWatchFilterLabel(filters.watchState),
   ];
 }

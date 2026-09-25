@@ -120,6 +120,19 @@ void main() {
       expect(effective.serverIds, {'nas'}, reason: 'source filters are backend-independent');
     });
 
+    test('a Pleya Server in the mix drops Actief bezig and Leeftijd, and keeps them stored', () {
+      const selection = UnifiedCatalogFilterSelection(
+        watchState: UnifiedWatchFilter.inProgress,
+        officialRatings: {'12'},
+      );
+      final effective = selection.constrainedTo(
+        unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.pleyaServer]),
+      );
+      expect(effective.watchState, UnifiedWatchFilter.all);
+      expect(effective.officialRatings, isEmpty);
+      expect(selection.watchState, UnifiedWatchFilter.inProgress);
+    });
+
     test('constrainedTo never mutates the stored value', () {
       stored.constrainedTo(UnifiedFilterCapabilities.none);
       expect(stored.genres, {'Drama'}, reason: 'suppressing a filter must be reversible');
@@ -270,6 +283,13 @@ void main() {
       );
       expect(query.officialRatings, ['12', 'PG-13']);
       expect(query.toLibraryQuery(offset: 0, limit: 10).officialRatings, ['12', 'PG-13']);
+    });
+
+    test('a grouped Leeftijd choice sends every raw rating behind it', () {
+      final query = build(
+        const UnifiedCatalogPreferences(filters: UnifiedCatalogFilterSelection(officialRatings: {'12|gb/12', 'PG-13'})),
+      );
+      expect(query.officialRatings, ['12', 'PG-13', 'gb/12']);
     });
 
     test('content ratings need the metadata capability, like genre', () {

@@ -454,10 +454,39 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     watchedOnly: filters.watchState == UnifiedWatchFilter.watched,
     genres: filters.genres.isEmpty ? null : (filters.genres.toList()..sort()),
     audioLanguages: filters.audioLanguages.isEmpty ? null : (filters.audioLanguages.toList()..sort()),
-    officialRatings: filters.officialRatings.isEmpty ? null : (filters.officialRatings.toList()..sort()),
+    officialRatings: filters.officialRatings.isEmpty
+        ? null
+        : ({for (final value in filters.officialRatings) ...value.split(contentRatingValueSeparator)}.toList()..sort()),
     years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
   );
 }
+
+/// One Leeftijd choice can stand for several raw ratings: Plex `gb/12` and
+/// Jellyfin `12` are both "12", and each only matches on its own server. The
+/// choice stores them joined by this, and [buildUnifiedCatalogQuery] sends
+/// all of them to every library.
+const String contentRatingValueSeparator = '|';
+
+/// What a stored Leeftijd value reads as: the rating without its country
+/// prefix, so `gb/12` and `12` are the same "12" in the panel, the rail tags
+/// and a Home row's name.
+String contentRatingLabel(String value) {
+  final first = value.split(contentRatingValueSeparator).first;
+  return first.substring(first.lastIndexOf('/') + 1);
+}
+
+/// Numeric ages in age order ("6" before "12"), named ratings after them.
+int compareContentRatingLabels(String a, String b) {
+  final ageA = int.tryParse(a);
+  final ageB = int.tryParse(b);
+  if (ageA != null && ageB != null) return ageA.compareTo(ageB);
+  if (ageA != null || ageB != null) return ageA != null ? -1 : 1;
+  return a.toLowerCase().compareTo(b.toLowerCase());
+}
+
+/// The labels of [ratings], each once, in display order.
+List<String> contentRatingLabels(Iterable<String> ratings) =>
+    {for (final rating in ratings) contentRatingLabel(rating)}.toList()..sort(compareContentRatingLabels);
 
 /// A screen's `_restorePreferences` step, factored out so the TV and mobile
 /// catalog screens share one answer instead of two (CAT20).
