@@ -1,5 +1,6 @@
 import 'dart:io' show Directory, Platform;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 
 import '../i18n/strings.g.dart';
@@ -69,7 +70,13 @@ class SystemShelfService {
   /// Callback for warm-start launcher surface taps.
   ValueChanged<ShelfDeepLink>? onShelfItemTap;
 
+  /// Makes the host test run take the tvOS channel, so the Top Shelf path
+  /// (carousel, hero, app-group images) can be tested end to end.
+  @visibleForTesting
+  static bool debugForceTopShelf = false;
+
   MethodChannel? get _channel {
+    if (debugForceTopShelf) return _tvosChannel;
     if (Platform.isAndroid) return _androidChannel;
     if (Platform.isIOS && (_tvosBuild || PlatformDetector.isAppleTV())) return _tvosChannel;
     return null;
@@ -89,6 +96,10 @@ class SystemShelfService {
       }
     }
   }
+
+  /// Whether this platform's shelf is the tvOS Top Shelf, the only one that
+  /// reads the hero carousel.
+  bool get drivesTopShelfCarousel => identical(_channel, _tvosChannel);
 
   /// Get a pending deep link from cold start (consumed on first call).
   Future<ShelfDeepLink?> getInitialDeepLink() => _takePendingLink(_channel);
@@ -147,18 +158,28 @@ class SystemShelfService {
       if (!supported) return false;
 
       final args = <String, dynamic>{'items': items};
+      Directory? imageDir;
+      var carousel = const <Map<String, dynamic>>[];
       if (identical(channel, _tvosChannel)) {
         args['sections'] = [
           {'id': 'continue_watching', 'title': t.discover.continueWatching, 'items': items},
         ];
-        final carousel = await _localCarouselImages(
-          carouselItemsFor(hero, continueWatchingItems, getClientForServerId, hideSpoilers: hideSpoilers),
-        );
+        imageDir = await _topShelfImageDirectory();
+        if (imageDir != null) {
+          carousel = await topShelfImages.localize(
+            carouselItemsFor(hero, continueWatchingItems, getClientForServerId, hideSpoilers: hideSpoilers),
+            imageDir,
+          );
+        }
         // No carousel item with an image: the extension keeps the sectioned row.
         if (carousel.isNotEmpty) args['carousel'] = carousel;
       }
 
-      return await channel.invokeMethod<bool>('sync', args) ?? false;
+      final synced = await channel.invokeMethod<bool>('sync', args) ?? false;
+      // Only now: until the new payload is written, the old one still points
+      // at the old files. An empty carousel empties the folder.
+      if (synced && imageDir != null) await topShelfImages.removeUnused(carousel, imageDir);
+      return synced;
     } on MissingPluginException catch (e) {
       appLogger.e('Failed to sync system shelf: native channel missing', error: e);
       return false;
@@ -171,13 +192,11 @@ class SystemShelfService {
     }
   }
 
-  /// The carousel with `file://` artwork in the app-group folder the native
-  /// side names; empty when that folder is unavailable, which leaves the
-  /// sectioned row. Runs for an empty carousel too, so its files get removed.
-  Future<List<Map<String, dynamic>>> _localCarouselImages(List<Map<String, dynamic>> carousel) async {
+  /// The app-group folder the native side names for carousel artwork; null
+  /// when it is unavailable, which leaves the sectioned row.
+  Future<Directory?> _topShelfImageDirectory() async {
     final path = await _tvosChannel.invokeMethod<String>('imageDirectory');
-    if (path == null || path.isEmpty) return const [];
-    return topShelfImages.localize(carousel, Directory(path));
+    return path == null || path.isEmpty ? null : Directory(path);
   }
 
   /// Clear all launcher shelf entries owned by the app.

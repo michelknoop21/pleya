@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
 import 'package:pleya/database/app_database.dart';
@@ -28,6 +31,8 @@ import 'package:pleya/services/recommendations/personalized_rows_builder.dart';
 import 'package:pleya/services/recommendations/recommendation_service.dart';
 import 'package:pleya/services/recommendations/tautulli_history_importer.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/system_shelf_service.dart';
+import 'package:pleya/services/top_shelf_images.dart';
 import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/watch_state_notifier.dart';
 
@@ -219,6 +224,10 @@ class _FakeClient implements MediaServerClient {
   Set<String> relatedFailsFor = const {};
   final List<String> relatedFetchedIds = [];
   ServerCapabilities caps = ServerCapabilities.plex;
+  String Function(String? path)? thumbnail;
+
+  @override
+  String thumbnailUrl(String? path, {int? width, int? height}) => thumbnail?.call(path) ?? '';
 
   @override
   ServerId get serverId => ServerId(id);
@@ -1480,6 +1489,105 @@ void main() {
       await pumpEventQueue();
 
       expect(observed, isEmpty);
+    });
+  });
+
+  // Review B, M-5 (plus M-2 and M-3): the hero reaches the Top Shelf carousel
+  // through ContinueWatchingRow, driven over the real tvOS channel name.
+  group('Top Shelf hero', () {
+    const channel = MethodChannel('com.pleya/system_shelf');
+    late Directory tmp;
+    late List<Map<Object?, Object?>> syncs;
+    late List<bool> watchedExistedAtSync;
+    File? watched;
+
+    List<Object?> carouselTitles(Map<Object?, Object?> args) => [
+      for (final item in (args['carousel'] as List? ?? const [])) (item as Map)['title'],
+    ];
+
+    /// Waits for the sync whose carousel reads [titles]; load() may sync more
+    /// than once, so a count is not a reliable signal.
+    Future<Map<Object?, Object?>> syncWith(List<Object?> titles) async {
+      for (var i = 0; i < 400; i++) {
+        final match = syncs.where((args) => listEquals(carouselTitles(args), titles));
+        if (match.isNotEmpty) return match.last;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      fail('no sync with carousel $titles; got ${syncs.map(carouselTitles).toList()}');
+    }
+
+    MediaItem film(String id) => _item(id, kind: MediaKind.movie).copyWith(artPath: '/art/$id');
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('shelf_hero');
+      syncs = [];
+      watchedExistedAtSync = [];
+      watched = null;
+      client.thumbnail = (path) => 'https://plex.local$path?X-Plex-Token=s3cr3t';
+      SystemShelfService.debugForceTopShelf = true;
+      SystemShelfService().topShelfImages = TopShelfImages(
+        fetch: (url) async => File('${tmp.path}/src')..writeAsBytesSync([1, 2, 3]),
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        switch (call.method) {
+          case 'isSupported':
+            return true;
+          case 'imageDirectory':
+            return '${tmp.path}/TopShelfImages';
+          case 'sync':
+            final file = watched;
+            if (file != null) watchedExistedAtSync.add(file.existsSync());
+            syncs.add(call.arguments as Map<Object?, Object?>);
+            return true;
+        }
+        return null;
+      });
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+      SystemShelfService.debugForceTopShelf = false;
+      SystemShelfService().topShelfImages = TopShelfImages();
+      tmp.deleteSync(recursive: true);
+    });
+
+    test('the hero leads the carousel, a film also in Continue Watching keeps its CW entry, no token', () async {
+      final cw1 = _item('cw1').copyWith(artPath: '/art/cw1');
+      aggregation.onDeckResult = () => [cw1];
+      await provider.load();
+      await syncWith(['cw1']);
+
+      provider.setTopShelfHero([film('h1'), cw1, film('h2')]);
+      final args = await syncWith(['h1', 'h2', 'cw1']);
+      for (final item in args['carousel']! as List) {
+        expect((item as Map)['imageUri'] as String, startsWith('file://'));
+      }
+      expect(args['carousel'].toString(), isNot(contains('s3cr3t')));
+    });
+
+    test('new instances of the same hero films do not sync again', () async {
+      await provider.load();
+      provider.setTopShelfHero([film('h1')]);
+      await syncWith(['h1']);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final before = syncs.length;
+      provider.setTopShelfHero([film('h1')]);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(syncs, hasLength(before));
+    });
+
+    test('a replaced image is deleted only after the new payload is written', () async {
+      await provider.load();
+      provider.setTopShelfHero([film('h1')]);
+      final first = await syncWith(['h1']);
+      final old = File(Uri.parse((first['carousel']! as List).single['imageUri'] as String).toFilePath());
+      expect(old.existsSync(), isTrue);
+
+      watched = old;
+      provider.setTopShelfHero([film('h2')]);
+      await syncWith(['h2']);
+      expect(watchedExistedAtSync.last, isTrue, reason: 'the payload being replaced still points at it');
+      expect(old.existsSync(), isFalse);
     });
   });
 }

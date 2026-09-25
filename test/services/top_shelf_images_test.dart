@@ -68,19 +68,39 @@ void main() {
     expect(await slow.localize([entry('slow', 'https://x/slow')], shelf), isEmpty);
   });
 
-  test('each write deletes files of items no longer on the shelf and reuses current ones', () async {
+  test('removeUnused deletes files of items no longer on the shelf; localize reuses current ones', () async {
     await images().localize([entry('a', 'https://x/a'), entry('b', 'https://x/b')], shelf);
     File('${shelf.path}/leftover.jpg.part').writeAsBytesSync([0]);
     fetched.clear();
     final result = await images().localize([entry('b', 'https://x/b'), entry('c', 'https://x/c')], shelf);
     expect(fetched, ['https://x/c'], reason: 'b is already on disk');
+    expect(shelf.listSync(), hasLength(4), reason: 'nothing is deleted before the new payload is written');
+    await images().removeUnused(result, shelf);
     final onDisk = shelf.listSync().map((e) => e.path).toSet();
     expect(onDisk, {for (final i in result) Uri.parse(i['imageUri'] as String).toFilePath()});
   });
 
   test('an empty shelf empties the folder', () async {
     await images().localize([entry('a', 'https://x/a')], shelf);
-    await images().localize(const [], shelf);
+    await images().removeUnused(await images().localize(const [], shelf), shelf);
     expect(shelf.listSync(), isEmpty);
+  });
+
+  // Review B, I-1: two episodes of one series carry the show's backdrop, so
+  // two resume items share one URL and one file name. Downloaded in parallel,
+  // they raced on one `.part` file and the second fell out of the carousel.
+  test('two items with one shared backdrop URL both stay in the carousel, from one download', () async {
+    const shared = 'https://plex.local/library/metadata/7/art';
+    final slow = TopShelfImages(
+      fetch: (url) async {
+        fetched.add(url);
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        return File('${tmp.path}/src_${fetched.length}')..writeAsBytesSync([1, 2, 3]);
+      },
+    );
+    final result = await slow.localize([entry('ep1', shared), entry('ep2', shared)], shelf);
+    expect(result.map((i) => i['contentId']), ['ep1', 'ep2']);
+    expect(result.map((i) => i['imageUri']).toSet(), hasLength(1));
+    expect(fetched, [shared]);
   });
 }

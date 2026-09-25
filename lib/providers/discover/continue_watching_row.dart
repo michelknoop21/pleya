@@ -249,7 +249,12 @@ class ContinueWatchingRow {
 
   /// The Home hero's films for the Top Shelf carousel. Resyncs on change.
   void setTopShelfHero(List<MediaItem> hero) {
-    if (listEquals(hero, _topShelfHero)) return;
+    // Only the tvOS Top Shelf reads the hero; elsewhere this would rewrite
+    // Android Watch Next for nothing.
+    if (!SystemShelfService().drivesTopShelfCarousel) return;
+    // By key: a Home refresh hands back new instances of the same films.
+    List<String> keys(List<MediaItem> items) => [for (final item in items) item.globalKey];
+    if (listEquals(keys(hero), keys(_topShelfHero))) return;
     _topShelfHero = List.unmodifiable(hero);
     unawaited(syncShelf());
   }

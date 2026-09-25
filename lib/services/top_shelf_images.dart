@@ -37,13 +37,25 @@ class TopShelfImages {
 
   /// [items] with `imageUri` rewritten to a file in [dir]. An item whose image
   /// cannot be stored is left out, because the carousel shows nothing without
-  /// artwork and the remote URL may carry a token. Files in [dir] that no
-  /// current item uses are deleted, so the folder holds one shelf at most.
+  /// artwork and the remote URL may carry a token. Old files stay until
+  /// [removeUnused] runs, after the payload that replaces them is written.
   Future<List<Map<String, dynamic>>> localize(List<Map<String, dynamic>> items, Directory dir) async {
     await dir.create(recursive: true);
-    final stored = await Future.wait(items.map((item) => _store(item, dir)));
-    final result = [for (final item in stored) ?item];
-    final keep = {for (final item in result) p.basename(Uri.parse(item['imageUri'] as String).toFilePath())};
+    // Items can share an image (two episodes of one series both carry the
+    // show's backdrop) and so a file name. They share one download instead of
+    // racing on one `.part` file, where the loser dropped out of the carousel.
+    final downloads = <String, Future<bool>>{};
+    final stored = await Future.wait(items.map((item) => _store(item, dir, downloads)));
+    return [for (final item in stored) ?item];
+  }
+
+  /// Deletes the files in [dir] that [items] (a [localize] result) does not
+  /// use, so the folder holds one shelf at most. Run it once the payload with
+  /// [items] is written: until then the previous payload still points at the
+  /// old files, and tvOS may read it.
+  Future<void> removeUnused(List<Map<String, dynamic>> items, Directory dir) async {
+    final keep = {for (final item in items) p.basename(Uri.parse(item['imageUri'] as String).toFilePath())};
+    if (!await dir.exists()) return;
     await for (final entry in dir.list()) {
       if (entry is File && !keep.contains(p.basename(entry.path))) {
         try {
@@ -53,13 +65,21 @@ class TopShelfImages {
         }
       }
     }
-    return result;
   }
 
-  Future<Map<String, dynamic>?> _store(Map<String, dynamic> item, Directory dir) async {
+  Future<Map<String, dynamic>?> _store(
+    Map<String, dynamic> item,
+    Directory dir,
+    Map<String, Future<bool>> downloads,
+  ) async {
     final url = item['imageUri'];
     if (url is! String || url.isEmpty) return null;
     final target = File(p.join(dir.path, fileNameFor(url)));
+    final stored = await (downloads[target.path] ??= _save(url, target, item['title']));
+    return stored ? {...item, 'imageUri': target.uri.toString()} : null;
+  }
+
+  Future<bool> _save(String url, File target, Object? title) async {
     try {
       if (!await target.exists()) {
         final source = await _fetch(url).timeout(timeout);
@@ -67,11 +87,11 @@ class TopShelfImages {
         final partial = await source.copy('${target.path}.part');
         await partial.rename(target.path);
       }
-      return {...item, 'imageUri': target.uri.toString()};
+      return true;
     } catch (e) {
       // The URL may carry a token; log the title only.
-      appLogger.w('Top Shelf: image for ${item['title']} not stored', error: e.runtimeType);
-      return null;
+      appLogger.w('Top Shelf: image for $title not stored', error: e.runtimeType);
+      return false;
     }
   }
 }
