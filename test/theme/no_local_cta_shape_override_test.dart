@@ -16,6 +16,8 @@ void main() {
     'lib/screens/companion_remote/mobile_remote_screen.dart': 'deliberately round D-pad control',
     // The mobile detail northstar explicitly uses two full-width capsule CTAs.
     'lib/screens/media_detail/mobile_detail_view.dart': 'northstar-defined mobile detail capsules',
+    // The Download capsule of that pair lives here since the DEC-131 merge.
+    'lib/screens/media_detail/mobile_detail_info.dart': 'northstar-defined mobile detail capsules',
   };
 
   test('no local shape: override on FilledButton/ElevatedButton/OutlinedButton/TextButton.styleFrom', () {
