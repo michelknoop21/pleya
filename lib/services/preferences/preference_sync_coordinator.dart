@@ -325,22 +325,17 @@ class PreferenceSyncCoordinator {
     // reset only call in through `pushAllIfEnabled`.
     await refreshAvailability();
     if (status.value.availability != PreferenceSyncAvailability.ready) return;
-    var storeWins = false;
-    if (triggers.contains(ReconcileTrigger.accountChanged)) {
-      // The system also reports an identity change for the account the device
-      // already had. A store holding a record this device wrote is that
-      // account, and its stamps (tombstones included) still order its history.
-      final all = await _transport?.readAll();
-      if (all == null || !storeHoldsRecordFrom(all, _deviceId)) {
-        // Another account: the stamps describe this device's edits against the
-        // previous account's history and mean nothing here; keeping them would
-        // push the old account's values into the new one as "newer". Local
-        // values stay; the store is read first and wins what it holds, per
-        // map entry too.
-        await clearRevisions();
-        await PreferenceLegacyBootstrap.reset(_prefs);
-        storeWins = true;
-      }
+    final storeWins = triggers.contains(ReconcileTrigger.accountChanged);
+    if (storeWins) {
+      // Strict read-first (B9). The stamps describe this device's edits against
+      // the previous account's history; against another account they mean
+      // nothing, and keeping them would push the old account's values into the
+      // new one as "newer". The engine has no account identity: a store holding
+      // records this device wrote proves nothing (A, B, A would carry B's
+      // stamps into A), so every account change reads first. Local values stay;
+      // the store wins what it holds, per map entry too.
+      await clearRevisions();
+      await PreferenceLegacyBootstrap.reset(_prefs);
     }
     final needsBootstrap =
         triggers.contains(ReconcileTrigger.boot) ||

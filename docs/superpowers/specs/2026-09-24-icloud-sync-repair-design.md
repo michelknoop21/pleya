@@ -198,10 +198,11 @@ voorkeuren wissen of een tweede lokale namespace per account aanleggen. Een echt
 is een ontwerpronde op zich en wordt in DEC-131 als niet-gebouwd vastgelegd. `RemoteChangeReason.
 accountChanged` dekt ook uitloggen; dat pad stopt al op `unavailable` en verandert niet.
 
-Bijgesteld na de eindreview (minors 3 en 4): het systeem meldt een identiteitswissel ook voor het
-account dat het toestel al had. Houdt de store een record met de apparaat-id van dit toestel, dan
-is het hetzelfde account en blijven de stempels staan, tombstones inbegrepen. Bij een ander account
-wint de store in de twee taalkaarten per entry, ongeacht `u` (`PreferenceMergeFamily.adoptStore`).
+Bijgesteld na de eindreview (minor 3): bij elke accountwissel wint de store in de twee taalkaarten
+per entry, ongeacht `u` (`PreferenceMergeFamily.adoptStore`). De regel zelf blijft strikt: elke
+`accountChanged` wist de stempels en leest eerst, ook als het systeem de wissel meldt voor het
+account dat het toestel al had. Een heuristiek op het apparaat-id in de store (minor 4) is na de
+herreview teruggedraaid, omdat een wissel A, B, A de stempels uit de B-periode naar A zou duwen.
 
 ### B10: de taalvoorkeur
 

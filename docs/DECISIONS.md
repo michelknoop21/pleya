@@ -2968,11 +2968,11 @@ niet gehad" en wordt overgenomen. (6) De guard die een lokale write tijdens een 
 vallen gaat weg: de stempel ordent. (7) `_runReconcile` leest eerst `refreshAvailability()` en
 stopt buiten `ready`; `apply()` stopt na het lokale stempelen bij `unavailable`; `writeSucceeded`
 en `reconcileSucceeded` forceren geen `ready`; `reconcileSucceeded` laat `quota` staan. (8) Bij
-`accountChanged` (en beschikbaar) leest de engine eerst de store. Houdt die een record dat dit
-toestel schreef (apparaat-id in `d`), dan is het hetzelfde account en blijven de stempels staan,
-tombstones inbegrepen. Anders worden de lokale revisies en de v1-bootstrapmarker gewist, wint de
-store alles wat hij heeft (in de twee taalkaarten per entry, ongeacht `u`) en duwt de engine alleen
-wat het nieuwe account mist, met stempel 0. Niets lokaal wordt gewist. Een `initialSync`-notificatie wordt gevolgd door een
+`accountChanged` (en beschikbaar) worden de lokale revisies en de v1-bootstrapmarker gewist, daarna
+leest de engine de store (die wint alles wat hij heeft, in de twee taalkaarten per entry, ongeacht
+`u`) en duwt alleen wat het nieuwe account mist, met stempel 0. Niets lokaal wordt gewist en er is
+geen partitie per account. Een heuristiek "de store bevat een record van dit toestel, dus hetzelfde
+account" is na de herreview teruggedraaid: bij A, B, A duwde die de stempels uit de B-periode naar A. Een `initialSync`-notificatie wordt gevolgd door een
 reconcile onder de nieuwe trigger `ReconcileTrigger.initialSync`. (9)
 `pleya_profile_language_preferences` en `track_language_preferences` zijn `global` met de
 merge-familie `profileKeyedMap`: draagbaar is een mapsleutel waarvan de scope het volledige Plex
@@ -3023,11 +3023,10 @@ zijn volgende reconcile weer prunet. Een tombstone die hij overschrijft, zet dez
 alle Apple-toestellen deze build hebben, schrijven de twee builds die sleutels dus heen en weer; de
 waarde blijft op het bijgewerkte toestel bestaan maar bereikt het oude niet. De releasevoorwaarde
 uit DEC-060 blijft. Een wijziging die uitgelogd
-is gemaakt, houdt bij terugkeer naar hetzelfde account haar stempel en wint als ze nieuwer is; bij
-een ander account verliest ze van de store voor elke sleutel die de store heeft. De engine kent geen
-accountidentiteit en herkent "hetzelfde account" aan een record van dit toestel in de store, dus een
-account waarin dit toestel eerder schreef telt als hetzelfde en een account waarin het nog niets
-stempelde als een ander. Een sleutel die de store mist houdt de lokale waarde. Een wijziging op een toestel met
+is gemaakt verliest bij de volgende aanmelding van de store voor elke sleutel die de store heeft,
+ook bij terugkeer naar hetzelfde account: de engine kent geen accountidentiteit, dus elke aanmelding
+wist de stempels. Een tombstone die de store niet meer heeft (een uitgebrachte build schreef eroverheen)
+gaat daarbij ook verloren. Een sleutel die de store mist houdt de lokale waarde. Een wijziging op een toestel met
 de vorige build wordt zonder stempel geschreven en verliest van elke sleutel die een nieuwer toestel
 gestempeld heeft, dus alle Apple-toestellen moeten tegelijk worden bijgewerkt. Bewijs: unit tegen
 `FakeTransport`; geen simulator kan cross-device KVS bewijzen; per punt geldt `CODE CLOSED · UNIT

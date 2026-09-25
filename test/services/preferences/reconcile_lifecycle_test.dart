@@ -250,7 +250,7 @@ void main() {
       expect(coordinator.localRevision('subtitle_font_size'), isNotNull);
     });
 
-    test('an edit made while signed out still wins when the same account comes back', () async {
+    test('an edit made while signed out loses to the store where it holds the key, and keeps the rest', () async {
       final coordinator = await build();
       await settings.prefs.setInt('subtitle_font_size', 30);
       await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 30));
@@ -266,32 +266,39 @@ void main() {
       await settings.prefs.setInt('seek_time_small', 5);
       await coordinator.apply(const PreferenceMutation.set('seek_time_small', 5));
 
-      // Back into the same store: it holds a record this device wrote, so the
-      // stamps are kept and the later signed-out edit wins.
+      // Back into the same store. There is no account identity to tell it apart.
       transport.available = true;
       await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
 
-      expect(settings.prefs.getInt('subtitle_font_size'), 44, reason: 'the same account, so the newer stamp wins');
-      expect((json.decode(transport.store[subtitleKey]!) as Map)['value'], 44);
+      expect(settings.prefs.getInt('subtitle_font_size'), 30, reason: 'the store held the key, so it wins');
       expect(settings.prefs.getInt('seek_time_small'), 5, reason: 'the store lacked the key');
       expect((json.decode(transport.store[seekKey]!) as Map)['value'], 5);
     });
 
-    test('a spurious identity change for the same account keeps the tombstones', () async {
+    test('A, then B, then A again: nothing from the B period travels into A', () async {
       final coordinator = await build();
-      await settings.prefs.setInt('seek_time_small', 5);
-      await coordinator.apply(const PreferenceMutation.set('seek_time_small', 5));
-      await settings.prefs.remove('subtitle_font_size');
-      await coordinator.apply(const PreferenceMutation.remove('subtitle_font_size'));
-      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
-      // The released build writes its old value back over the tombstone, then
-      // the system reports an identity change for the account it already had.
-      transport.store[cloudKey] = enc('int', 30);
+      await settings.prefs.setInt('subtitle_font_size', 30);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 30));
+      final key = coordinator.cloudKeyFor('subtitle_font_size')!;
+      final storeA = Map<String, String>.from(transport.store);
 
+      // Account B: another person's Apple TV chose 50, later than this device's edit in A.
+      final later = DateTime.now().toUtc().millisecondsSinceEpoch + 60 * 1000;
+      transport.store
+        ..clear()
+        ..[key] = json.encode({'type': 'int', 'value': 50, 't': later, 'd': 'appletv-b'});
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+      expect(settings.prefs.getInt('subtitle_font_size'), 50);
+
+      // Back to A. Its store holds records this device wrote, which proves nothing
+      // about whether the stamps held now describe A's history.
+      transport.store
+        ..clear()
+        ..addAll(storeA);
       await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
 
-      expect(settings.prefs.getInt('subtitle_font_size'), isNull, reason: 'the removal stays removed');
-      expect((json.decode(transport.store[cloudKey]!) as Map)['x'], isTrue);
+      expect(settings.prefs.getInt('subtitle_font_size'), 30, reason: "A's store wins what it holds");
+      expect((json.decode(transport.store[key]!) as Map)['value'], 30, reason: "B's value never reaches A");
     });
 
     test("another account's map entries replace this device's, and the entries it lacks stay", () async {
