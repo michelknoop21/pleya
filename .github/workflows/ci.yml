@@ -64,11 +64,16 @@ jobs:
           # Fails on errors or warnings only (info messages are allowed)
           flutter analyze 2>&1 | tee analyze_output.txt || true
 
-          # Check output for errors or warnings
-          if grep -q "error •" analyze_output.txt; then
+          # Check output for errors or warnings. dart_code_linter-plugin rules
+          # (kebab-case) are dropped: flutter analyze does not wait for the
+          # plugin, so which files it covers is a race. Same filter as
+          # scripts/ci_checks.sh.
+          grep -E "error •|warning •" analyze_output.txt \
+            | grep -vE '• [a-z0-9]+(-[a-z0-9]+)+[[:space:]]*$' > core_issues.txt || true
+          if grep -q "error •" core_issues.txt; then
             echo "❌ Analysis failed with errors"
             exit 1
-          elif grep -q "warning •" analyze_output.txt; then
+          elif grep -q "warning •" core_issues.txt; then
             echo "⚠️  Analysis completed with warnings"
             exit 1
           else
