@@ -49,6 +49,11 @@ class GlassSurface extends StatelessWidget {
     if (!backdrop) return DecoratedBox(decoration: _fakeGlassDecoration(shape, t), child: child);
 
     if (tier == GlassTier.real) {
+      // LiquidGlass asserts (debug) or null-checks (release) on a missing
+      // LiquidGlassLayer; a plate placed outside a [GlassLayer] brings its own.
+      if (context.dependOnInheritedWidgetOfExactType<_GlassLayerScope>() == null) {
+        return LiquidGlass.withOwnLayer(settings: _liquidSettings(t), shape: _asLiquidShape(shape), child: child);
+      }
       return LiquidGlass(shape: _asLiquidShape(shape), child: child);
     }
 
@@ -88,17 +93,28 @@ class GlassLayer extends StatelessWidget {
     if (glassTierFor(context) != GlassTier.real) return child;
     final t = tokens ?? const GlassTokens.phone();
     return LiquidGlassLayer(
-      settings: LiquidGlassSettings(
-        blur: t.blur,
-        glassColor: t.tint,
-        saturation: t.saturation,
-        thickness: 18,
-        refractiveIndex: 1.3,
-      ),
-      child: child,
+      settings: _liquidSettings(t),
+      child: _GlassLayerScope(child: child),
     );
   }
 }
+
+/// Marks the subtree of a real-tier [GlassLayer], so a [GlassSurface] knows
+/// whether a `LiquidGlassLayer` is above it.
+class _GlassLayerScope extends InheritedWidget {
+  const _GlassLayerScope({required super.child});
+
+  @override
+  bool updateShouldNotify(_GlassLayerScope oldWidget) => false;
+}
+
+LiquidGlassSettings _liquidSettings(GlassTokens t) => LiquidGlassSettings(
+  blur: t.blur,
+  glassColor: t.tint,
+  saturation: t.saturation,
+  thickness: 18,
+  refractiveIndex: 1.3,
+);
 
 /// A touch of white blended into [GlassTokens.tint] for the plate's top edge,
 /// independent of whether the tint itself is dark (phone/tv, Fixronde 1) or

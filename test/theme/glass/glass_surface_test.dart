@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:pleya/services/device_performance.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
@@ -126,6 +127,26 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsOneWidget);
     expect(find.byWidgetPredicate((w) => w.runtimeType.toString().startsWith('LiquidGlass')), findsNothing);
+  });
+
+  testWidgets('K1: tier real zonder GlassLayer bouwt zonder fout, met een eigen laag', (tester) async {
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() => SettingsService.getInstance());
+    await SettingsService.instance.write(SettingsService.liquidGlass, true);
+
+    await tester.pumpWidget(
+      wrap(
+        GlassSurface(shape: const CircleBorder(), child: const Text('glass')),
+        platform: TargetPlatform.iOS,
+      ),
+    );
+
+    expect(glassTierFor(tester.element(find.text('glass'))), GlassTier.real);
+    expect(tester.takeException(), isNull);
+    expect(find.byType(LiquidGlass), findsOneWidget);
+    expect(find.byType(LiquidGlassLayer), findsOneWidget);
   });
 
   group('glassAppliesTo per platform (B4)', () {
