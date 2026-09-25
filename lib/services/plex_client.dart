@@ -841,7 +841,11 @@ class PlexClient
   }
 
   /// Cancel a running background task by its UUID.
+  ///
+  /// Stopping a scan or analysis is server maintenance, so owner-only like
+  /// the task that started it.
   Future<void> cancelActivity(String uuid) async {
+    assertCanManageServerMetadata();
     await _http.delete('/activities/$uuid');
   }
 
@@ -1264,6 +1268,10 @@ class PlexClient
 
   /// Download a subtitle from an external provider and add it to the media item.
   /// The server downloads the file asynchronously; the new stream appears after a short delay.
+  ///
+  /// The stream lands on the shared item for every user of the server, which
+  /// Plex itself treats as subtitle admin (`allowSubtitleAdmin`), so it is
+  /// owner-only. Picking an existing stream goes through [selectStreams].
   Future<bool> downloadSubtitle(
     String ratingKey, {
     required String key,
@@ -1273,6 +1281,7 @@ class PlexClient
     required bool forced,
     required String providerTitle,
   }) async {
+    assertCanManageServerMetadata();
     return _wrapBoolApiCall(
       () => _http.put(
         '/library/metadata/$ratingKey/subtitles',

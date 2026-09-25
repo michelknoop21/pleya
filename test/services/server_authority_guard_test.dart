@@ -96,6 +96,17 @@ void main() {
       'refreshLibraryMetadata': (c) => c.refreshLibraryMetadata('1'),
       'emptyLibraryTrash': (c) => c.emptyLibraryTrash('1'),
       'analyzeLibrary': (c) => c.analyzeLibrary('1'),
+      // Adds a stream to the shared item for every user of the server.
+      'downloadSubtitle': (c) => c.downloadSubtitle(
+        '1',
+        key: 'k',
+        codec: 'srt',
+        language: 'nl',
+        hearingImpaired: false,
+        forced: false,
+        providerTitle: 'OpenSubtitles',
+      ),
+      'cancelActivity': (c) => c.cancelActivity('activity-1'),
     };
 
     for (final MapEntry(key: name, value: call) in canonicalWrites.entries) {
@@ -121,6 +132,12 @@ void main() {
       client.canManageServerMetadata = () => false;
       await client.rate(_item, 8);
       expect(requests.single.url.path, '/:/rate');
+    });
+
+    test('choosing an existing subtitle stream stays free (per-user selection)', () async {
+      client.canManageServerMetadata = () => false;
+      await client.selectStreams(42, subtitleStreamID: 7);
+      expect(requests.single.url.path, '/library/parts/42');
     });
   });
 
