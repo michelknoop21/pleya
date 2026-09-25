@@ -1199,6 +1199,10 @@ class TvTopNavLayout {
   /// ([DEC-053]).
   static const double focusRingGap = 3;
 
+  /// Glass capsule (LG-04): room between the capsule's rim and the first and
+  /// last pill, so a focus ring on the search glyph clears the rounded end.
+  static const double glassCapsuleInset = 4;
+
   /// The compact Search control.
   static const double searchIconSize = 17;
 

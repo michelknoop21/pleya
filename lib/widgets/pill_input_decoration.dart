@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 const pillInputRadius = BorderRadius.all(Radius.circular(100));
 
 /// Brighter fill on focus so input focus is visible inside TV overscan.
-InputDecoration pillInputDecoration(BuildContext context, {String? hintText, Widget? prefixIcon, Widget? suffixIcon}) {
+///
+/// [glass]: no fill at all, because a `GlassSurface` around the field is the
+/// surface (the TV search pill, LG-06).
+InputDecoration pillInputDecoration(
+  BuildContext context, {
+  String? hintText,
+  Widget? prefixIcon,
+  Widget? suffixIcon,
+  bool glass = false,
+}) {
   final onSurface = Theme.of(context).colorScheme.onSurface;
   final unfocusedFill = onSurface.withValues(alpha: 0.08);
   final focusedFill = onSurface.withValues(alpha: 0.18);
@@ -12,7 +21,7 @@ InputDecoration pillInputDecoration(BuildContext context, {String? hintText, Wid
     hintText: hintText,
     prefixIcon: prefixIcon,
     suffixIcon: suffixIcon,
-    filled: true,
+    filled: !glass,
     fillColor: WidgetStateColor.resolveWith(
       (states) => states.contains(WidgetState.focused) ? focusedFill : unfocusedFill,
     ),

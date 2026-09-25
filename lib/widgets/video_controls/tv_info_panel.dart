@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,6 +26,7 @@ import '../tv/tv_unified_layout.dart';
 import 'tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'tv_info_panel/tv_chapter_sub_view.dart';
 import 'tv_info_panel/tv_information_tab.dart';
+import 'tv_info_panel/tv_panel_card.dart';
 import 'tv_info_panel/tv_panel_types.dart';
 import 'tv_info_panel/tv_panel_value_row_scope.dart';
 import 'tv_info_panel/tv_panel_widgets.dart';
@@ -35,11 +35,8 @@ import 'tv_info_panel/tv_sleep_timer_sub_view.dart';
 import 'tv_info_panel/tv_sync_sub_view.dart';
 import 'tv_info_panel/tv_video_tab.dart';
 
+export 'tv_info_panel/tv_panel_card.dart' show kTvPanelBlurSigma;
 export 'tv_info_panel/tv_panel_types.dart';
-
-/// Blur behind the card. Judged on hardware: a full-width blur over playing
-/// video is the one cost of the glass look, and the Apple TV decides it.
-const double kTvPanelBlurSigma = 24;
 
 /// The TV player panel: one floating card on the page inset with four pill
 /// tabs (Info / Video / Sound / Subtitles), each with two columns of grouped
@@ -322,36 +319,21 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
                     id: AutomationIds.playerPanel,
                     role: 'region',
                     state: _automationState,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(m.gap(22)),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: kTvPanelBlurSigma, sigmaY: kTvPanelBlurSigma),
-                        child: Container(
-                          constraints: BoxConstraints(maxHeight: maxHeight),
-                          padding: EdgeInsets.fromLTRB(m.gap(28), m.gap(20), m.gap(28), 0),
-                          decoration: BoxDecoration(
-                            color: TvPanelTheme.card,
-                            borderRadius: BorderRadius.circular(m.gap(22)),
-                            border: Border.all(color: TvPanelTheme.cardBorder),
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x80000000), blurRadius: 60, offset: Offset(0, 30)),
-                            ],
-                          ),
-                          child: TvPanelValueRowScope(
-                            notifier: _valueRows,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _subView == TvInfoPanelSubView.none ? _buildPillBar() : _buildSubViewHeader(),
-                                SizedBox(height: m.gap(18)),
-                                Flexible(
-                                  child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView(),
-                                ),
-                                ListenableBuilder(listenable: _valueRows, builder: (context, _) => _buildFooter()),
-                              ],
-                            ),
-                          ),
+                    child: TvPanelCard(
+                      radius: m.gap(22),
+                      maxHeight: maxHeight,
+                      padding: EdgeInsets.fromLTRB(m.gap(28), m.gap(20), m.gap(28), 0),
+                      child: TvPanelValueRowScope(
+                        notifier: _valueRows,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _subView == TvInfoPanelSubView.none ? _buildPillBar() : _buildSubViewHeader(),
+                            SizedBox(height: m.gap(18)),
+                            Flexible(child: _subView == TvInfoPanelSubView.none ? _buildTabContent() : _buildSubView()),
+                            ListenableBuilder(listenable: _valueRows, builder: (context, _) => _buildFooter()),
+                          ],
                         ),
                       ),
                     ),
@@ -427,7 +409,7 @@ class _TvInfoPanelState extends State<TvInfoPanel> with SingleTickerProviderStat
             duration: const Duration(milliseconds: 150),
             padding: EdgeInsets.symmetric(horizontal: m.gap(16), vertical: m.gap(8)),
             decoration: BoxDecoration(
-              color: isActive ? TvPanelTheme.activePill : TvPanelTheme.inactivePill,
+              color: isActive ? TvPanelTheme.activePill : TvPanelTheme.inactivePillFor(glass: tvPanelGlassOn(context)),
               borderRadius: BorderRadius.circular(m.gap(22)),
               boxShadow: hasFocus
                   ? const [
