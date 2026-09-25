@@ -126,7 +126,8 @@ class IosSimulatorDriver implements VerificationDriver {
   @override
   Future<void> build() async {
     // Buildmappen naar de externe SSD (no-op zonder SSD of op CI).
-    await _run('${repoRoot.path}/scripts/link_build_dirs.sh', const [], workingDirectory: repoRoot.path);
+    final linkScript = File('${repoRoot.absolute.path}/scripts/link_build_dirs.sh');
+    if (linkScript.existsSync()) await _run('bash', [linkScript.path]);
     _log('flutter build ios --simulator --debug --dart-define=PLEYA_VERIFY=true');
     final gitCommit = await _gitCommit();
     final result = await _run('flutter', [
