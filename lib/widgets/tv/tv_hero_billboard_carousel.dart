@@ -66,6 +66,7 @@ import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
 import '../app_icon.dart';
 import 'tv_hero_artwork.dart';
 import 'tv_hero_billboard_card.dart';
@@ -451,7 +452,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
                 // 33.1 binds a *white* Afspelen capsule at rest, and the shared
                 // button's unfocused 60% dim would render it grey until focused —
                 // a state the north star does not have. The pill draws its own focus
-                // (the ring on its reserved band, and the secondary's inversion), so
+                // (the ring outside the fill, and the secondary's inversion), so
                 // it owns the whole treatment.
                 dimWhenUnfocused: false,
                 onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
@@ -482,7 +483,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
               // 33.1 binds a *white* Afspelen capsule at rest, and the shared
               // button's unfocused 60% dim would render it grey until focused —
               // a state the north star does not have. The pill draws its own focus
-              // (the ring on its reserved band, and the secondary's inversion), so
+              // (the ring outside the fill, and the secondary's inversion), so
               // it owns the whole treatment.
               dimWhenUnfocused: false,
               onPressed: () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false),
@@ -575,29 +576,37 @@ class _HeroPillState extends State<_HeroPill> {
         final bg = filled ? tk.text : tk.text.withValues(alpha: TvHomeLayout.heroSecondaryFillAlpha);
         final fg = filled ? tk.bg : tk.text;
 
-        final ringGap = TvHomeLayout.heroActionFocusRingGap * scale;
+        final radius = TvHomeLayout.heroActionRadius * scale;
+        final motion = reduceMotion(context, FocusTheme.getAnimationDuration(context));
 
-        // The ring stands *off* the pill, on a band of artwork, and the band is
-        // reserved whether or not the pill has the focus so the row's geometry
-        // never moves. Without the gap the primary CTA is a white ring drawn
-        // straight onto a white capsule: the two merge, and the one control
-        // Home rests on stops saying where the remote is at three metres. It is
-        // the same reason [TvDiscoveryLayout.cardFocusRingGap] exists for a
-        // tile — bright surface, white ring, nothing to contrast with.
-        return Container(
-          padding: EdgeInsets.all(ringGap),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(TvHomeLayout.heroActionRadius * scale + ringGap),
-            border: Border.all(color: showFocus ? tk.text : Colors.transparent, width: FocusTheme.focusBorderWidth),
-          ),
+        // VIS-0925-E: one focus contract for the CTAs, the same as every other
+        // TV control. The white ring (never `tk.text`, which is black in Light
+        // and drew a black-and-white double rim) stands a small clear band
+        // outside the fill, with the Light separator line from [FocusTheme],
+        // plus the focus scale. The fill itself starts on the text column's
+        // x, the halo goes outward.
+        return AnimatedScale(
+          scale: showFocus ? FocusTheme.focusScale : 1,
+          duration: motion,
+          curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)),
+            key: ValueKey(widget.primary ? 'tvHeroCta.play.fill' : 'tvHeroCta.info.fill'),
+            duration: motion,
             curve: Curves.easeOutCubic,
+            foregroundDecoration: FocusTheme.shapeFocusRing(
+              context,
+              isFocused: showFocus,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+              // The same clear band as the category rail (D1): in Dark a
+              // focused CTA is a white fill, and a white ring against it
+              // would vanish without one.
+              gap: TvMyPleyaLayout.tileFocusRingGap * TvHig.of(context),
+            ),
             height: TvHomeLayout.heroActionHeight * scale,
             padding: EdgeInsets.symmetric(horizontal: TvHomeLayout.heroActionPaddingHorizontal * scale),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(TvHomeLayout.heroActionRadius * scale),
+              borderRadius: BorderRadius.circular(radius),
               boxShadow: showFocus
                   ? [
                       BoxShadow(
@@ -633,7 +642,8 @@ class _HeroPillState extends State<_HeroPill> {
                 ],
                 Text(
                   widget.label,
-                  style: TextStyle(color: fg, fontSize: TvHomeLayout.heroActionFontSize * scale, fontWeight: .w600),
+                  // VIS-0925-G (DEC-139): the CTA label in Body (29 pt), not 25.
+                  style: TextStyle(color: fg, fontSize: TvHig.body * TvHig.of(context), fontWeight: .w600),
                 ),
               ],
             ),

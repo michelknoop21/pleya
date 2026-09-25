@@ -17,6 +17,7 @@ import 'package:pleya/utils/tv_hig.dart';
 import 'package:pleya/widgets/setting_tile.dart';
 import 'package:pleya/widgets/settings_section.dart';
 import 'package:pleya/widgets/tv/tv_menu_grid.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 void main() {
   const view = Size(1038, 584);
@@ -93,5 +94,35 @@ void main() {
     final glyph = tester.getRect(find.byIcon(Symbols.palette_rounded));
     expect(glyph.left, lessThan(tester.getRect(find.text('Uiterlijk')).left));
     expect(glyph.bottom, greaterThan(tester.getRect(find.text('Uiterlijk')).top));
+  });
+
+  // VIS-0925-G (DEC-139): the text keeps its HIG size, the air shrinks.
+  group('VIS-0925-G targeted densification', () {
+    testWidgets('a two-line settings row is at most 84 pt, a one-line row 56', (tester) async {
+      await pump(
+        tester,
+        TvSettingsDensity(
+          child: SettingsGroup(
+            children: [
+              SettingNavigationTile(icon: Symbols.contrast_rounded, title: 'Thema', subtitle: 'OLED', onTap: () {}),
+              SettingNavigationTile(icon: Symbols.language_rounded, title: 'Taal', onTap: () {}),
+            ],
+          ),
+        ),
+      );
+      final rows = find.byType(ListTile);
+      expect(points(tester.getSize(rows.at(0)).height), lessThanOrEqualTo(84.5));
+      expect(points(tester.getSize(rows.at(1)).height), lessThanOrEqualTo(56.5));
+      // The text did not shrink with the row.
+      expect(fontPoints(tester, 'Thema'), closeTo(TvHig.body, 0.1));
+      expect(fontPoints(tester, 'OLED'), closeTo(TvHig.caption1, 0.1));
+    });
+
+    test('catalog card text is at least the tvOS minimum on the canonical canvas', () {
+      // Tokens go through scaleOf (0.85 on 1038x584), then the 1.85 wrapper.
+      double pt(double token) => points(token * 0.85);
+      expect(pt(TvCatalogLayout.cardMetaFontSize), greaterThanOrEqualTo(TvHig.caption2));
+      expect(pt(TvCatalogLayout.cardTitleFontSize), greaterThanOrEqualTo(TvHig.caption1));
+    });
   });
 }

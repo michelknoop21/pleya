@@ -116,9 +116,7 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    final ink = tk.text.withValues(
-      alpha: tag.muted ? TvCatalogLayout.inkSecondary * 0.8 : TvCatalogLayout.inkSecondary,
-    );
+    final ink = tk.text.withValues(alpha: tag.muted ? tvCatalogTagMutedInk : TvCatalogLayout.inkSecondary);
 
     return CustomPaint(
       painter: _TagOutlinePainter(
@@ -202,3 +200,9 @@ class _TagOutlinePainter extends CustomPainter {
   bool shouldRepaint(_TagOutlinePainter old) =>
       old.color != color || old.radius != radius || old.dashed != dashed || old.scale != scale;
 }
+
+/// Ink of a muted (resting) tag such as "Populair nu". It was the secondary
+/// ink at 80% (0.496), 3.49:1 on the Light page at 18 pt; the catalog tertiary
+/// ink keeps it quieter than a chosen tag and above 4.5:1 (VIS-0925 Light
+/// audit). The dashed outline already says it is not a narrowing.
+const double tvCatalogTagMutedInk = TvCatalogLayout.inkTertiary;

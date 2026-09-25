@@ -4,10 +4,12 @@ import '../focus/card_focus_scope.dart';
 import '../focus/focus_theme.dart';
 import '../focus/focusable_wrapper.dart';
 import '../theme/mono_tokens.dart';
+import '../theme/tv_switch_theme.dart';
 import '../utils/platform_detector.dart';
 import '../utils/tv_hig.dart';
 import 'app_icon.dart';
 import 'settings_rows.dart';
+import 'tv/tv_unified_layout.dart';
 
 export 'settings_rows.dart';
 
@@ -26,9 +28,10 @@ const EdgeInsets kSettingRowPadding = EdgeInsets.symmetric(horizontal: 16, verti
 EdgeInsetsGeometry? settingRowPadding() => PlatformDetector.isTV() ? null : kSettingRowPadding;
 
 /// DENS1: settings rows on TV in Apple's tvOS HIG sizes. Title in Body (29 pt),
-/// value line in Caption 1 (25 pt), a 12 pt vertical inset and no enforced
-/// minimum height. Without it a two-line row inherited `ListTile`'s dense
-/// minimum of 64 logical pixels plus phone padding, which the TV wrapper turns
+/// value line in Caption 1 (25 pt), a 10 pt vertical inset and no enforced
+/// minimum height. VIS-0925-G (DEC-139) took the rows from 60/92 pt to 56/84:
+/// the text stays at HIG size, the air around it shrinks. Without it a
+/// two-line row inherited `ListTile`'s dense minimum of 64 logical pixels plus phone padding, which the TV wrapper turns
 /// into a 138 pt row around 26/22 pt text: 4.5 rows on a screen that holds 9.
 /// Off TV it returns [child] unchanged.
 class TvSettingsDensity extends StatelessWidget {
@@ -41,27 +44,32 @@ class TvSettingsDensity extends StatelessWidget {
     if (!PlatformDetector.isTV()) return child;
     final pt = TvHig.of(context);
     final t = tokens(context);
-    return ListTileTheme.merge(
-      dense: false,
-      visualDensity: VisualDensity.standard,
-      minTileHeight: 0,
-      minVerticalPadding: 0,
-      minLeadingWidth: 0,
-      horizontalTitleGap: 20 * pt,
-      contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 12 * pt),
-      titleTextStyle: TextStyle(
-        color: t.text,
-        fontSize: TvHig.body * pt,
-        height: TvHig.bodyLeading / TvHig.body,
-        fontWeight: FontWeight.w500,
+    // The TV switch theme (VIS-0925-C), shared with the overlay sheets.
+    return TvSwitchTheme(
+      child: ListTileTheme.merge(
+        dense: false,
+        visualDensity: VisualDensity.standard,
+        minTileHeight: 0,
+        minVerticalPadding: 0,
+        minLeadingWidth: 0,
+        horizontalTitleGap: 20 * pt,
+        contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 10 * pt),
+        titleTextStyle: TextStyle(
+          color: t.text,
+          fontSize: TvHig.body * pt,
+          height: TvHig.bodyLeading / TvHig.body,
+          fontWeight: FontWeight.w500,
+        ),
+        subtitleTextStyle: TextStyle(
+          color: t.textMuted,
+          fontSize: TvHig.caption1 * pt,
+          // 28 pt leading, not the table's 32: one line under a Body title needs
+          // no extra lead of its own.
+          height: 28 / TvHig.caption1,
+        ),
+        leadingAndTrailingTextStyle: TextStyle(color: t.textMuted, fontSize: TvHig.caption1 * pt),
+        child: child,
       ),
-      subtitleTextStyle: TextStyle(
-        color: t.textMuted,
-        fontSize: TvHig.caption1 * pt,
-        height: TvHig.caption1Leading / TvHig.caption1,
-      ),
-      leadingAndTrailingTextStyle: TextStyle(color: t.textMuted, fontSize: TvHig.caption1 * pt),
-      child: child,
     );
   }
 }
@@ -71,6 +79,15 @@ const double kSettingsOutlineAlpha = 0.6;
 
 /// Alpha of the hairline [SettingsRows] paints between two visible rows.
 const double kSettingsSeparatorAlpha = 0.5;
+
+/// Alpha of the hairline between rows on TV (VIS-0925-C): lighter than the
+/// focus ring, so a card reads as one surface and not as a table.
+const double kTvSettingsSeparatorAlpha = 0.35;
+
+/// Left inset of a row separator on TV, in HIG points: the row inset (24),
+/// the icon badge (44) and the title gap (20), so the line starts under the
+/// title as on tvOS.
+const double kTvSettingsSeparatorIndentPt = 88;
 
 /// Width of the leading focus marker a settings row paints instead of a border.
 const double kSettingsFocusBarWidth = 3;
@@ -124,7 +141,8 @@ class SettingsSectionHeader extends StatelessWidget {
     final tv = PlatformDetector.isTV();
     final pt = tv ? TvHig.of(context) : 1.0;
     return Padding(
-      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 32 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 10),
+      // VIS-0925-G: less air between the page title, this label and the card.
+      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 20 * pt, 24 * pt, 8 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 10),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -165,6 +183,9 @@ class SettingsGroup extends StatelessWidget {
     final t = tokens(context);
     if (children.isEmpty) return const SizedBox.shrink();
     final radius = BorderRadius.circular(t.radiusMd);
+    // VIS-0925-C: on TV no outer border and lighter, indented separators. The
+    // bordered card with full-width hairlines read as a table on the tv.
+    final tv = PlatformDetector.isTV();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -175,14 +196,22 @@ class SettingsGroup extends StatelessWidget {
           // (see SettingsRows below) so it always wins over a full-bleed
           // focus fill instead of being painted over by the first/last row.
           decoration: BoxDecoration(color: t.surface, borderRadius: radius),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(color: settingsOutlineColor(context)),
-          ),
+          foregroundDecoration: tv
+              ? null
+              : BoxDecoration(
+                  borderRadius: radius,
+                  border: Border.all(color: settingsOutlineColor(context)),
+                ),
           clipBehavior: Clip.antiAlias,
           child: Material(
             type: MaterialType.transparency,
-            child: SettingsRows(separatorColor: settingsSeparatorColor(context), children: children),
+            child: SettingsRows(
+              separatorColor: tv
+                  ? t.outline.withValues(alpha: kTvSettingsSeparatorAlpha)
+                  : settingsSeparatorColor(context),
+              separatorIndent: tv ? kTvSettingsSeparatorIndentPt * TvHig.of(context) : kSettingsSeparatorIndent,
+              children: children,
+            ),
           ),
         ),
       ],
@@ -257,6 +286,29 @@ class _SettingRowSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = tokens(context);
     final focused = CardFocusScope.maybeOf(context) ?? false;
+    if (PlatformDetector.isTV()) {
+      // VIS-0925-C: on TV a row takes the same focus as every tile on the
+      // page, the lighter ink fill plus the white ring, instead of a third
+      // focus language (a leading bar). In foregroundDecoration, so the ring
+      // never becomes padding and never nudges the row's content.
+      return AnimatedContainer(
+        duration: FocusTheme.getAnimationDuration(context),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: focused ? t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha) : Colors.transparent,
+          borderRadius: BorderRadius.circular(t.radiusMd),
+        ),
+        // Inside the card's clip, so the Light separator has to stay inside
+        // the row (FocusRingBorder.separatorInside).
+        foregroundDecoration: FocusTheme.focusDecoration(
+          context,
+          isFocused: focused,
+          borderRadius: t.radiusMd,
+          separatorInside: true,
+        ),
+        child: child,
+      );
+    }
     return AnimatedContainer(
       duration: FocusTheme.getAnimationDuration(context),
       curve: Curves.easeOutCubic,

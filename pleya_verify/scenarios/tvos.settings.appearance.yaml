@@ -52,7 +52,11 @@ steps:
   - assert: {id: "my_pleya.section.tile[setting.tv_reduce_motion]", state: {value: false}}
 
   # Down the Weergave card onto "titels onder posters": theme, language,
-  # density, view mode, episode poster mode, full card, focus glow, titles.
+  # density, view mode, episode poster mode, Liquid Glass, full card, focus
+  # glow, titles. Eight downs since the Liquid Glass row (PR #95) landed
+  # between episode poster mode and full card; this walk still counted seven.
+  - press: down
+  - settle: 250
   - press: down
   - settle: 250
   - press: down

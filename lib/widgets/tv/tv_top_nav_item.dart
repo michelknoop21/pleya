@@ -71,7 +71,9 @@ class TvTopNavItem extends StatelessWidget {
     final delegateFocus = glass && isActive;
     final idleInk = tk.text.withValues(alpha: glass ? kTvNavGlassInactiveInk : TvTopNavLayout.inactiveInk);
     final ink = isActive ? tk.bg : idleInk;
-    final shadows = glass && !isActive ? kGlassTextShadows : null;
+    // VIS-0925-D: the drop shadow keeps light ink legible on the dark plate.
+    // On the Light plate the ink is dark and a dark shadow only smears it.
+    final shadows = glass && !isActive && !tk.isLight ? kGlassTextShadows : null;
 
     Widget pill(bool activeFocused) => AnimatedContainer(
       duration: TvTopNavLayout.focusDuration,

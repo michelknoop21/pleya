@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../automation/automation_ids.dart';
+import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/tv_hig.dart';
 import '../settings_section.dart';
+import 'tv_unified_layout.dart';
 import 'tv_page_surface.dart';
 
 /// TV presentation for the existing Appearance rows. The original widgets
@@ -102,7 +104,7 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
               children: [
                 for (var index = 0; index < sections.length; index++)
                   Padding(
-                    padding: EdgeInsets.only(bottom: 12 * pt, right: TvHig.itemSpacing * pt),
+                    padding: EdgeInsets.only(bottom: 8 * pt, right: TvHig.itemSpacing * pt),
                     child: FocusableWrapper(
                       automationId: AutomationIds.settingsAppearanceCategory,
                       automationInstance: index.toString(),
@@ -110,23 +112,26 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
                       focusNode: _categoryNode(index),
                       autofocus: index == 0,
                       disableScale: true,
+                      // VIS-0925-A: the ring follows the pill's own corners,
+                      // one ring gap out.
+                      borderRadius: FocusTheme.ringRadiusAround(
+                        tk.radiusMd,
+                        gap: TvMyPleyaLayout.tileFocusRingGap * pt,
+                      ),
                       onSelect: () => setState(() => _selected = index),
                       onNavigateRight: () => _enterCategory(index),
                       child: GestureDetector(
                         onTap: () => setState(() => _selected = index),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 16 * pt),
-                          decoration: BoxDecoration(
-                            color: selected == index ? tk.surfaceElevated : tk.surface,
-                            borderRadius: BorderRadius.circular(tk.radiusMd),
-                            border: Border.all(color: selected == index ? tk.textMuted : tk.outline),
-                          ),
-                          child: Text(
-                            sections[index].title,
-                            style: TextStyle(
-                              color: tk.text,
-                              fontSize: TvHig.body * pt,
-                              fontWeight: selected == index ? FontWeight.w700 : FontWeight.w500,
+                        child: Padding(
+                          // A gap between ring and pill, so a focused selected
+                          // (white) pill in Dark still shows its white ring.
+                          padding: EdgeInsets.all(TvMyPleyaLayout.tileFocusRingGap * pt),
+                          child: Builder(
+                            builder: (context) => _CategoryPill(
+                              title: sections[index].title,
+                              selected: selected == index,
+                              focused: Focus.of(context).hasFocus,
+                              pt: pt,
                             ),
                           ),
                         ),
@@ -154,4 +159,50 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
       children: const [],
     );
   }
+}
+
+/// VIS-0925-B: one rule for selected versus focused on the category rail.
+///
+/// Selected is a filled pill in the theme's ink with a [MonoTokens.bg] label,
+/// the same as the active top-navigation pill, and carries no ring. Focused is
+/// the white ring from [FocusableWrapper] plus the lighter tile fill. The
+/// idle pill has the quiet tile fill and no border: the old 1px outlines on
+/// every pill made selected (#EDEDED with a rim) and idle (#FFF with a rim)
+/// indistinguishable in Light.
+class _CategoryPill extends StatelessWidget {
+  const _CategoryPill({required this.title, required this.selected, required this.focused, required this.pt});
+
+  final String title;
+  final bool selected;
+  final bool focused;
+  final double pt;
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    return Container(
+      // VIS-0925-G: 12 pt, not 16, around a Body label: 66 pt per category.
+      padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 12 * pt),
+      decoration: BoxDecoration(
+        color: tvCategoryPillFill(tk, selected: selected, focused: focused),
+        borderRadius: BorderRadius.circular(tk.radiusMd),
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: selected ? tk.bg : tk.text,
+          fontSize: TvHig.body * pt,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+/// Fill of a category pill; public so the contrast test measures the same
+/// colors the rail paints.
+@visibleForTesting
+Color tvCategoryPillFill(MonoTokens tk, {required bool selected, required bool focused}) {
+  if (selected) return tk.text;
+  return tk.text.withValues(alpha: focused ? TvMyPleyaLayout.tileFocusedFillAlpha : TvMyPleyaLayout.tileFillAlpha);
 }

@@ -704,7 +704,7 @@ void main() {
         .descendant(of: find.byType(CompositedTransformTarget), matching: find.byType(AnimatedContainer))
         .first;
     final borderContainer = tester.widget<AnimatedContainer>(cardFinder);
-    final border = (borderContainer.foregroundDecoration as BoxDecoration).border as Border;
+    final ring = ((borderContainer.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring;
     final cardSize = tester.getSize(cardFinder);
     // The focus scale wraps the glow overlay (CompositedTransformTarget);
     // MediaCard's own Pressable also mounts an (idle) AnimatedScale below it.
@@ -715,7 +715,7 @@ void main() {
     // The border stays in-card; the glow now renders in an overlay that follows
     // the focused card so it paints above siblings on all sides.
     expect(borderContainer.decoration, isNull);
-    expect(border.top.strokeAlign, BorderSide.strokeAlignOutside);
+    expect(ring.strokeAlign, BorderSide.strokeAlignOutside);
     expect(find.byType(ShaderMask), findsNothing);
     expect(find.byType(CompositedTransformTarget), findsOneWidget);
     expect(find.byType(CompositedTransformFollower), findsOneWidget);
@@ -869,8 +869,8 @@ void main() {
     final focusDecoration = find.descendant(
       of: find.ancestor(of: find.text('Visible Movie'), matching: find.byType(MediaCard)),
       matching: find.byWidgetPredicate((widget) {
-        if (widget is! AnimatedContainer || widget.foregroundDecoration is! BoxDecoration) return false;
-        return (widget.foregroundDecoration as BoxDecoration).border is Border;
+        if (widget is! AnimatedContainer || widget.foregroundDecoration is! ShapeDecoration) return false;
+        return (widget.foregroundDecoration! as ShapeDecoration).shape is FocusRingBorder;
       }),
     );
 

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../focus/dpad_navigator.dart';
 import '../focus/input_mode_tracker.dart';
 import '../focus/key_event_utils.dart';
+import '../theme/tv_switch_theme.dart';
 import '../utils/platform_detector.dart';
 import 'overlay_sheet_geometry.dart';
 
@@ -717,6 +718,9 @@ class _OverlaySheetHostState extends State<OverlaySheetHost> with SingleTickerPr
     Widget content = _pageStack.isNotEmpty ? Builder(builder: _pageStack.last.builder) : const SizedBox.shrink();
     // Keep sheet scrollables from attaching to the route's primary controller.
     content = PrimaryScrollController.none(child: content);
+    // On TV an off switch in a sheet (4K request, recording options,
+    // filters) sits on `colorScheme.surface`, its own default track colour.
+    content = TvSwitchTheme(child: content);
 
     // Wrap content in NotificationListener for scroll-aware drag-to-dismiss
     if (showHandle) {

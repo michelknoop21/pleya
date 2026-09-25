@@ -400,6 +400,12 @@ class AutomationIds {
   /// shows, or null while there is nothing to count.
   static const String tvSearchPill = 'tv.search.pill';
 
+  /// The search field above Aanvragen on TV (REQ-SEARCH-ROUTE).
+  static const String seerrSearchField = 'seerr.search.field';
+
+  /// The inbox button beside that field, which opens Alle aanvragen.
+  static const String seerrSearchInbox = 'seerr.search.inbox';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -583,6 +589,8 @@ class AutomationIds {
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
+    {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
+    {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},

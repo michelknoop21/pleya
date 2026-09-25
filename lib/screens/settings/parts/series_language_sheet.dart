@@ -17,6 +17,7 @@ import '../../../media/pleya_profile_language_preferences.dart';
 import '../../../media/track_language_choice.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/layout_constants.dart';
+import '../../../utils/platform_detector.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/overlay_sheet_geometry.dart';
 import '../../../widgets/tv/tv_catalog_sort_panel.dart';
@@ -241,10 +242,17 @@ class _ReadRow extends StatelessWidget {
           globalValue,
           style: TextStyle(
             fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
-            color: mono.text.withValues(alpha: TvSourcePickerLayout.inkTertiary),
+            color: mono.text.withValues(alpha: seriesSheetGlobalValueInk()),
           ),
         ),
       ],
     );
   }
 }
+
+/// Ink of the "globally: ..." value on a row of this panel. The panel also
+/// opens off TV (the phone, tablet and desktop language list), and the TV
+/// contrast audit's raise of [TvSourcePickerLayout.inkTertiary] (VIS-0925-H) is
+/// a TV decision: off TV the row keeps the 0.5 it had before.
+@visibleForTesting
+double seriesSheetGlobalValueInk() => PlatformDetector.isTV() ? TvSourcePickerLayout.inkTertiary : 0.5;

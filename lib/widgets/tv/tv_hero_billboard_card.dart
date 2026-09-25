@@ -187,18 +187,25 @@ class TvHeroBillboardCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           artwork,
-          // H20: the wash itself is [MonoTokens.artworkScrim] (`tk.bg`), but
-          // its *strength* forks on theme — `artworkScrimAlpha`'s own doc: a
-          // light-theme veil is white, so it brightens the artwork under the
-          // text instead of dimming it, and needs to wash harder before
-          // releasing the image.
-          _ReadingScrim(color: tk.artworkScrim, alphaFor: (a) => _themed(tk, a)),
+          // The wash is [MonoTokens.artworkScrim] (`tk.bg`). In Light that is
+          // white, so the scrim brightens the artwork; VIS-0925-E gives Light
+          // its own, smaller ramp (see [TvHomeLayout.heroScrimReadingStopsLight]).
+          _ReadingScrim(
+            color: tk.artworkScrim,
+            stops: tk.isLight ? TvHomeLayout.heroScrimReadingStopsLight : TvHomeLayout.heroScrimReadingStops,
+            alphas: tk.isLight ? TvHomeLayout.heroScrimReadingAlphasLight : TvHomeLayout.heroScrimReadingAlphas,
+          ),
           _VerticalScrim(
             color: tk.artworkScrim,
             stops: TvHomeLayout.heroScrimVerticalStops,
-            alphas: [for (final a in TvHomeLayout.heroScrimVerticalAlphas) _themed(tk, a)],
+            alphas: tk.isLight ? TvHomeLayout.heroScrimVerticalAlphasLight : TvHomeLayout.heroScrimVerticalAlphas,
           ),
           Positioned(
+            // Title, CTA fill and the rail heading share the page inset, the
+            // edge every nested page uses too; the CTA ring goes outward from
+            // there. Only a rail tile's artwork sits one ring gap further in,
+            // because the tile keeps its ring band inside the page edge (VER3).
+            // Decided by Michel after the VIS-0925 review (D3).
             left: TvDiscoveryLayout.pageInset * scale,
             // `right`, not `width`. The *text* column is capped at
             // [TvHomeLayout.heroTextMaxWidth] (see `_HeroText`), but the CTA
@@ -235,11 +242,6 @@ class TvHeroBillboardCard extends StatelessWidget {
   }
 }
 
-/// A dark-theme scrim strength, resolved for the active theme: light keeps
-/// the same shape and washes a little harder (H20), never past opaque.
-double _themed(MonoTokens tk, double dark) =>
-    tk.artworkScrimAlpha(dark: dark, light: (dark == 0 ? 0.0 : dark + 0.08).clamp(0.0, 1.0));
-
 /// The backdrop stepping back once a row holds the focus (mockup 30 B): a veil
 /// of [TvHomeLayout.heroDimAlpha] over the whole picture, and a vertical scrim
 /// that reaches the page ground at 40% so the focused band under it sits on
@@ -269,11 +271,13 @@ class TvHeroDimVeil extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: tk.artworkScrim.withValues(alpha: _themed(tk, TvHomeLayout.heroDimAlpha))),
+            // One strength in every theme: a Light hero is as clear as a Dark one,
+            // dimmed or not (VIS-0925 review, Michel).
+            ColoredBox(color: tk.artworkScrim.withValues(alpha: TvHomeLayout.heroDimAlpha)),
             _VerticalScrim(
               color: tk.artworkScrim,
               stops: TvHomeLayout.heroDimScrimStops,
-              alphas: [for (final a in TvHomeLayout.heroDimScrimAlphas) _themed(tk, a)],
+              alphas: TvHomeLayout.heroDimScrimAlphas,
             ),
           ],
         ),
@@ -293,14 +297,13 @@ class TvHeroDimVeil extends StatelessWidget {
 /// resolves the geometry against the ambient direction, so nothing else
 /// changes.
 class _ReadingScrim extends StatelessWidget {
-  const _ReadingScrim({required this.color, required this.alphaFor});
+  const _ReadingScrim({required this.color, required this.stops, required this.alphas});
 
   final Color color;
 
-  /// Theme-resolves one of [TvHomeLayout.heroScrimReadingAlphas] — this widget
-  /// never reads [MonoTokens] itself, so it cannot silently drift back to a
-  /// single hardcoded strength for both themes (H20).
-  final double Function(double dark) alphaFor;
+  /// Already theme-resolved by the caller, like [_VerticalScrim.alphas].
+  final List<double> stops;
+  final List<double> alphas;
 
   @override
   Widget build(BuildContext context) {
@@ -310,8 +313,8 @@ class _ReadingScrim extends StatelessWidget {
           gradient: LinearGradient(
             begin: AlignmentDirectional.centerStart,
             end: AlignmentDirectional.centerEnd,
-            colors: [for (final a in TvHomeLayout.heroScrimReadingAlphas) color.withValues(alpha: alphaFor(a))],
-            stops: TvHomeLayout.heroScrimReadingStops,
+            colors: [for (final a in alphas) color.withValues(alpha: a)],
+            stops: stops,
           ),
         ),
       ),

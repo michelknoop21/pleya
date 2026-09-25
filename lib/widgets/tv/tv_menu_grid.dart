@@ -26,6 +26,7 @@ import '../../focus/focus_memory_tracker.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/tv_hig.dart';
+import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import 'tv_page_surface.dart';
 import 'tv_unified_layout.dart';
@@ -267,7 +268,9 @@ class TvMenuTile extends StatelessWidget {
       onNavigateRight: onNavigateRight,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
-      borderRadius: radius,
+      // VIS-0925-A: the ring surrounds the tile plus its ring gap, so its
+      // radius follows the tile, the gap and the ring width.
+      borderRadius: FocusTheme.ringRadiusAround(radius, gap: TvMyPleyaLayout.tileFocusRingGap * scale),
       automationId: AutomationIds.myPleyaSectionTile,
       automationInstance: automationInstance,
       automationRole: 'grid.item',

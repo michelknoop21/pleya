@@ -31,6 +31,10 @@ steps:
   # HOME1 (`eed2a795`, 4 September) the hero surface is full-bleed and starts
   # at 0, so the edge is read from its content: the Play button. TV8's full
   # suite found this file still measuring the surface.
+  #
+  # VIS-0925 review D3 (Michel, 25 September): the hero text and CTA fill stay
+  # on the page edge like every nested page; only a rail tile's artwork sits one
+  # ring gap further in (VER3).
   - assert: {id: discover.hero.play, leftInset: 75.48}
 
   - press: right

@@ -159,7 +159,10 @@ class TvSourcePickerLayout {
   /// until the hierarchy "looks" right on a monitor at arm's length.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.68;
-  static const double inkTertiary = 0.5;
+  // VIS-0925 Light audit: 0.5 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.62 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.62;
   static const double inkQuiet = 0.5;
 
   /// The same ladder on a row nobody can pick. Compressed and dimmed as a
@@ -320,15 +323,18 @@ class TvCatalogLayout {
   /// other measurement on the page still lines up against this one.
   static double cardContentInset(double scale) => FocusTheme.focusBorderWidth + cardFocusRingGap * scale;
 
-  /// Title and context line inside the footer. 14 renders at ~11.9 logical,
-  /// ~22 reference px — inside hoofdstuk 8.3's "card title 18–21" at the top,
-  /// which is where a two-line title still reads at three metres.
-  static const double cardTitleFontSize = 14;
+  /// Title and context line inside the footer, in HIG points since
+  /// VIS-0925-G (DEC-139): the title is Caption 1 (25 pt) and the meta line
+  /// Caption 2 (23 pt), tvOS's minimum. They were 22 and 18 pt. These tokens go
+  /// through `scaleOf` like the rest of this class, so a point is 0.6362 of a
+  /// base unit on the canonical canvas (584 / 1080 / 0.85): 16 is 25.1 pt and
+  /// 15 is 23.6 pt, whole numbers so the grid arithmetic stays exact.
+  static const double cardTitleFontSize = 16;
 
   /// Line height of a card title, and the multiplier that reserves two lines of
   /// it whether the title needs both or not — see the card's own comment.
   static const double cardTitleLineHeight = 1.2;
-  static const double cardMetaFontSize = 11.5;
+  static const double cardMetaFontSize = 15;
 
   /// Line height of the meta line, named for the same reason the title's is:
   /// [cardHeight] has to add up the card the footer actually draws.
@@ -550,11 +556,19 @@ class TvCatalogLayout {
   /// same reasoning as [TvSourcePickerLayout]'s, so a card and a source row
   /// read as one design system rather than two.
   static const double inkPrimary = 1;
-  static const double inkSecondary = 0.62;
+
+  /// 0.7 since the VIS-0925 recheck: the audit raised [inkTertiary] to 0.6,
+  /// and at the old 0.62 the meta line and the third line (and a chosen and a
+  /// muted selection tag) read as one grey. Raised rather than lowering the
+  /// tertiary, which has to stay above 4.5:1 in Light.
+  static const double inkSecondary = 0.7;
 
   /// The third tier, for the one line that is context about a card rather than
   /// a statement of what it is: DEC-108's "Aangevraagd door michel".
-  static const double inkTertiary = 0.42;
+  // VIS-0925 Light audit: 0.42 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.6 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.6;
 
   /// Fill and outline of a header action capsule, as alphas on
   /// `MonoTokens.text` over the page background.
@@ -1145,7 +1159,10 @@ class TvDiscoveryLayout {
   /// Ink alphas on `MonoTokens.text` for the context block's three tiers.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.7;
-  static const double inkTertiary = 0.56;
+  // VIS-0925 Light audit: 0.56 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.62 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.62;
 }
 
 /// The TV root shell's top navigation (fase 7, hoofdstuk 6.2 and the shared
@@ -1262,8 +1279,7 @@ class TvMyPleyaLayout {
   static const double titleGap = 16;
   static const double groupGap = 18;
 
-  /// The profile header card.
-  static const double headerRadius = 12;
+  /// The profile header row (no card since VIS-0925-C).
   static const double headerPadding = 18;
   static const double avatarSize = 46;
   static const double headerNameFontSize = 22;
@@ -1286,12 +1302,9 @@ class TvMyPleyaLayout {
   static const double tileGap = 14;
   static const double tileRadius = 10;
   static const double tilePadding = 14;
-  static const double tileMinHeight = 74;
   static const double tileIconSize = 19;
   static const double tileTitleFontSize = 15;
   static const double tileSubtitleFontSize = 12;
-  static const double tileCountFontSize = 15;
-  static const double tileIconTitleGap = 14;
   static const double tileTitleSubtitleGap = 3;
 
   /// Fill of a tile at rest, and when it holds the focus.
@@ -1314,7 +1327,10 @@ class TvMyPleyaLayout {
   /// Ink tiers on `MonoTokens.text`.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.7;
-  static const double inkTertiary = 0.5;
+  // VIS-0925 Light audit: 0.5 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.62 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.62;
 }
 
 /// Home tokens: the full-bleed hero and where the rails sit under it
@@ -1427,12 +1443,13 @@ class TvHomeLayout {
   static const double heroActionHeight = 40;
   static const double heroActionRadius = 20;
   static const double heroActionPaddingHorizontal = 20;
-  static const double heroActionGap = 3;
-  static const double heroActionFontSize = 16;
+
+  /// Between two CTA fills. The pills no longer reserve a ring band of their
+  /// own (VIS-0925-E: the ring stands outside the fill), so the gap carries the
+  /// room two outside rings need without touching.
+  static const double heroActionGap = 11;
   static const double heroActionIconSize = 19;
   static const double heroActionIconLabelGap = 8;
-
-  static const double heroActionFocusRingGap = 4;
 
   static const double heroSecondaryFillAlpha = 0.26;
 
@@ -1447,6 +1464,31 @@ class TvHomeLayout {
   /// so they stand on the ground and not on the picture.
   static const List<double> heroScrimVerticalStops = [0, 0.18, 0.52, 0.78, 0.96];
   static const List<double> heroScrimVerticalAlphas = [0.66, 0, 0, 0.70, 1];
+
+  /// Light (VIS-0925-E, review and recheck). The Light wash is `tk.bg`,
+  /// white, so every alpha brightens the picture instead of dimming it; H20's
+  /// +0.08 on top of the dark ramp was a white haze over 60% of the backdrop on
+  /// the hardware photos of build 303. Michel's rule: the Light artwork is as
+  /// clear as in Dark and OLED, and the scrim only does what the text needs.
+  ///
+  /// * Across the text column, which ends at 51% of the canonical canvas
+  ///   (`(pageInset + heroTextMaxWidth) * 0.85 / 1038`): a flat 0.54. Dark ink
+  ///   over the darkest artwork needs 0.531 for the synopsis to clear 4.5:1
+  ///   (`tv_hero_scrim_light_test.dart`); the dark ramp's heavier 0.92 at the
+  ///   left edge is not needed in Light.
+  /// * From the end of the column the wash falls at the dark ramp's own
+  ///   steepest slope (0.58 over 28% of the width), never faster: the first
+  ///   version dropped 0.43 in 4% and drew a hard vertical seam across the
+  ///   picture (recheck item 1).
+  /// * At 73.6% it meets the dark ramp (0.072) and follows it to 0.
+  ///
+  /// No wash under the top navigation, only the ground under the rail.
+  static const List<double> heroScrimReadingStopsLight = [0, 0.51, 0.736, 1];
+  static const List<double> heroScrimReadingAlphasLight = [0.54, 0.54, 0.072, 0];
+
+  /// The first x where the Light reading ramp coincides with the dark one.
+  static const double heroScrimLightMeetsDark = 0.736;
+  static const List<double> heroScrimVerticalAlphasLight = [0, 0, 0, 0.70, 1];
 
   /// Once a row holds the focus the backdrop steps back (mockup 30 B): a veil
   /// at [heroDimAlpha] over the whole picture, and a steeper vertical scrim
