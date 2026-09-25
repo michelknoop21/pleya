@@ -2951,3 +2951,24 @@ vertalingen `mobileDetail.similarTab` en `mobileDetail.extrasTab` zijn niet meer
 Verify-scenario's `ios.detail.northstar` en `ios.detail-episodes.northstar` maken alleen
 schermafbeeldingen en veranderen niet; de comp `serie-detail-comp` (register rij 63) is hiermee
 achterhaald.
+
+## DEC-132: De avatar in de mobiele header opent de profielwisselaar
+
+**Date:** 2026-09-25
+**Status:** accepted, scherpt [DEC-023](#dec-023) aan
+
+**Context:** Michel (25 september): "iOS account switcher op Home werkt niet, het icoon rechtsboven
+doet niks." Dat klopte: sinds `86f04463` (5 september) is de avatar in `MobilePageHeader` een
+kaal plaatje met automation-rol `image`. De tik was toen weggehaald omdat geen aanroeper hem
+doorgaf, met de notitie dat profielwisselen in fase 6 een eigen ingang zou krijgen; die ingang is
+er nooit gekomen. DEC-023 verhuisde het accountmenu naar Mijn Pleya om te voorkomen dat een
+telefoon twee wisselaars heeft.
+
+**Decision:** Een tik op de avatar opent `AccountUiActions.openProfiles`, dus hetzelfde
+`ProfileSwitchScreen` als "Profiel wisselen" in Mijn Pleya. Dat is geen tweede wisselaar en geen
+tweede menu, maar een tweede ingang naar dezelfde lijst, met dezelfde PIN-flow. Het geldt voor
+Home en voor de Series- en Filmslanding, want die delen de header. De automation-rol van
+`home.header.avatar` en `landing.header.avatar` gaat terug naar `button`.
+
+**Consequences:** Wisselen kost op mobiel weer één tik minder. Uitloggen en de overige
+accountacties blijven in Mijn Pleya, zoals DEC-023 bepaalde.
