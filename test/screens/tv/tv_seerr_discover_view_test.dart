@@ -13,6 +13,7 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/seerr/seerr_tv_search_row.dart';
 import 'package:pleya/navigation/tv/tv_nested_back_owner.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/focusable_button.dart';
 import 'package:pleya/models/seerr/seerr_media.dart';
 import 'package:pleya/screens/seerr/seerr_discover_filter_bar.dart';
@@ -542,6 +543,27 @@ void main() {
 
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(topnav.hasFocus, isTrue, reason: 'only UP from the field reaches the top navigation');
+    });
+
+    // Review FIX 3 and D2: the focused field shows the white ring, and the
+    // field starts on the page title's x.
+    testWidgets('the focused field carries the ring, and sits on the title x', (tester) async {
+      await pumpRoute(tester);
+      topnav.requestFocus();
+      await tester.pumpAndSettle();
+      Color ringColor() {
+        final box = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('seerrSearchField.ring')));
+        return ((box.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring.color;
+      }
+
+      expect(ringColor().a, 0, reason: 'no ring while the field does not hold the focus');
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(field.hasFocus, isTrue);
+      expect(ringColor(), Colors.white);
+
+      final title = tester.getRect(find.text(t.seerr.title));
+      final pill = tester.getRect(find.byKey(const ValueKey('seerrSearchField.ring')));
+      expect(pill.left, closeTo(title.left, 0.5));
     });
 
     testWidgets('RIGHT to the inbox button, which has the same UP and DOWN, and LEFT back', (tester) async {
