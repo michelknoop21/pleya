@@ -55,9 +55,18 @@ under `Notes`.
 - scans en jobs in venster 2, job als achtste foutdomein (S2.4)
 - scans en jobs over HTTP, annuleren en retry (S2.4)
 - backoff op probe_attempts na een mislukte probe (S2.4)
+- seeds voor Omdat je X keek uit het eigen kijklog (D2, D3)
+- film- en seriedetail in één scroll, zonder tabs (DEC-131)
+- partieel signaal bij een eindstop, importer vergelijkt gewichten
+- related hubs van seeds vier tot zes voeden de kandidatenpool
+- Jellyfin-kijkgeschiedenis als tweede adapter op het interactielog
+- rij Meer met acteur of Meer van regisseur bij warme smaak
+- tvOS-icoon zonder cirkel, P + LEYA groter, warme onderrand
 
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
+- seedrijen in een eigen loader, gedrag ongewijzigd
+- discover-provider opgesplitst in eigen laders, gedrag ongewijzigd
 
 ### Fixed
 - "Opnieuw aanmelden" probeert eerst één echte refresh
@@ -78,7 +87,23 @@ under `Notes`.
 - annulering tussen claim en registratie gaat niet meer verloren (S2.4)
 - shutdown geeft failed in plaats van cancelled en een herstarte scan krijgt een verse rij (S2.4)
 - retry laat geen wees-scanronde achter bij een gelijktijdige retry (S2.4)
+- tvos_beta draait pod install op een verse worktree
 - queued scanrondes annuleren via één methode, stale scan_id, limiet naar contract
+- DENS1, instellingen en detail in Apple's tvOS-punten
+- detail en Nu aan het kijken volgen de gemonitorde server (D1)
+- seedtitel volgt de serie, zes seeds parallel, randgevallen getest (D2, D3)
+- seizoenpil altijd, informatieblok voor series, delen verankerd
+- hervatten geeft een nieuwe eindstop, dedup volgt de scoringsscope (REC-4)
+- nieuwe series tellen als getoond, afleveringidentiteit expliciet (REC-5)
+- geleende Jellyfin-verbindingen importeren niets, afspeeltijd als stempel, sync hooguit elk kwartier (REC-6)
+- DEC-132 noemt beide richtingen, klok terug remt de sync niet (REC-6)
+- persoonsrij met eigen id per naam en een bewijsdrempel (REC-7)
+- importer ziet alleen de Tautulli-fout, sessietest krijgt de verbindingsregistry (REC-9)
+- mislukte Jellyfin-sync houdt de kwartierrem aan, een falende serie stopt de rest niet
+- Jellyfin-pool en Similar vragen Genres en Studios, persoonsrijen op Jellyfin uitgesteld
+- seeds alleen van geschikte bronnen, afgewezen titels seeden niet, aanvullen tot drie
+- geleende status telt niet, tijdelijke fouten schuiven de watermark niet op, cap telt alleen positieven (REC-6)
+- avatar in de header opent de profielwisselaar (DEC-132)
 <!-- END GENERATED -->
 
 ### New
