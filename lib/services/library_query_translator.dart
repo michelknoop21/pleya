@@ -65,6 +65,12 @@ class PlexLibraryQueryTranslator implements LibraryQueryTranslator {
     if (!query.includeWatched) {
       filters['unwatched'] = '1';
     }
+    if (query.inProgressOnly) {
+      filters['inProgress'] = '1';
+    }
+    // `watchedOnly` is deliberately not translated: `unwatched=0` is not
+    // documented to mean "watched only", and a filter that might be ignored
+    // would present the whole library as matches.
     // Typed slots: emit under the Plex API names so a `LibraryQuery` built
     // from the FiltersBottomSheet (which still hands the browse tab a
     // `Map<String,String>`) round-trips back to the same wire query that the
@@ -233,7 +239,12 @@ class JellyfinLibraryQueryTranslator implements LibraryQueryTranslator {
     };
     // Jellyfin takes `Filters` as one comma-separated list. Assigning per
     // clause would let the last one win and silently drop the others.
-    final filters = <String>[if (!query.includeWatched) 'IsUnplayed', if (query.favoritesOnly) 'IsFavorite'];
+    final filters = <String>[
+      if (!query.includeWatched) 'IsUnplayed',
+      if (query.inProgressOnly) 'IsResumable',
+      if (query.watchedOnly) 'IsPlayed',
+      if (query.favoritesOnly) 'IsFavorite',
+    ];
     if (filters.isNotEmpty) {
       params['Filters'] = filters.join(',');
     }

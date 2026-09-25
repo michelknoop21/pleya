@@ -550,6 +550,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   List<String> _libraryOrderKeys() => [for (final library in _libraries.libraries) library.globalKey];
 
+  /// The Home hero's films, in slide order, for the Top Shelf carousel.
+  /// `TvHomeProjectionProvider` pushes them after each projection, so the
+  /// shelf shows exactly what the billboard rotates over. Resyncs on change.
+  void setTopShelfHero(List<MediaItem> hero) => _continueWatching.setTopShelfHero(hero);
+
   @override
   void dispose() {
     _multiServer.removeOnlineServersListener(syncToOnlineServers);

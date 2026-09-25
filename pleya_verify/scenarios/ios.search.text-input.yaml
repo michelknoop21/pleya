@@ -21,3 +21,9 @@ steps:
   - wait_until: {id: "search.results.section[movies]", timeout: 10000}
   - assert: {id: "search.results.section[movies]", insideViewport: true}
   - snapshot: search-text-input
+  # The query that found something is now this profile's history: clearing
+  # the field shows it as the newest chip.
+  - tap: {id: search.clear}
+  - wait_until: {id: "search.history.chip[0]", timeout: 5000}
+  - assert: {id: "search.history.chip[0]", insideViewport: true, state: {query: aurora}}
+  - snapshot: search-history-chip

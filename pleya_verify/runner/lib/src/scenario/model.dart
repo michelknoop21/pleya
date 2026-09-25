@@ -13,6 +13,7 @@ const Set<String> setupVerbs = {
   'seed',
   'sign_in',
   'seed_seerr',
+  'seed_profile',
   'open',
   'install',
   'launch',

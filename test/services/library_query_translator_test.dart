@@ -57,6 +57,28 @@ void main() {
       expect(params['unwatched'], '1');
     });
 
+    // python-plexapi documents `inProgress` as a boolean section filter field,
+    // encoded 1/0 like `unwatched`.
+    test('inProgressOnly sets inProgress=1', () {
+      final params = translator.toQueryParameters(const LibraryQuery(inProgressOnly: true));
+      expect(params['inProgress'], '1');
+      expect(params, isNot(contains('unwatched')));
+    });
+
+    // Plex `unwatched=0` is not documented to mean "watched only", so the
+    // translator does not guess; `unifiedFilterCapabilitiesFor` keeps the
+    // watched filter away from Plex libraries instead.
+    test('watchedOnly sends nothing to Plex rather than an unproven unwatched=0', () {
+      final params = translator.toQueryParameters(const LibraryQuery(watchedOnly: true));
+      expect(params, isNot(contains('unwatched')));
+      expect(params, isEmpty);
+    });
+
+    test('official ratings use Plex contentRating filter', () {
+      final params = translator.toQueryParameters(const LibraryQuery(officialRatings: ['PG-13', '12']));
+      expect(params['contentRating'], 'PG-13,12');
+    });
+
     test('audio languages use Plex audioLanguage filter', () {
       final params = translator.toQueryParameters(const LibraryQuery(audioLanguages: ['eng', 'nld']));
       expect(params['audioLanguage'], 'eng,nld');
@@ -120,6 +142,11 @@ void main() {
     test('genres joined with pipe separator', () {
       final params = translator.toQueryParameters(const LibraryQuery(genres: ['Action', 'Drama']));
       expect(params['Genres'], 'Action|Drama');
+    });
+
+    test('official ratings use Jellyfin OfficialRatings with pipe separator', () {
+      final params = translator.toQueryParameters(const LibraryQuery(officialRatings: ['PG-13', '12']));
+      expect(params['OfficialRatings'], 'PG-13|12');
     });
 
     test('audio languages use Jellyfin AudioLanguages with pipe separator', () {
@@ -232,6 +259,21 @@ void main() {
     test('both flags share one comma-separated value instead of overwriting each other', () {
       final params = translator.toQueryParameters(const LibraryQuery(includeWatched: false, favoritesOnly: true));
       expect(params['Filters'], 'IsUnplayed,IsFavorite');
+    });
+
+    test('inProgressOnly sets Filters=IsResumable', () {
+      final params = translator.toQueryParameters(const LibraryQuery(inProgressOnly: true));
+      expect(params['Filters'], 'IsResumable');
+    });
+
+    test('watchedOnly sets Filters=IsPlayed', () {
+      final params = translator.toQueryParameters(const LibraryQuery(watchedOnly: true));
+      expect(params['Filters'], 'IsPlayed');
+    });
+
+    test('watch-state flags join the favorite flag in one Filters value', () {
+      final params = translator.toQueryParameters(const LibraryQuery(inProgressOnly: true, favoritesOnly: true));
+      expect(params['Filters'], 'IsResumable,IsFavorite');
     });
 
     test('a translator without a parent asks across every library', () {

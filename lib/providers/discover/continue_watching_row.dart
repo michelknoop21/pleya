@@ -54,6 +54,7 @@ class ContinueWatchingRow {
 
   Future<void>? _systemShelfSyncFuture;
   List<MediaItem>? _pendingSystemShelfItems;
+  List<MediaItem> _topShelfHero = const [];
 
   List<MediaItem> get items => _items;
   bool get hasMore => _hasMore;
@@ -226,16 +227,16 @@ class ContinueWatchingRow {
 
         try {
           final settings = await SettingsService.getInstance();
-          final syncableOnDeck = onDeck
-              .where((item) {
-                final serverId = item.serverId;
-                return serverId != null && _multiServer.getClientForServer(ServerId(serverId)) != null;
-              })
-              .toList(growable: false);
+          bool syncable(MediaItem item) {
+            final serverId = item.serverId;
+            return serverId != null && _multiServer.getClientForServer(ServerId(serverId)) != null;
+          }
+
           await SystemShelfService().syncFromContinueWatching(
-            syncableOnDeck,
+            onDeck.where(syncable).toList(growable: false),
             _clientForShelfItem,
             hideSpoilers: settings.read(SettingsService.hideSpoilers),
+            hero: _topShelfHero.where(syncable).toList(growable: false),
           );
         } catch (e) {
           appLogger.w('Failed to sync system shelf', error: e);
@@ -244,6 +245,18 @@ class ContinueWatchingRow {
     } finally {
       _systemShelfSyncFuture = null;
     }
+  }
+
+  /// The Home hero's films for the Top Shelf carousel. Resyncs on change.
+  void setTopShelfHero(List<MediaItem> hero) {
+    // Only the tvOS Top Shelf reads the hero; elsewhere this would rewrite
+    // Android Watch Next for nothing.
+    if (!SystemShelfService().drivesTopShelfCarousel) return;
+    // By key: a Home refresh hands back new instances of the same films.
+    List<String> keys(List<MediaItem> items) => [for (final item in items) item.globalKey];
+    if (listEquals(keys(hero), keys(_topShelfHero))) return;
+    _topShelfHero = List.unmodifiable(hero);
+    unawaited(syncShelf());
   }
 
   MediaServerClient _clientForShelfItem(ServerId serverId) {

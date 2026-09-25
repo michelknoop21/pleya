@@ -34,19 +34,27 @@ steps:
   # presence and position, not the number itself, which the fixture's real
   # item count decides.
   - assert: {id: "catalog.count[movies]", insideViewport: true}
-  - assert: {id: "catalog.grid[movies]", below: "catalog.count[movies]"}
-  - assert: {id: "catalog.grid[movies]", insideViewport: true}
-  - assert: {id: "catalog.grid.item[movies.0]", insideViewport: true}
+  # The grid node is a sliver and reports no box bounds, so position is
+  # measured on its first card, which does.
+  - assert: {id: "catalog.grid[movies]"}
+  - assert: {id: "catalog.grid.item[movies.0]", below: "catalog.count[movies]", insideViewport: true}
   - snapshot: catalog-grid-northstar
-  # Filters sheet: opens on Status from the Filters chip, shows the
-  # two-zone rail-and-options layout, and both footer actions are reachable.
+  # Filters sheet: the two-zone rail-and-options layout, and the apply action
+  # reachable. The fixture is a Pleya Server, which executes neither the watch
+  # filter nor metadata filters (`unifiedFilterCapabilitiesFor`), so the sheet
+  # withholds Status, Genre, Audiotaal and Leeftijd and keeps Servers and
+  # Bibliotheken. These lines used to assert the withheld three, which no
+  # Pleya Server fixture can ever show; they now assert the fail-safe.
   - tap: {id: "catalog.chip.filters[movies]"}
   - wait_until: {id: sheet.catalog_filters, timeout: 5000}
   - settle: 500
   - assert: {id: sheet.catalog_filters, insideViewport: true}
-  - assert: {id: "sheet.catalog_filters.category[status]", insideViewport: true}
-  - assert: {id: "sheet.catalog_filters.category[genre]", insideViewport: true}
-  - assert: {id: "sheet.catalog_filters.category[audioLanguage]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[servers]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[libraries]", insideViewport: true}
+  - assert: {id: "sheet.catalog_filters.category[status]", present: false}
+  - assert: {id: "sheet.catalog_filters.category[genre]", present: false}
+  - assert: {id: "sheet.catalog_filters.category[audioLanguage]", present: false}
+  - assert: {id: "sheet.catalog_filters.category[contentRating]", present: false}
   - assert: {id: sheet.catalog_filters.apply, insideViewport: true, minimumTapTarget: 44}
   - snapshot: catalog-filters-sheet-northstar
   - tap: {id: sheet.catalog_filters.apply}

@@ -107,6 +107,14 @@ class _FilterValuesClient implements MediaServerClient {
       'year': [
         for (final year in const ['2024', '2023', '2022', '2021', '2020']) MediaFilterValue(key: year, title: year),
       ],
+      // Audiotaal and Leeftijd only join the rail when a server names values,
+      // so this is also the golden that shows the full seven-category rail.
+      'audioLanguage': [
+        for (final code in const ['eng', 'nld']) MediaFilterValue(key: code, title: code),
+      ],
+      'contentRating': [
+        for (final rating in const ['12', '16', 'PG-13']) MediaFilterValue(key: rating, title: rating),
+      ],
     },
   );
 

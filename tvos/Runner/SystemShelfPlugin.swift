@@ -8,7 +8,10 @@ import TVServices
     private static let channelName = "com.pleya/system_shelf"
     private static let appGroupIdentifier = "group.nl.michelknoop.pleya"
     private static let cacheDataKey = "PleyaSystemShelfCacheData"
-    private static var pendingDeepLink: String?
+    /// `["contentId": id, "action": "play" | "open"]`; `action` is absent on
+    /// links from older Top Shelf builds. Dart's `ShelfDeepLink.fromNative`
+    /// reads this shape.
+    private static var pendingDeepLink: [String: String]?
     private static var methodChannel: FlutterMethodChannel?
 
     static func register(with registrar: FlutterPluginRegistrar) {
@@ -21,16 +24,19 @@ import TVServices
     }
 
     static func handleOpenURL(_ url: URL) -> Bool {
-      guard let contentId = contentId(from: url) else { return false }
-      pendingDeepLink = contentId
-      methodChannel?.invokeMethod("onShelfItemTap", arguments: ["contentId": contentId])
+      guard let link = deepLink(from: url) else { return false }
+      pendingDeepLink = link
+      methodChannel?.invokeMethod("onShelfItemTap", arguments: link)
       return true
     }
 
-    private static func contentId(from url: URL) -> String? {
+    private static func deepLink(from url: URL) -> [String: String]? {
       guard url.scheme == "pleya", url.host == "play" else { return nil }
-      let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-      return components?.queryItems?.first { $0.name == "content_id" }?.value
+      let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+      guard let contentId = queryItems.first(where: { $0.name == "content_id" })?.value else { return nil }
+      var link = ["contentId": contentId]
+      link["action"] = queryItems.first { $0.name == "action" }?.value
+      return link
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -42,7 +48,18 @@ import TVServices
           result(FlutterError(code: "INVALID_ARGS", message: "Missing items", details: nil))
           return
         }
-        result(Self.writeItems(rawItems.map(Self.normalizedItem)))
+        // Current Dart sends `sections` (Continue Watching, title localized)
+        // plus an optional `carousel` (hero films, then Continue Watching);
+        // `items` alone is the older one-row shape.
+        if let sections = args["sections"] as? [[String: Any]] {
+          result(Self.writeSections(sections, carousel: args["carousel"] as? [[String: Any]]))
+        } else {
+          result(Self.writeItems(rawItems.map(Self.normalizedItem)))
+        }
+      case "imageDirectory":
+        // Dart stores the carousel artwork here; the extension reads the
+        // file:// URLs it writes into the payload.
+        result(Self.imageDirectoryURL?.path)
       case "clear":
         result(Self.clearCache())
       case "remove":
@@ -52,9 +69,9 @@ import TVServices
         }
         result(Self.removeItem(contentId: contentId))
       case "getInitialDeepLink":
-        let contentId = Self.pendingDeepLink
+        let link = Self.pendingDeepLink
         Self.pendingDeepLink = nil
-        result(contentId)
+        result(link)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -62,6 +79,11 @@ import TVServices
 
     private static var sharedDefaults: UserDefaults? {
       UserDefaults(suiteName: appGroupIdentifier)
+    }
+
+    private static var imageDirectoryURL: URL? {
+      FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
+        .appendingPathComponent("TopShelfImages", isDirectory: true)
     }
 
     private static func normalizedItem(_ item: [String: Any]) -> [String: Any] {
@@ -83,6 +105,17 @@ import TVServices
         ],
       ]
 
+      return writePayload(payload)
+    }
+
+    /// `writePayload` drops NSNull values recursively, so items need no
+    /// separate normalization here.
+    private static func writeSections(_ sections: [[String: Any]], carousel: [[String: Any]]?) -> Bool {
+      var payload: [String: Any] = [
+        "updatedAt": Date().timeIntervalSince1970,
+        "sections": sections,
+      ]
+      payload["carousel"] = carousel
       return writePayload(payload)
     }
 
@@ -154,6 +187,9 @@ import TVServices
 
       defaults.removeObject(forKey: cacheDataKey)
       defaults.synchronize()
+      if let images = imageDirectoryURL {
+        try? FileManager.default.removeItem(at: images)
+      }
 
       TVTopShelfContentProvider.topShelfContentDidChange()
       return true
@@ -177,6 +213,12 @@ import TVServices
           nextSection["items"] = filteredItems
         }
         return nextSection
+      }
+
+      if let carousel = payload["carousel"] as? [[String: Any]] {
+        let filteredCarousel = carousel.filter { $0["contentId"] as? String != contentId }
+        removed = removed || filteredCarousel.count != carousel.count
+        payload["carousel"] = filteredCarousel
       }
 
       if !removed {

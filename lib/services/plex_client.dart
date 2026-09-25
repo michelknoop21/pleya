@@ -1292,7 +1292,12 @@ class PlexClient
 
   /// Search across all libraries including individually shared items.
   /// Uses /library/search (same endpoint as Plex Web) which finds shared content.
-  /// Only returns movies and shows, filtering out other types.
+  /// Keeps the types the search screen has a section for (movies, shows,
+  /// episodes, collections) and drops the rest (seasons, music, photos).
+  ///
+  /// Built from the documented response shape, not from a capture: see
+  /// `test/fixtures/plex_search/README.md`. Whether `searchTypes=movies,tv`
+  /// actually yields episodes on a live server is still a live check.
   Future<List<PlexMetadataDto>> _search(String query, {int limit = 100}) async {
     final response = await _getWithFailover(
       '/library/search',
@@ -1324,8 +1329,8 @@ class PlexClient
         final metadata = result['Metadata'];
         if (metadata is! Map<String, dynamic>) continue;
 
-        final type = metadata['type'] as String?;
-        if (type != 'movie' && type != 'show') continue;
+        final type = metadata['type'];
+        if (type is! String || !_searchResultTypes.contains(type)) continue;
 
         results.add(_createTaggedMetadata(metadata));
       } catch (e) {
@@ -1335,6 +1340,8 @@ class PlexClient
 
     return results;
   }
+
+  static const Set<String> _searchResultTypes = {'movie', 'show', 'episode', 'collection'};
 
   /// Get recently added media (filtered to video content only)
   Future<List<PlexMetadataDto>> _getRecentlyAdded({int limit = 50}) async {

@@ -43,6 +43,7 @@ import '../services/update_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/haptics.dart';
 import '../widgets/auth_error_banner.dart';
+import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -1067,25 +1068,27 @@ class _MainScreenState extends State<MainScreen>
     final systemShelf = SystemShelfService();
 
     // Listen for deep links when app is already running (warm start)
-    systemShelf.onShelfItemTap = (contentId) {
-      appLogger.d('System shelf tap: $contentId');
-      _handleShelfContentId(contentId);
+    systemShelf.onShelfItemTap = (link) {
+      appLogger.d('System shelf tap: ${link.contentId} (${link.action.name})');
+      _handleShelfLink(link);
     };
 
     // Check for pending deep link from cold start
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final contentId = await systemShelf.getInitialDeepLink();
-      if (contentId != null && mounted) {
-        appLogger.d('System shelf initial deep link: $contentId');
-        unawaited(_handleShelfContentId(contentId));
+      final link = await systemShelf.getInitialDeepLink();
+      if (link != null && mounted) {
+        appLogger.d('System shelf initial deep link: ${link.contentId} (${link.action.name})');
+        unawaited(_handleShelfLink(link));
       }
     });
   }
 
-  /// Handle a launcher shelf content ID by fetching metadata and starting playback.
-  Future<void> _handleShelfContentId(String contentId) async {
+  /// Handle a launcher shelf link: fetch the metadata, then resume playback or
+  /// open the detail page depending on the link's action.
+  Future<void> _handleShelfLink(ShelfDeepLink link) async {
     if (!mounted) return;
 
+    final contentId = link.contentId;
     final parsed = SystemShelfService.parseContentId(contentId);
     if (parsed == null) {
       appLogger.w('System shelf: invalid content ID: $contentId');
@@ -1107,7 +1110,11 @@ class _MainScreenState extends State<MainScreen>
 
       if (metadata == null || !mounted) return;
 
-      unawaited(navigateToVideoPlayer(context, metadata: metadata));
+      if (link.startsPlaybackFor(metadata.kind)) {
+        unawaited(navigateToVideoPlayer(context, metadata: metadata));
+      } else {
+        unawaited(navigateToMediaItemDetails(context, metadata));
+      }
     } catch (e) {
       appLogger.e('System shelf: failed to navigate to media', error: e);
     }

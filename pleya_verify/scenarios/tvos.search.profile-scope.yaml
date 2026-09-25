@@ -1,0 +1,104 @@
+name: tvos.search.profile-scope
+target: tvos-sim
+# Z8 / C1 of the search-and-filters review: "Recent gezocht" belongs to the
+# profile that opened the titles. Zoeken stays mounted in MainScreen across a
+# profile switch, so the row has to be read again for the new profile rather
+# than kept from the old one.
+#
+# Built on tvos.profile.picker. `seed_profile` adds a second local profile
+# ("Kind") on the same Pleya Server connection, so both profiles see the same
+# catalog and only the search recency differs.
+#
+# What this proves:
+#   1. the owner opens a search result, which puts it in the owner's row;
+#   2. after switching to Kind, Zoeken shows no "Recent gezocht" row;
+#   3. after switching back to the owner, the row is there again.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_profile: {name: Kind}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  # 1. Owner: search "as" (see tvos.search.results), open the first film.
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: select
+  - settle: 2000
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}
+  - settle: 1000
+  - type: "as"
+  - settle: 2500
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 10000}
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.movies.0]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 1500
+  # Menu comes back to Zoeken with the ring on the search pill, not on the
+  # card (first run's focus trace: Content -> SearchInput).
+  - press: menu
+  - wait_until: {focused: tv.search.pill, timeout: 8000}
+  - settle: 800
+  - snapshot: 00-owner-results
+
+  # Menu on the pill clears the query first, which puts the owner's row at
+  # rest on screen: the positive control for step 2.
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.recent]", timeout: 8000}
+  - settle: 800
+  - snapshot: 01-owner-recent
+
+  # 2. Switch to Kind through the avatar. UP from the pill goes nowhere; a
+  # second Menu is the way to the bar.
+  - press: menu
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: left
+  - wait_until: {focused: nav.profile, timeout: 5000}
+  - press: select
+  - wait_until: {focused: "profile.tile[0]", timeout: 10000}
+  # The picker draws the profiles side by side; DOWN is Profielen beheren.
+  - press: right
+  - wait_until: {focused: "profile.tile[1]", timeout: 5000}
+  - assert: {id: "profile.tile[1]", state: {name: Kind, active: false}}
+  - press: select
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - settle: 3500
+
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: select
+  - settle: 2500
+  - assert: {id: tv.search.pill}
+  - assert: {id: "tv.catalog.grid[search.recent]", present: false}
+  - snapshot: 02-kind-search-empty
+
+  # 3. Back to the owner: the row is the owner's again. LEFT from the input
+  # lands on the search icon in the bar, one more on the avatar.
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: left
+  - wait_until: {focused: nav.profile, timeout: 5000}
+  - press: select
+  - wait_until: {focused: "profile.tile[0]", timeout: 10000}
+  # The active profile is drawn first, so Kind is tile 0 now.
+  - assert: {id: "profile.tile[0]", state: {name: Kind, active: true}}
+  - press: right
+  - wait_until: {focused: "profile.tile[1]", timeout: 5000}
+  - assert: {id: "profile.tile[1]", state: {name: verify-owner, active: false}}
+  - press: select
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - settle: 3500
+
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: select
+  - settle: 2500
+  - wait_until: {id: "tv.catalog.grid[search.recent]", timeout: 8000}
+  - assert: {id: "tv.catalog.grid.item[search.recent.0]"}
+  - snapshot: 03-owner-recent-back

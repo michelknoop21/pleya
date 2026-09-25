@@ -38,9 +38,19 @@ List<String> homeCustomRowFilterParts(HomeCustomRow row) {
   return [
     if (filters.genres.isNotEmpty) (filters.genres.toList()..sort()).join(', '),
     if (filters.years.isNotEmpty) (filters.years.toList()..sort()).join(', '),
-    if (filters.watchState == UnifiedWatchFilter.unwatched) t.unifiedCatalog.filters.unwatched,
+    if (filters.officialRatings.isNotEmpty) contentRatingLabels(filters.officialRatings).join(', '),
+    if (filters.watchState != UnifiedWatchFilter.all) unifiedWatchFilterLabel(filters.watchState),
   ];
 }
+
+/// The one wording of a watch state, shared by the filter panels, the rail
+/// tags and the Home row wizard so they never disagree.
+String unifiedWatchFilterLabel(UnifiedWatchFilter state) => switch (state) {
+  UnifiedWatchFilter.all => t.unifiedCatalog.filters.all,
+  UnifiedWatchFilter.unwatched => t.unifiedCatalog.filters.unwatched,
+  UnifiedWatchFilter.inProgress => t.unifiedCatalog.filters.inProgress,
+  UnifiedWatchFilter.watched => t.unifiedCatalog.filters.watched,
+};
 
 /// How many titles the row holds, in hoofdstuk 10.7's two registers: an exact
 /// count once every participating library is exhausted, and "N titles loaded"

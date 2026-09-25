@@ -293,7 +293,10 @@ void main() {
     await tapChip(tester, find.text(t.unifiedCatalog.filters.title));
     await tester.pumpAndSettle();
     expect(find.text(t.unifiedCatalog.filters.genre), findsOneWidget, reason: 'the Filters chip must open its sheet');
-    expect(find.text(t.libraries.filterCategories.audioLanguage), findsOneWidget);
+    // This fixture's clients name no audio languages, and since fase 1 of the
+    // search-and-filters plan an Audiotaal category without values stays out
+    // of the rail instead of showing an empty list.
+    expect(find.text(t.libraries.filterCategories.audioLanguage), findsNothing);
     await tester.tap(find.text(t.unifiedCatalog.filters.apply));
     await settle(tester);
 
@@ -503,5 +506,20 @@ void main() {
 
     expect(find.text(t.unifiedCatalog.states.filterEmptyTitle), findsOneWidget);
     expect(find.text(t.unifiedCatalog.states.clearFilters), findsOneWidget);
+  });
+  testWidgets('the count row names every active filter, Leeftijd included', (tester) async {
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(
+          filters: const UnifiedCatalogFilterSelection(genres: {'Horror'}, officialRatings: {'gb/12|12', '6'}),
+        ),
+      ),
+    );
+
+    await pumpCatalog(tester);
+    await settle(tester);
+
+    expect(find.textContaining('Horror · 6, 12'), findsOneWidget);
   });
 }

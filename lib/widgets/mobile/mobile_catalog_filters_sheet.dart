@@ -35,18 +35,20 @@ import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_filter_options.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/global_key_utils.dart';
+import '../../utils/home_custom_row_labels.dart';
 import '../app_icon.dart';
 import '../overlay_sheet.dart';
 
 /// Which category the sheet opens on. [servers] is what "Alle bronnen"
 /// promises; the other four are all reachable from "Filters".
-enum MobileCatalogFilterSection { status, genre, audioLanguage, year, servers, libraries }
+enum MobileCatalogFilterSection { status, genre, audioLanguage, year, contentRating, servers, libraries }
 
 const List<MobileCatalogFilterSection> _railOrder = [
   MobileCatalogFilterSection.status,
   MobileCatalogFilterSection.genre,
   MobileCatalogFilterSection.audioLanguage,
   MobileCatalogFilterSection.year,
+  MobileCatalogFilterSection.contentRating,
   MobileCatalogFilterSection.servers,
   MobileCatalogFilterSection.libraries,
 ];
@@ -110,23 +112,38 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   }
 
   MobileCatalogFilterSection _resolveInitialSection() {
-    final available = _availableSections;
+    final available = _sections(placeholders: false);
     return available.contains(widget.initialSection) ? widget.initialSection : available.first;
   }
 
   /// Status/Genre/Jaar depend on the participating backends; Servers and
   /// Bibliotheken are always offered, because they are executed by leaving a
   /// cursor out of the merge rather than by asking a backend to filter.
-  List<MobileCatalogFilterSection> get _availableSections => [
+  List<MobileCatalogFilterSection> get _availableSections => _sections(placeholders: _isLoadingOptions);
+
+  List<MobileCatalogFilterSection> _sections({required bool placeholders}) => [
     for (final section in _railOrder)
-      if (_supports(section)) section,
+      if (_supports(section) && (placeholders || _hasChoices(section))) section,
   ];
+
+  /// Audiotaal and Leeftijd stay in the rail while the values load, so the
+  /// rail does not grow under the eye (a focused row keeps its place), and go
+  /// only once the servers have named no value at all. Jellyfin's `/Items/Filters` has no audio languages at all, so
+  /// a Jellyfin-only catalog would otherwise show a category with nothing in
+  /// it. Genre and Jaar keep their row and say "nothing to choose from": those
+  /// every library has, and an empty one means something is wrong.
+  bool _hasChoices(MobileCatalogFilterSection section) => switch (section) {
+    MobileCatalogFilterSection.audioLanguage => _options.audioLanguages.isNotEmpty,
+    MobileCatalogFilterSection.contentRating => _options.contentRatings.isNotEmpty,
+    _ => true,
+  };
 
   bool _supports(MobileCatalogFilterSection section) => switch (section) {
     MobileCatalogFilterSection.status => widget.capabilities.supportsWatchFilter,
     MobileCatalogFilterSection.genre ||
     MobileCatalogFilterSection.audioLanguage ||
-    MobileCatalogFilterSection.year => widget.capabilities.supportsMetadataFilters,
+    MobileCatalogFilterSection.year ||
+    MobileCatalogFilterSection.contentRating => widget.capabilities.supportsMetadataFilters,
     MobileCatalogFilterSection.servers || MobileCatalogFilterSection.libraries => true,
   };
 
@@ -138,8 +155,16 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     );
     if (!mounted) return;
     setState(() {
-      _options = options;
+      _options = options.withStoredContentRatings(_draft.officialRatings);
       _isLoadingOptions = false;
+      // A placeholder row that turned out empty goes; if it was open, the
+      // nearest row above it opens instead.
+      final available = _availableSections;
+      if (!available.contains(_active)) {
+        _active = _railOrder
+            .take(_railOrder.indexOf(_active))
+            .lastWhere(available.contains, orElse: () => available.first);
+      }
     });
   }
 
@@ -152,6 +177,12 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
 
   void _toggleAudioLanguage(String language) =>
       setState(() => _draft = _draft.copyWith(audioLanguages: _toggled(_draft.audioLanguages, language)));
+
+  void _toggleContentRating(UnifiedFilterValue rating) => setState(
+    () => _draft = _draft.copyWith(
+      officialRatings: toggleContentRating(_draft.officialRatings, label: rating.label, value: rating.value),
+    ),
+  );
 
   void _toggleYear(int year) => setState(() => _draft = _draft.copyWith(years: _toggled(_draft.years, year)));
 
@@ -182,17 +213,16 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   }
 
   List<_OptionRowSpec> _rowsFor(MobileCatalogFilterSection section) => switch (section) {
+    // Only the states every participating backend executes: Bekeken is
+    // Jellyfin-only and disappears as soon as a Plex library takes part.
     MobileCatalogFilterSection.status => [
-      _OptionRowSpec(
-        label: t.unifiedCatalog.filters.all,
-        isSelected: _draft.watchState == UnifiedWatchFilter.all,
-        onPressed: () => _setWatchState(UnifiedWatchFilter.all),
-      ),
-      _OptionRowSpec(
-        label: t.unifiedCatalog.filters.unwatched,
-        isSelected: _draft.watchState == UnifiedWatchFilter.unwatched,
-        onPressed: () => _setWatchState(UnifiedWatchFilter.unwatched),
-      ),
+      for (final state in UnifiedWatchFilter.values)
+        if (widget.capabilities.supportsWatchState(state))
+          _OptionRowSpec(
+            label: unifiedWatchFilterLabel(state),
+            isSelected: _draft.watchState == state,
+            onPressed: () => _setWatchState(state),
+          ),
     ],
     MobileCatalogFilterSection.genre => [
       for (final genre in _options.genres)
@@ -209,6 +239,14 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     MobileCatalogFilterSection.year => [
       for (final year in _options.years)
         _OptionRowSpec(label: '$year', isSelected: _draft.years.contains(year), onPressed: () => _toggleYear(year)),
+    ],
+    MobileCatalogFilterSection.contentRating => [
+      for (final rating in _options.contentRatings)
+        _OptionRowSpec(
+          label: rating.label,
+          isSelected: isContentRatingSelected(_draft.officialRatings, rating.label),
+          onPressed: () => _toggleContentRating(rating),
+        ),
     ],
     MobileCatalogFilterSection.servers => [
       for (final server in _servers)
@@ -234,6 +272,7 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     MobileCatalogFilterSection.genre => _draft.genres.length,
     MobileCatalogFilterSection.audioLanguage => _draft.audioLanguages.length,
     MobileCatalogFilterSection.year => _draft.years.length,
+    MobileCatalogFilterSection.contentRating => contentRatingLabels(_draft.officialRatings).length,
     MobileCatalogFilterSection.servers => _draft.serverIds.length,
     MobileCatalogFilterSection.libraries => _draft.libraryKeys.length,
   };
@@ -243,6 +282,7 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     MobileCatalogFilterSection.genre => t.unifiedCatalog.filters.genre,
     MobileCatalogFilterSection.audioLanguage => t.libraries.filterCategories.audioLanguage,
     MobileCatalogFilterSection.year => t.unifiedCatalog.filters.year,
+    MobileCatalogFilterSection.contentRating => t.unifiedCatalog.filters.contentRating,
     MobileCatalogFilterSection.servers => t.unifiedCatalog.filters.servers,
     MobileCatalogFilterSection.libraries => t.unifiedCatalog.filters.libraries,
   };
