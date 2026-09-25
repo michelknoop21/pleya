@@ -230,6 +230,38 @@ def ember(w, h):
     return g.filter(ImageFilter.GaussianBlur(min(w, h) * 0.10))
 
 
+def tv_front(w, h):
+    """Voorlaag van het tvOS-icoon: P + LEYA zonder tagline, binnen de safe zone.
+
+    De tagline is op tegelformaat onleesbaar en de HIG wil tekst alleen als die
+    merkdragend is. 74% breedte houdt het lockup binnen de marge die de
+    focusschaal en de parallax van de voorlaag afsnijden.
+    """
+    canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    wd = fitted(WORD, int(w * 0.74), int(h * 0.60))
+    canvas.alpha_composite(wd, ((w - wd.width) // 2, (h - wd.height) // 2))
+    return canvas
+
+
+def warm_band(w, h):
+    """Transparante middenlaag: een lage, brede rode gloed langs de onderrand.
+
+    Geen cirkel achter het logo maar een horizon: diepte voor de parallax
+    zonder dat er iets achter de P staat. Maximaal 22% dekking, links iets
+    sterker dan rechts.
+    """
+    g = Image.new("RGBA", (w, h), (229, 20, 15, 0))
+    a = Image.new("L", (w, h), 0)
+    px = a.load()
+    top = h * 0.45
+    for y in range(h):
+        v = max(0.0, (y - top) / (h - top)) ** 1.6
+        for x in range(w):
+            px[x, y] = int(56 * v * (1.0 - 0.45 * x / w))
+    g.putalpha(a)
+    return g
+
+
 def og_background(w, h):
     """Donker vlak met een subtiele rode radial achter het midden (OG-social)."""
     base = Image.new("RGBA", (w, h), BG)
@@ -332,7 +364,7 @@ LIN = f"{ROOT}/linux/packaging/icons"
 for s in (16, 32, 48, 64, 128, 256, 512):
     save(mark_canvas(s, s, 0.80, BG), f"{LIN}/{s}x{s}/pleya.png")
 
-# ---- tvOS layered brand assets: Back #0B0B0B / Middle ember / Front = lockup mét tagline ----
+# ---- tvOS layered brand assets: Back #0B0B0B / Middle warme onderrand / Front = P + LEYA zonder tagline ----
 TV = f"{ROOT}/tvos/Runner/Assets.xcassets/AppIcon.brandassets"
 
 
@@ -345,12 +377,12 @@ def tv_layer(stack, name, img, at2x=None):
 
 w1, h1 = 400, 240
 tv_layer("App Icon.imagestack", "Back", Image.new("RGBA", (w1, h1), BG), Image.new("RGBA", (w1 * 2, h1 * 2), BG))
-tv_layer("App Icon.imagestack", "Middle", ember(w1, h1), ember(w1 * 2, h1 * 2))
-tv_layer("App Icon.imagestack", "Front", lockup(w1, h1, (0, 0, 0, 0)), lockup(w1 * 2, h1 * 2, (0, 0, 0, 0)))
+tv_layer("App Icon.imagestack", "Middle", warm_band(w1, h1), warm_band(w1 * 2, h1 * 2))
+tv_layer("App Icon.imagestack", "Front", tv_front(w1, h1), tv_front(w1 * 2, h1 * 2))
 w2, h2 = 1280, 768
 tv_layer("App Icon - App Store.imagestack", "Back", Image.new("RGBA", (w2, h2), BG))
-tv_layer("App Icon - App Store.imagestack", "Middle", ember(w2, h2))
-tv_layer("App Icon - App Store.imagestack", "Front", lockup(w2, h2, (0, 0, 0, 0)))
+tv_layer("App Icon - App Store.imagestack", "Middle", warm_band(w2, h2))
+tv_layer("App Icon - App Store.imagestack", "Front", tv_front(w2, h2))
 
 # Top Shelf (lockup mét tagline)
 save(lockup(1920, 720, BG), f"{TV}/Top Shelf Image.imageset/top-shelf.png")
