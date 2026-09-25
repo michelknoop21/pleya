@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/system_shelf_service.dart';
 
@@ -76,5 +78,35 @@ void main() {
       ('pleya_srv_7', ShelfLinkAction.open),
       ('pleya_srv_8', ShelfLinkAction.legacy),
     ]);
+  });
+
+  group('SystemShelfService.recentlyAddedFor', () {
+    MediaItem item(String id, MediaKind kind, int addedAt, {String? grandparentId}) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: kind,
+      title: id,
+      serverId: 'srv',
+      addedAt: addedAt,
+      grandparentId: grandparentId,
+    );
+
+    test('newest added first, capped', () {
+      final candidates = [for (var i = 0; i < 15; i++) item('m$i', MediaKind.movie, i)];
+      final result = SystemShelfService.recentlyAddedFor(candidates, const [], limit: 10);
+      expect(result.map((i) => i.id), ['m14', 'm13', 'm12', 'm11', 'm10', 'm9', 'm8', 'm7', 'm6', 'm5']);
+    });
+
+    test('drops what Continue Watching already shows, including the show of an episode', () {
+      final onDeck = [item('m1', MediaKind.movie, 0), item('e1', MediaKind.episode, 0, grandparentId: 'show1')];
+      final candidates = [
+        item('m1', MediaKind.movie, 9),
+        item('show1', MediaKind.show, 8),
+        item('show2', MediaKind.show, 7),
+        item('show2', MediaKind.show, 7),
+      ];
+      final result = SystemShelfService.recentlyAddedFor(candidates, onDeck);
+      expect(result.map((i) => i.id), ['show2']);
+    });
   });
 }

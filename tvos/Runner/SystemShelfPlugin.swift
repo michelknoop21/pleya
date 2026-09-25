@@ -48,7 +48,13 @@ import TVServices
           result(FlutterError(code: "INVALID_ARGS", message: "Missing items", details: nil))
           return
         }
-        result(Self.writeItems(rawItems.map(Self.normalizedItem)))
+        // Current Dart sends `sections` (Continue Watching + Recently Added,
+        // titles already localized); `items` alone is the older one-row shape.
+        if let sections = args["sections"] as? [[String: Any]] {
+          result(Self.writeSections(sections))
+        } else {
+          result(Self.writeItems(rawItems.map(Self.normalizedItem)))
+        }
       case "clear":
         result(Self.clearCache())
       case "remove":
@@ -90,6 +96,15 @@ import TVServices
       ]
 
       return writePayload(payload)
+    }
+
+    /// `writePayload` drops NSNull values recursively, so items need no
+    /// separate normalization here.
+    private static func writeSections(_ sections: [[String: Any]]) -> Bool {
+      writePayload([
+        "updatedAt": Date().timeIntervalSince1970,
+        "sections": sections,
+      ])
     }
 
     private static func writePayload(_ payload: [String: Any]) -> Bool {

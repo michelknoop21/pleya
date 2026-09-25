@@ -2,12 +2,14 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 
+import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
+import '../utils/global_key_utils.dart';
 import '../utils/platform_detector.dart';
 import 'settings_service.dart' show EpisodePosterMode;
 
@@ -114,10 +116,14 @@ class SystemShelfService {
   }
 
   /// Sync Continue Watching items to the current platform's launcher shelf.
+  ///
+  /// On tvOS [recentlyAdded] becomes a second Top Shelf section. Android Watch
+  /// Next only reads `items`, so it stays Continue Watching only.
   Future<bool> syncFromContinueWatching(
     List<MediaItem> continueWatchingItems,
     MediaServerClient Function(ServerId serverId) getClientForServerId, {
     bool hideSpoilers = false,
+    List<MediaItem> recentlyAdded = const [],
   }) async {
     final channel = _channel;
     if (channel == null) return false;
@@ -130,7 +136,21 @@ class SystemShelfService {
       final supported = await isSupported();
       if (!supported) return false;
 
-      return await channel.invokeMethod<bool>('sync', {'items': items}) ?? false;
+      final args = <String, dynamic>{'items': items};
+      if (identical(channel, _tvosChannel)) {
+        final recentItems = recentlyAddedFor(recentlyAdded, continueWatchingItems).map((item) {
+          // No progress bar in this row: the extension draws one from these two.
+          return _convertToShelfItem(item, getClientForServerId, hideSpoilers: hideSpoilers)
+            ..remove('duration')
+            ..remove('lastPlaybackPosition');
+        }).toList();
+        args['sections'] = [
+          {'id': 'continue_watching', 'title': t.discover.continueWatching, 'items': items},
+          {'id': 'recently_added', 'title': t.discover.topShelfRecentlyAdded, 'items': recentItems},
+        ];
+      }
+
+      return await channel.invokeMethod<bool>('sync', args) ?? false;
     } on MissingPluginException catch (e) {
       appLogger.e('Failed to sync system shelf: native channel missing', error: e);
       return false;
@@ -178,6 +198,21 @@ class SystemShelfService {
       appLogger.e('Failed to remove system shelf item', error: e);
       return false;
     }
+  }
+
+  /// The Top Shelf "Recently Added" row: newest added first, without anything
+  /// Continue Watching already shows (for an episode that includes its show),
+  /// capped at [limit].
+  static List<MediaItem> recentlyAddedFor(List<MediaItem> candidates, List<MediaItem> onDeck, {int limit = 10}) {
+    final seen = <String>{
+      for (final item in onDeck) ...[
+        item.globalKey,
+        if (item.grandparentId != null && item.serverId != null)
+          buildGlobalKey(ServerId(item.serverId!), item.grandparentId!),
+      ],
+    };
+    final sorted = [...candidates]..sort((a, b) => (b.addedAt ?? 0).compareTo(a.addedAt ?? 0));
+    return sorted.where((item) => seen.add(item.globalKey)).take(limit).toList(growable: false);
   }
 
   /// Build a content ID. Format: pleya_{serverId}_{ratingKey}

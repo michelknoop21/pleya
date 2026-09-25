@@ -312,6 +312,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       if (isDisposed) return;
       _latestShowsHub = _buildLatestShowsHub(fetchedLatestShows.items);
       safeNotifyListeners();
+      // Resync so the Top Shelf "Recently Added" row picks up the films and
+      // shows that landed after Continue Watching was synced.
+      unawaited(_syncSystemShelf(_onDeck));
 
       final fetchedHubs = await hubsFuture;
       if (isDisposed) return;
@@ -857,16 +860,21 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
         try {
           final settings = await SettingsService.getInstance();
-          final syncableOnDeck = onDeck
-              .where((item) {
-                final serverId = item.serverId;
-                return serverId != null && _multiServer.getClientForServer(ServerId(serverId)) != null;
-              })
-              .toList(growable: false);
+          bool syncable(MediaItem item) {
+            final serverId = item.serverId;
+            return serverId != null && _multiServer.getClientForServer(ServerId(serverId)) != null;
+          }
+
+          // ponytail: "Recently Added" reuses the two Home rows already loaded
+          // (hero films + latest shows) re-sorted on addedAt; the hero pool is
+          // release-date windowed, so an old film added today is not in it.
+          // Feed it the raw fetchRecentlyAdded pool if that gap matters.
+          final recentlyAdded = [..._latestMovies, ...?_latestShowsHub?.items].where(syncable).toList();
           await SystemShelfService().syncFromContinueWatching(
-            syncableOnDeck,
+            onDeck.where(syncable).toList(growable: false),
             _clientForShelfItem,
             hideSpoilers: settings.read(SettingsService.hideSpoilers),
+            recentlyAdded: recentlyAdded,
           );
         } catch (e) {
           appLogger.w('Failed to sync system shelf', error: e);
