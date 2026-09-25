@@ -55,6 +55,7 @@ under `Notes`.
 - scans en jobs in venster 2, job als achtste foutdomein (S2.4)
 - scans en jobs over HTTP, annuleren en retry (S2.4)
 - backoff op probe_attempts na een mislukte probe (S2.4)
+- de revisie-envelop reist mee en beslist bij het toepassen (B3)
 - seeds voor Omdat je X keek uit het eigen kijklog (D2, D3)
 - film- en seriedetail in één scroll, zonder tabs (DEC-131)
 - partieel signaal bij een eindstop, importer vergelijkt gewichten
@@ -66,6 +67,9 @@ under `Notes`.
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
 - seedrijen in een eigen loader, gedrag ongewijzigd
+- revisieopslag in een eigen bestand, gedrag ongewijzigd
+- reconcile en remote-apply in eigen bestanden, gedrag ongewijzigd
+- sleutelmapping en scope in een eigen bestand, gedrag ongewijzigd
 - discover-provider opgesplitst in eigen laders, gedrag ongewijzigd
 
 ### Fixed
@@ -91,19 +95,55 @@ under `Notes`.
 - queued scanrondes annuleren via één methode, stale scan_id, limiet naar contract
 - DENS1, instellingen en detail in Apple's tvOS-punten
 - detail en Nu aan het kijken volgen de gemonitorde server (D1)
+- luister echt naar de KVS-notificaties en laat de status niet liegen (B1, B6, B7, B8)
+- uitschakelen wist de quotamelding, status klopt vanaf de start (B6, B8)
+- verwijderen reset de stempel, startbedrading via de coordinator, randgevallen getest (B3)
+- reconcile vergelijkt met de store, verwijderingen reizen als tombstone en de prune verdwijnt onder v2 (B2, B4, B5, B13)
 - seedtitel volgt de serie, zes seeds parallel, randgevallen getest (D2, D3)
+- import krijgt een stempel, families respecteren tombstones, geen blinde push na een mislukte lezing (B2, B4)
 - seizoenpil altijd, informatieblok voor series, delen verankerd
 - hervatten geeft een nieuwe eindstop, dedup volgt de scoringsscope (REC-4)
+- een hangende reconcile blokkeert de sessie niet meer (B2)
 - nieuwe series tellen als getoond, afleveringidentiteit expliciet (REC-5)
+- accountwissel leest eerst en duwt niet terug, en de eerste download krijgt een reconcile (B9, A2)
+- lokale map kan zijn scan laten verversen
+- stille herlaad van Home als de rijen verouderd zijn
+- grens van opnieuw inloggen vastgelegd en getest (B9)
+- Home ververst bij terugkeer, resume en elke vijf minuten
+- kaart blijft op zijn plek als vooraan een rij een titel bijkomt
+- taalvoorkeuren reizen als profiel-gesleutelde map, acht stille sleutels geregistreerd en de scopetabel bijgewerkt (B10, B11)
 - geleende Jellyfin-verbindingen importeren niets, afspeeltijd als stempel, sync hooguit elk kwartier (REC-6)
+- echte Plex Home-scopes en samenvoegen per regel met tombstones (B10)
 - DEC-132 noemt beide richtingen, klok terug remt de sync niet (REC-6)
+- de cap schrijft tombstones zodat hij over toestellen heen blijft gelden (B10)
+- KVS-notificaties bereiken Dart via de platformthread (A1)
+- periodieke tik vraagt met de terugkeerdrempel
+- rail verplaatst een kaart in plaats van hem opnieuw te bouwen
+- seriekaart blijft ook bij alleen ontvangen binnen de cap (B10)
 - persoonsrij met eigen id per naam en een bewijsdrempel (REC-7)
+- groottegrens telt UTF-8-bytes, de seriekaart is ook uitgaand begrensd (B10)
 - importer ziet alleen de Tautulli-fout, sessietest krijgt de verbindingsregistry (REC-9)
+- stempel per profiel voor profielgebonden sleutels (I1)
+- kale remove van de vorige build wist geen gestempelde waarde (I2)
+- profielkaart in canonieke volgorde, geen schrijfpingpong meer (I3)
+- tombstones ouder dan 180 dagen verdwijnen uit de store (I4)
+- profielgebonden sleutels reizen voor echte Plex Home-profielen (I5)
 - mislukte Jellyfin-sync houdt de kwartierrem aan, een falende serie stopt de rest niet
 - Jellyfin-pool en Similar vragen Genres en Studios, persoonsrijen op Jellyfin uitgesteld
+- zeven kleine bevindingen uit de eindreview
 - seeds alleen van geschikte bronnen, afgewezen titels seeden niet, aanvullen tot drie
+- accountwissel weer strikt read-first, heuristiek minor 4 teruggedraaid (N2)
+- beurtgeneratie vóór de eerste await, v1-import onder de proceed-check (N3)
+- cloudsleutels binnen de 64 bytes van KVS (N1)
 - geleende status telt niet, tijdelijke fouten schuiven de watermark niet op, cap telt alleen positieven (REC-6)
+- accountwissel blijft staan tot hij echt verwerkt is (B9)
+- onleesbare submap haalt bij een herscan geen titels weg
+- volledige load alleen als elke client elk oppervlak gaf
+- timer loopt door bij focusverlies, terugkeer herscant lokale map
+- terugkeer uit een detail ververst Home en houdt de kaart op zijn plek
 - avatar in de header opent de profielwisselaar (DEC-132)
+- onvolledige herscan wacht de terugkeerdrempel af
+- bestemmingswissel toont Home niet onder een open detail
 <!-- END GENERATED -->
 
 ### New
