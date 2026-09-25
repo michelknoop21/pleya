@@ -20,7 +20,7 @@ library;
 import 'dart:convert';
 
 import '../media/media_item.dart';
-import '../services/settings_service.dart';
+import 'search_recency_store.dart';
 import '../utils/app_logger.dart';
 
 /// How many titles the row keeps.
@@ -36,7 +36,7 @@ const int searchRecentsLimit = 6;
 /// entry written by an older model should cost that entry rather than the whole
 /// row.
 List<MediaItem> readSearchRecents() {
-  final raw = SettingsService.instance.read(SettingsService.instance.profileSearchRecentItems);
+  final raw = SearchRecencyStore.readRecentItems();
   final items = <MediaItem>[];
   for (final entry in raw) {
     try {
@@ -57,14 +57,12 @@ List<MediaItem> readSearchRecents() {
 List<MediaItem> rememberSearchRecent(MediaItem item) {
   final next = [item, ...readSearchRecents().where((existing) => existing.globalKey != item.globalKey)];
   if (next.length > searchRecentsLimit) next.removeRange(searchRecentsLimit, next.length);
-  SettingsService.instance.write(SettingsService.instance.profileSearchRecentItems, [
-    for (final entry in next) jsonEncode(entry.toJson()),
-  ]);
+  SearchRecencyStore.writeRecentItems([for (final entry in next) jsonEncode(entry.toJson())]);
   return next;
 }
 
 /// Empties the row. Shares its button with the query chips: "Wissen" on Zoeken
 /// clears what the page shows, and on TV that is this.
 void clearSearchRecents() {
-  SettingsService.instance.write(SettingsService.instance.profileSearchRecentItems, const <String>[]);
+  SearchRecencyStore.writeRecentItems(const <String>[]);
 }

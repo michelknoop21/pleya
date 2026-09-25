@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import '../media/ids.dart';
 import 'dart:io';
@@ -23,7 +22,6 @@ import 'icloud_sync_service.dart';
 import 'preferences/preference_mutation.dart';
 import 'preferences/preference_reconcile_scheduler.dart';
 import 'preferences/preference_refresh.dart';
-import 'preferences/preference_sync_scope.dart';
 export 'base_shared_preferences_service.dart'
     show Pref, BoolPref, IntPref, DoublePref, StringPref, NullableStringPref, StringListPref, EnumPref, JsonPref;
 import '../models/transcode_quality_preset.dart';
@@ -349,9 +347,9 @@ class SettingsService extends BaseSharedPreferencesService {
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
   ///
-  /// The device-wide key from before search recency became per profile. Read
-  /// and write [profileSearchHistory] instead; this one is only the legacy
-  /// source it migrates from, and the key used while no profile is active.
+  /// The device-wide key from before search recency became per profile. Only
+  /// the base name now: `SearchRecencyStore` reads and writes it under the
+  /// active profile's prefix and deletes this device-wide copy.
   static const searchHistory = StringListPref('search_history');
 
   /// The titles opened from a search result, most-recent first, each entry a
@@ -359,8 +357,7 @@ class SettingsService extends BaseSharedPreferencesService {
   /// desktop and mobile keep showing [searchHistory]'s query chips. Capped by
   /// `searchRecentsLimit` in `services/search_recents.dart`, which owns the
   /// read and write.
-  /// Device-wide legacy key, same story as [searchHistory]: use
-  /// [profileSearchRecentItems].
+  /// Base name only, same story as [searchHistory].
   static const searchRecentItems = StringListPref('search_recent_items');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
   static const seekTimeSmall = IntPref('seek_time_small', defaultValue: 10);
@@ -774,40 +771,6 @@ class SettingsService extends BaseSharedPreferencesService {
   @visibleForTesting
   static void resetForTesting() {
     _cachedInstance = null;
-  }
-
-  /// The active profile's search queries (Z8: a child profile must not see
-  /// what the parent searched for).
-  StringListPref get profileSearchHistory => _forActiveProfile(searchHistory);
-
-  /// The active profile's "Recent gezocht" titles.
-  StringListPref get profileSearchRecentItems => _forActiveProfile(searchRecentItems);
-
-  /// [devicePref] under the active profile's `user_<scope>_` prefix, the same
-  /// local prefix `StorageService` and the sync coordinator already use.
-  ///
-  /// The first profile that reads it after the upgrade takes over the old
-  /// device-wide list, and the device-wide key is removed so a second profile
-  /// starts empty. Without an active profile the device-wide key is used.
-  StringListPref _forActiveProfile(StringListPref devicePref) {
-    final prefix = PreferenceSyncScope.forProfile(prefs.getString(PreferenceSyncScope.activeProfileIdKey)).localPrefix;
-    if (prefix.isEmpty) return devicePref;
-    final scoped = StringListPref('$prefix${devicePref.key}');
-    if (!prefs.containsKey(scoped.key) && prefs.containsKey(devicePref.key)) {
-      final legacy = read(devicePref);
-      unawaited(write(scoped, legacy, source: PreferenceSource.migration));
-      unawaited(prefs.remove(devicePref.key));
-    }
-    return scoped;
-  }
-
-  /// Drops the search queries and opened titles of [profileScope], from the
-  /// profile delete flow.
-  Future<void> clearSearchRecencyForProfileScope(String profileScope) async {
-    final prefix = PreferenceSyncScope.forProfile(profileScope).localPrefix;
-    if (prefix.isEmpty) return;
-    await prefs.remove('$prefix${searchHistory.key}');
-    await prefs.remove('$prefix${searchRecentItems.key}');
   }
 
   static Map<String, String> defaultKeyboardShortcuts() => _defaultKeyboardShortcuts();
