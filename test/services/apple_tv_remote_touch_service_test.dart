@@ -770,6 +770,69 @@ void main() {
       expect(harness.recorder.debugOpenTraceIds, isEmpty);
       expect(harness.recorder.consumeActiveSelectTrace(), isNull);
     });
+
+    // SCRUB1: in de vrije scrubmodus van de speler is de veeg geen reeks
+    // pijlstappen maar een doorlopende horizontale verplaatsing.
+    group('vrije scrub krijgt de pan in plaats van pijlen', () {
+      test('horizontale beweging gaat als delta naar de scrub, zonder pijlen', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 540, y: 505);
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 900, y: 510);
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 700, y: 510);
+
+        expect(harness.keys, isEmpty, reason: 'geen stap per veeg meer');
+        expect(pans, [40, 360, -200]);
+      });
+
+      test('trillen onder de slop tijdens een klik verschuift de cursor niet', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 508, y: 503);
+        await harness.send('move', x: 495, y: 498);
+
+        expect(pans, isEmpty);
+      });
+
+      test('een pan claimt het gebaar, dus de native veegpijl stapt niet mee', () async {
+        final harness = _Harness();
+        harness.service.setScrubPanHandler((_, _) {});
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 800, y: 500);
+
+        expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isTrue);
+      });
+
+      test('een ringdruk zonder pan blijft een gewone pijl', () async {
+        final harness = _Harness();
+        harness.service.setScrubPanHandler((_, _) {});
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 504, y: 500);
+
+        expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
+      });
+
+      test('zonder scrub-handler blijft de veeg pijlen geven', () async {
+        final harness = _Harness();
+        harness.service.setScrubPanHandler((_, _) {});
+        harness.service.setScrubPanHandler(null);
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 380, y: 490);
+
+        expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
+      });
+    });
   });
 }
 

@@ -23,6 +23,7 @@ import '../../utils/formatters.dart';
 import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../models/livetv_capture_buffer.dart';
+import 'helpers/apple_tv_scrub_pan.dart';
 import 'models/track_controls_state.dart';
 import 'tv_info_panel/tv_panel_types.dart';
 import 'widgets/content_strip.dart';
@@ -294,7 +295,10 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
 
   @override
   void dispose() {
-    if (_timelineScrubMode) widget.onScrubEnd?.call();
+    if (_timelineScrubMode) {
+      _releaseAppleTvScrubPan();
+      widget.onScrubEnd?.call();
+    }
     _keyRepeatThumbnailTimer?.cancel();
     _timelineSeekDebounceTimer?.cancel();
     _timelinePreviewClearTimer?.cancel();
@@ -562,7 +566,32 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       _showKeyRepeatThumbnail = true;
     });
     _setTimelinePreviewPosition(widget.player.state.position);
+    // SCRUB1: on Apple TV the touch surface moves the cursor freely.
+    if (PlatformDetector.isAppleTV()) {
+      AppleTvRemoteTouchService.instance.setScrubPanHandler(_onAppleTvScrubPan);
+    }
     widget.onScrubStart?.call();
+  }
+
+  void _releaseAppleTvScrubPan() {
+    if (PlatformDetector.isAppleTV()) {
+      AppleTvRemoteTouchService.instance.setScrubPanHandler(null);
+    }
+  }
+
+  void _onAppleTvScrubPan(double dx, Duration elapsed) {
+    if (!mounted || !_timelineScrubMode) return;
+    final duration = widget.player.state.duration;
+    final delta = appleTvScrubPanDelta(
+      dx: dx,
+      elapsed: elapsed,
+      surfaceWidth: MediaQuery.sizeOf(context).width,
+      duration: duration,
+    );
+    final base = _timelinePreviewPosition ?? widget.player.state.position;
+    final target = (base + delta).inMilliseconds.clamp(0, duration.inMilliseconds);
+    _setTimelinePreviewPosition(Duration(milliseconds: target));
+    widget.onFocusActivity?.call();
   }
 
   /// Leave scrub mode, resuming playback when entering it did the pausing.
@@ -571,6 +600,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     final shouldResume = _resumeAfterTimelineScrub;
     _timelineScrubMode = false;
     _resumeAfterTimelineScrub = false;
+    _releaseAppleTvScrubPan();
     _resetSeekState();
     widget.onScrubEnd?.call();
     if (shouldResume) widget.player.play();
