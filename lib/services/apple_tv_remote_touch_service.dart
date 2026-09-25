@@ -12,6 +12,10 @@ import 'gamepad_service.dart';
 
 enum _SwipeAxis { horizontal, vertical }
 
+/// Free-scrub travel: [dx] in UIKit view points, [speed] in points per
+/// millisecond (0 when unknown).
+typedef ScrubPanHandler = void Function(double dx, double speed);
+
 /// Which input source owns directional navigation for the current gesture.
 ///
 /// tvOS delivers one touch-surface swipe over two independent paths: its own
@@ -65,8 +69,28 @@ class AppleTvRemoteTouchService {
   // reached the app is attributed to a swipe instead of a clickpad press (a
   // press keeps the finger nearly still). Tuning knob; the verdict is logged.
   static const double defaultNativeSwipeClassifyDistance = 60;
+  // Finger travel before a free-scrub pan starts moving the cursor, so the
+  // jitter of a click (the commit click included) does not shift it.
+  static const double scrubPanSlop = 20;
+  // After the slop, travel is forwarded in chunks of at least this much, so
+  // the jitter of the commit click in the middle of a pan stays put.
+  static const double scrubPanDeadZone = 4;
+  // Horizontal travel, in the same UIKit view points as [swipeThreshold], that
+  // counts as one full swipe across the surface. Tuning knob for the hardware
+  // round: measure a full physical swipe in the log (`touch type=move`).
+  static const double scrubPanFullTravel = 1920;
+  // Pan speed is averaged over this window, and never over less than
+  // [scrubPanMinSpeedInterval]: channel messages that land in one frame are
+  // microseconds apart and would otherwise read as a flick.
+  static const Duration scrubPanSpeedWindow = Duration(milliseconds: 50);
+  static const Duration scrubPanMinSpeedInterval = Duration(milliseconds: 8);
 
-  static final AppleTvRemoteTouchService instance = AppleTvRemoteTouchService();
+  static final AppleTvRemoteTouchService _instance = AppleTvRemoteTouchService();
+  static AppleTvRemoteTouchService? _debugInstanceOverride;
+  static AppleTvRemoteTouchService get instance => _debugInstanceOverride ?? _instance;
+
+  @visibleForTesting
+  static set debugInstanceOverride(AppleTvRemoteTouchService? service) => _debugInstanceOverride = service;
 
   final BasicMessageChannel<dynamic> _channel;
   final BasicMessageChannel<dynamic> _pressDiagChannel;
@@ -121,6 +145,18 @@ class AppleTvRemoteTouchService {
   // for widgets that treat a swipe and a clickpad press differently.
   final Map<LogicalKeyboardKey, DateTime> _lastSwipeDirectionalAt = {};
 
+  /// SCRUB1: set while the player's free scrub owns the touch surface. The
+  /// pan then goes here as horizontal travel instead of being quantised into
+  /// arrow keys (one per [swipeThreshold], at most one per
+  /// [swipeRepeatInterval]), which is what made each swipe move one step.
+  ScrubPanHandler? _scrubPanHandler;
+  bool _scrubPanEngaged = false;
+  double _scrubPanPending = 0;
+  final List<(DateTime, double)> _scrubPanSamples = [];
+  // Set when the scrub lets go of the pan while the finger is still down (the
+  // commit or Menu click): the rest of that touch must not turn into arrows.
+  bool _swallowGestureTail = false;
+
   AppleTvRemoteTouchService({
     BasicMessageChannel<dynamic>? channel,
     BasicMessageChannel<dynamic>? pressDiagChannel,
@@ -171,6 +207,41 @@ class AppleTvRemoteTouchService {
     if (taggedAt == null) return false;
     return _now().difference(taggedAt).abs() <= swipeAttributionWindow;
   }
+
+  /// Route horizontal touch-surface travel to [handler] instead of
+  /// synthesising arrows. The gesture is re-anchored on the finger, so travel
+  /// from before the scrub began is not replayed into the cursor.
+  void setScrubPanHandler(ScrubPanHandler handler) {
+    _scrubPanHandler = handler;
+    _swallowGestureTail = false;
+    _reanchorGesture();
+    _log('scrub pan on');
+  }
+
+  /// Hand the touch surface back to swipe-to-arrow, but only when [handler] is
+  /// still the registered one. The rest of a touch that is still down is
+  /// swallowed, so the commit click never becomes a seek arrow.
+  void releaseScrubPanHandler(ScrubPanHandler handler) {
+    if (!identical(_scrubPanHandler, handler)) return;
+    _scrubPanHandler = null;
+    _swallowGestureTail = _touchActive;
+    _reanchorGesture();
+    _log('scrub pan off swallowTail=$_swallowGestureTail');
+  }
+
+  void _reanchorGesture() {
+    _startX = _anchorX = _lastTouchX;
+    _startY = _anchorY = _lastTouchY;
+    _lastSwipeAxis = null;
+    _lastSwipeAt = null;
+    _scrubPanEngaged = false;
+    _scrubPanPending = 0;
+    _scrubPanSamples
+      ..clear()
+      ..add((_now(), _lastTouchX));
+  }
+
+  bool get isScrubPanActive => _scrubPanHandler != null;
 
   void start() {
     if (_listening) return;
@@ -242,6 +313,7 @@ class AppleTvRemoteTouchService {
 
   bool _decideNativeKeyEvent(KeyEvent event) {
     _log('native ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)}');
+    if (event is KeyDownEvent && _isSelectKey(event.logicalKey)) _scrubPanPending = 0;
     if (_isMediaPlaybackKey(event.logicalKey)) {
       _log('consume native media key reason=direct-playback-action');
       return true;
@@ -336,6 +408,9 @@ class AppleTvRemoteTouchService {
       case 'click_e':
         _releaseSelectFromClick(source: 'click_e');
       case 'click_s':
+        // A click is no pan: a saved remainder must not add up with the
+        // click's jitter into one last cursor step.
+        _scrubPanPending = 0;
         _pressSelectFromClick();
       case 'play_pause':
         final source = arguments['source'] is String ? arguments['source'] as String : 'native';
@@ -374,6 +449,12 @@ class AppleTvRemoteTouchService {
     _lastTouchY = y;
     _lastSwipeAxis = null;
     _lastSwipeAt = null;
+    _swallowGestureTail = false;
+    _scrubPanEngaged = false;
+    _scrubPanPending = 0;
+    _scrubPanSamples
+      ..clear()
+      ..add((_now(), x));
     // A claim still under its post-lift grace belongs to a gesture that is
     // very probably this one, so carry it in and hold it for as long as the
     // finger is down. Which path made the claim does not change that.
@@ -402,6 +483,18 @@ class AppleTvRemoteTouchService {
   void _moveTouch(double x, double y) {
     if (!_touchActive) {
       _log('ignore touch-move reason=no-active-touch x=${_formatDouble(x)} y=${_formatDouble(y)}');
+      return;
+    }
+
+    if (_swallowGestureTail) {
+      _lastTouchX = x;
+      _lastTouchY = y;
+      return;
+    }
+
+    final scrubPan = _scrubPanHandler;
+    if (scrubPan != null) {
+      _moveScrubPan(scrubPan, x, y);
       return;
     }
 
@@ -452,6 +545,48 @@ class AppleTvRemoteTouchService {
     }
     _lastSwipeAxis = axis;
     _lastSwipeAt = now;
+  }
+
+  void _moveScrubPan(ScrubPanHandler scrubPan, double x, double y) {
+    final now = _now();
+    final previousX = _lastTouchX;
+    _lastTouchX = x;
+    _lastTouchY = y;
+    _scrubPanSamples
+      ..add((now, x))
+      ..removeWhere((sample) => now.difference(sample.$1) > scrubPanSpeedWindow);
+    final travelX = (x - _startX).abs();
+    final travelY = (y - _startY).abs();
+    // A horizontal pan owns the gesture, so tvOS' own swipe arrow (and its
+    // trailing copy after the lift, see [gestureOwnershipGrace]) does not also
+    // step the timeline. A ring click keeps the finger still and stays a
+    // press; a vertical swipe still leaves the scrub as before.
+    if (travelX >= nativeSwipeClassifyDistance &&
+        travelX > travelY &&
+        _currentDirectionalOwner() != _DirectionalOwner.swipe) {
+      _claimDirectionalOwner(_DirectionalOwner.swipe);
+    }
+    if (!_scrubPanEngaged) {
+      if (travelX < scrubPanSlop) return;
+      _scrubPanEngaged = true;
+      // The slop travel happened over an unknown stretch: no speed, gain 1.
+      scrubPan(x - _startX, 0);
+      return;
+    }
+    _scrubPanPending += x - previousX;
+    if (_scrubPanPending.abs() < scrubPanDeadZone) return;
+    final dx = _scrubPanPending;
+    _scrubPanPending = 0;
+    scrubPan(dx, _scrubPanSpeed(now, x));
+  }
+
+  /// Average horizontal speed in points per millisecond over
+  /// [scrubPanSpeedWindow].
+  double _scrubPanSpeed(DateTime now, double x) {
+    final (oldestAt, oldestX) = _scrubPanSamples.first;
+    final minMs = scrubPanMinSpeedInterval.inMicroseconds / 1000;
+    final elapsedMs = now.difference(oldestAt).inMicroseconds / 1000;
+    return (x - oldestX).abs() / (elapsedMs < minMs ? minMs : elapsedMs);
   }
 
   _SwipeAxis? _resolveSwipeAxis({
