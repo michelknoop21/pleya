@@ -20,7 +20,7 @@ een iPhone naar een Apple TV meereisde.
 **PS-9 is gesloten** op 4 september 2026: vier van de vijf acceptatiecriteria met tests, en het
 stopcriterium op de draaiende NAS in plaats van alleen in een container. De volgende fase in de
 vastgelegde doorloop is **PS-11A**. Dat aparte vrijgavebesluit is inmiddels genomen
-([DEC-129](docs/DECISIONS.md)): PS-11A is vrijgegeven, maar start pas wanneer alle blokkerende
+([DEC-129](../DECISIONS.md)): PS-11A is vrijgegeven, maar start pas wanneer alle blokkerende
 S0-poorten uit `docs/PLEYA-SERVER-MASTERLIST.md` groen zijn, en dat zijn er op dit moment nog twee
 (S0.6, de NAS-migratiefixture, en S0.7 als poort P9, de contractdekking). **PS-14 blijft gesloten en
 mag niet naast PS-11A lopen**; daarover volgt een eigen besluit pas na afronding en
@@ -30,14 +30,14 @@ van dezelfde afhankelijkheidsgraaf en staat in `docs/pleya-server-phase-order-de
 PS-5 (`DeviceCapabilities` in de client) is code complete maar niet gesloten: acceptatiecriterium 4,
 de regressieronde op echte hardware voor tvOS en minimaal één desktopplatform, blijft expliciet open
 en niet gehaald. Die hardwarevalidatie is bewust uitgesteld en blokkeerde PS-9 niet, conform
-[DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
+[DEC-118](../DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
 Dat PS-9 nu gesloten is, is nadrukkelijk geen bewijs dat PS-5-criterium 4 gehaald is; de bestaande
 hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag bevat
 alsnog worden uitgevoerd.
 
 **Op 24 augustus 2026 zijn er drie fasen bij gekomen**, goedgekeurd in
 `docs/pleya-server-ps4e-proposal.md` en vastgelegd in
-[DEC-073](docs/DECISIONS.md): **PS-4E** (Pleya Web naar app-pariteit, inclusief het *tonen* van
+[DEC-127](../DECISIONS.md#dec-127-ps-4e-ps-7n-en-ps-7a-komen-erbij-ps-4w-wordt-geknipt-en-de-lege-hubs-zijn-een-ps-4-defect): **PS-4E** (Pleya Web naar app-pariteit, inclusief het *tonen* van
 bestaande kijkstatus), **PS-7N** (`summary`, `genres` en `content_rating` uit lokale `.nfo`-sidecars,
 voorwaardelijk op een coverage-gate van 80 procent per bibliotheek) en **PS-7A** (`?width=` op
 artwork werkend maken). PS-4W behoudt zijn Phase ID maar raakt twee scope-items kwijt aan PS-4E: de
@@ -50,7 +50,7 @@ vroeg. PS-9 is nu toegestaan; latere fasen worden alleen gestart volgens hun vas
 afhankelijkheden en poorten, zoals transcoderen (PS-8) en de browserspeler (PS-4W).
 
 **E-books zijn sinds 3 september 2026 productscope, en nog niet vrijgegeven.**
-[DEC-093](docs/DECISIONS.md) neemt e-books op als contentdomein naast film en serie, met **PS-14**
+[DEC-128](../DECISIONS.md#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15) neemt e-books op als contentdomein naast film en serie, met **PS-14**
 (catalogus en inhoud) en **PS-15** (reader en leesvoortgang) als nieuwe fasen en **PS-16** (offline
 lezen, bladwijzers) begrensd maar niet ontworpen. De onderbouwing staat in
 `docs/pleya-server-ebooks-proposal.md`. Dat besluit voegt de fasen toe en geeft ze niet vrij: PS-9
@@ -64,12 +64,15 @@ de mobiele beperking is clientgedrag, dus er komt geen platform- of readerveld a
 tot een besluit het venster expliciet opent. Die formulering hing eerder aan "zolang de huidige
 ontwikkelfase loopt", en dat liet een gat vallen op het moment dat een fase sloot en de volgende nog
 niet gestart was: geen lopende fase las dan als geen vriezing. Er is geen moment waarop het contract
-vanzelf open staat. Het venster ging tot nu toe drie keer open: bij het sluiten van
+vanzelf open staat. Het venster ging tot nu toe vier keer open: bij het sluiten van
 PS-3, voor precies de drie poortbesluiten die eronder staan; voor PS-9, voor precies de zeven
-wijzigingen uit [DEC-122](docs/DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
+wijzigingen uit [DEC-122](../DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
 en op 5 september 2026 voor S1 van PS-11A, voor precies de zeventien wijzigingen uit J.2 van het
-re-baselinepakket, met [DEC-135](docs/DECISIONS.md#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
-Dat derde venster staat nog open en sluit bij taak S1.6. Buiten die zeventien is het contract ook nu
+re-baselinepakket, met [DEC-135](../DECISIONS.md#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein),
+dicht sinds [DEC-137](../DECISIONS.md#dec-137-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen);
+en op 6 september 2026 voor S2, voor precies de tien wijzigingen uit J.3, met
+[DEC-138](../DECISIONS.md#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein).
+Dat vierde venster staat nog open en sluit bij taak S2.6. Buiten die tien is het contract ook nu
 bevroren. Legt een latere fase een echt probleem bloot, dan is dat een
 protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie
 getoetst wordt, niet een aanpassing in de YAML omdat het zo uitkomt. `scripts/check_protocol.sh` is de

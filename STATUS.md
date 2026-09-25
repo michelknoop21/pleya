@@ -99,7 +99,7 @@ niet gebouwd. En PLR6 (Menu sluit het spelerpaneel niet op hardware) staat nog s
 native drukpad.
 
 **`feat/pleyaserver` is ongewijzigd sinds 2026-09-01.** Er is deze week niet aan gewerkt; de
-DEC-064-hardwareronde (zie "Volgende stap") staat nog open op precies dezelfde vier testtitels als
+DEC-118-hardwareronde (zie "Volgende stap") staat nog open op precies dezelfde vier testtitels als
 vorige week.
 
 _Hersteld uit `d4af0122`, weggevallen in merge `0b9699ec`. De DEC-nummers hierin zijn die van vóór de hernummering van 20 september; de tabel onderaan `docs/DECISIONS.md` geeft de huidige._
@@ -331,8 +331,8 @@ nu op `183d694` op `origin` én `github`. Zie `docs/architecture/pleya-verify.md
 **`feat/pleyaserver` is een aparte, verder gevorderde werkboom die `main` nog niet kent.** Een
 integratie-gereedheidsaudit wees uit dat die branch al PS-5 (`DeviceCapabilities`) compleet en getest
 heeft en inmiddels op PS-9 (gebruikers, sessies, rollen) werkt, met
-[DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
-als geldige, geaccepteerde toestemming daarvoor. Diezelfde DEC-064 vraagt wél de openstaande
+[DEC-118](docs/DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+als geldige, geaccepteerde toestemming daarvoor. Diezelfde DEC-118 vraagt wél de openstaande
 PS-5-hardwareronde vóór een merge naar `main` (dat is een van de drie triggers in de decision-tekst
 zelf), dus die ronde is nu bezig: een release-build draait lokaal op macOS, en dezelfde bron staat
 gebouwd en gelanceerd op de echte Apple TV. De vier testtitels en de fysieke playbackbeoordeling
@@ -532,7 +532,7 @@ endpoint waarmee een client zijn eigen account-id opvraagt: `GET /users` filtert
 halen. De client omzeilt dat nu door op gebruikersnaam te identificeren. Allebei horen in het
 eerstvolgende protocolvenster, met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3.
 
-**DEC-097's hardwareronde afmaken, dan pas naar `main` mergen.** Twee builds staan al klaar: de
+**DEC-118's hardwareronde afmaken, dan pas naar `main` mergen.** Twee builds staan al klaar: de
 macOS-app draait (`pgrep -f "Pleya.app/Contents/MacOS/Pleya"` bevestigt), en de tvOS-app is
 geïnstalleerd op de echte Apple TV (`nl.michelknoop.pleya`, gelanceerd via `xcrun devicectl device
 process launch`). Per toestel dezelfde vier titels beoordelen (een Plex- en een Jellyfin-titel die
@@ -553,7 +553,7 @@ PS-5-fasetabel in het architectuurdocument).
 Het sluiten van PS-9 verandert daar niets aan: die twee criteria staan los van elkaar, en de
 hardwareronde is niet gedraaid. Dat een openstaand hardwarecriterium het starten van PS-9 niet
 blokkeerde, is vastgelegd als een
-beperkte governance-afwijking, [DEC-097](docs/DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
+beperkte governance-afwijking, [DEC-118](docs/DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet).
 Ze geldt uitsluitend voor het starten van een volgende ontwikkelfase en is geen bewijs dat Plex- of
 Jellyfin-afspelen op echte hardware geverifieerd is; die verificatie ontbreekt gewoon nog. De
 hardwareronde blijft als openstaande schuld op de PS-5-fasetabel staan en moet uiterlijk vóór de
@@ -580,7 +580,7 @@ devicerun nodig met de console meelezend, zie `docs/tvos-remote-press-pipeline.m
 **Daarna, ongewijzigd sinds 2026-09-01: niet PS-5 vanaf `main` beginnen, die fase bestaat al,
 compleet en getest, op `feat/pleyaserver`.**
 Dat was de aanname tot 2026-09-01; de integratie-gereedheidsaudit die dag wees uit dat die branch al
-verder is dan `main` zelf weet. De echte volgende stap is de DEC-064-hardwareronde afmaken (zie "Waar
+verder is dan `main` zelf weet. De echte volgende stap is de DEC-118-hardwareronde afmaken (zie "Waar
 was ik" hierboven): op de macOS-release-build en de tvOS-build op de echte Apple TV, per toestel vier
 titels beoordelen (Plex direct-play, Jellyfin direct-play, een transcoderende titel, en een
 TrueHD/Dolby-titel via een echte AVR). Alle acht controles slagen: AC4 sluiten, een Roadmap Drift
@@ -814,10 +814,10 @@ bibliotheek ziet en na intrekking meteen buiten staat, `ci_checks.sh` is volledi
 
 ### 2026-09-01
 - Integratie-gereedheidsaudit van `feat/pleyaserver` (read-only, geen schrijfacties): de vijf lokale
-  ongepushte commits stuk voor stuk gekarakteriseerd, [DEC-064](docs/DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+  ongepushte commits stuk voor stuk gekarakteriseerd, [DEC-118](docs/DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
   volledig gelezen, en PS-9 starten terwijl PS-5's AC4 openstond bevestigd als geen roadmapschending
-  (alle vier voorwaarden van DEC-064 onafhankelijk geverifieerd). Verdict B: eerst DEC-064's
-  hardwareronde, dan pas mergen, want DEC-064's eigen triggerclausule noemt "een merge van
+  (alle vier voorwaarden van DEC-118 onafhankelijk geverifieerd). Verdict B: eerst DEC-118's
+  hardwareronde, dan pas mergen, want DEC-118's eigen triggerclausule noemt "een merge van
   `feat/pleyaserver` naar `main`" letterlijk als een van de drie momenten waarop die ronde uiterlijk
   moet zijn gedraaid.
 - Hardwareronde gestart: `feat/pleyaserver`'s huidige bron gebouwd als macOS-releasebuild en lokaal
@@ -829,7 +829,7 @@ _Hersteld uit `d4af0122`, weggevallen in merge `0b9699ec`. De DEC-nummers hierin
 
 
 ### 2026-09-01
-- DEC-097's PS-5-hardwareronde gestart, vanuit een integratie-gereedheidsaudit die op `main`'s
+- DEC-118's PS-5-hardwareronde gestart, vanuit een integratie-gereedheidsaudit die op `main`'s
   `STATUS.md`/`docs/CHANGELOG.md` staat (deze branch was zelf niet het onderwerp van schrijfacties
   tijdens de audit). macOS-releasebuild lokaal gestart; tvOS-build gebouwd, geïnstalleerd en
   gelanceerd op de echte, al bereikbare Apple TV via `xcodebuild -destination

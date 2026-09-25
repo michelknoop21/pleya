@@ -934,7 +934,7 @@ Register staat daarmee op 178 van 187 `covered`. Fase 10A heeft geen enkele rij 
 `covered` bewogen, en dat hoort ook zo: fase 9 had het register al gesloten, dit was harding erop.
 Wat openblijft is vijf hardwarerijen, twee geregistreerde debts en twee onopgeloste productcontracten.
 
-## [2026-09-01] feat/pleyaserver: integratie-gereedheidsaudit, DEC-064-hardwareronde gestart
+## [2026-09-01] feat/pleyaserver: integratie-gereedheidsaudit, DEC-118-hardwareronde gestart
 
 Voordat een PS-5-branch vanaf de vernieuwde `main` kon starten, bleek `feat/pleyaserver` een aparte,
 ongemergede werkboom te zijn die `main` niet kende: lokaal op DEC-073 tegen `main`'s DEC-068, met vijf
@@ -942,10 +942,10 @@ ongepushte commits. Een read-only audit zette de zes openstaande vragen op scher
 commits zijn stuk voor stuk compleet en getest (een `schema.d.ts`-sync, de goedgekeurde DEC-073 zelf,
 de PS-4-hubfix, een gofmt-ronde en een releasenotes-bump); geen ervan raakt de bewezen
 PS-5-checkpoint. PS-9 starten terwijl PS-5's acceptatiecriterium 4 nog open stond bleek geen
-roadmapschending: [DEC-064](DECISIONS.md#dec-064-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
+roadmapschending: [DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
 staat dat expliciet toe onder vier voorwaarden, en alle vier zijn onafhankelijk geverifieerd.
 
-DEC-064's eigen tekst noemt drie triggers die de hardwareronde alsnog verplichten, wat het eerst
+DEC-118's eigen tekst noemt drie triggers die de hardwareronde alsnog verplichten, wat het eerst
 komt: een publieke release met PS-5- of PS-9-gedrag, een TestFlight-indiening naar App Review, of een
 merge van `feat/pleyaserver` naar `main`. Dat laatste is precies de stap die nu overwogen wordt en nog
 niet gebeurd was, dus de conclusie: eerst de hardwareronde, dan pas mergen (verdict B).
@@ -956,17 +956,17 @@ gelanceerd op de echte, gepairde Apple TV 4K (3e generatie) via `xcodebuild` + `
 rechtstreeks (geen simulator, geen TestFlight-wachttijd nodig: het toestel bleek al bereikbaar). De
 vier testtitels (een Plex- en een Jellyfin-titel die vandaag direct playen, een titel die
 transcodeert, en een TrueHD/Dolby-titel via een fysieke AVR) en de fysieke playbackbeoordeling wachten
-op Michel; simulator- of Verify-bewijs telt hier expliciet niet, dat is precies wat DEC-064 als
+op Michel; simulator- of Verify-bewijs telt hier expliciet niet, dat is precies wat DEC-118 als
 hardwaregrens heeft laten staan.
 
-## [2026-09-01] DEC-097's hardwareronde gestart op echte apparaten
+## [2026-09-01] DEC-118's hardwareronde gestart op echte apparaten
 
 _Hersteld uit `d4af0122`, weggevallen in merge `0b9699ec`. De DEC-nummers zijn die van vóór de hernummering van 20 september; de tabel onderaan `docs/DECISIONS.md` geeft de huidige._
 
 Een integratie-gereedheidsaudit vanaf `main` (zie `main`'s eigen `docs/CHANGELOG.md`) wees uit dat
 deze branch al verder is dan `main` weet: PS-5 compleet en getest, PS-9 onderweg, met
-[DEC-097](DECISIONS.md#dec-097-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) als
-geldige toestemming daarvoor. Diezelfde DEC-097 vraagt de PS-5-hardwareronde vóór een merge naar
+[DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) als
+geldige toestemming daarvoor. Diezelfde DEC-118 vraagt de PS-5-hardwareronde vóór een merge naar
 `main`, dus die is nu gestart. `flutter run -d macos --release` bouwde en startte een lokale release
 van deze branch (`Pleya.app`, 254,6MB). Voor tvOS bleek de gepairde Apple TV 4K (3e generatie) al
 bereikbaar (`tunnelState: connected`), dus `xcodebuild -workspace tvos/Runner.xcworkspace -scheme
@@ -977,7 +977,7 @@ launch` zetten `nl.michelknoop.pleya` erop en starten hem, zonder simulator of T
 De vier testtitels per toestel (een Plex- en een Jellyfin-titel die vandaag direct playen, een titel
 die transcodeert met een niet-originele preset, en een TrueHD- of Dolby-titel via een echte AVR) en de
 fysieke playbackbeoordeling staan nog open. Simulator- of Pleya Verify-bewijs telt hier bewust niet
-mee: AC4 is in DEC-097 expliciet een criterium dat uitsluitend met fysieke hardware te bewijzen is.
+mee: AC4 is in DEC-118 expliciet een criterium dat uitsluitend met fysieke hardware te bewijzen is.
 
 ## [2026-08-31] Pleya Verify Core 1.0: hardening-pass afgerond en gemerged naar main
 
