@@ -2452,6 +2452,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Because you watched ${title}'
 	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
 
+	/// en: 'Because you're watching ${title}'
+	String becauseYouAreWatching({required Object title}) => 'Because you\'re watching ${title}';
+
 	/// en: 'Recently Added Shows'
 	String get latestShows => 'Recently Added Shows';
 
@@ -2466,6 +2469,12 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Because you like ${genre}'
 	String becauseYouLike({required Object genre}) => 'Because you like ${genre}';
+
+	/// en: 'More with ${name}'
+	String moreWithActor({required Object name}) => 'More with ${name}';
+
+	/// en: 'More from ${name}'
+	String moreFromDirector({required Object name}) => 'More from ${name}';
 
 	/// en: 'Hidden Gems'
 	String get hiddenGems => 'Hidden Gems';
@@ -7864,11 +7873,14 @@ extension on Translations {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
 			'discover.topRated' => 'Top Rated',
 			'discover.somethingDifferent' => 'Something Different',
 			'discover.topPicksForYou' => 'Top Picks for You',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
+			'discover.moreWithActor' => ({required Object name}) => 'More with ${name}',
+			'discover.moreFromDirector' => ({required Object name}) => 'More from ${name}',
 			'discover.hiddenGems' => 'Hidden Gems',
 			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
 			'discover.watchedByYou' => 'You',
@@ -8099,11 +8111,11 @@ extension on Translations {
 			'liveTv.whatsOn' => 'What\'s On',
 			'liveTv.watchChannel' => 'Watch Channel',
 			'liveTv.favorites' => 'Favorites',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
 			'liveTv.joinSession' => 'Join Session in Progress',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
@@ -8613,11 +8625,11 @@ extension on Translations {
 			'seerr.disconnect' => 'Disconnect',
 			'seerr.disconnectConfirm' => 'Disconnect requests server?',
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
 			'seerr.permissionAdmin' => 'Administrator',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',
