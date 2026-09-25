@@ -1052,12 +1052,16 @@ class _AppShell extends StatelessWidget {
   }
 }
 
-/// On Apple TV the system hands Flutter a 1920×1080 surface at
-/// devicePixelRatio 1.0, the same logical pixel count as a phablet. That's
-/// too dense for a 10ft viewing distance, so everything ends up tiny. We
-/// shrink the effective logical size to half and scale the rendered output
-/// back up so fonts, icons, and paddings end up visually ~2× larger — roughly
-/// matching the UI feel of Android TV (which renders at lower logical DPI).
+/// tvOS reports a 1920x1080 point screen, and the engine takes the
+/// devicePixelRatio from `UIScreen.scale`: 2.0 on 4K output, so Flutter sees
+/// 1920x1080 logical pixels on a 3840x2160 physical surface. Measured on an
+/// Apple TV 4K (log ekeb2, build 305): UIScreen 1920x1080, nativeBounds
+/// 3840x2160, scale 2.0; FlutterView 3840x2160 at dpr 2.0. At 10 feet that
+/// canvas is too dense, so this wrapper divides the logical size by [_scale]
+/// (1038x584 logical, dpr 3.7) and scales the rendered output back up by the
+/// same factor (DEC-028, DEC-139). Everything inside grows 1.85x; tokens that
+/// also go through `TvLayoutConstants.scaleOf` land at 1.5725x their nominal
+/// size, `TvHig` values at exactly their HIG point size.
 class _AppleTvScale extends StatelessWidget {
   final Widget? child;
   const _AppleTvScale({required this.child});

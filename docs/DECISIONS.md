@@ -4099,6 +4099,16 @@ dus DEC-135 of DEC-136.
 
 **Context:** Michel fotografeerde build 303 op de 77 inch tv en vond de interface opnieuw
 opgeblazen (VIS-0925-G). De vraag was of de wrapper van DEC-028 (1,85, canvas 1038x584) omlaag moest.
+
+De hardwaremeting (log `ekeb2`, build 305, Apple TV 4K op 4K-uitvoer) legt de keten vast:
+UIScreen 1920x1080 punten, nativeBounds 3840x2160, scale 2,0; de FlutterView is 3840x2160 fysiek
+bij dpr 2,0; binnen `_AppleTvScale` 1037,8x583,8 logisch bij dpr 3,7; `scaleOf` 0,85 (ruw 0,54) en
+`TvHig.of` 0,54. De effectieve maat op het scherm is daarmee per soort waarde verschillend: tokens
+via `scaleOf` komen op 1,5725 keer hun nominale waarde, Material-onderdelen zonder TV-maatvoering op
+1,85 keer, en `TvHig`-waarden en de `NoticeHost` (die buiten de wrapper stond) op 1,0 keer. De
+opgeblazen indruk zit dus niet in de wrapper zelf maar in de schermen die nog op `scaleOf` rekenen
+rond te kleine tekst of te veel lucht. DEC-028 leidde dpr 4 op een 4K-toestel af; de meting geeft
+2,0 voor de FlutterView en 3,7 binnen de wrapper.
 Gemeten in Apple-punten op het toestel staat Home al vrijwel op de HIG: zes posters van 231 pt met
 41 pt ertussen, zijkant 75,5 pt, en de topnav is met 52 pt zelfs lager dan de tabbalk van 68 pt.
 Instellingenrijen zijn sinds DENS1 60 en 92 pt rond tekst van 29 en 25 pt. Wat wel te groot of te
@@ -4119,11 +4129,14 @@ naar `TvHig`-punten, zoals DEC-130 voorschrijft:
   kaart, compactere categorieën.
 - Mijn Pleya-tegels naar de maat van `TvMenuGrid` (ongeveer 100 pt) met Body- en Caption 1-tekst.
 - Cataloguskaarttekst naar het HIG-minimum van 23 pt, het hero-CTA-label naar Body (29 pt).
-- `NoticeHost` binnen `_AppleTvScale`.
+- `NoticeHost` binnen `_AppleTvScale`. Buiten de wrapper stond hij op 1,0 keer: de TV-laag rekent
+  met `scaleOf`, maar zag daar een canvas van 1080 hoog en kwam op 14 en 13 pt uit, ver onder het
+  HIG-minimum van 23 pt. Binnen de wrapper komt dezelfde laag op 1,5725 keer, zo'n 22 en 20 pt.
+  Dat is nog net onder 23 pt, maar in lijn met de rest van de app; een eigen HIG-omzetting van de
+  meldingen is een aparte stap.
 
 **Consequences:** De tekst blijft op HIG-maat en de lucht eromheen krimpt. Goldens van de geraakte
-schermen worden stale en gaan via `goldens.yml` opnieuw. Of 1,85 op het toestel ook echt 1038x584
-logische pixels geeft, hangt af van de DPR die de engine-fork uit `windowScene.screen.scale`
-haalt. DEC-028 leidde dpr 4 op een 4K-toestel af maar heeft het niet gemeten. DPR1 voegt daarom één
-logregel na het eerste frame toe met de DPR en de fysieke resolutie. Blijkt de DPR daar anders dan
-verwacht, dan is dat een nieuw besluit, geen stille aanpassing van dit getal.
+schermen worden stale en gaan via `goldens.yml` opnieuw. De meting van `ekeb2` bevestigt dat 1,85
+op het toestel 1038x584 logische pixels geeft (DPR1); de engine, de DPR en de opbouw van
+`_AppleTvScale` en `scaleForHeight` blijven ongewijzigd. Alleen de doc-comment bij `_AppleTvScale`,
+die nog dpr 1,0 en een halvering beschreef, is naar deze meting gecorrigeerd.
