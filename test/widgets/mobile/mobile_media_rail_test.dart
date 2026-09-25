@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
@@ -49,8 +51,8 @@ void main() {
         viewAll: viewAll,
       );
 
-  Future<void> pump(WidgetTester tester, Widget rail, {double textScale = 1.0}) async {
-    tester.view.physicalSize = const Size(393, 852);
+  Future<void> pump(WidgetTester tester, Widget rail, {double textScale = 1.0, double width = 393}) async {
+    tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -91,6 +93,29 @@ void main() {
     expect(find.text('Continue watching'), findsOneWidget);
     expect(find.byType(MobileMediaCard), findsNWidgets(2));
   });
+
+  // DEC-132: a seed row's reason ("Because you watched X") is its rail title;
+  // a long seed title is cut on one line instead of overflowing the header.
+  // The test font draws every glyph a full em wide, so on a 393pt phone even
+  // the short label would be cut; 834pt keeps the short case meaningful.
+  {
+    const longTitle =
+        'The Extraordinarily Long and Winding Chronicle of a Title That Never Seems to End Across Several Seasons';
+    for (final locale in [AppLocale.en, AppLocale.nl]) {
+      for (final seedTitle in ['Severance', longTitle]) {
+        testWidgets('seed row title ${locale.languageCode}, ${seedTitle.length} chars', (tester) async {
+          await tester.runAsync(() => LocaleSettings.setLocale(locale));
+          addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+          final label = t.discover.becauseYouWatched(title: seedTitle);
+          await pump(tester, MobileMediaRail(hub: hub(count: 1, title: label), railIndex: 0), width: 834);
+
+          expect(find.text(label), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          expect(tester.renderObject<RenderParagraph>(find.text(label)).didExceedMaxLines, seedTitle == longTitle);
+        });
+      }
+    }
+  }
 
   testWidgets('shows "View All" only when a callback is given', (tester) async {
     await pump(tester, MobileMediaRail(hub: hub(), railIndex: 0));

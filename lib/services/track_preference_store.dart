@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -8,6 +9,9 @@ import '../media/track_language_choice.dart';
 import '../media/unified/identity_evidence.dart';
 import '../utils/app_logger.dart';
 import 'pleya_share/pleya_share_device_name.dart';
+import 'preferences/preference_merge_strategies.dart';
+import 'preferences/preference_sync_policy.dart';
+import 'preferences/preference_sync_scope.dart';
 import 'pleya_profile_language_preference_store.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
@@ -15,9 +19,11 @@ import 'storage_service.dart';
 /// Remembers the audio/subtitle language a user picked by hand, per series or
 /// movie, so the next episode does not fall back to the server default.
 ///
-/// Sits on [SettingsService.trackLanguagePreferences], which rides the existing
-/// allow-by-default iCloud key-value sync: nothing extra is needed for the
-/// choice to reach the user's other Apple devices.
+/// Sits on [SettingsService.trackLanguagePreferences], a global map registered
+/// with the `trackLanguageMap` merge family ([mergeFamily], DEC-134): the
+/// `profileKeyedMap` merge with this store's cap after it. The Plex Home
+/// profile's entries reach the user's other Apple devices, a local profile's
+/// stay here.
 ///
 /// Serialises every write through a Completer chain. The stored value is one
 /// map holding every title, and the audio and the subtitle write for the same
@@ -57,16 +63,18 @@ class TrackPreferenceStore {
     _deviceName = null;
   }
 
-  /// Beyond this many titles the oldest entries are dropped. The whole map is
-  /// one iCloud KVS value with a 100 KB ceiling.
+  /// Beyond this many titles the oldest entries are dropped, and at most this
+  /// many tombstones are kept. The whole map is one iCloud KVS value with a
+  /// 100 KB ceiling, which the sync layer enforces by refusing the whole value.
   ///
-  /// Was 500 while an entry held languages alone at well under 100 bytes. The
-  /// provenance the management page shows — series title, poster path, server,
-  /// episode, device — roughly triples that, so the cap comes down to keep the
-  /// same headroom under the same ceiling. Nobody accumulates 250 series
-  /// preferences; the cap exists so that a decade of watching cannot silently
-  /// grow past a limit the sync layer enforces by refusing the whole value.
-  static const int maxEntries = 250;
+  /// Was 500 while an entry held languages alone, then 250 once the provenance
+  /// the management page shows arrived. Measured on the wire with long titles
+  /// (kvs_footprint_test), a live entry costs up to about 490 bytes and a
+  /// tombstone about 120, so 250 live entries alone already passed the
+  /// ceiling, and tombstones had no bound but their lifetime. 100 of each is
+  /// about 59 KB, which leaves room for titles in scripts that take three
+  /// bytes a character.
+  static const int maxEntries = 100;
 
   /// The *logical* series key, when this item carries evidence strong enough to
   /// name its show across sources — today the show's stable catalogue GUID
@@ -216,12 +224,14 @@ class TrackPreferenceStore {
         final scope = await _scope();
         final stored = settings.read(SettingsService.trackLanguagePreferences);
         final next = Map<String, TrackLanguageChoice>.from(stored);
+        final now = DateTime.now().millisecondsSinceEpoch;
         var removed = false;
         for (final key in _candidateKeys(metadata)) {
-          if (next.remove('$scope|$key') != null) removed = true;
+          if (next['$scope|$key']?.isEmpty == false) removed = true;
+          _remove(next, '$scope|$key', now);
         }
         if (!removed) return;
-        await settings.write(SettingsService.trackLanguagePreferences, next);
+        await settings.write(SettingsService.trackLanguagePreferences, _capped(next));
       } catch (e) {
         appLogger.w('Failed to clear the remembered track languages', error: e);
       }
@@ -242,9 +252,10 @@ class TrackPreferenceStore {
         final settings = await SettingsService.getInstance();
         final scope = await _scope();
         final stored = settings.read(SettingsService.trackLanguagePreferences);
-        if (!stored.containsKey('$scope|$seriesKey')) return;
-        final next = Map<String, TrackLanguageChoice>.from(stored)..remove('$scope|$seriesKey');
-        await settings.write(SettingsService.trackLanguagePreferences, next);
+        if (stored['$scope|$seriesKey']?.isEmpty != false) return;
+        final next = Map<String, TrackLanguageChoice>.from(stored);
+        _remove(next, '$scope|$seriesKey', DateTime.now().millisecondsSinceEpoch);
+        await settings.write(SettingsService.trackLanguagePreferences, _capped(next));
       } catch (e) {
         appLogger.w('Failed to clear a remembered track language', error: e);
       }
@@ -312,10 +323,12 @@ class TrackPreferenceStore {
 
         final next = Map<String, TrackLanguageChoice>.from(stored);
         for (final candidate in candidates) {
-          if ('$scope|$candidate' != key) next.remove('$scope|$candidate');
+          if ('$scope|$candidate' != key) {
+            _remove(next, '$scope|$candidate', now);
+          }
         }
         if (updated.isEmpty) {
-          next.remove(key);
+          _remove(next, key, now);
         } else {
           next[key] = updated;
         }
@@ -326,10 +339,88 @@ class TrackPreferenceStore {
     });
   }
 
-  /// Drops the least recently written entries once the map exceeds [maxEntries].
+  /// Remove the entry under [key]. For a scope that syncs, the removal has to
+  /// reach the other devices, so it becomes a tombstone: an empty choice
+  /// stamped [now], which every reader here already skips and the
+  /// `profileKeyedMap` merge settles by timestamp like any other entry
+  /// (DEC-134). A scope that never leaves this device just loses the key.
+  ///
+  /// Only a live entry is removed: a key that never held one, or already holds
+  /// a tombstone, is left alone, so a removal is stamped once and ages out.
+  static void _remove(Map<String, TrackLanguageChoice> entries, String key, int now) {
+    if (entries[key]?.isEmpty != false) return;
+    if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key))) {
+      entries[key] = TrackLanguageChoice(updatedAt: now);
+    } else {
+      entries.remove(key);
+    }
+  }
+
+  /// Keeps the [maxEntries] most recently written live entries and as many of
+  /// the newest tombstones, and drops tombstones older than
+  /// `profileKeyedMapTombstoneLifetime`.
+  ///
+  /// Tombstones have a budget of their own, so a burst of removals cannot push
+  /// out the choices still in use. An evicted entry of a scope that syncs
+  /// becomes a tombstone rather than vanishing: the merge is a union, so a key
+  /// that simply disappeared here would come back from the store, and the map
+  /// would grow to every device's history past the 100 KB ceiling. The
+  /// tombstone is stamped one past the evicted entry, not now, so an edit
+  /// another device made since still wins.
   static Map<String, TrackLanguageChoice> _capped(Map<String, TrackLanguageChoice> entries) {
-    if (entries.length <= maxEntries) return entries;
-    final byAge = entries.entries.toList()..sort((a, b) => b.value.updatedAt.compareTo(a.value.updatedAt));
-    return Map.fromEntries(byAge.take(maxEntries));
+    final expiredBefore = DateTime.now().millisecondsSinceEpoch - profileKeyedMapTombstoneLifetime.inMilliseconds;
+    final live = entries.entries.where((e) => !e.value.isEmpty).toList()..sort(_newestFirst);
+    // ponytail: a tombstone past the budget goes before its lifetime is up, so a
+    // device offline since that removal can bring the entry back, exactly as
+    // after expiry. Budgeting bytes instead of entries would keep more of them.
+    final tombstones = <String, TrackLanguageChoice>{
+      for (final e in live.skip(maxEntries))
+        if (PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(e.key)))
+          e.key: TrackLanguageChoice(updatedAt: e.value.updatedAt + 1),
+      for (final e in entries.entries)
+        if (e.value.isEmpty && e.value.updatedAt >= expiredBefore) e.key: e.value,
+    }.entries.toList()..sort(_newestFirst);
+    return {
+      for (final e in live.take(maxEntries)) e.key: e.value,
+      for (final e in tombstones.take(maxEntries)) e.key: e.value,
+    };
+  }
+
+  /// Newest first, ties by key, so every device keeps the same entries.
+  static int _newestFirst(MapEntry<String, TrackLanguageChoice> a, MapEntry<String, TrackLanguageChoice> b) {
+    final byTime = b.value.updatedAt.compareTo(a.value.updatedAt);
+    return byTime != 0 ? byTime : a.key.compareTo(b.key);
+  }
+
+  /// The sync family for this map: `profileKeyedMap`, with [_capped] run over
+  /// every union, inbound and outbound.
+  ///
+  /// Each device caps its own writes, but the union of two capped maps holds
+  /// up to twice the cap. A device that only receives would keep that union
+  /// and push it back, over the store's ceiling, until its own next write; a
+  /// push that races the remote event would send it. The cap stays out of the
+  /// shared merge, which also serves the profile language map.
+  static PreferenceMergeFamily mergeFamily() {
+    final shared = buildProfileKeyedMapFamily();
+    return PreferenceMergeFamily(
+      name: PreferenceMergeFamilies.trackLanguageMap,
+      inbound: (local, remote) => _cappedRaw(shared.inbound(local, remote)),
+      outbound: (local, remote) => _cappedRaw(shared.outbound!(local, remote)),
+      removed: shared.removed,
+      adoptStore: (local, remote) => _cappedRaw(shared.adoptStore!(local, remote)),
+    );
+  }
+
+  /// [_capped] over a stored JSON value. A value this store cannot decode is
+  /// passed through untouched: capping is housekeeping, not a reason to fail
+  /// the apply.
+  static Object? _cappedRaw(Object? raw) {
+    if (raw is! String) return raw;
+    final pref = SettingsService.trackLanguagePreferences;
+    try {
+      return pref.encode(_capped(pref.decode(json.decode(raw))));
+    } catch (_) {
+      return raw;
+    }
   }
 }

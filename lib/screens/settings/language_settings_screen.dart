@@ -357,7 +357,7 @@ class _ValueRow extends StatelessWidget {
     return SettingRowFocus(
       onSelect: onSelect,
       child: ListTile(
-        contentPadding: kSettingRowPadding,
+        contentPadding: settingRowPadding(),
         leading: SettingsIconBadge(icon),
         title: Text(title),
         subtitle: Text(subtitle),

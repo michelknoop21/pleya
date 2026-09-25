@@ -19,6 +19,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/tv_hig.dart';
 import 'package:pleya/widgets/tv_browse_rail.dart';
 import 'package:provider/provider.dart';
 
@@ -113,7 +114,12 @@ void main() {
 
     final titleText = tester.widget<Text>(find.text(title));
     expect(titleText.style?.fontSize, isNotNull);
-    expect(titleText.style!.fontSize, closeTo(56 * panelScale, 0.05));
+    // DENS1: the title is HIG Title 1 (76 pt) on the panel's point grid; the
+    // nested box would give 76 * 900 / 1080.
+    expect(titleText.style!.fontSize, closeTo(TvHig.title1 * panelSize.height / 1080, 0.05));
+    // DENS1: the action row is 60 pt, above tvOS's 56 pt button minimum; the
+    // old `46 * scaleOf` made it 72 pt on an Apple TV.
+    expect(tester.getSize(find.byType(FilledButton).first).height, closeTo(60 * panelSize.height / 1080, 0.05));
   });
 
   testWidgets('SYS-3c/SYS-3e: the detail rail and its reservation read the scale the detail screen does', (
@@ -253,10 +259,13 @@ void main() {
     // `_buildHubHeader`) and always renders: with two seasons the season
     // chips own the season name, so the hub title falls back to the
     // localized "Episodes" label.
+    // Since VIS2 that label is the heading of the chip row on the rail's
+    // header line, and since DENS1 it is HIG Body on the panel's point grid
+    // (29 pt at 1080); on the nested box it would be 29 * 900 / 1080.
     final hubTitle = tester.widget<Text>(find.text('Episodes'));
     expect(
       hubTitle.style?.fontSize,
-      closeTo(18 * panelScale, 0.05),
+      closeTo(TvHig.body * panelSize.height / 1080, 0.05),
       reason: 'the rail scales off the nested box while the screen above it scales off the panel',
     );
     // SYS-3e: what the screen reserves for the rail has to be what the rail

@@ -1,9 +1,12 @@
 part of '../media_detail_screen.dart';
 
-/// The mobile film/series detail presentation (northstar 06/07,
-/// `docs/assets/ios-unified/northstar/06-film-detail.png` and
-/// `07-serie-afleveringen.png`). iOS Unified 2026 workitem 5 (I6),
-/// `docs/unified-2026-closure.md` §5 row 5.
+/// The mobile film/series detail presentation: one scrolling page in the
+/// order of northstar 06 (`docs/assets/ios-unified/northstar/06-film-detail.png`)
+/// for films and series alike. Northstar 07's tab strip for a series is
+/// dropped on Michel's instruction (DEC-131); the episodes, extras, cast and
+/// related rows follow the header inline, the way the TV detail stacks its
+/// rails. iOS Unified 2026 workitem 5 (I6), `docs/unified-2026-closure.md`
+/// §5 row 5.
 ///
 /// This is presentation only. Every action it triggers (play, download,
 /// watchlist, rate, mark watched, source change) reuses the exact methods
@@ -23,10 +26,15 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     // what media_detail_screen_test.dart's back/menu-suppression tests
     // attach to.
     final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
-    // Liquid Glass (LG-02): a film opens on a full-bleed hero behind the
-    // status bar, with the back/more buttons, title, tags and both CTAs on
-    // it. A series keeps mockup 07's layout; glass off keeps today's tree.
-    final glassHero = !metadata.isShow && glassTierFor(context) != GlassTier.off;
+    // Liquid Glass (LG-02): the page opens on a full-bleed hero behind the
+    // status bar, with the back/more buttons, title, tags and CTAs on it.
+    // Since DEC-131 a series shares the film's header, so it gets the hero
+    // too. Glass off keeps the DEC-131 tree unchanged.
+    final glassHero = glassTierFor(context) != GlassTier.off;
+    // The round watchlist button sits next to the film's Download capsule;
+    // a series has no Download capsule (download is per episode row), so
+    // its toggle stays in the action row.
+    final watchlistOnHero = glassHero && !metadata.isShow;
     final content = CustomScrollView(
       primary: true,
       slivers: [
@@ -37,52 +45,56 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
             child: Column(
               crossAxisAlignment: .start,
               children: [
-                // Mockup 07 opens a series on the Hervatten capsule and goes
-                // straight into the tabs: no 16:9 preview, no second title
-                // under the app bar's, no tags row, and no full-width
-                // Downloaden CTA (download lives per episode row instead).
-                // Those belong to 06, the film detail, which keeps them
-                // unchanged below (or on the glass hero).
-                if (!metadata.isShow && !glassHero) ...[
+                // DEC-131: one scrolling page for film and series alike, the
+                // order of mockup 06. Mockup 07's tabs (Afleveringen /
+                // Vergelijkbaar / Extra's / Details) are gone; a series gets
+                // the same header and its episodes, extras, cast and related
+                // rows follow inline, like the TV detail. With glass on the
+                // header (artwork, title, tags, CTAs) is the hero above.
+                if (!glassHero) ...[
                   _buildMobilePreviewCard(context, metadata, client),
                   const SizedBox(height: 16),
                   Text(metadata.displayTitle, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold)),
                   const SizedBox(height: 8),
                   _buildMobileTagsRow(context, metadata),
                   const SizedBox(height: 16),
+                  _buildMobilePrimaryCta(context, metadata),
+                  // Downloading a series happens per episode row; the
+                  // full-width capsule is the film's.
+                  if (!metadata.isShow) ...[const SizedBox(height: 10), _buildMobileDownloadCta(context, metadata)],
                 ],
-                if (!glassHero) _buildMobilePrimaryCta(context, metadata),
-                if (!metadata.isShow && !glassHero) ...[
-                  const SizedBox(height: 10),
-                  _buildMobileDownloadCta(context, metadata),
-                ],
-                // Kept for a series too: this is the only way to change
-                // source from the detail page, and it already draws nothing
-                // unless the item actually has alternative sources
+                // The only way to change source from the detail page; draws
+                // nothing unless the item has alternative sources
                 // (`hasAlternativeSources`, action_buttons.dart).
                 _buildUnifiedSourceLine(),
                 if (_detailAudioTracks.isNotEmpty) ...[const SizedBox(height: 10), _buildMobileAudioSelector()],
                 const SizedBox(height: 16),
-                if (metadata.isShow)
-                  _buildMobileEpisodesTabs(context, metadata)
-                else ...[
-                  _buildMobileSynopsisAndCredits(context, metadata),
-                  const SizedBox(height: 16),
-                  _buildMobileActionRow(context, metadata, includeWatchlist: !glassHero),
+                _buildMobileSynopsisAndCredits(context, metadata),
+                const SizedBox(height: 16),
+                _buildMobileActionRow(context, metadata, includeWatchlist: !watchlistOnHero),
+                if (metadata.isShow) ...[const SizedBox(height: 24), _buildMobileEpisodesSection(context, metadata)],
+                if (!widget.isOffline && _extras != null && _extras!.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  _buildMobileSectionTitle(context, t.discover.extras, key: _extrasSectionKey),
+                  const SizedBox(height: 12),
+                  _buildExtrasSection(),
                 ],
-                // For a show, "Meer zoals dit" lives in the Vergelijkbaar tab
-                // instead (_buildMobileEpisodesTabs) so it isn't rendered twice.
-                if (!metadata.isShow)
-                  for (int i = 0; i < _relatedHubs.length; i++) ...[
-                    const SizedBox(height: 8),
-                    HubSection(
-                      key: _relatedHubKeys[i],
-                      hub: _relatedHubs[i],
-                      icon: _getRelatedHubIcon(_relatedHubs[i]),
-                      inset: true,
-                      onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
-                    ),
-                  ],
+                if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  _buildMobileSectionTitle(context, t.discover.cast, key: _castSectionKey),
+                  const SizedBox(height: 12),
+                  _buildCastSection(metadata),
+                ],
+                for (int i = 0; i < _relatedHubs.length; i++) ...[
+                  const SizedBox(height: 16),
+                  HubSection(
+                    key: _relatedHubKeys[i],
+                    hub: _relatedHubs[i],
+                    icon: _getRelatedHubIcon(_relatedHubs[i]),
+                    inset: true,
+                    onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
+                  ),
+                ],
               ],
             ),
           ),
@@ -261,17 +273,30 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// the title. Reuses [_buildMetadataChip] and [buildMediaQualityLabels]
   /// unchanged; only the row composition is new.
   Widget _buildMobileTagsRow(BuildContext context, MediaItem metadata) {
-    final chips = [for (final label in _mobileTagLabels(metadata)) _buildMetadataChip(label)];
+    final chips = [
+      for (final label in _mobileTagLabels(metadata)) _buildMetadataChip(label),
+      // Critic and audience ratings, the chips the tablet header shows. The own
+      // rating is not repeated here: "Beoordelen" sits in the action row.
+      ..._buildRatingChips(metadata, includeUserRating: false),
+    ];
     if (chips.isEmpty) return const SizedBox.shrink();
     return Wrap(spacing: 8, runSpacing: 8, children: chips);
   }
 
-  List<String> _mobileTagLabels(MediaItem metadata) => [
-    if (metadata.year != null) '${metadata.year}',
-    if (metadata.contentRating != null) formatContentRating(metadata.contentRating),
-    if (metadata.durationMs != null) formatDurationTextual(metadata.durationMs!),
-    ...buildMediaQualityLabels(metadata),
-  ];
+  /// The text tags shared by the flat tags row and the glass hero.
+  List<String> _mobileTagLabels(MediaItem metadata) {
+    final seasonCount = metadata.isShow ? metadata.childCount : null;
+    return [
+      if (metadata.year != null) '${metadata.year}',
+      if (metadata.contentRating != null) formatContentRating(metadata.contentRating),
+      if (metadata.durationMs != null) formatDurationTextual(metadata.durationMs!),
+      // A series says how many seasons it has where a film says how long it
+      // is. Only from two up: the string is plural, and a single season is
+      // already named by the season pill below.
+      if (seasonCount != null && seasonCount > 1) '$seasonCount ${t.libraries.groupings.seasons.toLowerCase()}',
+      ...buildMediaQualityLabels(metadata),
+    ];
+  }
 
   /// Full-width primary CTA: "Afspelen" or "Hervatten · nog Xu Ym", reusing
   /// [_handlePlayPressed] (extracted from `_buildActionButtons` for exactly
@@ -319,78 +344,6 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     );
   }
 
-  /// Full-width secondary CTA: "Downloaden", reusing
-  /// [_handleDownloadButtonPressed] for the full state machine (queue,
-  /// pause/resume, retry, delete) unchanged; only the label mapping below is
-  /// new, matching the northstar's text button instead of an icon-only one.
-  Widget _buildMobileDownloadCta(BuildContext context, MediaItem metadata, {bool glass = false}) {
-    if (widget.isOffline || PlatformDetector.isAppleTV()) return const SizedBox.shrink();
-
-    return Consumer<DownloadProvider>(
-      builder: (context, downloadProvider, _) {
-        final globalKey = metadata.globalKey;
-        final progress = downloadProvider.getProgress(globalKey);
-        final isDownloaded = downloadProvider.isDownloaded(globalKey);
-
-        final (icon, label) = switch (progress?.status) {
-          _ when downloadProvider.isQueueing(globalKey) => (Icons.schedule_rounded, t.downloads.queuedTooltip),
-          DownloadStatus.queued => (Icons.schedule_rounded, t.downloads.queuedTooltip),
-          DownloadStatus.downloading => (Icons.downloading_rounded, t.downloads.downloadingTooltip),
-          DownloadStatus.paused => (Icons.pause_circle_outline_rounded, t.downloads.resumeDownload),
-          DownloadStatus.failed => (Icons.error_outline_rounded, t.downloads.retryDownload),
-          DownloadStatus.cancelled => (Icons.cancel_rounded, t.downloads.cancelledDownload),
-          _ when isDownloaded => (Icons.check_circle_outline_rounded, t.downloads.downloadAction),
-          _ => (Icons.download_rounded, _mobileDownloadActionLabel(metadata)),
-        };
-
-        if (glass) {
-          return GlassCapsuleButton(
-            icon: icon,
-            label: label,
-            onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
-          );
-        }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.tonalIcon(
-              onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
-              // The tonal variant's own defaults never reach this button:
-              // monoTheme's `filledButtonTheme` sets `backgroundColor: c.text`
-              // for every FilledButton, and a theme style outranks a variant
-              // default, so this rendered pure white — the same capsule as the
-              // primary CTA right above it. The mockup has a grey secondary
-              // under a white primary, so name the surface explicitly.
-              style: FilledButton.styleFrom(
-                shape: const StadiumBorder(),
-                backgroundColor: tokens(context).surfaceElevated,
-                foregroundColor: tokens(context).text,
-              ),
-              icon: Icon(icon),
-              label: Text(label, style: const TextStyle(fontWeight: .w700)),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// "Downloaden S7:E18" for a show with an on-deck episode (comp), plain
-  /// "Downloaden" otherwise.
-  String _mobileDownloadActionLabel(MediaItem metadata) {
-    final onDeck = _onDeckEpisode;
-    if (!metadata.isShow || onDeck == null || onDeck.parentIndex == null || onDeck.index == null) {
-      return t.downloads.downloadAction;
-    }
-    final episodeLabel = t.discover.playEpisode(
-      season: onDeck.parentIndex.toString(),
-      episode: onDeck.index.toString(),
-    );
-    return '${t.downloads.downloadAction} $episodeLabel';
-  }
-
   /// The LG-02 back/more row, pinned over the page (see [MobileDetailHeroBar]).
   Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata) {
     final trailer = _getPrimaryTrailer();
@@ -418,9 +371,10 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     );
   }
 
-  /// The LG-02 hero: [MobileDetailHero] fed with this page's artwork, tags
-  /// and the same handlers the flat layout uses. The watchlist toggle moves
-  /// here from the action row, as a round glass button next to Download.
+  /// The LG-02 hero: [MobileDetailHero] fed with this page's artwork, tags,
+  /// rating chips and the same handlers the flat layout uses. For a film the
+  /// watchlist toggle moves here from the action row, as a round glass button
+  /// next to Download.
   Widget _buildMobileGlassHero(BuildContext context, MediaItem metadata, MediaServerClient? client) {
     final (onList, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
 
@@ -428,11 +382,13 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
       artwork: _buildMobileArtwork(context, metadata, client, maxWidth: 1200, maxHeight: 1600),
       title: metadata.displayTitle,
       chips: _mobileTagLabels(metadata),
+      extraChips: _buildRatingChips(metadata, includeUserRating: false),
       actions: Column(
         children: [
           _buildMobilePrimaryCta(context, metadata, glass: true),
-          // Offline there is neither a download nor a watchlist to offer.
-          if (!widget.isOffline) ...[
+          // Offline there is neither a download nor a watchlist to offer; a
+          // series downloads per episode and keeps its toggle in the action row.
+          if (!widget.isOffline && !metadata.isShow) ...[
             const SizedBox(height: 12),
             GlassLayer(
               child: Row(

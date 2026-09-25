@@ -1122,8 +1122,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       // view state reload from the same signal a remote apply uses.
       PreferenceRefreshBus.instance.invalidateAll();
 
-      // Import wrote straight to prefs, bypassing write() and its KVS mirror —
-      // push the imported values so they reach the user's other devices.
+      // Import stamped every key it wrote; this reconcile makes sure each one
+      // reached the store, including a send the transport held back.
       unawaited(ICloudSyncService.instance?.pushAllIfEnabled() ?? Future.value());
 
       if (!mounted) return;

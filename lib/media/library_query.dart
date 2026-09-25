@@ -68,6 +68,11 @@ sealed class LibraryQuery with _$LibraryQuery {
     List<String>? officialRatings,
     List<int>? years,
     List<String>? tags,
+
+    /// Ask for the taste fields (genres, studio) as well. Only the candidate
+    /// pool of the recommendations sets it; Jellyfin leaves them off every
+    /// other library page because they are slow on large libraries.
+    @Default(false) bool withTasteFields,
   }) = _LibraryQuery;
 }
 

@@ -87,11 +87,14 @@ void main() {
       expect(transport.writes, contains(PreferenceSyncCoordinator.v2MetaVersionKey));
     });
 
-    test('a removal is a v2 removal', () async {
+    test('a removal is a v2 tombstone', () async {
       final coordinator = await build();
       await coordinator.apply(const PreferenceMutation.remove('theme_mode'));
 
-      expect(transport.removes, ['${PreferenceSyncScope.cloudNamespacePrefix}global/theme_mode']);
+      final key = '${PreferenceSyncScope.cloudNamespacePrefix}global/theme_mode';
+      expect(transport.writes, contains(key));
+      expect(json.decode(transport.store[key]!)['x'], isTrue);
+      expect(transport.removes, isEmpty);
     });
   });
 

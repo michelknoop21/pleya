@@ -2057,6 +2057,11 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  /// False only for Home on the TV shell with a nested route still open above
+  /// its root; every other tab and shell shows its root when selected.
+  bool _showsRootOf(NavigationTabId tab) =>
+      !_isTvShell || tab != NavigationTabId.discover || _tvNav.showsRootOf(TvDestinationId.home);
+
   void _onDiscoverBecameVisible() {
     appLogger.d('Navigated to home');
     // Refresh content when returning to discover page
@@ -2216,9 +2221,11 @@ class _MainScreenState extends State<MainScreen>
       if (_screenKeyFor(previousTab)?.currentState case final TabVisibilityAware aware) {
         aware.onTabHidden();
       }
-      // Notify and focus new screen
+      // Notify and focus new screen. Not Home while a detail is still open
+      // over it on TV (review N2): that detail is what is on screen, and
+      // `_popTvNestedRoute` shows and refreshes Home once it closes.
       final newState = _screenKeyFor(tab)?.currentState;
-      if (newState case final TabVisibilityAware aware) {
+      if (newState case final TabVisibilityAware aware when _showsRootOf(tab)) {
         aware.onTabShown();
       }
       // Not on the TV shell. There, moving the focus is the shell's decision
@@ -2237,7 +2244,7 @@ class _MainScreenState extends State<MainScreen>
     }
 
     // Discover: always refresh content (even on re-selection)
-    if (!_isOffline && tab == NavigationTabId.discover) {
+    if (!_isOffline && tab == NavigationTabId.discover && _showsRootOf(tab)) {
       _onDiscoverBecameVisible();
     }
 
@@ -2306,6 +2313,12 @@ class _MainScreenState extends State<MainScreen>
   /// opens where the remote already is, and the lit pill does not move under it.
   Future<Object?> _pushTvContentRoute(TvNestedRoute route) {
     final destination = _tvNav.active;
+    // A route over Home's root hides Home the way a push on the profile
+    // navigator does (`didPushNext`): the hero stops and the refresh timer
+    // pauses, so no reload reorders a rail nobody is looking at.
+    if (destination == TvDestinationId.home && _tvNav.activeNestedRoute == null) {
+      if (_discoverKey.currentState case final TabVisibilityAware aware) aware.onTabHidden();
+    }
     // Await the route that ends up on top: a re-push of the id already there is
     // discarded, and it is that one which will be popped.
     final live = _tvNav.pushNested(destination, route);
@@ -2382,6 +2395,14 @@ class _MainScreenState extends State<MainScreen>
   bool _popTvNestedRoute([Object? result]) {
     final popped = _tvNav.popNested(result);
     if (popped == null) return false;
+    // Back onto Home's root: the TV counterpart of `didPopNext`, so a return
+    // from a detail page refreshes like it does on the phone (review I2).
+    // Not a re-selection of Home, so hoofdstuk 7.2 does not apply.
+    final revealsHome = _tvNav.active == TvDestinationId.home && _tvNav.activeNestedRoute == null;
+    if (revealsHome && _currentTab == NavigationTabId.discover) {
+      if (_discoverKey.currentState case final TabVisibilityAware aware) aware.onTabShown();
+      _onDiscoverBecameVisible();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final key = popped.restoreFocusKey;

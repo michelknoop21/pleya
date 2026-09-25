@@ -552,6 +552,12 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 
 *De credentialgrens.* `TautulliImportAccess` biedt alleen `enabledImportServerIds()` en `fetchImportHistory(serverId, userId: …)`. Er is geen publiek veld en geen getter waarlangs UI-code of een ander profiel de token bereikt, en de enige uitgaande call is een `get_history` met vastgezet `user_id`. Binnen één Dart-isolate bestaat geen taalgrens die geheugen afschermt, dus dit is een API-grens en geen sandbox; die claim wordt niet groter gemaakt dan hij is.
 
+*Addendum 24 september 2026 (DEC-132).* Twee namen in deze tekst zijn ingehaald door de code:
+`SettingsExportService._denyPrefixes` is vervangen door de registry in
+`lib/services/preferences/preference_sync_policy.dart` (onbekende sleutel is `localOnly`), en
+`fetchImportHistory` neemt `profileId`, niet `userId` (`lib/services/tautulli/tautulli_import_access.dart`).
+Het gedrag is zoals hier bedoeld; alleen de namen verschoven.
+
 *Bredere kandidatenpool.* `CandidatePool` voegt per server vier lagen samen: de al geladen hub-items, `fetchRecentlyAdded` (12u TTL), top-rated per bibliotheek en een deterministisch roterende steekproef uit de oudste toevoegingen (beide 24u TTL). Dat is een bronreparatie: "Verborgen parels" eist items ouder dan 90 dagen maar kreeg uitsluitend recent-toegevoegd voer. Het budget is `1 + 2 * kMaxLibraries = 13` calls per server per 24u, gehaald door `totalCount` uit de top-rated pagina te hergebruiken voor de offset in plaats van er een probe-call aan te besteden. Top Picks-items worden nu ook uitgesloten van Verborgen parels.
 
 *Serverpopulariteit blijft buiten scope.* `get_home_stats` wordt niet toegevoegd, ook niet als ongebruikte clientmethode, model of fixture. De integratie gebruikt uitsluitend de kijkgeschiedenis van de exact gekoppelde actieve gebruiker; geaggregeerd gedrag van andere servergebruikers wordt niet opgehaald en krijgt geen gewicht en geen verborgen prior.
@@ -2896,3 +2902,246 @@ de lichtste scène.
 iPhone), met een toesteltest op prestaties voordat de rest van de app volgt. De iPad houdt zijn
 presentatie tot een eigen northstar bestaat (DEC-103). DEC-121 is op `feat/unified-desktop-ipad`
 in gebruik; daarom krijgt dit besluit nummer 122.
+
+## DEC-130: TV-instellingen en detail volgen Apple's tvOS-HIG in punten
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Michel noemde de instellingenvensters, seriedetail en filmdetail op zijn 77 inch tv
+"nog steeds enorm opgeblazen" (DENS1) en vroeg om eerdere eigen keuzes los te laten en te doen wat
+voorgeschreven wordt. De oorzaak is één getal: `TvLayoutConstants.scaleOf` klemt op 0,85, terwijl
+Flutter op een Apple TV een paneel van 584 logische pixels ziet (de wrapper vermenigvuldigt met
+1,85). Alles wat door die schaal gaat, komt op het scherm 1,57 keer zijn nominale waarde uit. De
+getallen tegen Apple's Human Interface Guidelines (Typography, Layout, Designing for games; ook via
+Context7): tvOS-tekst is standaard 29 pt en nooit onder 23 pt, Title 1 is 76 pt, een tvOS-knop is
+minstens 56x56 pt. Gemeten in de app: een instellingenrij van 138 pt rond 26/22 pt tekst, een
+indextegel van 160 pt met een waarderegel van 19 pt, een detailtitel van 88 pt, een actieknop van
+72 pt rond een label van 27 pt en een bronregel van 20 pt.
+
+**Decision:** `TvHig` (`lib/utils/tv_hig.dart`) zet Apple's punten één op één om: `TvHig.of`
+is de ongeklemde paneelhoogte gedeeld door 1080. De instellingenrijen (via `TvSettingsDensity` in
+`TvPageSurface` en `SettingsPage`), de indextegels van `TvMenuGrid`, de categoriekolom van
+Uiterlijk en het informatieblok en de actierij van seriedetail en filmdetail rekenen in die punten:
+Body 29 pt voor titels en labels, Caption 1 25 pt voor waarde- en metadataregels, Caption 2 23 pt
+voor de kleinste regel, Title 1 76 pt voor de detailtitel, knoppen van 60 pt. Mockups 20 en 37
+zijn voor deze maten niet meer leidend; waar ze kleiner tekenden dan 23 pt wint de HIG.
+
+**Consequences:** Rijen en tegels worden lager en de tekst erin wordt op een paar plekken groter
+(instellingen van 26 naar 29 pt), zodat een instellingenpagina ongeveer twee keer zoveel rijen
+toont. De globale klem van 0,85 blijft voor de rest van de app staan; de rails, catalogus en Home
+zijn niet omgezet. Wie die schermen op dezelfde manier wil corrigeren, rekent ze om naar `TvHig`
+in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.
+
+## DEC-131: iPhone-detail in één scroll, zonder de tabs van northstar 07
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Michel (24 september, met een schermfoto van het seriedetail op zijn iPhone): "maak het
+meer zoals tvOS maar dan mobiel, dus met beschrijving enz, maar dan niet achter tabs", en "ook voor
+films". Northstar 06 (filmdetail) is al één scrollende pagina: artwork, titel, metadata, Hervatten,
+Downloaden, bron, beschrijving, cast, acties. Northstar 07 (seriedetail) zet de beschrijving, cast
+en acties achter een tabstrip Afleveringen / Vergelijkbaar / Extra's / Details en laat de kop weg.
+DEC-090 maakt de 21 northstar-beelden leidend en vraagt voor elke afwijking een DEC.
+
+**Decision:** Film en serie krijgen op de iPhone dezelfde pagina, in de volgorde van northstar 06:
+voorvertoning, titel, tags, Afspelen of Hervatten, Downloaden (alleen film), bron, audio,
+beschrijving met cast- en regieregel, de actierij, en daaronder de blokken die het TV-detail als
+rails stapelt: Afleveringen (seizoenpil en rijen, alleen serie), Trailers & Extra's, Acteurs en
+"Meer zoals dit". De tabstrip van northstar 07 vervalt; `mobile_episodes_tab.dart` wordt
+`mobile_episodes_section.dart`. Northstar 07 blijft de referentie voor de afleveringrij zelf.
+
+**Consequences:** De seriepagina wordt langer en scrolt; niets staat meer twee tikken diep. De
+vertalingen `mobileDetail.similarTab` en `mobileDetail.extrasTab` zijn niet meer in gebruik. De
+Verify-scenario's `ios.detail.northstar` en `ios.detail-episodes.northstar` maken alleen
+schermafbeeldingen en veranderen niet; de comp `serie-detail-comp` (register rij 63) is hiermee
+achterhaald.
+
+## DEC-132: Home-aanbevelingen seeden uit het eigen interactielog; Tautulli blijft één adapter naast een lokaal partieel signaal en een Jellyfin-import
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** De audit van 24 september 2026 op de Tautulli-integratie vond drie defecten en vijf
+verbeteringen. De seeds voor "Omdat je X gekeken hebt" kwamen uit `fetchRecentlyWatched` van elke
+online client, dus een Pleya Server-kijkbeurt nam een van de drie plekken in zonder rij op te
+leveren, en een lopende serie seedde nooit omdat `isWatched` voor een serie "alles gezien"
+betekent. Op de detailpagina ging de adminclient van Tautulli mee voor elk beheerd Plex-item, ook
+op een tweede server die Tautulli niet monitort. Het lokale log kende alleen "afgekeken" en "uit
+Verder kijken gehaald", zodat Jellyfin- en Pleya Server-profielen koud bleven tot ze in Pleya
+zelf hadden gekeken.
+
+**Decision:**
+
+*Seeds uit het log.* De drie seed-rijen komen uit `MediaInteractions` van het actieve profiel:
+de nieuwste onderscheiden evidence-sleutels met gewicht >= 0,4 binnen 30 dagen, alleen voor
+servers met de capability `relatedHubs`. Een `partial`-seed heet "Omdat je X kijkt", een
+`completed`-seed "Omdat je X gekeken hebt". Levert het log minder dan drie seeds, dan vult
+`fetchRecentlyWatched` aan tot drie, een seed per titel; een Jellyfin-verbinding die meer dan één profiel deelt,
+doet daarin niet mee. Een titel die na de play uit Verder kijken is gehaald, seedt niet.
+Seeds vier tot en met zes leveren alleen kandidaten voor Top Picks.
+
+*Eén partieel signaal, lokaal en geïmporteerd gelijk.* Een eindstop tussen 50 procent en de
+kijkdrempel van de client schrijft `partial` 0,4, hoogstens één per titel per zes uur. De
+cross-source-deduplicatie van de importer onderdrukt een geïmporteerd event alleen door een lokale
+rij met minstens hetzelfde gewicht.
+
+*Jellyfin als tweede adapter op dezelfde tabel.* `source = 'jellyfin'`, eigen gebruikerstoken,
+geen adminbeleid, watermark op `LastPlayedDate`, geen backfill voorbij de retentiecap. Een
+Jellyfin-verbinding die meer dan één profiel gebruikt, importeert voor niemand geschiedenis. De
+lener niet, want dat token is niet zijn eigen login; de uitlener ook niet, want zijn
+Jellyfin-gebruiker draagt vanaf dat moment ook de plays van de lener (DEC-062).
+
+*Eén persoonsrij, gedeelde cap.* Genre-, acteur- en regisseursrijen delen twee plekken; sorteren
+op genormaliseerd gewicht, bij gelijkspel genre, dan acteur, dan regisseur. Persoonsdrempel 0,7.
+
+*De Tautulli-client volgt de gemonitorde server.* `TautulliProvider.clientForServer` geeft de
+adminclient alleen voor de server die `tautulliMonitoredServer` aanwijst. "Nu aan het kijken" op
+detail vergelijkt server én rating key.
+
+**Consequences:** `ServerCapabilities.relatedHubs` (Plex en Jellyfin `true`). `WatchStateEvent`
+draagt `durationMs` en `isFinal`. Drie nieuwe i18n-sleutels (`discover.becauseYouAreWatching`,
+`discover.moreWithActor`, `discover.moreFromDirector`), andere locales vallen terug op Engels.
+`HistorySyncCursors` krijgt rijen met `source = 'jellyfin'`; geen schemawijziging. Buiten scope
+blijven: `get_home_stats`, een engine op Pleya Server, een negatief signaal uit een afgebroken
+play, een rewatch-rij, een nieuw instellingenscherm. Open: P4 (devicetoken verbruikt bij een
+mislukte test), P7 (client per importpagina), P9 (`owned` voor een beheerd Home-profiel) en de
+Pleya Server-follow-ups `GET /items/{id}/related` en per-gebruiker watch-state. Register:
+`docs/recommendations-register.md`.
+
+## DEC-133: De avatar in de mobiele header opent de profielwisselaar
+
+**Date:** 2026-09-25
+**Status:** accepted, scherpt [DEC-023](#dec-023) aan
+
+**Context:** Michel (25 september): "iOS account switcher op Home werkt niet, het icoon rechtsboven
+doet niks." Dat klopte: sinds `86f04463` (5 september) is de avatar in `MobilePageHeader` een
+kaal plaatje met automation-rol `image`. De tik was toen weggehaald omdat geen aanroeper hem
+doorgaf, met de notitie dat profielwisselen in fase 6 een eigen ingang zou krijgen; die ingang is
+er nooit gekomen. DEC-023 verhuisde het accountmenu naar Mijn Pleya om te voorkomen dat een
+telefoon twee wisselaars heeft.
+
+**Decision:** Een tik op de avatar opent `AccountUiActions.openProfiles`, dus hetzelfde
+`ProfileSwitchScreen` als "Profiel wisselen" in Mijn Pleya. Dat is geen tweede wisselaar en geen
+tweede menu, maar een tweede ingang naar dezelfde lijst, met dezelfde PIN-flow. Het geldt voor
+Home en voor de Series- en Filmslanding, want die delen de header. De automation-rol van
+`home.header.avatar` en `landing.header.avatar` gaat terug naar `button`.
+
+**Consequences:** Wisselen kost op mobiel weer één tik minder. Uitloggen en de overige
+accountacties blijven in Mijn Pleya, zoals DEC-023 bepaalde.
+
+## DEC-134: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** De leesaudit van 24 september ([`qa/icloud-sync-audit-2026-09-24.md`](qa/icloud-sync-audit-2026-09-24.md)) toonde dat van de vier beloften
+van DEC-059 alleen de prune-bescherming bestond. `PreferenceSyncCoordinator.listen()` werd in
+productie nergens aangeroepen, dus geen `didChangeExternallyNotification` bereikte Dart en de
+engine was poll-on-foreground. De envelop werd lokaal gestempeld maar reisde niet en werd bij
+toepassen niet geraadpleegd; `reconcile()` schreef elke sleutel opnieuw, ook gelijke, waardoor een
+toestel dat later naar voren kwam een oudere waarde met een verse aankomsttijd over een nieuwere
+zette. Een lokale verwijdering werd door het andere toestel teruggezet. `disable()` gooide de
+transport weg en `enable()` maakte geen nieuwe. De status meldde "Last sent" terwijl iCloud
+uitgelogd was en een geslaagde reconcile wiste een quota-melding. De taalvoorkeur van het
+Pleya-profiel (DEC-096) stond als profiel-scoped geregistreerd terwijl haar opslag een global map
+met het profiel in de sleutel is, zodat zij inkomend op `user_<uuid>_pleya_profile_language_preferences`
+landde, een sleutel die niemand leest. Acht `JsonPref`-sleutels ontsnapten aan de registratieguard
+door een regex die geen generiek type met komma verdroeg. Het ontwerp staat in
+`docs/superpowers/specs/2026-09-24-icloud-sync-repair-design.md`.
+
+**Decision:** (1) De subscriptie op de transport is onvoorwaardelijk en wordt door `start()` en
+`debugCreate()` via één `_wire` gezet; `disable()` schakelt alleen de vlag en gooit niets weg. (2)
+Een v2-record draagt zijn stempel: `{"type","value","t","d"}`; een tombstone is `{"x":true,"t","d"}`.
+Een record zonder `t`/`d` is van de build vóór dit besluit en telt als `legacyRevisionAt`. De
+uitgebrachte build leest het formaat ongewijzigd en slaat tombstones over. (3) Bij toepassen wint
+een inkomend record alleen als zijn stempel wint volgens `PreferenceRevision.stampWins`; zijn
+beide kanten ongestempeld dan wint de store, zoals bij inschakelen en bij de cutover. Een winnende
+remote stempel wordt lokaal overgenomen. Merge-families blijven mergen; voor hen beslist de stempel
+niet. (4) `reconcile()` schrijft alleen wat lokaal strikt wint of in de store ontbreekt, en voor
+merge-families alleen bij een andere waarde. Een lokale `remove` schrijft een tombstone; reconcile
+herhaalt tombstones waar de store nog een ouder levend record heeft. Een tombstone aan een van beide
+kanten laat ook in een merge-familie de stempel beslissen: een inkomende tombstone moet nieuwer zijn
+dan de lokale wijziging, een levend record nieuwer dan de lokale verwijdering. Mislukt de lezing van
+de store, dan duwt reconcile niets, meldt een fout en herhaalt de volgende trigger de poging. Een
+settings-import stempelt elke geschreven sleutel met bron `import`. (5) Onder v2 is er geen prune, alleen de opruiming van tombstones ouder dan 180 dagen:
+`ownsCloudKey` geeft `false`, de prune-lus draait alleen voor het v1-pad dat
+`icloud_rolling_upgrade_test` bewaart. Een sleutel die de store heeft en dit toestel niet, is "nog
+niet gehad" en wordt overgenomen. (6) De guard die een lokale write tijdens een remote batch liet
+vallen gaat weg: de stempel ordent. (7) `_runReconcile` leest eerst `refreshAvailability()` en
+stopt buiten `ready`; `apply()` stopt na het lokale stempelen bij `unavailable`; `writeSucceeded`
+en `reconcileSucceeded` forceren geen `ready`; `reconcileSucceeded` laat `quota` staan. (8) Bij
+`accountChanged` (en beschikbaar) worden de lokale revisies en de v1-bootstrapmarker gewist, daarna
+leest de engine de store (die wint alles wat hij heeft, in de twee taalkaarten per entry, ongeacht
+`u`) en duwt alleen wat het nieuwe account mist, met stempel 0. Niets lokaal wordt gewist en er is
+geen partitie per account. Een heuristiek "de store bevat een record van dit toestel, dus hetzelfde
+account" is na de herreview teruggedraaid: bij A, B, A duwde die de stempels uit de B-periode naar A. Een `initialSync`-notificatie wordt gevolgd door een
+reconcile onder de nieuwe trigger `ReconcileTrigger.initialSync`. (9)
+`pleya_profile_language_preferences` en `track_language_preferences` zijn `global` met de
+merge-familie `profileKeyedMap`: draagbaar is een mapsleutel waarvan de scope het volledige Plex
+Home-profiel-id `plex-home-plex.<accountUuid>-<homeUuid>` is, met twee uuids van 16 hex-tekens (wat
+`StorageService.activeUserScope()` in de praktijk teruggeeft, omdat `parsePlexHomeProfileId` alleen
+een home-uuid van 36 tekens herkent); `local-<uuid>`, leeg en een accountverbinding die terugviel op
+de client-id van het toestel blijven thuis. Samenvoegen gaat per entry op tijdstempel `u`, in beide
+richtingen als vereniging; een verwijdering reist als tombstone (een lege keuze met alleen `u`) die
+na 180 dagen vervalt. De seriekaart `track_language_preferences` heeft een eigen familie
+`trackLanguageMap`: dezelfde merge met daarna de cap van `TrackPreferenceStore`, inkomend en
+uitgaand. Die cap staat op 100 levende serie-uitzonderingen (was 250) plus hoogstens 100
+tombstones; gemeten op de draad is dat in het slechtste geval 59 KB van de 100 KB per waarde, en de
+groottegrens telt UTF-8-bytes. Een taalvoorkeur die onder de vorige build is geïmporteerd, landde op de dode
+sleutel `user_<scope>_pleya_profile_language_preferences` en is weg tot ze opnieuw wordt
+geïmporteerd. (10) De registratieguard gebruikt `Pref(?:<[^()]*>)?\(\s*'`. Nieuw geregistreerd:
+`keyboard_shortcuts` en `keyboard_hotkeys` als global; `media_version_preferences`,
+`unified_source_preferences`, `preferred_unified_server` en `custom_shader_presets` als
+device-local; `tv_live_tv_capability` als runtime cache. `live_tv_default_favorites` wordt global.
+`default_quality_preset`, `buffer_size`, `mpv_config_text`, `mpv_config_presets`,
+`global_shader_preset`, `enable_discord_rpc`, `video_player_navigation_enabled` en
+`auto_check_updates_on_startup` synchroniseren niet meer maar blijven exporteerbaar
+(`_deviceBoundPref`). (11) De Swift-plugins leveren events via `DispatchQueue.main.async`.
+
+**Consequences:** Wat een gebruiker anders ziet: een wijziging op de Mac verschijnt op de Apple TV
+zonder herstart; een teruggezette instelling blijft teruggezet; de statusregel toont geen tijdstip
+als iCloud uitgelogd is; uit en weer aan werkt binnen één sessie; de taal van het Pleya-profiel
+volgt over toestellen heen; `hidden_libraries`, `library_order` en de `library_*`-sleutels reizen
+voor een Plex Home-profiel met de echte scopevorm `plex-home-plex.<16hex>-<16hex>`
+(`PreferenceSyncScope.forProfile` gebruikt dezelfde `isPortableProfileScope` als de taalkaarten,
+eindreview I5), met een stempel per profiel (I1). KVS neemt sleutels van hoogstens 64 bytes UTF-8 en
+bewaart langere niet (herreview N1), dus de cloudsleutel draagt geen volledig profiel-id en geen
+`serverId:libraryId` meer: beide worden `PreferenceSyncScope.shortId`, de eerste tien tekens van
+base64url(SHA-256), en een per-bibliotheekrecord noemt zijn volledige sleutel in `k`. Een profielsleutel
+wordt `__pleya_pref_v2/profile/<shortId>/library_grouping_<shortId>`, de langste 62 bytes
+(`kvs_footprint_test`). De transport weigert een langere sleutel (`maxKeyBytes`), de engine telt
+dat als oversize. De lange vorm heeft KVS nooit bewaard, dus er valt niets te migreren. Na de upgrade
+wint voor een Plex Home-profiel het toestel dat als eerste reconcilet `hidden_libraries` en
+`library_order`: beide kanten zijn ongestempeld en de store wint, dus een bewust per toestel
+afwijkende inrichting (een ingeperkt kinderprofiel op de Apple TV) wordt eenmalig overschreven. Een
+accountverbinding die terugviel op de client-id van het toestel blijft thuis. Wat niet is gebouwd: profielscope voor Jellyfin- en Pleya
+Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_order`, `library_*`
+en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale
+voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en
+`preferred_unified_server`. Bekende grenzen: een toestel dat langer dan 180 dagen offline was, kan
+een gewiste serie-uitzondering terugbrengen omdat de tombstone dan vervallen is, en dat geldt ook
+voor een verwijdering die buiten de 100 nieuwste tombstones van de seriekaart valt; wie meer dan 100
+serie-uitzonderingen had, verliest de oudste; het lokale revisieblob groeit tot
+één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
+circa 40 KB); een reset schrijft een tombstone voor elke resetbare voorkeur, ook een die nooit gezet
+was, en een verdwenen bibliotheek laat haar tombstones achter; reconcile haalt tombstones van dit
+toestel (globaal en het actieve profiel) na 180 dagen uit de store, dus zulke sleutels houden hun
+plek van de 1024 hoogstens een half jaar bezet, en een toestel dat langer offline was kan de
+verwijdering terugbrengen; de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
+waarden over tombstones terug. Zijn kale remove wist op dit toestel geen gestempelde lokale waarde:
+de waarde blijft staan en reconcile zet haar terug in de store, waarna de uitgebrachte build haar bij
+zijn volgende reconcile weer prunet. Een tombstone die hij overschrijft, zet deze build terug. Tot
+alle Apple-toestellen deze build hebben, schrijven de twee builds die sleutels dus heen en weer; de
+waarde blijft op het bijgewerkte toestel bestaan maar bereikt het oude niet. De releasevoorwaarde
+uit DEC-060 blijft. Een wijziging die uitgelogd
+is gemaakt verliest bij de volgende aanmelding van de store voor elke sleutel die de store heeft,
+ook bij terugkeer naar hetzelfde account: de engine kent geen accountidentiteit, dus elke aanmelding
+wist de stempels. Een tombstone die de store niet meer heeft (een uitgebrachte build schreef eroverheen)
+gaat daarbij ook verloren. Een sleutel die de store mist houdt de lokale waarde. Een wijziging op een toestel met
+de vorige build wordt zonder stempel geschreven en verliest van elke sleutel die een nieuwer toestel
+gestempeld heeft, dus alle Apple-toestellen moeten tegelijk worden bijgewerkt. Bewijs: unit tegen
+`FakeTransport`; geen simulator kan cross-device KVS bewijzen; per punt geldt `CODE CLOSED · UNIT
+VERIFIED · HARDWARE OPEN` tot het recept in de spec §7 op twee toestellen is gedraaid. Register:
+`docs/icloud-sync-repair-register.md`.

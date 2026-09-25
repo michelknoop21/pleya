@@ -14,9 +14,12 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
   bool _tvDetailShowsSeasonChips(MediaItem metadata) =>
       PlatformDetector.isTV() && metadata.isShow && !_showEpisodesDirectly && _seasons.length > 1;
 
-  static const double _tvSeasonChipFontSize = 17;
-  static const double _tvSeasonChipPaddingHorizontal = 22;
-  static const double _tvSeasonChipPaddingVertical = 11;
+  // DENS1: font and padding in HIG points (times `TvHig.of`), so a chip is
+  // about 60 pt tall with Body text, level with the action row above it. On
+  // `scaleOf` it was 76 pt around 27 pt text.
+  static const double _tvSeasonChipFontSize = TvHig.body;
+  static const double _tvSeasonChipPaddingHorizontal = 24;
+  static const double _tvSeasonChipPaddingVertical = 6;
   // A pill: larger than half of any chip height this row renders.
   static const double _tvSeasonChipRadius = 40;
   static const double _tvSeasonChipGap = 12;
@@ -55,13 +58,13 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
     final painter = TextPainter(
       text: TextSpan(
         text: 'Mg',
-        style: style.copyWith(fontSize: _tvSeasonChipFontSize * scale, fontWeight: FontWeight.w600),
+        style: style.copyWith(fontSize: _tvSeasonChipFontSize * TvHig.of(context), fontWeight: FontWeight.w600),
       ),
       textDirection: Directionality.of(context),
     )..layout();
     final textHeight = painter.height;
     painter.dispose();
-    return textHeight + (2 * _tvSeasonChipPaddingVertical * scale) + _tvSeasonChipBorderInset;
+    return textHeight + (2 * _tvSeasonChipPaddingVertical * TvHig.of(context)) + _tvSeasonChipBorderInset;
   }
 
   /// VIS2/37 C: the row takes the season rail's own header line, so
@@ -119,7 +122,7 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
               maxLines: 1,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 18 * scale,
+                fontSize: TvHig.body * TvHig.of(context),
                 height: 1,
                 fontWeight: FontWeight.w800,
               ),
@@ -133,7 +136,7 @@ extension _MediaDetailTvSeasonChips on _MediaDetailScreenState {
                 maxLines: 1,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: tokens(context).onArtworkInk(dark: 0.60, light: 0.85),
-                  fontSize: 17 * scale,
+                  fontSize: TvHig.caption1 * TvHig.of(context),
                 ),
               ),
             ],
@@ -266,8 +269,8 @@ class _TvSeasonChipState extends State<_TvSeasonChip> {
       child: AnimatedContainer(
         duration: mono.fast,
         padding: EdgeInsets.symmetric(
-          horizontal: _MediaDetailTvSeasonChips._tvSeasonChipPaddingHorizontal * scale,
-          vertical: _MediaDetailTvSeasonChips._tvSeasonChipPaddingVertical * scale,
+          horizontal: _MediaDetailTvSeasonChips._tvSeasonChipPaddingHorizontal * TvHig.of(context),
+          vertical: _MediaDetailTvSeasonChips._tvSeasonChipPaddingVertical * TvHig.of(context),
         ),
         decoration: BoxDecoration(
           color: backgroundColor,
@@ -280,7 +283,7 @@ class _TvSeasonChipState extends State<_TvSeasonChip> {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: foregroundColor,
-            fontSize: _MediaDetailTvSeasonChips._tvSeasonChipFontSize * scale,
+            fontSize: _MediaDetailTvSeasonChips._tvSeasonChipFontSize * TvHig.of(context),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),

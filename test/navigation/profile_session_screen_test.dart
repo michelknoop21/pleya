@@ -76,6 +76,7 @@ void main() {
         providers: [
           Provider<AppDatabase>.value(value: db),
           Provider<StorageService>.value(value: storage),
+          Provider<ProfileConnectionRegistry>.value(value: profileConnectionRegistry),
           ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
           ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
         ],

@@ -28,9 +28,9 @@ import 'storage_service.dart';
 ///   ever propagated a delete;
 /// - syncability is decided by an explicit registry instead of an
 ///   allow-by-default denylist, so a new preference no longer opts itself in;
-/// - a value that outgrows the transport cap is skipped *and* held back from
-///   the prune. It used to be deleted from the store, because the prune worked
-///   on absence from the push set;
+/// - a value that outgrows the transport cap is skipped, and the older copy
+///   stays in the store. It used to be deleted, because the prune worked on
+///   absence from the push set; under v2 there is no prune (DEC-134);
 /// - the write is awaited, so a transport failure lands in the status instead
 ///   of an unawaited future.
 ///
@@ -70,12 +70,17 @@ class ICloudSyncService {
 
   bool get _enabled => _settings.read(SettingsService.icloudSyncEnabled);
 
-  /// Wire the mutation pipeline and, if the toggle is on, subscribe and merge.
-  /// Safe to call on any platform; no-ops off Apple platforms.
+  /// Wire the mutation pipeline, subscribe to the transport and, if the toggle
+  /// is on, reconcile. Safe to call on any platform; no-ops off Apple platforms.
+  ///
+  /// [transport] exists so a test can drive this exact path with a fake. It
+  /// was the missing piece of DEC-134's B1: the listener was only ever attached
+  /// by tests calling `coordinator.listen()` themselves.
   static Future<void> start({
     required SettingsService settings,
     required StorageService storage,
     VoidCallback? onRemoteChangesApplied,
+    @visibleForTesting PreferenceTransport? transport,
   }) async {
     if (!_supported || _instance != null) return;
     // A dedicated id, not the Plex client identifier: that one is sent to
@@ -86,21 +91,37 @@ class ICloudSyncService {
       activeProfileId: storage.getActiveProfileId,
       enabled: () => settings.read(SettingsService.icloudSyncEnabled),
       deviceId: deviceId,
-      transport: ICloudKvsTransport(),
+      transport: transport ?? ICloudKvsTransport(),
       onRemoteChangesApplied: onRemoteChangesApplied,
       onLocalStateChanged: settings.refreshListenables,
     )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
-    final svc = ICloudSyncService._(settings, coordinator);
-    _instance = svc;
-    BaseSharedPreferencesService.onMutation = coordinator.apply;
+    // Wired before the availability check, so a write in that window is still
+    // stamped: an unstamped value loses to every stamped remote record. Only
+    // the send waits, until refreshAvailability() replaces the placeholder.
+    coordinator.markAvailabilityUnknown();
+    final svc = _wire(settings, coordinator);
+    await coordinator.refreshAvailability();
     // A key-value store can change while the process is suspended, and the
     // notification for that change can be delivered to nobody. Coming back to
     // the foreground is therefore a reconcile trigger, not a hope.
     svc._lifecycle = AppLifecycleListener(
       onResume: () => unawaited(coordinator.requestReconcile(ReconcileTrigger.foreground)),
     );
-    await coordinator.refreshAvailability();
     if (svc._enabled) await coordinator.requestReconcile(ReconcileTrigger.boot);
+  }
+
+  /// Everything a live instance needs, shared by [start] and [debugCreate] so
+  /// a test of the fake path proves the production one.
+  ///
+  /// The subscription is unconditional. The coordinator drops events while the
+  /// toggle is off, and a subscription that only exists after `enable()` is
+  /// how it came to exist nowhere at all.
+  static ICloudSyncService _wire(SettingsService settings, PreferenceSyncCoordinator coordinator) {
+    final svc = ICloudSyncService._(settings, coordinator);
+    _instance = svc;
+    BaseSharedPreferencesService.onMutation = coordinator.apply;
+    coordinator.listen();
+    return svc;
   }
 
   AppLifecycleListener? _lifecycle;
@@ -122,14 +143,15 @@ class ICloudSyncService {
   Future<void> enable() async {
     await _settings.write(SettingsService.icloudSyncEnabled, true);
     await _coordinator.refreshAvailability();
+    _coordinator.listen();
     await _coordinator.requestReconcile(ReconcileTrigger.enabled);
   }
 
-  /// Turn sync off: persist the toggle and stop listening. Store contents are
-  /// left intact so re-enabling later still merges.
+  /// Turn sync off: persist the toggle. The transport and the subscription
+  /// stay; the coordinator ignores events and writes while the toggle is off,
+  /// and tearing them down here left `enable()` with nothing to re-enable.
   Future<void> disable() async {
     await _settings.write(SettingsService.icloudSyncEnabled, false);
-    await _coordinator.dispose();
     await _coordinator.refreshAvailability();
   }
 
@@ -196,28 +218,15 @@ class ICloudSyncService {
       onRemoteChangesApplied: onRemoteChangesApplied,
       onLocalStateChanged: settings.refreshListenables,
     )..onRuntimeRefresh = PreferenceRefreshBus.instance.invalidate;
-    final svc = ICloudSyncService._(settings, coordinator);
-    _instance = svc;
-    BaseSharedPreferencesService.onMutation = coordinator.apply;
-    return svc;
+    return _wire(settings, coordinator);
   }
 
   /// Drive the remote-event path directly (fakes an EventChannel emission).
   @visibleForTesting
   Future<void> debugHandleEvent(Map<String, dynamic> event) async {
-    if (!_enabled) return;
     final change = ICloudKvsTransport.translateEvent(event);
-    if (change == null) return;
-    switch (change.reason) {
-      case RemoteChangeReason.quotaExceeded:
-        return;
-      case RemoteChangeReason.accountChanged:
-        await _coordinator.refreshAvailability();
-        await _coordinator.requestReconcile(ReconcileTrigger.accountChanged);
-      case RemoteChangeReason.serverChange:
-      case RemoteChangeReason.initialSync:
-        if (change.changedKeys.isNotEmpty) await _coordinator.applyRemoteKeys(change.changedKeys);
-    }
+    // ignore: invalid_use_of_visible_for_testing_member - test hook forwards to the coordinator's own test entry
+    if (change != null) await _coordinator.handleRemoteChange(change);
   }
 
   @visibleForTesting

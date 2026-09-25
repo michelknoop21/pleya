@@ -28,9 +28,10 @@ BoxDecoration mobileDetailHeroScrim(Color bg) => BoxDecoration(
   ),
 );
 
-/// The film-page hero with Liquid Glass on (mockup LG-02): the artwork over
-/// the full width behind the status bar, at least [kMobileDetailHeroFraction]
-/// of the screen high, with [title], [chips] and [actions] on the scrim at the
+/// The detail-page hero (film, and since DEC-131 series) with Liquid Glass on
+/// (mockup LG-02): the artwork over the full width behind the status bar, at
+/// least [kMobileDetailHeroFraction] of the screen high, with [title],
+/// [chips], [extraChips] and [actions] on the scrim at the
 /// bottom. The top keeps room for [MobileDetailHeroBar], which the page pins
 /// above the scroll view so back and more stay reachable. Grows past that
 /// height instead of clipping when a long title wraps.
@@ -40,6 +41,7 @@ class MobileDetailHero extends StatelessWidget {
     required this.artwork,
     required this.title,
     required this.chips,
+    this.extraChips = const [],
     required this.actions,
     @visibleForTesting this.debugTransparentForeground = false,
   });
@@ -47,6 +49,10 @@ class MobileDetailHero extends StatelessWidget {
   final Widget artwork;
   final String title;
   final List<String> chips;
+
+  /// Ready-made chips after [chips], such as the page's critic/audience
+  /// rating badges (DEC-131), which carry their own source icon.
+  final List<Widget> extraChips;
   final Widget actions;
 
   /// Title and chip labels painted transparent (shadows kept), so the
@@ -80,9 +86,16 @@ class MobileDetailHero extends StatelessWidget {
                     theme.textTheme.headlineMedium!.copyWith(fontWeight: .w800, color: foreground, height: 1.1),
                   ),
                 ),
-                if (chips.isNotEmpty) ...[
+                if (chips.isNotEmpty || extraChips.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Wrap(spacing: 8, runSpacing: 8, children: [for (final c in chips) _HeroChip(c, color: foreground)]),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final c in chips) _HeroChip(c, color: foreground),
+                      ...extraChips,
+                    ],
+                  ),
                 ],
                 const SizedBox(height: 20),
                 actions,

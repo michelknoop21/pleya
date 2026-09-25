@@ -4,7 +4,9 @@ Alles hieronder start als **open**. Een fake `MethodChannel` bewijst geen echte 
 toestellen, en unit- of widgettests bewijzen geen Apple TV-gedrag. Vul de uitkomst in met datum,
 build en toestel, niet met een vinkje.
 
-Bijgewerkt: 2026-08-21, na fase A blok 2. Blok 2 voegde de blokken R en L toe.
+Bijgewerkt: 2026-09-24, na DEC-134 (herstelronde iCloud-sync). Alle rijen blijven open tot de hardwareronde.
+
+Eerder bijgewerkt: 2026-08-21, na fase A blok 2. Blok 2 voegde de blokken R en L toe.
 
 ## Blok 1: sync tussen twee Apple-installaties op hetzelfde iCloud-account
 
@@ -18,7 +20,7 @@ iCloud-schakelaar aan in Instellingen.
 | S3 | Een globale instelling (thema) op één toestel | Beide tonen dezelfde waarde | open |
 | S4 | Bibliotheek verbergen in profiel A | Profiel A op het andere toestel volgt | open |
 | S5 | Hetzelfde in profiel B | Profiel A blijft ongemoeid | open |
-| S6 | Een instelling terugzetten naar de standaard | De verwijdering bereikt het andere toestel | open |
+| S6 | Een instelling terugzetten naar de standaard | De verwijdering bereikt het andere toestel als tombstone; een volgende foreground zet hem niet terug | open |
 | S7 | Wijzigen met wifi uit, daarna weer aan | De wijziging komt alsnog aan | open |
 | S8 | Tegelijk wijzigen op beide toestellen | Eén waarde wint, beide toestellen tonen dezelfde | open |
 | S9 | App naar achtergrond en terug | Wijzigingen van het andere toestel zijn zichtbaar | open |
@@ -158,6 +160,28 @@ Onder de iCloud-schakelaar staat één regel. Hij mag nooit beweren dat andere t
 | L6 | Een waarde boven de 100 KB | De melding dat iets te groot is, zonder te zeggen wát | open |
 | L7 | Ander toestel op een oudere Pleya | De compatibiliteitsmelding, náást de statusregel | open |
 
+## Blok 5: herstelronde DEC-134 (hardware)
+
+Recept in `docs/superpowers/specs/2026-09-24-icloud-sync-repair-design.md` §7. Twee toestellen,
+één iCloud-account, dezelfde TestFlight-build, schakelaar aan op beide.
+
+| # | Scenario | Verwacht | Status |
+|---|---|---|---|
+| H1 | Ondertitelgrootte op de Mac, Apple TV open in Instellingen | Volgt binnen een minuut zonder herstart (S1, S9) | open |
+| H2 | Instelling terugzetten en daarna resetten op de Mac | Apple TV volgt; de Mac krijgt na een eigen foreground niets terug; log toont één tombstone-write per sleutel (S6, R8) | open |
+| H3 | Dezelfde instelling binnen vijf seconden op beide anders | Beide op de laatst gezette waarde; een derde foreground wisselt niets (S8) | open |
+| H4 | Uitloggen bij iCloud met de app open, wijziging, weer inloggen | Ondertitel "Sign in to iCloud", geen "Last sent"; na inloggen komt de volgende wijziging aan zonder herstart (R5, R6) | open |
+| H5 | Schakelaar uit, wijziging, schakelaar aan, wijziging | Beide wijzigingen komen aan (B6) | open |
+| H6 | Wisselen naar een tweede testaccount en terug | Waarden van dat account verschijnen; wat het miste staat met stempel 0 in zijn store; lokaal niets gewist (S10, B9) | open |
+| H7 | KVS-quota vol | Niet praktisch uitvoerbaar; blijft open met die reden (L4) | open |
+| H8 | Voorkeurstaal voor ondertitels zetten op de Mac, in hetzelfde Plex Home-profiel als de Apple TV | De Apple TV kiest die taal bij de volgende aflevering; terugzetten naar standaard op de Mac haalt hem daar ook weg (B10) | open |
+| H9 | Instellingen importeren uit een bestand op de Mac | De geïmporteerde waarden verschijnen op de Apple TV en een foreground op de Mac zet ze niet terug (B2, R7) | open |
+
+H8 en H9 staan niet in het spec-recept. Ze dekken de profiel-gesleutelde taalkaart en de import,
+twee paden die in de reviews van taak 4 en 6 fout bleken en alleen in unit tegen `FakeTransport`
+zijn gerepareerd. H8 werkt alleen voor een Plex Home-profiel; Jellyfin en Pleya Server hebben nog
+geen draagbare profielscope (B12, `DEFERRED`).
+
 ## Wat de geautomatiseerde tests wél bewijzen
 
 Zodat niemand ze aanziet voor het bovenstaande:
@@ -174,4 +198,8 @@ Zodat niemand ze aanziet voor het bovenstaande:
 - het live herladen is getest op de staat die de provider tóónt, niet op een callback die vuurde.
   Dat sluit het gat dat de bug was; het zegt niets over hoe snel dat op een Apple TV voelt;
 - de native audit is een code- en configuratie-audit. Dat de drie platforms dezelfde KVS-identiteit
-  gebruiken is uit de projectinstellingen afgeleid, niet op hardware waargenomen.
+  gebruiken is uit de projectinstellingen afgeleid, niet op hardware waargenomen;
+- de envelop op de draad, de tombstones, de accountwissel en de profiel-gesleutelde map zijn getest
+  tegen FakeTransport (revision_on_the_wire_test, reconcile_and_tombstones_test,
+  reconcile_lifecycle_test, profile_keyed_map_test); de productiebedrading van de listener tegen
+  dezelfde fake via ICloudSyncService.start(transport:). Geen simulator heeft een iCloud-account.

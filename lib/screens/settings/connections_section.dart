@@ -194,7 +194,7 @@ class _ConnectionsSectionState extends State<ConnectionsSection> {
     return SettingRowFocus(
       onSelect: onRemove,
       child: ListTile(
-        contentPadding: kSettingRowPadding,
+        contentPadding: settingRowPadding(),
         leading: Icon(icon, fill: 1, color: theme.colorScheme.primary),
         title: Text(title),
         subtitle: subtitle == null ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
