@@ -45,6 +45,12 @@ private struct TopShelfCachePayload: Decodable {
     let genre: String?
     let releaseDate: String?
     let imageUri: String?
+    let namedAttributes: [NamedAttribute]?
+
+    struct NamedAttribute: Decodable {
+      let name: String
+      let values: [String]
+    }
 
     private enum CodingKeys: String, CodingKey {
       case contentId
@@ -62,6 +68,7 @@ private struct TopShelfCachePayload: Decodable {
       case genre
       case releaseDate
       case imageUri
+      case namedAttributes
     }
 
     init(from decoder: Decoder) throws {
@@ -81,6 +88,7 @@ private struct TopShelfCachePayload: Decodable {
       genre = try? container.decodeIfPresent(String.self, forKey: .genre)
       releaseDate = try? container.decodeIfPresent(String.self, forKey: .releaseDate)
       imageUri = try? container.decodeIfPresent(String.self, forKey: .imageUri)
+      namedAttributes = try? container.decodeIfPresent([NamedAttribute].self, forKey: .namedAttributes)
     }
   }
 
@@ -129,7 +137,9 @@ final class TopShelfProvider: TVTopShelfContentProvider {
 
     let carouselItems = (payload.carousel ?? []).compactMap(makeCarouselItem)
     if !carouselItems.isEmpty {
-      return TVTopShelfCarouselContent(style: .actions, items: carouselItems)
+      // `.details` shows title, context line, summary, genre, duration, year
+      // and named attributes next to the buttons; `.actions` shows buttons only.
+      return TVTopShelfCarouselContent(style: .details, items: carouselItems)
     }
 
     let sections = payload.sections.compactMap { section -> TVTopShelfItemCollection<TVTopShelfSectionedItem>? in
@@ -197,6 +207,13 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       formatter.formatOptions = [.withFullDate]
       item.creationDate = formatter.date(from: releaseDate)
     }
+    // tvOS shows at most four.
+    item.namedAttributes = (cacheItem.namedAttributes ?? []).prefix(4)
+      .filter { !$0.name.isEmpty && !$0.values.isEmpty }
+      .map { TVTopShelfNamedAttribute(name: $0.name, values: $0.values) }
+    // A file:// URL in the app-group container (the app downloads the image,
+    // so servers that need an auth header work too); older payloads carry an
+    // http(s) URL.
     item.setImageURL(imageURL, for: .screenScale1x)
     item.setImageURL(imageURL, for: .screenScale2x)
     // Carousel: playAction is the first button (Play resumes), displayAction

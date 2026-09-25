@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, Platform;
 
 import 'package:flutter/services.dart';
 
@@ -11,6 +11,7 @@ import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import 'settings_service.dart' show EpisodePosterMode;
+import 'top_shelf_images.dart';
 
 /// What a launcher shelf tap asks for. Top Shelf sends `play` for the remote's
 /// Play button and `open` for a click; Android Watch Next and links written by
@@ -61,6 +62,9 @@ class SystemShelfService {
     _androidChannel.setMethodCallHandler(_handleMethodCall);
     _tvosChannel.setMethodCallHandler(_handleMethodCall);
   }
+
+  /// Downloads carousel artwork into the app-group container (tvOS only).
+  TopShelfImages topShelfImages = TopShelfImages();
 
   /// Callback for warm-start launcher surface taps.
   ValueChanged<ShelfDeepLink>? onShelfItemTap;
@@ -147,11 +151,8 @@ class SystemShelfService {
         args['sections'] = [
           {'id': 'continue_watching', 'title': t.discover.continueWatching, 'items': items},
         ];
-        final carousel = carouselItemsFor(
-          hero,
-          continueWatchingItems,
-          getClientForServerId,
-          hideSpoilers: hideSpoilers,
+        final carousel = await _localCarouselImages(
+          carouselItemsFor(hero, continueWatchingItems, getClientForServerId, hideSpoilers: hideSpoilers),
         );
         // No carousel item with an image: the extension keeps the sectioned row.
         if (carousel.isNotEmpty) args['carousel'] = carousel;
@@ -168,6 +169,15 @@ class SystemShelfService {
       appLogger.e('Failed to sync system shelf', error: e);
       return false;
     }
+  }
+
+  /// The carousel with `file://` artwork in the app-group folder the native
+  /// side names; empty when that folder is unavailable, which leaves the
+  /// sectioned row. Runs for an empty carousel too, so its files get removed.
+  Future<List<Map<String, dynamic>>> _localCarouselImages(List<Map<String, dynamic>> carousel) async {
+    final path = await _tvosChannel.invokeMethod<String>('imageDirectory');
+    if (path == null || path.isEmpty) return const [];
+    return topShelfImages.localize(carousel, Directory(path));
   }
 
   /// Clear all launcher shelf entries owned by the app.
@@ -207,7 +217,7 @@ class SystemShelfService {
     }
   }
 
-  /// The Top Shelf carousel (`TVTopShelfCarouselContent`, style `.actions`):
+  /// The Top Shelf carousel (`TVTopShelfCarouselContent`, style `.details`):
   /// [hero] first, then [continueWatching]. A film that is in both keeps only
   /// its Continue Watching entry, because tvOS requires unique identifiers and
   /// that entry carries the progress. Items without a usable 16:9 image are
@@ -238,6 +248,7 @@ class SystemShelfService {
         'releaseDate': _releaseDate(item),
         'duration': item.durationMs,
         'imageUri': imageUri,
+        'namedAttributes': _namedAttributes(item),
       });
     }
 
@@ -249,6 +260,16 @@ class SystemShelfService {
       add(item, _continueWatchingContext(item));
     }
     return result;
+  }
+
+  /// Director and cast for the details style; tvOS shows at most four.
+  static List<Map<String, dynamic>> _namedAttributes(MediaItem item) {
+    final directors = item.directors?.take(2).toList() ?? const <String>[];
+    final cast = item.roles?.map((r) => r.tag).where((tag) => tag.isNotEmpty).take(3).toList() ?? const <String>[];
+    return [
+      if (directors.isNotEmpty) {'name': t.metadataEdit.director, 'values': directors},
+      if (cast.isNotEmpty) {'name': t.discover.cast, 'values': cast},
+    ];
   }
 
   /// "Verder kijken · S2E5 · 42 min over"; a carousel item has no progress bar.

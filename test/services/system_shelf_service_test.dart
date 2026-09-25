@@ -5,6 +5,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/media_role.dart';
 import 'package:pleya/services/system_shelf_service.dart';
 
 void main() {
@@ -183,6 +184,36 @@ void main() {
       expect(film['releaseDate'], '2024-03-15');
       expect(film['duration'], 5400000);
       expect(film['imageUri'], 'img:/a/h1@1920x1080');
+      expect(film['namedAttributes'], isEmpty, reason: 'no director or cast known: nothing invented');
+    });
+
+    test('director and up to three cast names become named attributes', () {
+      final film = MediaItem(
+        id: 'm',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'm',
+        serverId: 'srv',
+        artPath: '/a/m',
+        directors: const ['Dir'],
+        roles: const [
+          MediaRole(tag: 'A'),
+          MediaRole(tag: ''),
+          MediaRole(tag: 'B'),
+          MediaRole(tag: 'C'),
+          MediaRole(tag: 'D'),
+        ],
+      );
+      expect(build([film], const []).single['namedAttributes'], [
+        {
+          'name': t.metadataEdit.director,
+          'values': ['Dir'],
+        },
+        {
+          'name': t.discover.cast,
+          'values': ['A', 'B', 'C'],
+        },
+      ]);
     });
 
     test('an episode shows its series title, the show backdrop and a progress context line', () {

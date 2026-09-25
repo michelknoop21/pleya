@@ -56,6 +56,10 @@ import TVServices
         } else {
           result(Self.writeItems(rawItems.map(Self.normalizedItem)))
         }
+      case "imageDirectory":
+        // Dart stores the carousel artwork here; the extension reads the
+        // file:// URLs it writes into the payload.
+        result(Self.imageDirectoryURL?.path)
       case "clear":
         result(Self.clearCache())
       case "remove":
@@ -75,6 +79,11 @@ import TVServices
 
     private static var sharedDefaults: UserDefaults? {
       UserDefaults(suiteName: appGroupIdentifier)
+    }
+
+    private static var imageDirectoryURL: URL? {
+      FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
+        .appendingPathComponent("TopShelfImages", isDirectory: true)
     }
 
     private static func normalizedItem(_ item: [String: Any]) -> [String: Any] {
@@ -178,6 +187,9 @@ import TVServices
 
       defaults.removeObject(forKey: cacheDataKey)
       defaults.synchronize()
+      if let images = imageDirectoryURL {
+        try? FileManager.default.removeItem(at: images)
+      }
 
       TVTopShelfContentProvider.topShelfContentDidChange()
       return true
