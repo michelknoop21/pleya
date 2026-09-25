@@ -114,6 +114,17 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<List<MediaItem>>? _scanInFlight;
   Set<String>? _scanSeen;
 
+  /// A subfolder could not be listed during this scan. Its items are then
+  /// unknown, not gone, so a rescan keeps them and stays stale for a retry.
+  bool _scanIncomplete = false;
+
+  /// Lists a folder below the root, recording an unreadable one.
+  Future<List<SafDocumentFile>?> _listSubfolder(String uri) async {
+    final children = await SafStorageService.instance.list(uri);
+    if (children == null) _scanIncomplete = true;
+    return children;
+  }
+
   /// In-memory library list (one library per configured root).
   late final List<MediaLibrary> _libraries;
 
@@ -881,6 +892,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<List<MediaItem>> _runScan(String libraryId, {required bool rescan}) async {
     await _loadWatchState();
     if (rescan) _scanSeen = {};
+    _scanIncomplete = false;
 
     try {
       appLogger.i('LocalFolderClient: scan start for ${connection.displayName} (${connection.libraryType})');
@@ -937,7 +949,12 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
       }
 
       final seen = _scanSeen;
-      if (seen != null) _itemCache.removeWhere((id, _) => !seen.contains(id));
+      if (_scanIncomplete) {
+        // Only a rescan retries; a first scan keeps its old behaviour.
+        if (rescan) _scanStale = true;
+      } else if (seen != null) {
+        _itemCache.removeWhere((id, _) => !seen.contains(id));
+      }
       _applyWatchStateToCache();
       appLogger.i('LocalFolderClient: scan done for ${connection.displayName} → ${_itemCache.length} items');
     } catch (e, st) {
@@ -978,7 +995,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   }
 
   Future<void> _scanMovieFolder(SafDocumentFile folder) async {
-    final children = await SafStorageService.instance.list(folder.uri);
+    final children = await _listSubfolder(folder.uri);
     if (children == null) return;
 
     // An unpacked disc is one movie, not a folder of streams.
@@ -1009,7 +1026,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
     );
     _cacheItem(showItem);
 
-    final seasonDirs = await SafStorageService.instance.list(showFolder.uri);
+    final seasonDirs = await _listSubfolder(showFolder.uri);
     if (seasonDirs == null) return;
 
     int seasonNum = 0;
@@ -1033,7 +1050,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
       );
       _cacheItem(seasonItem);
 
-      final episodeFiles = await SafStorageService.instance.list(seasonDir.uri);
+      final episodeFiles = await _listSubfolder(seasonDir.uri);
       if (episodeFiles == null) continue;
 
       int epNum = 0;
@@ -1220,7 +1237,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   }
 
   Future<void> _scanGenericFolder(SafDocumentFile folder, String libraryId) async {
-    final children = await SafStorageService.instance.list(folder.uri);
+    final children = await _listSubfolder(folder.uri);
     if (children == null) return;
 
     if (_isDiscFolderListing(children)) {

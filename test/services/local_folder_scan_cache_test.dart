@@ -81,4 +81,23 @@ void main() {
     File('${root.path}/Dune (2021).mkv').writeAsStringSync('x');
     expect(await recentTitles(), containsAll(['Arrival', 'Dune']), reason: 'the failed rescan is retried');
   });
+
+  test('a subfolder that cannot be read during the rescan keeps its titles, and the rescan is retried', () async {
+    // Film libraries put each film in its own folder, so one SMB or File
+    // Provider hiccup on that folder must not drop the film from Home, the
+    // library, or a playback in progress.
+    final dune = Directory('${root.path}/Dune (2021)')..createSync();
+    File('${dune.path}/Dune (2021).mkv').writeAsStringSync('x');
+    await client.scanAllItems();
+    expect(await recentTitles(), containsAll(['Arrival', 'Dune']));
+
+    Process.runSync('chmod', ['000', dune.path]);
+    addTearDown(() => Process.runSync('chmod', ['755', dune.path]));
+    client.invalidateScanCache();
+    expect(await recentTitles(), containsAll(['Arrival', 'Dune']), reason: 'an unreadable folder is not an empty one');
+
+    Process.runSync('chmod', ['755', dune.path]);
+    File('${root.path}/Heat (1995).mkv').writeAsStringSync('x');
+    expect(await recentTitles(), containsAll(['Arrival', 'Dune', 'Heat']), reason: 'the incomplete rescan is retried');
+  });
 }
