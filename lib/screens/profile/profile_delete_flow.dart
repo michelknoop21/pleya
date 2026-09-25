@@ -11,6 +11,7 @@ import '../../profiles/profile_connection_registry.dart';
 import '../../profiles/profile_registry.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../services/settings_service.dart';
 import '../../services/storage_service.dart';
 import '../../navigation/tv/tv_live_tv_capability.dart';
 import '../../services/unified_catalog/preferred_server_store.dart';
@@ -72,6 +73,11 @@ Future<void> deleteProfile(BuildContext context, Profile profile) async {
   // that gets reused would otherwise hand the next profile a navigation item
   // for a source it has never seen.
   await TvLiveTvCapabilityStore.clearForProfileScope(storage.userScopeForProfileId(profile.id));
+  // What this profile searched for and opened (Z8): per profile since the
+  // search-and-filters plan, so it leaves with the profile.
+  await (await SettingsService.getInstance()).clearSearchRecencyForProfileScope(
+    storage.userScopeForProfileId(profile.id),
+  );
   await removeAllProfileConnectionsAndCleanup(
     profileId: profile.id,
     profileConnections: pcRegistry,

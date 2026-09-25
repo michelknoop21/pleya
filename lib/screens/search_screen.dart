@@ -190,7 +190,7 @@ class _SearchScreenState extends State<SearchScreen>
     super.initState();
     _searchDebounce = debounce(_performSearch, const Duration(milliseconds: 500));
     _searchController.addListener(_onSearchChanged);
-    _history = SettingsService.instance.read(SettingsService.searchHistory);
+    _history = SettingsService.instance.read(SettingsService.instance.profileSearchHistory);
     _recentItems = readSearchRecents();
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
     _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
@@ -284,14 +284,14 @@ class _SearchScreenState extends State<SearchScreen>
     final next = [trimmed, ..._history.where((q) => q.toLowerCase() != trimmed.toLowerCase())];
     if (next.length > _searchHistoryLimit) next.removeRange(_searchHistoryLimit, next.length);
     _history = next;
-    SettingsService.instance.write(SettingsService.searchHistory, next);
+    SettingsService.instance.write(SettingsService.instance.profileSearchHistory, next);
   }
 
   void _clearHistory() {
     _history = const [];
     // Explicitly typed: an untyped `const []` infers List<dynamic> here, which
     // StringListPref rejects at runtime — the button silently did nothing.
-    SettingsService.instance.write(SettingsService.searchHistory, const <String>[]);
+    SettingsService.instance.write(SettingsService.instance.profileSearchHistory, const <String>[]);
     setStateIfMounted(() {});
     // The chips and this button unmount with the row — without a new home,
     // primary focus dies with them and the D-pad goes dead.

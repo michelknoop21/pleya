@@ -36,7 +36,7 @@ const int searchRecentsLimit = 6;
 /// entry written by an older model should cost that entry rather than the whole
 /// row.
 List<MediaItem> readSearchRecents() {
-  final raw = SettingsService.instance.read(SettingsService.searchRecentItems);
+  final raw = SettingsService.instance.read(SettingsService.instance.profileSearchRecentItems);
   final items = <MediaItem>[];
   for (final entry in raw) {
     try {
@@ -57,7 +57,7 @@ List<MediaItem> readSearchRecents() {
 List<MediaItem> rememberSearchRecent(MediaItem item) {
   final next = [item, ...readSearchRecents().where((existing) => existing.globalKey != item.globalKey)];
   if (next.length > searchRecentsLimit) next.removeRange(searchRecentsLimit, next.length);
-  SettingsService.instance.write(SettingsService.searchRecentItems, [
+  SettingsService.instance.write(SettingsService.instance.profileSearchRecentItems, [
     for (final entry in next) jsonEncode(entry.toJson()),
   ]);
   return next;
@@ -66,5 +66,5 @@ List<MediaItem> rememberSearchRecent(MediaItem item) {
 /// Empties the row. Shares its button with the query chips: "Wissen" on Zoeken
 /// clears what the page shows, and on TV that is this.
 void clearSearchRecents() {
-  SettingsService.instance.write(SettingsService.searchRecentItems, const <String>[]);
+  SettingsService.instance.write(SettingsService.instance.profileSearchRecentItems, const <String>[]);
 }

@@ -264,6 +264,17 @@ class PreferenceSyncPolicyRegistry {
     icloudSyncable: false,
   );
 
+  /// Runtime state that belongs to one profile: stored under the active
+  /// profile's `user_<scope>_` prefix, never synced, never exported. Search
+  /// recency is the case (Z8): a child profile must not see what the parent
+  /// searched for, and another device has no use for either list.
+  static const PreferencePolicy _profileRuntimeCache = PreferencePolicy(
+    scope: PreferenceScopeKind.profile,
+    sensitivity: PreferenceSensitivity.runtimeCache,
+    exportable: false,
+    icloudSyncable: false,
+  );
+
   static const PreferencePolicy _progressMapCache = PreferencePolicy(
     scope: PreferenceScopeKind.deviceLocal,
     sensitivity: PreferenceSensitivity.runtimeCache,
@@ -452,13 +463,13 @@ class PreferenceSyncPolicyRegistry {
     'enable_companion_remote_server': _deviceLocalPref,
 
     // -- Runtime and view state.
-    'search_history': _runtimeCache,
+    'search_history': _profileRuntimeCache,
     // The other half of Zoeken's recency (mockup 36 A): the titles that were
     // opened from a result, drawn as the row at rest on TV. Same policy as the
     // query strings it sits beside — it is a convenience this device rebuilds
     // by being used, and a row of posters from someone else's television is not
     // a preference anyone set.
-    'search_recent_items': _runtimeCache,
+    'search_recent_items': _profileRuntimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,
