@@ -159,7 +159,10 @@ class TvSourcePickerLayout {
   /// until the hierarchy "looks" right on a monitor at arm's length.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.68;
-  static const double inkTertiary = 0.5;
+  // VIS-0925 Light audit: 0.5 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.62 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.62;
   static const double inkQuiet = 0.5;
 
   /// The same ladder on a row nobody can pick. Compressed and dimmed as a
@@ -557,7 +560,10 @@ class TvCatalogLayout {
 
   /// The third tier, for the one line that is context about a card rather than
   /// a statement of what it is: DEC-108's "Aangevraagd door michel".
-  static const double inkTertiary = 0.42;
+  // VIS-0925 Light audit: 0.42 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.6 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.6;
 
   /// Fill and outline of a header action capsule, as alphas on
   /// `MonoTokens.text` over the page background.
@@ -1148,7 +1154,10 @@ class TvDiscoveryLayout {
   /// Ink alphas on `MonoTokens.text` for the context block's three tiers.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.7;
-  static const double inkTertiary = 0.56;
+  // VIS-0925 Light audit: 0.56 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.62 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.62;
 }
 
 /// The TV root shell's top navigation (fase 7, hoofdstuk 6.2 and the shared
@@ -1313,7 +1322,10 @@ class TvMyPleyaLayout {
   /// Ink tiers on `MonoTokens.text`.
   static const double inkPrimary = 1;
   static const double inkSecondary = 0.7;
-  static const double inkTertiary = 0.5;
+  // VIS-0925 Light audit: 0.5 gave under 4.5:1 on the Light page
+  // (test/theme/tv_text_contrast_audit_test.dart); 0.62 is an ink alpha the
+  // palette already uses.
+  static const double inkTertiary = 0.62;
 }
 
 /// Home tokens: the full-bleed hero and where the rails sit under it
