@@ -4091,3 +4091,39 @@ periode ook nummers uitgaf. Bij de eerste main-sync werden ze DEC-133 tot en met
 door naar DEC-135 tot en met DEC-138. De tabel toont de huidige nummers. Een verwijzing naar
 DEC-133 of DEC-134 van vóór die tweede sync die over een protocolvenster of foutdomeinen gaat, bedoelt
 dus DEC-135 of DEC-136.
+
+## DEC-139: Apple TV blijft op 1,85; te grote vlakken worden gericht verdicht via `TvHig`
+
+**Date:** 2026-09-25
+**Status:** accepted. Amendement op [DEC-028](#dec-028-de-apple-tv-vergroting-gaat-van-200-naar-185-en-verder-verandert-er-niets) en [DEC-130](#dec-130-tv-instellingen-en-detail-volgen-apples-tvos-hig-in-punten)
+
+**Context:** Michel fotografeerde build 303 op de 77 inch tv en vond de interface opnieuw
+opgeblazen (VIS-0925-G). De vraag was of de wrapper van DEC-028 (1,85, canvas 1038x584) omlaag moest.
+Gemeten in Apple-punten op het toestel staat Home al vrijwel op de HIG: zes posters van 231 pt met
+41 pt ertussen, zijkant 75,5 pt, en de topnav is met 52 pt zelfs lager dan de tabbalk van 68 pt.
+Instellingenrijen zijn sinds DENS1 60 en 92 pt rond tekst van 29 en 25 pt. Wat wel te groot of te
+krap is: Mijn Pleya-tegels van 151 pt met een titel van 23,6 pt en een ondertitel van 18,9 pt,
+cataloguskaarttekst van 22 en 18 pt, een hero-CTA-label van 25 pt, veel verticale lucht tussen
+paginatitel, sectielabel en kaart in Instellingen, en `NoticeHost`, die buiten `_AppleTvScale`
+staat en daardoor op 14 en 13 pt rendert. Drie globale opties zijn doorgerekend. Een wrapper van
+1,5 verkleint alles met 19%, ook de tekst (Body naar ongeveer 23,5 pt). Een wrapper van 1,0 zet
+Material-oppervlakken als OSD, dialogen en sheets op telefoonmaat. De klem van 0,85 eraf haalt 36%
+van alle tokens af, wat DEC-130 al uitsloot. Alle drie breken `tv_discovery_density_test` en de
+goldens op 1038x584. Ter vergelijking: Android TV en Fire TV rekenen op 960x540 dp, dus 2x, en
+Plex, Infuse, Netflix en de Apple TV-app bieden geen zoom- of density-instelling.
+
+**Decision:** De wrapper blijft 1,85 en de klem blijft staan. Wat te groot is, gaat per oppervlak
+naar `TvHig`-punten, zoals DEC-130 voorschrijft:
+
+- Instellingen: rijen van 60/92 naar 56/80 pt, minder ruimte tussen paginatitel, sectielabel en
+  kaart, compactere categorieën.
+- Mijn Pleya-tegels naar de maat van `TvMenuGrid` (ongeveer 100 pt) met Body- en Caption 1-tekst.
+- Cataloguskaarttekst naar het HIG-minimum van 23 pt, het hero-CTA-label naar Body (29 pt).
+- `NoticeHost` binnen `_AppleTvScale`.
+
+**Consequences:** De tekst blijft op HIG-maat en de lucht eromheen krimpt. Goldens van de geraakte
+schermen worden stale en gaan via `goldens.yml` opnieuw. Of 1,85 op het toestel ook echt 1038x584
+logische pixels geeft, hangt af van de DPR die de engine-fork uit `windowScene.screen.scale`
+haalt. DEC-028 leidde dpr 4 op een 4K-toestel af maar heeft het niet gemeten. DPR1 voegt daarom één
+logregel na het eerste frame toe met de DPR en de fysieke resolutie. Blijkt de DPR daar anders dan
+verwacht, dan is dat een nieuw besluit, geen stille aanpassing van dit getal.
