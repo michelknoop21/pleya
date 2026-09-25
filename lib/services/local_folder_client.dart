@@ -1,4 +1,5 @@
 import '../media/media_identity.dart';
+import '../providers/discover_refresh_policy.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -111,6 +112,27 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   /// Set by [invalidateScanCache]; the scan in flight, so concurrent readers
   /// share one pass; and the ids that pass has seen, to drop removed files.
   bool _scanStale = false;
+
+  /// After a rescan that could not read everything, the next automatic try
+  /// waits until this moment; until then every reader gets the last good
+  /// catalog. [invalidateScanCache] skips the wait.
+  DateTime? _retryIncompleteAt;
+
+  bool get _needsRescan {
+    if (_scanStale) return true;
+    final retryAt = _retryIncompleteAt;
+    return retryAt != null && !_now().isBefore(retryAt);
+  }
+
+  /// A rescan that failed or missed a folder keeps the old items and asks
+  /// for one more try after the return threshold, never on every read.
+  void _retryIncompleteLater() => _retryIncompleteAt = _now().add(kHomeRefreshOnReturn);
+
+  final DateTime Function() _now;
+
+  /// Folder scans run so far, for tests that bound how often a read rescans.
+  @visibleForTesting
+  int debugScanCount = 0;
   Future<List<MediaItem>>? _scanInFlight;
   Set<String>? _scanSeen;
 
@@ -140,7 +162,8 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   @override
   final ApiCache cache;
 
-  LocalFolderClient({required this.connection, required this.cache}) {
+  LocalFolderClient({required this.connection, required this.cache, DateTime Function()? now})
+    : _now = now ?? DateTime.now {
     _libraries = [
       MediaLibrary(
         id: connection.id,
@@ -399,7 +422,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async {
-    if (_scanStale || _scanInFlight != null) await _scanLibrary(connection.id);
+    if (_needsRescan || _scanInFlight != null) await _scanLibrary(connection.id);
     final all = _itemCache.values
         .where((item) => item.kind == MediaKind.movie || item.kind == MediaKind.episode)
         .toList();
@@ -883,13 +906,15 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<List<MediaItem>> _scanLibrary(String libraryId) {
     final inFlight = _scanInFlight;
     if (inFlight != null) return inFlight;
-    if (_itemCache.isNotEmpty && !_scanStale) return Future.value(_itemCache.values.toList());
-    final rescan = _scanStale && _itemCache.isNotEmpty;
+    if (_itemCache.isNotEmpty && !_needsRescan) return Future.value(_itemCache.values.toList());
+    final rescan = _needsRescan && _itemCache.isNotEmpty;
     _scanStale = false;
+    _retryIncompleteAt = null;
     return _scanInFlight = _runScan(libraryId, rescan: rescan).whenComplete(() => _scanInFlight = null);
   }
 
   Future<List<MediaItem>> _runScan(String libraryId, {required bool rescan}) async {
+    debugScanCount++;
     await _loadWatchState();
     if (rescan) _scanSeen = {};
     _scanIncomplete = false;
@@ -951,7 +976,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
       final seen = _scanSeen;
       if (_scanIncomplete) {
         // Only a rescan retries; a first scan keeps its old behaviour.
-        if (rescan) _scanStale = true;
+        if (rescan) _retryIncompleteLater();
       } else if (seen != null) {
         _itemCache.removeWhere((id, _) => !seen.contains(id));
       }
@@ -975,7 +1000,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   }
 
   List<MediaItem> _keepAfterFailedRescan() {
-    _scanStale = true;
+    _retryIncompleteLater();
     return _itemCache.values.toList();
   }
 

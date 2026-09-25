@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/providers/discover_refresh_policy.dart';
 import 'package:pleya/services/api_cache.dart';
 import 'package:pleya/services/local_folder_client.dart';
 import 'package:pleya/services/plex_api_cache.dart';
@@ -19,6 +20,7 @@ void main() {
   late AppDatabase db;
   late Directory root;
   late LocalFolderClient client;
+  late DateTime clock;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -26,7 +28,9 @@ void main() {
     PlexApiCache.initialize(db);
     root = Directory.systemTemp.createTempSync('pleya_local_scan_');
     File('${root.path}/Arrival (2016).mkv').writeAsStringSync('x');
+    clock = DateTime(2026, 9, 25, 12);
     client = LocalFolderClient(
+      now: () => clock,
       connection: LocalFolderConnection(
         id: 'local-1',
         directoryUri: root.path,
@@ -79,6 +83,7 @@ void main() {
     expect([for (final item in during) item.title], ['Arrival'], reason: 'the browse view keeps its titles');
 
     File('${root.path}/Dune (2021).mkv').writeAsStringSync('x');
+    clock = clock.add(kHomeRefreshOnReturn);
     expect(await recentTitles(), containsAll(['Arrival', 'Dune']), reason: 'the failed rescan is retried');
   });
 
@@ -98,6 +103,33 @@ void main() {
 
     Process.runSync('chmod', ['755', dune.path]);
     File('${root.path}/Heat (1995).mkv').writeAsStringSync('x');
+    clock = clock.add(kHomeRefreshOnReturn);
     expect(await recentTitles(), containsAll(['Arrival', 'Dune', 'Heat']), reason: 'the incomplete rescan is retried');
+  });
+
+  test('a subfolder that stays unreadable is retried once per return threshold, not on every read', () async {
+    final dune = Directory('${root.path}/Dune (2021)')..createSync();
+    File('${dune.path}/Dune (2021).mkv').writeAsStringSync('x');
+    await client.scanAllItems();
+    Process.runSync('chmod', ['000', dune.path]);
+    addTearDown(() => Process.runSync('chmod', ['755', dune.path]));
+
+    client.invalidateScanCache();
+    final before = client.debugScanCount;
+    await client.fetchRecentlyAdded();
+    await client.scanAllItems();
+    await client.fetchRecentlyAdded();
+    expect(client.debugScanCount, before + 1, reason: 'three reads after an incomplete rescan, one scan');
+    expect(await recentTitles(), containsAll(['Arrival', 'Dune']), reason: 'readers get the last good catalog');
+
+    clock = clock.add(kHomeRefreshOnReturn);
+    await client.fetchRecentlyAdded();
+    await client.scanAllItems();
+    expect(client.debugScanCount, before + 2, reason: 'retried once the return threshold passed');
+
+    client.invalidateScanCache();
+    await client.fetchRecentlyAdded();
+    await client.fetchRecentlyAdded();
+    expect(client.debugScanCount, before + 3, reason: 'an explicit invalidate always rescans, once');
   });
 }
