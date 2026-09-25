@@ -23,6 +23,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../focus/focus_memory_tracker.dart';
+import '../../focus/focus_theme.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_screen.dart';
@@ -581,8 +582,8 @@ class _Tile extends StatelessWidget {
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       // VIS-0925-A: the ring surrounds the tile plus its ring gap, so its
-      // radius is the tile's plus that gap, or its corners would not follow.
-      borderRadius: radius + TvMyPleyaLayout.tileFocusRingGap * scale,
+      // radius follows the tile, the gap and the ring width.
+      borderRadius: FocusTheme.ringRadiusAround(radius, gap: TvMyPleyaLayout.tileFocusRingGap * scale),
       // Suffixed by section name, not by index: the tile order follows what
       // the profile actually has (Aanvragen only with a Seerr server), so an
       // index would address a different section on a different fixture.

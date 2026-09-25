@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_registry.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/settings_section.dart';
 import 'package:pleya/widgets/tv/tv_appearance_categories.dart';
 
@@ -112,5 +115,40 @@ void main() {
       expect(focusedWithin(tester, 'Home'), isTrue);
       expect(focusedWithin(tester, 'Home 6'), isFalse);
     });
+  });
+
+  // VIS-0925-B: selected, focused and idle must read apart in every palette.
+  // Ratios are WCAG contrast of each fill composited on the page background.
+  // Measured 25 Sep 2026 (selected/idle, label, focused/idle, idle/page):
+  //   Light 15.75, 17.63, 1.18, 1.12
+  //   Dark  16.12, 18.42, 1.27, 1.14
+  //   OLED  19.30, 21.00, 1.20, 1.09
+  // The idle pill on OLED is the faintest step on purpose: it replaces a 12%
+  // white outline that made the rail read as a table.
+  group('VIS-0925-B selected versus focused', () {
+    double ratio(Color a, Color b) {
+      final la = a.computeLuminance(), lb = b.computeLuminance();
+      return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+    }
+
+    for (final (name, dark, oled) in [('Light', false, false), ('Dark', true, false), ('OLED', true, true)]) {
+      test(name, () {
+        final tk = monoTheme(dark: dark, oled: oled).extension<MonoTokens>()!;
+        Color fill({required bool selected, required bool focused}) =>
+            Color.alphaBlend(tvCategoryPillFill(tk, selected: selected, focused: focused), tk.bg);
+        final idle = fill(selected: false, focused: false);
+        final focused = fill(selected: false, focused: true);
+        final selected = fill(selected: true, focused: false);
+
+        // Selected is unmistakable: a full ink pill against the idle pill.
+        expect(ratio(selected, idle), greaterThan(10));
+        // Its label is the page color, readable on it.
+        expect(ratio(tk.bg, selected), greaterThan(7));
+        // Focused and idle differ by fill (the ring does the rest), and the
+        // idle pill still separates from the page without a border.
+        expect(ratio(focused, idle), greaterThan(1.1));
+        expect(ratio(idle, tk.bg), greaterThan(1.08));
+      });
+    }
   });
 }

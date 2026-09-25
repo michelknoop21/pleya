@@ -68,6 +68,12 @@ class FocusTheme {
         );
   }
 
+  /// Radius for a ring-mode [FocusableWrapper] around a child of
+  /// [innerRadius] that sits [gap] inside the ring. The inside-aligned ring
+  /// reserves its own width as padding, so the child is inset by both; a ring
+  /// with the child's own radius has corners that do not follow it.
+  static double ringRadiusAround(double innerRadius, {double gap = 0}) => innerRadius + gap + focusBorderWidth;
+
   static Duration getAnimationDuration(BuildContext context) {
     // Reduced tier: snap focus transitions (scale/border/glow) instead of
     // animating — each animation frame re-rasterizes the focused card.
