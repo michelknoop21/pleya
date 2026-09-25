@@ -41,6 +41,7 @@ import 'seerr_grid_sliver.dart';
 import 'seerr_media_detail_screen.dart';
 import 'seerr_row_grid_screen.dart';
 import 'seerr_requests_screen.dart';
+import 'seerr_tv_search_row.dart';
 
 /// Jellyseerr / Overseerr ("seerr") discover + search screen.
 ///
@@ -116,6 +117,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   late final TextEditingController _searchController;
   final _searchFocusNode = FocusNode(debugLabel: 'SeerrSearchInput');
   final _firstResultFocusNode = FocusNode(debugLabel: 'SeerrSearchFirstResult');
+  final _inboxFocusNode = FocusNode(debugLabel: 'SeerrSearchInbox');
 
   /// The two rungs between the search field and the content. Without them the
   /// remote had to fall back on default directional traversal to reach the type
@@ -232,6 +234,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _searchDebounce.dispose();
     _searchFocusNode.dispose();
     _firstResultFocusNode.dispose();
+    _inboxFocusNode.dispose();
     _filterFirstTabFocusNode.dispose();
     _firstDiscoverItemFocusNode.dispose();
     super.dispose();
@@ -878,7 +881,10 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       },
       onActivate: _openDetail,
       onLeaveGrid: _tvGridPage() == null ? null : _leaveTvGrid,
-      onExitTop: _navigateToSidebar,
+      // REQ-SEARCH-ROUTE: UP out of the first shelf, the grid or the rail
+      // returns to the search field; only UP from the field reaches the top
+      // navigation.
+      onExitTop: _searchFocusNode.requestFocus,
     );
   }
 
@@ -1057,68 +1063,53 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
   }
 
-  /// TV: hand focus to the first result if there is one, otherwise fall back to
-  /// the sidebar. Never leaves focus in limbo (which traps the D-pad).
-  void _focusFirstResultOrSidebar() {
-    if (_filteredSearchResults.isNotEmpty && !_searching) {
-      _firstResultFocusNode.requestFocus();
-    } else {
-      _navigateToSidebar();
-    }
-  }
-
   Widget _buildSearchField() {
-    final isTv = PlatformDetector.isTV();
-    final inset = isTv ? TvLayoutConstants.horizontalInset : 12.0;
-    final field = FocusableTextField(
-      controller: _searchController,
-      focusNode: _searchFocusNode,
-      onChanged: _onSearchChanged,
-      textInputAction: TextInputAction.search,
-      tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
-      // Mirror the working search_screen field: always route focus to a
-      // reachable target (first result or sidebar) — never a bare unfocus(),
-      // which strands the D-pad with nothing focused and traps the user.
-      onEditingComplete: isTv ? _focusFirstResultOrSidebar : null,
-      onNavigateLeft: _navigateToSidebar,
-      // Down goes to the first thing below that can actually take focus: the
-      // result grid while searching, the type tabs otherwise. Leaving it to the
-      // field's own down-traversal was the old behaviour and it did not reliably
-      // land on the tabs, so the filter line was close to unreachable by remote.
-      onNavigateDown: _navigateDownFromSearch,
-      onBack: () {
-        if (_searchController.text.isNotEmpty) {
-          _clearSearch();
-        } else {
-          _navigateToSidebar();
-        }
-      },
-      decoration: pillInputDecoration(
-        context,
-        hintText: t.seerr.searchOnSeerrShort,
-        prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-        suffixIcon: _query.isEmpty
-            ? null
-            : IconButton(icon: const AppIcon(Symbols.close_rounded, fill: 1), onPressed: _clearSearch),
-      ),
+    final decoration = pillInputDecoration(
+      context,
+      hintText: t.seerr.searchOnSeerrShort,
+      prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+      suffixIcon: _query.isEmpty
+          ? null
+          : IconButton(icon: const AppIcon(Symbols.close_rounded, fill: 1), onPressed: _clearSearch),
     );
+    // On TV the AppBar action is unreachable (the app bar is excluded from
+    // focus), so the row carries a focusable inbox button beside the field.
+    if (PlatformDetector.isTV()) {
+      return SeerrTvSearchRow(
+        controller: _searchController,
+        fieldFocusNode: _searchFocusNode,
+        inboxFocusNode: _inboxFocusNode,
+        decoration: decoration,
+        onChanged: _onSearchChanged,
+        onClear: _clearSearch,
+        onFocusContent: () => _tvKey.currentState?.focusFirstContent() ?? false,
+        onExitUp: _navigateToSidebar,
+        onOpenRequests: _openRequests,
+      );
+    }
     return Padding(
-      padding: EdgeInsets.fromLTRB(inset, 8, inset, 8),
-      // On TV the AppBar action is unreachable (the app bar is excluded from
-      // focus), so surface a focusable inbox button beside the search field.
-      child: isTv
-          ? Row(
-              children: [
-                Expanded(child: field),
-                const SizedBox(width: 12),
-                IconButton.filledTonal(
-                  tooltip: t.seerr.myRequests,
-                  icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
-                  onPressed: _openRequests,
-                ),
-              ],
-            )
-          : field,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: FocusableTextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        onChanged: _onSearchChanged,
+        textInputAction: TextInputAction.search,
+        tvKeyboardAutoOpenBehavior: TvKeyboardAutoOpenBehavior.afterFirstFocus,
+        onNavigateLeft: _navigateToSidebar,
+        // Down goes to the first thing below that can actually take focus: the
+        // result grid while searching, the type tabs otherwise. Leaving it to the
+        // field's own down-traversal was the old behaviour and it did not reliably
+        // land on the tabs, so the filter line was close to unreachable by remote.
+        onNavigateDown: _navigateDownFromSearch,
+        onBack: () {
+          if (_searchController.text.isNotEmpty) {
+            _clearSearch();
+          } else {
+            _navigateToSidebar();
+          }
+        },
+        decoration: decoration,
+      ),
     );
   }
 

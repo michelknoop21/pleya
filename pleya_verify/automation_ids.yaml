@@ -150,6 +150,12 @@ ids:
   - id: tv.search.pill
     role: field
     instanceable: false
+  - id: seerr.search.field
+    role: field
+    instanceable: false
+  - id: seerr.search.inbox
+    role: button
+    instanceable: false
   - id: screen.my_pleya
     role: screen
     instanceable: false
