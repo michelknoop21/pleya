@@ -2455,9 +2455,6 @@ class TranslationsDiscoverEn {
 	/// en: 'Recently Added Shows'
 	String get latestShows => 'Recently Added Shows';
 
-	/// en: 'Recently Added'
-	String get topShelfRecentlyAdded => 'Recently Added';
-
 	/// en: 'Top Rated'
 	String get topRated => 'Top Rated';
 
@@ -7868,7 +7865,6 @@ extension on Translations {
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
-			'discover.topShelfRecentlyAdded' => 'Recently Added',
 			'discover.topRated' => 'Top Rated',
 			'discover.somethingDifferent' => 'Something Different',
 			'discover.topPicksForYou' => 'Top Picks for You',
@@ -8105,9 +8101,9 @@ extension on Translations {
 			'liveTv.favorites' => 'Favorites',
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
+			'liveTv.joinSession' => 'Join Session in Progress',
 			_ => null,
 		} ?? switch (path) {
-			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
@@ -8619,9 +8615,9 @@ extension on Translations {
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
+			'seerr.permissionAdmin' => 'Administrator',
 			_ => null,
 		} ?? switch (path) {
-			'seerr.permissionAdmin' => 'Administrator',
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',

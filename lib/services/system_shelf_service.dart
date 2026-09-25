@@ -9,7 +9,6 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
-import '../utils/global_key_utils.dart';
 import '../utils/platform_detector.dart';
 import 'settings_service.dart' show EpisodePosterMode;
 
@@ -76,15 +75,21 @@ class SystemShelfService {
     if (call.method == 'onWatchNextTap' || call.method == 'onShelfItemTap') {
       final args = call.arguments;
       final link = args is Map ? ShelfDeepLink.fromNative(args) : null;
-      if (link != null) {
-        onShelfItemTap?.call(link);
+      final callback = onShelfItemTap;
+      if (link != null && callback != null) {
+        callback(link);
+        // Native also parks every tap as its pending cold-start link. This one
+        // was delivered, so drain it; otherwise a later getInitialDeepLink (a
+        // MainScreen rebuild) would replay it. Undelivered taps stay parked.
+        await _takePendingLink(call.method == 'onShelfItemTap' ? _tvosChannel : _androidChannel);
       }
     }
   }
 
   /// Get a pending deep link from cold start (consumed on first call).
-  Future<ShelfDeepLink?> getInitialDeepLink() async {
-    final channel = _channel;
+  Future<ShelfDeepLink?> getInitialDeepLink() => _takePendingLink(_channel);
+
+  Future<ShelfDeepLink?> _takePendingLink(MethodChannel? channel) async {
     if (channel == null) return null;
     try {
       return ShelfDeepLink.fromNative(await channel.invokeMethod<Object?>('getInitialDeepLink'));
@@ -117,13 +122,14 @@ class SystemShelfService {
 
   /// Sync Continue Watching items to the current platform's launcher shelf.
   ///
-  /// On tvOS [recentlyAdded] becomes a second Top Shelf section. Android Watch
-  /// Next only reads `items`, so it stays Continue Watching only.
+  /// On tvOS the Top Shelf also gets a `carousel`: [hero] (the Home hero's
+  /// films) first, then Continue Watching, see [carouselItemsFor]. Android
+  /// Watch Next only reads `items`, so it stays Continue Watching only.
   Future<bool> syncFromContinueWatching(
     List<MediaItem> continueWatchingItems,
     MediaServerClient Function(ServerId serverId) getClientForServerId, {
     bool hideSpoilers = false,
-    List<MediaItem> recentlyAdded = const [],
+    List<MediaItem> hero = const [],
   }) async {
     final channel = _channel;
     if (channel == null) return false;
@@ -138,16 +144,17 @@ class SystemShelfService {
 
       final args = <String, dynamic>{'items': items};
       if (identical(channel, _tvosChannel)) {
-        final recentItems = recentlyAddedFor(recentlyAdded, continueWatchingItems).map((item) {
-          // No progress bar in this row: the extension draws one from these two.
-          return _convertToShelfItem(item, getClientForServerId, hideSpoilers: hideSpoilers)
-            ..remove('duration')
-            ..remove('lastPlaybackPosition');
-        }).toList();
         args['sections'] = [
           {'id': 'continue_watching', 'title': t.discover.continueWatching, 'items': items},
-          {'id': 'recently_added', 'title': t.discover.topShelfRecentlyAdded, 'items': recentItems},
         ];
+        final carousel = carouselItemsFor(
+          hero,
+          continueWatchingItems,
+          getClientForServerId,
+          hideSpoilers: hideSpoilers,
+        );
+        // No carousel item with an image: the extension keeps the sectioned row.
+        if (carousel.isNotEmpty) args['carousel'] = carousel;
       }
 
       return await channel.invokeMethod<bool>('sync', args) ?? false;
@@ -200,19 +207,99 @@ class SystemShelfService {
     }
   }
 
-  /// The Top Shelf "Recently Added" row: newest added first, without anything
-  /// Continue Watching already shows (for an episode that includes its show),
-  /// capped at [limit].
-  static List<MediaItem> recentlyAddedFor(List<MediaItem> candidates, List<MediaItem> onDeck, {int limit = 10}) {
-    final seen = <String>{
-      for (final item in onDeck) ...[
-        item.globalKey,
-        if (item.grandparentId != null && item.serverId != null)
-          buildGlobalKey(ServerId(item.serverId!), item.grandparentId!),
-      ],
-    };
-    final sorted = [...candidates]..sort((a, b) => (b.addedAt ?? 0).compareTo(a.addedAt ?? 0));
-    return sorted.where((item) => seen.add(item.globalKey)).take(limit).toList(growable: false);
+  /// The Top Shelf carousel (`TVTopShelfCarouselContent`, style `.actions`):
+  /// [hero] first, then [continueWatching]. A film that is in both keeps only
+  /// its Continue Watching entry, because tvOS requires unique identifiers and
+  /// that entry carries the progress. Items without a usable 16:9 image are
+  /// dropped; an empty result means the caller keeps the sectioned row.
+  static List<Map<String, dynamic>> carouselItemsFor(
+    List<MediaItem> hero,
+    List<MediaItem> continueWatching,
+    MediaServerClient Function(ServerId serverId) getClientForServerId, {
+    bool hideSpoilers = false,
+  }) {
+    String idOf(MediaItem item) => _buildContentId(serverIdOrNull(item.serverId), item.id);
+    final continueIds = continueWatching.map(idOf).toSet();
+    final seen = <String>{};
+    final result = <Map<String, dynamic>>[];
+    void add(MediaItem item, String contextTitle) {
+      final contentId = idOf(item);
+      if (!seen.add(contentId)) return;
+      final imageUri = _carouselImageUri(item, getClientForServerId, hideSpoilers: hideSpoilers);
+      if (imageUri == null) return;
+      final isEpisode = item.kind == MediaKind.episode && item.grandparentTitle != null;
+      final spoilerSafe = hideSpoilers && item.shouldHideSpoiler;
+      result.add({
+        'contentId': contentId,
+        'title': isEpisode ? item.grandparentTitle! : item.title ?? '',
+        'contextTitle': contextTitle,
+        'summary': spoilerSafe ? null : item.summary,
+        'genre': item.genres?.firstOrNull,
+        'releaseDate': _releaseDate(item),
+        'duration': item.durationMs,
+        'imageUri': imageUri,
+      });
+    }
+
+    for (final item in hero) {
+      if (continueIds.contains(idOf(item))) continue;
+      add(item, t.discover.recentlyReleased);
+    }
+    for (final item in continueWatching) {
+      add(item, _continueWatchingContext(item));
+    }
+    return result;
+  }
+
+  /// "Verder kijken · S2E5 · 42 min over"; a carousel item has no progress bar.
+  static String _continueWatchingContext(MediaItem item) {
+    final season = item.parentIndex;
+    final episode = item.index;
+    final offset = item.viewOffsetMs ?? 0;
+    final duration = item.durationMs ?? 0;
+    final minutesLeft = offset > 0 && duration > offset ? ((duration - offset) / 60000).round() : 0;
+    return [
+      t.discover.continueWatching,
+      if (item.kind == MediaKind.episode && season != null && episode != null)
+        t.discover.playEpisode(season: season, episode: episode),
+      if (minutesLeft > 0) t.discover.minutesLeft(minutes: minutesLeft),
+    ].join(' · ');
+  }
+
+  /// Full-screen 16:9 backdrop: the show's for an episode, else the item's own.
+  /// Without one, an episode or clip falls back to its 16:9 still (never for an
+  /// unwatched episode when spoilers are hidden). A film poster is portrait,
+  /// so a film without a backdrop gets null.
+  static String? _carouselImageUri(
+    MediaItem item,
+    MediaServerClient Function(ServerId serverId) getClientForServerId, {
+    required bool hideSpoilers,
+  }) {
+    final serverId = item.serverId;
+    if (serverId == null) return null;
+    final wideStill =
+        item.kind == MediaKind.clip || (item.kind == MediaKind.episode && !(hideSpoilers && item.shouldHideSpoiler));
+    final path = item.kind == MediaKind.episode ? item.grandparentArtPath ?? item.artPath : item.artPath;
+    final chosen = path ?? (wideStill ? item.thumbPath : null);
+    if (chosen == null) return null;
+    try {
+      // ponytail: tvOS draws the carousel full screen (1920x1080 pt); the SDK
+      // names no pixel size. One 1080p URL serves both scale traits, because
+      // Plex upscales on request and a 4K fetch would mostly be upscaled 1080p.
+      final url = getClientForServerId(ServerId(serverId)).thumbnailUrl(chosen, width: 1920, height: 1080);
+      return url.isEmpty ? null : url;
+    } catch (e) {
+      appLogger.w('Failed to get Top Shelf image URL for ${item.title}', error: e);
+      return null;
+    }
+  }
+
+  /// `yyyy-MM-dd` for `creationDate`: the release date, else January 1 of the year.
+  static String? _releaseDate(MediaItem item) {
+    final date = DateTime.tryParse(item.originallyAvailableAt ?? '');
+    if (date != null) return date.toIso8601String().substring(0, 10);
+    final year = item.year;
+    return year != null && year > 999 ? '$year-01-01' : null;
   }
 
   /// Build a content ID. Format: pleya_{serverId}_{ratingKey}

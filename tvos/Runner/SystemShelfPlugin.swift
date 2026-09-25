@@ -48,10 +48,11 @@ import TVServices
           result(FlutterError(code: "INVALID_ARGS", message: "Missing items", details: nil))
           return
         }
-        // Current Dart sends `sections` (Continue Watching + Recently Added,
-        // titles already localized); `items` alone is the older one-row shape.
+        // Current Dart sends `sections` (Continue Watching, title localized)
+        // plus an optional `carousel` (hero films, then Continue Watching);
+        // `items` alone is the older one-row shape.
         if let sections = args["sections"] as? [[String: Any]] {
-          result(Self.writeSections(sections))
+          result(Self.writeSections(sections, carousel: args["carousel"] as? [[String: Any]]))
         } else {
           result(Self.writeItems(rawItems.map(Self.normalizedItem)))
         }
@@ -100,11 +101,13 @@ import TVServices
 
     /// `writePayload` drops NSNull values recursively, so items need no
     /// separate normalization here.
-    private static func writeSections(_ sections: [[String: Any]]) -> Bool {
-      writePayload([
+    private static func writeSections(_ sections: [[String: Any]], carousel: [[String: Any]]?) -> Bool {
+      var payload: [String: Any] = [
         "updatedAt": Date().timeIntervalSince1970,
         "sections": sections,
-      ])
+      ]
+      payload["carousel"] = carousel
+      return writePayload(payload)
     }
 
     private static func writePayload(_ payload: [String: Any]) -> Bool {
@@ -198,6 +201,12 @@ import TVServices
           nextSection["items"] = filteredItems
         }
         return nextSection
+      }
+
+      if let carousel = payload["carousel"] as? [[String: Any]] {
+        let filteredCarousel = carousel.filter { $0["contentId"] as? String != contentId }
+        removed = removed || filteredCarousel.count != carousel.count
+        payload["carousel"] = filteredCarousel
       }
 
       if !removed {

@@ -39,6 +39,12 @@ private struct TopShelfCachePayload: Decodable {
     let lastPlaybackPosition: Double?
     let seasonNumber: Int?
     let episodeNumber: Int?
+    // Carousel-only fields; absent on section items and in older payloads.
+    let contextTitle: String?
+    let summary: String?
+    let genre: String?
+    let releaseDate: String?
+    let imageUri: String?
 
     private enum CodingKeys: String, CodingKey {
       case contentId
@@ -51,6 +57,11 @@ private struct TopShelfCachePayload: Decodable {
       case lastPlaybackPosition
       case seasonNumber
       case episodeNumber
+      case contextTitle
+      case summary
+      case genre
+      case releaseDate
+      case imageUri
     }
 
     init(from decoder: Decoder) throws {
@@ -65,10 +76,18 @@ private struct TopShelfCachePayload: Decodable {
       lastPlaybackPosition = container.decodeFlexibleDoubleIfPresent(.lastPlaybackPosition)
       seasonNumber = container.decodeFlexibleIntIfPresent(.seasonNumber)
       episodeNumber = container.decodeFlexibleIntIfPresent(.episodeNumber)
+      contextTitle = try? container.decodeIfPresent(String.self, forKey: .contextTitle)
+      summary = try? container.decodeIfPresent(String.self, forKey: .summary)
+      genre = try? container.decodeIfPresent(String.self, forKey: .genre)
+      releaseDate = try? container.decodeIfPresent(String.self, forKey: .releaseDate)
+      imageUri = try? container.decodeIfPresent(String.self, forKey: .imageUri)
     }
   }
 
   let sections: [Section]
+  /// Hero films, then Continue Watching. Older app builds never write it; they
+  /// keep getting the sectioned row.
+  let carousel: [Item]?
 }
 
 private extension KeyedDecodingContainer {
@@ -106,6 +125,11 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       payload = try JSONDecoder().decode(TopShelfCachePayload.self, from: data)
     } catch {
       return nil
+    }
+
+    let carouselItems = (payload.carousel ?? []).compactMap(makeCarouselItem)
+    if !carouselItems.isEmpty {
+      return TVTopShelfCarouselContent(style: .actions, items: carouselItems)
     }
 
     let sections = payload.sections.compactMap { section -> TVTopShelfItemCollection<TVTopShelfSectionedItem>? in
@@ -151,6 +175,38 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       item.setImageURL(imageURL, for: .screenScale2x)
     }
 
+    return item
+  }
+
+  private func makeCarouselItem(_ cacheItem: TopShelfCachePayload.Item) -> TVTopShelfCarouselItem? {
+    // The carousel is full-screen artwork; an item without it is left out.
+    guard !cacheItem.contentId.isEmpty,
+      let imageUri = cacheItem.imageUri, let imageURL = URL(string: imageUri)
+    else { return nil }
+
+    let item = TVTopShelfCarouselItem(identifier: cacheItem.contentId)
+    item.title = cacheItem.title
+    item.contextTitle = cacheItem.contextTitle
+    item.summary = cacheItem.summary
+    item.genre = cacheItem.genre
+    if let duration = cacheItem.duration, duration > 0 {
+      item.duration = duration / 1000  // payload is milliseconds
+    }
+    if let releaseDate = cacheItem.releaseDate {
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withFullDate]
+      item.creationDate = formatter.date(from: releaseDate)
+    }
+    item.setImageURL(imageURL, for: .screenScale1x)
+    item.setImageURL(imageURL, for: .screenScale2x)
+    // Carousel: playAction is the first button (Play resumes), displayAction
+    // the second (opens the detail page).
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "play") {
+      item.playAction = TVTopShelfAction(url: url)
+    }
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "open") {
+      item.displayAction = TVTopShelfAction(url: url)
+    }
     return item
   }
 

@@ -139,6 +139,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   Future<void>? _systemShelfSyncFuture;
   List<MediaItem>? _pendingSystemShelfItems;
+  List<MediaItem> _topShelfHero = const [];
 
   List<MediaItem> get onDeck => _onDeck;
   List<MediaItem> get latestMovies => _latestMovies;
@@ -312,9 +313,6 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       if (isDisposed) return;
       _latestShowsHub = _buildLatestShowsHub(fetchedLatestShows.items);
       safeNotifyListeners();
-      // Resync so the Top Shelf "Recently Added" row picks up the films and
-      // shows that landed after Continue Watching was synced.
-      unawaited(_syncSystemShelf(_onDeck));
 
       final fetchedHubs = await hubsFuture;
       if (isDisposed) return;
@@ -865,16 +863,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
             return serverId != null && _multiServer.getClientForServer(ServerId(serverId)) != null;
           }
 
-          // ponytail: "Recently Added" reuses the two Home rows already loaded
-          // (hero films + latest shows) re-sorted on addedAt; the hero pool is
-          // release-date windowed, so an old film added today is not in it.
-          // Feed it the raw fetchRecentlyAdded pool if that gap matters.
-          final recentlyAdded = [..._latestMovies, ...?_latestShowsHub?.items].where(syncable).toList();
           await SystemShelfService().syncFromContinueWatching(
             onDeck.where(syncable).toList(growable: false),
             _clientForShelfItem,
             hideSpoilers: settings.read(SettingsService.hideSpoilers),
-            recentlyAdded: recentlyAdded,
+            hero: _topShelfHero.where(syncable).toList(growable: false),
           );
         } catch (e) {
           appLogger.w('Failed to sync system shelf', error: e);
@@ -883,6 +876,15 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     } finally {
       _systemShelfSyncFuture = null;
     }
+  }
+
+  /// The Home hero's films, in slide order, for the Top Shelf carousel.
+  /// `TvHomeProjectionProvider` pushes them after each projection, so the
+  /// shelf shows exactly what the billboard rotates over. Resyncs on change.
+  void setTopShelfHero(List<MediaItem> hero) {
+    if (listEquals(hero, _topShelfHero)) return;
+    _topShelfHero = List.unmodifiable(hero);
+    unawaited(_syncSystemShelf(_onDeck));
   }
 
   MediaServerClient _clientForShelfItem(ServerId serverId) {
