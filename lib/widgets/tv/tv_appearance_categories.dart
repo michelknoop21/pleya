@@ -10,6 +10,15 @@ import '../settings_section.dart';
 import 'tv_unified_layout.dart';
 import 'tv_page_surface.dart';
 
+/// VIS-0926-S1 (DEC-139), in HIG points. VIS-0925-G packed the rail to a
+/// 12 pt pill inset with 8 pt between pills, which read as one stack on the
+/// 77 inch set; 18 and 16 make it a list. The page title and the section label
+/// get back some of the air VIS-0925-G took, not the pre-G amount.
+const double kTvCategoryPillInsetPt = 18;
+const double kTvCategoryGapPt = 16;
+const double kTvAppearanceColumnsTopPt = 12;
+const double kTvAppearanceLabelGapPt = 6;
+
 /// TV presentation for the existing Appearance rows. The original widgets
 /// remain the sole owners of their preferences, callbacks and platform gates.
 class TvAppearanceCategories extends StatefulWidget {
@@ -101,10 +110,12 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
           SizedBox(
             width: 400 * pt,
             child: ListView(
+              // VIS-0926-S1: air between the page title and both columns.
+              padding: EdgeInsets.only(top: kTvAppearanceColumnsTopPt * pt),
               children: [
                 for (var index = 0; index < sections.length; index++)
                   Padding(
-                    padding: EdgeInsets.only(bottom: 8 * pt, right: TvHig.itemSpacing * pt),
+                    padding: EdgeInsets.only(bottom: kTvCategoryGapPt * pt, right: TvHig.itemSpacing * pt),
                     child: FocusableWrapper(
                       automationId: AutomationIds.settingsAppearanceCategory,
                       automationInstance: index.toString(),
@@ -147,8 +158,10 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
               onKeyEvent: _handleRowsKey,
               child: ListView(
                 key: ValueKey(selected),
+                padding: EdgeInsets.only(top: kTvAppearanceColumnsTopPt * pt),
                 children: [
                   TvPageGroupLabel(sections[selected].title),
+                  SizedBox(height: kTvAppearanceLabelGapPt * pt),
                   SettingsGroup(children: sections[selected].rows),
                 ],
               ),
@@ -181,8 +194,7 @@ class _CategoryPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     return Container(
-      // VIS-0925-G: 12 pt, not 16, around a Body label: 66 pt per category.
-      padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 12 * pt),
+      padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: kTvCategoryPillInsetPt * pt),
       decoration: BoxDecoration(
         color: tvCategoryPillFill(tk, selected: selected, focused: focused),
         borderRadius: BorderRadius.circular(tk.radiusMd),
