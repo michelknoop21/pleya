@@ -656,9 +656,12 @@ class _Tile extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          // Two lines, as in `TvMenuGrid`: at Caption 1 in a
+                          // four-column hub one line cut four of seven
+                          // subtitles off (VIS-0925 review, FIX 1).
                           Text(
                             tile.subtitle,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),

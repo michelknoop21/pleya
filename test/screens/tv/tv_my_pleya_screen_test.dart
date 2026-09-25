@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -522,6 +523,26 @@ void main() {
       expect(scroller.position.maxScrollExtent, 0.0);
       expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
     });
+
+    // VIS-0925 review FIX 1: no tile title or subtitle is cut off on the
+    // canonical canvas.
+    for (final locale in [AppLocale.en, AppLocale.nl]) {
+      testWidgets('on the canonical canvas no tile text is ellipsized (${locale.languageCode})', (tester) async {
+        await tester.runAsync(() => LocaleSettings.setLocale(locale));
+        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+        // Real Inter metrics: the test font draws every glyph a full em wide.
+        await tester.runAsync(loadAppFontsForGoldens);
+        await pump(tester, full: true, size: kTvGoldenSurfaceSize);
+        final paragraphs = tester.renderObjectList<RenderParagraph>(
+          find.descendant(of: find.byType(TvMyPleyaScreen), matching: find.byType(RichText)),
+        );
+        final cut = [
+          for (final p in paragraphs)
+            if (p.didExceedMaxLines) p.text.toPlainText(),
+        ];
+        expect(cut, isEmpty);
+      });
+    }
 
     testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
       // A frame shorter than the tvOS canvas, so the full hub still overflows:
