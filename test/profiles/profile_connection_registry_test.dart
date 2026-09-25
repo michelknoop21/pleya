@@ -56,6 +56,15 @@ void main() {
       expect(raw.userToken, isNot('tok'));
     });
 
+    test('borrowed flag round-trips and defaults to false', () async {
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userIdentifier: 'uid-1', borrowed: true),
+      );
+      await registry.upsert(const ProfileConnection(profileId: 'p2', connectionId: 'c1', userIdentifier: 'uid-1'));
+      expect((await registry.get('p1', 'c1'))!.borrowed, isTrue);
+      expect((await registry.get('p2', 'c1'))!.borrowed, isFalse);
+    });
+
     test('first row for a profile is auto-default', () async {
       await registry.upsert(
         const ProfileConnection(profileId: 'p1', connectionId: 'c1', userToken: 't', userIdentifier: 'u'),

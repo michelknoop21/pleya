@@ -320,6 +320,7 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
           connectionId: account.id,
           userToken: result.userToken!,
           userIdentifier: cand.pc.userIdentifier,
+          borrowed: true,
           tokenAcquiredAt: DateTime.now(),
         ),
       );
@@ -350,6 +351,7 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
         connectionId: jelly.id,
         userToken: cand.pc.hasToken ? cand.pc.userToken : jelly.accessToken,
         userIdentifier: cand.pc.userIdentifier.isNotEmpty ? cand.pc.userIdentifier : jelly.userId,
+        borrowed: true,
         tokenAcquiredAt: DateTime.now(),
       ),
     );

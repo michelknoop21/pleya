@@ -113,6 +113,7 @@ class ProfileConnectionRegistry {
       userToken: Value(protectedToken),
       userIdentifier: Value(pc.userIdentifier),
       isDefault: Value(isDefault ?? pc.isDefault),
+      borrowed: Value(pc.borrowed),
       tokenAcquiredAt: Value(pc.tokenAcquiredAt?.millisecondsSinceEpoch),
       lastUsedAt: Value(pc.lastUsedAt?.millisecondsSinceEpoch),
     );
@@ -204,6 +205,7 @@ class ProfileConnectionRegistry {
       userToken: userToken,
       userIdentifier: row.userIdentifier,
       isDefault: row.isDefault,
+      borrowed: row.borrowed,
       tokenAcquiredAt: row.tokenAcquiredAt == null ? null : DateTime.fromMillisecondsSinceEpoch(row.tokenAcquiredAt!),
       lastUsedAt: row.lastUsedAt == null ? null : DateTime.fromMillisecondsSinceEpoch(row.lastUsedAt!),
     );

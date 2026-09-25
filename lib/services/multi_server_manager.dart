@@ -270,17 +270,66 @@ class MultiServerManager {
   String serverDisplayName(ServerId serverId) =>
       _clients[serverId]?.serverName ?? _plexServers[serverId]?.name ?? serverId;
 
-  /// Backend-neutral "is this user an owner/admin on [serverId]?" probe used
-  /// by UI gates that hide destructive admin entries (delete, edit metadata,
-  /// match/unmatch). Returns:
-  ///   - Plex: `PlexServer.owned` for the server (the matching profile-level
-  ///     `plexAdmin` check stays at the call site so it can fold in
-  ///     `ActiveProfileProvider`).
-  ///   - Jellyfin: `JellyfinConnection.isAdministrator` captured at sign-in.
+  /// Backend-neutral "is this user an owner/admin on [serverId]?" probe for
+  /// read-side admin surfaces (Tautulli, the "Watched by" row). Returns:
+  ///   - Plex: `PlexServer.owned` for the server.
+  ///   - Jellyfin: `JellyfinConnection.isAdministrator`.
   ///   - Unknown server: `false`.
+  ///
+  /// Not for canonical writes: those go through [canManageServerMetadata],
+  /// which also folds in the active profile's role and borrowed connections.
   bool isOwnerOrAdmin(ServerId serverId) {
     final client = _clients[serverId];
     if (client is PlexClient) {
+      return _plexServers[serverId]?.owned == true;
+    }
+    if (client is JellyfinClient) {
+      return client.connection.isAdministrator;
+    }
+    return false;
+  }
+
+  /// Plex account `clientIdentifier`s and plain server ids the active profile
+  /// holds without owner rights: a borrowed connection, or a Plex Home member
+  /// who is not the Home admin. Replaced wholesale by [ActiveProfileBinder]
+  /// before it connects anything, so no client is ever reachable under a
+  /// stale grant.
+  Set<String> _restrictedPlexAccounts = const {};
+  Set<String> _restrictedServerIds = const {};
+
+  ///
+  /// [keepExisting] adds to the current set instead of replacing it. The
+  /// binder uses it while a profile switch is in flight, when clients of the
+  /// previous profile are still registered.
+  void setServerAuthorityRestrictions({
+    Set<String> plexAccountClientIds = const {},
+    Set<String> serverIds = const {},
+    bool keepExisting = false,
+  }) {
+    _restrictedPlexAccounts = Set.unmodifiable({if (keepExisting) ..._restrictedPlexAccounts, ...plexAccountClientIds});
+    _restrictedServerIds = Set.unmodifiable({if (keepExisting) ..._restrictedServerIds, ...serverIds});
+  }
+
+  /// The owner rule: may the active profile change or delete canonical
+  /// metadata on [serverId] (metadata and artwork, match, media and
+  /// collection deletes, collection membership, library maintenance)?
+  ///
+  ///   - Plex: the server is `owned` by the signed-in account and the active
+  ///     profile is not a restricted or non-admin Home member. Plex Home has
+  ///     one admin, the account itself, so that is the owner.
+  ///   - Jellyfin: `Policy.IsAdministrator`. Jellyfin has no owner concept in
+  ///     its API; administrator is the highest role it exposes, so every
+  ///     admin counts as owner.
+  ///   - Pleya Server: `false` until PS-9 delivers roles. Only `role == owner`
+  ///     may ever return true there; `admin` is not owner and a library's
+  ///     `read_write` grant is about watch state, never about metadata.
+  ///   - A borrowed connection (any backend): `false`.
+  ///   - Unknown server: `false`.
+  bool canManageServerMetadata(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return false;
+    final client = _clients[serverId];
+    if (client is PlexClient) {
+      if (_restrictedPlexAccounts.contains(_clientIdByServer[serverId])) return false;
       return _plexServers[serverId]?.owned == true;
     }
     if (client is JellyfinClient) {

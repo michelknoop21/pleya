@@ -13,6 +13,7 @@ import 'package:pleya/services/plex_auth_service.dart';
 import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -442,6 +443,123 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(done, isTrue);
       await sub.cancel();
+    });
+  });
+  group('canManageServerMetadata', () {
+    Future<MultiServerManager> plexManager({required bool owned}) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      PlexApiCache.initialize(db);
+      addTearDown(db.close);
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      final client = PlexClient.forTesting(
+        config: PlexConfig(
+          baseUrl: 'https://plex.example',
+          token: 'token',
+          clientIdentifier: 'client-id',
+          product: 'Plezy',
+          version: '1.0.0',
+        ),
+        serverId: ServerId('server-1'),
+        serverName: 'Plex',
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
+      );
+      m.debugRegisterClientForTesting(client, online: true);
+      await m.refreshTokensForProfile(
+        PlexAccountConnection(
+          id: 'account-1',
+          accountToken: 'account-token',
+          clientIdentifier: 'account-client',
+          accountLabel: 'Account',
+          servers: [
+            PlexServer(
+              name: 'Plex',
+              clientIdentifier: 'server-1',
+              accessToken: 'token',
+              connections: const [],
+              owned: owned,
+            ),
+          ],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+        ),
+      );
+      return m;
+    }
+
+    MultiServerManager jellyfinManager({required bool admin}) {
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      m.debugRegisterJellyfinClientForTesting(
+        JellyfinClient.forTesting(
+          connection: _jellyfinConnection('user-a').copyWith(isAdministrator: admin),
+          httpClient: MockClient((_) async => http.Response('{}', 200)),
+        ),
+      );
+      return m;
+    }
+
+    test('Plex owner may manage', () async {
+      final m = await plexManager(owned: true);
+      expect(m.canManageServerMetadata(ServerId('server-1')), isTrue);
+    });
+
+    test('Plex server shared with the account (not owned) may not', () async {
+      final m = await plexManager(owned: false);
+      expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
+    });
+
+    test('non-admin or restricted Plex Home member on an owned server may not', () async {
+      final m = await plexManager(owned: true);
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+      expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
+      // Read-side probe keeps its own boundary.
+      expect(m.isOwnerOrAdmin(ServerId('server-1')), isTrue);
+    });
+
+    test('restrictions are replaced, not accumulated, unless asked', () async {
+      final m = await plexManager(owned: true);
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+      m.setServerAuthorityRestrictions(serverIds: {'other'}, keepExisting: true);
+      expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
+      m.setServerAuthorityRestrictions();
+      expect(m.canManageServerMetadata(ServerId('server-1')), isTrue);
+    });
+
+    test('Jellyfin administrator may manage, a regular user may not', () {
+      expect(jellyfinManager(admin: true).canManageServerMetadata(ServerId('jf-machine')), isTrue);
+      expect(jellyfinManager(admin: false).canManageServerMetadata(ServerId('jf-machine')), isFalse);
+    });
+
+    test('borrowed Jellyfin connection may not, even when the lender is admin', () {
+      final m = jellyfinManager(admin: true);
+      m.setServerAuthorityRestrictions(serverIds: {'jf-machine'});
+      expect(m.canManageServerMetadata(ServerId('jf-machine')), isFalse);
+    });
+
+    test('Pleya Server has no owner role yet and may not', () {
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      final client = PleyaServerClient.create(
+        PleyaServerConnection(
+          id: 'pleyaServer.srv-1',
+          baseUrl: 'http://nas.lan:8832',
+          serverId: 'srv-1',
+          serverName: 'Zolder',
+          userName: 'michel',
+          refreshToken: 'rt-1',
+          createdAt: DateTime.utc(2026, 8, 19),
+        ),
+        httpClientFactory: () => MockClient((_) async => http.Response('{}', 200)),
+      );
+      addTearDown(client.close);
+      m.debugRegisterClientForTesting(client);
+      expect(m.canManageServerMetadata(ServerId('srv-1')), isFalse);
+    });
+
+    test('unknown server may not', () {
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      expect(m.canManageServerMetadata(ServerId('nope')), isFalse);
     });
   });
 }
