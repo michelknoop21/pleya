@@ -43,6 +43,9 @@ Nothing user-facing since the last published build.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
+- **Home now shows movies and shows added while the app stays open**, on every device and for
+  every source including local folders. It refreshes quietly when you return to Home after two
+  minutes and every five minutes while Home is on screen, and keeps your place in a row.
 
 ### Notes
 

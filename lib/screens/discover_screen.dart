@@ -27,6 +27,7 @@ import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
+import '../providers/discover_refresh_policy.dart';
 import '../providers/home_custom_rows_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
@@ -79,6 +80,11 @@ import 'companion_remote/mobile_remote_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key, this.onManageServers, this.onOpenSearch});
+
+  /// Overrides the "refresh on resume" platform gate in tests; the test host
+  /// is not iOS or Android.
+  @visibleForTesting
+  static bool? debugRefreshOnResume;
 
   /// Hoofdstuk 14.7's escape hatch from the unified source picker's
   /// `NoUsableSource` state ("every source for this title is
@@ -180,6 +186,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool _isAutoScrollPaused = false;
   bool _heroFocusPausedAutoScroll = false;
   bool _isTabVisible = true;
+  bool _appResumed = true;
+
+  /// Silent periodic refresh while Home is on screen and the app is in the
+  /// foreground, on every platform. Background refresh of a suspended app is
+  /// left to the resume path: iOS gives a suspended app no reliable run time.
+  ///
+  /// The tick asks with the return threshold, not the interval: the timer
+  /// restarts on every return to Home, right before that return's own load,
+  /// so a tick exactly one interval later always finds data a few
+  /// milliseconds younger than the interval and would skip every other tick.
+  late final _refreshTicker = HomeRefreshTicker(
+    () => unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn)),
+  );
+  void _syncRefreshTicker() => _refreshTicker.update(active: _isTabVisible && _appResumed);
 
   /// Cached in didChangeDependencies rather than read via
   /// PlatformDetector.isPhone(context) at each _startAutoScroll call: that
@@ -351,6 +371,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _updateHubKeys();
     unawaited(_discover.load());
     _startAutoScroll();
+    _syncRefreshTicker();
   }
 
   @override
@@ -621,6 +642,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _customRows?.removeListener(_onCustomRowsChanged);
     _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
+    _refreshTicker.dispose();
     _autoScrollTimer?.cancel();
     _indicatorTimer?.cancel();
     _indicatorProgress.dispose();
@@ -633,13 +655,22 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // `inactive` is a desktop window losing focus while it stays on screen,
+    // and a short step towards `hidden` on iOS and tvOS; only the states in
+    // which the app is really out of sight stop the timer.
+    _appResumed = switch (state) {
+      AppLifecycleState.hidden || AppLifecycleState.paused || AppLifecycleState.detached => false,
+      AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+    };
+    _syncRefreshTicker();
     if (state == AppLifecycleState.resumed) {
       // Restart auto-scroll only if discover tab is visible
       if (_isTabVisible && !_isAutoScrollPaused) _startAutoScroll();
-      // Refresh continue watching on mobile only
-      // (on desktop, "resumed" fires on every window focus gain)
-      if (Platform.isIOS || Platform.isAndroid) {
-        unawaited(_discover.refreshContinueWatching());
+      // Mobile and Apple TV only (on desktop, "resumed" fires on every window
+      // focus gain; the ticker covers desktop). Continue Watching always, the
+      // other rows when they are older than the return threshold.
+      if (DiscoverScreen.debugRefreshOnResume ?? (Platform.isIOS || Platform.isAndroid)) {
+        unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true));
       }
     } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
       // Stop animations to prevent scroll state corruption while backgrounded
@@ -739,6 +770,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     // A flag on the still-mounted feed, not a dispose — coming back finds the
     // scroll position, the focused card and the active slide where they were.
     _tvFeedKey.currentState?.setDestinationActive(false);
+    _syncRefreshTicker();
     _autoScrollTimer?.cancel();
     _stopIndicatorProgress();
   }
@@ -747,6 +779,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void onTabShown() {
     _isTabVisible = true;
     _tvFeedKey.currentState?.setDestinationActive(true);
+    _syncRefreshTicker();
     if (!_isAutoScrollPaused) {
       _startAutoScroll();
     }
@@ -823,11 +856,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return 8.0; // Normal size
   }
 
-  // Public method to refresh content (for normal navigation)
+  // Public method to refresh content (for normal navigation): tab switch,
+  // back from the player or a detail page. Continue Watching always, the
+  // other rows silently when they are older than the return threshold.
   @override
   void refresh() {
-    // Only refresh Continue Watching in background, not full screen reload
-    unawaited(_discover.refreshContinueWatching());
+    unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true));
   }
 
   // Public method to fully reload all content (for profile switches)

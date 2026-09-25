@@ -1,0 +1,96 @@
+name: tvos.home.recently-added-refresh
+target: tvos-sim
+# Home shows a film that was added while the app stayed open (melding 24
+# september 2026). Before the fix Home fetched "Recently Added" once per
+# session: tab switches, resume and the player return refreshed Continue
+# Watching only, so on an Apple TV that stays on Home the new title never came.
+#
+# The path under test is the real one: the server gains a film, more than
+# `kHomeRefreshOnReturn` (2 minutes) passes, the viewer leaves Home for Series
+# and comes back. `_onDiscoverBecameVisible` asks for `refreshIfStale`, which
+# reloads silently. No clock is faked; the scenario waits the two minutes.
+#
+# The second half holds the focus contract. With the ring on Cascade, a card
+# in the films rail, another film arrives and the five-minute timer reloads Home
+# while the viewer stands there. The ring has to stay on the same title, now
+# one place further right, not on whatever took over its index. Leaving and
+# re-entering Home restarts the timer, so its first tick lands five minutes
+# after the return; the 330-second settle after the second film covers it.
+# The first run of this scenario failed exactly here: the tick asked with the
+# five-minute threshold and found data a few milliseconds younger than that,
+# so the reload only came on the tick after. The tick now asks with the
+# two-minute return threshold.
+#
+# Rail indices come from catalog.mixed.v1 on Home: 0 Verder kijken, 1 Recent
+# toegevoegde series, 2 Recent toegevoegd (films), 3 Recent toegevoegd
+# (series). Films and Series landings sit in the same IndexedStack and publish
+# the same ids with a #2/#3 suffix; the bare id is Home.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - assert: {id: nav.discover, focused: true}
+  - assert: {id: "discover.rail.item[2.0]", state: {title: Aurora}}
+  - snapshot: 00-landing
+
+  - fixture_mutate: {op: add_movie, library_id: "{{fixture_id:library/movies}}", title: Verify Nieuw}
+
+  # Past the return threshold, away to the next destination (Series) and back.
+  - settle: 125000
+  - assert: {id: "discover.rail.item[2.0]", state: {title: Aurora}}
+  - press: right
+  - wait_until: {focused: nav.series, timeout: 10000}
+  - settle: 1500
+  - press: left
+  - wait_until: {focused: nav.discover, timeout: 10000}
+  - settle: 5000
+  - assert: {id: "discover.rail.item[2.0]", state: {title: Verify Nieuw}}
+  - assert: {id: "discover.rail.item[2.1]", state: {title: Aurora}}
+  - snapshot: 01-new-title-in-rail
+
+  # Into the films rail, onto Cascade (fourth card now).
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 1200
+  - press: down
+  - settle: 1200
+  - press: down
+  - settle: 1200
+  - press: right
+  - settle: 800
+  - press: right
+  - settle: 800
+  - press: right
+  - settle: 1200
+  - assert: {id: "discover.rail.item[2.3]", focused: true, state: {title: Cascade}}
+  - snapshot: 02-on-cascade
+
+  - fixture_mutate: {op: add_movie, library_id: "{{fixture_id:library/movies}}", title: Verify Tweede}
+  - settle: 330000
+  - assert: {id: "discover.rail.item[2.0]", state: {title: Verify Tweede}}
+  - assert: {id: "discover.rail.item[2.4]", focused: true, state: {title: Cascade}}
+  - snapshot: 03-focus-kept-on-cascade
+
+  # Back from a detail page (review I2). On TV a detail opened from Home is a
+  # nested route, not a push on the profile navigator, so `didPopNext` never
+  # ran and nothing refreshed on the way back. A third film arrives while the
+  # detail is open; after the return threshold, Back has to bring it to the
+  # front of the rail and put the ring back on the card the detail was opened
+  # from. The timer cannot be what refreshes here: it last fired about a
+  # minute before the detail opened and its next tick is minutes away.
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 1500
+  - fixture_mutate: {op: add_movie, library_id: "{{fixture_id:library/movies}}", title: Verify Derde}
+  - settle: 125000
+  - press: menu
+  - settle: 5000
+  - assert: {id: "discover.rail.item[2.0]", state: {title: Verify Derde}}
+  - assert: {id: "discover.rail.item[2.5]", focused: true, state: {title: Cascade}}
+  - snapshot: 04-back-from-detail

@@ -10,6 +10,16 @@ Shared instructions for all agents working on Pleya, a Flutter media app for des
 - Keep decisions and verification results in the task context. Create a short handoff only when transferring work: changes, evidence and remaining work. Existing domain work registers remain required.
 - Preserve unrelated working-tree changes. Keep full verification logs/evidence outside tracked source; inspect summaries first and relevant details on failure. UI verification still requires reading the evidence bundle and relevant screenshots.
 
+## Review and release bundling
+
+This is the default Pleya workflow for changes that head to a TestFlight build (owner decision, 25 September 2026).
+
+- Do not run a separate agent review and re-review per change. Each branch delivers its own evidence: focused tests, a green `scripts/ci_checks.sh`, a negative control for each fix (the test fails without it) and, for UI, Pleya Verify plus screenshots.
+- When a set of branches is ready, review them together once: one fresh reviewer over the combined diff, one section per branch, including the visual gate for UI work. Then one fix round and one scoped check of that fix round, merge the PRs (required checks green, never `--admin`), and cut one TestFlight build for the whole bundle.
+- Large multi-task plans keep only their final whole-branch review; do not add a review after every task.
+- Security-sensitive changes (authentication, permissions, credentials, payments) keep an adversarial review of their exact diff, but it runs inside the bundle review.
+- Builds: one build per bundle, not per merge. `ensure_build_number` takes the build number from TestFlight, so the pubspec bump does not need its own PR and CI round: commit it with the next bundle PR. Prune old builds first (`scripts/prune_old_builds.sh`, already part of the beta lanes).
+
 ## Setup and verification
 
 - Run `flutter pub get` only when dependencies are missing or changed. Run `scripts/codegen.sh` (slang + build_runner) after changes to Freezed/JSON/Drift models or translation sources, or when generated output is missing/stale. No unconditional setup or codegen on each task.
