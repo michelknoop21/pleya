@@ -18,7 +18,6 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/settings_service.dart';
-import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/glass/glass_text.dart';
 import 'package:pleya/utils/platform_detector.dart';
