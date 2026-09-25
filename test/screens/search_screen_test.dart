@@ -28,6 +28,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/services/search_recency_store.dart';
 import 'package:pleya/services/search_recents.dart';
 import 'package:pleya/widgets/tv/tv_catalog_card_rail.dart';
 import 'package:pleya/widgets/tv/tv_section_header.dart';
@@ -152,7 +153,8 @@ void main() {
     // and mobile still draw them as chips; TV draws what those queries were
     // *for*. A row of past query strings asks a viewer to remember what "dune"
     // got them; a row of posters is the thing itself, one press away.
-    SettingsService.instance.write(SettingsService.searchHistory, ['star wars']);
+    await (await StorageService.getInstance()).setActiveProfileId('parent');
+    await SearchRecencyStore.writeHistory(['star wars']);
     rememberSearchRecent(
       MediaItem(
         id: 'm1',
@@ -180,7 +182,8 @@ void main() {
     // be the one list on TV a viewer cannot clear — the chips it replaces
     // always had a Wissen. It clears both halves, because on this page they
     // are one idea with two presentations.
-    SettingsService.instance.write(SettingsService.searchHistory, ['star wars']);
+    await (await StorageService.getInstance()).setActiveProfileId('parent');
+    await SearchRecencyStore.writeHistory(['star wars']);
     rememberSearchRecent(
       MediaItem(
         id: 'm1',
@@ -206,11 +209,65 @@ void main() {
 
     expect(find.text('Andor'), findsNothing);
     expect(readSearchRecents(), isEmpty);
-    expect(SettingsService.instance.read(SettingsService.searchHistory), isEmpty);
+    expect(SearchRecencyStore.readHistory(), isEmpty);
     // The row unmounts under the button that was just pressed; without a new
     // home primary focus dies with it and the D-pad goes dead.
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'SearchInput');
     expect(key.currentState, isNotNull);
+  });
+
+  // C1: SearchScreen stays mounted in MainScreen's IndexedStack across a
+  // profile switch, and `fullRefresh` is what `_invalidateAllScreens` calls.
+  testWidgets('TV: a profile switch drops the previous profile\'s Recent gezocht', (tester) async {
+    await (await StorageService.getInstance()).setActiveProfileId('parent');
+    rememberSearchRecent(
+      MediaItem(
+        id: 'm1',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Andor',
+        serverId: 'server_1',
+        serverName: 'Server',
+      ),
+    );
+    final (_, key) = await _pumpTvSearchScreen(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Andor'), findsOneWidget);
+
+    await (await StorageService.getInstance()).setActiveProfileId('child');
+    (key.currentState! as FullRefreshable).fullRefresh();
+    await tester.pumpAndSettle();
+    expect(find.text('Andor'), findsNothing, reason: 'the child must not see the parent\'s opened titles');
+
+    await (await StorageService.getInstance()).setActiveProfileId('parent');
+    (key.currentState! as FullRefreshable).fullRefresh();
+    await tester.pumpAndSettle();
+    expect(find.text('Andor'), findsOneWidget, reason: 'the parent gets its own row back');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('desktop: a profile switch drops the previous profile\'s query chips and never writes them over', (
+    tester,
+  ) async {
+    await (await StorageService.getInstance()).setActiveProfileId('parent');
+    await SearchRecencyStore.writeHistory(['horror']);
+    final key = await _pumpSearchScreen(tester, _FakeMediaServerClient(items: [_dune('dune-1', 'srv')]));
+    await tester.pumpAndSettle();
+    expect(find.text('horror'), findsOneWidget);
+
+    await (await StorageService.getInstance()).setActiveProfileId('child');
+    (key.currentState! as FullRefreshable).fullRefresh();
+    await tester.pumpAndSettle();
+    expect(find.text('horror'), findsNothing, reason: 'the child must not see the parent\'s queries');
+
+    // The next search of the child must not carry the parent's terms along.
+    (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+    (key.currentState! as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(SearchRecencyStore.readHistory(), ['dune']);
+
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('TV: a new search while a result is focused parks focus on the input', (tester) async {

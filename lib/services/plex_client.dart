@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../media/download_resolution.dart';
+import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
@@ -207,7 +208,7 @@ bool? _parsePlexTranscoderVideoCapability(Object? value) {
 typedef PlexWatcherRow = ({int accountId, String displayName, String? thumbUrl, int viewedAt});
 
 class PlexClient
-    with MediaServerCacheMixin, _PlexLiveTvClientMethods
+    with MediaServerCacheMixin, _PlexLiveTvClientMethods, ServerAuthorityGuard
     implements MediaServerClient, SeasonEpisodePagingClient, PersonSearchClient, GracefullyCloseable {
   @override
   PlexConfig config;
@@ -842,7 +843,11 @@ class PlexClient
   }
 
   /// Cancel a running background task by its UUID.
+  ///
+  /// Stopping a scan or analysis is server maintenance, so owner-only like
+  /// the task that started it.
   Future<void> cancelActivity(String uuid) async {
+    assertCanManageServerMetadata();
     await _http.delete('/activities/$uuid');
   }
 
@@ -1265,6 +1270,10 @@ class PlexClient
 
   /// Download a subtitle from an external provider and add it to the media item.
   /// The server downloads the file asynchronously; the new stream appears after a short delay.
+  ///
+  /// The stream lands on the shared item for every user of the server, which
+  /// Plex itself treats as subtitle admin (`allowSubtitleAdmin`), so it is
+  /// owner-only. Picking an existing stream goes through [selectStreams].
   Future<bool> downloadSubtitle(
     String ratingKey, {
     required String key,
@@ -1274,6 +1283,7 @@ class PlexClient
     required bool forced,
     required String providerTitle,
   }) async {
+    assertCanManageServerMetadata();
     return _wrapBoolApiCall(
       () => _http.put(
         '/library/metadata/$ratingKey/subtitles',
@@ -1292,7 +1302,12 @@ class PlexClient
 
   /// Search across all libraries including individually shared items.
   /// Uses /library/search (same endpoint as Plex Web) which finds shared content.
-  /// Only returns movies and shows, filtering out other types.
+  /// Keeps the types the search screen has a section for (movies, shows,
+  /// episodes, collections) and drops the rest (seasons, music, photos).
+  ///
+  /// Built from the documented response shape, not from a capture: see
+  /// `test/fixtures/plex_search/README.md`. Whether `searchTypes=movies,tv`
+  /// actually yields episodes on a live server is still a live check.
   Future<List<PlexMetadataDto>> _search(String query, {int limit = 100}) async {
     final response = await _getWithFailover(
       '/library/search',
@@ -1324,8 +1339,8 @@ class PlexClient
         final metadata = result['Metadata'];
         if (metadata is! Map<String, dynamic>) continue;
 
-        final type = metadata['type'] as String?;
-        if (type != 'movie' && type != 'show') continue;
+        final type = metadata['type'];
+        if (type is! String || !_searchResultTypes.contains(type)) continue;
 
         results.add(_createTaggedMetadata(metadata));
       } catch (e) {
@@ -1335,6 +1350,8 @@ class PlexClient
 
     return results;
   }
+
+  static const Set<String> _searchResultTypes = {'movie', 'show', 'episode', 'collection'};
 
   /// Get recently added media (filtered to video content only)
   Future<List<PlexMetadataDto>> _getRecentlyAdded({int limit = 50}) async {
@@ -1668,7 +1685,8 @@ class PlexClient
   /// This permanently removes the item and its associated files from the server
   /// Returns true if deletion was successful, false otherwise
   @override
-  Future<bool> deleteMediaItem(MediaItem item) {
+  Future<bool> deleteMediaItem(MediaItem item) async {
+    assertCanManageServerMetadata();
     return _wrapBoolApiCall(() => _http.delete('/library/metadata/${item.id}'), 'Failed to delete media item');
   }
 
@@ -2232,6 +2250,7 @@ class PlexClient
     String? summary,
     Map<String, ({List<String> current, List<String> original})>? tagChanges,
   }) async {
+    assertCanManageServerMetadata();
     final queryParams = <String, dynamic>{'type': typeNumber, 'id': ratingKey};
 
     void addField(String name, String? value) {
@@ -2305,6 +2324,7 @@ class PlexClient
 
   /// Apply a chosen match to a media item.
   Future<bool> applyMatch(String ratingKey, {required String guid, String? name, String? year}) async {
+    assertCanManageServerMetadata();
     final queryParams = <String, dynamic>{'guid': guid};
     if (name != null && name.isNotEmpty) queryParams['name'] = name;
     if (year != null && year.isNotEmpty) queryParams['year'] = year;
@@ -2320,6 +2340,7 @@ class PlexClient
   }
 
   Future<bool> unmatchItem(String ratingKey) async {
+    assertCanManageServerMetadata();
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/metadata/$ratingKey/unmatch'),
       'Failed to unmatch item',
@@ -2347,6 +2368,7 @@ class PlexClient
 
   /// Set artwork from a URL (can be a Plex internal path or external URL)
   Future<bool> setArtworkFromUrl(String ratingKey, String element, String url) async {
+    assertCanManageServerMetadata();
     final setElement = element.endsWith('s') ? element.substring(0, element.length - 1) : element;
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/metadata/$ratingKey/$setElement', queryParameters: {'url': url}),
@@ -2360,6 +2382,7 @@ class PlexClient
 
   /// Upload artwork from binary data
   Future<bool> uploadArtwork(String ratingKey, String element, List<int> bytes) async {
+    assertCanManageServerMetadata();
     final setElement = element.endsWith('s') ? element.substring(0, element.length - 1) : element;
     final result = await _wrapBoolApiCall(
       () => _http.put(
@@ -2377,6 +2400,7 @@ class PlexClient
 
   /// Update per-media advanced preferences
   Future<bool> updateMetadataPrefs(String ratingKey, Map<String, String> prefs) async {
+    assertCanManageServerMetadata();
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/metadata/$ratingKey/prefs', queryParameters: prefs),
       'Failed to update metadata preferences',
@@ -2477,6 +2501,7 @@ class PlexClient
   }
 
   Future<bool> deleteCollectionById(String sectionId, String collectionId) async {
+    assertCanManageServerMetadata();
     appLogger.d('Deleting collection: sectionId=$sectionId, collectionId=$collectionId');
     final result = await _wrapBoolApiCall(
       () => _http.delete('/library/collections/$collectionId'),
@@ -2497,6 +2522,7 @@ class PlexClient
     required List<MediaItem> items,
     MediaKind? itemKind,
   }) async {
+    assertCanManageServerMetadata();
     final uri = items.isEmpty ? '' : await buildMetadataUri(items.map((i) => i.id).join(','));
     final type = switch (itemKind) {
       MediaKind.movie => 1,
@@ -2517,6 +2543,7 @@ class PlexClient
     required String uri,
     int? type,
   }) async {
+    assertCanManageServerMetadata();
     try {
       appLogger.d('Creating collection: sectionId=$sectionId, title=$title, type=$type');
       final response = await _http.post(
@@ -2548,6 +2575,7 @@ class PlexClient
   /// from [items] and delegates to [addItemsToCollectionByUri].
   @override
   Future<bool> addToCollection({required String collectionId, required List<MediaItem> items}) async {
+    assertCanManageServerMetadata();
     if (items.isEmpty) return true;
     final uri = await buildMetadataUri(items.map((i) => i.id).join(','));
     return addItemsToCollectionByUri(collectionId: collectionId, uri: uri);
@@ -2556,6 +2584,7 @@ class PlexClient
   /// Add items to an existing collection
   /// Adds one or more items (specified by URI) to an existing collection
   Future<bool> addItemsToCollectionByUri({required String collectionId, required String uri}) async {
+    assertCanManageServerMetadata();
     appLogger.d('Adding items to collection: collectionId=$collectionId');
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/collections/$collectionId/items', queryParameters: {'uri': uri}),
@@ -2571,6 +2600,7 @@ class PlexClient
   /// Removes a single item from an existing collection
   @override
   Future<bool> removeFromCollection({required String collectionId, required MediaItem item}) async {
+    assertCanManageServerMetadata();
     appLogger.d('Removing item from collection: collectionId=$collectionId, itemId=${item.id}');
     final result = await _wrapBoolApiCall(
       () => _http.delete('/library/collections/$collectionId/items/${item.id}'),
@@ -2878,22 +2908,26 @@ class PlexClient
 
   /// Scan/refresh a library section to detect new files
   Future<void> scanLibrary(String sectionId) async {
+    assertCanManageServerMetadata();
     await _getWithFailover('/library/sections/$sectionId/refresh');
   }
 
   /// Refresh metadata for a library section
   @override
   Future<void> refreshLibraryMetadata(String sectionId) async {
+    assertCanManageServerMetadata();
     await _getWithFailover('/library/sections/$sectionId/refresh?force=1');
   }
 
   /// Empty trash for a library section
   Future<void> emptyLibraryTrash(String sectionId) async {
+    assertCanManageServerMetadata();
     await _http.put('/library/sections/$sectionId/emptyTrash');
   }
 
   /// Analyze library section
   Future<void> analyzeLibrary(String sectionId) async {
+    assertCanManageServerMetadata();
     await _getWithFailover('/library/sections/$sectionId/analyze');
   }
 

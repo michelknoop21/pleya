@@ -1,0 +1,85 @@
+{
+  "MediaContainer": {
+    "size": 6,
+    "SearchResult": [
+      {
+        "score": 0.95,
+        "Metadata": {
+          "ratingKey": "101",
+          "key": "/library/metadata/101",
+          "type": "movie",
+          "title": "The Office Party",
+          "year": 2016,
+          "librarySectionID": 1,
+          "librarySectionTitle": "Films"
+        }
+      },
+      {
+        "score": 0.93,
+        "Metadata": {
+          "ratingKey": "202",
+          "key": "/library/metadata/202/children",
+          "type": "show",
+          "title": "The Office",
+          "year": 2005,
+          "librarySectionID": 2,
+          "librarySectionTitle": "Series"
+        }
+      },
+      {
+        "score": 0.88,
+        "Metadata": {
+          "ratingKey": "2031",
+          "key": "/library/metadata/2031",
+          "parentRatingKey": "203",
+          "grandparentRatingKey": "202",
+          "type": "episode",
+          "title": "The Dundies",
+          "grandparentTitle": "The Office",
+          "parentTitle": "Season 2",
+          "index": 1,
+          "parentIndex": 2,
+          "year": 2005,
+          "librarySectionID": 2,
+          "librarySectionTitle": "Series"
+        }
+      },
+      {
+        "score": 0.8,
+        "Metadata": {
+          "ratingKey": "301",
+          "key": "/library/collections/301/children",
+          "type": "collection",
+          "subtype": "movie",
+          "title": "Office Comedies",
+          "childCount": 4,
+          "librarySectionID": 1,
+          "librarySectionTitle": "Films"
+        }
+      },
+      {
+        "score": 0.7,
+        "Metadata": {
+          "ratingKey": "203",
+          "key": "/library/metadata/203/children",
+          "parentRatingKey": "202",
+          "type": "season",
+          "title": "Season 2",
+          "parentTitle": "The Office",
+          "index": 2,
+          "librarySectionID": 2
+        }
+      },
+      {
+        "score": 0.6,
+        "Metadata": {
+          "ratingKey": "401",
+          "key": "/library/metadata/401",
+          "type": "track",
+          "title": "Office Hours",
+          "librarySectionID": 5
+        }
+      }
+    ]
+  }
+}

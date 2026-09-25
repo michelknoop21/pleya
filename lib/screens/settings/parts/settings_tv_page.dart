@@ -70,7 +70,7 @@ extension _SettingsTvPage on _SettingsScreenState {
     final seerr = context.watch<SeerrProvider>();
     final tautulli = context.watch<TautulliProvider>();
     final themeProvider = context.watch<ThemeProvider>();
-    final ownsAPlexServer = context.select<MultiServerProvider, bool>(_SettingsScreenState._ownsAPlexServer);
+    final managesAPlexServer = context.select<MultiServerProvider, bool>(_SettingsScreenState._managesAPlexServer);
 
     final connectedTrackers = <String>[
       if (trakt.isConnected) t.trakt.title,
@@ -189,7 +189,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                     subtitle: seerr.isConfigured ? null : t.settings.requestsDescription,
                     onSelect: () => open('requests', (_) => const SeerrSettingsScreen()),
                   ),
-                  if (ownsAPlexServer)
+                  if (managesAPlexServer)
                     TvMenuItem(
                       key: _SettingsScreenState._kTautulli,
                       icon: Symbols.insights_rounded,

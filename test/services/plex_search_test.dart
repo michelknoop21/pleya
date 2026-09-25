@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -68,6 +69,31 @@ void main() {
     expect(captured.single.queryParameters['limit'], '100');
     expect(captured.single.queryParameters['X-Plex-Container-Size'], '100');
     expect(captured.single.queryParameters['searchTypes'], 'movies,tv');
+  });
+
+  // The fixture follows the documented response, not a capture: see
+  // test/fixtures/plex_search/README.md (live check open).
+  test('search keeps episodes and collections next to movies and shows', () async {
+    final body = File('test/fixtures/plex_search/library_search_documented.json').readAsStringSync();
+    final client = makeClient((request) async {
+      if (request.url.path == '/library/search') {
+        return http.Response(body, 200, headers: {'content-type': 'application/json'});
+      }
+      return http.Response('unexpected request', 500);
+    });
+    addTearDown(client.close);
+
+    final results = await client.searchItems('office');
+
+    expect(results.map((item) => (item.id, item.kind)), [
+      ('101', MediaKind.movie),
+      ('202', MediaKind.show),
+      ('2031', MediaKind.episode),
+      ('301', MediaKind.collection),
+    ], reason: 'seasons and music have no search section, so they stay out');
+    final episode = results.firstWhere((item) => item.kind == MediaKind.episode);
+    expect(episode.grandparentTitle, 'The Office');
+    expect(episode.serverId, 'plex-1');
   });
 
   group('searchPeople (SRCH-2)', () {

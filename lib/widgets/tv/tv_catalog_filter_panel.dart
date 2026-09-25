@@ -54,7 +54,9 @@ import '../../services/unified_catalog/source_cursor.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../services/unified_catalog/unified_filter_options.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/focus_utils.dart';
 import '../../utils/global_key_utils.dart';
+import '../../utils/home_custom_row_labels.dart';
 import '../../utils/layout_constants.dart';
 import '../overlay_sheet.dart';
 import '../overlay_sheet_geometry.dart';
@@ -64,7 +66,7 @@ import 'tv_unified_layout.dart';
 
 /// Which category the panel opens on, and — since every category is one of
 /// these — what the rail is a list of.
-enum TvCatalogFilterSection { status, genre, audioLanguage, year, servers, libraries }
+enum TvCatalogFilterSection { status, genre, audioLanguage, year, contentRating, servers, libraries }
 
 /// Rail order, which is hoofdstuk 10.6's listing verbatim: "Status; Genre;
 /// Jaar; Servers; Bibliotheken".
@@ -84,6 +86,7 @@ const List<TvCatalogFilterSection> _railOrder = [
   TvCatalogFilterSection.genre,
   TvCatalogFilterSection.audioLanguage,
   TvCatalogFilterSection.year,
+  TvCatalogFilterSection.contentRating,
   TvCatalogFilterSection.servers,
   TvCatalogFilterSection.libraries,
 ];
@@ -202,7 +205,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   /// omitting unavailable categories: opening on a category that is not in the
   /// rail would put the initial focus on nothing.
   TvCatalogFilterSection _resolveInitialSection() {
-    final available = _availableSections;
+    final available = _sections(placeholders: false);
     return available.contains(widget.initialSection) ? widget.initialSection : available.first;
   }
 
@@ -212,16 +215,31 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   /// cursor out of the merge, not by asking a backend to filter — so the rail
   /// is never empty and [_resolveInitialSection] always has something to fall
   /// back to.
-  List<TvCatalogFilterSection> get _availableSections => [
+  List<TvCatalogFilterSection> get _availableSections => _sections(placeholders: _isLoadingOptions);
+
+  List<TvCatalogFilterSection> _sections({required bool placeholders}) => [
     for (final section in _railOrder)
-      if (_supports(section)) section,
+      if (_supports(section) && (placeholders || _hasChoices(section))) section,
   ];
+
+  /// Audiotaal and Leeftijd stay in the rail while the values load, so the
+  /// rail does not grow under the eye (a focused row keeps its place), and go
+  /// only once the servers have named no value at all. Jellyfin's `/Items/Filters` has no audio languages at all, so
+  /// a Jellyfin-only catalog would otherwise show a category with nothing in
+  /// it. Genre and Jaar keep their row and say "nothing to choose from": those
+  /// every library has, and an empty one means something is wrong.
+  bool _hasChoices(TvCatalogFilterSection section) => switch (section) {
+    TvCatalogFilterSection.audioLanguage => _options.audioLanguages.isNotEmpty,
+    TvCatalogFilterSection.contentRating => _options.contentRatings.isNotEmpty,
+    _ => true,
+  };
 
   bool _supports(TvCatalogFilterSection section) => switch (section) {
     TvCatalogFilterSection.status => widget.capabilities.supportsWatchFilter,
     TvCatalogFilterSection.genre ||
     TvCatalogFilterSection.audioLanguage ||
-    TvCatalogFilterSection.year => widget.capabilities.supportsMetadataFilters,
+    TvCatalogFilterSection.year ||
+    TvCatalogFilterSection.contentRating => widget.capabilities.supportsMetadataFilters,
     TvCatalogFilterSection.servers || TvCatalogFilterSection.libraries => true,
   };
 
@@ -239,16 +257,34 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
       clientFor: (serverId) => clientFor(serverId.value),
     );
     if (!mounted) return;
+    final hadFocus = _railNodes[_active]?.hasFocus ?? false;
     setState(() {
-      _options = options;
+      _options = options.withStoredContentRatings(_draft.officialRatings);
       _isLoadingOptions = false;
+      _active = _survivingSection(_active);
     });
+    // The row the focus was on may have gone with its placeholder; hand the
+    // focus to the row that took its place instead of letting it die.
+    if (hadFocus) FocusUtils.requestFocusAfterBuild(this, _railNodeFor(_active));
+  }
+
+  /// [section], or the nearest available row above it once it has gone.
+  TvCatalogFilterSection _survivingSection(TvCatalogFilterSection section) {
+    final available = _availableSections;
+    if (available.contains(section)) return section;
+    return _railOrder.take(_railOrder.indexOf(section)).lastWhere(available.contains, orElse: () => available.first);
   }
 
   void _toggleGenre(String genre) => setState(() => _draft = _draft.copyWith(genres: _toggled(_draft.genres, genre)));
 
   void _toggleAudioLanguage(String language) =>
       setState(() => _draft = _draft.copyWith(audioLanguages: _toggled(_draft.audioLanguages, language)));
+
+  void _toggleContentRating(UnifiedFilterValue rating) => setState(
+    () => _draft = _draft.copyWith(
+      officialRatings: toggleContentRating(_draft.officialRatings, label: rating.label, value: rating.value),
+    ),
+  );
 
   void _toggleYear(int year) => setState(() => _draft = _draft.copyWith(years: _toggled(_draft.years, year)));
 
@@ -283,17 +319,16 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
 
   /// The rows of one category, as data.
   List<_RowSpec> _rowsFor(TvCatalogFilterSection section) => switch (section) {
+    // Only the states every participating backend executes: Bekeken is
+    // Jellyfin-only and disappears as soon as a Plex library takes part.
     TvCatalogFilterSection.status => [
-      _RowSpec(
-        label: t.unifiedCatalog.filters.all,
-        isSelected: _draft.watchState == UnifiedWatchFilter.all,
-        onPressed: () => _setWatchState(UnifiedWatchFilter.all),
-      ),
-      _RowSpec(
-        label: t.unifiedCatalog.filters.unwatched,
-        isSelected: _draft.watchState == UnifiedWatchFilter.unwatched,
-        onPressed: () => _setWatchState(UnifiedWatchFilter.unwatched),
-      ),
+      for (final state in UnifiedWatchFilter.values)
+        if (widget.capabilities.supportsWatchState(state))
+          _RowSpec(
+            label: unifiedWatchFilterLabel(state),
+            isSelected: _draft.watchState == state,
+            onPressed: () => _setWatchState(state),
+          ),
     ],
     TvCatalogFilterSection.genre => [
       for (final genre in _options.genres)
@@ -310,6 +345,14 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     TvCatalogFilterSection.year => [
       for (final year in _options.years)
         _RowSpec(label: '$year', isSelected: _draft.years.contains(year), onPressed: () => _toggleYear(year)),
+    ],
+    TvCatalogFilterSection.contentRating => [
+      for (final rating in _options.contentRatings)
+        _RowSpec(
+          label: rating.label,
+          isSelected: isContentRatingSelected(_draft.officialRatings, rating.label),
+          onPressed: () => _toggleContentRating(rating),
+        ),
     ],
     TvCatalogFilterSection.servers => [
       for (final server in _servers)
@@ -342,6 +385,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     TvCatalogFilterSection.genre => _draft.genres.length,
     TvCatalogFilterSection.audioLanguage => _draft.audioLanguages.length,
     TvCatalogFilterSection.year => _draft.years.length,
+    TvCatalogFilterSection.contentRating => contentRatingLabels(_draft.officialRatings).length,
     TvCatalogFilterSection.servers => _draft.serverIds.length,
     TvCatalogFilterSection.libraries => _draft.libraryKeys.length,
   };
@@ -351,6 +395,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     TvCatalogFilterSection.genre => t.unifiedCatalog.filters.genre,
     TvCatalogFilterSection.audioLanguage => t.libraries.filterCategories.audioLanguage,
     TvCatalogFilterSection.year => t.unifiedCatalog.filters.year,
+    TvCatalogFilterSection.contentRating => t.unifiedCatalog.filters.contentRating,
     TvCatalogFilterSection.servers => t.unifiedCatalog.filters.servers,
     TvCatalogFilterSection.libraries => t.unifiedCatalog.filters.libraries,
   };
@@ -443,7 +488,11 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
                         TvCatalogLayout.filterRailMaxWidth,
                       )
                       .toDouble();
-                  final noteShown = sections.length != _railOrder.length;
+                  // Only for categories the backends cannot execute. A category
+                  // hidden for lack of values is not "unavailable for these
+                  // sources", and saying so would send the user looking for a
+                  // server to exclude.
+                  final noteShown = _railOrder.any((section) => !_supports(section));
                   return SizedBox(
                     height: _zoneHeight(scale, constraints.maxHeight),
                     child: Row(
@@ -526,7 +575,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (var i = 0; i < sections.length; i++) ...[
-              if (i > 0) SizedBox(height: TvCatalogLayout.optionRowGap * scale),
+              if (i > 0) SizedBox(height: TvCatalogLayout.filterRailGap * scale),
               _CategoryRow(
                 label: _labelFor(sections[i]),
                 count: _activeCountFor(sections[i]),

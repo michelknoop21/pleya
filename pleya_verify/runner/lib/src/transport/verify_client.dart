@@ -238,6 +238,9 @@ class VerifyClient {
   Future<Map<String, Object?>> seedSeerr({required String baseUrl, required String apiKey}) =>
       _postJson('/v1/seerr/seed', {'base_url': baseUrl, 'api_key': apiKey});
 
+  Future<Map<String, Object?>> seedProfile({required String displayName}) =>
+      _postJson('/v1/profiles/seed', {'display_name': displayName});
+
   void close() => _http.close();
 
   /// Every endpoint `pleya_verify/contract/verify_api_v1.md` documents,
@@ -266,6 +269,7 @@ class VerifyClient {
     (method: 'POST', path: '/v1/signin'),
     (method: 'POST', path: '/v1/connections/seed'),
     (method: 'POST', path: '/v1/seerr/seed'),
+    (method: 'POST', path: '/v1/profiles/seed'),
     (method: 'POST', path: '/v1/open'),
   ];
 }

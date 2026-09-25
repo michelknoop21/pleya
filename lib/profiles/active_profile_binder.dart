@@ -163,8 +163,32 @@ class ActiveProfileBinder {
       _pendingRebind = true;
       return;
     }
-    if (id == _lastBoundProfileId) return;
+    if (id == _lastBoundProfileId) {
+      // Same profile, new snapshot: a Plex Home refresh can promote or demote
+      // the member without a rebind. Owner rights follow the role now.
+      unawaited(_refreshServerAuthority());
+      return;
+    }
     unawaited(_rebind());
+  }
+
+  /// Bumped by every rebind pass and every role refresh, so a role refresh
+  /// that raced a newer rebind or refresh drops its result instead of
+  /// overwriting the newer set.
+  int _authorityGeneration = 0;
+
+  Future<void> _refreshServerAuthority() async {
+    final profile = activeProfile.active;
+    if (profile == null || profile.id != _lastBoundProfileId) return;
+    final generation = ++_authorityGeneration;
+    final restrictions = await _serverAuthorityRestrictionsFor(profile);
+    if (!_started || _isSwitching || generation != _authorityGeneration || activeProfile.activeId != profile.id) {
+      return;
+    }
+    serverManager.setServerAuthorityRestrictions(
+      plexAccountClientIds: restrictions.plexAccounts,
+      serverIds: restrictions.serverIds,
+    );
   }
 
   /// Force the binder to re-run for the currently-active profile, even
@@ -212,6 +236,7 @@ class ActiveProfileBinder {
   }
 
   Future<void> _runRebindOnce() async {
+    _authorityGeneration++;
     _bindingProfileId = activeProfile.activeId;
     activeProfile.markBindingStarted();
     final stopwatch = Stopwatch()..start();
@@ -242,6 +267,14 @@ class ActiveProfileBinder {
 
       appLogger.i('ActiveProfileBinder: rebinding for ${profile.displayName} (${profile.id})');
 
+      final restrictions = await _serverAuthorityRestrictionsFor(profile);
+      // Previous profile's clients are still registered until the removal
+      // pass below, so keep its restrictions until then.
+      serverManager.setServerAuthorityRestrictions(
+        plexAccountClientIds: restrictions.plexAccounts,
+        serverIds: restrictions.serverIds,
+        keepExisting: true,
+      );
       final expectedServerIds = await _expectedServerIdsForProfile(profile);
       multiServerProvider.setExpectedVisibleServerIds(expectedServerIds);
       final localProfileHasJoinRows =
@@ -274,6 +307,10 @@ class ActiveProfileBinder {
           serverManager.removeServer(ServerId(serverId));
         }
       }
+      serverManager.setServerAuthorityRestrictions(
+        plexAccountClientIds: restrictions.plexAccounts,
+        serverIds: restrictions.serverIds,
+      );
       multiServerProvider.setExpectedVisibleServerIds(expectedServerIds);
       multiServerProvider.setVisibleServerIds(visibleServerIds);
       success = (profile.isLocal && !localProfileHasJoinRows) || visibleServerIds.isNotEmpty;
@@ -298,6 +335,38 @@ class ActiveProfileBinder {
       activeProfile.markBindingFinished(success: success);
       _bindingProfileId = null;
     }
+  }
+
+  /// The connections this profile holds without owner rights, applied to the
+  /// manager before any client for them is connected. Plex rows in the join
+  /// table are always borrowed (a Plex account only reaches a profile as its
+  /// Home parent or through the borrow flow); a Jellyfin row is borrowed when
+  /// the borrow flow marked it. A Plex Home member who is not the Home admin
+  /// gets no owner rights on the parent account either.
+  Future<({Set<String> plexAccounts, Set<String> serverIds})> _serverAuthorityRestrictionsFor(Profile profile) async {
+    final plexAccounts = <String>{};
+    final serverIds = <String>{};
+    final parentId = profile.parentConnectionId;
+    if (profile.isPlexHome && !profile.plexAdmin && parentId != null) {
+      final account = await connections.getPlexAccount(parentId);
+      if (account != null) plexAccounts.add(account.clientIdentifier);
+    }
+    final pcs = await profileConnections.listForProfile(profile.id);
+    if (pcs.isNotEmpty) {
+      final byId = {for (final c in await connections.list()) c.id: c};
+      for (final pc in pcs) {
+        if (parentId != null && pc.connectionId == parentId) continue;
+        switch (byId[pc.connectionId]) {
+          case PlexAccountConnection(:final clientIdentifier):
+            plexAccounts.add(clientIdentifier);
+          case JellyfinConnection(:final serverMachineId) when pc.borrowed:
+            serverIds.add(serverMachineId);
+          default:
+            break;
+        }
+      }
+    }
+    return (plexAccounts: plexAccounts, serverIds: serverIds);
   }
 
   Future<Set<String>> _expectedServerIdsForProfile(Profile profile) async {

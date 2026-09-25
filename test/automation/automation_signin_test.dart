@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_profile_seed.dart';
 import 'package:pleya/automation/automation_signin.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
@@ -444,5 +445,50 @@ void main() {
       expect(result['ok'], isFalse);
       expect(result['error'], contains('loopback'));
     });
+  });
+  testWidgets('seed_profile adds a second profile on the same connection and keeps the active one', (tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ConnectionRegistry>.value(value: connections),
+          Provider<ProfileRegistry>.value(value: profiles),
+          Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+          ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+          Provider<ActiveProfileBinder>.value(value: binder),
+        ],
+        child: MaterialApp(navigatorKey: rootNavigatorKey, home: const _ProfileGate()),
+      ),
+    );
+    await tester.pump();
+
+    late Map<String, Object?> before;
+    await tester.runAsync(() async => before = await handleAutomationSeedProfile({'display_name': 'Kind'}));
+    expect(before['ok'], isFalse, reason: 'nothing to borrow before sign-in');
+
+    late Map<String, Object?> signinResult;
+    await tester.runAsync(() async {
+      signinResult = await handleAutomationSignIn({
+        'base_url': 'http://127.0.0.1:${fixtureAdapter.port}',
+        'username': 'verify-owner',
+        'password': 'verify-password',
+        'setup_code': fakeServer.setupCode,
+      });
+    });
+    expect(signinResult['ok'], isTrue, reason: signinResult.toString());
+    final owner = activeProfile.active!;
+
+    late Map<String, Object?> seeded;
+    await tester.runAsync(() async => seeded = await handleAutomationSeedProfile({'display_name': 'Kind'}));
+    expect(seeded['ok'], isTrue, reason: seeded.toString());
+
+    late List<Object> state;
+    await tester.runAsync(() async {
+      final all = await profiles.list();
+      final borrowed = await profileConnections.listForProfile(seeded['profileId']! as String);
+      state = [all.map((p) => p.displayName).toList(), borrowed.map((pc) => pc.connectionId).toList()];
+    });
+    expect(state[0], containsAll(<String>[owner.displayName, 'Kind']));
+    expect(state[1], [signinResult['connectionId']]);
+    expect(activeProfile.activeId, owner.id, reason: 'seeding must not switch profiles');
   });
 }

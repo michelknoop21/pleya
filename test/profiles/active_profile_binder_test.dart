@@ -41,7 +41,7 @@ Future<void> pumpUntil(Future<bool> Function() condition, {Duration timeout = co
 
 void main() {
   late AppDatabase db;
-  late ConnectionRegistry connections;
+  late _GatedConnectionRegistry connections;
   late ProfileConnectionRegistry profileConnections;
   late ProfileRegistry profiles;
   late PlexHomeService plexHome;
@@ -56,7 +56,7 @@ void main() {
   setUp(() async {
     resetSharedPreferencesForTest();
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    connections = ConnectionRegistry(db);
+    connections = _GatedConnectionRegistry(db);
     profileConnections = ProfileConnectionRegistry(db);
     profiles = ProfileRegistry(db);
     storage = await StorageService.getInstance();
@@ -310,6 +310,126 @@ void main() {
     expect(multiServerProvider.expectedServerIds.toSet(), {'srv-1', 'jf-machine'});
   });
 
+  group('server authority of join rows', () {
+    Future<_RecordingJellyfinManager> bindLocalJellyfin({required bool borrowed}) async {
+      binder.dispose();
+      multiServerProvider.dispose();
+      final recording = _RecordingJellyfinManager();
+      manager = recording;
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      binder = ActiveProfileBinder(
+        activeProfile: activeProfile,
+        connections: connections,
+        profileConnections: profileConnections,
+        serverManager: manager,
+        multiServerProvider: multiServerProvider,
+        pinPrompt: (_, {String? errorMessage}) async => null,
+        shouldDeferInitialBind: (_) async => false,
+      );
+      final profile = await createActiveLocalProfile('local-jf');
+      final jellyfin = _jellyfinConnection();
+      await connections.upsert(jellyfin);
+      await profileConnections.upsert(
+        ProfileConnection(
+          profileId: profile.id,
+          connectionId: jellyfin.id,
+          userToken: jellyfin.accessToken,
+          userIdentifier: jellyfin.userId,
+          borrowed: borrowed,
+        ),
+      );
+      await binder.rebindActive();
+      return recording;
+    }
+
+    test('borrowed Jellyfin row is restricted before its client connects', () async {
+      final recording = await bindLocalJellyfin(borrowed: true);
+      expect(recording.restrictedServerIdsAtConnect, {'jf-machine'});
+      expect(recording.restrictedServerIds, {'jf-machine'});
+      // Playback identity unchanged: the borrower still binds with the row's
+      // connection and token.
+      expect(recording.connected.single.accessToken, 'token');
+    });
+
+    test('own Jellyfin row keeps its server role', () async {
+      final recording = await bindLocalJellyfin(borrowed: false);
+      expect(recording.restrictedServerIdsAtConnect, isEmpty);
+      expect(recording.restrictedServerIds, isEmpty);
+    });
+
+    test('switching from a borrowed row back to the owner profile restores owner rights', () async {
+      final recording = await bindLocalJellyfin(borrowed: true);
+      expect(recording.restrictedServerIds, {'jf-machine'});
+
+      final owner = Profile.local(id: 'owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1));
+      await profiles.upsert(owner);
+      final jellyfin = _jellyfinConnection();
+      await profileConnections.upsert(
+        ProfileConnection(
+          profileId: owner.id,
+          connectionId: jellyfin.id,
+          userToken: jellyfin.accessToken,
+          userIdentifier: jellyfin.userId,
+        ),
+      );
+      expect(await activeProfile.activate(owner), isTrue);
+      await binder.rebindActive();
+
+      // Restrictions must not pile up across switches.
+      expect(recording.restrictedServerIds, isEmpty);
+    });
+
+    test('a joined Plex account is restricted before its first connect', () async {
+      binder.dispose();
+      multiServerProvider.dispose();
+      final capturing = _CapturingMultiServerManager();
+      manager = capturing;
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      binder = ActiveProfileBinder(
+        activeProfile: activeProfile,
+        connections: connections,
+        profileConnections: profileConnections,
+        serverManager: manager,
+        multiServerProvider: multiServerProvider,
+        pinPrompt: (_, {String? errorMessage}) async => null,
+        shouldDeferInitialBind: (_) async => false,
+        plexAuth: PlexAuthService.forTesting(
+          http: MediaServerHttpClient(
+            client: MockClient(
+              (_) async =>
+                  http.Response(jsonEncode([_serverJson()]), 200, headers: {'content-type': 'application/json'}),
+            ),
+          ),
+        ),
+      );
+      final profile = await createActiveLocalProfile('local-joined-plex');
+      final plexAccount = PlexAccountConnection(
+        id: 'plex.account',
+        accountToken: 'account-token',
+        clientIdentifier: 'client-id',
+        accountLabel: 'Owner',
+        servers: [_server(accessToken: 'account-server-token')],
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await connections.upsert(plexAccount);
+      await profileConnections.upsert(
+        ProfileConnection(
+          profileId: profile.id,
+          connectionId: plexAccount.id,
+          userToken: 'cached-token',
+          userIdentifier: 'home-user-uuid',
+          tokenAcquiredAt: DateTime(2026, 1, 1),
+        ),
+      );
+
+      await binder.rebindActive().timeout(const Duration(seconds: 2));
+
+      expect(capturing.refreshCalls, greaterThanOrEqualTo(1));
+      expect(capturing.restrictedPlexAccountsAtFirstRefresh, {'client-id'});
+      expect(capturing.restrictedPlexAccounts, {'client-id'});
+    });
+  });
+
   // SRC1: a joined/borrowed Plex connection binds through _bindLocalPlexConnection,
   // which has the same optimistic-then-fallback shape as _bindPlexHome and the
   // same gap: the fallback must carry retryRecentFailures, or a server whose
@@ -405,6 +525,7 @@ void main() {
       required bool protected,
       required http.Client httpClient,
       int failFirstNCalls = 0,
+      bool admin = true,
     }) async {
       binder.dispose();
       multiServerProvider.dispose();
@@ -441,7 +562,7 @@ void main() {
         hasPassword: protected,
         restricted: false,
         updatedAt: null,
-        admin: true,
+        admin: admin,
         guest: false,
         protected: protected,
       );
@@ -461,6 +582,125 @@ void main() {
       await activeProfile.initialize();
       return (profileId: profileId, manager: capturingManager);
     }
+
+    test('non-admin Home member holds the parent account without owner rights from before the first connect', () async {
+      final prepared = await preparePlexHomeBind(
+        protected: false,
+        admin: false,
+        httpClient: MockClient((request) async {
+          throw http.ClientException('DNS failed', request.url);
+        }),
+      );
+
+      await binder.rebindActive();
+
+      expect(prepared.manager.refreshCalls, 1);
+      expect(prepared.manager.restrictedPlexAccountsAtFirstRefresh, {'client-id'});
+      expect(prepared.manager.restrictedPlexAccounts, {'client-id'});
+    });
+
+    test('a Home member promoted to admin regains owner rights without a rebind', () async {
+      final prepared = await preparePlexHomeBind(
+        protected: false,
+        admin: false,
+        httpClient: MockClient((request) async {
+          throw http.ClientException('DNS failed', request.url);
+        }),
+      );
+      // start() runs the initial bind (cached token, succeeds) and attaches
+      // the listener that sees the Home refresh below.
+      binder.start();
+      await Future<void>.delayed(Duration.zero);
+      await activeProfile.awaitBindingSettle();
+      expect(activeProfile.lastBindingSucceeded, isTrue);
+      expect(prepared.manager.restrictedPlexAccounts, {'client-id'});
+      var rebinds = 0;
+      var wasBinding = activeProfile.isBinding;
+      void countRebinds() {
+        if (activeProfile.isBinding && !wasBinding) rebinds++;
+        wasBinding = activeProfile.isBinding;
+      }
+
+      activeProfile.addListener(countRebinds);
+      addTearDown(() => activeProfile.removeListener(countRebinds));
+
+      fetchedHomeUsers = [
+        PlexHomeUser.fromJson({...fetchedHomeUsers.single.toJson(), 'admin': true}),
+      ];
+      await plexHome.refresh((await connections.getPlexAccount('plex.account'))!);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(activeProfile.active!.plexAdmin, isTrue);
+      expect(rebinds, 0, reason: 'a role change must not need a rebind');
+      expect(prepared.manager.restrictedPlexAccounts, isEmpty);
+    });
+
+    /// Starts bound as Home admin, then demotes the member while the role
+    /// refresh is held at its first registry read. Returns once that stale
+    /// refresh (restricted, computed from the demoted snapshot) is waiting.
+    Future<({_CapturingMultiServerManager manager, Completer<void> release})> holdStaleDemotion() async {
+      final prepared = await preparePlexHomeBind(
+        protected: false,
+        httpClient: MockClient((request) async {
+          throw http.ClientException('DNS failed', request.url);
+        }),
+      );
+      binder.start();
+      await Future<void>.delayed(Duration.zero);
+      await activeProfile.awaitBindingSettle();
+      expect(prepared.manager.restrictedPlexAccounts, isEmpty);
+
+      final account = (await connections.getPlexAccount('plex.account'))!;
+      final release = connections.holdNextGetPlexAccount();
+      fetchedHomeUsers = [
+        PlexHomeUser.fromJson({...fetchedHomeUsers.single.toJson(), 'admin': false}),
+      ];
+      await plexHome.refresh(account);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(connections.held, isTrue, reason: 'the demotion refresh must be waiting on the registry');
+
+      fetchedHomeUsers = [
+        PlexHomeUser.fromJson({...fetchedHomeUsers.single.toJson(), 'admin': true}),
+      ];
+      await plexHome.refresh(account);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      return (manager: prepared.manager, release: release);
+    }
+
+    test('a role refresh that raced a rebind is dropped', () async {
+      final held = await holdStaleDemotion();
+      await binder.rebindActive();
+      expect(held.manager.restrictedPlexAccounts, isEmpty);
+
+      held.release.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(held.manager.restrictedPlexAccounts, isEmpty, reason: 'the stale demotion must not overwrite the rebind');
+    });
+
+    test('an older role refresh does not overwrite a newer one', () async {
+      final held = await holdStaleDemotion();
+      expect(held.manager.restrictedPlexAccounts, isEmpty);
+
+      held.release.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(held.manager.restrictedPlexAccounts, isEmpty, reason: 'the promotion came later and wins');
+    });
+
+    test('Home admin keeps owner rights on the parent account', () async {
+      final prepared = await preparePlexHomeBind(
+        protected: false,
+        httpClient: MockClient((request) async {
+          throw http.ClientException('DNS failed', request.url);
+        }),
+      );
+
+      await binder.rebindActive();
+
+      expect(prepared.manager.refreshCalls, 1);
+      expect(prepared.manager.restrictedPlexAccounts, isEmpty);
+    });
 
     test('uses cached server metadata with the active user token after transient resources failure', () async {
       final prepared = await preparePlexHomeBind(
@@ -687,8 +927,66 @@ JellyfinConnection _jellyfinConnection() {
   );
 }
 
-class _CapturingMultiServerManager extends MultiServerManager {
+/// Records authority restrictions so tests can check them at connect time.
+mixin _RecordsRestrictions on MultiServerManager {
+  Set<String> restrictedPlexAccounts = const {};
+  Set<String> restrictedServerIds = const {};
+
+  @override
+  void setServerAuthorityRestrictions({
+    Set<String> plexAccountClientIds = const {},
+    Set<String> serverIds = const {},
+    bool keepExisting = false,
+  }) {
+    super.setServerAuthorityRestrictions(
+      plexAccountClientIds: plexAccountClientIds,
+      serverIds: serverIds,
+      keepExisting: keepExisting,
+    );
+    restrictedPlexAccounts = {if (keepExisting) ...restrictedPlexAccounts, ...plexAccountClientIds};
+    restrictedServerIds = {if (keepExisting) ...restrictedServerIds, ...serverIds};
+  }
+}
+
+class _RecordingJellyfinManager extends MultiServerManager with _RecordsRestrictions {
+  final connected = <JellyfinConnection>[];
+  Set<String>? restrictedServerIdsAtConnect;
+
+  @override
+  Future<bool> addJellyfinConnection(JellyfinConnection connection) async {
+    restrictedServerIdsAtConnect ??= restrictedServerIds;
+    connected.add(connection);
+    updateServerStatus(ServerId(connection.serverMachineId), true);
+    return true;
+  }
+}
+
+/// Can hold the next [getPlexAccount] call until the test releases it, to
+/// order a role refresh against a later refresh or rebind.
+class _GatedConnectionRegistry extends ConnectionRegistry {
+  _GatedConnectionRegistry(super.db);
+
+  Completer<void>? _gate;
+  bool held = false;
+
+  Completer<void> holdNextGetPlexAccount() => _gate = Completer<void>();
+
+  @override
+  Future<PlexAccountConnection?> getPlexAccount(String id) async {
+    final gate = _gate;
+    if (gate != null) {
+      _gate = null;
+      held = true;
+      await gate.future;
+    }
+    return super.getPlexAccount(id);
+  }
+}
+
+class _CapturingMultiServerManager extends MultiServerManager with _RecordsRestrictions {
   _CapturingMultiServerManager({this.failFirstNCalls = 0});
+
+  Set<String>? restrictedPlexAccountsAtFirstRefresh;
 
   /// SRC1: every server fails to connect on the first [failFirstNCalls]
   /// calls, then succeeds on every call after. Simulates the real
@@ -712,6 +1010,7 @@ class _CapturingMultiServerManager extends MultiServerManager {
     bool retryRecentFailures = false,
   }) async {
     refreshCalls++;
+    restrictedPlexAccountsAtFirstRefresh ??= restrictedPlexAccounts;
     lastConnection = connection;
     retryRecentFailuresCalls.add(retryRecentFailures);
     if (refreshCalls <= failFirstNCalls) return const {};

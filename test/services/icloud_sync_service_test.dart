@@ -56,7 +56,7 @@ void main() {
           kvs[args['key'] as String] = args['value'] as String;
           return null;
         case 'remove':
-          kvs.remove((call.arguments as Map)['key']);
+          kvs.remove((call.arguments as Map)['key'] as String);
           return null;
         case 'synchronize':
           return true;

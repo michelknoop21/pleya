@@ -40,7 +40,6 @@ import '../utils/external_ids_fetcher.dart';
 import '../utils/provider_extensions.dart';
 
 import '../services/apple_tv_native_text_entry.dart';
-import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
@@ -63,6 +62,7 @@ import 'tv/tv_search_view.dart';
 import 'seerr/seerr_discover_screen.dart';
 import '../media/media_server_client.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
+import '../services/search_recency_store.dart';
 import '../services/search_recents.dart';
 import '../utils/media_navigation_helper.dart';
 import 'actor_media_screen.dart';
@@ -71,9 +71,11 @@ import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
 /// Client-side result type filter over whatever [searchAcrossServers] returns.
-/// There is no "people" row — search results carry no person items. Note that
-/// the episodes chip is effectively Jellyfin-only: the Plex client searches
-/// with `searchTypes: 'movies,tv'` and never yields episode items.
+/// There is no "people" row — search results carry no person items. The
+/// episodes chip only appears when a result is an episode. Jellyfin returns
+/// episodes; whether Plex does for this query is unverified: the client keeps
+/// them when the documented response shape carries them, but no live response
+/// has confirmed that yet (see `test/fixtures/plex_search/README.md`).
 enum _SearchFilter { all, movies, shows, episodes }
 
 /// Why the last search produced nothing — so the UI can tell "we couldn't
@@ -189,7 +191,7 @@ class _SearchScreenState extends State<SearchScreen>
     super.initState();
     _searchDebounce = debounce(_performSearch, const Duration(milliseconds: 500));
     _searchController.addListener(_onSearchChanged);
-    _history = SettingsService.instance.read(SettingsService.searchHistory);
+    _history = SearchRecencyStore.readHistory();
     _recentItems = readSearchRecents();
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
     _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
@@ -283,14 +285,14 @@ class _SearchScreenState extends State<SearchScreen>
     final next = [trimmed, ..._history.where((q) => q.toLowerCase() != trimmed.toLowerCase())];
     if (next.length > _searchHistoryLimit) next.removeRange(_searchHistoryLimit, next.length);
     _history = next;
-    SettingsService.instance.write(SettingsService.searchHistory, next);
+    SearchRecencyStore.writeHistory(next);
   }
 
   void _clearHistory() {
     _history = const [];
     // Explicitly typed: an untyped `const []` infers List<dynamic> here, which
     // StringListPref rejects at runtime — the button silently did nothing.
-    SettingsService.instance.write(SettingsService.searchHistory, const <String>[]);
+    SearchRecencyStore.writeHistory(const <String>[]);
     setStateIfMounted(() {});
     // The chips and this button unmount with the row — without a new home,
     // primary focus dies with them and the D-pad goes dead.
@@ -685,6 +687,11 @@ class _SearchScreenState extends State<SearchScreen>
       _hasSearched = false;
       _searchError = null;
       _lastSearchedQuery = '';
+      // Both lists belong to the profile that was active when they were read.
+      // Keeping them would show the previous profile's recency and, on the
+      // next search, write it into the new profile's key.
+      _history = SearchRecencyStore.readHistory();
+      _recentItems = readSearchRecents();
     });
   }
 
@@ -1321,11 +1328,17 @@ class _SearchScreenState extends State<SearchScreen>
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final query in _history)
-                  FocusableFilterChip(
-                    icon: Symbols.history_rounded,
-                    label: query,
-                    onPressed: () => _runHistoryQuery(query),
+                for (final (index, query) in _history.indexed)
+                  AutomationNode(
+                    id: AutomationIds.searchHistoryChip,
+                    instance: '$index',
+                    role: 'chip',
+                    state: () => {'query': query},
+                    child: FocusableFilterChip(
+                      icon: Symbols.history_rounded,
+                      label: query,
+                      onPressed: () => _runHistoryQuery(query),
+                    ),
                   ),
               ],
             ),
@@ -1381,11 +1394,15 @@ class _SearchScreenState extends State<SearchScreen>
                     hintText: t.search.hint,
                     prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
                     suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const AppIcon(Symbols.clear_rounded, fill: 1),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
+                        ? AutomationNode(
+                            id: AutomationIds.searchClear,
+                            role: 'button',
+                            child: IconButton(
+                              icon: const AppIcon(Symbols.clear_rounded, fill: 1),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            ),
                           )
                         : null,
                   ),

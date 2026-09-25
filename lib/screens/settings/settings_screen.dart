@@ -385,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       ),
       // Same gate as the tile itself: searching for "tautulli" must not be a
       // back door into a screen the profile is not allowed to have.
-      if (_ownsAPlexServer(context.read<MultiServerProvider>()))
+      if (_managesAPlexServer(context.read<MultiServerProvider>()))
         _SettingsSearchEntry(
           icon: Symbols.insights_rounded,
           title: t.tautulli.title,
@@ -715,20 +715,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     );
   }
 
-  /// Whether this profile administers any Plex server here. Used by both the
-  /// tile and the search entry, so the two can never disagree about who is
-  /// allowed to reach the Tautulli screen.
-  static bool _ownsAPlexServer(MultiServerProvider multiServer) {
-    final manager = multiServer.serverManager;
-    return manager.serverIds.any((id) => manager.isOwnerOrAdmin(ServerId(id)));
-  }
+  /// Whether this profile may administer any Plex server here. Used by both
+  /// the tile and the search entry, so the two can never disagree about who is
+  /// allowed to reach the Tautulli screen. A borrowed connection or a
+  /// Jellyfin-only administrator does not count.
+  static bool _managesAPlexServer(MultiServerProvider multiServer) => multiServer.serverManager.managesAPlexServer;
 
   /// Tautulli reports on the whole Plex server, and its single API key opens
-  /// the entire admin surface, so the tile only appears for someone who owns a
-  /// Plex server here. Everyone else never learns the integration exists, which
+  /// the entire admin surface, so the tile only appears for someone with owner
+  /// rights on a Plex server here. Everyone else never learns the integration exists, which
   /// is the right outcome: they could not use it anyway.
   Widget _buildTautulliTile() {
-    if (!context.select<MultiServerProvider, bool>(_ownsAPlexServer)) return const SizedBox.shrink();
+    if (!context.select<MultiServerProvider, bool>(_managesAPlexServer)) return const SizedBox.shrink();
 
     return Consumer<TautulliProvider>(
       builder: (context, tautulli, _) {

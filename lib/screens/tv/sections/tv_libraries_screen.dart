@@ -36,6 +36,8 @@ import '../../../mixins/refreshable.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../providers/hidden_libraries_provider.dart';
 import '../../../providers/libraries_provider.dart';
+import '../../../media/ids.dart';
+import '../../../providers/multi_server_provider.dart';
 import '../../../providers/unified_catalogs.dart';
 import '../../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../../theme/mono_tokens.dart';
@@ -58,16 +60,19 @@ enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, a
 
 /// Which actions [library] offers, in the order mockup 27 B draws them.
 ///
-/// Scan/Analyze/Prullenbak hit Plex-only endpoints — the same gate
-/// `_getLibraryMenuItems` in the shared [LibrariesScreen] applies. Openen in
-/// catalogus only makes sense for a library the unified catalog actually
-/// browses; a music or photo library gets the admin actions and nothing else.
-List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library) {
+/// Library maintenance (metadata refresh, scan, analyze, empty trash) changes
+/// canonical server data, so it needs [canManage] (the owner rule, see
+/// `MultiServerManager.canManageServerMetadata`); without it only the profile
+/// actions remain. Scan/Analyze/Prullenbak also hit Plex-only endpoints, the
+/// same gate `_getLibraryMenuItems` in the shared [LibrariesScreen] applies.
+/// Openen in catalogus only makes sense for a library the unified catalog
+/// actually browses.
+List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool canManage}) {
   final isCatalogable = library.kind == MediaKind.movie || library.kind == MediaKind.show;
-  final isPlex = library.backend == MediaBackend.plex;
+  final isPlex = canManage && library.backend == MediaBackend.plex;
   return [
     if (isCatalogable) TvLibraryAction.openInCatalog,
-    TvLibraryAction.refreshMetadata,
+    if (canManage) TvLibraryAction.refreshMetadata,
     if (isPlex) TvLibraryAction.scan,
     TvLibraryAction.toggleVisibility,
     if (isPlex) TvLibraryAction.analyze,
@@ -205,6 +210,13 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
         context,
         library: library,
         isHidden: isHidden,
+        // No provider (a bare test harness) means no proof of ownership.
+        canManage: switch ((context.read<MultiServerProvider?>(), library.serverId)) {
+          (final multiServer?, final serverId?) => multiServer.serverManager.canManageServerMetadata(
+            ServerId(serverId),
+          ),
+          _ => false,
+        },
         onOpenInCatalog: () => _openInCatalog(library),
         onRefreshMetadata: () => _refreshMetadata(library),
         onScan: () => _scan(library),

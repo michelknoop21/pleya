@@ -10,11 +10,13 @@ import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/media_version.dart';
 import 'package:pleya/models/shader_preset.dart';
 import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/apple_tv_remote_touch_service.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/widgets/video_controls/video_controls.dart';
 import 'package:pleya/widgets/video_controls/desktop_video_controls.dart';
+import 'package:pleya/widgets/video_controls/helpers/apple_tv_scrub_pan.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_controls_header.dart';
 import 'package:pleya/widgets/tv/tv_page_surface.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -1149,6 +1151,215 @@ void main() {
       final lastStep = seeks.last - const Duration(minutes: 5);
       expect(firstStep, const Duration(seconds: 10));
       expect(lastStep, greaterThan(const Duration(seconds: 10)));
+    });
+
+    // SCRUB1: Apple TV, vrij scrubben met de pan van het touchoppervlak. Een
+    // eigen service met een gestuurde klok, zodat de gain vastligt.
+    group('Apple TV pan', () {
+      late AppleTvRemoteTouchService touch;
+      late DateTime now;
+      const fullTravel = AppleTvRemoteTouchService.scrubPanFullTravel;
+      const tenMinutes = Duration(minutes: 10);
+
+      Duration mapped(double dx, double speed) =>
+          appleTvScrubPanDelta(dx: dx, speed: speed, fullTravel: fullTravel, duration: tenMinutes);
+
+      Future<void> send(String type, double x) => touch.handleMessage({'type': type, 'x': x, 'y': 540.0});
+
+      /// A pan with 100 ms between samples: every sample after the slop one
+      /// is alone in the speed window, so it arrives at speed 0 (gain 1).
+      Future<void> slowPan(WidgetTester tester, List<double> xs) async {
+        await send('started', 960);
+        for (final x in xs) {
+          now = now.add(const Duration(milliseconds: 100));
+          await send('move', x);
+        }
+        await send('ended', xs.last);
+        now = now.add(const Duration(milliseconds: 400));
+        await tester.pump();
+      }
+
+      setUp(() {
+        now = DateTime(2026, 9, 25, 12);
+        touch = AppleTvRemoteTouchService(
+          simulateKeyPress: (_) {},
+          simulateKeyDown: (_) {},
+          simulateKeyUp: (_) {},
+          scheduleFrame: () {},
+          now: () => now,
+        );
+        AppleTvRemoteTouchService.debugInstanceOverride = touch;
+        TvDetectionService.debugSetAppleTVOverride(true);
+      });
+      tearDown(() {
+        AppleTvRemoteTouchService.debugInstanceOverride = null;
+        TvDetectionService.debugSetAppleTVOverride(null);
+      });
+
+      Future<void> enterScrub(WidgetTester tester) async {
+        await pumpControls(tester, playing: true);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        expect(touch.isScrubPanActive, isTrue);
+      }
+
+      testWidgets('één veeg verplaatst de cursor evenredig, zonder seek', (tester) async {
+        await enterScrub(tester);
+
+        await slowPan(tester, [1000, 1200, 1360]);
+
+        final expected = const Duration(minutes: 5) + mapped(40, 0) + mapped(200, 0) + mapped(160, 0);
+        expect(sliderPosition(tester), expected);
+        expect(expected, greaterThan(const Duration(minutes: 5, seconds: 10)));
+        expect(seeks, isEmpty);
+        expect(seekEnds, isEmpty);
+      });
+
+      testWidgets('een snelle veeg gaat verder dan een langzame', (tester) async {
+        await enterScrub(tester);
+        await send('started', 960);
+        for (final x in [1000.0, 1100.0, 1200.0]) {
+          now = now.add(const Duration(milliseconds: 16));
+          await send('move', x);
+        }
+        await send('ended', 1200);
+        await tester.pump();
+
+        final fast = sliderPosition(tester) - const Duration(minutes: 5);
+        expect(fast, greaterThan(mapped(240, 0)));
+      });
+
+      testWidgets('de cursor klemt op 0 en op de duur', (tester) async {
+        await enterScrub(tester);
+
+        for (var i = 0; i < 12; i++) {
+          await slowPan(tester, [1400, 1900]);
+        }
+        expect(sliderPosition(tester), tenMinutes);
+
+        for (var i = 0; i < 24; i++) {
+          await slowPan(tester, [500, 0]);
+        }
+        expect(sliderPosition(tester), Duration.zero);
+      });
+
+      testWidgets('klik zet door naar de cursor en speelt verder', (tester) async {
+        await enterScrub(tester);
+        await slowPan(tester, [700, 400]);
+        final previewed = sliderPosition(tester);
+        expect(previewed, lessThan(const Duration(minutes: 5)));
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+
+        expect(seekEnds, [previewed]);
+        expect(player.commandLog.last, 'play');
+        expect(touch.isScrubPanActive, isFalse);
+      });
+
+      testWidgets('Menu annuleert naar de oorspronkelijke positie', (tester) async {
+        await enterScrub(tester);
+        await slowPan(tester, [1200, 1500]);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+
+        expect(seeks, isEmpty);
+        expect(seekEnds, isEmpty);
+        expect(sliderPosition(tester), const Duration(minutes: 5));
+        expect(touch.isScrubPanActive, isFalse);
+      });
+
+      testWidgets('een ringdruk stapt nog steeds één stap vanaf de cursor', (tester) async {
+        await enterScrub(tester);
+        await slowPan(tester, [1200]);
+        final afterPan = sliderPosition(tester);
+
+        await send('started', 960);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await send('ended', 962);
+        await tester.pump();
+
+        expect(sliderPosition(tester), afterPan + const Duration(seconds: 10));
+        expect(seeks, isEmpty);
+      });
+
+      testWidgets('een vroege systeempijl telt niet op bij de pan', (tester) async {
+        await enterScrub(tester);
+
+        await send('started', 960);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1000);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1300);
+        await send('ended', 1300);
+        await tester.pump();
+
+        expect(sliderPosition(tester), const Duration(minutes: 5) + mapped(40, 0) + mapped(300, 0));
+      });
+
+      // Probe E: klikken met de duim al op het oppervlak en in dezelfde
+      // aanraking doorvegen. Er volgt geen touch-down, dus de basis moet bij
+      // de klik vastliggen, vóór de vroege systeempijl.
+      testWidgets('klik met de vinger neer: een vroege systeempijl telt niet op bij de pan', (tester) async {
+        await pumpControls(tester, playing: true);
+        await send('started', 960);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        expect(touch.isScrubPanActive, isTrue);
+
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 970);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1300);
+        await send('ended', 1300);
+        await tester.pump();
+
+        expect(sliderPosition(tester), const Duration(minutes: 5) + mapped(340, 0));
+      });
+    });
+
+    testWidgets('buiten Apple TV neemt de scrub de pan niet over', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      await pumpControls(tester, playing: true);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(AppleTvRemoteTouchService.instance.isScrubPanActive, isFalse);
+    });
+  });
+
+  group('appleTvScrubPanDelta', () {
+    const tenMinutes = Duration(minutes: 10);
+    Duration delta(double dx, {double speed = 0, double fullTravel = 1920, Duration duration = tenMinutes}) =>
+        appleTvScrubPanDelta(dx: dx, speed: speed, fullTravel: fullTravel, duration: duration);
+
+    test('is evenredig met de afgelegde afstand', () {
+      // Een vijfde van tien minuten per volle veeg.
+      expect(delta(960), const Duration(minutes: 1));
+      expect(delta(480), const Duration(seconds: 30));
+      expect(delta(-480), const Duration(seconds: -30));
+    });
+
+    test('een snelle veeg gaat verder dan een langzame, tot vier keer', () {
+      expect(delta(20, speed: 2), delta(20) * 2);
+      expect(delta(480, speed: 100), delta(480) * 4);
+    });
+
+    test('lange film: een volle veeg is hooguit tien minuten zonder versnelling', () {
+      expect(delta(1920, duration: const Duration(hours: 3)), const Duration(minutes: 10));
+    });
+
+    test('rekent in de eenheid van de service, niet in schermbreedte', () {
+      expect(AppleTvRemoteTouchService.scrubPanFullTravel, 1920);
+    });
+
+    test('geen bereik of duur geeft geen beweging', () {
+      expect(delta(100, fullTravel: 0), Duration.zero);
+      expect(delta(100, duration: Duration.zero), Duration.zero);
     });
   });
 
