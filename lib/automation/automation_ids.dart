@@ -388,6 +388,14 @@ class AutomationIds {
   /// `<family>.<index>` shape [landingRailItem]/[discoverRailItem] use.
   static const String searchResultsItem = 'search.results.item';
 
+  /// One query chip under "Recent gezocht" on desktop and phone. Instanceable
+  /// by position (`search.history.chip[0]` is the newest); its state carries
+  /// the query, so a scenario can tell whose history it is looking at.
+  static const String searchHistoryChip = 'search.history.chip';
+
+  /// The clear button inside the search field, there while the field has text.
+  static const String searchClear = 'search.clear';
+
   /// The TV search pill (36 B). Its state carries the result count the pill
   /// shows, or null while there is nothing to count.
   static const String tvSearchPill = 'tv.search.pill';
@@ -459,6 +467,7 @@ class AutomationIds {
   /// a rail row it is `<surface>.<index>` / `<surface>.<row>`, so the surfaces
   /// never have to share a counter.
   static const String tvCatalogGrid = 'tv.catalog.grid';
+
   static const String tvCatalogGridItem = 'tv.catalog.grid.item';
   static const String tvCatalogRail = 'tv.catalog.rail';
   static const String tvCatalogRailRow = 'tv.catalog.rail.row';
@@ -501,6 +510,7 @@ class AutomationIds {
     landingRailItem,
     searchResultsSection,
     searchResultsItem,
+    searchHistoryChip,
     sheetSourcePickerRow,
     sheetContextMenuItem,
     catalogHeader,
@@ -610,6 +620,8 @@ class AutomationIds {
     {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': searchResultsSection, 'role': 'region', 'instanceable': true},
     {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
+    {'id': searchHistoryChip, 'role': 'chip', 'instanceable': true},
+    {'id': searchClear, 'role': 'button', 'instanceable': false},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},

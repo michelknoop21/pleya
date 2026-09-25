@@ -1328,11 +1328,17 @@ class _SearchScreenState extends State<SearchScreen>
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final query in _history)
-                  FocusableFilterChip(
-                    icon: Symbols.history_rounded,
-                    label: query,
-                    onPressed: () => _runHistoryQuery(query),
+                for (final (index, query) in _history.indexed)
+                  AutomationNode(
+                    id: AutomationIds.searchHistoryChip,
+                    instance: '$index',
+                    role: 'chip',
+                    state: () => {'query': query},
+                    child: FocusableFilterChip(
+                      icon: Symbols.history_rounded,
+                      label: query,
+                      onPressed: () => _runHistoryQuery(query),
+                    ),
                   ),
               ],
             ),
@@ -1388,11 +1394,15 @@ class _SearchScreenState extends State<SearchScreen>
                     hintText: t.search.hint,
                     prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
                     suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const AppIcon(Symbols.clear_rounded, fill: 1),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
+                        ? AutomationNode(
+                            id: AutomationIds.searchClear,
+                            role: 'button',
+                            child: IconButton(
+                              icon: const AppIcon(Symbols.clear_rounded, fill: 1),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            ),
                           )
                         : null,
                   ),

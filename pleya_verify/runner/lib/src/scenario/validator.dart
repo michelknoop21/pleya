@@ -202,7 +202,7 @@ void _validateTap(ScenarioStep step, Scenario scenario, List<ScenarioError> erro
 }
 
 /// Every key an `assert:` step may carry at the top level.
-Set<String> get _assertKeys => {'id', ...geometryPredicates, ...nodeFieldPredicates};
+Set<String> get _assertKeys => {'id', 'present', ...geometryPredicates, ...nodeFieldPredicates};
 
 /// Catches the two shapes of assert that pass while checking nothing.
 ///
@@ -257,6 +257,20 @@ void _validateAssert(ScenarioStep step, Scenario scenario, List<ScenarioError> e
             'and a non-boolean here is skipped rather than checked',
       ),
     );
+  }
+  if (args.containsKey('present')) {
+    // Only `false` means anything: presence is what every assert checks anyway.
+    // And a node that is absent has nothing to measure, so the claim stands alone.
+    final others = args.keys.where((key) => key != 'id' && key != 'present');
+    if (args['present'] != false || others.isNotEmpty) {
+      errors.add(
+        ScenarioError(
+          sourcePath: scenario.sourcePath,
+          line: step.line,
+          message: "assert 'present' only takes an unquoted false, next to nothing but the id",
+        ),
+      );
+    }
   }
   if (args.containsKey('state')) {
     final state = args['state'];

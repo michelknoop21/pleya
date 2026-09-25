@@ -61,9 +61,11 @@ setup:
   - seed: <fixture catalog name>
   - launch
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_profile: {name: Kind}                            # optional: second profile on the same connection
 steps:
   - wait_until: {id: <automation id>, timeout: 30000}
   - assert: {id: <automation id>, insideViewport: true, state: {<field>: <value>}}
+  - assert: {id: <automation id>, present: false}         # the node is not in the tree; stands alone
   - press: <up|down|left|right|select|menu|delete>       # tvOS only
   - snapshot: <name>                                      # writes screenshot + ui-tree
 ```

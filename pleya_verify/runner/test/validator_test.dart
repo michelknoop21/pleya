@@ -65,6 +65,19 @@ void main() {
     expect(errors.single.message, contains('focused'));
   });
 
+  test('present: false validates alone and is rejected next to a predicate or as true', () {
+    List<String> errorsFor(String assertion) => [
+      for (final e in validateScenario(
+        parseScenarioString('name: x\ntarget: tvos-sim\nsteps:\n  - assert: $assertion\n', sourcePath: 'x.yaml'),
+        catalog,
+      ))
+        e.message,
+    ];
+    expect(errorsFor('{id: tv.search.pill, present: false}'), isEmpty);
+    expect(errorsFor('{id: tv.search.pill, present: true}'), [contains("'present'")]);
+    expect(errorsFor('{id: tv.search.pill, present: false, focused: true}'), [contains("'present'")]);
+  });
+
   test('an unknown automation id is rejected', () {
     final scenario = parseScenarioString(
       'name: x\ntarget: macos\nsteps:\n  - assert: {id: nonexistent.thing}\n',

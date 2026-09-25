@@ -276,6 +276,12 @@ ids:
   - id: search.results.item
     role: list.item
     instanceable: true
+  - id: search.history.chip
+    role: chip
+    instanceable: true
+  - id: search.clear
+    role: button
+    instanceable: false
   - id: sheet.source_picker
     role: sheet
     instanceable: false
