@@ -146,7 +146,7 @@ void main() {
         _ev(weight: 1.0, evidenceKey: 's1:a', genres: const ['Drama']),
       ], nowMs: _nowMs);
       expect(v.toJson()['v'], AffinityVector.schemaVersion);
-      expect(AffinityVector.schemaVersion, 2);
+      expect(AffinityVector.schemaVersion, 3);
     });
 
     test('round-trips titleCount and penalties', () {

@@ -39,7 +39,7 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('tapping the avatar opens the profile switcher (DEC-132)', (tester) async {
+  testWidgets('tapping the avatar opens the profile switcher (DEC-133)', (tester) async {
     final pushed = <Route<dynamic>>[];
     await tester.pumpWidget(
       MaterialApp(

@@ -56,6 +56,11 @@ class ServerCapabilities {
   /// returns synthesized hubs but with sparser categorisation.
   final bool richHubs;
 
+  /// The backend answers `fetchRelatedHubs` with something (Plex `/related`,
+  /// Jellyfin `/Similar`). A source without this never becomes a seed for
+  /// "Because you watched", because the row would be empty.
+  final bool relatedHubs;
+
   /// This backend stores a per-user rating at all, in whatever shape.
   ///
   /// Deliberately separate from [numericUserRating], which answers a narrower
@@ -137,6 +142,7 @@ class ServerCapabilities {
     this.videoTranscoding = true,
     this.serverSideSync = false,
     this.richHubs = false,
+    this.relatedHubs = false,
     this.userRating = false,
     this.numericUserRating = false,
     this.continueWatchingRemoval = false,
@@ -162,6 +168,7 @@ class ServerCapabilities {
     videoTranscoding: true,
     serverSideSync: true,
     richHubs: true,
+    relatedHubs: true,
     userRating: true,
     numericUserRating: true,
     continueWatchingRemoval: true,
@@ -194,6 +201,7 @@ class ServerCapabilities {
     videoTranscoding: true,
     serverSideSync: false,
     richHubs: false,
+    relatedHubs: true,
     // A like/dislike is still a rating the server keeps, which is the whole
     // reason these two flags are not one.
     userRating: true,
@@ -246,6 +254,7 @@ class ServerCapabilities {
     bool? videoTranscoding,
     bool? serverSideSync,
     bool? richHubs,
+    bool? relatedHubs,
     bool? userRating,
     bool? numericUserRating,
     bool? continueWatchingRemoval,
@@ -269,6 +278,7 @@ class ServerCapabilities {
       videoTranscoding: videoTranscoding ?? this.videoTranscoding,
       serverSideSync: serverSideSync ?? this.serverSideSync,
       richHubs: richHubs ?? this.richHubs,
+      relatedHubs: relatedHubs ?? this.relatedHubs,
       userRating: userRating ?? this.userRating,
       numericUserRating: numericUserRating ?? this.numericUserRating,
       continueWatchingRemoval: continueWatchingRemoval ?? this.continueWatchingRemoval,
