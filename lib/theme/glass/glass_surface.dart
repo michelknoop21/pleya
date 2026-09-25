@@ -9,6 +9,14 @@ import 'glass_settings.dart';
 /// when glass is [GlassTier.off]; real `liquid_glass_renderer` glass inside a
 /// [GlassLayer] on [GlassTier.real]; a hand-rolled `BackdropFilter` stack,
 /// never a package widget, on [GlassTier.fake].
+///
+/// [backdrop] false drops the backdrop on every tier: no `BackdropFilter`, no
+/// `LiquidGlass`, only the translucent tint, the rim and the top highlight.
+/// For plates over native video: on iOS mpv renders into its own layer
+/// *under* the FlutterView (`ios/Runner/MpvPlayer/MpvPlayerCore.swift`,
+/// `insertSubview(_, at: 0)`), so a Flutter backdrop samples only the
+/// transparent Flutter surface and paints the plate solid black. A plain
+/// translucent fill lets the video show through instead.
 class GlassSurface extends StatelessWidget {
   const GlassSurface({
     super.key,
@@ -17,6 +25,7 @@ class GlassSurface extends StatelessWidget {
     this.tokens,
     this.prominent = false,
     this.legacy,
+    this.backdrop = true,
   });
 
   final ShapeBorder shape;
@@ -24,6 +33,7 @@ class GlassSurface extends StatelessWidget {
   final GlassTokens? tokens;
   final bool prominent;
   final Widget? legacy;
+  final bool backdrop;
 
   /// Fixed rim width for the fake-tier light edge ([GlassTokens.tv] and
   /// [GlassTokens.control] have a non-zero [GlassTokens.edge]).
@@ -35,6 +45,8 @@ class GlassSurface extends StatelessWidget {
     if (tier == GlassTier.off) return legacy ?? child;
 
     final t = tokens ?? (prominent ? const GlassTokens.prominent() : const GlassTokens.phone());
+
+    if (!backdrop) return DecoratedBox(decoration: _fakeGlassDecoration(shape, t), child: child);
 
     if (tier == GlassTier.real) {
       return LiquidGlass(shape: _asLiquidShape(shape), child: child);

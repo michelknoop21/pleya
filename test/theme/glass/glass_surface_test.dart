@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/device_performance.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
@@ -125,5 +126,43 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsOneWidget);
     expect(find.byWidgetPredicate((w) => w.runtimeType.toString().startsWith('LiquidGlass')), findsNothing);
+  });
+
+  group('backdrop: false (vlakken boven native video)', () {
+    Future<void> pumpNoBackdrop(WidgetTester tester, {TargetPlatform? platform}) async {
+      tester.view.physicalSize = const Size(750, 1334);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.runAsync(() => SettingsService.getInstance());
+      await SettingsService.instance.write(SettingsService.liquidGlass, true);
+      await tester.pumpWidget(
+        wrap(
+          const GlassSurface(shape: StadiumBorder(), backdrop: false, child: Text('glass')),
+          platform: platform,
+        ),
+      );
+    }
+
+    void expectTintOnly(WidgetTester tester) {
+      expect(find.text('glass'), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byWidgetPredicate((w) => w.runtimeType.toString().startsWith('LiquidGlass')), findsNothing);
+      final tint = tester.widget<DecoratedBox>(
+        find.ancestor(of: find.text('glass'), matching: find.byType(DecoratedBox)).first,
+      );
+      expect((tint.decoration as ShapeDecoration).shape, isA<StadiumBorder>());
+    }
+
+    testWidgets('tier real: geen LiquidGlass, geen BackdropFilter, alleen tint', (tester) async {
+      await pumpNoBackdrop(tester, platform: TargetPlatform.iOS);
+      expect(glassTierFor(tester.element(find.text('glass'))), GlassTier.real);
+      expectTintOnly(tester);
+    });
+
+    testWidgets('tier fake: geen BackdropFilter, alleen tint', (tester) async {
+      await pumpNoBackdrop(tester);
+      expect(glassTierFor(tester.element(find.text('glass'))), GlassTier.fake);
+      expectTintOnly(tester);
+    });
   });
 }
