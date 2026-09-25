@@ -165,6 +165,20 @@ void main() {
       expect(rows.map((r) => r.globalKey), ['s:second'], reason: 'the later insert wins the tie');
     });
 
+    test('dismissals do not use up the row cap, so an older positive still seeds', () async {
+      await db.insertMediaInteraction(_row('p1', 's:keep', occurredAt: now - 2 * day), profileId: 'p1');
+      for (var i = 0; i < kRecentPositiveRowCap + 5; i++) {
+        await db.insertMediaInteraction(
+          _row('p1', 's:gone$i', occurredAt: now - day + i, weight: -0.3, eventType: 'skipped'),
+          profileId: 'p1',
+        );
+      }
+
+      final rows = await db.recentPositiveInteractions('p1', sinceMs: now - 30 * day, minWeight: 0.4, limit: 6);
+
+      expect(rows.map((r) => r.globalKey), ['s:keep']);
+    });
+
     test('rows on servers outside serverIds are skipped before the limit, so they take no slot', () async {
       for (var i = 0; i < 6; i++) {
         await db.insertMediaInteraction(_row('p1', 'pleya:$i', occurredAt: now - i * 1000), profileId: 'p1');

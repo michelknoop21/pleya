@@ -72,7 +72,14 @@ class SeedRowsLoader {
     // Narrowed in the query, so a key on a source that cannot seed never
     // takes one of the six places.
     final seeds = await service.recentSeeds(limit: 6, serverIds: {for (final id in byServer.keys) id.toString()});
-    final resolved = await Future.wait([for (final seed in seeds) _resolve(seed, byServer)]);
+    // On a shared Jellyfin connection the server's watched state is the other
+    // profile's too, so it may not rename a row; unknown counts as shared.
+    Set<String>? shared;
+    try {
+      shared = await service.sharedHistoryServerIds();
+    } catch (_) {}
+    bool isShared(ServerId id) => shared?.contains(id.toString()) ?? true;
+    final resolved = await Future.wait([for (final seed in seeds) _resolve(seed, byServer, isShared)]);
     // The same title on two servers is one seed, the newest; same identity
     // as the server path.
     final usedIdentities = <String>{};
@@ -82,7 +89,11 @@ class SeedRowsLoader {
     ];
   }
 
-  Future<_Seed?> _resolve(RecommendationSeed seed, Map<ServerId, MediaServerClient> byServer) async {
+  Future<_Seed?> _resolve(
+    RecommendationSeed seed,
+    Map<ServerId, MediaServerClient> byServer,
+    bool Function(ServerId) isShared,
+  ) async {
     final key = parseGlobalKey(seed.globalKey);
     final client = key == null ? null : byServer[key.serverId];
     if (key == null || client == null) return null;
@@ -90,8 +101,10 @@ class SeedRowsLoader {
     if (item == null || item.title == null) return null;
     // A series is still being watched until every episode is seen, whatever
     // the newest row says: finishing episode four of ten is not finishing it.
-    // A film finished elsewhere after a partial here is finished.
-    return (item: item, completed: item.kind == MediaKind.show ? item.isWatched : seed.completed || item.isWatched);
+    // A film finished elsewhere after a partial here is finished, unless
+    // "elsewhere" may be another profile on a shared connection.
+    final watchedElsewhere = item.isWatched && !isShared(key.serverId);
+    return (item: item, completed: item.kind == MediaKind.show ? item.isWatched : seed.completed || watchedElsewhere);
   }
 
   /// One seed per title and kind: a film and a series that share a name are

@@ -330,7 +330,7 @@ void main() {
       expect((await importer(source).sync())!.imported, 1, reason: 'the retry after the interval catches up');
     });
 
-    test('one series whose lookup fails is unresolvable for its rows, the rest still imports', () async {
+    test('one series whose lookup fails does not stop the rest of the sync', () async {
       final show = MediaItem.jellyfin(id: 'show', kind: MediaKind.show, serverId: _server, title: 'Show');
       final source = _FakeSource(
         played: [
@@ -341,9 +341,38 @@ void main() {
         items: {'show': show},
       )..failingItems = {'bad'};
       final outcome = await importer(source).sync();
-      expect(outcome!.partial, isFalse);
-      expect(outcome.unresolvable, 1);
-      expect(outcome.imported, 2);
+      expect(outcome!.imported, 2);
+      expect(outcome.unresolvable, 0, reason: 'a failed lookup is retried, not written off');
+    });
+
+    test('a failed series lookup holds the watermark below its episode, so the next sync imports it', () async {
+      final show = MediaItem.jellyfin(id: 'bad', kind: MediaKind.show, serverId: _server, title: 'Bad');
+      final source = _FakeSource(
+        played: [
+          _movie('m1', lastViewedDaysAgo: 1),
+          _episode('e1', showId: 'bad', lastViewedDaysAgo: 2),
+          _movie('m2', lastViewedDaysAgo: 3),
+        ],
+        items: {'bad': show},
+      )..failingItems = {'bad'};
+      expect((await importer(source).sync())!.imported, 2);
+      source.failingItems = {};
+      later();
+      final second = await importer(source).sync();
+      expect(second!.imported, 1, reason: 'the episode comes back; m1 is read again but deduplicated by event id');
+      expect(await db.getMediaInteractions(_profile), hasLength(3));
+    });
+
+    test('a series the server answers as missing is unresolvable and the watermark moves past it', () async {
+      final source = _FakeSource(
+        played: [
+          _movie('m1', lastViewedDaysAgo: 1),
+          _episode('e1', showId: 'gone', lastViewedDaysAgo: 2),
+        ],
+      );
+      expect((await importer(source).sync())!.unresolvable, 1);
+      later();
+      expect((await importer(source).sync())!.fetched, 0);
     });
 
     test('a later partial of the same title after a rewatch is its own row', () async {

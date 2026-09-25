@@ -142,6 +142,20 @@ void main() {
     expect(await rowTitles(service(), [plex]), [t.discover.becauseYouWatched(title: 'film')]);
   });
 
+  test('on a shared Jellyfin server the other profile\'s watched state does not rename the row', () async {
+    final jf = _Client('jf')..itemsById = {'film': _movie('film', server: 'jf', viewCount: 1)};
+    await play('jf:film', weight: 0.4, at: now - day);
+
+    expect(await rowTitles(service(shared: () async => {'jf'}), [jf]), [
+      t.discover.becauseYouAreWatching(title: 'film'),
+    ]);
+    expect(
+      await rowTitles(service(shared: () async => throw StateError('registry down')), [jf]),
+      [t.discover.becauseYouAreWatching(title: 'film')],
+      reason: 'an unknown answer counts as shared',
+    );
+  });
+
   group('top-up from the servers', () {
     test('one log seed is topped up to three from the server list, without repeating the title', () async {
       final plex = _Client('plex')

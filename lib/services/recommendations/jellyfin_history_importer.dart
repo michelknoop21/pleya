@@ -223,14 +223,21 @@ class JellyfinHistoryImporter implements HistoryImporter {
       final fresh = candidates.where((c) => !existing.contains(c.eventId)).toList();
 
       // Episodes resolve their series once, so a binge is one lookup. A series
-      // the server no longer knows, or whose lookup fails, maps to null: its
-      // rows are unresolvable, never stored with the episode's empty features,
-      // and one bad series does not fail the whole sync.
+      // the server answers as missing (404, null) is unresolvable: its rows are
+      // never stored with the episode's empty features. A lookup that fails
+      // (5xx, transport, timeout) is retried next sync instead, and one failing
+      // series does not fail the whole sync.
       final features = <String, MediaItem?>{};
+      final failedLookups = <String>{};
       for (final c in fresh) {
         final key = c.featureItemId;
         if (features.containsKey(key)) continue;
-        features[key] = key == c.item.id ? c.item : await _source.fetchItem(key).catchError((Object _) => null);
+        features[key] = key == c.item.id
+            ? c.item
+            : await _source.fetchItem(key).catchError((Object _) {
+                failedLookups.add(key);
+                return null;
+              });
       }
 
       // Keyed on the item itself, the key a local row carries for the same
@@ -252,7 +259,13 @@ class JellyfinHistoryImporter implements HistoryImporter {
       for (final c in fresh) {
         final f = features[c.featureItemId];
         if (f == null) {
-          unresolvable++;
+          if (!failedLookups.contains(c.featureItemId)) {
+            unresolvable++;
+          } else if (c.type == 'completed') {
+            // Hold the watermark below this play so the next sync reads it
+            // again; newer plays read twice are dropped by their event id.
+            newest = math.max(watermarkMs, math.min(newest, c.atMs - 1));
+          }
           continue;
         }
         final nearby = localPlays[buildGlobalKey(serverId, c.item.id)];

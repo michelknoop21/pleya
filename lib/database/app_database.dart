@@ -398,7 +398,7 @@ class AppDatabase extends _$AppDatabase {
               ..where(
                 (t) =>
                     t.profileId.equals(profileId) &
-                    (t.eventWeight.isBiggerOrEqualValue(minWeight) | t.eventWeight.isSmallerThanValue(0)) &
+                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
                     t.occurredAt.isBiggerOrEqualValue(sinceMs) &
                     _scoringScope(enabledImportServerIds),
               )
@@ -410,17 +410,39 @@ class AppDatabase extends _$AppDatabase {
               // ever shows up.
               ..limit(kRecentPositiveRowCap))
             .get();
+    // Dismissals are read apart, so they never use up the cap on positives.
+    // Local rows only, so no scoring scope is needed.
+    final dismissals =
+        await (select(mediaInteractions)..where(
+              (t) =>
+                  t.profileId.equals(profileId) &
+                  t.eventWeight.isSmallerThanValue(0) &
+                  t.occurredAt.isBiggerOrEqualValue(sinceMs),
+            ))
+            .get();
+    final newestDismissal = <String, MediaInteractionRow>{};
+    for (final row in dismissals) {
+      final key = row.seriesKey ?? row.globalKey;
+      final current = newestDismissal[key];
+      if (current == null || _isNewer(row, current)) newestDismissal[key] = row;
+    }
     final seen = <String>{};
     final out = <MediaInteractionRow>[];
     for (final row in rows) {
       final key = row.seriesKey ?? row.globalKey;
-      if (!seen.add(key) || row.eventWeight < 0) continue;
+      if (!seen.add(key)) continue;
+      final dismissal = newestDismissal[key];
+      if (dismissal != null && _isNewer(dismissal, row)) continue;
       if (serverIds != null && !serverIds.contains(parseGlobalKey(key)?.serverId.toString())) continue;
       out.add(row);
       if (out.length >= limit) break;
     }
     return out;
   }
+
+  /// Newest first, the id breaking ties, as in [recentPositiveInteractions].
+  static bool _isNewer(MediaInteractionRow a, MediaInteractionRow b) =>
+      a.occurredAt > b.occurredAt || (a.occurredAt == b.occurredAt && a.id > b.id);
 
   /// Counts interactions. Pass [enabledImportServerIds] to count exactly the
   /// rows the vector is built from; omit it for the storage-side count the
