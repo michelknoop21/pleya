@@ -58,9 +58,14 @@ enum OfflineActionType {
 const int kProfileInteractionCap = 5000;
 const int kInteractionRetentionDays = 365;
 
+/// Most rows [AppDatabase.recentPositiveInteractions] reads before it dedupes
+/// to one per title.
+const int kRecentPositiveRowCap = 500;
+
 /// [MediaInteractions.source] values.
 const String kInteractionSourceLocal = 'local';
 const String kInteractionSourceTautulli = 'tautulli';
+const String kInteractionSourceJellyfin = 'jellyfin';
 
 /// Partial unique index; drift's `createAll()` has no way to express one.
 const String _sqlImportedInteractionUniqueIndex =
@@ -372,6 +377,73 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(t) => OrderingTerm.asc(t.occurredAt)]))
           .get();
 
+  /// Newest positive interactions of one profile, one row per evidence key
+  /// (the series for an episode, the item for a movie), newest first. Same
+  /// scoring scope as the vector, so a disabled import server never seeds.
+  ///
+  /// A key whose newest row is negative (taken out of Continue Watching after
+  /// the play) yields nothing: the dismissal is the newer word. [serverIds],
+  /// when given, drops keys on other servers before they count toward
+  /// [limit], so a source that cannot seed takes no slot.
+  Future<List<MediaInteractionRow>> recentPositiveInteractions(
+    String profileId, {
+    required int sinceMs,
+    required double minWeight,
+    required int limit,
+    Set<String> enabledImportServerIds = const {},
+    Set<String>? serverIds,
+  }) async {
+    final rows =
+        await (select(mediaInteractions)
+              ..where(
+                (t) =>
+                    t.profileId.equals(profileId) &
+                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
+                    t.occurredAt.isBiggerOrEqualValue(sinceMs) &
+                    _scoringScope(enabledImportServerIds),
+              )
+              // The id breaks ties: imported timestamps are whole seconds.
+              ..orderBy([(t) => OrderingTerm.desc(t.occurredAt), (t) => OrderingTerm.desc(t.id)])
+              // ponytail: fixed row cap instead of a GROUP BY on the evidence
+              // key. Only a profile with 500 positive rows in the window from
+              // fewer than [limit] titles loses a seed; group in SQL if that
+              // ever shows up.
+              ..limit(kRecentPositiveRowCap))
+            .get();
+    // Dismissals are read apart, so they never use up the cap on positives.
+    // Local rows only, so no scoring scope is needed.
+    final dismissals =
+        await (select(mediaInteractions)..where(
+              (t) =>
+                  t.profileId.equals(profileId) &
+                  t.eventWeight.isSmallerThanValue(0) &
+                  t.occurredAt.isBiggerOrEqualValue(sinceMs),
+            ))
+            .get();
+    final newestDismissal = <String, MediaInteractionRow>{};
+    for (final row in dismissals) {
+      final key = row.seriesKey ?? row.globalKey;
+      final current = newestDismissal[key];
+      if (current == null || _isNewer(row, current)) newestDismissal[key] = row;
+    }
+    final seen = <String>{};
+    final out = <MediaInteractionRow>[];
+    for (final row in rows) {
+      final key = row.seriesKey ?? row.globalKey;
+      if (!seen.add(key)) continue;
+      final dismissal = newestDismissal[key];
+      if (dismissal != null && _isNewer(dismissal, row)) continue;
+      if (serverIds != null && !serverIds.contains(parseGlobalKey(key)?.serverId.toString())) continue;
+      out.add(row);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
+  /// Newest first, the id breaking ties, as in [recentPositiveInteractions].
+  static bool _isNewer(MediaInteractionRow a, MediaInteractionRow b) =>
+      a.occurredAt > b.occurredAt || (a.occurredAt == b.occurredAt && a.id > b.id);
+
   /// Counts interactions. Pass [enabledImportServerIds] to count exactly the
   /// rows the vector is built from; omit it for the storage-side count the
   /// retention cap is about.
@@ -419,13 +491,14 @@ class AppDatabase extends _$AppDatabase {
     return {for (final row in rows) ?row.read(mediaInteractions.sourceEventId)};
   }
 
-  /// Timestamps of positive *local* playback interactions for the given items
-  /// inside a time window, grouped by global key.
+  /// Timestamps and weights of positive *local* playback interactions for the
+  /// given items inside a time window, grouped by global key.
   ///
   /// One bundled query per import page instead of one per row. The
   /// `event_weight > 0` clause is the point: a dismissal must never be treated
-  /// as "we already saw this play" and swallow a completed Tautulli view.
-  Future<Map<String, List<int>>> localPositiveInteractionsIn(
+  /// as "we already saw this play" and swallow a completed Tautulli view. The
+  /// weight lets the caller tell a local partial from a local completed view.
+  Future<Map<String, List<({int at, double weight})>>> localPositiveInteractionsIn(
     String profileId,
     Set<String> globalKeys,
     int fromMs,
@@ -442,11 +515,37 @@ class AppDatabase extends _$AppDatabase {
                   t.occurredAt.isBetweenValues(fromMs, toMs),
             ))
             .get();
-    final out = <String, List<int>>{};
+    final out = <String, List<({int at, double weight})>>{};
     for (final row in rows) {
-      out.putIfAbsent(row.globalKey, () => []).add(row.occurredAt);
+      out.putIfAbsent(row.globalKey, () => []).add((at: row.occurredAt, weight: row.eventWeight));
     }
     return out;
+  }
+
+  /// Whether a positive row for [globalKey] exists at or after [sinceMs].
+  /// Same scoring scope as the vector: a Tautulli row imported an hour ago is
+  /// as much proof of the view as a local one, but only while its server is in
+  /// [enabledImportServerIds]. A row the scorer ignores must not suppress one
+  /// it would count.
+  Future<bool> hasPositiveInteractionSince(
+    String profileId,
+    String globalKey,
+    int sinceMs, {
+    Set<String> enabledImportServerIds = const {},
+  }) async {
+    final row =
+        await (select(mediaInteractions)
+              ..where(
+                (t) =>
+                    t.profileId.equals(profileId) &
+                    t.globalKey.equals(globalKey) &
+                    t.eventWeight.isBiggerThanValue(0) &
+                    t.occurredAt.isBiggerOrEqualValue(sinceMs) &
+                    _scoringScope(enabledImportServerIds),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
   }
 
   Future<void> upsertAffinitySnapshot(AffinitySnapshotsCompanion entry) =>

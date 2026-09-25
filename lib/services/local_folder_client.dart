@@ -312,6 +312,13 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   /// that is playing or open never disappears mid-rescan.
   void invalidateScanCache() => _scanStale = true;
 
+  /// [invalidateScanCache] for every local-folder client among [clients].
+  static void invalidateAllScans(Iterable<MediaServerClient> clients) {
+    for (final client in clients.whereType<LocalFolderClient>()) {
+      client.invalidateScanCache();
+    }
+  }
+
   @override
   Future<void> refreshLibraryMetadata(String libraryId) async {
     _itemCache.clear();

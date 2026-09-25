@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../utils/app_logger.dart';
+
 /// Returning to Home (tab switch, back from the player or a detail page, app
 /// resume) reloads the rows when they are older than this.
 const kHomeRefreshOnReturn = Duration(minutes: 2);
@@ -28,6 +30,31 @@ class DiscoverRefreshPolicy {
     final last = _lastFullLoadAt;
     if (last == null) return hasContent;
     return _now().difference(last) >= maxAge;
+  }
+}
+
+/// One full load pass's bookkeeping: which surfaces every asked server
+/// answered. Only a complete pass counts as a full load (so a missing server
+/// is asked again on the next trigger), and a silent pass keeps a surface as
+/// it was when a server did not answer it: the rows on screen beat a partial
+/// list.
+class DiscoverPassAudit {
+  DiscoverPassAudit({required this.silent, required Set<String> Function() asked}) : _asked = asked;
+
+  final bool silent;
+  final Set<String> Function() _asked;
+  bool _complete = true;
+
+  bool get complete => _complete;
+
+  /// Whether to keep the old [surface] instead of the answer in [succeeded].
+  bool keepOld(Set<String> succeeded, String surface) {
+    final missing = _asked().difference(succeeded);
+    if (missing.isEmpty) return false;
+    _complete = false;
+    if (!silent) return false;
+    appLogger.w('DiscoverProvider: silent refresh kept $surface, no answer from $missing');
+    return true;
   }
 }
 

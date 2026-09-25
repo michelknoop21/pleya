@@ -239,6 +239,72 @@ void main() {
       expect(capturedUri!.queryParameters['Fields']!.split(','), contains('MediaSources'));
     });
 
+    test('history import asks for its own user only, paged, with the taste fields', () async {
+      final requests = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[], 'TotalRecordCount': 0}), 200);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.fetchPlayedHistoryPage(startIndex: 400);
+      await scoped.fetchResumableItems();
+
+      final played = requests[0].queryParameters;
+      expect(requests[0].path, '/Items');
+      expect(played['userId'], 'user-1');
+      expect(played['Filters'], 'IsPlayed');
+      expect(played['SortBy'], 'DatePlayed');
+      expect(played['SortOrder'], 'Descending');
+      expect(played['IncludeItemTypes'], 'Movie,Episode');
+      expect(played['StartIndex'], '400');
+      expect(played['Limit'], '200');
+      expect(played['Fields']!.split(','), containsAll(['UserData', 'Genres', 'People', 'Studios']));
+
+      final resumable = requests[1].queryParameters;
+      expect(resumable['userId'], 'user-1');
+      expect(resumable['Filters'], 'IsResumable');
+      expect(resumable['Limit'], '100');
+    });
+
+    test('a failing history page or resumable list throws instead of reading as the last page', () async {
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async => http.Response('boom', 500)),
+      );
+      addTearDown(scoped.close);
+      await expectLater(scoped.fetchPlayedHistoryPage(startIndex: 200), throwsA(anything));
+      await expectLater(scoped.fetchResumableItems(), throwsA(anything));
+    });
+
+    test('the candidate pool and Similar calls ask for Genres and Studios, not People', () async {
+      final requests = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[], 'TotalRecordCount': 0}), 200);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.fetchRecentlyAdded(limit: 10);
+      await scoped.fetchRelatedHubs('m1');
+      await scoped.fetchLibraryContent('lib-1', const LibraryQuery(withTasteFields: true));
+      await scoped.fetchLibraryContent('lib-1', const LibraryQuery());
+
+      for (final request in requests.take(3)) {
+        final fields = request.queryParameters['Fields']!.split(',');
+        expect(fields, containsAll(['Genres', 'Studios']), reason: request.path);
+        expect(fields, isNot(contains('People')), reason: request.path);
+      }
+      final browse = requests[3].queryParameters['Fields']!.split(',');
+      expect(browse, isNot(contains('Genres')), reason: 'a library page for the grid stays light');
+    });
+
     test('reportPlaybackProgress sends media source and stream indexes', () async {
       Uri? capturedUri;
       String? capturedBody;

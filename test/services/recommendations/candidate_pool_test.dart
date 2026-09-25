@@ -130,6 +130,13 @@ void main() {
     expect(items.any((i) => i.id.contains('addedAt')), isTrue);
   });
 
+  test('every catalogue page asks for the taste fields, so genre rows can form on Jellyfin', () async {
+    final client = _FakeClient(libraries: [_library('1')]);
+    await pool().candidates([client]);
+    expect(client.pageCalls, isNotEmpty);
+    expect(client.pageCalls.every((c) => c.query.withTasteFields), isTrue);
+  });
+
   test('the library kind is passed through for Jellyfin show libraries', () async {
     final client = _FakeClient(libraries: [_library('1', kind: MediaKind.show)]);
     await pool().candidates([client]);
