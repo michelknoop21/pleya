@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/profiles/profile_avatar.dart';
+import 'package:pleya/screens/profile/profile_switch_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/mobile/mobile_page_header.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
@@ -38,9 +39,27 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('the avatar has no tap target — it names a surface, it does not activate one', (tester) async {
-    await pump(tester, onSearchTap: () {});
-    expect(find.ancestor(of: find.byType(ProfileAvatar), matching: find.byType(GestureDetector)), findsNothing);
+  testWidgets('tapping the avatar opens the profile switcher (DEC-133)', (tester) async {
+    final pushed = <Route<dynamic>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: monoTheme(dark: true),
+        navigatorObservers: [_PushRecorder(pushed)],
+        home: Scaffold(body: MobilePageHeader(activeProfile: null, onSearchTap: () {})),
+      ),
+    );
+    pushed.clear();
+
+    await tester.tap(find.byType(ProfileAvatar));
+    await tester.pump();
+    // The pushed page needs the app's profile providers, which this harness
+    // does not mount; what is under test is which page the tap opens.
+    while (tester.takeException() != null) {}
+
+    expect(pushed, hasLength(1));
+    final page = (pushed.single as MaterialPageRoute<dynamic>).builder(tester.element(find.byType(Scaffold).first));
+    // The same screen Mijn Pleya's "Profiel wisselen" opens, not a second switcher.
+    expect(page, isA<ProfileSwitchScreen>());
   });
 
   testWidgets('extra actions render between the lockup and search', (tester) async {
@@ -58,4 +77,13 @@ void main() {
     );
     expect(find.byKey(const Key('probe')), findsOneWidget);
   });
+}
+
+class _PushRecorder extends NavigatorObserver {
+  _PushRecorder(this.pushed);
+
+  final List<Route<dynamic>> pushed;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => pushed.add(route);
 }

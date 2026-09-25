@@ -15,6 +15,7 @@ import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
+import '../../services/account_ui_actions.dart';
 import '../app_icon.dart';
 import '../pleya_wordmark.dart';
 
@@ -79,11 +80,18 @@ class MobilePageHeader extends StatelessWidget {
                 tooltip: t.common.search,
               ),
             ),
+            // The avatar is the profile switcher, as in the northstar: it opens
+            // the same list Mijn Pleya's "Profiel wisselen" does. It used to be
+            // a bare image, so tapping it did nothing (Michel, 25 September).
             AutomationNode(
               id: avatarAutomationId,
               instance: automationInstance,
-              role: 'image',
-              child: ProfileAvatar(profile: activeProfile, size: 32),
+              role: 'button',
+              child: IconButton(
+                onPressed: () => AccountUiActions.openProfiles(context),
+                tooltip: t.screens.switchProfile,
+                icon: ProfileAvatar(profile: activeProfile, size: 32),
+              ),
             ),
           ],
         ),
