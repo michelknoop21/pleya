@@ -280,6 +280,31 @@ void main() {
       await expectLater(scoped.fetchResumableItems(), throwsA(anything));
     });
 
+    test('the candidate pool and Similar calls ask for Genres and Studios, not People', () async {
+      final requests = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[], 'TotalRecordCount': 0}), 200);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.fetchRecentlyAdded(limit: 10);
+      await scoped.fetchRelatedHubs('m1');
+      await scoped.fetchLibraryContent('lib-1', const LibraryQuery(withTasteFields: true));
+      await scoped.fetchLibraryContent('lib-1', const LibraryQuery());
+
+      for (final request in requests.take(3)) {
+        final fields = request.queryParameters['Fields']!.split(',');
+        expect(fields, containsAll(['Genres', 'Studios']), reason: request.path);
+        expect(fields, isNot(contains('People')), reason: request.path);
+      }
+      final browse = requests[3].queryParameters['Fields']!.split(',');
+      expect(browse, isNot(contains('Genres')), reason: 'a library page for the grid stays light');
+    });
+
     test('reportPlaybackProgress sends media source and stream indexes', () async {
       Uri? capturedUri;
       String? capturedBody;

@@ -52,6 +52,11 @@ const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,Origi
 /// queries because it is the heaviest item field Jellyfin returns.
 const _episodeRowFields = '$_browseFields,MediaSources';
 
+/// Candidate pool and Similar: genres and studio, so a Jellyfin candidate can
+/// fill a genre row and be scored on taste. `People` stays out for cost; person
+/// rows on a Jellyfin-only profile are deferred (recommendations register).
+const _poolFields = '$_browseFields,Genres,Studios';
+
 /// Watch-history import: the taste features (genres, cast, director, studio)
 /// come along on the page, so a film costs no separate item lookup. Only the
 /// background history sync asks for these, never a visible list.
@@ -186,7 +191,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final translator = JellyfinLibraryQueryTranslator(
       userId: connection.userId,
       parentId: libraryId,
-      fields: _browseFields,
+      fields: query.withTasteFields ? _poolFields : _browseFields,
     );
     final params = translator.toQueryParameters(query);
 
@@ -1183,7 +1188,8 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       '/Users/${_segment(connection.userId)}/Items/Latest',
       queryParameters: {
         'Limit': limit.toString(),
-        'Fields': _browseFields,
+        // The candidate pool reads this list; the home hero shares the call.
+        'Fields': _poolFields,
         'IncludeItemTypes': 'Movie,Series,Episode',
         ...jellyfinImageQueryParameters,
       },
@@ -1696,7 +1702,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       queryParameters: {
         'userId': connection.userId,
         'Limit': count.toString(),
-        'Fields': _browseFields,
+        'Fields': _poolFields,
         ...jellyfinImageQueryParameters,
       },
     );
