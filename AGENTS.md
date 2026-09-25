@@ -12,13 +12,30 @@ Shared instructions for all agents working on Pleya, a Flutter media app for des
 
 ## Review and release bundling
 
-This is the default Pleya workflow for changes that head to a TestFlight build (owner decision, 25 September 2026).
+This is the default Pleya workflow for changes that head to a TestFlight build (owner decision, 25 September 2026). Goal: fewer agent turns, fewer tokens, less wall-clock time, without dropping evidence.
 
-- Do not run a separate agent review and re-review per change. Each branch delivers its own evidence: focused tests, a green `scripts/ci_checks.sh`, a negative control for each fix (the test fails without it) and, for UI, Pleya Verify plus screenshots.
-- When a set of branches is ready, review them together once: one fresh reviewer over the combined diff, one section per branch, including the visual gate for UI work. Then one fix round and one scoped check of that fix round, merge the PRs (required checks green, never `--admin`), and cut one TestFlight build for the whole bundle.
+**Per branch (implementer)**
+- Deliver the evidence once: focused tests for the changed behavior, a negative control per fix (the test fails without it), a green `scripts/ci_checks.sh`, and for UI Pleya Verify plus screenshots listed in a short manifest (screen, size, file).
+- Do not run the full test suite locally; GitHub CI runs it on the PR. Run it locally only when shared code breaks focused tests.
+- Write a report file of at most one page: commits, evidence one-liners, concerns. The agent returns only status and the report path.
+- Decision records get a `DEC-XXX` placeholder; the number is assigned when the PR merges, so parallel branches never renumber.
+
+**Bundle review (one reviewer seat per bundle)**
+- One review package file: commit list, stat and diff per branch, plus the paths of the branch reports and screenshot manifests. The reviewer reads that file and does not re-explore the codebase or re-run evidence that is already in the reports.
+- Scale by risk, not by branch: documentation-only and mechanical branches get a skim; UI, playback, sync and permission changes get the full read. Split into parallel reviewers only when the combined diff exceeds about 3000 changed lines or spans unrelated domains.
+- Security-sensitive changes (authentication, permissions, credentials, payments) get adversarial negative controls inside the bundle review, not a separate seat.
+- The visual gate covers only screens listed in the manifests.
+- Findings go to one file with Critical, Important and Minor per branch, each with file:line and a failure scenario.
+
+**Fix and close**
+- One fix agent per branch fixes every finding including minors, with a negative control for each Critical or Important.
+- No full re-review. A scoped check on a mid-tier model looks only at the fixes for Critical and Important findings. Minors close on the fix agent's evidence.
+- Merge the PRs (required checks green, never `--admin`), then cut one TestFlight build for the whole bundle, only for the platforms the bundle touches.
+
+**Builds and disk**
+- `ensure_build_number` takes the build number from TestFlight, so the pubspec bump rides along in the next bundle PR instead of its own PR and CI round.
+- Reuse one release worktree for builds instead of a fresh checkout per build, and prune old builds first (`scripts/prune_old_builds.sh`, part of the beta lanes).
 - Large multi-task plans keep only their final whole-branch review; do not add a review after every task.
-- Security-sensitive changes (authentication, permissions, credentials, payments) keep an adversarial review of their exact diff, but it runs inside the bundle review.
-- Builds: one build per bundle, not per merge. `ensure_build_number` takes the build number from TestFlight, so the pubspec bump does not need its own PR and CI round: commit it with the next bundle PR. Prune old builds first (`scripts/prune_old_builds.sh`, already part of the beta lanes).
 
 ## Setup and verification
 
