@@ -225,4 +225,20 @@ void main() {
       expect(failing, isEmpty);
     });
   }
+
+  // VIS-0925 recheck item 3: raising the tertiary inks must not collapse a
+  // ladder. Secondary stays a visible step above tertiary everywhere.
+  test('every TV ink ladder keeps a step between secondary and tertiary', () {
+    const minStep = 0.06;
+    for (final (name, secondary, tertiary) in [
+      ('catalog', TvCatalogLayout.inkSecondary, TvCatalogLayout.inkTertiary),
+      ('source picker', TvSourcePickerLayout.inkSecondary, TvSourcePickerLayout.inkTertiary),
+      ('discovery', TvDiscoveryLayout.inkSecondary, TvDiscoveryLayout.inkTertiary),
+      ('Mijn Pleya', TvMyPleyaLayout.inkSecondary, TvMyPleyaLayout.inkTertiary),
+      ('home', TvHomeLayout.inkSecondary, TvHomeLayout.inkTertiary),
+      ('selection tags', TvCatalogLayout.inkSecondary, tvCatalogTagMutedInk),
+    ]) {
+      expect(secondary - tertiary, greaterThanOrEqualTo(minStep - 1e-9), reason: name);
+    }
+  });
 }

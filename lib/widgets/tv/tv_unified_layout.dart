@@ -556,7 +556,12 @@ class TvCatalogLayout {
   /// same reasoning as [TvSourcePickerLayout]'s, so a card and a source row
   /// read as one design system rather than two.
   static const double inkPrimary = 1;
-  static const double inkSecondary = 0.62;
+
+  /// 0.7 since the VIS-0925 recheck: the audit raised [inkTertiary] to 0.6,
+  /// and at the old 0.62 the meta line and the third line (and a chosen and a
+  /// muted selection tag) read as one grey. Raised rather than lowering the
+  /// tertiary, which has to stay above 4.5:1 in Light.
+  static const double inkSecondary = 0.7;
 
   /// The third tier, for the one line that is context about a card rather than
   /// a statement of what it is: DEC-108's "Aangevraagd door michel".
