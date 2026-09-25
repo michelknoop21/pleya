@@ -593,13 +593,32 @@ void main() {
     });
 
     test('Tautulli keeps its own admin probe: isOwnerOrAdmin ignores authority restrictions', () async {
-      // Tautulli (settings tile, pollers, "Watched by") asks a different
-      // question: is there a Plex server here whose admin data this account
-      // may read. It stays on isOwnerOrAdmin on purpose; see the doc there.
+      // Reading Tautulli (pollers, "Watched by", own-history import) asks
+      // whether this account may read a Plex server's admin data. It stays on
+      // isOwnerOrAdmin on purpose; see the doc there. Only the read side.
       final m = await plexManager(owned: true);
       m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'}, serverIds: {'server-1'});
       expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
       expect(m.isOwnerOrAdmin(ServerId('server-1')), isTrue);
+    });
+
+    test('administering Tautulli needs owner rights on a Plex server', () async {
+      final owner = await plexManager(owned: true);
+      expect(owner.canManagePlexServer(ServerId('server-1')), isTrue);
+      expect(owner.managesAPlexServer, isTrue);
+
+      // A borrowed Plex account runs on the owner's token: owned, yet no rights.
+      final borrowed = await plexManager(owned: true);
+      borrowed.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+      expect(borrowed.isOwnerOrAdmin(ServerId('server-1')), isTrue);
+      expect(borrowed.canManagePlexServer(ServerId('server-1')), isFalse);
+      expect(borrowed.managesAPlexServer, isFalse);
+
+      // Tautulli watches Plex only: a Jellyfin administrator gets no say.
+      final jellyfinAdmin = jellyfinManager(admin: true);
+      expect(jellyfinAdmin.canManageServerMetadata(ServerId('jf-machine')), isTrue);
+      expect(jellyfinAdmin.canManagePlexServer(ServerId('jf-machine')), isFalse);
+      expect(jellyfinAdmin.managesAPlexServer, isFalse);
     });
 
     test('a change of restrictions emits a status event so owner-gated UI rebuilds', () async {

@@ -290,12 +290,13 @@ class MultiServerManager {
   /// Not for canonical writes: those go through [canManageServerMetadata],
   /// which also folds in the active profile's role and borrowed connections.
   ///
-  /// Tautulli stays on this probe on purpose. Its question is whether this
-  /// account administers a Plex server whose monitoring data it may read,
-  /// which Tautulli itself decides with its own API key; it writes nothing
-  /// canonical on the media server. Routing it through the owner rule would
-  /// tie a read-side integration to the borrow restrictions of the write
-  /// side. Pinned by the "Tautulli keeps its own admin probe" test.
+  /// Tautulli reads through this probe: whether this account administers a
+  /// Plex server whose monitoring data it may read. That exposes nothing a
+  /// borrowed token cannot already ask Plex itself (`/status/sessions`).
+  /// Administering the integration (pairing, unlinking, policy) is
+  /// device-wide and goes through [canManagePlexServer] instead, so a
+  /// borrowed connection never inherits it. Pinned by the "Tautulli keeps its
+  /// own admin probe" test.
   bool isOwnerOrAdmin(ServerId serverId) {
     final client = _clients[serverId];
     if (client is PlexClient) {
@@ -362,6 +363,14 @@ class MultiServerManager {
     }
     return false;
   }
+
+  /// [canManageServerMetadata] on a Plex server. Gates administering the
+  /// Tautulli integration and its settings tile: Tautulli watches Plex only,
+  /// so a Jellyfin administrator gets no say in it.
+  bool canManagePlexServer(ServerId serverId) => _clients[serverId] is PlexClient && canManageServerMetadata(serverId);
+
+  /// Whether the active profile may administer any registered Plex server.
+  bool get managesAPlexServer => serverIds.any((id) => canManagePlexServer(ServerId(id)));
 
   /// Get all online clients
   Map<String, MediaServerClient> get onlineClients {

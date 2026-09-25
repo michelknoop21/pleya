@@ -166,6 +166,9 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   provider.attachServerResolvers(
                     serverIds: () => multiServer.serverManager.serverIds,
                     isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
+                    // Pairing and unlinking are device-wide: owner rights on
+                    // the Plex server, never through a borrowed connection.
+                    mayAdminister: multiServer.serverManager.canManagePlexServer,
                     // The credential is the admin's, so the provider resolves
                     // whose history it fetches instead of being told. Nullable
                     // read: without a Home service nothing resolves and the

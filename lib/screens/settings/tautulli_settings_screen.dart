@@ -266,7 +266,7 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         const SizedBox(height: 16),
         Text(t.tautulli.adminOnlyNote, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
         // Admin-only by construction: this whole screen is behind
-        // `SettingsScreen._ownsAPlexServer`, and the provider refuses the write
+        // `SettingsScreen._managesAPlexServer`, and the provider refuses the write
         // again for anyone who does not administer the server. Regular profiles
         // never see this switch, never opt in and never learn Tautulli exists;
         // they just get better recommendations from their own history.
