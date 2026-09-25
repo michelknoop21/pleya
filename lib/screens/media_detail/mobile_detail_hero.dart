@@ -197,7 +197,7 @@ class GlassCapsuleButton extends StatelessWidget {
         height: height,
         child: TextButton.icon(
           onPressed: onPressed,
-          style: TextButton.styleFrom(foregroundColor: fg, shape: const StadiumBorder()),
+          style: TextButton.styleFrom(foregroundColor: fg),
           icon: Icon(icon, color: fg, shadows: shadows),
           label: Text(
             label,
