@@ -151,8 +151,8 @@ void main() {
       find.descendant(of: find.byType(FocusGlowOverlay), matching: find.byType(AnimatedContainer)).first,
     );
     expect(borderContainer.decoration, isNull);
-    final border = (borderContainer.foregroundDecoration as BoxDecoration).border as Border;
-    expect(border.top.strokeAlign, BorderSide.strokeAlignOutside);
+    final ring = ((borderContainer.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring;
+    expect(ring.strokeAlign, BorderSide.strokeAlignOutside);
 
     // The glow itself is two shadows.
     expect(FocusTheme.focusGlowShadows(const Color(0xFFFFFFFF)), hasLength(2));

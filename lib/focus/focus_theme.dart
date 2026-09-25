@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/device_performance.dart';
 import '../theme/mono_tokens.dart';
+import 'focus_ring_border.dart';
+
+export 'focus_ring_border.dart';
 
 class FocusTheme {
   FocusTheme._();
@@ -48,24 +51,23 @@ class FocusTheme {
 
   static const double contrastSeparatorWidth = 1;
 
-  /// [ring] plus the separator line hugging its outer edge, as one border.
-  ///
-  /// `ring + separator` is Flutter's compound border: both paint on the same
-  /// rect (an outside stroke adds no dimensions), so the separator's
-  /// [BorderSide.strokeAlign] is set past 1 to start exactly where the ring
-  /// ends, at `ring.strokeOutset`. The separator is always present, transparent
-  /// when not needed, so a focus animation lerps between two borders of the
-  /// same structure instead of snapping.
-  static ShapeBorder _ringWithSeparator(BuildContext context, OutlinedBorder shape, BorderSide ring, bool separator) {
-    final sideAlign = 1 + 2 * ring.strokeOutset / contrastSeparatorWidth;
-    return shape.copyWith(side: ring) +
-        shape.copyWith(
-          side: BorderSide(
-            color: separator ? contrastSeparatorColor(context) : Colors.transparent,
-            width: contrastSeparatorWidth,
-            strokeAlign: sideAlign,
-          ),
-        );
+  /// [ring] on [shape] plus the separator line hugging its outer edge. The
+  /// separator is always present, transparent when not needed, so a focus
+  /// animation lerps between two borders of the same structure.
+  static FocusRingBorder _ringWithSeparator(
+    BuildContext context,
+    OutlinedBorder shape,
+    BorderSide ring,
+    bool separator,
+  ) {
+    return FocusRingBorder(
+      shape: shape.copyWith(side: BorderSide.none),
+      ring: ring,
+      separator: BorderSide(
+        color: separator ? contrastSeparatorColor(context) : Colors.transparent,
+        width: contrastSeparatorWidth,
+      ),
+    );
   }
 
   /// Radius for a ring-mode [FocusableWrapper] around a child of
