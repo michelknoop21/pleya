@@ -3030,3 +3030,118 @@ Home en voor de Series- en Filmslanding, want die delen de header. De automation
 
 **Consequences:** Wisselen kost op mobiel weer één tik minder. Uitloggen en de overige
 accountacties blijven in Mijn Pleya, zoals DEC-023 bepaalde.
+
+## DEC-134: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** De leesaudit van 24 september ([`qa/icloud-sync-audit-2026-09-24.md`](qa/icloud-sync-audit-2026-09-24.md)) toonde dat van de vier beloften
+van DEC-059 alleen de prune-bescherming bestond. `PreferenceSyncCoordinator.listen()` werd in
+productie nergens aangeroepen, dus geen `didChangeExternallyNotification` bereikte Dart en de
+engine was poll-on-foreground. De envelop werd lokaal gestempeld maar reisde niet en werd bij
+toepassen niet geraadpleegd; `reconcile()` schreef elke sleutel opnieuw, ook gelijke, waardoor een
+toestel dat later naar voren kwam een oudere waarde met een verse aankomsttijd over een nieuwere
+zette. Een lokale verwijdering werd door het andere toestel teruggezet. `disable()` gooide de
+transport weg en `enable()` maakte geen nieuwe. De status meldde "Last sent" terwijl iCloud
+uitgelogd was en een geslaagde reconcile wiste een quota-melding. De taalvoorkeur van het
+Pleya-profiel (DEC-096) stond als profiel-scoped geregistreerd terwijl haar opslag een global map
+met het profiel in de sleutel is, zodat zij inkomend op `user_<uuid>_pleya_profile_language_preferences`
+landde, een sleutel die niemand leest. Acht `JsonPref`-sleutels ontsnapten aan de registratieguard
+door een regex die geen generiek type met komma verdroeg. Het ontwerp staat in
+`docs/superpowers/specs/2026-09-24-icloud-sync-repair-design.md`.
+
+**Decision:** (1) De subscriptie op de transport is onvoorwaardelijk en wordt door `start()` en
+`debugCreate()` via één `_wire` gezet; `disable()` schakelt alleen de vlag en gooit niets weg. (2)
+Een v2-record draagt zijn stempel: `{"type","value","t","d"}`; een tombstone is `{"x":true,"t","d"}`.
+Een record zonder `t`/`d` is van de build vóór dit besluit en telt als `legacyRevisionAt`. De
+uitgebrachte build leest het formaat ongewijzigd en slaat tombstones over. (3) Bij toepassen wint
+een inkomend record alleen als zijn stempel wint volgens `PreferenceRevision.stampWins`; zijn
+beide kanten ongestempeld dan wint de store, zoals bij inschakelen en bij de cutover. Een winnende
+remote stempel wordt lokaal overgenomen. Merge-families blijven mergen; voor hen beslist de stempel
+niet. (4) `reconcile()` schrijft alleen wat lokaal strikt wint of in de store ontbreekt, en voor
+merge-families alleen bij een andere waarde. Een lokale `remove` schrijft een tombstone; reconcile
+herhaalt tombstones waar de store nog een ouder levend record heeft. Een tombstone aan een van beide
+kanten laat ook in een merge-familie de stempel beslissen: een inkomende tombstone moet nieuwer zijn
+dan de lokale wijziging, een levend record nieuwer dan de lokale verwijdering. Mislukt de lezing van
+de store, dan duwt reconcile niets, meldt een fout en herhaalt de volgende trigger de poging. Een
+settings-import stempelt elke geschreven sleutel met bron `import`. (5) Onder v2 is er geen prune, alleen de opruiming van tombstones ouder dan 180 dagen:
+`ownsCloudKey` geeft `false`, de prune-lus draait alleen voor het v1-pad dat
+`icloud_rolling_upgrade_test` bewaart. Een sleutel die de store heeft en dit toestel niet, is "nog
+niet gehad" en wordt overgenomen. (6) De guard die een lokale write tijdens een remote batch liet
+vallen gaat weg: de stempel ordent. (7) `_runReconcile` leest eerst `refreshAvailability()` en
+stopt buiten `ready`; `apply()` stopt na het lokale stempelen bij `unavailable`; `writeSucceeded`
+en `reconcileSucceeded` forceren geen `ready`; `reconcileSucceeded` laat `quota` staan. (8) Bij
+`accountChanged` (en beschikbaar) worden de lokale revisies en de v1-bootstrapmarker gewist, daarna
+leest de engine de store (die wint alles wat hij heeft, in de twee taalkaarten per entry, ongeacht
+`u`) en duwt alleen wat het nieuwe account mist, met stempel 0. Niets lokaal wordt gewist en er is
+geen partitie per account. Een heuristiek "de store bevat een record van dit toestel, dus hetzelfde
+account" is na de herreview teruggedraaid: bij A, B, A duwde die de stempels uit de B-periode naar A. Een `initialSync`-notificatie wordt gevolgd door een
+reconcile onder de nieuwe trigger `ReconcileTrigger.initialSync`. (9)
+`pleya_profile_language_preferences` en `track_language_preferences` zijn `global` met de
+merge-familie `profileKeyedMap`: draagbaar is een mapsleutel waarvan de scope het volledige Plex
+Home-profiel-id `plex-home-plex.<accountUuid>-<homeUuid>` is, met twee uuids van 16 hex-tekens (wat
+`StorageService.activeUserScope()` in de praktijk teruggeeft, omdat `parsePlexHomeProfileId` alleen
+een home-uuid van 36 tekens herkent); `local-<uuid>`, leeg en een accountverbinding die terugviel op
+de client-id van het toestel blijven thuis. Samenvoegen gaat per entry op tijdstempel `u`, in beide
+richtingen als vereniging; een verwijdering reist als tombstone (een lege keuze met alleen `u`) die
+na 180 dagen vervalt. De seriekaart `track_language_preferences` heeft een eigen familie
+`trackLanguageMap`: dezelfde merge met daarna de cap van `TrackPreferenceStore`, inkomend en
+uitgaand. Die cap staat op 100 levende serie-uitzonderingen (was 250) plus hoogstens 100
+tombstones; gemeten op de draad is dat in het slechtste geval 59 KB van de 100 KB per waarde, en de
+groottegrens telt UTF-8-bytes. Een taalvoorkeur die onder de vorige build is geïmporteerd, landde op de dode
+sleutel `user_<scope>_pleya_profile_language_preferences` en is weg tot ze opnieuw wordt
+geïmporteerd. (10) De registratieguard gebruikt `Pref(?:<[^()]*>)?\(\s*'`. Nieuw geregistreerd:
+`keyboard_shortcuts` en `keyboard_hotkeys` als global; `media_version_preferences`,
+`unified_source_preferences`, `preferred_unified_server` en `custom_shader_presets` als
+device-local; `tv_live_tv_capability` als runtime cache. `live_tv_default_favorites` wordt global.
+`default_quality_preset`, `buffer_size`, `mpv_config_text`, `mpv_config_presets`,
+`global_shader_preset`, `enable_discord_rpc`, `video_player_navigation_enabled` en
+`auto_check_updates_on_startup` synchroniseren niet meer maar blijven exporteerbaar
+(`_deviceBoundPref`). (11) De Swift-plugins leveren events via `DispatchQueue.main.async`.
+
+**Consequences:** Wat een gebruiker anders ziet: een wijziging op de Mac verschijnt op de Apple TV
+zonder herstart; een teruggezette instelling blijft teruggezet; de statusregel toont geen tijdstip
+als iCloud uitgelogd is; uit en weer aan werkt binnen één sessie; de taal van het Pleya-profiel
+volgt over toestellen heen; `hidden_libraries`, `library_order` en de `library_*`-sleutels reizen
+voor een Plex Home-profiel met de echte scopevorm `plex-home-plex.<16hex>-<16hex>`
+(`PreferenceSyncScope.forProfile` gebruikt dezelfde `isPortableProfileScope` als de taalkaarten,
+eindreview I5), met een stempel per profiel (I1). KVS neemt sleutels van hoogstens 64 bytes UTF-8 en
+bewaart langere niet (herreview N1), dus de cloudsleutel draagt geen volledig profiel-id en geen
+`serverId:libraryId` meer: beide worden `PreferenceSyncScope.shortId`, de eerste tien tekens van
+base64url(SHA-256), en een per-bibliotheekrecord noemt zijn volledige sleutel in `k`. Een profielsleutel
+wordt `__pleya_pref_v2/profile/<shortId>/library_grouping_<shortId>`, de langste 62 bytes
+(`kvs_footprint_test`). De transport weigert een langere sleutel (`maxKeyBytes`), de engine telt
+dat als oversize. De lange vorm heeft KVS nooit bewaard, dus er valt niets te migreren. Na de upgrade
+wint voor een Plex Home-profiel het toestel dat als eerste reconcilet `hidden_libraries` en
+`library_order`: beide kanten zijn ongestempeld en de store wint, dus een bewust per toestel
+afwijkende inrichting (een ingeperkt kinderprofiel op de Apple TV) wordt eenmalig overschreven. Een
+accountverbinding die terugviel op de client-id van het toestel blijft thuis. Wat niet is gebouwd: profielscope voor Jellyfin- en Pleya
+Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_order`, `library_*`
+en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale
+voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en
+`preferred_unified_server`. Bekende grenzen: een toestel dat langer dan 180 dagen offline was, kan
+een gewiste serie-uitzondering terugbrengen omdat de tombstone dan vervallen is, en dat geldt ook
+voor een verwijdering die buiten de 100 nieuwste tombstones van de seriekaart valt; wie meer dan 100
+serie-uitzonderingen had, verliest de oudste; het lokale revisieblob groeit tot
+één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
+circa 40 KB); een reset schrijft een tombstone voor elke resetbare voorkeur, ook een die nooit gezet
+was, en een verdwenen bibliotheek laat haar tombstones achter; reconcile haalt tombstones van dit
+toestel (globaal en het actieve profiel) na 180 dagen uit de store, dus zulke sleutels houden hun
+plek van de 1024 hoogstens een half jaar bezet, en een toestel dat langer offline was kan de
+verwijdering terugbrengen; de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
+waarden over tombstones terug. Zijn kale remove wist op dit toestel geen gestempelde lokale waarde:
+de waarde blijft staan en reconcile zet haar terug in de store, waarna de uitgebrachte build haar bij
+zijn volgende reconcile weer prunet. Een tombstone die hij overschrijft, zet deze build terug. Tot
+alle Apple-toestellen deze build hebben, schrijven de twee builds die sleutels dus heen en weer; de
+waarde blijft op het bijgewerkte toestel bestaan maar bereikt het oude niet. De releasevoorwaarde
+uit DEC-060 blijft. Een wijziging die uitgelogd
+is gemaakt verliest bij de volgende aanmelding van de store voor elke sleutel die de store heeft,
+ook bij terugkeer naar hetzelfde account: de engine kent geen accountidentiteit, dus elke aanmelding
+wist de stempels. Een tombstone die de store niet meer heeft (een uitgebrachte build schreef eroverheen)
+gaat daarbij ook verloren. Een sleutel die de store mist houdt de lokale waarde. Een wijziging op een toestel met
+de vorige build wordt zonder stempel geschreven en verliest van elke sleutel die een nieuwer toestel
+gestempeld heeft, dus alle Apple-toestellen moeten tegelijk worden bijgewerkt. Bewijs: unit tegen
+`FakeTransport`; geen simulator kan cross-device KVS bewijzen; per punt geldt `CODE CLOSED · UNIT
+VERIFIED · HARDWARE OPEN` tot het recept in de spec §7 op twee toestellen is gedraaid. Register:
+`docs/icloud-sync-repair-register.md`.

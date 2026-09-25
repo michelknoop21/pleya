@@ -44,6 +44,13 @@ Nothing user-facing since the last published build.
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
 
+### Notes
+
+- **Hidden libraries and library order now sync over iCloud for Plex Home profiles.** The first
+  device to sync after updating sets them for that profile on every device. If you arranged a
+  profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
+  after updating.
+
 ## 2.8.0 · build 298 · 24 September 2026 · Apple TV
 
 <!-- commit: 53e2704a -->

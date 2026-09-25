@@ -1,18 +1,20 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_logger.dart';
-import '../settings_export_service.dart';
 import 'preference_legacy_bootstrap.dart';
+import 'preference_key_mapper.dart';
 import 'preference_merge_strategies.dart';
 import 'preference_mutation.dart';
-import 'preference_quarantine.dart';
 import 'preference_reconcile_scheduler.dart';
+import 'preference_reconciler.dart';
 import 'preference_refresh.dart';
+import 'preference_remote_apply.dart';
 import 'preference_revision.dart';
+import 'preference_revision_store.dart';
+import 'preference_single_send.dart';
 import 'preference_sync_policy.dart';
 import 'preference_sync_scope.dart';
 import 'preference_sync_status.dart';
@@ -35,11 +37,12 @@ export 'preference_sync_status.dart';
 /// And it started its work with `unawaited(...)`, so a failed push had nowhere
 /// to be reported.
 ///
-/// The wire format is still v1 while the cloud-content migration waits for its
-/// own checkpoint: cloud keys are export base keys and values are the bare
-/// typed markers. [PreferenceRevision] and [PreferenceSyncScope.cloudKey] are
-/// built and tested, and go live together in A6, under the `__` namespace an
-/// older client provably leaves alone.
+/// Since DEC-134 the wire format carries the envelope: a record is
+/// `{"type","value","t","d"}` and a removal is a tombstone `{"x":true,"t","d"}`.
+/// Both live in the `__pleya_pref_v2/` namespace the previous build already
+/// reads; that build ignores `t` and `d` and skips a tombstone, so the formats
+/// coexist. A record without a stamp is one the previous build wrote and
+/// counts as [legacyRevisionAt].
 class PreferenceSyncCoordinator {
   PreferenceSyncCoordinator({
     required SharedPreferencesWithCache prefs,
@@ -52,32 +55,26 @@ class PreferenceSyncCoordinator {
     VoidCallback? onRemoteChangesApplied,
     VoidCallback? onLocalStateChanged,
   }) : _prefs = prefs,
-       _activeProfileId = activeProfileId,
+       _keys = PreferenceKeyMapper(
+         activeProfileId: activeProfileId,
+         v2Format: useV2CloudFormat ?? v2CloudFormatEnabled,
+         isServerIdPortable: isServerIdPortable ?? noServerIdIsPortable,
+       ),
        _enabled = enabled,
        _deviceId = deviceId,
-       _isServerIdPortable = isServerIdPortable ?? noServerIdIsPortable,
-       _useV2CloudFormat = useV2CloudFormat ?? v2CloudFormatEnabled,
        _transport = transport,
        onRemoteChangesApplied = onRemoteChangesApplied,
-       onLocalStateChanged = onLocalStateChanged {
-    _registerBuiltInMergeFamilies();
-  }
+       onLocalStateChanged = onLocalStateChanged;
 
   final SharedPreferencesWithCache _prefs;
-  final String? Function() _activeProfileId;
+
+  /// Key mapping, scope and merges. See [PreferenceKeyMapper].
+  final PreferenceKeyMapper _keys;
   final bool Function() _enabled;
   final String _deviceId;
 
-  /// Whether a server id identifies the same server on another device. Deny by
-  /// default: without the connection layer wired in, nothing is portable.
-  ///
-  /// Late-bindable, because the answer comes from the connection registry and
-  /// that only exists once the database is open, well after the engine starts.
-  /// Until it is supplied nothing library-scoped travels, which is the right
-  /// way round: a missing answer must not read as "yes".
-  IsServerIdPortable _isServerIdPortable;
-
-  set serverIdPortability(IsServerIdPortable predicate) => _isServerIdPortable = predicate;
+  /// See [PreferenceKeyMapper.isServerIdPortable].
+  set serverIdPortability(IsServerIdPortable predicate) => _keys.isServerIdPortable = predicate;
 
   PreferenceTransport? _transport;
 
@@ -97,10 +94,6 @@ class PreferenceSyncCoordinator {
 
   StreamSubscription<RemotePreferenceChange>? _changeSub;
 
-  /// Guards the remote-apply window. Remote writes go straight to `prefs`, so
-  /// they cannot echo by construction; this is the second lock on the door.
-  bool _applyingRemote = false;
-
   final ValueNotifier<PreferenceSyncStatus> status = ValueNotifier(const PreferenceSyncStatus());
 
   PreferenceTransport? get transport => _transport;
@@ -108,125 +101,38 @@ class PreferenceSyncCoordinator {
   /// Whether the cloud content has been migrated to the scoped, enveloped v2
   /// format.
   ///
-  /// Off by design: the coordinator, the policy, the scope and the envelope all
-  /// exist, but nothing writes a v2 record or deletes a v1 one until profile
-  /// ownership and rolling-client safety have been signed off. Flipping this is
-  /// the whole of that change.
+  /// On in every build since the v2 cutover: nothing writes a flat v1 key any
+  /// more. Since DEC-134 v2 records also carry the revision envelope, and a
+  /// removal travels as a tombstone.
   ///
   /// The two formats differ in more than the key shape, which is why the switch
   /// is readable per instance rather than only as a constant. Under v1 the
   /// cloud key carries no profile identity, so an incoming profile-scoped
-  /// record cannot be applied at all: it goes to [PreferenceQuarantine] instead
-  /// of being handed to whichever profile happens to be active. Under v2 the
-  /// profile is in the key, so the same record applies normally.
+  /// record cannot be applied at all: `preference_remote_apply.dart` hands it
+  /// to `PreferenceQuarantine` instead of to whichever profile happens to be
+  /// active. Under v2 the profile is in the key, so the same record applies
+  /// normally.
   static const bool v2CloudFormatEnabled = true;
-
-  final bool _useV2CloudFormat;
 
   /// This instance's format. Equals [v2CloudFormatEnabled] in the app; tests
   /// drive both sides.
-  bool get usesV2CloudFormat => _useV2CloudFormat;
+  bool get usesV2CloudFormat => _keys.v2Format;
 
   // ---- Scope ----------------------------------------------------------------
 
-  PreferenceSyncScope scopeFor(String baseKey) {
-    final policy = PreferenceSyncPolicyRegistry.policyFor(baseKey);
-    return switch (policy.scope) {
-      PreferenceScopeKind.global => PreferenceSyncScope.global,
-      PreferenceScopeKind.deviceLocal => PreferenceSyncScope.deviceLocal,
-      PreferenceScopeKind.profile => PreferenceSyncScope.forProfile(_activeProfileId()),
-    };
-  }
+  PreferenceSyncScope scopeFor(String baseKey) => _keys.scopeFor(baseKey);
 
   /// The active profile's scope identifier, the value `StorageService` uses for
   /// its `user_<scope>_` prefixes.
-  String? get activeUserScope => PreferenceSyncScope.forProfile(_activeProfileId()).id;
+  String? get activeUserScope => _keys.activeProfileScope.id;
 
-  /// Full prefs key to the key it travels under, or null when it must not
-  /// travel: unregistered, sensitive, device-local, another profile's, or a
-  /// profile-scoped value with no portable profile behind it.
-  String? cloudKeyFor(String fullKey) {
-    final baseKey = baseKeyOf(fullKey);
-    if (baseKey == null) return null;
-    if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return null;
-    if (!_keyIdentityIsPortable(baseKey)) return null;
-    final scope = scopeFor(baseKey);
-    if (!scope.portable) return null;
-    return _useV2CloudFormat ? scope.cloudKey(baseKey) : baseKey;
-  }
+  /// See [PreferenceKeyMapper.cloudKeyFor].
+  String? cloudKeyFor(String fullKey) => _keys.cloudKeyFor(fullKey);
 
-  /// Per-library families put the identity in the key
-  /// (`library_sort_<serverId:libraryId>`), so there is nothing to filter out
-  /// of the value: the key travels whole or not at all.
-  bool _keyIdentityIsPortable(String baseKey) {
-    for (final prefix in perLibraryKeyPrefixes) {
-      if (baseKey.startsWith(prefix)) {
-        return PreferenceValuePortability.isPortableScopedKey(baseKey, prefix, _isServerIdPortable);
-      }
-    }
-    return true;
-  }
+  /// See [PreferenceKeyMapper.baseKeyOf].
+  String? baseKeyOf(String fullKey) => _keys.baseKeyOf(fullKey);
 
-  /// Families whose key carries a `serverId:libraryId`.
-  static const List<String> perLibraryKeyPrefixes = [
-    'library_filters_',
-    'library_sort_',
-    'library_grouping_',
-    'library_tab_',
-  ];
-
-  /// The merge behaviour per family, looked up by the name in the policy.
-  ///
-  /// The coordinator never learns what a value means. It asks the registry
-  /// whether this key's family has a merge and calls it. Before this there was
-  /// one hardcoded `if` on a key list, which is why nothing else could ever
-  /// need a merge.
-  final PreferenceMergeRegistry _merges = PreferenceMergeRegistry();
-
-  PreferenceMergeRegistry get mergeRegistry => _merges;
-
-  void _registerBuiltInMergeFamilies() {
-    // The closure reads the field rather than capturing it: the portability
-    // predicate arrives from the connection registry after the engine starts.
-    _merges.register(buildServerScopedListFamily((serverId) => _isServerIdPortable(serverId)));
-    _merges.register(buildProgressMapFamily(watchedMap: false));
-    _merges.register(buildProgressMapFamily(watchedMap: true));
-  }
-
-  /// The value as it may leave the device, or null when nothing may.
-  ///
-  /// For a family with an outgoing merge this is where it runs. [remote] is the
-  /// value currently in the store, when the caller could read it; null means
-  /// "not available", and a family must then fall back to what it can decide on
-  /// its own — for the server-scoped lists, dropping the entries whose server id
-  /// is not portable. A device with one Plex server and one local folder still
-  /// syncs its Plex choices; the folder's simply never leave.
-  Object? portableValueFor(String baseKey, Object? value, {Object? remote}) {
-    final outbound = _merges.familyFor(baseKey)?.outbound;
-    if (outbound == null) return value;
-    return outbound(value, remote);
-  }
-
-  /// Strip the active profile's prefix. Returns null for a key belonging to
-  /// another profile, or for a reserved namespace.
-  String? baseKeyOf(String fullKey) {
-    for (final reserved in PreferenceSyncPolicyRegistry.reservedPrefixes) {
-      if (fullKey.startsWith(reserved)) return null;
-    }
-    final scope = PreferenceSyncScope.forProfile(_activeProfileId());
-    final prefix = scope.localPrefix;
-    if (prefix.isNotEmpty && fullKey.startsWith(prefix)) return fullKey.substring(prefix.length);
-    if (fullKey.startsWith(SettingsExportService.userPrefixRoot)) return null;
-    return fullKey;
-  }
-
-  /// Inverse of [baseKeyOf] for a base key that arrived from a transport.
-  String? localKeyFor(String baseKey) {
-    if (!PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) return baseKey;
-    final scope = PreferenceSyncScope.forProfile(_activeProfileId());
-    if (scope.id == null) return null;
-    return '${scope.localPrefix}$baseKey';
-  }
+  PreferenceMergeRegistry get mergeRegistry => _keys.merges;
 
   // ---- Mutation intake ------------------------------------------------------
 
@@ -244,173 +150,163 @@ class PreferenceSyncCoordinator {
       // switches profiles is covered, including the bootstrap and the cleanup.
       unawaited(requestReconcile(ReconcileTrigger.profileChanged));
     }
-    if (_applyingRemote && mutation.source == PreferenceSource.local) {
-      // A local write landing inside a remote-apply window is not an echo, but
-      // ordering it against the batch we are mid-way through is not worth the
-      // complexity: let the reconcile that follows pick it up.
-      return;
-    }
     if (!mutation.mayTravel) return;
 
-    final baseKey = baseKeyOf(mutation.key);
+    final baseKey = _keys.baseKeyOf(mutation.key);
     if (baseKey == null) return;
 
-    if (mutation.stampsUserChange) _stampRevision(baseKey, mutation);
+    // Stamped before any gate that holds the send back. An unstamped local
+    // value loses to every stamped remote record (see [remoteStampWins]), so a
+    // user's write that skipped the stamp would be overwritten by the next
+    // remote batch, however old that batch is.
+    final stampKey = _keys.stampKeyFor(baseKey);
+    if (mutation.stampsUserChange && PreferenceSyncPolicyRegistry.maySync(baseKey)) {
+      _revisionStore.stampUserChange(stampKey, removed: mutation.operation == PreferenceOperation.remove);
+    }
 
     if (!_enabled()) return;
     final transport = _transport;
     if (transport == null) return;
+    final availability = status.value.availability;
+    if (availability == PreferenceSyncAvailability.unavailable || availability == PreferenceSyncAvailability.unknown) {
+      // Signed out, or not known yet. The change is stamped above, so the
+      // first reconcile once the store is there carries it; writing now would
+      // only produce a "last sent" time for a value that went nowhere.
+      return;
+    }
 
-    final cloudKey = cloudKeyFor(mutation.key);
+    final cloudKey = _keys.cloudKeyFor(mutation.key);
     if (cloudKey == null) return;
 
     _setStatus(status.value.starting(DateTime.now()));
     try {
       if (mutation.operation == PreferenceOperation.remove) {
         // A removal is a first-class change. v1 lost it here: the hook only had
-        // a key, read `null` back, and stopped.
-        await transport.remove(cloudKey);
+        // a key, read `null` back, and stopped. Since DEC-134 it travels as a
+        // tombstone rather than as an absent key, so the other device can tell
+        // "deleted" from "never had it".
+        final tombstone = encodeTombstone(_revisionStore.stampOf(stampKey), key: _keys.keyTagFor(baseKey));
+        if (exceedsTransportLimits(transport, cloudKey, tombstone)) {
+          appLogger.w('preference sync: removal of ${_category(baseKey)} exceeds the transport limits');
+          _setStatus(status.value.copyWith(oversize: status.value.oversize + 1).raise(PreferenceSyncHealth.warning));
+          return;
+        }
+        await transport.write(cloudKey, tombstone);
         _setStatus(status.value.writeSucceeded(DateTime.now()));
         return;
       }
 
-      // A family with an outgoing merge needs to see what is in the store
-      // before it decides what to send. A failed read is not an empty store, so
-      // the write is held back rather than pushed over entries this device
-      // cannot account for.
-      Object? remoteValue;
-      if (_merges.familyFor(baseKey)?.mergesOutgoing ?? false) {
-        final all = await transport.readAll();
-        if (all == null) {
-          _setStatus(status.value.countingSkipped(1).raise(PreferenceSyncHealth.warning));
-          appLogger.w('preference sync: held back ${_category(baseKey)}, the store could not be read');
-          return;
-        }
-        final record = all[cloudKey];
-        remoteValue = record == null ? null : _decodeTyped(record)?.$2;
+      // A family with an outgoing merge reads the store and writes from that
+      // read, so it takes a turn: a reconcile or a remote batch in between
+      // would change the store under it.
+      if (_keys.merges.familyFor(baseKey)?.mergesOutgoing ?? false) {
+        await _exclusively(
+          () => _singleSend.send(transport, baseKey, cloudKey, stampKey, mutation.value, readFirst: true),
+        );
+      } else {
+        await _singleSend.send(transport, baseKey, cloudKey, stampKey, mutation.value, readFirst: false);
       }
-
-      final portableValue = portableValueFor(baseKey, mutation.value, remote: remoteValue);
-      if (portableValue == null) {
-        // Everything in this list belongs to a non-portable backend. Nothing to
-        // send, and nothing to delete either: the cloud copy belongs to the
-        // other devices' entries.
-        _setStatus(status.value.countingSkipped(1));
-        return;
-      }
-      final entry = SettingsExportService.encodeValue(portableValue);
-      if (entry == null) {
-        _setStatus(status.value.countingSkipped(1));
-        return;
-      }
-      final encoded = json.encode(entry);
-      final cap = transport.maxValueBytes;
-      if (cap != null && encoded.length > cap) {
-        // Oversize is reported, not swallowed. It also must not become a
-        // removal: leaving the older cloud value in place is strictly better
-        // than deleting it because the newer one did not fit.
-        appLogger.w('preference sync: value for ${_category(baseKey)} exceeds the transport cap');
-        _setStatus(status.value.copyWith(oversize: status.value.oversize + 1).raise(PreferenceSyncHealth.warning));
-        return;
-      }
-      await transport.write(cloudKey, encoded);
-      _setStatus(status.value.writeSucceeded(DateTime.now()));
     } catch (e) {
       _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: _errorCategory(e)));
       appLogger.w('preference sync: transport write failed for ${_category(baseKey)}');
     }
   }
 
+  late final PreferenceSingleSend _singleSend = PreferenceSingleSend(
+    keys: _keys,
+    revisionStore: _revisionStore,
+    status: status,
+  );
+
   // ---- Conflict metadata ----------------------------------------------------
 
-  /// Key holding this device's per-preference revision metadata. Registered as
-  /// runtime cache, so it never syncs: it describes this device's edits.
-  static const String revisionStoreKey = 'pleya_pref_revisions_v1';
+  /// See [PreferenceRevisionStore.storeKey].
+  static const String revisionStoreKey = PreferenceRevisionStore.storeKey;
 
-  Map<String, dynamic> _revisions() {
-    final raw = _prefs.getString(revisionStoreKey);
-    if (raw == null) return {};
-    try {
-      final decoded = json.decode(raw);
-      return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
-    } catch (_) {
-      return {};
-    }
-  }
+  /// See [PreferenceRevisionStore.legacyAt].
+  static const int legacyRevisionAt = PreferenceRevisionStore.legacyAt;
 
-  /// The revision a value carries when it was not written by a user but found
-  /// already there: a v1 cloud value adopted at upgrade, or a local value that
-  /// predates the revision store.
-  ///
-  /// Zero, not `now()`. A migrated value has no real change time, and stamping
-  /// it with the moment the migration happened to run would make the last
-  /// device to upgrade look like the most recent editor of every setting it
-  /// touched. At zero, the first genuine change on any device wins.
-  static const int legacyRevisionAt = 0;
-
-  void _stampRevision(String baseKey, PreferenceMutation mutation) {
-    if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return;
-    final revisions = _revisions();
-    revisions[baseKey] = {
-      't': _nextRevisionTimestamp(baseKey, revisions),
-      'd': _deviceId,
-      if (mutation.operation == PreferenceOperation.remove) 'x': true,
-    };
-    unawaited(_prefs.setString(revisionStoreKey, json.encode(revisions)));
-  }
-
-  /// A timestamp that never goes backwards on this device.
-  ///
-  /// Cross-device clock skew is a real limit of client-side last-writer-wins
-  /// and this does not fix it. What it does fix is the local case: set the
-  /// clock back an hour, change a setting, and without this the new value would
-  /// carry a revision below its own predecessor, so the *older* value would win
-  /// on the very device that just replaced it. One millisecond past the last
-  /// revision is enough to keep the local sequence honest.
-  int _nextRevisionTimestamp(String baseKey, Map<String, dynamic> revisions) {
-    final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final previous = revisions[baseKey];
-    final previousAt = previous is Map ? previous['t'] : null;
-    if (previousAt is! int) return now;
-    return now > previousAt ? now : previousAt + 1;
-  }
+  late final PreferenceRevisionStore _revisionStore = PreferenceRevisionStore(_prefs, _deviceId);
 
   /// Record a revision for a value that was already present, without pretending
-  /// the user just chose it. Idempotent: an existing revision is never
-  /// downgraded to the legacy one.
+  /// the user just chose it. Idempotent.
   Future<void> bootstrapLegacyRevision(String baseKey) async {
     if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return;
-    final revisions = _revisions();
-    if (revisions.containsKey(baseKey)) return;
-    revisions[baseKey] = {'t': legacyRevisionAt, 'd': _deviceId};
-    await _prefs.setString(revisionStoreKey, json.encode(revisions));
+    await _revisionStore.bootstrapLegacy(_keys.stampKeyFor(baseKey));
   }
 
   /// The last deliberate local change to [baseKey], or null when this device
   /// never made one. This is the half of [PreferenceRevision] that has to be
   /// kept locally so a remote snapshot has something to be compared against.
   PreferenceRevision? localRevision(String baseKey) {
-    final entry = _revisions()[baseKey];
+    final entry = _revisionStore.all()[_keys.stampKeyFor(baseKey)];
     if (entry is! Map) return null;
     final at = entry['t'];
     final device = entry['d'];
     if (at is! int || device is! String) return null;
     final deleted = entry['x'] == true;
-    final localKey = localKeyFor(baseKey);
+    final localKey = _keys.localKeyFor(baseKey);
     final value = deleted || localKey == null ? null : _prefs.get(localKey);
     if (!deleted && value == null) return null;
     return PreferenceRevision(value: value, updatedAt: at, deviceId: device, deleted: deleted);
   }
 
-  @visibleForTesting
-  void debugClearRevisions() => unawaited(_prefs.remove(revisionStoreKey));
+  /// Forget every stamp. Used when the account under the store changes (the
+  /// stamps describe edits against another account's history) and by tests.
+  Future<void> clearRevisions() => _revisionStore.clear();
 
   // ---- Reconciliation lifecycle ---------------------------------------------
 
   late final PreferenceReconcileScheduler _scheduler = PreferenceReconcileScheduler(
-    run: _runReconcile,
-    onError: (e) => appLogger.w('preference sync: reconcile failed (${_errorCategory(e)})'),
+    run: (triggers) => _exclusively(() => _runReconcile(triggers)),
+    onError: (e) {
+      _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: _errorCategory(e)));
+      appLogger.w('preference sync: reconcile failed (${_errorCategory(e)})');
+    },
   );
+
+  /// The tail of the queue a reconcile run and a remote event take turns on.
+  Future<void> _turn = Future<void>.value();
+
+  /// Run [body] after every earlier reconcile run and remote event finished.
+  ///
+  /// A reconcile reads the store once and decides from that snapshot. A remote
+  /// event applied in the middle would change local state under it, and the
+  /// event's own read would race the reconcile's writes, so the two queue.
+  ///
+  /// Each turn gets [turnTimeout] from the moment it starts, so turns behind a
+  /// hung one are released one at a time, and a hung reconcile frees the
+  /// scheduler instead of holding it for the rest of the session.
+  Future<void> _exclusively(Future<void> Function() body) {
+    // ponytail: a bounded turn, not cancellation. A turn that hangs (a native
+    // call that never answers) is left running in the background while the
+    // queue moves on, so it can still land late. Cancel the transport call
+    // instead if that ever shows up.
+    final run = _turn.then((_) {
+      _turnGeneration++;
+      return body().timeout(
+        turnTimeout,
+        onTimeout: () {
+          // The abandoned turn is no longer current: whatever it does when it
+          // answers late is checked against this number and dropped.
+          _turnGeneration++;
+          _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: 'timeout'));
+          appLogger.w('preference sync: a sync turn did not finish in time');
+        },
+      );
+    });
+    _turn = run.catchError((Object _) {});
+    return run;
+  }
+
+  /// Bumped when a turn starts and when one times out. A turn that answers
+  /// late sees a newer number and knows its snapshot is stale.
+  int _turnGeneration = 0;
+
+  /// How long one reconcile run or remote event may take before the queue
+  /// moves on without it.
+  @visibleForTesting
+  Duration turnTimeout = const Duration(seconds: 30);
 
   /// Test-facing view of the scheduler, so "one run, not three" is measurable.
   @visibleForTesting
@@ -426,22 +322,62 @@ class PreferenceSyncCoordinator {
   /// a trigger that can have changed the store needs a pull before the push. An
   /// import or a reset changed *local* state, so pulling first would be a good
   /// way to undo what the user just did.
+  /// An account change seen but not yet handled by a current turn.
+  ///
+  /// ponytail: in memory, so an app restart between the event and its turn
+  /// loses it; persist it in prefs if that shows up.
+  bool _accountChangePending = false;
+
   Future<void> _runReconcile(Set<ReconcileTrigger> triggers) async {
-    // An ambient trigger fires whether or not anybody asked for sync, so it is
-    // gated here. The explicit ones come from a caller that already decided:
-    // the enable path is what turns the toggle on, and import and reset are
-    // deliberate bulk acts.
-    const ambient = {ReconcileTrigger.foreground, ReconcileTrigger.accountChanged, ReconcileTrigger.profileChanged};
-    if (triggers.every(ambient.contains) && !_enabled()) return;
-    final needsBootstrap = triggers.contains(ReconcileTrigger.boot) || triggers.contains(ReconcileTrigger.enabled);
+    // Still the current turn, and sync still on. Taken before the first await:
+    // a turn that hangs in the availability check and answers after its
+    // timeout must not clear stamps or act on a snapshot beside the next turn.
+    final generation = _turnGeneration;
+    bool current() => generation == _turnGeneration && _enabled();
+
+    // One gate for every trigger. `disabled` means the toggle is off (no
+    // channel call is made to find that out), `unavailable` means nobody is
+    // signed in, and the store may have gone away while we were suspended. In
+    // each case the status has to say so before this pass pretends to have
+    // sent anything. The enable path writes the toggle first, and import and
+    // reset only call in through `pushAllIfEnabled`.
+    if (triggers.contains(ReconcileTrigger.accountChanged)) _accountChangePending = true;
+    await refreshAvailability();
+    if (status.value.availability != PreferenceSyncAvailability.ready || !current()) return;
+    // Pending until a current turn has cleared the stamps: a turn that timed
+    // out or stopped before this point leaves it set, and the next reconcile of
+    // any kind runs the account change instead of keeping the old stamps.
+    final storeWins = _accountChangePending;
+    if (storeWins) {
+      // Strict read-first (B9). The stamps describe this device's edits against
+      // the previous account's history; against another account they mean
+      // nothing, and keeping them would push the old account's values into the
+      // new one as "newer". The engine has no account identity: a store holding
+      // records this device wrote proves nothing (A, B, A would carry B's
+      // stamps into A), so every account change reads first. Local values stay;
+      // the store wins what it holds, per map entry too.
+      await clearRevisions();
+      await PreferenceLegacyBootstrap.reset(_prefs);
+      if (!current()) return;
+      _accountChangePending = false;
+    }
+    final needsBootstrap =
+        triggers.contains(ReconcileTrigger.boot) || triggers.contains(ReconcileTrigger.enabled) || storeWins;
     final localIsTheSource = triggers.every((t) => t == ReconcileTrigger.imported || t == ReconcileTrigger.reset);
 
-    if (needsBootstrap) await bootstrapFromLegacyV1();
-    if (!localIsTheSource) await applyAllRemote();
-    await reconcile();
+    if (needsBootstrap) await bootstrapFromLegacyV1(proceed: current);
+    if (!localIsTheSource) await applyAllRemote(proceed: current, storeWins: storeWins);
+    await _reconciler.reconcile(proceed: current);
   }
 
   // ---- Availability ---------------------------------------------------------
+
+  /// Hold every send until [refreshAvailability] answers, without holding back
+  /// the stamp. The default status reads `disabled`, which `starting()`
+  /// promotes to `ready`, so a write in that window would report a send from a
+  /// device that may be signed out; `unknown` makes [apply] stamp and stop,
+  /// and unlike `unavailable` does not claim that iCloud is signed out.
+  void markAvailabilityUnknown() => _setStatus(status.value.copyWith(availability: PreferenceSyncAvailability.unknown));
 
   /// Re-read whether the engine can run at all: the toggle, then the transport.
   ///
@@ -450,7 +386,7 @@ class PreferenceSyncCoordinator {
   /// problem in the app.
   Future<void> refreshAvailability() async {
     if (!_enabled()) {
-      _setStatus(status.value.copyWith(availability: PreferenceSyncAvailability.disabled));
+      _setStatus(status.value.switchedOff());
       return;
     }
     final available = await _transport?.isAvailable() ?? false;
@@ -471,12 +407,18 @@ class PreferenceSyncCoordinator {
 
   Future<void> _onRemoteChange(RemotePreferenceChange change) async {
     if (!_enabled()) return;
-    _setStatus(status.value.sawRemoteChange(DateTime.now()));
+    // Every other event is evidence of a live store. An account change is not:
+    // it fires on sign-out too, so it re-checks availability instead of
+    // claiming it, and a send cannot slip through while the check runs.
+    if (change.reason != RemoteChangeReason.accountChanged) {
+      _setStatus(status.value.sawRemoteChange(DateTime.now()));
+    }
     switch (change.reason) {
       case RemoteChangeReason.quotaExceeded:
         appLogger.w('preference sync: transport quota exceeded');
         _setStatus(status.value.raise(PreferenceSyncHealth.quota));
       case RemoteChangeReason.accountChanged:
+        _accountChangePending = true;
         // The account under the store changed, or went away. Re-ask whether
         // there is a store to talk to at all before deciding this is a sync:
         // signing out is not an error, and reporting it as one sends the user
@@ -486,362 +428,89 @@ class PreferenceSyncCoordinator {
           await requestReconcile(ReconcileTrigger.accountChanged);
         }
       case RemoteChangeReason.serverChange:
+        if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys);
       case RemoteChangeReason.initialSync:
         if (change.changedKeys.isNotEmpty) await applyRemoteKeys(change.changedKeys);
+        await requestReconcile(ReconcileTrigger.initialSync);
     }
   }
 
-  Future<void> applyAllRemote() async {
+  /// Drive the remote-event path without a stream. Test-only.
+  @visibleForTesting
+  Future<void> handleRemoteChange(RemotePreferenceChange change) => _onRemoteChange(change);
+
+  /// Apply everything in the store. [proceed] is asked after the read; see
+  /// [PreferenceReconciler.reconcile].
+  Future<void> applyAllRemote({bool Function()? proceed, bool storeWins = false}) async {
     final all = await _transport?.readAll();
-    if (all != null && all.isNotEmpty) await applyEntries(all);
+    if (proceed != null && !proceed()) return;
+    if (all != null && all.isNotEmpty) await _remoteApply.applyEntries(all, storeWins: storeWins);
   }
 
-  Future<void> applyRemoteKeys(List<String> keys) async {
+  /// Apply the keys a remote event named. Queued behind a running reconcile.
+  Future<void> applyRemoteKeys(List<String> keys) => _exclusively(() async {
+    final generation = _turnGeneration;
     final all = await _transport?.readAll();
+    // Timed out and answered after a newer turn ran: applying this snapshot
+    // now, a key it lacks would remove a value that turn just wrote.
+    if (generation != _turnGeneration) return;
     // null means the read failed. Absence only means "removed remotely" when
     // the read succeeded; inferring removals from a broken channel wipes local
     // settings on a transient error.
     if (all == null) return;
     await applyEntries({for (final k in keys) k: all[k]});
-  }
+  });
 
-  /// Apply transport entries to local prefs. A null value is a removal.
-  Future<void> applyEntries(Map<String, String?> entries) async {
-    _applyingRemote = true;
-    var changed = 0;
-    var skipped = 0;
-    final stale = <PreferenceRefreshFamily>{};
-    try {
-      for (final entry in entries.entries) {
-        final cloudKey = entry.key;
-        if (cloudKey.startsWith('__') && !PreferenceSyncScope.ownsCloudKey(cloudKey)) {
-          continue; // transport meta, another feature, or a format we do not read
-        }
-        if (_useV2CloudFormat && isLegacyV1Record(cloudKey)) {
-          // A flat v1 key changing after the cutover means another device is
-          // still writing that format. It is not merged into v2 under any
-          // circumstances: v1 carries no revision, so there is no way to tell a
-          // newer user action from an older snapshot of one. Surfaced, not
-          // applied, and not deleted.
-          _setStatus(status.value.sawLegacyPeer());
-          // A profile-scoped one is also permanently unattributable, so it keeps
-          // its quarantine record and the removal condition that goes with it.
-          if (PreferenceSyncPolicyRegistry.isProfileScoped(cloudKey)) {
-            await PreferenceQuarantine.quarantine(
-              _prefs,
-              cloudKey,
-              reason: 'v1 cloud key carries no profile identity',
-              seenAt: DateTime.now().toUtc().millisecondsSinceEpoch,
-            );
-          }
-          skipped++;
-          continue;
-        }
-        final baseKey = _baseKeyFromCloudKey(cloudKey);
-        if (baseKey == null) {
-          skipped++;
-          continue; // malformed, or a record for another profile
-        }
-        if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) {
-          skipped++;
-          continue;
-        }
-        // A v1 record for a profile-scoped key carries no profile identity: the
-        // format stripped it. Handing it to whichever profile is active would
-        // make the existing collision permanent, so it is recorded and left.
-        if (!_useV2CloudFormat && PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) {
-          await PreferenceQuarantine.quarantine(
-            _prefs,
-            baseKey,
-            reason: 'v1 cloud key carries no profile identity',
-            seenAt: DateTime.now().toUtc().millisecondsSinceEpoch,
-          );
-          skipped++;
-          continue;
-        }
-
-        final targetKey = localKeyFor(baseKey);
-        if (targetKey == null) {
-          skipped++;
-          continue; // profile-scoped with no active profile to scope to
-        }
-
-        final family = PreferenceSyncPolicyRegistry.policyFor(baseKey).refresh;
-
-        final raw = entry.value;
-        if (raw == null) {
-          await _prefs.remove(targetKey);
-          changed++;
-          if (family != null) stale.add(family);
-          continue;
-        }
-        final decoded = _decodeTyped(raw);
-        if (decoded == null) {
-          skipped++;
-          continue;
-        }
-        var value = decoded.$2;
-        final inbound = _merges.familyFor(baseKey)?.inbound;
-        if (inbound != null) {
-          // Not a replacement. What the family does with the two sides is the
-          // family's business; for the server-scoped lists it keeps what the
-          // sender never saw, because treating that absence as a removal would
-          // wipe this device's local-folder libraries on every remote change.
-          value = inbound(_prefs.get(targetKey), value);
-        }
-        final ok = await SettingsExportService.writeTyped(_prefs, targetKey, decoded.$1, value);
-        if (ok) {
-          changed++;
-          if (family != null) stale.add(family);
-        } else {
-          skipped++;
-        }
-      }
-    } finally {
-      _applyingRemote = false;
-    }
-    _setStatus(status.value.appliedRemote(DateTime.now(), changed: changed, skippedCount: skipped));
-    if (changed > 0) {
+  late final PreferenceRemoteApply _remoteApply = PreferenceRemoteApply(
+    prefs: _prefs,
+    revisionStore: _revisionStore,
+    keys: _keys,
+    transport: () => _transport,
+    status: status,
+    onChanged: (stale) {
       onLocalStateChanged?.call();
       onRemoteChangesApplied?.call();
       if (stale.isNotEmpty) onRuntimeRefresh?.call(stale);
-    }
-  }
+    },
+  );
 
-  /// The base key a transport record maps to, or null when it is not this
-  /// device's business.
-  ///
-  /// Under v2 that includes the profile check: a record under another profile's
-  /// namespace is not "unknown", it belongs to somebody else and is skipped.
-  String? _baseKeyFromCloudKey(String cloudKey) {
-    if (!_useV2CloudFormat) return cloudKey;
-    final parsed = PreferenceSyncScope.parseCloudKey(cloudKey);
-    if (parsed == null) return null;
-    if (parsed.kind == PreferenceScopeKind.profile) {
-      final active = PreferenceSyncScope.forProfile(_activeProfileId());
-      if (active.id == null || active.id != parsed.id) return null;
-    }
-    return parsed.baseKey;
-  }
+  /// Apply transport entries to local prefs. A null value is a removal. See
+  /// [PreferenceRemoteApply.applyEntries].
+  Future<void> applyEntries(Map<String, String?> entries) => _remoteApply.applyEntries(entries);
 
-  (String, Object?)? _decodeTyped(String raw) {
-    try {
-      final m = json.decode(raw);
-      if (m is! Map) return null;
-      final type = m['type'];
-      if (type is! String) return null;
-      return (type, m['value']);
-    } catch (_) {
-      return null;
-    }
-  }
+  /// See [PreferenceKeyMapper.ownsCloudKey].
+  bool ownsCloudKey(String cloudKey) => _keys.ownsCloudKey(cloudKey);
 
-  /// Whether [cloudKey] is a v1 preference record: a flat key, outside every
-  /// `__` namespace, that the registry recognises as a preference.
-  ///
-  /// The registry check matters. Without it any unknown flat key would be read
-  /// as "an old Pleya is running", and the warning would fire on somebody
-  /// else's data.
-  static bool isLegacyV1Record(String cloudKey) {
-    if (cloudKey.startsWith('__')) return false;
-    return PreferenceSyncPolicyRegistry.isRegistered(cloudKey);
-  }
-
-  /// Whether a transport key is a record this coordinator, in its current
-  /// format, is entitled to delete.
-  ///
-  /// Deliberately narrower than "not obviously somebody else's". The prune is
-  /// the only destructive operation in the engine, so it works from a positive
-  /// claim of ownership: in v2 that is the coordinator's own namespace, and in
-  /// v1 it is a flat key the registry recognises as a syncable preference. A
-  /// key from another feature, a future format, an older Pleya, or simply one
-  /// nobody registered is left alone. Cloud junk is cheaper than deleting
-  /// somebody's data.
-  bool ownsCloudKey(String cloudKey) {
-    if (_useV2CloudFormat) {
-      // Namespace alone is not ownership: another profile's record lives in the
-      // same namespace and is emphatically not ours to delete. The scope has to
-      // match too, which is what `_baseKeyFromCloudKey` checks.
-      return _baseKeyFromCloudKey(cloudKey) != null;
-    }
-    if (cloudKey.startsWith('__')) return false;
-    return PreferenceSyncPolicyRegistry.maySync(cloudKey);
-  }
-
-  /// Import unambiguously global v1 cloud values into v2, once.
-  ///
-  /// Only global ones. A profile-scoped v1 record has had its profile stripped
-  /// by the format, so nobody can say whose it is; those are quarantined by
-  /// [applyEntries] and stay there.
-  ///
-  /// Imported values carry [legacyRevisionAt], not the moment the import ran.
-  /// A v1 value has no real change time, and stamping it with `now` would make
-  /// whichever device upgraded last look like the most recent editor of every
-  /// setting it touched. At zero, the first genuine change anywhere wins.
-  ///
-  /// Runs at most once per installation, and writes nothing back to v1.
-  Future<void> bootstrapFromLegacyV1() async {
-    if (!_useV2CloudFormat) return;
-    final transport = _transport;
-    if (transport == null) return;
-    if (PreferenceLegacyBootstrap.hasRun(_prefs)) return;
-
-    final all = await transport.readAll();
-    // A failed read is not an empty store. Leaving the marker unset means the
-    // import simply tries again next time, which is the safe direction.
-    if (all == null) return;
-
-    var imported = 0;
-    for (final entry in all.entries) {
-      final key = entry.key;
-      if (!isLegacyV1Record(key)) continue;
-      final policy = PreferenceSyncPolicyRegistry.policyFor(key);
-      if (!policy.maySync) continue;
-      if (policy.scope != PreferenceScopeKind.global) continue; // ambiguous, stays quarantined
-
-      final decoded = _decodeTyped(entry.value);
-      if (decoded == null) continue;
-      // Local value wins if there is one: this device already has an opinion.
-      if (_prefs.get(key) == null) {
-        final ok = await SettingsExportService.writeTyped(_prefs, key, decoded.$1, decoded.$2);
-        if (!ok) continue;
-      }
-      await bootstrapLegacyRevision(key);
-      imported++;
-    }
-
-    await PreferenceLegacyBootstrap.markComplete(_prefs);
-    appLogger.i('preference sync: imported $imported legacy global values at the v2 cutover');
-  }
+  /// Import unambiguously global v1 cloud values into v2, once. See
+  /// [PreferenceRemoteApply.bootstrapFromLegacyV1].
+  Future<void> bootstrapFromLegacyV1({bool Function()? proceed}) =>
+      _remoteApply.bootstrapFromLegacyV1(proceed: proceed);
 
   // ---- Reconcile ------------------------------------------------------------
 
-  /// The v1 meta key. Read, never written after the cutover: it belongs to the
-  /// frozen v1 state, and older clients still maintain it among themselves.
-  static const String metaVersionKey = '__syncFormatVersion';
-  static const int formatVersion = 1;
+  /// See [PreferenceReconciler.metaVersionKey].
+  static const String metaVersionKey = PreferenceReconciler.metaVersionKey;
+  static const int formatVersion = PreferenceReconciler.formatVersion;
 
-  /// The v2 marker, inside the namespace this coordinator owns.
-  static const String v2MetaVersionKey = '${PreferenceSyncScope.cloudNamespacePrefix}__meta/formatVersion';
-  static const int v2FormatVersion = 2;
+  /// See [PreferenceReconciler.v2MetaVersionKey].
+  static const String v2MetaVersionKey = PreferenceReconciler.v2MetaVersionKey;
+  static const int v2FormatVersion = PreferenceReconciler.v2FormatVersion;
 
-  String get _activeMetaKey => _useV2CloudFormat ? v2MetaVersionKey : metaVersionKey;
-  int get _activeFormatVersion => _useV2CloudFormat ? v2FormatVersion : formatVersion;
+  late final PreferenceReconciler _reconciler = PreferenceReconciler(
+    prefs: _prefs,
+    revisionStore: _revisionStore,
+    keys: _keys,
+    transport: () => _transport,
+    status: status,
+  );
 
-  /// Read the format version the store was last written with. v1 wrote this and
-  /// never read it, which left no way to recognise a store from a newer client.
-  Future<int?> readFormatVersion() async {
-    final all = await _transport?.readAll();
-    if (all == null) return null;
-    final raw = all[_activeMetaKey];
-    if (raw == null) return null;
-    final decoded = _decodeTyped(raw);
-    final value = decoded?.$2;
-    return value is int ? value : null;
-  }
+  /// Read the format version the store was last written with.
+  Future<int?> readFormatVersion() => _reconciler.readFormatVersion();
 
-  /// Push every syncable local key and drop transport keys that no longer exist
-  /// locally, so removals and a settings reset propagate.
-  Future<void> reconcile() async {
-    final transport = _transport;
-    if (transport == null) return;
-    _setStatus(status.value.starting(DateTime.now()));
-
-    try {
-      // The store is read before anything is written. A family with an outgoing
-      // merge cannot decide what to send without seeing what is already there,
-      // and the prune works from the same snapshot. A failed read is not an
-      // empty store: everything that can decide on its own is still pushed, and
-      // nothing is deleted.
-      final remote = await transport.readAll();
-
-      final eligible = <String, String>{};
-      final oversize = <String>{};
-      // Every base key this device holds, syncable or not. The prune deletes
-      // what is genuinely gone locally, never what merely stopped being
-      // eligible. Without that distinction, tightening the policy (or simply
-      // forgetting to register a preference) would delete other devices' copies
-      // instead of leaving them alone, and an older client that still syncs the
-      // key would lose it outright.
-      final known = <String>{};
-      var skipped = 0;
-      for (final fullKey in _prefs.keys) {
-        final baseKey = baseKeyOf(fullKey);
-        if (baseKey != null) known.add(baseKey);
-        final cloudKey = cloudKeyFor(fullKey);
-        if (cloudKey == null || baseKey == null) continue;
-        if ((_merges.familyFor(baseKey)?.mergesOutgoing ?? false) && remote == null) {
-          // Merging blind would push over entries this device cannot account
-          // for. Held back from the push, and from the prune with it.
-          skipped++;
-          continue;
-        }
-        final record = remote?[cloudKey];
-        final portableValue = portableValueFor(
-          baseKey,
-          _prefs.get(fullKey),
-          remote: record == null ? null : _decodeTyped(record)?.$2,
-        );
-        if (portableValue == null) {
-          skipped++;
-          continue;
-        }
-        final entry = SettingsExportService.encodeValue(portableValue);
-        if (entry == null) {
-          skipped++;
-          continue;
-        }
-        final encoded = json.encode(entry);
-        final cap = transport.maxValueBytes;
-        if (cap != null && encoded.length > cap) {
-          // Oversize keys are held back from the push AND from the prune. v1
-          // pruned on absence from this map, so a value that grew past the cap
-          // was deleted from the cloud rather than skipped.
-          oversize.add(cloudKey);
-          continue;
-        }
-        eligible[cloudKey] = encoded;
-      }
-
-      await transport.write(_activeMetaKey, json.encode({'type': 'int', 'value': _activeFormatVersion}));
-      for (final e in eligible.entries) {
-        await transport.write(e.key, e.value);
-      }
-
-      if (remote != null) {
-        final scope = PreferenceSyncScope.forProfile(_activeProfileId());
-        for (final k in remote.keys) {
-          if (!ownsCloudKey(k)) continue; // another format, another feature, or unknown
-          if (eligible.containsKey(k)) continue;
-          if (oversize.contains(k)) continue;
-          // The comparison is on base keys. Under v2 a cloud key is namespaced
-          // and a local key is not, so comparing the two directly never matched
-          // and the "present locally, just not eligible" protection quietly did
-          // nothing: a list that held only local-folder entries was pushed by
-          // nobody and deleted from the store on the next reconcile.
-          final baseKey = _baseKeyFromCloudKey(k);
-          if (baseKey == null) continue;
-          if (known.contains(baseKey)) continue;
-          // With no profile behind it, a profile-scoped cloud key belongs to
-          // somebody else. Absent locally means "not mine", not "deleted".
-          if (scope.id == null && PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) continue;
-          await transport.remove(k);
-        }
-      }
-      await transport.flush();
-      _setStatus(
-        status.value.reconcileSucceeded(
-          DateTime.now(),
-          pushedCount: eligible.length,
-          skippedCount: skipped,
-          oversizeCount: oversize.length,
-        ),
-      );
-    } catch (e) {
-      _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: _errorCategory(e)));
-      appLogger.w('preference sync: reconcile failed (${_errorCategory(e)})');
-    }
-  }
+  /// Push every syncable local key whose stamp is newer than the store's, or
+  /// which the store lacks; re-send tombstones the store has been written over.
+  /// See [PreferenceReconciler.reconcile].
+  Future<void> reconcile() => _reconciler.reconcile();
 
   Future<void> dispose() async {
     await _changeSub?.cancel();
@@ -856,12 +525,7 @@ class PreferenceSyncCoordinator {
 
   /// Never log a preference key verbatim: per-library and per-server keys carry
   /// identifiers. The registered prefix is enough to debug with.
-  static String _category(String baseKey) {
-    for (final prefix in PreferenceSyncPolicyRegistry.registeredPrefixes) {
-      if (baseKey.startsWith(prefix)) return '$prefix*';
-    }
-    return PreferenceSyncPolicyRegistry.isRegistered(baseKey) ? baseKey : 'unregistered';
-  }
+  static String _category(String baseKey) => preferenceLogCategory(baseKey);
 
   static String _errorCategory(Object e) => e.runtimeType.toString();
 }
