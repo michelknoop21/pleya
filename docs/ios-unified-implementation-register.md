@@ -54,6 +54,19 @@ werkvolgorde.
 | 20 | Speler | OPEN | `mobile_video_controls.dart` | open | open: afspelen in landschap | 12 (I9b) |
 | 21 | Activiteit | CODE CLOSED · VERIFY/SIM OPEN (ACT1 ACCEPTANCE GAP) | De goedgekeurde mobiele afwijking blijft de bestaande sheet uit de Home-header (audit 9a), geen nieuw volledig scherm. `cd40a532` voegt stabiele ids `activity.button` en `activity.sheet` toe; de sessierijen hergebruiken `activity.row`. `ios.activity.northstar.yaml` seedt `catalog.mixed.v1` plus `activity.active-session.v1` en probeert de echte Home-route | `now_watching_surfaces_test.dart` groen (20 sep, 9 tests), inclusief trigger → sheet → rij. De echte ios-sim-run op `8c3ffd0a` bouwde en installeerde succesvol, logde in en bereikte `screen.discover` plus `home.rail.item[0.0]`, maar faalde zoals vooraf afgebakend op `wait_until activity.button`: het Pleya-Server-only fixtureprofiel voldoet nooit aan `MultiServerManager.isOwnerOrAdmin`, waardoor `NowWatchingProvider` niet wordt gemount en de trigger terecht niet rendert. Dit is dezelfde ACT1-productbeslissing als rij 7 van de closure, geen ontbrekende fixturedata. Geen autorisatiepredicate versoepeld, geen tegel gefaket en geen Verify-bypass gebouwd. Omdat de poort vóór de sheet ligt, bestaat er voor deze run ook geen eerlijke simulator-screenshot om met northstar 21 te vergelijken | ACT1: definieer eigenaar/admin voor Pleya Server of lever een protocolgetrouw Plex-profiel; daarna exact hetzelfde scenario herhalen | 8 (I7) |
 
+## Liquid Glass (DEC-122)
+
+Los van de northstar-schermen hierboven. De oppervlakken staan achter de schakelaar Liquid Glass in
+Uiterlijk (default uit) en gelden niet op de iPad. Contrastwaarden en open punten staan in
+[liquid-glass-mockups-2026-09.md](liquid-glass-mockups-2026-09.md#bouwstatus). Branch
+`feat/liquid-glass`, nog niet op `main`.
+
+| ID | Oppervlak | Status | CODE | VERIFY/SIM | HARDWARE |
+|---|---|---|---|---|---|
+| LG-01 | Zwevende glazen tabbalk | CODE CLOSED · VERIFY/SIM CLOSED | `mobile_tab_bar.dart` uit `main_screen.dart` geëxtraheerd `0f6d8670`, glasvariant `0859af7d`, fixronde (bodempadding op vier tab-roots, actieve tab icoon rood en label wit) `c299b9f6` | `ios.glass.tabbar` PASS; label 16,27, icoon 3,17 | open |
+| LG-02 | Filmpagina met hero en glazen knoppen | CODE CLOSED · VERIFY/SIM CLOSED (met bevindingen) | `a10aa935`; hero scrolt weg, serie houdt oude layout | `ios.glass.detail` PASS in de tweede run; laagste ratio 9,4 | open |
+| LG-03 | Spelerbediening | CODE CLOSED · VERIFY/SIM CLOSED (met bevinding) | glas zonder backdrop `5afc34d3`, bediening `e9892e9b`, fixronde `d6952bd1`; spelergeest bij rotatie open | `ios.glass.player` PASS; laagste ratio 4,71 | open: rotatie |
+
 ## Comps en Home-besluiten
 
 | ID | Onderwerp | Status | CODE | VERIFY/SIM | Closure |
