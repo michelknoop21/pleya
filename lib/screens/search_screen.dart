@@ -71,9 +71,10 @@ import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
 /// Client-side result type filter over whatever [searchAcrossServers] returns.
-/// There is no "people" row — search results carry no person items. Note that
-/// the episodes chip is effectively Jellyfin-only: the Plex client searches
-/// with `searchTypes: 'movies,tv'` and never yields episode items.
+/// There is no "people" row — search results carry no person items. The
+/// episodes chip only appears when a result is an episode; Plex and Jellyfin
+/// both return episodes (the Plex side is mapped from the documented response
+/// and still awaits a live check, see `test/fixtures/plex_search/README.md`).
 enum _SearchFilter { all, movies, shows, episodes }
 
 /// Why the last search produced nothing — so the UI can tell "we couldn't
