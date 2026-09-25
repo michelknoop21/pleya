@@ -9,5 +9,5 @@ music track.
 
 Live check open: this repo has never recorded what a real Plex Media Server
 returns for `/library/search?query=...&searchTypes=movies,tv&includeCollections=1`.
-Replace the file with a real capture once the owner has run the curl recipe in
-the fase-1 report of the search-and-filters plan.
+Replace the file with a real capture once the owner has run step 1 of
+`docs/testing/plex-live-checks-search-filters.md`.
