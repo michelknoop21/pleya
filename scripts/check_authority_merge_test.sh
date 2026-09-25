@@ -88,6 +88,55 @@ set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; se
 check "een gemaskeerde innerlijke merge wordt gevangen" "$rc" "1"
 check "en controleert meer dan alleen de laatste merge" "$(printf '%s' "$out" | grep -c '^==> merge ')" "2"
 
+# Geval 5: een uitzondering in ALLOW_MERGES geldt voor precies één merge en één
+# pad. Hetzelfde pad in een andere merge, en een ander pad in dezelfde merge,
+# blijven gevangen.
+setup_twee() {
+  rm -rf "$TMP/repo"; mkdir -p "$TMP/repo/scripts"; cd "$TMP/repo"
+  git init -q -b main
+  git config user.email t@t; git config user.name t
+  cp "$GATE" scripts/check_authority_merge.sh
+  printf 'basis\n' > CLAUDE.md; printf 'basis\n' > STATUS.md
+  git add -A && git commit -qm base
+  BASE_COMMIT="$(git rev-parse HEAD)"
+  git checkout -q -b zijtak
+  printf 'basis\nbranch\n' > CLAUDE.md; printf 'basis\nbranch\n' > STATUS.md
+  git add -A && git commit -qm branch
+  git checkout -q main
+  printf 'basis\nmain\n' > CLAUDE.md; printf 'basis\nmain\n' > STATUS.md
+  git add -A && git commit -qm main
+}
+merge_van_een_kant() {
+  git merge -q zijtak --no-commit 2>/dev/null || true
+  git show zijtak:CLAUDE.md > CLAUDE.md; git show zijtak:STATUS.md > STATUS.md
+  git add CLAUDE.md STATUS.md && git commit -qm "$1"
+}
+sta_toe() {
+  awk -v e="$1" '{ print } /^ALLOW_MERGES=\($/ { print "  \"" e "\"" }' \
+    scripts/check_authority_merge.sh > "$TMP/gate" && cat "$TMP/gate" > scripts/check_authority_merge.sh
+}
+setup_twee
+merge_van_een_kant 'kwade merge'
+KWAAD="$(git rev-parse HEAD)"
+sta_toe "$KWAAD CLAUDE.md # test"
+set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; set -e
+check "een ander pad in dezelfde merge valt niet onder de uitzondering" "$rc" "1"
+check "STATUS.md blijft gevangen" "$(printf '%s' "$out" | grep -c 'FAIL  STATUS.md')" "1"
+check "CLAUDE.md valt onder de uitzondering" "$(printf '%s' "$out" | grep -c 'CLAUDE.md (uitzondering voor deze merge')" "1"
+sta_toe "$KWAAD STATUS.md # test"
+set +e; scripts/check_authority_merge.sh "$BASE_COMMIT" >/dev/null 2>&1; rc=$?; set -e
+check "met beide paden uitgezonderd is die ene merge groen" "$rc" "0"
+git checkout -q zijtak
+printf 'basis\nbranch\nnog een\n' > CLAUDE.md; printf 'basis\nbranch\nnog een\n' > STATUS.md
+git commit -qam 'branch verder'
+git checkout -q main
+printf 'basis\nmain\nbranch\nmain verder\n' > CLAUDE.md; printf 'basis\nmain\nbranch\nmain verder\n' > STATUS.md
+git commit -qam 'main verder'
+merge_van_een_kant 'nieuwe kwade merge'
+set +e; out="$(scripts/check_authority_merge.sh "$BASE_COMMIT" 2>&1)"; rc=$?; set -e
+check "een nieuwe merge met hetzelfde pad valt niet onder de uitzondering" "$rc" "1"
+check "en faalt op beide bestanden" "$(printf '%s' "$out" | grep -c 'FAIL  \(CLAUDE\|STATUS\).md is byte-identiek')" "2"
+
 echo
 [ "$FAILED" = 0 ] && { echo "alle controles groen"; exit 0; }
 echo "er faalde een controle"; exit 1

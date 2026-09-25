@@ -43,6 +43,17 @@ FILES=(
 # Bewuste uitzonderingen, als "pad # reden".
 ALLOW=()
 
+# Uitzonderingen voor één historische merge, als "<volledige merge-sha> <pad> # reden".
+# Alleen voor een merge die al fout was en waarvan het verlies later is hersteld;
+# de volledige sha zorgt dat een nieuwe merge met hetzelfde bestand nooit meelift.
+ALLOW_MERGES=(
+  "4e78b16003cf1e10e33c43dc6e76d442766be5a0 CLAUDE.md # --ours, driewegmerge hersteld in b020d648"
+  "4e78b16003cf1e10e33c43dc6e76d442766be5a0 docs/RELEASES.md # --ours, opnieuw gegenereerd in b020d648"
+  "0b9699ec0c6e174a9f03fe52ad633149d61addf8 docs/RELEASES.md # gegenereerd blok, daarna opnieuw gegenereerd met gen_release_notes.sh"
+  "0b9699ec0c6e174a9f03fe52ad633149d61addf8 docs/CHANGELOG.md # entries uit d4af0122 hersteld in 778315dc"
+  "0b9699ec0c6e174a9f03fe52ad633149d61addf8 STATUS.md # secties uit d4af0122 hersteld in 778315dc"
+)
+
 PASS=0
 FAIL=0
 pass() { printf '  PASS  %s\n' "$1"; PASS=$((PASS + 1)); }
@@ -92,6 +103,14 @@ while IFS= read -r MERGE; do
         skip "$f (uitzondering: ${allowed#*# })"
         allowed_file=true
         break
+      fi
+    done
+    for allowed in ${ALLOW_MERGES[@]+"${ALLOW_MERGES[@]}"}; do
+      [ "$allowed_file" = false ] || break
+      entry="${allowed%% # *}"
+      if [ "$entry" = "$MERGE $f" ]; then
+        skip "$f (uitzondering voor deze merge: ${allowed#*# })"
+        allowed_file=true
       fi
     done
     [ "$allowed_file" = false ] || continue
