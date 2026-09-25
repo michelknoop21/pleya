@@ -32,13 +32,19 @@ scripts/tvos_press_trace.sh <log-id>          # curl https://ice.pleya.app/logs/
 scripts/tvos_press_trace.sh pad/naar/log.txt
 ```
 
-Drie vlaggen, exit 2 zodra er één is:
+De belangrijkste vlaggen, exit 2 zodra er één is (de volledige lijst staat bovenin het script):
 
 | Vlag | Betekent | Zijdeur |
 |------|----------|---------|
 | `EARLY-KEYUP` | keyup binnen 40 ms na de keydown terwijl de druk nog vastzit | 1: de engine liet de toets los |
 | `RE-TAP` | verse keydown binnen 400 ms na een early keyup | 2: `.ended` tikte opnieuw, dat is stap twee |
 | `ENABLE-HELD` | `menuPassthroughEnabled=true` verstuurd terwijl een toets ingedrukt is | 1: het bericht dat de release uitlokt |
+| `NATIVE-BOUNCE` | UIKit levert zelf binnen 40 ms na een ended een nieuwe began van dezelfde toets, en die druk duurt korter dan 40 ms | geen: station 1, remote of tvOS (DBL1, log `oc8pw`) |
+
+Vertrouw `uipress` niet als bewijs van één druk: UIKit hergebruikt één `UIPress`-object per
+druktype, dus de hash is gelijk voor elke druk in dezelfde richting. Of een keydown van UIKit of
+van de engine komt, lees je af aan zijn eigen `phase=0`-regel (`RE-TAP(uikit-began)` tegenover
+`RE-TAP(engine-synth)`).
 
 Een keyup twee tot drie milliseconden na een keydown is nooit UIKit. Dan heeft de app iets tegen
 de engine gezegd; zoek het kanaalbericht in datzelfde venster. `TvosSystemNavigationService` logt
@@ -91,5 +97,5 @@ log met de debug-pref aan, en draai stap 2 erop voordat je iets concludeert.
 
 - `scripts/tvos_engine_source.sh`, `scripts/tvos_press_trace.sh`, de pijplijn-doc en het
   held-press-scenario zijn van 5 september 2026 (DEC-099).
-- De trace kent alleen de drie vormen hierboven. Een nieuwe vorm hoort erbij in het script én
+- De trace kent alleen de vormen in de kop van het script. Een nieuwe vorm hoort erbij in het script én
   in de symptoomtabel, met het log-id waarin hij voor het eerst gezien is.

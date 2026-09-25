@@ -359,7 +359,7 @@ class AppleTvRemoteTouchService {
     if (arguments is! Map) return null;
     _log(
       'native press=${arguments['press']} phase=${arguments['phase']} '
-      'uipress=${arguments['uipress']} t=${arguments['systemUptimeMs']}',
+      'uipress=${arguments['uipress']} t=${arguments['systemUptimeMs']} ts=${arguments['uikitMs']}',
     );
     return null;
   }

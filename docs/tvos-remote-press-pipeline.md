@@ -68,6 +68,15 @@ Het pad hierboven is symmetrisch. Wat asymmetrie veroorzaakt zit in vier extra r
    fantoompaar-instanties (arrowRight ×2, arrowLeft ×1), elk `same-uipress`. Zie
    `docs/tvos-fysieke-correctieronde.md`, rij RAIL2, voor de volledige classificatie.
 
+   **Kanttekening (DBL1, 25 september 2026).** De `uipress`-hash bewijst geen identiteit van één
+   druk. In log `oc8pw` (build 303) is hij voor elke druk van een richting gelijk, minutenlang:
+   `6961` voor elke up, `62775` voor elke right. UIKit hergebruikt één `UIPress`-object per
+   druktype, dus `same-uipress` geldt voor elk paar drukken in dezelfde richting. Het bewijs dat
+   zijdeur 4 werkelijk speelt is een fase-regel die twee keer binnenkomt (`phase=3` twee keer
+   achter elkaar voor dezelfde toets), of een keydown in Dart zonder eigen `phase=0`-regel ervoor.
+   Geen van beide staat in `oc8pw`: 419 fase-regels, nul herhaalde fasen, elke keydown heeft zijn
+   eigen began.
+
 `TvosSystemNavigationService` parkeert sinds `7786a952` een enable tot `physicalKeysPressed`
 leeg is. Een disable laat in de engine niets los en gaat direct.
 
@@ -82,6 +91,7 @@ leeg is. Een disable laat in de engine niets los en gaat direct.
 | Echte snelle drukken verdwijnen | station 9: een timing-heuristiek in Dart | build 254, log `ld1t1` |
 | Een klik doet niets, een toets blijft in Dart vastzitten na het systeemtoetsenbord | station 3: de sessietak levert de eigen keyup van de druk die de sessie opende nooit aan de engine's synthesepad (SEL2) | build 280, log `ijqxp` |
 | Een echte keyup, dan binnen 1-20 ms een down+up-paar met 1-2 ms ertussen, zonder kanaalbericht in de buurt | zijdeur 4: dezelfde `UIPress`-fase twee keer afgeleverd, `tapIfMissingKeyDown:YES` vindt de toets al weg (bevestigd `same-uipress`) | build 272-280, logs `h6ocl`/`ijqxp` (timing/context); bevestigd met `uipress`-identiteit op build 281, log `8x94u` (15 sep 2026) |
+| Eén druk, twee stappen, verspreid over topnav, dropdown, speler en instellingen. In het log een echte druk van 80-180 ms, dan 0-21 ms later een tweede `phase=0`/`phase=3`-paar van dezelfde richting dat 0-21 ms duurt, elk met een eigen `native press=`-regel, zonder kanaalbericht | station 1: UIKit levert zelf een tweede levenscyclus (`NATIVE-BOUNCE`, `RE-TAP(uikit-began)`). De engine synthetiseert hier niets. Of de remote (contactdender) of tvOS (touchoppervlak) hem maakt, beslist `ts=` (`UIPress.timestamp`, sinds DBL1) samen met een gegevensronde op het tvOS-beginscherm | build 303, log `oc8pw` (25 sep 2026): tien keer, negen daarvan op right |
 
 ## Meetprotocol
 
@@ -91,7 +101,10 @@ Wat een log moet bevatten voordat er een build wordt gemaakt:
   Sinds NAV2 gaat dit ook naar de app-log: `[PleyaTvosPress]` is alleen NSLog en haalt geen
   relaylog, dus `tvosHandlePress` stuurt hetzelfde ook over
   `nl.michelknoop.pleya/tvos_press_diag` naar `AppleTvRemoteTouchService`, die het als
-  `native press=… phase=… uipress=… t=…` logt;
+  `native press=… phase=… uipress=… t=… ts=…` logt. `t` is het moment waarop de hook liep
+  (`systemUptime`), `ts` sinds DBL1 het moment van de druk zelf volgens UIKit
+  (`UIPress.timestamp`, dezelfde klok). Een herhaalde aflevering van één fase draagt dezelfde
+  `ts`, een nieuwe levering een nieuwe. `uipress` onderscheidt drukken niet (zie zijdeur 4);
 - per keydown en keyup in Dart de **logische toets en het tijdstip** (`native keydown` in
   `AppleTvRemoteTouchService`);
 - de **kanaalberichten** die de app in datzelfde venster verstuurt. Een keyup binnen enkele
@@ -109,17 +122,21 @@ Het beoordelen is geautomatiseerd:
 scripts/tvos_press_trace.sh wa6v9        # of een bestandspad
 ```
 
-De trace print elke relevante regel met het verschil in milliseconden en zet vier vlaggen:
+De trace print elke relevante regel met het verschil in milliseconden en zet vijf vlaggen:
 `EARLY-KEYUP` (keyup binnen 40 ms na de keydown, zijdeur 1; Menu telt niet mee, want tvOS levert
 Menu altijd bij het loslaten), `KEYUP-ONLY` (een keyup zonder eigen keydown: ofwel helemaal
 geen keydown gezien, ofwel een keydown die meer dan 2 s oud is en dus een verweesde stand uit
 een eerdere druk, SEL2), `RE-TAP` (verse keydown binnen 400 ms na een `EARLY-KEYUP`, zijdeur 2,
-met een `same-uipress`/`new-uipress`/`unknown`-oordeel uit de dichtstbijzijnde `native
-press=`-regels) en `ENABLE-HELD` (een passthrough-enable terwijl een toets vastzit). Exit 2
+met een `uikit-began`/`engine-synth`/`unknown`-oordeel: heeft de keydown een eigen `native
+press=… phase=0`-regel, dan leverde UIKit hem en is de engine er niet bij betrokken; zo niet,
+dan synthetiseerde de engine hem, zijdeur 2 of 4), `NATIVE-BOUNCE` (UIKit levert binnen 40 ms na
+een ended een nieuwe began van dezelfde toets, en die tweede druk duurt zelf korter dan 40 ms;
+station 1, DBL1) en `ENABLE-HELD` (een passthrough-enable terwijl een toets vastzit). Exit 2
 zodra er één staat. Op `wa6v9` geeft hij acht `EARLY-KEYUP` en acht `RE-TAP`, één paar per druk
 die op Home landde; op `3zsde` (build 252) twaalf en achttien; op `ijqxp` (build 280) vier
 `EARLY-KEYUP`, drie `KEYUP-ONLY` en vier `RE-TAP`; op `h6ocl` (build 272, RAIL2) drie
-`EARLY-KEYUP`, vier `KEYUP-ONLY` en twee `RE-TAP`.
+`EARLY-KEYUP`, vier `KEYUP-ONLY` en twee `RE-TAP`; op `oc8pw` (build 303, DBL1) elf
+`EARLY-KEYUP`, vijf `KEYUP-ONLY`, vier `RE-TAP(uikit-began)` en tien `NATIVE-BOUNCE`.
 
 ## Bewijs met Pleya Verify: wat de simulator raakt en wat niet
 

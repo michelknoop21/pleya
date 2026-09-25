@@ -117,6 +117,12 @@ import wakelock_plus
       "phase": press.phase.rawValue,
       "uipress": ObjectIdentifier(press).hashValue & 0xffff,
       "systemUptimeMs": Int(ProcessInfo.processInfo.systemUptime * 1000),
+      // DBL1: UIKit's own time for this phase (HID origin, same clock as
+      // systemUptime). `systemUptimeMs` is when this hook ran; this is when the
+      // press happened. A re-dispatch of one phase repeats it, a new delivery
+      // does not. `uipress` cannot tell those apart: UIKit reuses one UIPress
+      // object per press type (log oc8pw, build 303).
+      "uikitMs": Int(press.timestamp * 1000),
     ])
     guard NativeInputSession.isActive else {
       if press === lastForwardedPress, press.phase == lastForwardedPhase {

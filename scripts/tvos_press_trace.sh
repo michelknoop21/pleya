@@ -12,11 +12,19 @@
 #                  keyboard session ate the next real press).
 #   RE-TAP         a fresh keydown of the same key within 400 ms of an early keyup:
 #                  the .ended phase re-tapped it (tapIfMissingKeyDown:YES), a second step.
-#                  Judged same-uipress (side door 4, the same UIPress object dispatched
-#                  twice via both swizzle hops, see docs/tvos-remote-input-authority.md
-#                  §3) or new-uipress (UIKit delivered a real second press) from the
-#                  nearest `native press=` diagnostic lines (NAV2); unknown when the
-#                  build predates that channel.
+#                  Judged by whether the re-tap keydown has its own `native press=...
+#                  phase=0` line (NAV2): uikit-began (UIKit delivered a new press
+#                  lifecycle, station 1, the engine is not involved) or engine-synth
+#                  (no began reached the hook: side door 2/4, tapIfMissingKeyDown);
+#                  unknown when the build predates that channel. The `uipress` hash is
+#                  no evidence either way: UIKit reuses one UIPress object per press
+#                  type, so it is equal for every press of a direction (log oc8pw, DBL1).
+#   NATIVE-BOUNCE  UIKit itself delivers a began for a key within 40 ms after that
+#                  key's ended, and that second lifecycle is itself shorter than
+#                  40 ms: no finger releases and re-clicks that fast. Station 1
+#                  (remote or tvOS), not the engine (DBL1, first seen in log oc8pw,
+#                  build 303). Shows `uikit=` gaps when the log carries `ts=` (DBL1
+#                  diagnostic, UIPress.timestamp).
 #   ENABLE-HELD    a menuPassthroughEnabled=true sent while a key is down: the
 #                  message that triggers the release (needs 7786a952 or later to be logged)
 #
@@ -51,7 +59,10 @@ interesting = re.compile(
 keydown = re.compile(r'native keydown logical=(\w+)')
 keyup = re.compile(r'native keyup logical=(\w+)')
 enable = re.compile(r'send menuPassthroughEnabled=true')
-pressdiag = re.compile(r'native press=(\w+)(?:\(\d+\))? phase=(-?\d+) uipress=([0-9a-fA-F]+)')
+pressdiag = re.compile(r'native press=(\w+)(?:\(\d+\))? phase=(-?\d+) uipress=([0-9a-fA-F]+)'
+                       r'(?: t=\d+)?(?: ts=(\d+))?')
+DIRECTION_KEYS = {'up': 'arrowUp', 'down': 'arrowDown', 'left': 'arrowLeft', 'right': 'arrowRight'}
+BOUNCE_MS = 40
 
 MENU_KEY = 'escape'  # tvOS delivers Menu on release; expected, not a defect (NAV2)
 RETAP_WINDOW_MS = 400
@@ -67,15 +78,23 @@ def ms(m):
     h, mi, s, f = (int(x) for x in m.groups())
     return ((h * 60 + mi) * 60 + s) * 1000 + f
 
-def uipress_ids_near(diag_events, t, window=NEAREST_DIAG_WINDOW_MS):
-    return {u for (dt, u) in diag_events if abs(dt - t) <= window}
+def began_line_for(diag_events, key, t, window=NEAREST_DIAG_WINDOW_MS):
+    """The nearest `native press=` line at or before a keydown, if it is this key's began."""
+    for (dt, name, phase) in reversed(diag_events):
+        if t - dt > window:
+            return False
+        if dt <= t:
+            return DIRECTION_KEYS.get(name) == key and phase == '0'
+    return False
 
 down_at = {}          # key -> time of last keydown still held
 early_up_at = {}      # key -> time of last early keyup
 retap = set()         # keys whose current keydown was a re-tap; their keyup is part of it
-diag_events = []      # (time, uipress) from `native press=` diagnostic lines (NAV2)
-flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'ENABLE-HELD': 0}
-same_uipress_retaps = 0
+diag_events = []      # (time, press name, phase) from `native press=` lines (NAV2)
+native_ended = {}     # press name -> (time, uikit ts) of its last native ended (phase 3)
+native_began = {}     # press name -> (time, uikit ts, bounce candidate) of its open began
+flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'NATIVE-BOUNCE': 0, 'ENABLE-HELD': 0}
+verdicts = {'uikit-began': 0, 'engine-synth': 0, 'unknown': 0}
 prev = None
 
 with open(path, errors='replace') as fh:
@@ -93,19 +112,32 @@ with open(path, errors='replace') as fh:
         kd = keydown.search(line)
         ku = keyup.search(line)
         if pd:
-            diag_events.append((t, pd.group(3)))
+            name, phase, uikit = pd.group(1), pd.group(2), pd.group(4)
+            uikit = int(uikit) if uikit else None
+            diag_events.append((t, name, phase))
+            if phase == '0':
+                prev_end = native_ended.get(name)
+                candidate = prev_end is not None and t - prev_end[0] <= BOUNCE_MS
+                native_began[name] = (t, uikit, candidate and prev_end)
+            elif phase == '3' and name in native_began:
+                bt, buikit, prev_end = native_began.pop(name)
+                if prev_end and t - bt <= BOUNCE_MS:
+                    detail = f'gap={bt - prev_end[0]}ms hold={t - bt}ms'
+                    if buikit is not None and prev_end[1] is not None and uikit is not None:
+                        detail += f' uikit gap={buikit - prev_end[1]}ms hold={uikit - buikit}ms'
+                    tags.append(f'NATIVE-BOUNCE({detail})')
+                    flags['NATIVE-BOUNCE'] += 1
+                native_ended[name] = (t, uikit)
         elif kd:
             k = kd.group(1)
             if k in early_up_at and t - early_up_at[k] <= RETAP_WINDOW_MS:
-                ids_before = uipress_ids_near(diag_events, early_up_at[k])
-                ids_after = uipress_ids_near(diag_events, t)
-                if not ids_before or not ids_after:
+                if not diag_events:
                     verdict = 'unknown'
-                elif ids_before & ids_after:
-                    verdict = 'same-uipress'
-                    same_uipress_retaps += 1
+                elif began_line_for(diag_events, k, t):
+                    verdict = 'uikit-began'
                 else:
-                    verdict = 'new-uipress'
+                    verdict = 'engine-synth'
+                verdicts[verdict] += 1
                 tags.append(f'RE-TAP({verdict})')
                 flags['RE-TAP'] += 1
                 retap.add(k)
@@ -138,9 +170,15 @@ with open(path, errors='replace') as fh:
 
 print()
 print('summary: ' + ', '.join(f'{k}={v}' for k, v in flags.items()))
-if same_uipress_retaps:
-    print(f'verdict: {same_uipress_retaps} RE-TAP(same-uipress) — side door 4 confirmed (same UIPress '
-          'object dispatched twice), see docs/tvos-remote-input-authority.md §3')
+if flags['RE-TAP']:
+    print('re-tap origin: ' + ', '.join(f'{k}={v}' for k, v in verdicts.items()))
+if verdicts['engine-synth']:
+    print(f"verdict: {verdicts['engine-synth']} RE-TAP(engine-synth): a keydown without its own UIKit "
+          'began, the engine synthesized it; side door 2/4 in docs/tvos-remote-press-pipeline.md')
+    sys.exit(2)
+if flags['NATIVE-BOUNCE'] or verdicts['uikit-began']:
+    print('verdict: UIKit delivered a second press lifecycle itself (station 1, NATIVE-BOUNCE); the '
+          'engine is not involved, see the DBL1 row in docs/tvos-remote-press-pipeline.md')
     sys.exit(2)
 if any(flags.values()):
     print('verdict: the engine produced events the viewer did not; start at side door 1-3 in docs/tvos-remote-press-pipeline.md')
