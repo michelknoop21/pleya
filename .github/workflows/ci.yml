@@ -139,7 +139,7 @@ jobs:
           fi
 
   pleya-server:
-    name: Pleya Server (Go)
+    name: Pleya Server (Go, database)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -206,7 +206,7 @@ jobs:
           python3 scripts/check_server_responses.py pleya_server/.responses
 
   pleya-web:
-    name: Pleya Web
+    name: Pleya Web (contract)
     runs-on: ubuntu-latest
     permissions:
       contents: read
