@@ -39,7 +39,6 @@ import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
-import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:provider/provider.dart';
 
@@ -141,7 +140,7 @@ Future<_CountingWatchlistSource> _pumpDetail(WidgetTester tester, {required bool
         ],
         child: MaterialApp(
           builder: withNoticeLayer(),
-          theme: monoTheme(dark: true),
+          theme: glassPhoneTheme(),
           home: withProfileNavigationScope(child: MediaDetailScreen(metadata: _movie)),
         ),
       ),
@@ -232,7 +231,7 @@ void main() {
     // meter reads the background the real glyph sits on.
     await tester.pumpWidget(
       MaterialApp(
-        theme: monoTheme(dark: true),
+        theme: glassPhoneTheme(),
         home: RepaintBoundary(
           key: sceneKey,
           child: Material(

@@ -248,7 +248,7 @@ void main() {
     await _phone(tester, glass: true);
     await tester.pumpWidget(
       MaterialApp(
-        theme: monoTheme(dark: true),
+        theme: glassPhoneTheme(),
         home: const RepaintBoundary(
           key: _kSceneKey,
           child: ColoredBox(

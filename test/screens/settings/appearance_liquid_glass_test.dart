@@ -20,7 +20,7 @@ class _Profiles extends ChangeNotifier implements ActiveProfileProvider {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<void> _pumpAppearance(WidgetTester tester) async {
+Future<void> _pumpAppearance(WidgetTester tester, {TargetPlatform platform = TargetPlatform.iOS}) async {
   // Deterministic regardless of the host machine's device locale — otherwise
   // a longer non-English translation (e.g. "Afleveringsminiatuur") overflows
   // the episode-poster-mode segmented control at phone width.
@@ -34,7 +34,10 @@ Future<void> _pumpAppearance(WidgetTester tester) async {
           ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
           ChangeNotifierProvider<ActiveProfileProvider>.value(value: profiles),
         ],
-        child: MaterialApp(theme: monoTheme(dark: true), home: const AppearanceSettingsScreen()),
+        child: MaterialApp(
+          theme: monoTheme(dark: true).copyWith(platform: platform),
+          home: const AppearanceSettingsScreen(),
+        ),
       ),
     ),
   );
@@ -98,4 +101,32 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // B4: glass is an iPhone and Apple TV feature. Elsewhere the tile is gone,
+  // also on a phone-small desktop window that the old diagonal-only rule let
+  // through.
+  for (final (name, platform, size, dpr, androidTV) in <(String, TargetPlatform, Size, double, bool)>[
+    ('macOS', TargetPlatform.macOS, const Size(4800, 7200), 6, false),
+    ('Windows', TargetPlatform.windows, const Size(4800, 7200), 6, false),
+    ('Linux', TargetPlatform.linux, const Size(4800, 7200), 6, false),
+    ('Android-telefoon', TargetPlatform.android, const Size(4800, 7200), 6, false),
+    ('Android TV', TargetPlatform.android, const Size(1920, 1080), 1, true),
+  ]) {
+    testWidgets('tile afwezig op $name', (tester) async {
+      if (androidTV) TvDetectionService.debugSetTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = dpr;
+      addTearDown(tester.view.reset);
+      await tester.runAsync(() => SettingsService.getInstance());
+
+      await _pumpAppearance(tester, platform: platform);
+
+      expect(find.byType(AppearanceSettingsScreen), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((widget) => widget is SettingSwitchTile && widget.pref == SettingsService.liquidGlass),
+        findsNothing,
+      );
+    });
+  }
 }

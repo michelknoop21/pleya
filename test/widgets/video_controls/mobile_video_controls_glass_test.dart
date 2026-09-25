@@ -24,7 +24,6 @@ import 'package:pleya/models/livetv_capture_buffer.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/glass/glass_text.dart';
-import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/widgets/video_controls/mobile_video_controls.dart';
 import 'package:pleya/widgets/video_controls/mobile_video_controls_glass.dart';
@@ -34,6 +33,7 @@ import 'package:pleya/widgets/video_controls/widgets/timeline_slider.dart';
 import 'package:provider/provider.dart';
 
 import '../../test_helpers/contrast.dart';
+import '../../test_helpers/glass_phone.dart';
 import '../../test_helpers/golden.dart';
 import '../../test_helpers/prefs.dart';
 import '../../test_helpers/watch_together_fakes.dart';
@@ -52,6 +52,7 @@ Future<void> _phoneLandscape(WidgetTester tester, {required bool glass}) async {
   addTearDown(tester.view.reset);
   await tester.runAsync(() => SettingsService.getInstance());
   await SettingsService.instance.write(SettingsService.liquidGlass, glass);
+  useFakeGlassTier();
 }
 
 /// The real controls over [background], with the OSD scrim `VideoControls`
@@ -71,7 +72,7 @@ Future<void> _pumpControls(WidgetTester tester, {required bool glass, Widget? ba
     ChangeNotifierProvider<WatchTogetherProvider>.value(
       value: watchTogether,
       child: MaterialApp(
-        theme: monoTheme(dark: true),
+        theme: glassPhoneTheme(),
         home: Material(
           type: MaterialType.transparency,
           child: RepaintBoundary(
@@ -265,6 +266,7 @@ void main() {
       const titleKey = Key('title'), timeKey = Key('time'), iconKey = Key('icon'), capsuleKey = Key('capsule');
       await tester.pumpWidget(
         MaterialApp(
+          theme: glassPhoneTheme(),
           home: RepaintBoundary(
             key: _kSceneKey,
             child: Builder(

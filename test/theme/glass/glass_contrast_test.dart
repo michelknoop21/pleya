@@ -7,9 +7,9 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/glass/glass_surface.dart';
 import 'package:pleya/theme/glass/glass_text.dart';
-import 'package:pleya/theme/mono_theme.dart';
 
 import '../../test_helpers/contrast.dart';
+import '../../test_helpers/glass_phone.dart';
 import '../../test_helpers/golden.dart';
 import '../../test_helpers/prefs.dart';
 
@@ -48,6 +48,7 @@ Future<void> _prepare(WidgetTester tester) async {
   addTearDown(tester.view.reset);
   await tester.runAsync(() => SettingsService.getInstance());
   await SettingsService.instance.write(SettingsService.liquidGlass, true);
+  useFakeGlassTier();
 }
 
 /// Pumps [background] behind a glass plate (phone tokens, StadiumBorder)
@@ -61,7 +62,7 @@ Future<void> pumpTextOnGlass(WidgetTester tester, TextStyle style, Widget backgr
   await _prepare(tester);
   await tester.pumpWidget(
     MaterialApp(
-      theme: monoTheme(dark: true),
+      theme: glassPhoneTheme(),
       home: RepaintBoundary(
         child: Stack(
           fit: StackFit.expand,
@@ -95,7 +96,7 @@ Future<void> pumpTextOnFlatColor(WidgetTester tester, Color background) async {
   await _prepare(tester);
   await tester.pumpWidget(
     MaterialApp(
-      theme: monoTheme(dark: true),
+      theme: glassPhoneTheme(),
       home: RepaintBoundary(
         child: ColoredBox(
           color: background,

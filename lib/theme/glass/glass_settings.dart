@@ -7,22 +7,23 @@ import '../../utils/platform_detector.dart';
 /// How a glass surface should render.
 ///
 /// - [off]: the setting is disabled, or [glassAppliesTo] rules the device out
-///   (the iPad: glass reads worse at that size and it has no real-glass
-///   renderer target anyway; TV is never ruled out here).
+///   (everything but the iPhone and Apple TV).
 /// - [real]: `liquid_glass_renderer` on Impeller: handheld iOS only, and
 ///   only when the device isn't on the reduced-performance tier.
-/// - [fake]: every other case, including tvOS and Skia fallbacks. The hand
+/// - [fake]: Apple TV and the reduced-performance iPhone. The hand
 ///   rolled `BackdropFilter` stack in [GlassSurface]: never a package widget.
 enum GlassTier { real, fake, off }
 
 /// Whether glass renders at all on this device, regardless of the setting.
 ///
-/// TV always wins the tablet check: [PlatformDetector.isTablet]'s
-/// diagonal-inches heuristic reads a real TV resolution (e.g. 1920x1080) as a
-/// giant tablet, which silently turned every tvOS glass surface off before
-/// this guard existed (Fixronde 1). Once TV is ruled out, only the iPad is
-/// excluded.
-bool glassAppliesTo(BuildContext context) => PlatformDetector.isTV() || !PlatformDetector.isTablet(context);
+/// An explicit platform list: Apple TV, and the iPhone (handheld iOS that
+/// isn't a tablet). The iPad, Android (phone and TV) and desktop never get
+/// glass or its settings tile. A size-only rule let a phone-small desktop
+/// window through (final review B4). Apple TV is checked on its own because
+/// [PlatformDetector.isTablet]'s diagonal-inches heuristic reads a real TV
+/// resolution as a giant tablet (Fixronde 1).
+bool glassAppliesTo(BuildContext context) =>
+    PlatformDetector.isAppleTV() || (PlatformDetector.isHandheldIOS(context) && !PlatformDetector.isTablet(context));
 
 /// Resolves the tier for the current [context]. See [GlassTier] for the
 /// rules; they are load-bearing for every glass surface in the app.
