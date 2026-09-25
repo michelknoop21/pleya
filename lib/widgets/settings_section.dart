@@ -27,8 +27,9 @@ const EdgeInsets kSettingRowPadding = EdgeInsets.symmetric(horizontal: 16, verti
 EdgeInsetsGeometry? settingRowPadding() => PlatformDetector.isTV() ? null : kSettingRowPadding;
 
 /// DENS1: settings rows on TV in Apple's tvOS HIG sizes. Title in Body (29 pt),
-/// value line in Caption 1 (25 pt), a 12 pt vertical inset and no enforced
-/// minimum height. Without it a two-line row inherited `ListTile`'s dense
+/// value line in Caption 1 (25 pt), a 10 pt vertical inset and no enforced
+/// minimum height. VIS-0925-G (DEC-139) took the rows from 60/92 pt to 56/84:
+/// the text stays at HIG size, the air around it shrinks. Without it a two-line row inherited `ListTile`'s dense
 /// minimum of 64 logical pixels plus phone padding, which the TV wrapper turns
 /// into a 138 pt row around 26/22 pt text: 4.5 rows on a screen that holds 9.
 /// Off TV it returns [child] unchanged.
@@ -49,7 +50,7 @@ class TvSettingsDensity extends StatelessWidget {
       minVerticalPadding: 0,
       minLeadingWidth: 0,
       horizontalTitleGap: 20 * pt,
-      contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 12 * pt),
+      contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 10 * pt),
       titleTextStyle: TextStyle(
         color: t.text,
         fontSize: TvHig.body * pt,
@@ -59,7 +60,9 @@ class TvSettingsDensity extends StatelessWidget {
       subtitleTextStyle: TextStyle(
         color: t.textMuted,
         fontSize: TvHig.caption1 * pt,
-        height: TvHig.caption1Leading / TvHig.caption1,
+        // 28 pt leading, not the table's 32: one line under a Body title needs
+        // no extra lead of its own.
+        height: 28 / TvHig.caption1,
       ),
       leadingAndTrailingTextStyle: TextStyle(color: t.textMuted, fontSize: TvHig.caption1 * pt),
       child: child,
@@ -134,7 +137,8 @@ class SettingsSectionHeader extends StatelessWidget {
     final tv = PlatformDetector.isTV();
     final pt = tv ? TvHig.of(context) : 1.0;
     return Padding(
-      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 32 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 10),
+      // VIS-0925-G: less air between the page title, this label and the card.
+      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 20 * pt, 24 * pt, 8 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 10),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(

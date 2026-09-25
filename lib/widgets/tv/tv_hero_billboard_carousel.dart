@@ -66,6 +66,7 @@ import '../../media/unified/unified_route_context.dart';
 import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
 import '../app_icon.dart';
 import 'tv_hero_artwork.dart';
 import 'tv_hero_billboard_card.dart';
@@ -637,7 +638,8 @@ class _HeroPillState extends State<_HeroPill> {
                 ],
                 Text(
                   widget.label,
-                  style: TextStyle(color: fg, fontSize: TvHomeLayout.heroActionFontSize * scale, fontWeight: .w600),
+                  // VIS-0925-G (DEC-139): the CTA label in Body (29 pt), not 25.
+                  style: TextStyle(color: fg, fontSize: TvHig.body * TvHig.of(context), fontWeight: .w600),
                 ),
               ],
             ),

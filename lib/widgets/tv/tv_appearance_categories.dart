@@ -104,7 +104,7 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
               children: [
                 for (var index = 0; index < sections.length; index++)
                   Padding(
-                    padding: EdgeInsets.only(bottom: 12 * pt, right: TvHig.itemSpacing * pt),
+                    padding: EdgeInsets.only(bottom: 8 * pt, right: TvHig.itemSpacing * pt),
                     child: FocusableWrapper(
                       automationId: AutomationIds.settingsAppearanceCategory,
                       automationInstance: index.toString(),
@@ -181,7 +181,8 @@ class _CategoryPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 16 * pt),
+      // VIS-0925-G: 12 pt, not 16, around a Body label: 66 pt per category.
+      padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 12 * pt),
       decoration: BoxDecoration(
         color: tvCategoryPillFill(tk, selected: selected, focused: focused),
         borderRadius: BorderRadius.circular(tk.radiusMd),

@@ -320,15 +320,18 @@ class TvCatalogLayout {
   /// other measurement on the page still lines up against this one.
   static double cardContentInset(double scale) => FocusTheme.focusBorderWidth + cardFocusRingGap * scale;
 
-  /// Title and context line inside the footer. 14 renders at ~11.9 logical,
-  /// ~22 reference px — inside hoofdstuk 8.3's "card title 18–21" at the top,
-  /// which is where a two-line title still reads at three metres.
-  static const double cardTitleFontSize = 14;
+  /// Title and context line inside the footer, in HIG points since
+  /// VIS-0925-G (DEC-139): the title is Caption 1 (25 pt) and the meta line
+  /// Caption 2 (23 pt), tvOS's minimum. They were 22 and 18 pt. These tokens go
+  /// through `scaleOf` like the rest of this class, so a point is 0.6362 of a
+  /// base unit on the canonical canvas (584 / 1080 / 0.85): 16 is 25.1 pt and
+  /// 15 is 23.6 pt, whole numbers so the grid arithmetic stays exact.
+  static const double cardTitleFontSize = 16;
 
   /// Line height of a card title, and the multiplier that reserves two lines of
   /// it whether the title needs both or not — see the card's own comment.
   static const double cardTitleLineHeight = 1.2;
-  static const double cardMetaFontSize = 11.5;
+  static const double cardMetaFontSize = 15;
 
   /// Line height of the meta line, named for the same reason the title's is:
   /// [cardHeight] has to add up the card the footer actually draws.
@@ -1285,12 +1288,9 @@ class TvMyPleyaLayout {
   static const double tileGap = 14;
   static const double tileRadius = 10;
   static const double tilePadding = 14;
-  static const double tileMinHeight = 74;
   static const double tileIconSize = 19;
   static const double tileTitleFontSize = 15;
   static const double tileSubtitleFontSize = 12;
-  static const double tileCountFontSize = 15;
-  static const double tileIconTitleGap = 14;
   static const double tileTitleSubtitleGap = 3;
 
   /// Fill of a tile at rest, and when it holds the focus.
@@ -1431,7 +1431,6 @@ class TvHomeLayout {
   /// own (VIS-0925-E: the ring stands outside the fill), so the gap carries the
   /// room two outside rings need without touching.
   static const double heroActionGap = 11;
-  static const double heroActionFontSize = 16;
   static const double heroActionIconSize = 19;
   static const double heroActionIconLabelGap = 8;
 

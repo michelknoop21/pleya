@@ -1033,8 +1033,10 @@ class _AppShell extends StatelessWidget {
                             _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
                             // Global notice overlay — deliberately a Stack layer here,
                             // not a hand-inserted OverlayEntry. See NoticeHost's doc
-                            // comment for why that distinction matters.
-                            const NoticeHost(),
+                            // comment for why that distinction matters. Inside the
+                            // Apple TV scale like the app itself (VIS-0925-G, DEC-139):
+                            // outside it the TV layer rendered at 14 and 13 pt.
+                            const _AppleTvScale(child: NoticeHost()),
                           ],
                         ),
                       ),

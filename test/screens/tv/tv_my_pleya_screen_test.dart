@@ -513,12 +513,22 @@ void main() {
     // the sidebar into Mijn Pleya has to stay reachable. A tile below the fold
     // that the remote cannot bring into view is exactly that function going
     // missing, and it would not show up in a picture of the first frame.
-    testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
-      // The tvOS logical canvas (DEC-028), which is what an Apple TV actually
-      // renders and what `tv_shell_my_pleya_full.png` is captured at. At this
-      // group's default 1280x720 the full hub still fits, so the scenario only
-      // exists at the real size.
+    // VIS-0925-G (DEC-139): at the tvOS logical canvas the full hub now fits.
+    // The tiles are about 100 pt instead of 151, which is the point of the
+    // targeted densification.
+    testWidgets('on the canonical canvas the full hub fits, last tile included', (tester) async {
       await pump(tester, full: true, size: kTvGoldenSurfaceSize);
+      final scroller = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      expect(scroller.position.maxScrollExtent, 0.0);
+      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
+    });
+
+    testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
+      // A frame shorter than the tvOS canvas, so the full hub still overflows:
+      // since DEC-139 it fits at 1038x584, and the scroll path it proves has to
+      // keep working for a hub that grows.
+      const size = Size(1038, 400);
+      await pump(tester, full: true, size: size);
 
       ScrollableState scroller() => tester.state<ScrollableState>(find.byType(Scrollable).first);
 
@@ -540,7 +550,7 @@ void main() {
         reason: 'focusing a tile below the fold has to bring it into view',
       );
       // And it is genuinely on screen, not merely focused off-screen.
-      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
+      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(size.height));
     });
 
     testWidgets('a menu tile announces its title and what it is for', (tester) async {

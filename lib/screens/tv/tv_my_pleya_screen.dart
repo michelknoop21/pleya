@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 
 import '../../focus/focus_memory_tracker.dart';
 import '../../focus/focus_theme.dart';
+import '../../utils/tv_hig.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_screen.dart';
@@ -573,6 +574,7 @@ class _Tile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final radius = TvMyPleyaLayout.tileRadius * scale;
+    final pt = TvHig.of(context);
 
     return FocusableWrapper(
       focusNode: node,
@@ -619,59 +621,65 @@ class _Tile extends StatelessWidget {
               return AnimatedContainer(
                 duration: TvTopNavLayout.focusDuration,
                 curve: Curves.easeOut,
-                constraints: BoxConstraints(minHeight: TvMyPleyaLayout.tileMinHeight * scale),
-                padding: EdgeInsets.all(TvMyPleyaLayout.tilePadding * scale),
+                // VIS-0925-G (DEC-139): HIG points, the `TvMenuGrid` tile. The
+                // glyph sits beside the text, title in Body (29 pt) and the
+                // subtitle in Caption 1 (25 pt): about 100 pt tall, where the
+                // stacked tile was 151 pt around 23.6/18.9 pt text.
+                padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 16 * pt),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(radius),
                   color: tk.text.withValues(
                     alpha: focused ? TvMyPleyaLayout.tileFocusedFillAlpha : TvMyPleyaLayout.tileFillAlpha,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          tile.icon,
-                          size: TvMyPleyaLayout.tileIconSize * scale,
-                          color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-                        ),
-                        const Spacer(),
-                        if (tile.count != null)
+                    Icon(
+                      tile.icon,
+                      size: TvHig.body * pt,
+                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                    ),
+                    SizedBox(width: 20 * pt),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            '${tile.count}',
+                            tile.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-                              fontSize: TvMyPleyaLayout.tileCountFontSize * scale,
-                              fontWeight: FontWeight.w500,
+                              color: tk.text,
+                              fontSize: TvHig.body * pt,
+                              height: TvHig.bodyLeading / TvHig.body,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                      ],
-                    ),
-                    SizedBox(height: TvMyPleyaLayout.tileIconTitleGap * scale),
-                    Text(
-                      tile.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tk.text,
-                        fontSize: TvMyPleyaLayout.tileTitleFontSize * scale,
-                        fontWeight: FontWeight.w600,
+                          Text(
+                            tile.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                              fontSize: TvHig.caption1 * pt,
+                              height: TvHig.caption1Leading / TvHig.caption1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
-                    Text(
-                      tile.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                        fontSize: TvMyPleyaLayout.tileSubtitleFontSize * scale,
+                    if (tile.count != null) ...[
+                      SizedBox(width: 12 * pt),
+                      Text(
+                        '${tile.count}',
+                        style: TextStyle(
+                          color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                          fontSize: TvHig.body * pt,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               );
