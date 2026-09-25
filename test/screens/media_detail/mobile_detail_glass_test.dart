@@ -14,6 +14,7 @@ import 'dart:ui' as ui;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -93,9 +94,9 @@ class _CountingWatchlistSource implements WatchlistSource {
 }
 
 /// The real detail screen on an iPhone 17 Pro, glass [glass].
-Future<_CountingWatchlistSource> _pumpDetail(WidgetTester tester, {required bool glass}) async {
+Future<_CountingWatchlistSource> _pumpDetail(WidgetTester tester, {required bool glass, bool realTier = false}) async {
   TvDetectionService.debugSetAppleTVOverride(false);
-  await glassPhone(tester, glass: glass);
+  await glassPhone(tester, glass: glass, realTier: realTier);
 
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   PlexApiCache.initialize(db);
@@ -239,6 +240,33 @@ void main() {
     expect(tester.getRect(more), before.$2);
     expect(back.hitTestable(), findsOneWidget);
     expect(more.hitTestable(), findsOneWidget);
+  });
+
+  // B6: the real tier (liquid_glass_renderer) on the iPhone theme. Only
+  // proves the package widgets build on each surface; contrast is measured
+  // on tier fake above.
+  testWidgets('rooktest echt glas op iOS: knoppenrij, Resume en downloadrij', (tester) async {
+    await _pumpDetail(tester, glass: true, realTier: true);
+    expect(glassTierFor(tester.element(find.byType(MobileDetailHero))), GlassTier.real);
+    expect(tester.takeException(), isNull);
+
+    int layersAbove(Finder f) => find.ancestor(of: f, matching: find.byType(LiquidGlassLayer)).evaluate().length;
+    Finder platesIn(Finder layer) => find.descendant(of: layer, matching: find.byType(LiquidGlass));
+    final l10n = MaterialLocalizations.of(tester.element(find.byType(MobileDetailHero)));
+    final bar = find.ancestor(of: find.byTooltip(l10n.backButtonTooltip), matching: find.byType(LiquidGlassLayer));
+    final resume = find.ancestor(of: find.textContaining(t.common.resume), matching: find.byType(LiquidGlassLayer));
+    final download = find.ancestor(of: find.text('Download'), matching: find.byType(LiquidGlassLayer));
+
+    // Each surface sits in exactly one layer of its own.
+    expect(layersAbove(find.byTooltip(l10n.backButtonTooltip)), 1);
+    expect(layersAbove(find.textContaining(t.common.resume)), 1);
+    expect(layersAbove(find.text('Download')), 1);
+    expect(find.byType(LiquidGlassLayer), findsNWidgets(3));
+    // Back and more; Resume; Download and the watchlist circle.
+    expect(platesIn(bar), findsNWidgets(2));
+    expect(platesIn(resume), findsOneWidget);
+    expect(platesIn(download), findsNWidgets(2));
+    expect(find.byType(LiquidGlass), findsNWidgets(5));
   });
 
   testWidgets('contrast over Big Buck Bunny: titel, tags en glasknoppen', (tester) async {

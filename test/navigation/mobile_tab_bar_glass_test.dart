@@ -14,6 +14,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/widgets/mobile/mobile_page_header.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/screens/main/mobile_tab_bar_theme.dart';
 import 'package:pleya/theme/glass/glass_settings.dart';
@@ -284,5 +286,37 @@ void main() {
     expect(ratio, greaterThanOrEqualTo(3.0));
     // And it is visible as a button: the plate is clearly lighter than black.
     expect(ratio, lessThan(21));
+  });
+
+  // B6: the real tier (liquid_glass_renderer) on an iPhone theme. Tier fake
+  // is what the contrast tests measure; these only prove the real widgets
+  // build without an exception on each surface.
+  group('(g) rooktest echt glas op iOS', () {
+    testWidgets('tabbalk', (tester) async {
+      await glassPhone(tester, glass: true, realTier: true);
+      await tester.pumpWidget(_shell((_) => const SizedBox.expand()));
+      await tester.pumpAndSettle();
+
+      expect(glassTierFor(tester.element(find.byType(NavigationBar))), GlassTier.real);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(LiquidGlassLayer), findsOneWidget);
+      expect(find.byType(LiquidGlass), findsOneWidget);
+    });
+
+    testWidgets('kopcirkel', (tester) async {
+      await glassPhone(tester, glass: true, realTier: true);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: glassPhoneTheme(),
+          home: Scaffold(body: MobilePageHeader(activeProfile: null, onSearchTap: () {})),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(glassTierFor(tester.element(find.byType(MobilePageHeader))), GlassTier.real);
+      expect(tester.takeException(), isNull);
+      expect(find.byType(LiquidGlassLayer), findsOneWidget);
+      expect(find.byType(LiquidGlass), findsOneWidget);
+    });
   });
 }
