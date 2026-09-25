@@ -129,6 +129,17 @@ class PreferenceKeyMapper {
     return '${scope.localPrefix}$baseKey';
   }
 
+  /// The key this device keeps its stamp for [baseKey] under.
+  ///
+  /// A profile-scoped preference is one value per profile, so it needs one
+  /// stamp per profile too: keyed by the base key alone, profile A's change
+  /// decided profile B's conflicts on the same device. The full local key
+  /// (`user_<scope>_<baseKey>`) is that per-profile identity.
+  String stampKeyFor(String baseKey) {
+    if (!PreferenceSyncPolicyRegistry.isProfileScoped(baseKey)) return baseKey;
+    return localKeyFor(baseKey) ?? baseKey;
+  }
+
   /// Whether a transport key is a record this coordinator, in its current
   /// format, is entitled to delete.
   ///

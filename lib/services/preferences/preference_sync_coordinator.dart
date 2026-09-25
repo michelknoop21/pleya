@@ -160,8 +160,9 @@ class PreferenceSyncCoordinator {
     // value loses to every stamped remote record (see [remoteStampWins]), so a
     // user's write that skipped the stamp would be overwritten by the next
     // remote batch, however old that batch is.
-    if (mutation.stampsUserChange) {
-      _revisionStore.stampUserChange(baseKey, removed: mutation.operation == PreferenceOperation.remove);
+    final stampKey = _keys.stampKeyFor(baseKey);
+    if (mutation.stampsUserChange && PreferenceSyncPolicyRegistry.maySync(baseKey)) {
+      _revisionStore.stampUserChange(stampKey, removed: mutation.operation == PreferenceOperation.remove);
     }
 
     if (!_enabled()) return;
@@ -184,7 +185,7 @@ class PreferenceSyncCoordinator {
         // a key, read `null` back, and stopped. Since DEC-131 it travels as a
         // tombstone rather than as an absent key, so the other device can tell
         // "deleted" from "never had it".
-        await transport.write(cloudKey, encodeTombstone(_revisionStore.stampOf(baseKey)));
+        await transport.write(cloudKey, encodeTombstone(_revisionStore.stampOf(stampKey)));
         _setStatus(status.value.writeSucceeded(DateTime.now()));
         return;
       }
@@ -218,7 +219,7 @@ class PreferenceSyncCoordinator {
         _setStatus(status.value.countingSkipped(1));
         return;
       }
-      final encoded = encodeStampedRecord(entry, _revisionStore.stampOf(baseKey));
+      final encoded = encodeStampedRecord(entry, _revisionStore.stampOf(stampKey));
       final cap = transport.maxValueBytes;
       if (cap != null && utf8.encode(encoded).length > cap) {
         // Oversize is reported, not swallowed. It also must not become a
@@ -248,13 +249,16 @@ class PreferenceSyncCoordinator {
 
   /// Record a revision for a value that was already present, without pretending
   /// the user just chose it. Idempotent.
-  Future<void> bootstrapLegacyRevision(String baseKey) => _revisionStore.bootstrapLegacy(baseKey);
+  Future<void> bootstrapLegacyRevision(String baseKey) async {
+    if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return;
+    await _revisionStore.bootstrapLegacy(_keys.stampKeyFor(baseKey));
+  }
 
   /// The last deliberate local change to [baseKey], or null when this device
   /// never made one. This is the half of [PreferenceRevision] that has to be
   /// kept locally so a remote snapshot has something to be compared against.
   PreferenceRevision? localRevision(String baseKey) {
-    final entry = _revisionStore.all()[baseKey];
+    final entry = _revisionStore.all()[_keys.stampKeyFor(baseKey)];
     if (entry is! Map) return null;
     final at = entry['t'];
     final device = entry['d'];

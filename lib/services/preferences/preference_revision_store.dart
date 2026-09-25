@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'preference_revision.dart';
-import 'preference_sync_policy.dart';
 
 /// A stamp as stored locally or read from a record.
 typedef PreferenceStamp = ({int at, String device, bool deleted});
@@ -47,8 +46,12 @@ class PreferenceRevisionStore {
     }
   }
 
-  PreferenceStamp stampOf(String baseKey) {
-    final entry = all()[baseKey];
+  // Every method takes a stamp key: the base key for a global preference, the
+  // full `user_<scope>_` key for a profile-scoped one (see
+  // `PreferenceKeyMapper.stampKeyFor`). Callers decide what may be stamped.
+
+  PreferenceStamp stampOf(String stampKey) {
+    final entry = all()[stampKey];
     if (entry is Map && entry['t'] is int && entry['d'] is String) {
       return (at: entry['t'] as int, device: entry['d'] as String, deleted: entry['x'] == true);
     }
@@ -57,17 +60,16 @@ class PreferenceRevisionStore {
 
   /// Remember the stamp of a remote record this device just adopted, so the
   /// next comparison is against it and the next local change stamps past it.
-  Future<void> adopt(String baseKey, PreferenceStamp stamp) async {
+  Future<void> adopt(String stampKey, PreferenceStamp stamp) async {
     final revisions = all();
-    revisions[baseKey] = {'t': stamp.at, 'd': stamp.device, if (stamp.deleted) 'x': true};
+    revisions[stampKey] = {'t': stamp.at, 'd': stamp.device, if (stamp.deleted) 'x': true};
     await _prefs.setString(storeKey, json.encode(revisions));
   }
 
   /// Stamp a change a user made on this device.
-  void stampUserChange(String baseKey, {required bool removed}) {
-    if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return;
+  void stampUserChange(String stampKey, {required bool removed}) {
     final revisions = all();
-    revisions[baseKey] = {'t': _nextTimestamp(baseKey, revisions), 'd': _deviceId, if (removed) 'x': true};
+    revisions[stampKey] = {'t': _nextTimestamp(stampKey, revisions), 'd': _deviceId, if (removed) 'x': true};
     unawaited(_prefs.setString(storeKey, json.encode(revisions)));
   }
 
@@ -79,9 +81,9 @@ class PreferenceRevisionStore {
   /// carry a revision below its own predecessor, so the *older* value would win
   /// on the very device that just replaced it. One millisecond past the last
   /// revision is enough to keep the local sequence honest.
-  int _nextTimestamp(String baseKey, Map<String, dynamic> revisions) {
+  int _nextTimestamp(String stampKey, Map<String, dynamic> revisions) {
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final previous = revisions[baseKey];
+    final previous = revisions[stampKey];
     final previousAt = previous is Map ? previous['t'] : null;
     if (previousAt is! int) return now;
     return now > previousAt ? now : previousAt + 1;
@@ -90,11 +92,17 @@ class PreferenceRevisionStore {
   /// Record a revision for a value that was already present, without pretending
   /// the user just chose it. Idempotent: an existing revision is never
   /// downgraded to the legacy one.
-  Future<void> bootstrapLegacy(String baseKey) async {
-    if (!PreferenceSyncPolicyRegistry.maySync(baseKey)) return;
+  Future<void> bootstrapLegacy(String stampKey) async {
     final revisions = all();
-    if (revisions.containsKey(baseKey)) return;
-    revisions[baseKey] = {'t': legacyAt, 'd': _deviceId};
+    if (revisions.containsKey(stampKey)) return;
+    revisions[stampKey] = {'t': legacyAt, 'd': _deviceId};
+    await _prefs.setString(storeKey, json.encode(revisions));
+  }
+
+  /// Drop the stamp for [stampKey], so the key is "never seen" again.
+  Future<void> forget(String stampKey) async {
+    final revisions = all();
+    if (revisions.remove(stampKey) == null) return;
     await _prefs.setString(storeKey, json.encode(revisions));
   }
 

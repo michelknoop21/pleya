@@ -105,6 +105,7 @@ class PreferenceRemoteApply {
       }
 
       final refresh = PreferenceSyncPolicyRegistry.policyFor(baseKey).refresh;
+      final stampKey = _keys.stampKeyFor(baseKey);
 
       final raw = entry.value;
       if (raw == null) {
@@ -115,7 +116,7 @@ class PreferenceRemoteApply {
         // The stamp goes back to "unstamped, removed". Keeping the live stamp
         // would make this device skip every later record stamped below it
         // and leave the key empty for good.
-        await _revisionStore.adopt(baseKey, (
+        await _revisionStore.adopt(stampKey, (
           at: PreferenceRevisionStore.legacyAt,
           device: PreferenceRevisionStore.noDevice,
           deleted: true,
@@ -130,7 +131,7 @@ class PreferenceRemoteApply {
         continue;
       }
       final family = _keys.merges.familyFor(baseKey);
-      final local = _revisionStore.stampOf(baseKey);
+      final local = _revisionStore.stampOf(stampKey);
       // A value in a merge family is merged, whatever its stamp. A tombstone
       // on either side is not a value to merge: an incoming one has to be
       // newer than this device's change, and a live record has to be newer
@@ -156,7 +157,7 @@ class PreferenceRemoteApply {
           changed++;
           if (refresh != null) stale.add(refresh);
         }
-        await _revisionStore.adopt(baseKey, record.stamp);
+        await _revisionStore.adopt(stampKey, record.stamp);
         continue;
       }
       var value = record.value;
@@ -172,7 +173,7 @@ class PreferenceRemoteApply {
       if (ok) {
         changed++;
         if (refresh != null) stale.add(refresh);
-        if (stampDecides) await _revisionStore.adopt(baseKey, record.stamp);
+        if (stampDecides) await _revisionStore.adopt(stampKey, record.stamp);
       } else {
         skipped++;
       }

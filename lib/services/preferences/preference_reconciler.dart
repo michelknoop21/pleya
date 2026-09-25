@@ -89,7 +89,7 @@ class PreferenceReconciler {
         if (baseKey != null) known.add(baseKey);
         final cloudKey = _keys.cloudKeyFor(fullKey);
         if (cloudKey == null || baseKey == null) continue;
-        final local = _revisionStore.stampOf(baseKey);
+        final local = _revisionStore.stampOf(_keys.stampKeyFor(baseKey));
         // A value held under a removal stamp (a family's local-only entries)
         // is not a change of its own; sending it would carry the tombstone's
         // stamp on a live record. A legacy removal (the old build's bare
@@ -130,12 +130,15 @@ class PreferenceReconciler {
 
       // Tombstones this device holds, re-sent where the store still carries an
       // older live record: the previous build writes its values back over them.
+      // A stamp key is a local key, so another profile's entry maps to no base
+      // key, and a bare profile-scoped entry (the previous build's, profile
+      // unknown) is not this profile's stamp key.
       for (final e in _revisionStore.all().entries) {
         final meta = e.value;
         if (meta is! Map || meta['x'] != true) continue;
-        final localKey = _keys.localKeyFor(e.key);
-        if (localKey == null) continue;
-        final cloudKey = _keys.cloudKeyFor(localKey);
+        final baseKey = _keys.baseKeyOf(e.key);
+        if (baseKey == null || _keys.stampKeyFor(baseKey) != e.key) continue;
+        final cloudKey = _keys.cloudKeyFor(e.key);
         if (cloudKey == null) continue;
         final raw = remote[cloudKey];
         if (raw == null) continue;
