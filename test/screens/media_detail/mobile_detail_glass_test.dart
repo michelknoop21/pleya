@@ -139,6 +139,7 @@ Future<_CountingWatchlistSource> _pumpDetail(
   required bool glass,
   bool realTier = false,
   MediaServerClient? client,
+  MediaItem? metadata,
 }) async {
   TvDetectionService.debugSetAppleTVOverride(false);
   await glassPhone(tester, glass: glass, realTier: realTier);
@@ -188,7 +189,7 @@ Future<_CountingWatchlistSource> _pumpDetail(
         child: MaterialApp(
           builder: withNoticeLayer(),
           theme: glassPhoneTheme(),
-          home: withProfileNavigationScope(child: MediaDetailScreen(metadata: _movie)),
+          home: withProfileNavigationScope(child: MediaDetailScreen(metadata: metadata ?? _movie)),
         ),
       ),
     ),
@@ -267,6 +268,32 @@ void main() {
     expect(source.added, hasLength(1));
     expect(find.byTooltip(t.watchlist.remove), findsOneWidget);
     expect(find.byIcon(Icons.bookmark_added_rounded), findsOneWidget);
+  });
+
+  testWidgets('glas aan, serie (DEC-131): hero met seizoenen-tag, geen Download, watchlist in de actierij', (
+    tester,
+  ) async {
+    final series = MediaItem(
+      id: 'show_bbb',
+      backend: MediaBackend.plex,
+      kind: MediaKind.show,
+      title: 'Bunny Tales',
+      guid: 'plex://show/bbb',
+      serverId: 'server_1',
+      year: 2008,
+      childCount: 3,
+    );
+    await _pumpDetail(tester, glass: true, metadata: series);
+
+    final hero = find.byType(MobileDetailHero);
+    expect(hero, findsOneWidget);
+    final seasons = '3 ${t.libraries.groupings.seasons.toLowerCase()}';
+    expect(find.descendant(of: hero, matching: find.text(seasons)), findsOneWidget);
+    // A series downloads per episode: no Download capsule, no round watchlist
+    // button; the toggle stays in the action row as on the flat page.
+    expect(_surface(shape: StadiumBorder, prominent: false), findsNothing);
+    expect(find.descendant(of: hero, matching: find.byTooltip(t.watchlist.add)), findsNothing);
+    expect(find.text(t.watchlist.add), findsOneWidget);
   });
 
   testWidgets('K8: de trailerknop heet "Trailer afspelen", niet "Extras"', (tester) async {
