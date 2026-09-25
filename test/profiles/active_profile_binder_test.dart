@@ -41,7 +41,7 @@ Future<void> pumpUntil(Future<bool> Function() condition, {Duration timeout = co
 
 void main() {
   late AppDatabase db;
-  late ConnectionRegistry connections;
+  late _GatedConnectionRegistry connections;
   late ProfileConnectionRegistry profileConnections;
   late ProfileRegistry profiles;
   late PlexHomeService plexHome;
@@ -56,7 +56,7 @@ void main() {
   setUp(() async {
     resetSharedPreferencesForTest();
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    connections = ConnectionRegistry(db);
+    connections = _GatedConnectionRegistry(db);
     profileConnections = ProfileConnectionRegistry(db);
     profiles = ProfileRegistry(db);
     storage = await StorageService.getInstance();
@@ -635,6 +635,59 @@ void main() {
       expect(prepared.manager.restrictedPlexAccounts, isEmpty);
     });
 
+    /// Starts bound as Home admin, then demotes the member while the role
+    /// refresh is held at its first registry read. Returns once that stale
+    /// refresh (restricted, computed from the demoted snapshot) is waiting.
+    Future<({_CapturingMultiServerManager manager, Completer<void> release})> holdStaleDemotion() async {
+      final prepared = await preparePlexHomeBind(
+        protected: false,
+        httpClient: MockClient((request) async {
+          throw http.ClientException('DNS failed', request.url);
+        }),
+      );
+      binder.start();
+      await Future<void>.delayed(Duration.zero);
+      await activeProfile.awaitBindingSettle();
+      expect(prepared.manager.restrictedPlexAccounts, isEmpty);
+
+      final account = (await connections.getPlexAccount('plex.account'))!;
+      final release = connections.holdNextGetPlexAccount();
+      fetchedHomeUsers = [
+        PlexHomeUser.fromJson({...fetchedHomeUsers.single.toJson(), 'admin': false}),
+      ];
+      await plexHome.refresh(account);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(connections.held, isTrue, reason: 'the demotion refresh must be waiting on the registry');
+
+      fetchedHomeUsers = [
+        PlexHomeUser.fromJson({...fetchedHomeUsers.single.toJson(), 'admin': true}),
+      ];
+      await plexHome.refresh(account);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      return (manager: prepared.manager, release: release);
+    }
+
+    test('a role refresh that raced a rebind is dropped', () async {
+      final held = await holdStaleDemotion();
+      await binder.rebindActive();
+      expect(held.manager.restrictedPlexAccounts, isEmpty);
+
+      held.release.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(held.manager.restrictedPlexAccounts, isEmpty, reason: 'the stale demotion must not overwrite the rebind');
+    });
+
+    test('an older role refresh does not overwrite a newer one', () async {
+      final held = await holdStaleDemotion();
+      expect(held.manager.restrictedPlexAccounts, isEmpty);
+
+      held.release.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(held.manager.restrictedPlexAccounts, isEmpty, reason: 'the promotion came later and wins');
+    });
+
     test('Home admin keeps owner rights on the parent account', () async {
       final prepared = await preparePlexHomeBind(
         protected: false,
@@ -905,6 +958,28 @@ class _RecordingJellyfinManager extends MultiServerManager with _RecordsRestrict
     connected.add(connection);
     updateServerStatus(ServerId(connection.serverMachineId), true);
     return true;
+  }
+}
+
+/// Can hold the next [getPlexAccount] call until the test releases it, to
+/// order a role refresh against a later refresh or rebind.
+class _GatedConnectionRegistry extends ConnectionRegistry {
+  _GatedConnectionRegistry(super.db);
+
+  Completer<void>? _gate;
+  bool held = false;
+
+  Completer<void> holdNextGetPlexAccount() => _gate = Completer<void>();
+
+  @override
+  Future<PlexAccountConnection?> getPlexAccount(String id) async {
+    final gate = _gate;
+    if (gate != null) {
+      _gate = null;
+      held = true;
+      await gate.future;
+    }
+    return super.getPlexAccount(id);
   }
 }
 

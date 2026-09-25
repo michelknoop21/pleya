@@ -171,14 +171,15 @@ class ActiveProfileBinder {
     unawaited(_rebind());
   }
 
-  /// Bumped by every rebind pass, so a role refresh that raced one drops its
-  /// result instead of overwriting the rebind's newer set.
+  /// Bumped by every rebind pass and every role refresh, so a role refresh
+  /// that raced a newer rebind or refresh drops its result instead of
+  /// overwriting the newer set.
   int _authorityGeneration = 0;
 
   Future<void> _refreshServerAuthority() async {
     final profile = activeProfile.active;
     if (profile == null || profile.id != _lastBoundProfileId) return;
-    final generation = _authorityGeneration;
+    final generation = ++_authorityGeneration;
     final restrictions = await _serverAuthorityRestrictionsFor(profile);
     if (!_started || _isSwitching || generation != _authorityGeneration || activeProfile.activeId != profile.id) {
       return;
