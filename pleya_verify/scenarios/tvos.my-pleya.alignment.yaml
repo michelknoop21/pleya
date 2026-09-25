@@ -32,12 +32,10 @@ steps:
   # at 0, so the edge is read from its content: the Play button. TV8's full
   # suite found this file still measuring the surface.
   #
-  # VIS-0925-E (25 September, plan approved by Michel): the hero title, the
-  # CTA fill and the first rail tile's artwork share one x. The rail tile keeps
-  # its ring band inside the page edge (VER3), so its artwork sits one ring gap
-  # further in, and the hero text moved onto that artwork edge: (48 + 5) x 0.85
-  # x 1.85 = 83.34. The page edge itself stays 75.48 for every nested page.
-  - assert: {id: discover.hero.play, leftInset: 83.34}
+  # VIS-0925 review D3 (Michel, 25 September): the hero text and CTA fill stay
+  # on the page edge like every nested page; only a rail tile's artwork sits one
+  # ring gap further in (VER3).
+  - assert: {id: discover.hero.play, leftInset: 75.48}
 
   - press: right
   - press: right

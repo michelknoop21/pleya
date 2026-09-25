@@ -201,18 +201,19 @@ class TvHeroBillboardCard extends StatelessWidget {
             alphas: tk.isLight ? TvHomeLayout.heroScrimVerticalAlphasLight : TvHomeLayout.heroScrimVerticalAlphas,
           ),
           Positioned(
-            // VIS-0925-E: title, CTA fill and the first rail tile's artwork
-            // share one x. The rail's tile keeps its ring band inside the page
-            // inset (VER3), so the hero text moves onto the artwork edge
-            // rather than the rail moving out of the safe zone.
-            left: heroContentLeft(scale),
+            // Title, CTA fill and the rail heading share the page inset, the
+            // edge every nested page uses too; the CTA ring goes outward from
+            // there. Only a rail tile's artwork sits one ring gap further in,
+            // because the tile keeps its ring band inside the page edge (VER3).
+            // Decided by Michel after the VIS-0925 review (D3).
+            left: TvDiscoveryLayout.pageInset * scale,
             // `right`, not `width`. The *text* column is capped at
             // [TvHomeLayout.heroTextMaxWidth] (see `_HeroText`), but the CTA
             // row underneath it is not: a resume pill carrying a progress
             // bar beside a long "Meer info" label is wider than the prose
             // column on a long locale, and capping the whole block at the
             // prose width overflowed the row rather than wrapping it.
-            right: heroContentLeft(scale),
+            right: TvDiscoveryLayout.pageInset * scale,
             bottom: textBottom,
             // Opacity, never a conditional subtree: the CTAs live in here,
             // and unmounting them would drop the remote's focus on the
@@ -240,10 +241,6 @@ class TvHeroBillboardCard extends StatelessWidget {
     );
   }
 }
-
-/// Left edge of the hero text and CTAs: the page inset plus the ring band a
-/// rail tile keeps between its outer edge and its artwork.
-double heroContentLeft(double scale) => (TvDiscoveryLayout.pageInset + TvDiscoveryLayout.cardFocusRingGap) * scale;
 
 /// The backdrop stepping back once a row holds the focus (mockup 30 B): a veil
 /// of [TvHomeLayout.heroDimAlpha] over the whole picture, and a vertical scrim

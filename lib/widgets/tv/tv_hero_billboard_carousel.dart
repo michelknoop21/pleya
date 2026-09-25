@@ -581,10 +581,10 @@ class _HeroPillState extends State<_HeroPill> {
 
         // VIS-0925-E: one focus contract for the CTAs, the same as every other
         // TV control. The white ring (never `tk.text`, which is black in Light
-        // and drew a black-and-white double rim) stands directly outside the
-        // fill, with the Light separator line from [FocusTheme]; the scale says
-        // which pill holds the focus when a white ring meets a white pill. The
-        // fill itself starts on the text column's x, the halo goes outward.
+        // and drew a black-and-white double rim) stands a small clear band
+        // outside the fill, with the Light separator line from [FocusTheme],
+        // plus the focus scale. The fill itself starts on the text column's
+        // x, the halo goes outward.
         return AnimatedScale(
           scale: showFocus ? FocusTheme.focusScale : 1,
           duration: motion,
@@ -597,6 +597,10 @@ class _HeroPillState extends State<_HeroPill> {
               context,
               isFocused: showFocus,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+              // The same clear band as the category rail (D1): in Dark a
+              // focused CTA is a white fill, and a white ring against it
+              // would vanish without one.
+              gap: TvMyPleyaLayout.tileFocusRingGap * TvHig.of(context),
             ),
             height: TvHomeLayout.heroActionHeight * scale,
             padding: EdgeInsets.symmetric(horizontal: TvHomeLayout.heroActionPaddingHorizontal * scale),

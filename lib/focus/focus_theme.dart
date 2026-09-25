@@ -156,6 +156,7 @@ class FocusTheme {
     required bool isFocused,
     required OutlinedBorder shape,
     Color? color,
+    double gap = 0,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
     return ShapeDecoration(
@@ -165,7 +166,9 @@ class FocusTheme {
         BorderSide(
           color: isFocused ? focusColor : Colors.transparent,
           width: focusBorderWidth,
-          strokeAlign: BorderSide.strokeAlignOutside,
+          // [gap] of clear space between the shape and the ring: a white ring
+          // directly on a white fill is no ring at all (VIS-0925 review D1).
+          strokeAlign: BorderSide.strokeAlignOutside + 2 * gap / focusBorderWidth,
         ),
         isFocused && needsContrastSeparator(context),
       ),

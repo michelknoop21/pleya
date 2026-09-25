@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -55,6 +56,7 @@ import 'package:pleya/services/unified_catalog/home_custom_row_view_all.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_content_row.dart';
@@ -374,23 +376,38 @@ void main() {
     _film('arrival-nas', title: 'Arrival', releasedAt: '2024-02-01'),
   ];
 
-  // VIS-0925-E: title, CTA fill and first rail artwork on one x. Build 303
-  // drew them on three (title 48, CTA 48+6.5, tile 48+7.5 reference px).
-  testWidgets('hero title, CTA fills and the first rail artwork share one x', (tester) async {
+  // VIS-0925-E with Michel's D3: hero title, CTA fill and the rail heading
+  // on the page inset, the edge every nested page uses; a rail tile's artwork
+  // one ring gap further in (VER3). Build 303 drew title, CTA and tile on
+  // three x-positions; the first fix moved the title off the heading.
+  testWidgets('hero title, CTA fill and rail heading share the page inset, artwork one ring gap in', (tester) async {
     await boot(
       tester,
       latestMovies: twoRecentFilms(),
       onDeck: [_episode('e1', show: 'Harbourlight', season: 2, episode: 4)],
     );
+    final scale = TvLayoutConstants.scaleOf(tester.element(find.byType(TvContentFeed)));
+    final page = TvDiscoveryLayout.pageInset * scale;
     final hero = find.byType(TvHeroBillboardCard);
     final title = tester.getRect(
       find.descendant(of: hero, matching: find.text(heroGroup(tester).representativeSource.item.title!)).first,
     );
     final play = tester.getRect(find.byKey(const ValueKey('tvHeroCta.play.fill')));
+    final heading = tester.getRect(
+      find.descendant(of: find.byType(TvSectionHeader).first, matching: find.text(t.discover.continueWatching)),
+    );
     final firstTile = find.byType(TvExpandableMediaTile).first;
     final artwork = tester.getRect(find.descendant(of: firstTile, matching: find.byType(AnimatedContainer)).first);
-    expect(play.left, closeTo(title.left, 0.5));
-    expect(artwork.left, closeTo(title.left, 0.5));
+    expect(title.left, closeTo(page, 0.5));
+    expect(play.left, closeTo(page, 0.5));
+    expect(heading.left, closeTo(page, 0.5));
+    expect(artwork.left, closeTo(page + TvDiscoveryLayout.cardFocusRingGap * scale, 0.5));
+
+    // D1: the CTA ring stands a clear band off the fill, as on the category
+    // rail, so a white ring still shows around a white (focused) fill.
+    final fill = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('tvHeroCta.play.fill')));
+    final ring = ((fill.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring;
+    expect(ring.strokeOutset, greaterThan(FocusTheme.focusBorderWidth + 1));
   });
 
   group('rowfocus is not hero state (hoofdstuk 7.3 / 31.9)', () {

@@ -1453,7 +1453,7 @@ class TvHomeLayout {
   /// +0.08 of H20 was a white haze over 60% of the backdrop on the hardware
   /// photos of build 303. Light reads with less: the reading ramp stops just
   /// past the text column, which ends at 51% of the canonical canvas
-  /// (`(pageInset + cardFocusRingGap + heroTextMaxWidth) * 0.85 / 1038`), and
+  /// (`(pageInset + heroTextMaxWidth) * 0.85 / 1038`), and
   /// still holds 0.55 there so the synopsis keeps 4.5:1 over dark artwork.
   /// No wash under the top navigation, only the ground under the rail.
   static const List<double> heroScrimReadingStopsLight = [0, 0.53, 0.64, 1];

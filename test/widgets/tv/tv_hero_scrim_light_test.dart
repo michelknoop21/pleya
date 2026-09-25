@@ -4,7 +4,6 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
-import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 /// VIS-0925-E: the Light hero scrim got smaller, and the synopsis must still
@@ -32,8 +31,8 @@ void main() {
   }
 
   test('the synopsis clears 4.5:1 over dark artwork across the text column', () {
-    final start = heroContentLeft(scale) / canvasWidth;
-    final end = (heroContentLeft(scale) + TvHomeLayout.heroTextMaxWidth * scale) / canvasWidth;
+    final start = TvDiscoveryLayout.pageInset * scale / canvasWidth;
+    final end = (TvDiscoveryLayout.pageInset + TvHomeLayout.heroTextMaxWidth) * scale / canvasWidth;
     var worst = double.infinity;
     for (var f = start; f <= end; f += 0.01) {
       final a = alphaAt(f, TvHomeLayout.heroScrimReadingStopsLight, TvHomeLayout.heroScrimReadingAlphasLight);
