@@ -7,17 +7,15 @@ import 'package:provider/provider.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../providers/multi_server_provider.dart';
 import '../../../services/settings_service.dart';
-import '../../../widgets/app_icon.dart';
-import '../../../widgets/clickable_cursor.dart';
-import '../../../widgets/settings_section.dart';
+import '../../../widgets/setting_tile.dart';
 import '../settings_utils.dart';
 
 /// The app-language row on the Appearance page.
 ///
 /// VIS-0925-C: this was a bare `ListTile`, the one row on the page without
 /// [SettingRowFocus]. On TV it therefore had no focus treatment of its own and
-/// a second focus stop inside the tile. It now uses the same row focus, icon
-/// badge and inset as every other settings row.
+/// a second focus stop inside the tile. It is now a [SettingNavigationTile],
+/// the same row, focus, badge and chevron as every other settings row.
 class AppLanguageRow extends StatelessWidget {
   const AppLanguageRow({super.key, required this.onRestart});
 
@@ -43,22 +41,12 @@ class AppLanguageRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return SettingRowFocus(
-      onSelect: () => _pick(context),
-      automationInstance: 'setting.${SettingsService.appLocale.key}',
-      child: ClickableCursor(
-        child: ListTile(
-          contentPadding: settingRowPadding(),
-          leading: const SettingsIconBadge(Symbols.language_rounded),
-          title: Text(t.settings.language),
-          subtitle: Text(appLocaleDisplayName(LocaleSettings.currentLocale)),
-          trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
-          onTap: () => _pick(context),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SettingNavigationTile(
+    icon: Symbols.language_rounded,
+    title: t.settings.language,
+    subtitle: appLocaleDisplayName(LocaleSettings.currentLocale),
+    onTap: () => _pick(context),
+  );
 }
 
 /// A locale's own name for itself.

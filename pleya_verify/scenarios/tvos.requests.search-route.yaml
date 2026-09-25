@@ -27,13 +27,11 @@ steps:
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
 
-  # With Seerr configured the content group carries Aanvragen; DOWN from the
-  # profile control lands on the group's first tile, RIGHT walks to it.
+  # With Seerr configured the content group carries Aanvragen, its only tile
+  # on this fixture: DOWN from the profile control lands on it.
   - press: down
-  - settle: 500
-  - snapshot: 00-hub
-  - press: right
   - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - snapshot: 00-hub
   - press: select
   - wait_until: {id: seerr.search.field, timeout: 15000}
   - settle: 2500

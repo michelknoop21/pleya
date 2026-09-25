@@ -1,0 +1,107 @@
+name: tvos.glass.topnav-light
+target: tvos-sim
+# The Apple TV top bar and search pill with Liquid Glass on (mockups LG-04 and
+# LG-06, Liquid Glass Tasks 8 and 9). Glass is switched on the way a viewer
+# does it: Mijn Pleya, Instellingen, Uiterlijk, the Liquid Glass row. The bar
+# follows the switch live, so no restart. Back on Home the white Home pill has
+# the focus: with glass on that is a 1.08 scale plus a shadow, not the ring.
+# Then Zoeken with the query "as" (Basalt and Cascade in `catalog.mixed.v1`),
+# the pill at rest under the bar with the results below it.
+#
+# The row count from the first Uiterlijk row to Liquid Glass (five downs) is
+# the Display category on TV today: theme, language, density, view mode,
+# episode posters, Liquid Glass.
+#
+# VIS-0925-D: the same walk in Light. The theme row is switched to Light first
+# (the choice dialog opens on the current value; UP to the top of the list is
+# Systeem, one DOWN is Licht), so every snapshot after it is the Light plate,
+# the Light settings card and the Light hero.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - snapshot: 00-home-glass-off
+
+  # Glass on through Uiterlijk.
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[settings]", timeout: 15000}
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
+  - press: right
+  - settle: 400
+  - snapshot: 01a-appearance-dark
+  - press: select
+  - settle: 1000
+  - press: up
+  - press: up
+  - press: up
+  - press: down
+  - settle: 300
+  - press: select
+  - settle: 1500
+  - snapshot: 01b-appearance-light
+  - press: down
+  - settle: 300
+  - press: down
+  - settle: 300
+  - press: down
+  - settle: 300
+  - press: down
+  - settle: 300
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[setting.liquid_glass]", timeout: 5000}
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: false}}
+  - press: select
+  - settle: 500
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: true}}
+  - snapshot: 01-glass-switched-on
+
+  # Out to the bar, over to Home.
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - press: menu
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  # Walking the bar switches the destination (tvos.nav.focus-switches-
+  # destination), so the ring on Home is Home on screen; Select would hand
+  # the remote to the content.
+  - walk: {direction: left, expect: [nav.movies, nav.series, nav.discover], timeout: 20000, settle: 800}
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 1500
+  - assert: {id: nav.discover, focused: true, state: {active: true}}
+  - assert: {id: nav.discover, insideViewport: true}
+  - assert: {id: nav.search, leftOf: nav.discover}
+  - snapshot: 02-home-glass-focus-home
+
+  # LG-06: Zoeken, "as", the pill at rest with the results under it.
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: select
+  - settle: 2000
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}
+  - settle: 1000
+  - type: "as"
+  - settle: 2500
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 10000}
+  - assert: {id: tv.search.pill, state: {count: "2 resultaten"}}
+  - assert: {id: tv.search.pill, below: nav.search}
+  - assert: {id: "tv.catalog.grid[search.movies]", below: tv.search.pill}
+  - settle: 1000
+  - snapshot: 03-search-glass-results
