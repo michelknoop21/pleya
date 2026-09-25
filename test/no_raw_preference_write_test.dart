@@ -62,7 +62,7 @@ void main() {
     ),
     'lib/services/preferences/preference_revision_store.dart': RawWriteRecord(
       WriteCategory.syncPreference,
-      4,
+      5,
       'persists the sync engine\'s own revision metadata, which never syncs itself',
     ),
     'lib/services/preferences/preference_device_id.dart': RawWriteRecord(
@@ -240,7 +240,7 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 90, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(total, 91, reason: 'total raw preference writes still classified as staying outside the coordinator');
     expect(inventory.length, 25, reason: 'files containing them');
   });
 
