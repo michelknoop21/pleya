@@ -552,6 +552,12 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 
 *De credentialgrens.* `TautulliImportAccess` biedt alleen `enabledImportServerIds()` en `fetchImportHistory(serverId, userId: …)`. Er is geen publiek veld en geen getter waarlangs UI-code of een ander profiel de token bereikt, en de enige uitgaande call is een `get_history` met vastgezet `user_id`. Binnen één Dart-isolate bestaat geen taalgrens die geheugen afschermt, dus dit is een API-grens en geen sandbox; die claim wordt niet groter gemaakt dan hij is.
 
+*Addendum 24 september 2026 (DEC-132).* Twee namen in deze tekst zijn ingehaald door de code:
+`SettingsExportService._denyPrefixes` is vervangen door de registry in
+`lib/services/preferences/preference_sync_policy.dart` (onbekende sleutel is `localOnly`), en
+`fetchImportHistory` neemt `profileId`, niet `userId` (`lib/services/tautulli/tautulli_import_access.dart`).
+Het gedrag is zoals hier bedoeld; alleen de namen verschoven.
+
 *Bredere kandidatenpool.* `CandidatePool` voegt per server vier lagen samen: de al geladen hub-items, `fetchRecentlyAdded` (12u TTL), top-rated per bibliotheek en een deterministisch roterende steekproef uit de oudste toevoegingen (beide 24u TTL). Dat is een bronreparatie: "Verborgen parels" eist items ouder dan 90 dagen maar kreeg uitsluitend recent-toegevoegd voer. Het budget is `1 + 2 * kMaxLibraries = 13` calls per server per 24u, gehaald door `totalCount` uit de top-rated pagina te hergebruiken voor de offset in plaats van er een probe-call aan te besteden. Top Picks-items worden nu ook uitgesloten van Verborgen parels.
 
 *Serverpopulariteit blijft buiten scope.* `get_home_stats` wordt niet toegevoegd, ook niet als ongebruikte clientmethode, model of fixture. De integratie gebruikt uitsluitend de kijkgeschiedenis van de exact gekoppelde actieve gebruiker; geaggregeerd gedrag van andere servergebruikers wordt niet opgehaald en krijgt geen gewicht en geen verborgen prior.
@@ -2951,6 +2957,58 @@ vertalingen `mobileDetail.similarTab` en `mobileDetail.extrasTab` zijn niet meer
 Verify-scenario's `ios.detail.northstar` en `ios.detail-episodes.northstar` maken alleen
 schermafbeeldingen en veranderen niet; de comp `serie-detail-comp` (register rij 63) is hiermee
 achterhaald.
+
+## DEC-132: Home-aanbevelingen seeden uit het eigen interactielog; Tautulli blijft één adapter naast een lokaal partieel signaal en een Jellyfin-import
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** De audit van 24 september 2026 op de Tautulli-integratie vond drie defecten en vijf
+verbeteringen. De seeds voor "Omdat je X gekeken hebt" kwamen uit `fetchRecentlyWatched` van elke
+online client, dus een Pleya Server-kijkbeurt nam een van de drie plekken in zonder rij op te
+leveren, en een lopende serie seedde nooit omdat `isWatched` voor een serie "alles gezien"
+betekent. Op de detailpagina ging de adminclient van Tautulli mee voor elk beheerd Plex-item, ook
+op een tweede server die Tautulli niet monitort. Het lokale log kende alleen "afgekeken" en "uit
+Verder kijken gehaald", zodat Jellyfin- en Pleya Server-profielen koud bleven tot ze in Pleya
+zelf hadden gekeken.
+
+**Decision:**
+
+*Seeds uit het log.* De drie seed-rijen komen uit `MediaInteractions` van het actieve profiel:
+de nieuwste onderscheiden evidence-sleutels met gewicht >= 0,4 binnen 30 dagen, alleen voor
+servers met de capability `relatedHubs`. Een `partial`-seed heet "Omdat je X kijkt", een
+`completed`-seed "Omdat je X gekeken hebt". Levert het log minder dan drie seeds, dan vult
+`fetchRecentlyWatched` aan tot drie, een seed per titel; een Jellyfin-verbinding die meer dan één profiel deelt,
+doet daarin niet mee. Een titel die na de play uit Verder kijken is gehaald, seedt niet.
+Seeds vier tot en met zes leveren alleen kandidaten voor Top Picks.
+
+*Eén partieel signaal, lokaal en geïmporteerd gelijk.* Een eindstop tussen 50 procent en de
+kijkdrempel van de client schrijft `partial` 0,4, hoogstens één per titel per zes uur. De
+cross-source-deduplicatie van de importer onderdrukt een geïmporteerd event alleen door een lokale
+rij met minstens hetzelfde gewicht.
+
+*Jellyfin als tweede adapter op dezelfde tabel.* `source = 'jellyfin'`, eigen gebruikerstoken,
+geen adminbeleid, watermark op `LastPlayedDate`, geen backfill voorbij de retentiecap. Een
+Jellyfin-verbinding die meer dan één profiel gebruikt, importeert voor niemand geschiedenis. De
+lener niet, want dat token is niet zijn eigen login; de uitlener ook niet, want zijn
+Jellyfin-gebruiker draagt vanaf dat moment ook de plays van de lener (DEC-062).
+
+*Eén persoonsrij, gedeelde cap.* Genre-, acteur- en regisseursrijen delen twee plekken; sorteren
+op genormaliseerd gewicht, bij gelijkspel genre, dan acteur, dan regisseur. Persoonsdrempel 0,7.
+
+*De Tautulli-client volgt de gemonitorde server.* `TautulliProvider.clientForServer` geeft de
+adminclient alleen voor de server die `tautulliMonitoredServer` aanwijst. "Nu aan het kijken" op
+detail vergelijkt server én rating key.
+
+**Consequences:** `ServerCapabilities.relatedHubs` (Plex en Jellyfin `true`). `WatchStateEvent`
+draagt `durationMs` en `isFinal`. Drie nieuwe i18n-sleutels (`discover.becauseYouAreWatching`,
+`discover.moreWithActor`, `discover.moreFromDirector`), andere locales vallen terug op Engels.
+`HistorySyncCursors` krijgt rijen met `source = 'jellyfin'`; geen schemawijziging. Buiten scope
+blijven: `get_home_stats`, een engine op Pleya Server, een negatief signaal uit een afgebroken
+play, een rewatch-rij, een nieuw instellingenscherm. Open: P4 (devicetoken verbruikt bij een
+mislukte test), P7 (client per importpagina), P9 (`owned` voor een beheerd Home-profiel) en de
+Pleya Server-follow-ups `GET /items/{id}/related` en per-gebruiker watch-state. Register:
+`docs/recommendations-register.md`.
 
 ## DEC-133: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
 

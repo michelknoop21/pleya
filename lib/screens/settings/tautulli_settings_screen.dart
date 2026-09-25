@@ -30,9 +30,10 @@ import 'async_form_state_mixin.dart';
 /// generated in Tautulli, or the permanent API key.
 ///
 /// The difference from seerr that shapes this screen: Tautulli has no per-user
-/// login. One key opens the whole admin API, so what is configured here only
-/// ever serves the person holding it, and the copy says so instead of implying
-/// the household gets it too.
+/// login. One key opens the whole admin API, so pairing is an admin act. What
+/// it feeds is per profile: every profile on this server gets its own history
+/// imported, bound to its own Plex account (DEC-062), and none of them sees
+/// the key.
 class TautulliSettingsScreen extends StatefulWidget {
   const TautulliSettingsScreen({super.key});
 
