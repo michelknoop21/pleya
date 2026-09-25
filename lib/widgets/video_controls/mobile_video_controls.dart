@@ -375,14 +375,19 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
         // Live TV with time-shift: show seekable timeline
         return FirstFrameGuard(
           hasFirstFrame: widget.hasFirstFrame,
-          builder: (context) => LiveTimelineBar(
-            player: widget.player,
-            captureBuffer: widget.captureBuffer!,
-            streamStartEpoch: widget.streamStartEpoch,
-            isAtLiveEdge: widget.isAtLiveEdge,
-            onSeekEnd: widget.onLiveSeek,
-            horizontalLayout: false,
-            enabled: widget.canControl,
+          builder: (context) => playerGlassPlate(
+            context,
+            LiveTimelineBar(
+              player: widget.player,
+              captureBuffer: widget.captureBuffer!,
+              streamStartEpoch: widget.streamStartEpoch,
+              isAtLiveEdge: widget.isAtLiveEdge,
+              onSeekEnd: widget.onLiveSeek,
+              horizontalLayout: false,
+              enabled: widget.canControl,
+              verticalTimeColor: playerGlassOn(context) ? Colors.white : Colors.white70,
+            ),
+            childPadded: true,
           ),
         );
       }

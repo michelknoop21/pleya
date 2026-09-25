@@ -38,10 +38,14 @@ Widget playerGlassScope(BuildContext context, Widget child) {
 
 /// The header's trailing button row (cast, tracks, settings) in a capsule.
 /// No inner padding: the 40px buttons fill the capsule's round ends, so no
-/// button moves. Its icons drop the glass shadow: on the iOS simulator
-/// (Impeller) that shadow painted a detached dark copy of the whole row
-/// further down-left over the video, and the capsule's tint alone clears the
-/// 3:1 icon bar (`mobile_video_controls_glass_test.dart`).
+/// button moves. Its icons drop the glass shadow, a workaround with a
+/// partly understood cause: on the iOS simulator the shadows of this row
+/// stayed on screen at its portrait position (x 121, y 106 pt) after the
+/// player turned landscape, as a dark copy over the video
+/// (`player-ghost-repro.png`). Hiding and showing the controls, or a hot
+/// reload, cleared it; so stale paint, not layout. Why only shadows go stale
+/// is open. The capsule's tint alone clears the 3:1 icon bar
+/// (`mobile_video_controls_glass_test.dart`).
 Widget playerGlassCapsule(Widget trailing) => playerGlassSurface(
   const StadiumBorder(),
   IconTheme.merge(
@@ -51,24 +55,30 @@ Widget playerGlassCapsule(Widget trailing) => playerGlassSurface(
   legacy: trailing,
 );
 
-/// Outer inset of the bottom bar, split around the plate with glass on so the
-/// timeline keeps its exact position: 10 outside + 6 inside = the old 16.
+/// Outer inset of the bottom bar with glass on: 10 outside + 6 inside keeps
+/// the timeline at the old height. Horizontally the plate keeps the old 16 pt
+/// margin and the timeline sits another 16 pt inside it (LG-03).
 const double _kPlateInnerV = 6;
+const double _kPlateInnerH = 16;
 const double _kPlateRadius = 22;
 
 /// Timeline and timestamps on one glass plate. [child] is the timeline bar.
 /// The progress stays `kAccent` and opaque: the slider paints it on top of
-/// the plate, never through it.
-Widget playerGlassPlate(BuildContext context, Widget child) {
-  if (!playerGlassOn(context)) return Padding(padding: const EdgeInsets.all(16), child: child);
+/// the plate, never through it. [childPadded]: [child] brings its own 16 pt
+/// inset (`LiveTimelineBar`'s vertical layout), so glass off returns it bare
+/// and the plate adds no inner padding.
+Widget playerGlassPlate(BuildContext context, Widget child, {bool childPadded = false}) {
+  if (!playerGlassOn(context)) return childPadded ? child : Padding(padding: const EdgeInsets.all(16), child: child);
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16 - _kPlateInnerV),
     child: playerGlassSurface(
       const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(_kPlateRadius))),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: _kPlateInnerV),
-        child: child,
-      ),
+      childPadded
+          ? child
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: _kPlateInnerH, vertical: _kPlateInnerV),
+              child: child,
+            ),
     ),
   );
 }
