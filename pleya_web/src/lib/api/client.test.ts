@@ -325,6 +325,19 @@ describe('foutafhandeling', () => {
     });
     expect(describeError(err)).toContain('library.brand_new');
   });
+
+  // Venster 1 verruimt het foutdomein (DEC-135 en DEC-136). De compatibiliteits-
+  // toets daaronder rust op de aanname dat een onbekend domein hier generiek
+  // afloopt in plaats van ergens op te takken. Dat is een aanname over deze code,
+  // dus hij hoort hier gemeten te worden en niet alleen in het besluit te staan.
+  it.each(['server.internal', 'settings.invalid_value'])(
+    'behandelt %s als een gewone onbekende code en tekent geen authstoring',
+    (code) => {
+      const err = new ApiError({ code, message: 'x', status: 500, retryable: true });
+      expect(describeError(err)).toContain(code);
+      expect(err.isAuthFailure).toBe(false);
+    }
+  );
 });
 
 describe('artwork', () => {
@@ -332,10 +345,11 @@ describe('artwork', () => {
     let auth: string | null = null;
     const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       auth = new Headers(init?.headers).get('Authorization');
-      // Een kale string als body: Response.blob() bouwt daar zelf een Blob uit,
-      // en dat vermijdt een Blob die uit een ander realm komt dan de Response die
-      // hem in ontvangst neemt (jsdom's fetch-polyfill versus de host-runtime).
-      return new Response('bytes', { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+      // Een kale string als body, geen Blob. jsdom's Blob mist `stream()`, waar
+      // undici's Response om vraagt (op macOS valt dat toevallig goed uit, op de
+      // Linux-runner niet), en Response.blob() bouwt zelf een Blob uit de string,
+      // zodat er geen Blob uit een ander realm dan de Response binnenkomt.
+      return new Response('bytes', { status: 200, headers: { 'content-type': 'image/jpeg' } });
     }) as unknown as FetchLike;
 
     const { client } = clientWith(fetchImpl);

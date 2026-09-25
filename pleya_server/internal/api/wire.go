@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
@@ -29,12 +30,19 @@ type InfoProtocol struct {
 	Profile      string `json:"profile"`
 }
 
-// InfoServer draagt alleen een id. Geen servernaam, geen versie en geen
-// buildnummer: die zijn nuttig bij foutzoeken en staan daarom in GET /server,
-// achter authenticatie. Een versienummer aan de buitenkant vertelt een scanner
-// precies welke bekende zwakke plekken het proberen waard zijn.
+// InfoServer draagt een id en één onderhandelingsvlag. Geen servernaam, geen
+// versie en geen buildnummer: die zijn nuttig bij foutzoeken en staan daarom in
+// GET /server, achter authenticatie. Een versienummer aan de buitenkant vertelt
+// een scanner precies welke bekende zwakke plekken het proberen waard zijn.
 type InfoServer struct {
 	ID string `json:"id"`
+
+	// SetupAcceptsName (J.2 rij 10) zegt dat POST /auth/setup het veld
+	// server_name aanneemt. Hier en niet in Capabilities: het is geen functie
+	// die aan of uit staat maar een eigenschap van dat ene endpoint, en het is
+	// het enige veld dat een client vóór het inloggen moet weten. SetupRequest
+	// is gesloten, dus zonder deze vlag stuurt een client server_name niet.
+	SetupAcceptsName bool `json:"setup_accepts_name"`
 }
 
 // InfoAuth zegt hoe er ingelogd kan worden.
@@ -54,7 +62,12 @@ type Capabilities struct {
 	Downloads    bool `json:"downloads"`
 	LiveTV       bool `json:"live_tv"`
 	Realtime     bool `json:"realtime"`
-	Users        bool `json:"users"`
+
+	// Users (DEC-121). Aan sinds stap 4 van PS-9: de vijf endpoints onder
+	// /users bestaan, en /auth/login verifieert tegen users en niet meer tegen
+	// alleen de owner-rij. Een client die deze vlag ziet mag ervan uitgaan dat
+	// een tweede gebruiker kan bestaan en kan inloggen.
+	Users bool `json:"users"`
 
 	// PS-4. Twee vlaggen die de client vertellen dat hij de velden uit DEC-049
 	// en het endpoint uit DEC-051 mag gebruiken. WatchStateEvent is gesloten,
@@ -62,20 +75,100 @@ type Capabilities struct {
 	// een 400 krijgen van een oudere server.
 	WatchStateOwnership bool `json:"watch_state_ownership"`
 	StreamSessions      bool `json:"stream_sessions"`
+
+	// Sessions (DEC-123, DEC-124). Aan sinds stap 6 van PS-9. De vlag zegt drie
+	// dingen tegelijk: de client mag device_id en device_name meesturen bij
+	// login en setup, GET/DELETE /sessions en POST /auth/logout bestaan, en een
+	// ingetrokken sessie is binnen twee seconden ongeldig, ook voor een lopende
+	// stream (DEC-120).
+	Sessions bool `json:"sessions"`
+
+	// APITokens (RB-20, J.2 rij 12 en 13). Aan sinds S1.5. De vlag zegt dat
+	// POST en GET /auth/api-tokens bestaan en dat Session kind en scope draagt.
+	// Hij staat naast `sessions` en niet erin: een client die sessies kent maar
+	// deze vlag niet ziet, toont het sessieoverzicht zonder de tokenkolom, en
+	// dat is een geldig scherm.
+	APITokens bool `json:"api_tokens"`
+
+	// CookieAuth (RB-29, J.2 rij 16). Aan sinds S1.8. De vlag zegt dat
+	// POST /auth/login en POST /auth/refresh het veld credential_mode kennen en
+	// het refreshcredential desgevraagd in een HttpOnly-cookie zetten. Beide
+	// bodies zijn gesloten, dus zonder deze onderhandeling zou een client die
+	// credential_mode meestuurt een weigering krijgen van een oudere server in
+	// plaats van een veld dat stil wegvalt.
+	CookieAuth bool `json:"cookie_auth"`
+
+	// Administration (J.2 rij 1). Aan sinds S1.6, en hij dekt wat S1.2 tot en
+	// met S1.5 hebben gebouwd: GET/PATCH /settings, de vier routes onder
+	// /server, GET /stream-sessions en GET /audit.
+	//
+	// Eén vlag voor het hele oppervlak. Een client die zes vlaggen zou moeten
+	// lezen krijgt zes vragen met altijd hetzelfde antwoord, want de routes
+	// kwamen samen. En de vlag is netheid en geen beveiliging: de server
+	// weigert onafhankelijk ervan met 404 voor wie er niet bij mag.
+	Administration bool `json:"administration"`
+
+	// MCP (RB-19, RB-20, J.2 rij 15). Uit, en dat blijft zo tot slice S16 de
+	// laag werkelijk bouwt. Hij staat er nu al omdat het protocolvenster nu
+	// open is: een vlag die pas met de implementatie meekomt zou een tweede
+	// venster kosten voor een boolean.
+	MCP bool `json:"mcp"`
 }
 
 // ServerDetail is het antwoord van GET /server.
+//
+// De eerste vier velden zijn klasse authenticated en staan er sinds PS-2. De
+// negen daaronder gaan alleen mee voor klasse admin: acht met S1.3 (J.2 rij 3)
+// en web_origin met S1.8. Ze beschrijven hoe deze server draait, en dat is voor
+// een huisgenoot geen informatie maar een verkenning.
+//
+// cors_origins staat er bewust niet bij. Die lijst is beleid en geen adres, en
+// een opsomming van vertrouwde origins vertelt precies welke herkomst het
+// proberen waard is; hij staat in GET /settings en verder nergens.
+//
+// Pointers en geen kale waarden, want het verschil tussen "afwezig" en "leeg"
+// draagt hier betekenis. Een lid ziet public_url niet; een beheerder van een
+// server zonder publiek adres ziet hem als lege tekst, en dat is een ander
+// antwoord op een andere vraag.
 type ServerDetail struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Version   string `json:"version"`
 	StartedAt string `json:"started_at"`
+
+	PublicURL      *string             `json:"public_url,omitempty"`
+	WebOrigin      *string             `json:"web_origin,omitempty"`
+	Listen         *string             `json:"listen,omitempty"`
+	BehindProxy    *bool               `json:"behind_proxy,omitempty"`
+	TrustedProxies *[]string           `json:"trusted_proxies,omitempty"`
+	Build          *string             `json:"build,omitempty"`
+	Database       *ServerDatabaseWire `json:"database,omitempty"`
+	FFprobe        *ServerFFprobeWire  `json:"ffprobe,omitempty"`
+	Health         *ServerHealthWire   `json:"health,omitempty"`
+	MCP            *ServerMCPWire      `json:"mcp,omitempty"`
+}
+
+// ServerMCPWire is de MCP-beheerlaag in GET /server, klasse admin (J.2 rij 15).
+//
+// Zolang capabilities.mcp uit staat draagt hij enabled false en tool_count 0,
+// zonder url. Dat is een ander antwoord dan een afwezig object: het eerste zegt
+// "de laag bestaat en staat uit", het tweede "deze server kent de vraag niet".
+type ServerMCPWire struct {
+	Enabled   bool    `json:"enabled"`
+	URL       *string `json:"url,omitempty"`
+	ToolCount int     `json:"tool_count"`
 }
 
 // TokenPair is wat setup, login en refresh teruggeven.
+//
+// RefreshToken draagt omitempty sinds S1.8: in cookiemodus zit het credential in
+// de cookie pleya_refresh en hoort het niet in het lichaam. Het weglaten is het
+// hele punt van RB-29, want een refreshtoken dat óók in het antwoord staat is met
+// één regel JavaScript alsnog te lezen. Voor een client die credential_mode niet
+// stuurt staat het er altijd; zie hoofdstuk 17d.1 voor de compatibiliteitstoets.
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 	TokenType    string `json:"token_type"`
 	ExpiresInMs  int64  `json:"expires_in_ms"`
 }
@@ -87,16 +180,68 @@ type StreamToken struct {
 }
 
 // Library is één bibliotheek op de lijn.
+//
+// managed, scan_interval_seconds en scan_on_start gaan sinds S2.2 alleen mee
+// voor klasse admin (J.3): voor een huisgenoot is dat geen kijkinformatie maar
+// beheerdetail. scan_interval_seconds is ook voor een admin nullable (NULL
+// betekent: gebruik de globale interval), dus dit veld draagt een pointer naar
+// een pointer: de buitenste beslist of het veld er voor deze rol bij staat, de
+// binnenste of de waarde zelf null is. roots[] en last_scan volgen met S2.3 en
+// S2.4, wanneer er ook werkelijk iets zinnigs in te vullen is.
 type Library struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	Kind      string `json:"kind"`
 	ItemCount int    `json:"item_count"`
+
+	Managed             *string `json:"managed,omitempty"`
+	ScanIntervalSeconds **int   `json:"scan_interval_seconds,omitempty"`
+	ScanOnStart         *bool   `json:"scan_on_start,omitempty"`
 }
 
 // LibraryList is het antwoord van GET /libraries.
 type LibraryList struct {
 	Items []Library `json:"items"`
+}
+
+// CreateLibraryRequest is de gesloten aanvraagbody van POST /libraries (J.3).
+type CreateLibraryRequest struct {
+	Title               string   `json:"title"`
+	Kind                string   `json:"kind"`
+	RootPaths           []string `json:"root_paths"`
+	ScanIntervalSeconds *int     `json:"scan_interval_seconds"`
+	ScanOnStart         *bool    `json:"scan_on_start"`
+}
+
+// UpdateLibraryRequest is de gesloten aanvraagbody van PATCH /libraries/{id}
+// (J.3). Elk veld is een pointer: afwezig betekent onveranderd.
+//
+// scan_interval_seconds is bovendien zelf nullable, en heeft daarom een kale
+// (niet-pointer) json.RawMessage: encoding/json zet een `*json.RawMessage` bij
+// het JSON-literaal null zelf op nil, vóórdat RawMessage's eigen
+// UnmarshalJSON ooit wordt aangeroepen, en dan is "niet meegestuurd" en
+// "meegestuurd met null" opnieuw hetzelfde ongeval als bij een kale `*int`. Een
+// niet-pointer json.RawMessage krijgt zijn UnmarshalJSON wél aangeroepen op
+// null en bewaart dan de letterlijke bytes `null`; alleen een afwezige sleutel
+// laat het veld op zijn Go-zero (een nil slice) staan. Zie
+// TestUpdateLibraryScanIntervalDistinguishesAbsentFromNull in de catalog-laag
+// voor het gedrag dat dit onderscheid mogelijk maakt.
+// Title en Kind zijn zelf ook niet-nullable velden en dragen daarom dezelfde
+// kale json.RawMessage als scan_interval_seconds: {"title": null} moet 400
+// geven en geen stille no-op, en een *string kan "afwezig" en "null" niet uit
+// elkaar houden.
+type UpdateLibraryRequest struct {
+	Title               json.RawMessage `json:"title"`
+	Kind                json.RawMessage `json:"kind"`
+	RootPaths           *[]string       `json:"root_paths"`
+	ScanIntervalSeconds json.RawMessage `json:"scan_interval_seconds"`
+	ScanOnStart         *bool           `json:"scan_on_start"`
+}
+
+// DeleteLibraryRequest is de gesloten aanvraagbody van DELETE /libraries/{id}
+// (K rij 16, J.3): confirm moet letterlijk de titel van de bibliotheek zijn.
+type DeleteLibraryRequest struct {
+	Confirm string `json:"confirm"`
 }
 
 // Artwork draagt de ids van de beschikbare afbeeldingen.

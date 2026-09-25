@@ -349,6 +349,11 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String bufferSizeWarning({required Object heap, required Object size}) => '${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.';
 	@override String get defaultQualityTitle => 'Standaardkwaliteit';
 	@override String get defaultQualityDescription => 'Wordt gebruikt bij het starten van de weergave. Lagere waarden verminderen de bandbreedte.';
+	@override String get displayMaxResolutionTitle => 'Maximale resolutie';
+	@override String get displayMaxResolutionDescription => 'Begrenst wat dit apparaat aan een server vraagt, ook als het bestand groter is.';
+	@override String displayMaxResolutionNow({required Object resolution}) => 'gedetecteerd: ${resolution}';
+	@override late final _TranslationsSettingsDisplayMaxResolutionOptionsNl displayMaxResolutionOptions = _TranslationsSettingsDisplayMaxResolutionOptionsNl._(_root);
+	@override late final _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl displayMaxResolutionOptionDescriptions = _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl._(_root);
 	@override String get subtitleStyling => 'Ondertitel opmaak';
 	@override String get subtitleStylingDescription => 'Pas ondertitel uiterlijk aan';
 	@override String get smallSkipDuration => 'Korte skip duur';
@@ -2417,6 +2422,30 @@ class _TranslationsLanguageSettingsNl extends TranslationsLanguageSettingsEn {
 	@override String get kindSubtitles => 'Ondertitels';
 }
 
+// Path: settings.displayMaxResolutionOptions
+class _TranslationsSettingsDisplayMaxResolutionOptionsNl extends TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	_TranslationsSettingsDisplayMaxResolutionOptionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Automatisch';
+	@override String get hd1080 => '1080p';
+	@override String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class _TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl extends TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	_TranslationsSettingsDisplayMaxResolutionOptionDescriptionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get auto => 'Volg het scherm waar de app het kan uitlezen';
+	@override String get hd1080 => 'Vraag nooit meer dan 1920x1080';
+	@override String get uhd2160 => 'Vraag nooit meer dan 3840x2160';
+}
+
 // Path: search.filters
 class _TranslationsSearchFiltersNl extends TranslationsSearchFiltersEn {
 	_TranslationsSearchFiltersNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3211,6 +3240,15 @@ extension on TranslationsNl {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.',
 			'settings.defaultQualityTitle' => 'Standaardkwaliteit',
 			'settings.defaultQualityDescription' => 'Wordt gebruikt bij het starten van de weergave. Lagere waarden verminderen de bandbreedte.',
+			'settings.displayMaxResolutionTitle' => 'Maximale resolutie',
+			'settings.displayMaxResolutionDescription' => 'Begrenst wat dit apparaat aan een server vraagt, ook als het bestand groter is.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'gedetecteerd: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Automatisch',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Volg het scherm waar de app het kan uitlezen',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Vraag nooit meer dan 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Vraag nooit meer dan 3840x2160',
 			'settings.subtitleStyling' => 'Ondertitel opmaak',
 			'settings.subtitleStylingDescription' => 'Pas ondertitel uiterlijk aan',
 			'settings.smallSkipDuration' => 'Korte skip duur',
@@ -3530,6 +3568,8 @@ extension on TranslationsNl {
 			'videoControls.skipCredits' => 'Aftiteling overslaan',
 			'videoControls.playButton' => 'Afspelen',
 			'videoControls.pauseButton' => 'Pauzeren',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Terugspoelen ${seconds} seconden',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Vooruitspoelen ${seconds} seconden',
 			'videoControls.previousButton' => 'Vorige aflevering',
@@ -3539,8 +3579,6 @@ extension on TranslationsNl {
 			'videoControls.muteButton' => 'Dempen',
 			'videoControls.unmuteButton' => 'Dempen opheffen',
 			'videoControls.settingsButton' => 'Afspeelinstellingen',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.tracksButton' => 'Audio en ondertitels',
 			'videoControls.chaptersButton' => 'Hoofdstukken',
 			'videoControls.versionsButton' => 'Videoversies',
@@ -4044,6 +4082,8 @@ extension on TranslationsNl {
 			'liveTv.live' => 'LIVE',
 			'liveTv.reloadGuide' => 'Gids herladen',
 			'liveTv.now' => 'Nu',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.today' => 'Vandaag',
 			'liveTv.tomorrow' => 'Morgen',
 			'liveTv.midnight' => 'Middernacht',
@@ -4053,8 +4093,6 @@ extension on TranslationsNl {
 			'liveTv.evening' => 'Avond',
 			'liveTv.lateNight' => 'Late avond',
 			'liveTv.whatsOn' => 'Nu op TV',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.watchChannel' => 'Kanaal bekijken',
 			'liveTv.favorites' => 'Favorieten',
 			'liveTv.reorderFavorites' => 'Favorieten herordenen',
@@ -4558,6 +4596,8 @@ extension on TranslationsNl {
 			'trakt.watchedSync' => 'Bekeken-status synchroniseren',
 			'trakt.watchedSyncDescription' => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.',
 			'trackers.title' => 'Trackers',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.hubSubtitle' => 'Synchroniseer kijkvoortgang met Trakt en andere diensten.',
 			'trackers.notConnected' => 'Niet verbonden',
 			'trackers.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
@@ -4567,8 +4607,6 @@ extension on TranslationsNl {
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.',
 			'trackers.connectFailed' => ({required Object service}) => 'Kan niet verbinden met ${service}. Probeer opnieuw.',
 			'trackers.services.mal' => 'MyAnimeList',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
 			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',

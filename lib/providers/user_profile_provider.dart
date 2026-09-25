@@ -226,6 +226,15 @@ class UserProfileProvider extends ChangeNotifier with DisposableChangeNotifierMi
     final profile = activeProfile.active;
     if (profile == null) return null;
 
+    // A Pleya Server profile has no plex.tv identity, and the chain below ends
+    // at the account owner's token when it cannot find a better one. On a
+    // device with both a Plex account and a Pleya Server sign-in that fallback
+    // would answer a question about one identity with the credential of
+    // another (architecture 4.1). Refusing here is the whole point of the
+    // separate PleyaServerCredentialResolver: there is nothing to fall back to,
+    // so nothing is returned.
+    if (profile.kind == ProfileKind.pleyaServer) return null;
+
     final plexAccounts = (await connections.list()).whereType<PlexAccountConnection>().toList();
     if (plexAccounts.isEmpty) return null;
 

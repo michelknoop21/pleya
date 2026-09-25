@@ -27,10 +27,78 @@ void main() {
   /// skipping them silently means the phase that adds one has to remove a line,
   /// not discover a hole.
   ///
-  /// Empty since PS-4: the write side of watch state is now a real type, and
-  /// `StreamSession` is read even though this client never opens one, because a
-  /// fixture nobody parses is a fixture nobody notices breaking.
-  const deferredSchemas = <String>{};
+  /// It was empty after PS-4 and is not empty after PS-9. The eight schemas
+  /// below all belong to the management surface: creating a household member,
+  /// setting their library permissions, and looking at or ending the sessions
+  /// of a device. PS-9 deliberately ships that as an API plus a documented
+  /// `curl` recipe and no screen at all (DEC-121); the screen is PS-11A, and
+  /// building a Dart type for a response nothing renders would be exactly the
+  /// kind of pulled-forward work the phase rules forbid.
+  ///
+  /// The app's own side of PS-9 is not deferred and is tested elsewhere:
+  /// `capabilities.sessions` in `pleya_wire_contract_test` below, and the
+  /// device fields on login in `pleya_server_sessions_test.dart`.
+  const deferredSchemas = <String>{
+    // Beheer, geen Flutter-consument tot S10.
+    'Scan',
+    'Job',
+    'UserList',
+    'CreateUserRequest',
+    'UpdateUserRequest',
+    'PermissionsRequest',
+    'LibraryPermissionList',
+    'Session',
+    'SessionList',
+    // S1.2 adds the server settings surface. Same reasoning as the eight
+    // above: the screen that reads it is the web admin (S10), and the Flutter
+    // app has no settings-of-the-server page in this slice.
+    'Settings',
+    // S1.3 adds the server diagnostics surface. Same reasoning again, and one
+    // more on top: an environment listing and a log tail belong on an admin
+    // screen and nowhere near a living-room client. `ServerDetail` is *not*
+    // deferred, because the app already reads it; the eight admin-only fields
+    // it grew are optional, so the existing type keeps parsing both fixtures.
+    'ServerEnvironment',
+    'ServerLog',
+    'ConnectivityCheck',
+    // S1.4 adds the running-streams overview. Same reasoning once more: it
+    // answers "who is watching right now on which device", which is an admin
+    // screen (S10) and not something a living-room client renders.
+    //
+    // `GET /users/me` is intentionally not deferred: sign-in reads `User.id`
+    // to keep two accounts on one server in separate connection rows.
+    'StreamSessionList',
+    // S1.5 adds API tokens and the audit log. Both belong to the same web admin
+    // screen (S10.6 for the token list, S10.5 for diagnostics), and an agent
+    // credential is by definition not something a living-room client mints.
+    //
+    // `SessionList` was already deferred above, so the two new fields on
+    // `Session` (`kind` and `scope`) add no line here; the slice that builds a
+    // session screen in the app is the one that removes that entry.
+    'ApiTokenList',
+    'ApiTokenCreated',
+    'AuditPage',
+    // S1.6 adds `server_name` to the setup body (protocol window 1, row 10).
+    // There is no Dart type for it to defer *from*: `completeSetup` in
+    // `pleya_server_auth_service.dart` composes the body as a literal map, so
+    // this fixture has nothing to parse it. Naming the schema here rather than
+    // leaving it out of the manifest keeps the hole visible; the phase that
+    // gives the app a typed setup request, or a setup screen that names the
+    // server, is the one that removes this line. On web the field belongs to
+    // the setup wizard, which is slice S11.
+    'SetupRequest',
+    // S2.2 adds admin CRUD on /libraries. Same reasoning as SetupRequest: the
+    // app has no request type to defer *from*, because it never creates,
+    // edits or deletes a library. That is a web admin screen (S9), not a
+    // living-room client. `Library` itself is *not* deferred: `PleyaLibrary`
+    // already exists (`LibraryList` reads it), and the three admin-only
+    // fields it grew are optional, so the existing type keeps parsing both
+    // the plain and the admin fixture, the same reasoning `ServerDetail` used
+    // above.
+    'CreateLibraryRequest',
+    'UpdateLibraryRequest',
+    'DeleteLibraryRequest',
+  };
 
   final parsers = <String, void Function(Map<String, dynamic>)>{
     'Info': (json) {
@@ -40,9 +108,11 @@ void main() {
     },
     'ServerDetail': (json) => PleyaServerDetail.fromJson(json),
     'TokenPair': (json) => PleyaTokenPair.fromJson(json),
+    'User': (json) => PleyaUser.fromJson(json),
     'StreamToken': (json) => PleyaStreamToken.fromJson(json),
     'ErrorEnvelope': (json) => PleyaError.fromJson(json),
     'LibraryList': (json) => PleyaLibrary.listFromJson(json),
+    'Library': (json) => PleyaLibrary.fromJson(json),
     'Item': (json) => PleyaItem.fromJson(json),
     'ItemPage': (json) => PleyaItemPage.fromJson(json),
     'UserState': (json) => PleyaUserState.fromJson(json),
@@ -75,8 +145,8 @@ void main() {
       );
     });
 
-    test('covers the 32 fixtures the contract ships', () {
-      expect(fixtures, hasLength(32));
+    test('covers the 76 fixtures the contract ships', () {
+      expect(fixtures, hasLength(76));
     });
 
     for (final fixture in fixtures) {
@@ -99,6 +169,37 @@ void main() {
       expect(info.capabilities.playbackPlan, isFalse);
       expect(info.capabilities.transcode, isFalse);
       expect(info.capabilities.users, isFalse);
+    });
+
+    test('a PS-9 server advertises users and sessions', () {
+      final info = PleyaInfo.fromJson(load('info_ps9.json'));
+      expect(info.capabilities.users, isTrue);
+      expect(info.capabilities.sessions, isTrue);
+      // And the phases that come later are still off, so the flag genuinely
+      // negotiates rather than being read as "new server, everything on".
+      expect(info.capabilities.playbackPlan, isFalse);
+      expect(info.capabilities.transcode, isFalse);
+      expect(info.capabilities.downloads, isFalse);
+    });
+
+    test('a PS-4 server says no to sessions, so the device fields stay off the wire', () {
+      final info = PleyaInfo.fromJson(load('info_ps4.json'));
+      expect(info.capabilities.sessions, isFalse);
+    });
+
+    test('an S1.6 server still parses, though the app reads neither new flag', () {
+      // `administration` and `mcp` are for the web admin (S10) and the MCP
+      // layer (S16); the Flutter client has no screen for either, so
+      // `PleyaCapabilities` deliberately gains no field here. What this proves
+      // is the other half of that decision: the two flags plus
+      // `server.setup_accepts_name` do not break the type that does read this
+      // response. A wire model that choked on an unknown field would make every
+      // later capability a breaking change.
+      final info = PleyaInfo.fromJson(load('info_administration.json'));
+      expect(info.major, 1);
+      expect(info.capabilities.users, isTrue);
+      expect(info.capabilities.sessions, isTrue);
+      expect(info.capabilities.transcode, isFalse);
     });
 
     test('the pre-connection default claims nothing at all', () {
@@ -259,6 +360,29 @@ void main() {
       expect(error.code, 'library.not_found');
       expect(error.domain, 'library');
       expect(error.retryable, isFalse);
+    });
+
+    // Window 1 widens the error domain to seven (DEC-135 and DEC-136). The
+    // compatibility argument under that decision is a claim about this class:
+    // the code is carried as a String and nothing branches on the domain. A
+    // claim about code belongs in a test, not only in the decision.
+    test('a domain the client has never seen parses like any other code', () {
+      final internal = PleyaError.fromJson(load('error_server_internal.json'));
+      expect(internal.code, 'server.internal');
+      expect(internal.domain, 'server');
+      expect(internal.retryable, isFalse);
+      expect(internal.details?['request_id'], isA<String>());
+
+      final invalid = PleyaError.fromJson(load('error_settings_invalid_value.json'));
+      expect(invalid.code, 'settings.invalid_value');
+      expect(invalid.domain, 'settings');
+      expect(invalid.details?['field'], 'access_token_ttl');
+
+      // The only domain test in the app is startsWith('auth.') in
+      // pleya_server_auth_service.dart. Neither new domain may trip it.
+      for (final error in [internal, invalid]) {
+        expect(error.code.startsWith('auth.'), isFalse);
+      }
     });
 
     test('a rate limit is retryable and says how long to wait', () {

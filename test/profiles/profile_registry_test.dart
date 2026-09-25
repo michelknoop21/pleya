@@ -66,6 +66,26 @@ void main() {
       expect(list.map((p) => p.id).toList(), ['b', 'a']);
     });
 
+    test('list and watch include Pleya Server profiles but not persisted Plex Home rows', () async {
+      await registry.upsert(Profile.local(id: 'local', displayName: 'Lokaal', createdAt: DateTime(2026, 1, 1)));
+      await registry.upsert(
+        Profile.pleyaServer(
+          id: 'pleya-server',
+          displayName: 'Sanne',
+          pleyaConnectionId: 'pleyaServer.server.user',
+          pleyaUsername: 'sanne',
+          sortOrder: 1,
+          createdAt: DateTime(2026, 1, 2),
+        ),
+      );
+      await registry.upsert(
+        Profile.plexHome(id: 'legacy-plex-home', displayName: 'Plex Home', createdAt: DateTime(2026, 1, 3)),
+      );
+
+      expect((await registry.list()).map((profile) => profile.id), ['local', 'pleya-server']);
+      expect((await registry.watchProfiles().first).map((profile) => profile.id), ['local', 'pleya-server']);
+    });
+
     test('remove deletes a profile', () async {
       await registry.upsert(Profile.local(id: 'p', displayName: 'P', createdAt: DateTime(2026, 1, 1)));
       await registry.remove('p');

@@ -18,7 +18,132 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- DeviceCapabilities-model met vier lagen en een expliciete confidence
+- detectie per laag, met de host als injecteerbaar argument
+- overrides op het model, plus display_max_resolution
+- Jellyfin-DeviceProfile uit het model, gedragsneutraal
+- Plex-transcoderequest uit het model, gedragsneutraal
+- TrueHD in de Jellyfin direct-play-lijst op mpv-platforms
+- de resolutiecap van de gebruiker bereikt de Jellyfin-profielcondities
+- respijtvenster op refreshtokenrotatie (DEC-063)
+- token bucket op de relay, en meldingen die vouwen in plaats van stapelen
+- compacte sessieregel, en de commit-sha in elke TestFlight-build
+- migratie 0007, sessie-scoped tokenketen en begrensde loginlimiter (PS-9-stap 2)
+- scope watch state to authenticated users
+- PS-9 AC2, volledige autorisatiematrix en DEC-065-alignment
+- PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
+- PS-9-clientkant, een eigen profielsoort voor Pleya Server
+- S0.6, de NAS-migratiefixture op schema 7
+- S0.7 en poort P9, de contractdekking wordt afgeleid in plaats van bijgehouden
+- venster 1 verruimt het foutdomein, en de controle meet twee kanten op
+- S1.1, recovery, lichaamslimiet en securityheaders op de API
+- S1.2, serverinstellingen met een grens en hot reload
+- S1.3, serverdiagnostiek met een ringbuffer en één doel
+- S1.4, lopende streams, de eigen gebruiker en een code die uitlegt
+- S1.5, API-tokens als sessies en een auditlog dat verder kijkt dan mutaties
+- S1.8, de refreshcookie buiten het bereik van JavaScript en een origin dat vastligt
+- S1.6, de laatste drie rijen van venster 1, en het venster dicht
+- S2.1, managed en scaninstellingen op libraries
+- S2.2, CRUD op libraries en protocolvenster 2 open
+- S2.3, GET /storage/roots uit de mounts en de recheck
+- D0 goedgekeurd, D1 canoniek loudnessbewijs per audiostroom
+- D2, package internal/loudness
+- rescue-migraties geland als 0010 (S2.4) en 0011 (loudness), docs hernummerd
+- jobs annuleren, opnieuw proberen en lezen in de runner (S2.4)
+- scanner stopt binnen één walk-stap en neemt een queued scan_runs-rij over (S2.4)
+- scans en jobs in venster 2, job als achtste foutdomein (S2.4)
+- scans en jobs over HTTP, annuleren en retry (S2.4)
+- backoff op probe_attempts na een mislukte probe (S2.4)
+- de revisie-envelop reist mee en beslist bij het toepassen (B3)
+- seeds voor Omdat je X keek uit het eigen kijklog (D2, D3)
+- film- en seriedetail in één scroll, zonder tabs (DEC-131)
+- partieel signaal bij een eindstop, importer vergelijkt gewichten
+- related hubs van seeds vier tot zes voeden de kandidatenpool
+- Jellyfin-kijkgeschiedenis als tweede adapter op het interactielog
+- rij Meer met acteur of Meer van regisseur bij warme smaak
+- tvOS-icoon zonder cirkel, P + LEYA groter, warme onderrand
+
+### Improved
+- semantische bronaudit op codec- en containerlijsten
+- seedrijen in een eigen loader, gedrag ongewijzigd
+- revisieopslag in een eigen bestand, gedrag ongewijzigd
+- reconcile en remote-apply in eigen bestanden, gedrag ongewijzigd
+- sleutelmapping en scope in een eigen bestand, gedrag ongewijzigd
+- discover-provider opgesplitst in eigen laders, gedrag ongewijzigd
+
+### Fixed
+- "Opnieuw aanmelden" probeert eerst één echte refresh
+- Nederlands compleet tegen Engels, met een test die dat afdwingt
+- cloudflared blijvend op het netwerk van de Pleya Server
+- verify-local.sh's drift check kende PS-9's eigen tabellen niet
+- schema.d.ts liep achter op de PS-9-protocoltoevoegingen
+- continue_watching en next_up leverden onvoorwaardelijk niets
+- de merge liet twee capability-fixtures en de gegenereerde client achter
+- drie bevindingen uit de codex-challenge op de merge
+- vijf codex-bevindingen op /libraries vóór S2.3
+- harden completion integration after review
+- offline-melding noemt de server die echt onbereikbaar was (L26)
+- dubbele common.timedOut uit nl verwijderd, parser bewaakt dubbele sleutels (L27)
+- git_commit_define stopt de lane bij een mislukte of lege git-aanroep (L29)
+- profile.freezed.dart opnieuw gegenereerd na de doc-wijziging uit 3734e399
+- schema.d.ts opnieuw gegenereerd na de contractwijziging uit 3734e399
+- annulering tussen claim en registratie gaat niet meer verloren (S2.4)
+- shutdown geeft failed in plaats van cancelled en een herstarte scan krijgt een verse rij (S2.4)
+- retry laat geen wees-scanronde achter bij een gelijktijdige retry (S2.4)
+- tvos_beta draait pod install op een verse worktree
+- queued scanrondes annuleren via één methode, stale scan_id, limiet naar contract
+- DENS1, instellingen en detail in Apple's tvOS-punten
+- detail en Nu aan het kijken volgen de gemonitorde server (D1)
+- luister echt naar de KVS-notificaties en laat de status niet liegen (B1, B6, B7, B8)
+- uitschakelen wist de quotamelding, status klopt vanaf de start (B6, B8)
+- verwijderen reset de stempel, startbedrading via de coordinator, randgevallen getest (B3)
+- reconcile vergelijkt met de store, verwijderingen reizen als tombstone en de prune verdwijnt onder v2 (B2, B4, B5, B13)
+- seedtitel volgt de serie, zes seeds parallel, randgevallen getest (D2, D3)
+- import krijgt een stempel, families respecteren tombstones, geen blinde push na een mislukte lezing (B2, B4)
+- seizoenpil altijd, informatieblok voor series, delen verankerd
+- hervatten geeft een nieuwe eindstop, dedup volgt de scoringsscope (REC-4)
+- een hangende reconcile blokkeert de sessie niet meer (B2)
+- nieuwe series tellen als getoond, afleveringidentiteit expliciet (REC-5)
+- accountwissel leest eerst en duwt niet terug, en de eerste download krijgt een reconcile (B9, A2)
+- lokale map kan zijn scan laten verversen
+- stille herlaad van Home als de rijen verouderd zijn
+- grens van opnieuw inloggen vastgelegd en getest (B9)
+- Home ververst bij terugkeer, resume en elke vijf minuten
+- kaart blijft op zijn plek als vooraan een rij een titel bijkomt
+- taalvoorkeuren reizen als profiel-gesleutelde map, acht stille sleutels geregistreerd en de scopetabel bijgewerkt (B10, B11)
+- geleende Jellyfin-verbindingen importeren niets, afspeeltijd als stempel, sync hooguit elk kwartier (REC-6)
+- echte Plex Home-scopes en samenvoegen per regel met tombstones (B10)
+- DEC-132 noemt beide richtingen, klok terug remt de sync niet (REC-6)
+- de cap schrijft tombstones zodat hij over toestellen heen blijft gelden (B10)
+- KVS-notificaties bereiken Dart via de platformthread (A1)
+- periodieke tik vraagt met de terugkeerdrempel
+- rail verplaatst een kaart in plaats van hem opnieuw te bouwen
+- seriekaart blijft ook bij alleen ontvangen binnen de cap (B10)
+- persoonsrij met eigen id per naam en een bewijsdrempel (REC-7)
+- groottegrens telt UTF-8-bytes, de seriekaart is ook uitgaand begrensd (B10)
+- importer ziet alleen de Tautulli-fout, sessietest krijgt de verbindingsregistry (REC-9)
+- stempel per profiel voor profielgebonden sleutels (I1)
+- kale remove van de vorige build wist geen gestempelde waarde (I2)
+- profielkaart in canonieke volgorde, geen schrijfpingpong meer (I3)
+- tombstones ouder dan 180 dagen verdwijnen uit de store (I4)
+- profielgebonden sleutels reizen voor echte Plex Home-profielen (I5)
+- mislukte Jellyfin-sync houdt de kwartierrem aan, een falende serie stopt de rest niet
+- Jellyfin-pool en Similar vragen Genres en Studios, persoonsrijen op Jellyfin uitgesteld
+- zeven kleine bevindingen uit de eindreview
+- seeds alleen van geschikte bronnen, afgewezen titels seeden niet, aanvullen tot drie
+- accountwissel weer strikt read-first, heuristiek minor 4 teruggedraaid (N2)
+- beurtgeneratie vóór de eerste await, v1-import onder de proceed-check (N3)
+- cloudsleutels binnen de 64 bytes van KVS (N1)
+- geleende status telt niet, tijdelijke fouten schuiven de watermark niet op, cap telt alleen positieven (REC-6)
+- accountwissel blijft staan tot hij echt verwerkt is (B9)
+- onleesbare submap haalt bij een herscan geen titels weg
+- volledige load alleen als elke client elk oppervlak gaf
+- timer loopt door bij focusverlies, terugkeer herscant lokale map
+- terugkeer uit een detail ververst Home en houdt de kaart op zijn plek
+- avatar in de header opent de profielwisselaar (DEC-132)
+- onvolledige herscan wacht de terugkeerdrempel af
+- bestemmingswissel toont Home niet onder een open detail
 <!-- END GENERATED -->
 
 ### New
@@ -38,6 +163,26 @@ Nothing user-facing since the last published build.
   read comfortably from the couch, with a progress line under whatever is airing now.
 - **A detail bar under the Apple TV guide always shows what's focused**: the title, channel,
   time, and a short synopsis, without taking the remote's focus away from the guide itself.
+- **A Pleya Server can now be shared by a household.** The owner adds an account per person and
+  decides which libraries each of them sees. A library somebody has no access to does not show
+  up in their list, in their search results, or when they open a link straight to it. Watch
+  position, resume and Continue Watching are per person, so two people watching the same film
+  keep their own place in it.
+- **Four roles, and one rung of access per library.** The owner and administrators see every
+  library. A member sees the libraries they were given. A restricted account is a member with
+  three differences: it cannot be given management rights, only an owner or administrator sets
+  its password, and it sees no one but itself in the account list. Adding accounts and setting
+  their libraries runs over the server API for now; `pleya_server/README.md` has the commands.
+  The screen for it comes with the management interface.
+- **Signing in registers the device, not just the account.** Each device gets its own session,
+  which means signing out on a phone that was lost leaves the television logged in. The owner
+  can see and end anyone's sessions; everyone else sees and ends their own.
+
+### Improved
+
+- **Ending a session takes effect while a film is playing.** A revoked session stops the stream
+  it was feeding rather than letting it run to the end of the file. Measured at under half a
+  second on the test rig, against a documented ceiling of two seconds.
 
 ### Fixed
 
@@ -363,6 +508,37 @@ screenshots. Four things in particular:
   number of a build that had been installed straight from Xcode earlier that day and never
   reached TestFlight, which left two different builds wearing one number. It was expired to end
   that, and expiring cannot be undone.
+
+## 2.8.0 · build 242 · 23 August 2026
+
+<!-- commit: aa74004 -->
+
+### New
+
+- **A "Maximum Resolution" setting for playback.** Under Settings → Playback → Maximum
+  Resolution, you can cap what the app asks a server for, even when the file itself is larger.
+  Useful on a connection where 4K would be more than the link should carry.
+- **A Pleya Server can be disconnected from Settings → Connections.** It had no entry there at
+  all before; removing one meant going two screens deeper into a profile's management screen,
+  and if the session there had expired, that screen only offered to sign back in.
+
+### Improved
+
+- **Jellyfin now plays TrueHD audio tracks directly instead of transcoding them**, on desktop,
+  iPhone, iPad and Apple TV. Nothing about the video or the audio changes: the app simply stops
+  asking the server to re-encode a track it could already decode itself.
+
+### Fixed
+
+- **A "Session expired" banner that kept coming back after every restart is gone.** Reconnecting
+  cleared it once, but the very next launch showed it again, with re-entering the server address
+  from scratch as the only way out. A session that was not actually dead now recovers on its own.
+- **Disconnecting a Pleya Server now removes it for good.** It could keep the connection around
+  behind the scenes, so a stale reconnect banner came back, sometimes only after restarting the
+  app.
+- **The sidebar no longer gets stuck open with nothing selected.** It could happen when the row
+  you were focused on, such as the reconnect prompt or "Now watching", disappeared on its own
+  while you were on it.
 
 ## 2.8.0 · build 240 · 21 August 2026
 

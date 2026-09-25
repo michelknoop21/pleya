@@ -78,7 +78,7 @@ class TrackPreferenceStore {
 
   /// The *logical* series key, when this item carries evidence strong enough to
   /// name its show across sources — today the show's stable catalogue GUID
-  /// (DEC-096 lid 7).
+  /// (DEC-109 lid 7).
   ///
   /// Null is the normal answer for most items, and the caller then uses
   /// [serverSeriesKeyFor]. Deliberately no title-and-year merge: a wrong merge
@@ -297,7 +297,7 @@ class TrackPreferenceStore {
         // checked at each write site, which meant every new one had to
         // remember — and a path that forgot (the transcoding source switch did,
         // for months) wrote an override the viewer had asked not to have
-        // (DEC-096 lid 3). Its owner is the profile, not a device-wide pref.
+        // (DEC-109 lid 3). Its owner is the profile, not a device-wide pref.
         if (!(await PleyaProfileLanguagePreferenceStore.read()).rememberPerSeries) return;
 
         final scope = await _scope();

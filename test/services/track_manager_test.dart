@@ -381,7 +381,7 @@ void main() {
   });
 
   // ============================================================
-  // LANG1 / DEC-096 — the manager actually supplies the layers
+  // LANG1 / DEC-109 — the manager actually supplies the layers
   // ============================================================
 
   group('the global Pleya profile preference reaches the resolver', () {
@@ -478,7 +478,7 @@ void main() {
 
       await mgr.onAudioTrackChanged(const AudioTrack(id: '2', language: 'nld'), userInitiated: false);
 
-      expect(mgr.sessionIntent, isNull, reason: 'DEC-096 lid 1: only a real action by the viewer creates layer 1');
+      expect(mgr.sessionIntent, isNull, reason: 'DEC-109 lid 1: only a real action by the viewer creates layer 1');
     });
   });
 
@@ -634,7 +634,7 @@ void main() {
   });
 
   // ============================================================
-  // LANG1 / DEC-096 — CONTROL N: de bevestiging van mockup 31 C
+  // LANG1 / DEC-109 — CONTROL N: de bevestiging van mockup 31 C
   // ============================================================
 
   group('CONTROL N — een handmatige keuze meldt zich', () {

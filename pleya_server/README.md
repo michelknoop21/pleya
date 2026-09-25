@@ -63,13 +63,17 @@ verandert.
 
 ## Wat het schema draagt
 
-Twaalf tabellen, in drie migraties.
+Achttien tabellen, in negen migraties.
 
 | Groep | Tabellen | Waarvoor |
 | --- | --- | --- |
 | Identiteit en auth | `server_instance`, `auth_owner`, `auth_refresh_tokens` | de bootstrap-identiteit uit specificatie 6.5, en niets daarbuiten |
 | Catalogus | `libraries`, `storage_locations`, `media_items`, `media_versions`, `media_files`, `media_streams` | het domeinmodel uit hoofdstuk 7.1 |
 | Werk | `jobs`, `scan_runs` | duurzame jobs en meetbare scanvoortgang |
+| Kijkstatus | `watch_states` | het conflictmodel uit DEC-049, met de eigenaar in de rij |
+| Streamsessies | `stream_sessions` | de browserkant van autorisatie uit DEC-051 |
+| Gebruikers en rechten | `users`, `sessions`, `library_permissions` | vier rollen en de sessieketen uit PS-9 (DEC-119, DEC-123) |
+| Beheer | `server_settings`, `admin_audit` | instellingen met een grens (S1.2); `admin_audit` wordt gevuld sinds S1.5 en bewaart negentig dagen |
 
 Drie keuzes die uitleg verdienen, en die als [DEC-040](../docs/DECISIONS.md#dec-040-grouping-key-en-identiteit-zijn-twee-dingen-in-het-catalogusschema)
 tot en met [DEC-043](../docs/DECISIONS.md#dec-043-de-inodebetrouwbaarheid-staat-per-root-in-de-database-en-wordt-gemeten-en-niet-aangenomen)
@@ -98,24 +102,29 @@ anders uitpakt.
 subject en één versie, en de server bewaart het geheim niet: er staat een SHA-256 van, net als bij
 een refreshtoken, zodat een databasedump geen speelbare sessies oplevert.
 
-Wat er níét in staat: geen `users`, geen `sessions`, geen `library_permissions`, geen `play_history`,
-geen `play_sessions`, geen `user_item_data`, geen `external_ids`, geen `metadata_candidates`, geen
-`transcode_sessions`. De tabellenlijst in hoofdstuk 17.2 beschrijft het hele v1-product en niet deze
+Wat er níét in staat: geen `play_history`, geen `play_sessions`, geen `user_item_data`, geen
+`external_ids`, geen `metadata_candidates`, geen `transcode_sessions`. De tabellenlijst in hoofdstuk 17.2 beschrijft het hele v1-product en niet deze
 fase. `play_history` is de opvallendste van de lijst: het masterplan wilde er geweigerde
 kijkstatusevents in schrijven, en die tabel hoort bij PS-9P. PS-4 mag daar niet van afhangen, dus
 een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verder niet bewaard.
 
 ## Wat er op de lijn zit
 
-Dertien endpoints van de achttien uit het protocol.
+Achtenveertig operaties op eenenveertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
+van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, de
+drie daarna de API-tokens en het auditlog van S1.5, de drie daarna de bibliotheek-CRUD van
+S2.2, de twee daarna de opslagroots van S2.3 en de laatste zes scans en jobs van S2.4. S1.8 komt er niet bij: de refreshcookie is een modus op login en refresh en geen endpoint
+ernaast.
 
 | Endpoint | Klasse |
 | --- | --- |
 | `GET /pleya/v1/info` | publiek |
 | `POST /pleya/v1/auth/setup`, `/auth/login`, `/auth/refresh` | publiek |
 | `POST /pleya/v1/auth/stream-token` | geauthenticeerd |
-| `GET /pleya/v1/server` | geauthenticeerd |
-| `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd |
+| `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
+| `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd; voor een admin drie velden erbij (S2.2) |
+| `POST /pleya/v1/libraries`, `PATCH`/`DELETE /libraries/{id}` | admin |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
@@ -123,16 +132,38 @@ Dertien endpoints van de achttien uit het protocol.
 | `POST /pleya/v1/auth/stream-session` | geauthenticeerd |
 | `GET /pleya/v1/stream/{version_id}` | geauthenticeerd, met een streamtoken, of met een streamsessie |
 | `POST /pleya/v1/watch-state`, `GET /pleya/v1/watch-state` | geauthenticeerd |
+| `POST /pleya/v1/users`, `PATCH`/`DELETE /users/{id}`, `PUT /users/{id}/permissions` | admin |
+| `GET /pleya/v1/users` | geauthenticeerd, gefilterd op rol |
+| `GET /pleya/v1/users/me` | geauthenticeerd; elke rol krijgt zichzelf |
+| `POST /pleya/v1/auth/logout`, `GET /pleya/v1/sessions`, `DELETE /pleya/v1/sessions/{id}` | geauthenticeerd op de eigen sessies, admin op elke |
+| `GET /pleya/v1/settings`, `PATCH /pleya/v1/settings` | admin |
+| `GET /pleya/v1/server/environment`, `/server/log` | admin |
+| `POST /pleya/v1/server/connectivity-check`, `/server/rotate-signing-key` | admin |
+| `GET /pleya/v1/stream-sessions` | admin |
+| `POST`/`GET /pleya/v1/auth/api-tokens` | geauthenticeerd op zichzelf, admin met `user_id` |
+| `GET /pleya/v1/audit` | admin |
+| `GET /pleya/v1/storage/roots`, `POST /pleya/v1/storage/roots/recheck` | admin |
+| `POST /pleya/v1/libraries/{id}/scan` | admin; geeft 202 met de scan |
+| `GET /pleya/v1/scans`, `/scans/{id}`, `GET /pleya/v1/jobs` | admin |
+| `POST /pleya/v1/jobs/{id}/cancel`, `/jobs/{id}/retry` | admin |
 
 Buiten het protocol staat er nog één route: `GET /` en elk pad dat geen bestand en geen protocolroute is levert
 `index.html` van de webbundel. `/pleya/v1/*`, `/healthz` en `/readyz` houden altijd voorrang, en een
 onbekend pad onder `/pleya/v1` krijgt de foutvorm van het protocol en geen pagina HTML.
 `internal/web` en `internal/api/web_routes_test.go` toetsen dat.
 
-Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), gebruikers (PS-9),
-verzamelingen en afspeellijsten (PS-9C) en beheer (PS-11A). Die geven een 404, en `capabilities` in
-`/info` zegt hetzelfde: alleen `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership` en `stream_sessions` staan op `true`, en capabilities is leidend.
+Een API-token is geen apart credentialtype maar een rij in `sessions` met `kind = 'api'` (RB-20). Het
+gaat als bearer mee zoals een accesstoken, wordt op zijn hash opgezocht in plaats van op een
+handtekening geverifieerd, en wordt ingetrokken met `DELETE /sessions/{id}` zoals elk ander toestel.
+Zijn bereik (`read`, `maintenance`, `admin`) kan nooit boven de rol van de eigenaar, en begrenst de
+adminklasse ook wanneer de rol hem wel haalt.
+
+Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
+afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (S2.5 en S2.6). Die geven een 404, en
+`capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
+`watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
+capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
+venster 1 sluit.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
 `206`; **meerdere bereiken leveren het hele bestand als `200`**, want `multipart/byteranges` wordt
@@ -280,6 +311,140 @@ curl -s -H "Authorization: Bearer $A" "$B/search?q=grease"
 curl -s -H "Authorization: Bearer $A" $B/hubs/recently_added
 ```
 
+### Huisgenoten toevoegen
+
+Sinds PS-9 kent de server vier rollen (`owner`, `admin`, `member`, `restricted`) en één recht per
+bibliotheek uit een geordende ladder (`view` < `download` < `manage`). `owner` en `admin` zien elke
+bibliotheek via hun rol en krijgen daar geen rijen voor; `member` en `restricted` zien uitsluitend wat
+ze toegewezen krijgen, en een bibliotheek zonder recht bestaat voor hen niet, ook niet als ze het id
+raden.
+
+Er is in deze fase geen beheerscherm. Dat is PS-11A; het ondersteunde pad is nu deze API.
+
+```sh
+A=<access_token van owner of admin>
+B=http://127.0.0.1:8832/pleya/v1
+
+# Aanmaken. role mag niet owner zijn; die rol ontstaat alleen via /auth/setup.
+curl -s -X POST -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"username":"sanne","password":"...","role":"member"}' $B/users
+
+# Wie er zijn. member en restricted zien in dit antwoord alleen zichzelf.
+curl -s -H "Authorization: Bearer $A" $B/users
+
+# Bibliotheekrechten zetten. PUT vervangt de volledige lijst: wat er niet in
+# staat, wordt ingetrokken.
+curl -s -X PUT -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"permissions":[{"library_id":"<id>","permission":"view"}]}' \
+  $B/users/<user_id>/permissions
+
+# Rol of wachtwoord wijzigen, en verwijderen. De owner weigert allebei.
+curl -s -X PATCH -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"role":"restricted"}' $B/users/<user_id>
+curl -s -X DELETE -H "Authorization: Bearer $A" $B/users/<user_id>
+```
+
+Daarna logt de nieuwe gebruiker gewoon in op `/auth/login` met haar eigen naam en wachtwoord, en
+krijgt ze haar eigen tokenpaar, haar eigen sessie en haar eigen kijkstatus.
+
+Een `restricted`-gebruiker is een `member` met drie verschillen: hij kan nooit `manage` krijgen, hij
+zet zijn eigen wachtwoord niet (alleen owner en admin doen dat), en hij ziet in `GET /users` alleen
+zichzelf. Dat is het Plex Home-kinderprofiel.
+
+### Scans en jobs
+
+Sinds S2.4 start je een scan over de API en volg je hem, en kun je een job annuleren of opnieuw
+proberen. Alle zes zijn klasse `admin`.
+
+```sh
+A=<access_token van owner of admin>
+B=http://127.0.0.1:8832/pleya/v1
+
+# Scan starten: 202 met de scan op status queued. Loopt er al een, dan 409 library.scan_in_progress.
+curl -s -X POST -H "Authorization: Bearer $A" $B/libraries/<id>/scan
+
+# Volgen. Nieuwste eerst, met cursor en limit; library_id filtert.
+curl -s -H "Authorization: Bearer $A" "$B/scans?library_id=<id>&limit=10"
+curl -s -H "Authorization: Bearer $A" $B/scans/<scan_id>
+curl -s -H "Authorization: Bearer $A" "$B/jobs?limit=10"
+
+# Annuleren stopt een lopende scan binnen één walk-stap. Een job die al klaar is geeft 409
+# job.not_cancellable met details.reason finished.
+curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/cancel
+
+# Opnieuw in de wachtrij zetten na failed of cancelled. Staat dezelfde dedupe-sleutel al in de
+# wachtrij, dan 409 job.not_cancellable met details.reason duplicate_in_flight.
+curl -s -X POST -H "Authorization: Bearer $A" $B/jobs/<job_id>/retry
+```
+
+`job` is het achtste foutdomein. Na een mislukte probe van een bestand wacht de scanner volgens
+`probe_attempts` steeds langer voor hij het opnieuw probeert (`probeBackoff`).
+
+### Serverinstellingen wijzigen
+
+Een deel van de `.env` is sinds S1.2 ook over de API te wijzigen, door `owner` en `admin`. De
+omgeving blijft de onderste laag: een instelling die niemand heeft gewijzigd komt uit `.env` (of uit
+de default) en draagt `source: env`. Wie iets opslaat krijgt `source: db`, en dat wint tot hij
+teruggezet wordt.
+
+```sh
+A=<access_token van owner of admin>
+B=http://127.0.0.1:8832/pleya/v1
+
+# Wat er nu geldt, met per sleutel de laag die hem levert.
+curl -s -H "Authorization: Bearer $A" $B/settings
+
+# Wijzigen. De body is gesloten: een onbekende sleutel geeft 400.
+curl -s -X PATCH -H "Authorization: Bearer $A" -H 'Content-Type: application/json' \
+  -d '{"server_name":"Zolder","access_token_ttl":"30m"}' $B/settings
+```
+
+| Sleutel | Vorm | Grens |
+| --- | --- | --- |
+| `server_name` | tekst | 1 tot 64 tekens |
+| `access_token_ttl` | duur | `1m` tot `60m` |
+| `refresh_token_ttl` | duur | `24h` tot `2160h` |
+| `stream_token_ttl` | duur | `1m` tot `15m` |
+| `stream_session_ttl` | duur | `5m` tot `120m` |
+| `max_stream_sessions` | geheel getal | 1 tot 32 |
+| `public_url` | tekst | absolute `http(s)`-URL, geen inloggegevens, querystring of fragment, geen letterlijk privé-adres (S1.3) |
+| `web_origin` | tekst | een origin: `schema://host[:poort]`, geen pad; een privé-adres mag hier wél (S1.8) |
+| `cors_origins` | lijst van tekst | ten hoogste 16 origins in dezelfde vorm, elk uniek, geen `*` (S1.8) |
+
+Een wijziging geldt vanaf het eerstvolgende verzoek, zonder herstart: het eerstvolgende token draagt
+de nieuwe TTL. Een waarde buiten de grens geeft `400` met `settings.invalid_value`, het veld en de
+grens erbij, en wijzigt niets, ook niet aan de sleutels die in dezelfde aanvraag wel klopten.
+
+Wat hier niet tussen staat is bewust: het bindadres, de vertrouwde proxy's, de schrijfbare paden en
+de ondertekensleutel blijven `.env` en containerconfiguratie. Wie het bindadres over de API kan
+zetten kan de server van het netwerk halen of hem juist openzetten.
+
+### De refreshcookie voor een browser
+
+Sinds S1.8 accepteren `POST /auth/login` en `POST /auth/refresh` het optionele veld
+`credential_mode`. Zonder dat veld verandert er niets: het refreshtoken komt in het antwoord, zoals
+altijd. Met `"credential_mode": "cookie"` zet de server het in plaats daarvan in een
+`HttpOnly`-cookie op `Path=/pleya/v1/auth/refresh`, en blijft `refresh_token` uit het antwoord.
+JavaScript op de pagina komt er dan niet bij, en de cookie bereikt geen enkele andere route.
+
+```sh
+B=http://127.0.0.1:8832/pleya/v1
+
+# Inloggen in cookiemodus. De Origin-header is verplicht en moet toegestaan zijn.
+curl -s -c jar.txt -H 'Content-Type: application/json' -H "Origin: http://127.0.0.1:8832" \
+  -d '{"username":"michel","password":"...","credential_mode":"cookie"}' $B/auth/login
+
+# Verversen met alleen de cookie: geen refresh_token in de body.
+curl -s -b jar.txt -c jar.txt -H 'Content-Type: application/json' \
+  -H "Origin: http://127.0.0.1:8832" -d '{"credential_mode":"cookie"}' $B/auth/refresh
+```
+
+De cookie is `SameSite=Strict`, dus cookiemodus werkt alleen wanneer web en server dezelfde site
+zijn: de meegeleverde bundel, of een reverse proxy die beide onder één hostnaam hangt. Draait de
+webclient op een andere origin, zet die dan in `web_origin` of `cors_origins` en gebruik daar de
+gewone tokenmodus; het protocol kent geen third-party cookies. Een aanvraag in cookiemodus vanaf een
+origin die niet is toegestaan, of zonder `Origin`, geeft `403 auth.origin_rejected`.
+
 De voortgang van een lopende scan staat in `scan_runs` en in de logregels `scan gestart` en
 `scan klaar`. Er is bewust geen endpoint voor: realtime is PS-11, en een trage NAS die lijkt te hangen
 is met een teller die oploopt net zo goed te onderscheiden van een scanner die vastzit.
@@ -421,7 +586,7 @@ image die de container bouwt.
 
 ```sh
 scripts/go-tool.sh vet ./...
-scripts/verify-local.sh              # de hele keten, vijftien secties, 72 controles
+scripts/verify-local.sh              # de hele keten, vijftien secties, 79 controles
 ```
 
 De tests tegen een echte database en een echte ffprobe vragen twee dingen vooraf. Zonder die twee

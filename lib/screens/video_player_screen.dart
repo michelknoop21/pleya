@@ -214,7 +214,7 @@ TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
 /// choice would never reach Android, Windows or the official Plex clients,
 /// because iCloud key-value sync is Apple-only.
 ///
-/// A mirror, never the authority (DEC-096 lid 6). A failed write is logged by
+/// A mirror, never the authority (DEC-109 lid 6). A failed write is logged by
 /// the caller and leaves the Pleya preference exactly as it was; nothing here
 /// rolls anything back, and nothing reads Plex's answer back as truth.
 SeriesLanguagePersister _plexSeriesLanguagePersister(PlexClient? Function() resolve) {

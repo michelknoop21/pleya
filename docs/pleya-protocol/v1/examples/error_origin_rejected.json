@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "auth.origin_rejected",
+    "message": "origin not allowed for cookie credentials",
+    "retryable": false,
+    "details": {
+      "origin": "https://ergens-anders.example"
+    }
+  }
+}

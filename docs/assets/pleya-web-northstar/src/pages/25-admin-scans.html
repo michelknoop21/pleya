@@ -1,0 +1,44 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Scans en taken|navAction=}}
+<div class="admin">
+  {{admin:activity|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Scans en taken</div>
+    <h1 class="page-title" style="margin-top:0"><span>Scans en taken</span><span class="btn-row"><a class="btn ghost sm" href="#">{{icon:scan}} Alles scannen</a></span></h1>
+
+    <section class="panel">
+      <h3>Bezig <span class="pill run">1 taak · 2 werkers</span></h3>
+      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <div style="display:flex;justify-content:space-between;font-size:14px"><b>Scan Series</b><span class="dim">gestart 14:02 · 9 min bezig</span></div>
+          <div class="bar acc" style="margin:8px 0 6px;height:8px"><i style="width:62%"></i></div>
+          <div class="s dim" style="font-size:12px">3.104 van 5.012 bestanden gezien · 41 geanalyseerd · 2 hernoemd · 0 ontbrekend · 128 MB gehasht</div>
+          <div class="s dim mono" style="font-size:12px;margin-top:4px">/volume1/media/Series/Severance/Season 02/Severance.S02E07.mkv</div>
+        </div>
+        <a class="btn ghost sm" href="#">{{icon:stop}} Afbreken</a>
+      </div>
+      <p class="help" style="margin-top:12px">Voortgang komt uit <span class="mono">scan_runs</span> en ververst elke vijf seconden; met realtime aan zonder te pollen.</p>
+    </section>
+
+    <section class="panel" style="margin-top:14px;padding:6px 8px">
+      <h3 style="padding:10px 12px 4px">Fouten <span class="all">2 open</span></h3>
+      <table class="table">
+        <tr><td><div class="t">Analyse mislukt</div><div class="s mono">/volume1/media/Films/Nosferatu (2024)/Nosferatu.mkv</div></td><td><div class="s" style="margin:0">ffprobe gaf na 60 s geen antwoord</div><div class="s" style="margin:0">3 pogingen · volgende poging over 6 uur</div></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:refresh}} Nu opnieuw</a><a class="btn ghost sm" href="#">Overslaan</a></div></td></tr>
+        <tr><td><div class="t">Root niet bereikbaar</div><div class="s mono">/volume1/media/Boeken</div></td><td><div class="s" style="margin:0">scan overgeslagen, niets als ontbrekend gemarkeerd</div><div class="s" style="margin:0">sinds 07:12</div></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:drive}} Opslag</a></div></td></tr>
+      </table>
+    </section>
+
+    <section class="panel" style="margin-top:14px;padding:6px 8px">
+      <h3 style="padding:10px 12px 4px">Geschiedenis</h3>
+      <table class="table">
+        <tr><th>Taak</th><th>Gestart</th><th>Duur</th><th>Resultaat</th><th class="r"></th></tr>
+        <tr><td class="t">Scan Films</td><td>vandaag 08:00</td><td>11 min</td><td>28.412 gezien · 3 nieuw · 0 ontbrekend · 1 fout</td><td class="r"><span class="pill ok">klaar</span></td></tr>
+        <tr><td class="t">Scan Kids</td><td>vandaag 08:00</td><td>40 s</td><td>212 gezien · 0 nieuw</td><td class="r"><span class="pill ok">klaar</span></td></tr>
+        <tr><td class="t">Scan Boeken</td><td>vandaag 08:00</td><td class="dim">n.v.t.</td><td>root niet gemount</td><td class="r"><span class="pill warn">overgeslagen</span></td></tr>
+        <tr><td class="t">Scan Series</td><td>gisteren 20:00</td><td>14 min</td><td>4.998 gezien · 2 nieuw (Severance S2 A9, Andor S2 A8)</td><td class="r"><span class="pill ok">klaar</span></td></tr>
+        <tr><td class="t">Scan Films (handmatig)</td><td>gisteren 16:22</td><td>2 min</td><td>afgebroken door Michel bij 31%</td><td class="r"><span class="pill">afgebroken</span></td></tr>
+      </table>
+    </section>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 25 Scans en taken · scan_runs en jobs zichtbaar, afbreken, begrensde retry (backlog 24.3)</div>

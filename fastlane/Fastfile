@@ -547,6 +547,16 @@ rescue => e
   UI.important("Later herstellen met: fastlane attach_builds platform:#{platform} build:#{build_number}")
 end
 
+# De korte sha van de sourcecommit, als dart-define voor de logheader en
+# Sentry. Zonder deze define toont een TestFlight-build "Pleya v2.8.0 (242)"
+# zonder sha en moest de herkomst achteraf uit buildtijden gereconstrueerd
+# worden; Android en CI geven hem al jaren mee.
+def git_commit_define
+  sha = sh("git", "-C", PROJECT_ROOT, "rev-parse", "--short", "HEAD", log: false).strip
+  UI.user_error!("git rev-parse gaf geen sha terug voor #{PROJECT_ROOT}") if sha.empty?
+  " --dart-define=GIT_COMMIT=#{sha}"
+end
+
 # Oude Verify-bundels en Pleya-archives opruimen vóór een nieuwe build
 # (PLEYA_KEEP_BUILDS=1 slaat over).
 def prune_old_builds
@@ -557,7 +567,7 @@ desc "iOS → TestFlight"
 lane :ios_beta do
   prune_old_builds
   build_number = ensure_build_number("ios")
-  flutter_sh("flutter build ios --config-only --release")
+  flutter_sh("flutter build ios --config-only --release#{git_commit_define}")
   patch_spm_min_ios
   build_app(
     workspace: File.join(PROJECT_ROOT, "ios/Runner.xcworkspace"),
@@ -585,7 +595,7 @@ lane :tvos_beta do
   # fetch_engine.sh is idempotent (slaat de download over als de cache al klopt)
   # en herschrijft Generated.xcconfig — daarom ná ensure_build_number, want het
   # neemt het buildnummer uit pubspec.yaml over.
-  sh("cd #{PROJECT_ROOT} && tvos/scripts/fetch_engine.sh")
+  sh("cd #{PROJECT_ROOT} && PLEYA_GIT_COMMIT=$(git rev-parse --short HEAD) tvos/scripts/fetch_engine.sh")
   # Op een verse worktree ontbreekt tvos/Pods; de archive faalt dan op een
   # ontbrekende xcfilelist. pod install kan pas na fetch_engine.sh, dat
   # Generated.xcconfig schrijft waar de Podfile op leunt.
@@ -691,7 +701,7 @@ desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
   prune_old_builds
   build_number = ensure_build_number("osx")
-  flutter_sh("flutter build macos --config-only --release")
+  flutter_sh("flutter build macos --config-only --release#{git_commit_define}")
   # Buildnummer/-naam expliciet aan xcodebuild meegeven: DerivedData herprocesst
   # de Info.plist niet altijd als alleen de ephemeral xcconfig wijzigt → stale
   # CFBundleVersion in de archive (158-upload-rejectie terwijl de xcconfig al

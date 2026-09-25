@@ -590,7 +590,7 @@ class PlexMetadataDto {
 
   /// The show's stable catalogue GUID on an episode row. Plex reports it
   /// alongside `grandparentRatingKey`; it is the one cross-server identity an
-  /// episode carries about its series (DEC-096 lid 7).
+  /// episode carries about its series (DEC-109 lid 7).
   final String? grandparentGuid;
   final String? parentTitle;
   final String? parentThumb;

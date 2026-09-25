@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "auth.session_not_found",
+    "message": "No such session, or not visible to this account",
+    "retryable": false
+  }
+}

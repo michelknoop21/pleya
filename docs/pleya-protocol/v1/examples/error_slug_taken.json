@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.slug_taken",
+    "message": "slug taken",
+    "retryable": false
+  }
+}

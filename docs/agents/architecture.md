@@ -11,6 +11,6 @@ Read only when the task touches this domain. Inline code paths are relative to t
 
 ## Temporary overrides
 
-- **Tijdelijke overrides (rate-boost, background-pause, e.d.):** nooit los een "waarde-vóór"-veld bijhouden — een re-entrante start-handler (dubbele gesture/lifecycle-event) overschrijft de captured waarde met de al-geboden waarde en dan blijft de override permanent hangen. Gebruik `lib/utils/temporary_override.dart` (`TemporaryOverride<T>`: engage capture't éénmalig, release herstelt éénmalig), of minimaal een `if (alActief) return;`-guard op de start-handler én een reset op elk cancel/lifecycle-pad.
+- **Tijdelijke overrides (rate-boost, background-pause, e.d.):** nooit los een "waarde-vóór"-veld bijhouden. Een re-entrante start-handler (dubbele gesture/lifecycle-event) overschrijft de captured waarde met de al-geboden waarde en dan blijft de override permanent hangen. Gebruik `lib/utils/temporary_override.dart` (`TemporaryOverride<T>`: engage capture't éénmalig, release herstelt éénmalig), of minimaal een `if (alActief) return;`-guard op de start-handler én een reset op elk cancel/lifecycle-pad.
 
 Repository history: GPL-3.0 fork of [edde746/plezy](https://github.com/edde746/plezy).

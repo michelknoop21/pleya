@@ -550,6 +550,7 @@ BuildAppRelease() {
     -DTARGET_PLATFORM=TVOS \
     -DTVOS_BUILD=true \
     -DPLEYA_VERIFY=${PLEYA_VERIFY:-false} \
+    ${PLEYA_GIT_COMMIT:+-DGIT_COMMIT=${PLEYA_GIT_COMMIT}} \
     --output-dill "$OUTDIR/app.dill" \
     "$FLUTTER_APPLICATION_PATH/lib/main.dart"
 

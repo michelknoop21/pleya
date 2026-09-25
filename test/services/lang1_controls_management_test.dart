@@ -1,4 +1,4 @@
-/// LANG1 / DEC-096, negatieve controles C en G, plus het terugvalcontract.
+/// LANG1 / DEC-109, negatieve controles C en G, plus het terugvalcontract.
 ///
 /// Deze controles raken de globale laag en het beheer ervan. Ze verwijzen naar
 /// `PleyaProfileLanguagePreferenceStore` en `TrackPreferenceStore.clear`, die
@@ -77,7 +77,7 @@ void main() {
         expect(
           service.selectSubtitleTrack([_sub('1', lang: 'eng'), _sub('2', lang: 'nld')], null, null).track.language,
           'nld',
-          reason: 'DEC-096 lid 5: het Pleya-profiel geldt voor alle content, ook over backends heen',
+          reason: 'DEC-109 lid 5: het Pleya-profiel geldt voor alle content, ook over backends heen',
         );
         expect(
           service.selectAudioTrack([_audio('1', lang: 'eng'), _audio('2', lang: 'jpn')], null)?.track.language,
@@ -101,7 +101,7 @@ void main() {
   });
 
   // ────────────────────────────────────────────────────────────────
-  // Terugvalcontract (DEC-096 lid 3), hoort bij de globale laag
+  // Terugvalcontract (DEC-109 lid 3), hoort bij de globale laag
   // ────────────────────────────────────────────────────────────────
   group('terugvalcontract — gewenste taal, dan de terugvaltaal, dan uit', () {
     test('ontbreekt de gewenste taal, dan speelt de ingestelde terugvaltaal', () {
@@ -125,7 +125,7 @@ void main() {
 
       final result = service.selectSubtitleTrack([_sub('3', lang: 'fre'), _sub('4', lang: 'deu')], null, null);
 
-      expect(result.track.id, 'no', reason: 'DEC-096 lid 3: nooit de eerste beschikbare ondertiteltrack');
+      expect(result.track.id, 'no', reason: 'DEC-109 lid 3: nooit de eerste beschikbare ondertiteltrack');
     });
 
     test('een terugval wijzigt de serievoorkeur en de globale voorkeur niet', () async {

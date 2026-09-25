@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# Bewaakt dat een merge een authority-bestand niet stil terugzet naar één kant.
+#
+# `git checkout --ours <bestand>` en `--theirs` nemen het HELE bestand, niet de
+# conflicterende hunk. Bij een bestand waar beide takken aan hebben gewerkt wist dat
+# de andere kant volledig uit, zonder dat git, de tests of de CI iets melden. Dat is
+# op 4 september 2026 gebeurd met CLAUDE.md (128 regels weg, waaronder de stand dat
+# PS-9 gesloten is) en met docs/RELEASES.md (14 releasenote-regels weg).
+#
+# De controle: voor elke merge in BASE..HEAD en elk authority-bestand waar BEIDE
+# ouders van de eigen merge-base afwijken, mag het bestand in de mergecommit niet
+# byte-identiek zijn aan één van die ouders. Is het dat wel, dan is er niet
+# gemergd maar gekozen.
+#
+# Dit is geen stijlregel maar een feitencontrole, en hij geneest vanzelf: zodra de
+# merge alsnog goed is opgelost, is het bestand van beide ouders verschillend.
+#
+# WAT DEZE CONTROLE BEWUST NIET DOET, en niet moet gaan doen: hij bewijst de
+# vingerafdruk, niet de intentie. Wie `--ours` draait en daarna één regel met de
+# hand wijzigt, komt er ongezien langs, want dan is het bestand niet meer
+# byte-identiek aan die ouder. Dat is geen gat om met heuristiek te dichten.
+# Een drempel op "hoeveel lijkt het op die ouder" levert vals alarm bij een merge
+# die legitiem grotendeels één kant volgt, en vals vertrouwen zodra iemand de
+# drempel leert kennen. De fout die werkelijk is opgetreden is exact deze, en
+# daar is dit een scherpe en onderhoudbare poort voor. Laat hem zo.
+#
+# Wil je een kant écht in zijn geheel overnemen, zet het bestand dan in ALLOW
+# hieronder met de reden erbij. Dat is een bewuste, zichtbare uitzondering.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# Bestanden die projectwaarheid dragen: wie ze terugdraait, stuurt elke volgende
+# sessie verkeerd. Aanvullen wanneer er een bijkomt.
+FILES=(
+  "CLAUDE.md"
+  "docs/RELEASES.md"
+  "docs/DECISIONS.md"
+  "docs/CHANGELOG.md"
+  "STATUS.md"
+  "docs/PLEYA-SERVER-MASTERLIST.md"
+)
+
+# Bewuste uitzonderingen, als "pad # reden".
+ALLOW=()
+
+# Uitzonderingen voor één historische merge, als "<volledige merge-sha> <pad> # reden".
+# Alleen voor een merge die al fout was en waarvan het verlies later is hersteld;
+# de volledige sha zorgt dat een nieuwe merge met hetzelfde bestand nooit meelift.
+ALLOW_MERGES=(
+  "4e78b16003cf1e10e33c43dc6e76d442766be5a0 CLAUDE.md # --ours, driewegmerge hersteld in b020d648"
+  "4e78b16003cf1e10e33c43dc6e76d442766be5a0 docs/RELEASES.md # --ours, opnieuw gegenereerd in b020d648"
+  "0b9699ec0c6e174a9f03fe52ad633149d61addf8 docs/RELEASES.md # gegenereerd blok, daarna opnieuw gegenereerd met gen_release_notes.sh"
+  "0b9699ec0c6e174a9f03fe52ad633149d61addf8 docs/CHANGELOG.md # entries uit d4af0122 hersteld in 778315dc"
+  "0b9699ec0c6e174a9f03fe52ad633149d61addf8 STATUS.md # secties uit d4af0122 hersteld in 778315dc"
+)
+
+PASS=0
+FAIL=0
+pass() { printf '  PASS  %s\n' "$1"; PASS=$((PASS + 1)); }
+fail() { printf '  FAIL  %s\n' "$1"; FAIL=$((FAIL + 1)); }
+skip() { printf '  ....  %s\n' "$1"; }
+
+RANGE_BASE="${1:-}"
+if [ -z "$RANGE_BASE" ]; then
+  if git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
+    RANGE_BASE="$(git merge-base HEAD refs/remotes/origin/main)"
+  else
+    echo "geen base opgegeven en origin/main ontbreekt; gebruik: $0 <base>" >&2
+    exit 2
+  fi
+fi
+if ! git rev-parse --verify --quiet "$RANGE_BASE^{commit}" >/dev/null; then
+  echo "ongeldige authority-base: $RANGE_BASE" >&2
+  exit 2
+fi
+
+# `git rev-parse <rev>:<pad>` echoot bij een onbekend pad zijn eigen argument naar
+# stdout en faalt daarna met 128. In een commandosubstitutie levert `|| echo "-"`
+# dan "<rev>:<pad>" plus "-" in plaats van alleen "-", en dat is voor deze controle
+# geen herkenbare "bestaat niet": een bestand dat maar aan één kant bestaat viel
+# daardoor niet in de skip maar in de vergelijking, en werd als FAIL gemeld.
+# `--verify --quiet` zwijgt en faalt wel meteen.
+blob() { git rev-parse --verify --quiet "$1:$2" || echo "-"; }
+
+MERGES=0
+while IFS= read -r MERGE; do
+  [ -n "$MERGE" ] || continue
+  MERGES=$((MERGES + 1))
+  P1="$(git rev-parse "$MERGE^1")"
+  P2="$(git rev-parse "$MERGE^2" 2>/dev/null || true)"
+  if [ -z "$P2" ]; then
+    skip "$(git rev-parse --short "$MERGE") heeft minder dan twee ouders"
+    continue
+  fi
+  BASE="$(git merge-base "$P1" "$P2")"
+
+  echo "==> merge $(git rev-parse --short "$MERGE") ($(git rev-parse --short "$P1") + $(git rev-parse --short "$P2"))"
+
+  for f in "${FILES[@]}"; do
+    allowed_file=false
+    for allowed in ${ALLOW[@]+"${ALLOW[@]}"}; do
+      if [ "${allowed%% *}" = "$f" ]; then
+        skip "$f (uitzondering: ${allowed#*# })"
+        allowed_file=true
+        break
+      fi
+    done
+    for allowed in ${ALLOW_MERGES[@]+"${ALLOW_MERGES[@]}"}; do
+      [ "$allowed_file" = false ] || break
+      entry="${allowed%% # *}"
+      if [ "$entry" = "$MERGE $f" ]; then
+        skip "$f (uitzondering voor deze merge: ${allowed#*# })"
+        allowed_file=true
+      fi
+    done
+    [ "$allowed_file" = false ] || continue
+
+    b_base="$(blob "$BASE" "$f")"
+    b_p1="$(blob "$P1" "$f")"
+    b_p2="$(blob "$P2" "$f")"
+    b_now="$(blob "$MERGE" "$f")"
+
+    # Een authority die bij deze geschiedenis hoorde mag niet stil uit het
+    # merge-resultaat verdwijnen, ook niet wanneer één ouder hem al verwijderde.
+    if [ "$b_base" != "-" ] && [ "$b_now" = "-" ]; then
+      fail "$f is verwijderd, maar bestond in de merge-base"
+      continue
+    fi
+
+    # Alleen interessant als beide kanten het bestand hebben aangeraakt. Raakte
+    # er maar één kant aan, dan is "gelijk aan die kant" precies de goede uitkomst.
+    if [ "$b_p1" = "$b_base" ] || [ "$b_p2" = "$b_base" ] || [ "$b_base" = "-" ]; then
+      skip "$f (maar één kant wijzigde hem)"
+      continue
+    fi
+
+    if [ "$b_now" = "$b_p1" ]; then
+      fail "$f is byte-identiek aan $(git rev-parse --short "$P1"), terwijl beide kanten hem wijzigden"
+    elif [ "$b_now" = "$b_p2" ]; then
+      fail "$f is byte-identiek aan $(git rev-parse --short "$P2"), terwijl beide kanten hem wijzigden"
+    else
+      pass "$f draagt beide kanten"
+    fi
+  done
+done < <(git rev-list --reverse --merges "$RANGE_BASE..HEAD")
+
+if [ "$MERGES" -eq 0 ]; then
+  echo "geen merges in $(git rev-parse --short "$RANGE_BASE")..HEAD; niets te controleren"
+  exit 0
+fi
+
+echo
+if [ "$FAIL" -gt 0 ]; then
+  cat >&2 <<'EOF'
+Een authority-bestand is gelijk aan één merge-ouder terwijl beide kanten het
+wijzigden. Dat is de vingerafdruk van `git checkout --ours/--theirs` op
+bestandsniveau: het hele bestand van één kant, en de andere kant stil weg.
+
+Los het op als echte driewegmerge:
+
+  git show <merge-base>:<bestand> > /tmp/base
+  git show <ouder-1>:<bestand>    > /tmp/a
+  git show <ouder-2>:<bestand>    > /tmp/b
+  cp /tmp/a <bestand> && git merge-file <bestand> /tmp/base /tmp/b
+
+Daarna staan alleen de werkelijke conflicten met markers in het bestand; die
+los je met de hand op. Gegenereerde bestanden niet met de hand mergen maar
+opnieuw laten genereren.
+
+Wil je één kant écht in zijn geheel, zet het bestand dan in ALLOW in dit script
+met de reden erbij.
+EOF
+  echo "$PASS pass, $FAIL fail"
+  exit 1
+fi
+echo "$PASS pass, 0 fail"

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -41,10 +42,16 @@ var (
 // Claims is de inhoud van een token.
 //
 // Klein gehouden met opzet. Een accesstoken hoeft niets te dragen behalve wie
-// hij is en tot wanneer; een streamtoken daarnaast één resource, want hij mag
-// niets anders openen.
+// hij is, van welke sessie, en tot wanneer; een streamtoken daarnaast één
+// resource, want hij mag niets anders openen.
+//
+// Sid is geen protocolwijziging (DEC-123): Claims is de inhoud van een
+// ondoorzichtige string en het protocol zegt uitdrukkelijk dat de client hem
+// nooit hoeft te lezen. Na intrekking van sessie A faalt elk credential met
+// sid = A; sessie B van dezelfde gebruiker blijft geldig.
 type Claims struct {
 	Subject   string    `json:"sub"`
+	Sid       string    `json:"sid"`
 	Type      TokenType `json:"typ"`
 	IssuedAt  int64     `json:"iat"`
 	ExpiresAt int64     `json:"exp"`
@@ -58,26 +65,47 @@ type Claims struct {
 // niet. Wat een JWT verder biedt (meerdere algoritmes, sleutelrotatie via een
 // header, een publieke verificatiesleutel) heeft deze server niet nodig.
 type Signer struct {
-	key []byte
+	// De sleutel wisselt in zijn geheel om en wordt nooit ter plaatse bewerkt:
+	// POST /server/rotate-signing-key vervangt hem terwijl er aanvragen lopen,
+	// en een half omgewisselde sleutel zou tokens ondertekenen die niemand meer
+	// kan verifiëren. Zie Rotate.
+	key atomic.Pointer[[]byte]
 	now func() time.Time
 }
 
 // NewSigner bouwt een ondertekenaar rond de sleutel.
 func NewSigner(key []byte) (*Signer, error) {
-	if len(key) < 32 {
-		return nil, fmt.Errorf("ondertekensleutel is %d bytes; minimaal 32 nodig", len(key))
+	if len(key) < KeyLength {
+		return nil, fmt.Errorf("ondertekensleutel is %d bytes; minimaal %d nodig", len(key), KeyLength)
 	}
-	return &Signer{key: key, now: time.Now}, nil
+	s := &Signer{now: time.Now}
+	s.key.Store(&key)
+	return s, nil
+}
+
+// Rotate neemt een nieuwe sleutel in gebruik.
+//
+// Vanaf de eerstvolgende aanvraag faalt elk token dat op de oude sleutel is
+// gemunt met ErrTokenSignature, en dat is precies wat een beheerder vraagt die
+// roteert. De oude sleutel wordt niet aangehouden: een overgangsvenster zou de
+// handeling betekenisloos maken zolang het duurt.
+func (s *Signer) Rotate(key []byte) error {
+	if len(key) < KeyLength {
+		return fmt.Errorf("ondertekensleutel is %d bytes; minimaal %d nodig", len(key), KeyLength)
+	}
+	s.key.Store(&key)
+	return nil
 }
 
 // SetClock laat een test de tijd bepalen.
 func (s *Signer) SetClock(now func() time.Time) { s.now = now }
 
 // Mint geeft een ondertekend token uit.
-func (s *Signer) Mint(subject string, typ TokenType, ttl time.Duration, resource string) (string, Claims, error) {
+func (s *Signer) Mint(subject, sid string, typ TokenType, ttl time.Duration, resource string) (string, Claims, error) {
 	now := s.now().UTC()
 	claims := Claims{
 		Subject:   subject,
+		Sid:       sid,
 		Type:      typ,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(ttl).Unix(),
@@ -130,7 +158,7 @@ func (s *Signer) Verify(token string, want TokenType) (Claims, error) {
 }
 
 func (s *Signer) sign(body string) []byte {
-	mac := hmac.New(sha256.New, s.key)
+	mac := hmac.New(sha256.New, *s.key.Load())
 	mac.Write([]byte(body))
 	return mac.Sum(nil)
 }
@@ -149,6 +177,24 @@ func NewRefreshToken() (token string, hash []byte, err error) {
 	token = base64.RawURLEncoding.EncodeToString(raw)
 	return token, HashOpaque(token), nil
 }
+
+// RefreshCookieName en RefreshCookiePath zijn de cookie uit RB-29 (S1.8).
+//
+// Het pad is het securitymodel eromheen en geen nettigheidje. Een browser
+// stuurt een cookie alleen naar een pad dat eronder valt, dus deze waarde zorgt
+// dat een credential dat maanden geldig is uitsluitend op POST /auth/refresh op
+// de lijn staat en op geen enkele andere route bestaat. Dat is wat K rij 7
+// ("geen cookie-auth op /pleya/v1") en RB-29 met elkaar verzoent: de cookie
+// autoriseert één handeling en nooit een identiteit.
+//
+// Eén vaste naam, anders dan bij de streamsessie. Daar draagt de naam de
+// sessie-id omdat twee tabbladen twee levende streams kunnen hebben; hier is
+// één credential per browser precies de bedoeling, en een tweede Set-Cookie
+// hoort de eerste dus te vervangen.
+const (
+	RefreshCookieName = "pleya_refresh"
+	RefreshCookiePath = "/pleya/v1/auth/refresh"
+)
 
 // HashOpaque geeft de opslagvorm van een ondoorzichtig geheim.
 func HashOpaque(token string) []byte {
