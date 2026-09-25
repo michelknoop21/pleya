@@ -96,7 +96,7 @@ niets erbij: loudnessmeting heeft geen afhankelijkheid op gebruikers/rechten en 
 vraagsturing via bestaande handlers) en kunnen dus ongeacht de venstertoestand door. D5 raakt het
 wél: een nieuw optioneel responsveld voldoet aan compatibiliteitsregel 1
 (`docs/pleya-protocol/v1/openapi.yaml` hoofdstuk 3), maar het venster dat nu open staat voor S2 van
-PS-11A ([DEC-133](DECISIONS.md), hernummerd op 20 september 2026, eerder DEC-113) is beperkt tot precies
+PS-11A ([DEC-136](DECISIONS.md), hernummerd op 20 en 25 september 2026, eerder DEC-113 en DEC-133) is beperkt tot precies
 de tien wijzigingen uit `docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3. Het
 `Loudness`-veld staat daar niet bij, dus D5 mag niet meeliften op dat venster. D5 heeft, wanneer D1-D4
 bewezen zijn en D5 daadwerkelijk klaarstaat, een eigen vensteropening nodig, volgens hetzelfde

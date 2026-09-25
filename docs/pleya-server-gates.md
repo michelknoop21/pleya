@@ -27,11 +27,11 @@ aan de lopende fase, niet aan een vast fasenummer, gelijk aan `CLAUDE.md`; bij h
 ging het venster een tweede keer open, zie sectie 6 hieronder en
 [DEC-122](DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
 Een derde keer voor S1 van PS-11A, zie sectie 7 en
-[DEC-130](DECISIONS.md#dec-130-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein);
+[DEC-133](DECISIONS.md#dec-133-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein);
 dat venster is met S1.6 weer gesloten,
-[DEC-132](DECISIONS.md#dec-132-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+[DEC-135](DECISIONS.md#dec-135-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
 Een vierde keer voor S2, zie sectie 8 en
-[DEC-133](DECISIONS.md#dec-133-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein);
+[DEC-136](DECISIONS.md#dec-136-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein);
 dat venster staat open tot S2.6.
 
 ---
@@ -305,9 +305,9 @@ fase daarna, tot de volgende expliciete venstervraag.
 ## 7. Het S1-contractvenster van PS-11A
 
 Op 5 september 2026 ging het venster een derde keer open, met
-[DEC-130](DECISIONS.md#dec-130-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein),
+[DEC-133](DECISIONS.md#dec-133-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein),
 en op dezelfde dag weer dicht met S1.6 en
-[DEC-132](DECISIONS.md#dec-132-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+[DEC-135](DECISIONS.md#dec-135-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
 Alle zeventien rijen zijn geland: veertien in S1.1 tot en met S1.5 en S1.8, en de laatste drie
 (`capabilities.administration`, `SetupRequest.server_name` met `Info.server.setup_accepts_name`, en
 `capabilities.mcp` met `Server.mcp`) in S1.6. Van die drie is er één met gedrag erachter: setup
@@ -327,11 +327,11 @@ aanvraagvelden achter een capability, en vallen onder regel 1, 4 en 5. Twee kreg
 redenering: `SetupRequest.server_name` botst met de gesloten aanvraagbody en wordt afgevangen met
 `setup_accepts_name` op `Info`, en het foutdomein verruimt een bestaand patroon.
 
-**Twee domeinen, niet één.** DEC-130 telde er één en dat bleek bij het uitvoeren te weinig: rij 2 van
+**Twee domeinen, niet één.** DEC-133 telde er één en dat bleek bij het uitvoeren te weinig: rij 2 van
 J.2 schrijft `settings.invalid_value` voor op `PATCH /settings`, en `settings` stond net zomin in het
 patroon als `server`. Beide zaten al in de zeventien, dus het venster dekt ze allebei; de tekst van
-DEC-130 telde ze niet allebei.
-[DEC-131](DECISIONS.md#dec-131-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
+DEC-133 telde ze niet allebei.
+[DEC-134](DECISIONS.md#dec-134-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
 corrigeert dat en legt meteen de regel voor de volgende vensters vast: een venster dat een foutdomein
 toevoegt zegt dat met zoveel woorden, met de compatibiliteitstoets erbij. J.3 brengt `job` mee en J.5
 `reading`, dus die vraag komt terug.
@@ -358,14 +358,14 @@ de hand geschreven zodat hij niet met het patroon meebeweegt. Aangetoond door he
 zetten op vijf domeinen: twee regels rood, `settings` en `server`.
 
 **Sluiting.** Gesloten met taak S1.6 van de masterlijst en
-[DEC-132](DECISIONS.md#dec-132-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen):
+[DEC-135](DECISIONS.md#dec-135-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen):
 `openapi.yaml`, de fixtures en de gegenereerde webclient zijn bijgewerkt en `check_protocol.sh` was
 groen op alle zeventien rijen.
 
 ## 8. Het S2-contractvenster van PS-11A
 
 Op 6 september 2026 ging het venster een vierde keer open, met
-[DEC-133](DECISIONS.md#dec-133-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein).
+[DEC-136](DECISIONS.md#dec-136-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein).
 Anders dan bij S1 landt de implementatie hier over meerdere commits binnen dezelfde slice: S2.2 heeft
 er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library`-uitbreiding met
 `managed`, `scan_interval_seconds` en `scan_on_start`), S2.3 er twee bij (`GET /storage/roots` en
@@ -379,7 +379,7 @@ er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library
 
 **Eén nieuw foutdomein, en pas wanneer er ook echt een code in zit.** `job` komt erbij zodra
 `job.not_cancellable` landt (S2.4); met S2.4 staat het patroon op acht domeinen, dezelfde
-discipline als bij `settings` en `server` in venster 1 (DEC-131). De overige nieuwe codes vallen in
+discipline als bij `settings` en `server` in venster 1 (DEC-134). De overige nieuwe codes vallen in
 bestaande domeinen: `library.slug_taken`, `library.not_empty`, `library.confirm_mismatch` en
 `library.not_config_managed` (dat laatste komt met S2.5, adopt) in `library`,
 `storage.root_not_offered` in `storage`.

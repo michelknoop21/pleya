@@ -1701,7 +1701,7 @@ components:
                 Het domein is de helft voor de punt. De lijst is niet gesloten
                 maar groeit per protocolvenster, en elke uitbreiding is een
                 besluit: `server` en `settings` kwamen erbij met venster 1
-                (DEC-130 en DEC-131). `job` kwam erbij met venster 2 (DEC-133),
+                (DEC-133 en DEC-134). `job` kwam erbij met venster 2 (DEC-136),
                 zodra S2.4 `job.not_cancellable` stuurde. Een client die een code
                 niet kent valt terug op een generieke melding en takt niet op het domein.
 

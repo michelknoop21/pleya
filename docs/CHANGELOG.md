@@ -22,7 +22,7 @@ De onvoltooide S2.4-migratie is eerst zonder herschrijven vastgelegd op
 `integration/pleya-server-completion` vanaf actueel `main` (`bc6bff47`) aangemaakt en is de oude
 integratiebranch samengebracht. `main` blijft authority voor de huidige app, tvOS-registers en
 besluitnummers; de unieke serverbesluiten zijn zonder inhoudsverlies naar DEC-117 tot en met
-DEC-133 verplaatst. De mergebasis staat in `0b9699ec`; 26 van 29 onafhankelijke reviewbevindingen
+DEC-129 en DEC-133 tot en met DEC-136 verplaatst. De mergebasis staat in `0b9699ec`; 26 van 29 onafhankelijke reviewbevindingen
 zijn test-first hersteld in `3734e399`, waarvoor de lokale CI-check groen was. Twee bevindingen
 staan bewust RED en één is nog open. Gedragssuites, overige brede gates en het overnemen van
 S2.4/loudness volgen binnen R0 en R1; dit is geen release- of productieclaim.

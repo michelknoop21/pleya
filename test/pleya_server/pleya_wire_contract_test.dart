@@ -362,7 +362,7 @@ void main() {
       expect(error.retryable, isFalse);
     });
 
-    // Window 1 widens the error domain to seven (DEC-130 and DEC-131). The
+    // Window 1 widens the error domain to seven (DEC-133 and DEC-134). The
     // compatibility argument under that decision is a claim about this class:
     // the code is carried as a String and nothing branches on the domain. A
     // claim about code belongs in a test, not only in the decision.

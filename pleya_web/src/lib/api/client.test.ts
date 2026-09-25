@@ -326,7 +326,7 @@ describe('foutafhandeling', () => {
     expect(describeError(err)).toContain('library.brand_new');
   });
 
-  // Venster 1 verruimt het foutdomein (DEC-130 en DEC-131). De compatibiliteits-
+  // Venster 1 verruimt het foutdomein (DEC-133 en DEC-134). De compatibiliteits-
   // toets daaronder rust op de aanname dat een onbekend domein hier generiek
   // afloopt in plaats van ergens op te takken. Dat is een aanname over deze code,
   // dus hij hoort hier gemeten te worden en niet alleen in het besluit te staan.

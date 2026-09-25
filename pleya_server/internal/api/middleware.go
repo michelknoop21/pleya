@@ -45,8 +45,8 @@ func (s *Server) chain(inner http.Handler) http.Handler {
 //
 // Zonder deze laag beëindigt net/http de verbinding zonder lichaam. Een client
 // ziet dan een transportfout waar een serverfout hoorde te staan, en verwart
-// "de server viel om" met "het netwerk was weg". Sinds venster 1 (DEC-130,
-// DEC-131) bestaat `server.internal`, dus er is een code om het mee te zeggen.
+// "de server viel om" met "het netwerk was weg". Sinds venster 1 (DEC-133,
+// DEC-134) bestaat `server.internal`, dus er is een code om het mee te zeggen.
 //
 // De stack blijft in het log. Wat de client krijgt is de request-id, en dat is
 // genoeg: dezelfde id staat op de logregel met de stack, dus een melder kan hem

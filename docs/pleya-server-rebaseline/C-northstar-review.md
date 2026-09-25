@@ -132,7 +132,7 @@ staat in C.3 en hoort bij S7.
 
 `src/pages/16-kaartstaten.html` regel 16 schrijft bij de amberstip "DEC-096 op main". Dat nummer is
 na de completion-re-baseline weer correct: `main` bezit DEC-096 voor de taalvoorkeuren en de
-serverbesluiten zijn naar DEC-117 tot en met DEC-133 verplaatst. De tijdelijke DEC-109-kopie uit de
+serverbesluiten zijn naar DEC-117 tot en met DEC-129 en DEC-133 tot en met DEC-136 verplaatst. De tijdelijke DEC-109-kopie uit de
 oude integratiebranch is verwijderd.
 
 De set is op 4 september 2026

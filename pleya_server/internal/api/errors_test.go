@@ -88,7 +88,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 // fout in deze server krijgt.
 //
 // Tot venster 1 was dat storage.unavailable, omdat het register niets beters
-// had. Sinds DEC-131 heeft het server.internal, en dan is opslag noemen bij een
+// had. Sinds DEC-134 heeft het server.internal, en dan is opslag noemen bij een
 // fout die niets met opslag te maken heeft een onwaar antwoord.
 func TestWriteInternalAnswersServerInternal(t *testing.T) {
 	rec := httptest.NewRecorder()
