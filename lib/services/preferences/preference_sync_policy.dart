@@ -48,7 +48,7 @@ class PreferenceMergeFamilies {
   static const String watchedMap = 'watchedMap';
 
   /// A JSON map whose keys are `{profileScope}` or `{profileScope}|{rest}`:
-  /// the two language preferences (DEC-096, DEC-131).
+  /// the two language preferences (DEC-096, DEC-133).
   static const String profileKeyedMap = 'profileKeyedMap';
 
   /// [profileKeyedMap] for `track_language_preferences`, with the store's cap
@@ -239,7 +239,7 @@ class PreferenceSyncPolicyRegistry {
     icloudSyncable: false,
   );
 
-  /// The two language maps (DEC-096, DEC-131 (9)): one global preference each,
+  /// The two language maps (DEC-096, DEC-133 (9)): one global preference each,
   /// with the profile scope inside the map keys, exactly as
   /// `PleyaProfileLanguagePreferenceStore` and `TrackPreferenceStore` write
   /// them. Registering them as profile-scoped put the incoming value under a
@@ -261,7 +261,7 @@ class PreferenceSyncPolicyRegistry {
 
   /// Bound to this device's hardware or installation, so it does not sync,
   /// but a file export is a deliberate act towards a device the user chose,
-  /// so it still exports (DEC-131 (10)).
+  /// so it still exports (DEC-133 (10)).
   static const PreferencePolicy _deviceBoundPref = PreferencePolicy(
     scope: PreferenceScopeKind.deviceLocal,
     icloudSyncable: false,
@@ -519,11 +519,11 @@ class PreferenceSyncPolicyRegistry {
     // activation preference and lives elsewhere.
     'unified_catalog_preferences': _unifiedCatalogViewPref,
 
-    // -- The two language maps (DEC-096, DEC-131).
+    // -- The two language maps (DEC-096, DEC-133).
     'pleya_profile_language_preferences': _profileKeyedMapPref,
     'track_language_preferences': _trackLanguageMapPref,
 
-    // -- JsonPref maps the guard could not see until DEC-131 (10).
+    // -- JsonPref maps the guard could not see until DEC-133 (10).
     'keyboard_shortcuts': _globalPref,
     'keyboard_hotkeys': _globalPref,
     // The chosen version index depends on what the server offers this device.

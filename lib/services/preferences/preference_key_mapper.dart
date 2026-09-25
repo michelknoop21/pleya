@@ -172,7 +172,7 @@ class PreferenceKeyMapper {
   /// format, is entitled to delete.
   ///
   /// Under v2 the answer is always no. A removal travels as a tombstone since
-  /// DEC-131, so a record this device does not hold is one it has not seen
+  /// DEC-133, so a record this device does not hold is one it has not seen
   /// yet, never one it deleted. The v1 path keeps a prune for the
   /// rolling-upgrade test. That path is not the released v1 algorithm any
   /// more: it writes stamped records and compares before it writes.

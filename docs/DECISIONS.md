@@ -2927,7 +2927,7 @@ toont. De globale klem van 0,85 blijft voor de rest van de app staan; de rails, 
 zijn niet omgezet. Wie die schermen op dezelfde manier wil corrigeren, rekent ze om naar `TvHig`
 in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.
 
-## DEC-131: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
+## DEC-133: De revisie-envelop reist mee, verwijderingen zijn tombstones en de prune verdwijnt onder v2
 
 **Date:** 2026-09-24
 **Status:** accepted

@@ -10,7 +10,7 @@ import 'package:pleya/services/settings_service.dart';
 import '../../test_helpers/prefs.dart';
 import 'fake_transport.dart';
 
-/// DEC-131 (2) and (3). The envelope leaves the device with every record and
+/// DEC-133 (2) and (3). The envelope leaves the device with every record and
 /// decides on arrival. A record without a stamp is one the previous build
 /// wrote and counts as the oldest possible.
 void main() {

@@ -233,7 +233,7 @@ void main() {
   test('pushAll leaves keys this device lacks in the store, and keeps meta and foreign keys', () async {
     final settings = await SettingsService.getInstance();
     await settings.prefs.setInt('seek_time_small', 8);
-    // A registered preference this device does not hold. Since DEC-131 a
+    // A registered preference this device does not hold. Since DEC-133 a
     // removal travels as a tombstone, so absence here means "not seen yet".
     kvs[g('theme_mode')] = enc('string', 'dark');
     // A key nobody registered. It might belong to another feature or a newer
@@ -250,7 +250,7 @@ void main() {
     expect(
       kvs.containsKey(g('theme_mode')),
       isTrue,
-      reason: 'an import is local-first, and nothing is pruned since DEC-131',
+      reason: 'an import is local-first, and nothing is pruned since DEC-133',
     );
     expect(kvs.containsKey('stale_key'), isTrue);
     expect(valueOf(kvs[g('seek_time_small')]), 8);

@@ -37,7 +37,7 @@ export 'preference_sync_status.dart';
 /// And it started its work with `unawaited(...)`, so a failed push had nowhere
 /// to be reported.
 ///
-/// Since DEC-131 the wire format carries the envelope: a record is
+/// Since DEC-133 the wire format carries the envelope: a record is
 /// `{"type","value","t","d"}` and a removal is a tombstone `{"x":true,"t","d"}`.
 /// Both live in the `__pleya_pref_v2/` namespace the previous build already
 /// reads; that build ignores `t` and `d` and skips a tombstone, so the formats
@@ -102,7 +102,7 @@ class PreferenceSyncCoordinator {
   /// format.
   ///
   /// On in every build since the v2 cutover: nothing writes a flat v1 key any
-  /// more. Since DEC-131 v2 records also carry the revision envelope, and a
+  /// more. Since DEC-133 v2 records also carry the revision envelope, and a
   /// removal travels as a tombstone.
   ///
   /// The two formats differ in more than the key shape, which is why the switch
@@ -182,7 +182,7 @@ class PreferenceSyncCoordinator {
     try {
       if (mutation.operation == PreferenceOperation.remove) {
         // A removal is a first-class change. v1 lost it here: the hook only had
-        // a key, read `null` back, and stopped. Since DEC-131 it travels as a
+        // a key, read `null` back, and stopped. Since DEC-133 it travels as a
         // tombstone rather than as an absent key, so the other device can tell
         // "deleted" from "never had it".
         final tombstone = encodeTombstone(_revisionStore.stampOf(stampKey), key: _keys.keyTagFor(baseKey));
