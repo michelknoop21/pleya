@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'preference_revision.dart';
+import 'preference_sync_scope.dart';
 
 /// A stamp as stored locally or read from a record.
 typedef PreferenceStamp = ({int at, String device, bool deleted});
@@ -134,6 +135,17 @@ bool remoteStampWins(PreferenceStamp remote, PreferenceStamp local) {
     overDevice: local.device,
     overDeleted: local.deleted,
   );
+}
+
+/// Whether [store] holds a record in the v2 namespace that [deviceId] wrote.
+/// Device ids are minted per installation, so such a store is one this device
+/// has written to before.
+bool storeHoldsRecordFrom(Map<String, String> store, String deviceId) {
+  for (final e in store.entries) {
+    if (!e.key.startsWith(PreferenceSyncScope.cloudNamespacePrefix)) continue;
+    if (decodeStampedRecord(e.value)?.stamp.device == deviceId) return true;
+  }
+  return false;
 }
 
 bool sameStamp(PreferenceStamp a, PreferenceStamp b) => a.at == b.at && a.device == b.device && a.deleted == b.deleted;

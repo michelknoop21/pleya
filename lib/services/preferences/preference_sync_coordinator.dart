@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/app_logger.dart';
-import '../settings_export_service.dart';
 import 'preference_legacy_bootstrap.dart';
 import 'preference_key_mapper.dart';
 import 'preference_merge_strategies.dart';
@@ -16,6 +14,7 @@ import 'preference_refresh.dart';
 import 'preference_remote_apply.dart';
 import 'preference_revision.dart';
 import 'preference_revision_store.dart';
+import 'preference_single_send.dart';
 import 'preference_sync_policy.dart';
 import 'preference_sync_scope.dart';
 import 'preference_sync_status.dart';
@@ -168,10 +167,11 @@ class PreferenceSyncCoordinator {
     if (!_enabled()) return;
     final transport = _transport;
     if (transport == null) return;
-    if (status.value.availability == PreferenceSyncAvailability.unavailable) {
-      // Signed out. The change is stamped above, so the first reconcile after
-      // signing back in carries it; writing now would only produce a "last
-      // sent" time for a value that went nowhere.
+    final availability = status.value.availability;
+    if (availability == PreferenceSyncAvailability.unavailable || availability == PreferenceSyncAvailability.unknown) {
+      // Signed out, or not known yet. The change is stamped above, so the
+      // first reconcile once the store is there carries it; writing now would
+      // only produce a "last sent" time for a value that went nowhere.
       return;
     }
 
@@ -190,52 +190,27 @@ class PreferenceSyncCoordinator {
         return;
       }
 
-      // A family with an outgoing merge needs to see what is in the store
-      // before it decides what to send. A failed read is not an empty store, so
-      // the write is held back rather than pushed over entries this device
-      // cannot account for.
-      Object? remoteValue;
+      // A family with an outgoing merge reads the store and writes from that
+      // read, so it takes a turn: a reconcile or a remote batch in between
+      // would change the store under it.
       if (_keys.merges.familyFor(baseKey)?.mergesOutgoing ?? false) {
-        final all = await transport.readAll();
-        if (all == null) {
-          _setStatus(status.value.countingSkipped(1).raise(PreferenceSyncHealth.warning));
-          appLogger.w('preference sync: held back ${_category(baseKey)}, the store could not be read');
-          return;
-        }
-        final record = all[cloudKey];
-        remoteValue = record == null ? null : decodeTypedRecord(record)?.$2;
+        await _exclusively(
+          () => _singleSend.send(transport, baseKey, cloudKey, stampKey, mutation.value, readFirst: true),
+        );
+      } else {
+        await _singleSend.send(transport, baseKey, cloudKey, stampKey, mutation.value, readFirst: false);
       }
-
-      final portableValue = _keys.portableValueFor(baseKey, mutation.value, remote: remoteValue);
-      if (portableValue == null) {
-        // Everything in this list belongs to a non-portable backend. Nothing to
-        // send, and nothing to delete either: the cloud copy belongs to the
-        // other devices' entries.
-        _setStatus(status.value.countingSkipped(1));
-        return;
-      }
-      final entry = SettingsExportService.encodeValue(portableValue);
-      if (entry == null) {
-        _setStatus(status.value.countingSkipped(1));
-        return;
-      }
-      final encoded = encodeStampedRecord(entry, _revisionStore.stampOf(stampKey));
-      final cap = transport.maxValueBytes;
-      if (cap != null && utf8.encode(encoded).length > cap) {
-        // Oversize is reported, not swallowed. It also must not become a
-        // removal: leaving the older cloud value in place is strictly better
-        // than deleting it because the newer one did not fit.
-        appLogger.w('preference sync: value for ${_category(baseKey)} exceeds the transport cap');
-        _setStatus(status.value.copyWith(oversize: status.value.oversize + 1).raise(PreferenceSyncHealth.warning));
-        return;
-      }
-      await transport.write(cloudKey, encoded);
-      _setStatus(status.value.writeSucceeded(DateTime.now()));
     } catch (e) {
       _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: _errorCategory(e)));
       appLogger.w('preference sync: transport write failed for ${_category(baseKey)}');
     }
   }
+
+  late final PreferenceSingleSend _singleSend = PreferenceSingleSend(
+    keys: _keys,
+    revisionStore: _revisionStore,
+    status: status,
+  );
 
   // ---- Conflict metadata ----------------------------------------------------
 
@@ -306,6 +281,9 @@ class PreferenceSyncCoordinator {
       return body().timeout(
         turnTimeout,
         onTimeout: () {
+          // The abandoned turn is no longer current: whatever it does when it
+          // answers late is checked against this number and dropped.
+          _turnGeneration++;
           _setStatus(status.value.raise(PreferenceSyncHealth.error, errorCategory: 'timeout'));
           appLogger.w('preference sync: a sync turn did not finish in time');
         },
@@ -315,8 +293,8 @@ class PreferenceSyncCoordinator {
     return run;
   }
 
-  /// Bumped when a turn starts. A turn that timed out and answers late sees a
-  /// newer number and knows its snapshot is stale.
+  /// Bumped when a turn starts and when one times out. A turn that answers
+  /// late sees a newer number and knows its snapshot is stale.
   int _turnGeneration = 0;
 
   /// How long one reconcile run or remote event may take before the queue
@@ -347,13 +325,22 @@ class PreferenceSyncCoordinator {
     // reset only call in through `pushAllIfEnabled`.
     await refreshAvailability();
     if (status.value.availability != PreferenceSyncAvailability.ready) return;
+    var storeWins = false;
     if (triggers.contains(ReconcileTrigger.accountChanged)) {
-      // The stamps describe this device's edits against the previous account's
-      // history. Against another account they mean nothing, and keeping them
-      // would push the old account's values into the new one as "newer".
-      // Local values stay; the store is read first and wins what it holds.
-      await clearRevisions();
-      await PreferenceLegacyBootstrap.reset(_prefs);
+      // The system also reports an identity change for the account the device
+      // already had. A store holding a record this device wrote is that
+      // account, and its stamps (tombstones included) still order its history.
+      final all = await _transport?.readAll();
+      if (all == null || !storeHoldsRecordFrom(all, _deviceId)) {
+        // Another account: the stamps describe this device's edits against the
+        // previous account's history and mean nothing here; keeping them would
+        // push the old account's values into the new one as "newer". Local
+        // values stay; the store is read first and wins what it holds, per
+        // map entry too.
+        await clearRevisions();
+        await PreferenceLegacyBootstrap.reset(_prefs);
+        storeWins = true;
+      }
     }
     final needsBootstrap =
         triggers.contains(ReconcileTrigger.boot) ||
@@ -361,9 +348,14 @@ class PreferenceSyncCoordinator {
         triggers.contains(ReconcileTrigger.accountChanged);
     final localIsTheSource = triggers.every((t) => t == ReconcileTrigger.imported || t == ReconcileTrigger.reset);
 
+    // Still the current turn, and sync still on. A turn that timed out, or
+    // runs on after the toggle went off, must not act on its snapshot.
+    final generation = _turnGeneration;
+    bool current() => generation == _turnGeneration && _enabled();
+
     if (needsBootstrap) await bootstrapFromLegacyV1();
-    if (!localIsTheSource) await applyAllRemote();
-    await reconcile();
+    if (!localIsTheSource) await applyAllRemote(proceed: current, storeWins: storeWins);
+    await _reconciler.reconcile(proceed: current);
   }
 
   // ---- Availability ---------------------------------------------------------
@@ -371,9 +363,9 @@ class PreferenceSyncCoordinator {
   /// Hold every send until [refreshAvailability] answers, without holding back
   /// the stamp. The default status reads `disabled`, which `starting()`
   /// promotes to `ready`, so a write in that window would report a send from a
-  /// device that may be signed out; `unavailable` makes [apply] stamp and stop.
-  void markAvailabilityUnknown() =>
-      _setStatus(status.value.copyWith(availability: PreferenceSyncAvailability.unavailable));
+  /// device that may be signed out; `unknown` makes [apply] stamp and stop,
+  /// and unlike `unavailable` does not claim that iCloud is signed out.
+  void markAvailabilityUnknown() => _setStatus(status.value.copyWith(availability: PreferenceSyncAvailability.unknown));
 
   /// Re-read whether the engine can run at all: the toggle, then the transport.
   ///
@@ -434,9 +426,12 @@ class PreferenceSyncCoordinator {
   @visibleForTesting
   Future<void> handleRemoteChange(RemotePreferenceChange change) => _onRemoteChange(change);
 
-  Future<void> applyAllRemote() async {
+  /// Apply everything in the store. [proceed] is asked after the read; see
+  /// [PreferenceReconciler.reconcile].
+  Future<void> applyAllRemote({bool Function()? proceed, bool storeWins = false}) async {
     final all = await _transport?.readAll();
-    if (all != null && all.isNotEmpty) await applyEntries(all);
+    if (proceed != null && !proceed()) return;
+    if (all != null && all.isNotEmpty) await _remoteApply.applyEntries(all, storeWins: storeWins);
   }
 
   /// Apply the keys a remote event named. Queued behind a running reconcile.
@@ -516,12 +511,7 @@ class PreferenceSyncCoordinator {
 
   /// Never log a preference key verbatim: per-library and per-server keys carry
   /// identifiers. The registered prefix is enough to debug with.
-  static String _category(String baseKey) {
-    for (final prefix in PreferenceSyncPolicyRegistry.registeredPrefixes) {
-      if (baseKey.startsWith(prefix)) return '$prefix*';
-    }
-    return PreferenceSyncPolicyRegistry.isRegistered(baseKey) ? baseKey : 'unregistered';
-  }
+  static String _category(String baseKey) => preferenceLogCategory(baseKey);
 
   static String _errorCategory(Object e) => e.runtimeType.toString();
 }

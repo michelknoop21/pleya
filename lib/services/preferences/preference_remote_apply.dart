@@ -46,7 +46,11 @@ class PreferenceRemoteApply {
   void _setStatus(PreferenceSyncStatus next) => _status.value = next;
 
   /// Apply transport entries to local prefs. A null value is a removal.
-  Future<void> applyEntries(Map<String, String?> entries) async {
+  ///
+  /// [storeWins] is the first read of another iCloud account's store: a merge
+  /// family with [PreferenceMergeFamily.adoptStore] takes the store's entries
+  /// over this device's instead of merging them by timestamp.
+  Future<void> applyEntries(Map<String, String?> entries, {bool storeWins = false}) async {
     var changed = 0;
     var skipped = 0;
     final stale = <PreferenceRefreshFamily>{};
@@ -168,7 +172,7 @@ class PreferenceRemoteApply {
         continue;
       }
       var value = record.value;
-      final inbound = family?.inbound;
+      final inbound = storeWins ? (family?.adoptStore ?? family?.inbound) : family?.inbound;
       if (inbound != null) {
         // Not a replacement. What the family does with the two sides is the
         // family's business; for the server-scoped lists it keeps what the

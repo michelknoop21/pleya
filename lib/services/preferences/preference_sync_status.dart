@@ -2,8 +2,9 @@
 enum PreferenceSyncActivity { idle, syncing }
 
 /// Whether the engine can run at all. Changes only when the user or the system
-/// changes it: the toggle, or iCloud being signed out.
-enum PreferenceSyncAvailability { disabled, unavailable, ready }
+/// changes it: the toggle, or iCloud being signed out. [unknown] is start-up,
+/// before the transport has answered: not signed out, not ready either.
+enum PreferenceSyncAvailability { disabled, unknown, unavailable, ready }
 
 /// What the last pass left unresolved. Persists across activity.
 ///
@@ -83,6 +84,8 @@ class PreferenceSyncStatus {
     switch (availability) {
       case PreferenceSyncAvailability.disabled:
         return PreferenceSyncState.disabled;
+      case PreferenceSyncAvailability.unknown:
+        return PreferenceSyncState.idle; // nothing to say until the transport answers
       case PreferenceSyncAvailability.unavailable:
         return PreferenceSyncState.unavailable;
       case PreferenceSyncAvailability.ready:
@@ -133,15 +136,13 @@ class PreferenceSyncStatus {
   );
 
   /// A pass started. `disabled` is promoted to `ready` because a pass only
-  /// starts while the toggle is on, so that value is stale; `unavailable` is
-  /// not, because a write to a signed-out store succeeds locally and proves
-  /// nothing.
+  /// starts while the toggle is on, so that value is stale; `unavailable` and
+  /// `unknown` are not, because a write to a signed-out store succeeds locally
+  /// and proves nothing.
   PreferenceSyncStatus starting(DateTime at) => copyWith(
     activity: PreferenceSyncActivity.syncing,
     lastAttempt: at,
-    availability: availability == PreferenceSyncAvailability.unavailable
-        ? PreferenceSyncAvailability.unavailable
-        : PreferenceSyncAvailability.ready,
+    availability: availability == PreferenceSyncAvailability.disabled ? PreferenceSyncAvailability.ready : availability,
   );
 
   /// One value left the device. Says nothing about health or availability: a

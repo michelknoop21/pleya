@@ -274,6 +274,34 @@ void main() {
     expect(settings.read(SettingsService.subtitleFontSize), 61, reason: 'the production wiring must listen');
   });
 
+  test('a native event on the real EventChannel reaches prefs through start() (A1, Dart side)', () async {
+    // The Swift half (the sink called on the main thread) is hardware-only;
+    // this proves everything from the channel inwards with the production
+    // transport, not a fake.
+    MockStreamHandlerEventSink? sink;
+    messenger.setMockStreamHandler(
+      const EventChannel('com.pleya/icloud_kvs/events'),
+      MockStreamHandler.inline(onListen: (_, events) => sink = events),
+    );
+    final settings = await SettingsService.getInstance();
+    final storage = await StorageService.getInstance();
+    await settings.write(SettingsService.icloudSyncEnabled, true);
+    ICloudSyncService.debugForceSupported = true;
+    await ICloudSyncService.start(settings: settings, storage: storage);
+    await pumpEventQueue();
+    expect(sink, isNotNull, reason: 'start() listens on the event channel');
+
+    final later = DateTime.now().toUtc().millisecondsSinceEpoch + 60 * 1000;
+    kvs[g('subtitle_font_size')] = json.encode({'type': 'int', 'value': 58, 't': later, 'd': 'appletv'});
+    sink!.success({
+      'reason': 0,
+      'changedKeys': [g('subtitle_font_size')],
+    });
+    await pumpEventQueue();
+
+    expect(settings.read(SettingsService.subtitleFontSize), 58);
+  });
+
   test('disable followed by enable keeps syncing in the same session, both ways', () async {
     final settings = await SettingsService.getInstance();
     final fake = FakeTransport();

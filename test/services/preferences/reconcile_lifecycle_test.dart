@@ -250,7 +250,7 @@ void main() {
       expect(coordinator.localRevision('subtitle_font_size'), isNotNull);
     });
 
-    test('an edit made while signed out loses to the store where it holds the key, and keeps the rest', () async {
+    test('an edit made while signed out still wins when the same account comes back', () async {
       final coordinator = await build();
       await settings.prefs.setInt('subtitle_font_size', 30);
       await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 30));
@@ -266,13 +266,66 @@ void main() {
       await settings.prefs.setInt('seek_time_small', 5);
       await coordinator.apply(const PreferenceMutation.set('seek_time_small', 5));
 
-      // Back into the same store. There is no account identity to tell it apart.
+      // Back into the same store: it holds a record this device wrote, so the
+      // stamps are kept and the later signed-out edit wins.
       transport.available = true;
       await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
 
-      expect(settings.prefs.getInt('subtitle_font_size'), 30, reason: 'the store held the key, so it wins');
+      expect(settings.prefs.getInt('subtitle_font_size'), 44, reason: 'the same account, so the newer stamp wins');
+      expect((json.decode(transport.store[subtitleKey]!) as Map)['value'], 44);
       expect(settings.prefs.getInt('seek_time_small'), 5, reason: 'the store lacked the key');
       expect((json.decode(transport.store[seekKey]!) as Map)['value'], 5);
+    });
+
+    test('a spurious identity change for the same account keeps the tombstones', () async {
+      final coordinator = await build();
+      await settings.prefs.setInt('seek_time_small', 5);
+      await coordinator.apply(const PreferenceMutation.set('seek_time_small', 5));
+      await settings.prefs.remove('subtitle_font_size');
+      await coordinator.apply(const PreferenceMutation.remove('subtitle_font_size'));
+      final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
+      // The released build writes its old value back over the tombstone, then
+      // the system reports an identity change for the account it already had.
+      transport.store[cloudKey] = enc('int', 30);
+
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+
+      expect(settings.prefs.getInt('subtitle_font_size'), isNull, reason: 'the removal stays removed');
+      expect((json.decode(transport.store[cloudKey]!) as Map)['x'], isTrue);
+    });
+
+    test("another account's map entries replace this device's, and the entries it lacks stay", () async {
+      final coordinator = await build();
+      const s1 = 'plex-home-plex.e434272903092b4e-f870c16b61268c50';
+      const s2 = 'plex-home-plex.e434272903092b4e-a870c16b61268c51';
+      const key = 'pleya_profile_language_preferences';
+      final cloudKey = coordinator.cloudKeyFor(key)!;
+      final mine = json.encode({
+        s1: {'audio': 'nl', 'u': 5000},
+        s2: {'audio': 'de', 'u': 5000},
+      });
+      await settings.prefs.setString(key, mine);
+      await coordinator.apply(PreferenceMutation.set(key, mine));
+      // Account B's store: an older entry for s1 from another device, nothing for s2.
+      transport.store
+        ..clear()
+        ..[cloudKey] = json.encode({
+          'type': 'string',
+          'value': json.encode({
+            s1: {'audio': 'en', 'u': 1000},
+          }),
+          't': 1000,
+          'd': 'other-device',
+        });
+
+      await coordinator.handleRemoteChange(const RemotePreferenceChange(reason: RemoteChangeReason.accountChanged));
+
+      final local = json.decode(settings.prefs.getString(key)!) as Map;
+      expect(local[s1], {'audio': 'en', 'u': 1000}, reason: 'the store holds s1, so its entry wins');
+      expect(local[s2], {'audio': 'de', 'u': 5000}, reason: 'nothing local is wiped');
+      final pushed = json.decode((json.decode(transport.store[cloudKey]!) as Map)['value'] as String) as Map;
+      expect(pushed.keys, containsAll([s1, s2]));
+      expect(pushed[s1], {'audio': 'en', 'u': 1000});
     });
 
     test('a sign-out does not pass for ready while availability is re-checked', () async {

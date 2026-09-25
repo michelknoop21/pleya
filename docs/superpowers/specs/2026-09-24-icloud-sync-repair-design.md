@@ -198,6 +198,11 @@ voorkeuren wissen of een tweede lokale namespace per account aanleggen. Een echt
 is een ontwerpronde op zich en wordt in DEC-131 als niet-gebouwd vastgelegd. `RemoteChangeReason.
 accountChanged` dekt ook uitloggen; dat pad stopt al op `unavailable` en verandert niet.
 
+Bijgesteld na de eindreview (minors 3 en 4): het systeem meldt een identiteitswissel ook voor het
+account dat het toestel al had. Houdt de store een record met de apparaat-id van dit toestel, dan
+is het hetzelfde account en blijven de stempels staan, tombstones inbegrepen. Bij een ander account
+wint de store in de twee taalkaarten per entry, ongeacht `u` (`PreferenceMergeFamily.adoptStore`).
+
 ### B10: de taalvoorkeur
 
 De registratie van `pleya_profile_language_preferences` gaat van `profile` naar `global` met een

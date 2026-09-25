@@ -407,6 +407,7 @@ class TrackPreferenceStore {
       inbound: (local, remote) => _cappedRaw(shared.inbound(local, remote)),
       outbound: (local, remote) => _cappedRaw(shared.outbound!(local, remote)),
       removed: shared.removed,
+      adoptStore: (local, remote) => _cappedRaw(shared.adoptStore!(local, remote)),
     );
   }
 

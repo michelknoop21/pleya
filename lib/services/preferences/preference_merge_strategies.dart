@@ -21,7 +21,13 @@ typedef PreferenceValueMerge = Object? Function(Object? local, Object? remote);
 /// value is a map of independently edited entries cannot be settled by
 /// last-writer-wins without losing the entries the other device edited.
 class PreferenceMergeFamily {
-  const PreferenceMergeFamily({required this.name, required this.inbound, this.outbound, this.removed});
+  const PreferenceMergeFamily({
+    required this.name,
+    required this.inbound,
+    this.outbound,
+    this.removed,
+    this.adoptStore,
+  });
 
   final String name;
 
@@ -41,6 +47,12 @@ class PreferenceMergeFamily {
   /// null to remove the value. Null when the family has nothing to keep, which
   /// makes the tombstone a plain removal.
   final Object? Function(Object? local)? removed;
+
+  /// The store of another iCloud account arrived. Returns what this device
+  /// should store: the store's entries win, entries it lacks stay. Null when
+  /// [inbound] already does that, or when the family has no per-entry order
+  /// to reset.
+  final PreferenceValueMerge? adoptStore;
 
   bool get mergesOutgoing => outbound != null;
 }
@@ -159,6 +171,17 @@ PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
         if (!_isPortableMapKey(e.key)) e.key: e.value,
     };
     return keep.isEmpty ? null : json.encode(keep);
+  },
+  // Another account's `u` means nothing against this device's history, so an
+  // entry it holds replaces this device's regardless of the timestamps.
+  adoptStore: (local, remote) {
+    final theirs = decodeStringMap(remote);
+    if (theirs == null) return local;
+    final merged = decodeStringMap(local) ?? <String, dynamic>{};
+    for (final e in theirs.entries) {
+      if (_isPortableMapKey(e.key)) merged[e.key] = e.value;
+    }
+    return _canonical(merged..removeWhere((_, v) => _isExpiredTombstone(v)));
   },
 );
 

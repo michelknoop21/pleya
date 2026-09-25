@@ -78,6 +78,7 @@ class PreferenceReconciler {
     PreferenceTransport transport,
     Map<String, String> remote,
     Set<String> written,
+    void Function() stillCurrent,
   ) async {
     final horizon = DateTime.now().toUtc().millisecondsSinceEpoch - tombstoneLifetime.inMilliseconds;
     final activeId = _keys.activeProfileScope.id;
@@ -88,6 +89,7 @@ class PreferenceReconciler {
       if (parsed.kind == PreferenceScopeKind.profile && (activeId == null || parsed.id != activeId)) continue;
       final record = decodeStampedRecord(e.value);
       if (record == null || !record.stamp.deleted || record.stamp.at >= horizon) continue;
+      stillCurrent();
       await transport.remove(e.key);
       final stampKey = _keys.stampKeyFor(parsed.baseKey);
       if (sameStamp(_revisionStore.stampOf(stampKey), record.stamp)) await _revisionStore.forget(stampKey);
@@ -96,10 +98,18 @@ class PreferenceReconciler {
 
   /// Push every syncable local key whose stamp is newer than the store's, or
   /// which the store lacks; re-send tombstones the store has been written over.
-  Future<void> reconcile() async {
+  ///
+  /// [proceed] is asked before every write and before the final status: false
+  /// means this pass is no longer the current one (it timed out and a newer
+  /// turn owns the store, or sync was switched off), so it stops without
+  /// writing from its snapshot or reporting success.
+  Future<void> reconcile({bool Function()? proceed}) async {
     final transport = _transport();
     if (transport == null) return;
     _setStatus(_status.value.starting(DateTime.now()));
+    void stillCurrent() {
+      if (proceed != null && !proceed()) throw const _Superseded();
+    }
 
     try {
       // The store is read before anything is written. A failed read is not an
@@ -112,6 +122,7 @@ class PreferenceReconciler {
         appLogger.w('preference sync: reconcile held back, the store could not be read');
         return;
       }
+      stillCurrent();
 
       var pushed = 0;
       var skipped = 0;
@@ -158,6 +169,7 @@ class PreferenceReconciler {
             continue; // the merged value is already what the store holds
           }
         }
+        stillCurrent();
         await transport.write(cloudKey, encoded);
         written.add(cloudKey);
         pushed++;
@@ -181,15 +193,17 @@ class PreferenceReconciler {
         if (record == null || record.stamp.deleted) continue;
         final local = _revisionStore.stampOf(e.key);
         if (remoteStampWins(record.stamp, local)) continue;
+        stillCurrent();
         await transport.write(cloudKey, encodeTombstone(local));
         written.add(cloudKey);
         pushed++;
       }
 
-      if (_keys.v2Format) await _collectExpiredTombstones(transport, remote, written);
+      if (_keys.v2Format) await _collectExpiredTombstones(transport, remote, written, stillCurrent);
 
       final metaRecord = json.encode({'type': 'int', 'value': _activeFormatVersion});
       if (remote[_activeMetaKey] != metaRecord) {
+        stillCurrent();
         await transport.write(_activeMetaKey, metaRecord);
       }
 
@@ -202,10 +216,12 @@ class PreferenceReconciler {
           if (!_keys.ownsCloudKey(k)) continue;
           if (known.contains(k)) continue;
           if (scope.id == null && PreferenceSyncPolicyRegistry.isProfileScoped(k)) continue;
+          stillCurrent();
           await transport.remove(k);
         }
       }
       await transport.flush();
+      stillCurrent();
       _setStatus(
         _status.value.reconcileSucceeded(
           DateTime.now(),
@@ -214,10 +230,20 @@ class PreferenceReconciler {
           oversizeCount: oversize,
         ),
       );
+    } on _Superseded {
+      return;
     } catch (e) {
-      final category = e.runtimeType.toString();
-      _setStatus(_status.value.raise(PreferenceSyncHealth.error, errorCategory: category));
-      appLogger.w('preference sync: reconcile failed ($category)');
+      _setStatus(_status.value.raise(PreferenceSyncHealth.error, errorCategory: _errorCategory(e)));
+      appLogger.w('preference sync: reconcile failed (${_errorCategory(e)})');
     }
   }
+}
+
+/// A runtime type, never a message: an exception string can carry a URL or a
+/// token.
+String _errorCategory(Object e) => e.runtimeType.toString();
+
+/// Thrown inside a reconcile pass that is no longer the current one.
+class _Superseded implements Exception {
+  const _Superseded();
 }
