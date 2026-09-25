@@ -1465,19 +1465,29 @@ class TvHomeLayout {
   static const List<double> heroScrimVerticalStops = [0, 0.18, 0.52, 0.78, 0.96];
   static const List<double> heroScrimVerticalAlphas = [0.66, 0, 0, 0.70, 1];
 
-  /// Light (VIS-0925-E and the review). The Light wash is `tk.bg`, white, so
-  /// every alpha brightens the picture instead of dimming it; H20's +0.08 on
-  /// top of the dark ramp was a white haze over 60% of the backdrop on the
-  /// hardware photos of build 303. Michel's rule: the Light artwork is as clear
-  /// as in Dark and OLED, and the scrim only does what the text needs. So Light
-  /// holds 0.90 to 0.55 across the text column, which ends at 51% of the
-  /// canonical canvas (`(pageInset + heroTextMaxWidth) * 0.85 / 1038`), because
-  /// dark text over dark artwork needs that for 4.5:1, then drops to the dark
-  /// ramp's own 0.12 at 56% and follows it to 0: from there on the Light scrim
-  /// covers the picture exactly as the dark one does. No wash under the top
-  /// navigation, only the ground under the rail.
-  static const List<double> heroScrimReadingStopsLight = [0, 0.52, 0.56, 1];
-  static const List<double> heroScrimReadingAlphasLight = [0.90, 0.55, 0.12, 0];
+  /// Light (VIS-0925-E, review and recheck). The Light wash is `tk.bg`,
+  /// white, so every alpha brightens the picture instead of dimming it; H20's
+  /// +0.08 on top of the dark ramp was a white haze over 60% of the backdrop on
+  /// the hardware photos of build 303. Michel's rule: the Light artwork is as
+  /// clear as in Dark and OLED, and the scrim only does what the text needs.
+  ///
+  /// * Across the text column, which ends at 51% of the canonical canvas
+  ///   (`(pageInset + heroTextMaxWidth) * 0.85 / 1038`): a flat 0.54. Dark ink
+  ///   over the darkest artwork needs 0.531 for the synopsis to clear 4.5:1
+  ///   (`tv_hero_scrim_light_test.dart`); the dark ramp's heavier 0.92 at the
+  ///   left edge is not needed in Light.
+  /// * From the end of the column the wash falls at the dark ramp's own
+  ///   steepest slope (0.58 over 28% of the width), never faster: the first
+  ///   version dropped 0.43 in 4% and drew a hard vertical seam across the
+  ///   picture (recheck item 1).
+  /// * At 73.6% it meets the dark ramp (0.072) and follows it to 0.
+  ///
+  /// No wash under the top navigation, only the ground under the rail.
+  static const List<double> heroScrimReadingStopsLight = [0, 0.51, 0.736, 1];
+  static const List<double> heroScrimReadingAlphasLight = [0.54, 0.54, 0.072, 0];
+
+  /// The first x where the Light reading ramp coincides with the dark one.
+  static const double heroScrimLightMeetsDark = 0.736;
   static const List<double> heroScrimVerticalAlphasLight = [0, 0, 0, 0.70, 1];
 
   /// Once a row holds the focus the backdrop steps back (mockup 30 B): a veil
