@@ -87,8 +87,12 @@ void main() {
   /// fill plus white ring) instead of the leading bar it had.
   Decoration ringOf(WidgetTester tester, int index) => surfaceOf(tester, index).foregroundDecoration!;
 
-  Decoration focusedRing(WidgetTester tester, MonoTokens t) =>
-      FocusTheme.focusDecoration(tester.element(find.byType(SettingsGroup)), isFocused: true, borderRadius: t.radiusMd);
+  Decoration focusedRing(WidgetTester tester, MonoTokens t) => FocusTheme.focusDecoration(
+    tester.element(find.byType(SettingsGroup)),
+    isFocused: true,
+    borderRadius: t.radiusMd,
+    separatorInside: true,
+  );
 
   bool looksFocused(WidgetTester tester, int index, MonoTokens t) {
     final fill = fillOf(tester, index);

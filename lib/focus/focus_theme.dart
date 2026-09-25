@@ -58,11 +58,13 @@ class FocusTheme {
     BuildContext context,
     OutlinedBorder shape,
     BorderSide ring,
-    bool separator,
-  ) {
+    bool separator, {
+    bool separatorInside = false,
+  }) {
     return FocusRingBorder(
       shape: shape.copyWith(side: BorderSide.none),
       ring: ring,
+      separatorInside: separatorInside,
       separator: BorderSide(
         color: separator ? contrastSeparatorColor(context) : Colors.transparent,
         width: contrastSeparatorWidth,
@@ -94,6 +96,7 @@ class FocusTheme {
     double borderStrokeAlign = BorderSide.strokeAlignInside,
     Color? color,
     BoxShape shape = BoxShape.rectangle,
+    bool separatorInside = false,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
     final OutlinedBorder outline = shape == BoxShape.circle
@@ -109,6 +112,7 @@ class FocusTheme {
           strokeAlign: borderStrokeAlign,
         ),
         isFocused && needsContrastSeparator(context),
+        separatorInside: separatorInside,
       ),
     );
   }

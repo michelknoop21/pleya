@@ -314,7 +314,14 @@ class _SettingRowSurface extends StatelessWidget {
           color: focused ? t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha) : Colors.transparent,
           borderRadius: BorderRadius.circular(t.radiusMd),
         ),
-        foregroundDecoration: FocusTheme.focusDecoration(context, isFocused: focused, borderRadius: t.radiusMd),
+        // Inside the card's clip, so the Light separator has to stay inside
+        // the row (FocusRingBorder.separatorInside).
+        foregroundDecoration: FocusTheme.focusDecoration(
+          context,
+          isFocused: focused,
+          borderRadius: t.radiusMd,
+          separatorInside: true,
+        ),
         child: child,
       );
     }

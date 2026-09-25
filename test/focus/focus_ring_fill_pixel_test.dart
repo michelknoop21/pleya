@@ -103,10 +103,10 @@ Future<(Color, Color, Color)> _focusedTile(WidgetTester tester, {required bool d
   final expected = Color.alphaBlend(tk.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha), tk.bg);
   final rect = tester.getRect(find.byKey(_tileKey));
   final center = await _pixelAt(tester, rect.center);
-  // The wrapper's outermost pixel: an inside ring keeps its Light separator
-  // there, in the band outside the ring (review FIX 2).
+  // One pixel outside the wrapper: a background-decoration ring keeps its
+  // Light separator outside the box, where the old shadow was (recheck item 5).
   final wrapper = tester.getRect(find.byType(FocusableWrapper));
-  final outside = await _pixelAt(tester, Offset(wrapper.center.dx, wrapper.top + 0.5));
+  final outside = await _pixelAt(tester, Offset(wrapper.center.dx, wrapper.top - 0.5));
   return (center, expected, outside);
 }
 
@@ -120,15 +120,15 @@ void main() {
   testWidgets('Light: the middle of a focused tile is exactly its 13% fill on the page', (tester) async {
     final (center, expected, outside) = await _focusedTile(tester, dark: false);
     expect(_channelDelta(center, expected), lessThanOrEqualTo(2), reason: 'center $center, fill $expected');
-    // The separator still exists: a dark line on the ring's outer edge.
+    // The separator still exists: a dark line directly outside the ring.
     expect(outside.computeLuminance(), lessThan(0.5), reason: 'separator pixel $outside');
   });
 
   testWidgets('Dark: the middle of a focused tile is its fill, no separator', (tester) async {
     final (center, expected, outside) = await _focusedTile(tester, dark: true);
     expect(_channelDelta(center, expected), lessThanOrEqualTo(2), reason: 'center $center, fill $expected');
-    // No separator in Dark: the outermost pixel is the white ring itself.
-    expect(outside.computeLuminance(), greaterThan(0.9));
+    // No separator in Dark: the page shows outside the ring.
+    expect(_channelDelta(outside, const Color(0xFF141414)), lessThanOrEqualTo(2));
   });
 
   testWidgets('OLED: the middle of a focused tile is its fill', (tester) async {
