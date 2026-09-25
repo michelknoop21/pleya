@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 
-import 'package:flutter/painting.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
+import 'package:pleya/widgets/tv/tv_hero_billboard_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 /// VIS-0925-E: the Light hero scrim got smaller, and the synopsis must still
@@ -52,4 +53,21 @@ void main() {
     // The ground under the rail stays.
     expect(TvHomeLayout.heroScrimVerticalAlphasLight.last, 1);
   });
+
+  // Review FIX 6: the dimmed hero (a row holds the focus) keeps H20's +0.08 in
+  // Light; only the resting reading scrim lost it.
+  for (final (name, dark, expected) in [('Light', false, 0.74), ('Dark', true, 0.66)]) {
+    testWidgets('$name: the dim veil washes at $expected', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: dark),
+          home: const TvHeroDimVeil(dim: 1),
+        ),
+      );
+      final veil = tester.widget<ColoredBox>(
+        find.descendant(of: find.byType(TvHeroDimVeil), matching: find.byType(ColoredBox)).first,
+      );
+      expect(veil.color.a, closeTo(expected, 0.005));
+    });
+  }
 }

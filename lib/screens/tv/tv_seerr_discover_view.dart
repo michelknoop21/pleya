@@ -285,7 +285,9 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     });
   }
 
-  /// UP out of the rail: the topnav, with the rail closed behind it.
+  /// UP out of the rail: [TvSeerrDiscoverView.onExitTop], with the rail closed
+  /// behind it. On Aanvragen that is the search field (REQ-SEARCH-ROUTE); only
+  /// UP from the field reaches the top navigation.
   ///
   /// LEFT used to fall through here too, until CAT19 (Michel, 13 September):
   /// the rail is the leftmost content on the page, so a second LEFT reached the
