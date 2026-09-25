@@ -29,8 +29,8 @@ EdgeInsetsGeometry? settingRowPadding() => PlatformDetector.isTV() ? null : kSet
 /// DENS1: settings rows on TV in Apple's tvOS HIG sizes. Title in Body (29 pt),
 /// value line in Caption 1 (25 pt), a 10 pt vertical inset and no enforced
 /// minimum height. VIS-0925-G (DEC-139) took the rows from 60/92 pt to 56/84:
-/// the text stays at HIG size, the air around it shrinks. Without it a two-line row inherited `ListTile`'s dense
-/// minimum of 64 logical pixels plus phone padding, which the TV wrapper turns
+/// the text stays at HIG size, the air around it shrinks. Without it a
+/// two-line row inherited `ListTile`'s dense minimum of 64 logical pixels plus phone padding, which the TV wrapper turns
 /// into a 138 pt row around 26/22 pt text: 4.5 rows on a screen that holds 9.
 /// Off TV it returns [child] unchanged.
 class TvSettingsDensity extends StatelessWidget {
@@ -43,29 +43,49 @@ class TvSettingsDensity extends StatelessWidget {
     if (!PlatformDetector.isTV()) return child;
     final pt = TvHig.of(context);
     final t = tokens(context);
-    return ListTileTheme.merge(
-      dense: false,
-      visualDensity: VisualDensity.standard,
-      minTileHeight: 0,
-      minVerticalPadding: 0,
-      minLeadingWidth: 0,
-      horizontalTitleGap: 20 * pt,
-      contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 10 * pt),
-      titleTextStyle: TextStyle(
-        color: t.text,
-        fontSize: TvHig.body * pt,
-        height: TvHig.bodyLeading / TvHig.body,
-        fontWeight: FontWeight.w500,
+    // VIS-0925-C: an unselected Material 3 Switch has a surfaceContainerHighest
+    // track and an `outline` rim and thumb; this palette maps the first onto
+    // the card and keeps the outline at 10-12%, so in Light an off switch
+    // vanished into its card on the tv. Scoped to the TV settings rows (review
+    // FIX 4): phone and desktop keep Material's switch. Selected and disabled
+    // states resolve to null, Material's own defaults.
+    Color? offOnly(Set<WidgetState> states, Color color) =>
+        states.contains(WidgetState.selected) || states.contains(WidgetState.disabled) ? null : color;
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        switchTheme: theme.switchTheme.copyWith(
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) => offOnly(states, t.text.withValues(alpha: t.isLight ? 0.14 : 0.18)),
+          ),
+          trackOutlineColor: WidgetStateProperty.resolveWith((states) => offOnly(states, Colors.transparent)),
+          thumbColor: WidgetStateProperty.resolveWith((states) => offOnly(states, t.textMuted)),
+        ),
       ),
-      subtitleTextStyle: TextStyle(
-        color: t.textMuted,
-        fontSize: TvHig.caption1 * pt,
-        // 28 pt leading, not the table's 32: one line under a Body title needs
-        // no extra lead of its own.
-        height: 28 / TvHig.caption1,
+      child: ListTileTheme.merge(
+        dense: false,
+        visualDensity: VisualDensity.standard,
+        minTileHeight: 0,
+        minVerticalPadding: 0,
+        minLeadingWidth: 0,
+        horizontalTitleGap: 20 * pt,
+        contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 10 * pt),
+        titleTextStyle: TextStyle(
+          color: t.text,
+          fontSize: TvHig.body * pt,
+          height: TvHig.bodyLeading / TvHig.body,
+          fontWeight: FontWeight.w500,
+        ),
+        subtitleTextStyle: TextStyle(
+          color: t.textMuted,
+          fontSize: TvHig.caption1 * pt,
+          // 28 pt leading, not the table's 32: one line under a Body title needs
+          // no extra lead of its own.
+          height: 28 / TvHig.caption1,
+        ),
+        leadingAndTrailingTextStyle: TextStyle(color: t.textMuted, fontSize: TvHig.caption1 * pt),
+        child: child,
       ),
-      leadingAndTrailingTextStyle: TextStyle(color: t.textMuted, fontSize: TvHig.caption1 * pt),
-      child: child,
     );
   }
 }

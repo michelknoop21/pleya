@@ -154,22 +154,6 @@ ThemeData monoTheme({required bool dark, bool oled = false}) {
         side: WidgetStatePropertyAll(BorderSide(color: c.outline)),
       ),
     ),
-    // VIS-0925-C: Material 3 paints an unselected Switch with a
-    // surfaceContainerHighest track, an `outline` rim and an `outline` thumb.
-    // This palette maps the first onto the card surface and keeps the outline
-    // at 10-12%, so in Light an off switch vanished into its card. Give the
-    // unselected state its own ink; selected keeps Material's defaults.
-    switchTheme: SwitchThemeData(
-      trackColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? null : c.text.withValues(alpha: isDark ? 0.18 : 0.14),
-      ),
-      trackOutlineColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? null : Colors.transparent,
-      ),
-      thumbColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? null : c.textMuted,
-      ),
-    ),
     scaffoldBackgroundColor: c.bg,
     appBarTheme: AppBarTheme(
       backgroundColor: c.bg,
