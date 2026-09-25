@@ -1327,7 +1327,8 @@ class PlexClient
         final metadata = result['Metadata'];
         if (metadata is! Map<String, dynamic>) continue;
 
-        if (!_searchResultTypes.contains(metadata['type'])) continue;
+        final type = metadata['type'];
+        if (type is! String || !_searchResultTypes.contains(type)) continue;
 
         results.add(_createTaggedMetadata(metadata));
       } catch (e) {

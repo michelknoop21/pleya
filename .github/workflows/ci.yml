@@ -68,9 +68,16 @@ jobs:
           # (kebab-case) are dropped: flutter analyze does not wait for the
           # plugin, so which files it covers is a race. Same filter as
           # scripts/ci_checks.sh.
+          # The filter goes by rule code, not severity: a plugin rule set to
+          # `severity: error` is dropped too. Rules that must block run in the
+          # "Check hard dart_code_linter rules" step. Without "No issues found!"
+          # or "issues found", analyze itself did not finish: that fails.
           grep -E "error •|warning •" analyze_output.txt \
             | grep -vE '• [a-z0-9]+(-[a-z0-9]+)+[[:space:]]*$' > core_issues.txt || true
-          if grep -q "error •" core_issues.txt; then
+          if ! grep -qE "No issues found!|issues? found" analyze_output.txt; then
+            echo "❌ flutter analyze did not produce a result"
+            exit 1
+          elif grep -q "error •" core_issues.txt; then
             echo "❌ Analysis failed with errors"
             exit 1
           elif grep -q "warning •" core_issues.txt; then
@@ -80,6 +87,9 @@ jobs:
             echo "✅ Analysis passed!"
             exit 0
           fi
+
+      - name: Check hard dart_code_linter rules
+        run: scripts/dcl_hard_rules.sh
 
       - name: Check for unused code
         run: |
