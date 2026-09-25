@@ -356,6 +356,78 @@ void main() {
       expect(recording.restrictedServerIdsAtConnect, isEmpty);
       expect(recording.restrictedServerIds, isEmpty);
     });
+
+    test('switching from a borrowed row back to the owner profile restores owner rights', () async {
+      final recording = await bindLocalJellyfin(borrowed: true);
+      expect(recording.restrictedServerIds, {'jf-machine'});
+
+      final owner = Profile.local(id: 'owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1));
+      await profiles.upsert(owner);
+      final jellyfin = _jellyfinConnection();
+      await profileConnections.upsert(
+        ProfileConnection(
+          profileId: owner.id,
+          connectionId: jellyfin.id,
+          userToken: jellyfin.accessToken,
+          userIdentifier: jellyfin.userId,
+        ),
+      );
+      expect(await activeProfile.activate(owner), isTrue);
+      await binder.rebindActive();
+
+      // Restrictions must not pile up across switches.
+      expect(recording.restrictedServerIds, isEmpty);
+    });
+
+    test('a joined Plex account is restricted before its first connect', () async {
+      binder.dispose();
+      multiServerProvider.dispose();
+      final capturing = _CapturingMultiServerManager();
+      manager = capturing;
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      binder = ActiveProfileBinder(
+        activeProfile: activeProfile,
+        connections: connections,
+        profileConnections: profileConnections,
+        serverManager: manager,
+        multiServerProvider: multiServerProvider,
+        pinPrompt: (_, {String? errorMessage}) async => null,
+        shouldDeferInitialBind: (_) async => false,
+        plexAuth: PlexAuthService.forTesting(
+          http: MediaServerHttpClient(
+            client: MockClient(
+              (_) async =>
+                  http.Response(jsonEncode([_serverJson()]), 200, headers: {'content-type': 'application/json'}),
+            ),
+          ),
+        ),
+      );
+      final profile = await createActiveLocalProfile('local-joined-plex');
+      final plexAccount = PlexAccountConnection(
+        id: 'plex.account',
+        accountToken: 'account-token',
+        clientIdentifier: 'client-id',
+        accountLabel: 'Owner',
+        servers: [_server(accessToken: 'account-server-token')],
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await connections.upsert(plexAccount);
+      await profileConnections.upsert(
+        ProfileConnection(
+          profileId: profile.id,
+          connectionId: plexAccount.id,
+          userToken: 'cached-token',
+          userIdentifier: 'home-user-uuid',
+          tokenAcquiredAt: DateTime(2026, 1, 1),
+        ),
+      );
+
+      await binder.rebindActive().timeout(const Duration(seconds: 2));
+
+      expect(capturing.refreshCalls, greaterThanOrEqualTo(1));
+      expect(capturing.restrictedPlexAccountsAtFirstRefresh, {'client-id'});
+      expect(capturing.restrictedPlexAccounts, {'client-id'});
+    });
   });
 
   // SRC1: a joined/borrowed Plex connection binds through _bindLocalPlexConnection,
@@ -525,6 +597,42 @@ void main() {
       expect(prepared.manager.refreshCalls, 1);
       expect(prepared.manager.restrictedPlexAccountsAtFirstRefresh, {'client-id'});
       expect(prepared.manager.restrictedPlexAccounts, {'client-id'});
+    });
+
+    test('a Home member promoted to admin regains owner rights without a rebind', () async {
+      final prepared = await preparePlexHomeBind(
+        protected: false,
+        admin: false,
+        httpClient: MockClient((request) async {
+          throw http.ClientException('DNS failed', request.url);
+        }),
+      );
+      // start() runs the initial bind (cached token, succeeds) and attaches
+      // the listener that sees the Home refresh below.
+      binder.start();
+      await Future<void>.delayed(Duration.zero);
+      await activeProfile.awaitBindingSettle();
+      expect(activeProfile.lastBindingSucceeded, isTrue);
+      expect(prepared.manager.restrictedPlexAccounts, {'client-id'});
+      var rebinds = 0;
+      var wasBinding = activeProfile.isBinding;
+      void countRebinds() {
+        if (activeProfile.isBinding && !wasBinding) rebinds++;
+        wasBinding = activeProfile.isBinding;
+      }
+
+      activeProfile.addListener(countRebinds);
+      addTearDown(() => activeProfile.removeListener(countRebinds));
+
+      fetchedHomeUsers = [
+        PlexHomeUser.fromJson({...fetchedHomeUsers.single.toJson(), 'admin': true}),
+      ];
+      await plexHome.refresh((await connections.getPlexAccount('plex.account'))!);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(activeProfile.active!.plexAdmin, isTrue);
+      expect(rebinds, 0, reason: 'a role change must not need a rebind');
+      expect(prepared.manager.restrictedPlexAccounts, isEmpty);
     });
 
     test('Home admin keeps owner rights on the parent account', () async {

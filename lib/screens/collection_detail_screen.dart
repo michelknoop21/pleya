@@ -217,8 +217,10 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
 
   /// Collections are canonical server data: only the server's owner may
   /// delete one or change its membership, and nobody else sees the actions.
-  bool get _canManageCollection => context.read<MultiServerProvider>().serverManager.canManageServerMetadata(
-    ServerId(widget.collection.serverId ?? mediaClient.serverId),
+  /// Read during build and subscribed, so a role change (rebind or health
+  /// probe) shows or hides the actions without leaving the screen.
+  bool get _canManageCollection => context.select<MultiServerProvider, bool>(
+    (p) => p.serverManager.canManageServerMetadata(ServerId(widget.collection.serverId ?? mediaClient.serverId)),
   );
 
   Future<void> _deleteCollection() async {

@@ -162,8 +162,31 @@ class ActiveProfileBinder {
       _pendingRebind = true;
       return;
     }
-    if (id == _lastBoundProfileId) return;
+    if (id == _lastBoundProfileId) {
+      // Same profile, new snapshot: a Plex Home refresh can promote or demote
+      // the member without a rebind. Owner rights follow the role now.
+      unawaited(_refreshServerAuthority());
+      return;
+    }
     unawaited(_rebind());
+  }
+
+  /// Bumped by every rebind pass, so a role refresh that raced one drops its
+  /// result instead of overwriting the rebind's newer set.
+  int _authorityGeneration = 0;
+
+  Future<void> _refreshServerAuthority() async {
+    final profile = activeProfile.active;
+    if (profile == null || profile.id != _lastBoundProfileId) return;
+    final generation = _authorityGeneration;
+    final restrictions = await _serverAuthorityRestrictionsFor(profile);
+    if (!_started || _isSwitching || generation != _authorityGeneration || activeProfile.activeId != profile.id) {
+      return;
+    }
+    serverManager.setServerAuthorityRestrictions(
+      plexAccountClientIds: restrictions.plexAccounts,
+      serverIds: restrictions.serverIds,
+    );
   }
 
   /// Force the binder to re-run for the currently-active profile, even
@@ -211,6 +234,7 @@ class ActiveProfileBinder {
   }
 
   Future<void> _runRebindOnce() async {
+    _authorityGeneration++;
     _bindingProfileId = activeProfile.activeId;
     activeProfile.markBindingStarted();
     final stopwatch = Stopwatch()..start();
