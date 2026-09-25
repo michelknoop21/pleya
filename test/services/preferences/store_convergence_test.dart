@@ -111,4 +111,73 @@ void main() {
       expect(decode(transport.store[cloud]!)['value'], local);
     });
   });
+
+  group('I4: tombstones are collected after 180 days', () {
+    int ago(Duration d) => DateTime.now().toUtc().millisecondsSinceEpoch - d.inMilliseconds;
+    String tombstone(int at, String device) => json.encode({'x': true, 't': at, 'd': device});
+
+    test('an expired tombstone leaves the store, and its matching local stamp goes', () async {
+      final c = await build();
+      final cloud = c.cloudKeyFor('subtitle_font_size')!;
+      // A removal from 200 days ago, adopted here back then.
+      final old = ago(const Duration(days: 200));
+      await c.applyEntries({cloud: tombstone(old, 'appletv')});
+      expect(c.localRevision('subtitle_font_size')!.updatedAt, old);
+      transport.store[cloud] = tombstone(old, 'appletv');
+
+      await c.reconcile();
+
+      expect(transport.store.containsKey(cloud), isFalse);
+      expect(transport.removes, [cloud]);
+      expect(c.localRevision('subtitle_font_size'), isNull);
+    });
+
+    test('a young tombstone, another profile\'s, and a newer local stamp are left alone', () async {
+      final c = await build();
+      final old = ago(const Duration(days: 200));
+      final young = c.cloudKeyFor('subtitle_font_size')!;
+      transport.store[young] = tombstone(ago(const Duration(days: 10)), 'appletv');
+      const otherProfile = '__pleya_pref_v2/profile/someone-else/hidden_libraries';
+      transport.store[otherProfile] = tombstone(old, 'appletv');
+      // This device removed theme_mode later than the store's expired
+      // tombstone says; the store record goes, the local stamp stays.
+      await settings.prefs.remove('theme_mode');
+      await c.apply(const PreferenceMutation.remove('theme_mode'));
+      final mine = c.cloudKeyFor('theme_mode')!;
+      transport.store[mine] = tombstone(old, 'appletv');
+
+      await c.reconcile();
+
+      expect(transport.store.containsKey(young), isTrue);
+      expect(transport.store.containsKey(otherProfile), isTrue);
+      expect(transport.store.containsKey(mine), isFalse);
+      expect(c.localRevision('theme_mode')!.deleted, isTrue);
+    });
+
+    test('a key this pass wrote a live value over is not collected', () async {
+      final c = await build();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await c.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      final cloud = c.cloudKeyFor('subtitle_font_size')!;
+      transport.store[cloud] = tombstone(ago(const Duration(days: 200)), 'appletv');
+
+      await c.reconcile();
+
+      expect(decode(transport.store[cloud]!)['value'], 44);
+    });
+
+    test('the other device takes the collection as a no-op', () async {
+      final c = await build(deviceId: 'appletv');
+      await settings.prefs.remove('subtitle_font_size');
+      await c.apply(const PreferenceMutation.remove('subtitle_font_size'));
+      final cloud = c.cloudKeyFor('subtitle_font_size')!;
+      transport.store.remove(cloud); // collected by the device above
+
+      await c.applyEntries({cloud: null});
+      await c.reconcile();
+
+      expect(settings.prefs.getInt('subtitle_font_size'), isNull);
+      expect(transport.store.containsKey(cloud), isFalse, reason: 'no tombstone is sent back');
+    });
+  });
 }

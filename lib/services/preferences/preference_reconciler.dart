@@ -61,6 +61,39 @@ class PreferenceReconciler {
     return value is int ? value : null;
   }
 
+  /// How long a tombstone stays in the store. The same horizon as the
+  /// profile-keyed map's entry tombstones: a device offline for longer can
+  /// bring the removed value back.
+  static const Duration tombstoneLifetime = Duration(days: 180);
+
+  /// Remove this device's tombstones older than [tombstoneLifetime] from the
+  /// store: global ones and the active profile's. Without this, every key the
+  /// account ever saw keeps a slot of the 1024, per library that ever existed.
+  ///
+  /// Another device of this build sees the removal as a bare remove and keeps
+  /// a live stamped value (see `PreferenceRemoteApply.applyEntries`), so only
+  /// the tombstone goes. The local stamp is dropped only when it is the
+  /// tombstone's own; a newer local change keeps its stamp.
+  Future<void> _collectExpiredTombstones(
+    PreferenceTransport transport,
+    Map<String, String> remote,
+    Set<String> written,
+  ) async {
+    final horizon = DateTime.now().toUtc().millisecondsSinceEpoch - tombstoneLifetime.inMilliseconds;
+    final activeId = _keys.activeProfileScope.id;
+    for (final e in remote.entries) {
+      if (written.contains(e.key)) continue;
+      final parsed = PreferenceSyncScope.parseCloudKey(e.key);
+      if (parsed == null) continue;
+      if (parsed.kind == PreferenceScopeKind.profile && (activeId == null || parsed.id != activeId)) continue;
+      final record = decodeStampedRecord(e.value);
+      if (record == null || !record.stamp.deleted || record.stamp.at >= horizon) continue;
+      await transport.remove(e.key);
+      final stampKey = _keys.stampKeyFor(parsed.baseKey);
+      if (sameStamp(_revisionStore.stampOf(stampKey), record.stamp)) await _revisionStore.forget(stampKey);
+    }
+  }
+
   /// Push every syncable local key whose stamp is newer than the store's, or
   /// which the store lacks; re-send tombstones the store has been written over.
   Future<void> reconcile() async {
@@ -84,6 +117,7 @@ class PreferenceReconciler {
       var skipped = 0;
       var oversize = 0;
       final known = <String>{};
+      final written = <String>{};
       for (final fullKey in _prefs.keys) {
         final baseKey = _keys.baseKeyOf(fullKey);
         if (baseKey != null) known.add(baseKey);
@@ -125,6 +159,7 @@ class PreferenceReconciler {
           }
         }
         await transport.write(cloudKey, encoded);
+        written.add(cloudKey);
         pushed++;
       }
 
@@ -147,8 +182,11 @@ class PreferenceReconciler {
         final local = _revisionStore.stampOf(e.key);
         if (remoteStampWins(record.stamp, local)) continue;
         await transport.write(cloudKey, encodeTombstone(local));
+        written.add(cloudKey);
         pushed++;
       }
+
+      if (_keys.v2Format) await _collectExpiredTombstones(transport, remote, written);
 
       final metaRecord = json.encode({'type': 'int', 'value': _activeFormatVersion});
       if (remote[_activeMetaKey] != metaRecord) {

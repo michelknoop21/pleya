@@ -168,9 +168,10 @@ void main() {
     final perProfile = 2 + libraryKeys().length * 3; // hidden, order, plus sort/grouping/tab per library
     final total = globalPrefs + 1 + profiles * perProfile; // +1 for the meta record
     // Frozen v1 keys share the same 1024-key budget: one flat set, no profile.
-    final v1Keys = globalPrefs + 2 + libraryKeys().length * 3;
+    final v1Keys = globalPrefs + 2 + libraryKeys().length * 3 + 1; // +1 for __syncFormatVersion
     // A reset tombstone reuses its key's slot. A vanished library's tombstones
-    // do not: they keep three keys each, which this figure leaves out.
+    // do not: they keep three keys each until reconcile collects them after
+    // 180 days, which this figure leaves out.
     // ignore: avoid_print
     print('KVS key count: $total of $kvsMaxKeys, plus $v1Keys frozen v1 keys = ${total + v1Keys}');
     expect(total, lessThan(kvsMaxKeys));

@@ -2961,7 +2961,7 @@ herhaalt tombstones waar de store nog een ouder levend record heeft. Een tombsto
 kanten laat ook in een merge-familie de stempel beslissen: een inkomende tombstone moet nieuwer zijn
 dan de lokale wijziging, een levend record nieuwer dan de lokale verwijdering. Mislukt de lezing van
 de store, dan duwt reconcile niets, meldt een fout en herhaalt de volgende trigger de poging. Een
-settings-import stempelt elke geschreven sleutel met bron `import`. (5) Onder v2 is er geen prune:
+settings-import stempelt elke geschreven sleutel met bron `import`. (5) Onder v2 is er geen prune, alleen de opruiming van tombstones ouder dan 180 dagen:
 `ownsCloudKey` geeft `false`, de prune-lus draait alleen voor het v1-pad dat
 `icloud_rolling_upgrade_test` bewaart. Een sleutel die de store heeft en dit toestel niet, is "nog
 niet gehad" en wordt overgenomen. (6) De guard die een lokale write tijdens een remote batch liet
@@ -3006,10 +3006,11 @@ een gewiste serie-uitzondering terugbrengen omdat de tombstone dan vervallen is,
 voor een verwijdering die buiten de 100 nieuwste tombstones van de seriekaart valt; wie meer dan 100
 serie-uitzonderingen had, verliest de oudste; het lokale revisieblob groeit tot
 één entry per ooit geziene sleutel (op het zware account uit `kvs_footprint_test` 654 sleutels,
-circa 40 KB); een tombstone wordt nooit opgeruimd en een reset schrijft er een voor elke resetbare
-voorkeur, ook een die nooit gezet was, dus het aantal sleutels in de store groeit monotoon met elke
-sleutel die het account ooit zag, per bibliotheek die ooit bestond, niet met de huidige staat
-(`kvs_footprint_test` telt dat mee); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
+circa 40 KB); een reset schrijft een tombstone voor elke resetbare voorkeur, ook een die nooit gezet
+was, en een verdwenen bibliotheek laat haar tombstones achter; reconcile haalt tombstones van dit
+toestel (globaal en het actieve profiel) na 180 dagen uit de store, dus zulke sleutels houden hun
+plek van de 1024 hoogstens een half jaar bezet, en een toestel dat langer offline was kan de
+verwijdering terugbrengen; de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
 waarden over tombstones terug. Zijn kale remove wist op dit toestel geen gestempelde lokale waarde:
 de waarde blijft staan en reconcile zet haar terug in de store, waarna de uitgebrachte build haar bij
 zijn volgende reconcile weer prunet. Een tombstone die hij overschrijft, zet deze build terug. Tot
