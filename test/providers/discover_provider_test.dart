@@ -215,6 +215,12 @@ class _FakeClient implements MediaServerClient {
   }
 
   @override
+  Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
+
+  @override
+  Future<List<MediaItem>> fetchRecentlyAddedShows({int limit = 50}) async => const [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -897,16 +903,104 @@ void main() {
       PlexApiCache.initialize(db);
       final local = _SpyLocalFolderClient();
       multiServer.serverManager.debugRegisterClientForTesting(local);
+      aggregation.onDeckSucceededServerIds = const {'server_1', 'local-1'};
+      aggregation.hubSucceededServerIds = const {'server_1', 'local-1'};
       aggregation.hubsResult = () => [_hub('hub-1')];
       await provider.load();
 
       clock = clock.add(const Duration(minutes: 1));
-      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true);
       expect(local.invalidations, 0, reason: 'fresh data leaves the scan alone');
 
       clock = clock.add(const Duration(minutes: 3));
-      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true);
       expect(local.invalidations, 1);
+
+      // The periodic tick does not pay for a full folder listing (M5).
+      clock = clock.add(const Duration(minutes: 6));
+      final hubsBefore = aggregation.hubCalls;
+      await provider.refreshIfStale();
+      expect(aggregation.hubCalls, hubsBefore + 1, reason: 'sanity: the tick did reload');
+      expect(local.invalidations, 1);
+    });
+
+    test('a load in which a server did not answer a surface does not count as full', () async {
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      aggregation.onDeckSucceededServerIds = const {};
+      await provider.load();
+      final hubsBefore = aggregation.hubCalls;
+
+      clock = clock.add(const Duration(minutes: 1));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+
+      expect(aggregation.hubCalls, hubsBefore + 1, reason: 'the missing server is asked again on the next trigger');
+    });
+
+    test('an online id without a client does not keep every pass incomplete', () async {
+      multiServer.serverManager.updateServerStatus(ServerId('ghost'), true);
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      clock = clock.add(const Duration(minutes: 3));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      final hubsBefore = aggregation.hubCalls;
+
+      clock = clock.add(const Duration(minutes: 1));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+
+      expect(aggregation.hubCalls, hubsBefore, reason: 'nothing was asked of the ghost, so nothing is missing');
+    });
+
+    test('a silent pass over an error state keeps the message until a pass succeeds', () async {
+      await provider.load();
+      multiServer.serverManager.updateServerStatus(ServerId('server_1'), false);
+      await provider.load();
+      expect(provider.errorMessage, isNotNull, reason: 'sanity: an error state');
+
+      clock = clock.add(const Duration(minutes: 3));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      expect(provider.errorMessage, isNotNull, reason: 'the error is still true, so it stays on screen');
+
+      multiServer.serverManager.updateServerStatus(ServerId('server_1'), true);
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      expect(provider.errorMessage, isNull);
+      expect(provider.areHubsLoading, isFalse);
+      expect(provider.hubs.map((h) => h.id), ['hub-1']);
+    });
+
+    test('a load() that arrives mid silent pass is visible and runs its own pass', () async {
+      aggregation.hubsResult = () => [_hub('hub-1')];
+      await provider.load();
+      await pumpEventQueue();
+      final generationBefore = provider.loadGeneration;
+      final hubsBefore = aggregation.hubCalls;
+
+      clock = clock.add(const Duration(minutes: 3));
+      final silent = provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      expect(provider.isRefreshing, isFalse, reason: 'sanity: the silent pass shows nothing');
+      final manual = provider.load();
+      expect(provider.isRefreshing, isTrue, reason: 'the refresh action now shows progress');
+      await Future.wait([silent, manual]);
+
+      expect(aggregation.hubCalls, hubsBefore + 2, reason: 'the silent pass plus the trailing visible one');
+      expect(provider.loadGeneration, greaterThan(generationBefore), reason: 'the visible pass may reset the hero');
+    });
+
+    test('a silent pass that throws over an empty Home leaves no loading or error state', () async {
+      await provider.load();
+      expect(provider.hubs, isEmpty, reason: 'sanity: an empty Home');
+      multiServer.serverManager.updateServerStatus(ServerId('server_1'), false);
+
+      final observed = <String>[];
+      provider.addListener(() {
+        if (provider.isLoading || provider.areHubsLoading) observed.add('loading');
+        if (provider.errorMessage != null) observed.add('error');
+      });
+      clock = clock.add(const Duration(minutes: 3));
+      await provider.refreshIfStale(maxAge: kHomeRefreshOnReturn);
+      await pumpEventQueue();
+
+      expect(observed, isEmpty);
     });
   });
 }

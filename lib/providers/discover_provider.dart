@@ -267,13 +267,22 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     final silent = _silentPass;
     final showingSnapshot = silent || _onDeck.isNotEmpty || _hubs.isNotEmpty;
 
-    // A silent pass keeps a surface as it was when a server did not answer
-    // it: the rows on screen beat a partial list. Logged, retried on the next
-    // trigger because the pass is not marked as a full load.
+    // Only a pass in which every client the aggregation asked answered every
+    // surface counts as a full load; otherwise the next trigger asks again.
+    // A silent pass also keeps such a surface as it was: the rows on screen
+    // beat a partial list. The expected set is the aggregation's own (online
+    // clients visible to the profile), so an id without a client is never
+    // "missing".
+    var complete = true;
     bool keepOld(Set<String> succeeded, String surface) {
-      if (!silent) return false;
-      final missing = _multiServer.onlineServerIds.toSet().difference(succeeded);
+      final manager = _multiServer.serverManager;
+      final missing = {
+        for (final id in manager.onlineClients.keys)
+          if (manager.isServerVisible(ServerId(id)) && !succeeded.contains(id)) id,
+      };
       if (missing.isEmpty) return false;
+      complete = false;
+      if (!silent) return false;
       appLogger.w('DiscoverProvider: silent refresh kept $surface, no answer from $missing');
       return true;
     }
@@ -282,7 +291,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       _onDeckState = DiscoverLoadState.loading;
       _hubsState = DiscoverLoadState.loading;
     }
-    _errorMessage = null;
+    // A silent pass over an error state leaves the message up until it
+    // actually succeeds (M3).
+    if (!silent) _errorMessage = null;
     safeNotifyListeners();
 
     try {
@@ -356,8 +367,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       appLogger.d('DiscoverProvider: ${_onDeck.length} on-deck items, ${filteredHubs.length} hubs');
       _hubs = _dedupeDiscoverHubs(filteredHubs);
       _hubsState = DiscoverLoadState.loaded;
+      _errorMessage = null;
       _loadedHubServerIds = fetchedHubs.succeededServerIds;
-      _refreshPolicy.markFullLoad();
+      if (complete) _refreshPolicy.markFullLoad();
       safeNotifyListeners();
       unawaited(_loadRecommendationRows());
       unawaited(
@@ -677,7 +689,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// are older than [maxAge], otherwise only Continue Watching. Silent means
   /// the states stay `loaded`, [isRefreshing] stays false and a failure keeps
   /// the rows on screen. A pass already in flight is joined, never doubled.
-  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval}) {
+  ///
+  /// [rescanLocalFolders] also invalidates the local-folder scans first, so a
+  /// new file there reaches Home. It costs a full folder listing, so the
+  /// return and resume paths ask for it and the periodic tick does not.
+  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval, bool rescanLocalFolders = false}) {
     final inFlight = _inFlightLoad;
     if (inFlight != null) return inFlight;
     if (!_refreshPolicy.isStale(maxAge, hasContent: _hubsState == DiscoverLoadState.loaded)) {
@@ -685,8 +701,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     }
     // The local folder serves its session-long scan cache otherwise, so a
     // new file there would never reach Home.
-    for (final client in _multiServer.serverManager.onlineClients.values.whereType<LocalFolderClient>()) {
-      client.invalidateScanCache();
+    if (rescanLocalFolders) {
+      for (final client in _multiServer.serverManager.onlineClients.values.whereType<LocalFolderClient>()) {
+        client.invalidateScanCache();
+      }
     }
     _silentPass = true;
     _hasPendingLoad = true;

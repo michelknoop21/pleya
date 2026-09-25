@@ -17,7 +17,7 @@ class DiscoverRefreshPolicy {
   final DateTime Function() _now;
   DateTime? _lastFullLoadAt;
 
-  /// Called at the end of a full load that reached the hubs.
+  /// Called at the end of a load in which every client answered every surface.
   void markFullLoad() => _lastFullLoadAt = _now();
 
   /// Whether a full reload is due. Content that never finished a full load
