@@ -408,7 +408,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire";
+			shellScript = "set -o pipefail\n\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh 2>&1 | \"$PROJECT_DIR/../scripts/filter_nonfatal_sksl.sh\" && touch Flutter/ephemeral/tripwire\n";
 		};
 		38D3B21B4A8B8C7FF266779D /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;

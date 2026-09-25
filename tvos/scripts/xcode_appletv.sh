@@ -359,11 +359,12 @@ BuildAppDebug() {
   # overwrite kernel_blob.bin and both snapshot blobs below with versions
   # from our tvOS engine so the tvOS VM can load them.
   (
+    set -o pipefail
     cd "$FLUTTER_APPLICATION_PATH" && \
     "$FLUTTER_BIN" build bundle \
       --asset-dir="$OUTDIR/App.framework/flutter_assets" \
       --no-tree-shake-icons \
-      --suppress-analytics
+      --suppress-analytics 2>&1 | "$PROJECT_DIR/../scripts/filter_nonfatal_sksl.sh"
   ) || {
     echo " └─ERROR: flutter build bundle failed"
     return 1
@@ -519,12 +520,13 @@ BuildAppRelease() {
   echo " └─Generate flutter_assets via flutter build bundle (release)"
   mkdir -p "$OUTDIR/App.framework/flutter_assets"
   (
+    set -o pipefail
     cd "$FLUTTER_APPLICATION_PATH" && \
     "$FLUTTER_BIN" build bundle \
       --release \
       --asset-dir="$OUTDIR/App.framework/flutter_assets" \
       --no-tree-shake-icons \
-      --suppress-analytics
+      --suppress-analytics 2>&1 | "$PROJECT_DIR/../scripts/filter_nonfatal_sksl.sh"
   ) || {
     echo " └─ERROR: flutter build bundle failed"
     return 1
