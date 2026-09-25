@@ -85,6 +85,25 @@ void main() {
 
     expect(c.localRevision('subtitle_font_size'), isNotNull, reason: 'the late turn is not the current one');
     expect(transport.writes, isEmpty);
+
+    // The account change is still pending, so the next turn of any kind runs
+    // it. The new account's store holds an older value from another device:
+    // with the previous account's stamp kept, this device's 44 would win.
+    transport.availabilityGate = null;
+    transport.gate.complete();
+    c.turnTimeout = const Duration(seconds: 30);
+    final key = c.cloudKeyFor('subtitle_font_size')!;
+    transport.store[key] = json.encode({'type': 'int', 'value': 30, 't': 1000, 'd': 'appletv'});
+    await c.requestReconcile(ReconcileTrigger.foreground);
+    expect(settings.prefs.getInt('subtitle_font_size'), 30, reason: 'the stamps were cleared, so the store wins');
+    expect(c.localRevision('subtitle_font_size')!.deviceId, 'appletv');
+
+    // Handled once: the next turn orders by stamp again.
+    await settings.prefs.setInt('subtitle_font_size', 50);
+    await c.apply(const PreferenceMutation.set('subtitle_font_size', 50));
+    await c.requestReconcile(ReconcileTrigger.foreground);
+    expect(settings.prefs.getInt('subtitle_font_size'), 50);
+    expect((json.decode(transport.store[key]!) as Map)['value'], 50);
   });
 
   test('the v1 import of a turn that is no longer current imports nothing and sets no marker', () async {

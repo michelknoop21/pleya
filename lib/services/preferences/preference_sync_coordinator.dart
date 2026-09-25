@@ -322,6 +322,12 @@ class PreferenceSyncCoordinator {
   /// a trigger that can have changed the store needs a pull before the push. An
   /// import or a reset changed *local* state, so pulling first would be a good
   /// way to undo what the user just did.
+  /// An account change seen but not yet handled by a current turn.
+  ///
+  /// ponytail: in memory, so an app restart between the event and its turn
+  /// loses it; persist it in prefs if that shows up.
+  bool _accountChangePending = false;
+
   Future<void> _runReconcile(Set<ReconcileTrigger> triggers) async {
     // Still the current turn, and sync still on. Taken before the first await:
     // a turn that hangs in the availability check and answers after its
@@ -335,9 +341,13 @@ class PreferenceSyncCoordinator {
     // each case the status has to say so before this pass pretends to have
     // sent anything. The enable path writes the toggle first, and import and
     // reset only call in through `pushAllIfEnabled`.
+    if (triggers.contains(ReconcileTrigger.accountChanged)) _accountChangePending = true;
     await refreshAvailability();
     if (status.value.availability != PreferenceSyncAvailability.ready || !current()) return;
-    final storeWins = triggers.contains(ReconcileTrigger.accountChanged);
+    // Pending until a current turn has cleared the stamps: a turn that timed
+    // out or stopped before this point leaves it set, and the next reconcile of
+    // any kind runs the account change instead of keeping the old stamps.
+    final storeWins = _accountChangePending;
     if (storeWins) {
       // Strict read-first (B9). The stamps describe this device's edits against
       // the previous account's history; against another account they mean
@@ -348,11 +358,11 @@ class PreferenceSyncCoordinator {
       // the store wins what it holds, per map entry too.
       await clearRevisions();
       await PreferenceLegacyBootstrap.reset(_prefs);
+      if (!current()) return;
+      _accountChangePending = false;
     }
     final needsBootstrap =
-        triggers.contains(ReconcileTrigger.boot) ||
-        triggers.contains(ReconcileTrigger.enabled) ||
-        triggers.contains(ReconcileTrigger.accountChanged);
+        triggers.contains(ReconcileTrigger.boot) || triggers.contains(ReconcileTrigger.enabled) || storeWins;
     final localIsTheSource = triggers.every((t) => t == ReconcileTrigger.imported || t == ReconcileTrigger.reset);
 
     if (needsBootstrap) await bootstrapFromLegacyV1(proceed: current);
@@ -408,6 +418,7 @@ class PreferenceSyncCoordinator {
         appLogger.w('preference sync: transport quota exceeded');
         _setStatus(status.value.raise(PreferenceSyncHealth.quota));
       case RemoteChangeReason.accountChanged:
+        _accountChangePending = true;
         // The account under the store changed, or went away. Re-ask whether
         // there is a store to talk to at all before deciding this is a sync:
         // signing out is not an error, and reporting it as one sends the user
