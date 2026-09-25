@@ -50,8 +50,11 @@ void main() {
         min: 700,
         max: 800,
       ),
-      (rule: 'some tokens', item: _item('8', 'Star Wars'), query: 'star trek', min: 400, max: 650),
-      (rule: 'fuzzy only', item: _item('9', 'Gladiator'), query: 'gladiater', min: 300, max: 650),
+      // The code's own bands for these two overlap (a token share floor of
+      // 400-500 against a fuzzy score of up to 650), so each case is pinned on
+      // its exact score; the order between them is pinned further down.
+      (rule: 'some tokens', item: _item('8', 'Star Wars'), query: 'star trek', min: 450, max: 450),
+      (rule: 'fuzzy only', item: _item('9', 'Gladiator'), query: 'gladiater', min: 487.5, max: 487.5),
       (
         rule: 'series title counts at 0.9',
         item: _item('10', 'Pilot', kind: MediaKind.episode, grandparentTitle: 'Dune'),
@@ -75,6 +78,12 @@ void main() {
         expect(score, inInclusiveRange(c.min, c.max), reason: '${c.item.title} for "${c.query}" scored $score');
       });
     }
+
+    test('for one query, a shared token outranks a near miss without one', () {
+      final shared = mediaSearchRelevanceScore(_item('8', 'Star Wars'), 'star trek');
+      final nearMiss = mediaSearchRelevanceScore(_item('13', 'Stat Trak'), 'star trek');
+      expect(shared, greaterThan(nearMiss), reason: 'some tokens $shared, fuzzy only $nearMiss');
+    });
 
     test('an empty query scores zero', () {
       expect(mediaSearchRelevanceScore(_item('1', 'Dune'), '  '), 0);
