@@ -193,7 +193,7 @@ _PlaybackOpenTiming _playbackOpenTiming({
 /// server is Jellyfin) makes the call short-circuit.
 ///
 /// Only the current episode's part is touched here. The show-wide language
-/// default is written separately by [_plexSeriesLanguagePersister].
+/// default is written separately by [plexSeriesLanguagePersister].
 TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
   return ({required int partId, required String trackType, int? streamID}) async {
     if (streamID == null) return;
@@ -221,7 +221,8 @@ TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
 /// A mirror, never the authority (DEC-096 lid 6). A failed write is logged by
 /// the caller and leaves the Pleya preference exactly as it was; nothing here
 /// rolls anything back, and nothing reads Plex's answer back as truth.
-SeriesLanguagePersister _plexSeriesLanguagePersister(PlexClient? Function() resolve) {
+@visibleForTesting
+SeriesLanguagePersister plexSeriesLanguagePersister(PlexClient? Function() resolve) {
   return ({required String seriesRatingKey, String? audioLanguage, String? subtitleLanguage, int? subtitleMode}) async {
     final client = resolve();
     if (client == null) return;
