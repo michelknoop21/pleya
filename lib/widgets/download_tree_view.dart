@@ -114,7 +114,8 @@ class _DownloadTreeViewState extends State<DownloadTreeView> {
     }
 
     return ListView.builder(
-      padding: .zero,
+      // Clears the floating Liquid Glass tab bar; 0 without it.
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
       itemCount: flattenedNodes.length,
       itemBuilder: (context, index) {
         final item = flattenedNodes[index];

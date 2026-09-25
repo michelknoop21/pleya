@@ -25,6 +25,11 @@ class LiveTimelineBar extends StatefulWidget {
   final ValueChanged<bool>? onFocusChange;
   final bool enabled;
 
+  /// Color of the timecode under the slider in the vertical (mobile) layout.
+  /// White70 by default; the mobile glass plate asks for full white, which
+  /// white70 on the tinted plate over a light frame does not reach 4.5:1.
+  final Color verticalTimeColor;
+
   const LiveTimelineBar({
     super.key,
     required this.player,
@@ -37,6 +42,7 @@ class LiveTimelineBar extends StatefulWidget {
     this.onKeyEvent,
     this.onFocusChange,
     this.enabled = true,
+    this.verticalTimeColor = Colors.white70,
   });
 
   @override
@@ -116,7 +122,11 @@ class _LiveTimelineBarState extends State<LiveTimelineBar> {
             alignment: .centerLeft,
             child: Text(
               _formatEpochTime(context, displayPos),
-              style: const TextStyle(color: Colors.white70, fontSize: 12, fontFeatures: [FontFeature.tabularFigures()]),
+              style: TextStyle(
+                color: widget.verticalTimeColor,
+                fontSize: 12,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],

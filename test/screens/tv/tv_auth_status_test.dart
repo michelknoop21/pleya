@@ -32,6 +32,7 @@ import 'package:pleya/screens/tv/tv_root_shell.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/auth_error_banner.dart';
+import 'package:pleya/widgets/tv/tv_top_nav_item.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 
 /// A stand-in for the real registry: the shell only ever asks it one question,
@@ -161,10 +162,7 @@ void main() {
   }, description: 'amber attention dot');
 
   /// The Mijn Pleya nav item, whatever else is on the bar.
-  Finder myPleyaItem() => find.ancestor(
-    of: find.text(t.navigation.myPleya),
-    matching: find.byWidgetPredicate((w) => w.runtimeType.toString() == '_NavItem'),
-  );
+  Finder myPleyaItem() => find.ancestor(of: find.text(t.navigation.myPleya), matching: find.byType(TvTopNavItem));
 
   group('the banner is gone from TV', () {
     testWidgets('an auth error draws no AuthErrorBanner anywhere in the TV shell', (tester) async {

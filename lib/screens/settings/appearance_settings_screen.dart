@@ -14,6 +14,7 @@ import '../../services/settings_service.dart' hide ThemeMode;
 import '../../services/settings_service.dart' as settings show ThemeMode;
 import '../../focus/focusable_slider.dart';
 import '../../services/device_performance.dart';
+import '../../theme/glass/glass_settings.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/setting_tile.dart';
@@ -35,6 +36,13 @@ class AppearanceSettingsScreen extends StatelessWidget {
       _densitySelector(),
       _viewModeSelector(),
       _episodePosterModeSelector(),
+      if (glassAppliesTo(context))
+        SettingSwitchTile(
+          pref: SettingsService.liquidGlass,
+          icon: Symbols.blur_on_rounded,
+          title: t.settings.liquidGlass,
+          subtitle: t.settings.liquidGlassDescription,
+        ),
       if (PlatformDetector.isTV())
         SettingSwitchTile(
           pref: SettingsService.tvFullCardLayout,

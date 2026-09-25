@@ -32,6 +32,14 @@ class TvPanelTheme {
   static const Color inactivePill = Color(0x14FFFFFF);
   static const Color activePill = Colors.white;
 
+  /// Inactive pill on the glass card (LG-05): black 10%, not a white fill.
+  /// The glass card has no backdrop over native video, so the Big Buck Bunny
+  /// sky shows through the 50% tint; any white fill under the white label
+  /// lands under 4.5:1 there (0x26 white 3.1, 0x14 white 3.5; black 10% 4.8,
+  /// `tv_info_panel_glass_test.dart`).
+  static const Color glassInactivePill = Color(0x1A000000);
+  static Color inactivePillFor({required bool glass}) => glass ? glassInactivePill : inactivePill;
+
   /// The focused row.
   static const Color focusFill = Color(0xEBFFFFFF);
   static const Color focusInk = Color(0xFF141414);

@@ -23,7 +23,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 import '../pleya_wordmark.dart';
 
@@ -34,10 +33,13 @@ import '../../automation/automation_ids.dart';
 import '../../navigation/tv/tv_destination.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
-import '../../theme/mono_theme.dart';
+import '../../services/settings_service.dart';
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import 'tv_reconnect_item.dart';
+import 'tv_top_nav_item.dart';
 import 'tv_unified_layout.dart';
 
 class TvTopNavigation extends StatelessWidget {
@@ -115,11 +117,73 @@ class TvTopNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The Liquid Glass switch flips the bar live, capsule and pills alike.
+    // No service (a bare widget test) reads as glass off, see [glassTierFor].
+    final settings = SettingsService.instanceOrNull;
+    if (settings == null) return _buildBar(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: settings.listenable(SettingsService.liquidGlass),
+      builder: (context, _, _) => _buildBar(context),
+    );
+  }
+
+  Widget _buildBar(BuildContext context) {
     final scale = TvLayoutConstants.scaleOf(context);
     // Same gate as [NavRailDestination.reconnect]'s `c.isOfflineMode &&
     // c.canReconnect`: a null callback hides the item rather than wiring a
     // dead Select.
     final showReconnect = isOfflineMode && onReconnect != null;
+
+    final cluster = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showReconnect) ...[
+          TvReconnectItem(
+            node: nodes.get(tvReconnectFocusKey, debugLabel: tvReconnectFocusKey),
+            scale: scale,
+            isReconnecting: isReconnecting,
+            onSelect: onReconnect!,
+            onNavigateDown: onNavigateDown,
+            onNavigateLeft: () => _focusKey(tvNavProfileFocusKey),
+            onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
+          ),
+          if (destinations.isNotEmpty)
+            SizedBox(key: const ValueKey('reconnect_gap'), width: TvTopNavLayout.itemGap * scale),
+        ],
+        for (var i = 0; i < destinations.length; i++) ...[
+          if (i > 0) SizedBox(key: ValueKey('${destinations[i].focusKey}_gap'), width: TvTopNavLayout.itemGap * scale),
+          TvTopNavItem(
+            // Keyed on the destination, not on its position. Without
+            // this, a Live TV slot appearing shifts every later child
+            // by one and Flutter matches children by position: Mijn
+            // Pleya's element is reused for Live TV, the element
+            // holding the remote's focus is torn down, and the focus
+            // falls out of the bar entirely. Hoofdstuk 7.2's last
+            // bullet is precisely this — a new item "vervangt geen
+            // focusnode van een bestaand item".
+            key: ValueKey(destinations[i].focusKey),
+            destination: destinations[i],
+            isActive: destinations[i] == active,
+            node: nodes.get(destinations[i].focusKey, debugLabel: destinations[i].focusKey),
+            scale: scale,
+            // Hoofdstuk 18.4: the dot rides the destination that owns
+            // the resolution route, and only that one.
+            needsAttention: destinations[i] == TvDestinationId.myPleya && needsAttention,
+            onSelect: () => onSelect(destinations[i]),
+            onFocused: () => onFocusDestination(destinations[i]),
+            onNavigateDown: onNavigateDown,
+            // No wrap at either end (hoofdstuk 7.2). The first item
+            // hands Left to the reconnect item when offline shows
+            // one, otherwise to the profile chip, the only other
+            // thing to its left; the last simply stops.
+            onNavigateLeft: i == 0
+                ? () => _focusKey(showReconnect ? tvReconnectFocusKey : tvNavProfileFocusKey)
+                : () => _focus(destinations[i - 1]),
+            onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
+          ),
+        ],
+      ],
+    );
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -163,57 +227,19 @@ class TvTopNavigation extends StatelessWidget {
                       : (destinations.isEmpty ? null : () => _focus(destinations.first)),
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showReconnect) ...[
-                    TvReconnectItem(
-                      node: nodes.get(tvReconnectFocusKey, debugLabel: tvReconnectFocusKey),
-                      scale: scale,
-                      isReconnecting: isReconnecting,
-                      onSelect: onReconnect!,
-                      onNavigateDown: onNavigateDown,
-                      onNavigateLeft: () => _focusKey(tvNavProfileFocusKey),
-                      onNavigateRight: destinations.isEmpty ? null : () => _focus(destinations.first),
-                    ),
-                    if (destinations.isNotEmpty)
-                      SizedBox(key: const ValueKey('reconnect_gap'), width: TvTopNavLayout.itemGap * scale),
-                  ],
-                  for (var i = 0; i < destinations.length; i++) ...[
-                    if (i > 0)
-                      SizedBox(key: ValueKey('${destinations[i].focusKey}_gap'), width: TvTopNavLayout.itemGap * scale),
-                    _NavItem(
-                      // Keyed on the destination, not on its position. Without
-                      // this, a Live TV slot appearing shifts every later child
-                      // by one and Flutter matches children by position: Mijn
-                      // Pleya's element is reused for Live TV, the element
-                      // holding the remote's focus is torn down, and the focus
-                      // falls out of the bar entirely. Hoofdstuk 7.2's last
-                      // bullet is precisely this — a new item "vervangt geen
-                      // focusnode van een bestaand item".
-                      key: ValueKey(destinations[i].focusKey),
-                      destination: destinations[i],
-                      isActive: destinations[i] == active,
-                      node: nodes.get(destinations[i].focusKey, debugLabel: destinations[i].focusKey),
-                      scale: scale,
-                      // Hoofdstuk 18.4: the dot rides the destination that owns
-                      // the resolution route, and only that one.
-                      needsAttention: destinations[i] == TvDestinationId.myPleya && needsAttention,
-                      onSelect: () => onSelect(destinations[i]),
-                      onFocused: () => onFocusDestination(destinations[i]),
-                      onNavigateDown: onNavigateDown,
-                      // No wrap at either end (hoofdstuk 7.2). The first item
-                      // hands Left to the reconnect item when offline shows
-                      // one, otherwise to the profile chip, the only other
-                      // thing to its left; the last simply stops.
-                      onNavigateLeft: i == 0
-                          ? () => _focusKey(showReconnect ? tvReconnectFocusKey : tvNavProfileFocusKey)
-                          : () => _focus(destinations[i - 1]),
-                      onNavigateRight: i == destinations.length - 1 ? null : () => _focus(destinations[i + 1]),
-                    ),
-                  ],
-                ],
-              ),
+              // LG-04: with glass on, search and the destinations sit in one
+              // capsule of fake glass. Glass off returns the bare row.
+              if (glassTierFor(context) == GlassTier.off)
+                cluster
+              else
+                GlassSurface(
+                  shape: const StadiumBorder(),
+                  tokens: const GlassTokens.tv(),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: TvTopNavLayout.glassCapsuleInset * scale),
+                    child: cluster,
+                  ),
+                ),
               Align(
                 alignment: Alignment.centerRight,
                 // Not focusable. The wordmark is branding, not a destination:
@@ -276,156 +302,6 @@ Set<String> tvTopNavFocusKeys({
   if (isOfflineMode && onReconnect != null) tvReconnectFocusKey,
   for (final destination in destinations) destination.focusKey,
 };
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    super.key,
-    required this.destination,
-    required this.isActive,
-    required this.needsAttention,
-    required this.node,
-    required this.scale,
-    required this.onSelect,
-    required this.onFocused,
-    required this.onNavigateDown,
-    required this.onNavigateLeft,
-    required this.onNavigateRight,
-  });
-
-  final TvDestinationId destination;
-  final bool isActive;
-  final bool needsAttention;
-  final FocusNode node;
-  final double scale;
-  final VoidCallback onSelect;
-  final VoidCallback onFocused;
-  final VoidCallback onNavigateDown;
-  final VoidCallback? onNavigateLeft;
-  final VoidCallback? onNavigateRight;
-
-  @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    const shape = StadiumBorder();
-
-    return FocusableWrapper(
-      focusNode: node,
-      onSelect: onSelect,
-      // `nav.<tab>`, the same ids the rail's own items carry — this bar is the
-      // TV shell's navigation, so it answers to the same addresses. No new id
-      // and no extra widget: `FocusableWrapper` already owns the registration.
-      //
-      // The bar had none at all, which is why nothing could state where the
-      // focus was after a destination was activated — precisely the fact P2 is
-      // about. `state.active` is the destination's own white-capsule flag, so a
-      // scenario can tell "Films is the page you are on" from "Films is where
-      // the ring is" without inferring either from a screenshot.
-      automationId: AutomationIds.navTab(destination.tab),
-      automationRole: 'nav',
-      automationState: () => {'active': isActive},
-      onFocusChange: (focused) {
-        if (focused) onFocused();
-      },
-      onNavigateDown: onNavigateDown,
-      onNavigateLeft: onNavigateLeft,
-      onNavigateRight: onNavigateRight,
-      focusShapeBorder: shape,
-      // The bar must not move. A scaling pill nudges its neighbours on every
-      // Left/Right, and on a remote that is the difference between reading the
-      // row and chasing it.
-      disableScale: true,
-      // Active and focused are separate facts, so they are announced
-      // separately: the ring is focus and this word is the page you are on.
-      // Without it VoiceOver would say the same thing on all six items.
-      // Everything below is inside an `ExcludeSemantics`, so the dot cannot
-      // carry a node of its own — it has to be said here or not at all. A
-      // silent red mark is exactly the kind of state a screen-reader user is
-      // left to guess at.
-      semanticLabel: [
-        destination.label,
-        if (isActive) t.tvNavigation.activeDestination,
-        if (needsAttention) t.tvNavigation.attentionRequired,
-      ].join(', '),
-      // The label above already names the destination. Leaving the glyph and
-      // the pill's own Text in the tree as well would merge a second copy into
-      // the same node, and VoiceOver would read "Films, current section, Films".
-      child: ExcludeSemantics(
-        child: Padding(
-          padding: EdgeInsets.all(TvTopNavLayout.focusRingGap * scale),
-          // The dot is an overlay, and `clipBehavior: none` lets it sit just
-          // outside the pill. A `Stack` sizes to its largest non-positioned
-          // child, and the pill is the only one of those, so the bar's
-          // geometry is identical with the dot and without it — which is the
-          // whole requirement: a token expiring must not move Films and Series
-          // sideways under the remote.
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              AnimatedContainer(
-                duration: TvTopNavLayout.focusDuration,
-                curve: Curves.easeOut,
-                decoration: ShapeDecoration(shape: shape, color: isActive ? tk.text : Colors.transparent),
-                padding: EdgeInsets.symmetric(
-                  horizontal: destination.isCompact
-                      ? TvTopNavLayout.pillPaddingVertical * scale
-                      : TvTopNavLayout.pillPaddingHorizontal * scale,
-                  vertical: TvTopNavLayout.pillPaddingVertical * scale,
-                ),
-                child: destination.isCompact
-                    ? Icon(
-                        Symbols.search_rounded,
-                        size: TvTopNavLayout.searchIconSize * scale,
-                        color: isActive ? tk.bg : tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
-                      )
-                    : Text(
-                        destination.label,
-                        maxLines: 1,
-                        // Long locales shrink inside the pill rather than truncating
-                        // or wrapping (hoofdstuk 25): a clipped destination is a
-                        // destination you cannot identify, and a second line would
-                        // change the height of the whole bar.
-                        overflow: TextOverflow.clip,
-                        softWrap: false,
-                        style: TextStyle(
-                          fontSize: TvTopNavLayout.itemFontSize * scale,
-                          fontWeight: FontWeight.w500,
-                          color: isActive ? tk.bg : tk.text.withValues(alpha: TvTopNavLayout.inactiveInk),
-                        ),
-                      ),
-              ),
-              if (needsAttention)
-                // Directional, not physical: `right` would keep the dot on the
-                // physical right of the pill while the bar itself mirrors, so
-                // under RTL it would sit on the wrong corner. Same mismatch
-                // DEC-072 fixed for the hero CTAs.
-                PositionedDirectional(
-                  top: -TvTopNavLayout.attentionDotInset * scale,
-                  end: -TvTopNavLayout.attentionDotInset * scale,
-                  child: Container(
-                    width: TvTopNavLayout.attentionDotSize * scale,
-                    height: TvTopNavLayout.attentionDotSize * scale,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      // Amber, not the brand red. Hoofdstuk 14.7 keeps the two
-                      // apart everywhere else in this rewrite for the same
-                      // reason: an expired session is something the viewer can
-                      // fix from the couch, and amber is what the source picker
-                      // and Mijn Pleya already use to say so. Red here would
-                      // read as breakage.
-                      color: kAccentAlt,
-                      // A hairline of the bar's own ground, so the dot stays
-                      // legible where it overlaps the white active pill.
-                      border: Border.all(color: tk.bg, width: 1),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _ProfileChip extends StatelessWidget {
   const _ProfileChip({

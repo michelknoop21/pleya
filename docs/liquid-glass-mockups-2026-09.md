@@ -143,3 +143,99 @@ cd ../../liquid-glass/src && python3 compare.py   # LG-07 en LG-08
 
 `art/` en `out/` staan niet in git. De tvOS-pagina's staan in
 `docs/assets/tvos-unified/src/pages/LG-0*.html` en halen hun glas uit `src/tv-glass.css`.
+
+## Bouwstatus
+
+Stand 25 september 2026 op `feat/liquid-glass` (nog niet op `main`). Bron voor alles hieronder is het
+SDD-logboek van de branch (`.superpowers/sdd/2026-09-24-liquid-glass/`, `progress.md` en de
+taakrapporten). Hardware is niet gedraaid en het lichte thema is niet bekeken.
+
+### Wat gebouwd is
+
+| Oppervlak | Platform | Commit | Bewijs |
+|---|---|---|---|
+| Glasmodule (`GlassSurface`, tokens, tier, contrastmeting) en pakket `liquid_glass_renderer` | beide | `9084005b`, `0762dbb1`, `3b8a24b4`, `002737dd` | contrasttests op de Bunny-scène |
+| Schakelaar in Uiterlijk | beide | `ebb4f8c4`, `a3943c58` | widgettests op iPad- en TV-maat |
+| Zwevende tabbalk (LG-01) | iPhone | `0f6d8670` (extractie), `0859af7d`, `c299b9f6` | Verify `ios.glass.tabbar` PASS |
+| Spelerbediening (LG-03) | iPhone | `5afc34d3`, `e9892e9b`, `d6952bd1` | Verify `ios.glass.player` PASS |
+| Filmpagina met hero en glazen knoppen (LG-02) | iPhone | `a10aa935` | Verify `ios.glass.detail` PASS (tweede run, de eerste liep vast op navigatie) |
+| Topbalk als capsule (LG-04) | Apple TV | `ad3ded8d` | Verify `tvos.glass.topnav` PASS |
+| Spelerpaneel (LG-05, informatiekaart) | Apple TV | `295789ac` | Verify `tvos.glass.player` PASS |
+| Zoekpil (LG-06) | Apple TV | `295789ac` | widgettest, 4 tests |
+
+De tvOS-commits kwamen uit `feat/liquid-glass-tv` en zijn in `d7287929` samengevoegd.
+
+### Instelling en tier
+
+De schakelaar staat in Instellingen, Uiterlijk, en staat standaard uit. Pas na Michels toesteltest
+gaat de default naar aan.
+
+`glassTierFor` kiest per platform een van drie niveaus:
+
+- real: iPhone met Impeller, via `liquid_glass_renderer` (brekende rand).
+- fake: iPhone op Skia en alle Apple TV's, opgebouwd uit `BackdropFilter`, tint en lichtrand.
+  tvOS gebruikt het pakket nooit.
+- off: schakelaar uit, instellingen nog niet geladen, of iPad. `glassAppliesTo` is
+  `isTV() || !isTablet(context)`, omdat `isTablet` op een Apple TV van 1920×1080 ook waar is en de
+  tier daar eerst uit stond (gevonden in `a3943c58`).
+
+Spelers krijgen glas zonder backdrop (`backdrop: false`: tint 55% zwart, rand 30% wit op de iPhone).
+mpv rendert op iOS in een native laag onder de FlutterView (`MpvPlayerCore.swift`, `insertSubview`
+op 0), dus een backdrop-filter of het pakket ziet daar alleen zwart. Het tvOS-spelerpaneel volgt
+dezelfde regel, met een zwarte tint van 50%.
+
+### Gemeten contrast
+
+Alle waarden zijn p95 van tekstkleur tegen de achtergrond, gemeten op de gecommitte crop van het
+lichtste Big Buck Bunny-frame (`bbb_light_scene.jpg`, CC-BY Blender), tegen een eis van 4,5 voor
+tekst en 3,0 voor iconen. Bron: de taakrapporten 2, 5, 6, 7 en 8 tot 9 en `progress.md`.
+
+| Element | Ratio |
+|---|---|
+| Plaatrecept, fake-tier, tint 50% zwart | 6,70 (zonder tekstschaduw 4,69; effen wit 5,86; sanity zwart/wit 21,0 en 1,0) |
+| iPhone tabbalk, actief label wit | 16,27 |
+| iPhone tabbalk, actief icoon rood | 3,17 (eis 3,0) |
+| iPhone tabbalk, zoekicoon | 9,29 |
+| iPhone speler, titel | 5,48 |
+| iPhone speler, tijd | 8,72 |
+| iPhone speler, play-icoon | 4,71 |
+| iPhone speler, capsule | 17,13 |
+| iPhone filmpagina, titel | 10,9 |
+| iPhone filmpagina, chips | 14,3 tot 17,5 |
+| iPhone filmpagina, Resume | 18,3 |
+| iPhone filmpagina, Download | 19,0 |
+| iPhone filmpagina, terug | 9,4 |
+| iPhone filmpagina, kijklijst | 19,3 |
+| Apple TV topbalk, inactief label | 8,03 |
+| Apple TV topbalk, actief label (donker op wit) | 18,42 |
+| Apple TV topbalk, zoekicoon | 6,33 |
+| Apple TV paneel, inactief pillabel | 5,99 |
+| Apple TV paneel, rijtitel | 4,53 |
+| Apple TV zoekpil, zoekterm in ruststand op `#141414` | 18,88 |
+| Apple TV zoekpil, zoekterm over Bunny (scrollend) | 7,16 |
+| Apple TV paneel, now-line (`textFaint`, informatief, bestond al) | 1,25 |
+
+De eerste contrastmeter telde de antialiasrand van de glyphs als achtergrond en kwam nooit boven
+ongeveer 3,5. De meter meet nu met transparante tekst (`002737dd`). Het paneel op de Apple TV heeft
+geen backdrop, dus de lucht van Bunny schijnt ongefilterd door de tint. Een witte pilvulling haalde
+daar 3,10 (wit 15%), 3,48 (wit 8%) en 3,72 (wit 4%), alle onder de eis. De inactieve pil is daarom
+zwart 10%, niet de lichtere pil uit LG-05.
+
+Twee afwijkingen van de mockups komen uit de contrasteis. De plaat is donker getint (zwart 50%) in
+plaats van wit 14%, en de tabbalk is een donkere capsule in plaats van een lichte pil.
+
+### Open punten
+
+- Spelergeest bij rotatie: bij het draaien van de iPhone-speler schaduwen portrait-frames na
+  (M2 in de taakreview). Oorzaak onbegrepen, alleen op hardware te controleren.
+- De filmpagina-hero scrolt weg, en met hem de knoppen terug en meer.
+- Seriedetail houdt de oude layout. De trailerknop is niet gezien.
+- LG-05: de onderbalk van `desktop_video_controls.dart` (1292 regels) heeft geen plaat. Alleen het
+  informatiepaneel is van glas.
+- De inactieve paneelpil is zwart 10% in plaats van de witte pil uit LG-05, zie Contrast.
+- De bestaande legacy-blur (`kTvPanelBlurSigma`) boven mpv werkt niet, om dezelfde reden als op de
+  iPhone.
+- De focusschaduw van de actieve pil in de Apple TV-topbalk wordt afgeknipt door de capsule.
+- Geen hardwaretest op iPhone of Apple TV, geen test in het lichte thema.
+- Geparkeerd, los van glas: de `SettingSegmentedTile`-rijen op Uiterlijk lopen op telefoonbreedte tot
+  70 px over.

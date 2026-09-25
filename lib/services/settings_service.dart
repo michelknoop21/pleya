@@ -463,6 +463,9 @@ class SettingsService extends BaseSharedPreferencesService {
   // Mirror local-folder playback progress onto matched Plex/Jellyfin items.
   static const syncLocalWatchState = BoolPref('sync_local_watch_state', defaultValue: true);
   static const showNavBarLabels = BoolPref('show_nav_bar_labels', defaultValue: true);
+  // Liquid Glass surfaces (tab bar, player, film page, tvOS top bar/panel).
+  // See lib/theme/glass/ for the tier/token machinery this gates.
+  static const liquidGlass = BoolPref('liquid_glass', defaultValue: false);
   static const globalShaderPreset = StringPref('global_shader_preset', defaultValue: 'none');
   static const requireProfileSelectionOnOpen = BoolPref('require_profile_selection_on_open');
   static const useExternalPlayer = _UseExternalPlayerPref();

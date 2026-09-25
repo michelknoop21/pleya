@@ -8,11 +8,11 @@ import '../../media/media_source_info.dart';
 import '../../services/scrub_preview_source.dart';
 import '../../utils/desktop_window_padding.dart';
 import '../../i18n/strings.g.dart';
+import 'mobile_playback_controls.dart';
+import 'mobile_video_controls_glass.dart';
 import 'player_chrome_controller.dart';
-import 'widgets/circular_control_button.dart';
 import 'widgets/content_strip.dart';
 import 'widgets/first_frame_guard.dart';
-import 'widgets/play_pause_stream_builder.dart';
 import 'widgets/live_timeline_bar.dart';
 import 'widgets/video_controls_header.dart';
 import 'widgets/video_timeline_bar.dart';
@@ -217,7 +217,9 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => playerGlassScope(context, _buildLayout(context));
+
+  Widget _buildLayout(BuildContext context) {
     if (!_hasStripContent) {
       return Column(
         children: [
@@ -339,7 +341,7 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
         child: VideoControlsHeader(
           metadata: widget.metadata,
           style: VideoHeaderStyle.multiLine,
-          trailing: widget.trackChapterControls,
+          trailing: playerGlassCapsule(widget.trackChapterControls),
           onBack: widget.onBack,
         ),
       ),
@@ -356,54 +358,14 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
 
     return FirstFrameGuard(
       hasFirstFrame: widget.hasFirstFrame,
-      builder: (context) => _buildPlaybackControlsContent(context),
-    );
-  }
-
-  Widget _buildPlaybackControlsContent(BuildContext _) {
-    return PlayPauseStreamBuilder(
-      player: widget.player,
-      builder: (context, isPlaying) {
-        return Row(
-          mainAxisAlignment: .center,
-          children: [
-            if (!widget.isLive) ...[
-              // Previous episode button (greyed out when unavailable)
-              CircularControlButton(
-                semanticLabel: t.videoControls.previousButton,
-                icon: Symbols.skip_previous_rounded,
-                iconSize: 48,
-                onPressed: widget.onPrevious,
-              ),
-              const SizedBox(width: 24),
-            ],
-            CircularControlButton(
-              semanticLabel: isPlaying ? t.videoControls.pauseButton : t.videoControls.playButton,
-              icon: isPlaying ? Symbols.pause_rounded : Symbols.play_arrow_rounded,
-              iconSize: 72,
-              onPressed: () {
-                if (isPlaying) {
-                  widget.player.pause();
-                  widget.onCancelAutoHide?.call(); // Cancel auto-hide when paused
-                } else {
-                  widget.player.play();
-                  widget.onStartAutoHide?.call(); // Start auto-hide when playing
-                }
-              },
-            ),
-            if (!widget.isLive) ...[
-              const SizedBox(width: 24),
-              // Next episode button (greyed out when unavailable)
-              CircularControlButton(
-                semanticLabel: t.videoControls.nextButton,
-                icon: Symbols.skip_next_rounded,
-                iconSize: 48,
-                onPressed: widget.onNext,
-              ),
-            ],
-          ],
-        );
-      },
+      builder: (context) => MobilePlaybackControls(
+        player: widget.player,
+        isLive: widget.isLive,
+        onPrevious: widget.onPrevious,
+        onNext: widget.onNext,
+        onCancelAutoHide: widget.onCancelAutoHide,
+        onStartAutoHide: widget.onStartAutoHide,
+      ),
     );
   }
 
@@ -413,14 +375,19 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
         // Live TV with time-shift: show seekable timeline
         return FirstFrameGuard(
           hasFirstFrame: widget.hasFirstFrame,
-          builder: (context) => LiveTimelineBar(
-            player: widget.player,
-            captureBuffer: widget.captureBuffer!,
-            streamStartEpoch: widget.streamStartEpoch,
-            isAtLiveEdge: widget.isAtLiveEdge,
-            onSeekEnd: widget.onLiveSeek,
-            horizontalLayout: false,
-            enabled: widget.canControl,
+          builder: (context) => playerGlassPlate(
+            context,
+            LiveTimelineBar(
+              player: widget.player,
+              captureBuffer: widget.captureBuffer!,
+              streamStartEpoch: widget.streamStartEpoch,
+              isAtLiveEdge: widget.isAtLiveEdge,
+              onSeekEnd: widget.onLiveSeek,
+              horizontalLayout: false,
+              enabled: widget.canControl,
+              verticalTimeColor: playerGlassOn(context) ? Colors.white : Colors.white70,
+            ),
+            childPadded: true,
           ),
         );
       }
@@ -448,9 +415,9 @@ class _MobileVideoControlsState extends State<MobileVideoControls> with SingleTi
     return _conditionalSafeArea(
       context: context,
       top: false, // Only respect bottom safe area when in portrait
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: VideoTimelineBar(
+      child: playerGlassPlate(
+        context,
+        VideoTimelineBar(
           player: widget.player,
           chapters: widget.chapters,
           chaptersLoaded: widget.chaptersLoaded,

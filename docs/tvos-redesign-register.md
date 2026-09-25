@@ -385,6 +385,19 @@ De HTML-bron loopt zelf achter op DEC-087: `_src/tv.css` presenteert 267x400 en 
 bindend terwijl DEC-087 de railband 346, de 16:9-kaart 615 en de buren 231 autoriseert. Daar
 wint de code.
 
+## LIQUID GLASS
+
+DEC-122. Achter de schakelaar Liquid Glass in Uiterlijk (default uit), altijd nepglas
+(`BackdropFilter`, nooit `liquid_glass_renderer`). Branch `feat/liquid-glass`, nog niet op `main`;
+de tvOS-commits kwamen via `feat/liquid-glass-tv` en merge `d7287929`. Contrastwaarden en open
+punten: [liquid-glass-mockups-2026-09.md](liquid-glass-mockups-2026-09.md#bouwstatus).
+
+| ID | Werkitem | Besluit | Status | SHA / bewijs |
+|----|----------|---------|--------|--------------|
+| LG-04 | Topbalk als glazen capsule met zoeken en vier bestemmingen | DEC-122 | DONE, hardware open | `ad3ded8d`; `tvos.glass.topnav` PASS; laagste ratio 6,33; focusschaduw van de actieve pil wordt afgeknipt |
+| LG-05 | Spelerpaneel, informatiekaart zonder backdrop (mpv-laag) | DEC-122 | IN PROGRESS | `295789ac`; `tvos.glass.player` PASS; rijtitel 4,53, inactieve pil zwart 10% (5,99); onderbalk `desktop_video_controls.dart` nog zonder plaat |
+| LG-06 | Zoekpil van glas, ruststand ongewijzigd | DEC-122 | DONE, hardware open | `295789ac`; widgettest 4/4; ruststand 18,88, scrollend 7,16 |
+
 ## Fysieke controlepunten
 
 Drie momenten waarop een Release-build rechtstreeks via Xcode op de gepairde Apple TV gaat.

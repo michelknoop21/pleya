@@ -620,6 +620,12 @@ class TranslationsSettingsEn {
 	/// en: 'Show each season's poster above its tab'
 	String get showSeasonPostersOnTabsDescription => 'Show each season\'s poster above its tab';
 
+	/// en: 'Liquid Glass'
+	String get liquidGlass => 'Liquid Glass';
+
+	/// en: 'Glass surfaces on the tab bar, player and buttons.'
+	String get liquidGlassDescription => 'Glass surfaces on the tab bar, player and buttons.';
+
 	/// en: 'Full TV Cards'
 	String get tvFullCardLayout => 'Full TV Cards';
 
@@ -7284,6 +7290,8 @@ extension on Translations {
 			'settings.showEpisodeNumberOnCardsDescription' => 'Show season and episode number on episode cards',
 			'settings.showSeasonPostersOnTabs' => 'Show Season Posters on Tabs',
 			'settings.showSeasonPostersOnTabsDescription' => 'Show each season\'s poster above its tab',
+			'settings.liquidGlass' => 'Liquid Glass',
+			'settings.liquidGlassDescription' => 'Glass surfaces on the tab bar, player and buttons.',
 			'settings.tvFullCardLayout' => 'Full TV Cards',
 			'settings.tvFullCardLayoutDescription' => 'Use image-only TV cards with actor names overlaid',
 			'settings.focusGlow' => 'Focus Glow',
@@ -7643,10 +7651,10 @@ extension on Translations {
 			'videoControls.skipCredits' => 'Skip Credits',
 			'videoControls.playButton' => 'Play',
 			'videoControls.pauseButton' => 'Pause',
-			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
-			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Seek forward ${seconds} seconds',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
+			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Seek forward ${seconds} seconds',
 			'videoControls.previousButton' => 'Previous episode',
 			'videoControls.nextButton' => 'Next episode',
 			'videoControls.previousChapterButton' => 'Previous chapter',
@@ -8157,10 +8165,10 @@ extension on Translations {
 			'liveTv.live' => 'LIVE',
 			'liveTv.reloadGuide' => 'Reload Guide',
 			'liveTv.now' => 'Now',
-			'liveTv.today' => 'Today',
-			'liveTv.tomorrow' => 'Tomorrow',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.today' => 'Today',
+			'liveTv.tomorrow' => 'Tomorrow',
 			'liveTv.midnight' => 'Midnight',
 			'liveTv.overnight' => 'Overnight',
 			'liveTv.morning' => 'Morning',
@@ -8671,10 +8679,10 @@ extension on Translations {
 			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
 			'seerr.authLocal' => 'Email and password',
 			'seerr.authApiKey' => 'API key',
-			'seerr.email' => 'Email',
-			'seerr.password' => 'Password',
 			_ => null,
 		} ?? switch (path) {
+			'seerr.email' => 'Email',
+			'seerr.password' => 'Password',
 			'seerr.apiKey' => 'API key',
 			'seerr.apiKeyHint' => 'From Settings → General on your server',
 			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',

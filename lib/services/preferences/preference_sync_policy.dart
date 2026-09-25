@@ -440,6 +440,8 @@ class PreferenceSyncPolicyRegistry {
     'audio_passthrough': _deviceLocalPref,
     'tunneled_playback': _deviceLocalPref,
     'use_exoplayer': _deviceLocalPref,
+    // Liquid Glass (DEC-122): glas hangt af van het toestel en zijn prestaties.
+    'liquid_glass': _deviceLocalPref,
     'match_refresh_rate': _deviceLocalPref,
     'match_content_frame_rate': _deviceLocalPref,
     'match_dynamic_range': _deviceLocalPref,

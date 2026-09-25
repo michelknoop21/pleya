@@ -148,6 +148,9 @@ under `Notes`.
 
 ### New
 
+- **Liquid Glass surfaces behind a switch in Appearance.** The tab bar, player controls and
+  movie page on iPhone and the top bar, player panel and search field on Apple TV can now be
+  glass. The switch is off by default and does not apply on iPad.
 - **The Apple TV context menu now shows a line under the title with genre, runtime, sources,
   and remaining time**, the same summary you already see on other screens.
 - **The context menu's Resume row now shows how much time is left** on the episode or movie

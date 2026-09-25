@@ -266,7 +266,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    // Plus the bottom inset: with Liquid Glass the tab bar floats
+                    // over this list and the main Scaffold reports its height here.
+                    SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
                     // Every card gets the same maximum width so the column stays
                     // centred on a wide window instead of stretching across it.
                   ].map((w) => SettingsWidthLimit(child: w)).toList(),

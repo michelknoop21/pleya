@@ -4,6 +4,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/pill_input_decoration.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
@@ -35,7 +37,8 @@ class TvSearchPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = countLabel;
-    final pill = ListenableBuilder(
+    final glass = glassTierFor(context) != GlassTier.off;
+    final field = ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
         final text = controller.text;
@@ -44,6 +47,7 @@ class TvSearchPill extends StatelessWidget {
             context,
             hintText: t.search.hint,
             prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
+            glass: glass,
             // 36 B puts "14 resultaten" inside the pill, at tertiary ink. It is
             // a statement about the query, so it belongs to the field that
             // holds the query rather than to a line above the first band.
@@ -72,6 +76,9 @@ class TvSearchPill extends StatelessWidget {
         );
       },
     );
+    // LG-06: glass on puts the field on a capsule of tvOS fake glass. At rest
+    // it sits on the page ground under the top bar; results scroll under it.
+    final pill = GlassSurface(shape: const StadiumBorder(), tokens: const GlassTokens.tv(), child: field);
     return Align(
       alignment: Alignment.centerLeft,
       child: FractionallySizedBox(

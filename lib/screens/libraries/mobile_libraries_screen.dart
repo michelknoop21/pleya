@@ -203,7 +203,9 @@ class _MobileLibrariesScreenState extends State<MobileLibrariesScreen> {
               SliverToBoxAdapter(
                 child: _RecentlyAddedSection(library: recentLibrary, onOpenLibrary: () => _openLibrary(recentLibrary)),
               ),
-            const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+            // Clears the floating glass tab bar: with glass on the main Scaffold
+            // extends the body under it and reports its height as bottom padding.
+            SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
           ],
         ),
       ),

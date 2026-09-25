@@ -16,6 +16,8 @@ import '../../i18n/strings.g.dart';
 import '../../profiles/profile.dart';
 import '../../profiles/profile_avatar.dart';
 import '../../services/account_ui_actions.dart';
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
 import '../app_icon.dart';
 import '../pleya_wordmark.dart';
 
@@ -74,10 +76,19 @@ class MobilePageHeader extends StatelessWidget {
               id: searchAutomationId,
               instance: automationInstance,
               role: 'button',
-              child: IconButton(
-                onPressed: onSearchTap,
-                icon: const AppIcon(Symbols.search_rounded),
-                tooltip: t.common.search,
+              // LG-01: a glass circle with Liquid Glass on, the plain button
+              // otherwise (GlassSurface renders [child] as-is when off).
+              child: GlassLayer(
+                tokens: const GlassTokens.control(),
+                child: GlassSurface(
+                  shape: const CircleBorder(),
+                  tokens: const GlassTokens.control(),
+                  child: IconButton(
+                    onPressed: onSearchTap,
+                    icon: const AppIcon(Symbols.search_rounded),
+                    tooltip: t.common.search,
+                  ),
+                ),
               ),
             ),
             // The avatar is the profile switcher, as in the northstar: it opens
