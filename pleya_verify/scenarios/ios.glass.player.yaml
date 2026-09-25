@@ -1,0 +1,51 @@
+name: ios.glass.player
+target: ios-sim
+# The iPhone player controls with Liquid Glass on (mockup LG-03, Liquid Glass
+# Task 6). Glass is turned on the way a user does it (Uiterlijk, the Liquid
+# Glass switch), then a film opens through Films, "Alle films" and the first
+# poster, the same walk as `ios.detail.northstar`, and plays. The controls are
+# up when the player opens; play/pause pauses at once and the snapshot is the
+# paused player with its controls, the evidence the tint-only plates render
+# over the native mpv layer (no backdrop: the video sits under the FlutterView).
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 2000
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - settle: 1000
+  - tap: {id: "my_pleya.tile[settings]"}
+  - wait_until: {id: screen.settings, timeout: 10000}
+  - settle: 1000
+  - tap: {id: "settings.tile[appearance]"}
+  - wait_until: {id: "my_pleya.section.tile[setting.liquid_glass]", timeout: 10000}
+  - settle: 500
+  - tap: {id: "my_pleya.section.tile[setting.liquid_glass]"}
+  - settle: 500
+  - assert: {id: "my_pleya.section.tile[setting.liquid_glass]", state: {value: true}}
+  # Back to Settings through the app bar's arrow (no id, see
+  # `ios.glass.tabbar`), then Films through the bar.
+  - tap: {x: 28, y: 90}
+  - wait_until: {id: screen.settings, timeout: 10000}
+  - settle: 1000
+  - tap: {id: nav.movies}
+  - wait_until: {id: screen.movies, timeout: 15000}
+  - settle: 3500
+  - tap: {id: "landing.view_all[movies]"}
+  - wait_until: {id: screen.catalog_movies, timeout: 15000}
+  - settle: 500
+  - tap: {id: "catalog.grid.item[movies.0]"}
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 1500
+  - tap: {id: media-detail.play}
+  - wait_until: {id: player.play_pause, timeout: 25000}
+  # Pause first: the fixture clip is fifteen seconds.
+  - tap: {id: player.play_pause}
+  - settle: 500
+  - assert: {id: player.play_pause, state: {playing: false}}
+  - assert: {id: player.play_pause, insideViewport: true, minimumTapTarget: 44}
+  - snapshot: glass-player-paused

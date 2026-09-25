@@ -278,18 +278,23 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
       label.write(' · $remaining');
     }
 
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: FilledButton.icon(
-        onPressed: () => unawaited(_handlePlayPressed(metadata)),
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          shape: const StadiumBorder(),
+    // Same id the TV/desktop play action registers (`action_buttons.dart`).
+    return AutomationNode(
+      id: AutomationIds.mediaDetailPlay,
+      role: 'button',
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: FilledButton.icon(
+          onPressed: () => unawaited(_handlePlayPressed(metadata)),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            shape: const StadiumBorder(),
+          ),
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: Text(label.toString(), style: const TextStyle(fontWeight: .w700)),
         ),
-        icon: const Icon(Icons.play_arrow_rounded),
-        label: Text(label.toString(), style: const TextStyle(fontWeight: .w700)),
       ),
     );
   }

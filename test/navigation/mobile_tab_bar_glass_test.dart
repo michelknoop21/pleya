@@ -157,7 +157,7 @@ void main() {
       for (final tab in glassPhoneTabs()) {
         ratios[tab.getLabel()] = await measure(tester, find.text(tab.getLabel()), Colors.white);
       }
-      // ignore: avoid_print
+      // ignore: avoid_print - the measured ratios belong in the test log
       print('glass tab bar contrast, labels (white): $ratios');
       for (final ratio in ratios.values) {
         expect(ratio, greaterThanOrEqualTo(4.5));
@@ -170,7 +170,7 @@ void main() {
       await pumpBarOverScene(tester);
       final glyph = find.byWidgetPredicate((w) => w is AutomationNode && w.id == 'nav.discover').first;
       final ratio = await measure(tester, glyph, kAccent);
-      // ignore: avoid_print
+      // ignore: avoid_print - the measured ratios belong in the test log
       print('glass tab bar contrast, active red glyph: $ratio');
       expect(ratio, greaterThanOrEqualTo(3.0));
     });
@@ -279,7 +279,7 @@ void main() {
       textColor: Colors.white,
       boundary: find.byKey(_kSceneKey),
     );
-    // ignore: avoid_print
+    // ignore: avoid_print - the measured ratios belong in the test log
     print('header search circle contrast, white glyph: $ratio');
     expect(ratio, greaterThanOrEqualTo(3.0));
     // And it is visible as a button: the plate is clearly lighter than black.
