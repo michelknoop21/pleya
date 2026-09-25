@@ -117,7 +117,8 @@ class _FakeRecommendationService implements RecommendationService {
   String get profileId => 'p1';
 
   @override
-  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, int? nowMs}) async => seeds.take(limit).toList();
+  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, Set<String>? serverIds, int? nowMs}) async =>
+      seeds.where((s) => serverIds == null || serverIds.contains(s.globalKey.split(':').first)).take(limit).toList();
 
   @override
   Future<List<MediaHub>> buildRows(
@@ -140,6 +141,9 @@ class _FakeRecommendationService implements RecommendationService {
 
   @override
   void invalidateCandidates() {}
+
+  @override
+  Future<Set<String>> sharedHistoryServerIds() async => const {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -1152,6 +1156,54 @@ void main() {
 
       expect(p.hubs.any((h) => h.identifier == 'home.latestshows'), isTrue);
       expect(service.lastExcludeKeys, contains('server_1:new-show'));
+    });
+
+    test('a title already in Recently Added Shows is left out of a seed row', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final newShow = MediaItem(
+        id: 'new-show',
+        backend: MediaBackend.plex,
+        kind: MediaKind.show,
+        title: 'New show',
+        serverId: 'server_1',
+        serverName: 'Server',
+      );
+      client.recentlyAddedShows = [newShow];
+      client.itemsById = {'heat': movie('heat')};
+      client.relatedByItem = {
+        'heat': [
+          _hub('rel', items: [newShow, movie('d')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [RecommendationSeed(globalKey: 'server_1:heat', completed: true, occurredAtMs: now)];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+
+      expect(seedRows(p).single.items.map((i) => i.id), ['d']);
+    });
+
+    test('seed rows are dropped when no source that answers related hubs is left', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      client.itemsById = {'heat': movie('heat')};
+      client.relatedByItem = {
+        'heat': [
+          _hub('rel', items: [movie('d')]),
+        ],
+      };
+      final service = _FakeRecommendationService()
+        ..seeds = [RecommendationSeed(globalKey: 'server_1:heat', completed: true, occurredAtMs: now)];
+      final p = await loadWith(service, [client]);
+      addTearDown(p.dispose);
+      expect(seedRows(p), hasLength(1));
+
+      client.caps = ServerCapabilities.local;
+      await p.load();
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(seedRows(p), isEmpty);
     });
 
     test('seeds four to six feed the candidate pool, not the rows', () async {

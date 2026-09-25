@@ -392,6 +392,17 @@ void main() {
       expect(seeds.first.occurredAtMs, now - 1 * day);
     });
 
+    test('serverIds narrows the seeds before the limit', () async {
+      for (var i = 0; i < 6; i++) {
+        await insert('pleya:$i', at: now - i * 1000);
+      }
+      await insert('pms:film', at: now - day);
+
+      final seeds = await service().recentSeeds(limit: 6, serverIds: const {'pms'}, nowMs: now);
+
+      expect(seeds.map((s) => s.globalKey), ['pms:film']);
+    });
+
     test('the window is measured from nowMs', () async {
       await insert('pms:film', at: now - 10 * day);
 

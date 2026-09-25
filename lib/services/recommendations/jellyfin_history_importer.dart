@@ -66,8 +66,7 @@ Future<List<JellyfinHistoryImporter>> ownJellyfinHistoryImporters({
   for (final pc in await connectionsForProfile(profileId)) {
     final source = onlineSource(pc.connectionId);
     if (source == null) continue;
-    final sharers = await profilesForConnection(pc.connectionId);
-    if (sharers.any((row) => row.profileId != profileId)) continue;
+    if (await _isShared(pc.connectionId, profileId, profilesForConnection)) continue;
     importers.add(
       JellyfinHistoryImporter(
         database: database,
@@ -79,6 +78,32 @@ Future<List<JellyfinHistoryImporter>> ownJellyfinHistoryImporters({
   }
   return importers;
 }
+
+/// Servers of this profile's Jellyfin connections that another profile also
+/// uses. Their server-side history ("recently watched") carries both
+/// profiles' plays, so the seed rows may not read it, for the lender and the
+/// borrower alike: the same rule as [ownJellyfinHistoryImporters].
+/// [jellyfinServerId] answers null for a connection that is not Jellyfin.
+Future<Set<String>> sharedJellyfinServerIds({
+  required String profileId,
+  required Future<List<ProfileConnection>> Function(String profileId) connectionsForProfile,
+  required Future<List<ProfileConnection>> Function(String connectionId) profilesForConnection,
+  required ServerId? Function(String connectionId) jellyfinServerId,
+}) async {
+  final shared = <String>{};
+  for (final pc in await connectionsForProfile(profileId)) {
+    final serverId = jellyfinServerId(pc.connectionId);
+    if (serverId == null) continue;
+    if (await _isShared(pc.connectionId, profileId, profilesForConnection)) shared.add(serverId.toString());
+  }
+  return shared;
+}
+
+Future<bool> _isShared(
+  String connectionId,
+  String profileId,
+  Future<List<ProfileConnection>> Function(String connectionId) profilesForConnection,
+) async => (await profilesForConnection(connectionId)).any((row) => row.profileId != profileId);
 
 /// Imports one Jellyfin user's own history into [MediaInteractions].
 ///

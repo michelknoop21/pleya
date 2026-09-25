@@ -165,6 +165,45 @@ void main() {
       expect(rows.map((r) => r.globalKey), ['s:second'], reason: 'the later insert wins the tie');
     });
 
+    test('rows on servers outside serverIds are skipped before the limit, so they take no slot', () async {
+      for (var i = 0; i < 6; i++) {
+        await db.insertMediaInteraction(_row('p1', 'pleya:$i', occurredAt: now - i * 1000), profileId: 'p1');
+      }
+      for (var i = 0; i < 3; i++) {
+        await db.insertMediaInteraction(_row('p1', 'plex:$i', occurredAt: now - day - i * 1000), profileId: 'p1');
+      }
+
+      final rows = await db.recentPositiveInteractions(
+        'p1',
+        sinceMs: now - 30 * day,
+        minWeight: 0.4,
+        limit: 6,
+        serverIds: const {'plex'},
+      );
+
+      expect(rows.map((r) => r.globalKey), ['plex:0', 'plex:1', 'plex:2']);
+    });
+
+    test('a key whose newest row is a dismissal seeds nothing, an older dismissal does not block', () async {
+      await db.insertMediaInteraction(
+        _row('p1', 's:film', occurredAt: now - 2 * day, weight: 0.4, eventType: 'partial'),
+        profileId: 'p1',
+      );
+      await db.insertMediaInteraction(
+        _row('p1', 's:film', occurredAt: now - 1 * day, weight: -0.3, eventType: 'skipped'),
+        profileId: 'p1',
+      );
+      await db.insertMediaInteraction(
+        _row('p1', 's:back', occurredAt: now - 3 * day, weight: -0.3, eventType: 'skipped'),
+        profileId: 'p1',
+      );
+      await db.insertMediaInteraction(_row('p1', 's:back', occurredAt: now - 1 * day), profileId: 'p1');
+
+      final rows = await db.recentPositiveInteractions('p1', sinceMs: now - 30 * day, minWeight: 0.4, limit: 6);
+
+      expect(rows.map((r) => r.globalKey), ['s:back']);
+    });
+
     test('an imported row on a disabled server is not a seed', () async {
       await db.insertMediaInteraction(
         MediaInteractionsCompanion.insert(

@@ -83,6 +83,10 @@ class RecommendationService {
   /// picked up. No policy set gates them: the token is the profile's own.
   final Future<List<HistoryImporter>> Function()? _historyImporters;
 
+  /// Servers whose own watch history is not this profile's alone: a Jellyfin
+  /// connection that another profile also uses (DEC-062, DEC-132).
+  final Future<Set<String>> Function()? _sharedHistoryServerIds;
+
   /// The enabled set the last [buildRows] actually scored with, so a sync can
   /// tell whether the rows on screen were built before the answer was known.
   Set<String>? _scoredWith;
@@ -108,6 +112,7 @@ class RecommendationService {
     this._importSourcesReady,
     this._importerFactory,
     this._historyImporters,
+    this._sharedHistoryServerIds,
   }) : _db = database,
        _affinity = AffinityEngine(database),
        _candidates = candidatePool ?? CandidatePool(),
@@ -143,10 +148,10 @@ class RecommendationService {
     }
   }
 
-  /// Newest distinct titles with positive evidence, for the seed rows. Empty
-  /// when personalization is off or nothing qualifies; the caller then falls
-  /// back to the servers' own recently-watched lists.
-  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, int? nowMs}) async {
+  /// Newest distinct titles with positive evidence, for the seed rows, only
+  /// on [serverIds] when given. Empty when personalization is off or nothing
+  /// qualifies; the caller then tops up from the servers' own lists.
+  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, Set<String>? serverIds, int? nowMs}) async {
     if (!_enabled) return const [];
     try {
       final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
@@ -156,6 +161,7 @@ class RecommendationService {
         minWeight: kSeedMinWeight,
         limit: limit,
         enabledImportServerIds: _enabledImportServerIds(),
+        serverIds: serverIds,
       );
       return [
         for (final row in rows)
@@ -170,6 +176,10 @@ class RecommendationService {
       return const [];
     }
   }
+
+  /// Servers the seed rows may not read the server-side history of. Throws
+  /// when the answer is unknown; the caller then leaves that path out.
+  Future<Set<String>> sharedHistoryServerIds() async => await _sharedHistoryServerIds?.call() ?? const {};
 
   /// Pulls in any new external history for this profile.
   ///

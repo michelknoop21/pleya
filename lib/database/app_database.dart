@@ -380,19 +380,25 @@ class AppDatabase extends _$AppDatabase {
   /// Newest positive interactions of one profile, one row per evidence key
   /// (the series for an episode, the item for a movie), newest first. Same
   /// scoring scope as the vector, so a disabled import server never seeds.
+  ///
+  /// A key whose newest row is negative (taken out of Continue Watching after
+  /// the play) yields nothing: the dismissal is the newer word. [serverIds],
+  /// when given, drops keys on other servers before they count toward
+  /// [limit], so a source that cannot seed takes no slot.
   Future<List<MediaInteractionRow>> recentPositiveInteractions(
     String profileId, {
     required int sinceMs,
     required double minWeight,
     required int limit,
     Set<String> enabledImportServerIds = const {},
+    Set<String>? serverIds,
   }) async {
     final rows =
         await (select(mediaInteractions)
               ..where(
                 (t) =>
                     t.profileId.equals(profileId) &
-                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
+                    (t.eventWeight.isBiggerOrEqualValue(minWeight) | t.eventWeight.isSmallerThanValue(0)) &
                     t.occurredAt.isBiggerOrEqualValue(sinceMs) &
                     _scoringScope(enabledImportServerIds),
               )
@@ -407,7 +413,9 @@ class AppDatabase extends _$AppDatabase {
     final seen = <String>{};
     final out = <MediaInteractionRow>[];
     for (final row in rows) {
-      if (!seen.add(row.seriesKey ?? row.globalKey)) continue;
+      final key = row.seriesKey ?? row.globalKey;
+      if (!seen.add(key) || row.eventWeight < 0) continue;
+      if (serverIds != null && !serverIds.contains(parseGlobalKey(key)?.serverId.toString())) continue;
       out.add(row);
       if (out.length >= limit) break;
     }

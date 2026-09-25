@@ -476,4 +476,38 @@ void main() {
       );
     });
   });
+  group('sharedJellyfinServerIds', () {
+    ProfileConnection row(String profileId, String connectionId) =>
+        ProfileConnection(profileId: profileId, connectionId: connectionId, userIdentifier: 'u');
+    const byConnection = {
+      'c-shared': ['profile-a', 'profile-b'],
+      'c-own': ['profile-c'],
+      'c-plex': ['profile-a', 'profile-b'],
+    };
+    const jellyfinServer = {'c-shared': 'jf-shared', 'c-own': 'jf-own'};
+
+    Future<Set<String>> sharedFor(String profileId) => sharedJellyfinServerIds(
+      profileId: profileId,
+      connectionsForProfile: (id) async => [
+        for (final e in byConnection.entries)
+          if (e.value.contains(id)) row(id, e.key),
+      ],
+      profilesForConnection: (connectionId) async => [
+        for (final p in byConnection[connectionId] ?? const <String>[]) row(p, connectionId),
+      ],
+      jellyfinServerId: (connectionId) => switch (jellyfinServer[connectionId]) {
+        final id? => ServerId(id),
+        null => null,
+      },
+    );
+
+    test('the lender and the borrower both see the shared server as shared', () async {
+      expect(await sharedFor('profile-a'), {'jf-shared'});
+      expect(await sharedFor('profile-b'), {'jf-shared'});
+    });
+
+    test('an own Jellyfin connection and a shared non-Jellyfin connection are not listed', () async {
+      expect(await sharedFor('profile-c'), isEmpty);
+    });
+  });
 }

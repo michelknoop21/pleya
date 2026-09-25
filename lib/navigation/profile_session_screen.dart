@@ -377,6 +377,15 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       // than skipping the import until the next load.
                       whenBound: () => activeProfile.awaitBindingSettle(),
                     ),
+                    // Same rule for the seed rows' server path: a shared
+                    // Jellyfin connection's history is not this profile's.
+                    sharedHistoryServerIds: () => sharedJellyfinServerIds(
+                      profileId: profileId,
+                      connectionsForProfile: profileConnections.listForProfile,
+                      profilesForConnection: profileConnections.listForConnection,
+                      jellyfinServerId: (connectionId) =>
+                          multiServer.serverManager.getJellyfinClientByCompoundId(connectionId)?.serverId,
+                    ),
                   );
                 },
               ),

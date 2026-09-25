@@ -94,14 +94,20 @@ class RecommendationRows {
           .where((client) => client.capabilities.relatedHubs)
           .toList();
       if (clients.isEmpty) {
+        // Rows of a server that just went offline must not stay behind.
         _seedCandidates = const [];
+        if (_seedHubs.isEmpty) return;
+        _seedHubs = [];
+        _notify();
         return;
       }
       final generation = _generation();
-      // Don't re-surface items already shown in Continue Watching or the hubs.
+      // Don't re-surface items already shown in Continue Watching, Recently
+      // Added Shows or the hubs.
       final feed = _feed();
       final alreadyShown = <String>{
         for (final item in feed.onDeck) item.globalKey,
+        for (final item in feed.latestShowsHub?.items ?? const <MediaItem>[]) item.globalKey,
         for (final hub in feed.hubs)
           for (final item in hub.items) item.globalKey,
       };
