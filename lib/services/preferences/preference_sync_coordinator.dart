@@ -317,6 +317,12 @@ class PreferenceSyncCoordinator {
   /// import or a reset changed *local* state, so pulling first would be a good
   /// way to undo what the user just did.
   Future<void> _runReconcile(Set<ReconcileTrigger> triggers) async {
+    // Still the current turn, and sync still on. Taken before the first await:
+    // a turn that hangs in the availability check and answers after its
+    // timeout must not clear stamps or act on a snapshot beside the next turn.
+    final generation = _turnGeneration;
+    bool current() => generation == _turnGeneration && _enabled();
+
     // One gate for every trigger. `disabled` means the toggle is off (no
     // channel call is made to find that out), `unavailable` means nobody is
     // signed in, and the store may have gone away while we were suspended. In
@@ -324,7 +330,7 @@ class PreferenceSyncCoordinator {
     // sent anything. The enable path writes the toggle first, and import and
     // reset only call in through `pushAllIfEnabled`.
     await refreshAvailability();
-    if (status.value.availability != PreferenceSyncAvailability.ready) return;
+    if (status.value.availability != PreferenceSyncAvailability.ready || !current()) return;
     final storeWins = triggers.contains(ReconcileTrigger.accountChanged);
     if (storeWins) {
       // Strict read-first (B9). The stamps describe this device's edits against
@@ -343,12 +349,7 @@ class PreferenceSyncCoordinator {
         triggers.contains(ReconcileTrigger.accountChanged);
     final localIsTheSource = triggers.every((t) => t == ReconcileTrigger.imported || t == ReconcileTrigger.reset);
 
-    // Still the current turn, and sync still on. A turn that timed out, or
-    // runs on after the toggle went off, must not act on its snapshot.
-    final generation = _turnGeneration;
-    bool current() => generation == _turnGeneration && _enabled();
-
-    if (needsBootstrap) await bootstrapFromLegacyV1();
+    if (needsBootstrap) await bootstrapFromLegacyV1(proceed: current);
     if (!localIsTheSource) await applyAllRemote(proceed: current, storeWins: storeWins);
     await _reconciler.reconcile(proceed: current);
   }
@@ -465,7 +466,8 @@ class PreferenceSyncCoordinator {
 
   /// Import unambiguously global v1 cloud values into v2, once. See
   /// [PreferenceRemoteApply.bootstrapFromLegacyV1].
-  Future<void> bootstrapFromLegacyV1() => _remoteApply.bootstrapFromLegacyV1();
+  Future<void> bootstrapFromLegacyV1({bool Function()? proceed}) =>
+      _remoteApply.bootstrapFromLegacyV1(proceed: proceed);
 
   // ---- Reconcile ------------------------------------------------------------
 

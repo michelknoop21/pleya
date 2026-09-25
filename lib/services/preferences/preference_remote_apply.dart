@@ -233,7 +233,12 @@ class PreferenceRemoteApply {
   /// anywhere wins.
   ///
   /// Runs at most once per installation, and writes nothing back to v1.
-  Future<void> bootstrapFromLegacyV1() async {
+  ///
+  /// [proceed] is asked after the read and before every write, like
+  /// `PreferenceReconciler.reconcile`: a turn that is no longer current stops
+  /// without importing or setting the marker.
+  Future<void> bootstrapFromLegacyV1({bool Function()? proceed}) async {
+    bool stale() => proceed != null && !proceed();
     if (!_keys.v2Format) return;
     final transport = _transport();
     if (transport == null) return;
@@ -242,7 +247,7 @@ class PreferenceRemoteApply {
     final all = await transport.readAll();
     // A failed read is not an empty store. Leaving the marker unset means the
     // import simply tries again next time, which is the safe direction.
-    if (all == null) return;
+    if (all == null || stale()) return;
 
     var imported = 0;
     for (final entry in all.entries) {
@@ -254,6 +259,7 @@ class PreferenceRemoteApply {
 
       final decoded = decodeTypedRecord(entry.value);
       if (decoded == null) continue;
+      if (stale()) return;
       // Local value wins if there is one: this device already has an opinion.
       if (_prefs.get(key) == null) {
         final ok = await SettingsExportService.writeTyped(_prefs, key, decoded.$1, decoded.$2);
@@ -263,6 +269,7 @@ class PreferenceRemoteApply {
       imported++;
     }
 
+    if (stale()) return;
     await PreferenceLegacyBootstrap.markComplete(_prefs);
     appLogger.i('preference sync: imported $imported legacy global values at the v2 cutover');
   }

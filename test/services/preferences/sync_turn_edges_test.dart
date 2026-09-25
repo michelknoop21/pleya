@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/preferences/preference_legacy_bootstrap.dart';
 import 'package:pleya/services/preferences/preference_mutation.dart';
 import 'package:pleya/services/preferences/preference_sync_coordinator.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -67,6 +68,36 @@ void main() {
     expect(c.status.value.errorCategory, 'timeout');
   });
 
+  test('an account-change turn that hangs before its account branch neither clears stamps nor writes', () async {
+    final c = await build();
+    c.turnTimeout = const Duration(milliseconds: 50);
+    await settings.prefs.setInt('subtitle_font_size', 44);
+    await c.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+    transport.writes.clear();
+    transport.availabilityGate = Completer<void>();
+
+    unawaited(c.requestReconcile(ReconcileTrigger.accountChanged));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(c.status.value.errorCategory, 'timeout');
+
+    transport.availabilityGate!.complete();
+    await pumpEventQueue();
+
+    expect(c.localRevision('subtitle_font_size'), isNotNull, reason: 'the late turn is not the current one');
+    expect(transport.writes, isEmpty);
+  });
+
+  test('the v1 import of a turn that is no longer current imports nothing and sets no marker', () async {
+    final c = await build();
+    transport.gate.complete();
+    transport.store['subtitle_font_size'] = json.encode({'type': 'int', 'value': 30});
+
+    await c.bootstrapFromLegacyV1(proceed: () => false);
+
+    expect(settings.prefs.getInt('subtitle_font_size'), isNull);
+    expect(PreferenceLegacyBootstrap.hasRun(settings.prefs), isFalse);
+  });
+
   test('switching sync off during a reconcile stops its writes', () async {
     final c = await build();
     await settings.prefs.setInt('subtitle_font_size', 44);
@@ -106,6 +137,15 @@ void main() {
 class _ReadGate extends FakeTransport {
   final Completer<void> gate = Completer<void>();
   int reads = 0;
+
+  /// When set, the availability check waits for it: the first await of a turn.
+  Completer<void>? availabilityGate;
+
+  @override
+  Future<bool> isAvailable() async {
+    await availabilityGate?.future;
+    return super.isAvailable();
+  }
 
   @override
   Future<Map<String, String>?> readAll() async {
