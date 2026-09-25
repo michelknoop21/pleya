@@ -11,6 +11,40 @@ import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import 'settings_service.dart' show EpisodePosterMode;
 
+/// What a launcher shelf tap asks for. Top Shelf sends `play` for the remote's
+/// Play button and `open` for a click; Android Watch Next and links written by
+/// older builds carry no action and keep the original play-on-tap behaviour.
+enum ShelfLinkAction { legacy, play, open }
+
+class ShelfDeepLink {
+  const ShelfDeepLink(this.contentId, [this.action = ShelfLinkAction.legacy]);
+
+  final String contentId;
+  final ShelfLinkAction action;
+
+  /// Native sends either a bare content id or `{contentId, action?}`.
+  static ShelfDeepLink? fromNative(Object? raw) {
+    if (raw is String) return raw.isEmpty ? null : ShelfDeepLink(raw);
+    if (raw is! Map) return null;
+    final contentId = raw['contentId'];
+    if (contentId is! String || contentId.isEmpty) return null;
+    final action = switch (raw['action']) {
+      'play' => ShelfLinkAction.play,
+      'open' => ShelfLinkAction.open,
+      _ => ShelfLinkAction.legacy,
+    };
+    return ShelfDeepLink(contentId, action);
+  }
+
+  /// True when the tap starts the player; false opens the detail page. `play`
+  /// on something that cannot play by itself (a show, a season) opens detail.
+  bool startsPlaybackFor(MediaKind kind) => switch (action) {
+    ShelfLinkAction.legacy => true,
+    ShelfLinkAction.open => false,
+    ShelfLinkAction.play => kind == MediaKind.movie || kind == MediaKind.episode || kind == MediaKind.clip,
+  };
+}
+
 /// Syncs Continue Watching content to platform launcher surfaces.
 ///
 /// Android uses the Watch Next row. tvOS uses the app's Top Shelf extension.
@@ -28,7 +62,7 @@ class SystemShelfService {
   }
 
   /// Callback for warm-start launcher surface taps.
-  ValueChanged<String>? onShelfItemTap;
+  ValueChanged<ShelfDeepLink>? onShelfItemTap;
 
   MethodChannel? get _channel {
     if (Platform.isAndroid) return _androidChannel;
@@ -39,19 +73,19 @@ class SystemShelfService {
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     if (call.method == 'onWatchNextTap' || call.method == 'onShelfItemTap') {
       final args = call.arguments;
-      final contentId = args is Map ? args['contentId'] as String? : null;
-      if (contentId != null) {
-        onShelfItemTap?.call(contentId);
+      final link = args is Map ? ShelfDeepLink.fromNative(args) : null;
+      if (link != null) {
+        onShelfItemTap?.call(link);
       }
     }
   }
 
   /// Get a pending deep link from cold start (consumed on first call).
-  Future<String?> getInitialDeepLink() async {
+  Future<ShelfDeepLink?> getInitialDeepLink() async {
     final channel = _channel;
     if (channel == null) return null;
     try {
-      return await channel.invokeMethod<String>('getInitialDeepLink');
+      return ShelfDeepLink.fromNative(await channel.invokeMethod<Object?>('getInitialDeepLink'));
     } on MissingPluginException catch (e) {
       appLogger.w('System shelf initial deep link failed: native channel missing', error: e);
       return null;

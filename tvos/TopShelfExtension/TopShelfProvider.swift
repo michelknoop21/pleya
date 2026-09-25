@@ -137,10 +137,13 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       item.playbackProgress = min(max(position / duration, 0), 1)
     }
 
-    if let url = deepLinkURL(contentId: cacheItem.contentId) {
-      let action = TVTopShelfAction(url: url)
-      item.displayAction = action
-      item.playAction = action
+    // Play on the remote resumes; a click opens the detail page. The app
+    // treats a link without `action` (written by older builds) as play.
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "open") {
+      item.displayAction = TVTopShelfAction(url: url)
+    }
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "play") {
+      item.playAction = TVTopShelfAction(url: url)
     }
 
     if let posterUri = cacheItem.posterUri, let imageURL = URL(string: posterUri) {
@@ -172,11 +175,14 @@ final class TopShelfProvider: TVTopShelfContentProvider {
     return "\(item.title) - \(episodeTitle)"
   }
 
-  private func deepLinkURL(contentId: String) -> URL? {
+  private func deepLinkURL(contentId: String, action: String) -> URL? {
     var components = URLComponents()
     components.scheme = TopShelfShared.deepLinkScheme
     components.host = "play"
-    components.queryItems = [URLQueryItem(name: "content_id", value: contentId)]
+    components.queryItems = [
+      URLQueryItem(name: "content_id", value: contentId),
+      URLQueryItem(name: "action", value: action),
+    ]
     return components.url
   }
 }
