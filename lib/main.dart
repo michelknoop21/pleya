@@ -22,9 +22,8 @@ import 'navigation/profile_navigation_scope.dart';
 import 'navigation/profile_session_screen.dart';
 import 'profiles/active_profile_binder.dart';
 import 'profiles/active_profile_provider.dart';
-import 'profiles/borrowed_connection_backfill.dart';
 import 'profiles/profile.dart';
-import 'profiles/profile_connection_cleanup.dart';
+import 'profiles/startup_maintenance.dart';
 import 'profiles/profile_connection_registry.dart';
 import 'profiles/profile_registry.dart';
 import 'mixins/mounted_set_state_mixin.dart';
@@ -1166,22 +1165,14 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
           serverRegistry: registry,
           profileRegistry: profileRegistry,
         );
-        await bootstrap.run();
-        final pruned = await pruneUnreferencedJellyfinConnections(
+        // Before the binder reads the rows (binder.start() below): the
+        // backfill takes admin rights away from pre-v20 borrowed rows.
+        await runStartupMaintenance(
+          bootstrap: bootstrap,
           profileConnections: profileConnections,
           connections: connRegistry,
           storage: storage,
           serverManager: serverManager,
-        );
-        if (pruned > 0) {
-          appLogger.i('Setup: pruned $pruned unreferenced Jellyfin connection${pruned == 1 ? '' : 's'}');
-        }
-        // Before the binder reads the rows: pre-v20 borrowed Jellyfin rows
-        // must not keep the lender's admin rights. Once per install.
-        await backfillBorrowedJellyfinRows(
-          profileConnections: profileConnections,
-          connections: connRegistry,
-          storage: storage,
         );
         // Provider initialization starts before this screen runs the legacy
         // migration. Reload after bootstrap so copied Plex Home users and the
