@@ -178,10 +178,14 @@ void main() {
       expect(settings.prefs.getInt('subtitle_font_size'), isNull);
     });
 
-    test('an absent-key removal resets the stamp, so a later lower-stamped record still lands', () async {
+    test('an absent-key removal resets an adopted stamp, so a later lower-stamped record still lands', () async {
       final coordinator = await build();
-      await settings.prefs.setInt('subtitle_font_size', 44);
-      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+      final cloudKey0 = coordinator.cloudKeyFor('subtitle_font_size')!;
+      // Adopted from the previous build: unstamped, so a bare remove still
+      // applies (a stamped local value survives it, see store_convergence_test).
+      transport.store[cloudKey0] = bare('int', 44);
+      await coordinator.applyAllRemote();
+      expect(settings.prefs.getInt('subtitle_font_size'), 44);
       final cloudKey = coordinator.cloudKeyFor('subtitle_font_size')!;
       transport.store.remove(cloudKey);
       await coordinator.applyRemoteKeys([cloudKey]);

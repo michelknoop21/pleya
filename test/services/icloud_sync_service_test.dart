@@ -146,11 +146,14 @@ void main() {
     expect(fake.writes, isEmpty, reason: 'an adopted record must not echo');
   });
 
-  test('remote removal (key absent in getAll) clears the local value', () async {
+  test('remote removal (key absent in getAll) clears an unstamped local value', () async {
     final settings = await SettingsService.getInstance();
     final svc = ICloudSyncService.debugCreate(settings: settings);
     await settings.write(SettingsService.icloudSyncEnabled, true);
-    await settings.write(SettingsService.subtitleFontSize, 44);
+    // Raw, so unstamped: a stamped value outlives the previous build's bare
+    // remove (store_convergence_test).
+    await settings.prefs.setInt('subtitle_font_size', 44);
+    kvs[g('subtitle_font_size')] = enc('int', 44);
     await pumpEventQueue();
 
     // Peer removed the key; changedKeys names it but getAll no longer has it.

@@ -3010,8 +3010,12 @@ circa 40 KB); een tombstone wordt nooit opgeruimd en een reset schrijft er een v
 voorkeur, ook een die nooit gezet was, dus het aantal sleutels in de store groeit monotoon met elke
 sleutel die het account ooit zag, per bibliotheek die ooit bestond, niet met de huidige staat
 (`kvs_footprint_test` telt dat mee); de uitgebrachte build prunet nog sleutels die hij niet kent en schrijft levende
-waarden over tombstones terug, dus tot alle Apple-toestellen deze build hebben wisselen oud en
-nieuw op die sleutels om, de releasevoorwaarde uit DEC-060 blijft. Een wijziging die uitgelogd
+waarden over tombstones terug. Zijn kale remove wist op dit toestel geen gestempelde lokale waarde:
+de waarde blijft staan en reconcile zet haar terug in de store, waarna de uitgebrachte build haar bij
+zijn volgende reconcile weer prunet. Een tombstone die hij overschrijft, zet deze build terug. Tot
+alle Apple-toestellen deze build hebben, schrijven de twee builds die sleutels dus heen en weer; de
+waarde blijft op het bijgewerkte toestel bestaan maar bereikt het oude niet. De releasevoorwaarde
+uit DEC-060 blijft. Een wijziging die uitgelogd
 is gemaakt verliest bij de volgende aanmelding van de store voor elke sleutel die de store heeft,
 ook bij terugkeer naar hetzelfde account: de engine kent geen accountidentiteit, dus elke aanmelding
 wist de stempels. Een sleutel die de store mist houdt de lokale waarde. Een wijziging op een toestel met

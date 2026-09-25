@@ -107,11 +107,19 @@ class PreferenceRemoteApply {
       final refresh = PreferenceSyncPolicyRegistry.policyFor(baseKey).refresh;
       final stampKey = _keys.stampKeyFor(baseKey);
 
+      final local = _revisionStore.stampOf(stampKey);
       final raw = entry.value;
       if (raw == null) {
         // Named in the event, gone from the store: the previous build's
-        // `transport.remove`. It carries no stamp, so it is honoured as it
-        // always was. This build never removes; it writes a tombstone.
+        // `transport.remove`, or this build collecting an expired tombstone.
+        // It carries no stamp, so it loses to a stamped local value like any
+        // unstamped record: the released build prunes every v2 key it does
+        // not know, which are exactly the keys this build added to the sync.
+        // Reconcile puts the value back, because the store now lacks it.
+        if (!local.deleted && local.at != PreferenceRevisionStore.legacyAt) {
+          skipped++;
+          continue;
+        }
         await _prefs.remove(targetKey);
         // The stamp goes back to "unstamped, removed". Keeping the live stamp
         // would make this device skip every later record stamped below it
@@ -131,7 +139,6 @@ class PreferenceRemoteApply {
         continue;
       }
       final family = _keys.merges.familyFor(baseKey);
-      final local = _revisionStore.stampOf(stampKey);
       // A value in a merge family is merged, whatever its stamp. A tombstone
       // on either side is not a value to merge: an incoming one has to be
       // newer than this device's change, and a live record has to be newer
