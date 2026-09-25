@@ -802,7 +802,22 @@ void main() {
         expect(pans, isEmpty);
       });
 
-      test('een pan claimt het gebaar, dus de native veegpijl stapt niet mee', () async {
+      test('na de slop valt klikjitter binnen de dode zone weg', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 600, y: 500);
+        await harness.send('move', x: 603, y: 501);
+        await harness.send('move', x: 600, y: 499);
+        expect(pans, [100], reason: 'drie punten heen en terug is jitter');
+
+        await harness.send('move', x: 605, y: 500);
+        expect(pans, [100, 5]);
+      });
+
+      test('een horizontale pan claimt het gebaar, dus de native veegpijl stapt niet mee', () async {
         final harness = _Harness();
         harness.service.setScrubPanHandler((_, _) {});
 
@@ -810,6 +825,16 @@ void main() {
         await harness.send('move', x: 800, y: 500);
 
         expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isTrue);
+      });
+
+      test('een verticale veeg claimt niets en verlaat de scrub zoals voorheen', () async {
+        final harness = _Harness();
+        harness.service.setScrubPanHandler((_, _) {});
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 530, y: 700);
+
+        expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowDown)), isFalse);
       });
 
       test('een ringdruk zonder pan blijft een gewone pijl', () async {
@@ -822,10 +847,112 @@ void main() {
         expect(harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight)), isFalse);
       });
 
+      test('een vroege systeempijl onder 60 punten komt door, de pan loopt daarna door', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+
+        await harness.send('started', x: 960, y: 540);
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 1000, y: 540);
+        final consumed = harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.arrowRight));
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 1100, y: 540);
+
+        // De stap zelf wordt in de speler ongedaan gemaakt: die rekent de
+        // cursor van een pannend gebaar als basis plus eigen pan.
+        expect(consumed, isFalse);
+        expect(pans, [40, 100]);
+      });
+
+      test('scrub ingaan midden in een veeg speelt de afstand van ervoor niet af', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 650, y: 500);
+        expect(harness.keys, [LogicalKeyboardKey.arrowRight]);
+
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 652, y: 500);
+        expect(pans, isEmpty, reason: 'twee punten sinds de scrub, onder de slop');
+
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 700, y: 500);
+        expect(pans, [50]);
+      });
+
+      test('na de commit met de vinger nog neer geeft de rest van het gebaar geen pijl', () async {
+        final harness = _Harness();
+        void handler(double _, double _) {}
+        harness.service.setScrubPanHandler(handler);
+
+        await harness.send('started', x: 500, y: 500);
+        for (var x = 540.0; x <= 800; x += 40) {
+          harness.advance(const Duration(milliseconds: 16));
+          await harness.send('move', x: x, y: 500);
+        }
+        harness.service.releaseScrubPanHandler(handler);
+        harness.advance(const Duration(milliseconds: 300));
+        await harness.send('move', x: 802, y: 501);
+        await harness.send('move', x: 1100, y: 501);
+        expect(harness.keys, isEmpty);
+
+        // Een nieuwe aanraking is weer gewoon navigatie.
+        await harness.send('ended', x: 1100, y: 501);
+        harness.advance(const Duration(milliseconds: 400));
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 380, y: 490);
+        expect(harness.keys, [LogicalKeyboardKey.arrowLeft]);
+      });
+
+      test('snelheid is een gemiddelde over het venster, niet per bericht', () async {
+        final harness = _Harness();
+        final speeds = <double>[];
+        harness.service.setScrubPanHandler((_, speed) => speeds.add(speed));
+
+        await harness.send('started', x: 960, y: 540);
+        harness.advance(const Duration(milliseconds: 16));
+        await harness.send('move', x: 990, y: 540);
+        harness.advance(const Duration(microseconds: 50));
+        await harness.send('move', x: 1000, y: 540);
+
+        expect(speeds[0], 0, reason: 'het slop-sample gaat met gain 1');
+        expect(speeds[1], closeTo(40 / 16.05, 0.001));
+      });
+
+      test('snelheid rekent nooit over minder dan 8 ms', () async {
+        final harness = _Harness();
+        final speeds = <double>[];
+        harness.service.setScrubPanHandler((_, speed) => speeds.add(speed));
+
+        await harness.send('started', x: 960, y: 540);
+        harness.advance(const Duration(milliseconds: 1));
+        await harness.send('move', x: 990, y: 540);
+        harness.advance(const Duration(milliseconds: 1));
+        await harness.send('move', x: 1000, y: 540);
+
+        expect(speeds[1], 40 / 8);
+      });
+
+      test('loslaten met een andere handler laat de actieve staan', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+        harness.service.releaseScrubPanHandler((_, _) {});
+
+        expect(harness.service.isScrubPanActive, isTrue);
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 540, y: 500);
+        expect(pans, [40]);
+      });
+
       test('zonder scrub-handler blijft de veeg pijlen geven', () async {
         final harness = _Harness();
-        harness.service.setScrubPanHandler((_, _) {});
-        harness.service.setScrubPanHandler(null);
+        void handler(double _, double _) {}
+        harness.service.setScrubPanHandler(handler);
+        harness.service.releaseScrubPanHandler(handler);
 
         await harness.send('started', x: 500, y: 500);
         await harness.send('move', x: 380, y: 490);

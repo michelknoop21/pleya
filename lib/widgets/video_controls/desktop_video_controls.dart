@@ -245,6 +245,12 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   bool _timelineScrubMode = false;
   bool _resumeAfterTimelineScrub = false;
 
+  // SCRUB1 (Apple TV): a stable handler identity for release, and the cursor
+  // at touch-down for the first pan sample of a gesture.
+  late final ScrubPanHandler _appleTvScrubPan = _onAppleTvScrubPan;
+  Duration? _scrubGestureBase;
+  Duration _scrubGestureOffset = Duration.zero;
+
   // Content strip state
   bool _contentStripVisible = false;
   bool _preferQueueTabOnOpen = false;
@@ -568,29 +574,47 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     _setTimelinePreviewPosition(widget.player.state.position);
     // SCRUB1: on Apple TV the touch surface moves the cursor freely.
     if (PlatformDetector.isAppleTV()) {
-      AppleTvRemoteTouchService.instance.setScrubPanHandler(_onAppleTvScrubPan);
+      _scrubGestureBase = null;
+      _scrubGestureOffset = Duration.zero;
+      final touch = AppleTvRemoteTouchService.instance;
+      touch.setScrubPanHandler(_appleTvScrubPan);
+      touch.touchActiveListenable.addListener(_onAppleTvTouchActiveChanged);
     }
     widget.onScrubStart?.call();
   }
 
   void _releaseAppleTvScrubPan() {
-    if (PlatformDetector.isAppleTV()) {
-      AppleTvRemoteTouchService.instance.setScrubPanHandler(null);
-    }
+    final touch = AppleTvRemoteTouchService.instance;
+    touch.releaseScrubPanHandler(_appleTvScrubPan);
+    touch.touchActiveListenable.removeListener(_onAppleTvTouchActiveChanged);
   }
 
-  void _onAppleTvScrubPan(double dx, Duration elapsed) {
+  /// Touch-down in scrub mode: remember where the cursor stood. The cursor of
+  /// a panning gesture is that base plus the gesture's own pan, so a system
+  /// arrow that stepped it in between is not added on top. A ring click never
+  /// pans, so its step stays.
+  void _onAppleTvTouchActiveChanged() {
+    if (!AppleTvRemoteTouchService.instance.isTouchActive) return;
+    _scrubGestureBase = _timelinePreviewPosition ?? widget.player.state.position;
+    _scrubGestureOffset = Duration.zero;
+  }
+
+  void _onAppleTvScrubPan(double dx, double speed) {
     if (!mounted || !_timelineScrubMode) return;
     final duration = widget.player.state.duration;
     final delta = appleTvScrubPanDelta(
       dx: dx,
-      elapsed: elapsed,
-      surfaceWidth: MediaQuery.sizeOf(context).width,
+      speed: speed,
+      fullTravel: AppleTvRemoteTouchService.scrubPanFullTravel,
       duration: duration,
     );
-    final base = _timelinePreviewPosition ?? widget.player.state.position;
-    final target = (base + delta).inMilliseconds.clamp(0, duration.inMilliseconds);
-    _setTimelinePreviewPosition(Duration(milliseconds: target));
+    // Scrub entered with the finger already down: the gesture starts here.
+    final base = _scrubGestureBase ??= _timelinePreviewPosition ?? widget.player.state.position;
+    final target = Duration(
+      milliseconds: (base + _scrubGestureOffset + delta).inMilliseconds.clamp(0, duration.inMilliseconds),
+    );
+    _scrubGestureOffset = target - base;
+    _setTimelinePreviewPosition(target);
     widget.onFocusActivity?.call();
   }
 
