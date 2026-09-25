@@ -1262,8 +1262,7 @@ class TvMyPleyaLayout {
   static const double titleGap = 16;
   static const double groupGap = 18;
 
-  /// The profile header card.
-  static const double headerRadius = 12;
+  /// The profile header row (no card since VIS-0925-C).
   static const double headerPadding = 18;
   static const double avatarSize = 46;
   static const double headerNameFontSize = 22;

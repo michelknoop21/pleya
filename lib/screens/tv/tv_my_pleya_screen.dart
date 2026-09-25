@@ -714,12 +714,11 @@ class _ProfileHeader extends StatelessWidget {
     final total = servers.totalServerCount;
     final online = servers.onlineServerCount;
 
-    return Container(
-      padding: EdgeInsets.all(TvMyPleyaLayout.headerPadding * scale),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(TvMyPleyaLayout.headerRadius * scale),
-        color: tk.text.withValues(alpha: TvMyPleyaLayout.tileFillAlpha),
-      ),
+    // VIS-0925-C: no tinted box of its own. On the tv the header's fill read
+    // as a loose grey bar under the navigation; the avatar, name and action
+    // sit on the page like the title above them.
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: TvMyPleyaLayout.headerPadding / 2 * scale),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

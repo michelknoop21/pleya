@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -9,6 +10,7 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/setting_tile.dart';
 import 'package:pleya/widgets/settings_section.dart';
+import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
 import '../../test_helpers/prefs.dart';
 
@@ -80,17 +82,18 @@ void main() {
   /// The fill: `decoration`, painted behind the tile.
   BoxDecoration fillOf(WidgetTester tester, int index) => surfaceOf(tester, index).decoration! as BoxDecoration;
 
-  /// The marker: `foregroundDecoration`'s border, painted on top of the tile.
-  /// Never affects layout, unlike the border this replaced.
-  Border markerOf(WidgetTester tester, int index) {
-    final decoration = surfaceOf(tester, index).foregroundDecoration! as BoxDecoration;
-    return decoration.border! as Border;
-  }
+  /// The ring: `foregroundDecoration`, painted on top of the tile. Never
+  /// affects layout. VIS-0925-C: on TV a row takes the tile contract (ink
+  /// fill plus white ring) instead of the leading bar it had.
+  Decoration ringOf(WidgetTester tester, int index) => surfaceOf(tester, index).foregroundDecoration!;
+
+  Decoration focusedRing(WidgetTester tester, MonoTokens t) =>
+      FocusTheme.focusDecoration(tester.element(find.byType(SettingsGroup)), isFocused: true, borderRadius: t.radiusMd);
 
   bool looksFocused(WidgetTester tester, int index, MonoTokens t) {
     final fill = fillOf(tester, index);
-    final marker = markerOf(tester, index);
-    return fill.color == t.surfaceElevated && marker.left.color.a != 0;
+    return fill.color == t.text.withValues(alpha: TvMyPleyaLayout.tileFocusedFillAlpha) &&
+        ringOf(tester, index) == focusedRing(tester, t);
   }
 
   MonoTokens tokensOf(WidgetTester tester) =>
@@ -126,28 +129,12 @@ void main() {
           reason: 'focus must not resolve to the card surface itself',
         );
         expect(focusedFill.color, isNot(t.surface), reason: 'a focused row the colour of the card is invisible');
-        expect(focusedFill.borderRadius, isNull, reason: 'the fill must not clip a pill inside the card');
-
-        final focusedMarker = markerOf(tester, focusedIndex);
         expect(
-          focusedMarker.left.color.a,
-          greaterThan(0.5),
-          reason: 'the focused row carries a solid marker on its leading edge',
+          focusedFill.borderRadius,
+          BorderRadius.circular(t.radiusMd),
+          reason: 'the fill follows the ring, one shape for fill and ring',
         );
-        expect(
-          focusedMarker.top.width,
-          0,
-          reason: 'the marker must not draw a top perimeter, that is SettingsRows\' separator to own',
-        );
-        expect(focusedMarker.right.width, 0, reason: 'the marker must not draw a right perimeter');
-        expect(
-          focusedMarker.bottom.width,
-          0,
-          reason: 'the marker must not draw a bottom perimeter, that is the next separator\'s to own',
-        );
-
-        final restingMarker = markerOf(tester, restingIndex);
-        expect(restingMarker.left.color.a, 0, reason: 'a resting row must carry no visible marker at all');
+        expect(ringOf(tester, restingIndex), isNot(focusedRing(tester, t)), reason: 'a resting row carries no ring');
       }
     });
   }
@@ -163,7 +150,7 @@ void main() {
     nodes[2].requestFocus();
     await tester.pumpAndSettle();
 
-    expect(looksFocused(tester, 0, t), isFalse, reason: 'the marker stayed on the row focus left');
+    expect(looksFocused(tester, 0, t), isFalse, reason: 'the ring stayed on the row focus left');
     expect(looksFocused(tester, 2, t), isTrue);
     expect([for (var i = 0; i < _rowTitles.length; i++) looksFocused(tester, i, t)].where((f) => f).length, 1);
   });
