@@ -135,8 +135,8 @@ de waarde niet kent doet wat in de derde kolom staat in plaats van te falen.
 | `Library.kind` | bibliotheeklijst | de bibliotheek niet tonen |
 | `Item.kind` | items, zoekresultaten, hubs | het item niet tonen |
 | `SubtitleStream.format` | itemdetail | het spoor niet aanbieden |
-| `Scan.state` | scanlijst en scandetail (venster 2, DEC-136) | de scan tonen als "onbekend" |
-| `Job.state` | joblijst (venster 2, DEC-136) | de job tonen als "onbekend" |
+| `Scan.state` | scanlijst en scandetail (venster 2, DEC-138) | de scan tonen als "onbekend" |
+| `Job.state` | joblijst (venster 2, DEC-138) | de job tonen als "onbekend" |
 
 In `openapi.yaml` draagt elk enum-veld `x-unknown-safe`, met `true` of `false`, en
 `scripts/check_protocol.sh` weigert een enum zonder die markering. Een nieuw enum-veld dwingt zo een
@@ -510,8 +510,8 @@ de precieze reden.
 Codes zijn gegroepeerd per domein. Uitbreiden mag; de betekenis van een bestaande code wijzigen niet.
 
 De domeinlijst zelf is ook niet gesloten, maar groeit alleen wanneer een protocolvenster dat met
-zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-133 en DEC-134). `job` kwam erbij met
-venster 2 (DEC-136), toen S2.4 `job.not_cancellable` ging sturen. Een
+zoveel woorden zegt. `settings` en `server` kwamen erbij met venster 1 (DEC-135 en DEC-136). `job` kwam erbij met
+venster 2 (DEC-138), toen S2.4 `job.not_cancellable` ging sturen. Een
 client die een domein niet kent behandelt de code als onbekend en toont een generieke melding; hij
 takt nooit op het domein. Codes die een client zelf verzint horen niet in dit register: de webclient
 draagt `client.transport` en `client.malformed_response`, die komen nooit over de lijn, en het
@@ -1262,7 +1262,7 @@ hun sessie ingetrokken is.
 ## 17a. Serverinstellingen
 
 `GET /pleya/v1/settings` en `PATCH /pleya/v1/settings` zijn klasse `admin`. Ze kwamen met S1.2,
-binnen protocolvenster 1 (DEC-133 en DEC-134).
+binnen protocolvenster 1 (DEC-135 en DEC-136).
 
 ### 17a.1 Twee lagen, en de bron staat erbij
 

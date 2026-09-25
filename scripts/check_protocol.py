@@ -267,7 +267,7 @@ def check_error_domains(document: dict) -> None:
 
     # auth, library, playback, session en storage droegen v1 tot en met PS-9.
     # settings en server kwamen erbij met venster 1 (DEC-110, DEC-111).
-    # job kwam erbij met venster 2 (DEC-136).
+    # job kwam erbij met venster 2 (DEC-138).
     expected = ["auth", "library", "playback", "session", "settings", "storage", "server", "job"]
     missing = []
     for domain in expected:

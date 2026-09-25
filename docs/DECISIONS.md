@@ -3737,7 +3737,7 @@ gestempeld heeft, dus alle Apple-toestellen moeten tegelijk worden bijgewerkt. B
 VERIFIED · HARDWARE OPEN` tot het recept in de spec §7 op twee toestellen is gedraaid. Register:
 `docs/icloud-sync-repair-register.md`.
 
-## DEC-133: het protocolvenster gaat open voor S1, en `server` wordt het zesde foutdomein
+## DEC-135: het protocolvenster gaat open voor S1, en `server` wordt het zesde foutdomein
 
 **Date:** 2026-09-05
 **Status:** accepted
@@ -3808,18 +3808,18 @@ einde van het traject openhouden, waarmee het geen venster meer is maar een afge
 
 Geaccepteerd door Michel op 5 september 2026.
 
-*Gecorrigeerd op één punt door [DEC-134](#dec-134-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij):
+*Gecorrigeerd op één punt door [DEC-136](#dec-136-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij):
 venster 1 voegt twee foutdomeinen toe en niet één. `settings.invalid_value` uit rij 2 van J.2 vraagt
 `settings` naast `server`. De rest van dit besluit blijft ongewijzigd van kracht.*
 
 ---
 
-## DEC-134: venster 1 voegt twee foutdomeinen toe, niet één; `settings` komt er naast `server` bij
+## DEC-136: venster 1 voegt twee foutdomeinen toe, niet één; `settings` komt er naast `server` bij
 
 **Date:** 2026-09-05
 **Status:** accepted
 
-**Context:** [DEC-133](#dec-133-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
+**Context:** [DEC-135](#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
 opent het venster voor precies de zeventien wijzigingen uit J.2 en zegt daarbij dat
 `ErrorEnvelope.error.code` er één domein bij krijgt: `server`. Diezelfde beslissing noemt
 `server.internal` "de enige wijziging die aan een bestaande regel zelf komt". Bij het uitvoeren van
@@ -3829,11 +3829,11 @@ als `server`. `docs/pleya-server-rebaseline/K-security.md` regel 33 noemt dezelf
 regel 13, de SSRF-grens op `public_url`.
 
 Dat is geen wijziging buiten het venster: de code stond al in de zeventien. Het is een ondertelling
-in de tekst van DEC-133. De toetsing daar redeneerde over `server.internal`, zag terecht dat dat de
+in de tekst van DEC-135. De toetsing daar redeneerde over `server.internal`, zag terecht dat dat de
 enige rij is die aan een bestaande regel raakt, en trok de conclusie voor het patroon te smal.
 
 **De toetsing, opnieuw en nu voor beide.** Het patroon is geen enum, dus regel 6 is niet aan de orde
-en de vraag is regel 3: verandert de betekenis van een bestaand veld. Nee. Het bewijs dat DEC-133
+en de vraag is regel 3: verandert de betekenis van een bestaand veld. Nee. Het bewijs dat DEC-135
 voor `server` gaf geldt woordelijk voor `settings`, want het gaat niet over de code maar over het
 foutpad eromheen. `PleyaError` draagt de code als `String` en takt er niet op; de enige domeintest in
 de app vraagt `startsWith('auth.')` in `pleya_server_auth_service.dart` en valt anders door naar de
@@ -3847,8 +3847,8 @@ bijschrijven omdat het zo uitkwam is precies wat hoofdstuk 3 verbiedt, ook wanne
 was goedgekeurd.
 
 **Decision:** Venster 1 voegt **twee** foutdomeinen toe. Het patroon wordt
-`^(auth|library|playback|session|settings|storage|server)\.[a-z0-9_]+$`. De zin in DEC-133 dat
-`server` het zesde en enige nieuwe domein is, is hiermee gecorrigeerd; de rest van DEC-133 blijft
+`^(auth|library|playback|session|settings|storage|server)\.[a-z0-9_]+$`. De zin in DEC-135 dat
+`server` het zesde en enige nieuwe domein is, is hiermee gecorrigeerd; de rest van DEC-135 blijft
 ongewijzigd van kracht, inclusief de begrenzing tot de zeventien rijen en het sluitmoment op S1.6.
 
 De domeinlijst is daarmee expliciet niet gesloten. J.3 brengt `job.not_cancellable` mee en J.5
@@ -3856,7 +3856,7 @@ De domeinlijst is daarmee expliciet niet gesloten. J.3 brengt `job.not_cancellab
 wordt vastgelegd: **een venster dat een foutdomein toevoegt zegt dat met zoveel woorden in zijn eigen
 besluit, met de compatibiliteitstoets erbij.** Een venster dat er niets over zegt voegt er geen toe.
 
-**De controle moet twee kanten op meten.** DEC-133 vroeg de negatieve controle in
+**De controle moet twee kanten op meten.** DEC-135 vroeg de negatieve controle in
 `scripts/check_protocol.py` mee te schuiven en te blijven bijten. Dat is nodig maar niet genoeg:
 `plex.not_found` blijft afgekeurd of het patroon nu vijf, zes of zeven domeinen kent, dus een venster
 dat een domein toevoegt zonder het patroon te verruimen zou daar niet in opvallen. Er komt daarom een
@@ -3868,13 +3868,13 @@ webclient zelf verzint en die het contract nooit mag accepteren.
 
 **Consequences:** `openapi.yaml` draagt zeven domeinen en twee fixtures die ze vastleggen
 (`error_server_internal.json`, `error_settings_invalid_value.json`). De docstring van
-`PleyaError.domain` noemt er zeven in plaats van de zes die DEC-133 vroeg, en zegt er nu bij dat de
+`PleyaError.domain` noemt er zeven in plaats van de zes die DEC-135 vroeg, en zegt er nu bij dat de
 lijst niet gesloten is. `docs/pleya-protocol-v1.md` hoofdstuk 7.1 krijgt beide codes in het
 coderegister. `docs/pleya-server-gates.md` sectie 7 vermeldt beide domeinen in plaats van één.
-`feature_level` gaat niet omhoog, om dezelfde reden als in DEC-133.
+`feature_level` gaat niet omhoog, om dezelfde reden als in DEC-135.
 
 Afgewezen: `server.settings_invalid_value`, waarmee het venster op zes domeinen zou blijven en
-DEC-133 letterlijk waar. Dat verplaatst het probleem twee vensters verderop naar `job` en `reading`,
+DEC-135 letterlijk waar. Dat verplaatst het probleem twee vensters verderop naar `job` en `reading`,
 en het maakt de code een samenstelling die niets meer over de resource zegt. Ook afgewezen: de code
 weglaten tot een later venster, want dan is S1.2 niet af en kan het venster niet sluiten op S1.6.
 
@@ -3883,14 +3883,14 @@ Geaccepteerd door Michel op 5 september 2026, in de keuzeronde over het foutdome
 
 ---
 
-## DEC-135: protocolvenster 1 gaat dicht; de laatste drie rijen en wat ze wel en niet vastleggen
+## DEC-137: protocolvenster 1 gaat dicht; de laatste drie rijen en wat ze wel en niet vastleggen
 
 **Date:** 2026-09-05
 **Status:** accepted
 
-**Context:** [DEC-133](#dec-133-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
+**Context:** [DEC-135](#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein)
 opende het venster voor precies de zeventien wijzigingen uit J.2 van het re-baseline-pakket, met het
-sluitmoment op S1.6. [DEC-134](#dec-134-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
+sluitmoment op S1.6. [DEC-136](#dec-136-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
 corrigeerde die opening op één punt. Veertien van de zeventien rijen zijn geland in S1.1 tot en met
 S1.5 en S1.8. Dit besluit landt de laatste drie en sluit het venster.
 
@@ -3956,7 +3956,7 @@ alle zeventien geland. Een wijziging die hierna nodig blijkt is een nieuw venste
 besluit en een eigen toetsing langs de zes regels, ook wanneer hij klein is en ook wanneer hij bij
 S1 hoort.
 
-`feature_level` blijft 1, om dezelfde reden als in DEC-133 en DEC-134: het niveau zegt wat de
+`feature_level` blijft 1, om dezelfde reden als in DEC-135 en DEC-136: het niveau zegt wat de
 implementatie begrijpt, en `capabilities` blijft leidend voor wat er werkelijk is.
 
 **Consequences:** `openapi.yaml` draagt `Capabilities.administration` en `Capabilities.mcp`,
@@ -3982,12 +3982,12 @@ Geaccepteerd door Michel op 5 september 2026, met het vrijgeven van S1.6 als slu
 
 ---
 
-## DEC-136: het protocolvenster gaat open voor S2, en `job` wordt het achtste foutdomein
+## DEC-138: het protocolvenster gaat open voor S2, en `job` wordt het achtste foutdomein
 
 **Date:** 2026-09-06
 **Status:** accepted
 
-**Context:** S1 is dicht en protocolvenster 1 is gesloten met [DEC-135](#dec-135-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+**Context:** S1 is dicht en protocolvenster 1 is gesloten met [DEC-137](#dec-137-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
 De eerstvolgende slice, S2 (bibliotheken, opslag, scans), kan geen regel opleveren zonder het
 contract aan te raken: al de eerste commit die dit venster nodig heeft (S2.2, CRUD op `/libraries`)
 breidt `Library` uit en voegt drie endpoints toe. Het venster staat dicht, en er is geen moment
@@ -3996,7 +3996,7 @@ waarop het vanzelf opengaat.
 De tien wijzigingen van venster 2 staan al beschreven in
 `docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3, met per wijziging het gedrag van een
 oude client tegen een nieuwe server. Dit besluit voegt daar niets aan toe; het opent het venster voor
-precies die tien, op dezelfde manier als bij S1 (DEC-133): in één keer voor de hele tabel, ook al
+precies die tien, op dezelfde manier als bij S1 (DEC-135): in één keer voor de hele tabel, ook al
 landt de implementatie verspreid over S2.2 tot en met S2.6.
 
 **De toetsing.** Alle tien zijn nieuwe optionele antwoordvelden, nieuwe endpoints of nieuwe optionele
@@ -4017,8 +4017,8 @@ POST/PATCH op `/libraries`), dus regel 4 is hier niet van toepassing in plaats v
 `library.not_empty`, `library.confirm_mismatch` en `library.not_config_managed` in `library`
 (dat laatste komt met S2.5, adopt), `storage.root_not_offered` in `storage` (beide bestonden al
 sinds vóór venster 1). Alleen `job.not_cancellable` (S2.4) opent het nieuwe domein. Dat is dezelfde
-soort verruiming als `server` bij DEC-133: geen enum en dus geen regel 6, maar wel bewijsplichtig.
-Het bewijs is identiek aan dat van DEC-133: beide clients behandelen een onbekend domein generiek
+soort verruiming als `server` bij DEC-135: geen enum en dus geen regel 6, maar wel bewijsplichtig.
+Het bewijs is identiek aan dat van DEC-135: beide clients behandelen een onbekend domein generiek
 (`PleyaError.domain` in Dart is niets meer dan de helft vóór de punt, en `describeError` op web geeft
 voor een onbekende code een generieke melding) en takken nergens op het domein zelf.
 
@@ -4028,7 +4028,7 @@ venster in het register (het is de "dode code" die S2.4 zijn zender geeft, `POST
 hem ooit stuurde, en dus geen aparte regel in deze toetsing.
 
 **Decision:** Het contractvenster gaat open voor **precies de tien wijzigingen uit J.3**, op dezelfde
-manier als bij S1 (DEC-133) en bij PS-3 en PS-9 daarvoor. `ErrorEnvelope.error.code` krijgt `job` als
+manier als bij S1 (DEC-135) en bij PS-3 en PS-9 daarvoor. `ErrorEnvelope.error.code` krijgt `job` als
 achtste domein, pas van kracht zodra S2.4 `job.not_cancellable` daadwerkelijk stuurt.
 `scripts/check_protocol.py` en de docstring van `PleyaError.domain` schuiven van zeven naar acht
 domeinen mee op het moment dat die code landt, niet eerder: een domein reserveren vóór er een code in
@@ -4049,7 +4049,7 @@ S1. De vriezing zelf verandert niet: buiten dit venster blijft `openapi.yaml` be
 
 Afgewezen: het venster per commitgrens apart openen (één besluit voor S2.2, één voor S2.3, enzovoort).
 Dat zou zes besluiten kosten voor tien wijzigingen die J.3 al als één samenhangende tabel beschrijft,
-en het is precies de reden dat DEC-133 het venster voor S1 ook in één keer opende.
+en het is precies de reden dat DEC-135 het venster voor S1 ook in één keer opende.
 
 Geaccepteerd door Michel op 6 september 2026, met het vrijgeven van S2.2 als eerste landing.
 
@@ -4079,7 +4079,15 @@ naar het oorspronkelijke DEC-096. De zeventien unieke serverbesluiten zijn als v
 | 107 | 128 | e-books als serverdomein |
 | 108 | 129 | PS-11A vóór PS-14 |
 | 109 | 096 | taalvoorkeuren; duplicaat van `main` verwijderd |
-| 110 | 133 | protocolvenster S1 open |
-| 111 | 134 | foutdomeinen van venster 1 |
-| 112 | 135 | protocolvenster 1 dicht |
-| 113 | 136 | protocolvenster S2 open |
+| 110 | 135 | protocolvenster S1 open |
+| 111 | 136 | foutdomeinen van venster 1 |
+| 112 | 137 | protocolvenster 1 dicht |
+| 113 | 138 | protocolvenster S2 open |
+
+De laatste vier rijen zijn op 25 september 2026 twee keer opgeschoven, omdat `main` in dezelfde
+periode ook nummers uitgaf. Bij de eerste main-sync werden ze DEC-133 tot en met DEC-136, omdat
+`main` DEC-130, 131 en 132 al had gepubliceerd. Bij de tweede main-sync bleek `main` ook DEC-133
+(avatar opent de profielwisselaar) en DEC-134 (iCloud-revisie-envelop) te gebruiken, en schoven ze
+door naar DEC-135 tot en met DEC-138. De tabel toont de huidige nummers. Een verwijzing naar
+DEC-133 of DEC-134 van vóór die tweede sync die over een protocolvenster of foutdomeinen gaat, bedoelt
+dus DEC-135 of DEC-136.

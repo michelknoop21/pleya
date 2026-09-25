@@ -18,7 +18,7 @@
 - Formatteer nooit heel `lib/`; alleen gewijzigde Dart-bestanden, en nooit `.g.dart` of `.freezed.dart`.
 - Geen `Co-Authored-By`, geen `Claude-Session`, geen vendor- of modelnaam in commits, code of docs. Auteur is Michel Knoop.
 - Geen em-dashes in docs of commitberichten.
-- Het protocol `docs/pleya-protocol/v1/openapi.yaml` is bevroren buiten het open venster. S2.4 werkt uitsluitend binnen de rijen die DEC-136 (venster 2) toestaat; een rij die daar niet in staat is een deviation proposal, geen YAML-edit.
+- Het protocol `docs/pleya-protocol/v1/openapi.yaml` is bevroren buiten het open venster. S2.4 werkt uitsluitend binnen de rijen die DEC-138 (venster 2) toestaat; een rij die daar niet in staat is een deviation proposal, geen YAML-edit.
 - Migratienummers zijn aaneengesloten en uniek (`migrate.Load()` faalt anders). S2.4 claimt `0010`, loudness `0011`.
 - Werkt een gate rood, dan is de oorzaak zoeken en herstellen onderdeel van de taak. Een gate afzwakken of skippen is geen optie.
 - Elke taak commit alleen zijn eigen bestanden. `.serena/` blijft untracked.
@@ -510,7 +510,7 @@ In `docs/pleya-server-rebaseline/J-api-schema-migratie.md`:
 
 In `docs/PLEYA-SERVER-MASTERLIST.md`: rij S3.1 noemt migratie `0011` (na de rescue); maak daar `0012` van. Rij S4.3 noemt `0011`; maak daar `0013` van (één opgeschoven door S2.4, één door loudness). Zet rij S2.4 op `[~]` met bewijs "migratie 0010 geland; endpoints en annulering volgen in dit plan".
 
-In `docs/pleya-server-loudness-measurement-proposal.md`: vervang de verwijzing naar het protocolvenster `DEC-113` door het nummer dat `grep -n 'venster' docs/DECISIONS.md` voor venster 2 oplevert (verwacht DEC-136), en noem de datum van de hernummering (20 september 2026).
+In `docs/pleya-server-loudness-measurement-proposal.md`: vervang de verwijzing naar het protocolvenster `DEC-113` door het nummer dat `grep -n 'venster' docs/DECISIONS.md` voor venster 2 oplevert (verwacht DEC-138), en noem de datum van de hernummering (20 september 2026).
 
 - [ ] **Stap 6: volledige Go-suite en formatcheck**
 
@@ -539,7 +539,7 @@ Verwacht: `<N> pass, 0 fail`.
 
 ## Deel B: S2.4 bouwen
 
-**Wat S2.4 is.** Masterlijstrij S2.4: "Scans en jobs over HTTP, annuleren, retry, backoff op `probe_attempts`". Uit J.3 (`docs/pleya-server-rebaseline/J-api-schema-migratie.md:56,60-61`): `POST /libraries/{id}/scan` (202 met `Scan`, 409 `library.scan_in_progress`), `GET /scans` en `GET /scans/{id}` (`ScanPage`, `Scan` met de tellers uit `scan_runs`, `state` unknown-safe met `queued/running/done/failed/cancelled`, `current_path` afgekort), `GET /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/retry` (`Job` met `kind`, `state`, `attempts`, `last_error`; 409 `job.not_cancellable`). Acceptatie uit I (`I-master-implementation-plan.md:129`): "annuleren stopt een lopende scan binnen één walk-stap; retry zet `probe_attempts` terug". Frontend: geen (I `:125`); de webpagina hoort bij S10.3. Protocolvenster 2 is open (DEC-136) en dekt precies deze rijen; `job` wordt daarmee het achtste foutdomein.
+**Wat S2.4 is.** Masterlijstrij S2.4: "Scans en jobs over HTTP, annuleren, retry, backoff op `probe_attempts`". Uit J.3 (`docs/pleya-server-rebaseline/J-api-schema-migratie.md:56,60-61`): `POST /libraries/{id}/scan` (202 met `Scan`, 409 `library.scan_in_progress`), `GET /scans` en `GET /scans/{id}` (`ScanPage`, `Scan` met de tellers uit `scan_runs`, `state` unknown-safe met `queued/running/done/failed/cancelled`, `current_path` afgekort), `GET /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/retry` (`Job` met `kind`, `state`, `attempts`, `last_error`; 409 `job.not_cancellable`). Acceptatie uit I (`I-master-implementation-plan.md:129`): "annuleren stopt een lopende scan binnen één walk-stap; retry zet `probe_attempts` terug". Frontend: geen (I `:125`); de webpagina hoort bij S10.3. Protocolvenster 2 is open (DEC-138) en dekt precies deze rijen; `job` wordt daarmee het achtste foutdomein.
 
 **Wat S2.4 niet is.** `Library.roots[]` en `Library.last_scan` (J.3 rij 52) blijven voor S2.6, net als de fake-server van Verify en het sluiten van het venster. `POST /libraries/{id}/adopt` is S2.5.
 
@@ -1391,7 +1391,7 @@ Voeg toe, in de stijl van `PATCH /libraries/{library_id}` (`openapi.yaml:933-967
 - `POST /jobs/{job_id}/cancel`, operationId `cancelJob`, `200` met `Job`, `401`, `404`, `409` beschrijving `job.not_cancellable. details.reason is finished (de job is al klaar).`, `500`.
 - `POST /jobs/{job_id}/retry`, operationId `retryJob`, `200` met `Job`, `401`, `404`, `409` beschrijving `job.not_cancellable. details.reason is duplicate_in_flight (dezelfde dedupe-sleutel staat al in de wachtrij).`, `500`.
 
-Foutpatroon op regel 1543 wordt `"^(auth|library|playback|session|settings|storage|server|job)\\.[a-z0-9_]+$"`; voeg aan de beschrijving eronder één zin toe: "`job` kwam erbij met venster 2 (DEC-136), zodra S2.4 `job.not_cancellable` stuurde."
+Foutpatroon op regel 1543 wordt `"^(auth|library|playback|session|settings|storage|server|job)\\.[a-z0-9_]+$"`; voeg aan de beschrijving eronder één zin toe: "`job` kwam erbij met venster 2 (DEC-138), zodra S2.4 `job.not_cancellable` stuurde."
 
 - [ ] **Stap 2: fixtures en manifest**
 
@@ -1461,8 +1461,8 @@ Controleer eerst met `ls docs/pleya-protocol/v1/examples | grep -i scan` dat de 
 - [ ] **Stap 3: specificatie**
 
 In `docs/pleya-protocol-v1.md`:
-- §3.2 tabel unknown-safe enums: rijen `Scan.state` en `Job.state` toevoegen (venster 2, DEC-136).
-- §7 prose regel 510-511: na "`settings` en `server` kwamen erbij met venster 1 (DEC-133 en DEC-134)." toevoegen: "`job` kwam erbij met venster 2 (DEC-136), toen S2.4 `job.not_cancellable` ging sturen."
+- §3.2 tabel unknown-safe enums: rijen `Scan.state` en `Job.state` toevoegen (venster 2, DEC-138).
+- §7 prose regel 510-511: na "`settings` en `server` kwamen erbij met venster 1 (DEC-135 en DEC-136)." toevoegen: "`job` kwam erbij met venster 2 (DEC-138), toen S2.4 `job.not_cancellable` ging sturen."
 - §7.1 register: na `storage.root_not_offered` (`:555`) de rij `| \`job.not_cancellable\` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; \`details.reason\` zegt welke |`.
 - §16.4: rijen 33 tot 38 in de vorm van regel 1167-1168, klasse `admin`, `404` voor de rest, met `(S2.4)`: `POST /libraries/{id}/scan`, `GET /scans`, `GET /scans/{id}`, `GET /jobs`, `POST /jobs/{id}/cancel`, `POST /jobs/{id}/retry`.
 - §17f "Scans en jobs" na 17e.4 (`:1759`): tien regels: een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt als de job hem claimt en eindigt op `done`, `failed` of `cancelled`; annuleren gaat via de job (`Job.scan_id` wijst terug), stopt de scanner binnen één walk-stap en laat de tellers staan; retry zet `attempts` en, voor een scanjob, `probe_attempts` van die bibliotheek op nul; een bestand waarvan de probe faalde krijgt een wachttijd van `min(2^(pogingen-1), 24)` uur voordat een volgende ronde hem opnieuw analyseert, tenzij het bestand zelf veranderde; `current_path` is afgekort tot de bestandsnaam.
@@ -1470,7 +1470,7 @@ In `docs/pleya-protocol-v1.md`:
 
 - [ ] **Stap 4: controlescripts, Dart en web**
 
-- `scripts/check_protocol.py:270`: `expected = ["auth", "library", "playback", "session", "settings", "storage", "server", "job"]`, en het commentaar erboven: "`job` kwam erbij met venster 2 (DEC-136)." Regel 207: "een foutcode buiten de acht domeinen".
+- `scripts/check_protocol.py:270`: `expected = ["auth", "library", "playback", "session", "settings", "storage", "server", "job"]`, en het commentaar erboven: "`job` kwam erbij met venster 2 (DEC-138)." Regel 207: "een foutcode buiten de acht domeinen".
 - `lib/models/pleya_server/pleya_wire.dart:353-355`: docstring van `PleyaError.domain` krijgt `job` erbij.
 - `test/pleya_server/pleya_wire_contract_test.dart`: fixture-telling van 73 naar het nieuwe aantal (73 plus het aantal nieuwe fixtures), en `Scan`, `Job` in `deferredSchemas` met commentaar "beheer, geen Flutter-consument tot S10".
 - `pleya_web/src/lib/api/errors.ts:89-98`: `'job.not_cancellable': 'This job is already finished.'`.
@@ -1738,7 +1738,7 @@ Verwacht: 404-antwoorden (routes bestaan niet) en de matrixtest die rij 33-38 ui
 ```go
 	// CodeJobNotCancellable is het antwoord van POST /jobs/{id}/cancel op een job
 	// die al klaar is, en van POST /jobs/{id}/retry als dezelfde dedupe-sleutel al
-	// in de wachtrij staat. Opent het achtste foutdomein (J.3, S2.4, DEC-136).
+	// in de wachtrij staat. Opent het achtste foutdomein (J.3, S2.4, DEC-138).
 	CodeJobNotCancellable = "job.not_cancellable"
 ```
 `errorTable`: `CodeJobNotCancellable: {http.StatusConflict, false},`. `errors_test.go` `want`: `"job.not_cancellable": {409, false},` en het commentaar op `:58-64` van zeven naar acht domeinen.

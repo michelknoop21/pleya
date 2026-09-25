@@ -68,7 +68,7 @@ vanzelf open staat. Het venster ging tot nu toe drie keer open: bij het sluiten 
 PS-3, voor precies de drie poortbesluiten die eronder staan; voor PS-9, voor precies de zeven
 wijzigingen uit [DEC-122](docs/DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5);
 en op 5 september 2026 voor S1 van PS-11A, voor precies de zeventien wijzigingen uit J.2 van het
-re-baselinepakket, met [DEC-133](docs/DECISIONS.md#dec-133-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
+re-baselinepakket, met [DEC-135](docs/DECISIONS.md#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein).
 Dat derde venster staat nog open en sluit bij taak S1.6. Buiten die zeventien is het contract ook nu
 bevroren. Legt een latere fase een echt probleem bloot, dan is dat een
 protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie
