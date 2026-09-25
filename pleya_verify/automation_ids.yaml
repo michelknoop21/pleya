@@ -226,7 +226,7 @@ ids:
     role: button
     instanceable: false
   - id: home.header.avatar
-    role: image
+    role: button
     instanceable: false
   - id: home.chips
     role: filter
@@ -256,7 +256,7 @@ ids:
     role: button
     instanceable: true
   - id: landing.header.avatar
-    role: image
+    role: button
     instanceable: true
   - id: landing.title
     role: region
