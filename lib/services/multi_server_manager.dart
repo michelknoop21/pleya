@@ -289,6 +289,13 @@ class MultiServerManager {
   ///
   /// Not for canonical writes: those go through [canManageServerMetadata],
   /// which also folds in the active profile's role and borrowed connections.
+  ///
+  /// Tautulli stays on this probe on purpose. Its question is whether this
+  /// account administers a Plex server whose monitoring data it may read,
+  /// which Tautulli itself decides with its own API key; it writes nothing
+  /// canonical on the media server. Routing it through the owner rule would
+  /// tie a read-side integration to the borrow restrictions of the write
+  /// side. Pinned by the "Tautulli keeps its own admin probe" test.
   bool isOwnerOrAdmin(ServerId serverId) {
     final client = _clients[serverId];
     if (client is PlexClient) {
@@ -317,8 +324,14 @@ class MultiServerManager {
     Set<String> serverIds = const {},
     bool keepExisting = false,
   }) {
-    _restrictedPlexAccounts = Set.unmodifiable({if (keepExisting) ..._restrictedPlexAccounts, ...plexAccountClientIds});
-    _restrictedServerIds = Set.unmodifiable({if (keepExisting) ..._restrictedServerIds, ...serverIds});
+    final plex = {if (keepExisting) ..._restrictedPlexAccounts, ...plexAccountClientIds};
+    final servers = {if (keepExisting) ..._restrictedServerIds, ...serverIds};
+    if (setEquals(plex, _restrictedPlexAccounts) && setEquals(servers, _restrictedServerIds)) return;
+    _restrictedPlexAccounts = Set.unmodifiable(plex);
+    _restrictedServerIds = Set.unmodifiable(servers);
+    // Rights changed: let owner-gated UI rebuild (MultiServerProvider
+    // notifies on every status event).
+    if (!_statusController.isClosed) _statusController.add(Map.from(_serverStatus));
   }
 
   /// The owner rule: may the active profile change or delete canonical
@@ -329,8 +342,9 @@ class MultiServerManager {
   ///     profile is not a restricted or non-admin Home member. Plex Home has
   ///     one admin, the account itself, so that is the owner.
   ///   - Jellyfin: `Policy.IsAdministrator`. Jellyfin has no owner concept in
-  ///     its API; administrator is the highest role it exposes, so every
-  ///     admin counts as owner.
+  ///     its API; administrator is the highest role it exposes and already
+  ///     holds metadata rights server-side, so every admin counts as owner
+  ///     (owner decision, 25 Sep 2026). A borrowed row never inherits it.
   ///   - Pleya Server: `false` until PS-9 delivers roles. Only `role == owner`
   ///     may ever return true there; `admin` is not owner and a library's
   ///     `read_write` grant is about watch state, never about metadata.

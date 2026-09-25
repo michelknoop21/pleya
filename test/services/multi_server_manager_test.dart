@@ -536,7 +536,84 @@ void main() {
       expect(m.canManageServerMetadata(ServerId('jf-machine')), isFalse);
     });
 
-    test('Pleya Server has no owner role yet and may not', () {
+    Future<void> bindAccount(MultiServerManager m, {required String accountClientId, required bool owned}) =>
+        m.refreshTokensForProfile(
+          PlexAccountConnection(
+            id: 'account-$accountClientId',
+            accountToken: 'account-token-$accountClientId',
+            clientIdentifier: accountClientId,
+            accountLabel: accountClientId,
+            servers: [
+              PlexServer(
+                name: 'Plex',
+                clientIdentifier: 'server-1',
+                accessToken: 'token-$accountClientId',
+                connections: const [],
+                owned: owned,
+              ),
+            ],
+            createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+          ),
+        );
+
+    test('two Plex accounts on one server: bind order never opens rights to a borrower (closed side)', () async {
+      // Own account sees the server as shared; the borrowed lender account
+      // sees it as owned but is restricted. Whichever binds last, no owner
+      // rights come out of the pair.
+      for (final order in [
+        ['own', 'lender'],
+        ['lender', 'own'],
+      ]) {
+        final m = await plexManager(owned: false);
+        m.setServerAuthorityRestrictions(plexAccountClientIds: {'lender'});
+        for (final account in order) {
+          await bindAccount(m, accountClientId: account, owned: account == 'lender');
+        }
+        expect(m.canManageServerMetadata(ServerId('server-1')), isFalse, reason: 'order $order');
+      }
+    });
+
+    test('two Plex accounts on one server: the owner can miss rights when a borrowed row binds last', () async {
+      final m = await plexManager(owned: false);
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'lender'});
+      await bindAccount(m, accountClientId: 'own', owned: true);
+      expect(m.canManageServerMetadata(ServerId('server-1')), isTrue);
+      await bindAccount(m, accountClientId: 'lender', owned: true);
+      // Known limit (last bind wins): closed, never a leak.
+      expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
+    });
+
+    test('a non-admin Home member who owns a server is still restricted there (known boundary)', () async {
+      // The restriction is per parent account, so it also covers a server the
+      // member owns when it arrives through that account. Same as before this
+      // change (the old isAdminActionAllowedForMediaItem blocked it too).
+      final m = await plexManager(owned: true);
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+      expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
+    });
+
+    test('Tautulli keeps its own admin probe: isOwnerOrAdmin ignores authority restrictions', () async {
+      // Tautulli (settings tile, pollers, "Watched by") asks a different
+      // question: is there a Plex server here whose admin data this account
+      // may read. It stays on isOwnerOrAdmin on purpose; see the doc there.
+      final m = await plexManager(owned: true);
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'}, serverIds: {'server-1'});
+      expect(m.canManageServerMetadata(ServerId('server-1')), isFalse);
+      expect(m.isOwnerOrAdmin(ServerId('server-1')), isTrue);
+    });
+
+    test('a change of restrictions emits a status event so owner-gated UI rebuilds', () async {
+      final m = await plexManager(owned: true);
+      final events = <Map<String, bool>>[];
+      final sub = m.statusStream.listen(events.add);
+      addTearDown(sub.cancel);
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+      m.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+      await Future<void>.delayed(Duration.zero);
+      expect(events, hasLength(1), reason: 'an unchanged set does not re-notify');
+    });
+
+    test('Pleya Server has no owner role yet and may not (PS-9)', () {
       final m = MultiServerManager();
       addTearDown(m.dispose);
       final client = PleyaServerClient.create(
@@ -553,7 +630,13 @@ void main() {
       );
       addTearDown(client.close);
       m.debugRegisterClientForTesting(client);
-      expect(m.canManageServerMetadata(ServerId('srv-1')), isFalse);
+      // Pinned to PS-9: even the bootstrap owner gets false until the server
+      // exposes roles. When PS-9 lands, only `role == owner` may flip this.
+      expect(
+        m.canManageServerMetadata(ServerId('srv-1')),
+        isFalse,
+        reason: 'PS-9 not delivered: Pleya Server has no owner role yet',
+      );
     });
 
     test('unknown server may not', () {
