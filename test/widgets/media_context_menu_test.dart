@@ -8,15 +8,16 @@ import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_playlist.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
 import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/metadata_edit/metadata_edit_adapters.dart';
-import 'package:pleya/models/plex/plex_home_user.dart';
-import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
@@ -29,6 +30,7 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -39,39 +41,6 @@ import 'package:provider/provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  group('isAdminActionAllowedForMediaItem', () {
-    test('blocks non-admin Plex Home users on Plex items', () {
-      final profile = Profile.virtualPlexHome(connectionId: 'plex-1', homeUser: _homeUser(admin: false));
-
-      expect(
-        isAdminActionAllowedForMediaItem(isOwnerOrAdmin: true, itemBackend: MediaBackend.plex, activeProfile: profile),
-        isFalse,
-      );
-    });
-
-    test('does not apply Plex Home role to Jellyfin items', () {
-      final profile = Profile.virtualPlexHome(connectionId: 'plex-1', homeUser: _homeUser(admin: false));
-
-      expect(
-        isAdminActionAllowedForMediaItem(
-          isOwnerOrAdmin: true,
-          itemBackend: MediaBackend.jellyfin,
-          activeProfile: profile,
-        ),
-        isTrue,
-      );
-    });
-
-    test('allows Plex admin Home users on Plex items', () {
-      final profile = Profile.virtualPlexHome(connectionId: 'plex-1', homeUser: _homeUser(admin: true));
-
-      expect(
-        isAdminActionAllowedForMediaItem(isOwnerOrAdmin: true, itemBackend: MediaBackend.plex, activeProfile: profile),
-        isTrue,
-      );
-    });
-  });
 
   group('supportsMetadataEdit', () {
     test('allows Jellyfin video metadata edit through capability gate', () {
@@ -179,6 +148,165 @@ void main() {
         }
       });
       expect(find.text('target'), findsOneWidget);
+    });
+  });
+
+  group('MediaContextMenu server authority', () {
+    late AppDatabase db;
+    late _AuthorityManager manager;
+    late MultiServerProvider multiServerProvider;
+    late ActiveProfileProvider activeProfileProvider;
+    late PlexHomeService plexHome;
+
+    setUp(() {
+      LocaleSettings.setLocaleSync(AppLocale.en);
+      TvDetectionService.debugSetAppleTVOverride(true);
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      PlexApiCache.initialize(db);
+      manager = _AuthorityManager();
+      manager.debugRegisterClientForTesting(
+        PlexClient.forTesting(
+          config: PlexConfig(
+            baseUrl: 'https://plex.example',
+            token: 'token',
+            clientIdentifier: 'client-id',
+            product: 'Pleya',
+            version: 'test',
+          ),
+          serverId: ServerId('server-1'),
+          serverName: 'Plex',
+          httpClient: MockClient((_) async => http.Response('{"MediaContainer":{"size":0}}', 200)),
+        ),
+      );
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      final connections = ConnectionRegistry(db);
+      plexHome = PlexHomeService(
+        connections: connections,
+        profileConnections: ProfileConnectionRegistry(db),
+        plexHomeUserFetcher: (_) async => const [],
+      );
+      activeProfileProvider = ActiveProfileProvider(
+        registry: ProfileRegistry(db),
+        plexHome: plexHome,
+        connections: connections,
+      );
+    });
+
+    tearDown(() async {
+      TvDetectionService.debugSetAppleTVOverride(null);
+      activeProfileProvider.dispose();
+      await plexHome.dispose();
+      multiServerProvider.dispose();
+      manager.dispose();
+      await db.close();
+    });
+
+    Future<void> openMenu(WidgetTester tester, Object item, {String? collectionId}) async {
+      final menuKey = GlobalKey<MediaContextMenuState>();
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+              ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfileProvider),
+            ],
+            child: MaterialApp(
+              theme: monoTheme(dark: true),
+              home: Scaffold(
+                body: Center(
+                  child: MediaContextMenu(
+                    key: menuKey,
+                    item: item,
+                    collectionId: collectionId,
+                    child: const SizedBox(width: 120, height: 80, child: Text('target')),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      menuKey.currentState!.showContextMenu(tester.element(find.text('target')));
+      await tester.pumpAndSettle();
+    }
+
+    final collection = MediaItem(
+      id: 'col-1',
+      backend: MediaBackend.plex,
+      kind: MediaKind.collection,
+      title: 'Blender',
+      serverId: 'server-1',
+    );
+    final movie = MediaItem(
+      id: 'movie-1',
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: 'Sintel',
+      serverId: 'server-1',
+    );
+    const playlist = MediaPlaylist(
+      id: 'pl-1',
+      backend: MediaBackend.plex,
+      title: 'Mine',
+      playlistType: 'video',
+      serverId: 'server-1',
+    );
+
+    testWidgets('non-owner does not see collection delete', (tester) async {
+      manager.canManage = false;
+      await openMenu(tester, collection);
+      expect(find.text(t.common.play), findsOneWidget);
+      expect(find.text(t.common.delete), findsNothing);
+    });
+
+    testWidgets('owner sees collection delete', (tester) async {
+      manager.canManage = true;
+      await openMenu(tester, collection);
+      expect(find.text(t.common.delete), findsOneWidget);
+    });
+
+    testWidgets('non-owner keeps deleting their own playlist', (tester) async {
+      manager.canManage = false;
+      await openMenu(tester, playlist);
+      expect(find.text(t.common.delete), findsOneWidget);
+    });
+
+    testWidgets('non-owner sees no canonical item actions, user data stays', (tester) async {
+      manager.canManage = false;
+      await openMenu(tester, movie, collectionId: 'col-1');
+      expect(find.text(t.collections.removeFromCollection), findsNothing);
+      expect(find.text(t.mediaMenu.deleteFromServer), findsNothing);
+      expect(find.text(t.metadataEdit.editMetadata), findsNothing);
+      expect(find.text(t.matchScreen.match), findsNothing);
+      expect(find.text(t.matchScreen.unmatch), findsNothing);
+      expect(find.text(t.mediaMenu.markAsWatched), findsOneWidget);
+      expect(find.text(t.mediaMenu.rate), findsOneWidget);
+      expect(find.text(t.common.addTo), findsOneWidget);
+    });
+
+    testWidgets('owner sees the canonical item actions', (tester) async {
+      manager.canManage = true;
+      await openMenu(tester, movie, collectionId: 'col-1');
+      expect(find.text(t.collections.removeFromCollection), findsOneWidget);
+      expect(find.text(t.mediaMenu.deleteFromServer), findsOneWidget);
+      expect(find.text(t.matchScreen.match), findsOneWidget);
+    });
+
+    testWidgets('non-owner Add to goes to playlists only, never collections', (tester) async {
+      manager.canManage = false;
+      await openMenu(tester, movie);
+      await tester.tap(find.text(t.common.addTo));
+      await tester.pumpAndSettle();
+      expect(find.text(t.collections.collection), findsNothing);
+    });
+
+    testWidgets('owner Add to offers playlist and collection', (tester) async {
+      manager.canManage = true;
+      await openMenu(tester, movie);
+      await tester.tap(find.text(t.common.addTo));
+      await tester.pumpAndSettle();
+      expect(find.text(t.collections.collection), findsOneWidget);
+      expect(find.text(t.playlists.playlist), findsOneWidget);
     });
   });
 
@@ -342,24 +470,6 @@ class _AcceptingSource implements WatchlistSource {
   Future<bool?> contains(MediaItem item) async => null;
 }
 
-PlexHomeUser _homeUser({required bool admin}) {
-  return PlexHomeUser(
-    id: 0,
-    uuid: 'home-user',
-    title: 'Home User',
-    username: null,
-    email: null,
-    friendlyName: null,
-    thumb: 'https://plex.tv/users/home-user/avatar',
-    hasPassword: false,
-    restricted: false,
-    updatedAt: null,
-    admin: admin,
-    guest: false,
-    protected: false,
-  );
-}
-
 JellyfinConnection _jellyfinConnection() {
   return JellyfinConnection(
     id: 'srv-1/user-1',
@@ -373,4 +483,13 @@ JellyfinConnection _jellyfinConnection() {
     isAdministrator: true,
     createdAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
+}
+
+/// Answers the owner question directly, so these tests measure the menu's
+/// gates and not the backend roles (those live in multi_server_manager_test).
+class _AuthorityManager extends MultiServerManager {
+  bool canManage = false;
+
+  @override
+  bool canManageServerMetadata(ServerId serverId) => canManage;
 }

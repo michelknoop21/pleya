@@ -7,6 +7,7 @@ import '../media/library_query.dart';
 import '../media/media_item.dart';
 import '../mixins/paginated_item_loader.dart';
 import '../providers/download_provider.dart';
+import '../providers/multi_server_provider.dart';
 import '../utils/app_logger.dart';
 import '../utils/dialogs.dart';
 import '../utils/download_utils.dart';
@@ -153,12 +154,13 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
           tooltip: t.downloads.removeSyncRule,
           onPressed: _removeCollectionSyncRule,
         ),
-      FocusableAction(
-        icon: Symbols.delete_rounded,
-        tooltip: t.common.delete,
-        onPressed: _deleteCollection,
-        iconColor: Colors.red,
-      ),
+      if (_canManageCollection)
+        FocusableAction(
+          icon: Symbols.delete_rounded,
+          tooltip: t.common.delete,
+          onPressed: _deleteCollection,
+          iconColor: Colors.red,
+        ),
     ];
   }
 
@@ -212,6 +214,12 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       serverId: ServerId(serverId),
     );
   }
+
+  /// Collections are canonical server data: only the server's owner may
+  /// delete one or change its membership, and nobody else sees the actions.
+  bool get _canManageCollection => context.read<MultiServerProvider>().serverManager.canManageServerMetadata(
+    ServerId(widget.collection.serverId ?? mediaClient.serverId),
+  );
 
   Future<void> _deleteCollection() async {
     final confirmed = await showDeleteConfirmation(
@@ -276,6 +284,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
     // from 0 and this is never sparse.
     final loadedList = [for (var i = 0; i < loadedItems.length; i++) loadedItems[i]!];
 
+    final canManage = _canManageCollection;
     return TvCollectionScreen(
       collection: widget.collection,
       items: loadedList,
@@ -289,9 +298,9 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       onLoadMore: _loadMoreOnTv,
       onPlay: playItems,
       onShuffle: shufflePlayItems,
-      onDelete: _deleteCollection,
+      onDelete: canManage ? _deleteCollection : null,
       onSelectItem: (item) => navigateToMediaItem(context, item, onRefresh: updateItem),
-      onRemoveItem: _removeItemOnTv,
+      onRemoveItem: canManage ? _removeItemOnTv : null,
     );
   }
 

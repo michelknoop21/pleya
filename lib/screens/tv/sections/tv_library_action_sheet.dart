@@ -46,6 +46,7 @@ Future<void> showTvLibraryActionSheet(
   BuildContext context, {
   required MediaLibrary library,
   required bool isHidden,
+  required bool canManage,
   required VoidCallback onOpenInCatalog,
   required VoidCallback onRefreshMetadata,
   required VoidCallback onScan,
@@ -53,7 +54,7 @@ Future<void> showTvLibraryActionSheet(
   required VoidCallback onAnalyze,
   required VoidCallback onEmptyTrash,
 }) async {
-  final actions = tvLibraryActionsFor(library);
+  final actions = tvLibraryActionsFor(library, canManage: canManage);
   if (actions.isEmpty) return;
 
   final chosen = await OverlaySheetController.showAdaptive<TvLibraryAction>(
@@ -110,7 +111,7 @@ class _TvLibraryActionPanel extends StatelessWidget {
 
     // The divider mockup 27 B draws before "Verbergen op dit profiel": every
     // action up to and including the visibility toggle sits above it, the
-    // Plex-only admin actions below.
+    // Plex-only owner actions below.
     final dividerIndex = actions.indexOf(TvLibraryAction.toggleVisibility) + 1;
 
     return DecoratedBox(

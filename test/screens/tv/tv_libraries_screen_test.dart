@@ -55,7 +55,7 @@ void main() {
 
   group('tvLibraryActionsFor', () {
     test('a Plex movie library gets the full set, in mockup order', () {
-      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s')));
+      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s')), canManage: true);
       expect(actions, [
         TvLibraryAction.openInCatalog,
         TvLibraryAction.refreshMetadata,
@@ -69,6 +69,7 @@ void main() {
     test('a Jellyfin show library skips the Plex-only admin actions', () {
       final actions = tvLibraryActionsFor(
         _lib('1', serverId: ServerId('s'), kind: MediaKind.show, backend: MediaBackend.jellyfin),
+        canManage: true,
       );
       expect(actions, [
         TvLibraryAction.openInCatalog,
@@ -78,16 +79,30 @@ void main() {
     });
 
     test('a music library has no catalog to open', () {
-      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s'), kind: MediaKind.artist));
+      final actions = tvLibraryActionsFor(_lib('1', serverId: ServerId('s'), kind: MediaKind.artist), canManage: true);
       expect(actions, isNot(contains(TvLibraryAction.openInCatalog)));
+    });
+
+    test('without owner rights only the profile actions remain, on every backend', () {
+      for (final backend in MediaBackend.values) {
+        expect(tvLibraryActionsFor(_lib('1', serverId: ServerId('s'), backend: backend), canManage: false), [
+          TvLibraryAction.openInCatalog,
+          TvLibraryAction.toggleVisibility,
+        ]);
+      }
     });
 
     test('every library can still be shown or hidden, regardless of kind', () {
       for (final kind in MediaKind.values) {
-        expect(
-          tvLibraryActionsFor(_lib('1', serverId: ServerId('s'), kind: kind)),
-          contains(TvLibraryAction.toggleVisibility),
-        );
+        for (final canManage in [true, false]) {
+          expect(
+            tvLibraryActionsFor(
+              _lib('1', serverId: ServerId('s'), kind: kind),
+              canManage: canManage,
+            ),
+            contains(TvLibraryAction.toggleVisibility),
+          );
+        }
       }
     });
   });
@@ -109,7 +124,12 @@ void main() {
       hidden.dispose();
     });
 
-    Future<void> pump(WidgetTester tester, List<MediaLibrary> fixture, {Size size = const Size(1280, 720)}) async {
+    Future<void> pump(
+      WidgetTester tester,
+      List<MediaLibrary> fixture, {
+      Size size = const Size(1280, 720),
+      MultiServerProvider? multiServer,
+    }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -139,6 +159,7 @@ void main() {
             providers: [
               ChangeNotifierProvider<LibrariesProvider>.value(value: libraries),
               ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
+              if (multiServer != null) ChangeNotifierProvider<MultiServerProvider>.value(value: multiServer),
             ],
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
@@ -212,6 +233,38 @@ void main() {
       await selectRow(tester, show.globalKey);
 
       expect(find.text(t.libraries.openInAllSeries), findsOneWidget);
+    });
+
+    MultiServerProvider authorityProvider({required bool canManage}) {
+      final manager = _AuthorityManager()..canManage = canManage;
+      final provider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(() {
+        provider.dispose();
+        manager.dispose();
+      });
+      return provider;
+    }
+
+    testWidgets('a non-owner sees no library maintenance in the sheet', (tester) async {
+      await pump(tester, [movie, show], multiServer: authorityProvider(canManage: false));
+
+      await selectRow(tester, movie.globalKey);
+
+      expect(find.text(t.libraries.openInAllMovies), findsOneWidget);
+      expect(find.text(t.libraries.hideLibrary), findsOneWidget);
+      expect(find.text(t.libraries.refreshMetadata), findsNothing);
+      expect(find.text(t.libraries.scanLibraryFiles), findsNothing);
+      expect(find.text(t.libraries.analyze), findsNothing);
+      expect(find.text(t.libraries.emptyTrash), findsNothing);
+    });
+
+    testWidgets('the owner sees library maintenance in the sheet', (tester) async {
+      await pump(tester, [movie, show], multiServer: authorityProvider(canManage: true));
+
+      await selectRow(tester, movie.globalKey);
+
+      expect(find.text(t.libraries.refreshMetadata), findsOneWidget);
+      expect(find.text(t.libraries.scanLibraryFiles), findsOneWidget);
     });
 
     testWidgets('a music row has no catalog action — nothing to browse it with', (tester) async {
@@ -387,4 +440,11 @@ void main() {
       expect(find.byType(TvTopNavigation), findsOneWidget);
     });
   });
+}
+
+class _AuthorityManager extends MultiServerManager {
+  bool canManage = false;
+
+  @override
+  bool canManageServerMetadata(ServerId serverId) => canManage;
 }
