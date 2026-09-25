@@ -13,7 +13,7 @@ import '../../widgets/tv/tv_unified_layout.dart';
 /// The pill holds half the content column and starts on its left edge, the
 /// width 36 B draws. The full width was nobody's decision (VIS1).
 class TvSearchPill extends StatelessWidget {
-  const TvSearchPill({super.key, required this.controller, required this.countLabel, this.wrap});
+  const TvSearchPill({super.key, required this.controller, required this.countLabel, this.wrap, this.focusNode});
 
   final TextEditingController controller;
 
@@ -23,6 +23,12 @@ class TvSearchPill extends StatelessWidget {
   /// Wraps the drawn pill, so the focusable around it takes the pill's width
   /// and its ring hugs the pill instead of the row.
   final Widget Function(Widget pill)? wrap;
+
+  /// The focus node of whatever [wrap] puts around the pill. Given to the
+  /// automation node so it reports whether the pill can take focus: while the
+  /// search screen sits offstage in the shell's IndexedStack it cannot, and a
+  /// Verify walk on Home must not count it as a stop it passed over.
+  final FocusNode? focusNode;
 
   static const double widthFactor = 0.5;
 
@@ -73,6 +79,7 @@ class TvSearchPill extends StatelessWidget {
         child: AutomationNode(
           id: AutomationIds.tvSearchPill,
           role: 'field',
+          focusNode: focusNode,
           state: () => {'count': label},
           child: wrap?.call(pill) ?? pill,
         ),

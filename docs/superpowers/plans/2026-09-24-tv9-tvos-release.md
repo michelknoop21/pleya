@@ -98,6 +98,22 @@ en filmdetail in Apple's tvOS-punten (`TvHig`). Tests die op de oude code falen,
 voor en na, goldens, ci_checks, PR en merge. De volledige Verify-suite uit fase 2 draait pas daarna,
 op de SHA met DENS1 erin.
 
+## Uitkomst fase 2 (24 september)
+
+- Volledige testsuite zonder goldens: groen, op `search_screen_test` "TV OSK search key moves focus to
+  the first result" na, die alleen onder de belasting van de hele suite faalt en los drie keer groen
+  is; CI's Unit Tests zijn op dezelfde code groen. Goldens via `goldens.yml`: bij DENS1 twee bewust
+  vernieuwd (`tv_detail_source_line`, `tv_detail_no_source_line`), verder ongewijzigd.
+- tvOS-Verify, alle 51 scenario's op `3ad702d3`: 48 PASS. `tvos.home.walk-rails` faalde op een
+  vals "passing over" door de automation-node van de zoekpil (VIS1) zonder focusinformatie; opgelost
+  door de focusnode mee te geven. `tvos.my-pleya.explore` en `tvos.nav.held-press-lands-once`
+  strandden op een buildfout (exit 65) doordat ik tijdens de suite een `flutter test` draaide. Alle
+  drie en `tvos.search.results` daarna PASS op de fix.
+- Route-uitweg (stap 5) en de MOC-afwijkingen: in `docs/tvos-hardware-eindronde.md`. Twaalf van de
+  twintig routes hebben een journey met Menu terug, acht staan als `HARDWARE ONLY` op de lijst.
+- PLR11 (zwarte hoekjes in de focusrand van witte spelerknoppen) is overgedragen aan de Liquid
+  Glass-lijn en staat op de checklist.
+
 ## Fase 3: release-identiteit en archive
 
 1. Nieuwe branch voor de lane: `tvos_beta` bouwt en uploadt nu in één stap, en dat botst met §8.
@@ -112,6 +128,15 @@ op de SHA met DENS1 erin.
    tot en met TV9 (onder andere LAND6b, SEARCH3, VIS1, APP1, PROF1). Ontbreekt er één, dan
    wordt er niet geïnstalleerd.
 4. Installeren op de Apple TV 4K met `devicectl`.
+
+### Wijziging 24 september (Michel, na fase 2)
+
+Geen installatie op de Apple TV met `devicectl`; de archive gaat meteen naar TestFlight
+(`tvos_upload`), en Michel doet de hardware-eindronde uit `docs/tvos-hardware-eindronde.md` op de
+TestFlight-build. Fase 3 punt 4 en de lane `tvos_device_export` vervallen daarmee voor deze
+release; de lane blijft bestaan voor een latere ronde. Fase 5 gaat vóór fase 4: de upload gebeurt
+op de fase-3-SHA, en een bevinding uit fase 4 die code raakt geeft een nieuwe SHA en een nieuwe
+build volgens §7 punt 5.
 
 ## Fase 4: hardware-eindronde (Michel)
 
@@ -150,3 +175,21 @@ zichtbaar in TestFlight) en de release-notes onder het gegenereerde blok in `doc
 Er is één geplande stop: fase 4 vraagt Michel met de Apple TV in de hand. Verder stop ik alleen bij
 een echte blocker, zoals een DEC die een eerder besluit tegenspreekt of een CI-storing buiten de
 repo.
+
+## Fase 6: iOS-detail in één scroll (Michel, 24 september)
+
+Film- en seriedetail op iPhone opnieuw, "meer zoals tvOS maar dan mobiel": artwork, titel,
+metadata, Afspelen, bron, beschrijving, cast en de acties in één scrollende pagina, zonder de tabs
+Afleveringen / Vergelijkbaar / Extra's / Details. Northstar 06 (film) is de referentie; northstar 07
+(serie) tekent nog tabs en wijkt daar op Michels aanwijzing van af: seizoenkiezer en afleveringen
+inline onder de beschrijving, vergelijkbaar en extra's als rijen daaronder. Eigen branch, eigen
+PR, iOS-simulator-screenshots als bewijs; los van de tvOS-archive.
+
+## Uitkomst fase 3 en 5 (24 september, 22:29)
+
+Archive `Pleya-tvOS-299-3bd976df.xcarchive` van SHA `3bd976df`, build 2.8.0 (299), Release,
+SHA-256 `433bb27a…e054a0176`, 5 van 5 TV9-markers in de binary. Met `tvos_upload` geëxporteerd
+en geüpload naar App Store Connect (interne TestFlight-groep, gekoppeld aan het versierecord).
+Twee lane-fouten onderweg: het releasescript gaf lane-opties niet door (nu `LANE_OPTS`), en gym
+wil ook voor een export-only run de workspace en het scheme. Fase 4 (hardware, Michel) loopt op
+deze TestFlight-build volgens `docs/tvos-hardware-eindronde.md`.

@@ -29,6 +29,30 @@ iOS → TestFlight
 
 tvOS → TestFlight
 
+### tvos_archive
+
+```sh
+[bundle exec] fastlane tvos_archive
+```
+
+tvOS: bouw de release-archive (geen upload), met hash
+
+### tvos_device_export
+
+```sh
+[bundle exec] fastlane tvos_device_export
+```
+
+tvOS: development-export uit een bestaande archive, voor devicectl
+
+### tvos_upload
+
+```sh
+[bundle exec] fastlane tvos_upload
+```
+
+tvOS → TestFlight uit een bestaande, geaccepteerde archive (geen compilatie)
+
 ### macos_beta
 
 ```sh
