@@ -5,6 +5,7 @@ import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
 import 'package:pleya/services/preferences/preference_mutation.dart';
 import 'package:pleya/services/preferences/preference_sync_coordinator.dart';
+import 'package:pleya/services/preferences/preference_sync_scope.dart';
 import 'package:pleya/services/settings_service.dart';
 
 import '../../test_helpers/prefs.dart';
@@ -55,7 +56,8 @@ void main() {
     final keyB = 'user_${c.activeUserScope}_$base';
     await settings.prefs.setString(keyB, 'staleB');
     final cloudB = c.cloudKeyFor(keyB)!;
-    transport.store[cloudB] = json.encode({'type': 'string', 'value': 'newB', 't': past(), 'd': 'appletv'});
+    // The cloud key carries a short id of the library; the record names it.
+    transport.store[cloudB] = json.encode({'type': 'string', 'value': 'newB', 't': past(), 'd': 'appletv', 'k': base});
     await c.applyAllRemote();
     await c.reconcile();
 
@@ -75,7 +77,13 @@ void main() {
     final keyB = 'user_${c.activeUserScope}_$base';
     await settings.prefs.setString(keyB, 'valueB');
     final cloudB = c.cloudKeyFor(keyB)!;
-    transport.store[cloudB] = json.encode({'type': 'string', 'value': 'valueB', 't': past(), 'd': 'appletv'});
+    transport.store[cloudB] = json.encode({
+      'type': 'string',
+      'value': 'valueB',
+      't': past(),
+      'd': 'appletv',
+      'k': base,
+    });
     await c.applyAllRemote();
     await c.reconcile();
 
@@ -101,7 +109,7 @@ void main() {
       final c = await build();
       expect(c.activeUserScope, real);
       final key = 'user_${real}_hidden_libraries';
-      expect(c.cloudKeyFor(key), '__pleya_pref_v2/profile/$real/hidden_libraries');
+      expect(c.cloudKeyFor(key), '__pleya_pref_v2/profile/${PreferenceSyncScope.shortId(real)}/hidden_libraries');
       expect(c.cloudKeyFor('user_${real}_$base'), isNotNull);
       expect(c.cloudKeyFor('user_${real}_library_order'), isNotNull);
     });
@@ -120,6 +128,54 @@ void main() {
       await c.clearRevisions();
       await c.applyEntries({cloud: transport.store[cloud]});
       expect(settings.prefs.getString(key), '["plex:1","plex:2"]');
+    });
+
+    test('a per-library key travels under a short id and lands under its full key (N1)', () async {
+      active = real;
+      final c = await build();
+      final key = 'user_${real}_$base';
+      await settings.prefs.setString(key, 'titleSort');
+      await c.apply(PreferenceMutation.set(key, 'titleSort'));
+      final cloud = c.cloudKeyFor(key)!;
+      expect(cloud, isNot(contains('srv1:lib1')), reason: 'the identity is shortened in the key');
+      expect(decode(transport.store[cloud]!)['k'], base, reason: 'and named in the record');
+
+      // The other device: no local value, no stamp.
+      await settings.prefs.remove(key);
+      await c.clearRevisions();
+      await c.applyEntries({cloud: transport.store[cloud]});
+      expect(settings.prefs.getString(key), 'titleSort');
+
+      // A removal travels as a tombstone that names the key too.
+      await settings.prefs.remove(key);
+      await c.apply(PreferenceMutation.remove(key));
+      expect(decode(transport.store[cloud]!)['k'], base);
+      await settings.prefs.setString(key, 'titleSort');
+      await c.clearRevisions();
+      await c.applyEntries({cloud: transport.store[cloud]});
+      expect(settings.prefs.getString(key), isNull);
+
+      // A bare removal (no record to name the key) finds it among the local keys.
+      await settings.prefs.setString(key, 'titleSort');
+      await c.clearRevisions();
+      await c.applyEntries({cloud: null});
+      expect(settings.prefs.getString(key), isNull);
+    });
+
+    test('a shortened per-library record whose key does not match is skipped', () async {
+      active = real;
+      final c = await build();
+      final cloud = c.cloudKeyFor('user_${real}_$base')!;
+      final wrong = json.encode({
+        'type': 'string',
+        'value': 'x',
+        't': past(),
+        'd': 'appletv',
+        'k': 'library_sort_srv9:9',
+      });
+      await c.applyEntries({cloud: wrong});
+      expect(settings.prefs.getString('user_${real}_library_sort_srv9:9'), isNull);
+      expect(settings.prefs.getString('user_${real}_$base'), isNull);
     });
 
     test('the client-id fallback and a local profile stay on the device', () async {

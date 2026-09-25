@@ -118,6 +118,15 @@ dezelfde `__pleya_pref_v2/`-namespace. Een live record wordt
 tombstone over (`type` ontbreekt, `_decodeTyped` geeft null). Een record zonder `t` en `d` is een
 record van de oude build en telt als `legacyRevisionAt` (0).
 
+Sleutellengte (herreview N1): Apple beperkt een KVS-sleutel tot 64 bytes UTF-8, een waarde tot
+1 MB en de store tot 1024 sleutels en 1 MB totaal. Het profiel-id en de `serverId:libraryId` van een
+per-bibliotheeksleutel staan daarom als `PreferenceSyncScope.shortId` in de cloudsleutel (tien tekens
+base64url van SHA-256, zonder `/` of `:`), en een per-bibliotheekrecord krijgt `"k": <volledige
+basissleutel>`. De ontvanger neemt `k` alleen als die terug-hasht naar het segment in de sleutel.
+Een kale remove heeft geen record; dan zoekt de ontvanger de sleutel tussen zijn eigen lokale
+sleutels. `PreferenceTransport.maxKeyBytes` is 64 voor KVS; de engine controleert elke write
+(waarde, tombstone, metarecord) en telt een weigering als oversize.
+
 Vergelijken gebeurt met de bestaande regel uit `PreferenceRevision.winsOver`, losgetrokken tot een
 statische `stampWins(...)` zodat de coordinator hem kan gebruiken zonder een `PreferenceRevision`
 met waarde te construeren (de assert eist een waarde voor een levend record). Eén expliciete extra

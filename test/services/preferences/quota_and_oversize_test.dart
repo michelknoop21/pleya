@@ -68,6 +68,22 @@ void main() {
       expect(transport.writes, isEmpty);
     });
 
+    test('a key over the transport key cap is refused and counted, on every write path', () async {
+      final coordinator = await build();
+      transport.keyCap = 20; // every cloud key is longer
+      await settings.prefs.setInt('seek_time_small', 5);
+
+      await coordinator.apply(const PreferenceMutation.set('theme_mode', 'dark'));
+      expect(coordinator.status.value.oversize, 1);
+      await coordinator.apply(const PreferenceMutation.remove('subtitle_font_size'));
+      expect(coordinator.status.value.oversize, 2, reason: 'a tombstone is refused the same way');
+      await coordinator.requestReconcile(ReconcileTrigger.imported);
+
+      expect(transport.writes, isEmpty);
+      expect(coordinator.status.value.oversize, greaterThanOrEqualTo(1));
+      expect(coordinator.status.value.state, PreferenceSyncState.warning, reason: 'refused, not crashed');
+    });
+
     test('the cap counts UTF-8 bytes, not code units', () async {
       final coordinator = await build();
       transport.valueCap = 250;

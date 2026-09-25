@@ -138,15 +138,19 @@ bool remoteStampWins(PreferenceStamp remote, PreferenceStamp local) {
 
 bool sameStamp(PreferenceStamp a, PreferenceStamp b) => a.at == b.at && a.device == b.device && a.deleted == b.deleted;
 
-String encodeStampedRecord(Map<String, dynamic> typed, PreferenceStamp stamp) =>
-    json.encode({...typed, 't': stamp.at, 'd': stamp.device});
+/// [key] is the full base key when the cloud key only carries a short id of
+/// it (`PreferenceKeyMapper.keyTagFor`); it travels as `k`.
+String encodeStampedRecord(Map<String, dynamic> typed, PreferenceStamp stamp, {String? key}) =>
+    json.encode({...typed, 't': stamp.at, 'd': stamp.device, 'k': ?key});
 
 /// A removal on the wire: no `type`, so the released v2 build skips it.
-String encodeTombstone(PreferenceStamp stamp) => json.encode({'x': true, 't': stamp.at, 'd': stamp.device});
+String encodeTombstone(PreferenceStamp stamp, {String? key}) =>
+    json.encode({'x': true, 't': stamp.at, 'd': stamp.device, 'k': ?key});
 
 /// A wire record, or null when [raw] is not one. `type` is empty for a
-/// tombstone. A missing stamp is the previous build's record.
-({String type, Object? value, PreferenceStamp stamp})? decodeStampedRecord(String raw) {
+/// tombstone. A missing stamp is the previous build's record. `key` is the
+/// record's `k`, when it carries one.
+({String type, Object? value, PreferenceStamp stamp, String? key})? decodeStampedRecord(String raw) {
   try {
     final m = json.decode(raw);
     if (m is! Map) return null;
@@ -158,6 +162,7 @@ String encodeTombstone(PreferenceStamp stamp) => json.encode({'x': true, 't': st
     return (
       type: type is String ? type : '',
       value: m['value'],
+      key: m['k'] is String ? m['k'] as String : null,
       stamp: (
         at: at is int ? at : PreferenceRevisionStore.legacyAt,
         device: device is String ? device : PreferenceRevisionStore.noDevice,

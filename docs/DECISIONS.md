@@ -3000,9 +3000,18 @@ device-local; `tv_live_tv_capability` als runtime cache. `live_tv_default_favori
 zonder herstart; een teruggezette instelling blijft teruggezet; de statusregel toont geen tijdstip
 als iCloud uitgelogd is; uit en weer aan werkt binnen één sessie; de taal van het Pleya-profiel
 volgt over toestellen heen; `hidden_libraries`, `library_order` en de `library_*`-sleutels reizen
-voor een Plex Home-profiel met de echte scopevorm `plex-home-plex.<16hex>-<16hex>`, onder het
-volledige profiel-id als cloudnamespace (`PreferenceSyncScope.forProfile` gebruikt dezelfde
-`isPortableProfileScope` als de taalkaarten, eindreview I5), met een stempel per profiel (I1). Een
+voor een Plex Home-profiel met de echte scopevorm `plex-home-plex.<16hex>-<16hex>`
+(`PreferenceSyncScope.forProfile` gebruikt dezelfde `isPortableProfileScope` als de taalkaarten,
+eindreview I5), met een stempel per profiel (I1). KVS neemt sleutels van hoogstens 64 bytes UTF-8 en
+bewaart langere niet (herreview N1), dus de cloudsleutel draagt geen volledig profiel-id en geen
+`serverId:libraryId` meer: beide worden `PreferenceSyncScope.shortId`, de eerste tien tekens van
+base64url(SHA-256), en een per-bibliotheekrecord noemt zijn volledige sleutel in `k`. Een profielsleutel
+wordt `__pleya_pref_v2/profile/<shortId>/library_grouping_<shortId>`, de langste 62 bytes
+(`kvs_footprint_test`). De transport weigert een langere sleutel (`maxKeyBytes`), de engine telt
+dat als oversize. De lange vorm heeft KVS nooit bewaard, dus er valt niets te migreren. Na de upgrade
+wint voor een Plex Home-profiel het toestel dat als eerste reconcilet `hidden_libraries` en
+`library_order`: beide kanten zijn ongestempeld en de store wint, dus een bewust per toestel
+afwijkende inrichting (een ingeperkt kinderprofiel op de Apple TV) wordt eenmalig overschreven. Een
 accountverbinding die terugviel op de client-id van het toestel blijft thuis. Wat niet is gebouwd: profielscope voor Jellyfin- en Pleya
 Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_order`, `library_*`
 en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale

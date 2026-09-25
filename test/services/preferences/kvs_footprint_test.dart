@@ -2,7 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/track_language_choice.dart';
+import 'package:pleya/profiles/profile.dart';
+import 'package:pleya/services/preferences/preference_key_mapper.dart';
+import 'package:pleya/services/preferences/preference_reconciler.dart';
 import 'package:pleya/services/preferences/preference_revision_store.dart';
+import 'package:pleya/services/preferences/preference_sync_policy.dart';
 import 'package:pleya/services/preferences/preference_sync_scope.dart';
 import 'package:pleya/services/settings_export_service.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -255,5 +259,88 @@ void main() {
       lessThan(kvsTotalBytes),
       reason: 'the ceiling, not a trend: no v2 write ever adds to the v1 half',
     );
+  });
+
+  group('every cloud key fits the 64-byte KVS key limit (re-review N1)', () {
+    // `NSUbiquitousKeyValueStore` takes keys of at most 64 bytes UTF-8 and does
+    // not sync longer ones. Every key the policy can produce is generated with
+    // the longest identifiers the backends hand out.
+    const maxKeyBytes = 64;
+    int keyBytes(String key) => utf8.encode(key).length;
+
+    // The real Plex Home shape (16 hex twice), and a 36-character home uuid,
+    // which `parsePlexHomeProfileId` strips the scope down to.
+    const plexHome = 'plex-home-plex.0123456789abcdef-fedcba9876543210';
+    final parsedHome = plexHomeProfileId(
+      accountConnectionId: 'conn',
+      homeUserUuid: '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e',
+    );
+
+    // Server ids: Plex machine id (40 hex), Jellyfin machine id (32 hex), Pleya
+    // Server uuid (36). Library ids up to a Jellyfin 32-hex item id.
+    const libraries = [
+      '$plexMachineId:123456',
+      '0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef',
+      '6f1d2b3c-4e5a-4b7c-8d9e-0f1a2b3c4d5e:0123456789abcdef0123456789abcdef',
+    ];
+
+    List<String> keysFor(String profileId) {
+      final mapper = PreferenceKeyMapper(
+        activeProfileId: () => profileId,
+        v2Format: true,
+        isServerIdPortable: (_) => true,
+      );
+      final prefix = mapper.activeProfileScope.localPrefix;
+      final keys = <String>[];
+      for (final key in PreferenceSyncPolicyRegistry.registeredExactKeys) {
+        if (!PreferenceSyncPolicyRegistry.maySync(key)) continue;
+        final full = PreferenceSyncPolicyRegistry.isProfileScoped(key) ? '$prefix$key' : key;
+        final cloud = mapper.cloudKeyFor(full);
+        expect(cloud, isNotNull, reason: key);
+        keys.add(cloud!);
+      }
+      for (final family in PreferenceKeyMapper.perLibraryKeyPrefixes) {
+        for (final library in libraries) {
+          final cloud = mapper.cloudKeyFor('$prefix$family$library');
+          expect(cloud, isNotNull, reason: '$family$library');
+          keys.add(cloud!);
+        }
+      }
+      return keys;
+    }
+
+    test('global, profile, per-library and meta keys, tombstones included', () {
+      // A tombstone travels under the key of the value it removes, so this
+      // list covers them too.
+      final keys = [...keysFor(plexHome), ...keysFor(parsedHome), PreferenceReconciler.v2MetaVersionKey];
+      final longest = keys.reduce((a, b) => keyBytes(a) >= keyBytes(b) ? a : b);
+      // Printed so the number is in the record, not only in an assertion.
+      // ignore: avoid_print
+      print('longest cloud key: ${keyBytes(longest)} of $maxKeyBytes bytes ($longest)');
+      for (final key in keys) {
+        expect(keyBytes(key), lessThanOrEqualTo(maxKeyBytes), reason: key);
+      }
+    });
+
+    test('the short ids are deterministic, distinct and carry no separator', () {
+      final a = PreferenceSyncScope.forProfile(plexHome).cloudKey('hidden_libraries');
+      final b = PreferenceSyncScope.forProfile(
+        'plex-home-plex.0123456789abcdef-fedcba9876543211',
+      ).cloudKey('hidden_libraries');
+      expect(a, isNot(b));
+      // Pinned, so another platform or a later build derives the same key:
+      // the first ten characters of base64url(SHA-256("x")).
+      expect(PreferenceSyncScope.shortId('x'), 'LXEWQrcmsE');
+      for (final library in libraries) {
+        final full = 'library_sort_$library';
+        final wire = PreferenceKeyMapper.wireBaseKey(full);
+        expect(wire, isNot(contains(':')));
+        expect(wire, isNot(contains('/')));
+        expect(PreferenceKeyMapper.resolveBaseKey(wire, full), full);
+        expect(PreferenceKeyMapper.resolveBaseKey(wire, 'library_sort_other:1'), isNull, reason: 'the tag must match');
+        expect(PreferenceKeyMapper.resolveBaseKey(wire, null), isNull);
+      }
+      expect(PreferenceKeyMapper.resolveBaseKey('hidden_libraries', null), 'hidden_libraries');
+    });
   });
 }

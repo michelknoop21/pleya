@@ -4,6 +4,20 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-09-25] iCloud-voorkeurensync: tweede eindfixronde DEC-131
+
+Drie punten uit de herreview. Cloudsleutels passen nu binnen de 64 bytes die KVS per sleutel
+toestaat: het Plex Home-profiel-id en de `serverId:libraryId` staan er als korte hash in, de
+volledige per-bibliotheeksleutel reist in het record (`k`), en de transport weigert een te lange
+sleutel. Tot nu toe reisden `hidden_libraries`, `library_order` en `library_*` op hardware dus niet.
+Een accountwissel is weer strikt read-first; de heuristiek "een record van dit toestel betekent
+hetzelfde account" is teruggedraaid, omdat A, B, A waarden van B naar A duwde. Een beurt legt haar
+generatie vast vóór de eerste await en de v1-import stopt als de beurt niet meer actueel is.
+
+Let op na de upgrade: voor een Plex Home-profiel wint het toestel dat als eerste synchroniseert
+`hidden_libraries` en `library_order`. Wie per toestel bewust een andere inrichting had, ziet die
+eenmalig overschreven. Staat in de releasenotes.
+
 ## [2026-09-24] iCloud-voorkeurensync: herstelronde DEC-131
 
 Acht taken in `fix/icloud-sync`. De KVS-listener is in productie aangesloten, de revisie-envelop

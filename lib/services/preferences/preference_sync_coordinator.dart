@@ -185,7 +185,13 @@ class PreferenceSyncCoordinator {
         // a key, read `null` back, and stopped. Since DEC-131 it travels as a
         // tombstone rather than as an absent key, so the other device can tell
         // "deleted" from "never had it".
-        await transport.write(cloudKey, encodeTombstone(_revisionStore.stampOf(stampKey)));
+        final tombstone = encodeTombstone(_revisionStore.stampOf(stampKey), key: _keys.keyTagFor(baseKey));
+        if (exceedsTransportLimits(transport, cloudKey, tombstone)) {
+          appLogger.w('preference sync: removal of ${_category(baseKey)} exceeds the transport limits');
+          _setStatus(status.value.copyWith(oversize: status.value.oversize + 1).raise(PreferenceSyncHealth.warning));
+          return;
+        }
+        await transport.write(cloudKey, tombstone);
         _setStatus(status.value.writeSucceeded(DateTime.now()));
         return;
       }

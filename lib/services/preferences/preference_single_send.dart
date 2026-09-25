@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 
 import '../../utils/app_logger.dart';
@@ -66,13 +64,12 @@ class PreferenceSingleSend {
       _setStatus(_current.countingSkipped(1));
       return;
     }
-    final encoded = encodeStampedRecord(entry, _revisionStore.stampOf(stampKey));
-    final cap = transport.maxValueBytes;
-    if (cap != null && utf8.encode(encoded).length > cap) {
+    final encoded = encodeStampedRecord(entry, _revisionStore.stampOf(stampKey), key: _keys.keyTagFor(baseKey));
+    if (exceedsTransportLimits(transport, cloudKey, encoded)) {
       // Oversize is reported, not swallowed. It also must not become a
       // removal: leaving the older cloud value in place is strictly better
       // than deleting it because the newer one did not fit.
-      appLogger.w('preference sync: value for ${_category(baseKey)} exceeds the transport cap');
+      appLogger.w('preference sync: value for ${_category(baseKey)} exceeds the transport limits');
       _setStatus(_current.copyWith(oversize: _current.oversize + 1).raise(PreferenceSyncHealth.warning));
       return;
     }

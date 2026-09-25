@@ -81,7 +81,7 @@ class PreferenceReconciler {
     void Function() stillCurrent,
   ) async {
     final horizon = DateTime.now().toUtc().millisecondsSinceEpoch - tombstoneLifetime.inMilliseconds;
-    final activeId = _keys.activeProfileScope.id;
+    final activeId = _keys.activeProfileScope.cloudId;
     for (final e in remote.entries) {
       if (written.contains(e.key)) continue;
       final parsed = PreferenceSyncScope.parseCloudKey(e.key);
@@ -91,7 +91,9 @@ class PreferenceReconciler {
       if (record == null || !record.stamp.deleted || record.stamp.at >= horizon) continue;
       stillCurrent();
       await transport.remove(e.key);
-      final stampKey = _keys.stampKeyFor(parsed.baseKey);
+      final baseKey = PreferenceKeyMapper.resolveBaseKey(parsed.baseKey, record.key);
+      if (baseKey == null) continue;
+      final stampKey = _keys.stampKeyFor(baseKey);
       if (sameStamp(_revisionStore.stampOf(stampKey), record.stamp)) await _revisionStore.forget(stampKey);
     }
   }
@@ -154,9 +156,8 @@ class PreferenceReconciler {
           skipped++;
           continue;
         }
-        final encoded = encodeStampedRecord(entry, local);
-        final cap = transport.maxValueBytes;
-        if (cap != null && utf8.encode(encoded).length > cap) {
+        final encoded = encodeStampedRecord(entry, local, key: _keys.keyTagFor(baseKey));
+        if (exceedsTransportLimits(transport, cloudKey, encoded)) {
           oversize++;
           continue;
         }
@@ -193,8 +194,13 @@ class PreferenceReconciler {
         if (record == null || record.stamp.deleted) continue;
         final local = _revisionStore.stampOf(e.key);
         if (remoteStampWins(record.stamp, local)) continue;
+        final tombstone = encodeTombstone(local, key: _keys.keyTagFor(baseKey));
+        if (exceedsTransportLimits(transport, cloudKey, tombstone)) {
+          oversize++;
+          continue;
+        }
         stillCurrent();
-        await transport.write(cloudKey, encodeTombstone(local));
+        await transport.write(cloudKey, tombstone);
         written.add(cloudKey);
         pushed++;
       }
@@ -203,8 +209,12 @@ class PreferenceReconciler {
 
       final metaRecord = json.encode({'type': 'int', 'value': _activeFormatVersion});
       if (remote[_activeMetaKey] != metaRecord) {
-        stillCurrent();
-        await transport.write(_activeMetaKey, metaRecord);
+        if (exceedsTransportLimits(transport, _activeMetaKey, metaRecord)) {
+          oversize++;
+        } else {
+          stillCurrent();
+          await transport.write(_activeMetaKey, metaRecord);
+        }
       }
 
       if (!_keys.v2Format) {

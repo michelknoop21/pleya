@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+
 import '../../profiles/profile.dart';
 
 /// Which population a preference belongs to.
@@ -101,6 +105,20 @@ class PreferenceSyncScope {
   /// feature may add more. Ownership is claimed for exactly this prefix.
   static const String cloudNamespacePrefix = '__pleya_pref_v2/';
 
+  /// A short, stable stand-in for an identifier inside a cloud key: the first
+  /// ten characters of base64url(SHA-256(UTF-8 id)), 60 bits.
+  ///
+  /// KVS takes keys of at most 64 bytes UTF-8 and does not store longer ones.
+  /// A Plex Home profile id is 48 characters and a per-library identity up to
+  /// 65, so neither fits in the key as it is (re-review N1). The alphabet has
+  /// no `/` and no `:`, so a short id never reads as a separator or as a
+  /// `serverId:libraryId`. Collisions need about a billion ids per namespace
+  /// to become likely; an account holds a handful of profiles and libraries.
+  static String shortId(String id) => base64Url.encode(sha256.convert(utf8.encode(id)).bytes).substring(0, 10);
+
+  /// The profile segment of this scope's cloud keys, or null without an id.
+  String? get cloudId => id == null ? null : shortId(id!);
+
   /// Whether [cloudKey] is a record this sync format owns.
   static bool ownsCloudKey(String cloudKey) => cloudKey.startsWith(cloudNamespacePrefix);
 
@@ -129,8 +147,8 @@ class PreferenceSyncScope {
   /// Inverse of [cloudKey]: the scope a v2 record belongs to and the base key
   /// inside it, or null when the key is not one of ours or is malformed.
   ///
-  /// The profile id comes back so the caller can check it against the active
-  /// profile. That check is the entire reason the namespace exists: under v1
+  /// The profile segment comes back so the caller can check it against the
+  /// active profile's [cloudId]. That check is the entire reason the namespace exists: under v1
   /// every profile shared one slot per base key, so there was nothing to
   /// compare and a record for profile B landed on profile A.
   static ({PreferenceScopeKind kind, String? id, String baseKey})? parseCloudKey(String cloudKey) {
@@ -162,7 +180,7 @@ class PreferenceSyncScope {
         id == null
             ? null
             : '$cloudNamespacePrefix'
-                  'profile/$id/$key',
+                  'profile/$cloudId/$key',
     };
   }
 

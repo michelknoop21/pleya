@@ -54,7 +54,35 @@ class PreferenceKeyMapper {
     if (!_keyIdentityIsPortable(baseKey)) return null;
     final scope = scopeFor(baseKey);
     if (!scope.portable) return null;
-    return v2Format ? scope.cloudKey(baseKey) : baseKey;
+    return v2Format ? scope.cloudKey(wireBaseKey(baseKey)) : baseKey;
+  }
+
+  /// [baseKey] as it appears inside a v2 cloud key. A per-library key carries
+  /// its `serverId:libraryId` as a [PreferenceSyncScope.shortId], because the
+  /// full identity does not fit in 64 bytes; everything else is unchanged.
+  static String wireBaseKey(String baseKey) {
+    for (final prefix in perLibraryKeyPrefixes) {
+      if (baseKey.startsWith(prefix)) return '$prefix${PreferenceSyncScope.shortId(baseKey.substring(prefix.length))}';
+    }
+    return baseKey;
+  }
+
+  /// The full base key a record has to carry (as `k`) because its cloud key
+  /// hides it, or null when the cloud key says it all.
+  String? keyTagFor(String baseKey) => v2Format && wireBaseKey(baseKey) != baseKey ? baseKey : null;
+
+  /// The base key of a received record: [segment] from the cloud key, or for
+  /// a shortened per-library segment the record's [keyTag], but only when it
+  /// hashes back to that segment. A portable per-library identity always has
+  /// a `:` and a short id never does, so an unshortened segment (the long form
+  /// an earlier build of this branch wrote) still reads as itself.
+  static String? resolveBaseKey(String segment, String? keyTag) {
+    final shortened = perLibraryKeyPrefixes.any(
+      (prefix) => segment.startsWith(prefix) && !segment.substring(prefix.length).contains(':'),
+    );
+    if (!shortened) return segment;
+    if (keyTag == null || wireBaseKey(keyTag) != segment) return null;
+    return keyTag;
   }
 
   /// Per-library families put the identity in the key

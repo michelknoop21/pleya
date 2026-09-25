@@ -79,7 +79,7 @@ class PreferenceRemoteApply {
         skipped++;
         continue;
       }
-      final baseKey = _baseKeyFromCloudKey(cloudKey);
+      final baseKey = _baseKeyFromCloudKey(cloudKey, entry.value);
       if (baseKey == null) {
         skipped++;
         continue; // malformed, or a record for another profile
@@ -198,15 +198,25 @@ class PreferenceRemoteApply {
   ///
   /// Under v2 that includes the profile check: a record under another profile's
   /// namespace is not "unknown", it belongs to somebody else and is skipped.
-  String? _baseKeyFromCloudKey(String cloudKey) {
+  ///
+  /// A per-library cloud key carries a short id of its identity; the record's
+  /// `k` names it. A bare removal has no record, so the key is found among
+  /// this device's own: one it does not hold has nothing to remove.
+  String? _baseKeyFromCloudKey(String cloudKey, String? raw) {
     if (!_keys.v2Format) return cloudKey;
     final parsed = PreferenceSyncScope.parseCloudKey(cloudKey);
     if (parsed == null) return null;
     if (parsed.kind == PreferenceScopeKind.profile) {
-      final active = _keys.activeProfileScope;
-      if (active.id == null || active.id != parsed.id) return null;
+      final active = _keys.activeProfileScope.cloudId;
+      if (active == null || active != parsed.id) return null;
     }
-    return parsed.baseKey;
+    if (raw != null) return PreferenceKeyMapper.resolveBaseKey(parsed.baseKey, decodeStampedRecord(raw)?.key);
+    final plain = PreferenceKeyMapper.resolveBaseKey(parsed.baseKey, parsed.baseKey);
+    if (plain != null) return plain;
+    for (final fullKey in _prefs.keys) {
+      if (_keys.cloudKeyFor(fullKey) == cloudKey) return _keys.baseKeyOf(fullKey);
+    }
+    return null;
   }
 
   /// Whether [cloudKey] is a v1 preference record: a flat key, outside every

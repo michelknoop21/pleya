@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// A remote change seen by a transport.
 class RemotePreferenceChange {
   const RemotePreferenceChange({required this.reason, this.changedKeys = const []});
@@ -50,5 +52,18 @@ abstract class PreferenceTransport {
   /// Not String.length: a CJK character is one code unit but three bytes.
   int? get maxValueBytes;
 
+  /// Per-key size limit in UTF-8 bytes, or null when the transport has none.
+  /// KVS: 64. A longer key is not stored, so it must never be sent.
+  int? get maxKeyBytes;
+
   Future<void> dispose();
+}
+
+/// Whether [transport] would refuse this record: the key or the value is over
+/// its limit. Callers report it as oversize and leave the store untouched.
+bool exceedsTransportLimits(PreferenceTransport transport, String key, String encoded) {
+  final keyCap = transport.maxKeyBytes;
+  if (keyCap != null && utf8.encode(key).length > keyCap) return true;
+  final valueCap = transport.maxValueBytes;
+  return valueCap != null && utf8.encode(encoded).length > valueCap;
 }
