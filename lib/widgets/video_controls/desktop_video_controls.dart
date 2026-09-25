@@ -584,6 +584,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   }
 
   void _releaseAppleTvScrubPan() {
+    if (!PlatformDetector.isAppleTV()) return;
     final touch = AppleTvRemoteTouchService.instance;
     touch.releaseScrubPanHandler(_appleTvScrubPan);
     touch.touchActiveListenable.removeListener(_onAppleTvTouchActiveChanged);
@@ -733,6 +734,12 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
           _confirmTimelineScrub();
         } else {
           _enterTimelineScrubMode();
+          // SCRUB1: clicked with the finger resting on the surface, so no
+          // touch-down follows. The gesture starts now, before any early
+          // system arrow could step the preview.
+          if (PlatformDetector.isAppleTV() && AppleTvRemoteTouchService.instance.isTouchActive) {
+            _scrubGestureBase = widget.player.state.position;
+          }
         }
         widget.onFocusActivity?.call();
       });

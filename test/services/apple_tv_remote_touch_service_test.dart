@@ -817,6 +817,34 @@ void main() {
         expect(pans, [100, 5]);
       });
 
+      test('een klik gooit de opgespaarde rest weg, klikjitter geeft geen laatste stap', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 600, y: 500);
+        await harness.send('move', x: 603.5, y: 500);
+        await harness.send('click_s');
+        await harness.send('move', x: 604.5, y: 500);
+
+        expect(pans, [100]);
+      });
+
+      test('een native Select gooit de opgespaarde rest ook weg', () async {
+        final harness = _Harness();
+        final pans = <double>[];
+        harness.service.setScrubPanHandler((dx, _) => pans.add(dx));
+
+        await harness.send('started', x: 500, y: 500);
+        await harness.send('move', x: 600, y: 500);
+        await harness.send('move', x: 603.5, y: 500);
+        harness.service.handleNativeKeyEvent(_keyDown(LogicalKeyboardKey.select));
+        await harness.send('move', x: 604.5, y: 500);
+
+        expect(pans, [100]);
+      });
+
       test('een horizontale pan claimt het gebaar, dus de native veegpijl stapt niet mee', () async {
         final harness = _Harness();
         harness.service.setScrubPanHandler((_, _) {});

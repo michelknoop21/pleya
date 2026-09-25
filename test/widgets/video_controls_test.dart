@@ -1298,6 +1298,27 @@ void main() {
 
         expect(sliderPosition(tester), const Duration(minutes: 5) + mapped(40, 0) + mapped(300, 0));
       });
+
+      // Probe E: klikken met de duim al op het oppervlak en in dezelfde
+      // aanraking doorvegen. Er volgt geen touch-down, dus de basis moet bij
+      // de klik vastliggen, vóór de vroege systeempijl.
+      testWidgets('klik met de vinger neer: een vroege systeempijl telt niet op bij de pan', (tester) async {
+        await pumpControls(tester, playing: true);
+        await send('started', 960);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        expect(touch.isScrubPanActive, isTrue);
+
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 970);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1300);
+        await send('ended', 1300);
+        await tester.pump();
+
+        expect(sliderPosition(tester), const Duration(minutes: 5) + mapped(340, 0));
+      });
     });
 
     testWidgets('buiten Apple TV neemt de scrub de pan niet over', (tester) async {

@@ -313,6 +313,7 @@ class AppleTvRemoteTouchService {
 
   bool _decideNativeKeyEvent(KeyEvent event) {
     _log('native ${_eventTypeName(event)} logical=${_keyName(event.logicalKey)}');
+    if (event is KeyDownEvent && _isSelectKey(event.logicalKey)) _scrubPanPending = 0;
     if (_isMediaPlaybackKey(event.logicalKey)) {
       _log('consume native media key reason=direct-playback-action');
       return true;
@@ -407,6 +408,9 @@ class AppleTvRemoteTouchService {
       case 'click_e':
         _releaseSelectFromClick(source: 'click_e');
       case 'click_s':
+        // A click is no pan: a saved remainder must not add up with the
+        // click's jitter into one last cursor step.
+        _scrubPanPending = 0;
         _pressSelectFromClick();
       case 'play_pause':
         final source = arguments['source'] is String ? arguments['source'] as String : 'native';
