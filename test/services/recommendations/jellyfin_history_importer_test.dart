@@ -19,6 +19,14 @@ class _FakeSource implements JellyfinHistorySource {
   List<MediaItem> resumable;
   final Map<String, MediaItem> items;
   int pageCalls = 0;
+  int resumableCalls = 0;
+  int itemCalls = 0;
+
+  /// Page indexes (0-based) whose request throws, like a 500 from the server.
+  Set<int> failingPages = {};
+
+  /// Item ids whose lookup throws.
+  Set<String> failingItems = {};
 
   /// Runs between reading the pages and writing, to model a profile switch or
   /// a wipe landing mid-sync.
@@ -31,17 +39,23 @@ class _FakeSource implements JellyfinHistorySource {
   @override
   Future<List<MediaItem>> fetchPlayedHistoryPage({required int startIndex, int limit = 200}) async {
     pageCalls++;
+    if (failingPages.contains(startIndex ~/ limit)) throw Exception('HTTP 500');
     return played.skip(startIndex).take(limit).toList();
   }
 
   @override
   Future<List<MediaItem>> fetchResumableItems({int limit = 100}) async {
+    resumableCalls++;
     onResumable?.call();
     return resumable.take(limit).toList();
   }
 
   @override
-  Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async => items[id];
+  Future<MediaItem?> fetchItem(String id, {bool useCache = true}) async {
+    itemCalls++;
+    if (failingItems.contains(id)) throw Exception('HTTP 500');
+    return items[id];
+  }
 }
 
 MediaItem _movie(String id, {required int lastViewedDaysAgo, int? viewOffsetMs, int? durationMs, int viewCount = 1}) =>
@@ -296,6 +310,67 @@ void main() {
       final source = _FakeSource(played: [_episode('e1', showId: 'gone', lastViewedDaysAgo: 1)]);
       final outcome = await importer(source).sync();
       expect(outcome!.unresolvable, 1);
+      expect(await db.getMediaInteractions(_profile), isEmpty);
+    });
+
+    test('a failed sync still holds the throttle and leaves the watermark alone', () async {
+      final source = _FakeSource(played: [_movie('m1', lastViewedDaysAgo: 1)])..failingPages = {0};
+      expect((await importer(source).sync())!.partial, isTrue);
+      final cursor = await db.getHistorySyncCursor(_profile, _server, 'jellyfin');
+      expect(cursor?.lastSyncAt, nowMs);
+      expect(cursor?.forwardCursorAt ?? 0, 0, reason: 'nothing was read, so nothing is skipped next time');
+      source
+        ..failingPages = {}
+        ..pageCalls = 0
+        ..resumableCalls = 0;
+      nowMs += const Duration(minutes: 5).inMilliseconds;
+      await importer(source).sync();
+      expect(source.pageCalls + source.resumableCalls + source.itemCalls, 0);
+      later();
+      expect((await importer(source).sync())!.imported, 1, reason: 'the retry after the interval catches up');
+    });
+
+    test('one series whose lookup fails is unresolvable for its rows, the rest still imports', () async {
+      final show = MediaItem.jellyfin(id: 'show', kind: MediaKind.show, serverId: _server, title: 'Show');
+      final source = _FakeSource(
+        played: [
+          _episode('e1', showId: 'bad', lastViewedDaysAgo: 1),
+          _episode('e2', showId: 'show', lastViewedDaysAgo: 2),
+          _movie('m1', lastViewedDaysAgo: 3),
+        ],
+        items: {'show': show},
+      )..failingItems = {'bad'};
+      final outcome = await importer(source).sync();
+      expect(outcome!.partial, isFalse);
+      expect(outcome.unresolvable, 1);
+      expect(outcome.imported, 2);
+    });
+
+    test('a later partial of the same title after a rewatch is its own row', () async {
+      final firstAt = _now ~/ 1000 - 20 * 24 * 3600;
+      final source = _FakeSource(resumable: [resumableAt('r1', firstAt)]);
+      await importer(source).sync();
+      source.resumable = [resumableAt('r1', _now ~/ 1000)];
+      later();
+      await importer(source).sync();
+      expect(await db.getMediaInteractions(_profile), hasLength(2));
+    });
+
+    test('a resumable item without a play time is left out, not stamped with now', () async {
+      final source = _FakeSource(
+        resumable: [
+          MediaItem.jellyfin(
+            id: 'r1',
+            kind: MediaKind.movie,
+            serverId: _server,
+            title: 'r1',
+            viewCount: 0,
+            viewOffsetMs: 60 * 60000,
+            durationMs: 100 * 60000,
+          ),
+        ],
+      );
+      await importer(source).sync();
       expect(await db.getMediaInteractions(_profile), isEmpty);
     });
 

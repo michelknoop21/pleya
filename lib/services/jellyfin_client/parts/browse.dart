@@ -1656,8 +1656,12 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
   /// [JellyfinHistorySource]: only this connection's own user, never another
   /// account on the server (DEC-062).
+  ///
+  /// Both history reads throw on failure instead of reading as empty: an empty
+  /// page ends the importer's paging as if it were the last one, and the
+  /// watermark would then skip the plays it never read.
   Future<List<MediaItem>> fetchPlayedHistoryPage({required int startIndex, int limit = kJellyfinPageLength}) async {
-    final items = await _safeFetchItemsArray('/Items', {
+    final items = await _fetchItemsArray('/Items', {
       'userId': connection.userId,
       'Recursive': 'true',
       'IncludeItemTypes': 'Movie,Episode',
@@ -1673,7 +1677,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   }
 
   Future<List<MediaItem>> fetchResumableItems({int limit = kJellyfinResumeLimit}) async {
-    final items = await _safeFetchItemsArray('/Items', {
+    final items = await _fetchItemsArray('/Items', {
       'userId': connection.userId,
       'Recursive': 'true',
       'IncludeItemTypes': 'Movie,Episode',

@@ -86,9 +86,8 @@ Future<List<JellyfinHistoryImporter>> ownJellyfinHistoryImporters({
 /// hands in the profile's own login, so every row is the profile's and no
 /// other user on the server is ever asked for (DEC-062). A played item becomes
 /// `completed`, a resumable one between [kPartialPercent] and
-/// [kJellyfinPlayedPercent] becomes `partial` once (its event id has no
-/// position in it, so a title that keeps being resumed stays one row until it
-/// is finished).
+/// [kJellyfinPlayedPercent] becomes `partial` once per stop (its event id
+/// carries the stop time, not the position).
 ///
 /// ponytail: forward-only. The watermark is the newest `LastPlayedDate` seen;
 /// every run reads at most `maxPagesFirstRun` pages. Anything older than that
@@ -167,20 +166,26 @@ class JellyfinHistoryImporter implements HistoryImporter {
                 atMs: at * 1000,
                 eventId: '$_kSource:$_serverId:${item.id}:$at',
               ),
+        // A resumable item without a play time is left out: stamping it with
+        // now would move it on every sync and slip past the cross-source
+        // window. The stop time is in the event id, so a rewatch that stops
+        // partway again is a new row, while one stop resumed and re-read over
+        // several syncs stays one.
         for (final item in resumable)
           if (_partialPercent(item) case final percent?
               when percent >= kPartialPercent && percent < kJellyfinPlayedPercent)
-            if (seen.add('$_kSource:$_serverId:${item.id}:resume'))
-              _Candidate(
-                item: item,
-                type: 'partial',
-                weight: kPartialWeight,
-                // The moment of the stop, so the cross-source window meets the
-                // local partial that the recorder wrote at that same stop.
-                atMs: item.lastViewedAt != null ? item.lastViewedAt! * 1000 : _nowMs(),
-                eventId: '$_kSource:$_serverId:${item.id}:resume',
-                completionPercent: percent,
-              ),
+            if (item.lastViewedAt case final at?)
+              if (seen.add('$_kSource:$_serverId:${item.id}:resume:$at'))
+                _Candidate(
+                  item: item,
+                  type: 'partial',
+                  weight: kPartialWeight,
+                  // The moment of the stop, so the cross-source window meets
+                  // the local partial that the recorder wrote at that stop.
+                  atMs: at * 1000,
+                  eventId: '$_kSource:$_serverId:${item.id}:resume:$at',
+                  completionPercent: percent,
+                ),
       ];
       // The watermark covers every play seen, also the ones deduplicated below,
       // so a suppressed play is not asked for again on the next run.
@@ -193,13 +198,14 @@ class JellyfinHistoryImporter implements HistoryImporter {
       final fresh = candidates.where((c) => !existing.contains(c.eventId)).toList();
 
       // Episodes resolve their series once, so a binge is one lookup. A series
-      // the server no longer knows maps to null: its rows are unresolvable,
-      // never stored with the episode's empty features.
+      // the server no longer knows, or whose lookup fails, maps to null: its
+      // rows are unresolvable, never stored with the episode's empty features,
+      // and one bad series does not fail the whole sync.
       final features = <String, MediaItem?>{};
       for (final c in fresh) {
         final key = c.featureItemId;
         if (features.containsKey(key)) continue;
-        features[key] = key == c.item.id ? c.item : await _source.fetchItem(key);
+        features[key] = key == c.item.id ? c.item : await _source.fetchItem(key).catchError((Object _) => null);
       }
 
       // Keyed on the item itself, the key a local row carries for the same
@@ -267,16 +273,25 @@ class JellyfinHistoryImporter implements HistoryImporter {
       );
     } catch (e, s) {
       appLogger.w('JellyfinHistoryImporter: sync failed', error: e, stackTrace: s);
+      // A failed sync still counts for the throttle, or every Home load would
+      // retry against a server that is already struggling. The watermark
+      // stays, so the retry after the interval reads the same plays again.
+      try {
+        if (stillOurs()) await _saveCursor(null);
+      } catch (e, s) {
+        appLogger.w('JellyfinHistoryImporter: could not record the failed sync', error: e, stackTrace: s);
+      }
       return const TautulliImportOutcome(partial: true);
     }
   }
 
-  Future<void> _saveCursor(int watermarkMs) => _db.upsertHistorySyncCursor(
+  /// Null leaves the watermark as it is and only stamps [lastSyncAt].
+  Future<void> _saveCursor(int? watermarkMs) => _db.upsertHistorySyncCursor(
     HistorySyncCursorsCompanion.insert(
       profileId: _profileId,
       serverId: _serverId,
       source: _kSource,
-      forwardCursorAt: Value(watermarkMs),
+      forwardCursorAt: watermarkMs == null ? const Value.absent() : Value(watermarkMs),
       lastSyncAt: Value(_nowMs()),
     ),
   );

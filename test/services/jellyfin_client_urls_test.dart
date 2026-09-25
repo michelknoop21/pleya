@@ -270,6 +270,16 @@ void main() {
       expect(resumable['Limit'], '100');
     });
 
+    test('a failing history page or resumable list throws instead of reading as the last page', () async {
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async => http.Response('boom', 500)),
+      );
+      addTearDown(scoped.close);
+      await expectLater(scoped.fetchPlayedHistoryPage(startIndex: 200), throwsA(anything));
+      await expectLater(scoped.fetchResumableItems(), throwsA(anything));
+    });
+
     test('reportPlaybackProgress sends media source and stream indexes', () async {
       Uri? capturedUri;
       String? capturedBody;
