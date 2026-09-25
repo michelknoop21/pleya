@@ -38,7 +38,9 @@ Future<bool> persistAndBindConnection({
 
   if (!context.mounted) return false;
   if (bindToProfile != null) {
-    await context.read<ProfileConnectionRegistry>().upsert(bindToProfile);
+    // Every caller binds a connection the user just signed in to with their
+    // own credentials, so the row is theirs (clears a stale `borrowed`).
+    await context.read<ProfileConnectionRegistry>().upsert(bindToProfile, freshLogin: true);
   }
 
   if (!context.mounted || addToManager == null) return false;
