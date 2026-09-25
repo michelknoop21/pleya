@@ -128,6 +128,9 @@ import '../widgets/fitting_title_text.dart';
 import 'actor_media_screen.dart';
 import 'media_detail/cast_section.dart';
 import 'media_detail/extras_section.dart';
+import 'media_detail/mobile_detail_hero.dart';
+import '../theme/glass/glass_settings.dart';
+import '../theme/glass/glass_surface.dart' show GlassLayer;
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
@@ -144,6 +147,7 @@ import '../utils/error_message_utils.dart';
 
 part 'media_detail/action_buttons.dart';
 part 'media_detail/audio_selector.dart';
+part 'media_detail/mobile_detail_info.dart';
 part 'media_detail/mobile_detail_view.dart';
 part 'media_detail/mobile_episodes_tab.dart';
 part 'media_detail/synopsis_panel.dart';

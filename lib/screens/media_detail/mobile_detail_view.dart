@@ -23,6 +23,73 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     // what media_detail_screen_test.dart's back/menu-suppression tests
     // attach to.
     final blockSystemBack = InputModeTracker.shouldBlockSystemBack(context);
+    // Liquid Glass (LG-02): a film opens on a full-bleed hero behind the
+    // status bar, with the back/more buttons, title, tags and both CTAs on
+    // it. A series keeps mockup 07's layout; glass off keeps today's tree.
+    final glassHero = !metadata.isShow && glassTierFor(context) != GlassTier.off;
+    final content = CustomScrollView(
+      primary: true,
+      slivers: [
+        if (glassHero) SliverToBoxAdapter(child: _buildMobileGlassHero(context, metadata, client)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: Column(
+              crossAxisAlignment: .start,
+              children: [
+                // Mockup 07 opens a series on the Hervatten capsule and goes
+                // straight into the tabs: no 16:9 preview, no second title
+                // under the app bar's, no tags row, and no full-width
+                // Downloaden CTA (download lives per episode row instead).
+                // Those belong to 06, the film detail, which keeps them
+                // unchanged below (or on the glass hero).
+                if (!metadata.isShow && !glassHero) ...[
+                  _buildMobilePreviewCard(context, metadata, client),
+                  const SizedBox(height: 16),
+                  Text(metadata.displayTitle, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold)),
+                  const SizedBox(height: 8),
+                  _buildMobileTagsRow(context, metadata),
+                  const SizedBox(height: 16),
+                ],
+                if (!glassHero) _buildMobilePrimaryCta(context, metadata),
+                if (!metadata.isShow && !glassHero) ...[
+                  const SizedBox(height: 10),
+                  _buildMobileDownloadCta(context, metadata),
+                ],
+                // Kept for a series too: this is the only way to change
+                // source from the detail page, and it already draws nothing
+                // unless the item actually has alternative sources
+                // (`hasAlternativeSources`, action_buttons.dart).
+                _buildUnifiedSourceLine(),
+                if (_detailAudioTracks.isNotEmpty) ...[const SizedBox(height: 10), _buildMobileAudioSelector()],
+                const SizedBox(height: 16),
+                if (metadata.isShow)
+                  _buildMobileEpisodesTabs(context, metadata)
+                else ...[
+                  _buildMobileSynopsisAndCredits(context, metadata),
+                  const SizedBox(height: 16),
+                  _buildMobileActionRow(context, metadata, includeWatchlist: !glassHero),
+                ],
+                // For a show, "Meer zoals dit" lives in the Vergelijkbaar tab
+                // instead (_buildMobileEpisodesTabs) so it isn't rendered twice.
+                if (!metadata.isShow)
+                  for (int i = 0; i < _relatedHubs.length; i++) ...[
+                    const SizedBox(height: 8),
+                    HubSection(
+                      key: _relatedHubKeys[i],
+                      hub: _relatedHubs[i],
+                      icon: _getRelatedHubIcon(_relatedHubs[i]),
+                      inset: true,
+                      onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
+                    ),
+                  ],
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(padding: .only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
+      ],
+    );
 
     return PrimaryScrollController(
       controller: _scrollController,
@@ -33,87 +100,17 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           child: Focus(
             onKeyEvent: _handleMediaDetailBackKey,
             child: Scaffold(
-              body: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    _buildMobileDetailAppBar(context, metadata),
-                    Expanded(
-                      child: CustomScrollView(
-                        primary: true,
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                              child: Column(
-                                crossAxisAlignment: .start,
-                                children: [
-                                  // Mockup 07 opens a series on the Hervatten
-                                  // capsule and goes straight into the tabs:
-                                  // no 16:9 preview, no second title under the
-                                  // app bar's, no tags row, and no full-width
-                                  // Downloaden CTA (download lives per episode
-                                  // row instead). Those belong to 06, the film
-                                  // detail, which keeps them unchanged below.
-                                  if (!metadata.isShow) ...[
-                                    _buildMobilePreviewCard(context, metadata, client),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      metadata.displayTitle,
-                                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildMobileTagsRow(context, metadata),
-                                    const SizedBox(height: 16),
-                                  ],
-                                  _buildMobilePrimaryCta(context, metadata),
-                                  if (!metadata.isShow) ...[
-                                    const SizedBox(height: 10),
-                                    _buildMobileDownloadCta(context, metadata),
-                                  ],
-                                  // Kept for a series too: this is the only way
-                                  // to change source from the detail page, and
-                                  // it already draws nothing unless the item
-                                  // actually has alternative sources
-                                  // (`hasAlternativeSources`, action_buttons.dart).
-                                  _buildUnifiedSourceLine(),
-                                  if (_detailAudioTracks.isNotEmpty) ...[
-                                    const SizedBox(height: 10),
-                                    _buildMobileAudioSelector(),
-                                  ],
-                                  const SizedBox(height: 16),
-                                  if (metadata.isShow)
-                                    _buildMobileEpisodesTabs(context, metadata)
-                                  else ...[
-                                    _buildMobileSynopsisAndCredits(context, metadata),
-                                    const SizedBox(height: 16),
-                                    _buildMobileActionRow(context, metadata),
-                                  ],
-                                  // For a show, "Meer zoals dit" lives in the
-                                  // Vergelijkbaar tab instead (_buildMobileEpisodesTabs)
-                                  // so it isn't rendered twice.
-                                  if (!metadata.isShow)
-                                    for (int i = 0; i < _relatedHubs.length; i++) ...[
-                                      const SizedBox(height: 8),
-                                      HubSection(
-                                        key: _relatedHubKeys[i],
-                                        hub: _relatedHubs[i],
-                                        icon: _getRelatedHubIcon(_relatedHubs[i]),
-                                        inset: true,
-                                        onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
-                                      ),
-                                    ],
-                                ],
-                              ),
-                            ),
-                          ),
-                          SliverPadding(padding: .only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
+              body: glassHero
+                  ? content
+                  : SafeArea(
+                      bottom: false,
+                      child: Column(
+                        children: [
+                          _buildMobileDetailAppBar(context, metadata),
+                          Expanded(child: content),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),
@@ -153,7 +150,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// styled for the app bar instead of the action row: everything the old
   /// row's `⋮` opened (shuffle, request, unmatch, playlist/collection, …)
   /// stays reachable from here rather than gaining a second entry point.
-  Widget _buildMobileMoreButton(BuildContext context, MediaItem metadata) {
+  Widget _buildMobileMoreButton(BuildContext context, MediaItem metadata, {bool glass = false}) {
     final primaryTrailer = _getPrimaryTrailer();
     final onPlayTrailer = primaryTrailer == null
         ? null
@@ -165,14 +162,22 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
       onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
       onPlayTrailer: onPlayTrailer,
       child: Builder(
-        builder: (buttonContext) => IconButton(
-          onPressed: () {
+        builder: (buttonContext) {
+          void open() {
             final renderBox = buttonContext.findRenderObject() as RenderBox?;
             final position = renderBox?.localToGlobal(renderBox.size.center(Offset.zero));
             _contextMenuKey.currentState?.showContextMenu(buttonContext, position: position);
-          },
-          icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
-        ),
+          }
+
+          if (glass) {
+            return GlassCircleButton(
+              icon: Icons.more_horiz_rounded,
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+              onPressed: open,
+            );
+          }
+          return IconButton(onPressed: open, icon: const AppIcon(Symbols.more_vert_rounded, fill: 1));
+        },
       ),
     );
   }
@@ -181,31 +186,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// item's own artwork when there is no trailer to preview.
   Widget _buildMobilePreviewCard(BuildContext context, MediaItem metadata, MediaServerClient? client) {
     final primaryTrailer = _getPrimaryTrailer();
-    final artworkPath = metadata.artPath ?? metadata.thumbPath;
-    final dpr = MediaImageHelper.effectiveDevicePixelRatio(context);
-
-    Widget artwork;
-    if (artworkPath == null) {
-      artwork = const PlaceholderContainer();
-    } else {
-      final imageUrl = MediaImageHelper.getOptimizedImageUrl(
-        client: client,
-        thumbPath: artworkPath,
-        maxWidth: 800,
-        maxHeight: 450,
-        devicePixelRatio: dpr,
-        imageType: ImageType.art,
-      );
-      artwork = imageUrl.isEmpty
-          ? const PlaceholderContainer()
-          : CachedNetworkImage(
-              imageUrl: imageUrl,
-              cacheManager: PlexImageCacheManager.instance,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => const PlaceholderContainer(),
-              errorBuilder: (context, error, stackTrace) => const PlaceholderContainer(),
-            );
-    }
+    final artwork = _buildMobileArtwork(context, metadata, client, maxWidth: 800, maxHeight: 450);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -246,24 +227,56 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     );
   }
 
+  /// The item's own backdrop (or poster), [PlaceholderContainer] while it
+  /// loads or when there is none. Shared by the preview card and the glass
+  /// hero.
+  Widget _buildMobileArtwork(
+    BuildContext context,
+    MediaItem metadata,
+    MediaServerClient? client, {
+    required double maxWidth,
+    required double maxHeight,
+  }) {
+    final artworkPath = metadata.artPath ?? metadata.thumbPath;
+    if (artworkPath == null) return const PlaceholderContainer();
+    final imageUrl = MediaImageHelper.getOptimizedImageUrl(
+      client: client,
+      thumbPath: artworkPath,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      devicePixelRatio: MediaImageHelper.effectiveDevicePixelRatio(context),
+      imageType: ImageType.art,
+    );
+    if (imageUrl.isEmpty) return const PlaceholderContainer();
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      cacheManager: PlexImageCacheManager.instance,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => const PlaceholderContainer(),
+      errorBuilder: (context, error, stackTrace) => const PlaceholderContainer(),
+    );
+  }
+
   /// Static tag pills (year, content rating, duration, quality labels) below
   /// the title. Reuses [_buildMetadataChip] and [buildMediaQualityLabels]
   /// unchanged; only the row composition is new.
   Widget _buildMobileTagsRow(BuildContext context, MediaItem metadata) {
-    final chips = <Widget>[
-      if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
-      if (metadata.contentRating != null) _buildMetadataChip(formatContentRating(metadata.contentRating)),
-      if (metadata.durationMs != null) _buildMetadataChip(formatDurationTextual(metadata.durationMs!)),
-      for (final label in buildMediaQualityLabels(metadata)) _buildMetadataChip(label),
-    ];
+    final chips = [for (final label in _mobileTagLabels(metadata)) _buildMetadataChip(label)];
     if (chips.isEmpty) return const SizedBox.shrink();
     return Wrap(spacing: 8, runSpacing: 8, children: chips);
   }
 
+  List<String> _mobileTagLabels(MediaItem metadata) => [
+    if (metadata.year != null) '${metadata.year}',
+    if (metadata.contentRating != null) formatContentRating(metadata.contentRating),
+    if (metadata.durationMs != null) formatDurationTextual(metadata.durationMs!),
+    ...buildMediaQualityLabels(metadata),
+  ];
+
   /// Full-width primary CTA: "Afspelen" or "Hervatten · nog Xu Ym", reusing
   /// [_handlePlayPressed] (extracted from `_buildActionButtons` for exactly
   /// this reuse) so both layouts drive the same resume/refresh behaviour.
-  Widget _buildMobilePrimaryCta(BuildContext context, MediaItem metadata) {
+  Widget _buildMobilePrimaryCta(BuildContext context, MediaItem metadata, {bool glass = false}) {
     final resumeTarget = metadata.isShow ? (_onDeckEpisode ?? metadata) : metadata;
     final viewOffsetMs = resumeTarget.viewOffsetMs ?? 0;
     final isResuming = viewOffsetMs > 0;
@@ -282,20 +295,27 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     return AutomationNode(
       id: AutomationIds.mediaDetailPlay,
       role: 'button',
-      child: SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: FilledButton.icon(
-          onPressed: () => unawaited(_handlePlayPressed(metadata)),
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            shape: const StadiumBorder(),
-          ),
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: Text(label.toString(), style: const TextStyle(fontWeight: .w700)),
-        ),
-      ),
+      child: glass
+          ? GlassCapsuleButton(
+              prominent: true,
+              icon: Icons.play_arrow_rounded,
+              label: label.toString(),
+              onPressed: () => unawaited(_handlePlayPressed(metadata)),
+            )
+          : SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: () => unawaited(_handlePlayPressed(metadata)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: const StadiumBorder(),
+                ),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text(label.toString(), style: const TextStyle(fontWeight: .w700)),
+              ),
+            ),
     );
   }
 
@@ -303,7 +323,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// [_handleDownloadButtonPressed] for the full state machine (queue,
   /// pause/resume, retry, delete) unchanged; only the label mapping below is
   /// new, matching the northstar's text button instead of an icon-only one.
-  Widget _buildMobileDownloadCta(BuildContext context, MediaItem metadata) {
+  Widget _buildMobileDownloadCta(BuildContext context, MediaItem metadata, {bool glass = false}) {
     if (widget.isOffline || PlatformDetector.isAppleTV()) return const SizedBox.shrink();
 
     return Consumer<DownloadProvider>(
@@ -323,6 +343,13 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           _ => (Icons.download_rounded, _mobileDownloadActionLabel(metadata)),
         };
 
+        if (glass) {
+          return GlassCapsuleButton(
+            icon: icon,
+            label: label,
+            onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
+          );
+        }
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: SizedBox(
@@ -364,134 +391,58 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     return '${t.downloads.downloadAction} $episodeLabel';
   }
 
-  /// Synopsis (reuses [CollapsibleText] unchanged, DEC-109: mobile/desktop
-  /// keep this in-place expand rather than the TV "Meer lezen" panel) plus
-  /// the compact "Cast: … / Regie: …" text lines from mockup 06/the
-  /// serie-detail comp.
-  Widget _buildMobileSynopsisAndCredits(BuildContext context, MediaItem metadata) {
-    final theme = Theme.of(context);
-    final summary = metadata.summary;
-    final roles = metadata.roles;
-    final directors = metadata.directors;
-    final mutedStyle = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+  /// The LG-02 hero: [MobileDetailHero] fed with this page's artwork, tags
+  /// and the same handlers the flat layout uses. The watchlist toggle moves
+  /// here from the action row, as a round glass button next to Download.
+  Widget _buildMobileGlassHero(BuildContext context, MediaItem metadata, MediaServerClient? client) {
+    final trailer = _getPrimaryTrailer();
+    final (onList, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
 
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        if (summary != null && summary.isNotEmpty) ...[
-          CollapsibleText(text: summary, maxLines: 6, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
-          const SizedBox(height: 12),
+    return MobileDetailHero(
+      artwork: _buildMobileArtwork(context, metadata, client, maxWidth: 1200, maxHeight: 1600),
+      title: metadata.displayTitle,
+      chips: _mobileTagLabels(metadata),
+      leading: GlassCircleButton(
+        icon: Icons.arrow_back_rounded,
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        onPressed: () => Navigator.pop(context, _watchStateChanged),
+      ),
+      trailing: [
+        // The flat layout's preview card is the trailer's door; on the hero
+        // it gets a glass circle of its own so it stays reachable.
+        if (trailer != null) ...[
+          GlassCircleButton(
+            icon: Icons.movie_outlined,
+            tooltip: t.discover.extras,
+            onPressed: () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
+          ),
+          const SizedBox(width: 12),
         ],
-        if (roles != null && roles.isNotEmpty)
-          Text.rich(
-            TextSpan(
-              style: mutedStyle,
-              children: [
-                TextSpan(
-                  text: '${t.discover.cast}: ',
-                  style: mutedStyle?.copyWith(fontWeight: .w600),
-                ),
-                TextSpan(text: roles.take(3).map((r) => r.tag).join(', ')),
-              ],
+        if (!widget.isOffline) _buildMobileMoreButton(context, metadata, glass: true),
+      ],
+      actions: Column(
+        children: [
+          _buildMobilePrimaryCta(context, metadata, glass: true),
+          // Offline there is neither a download nor a watchlist to offer.
+          if (!widget.isOffline) ...[
+            const SizedBox(height: 12),
+            GlassLayer(
+              child: Row(
+                children: [
+                  Expanded(child: _buildMobileDownloadCta(context, metadata, glass: true)),
+                  const SizedBox(width: 12),
+                  GlassCircleButton(
+                    size: GlassCapsuleButton.height,
+                    icon: onList ? Icons.bookmark_added_rounded : Icons.add_rounded,
+                    tooltip: onList ? t.watchlist.remove : t.watchlist.add,
+                    onPressed: canOfferWatchlist ? () => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
+                  ),
+                ],
+              ),
             ),
-          ),
-        if (directors != null && directors.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text.rich(
-            TextSpan(
-              style: mutedStyle,
-              children: [
-                TextSpan(
-                  text: '${t.metadataEdit.director}: ',
-                  style: mutedStyle?.copyWith(fontWeight: .w600),
-                ),
-                TextSpan(text: directors.join(', ')),
-              ],
-            ),
-          ),
+          ],
         ],
-      ],
-    );
-  }
-
-  /// Fixed action icon row (add to list / rate / mark watched / share).
-  /// Every icon but share reuses an existing, already-tested handler:
-  /// [WatchlistUiActions.toggle], [_showRatingDialog] and
-  /// [_handleWatchedTogglePressed] are exactly what the pre-northstar action
-  /// row and the long-press context menu already call. Share is genuinely
-  /// new (no prior share capability existed anywhere in the app).
-  Widget _buildMobileActionRow(BuildContext context, MediaItem metadata) {
-    final watchlistProvider = context.watch<WatchlistProvider?>();
-    final watchlistStore = context.watch<WatchlistStore?>();
-    final isWatchlistKind = metadata.isMovie || metadata.isShow;
-    final onWatchlist = WatchlistUiActions.isOnList(store: watchlistStore, provider: watchlistProvider, item: metadata);
-    final canOfferWatchlist =
-        !widget.isOffline &&
-        isWatchlistKind &&
-        WatchlistUiActions.canOffer(provider: watchlistProvider, item: metadata, onList: onWatchlist);
-
-    final mediaClient = _getMediaClientForMetadata(context);
-    final isNumericRating = mediaClient?.capabilities.numericUserRating ?? true;
-    final hasRating = metadata.userRating != null && metadata.userRating! > 0;
-
-    Widget action({
-      required IconData icon,
-      required String label,
-      required VoidCallback? onPressed,
-      bool active = false,
-    }) {
-      final color = active ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
-      final effectiveColor = onPressed == null ? color.withValues(alpha: 0.4) : color;
-      return Expanded(
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: effectiveColor),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: .ellipsis,
-                  textAlign: .center,
-                  style: TextStyle(fontSize: 12, color: effectiveColor),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        action(
-          icon: onWatchlist ? Icons.bookmark_added_rounded : Icons.add_rounded,
-          label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
-          onPressed: canOfferWatchlist ? () => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
-        ),
-        action(
-          icon: isNumericRating ? Icons.star_rounded : Icons.thumb_up_rounded,
-          label: t.mediaMenu.rate,
-          active: hasRating,
-          onPressed: widget.isOffline ? null : () => unawaited(_showRatingDialog(context, metadata)),
-        ),
-        action(
-          icon: metadata.isWatched ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
-          label: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
-          active: metadata.isWatched,
-          onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
-        ),
-        action(
-          icon: Icons.send_rounded,
-          label: t.common.share,
-          onPressed: () => unawaited(SharePlus.instance.share(ShareParams(text: metadata.displayTitle))),
-        ),
-      ],
+      ),
     );
   }
 }
