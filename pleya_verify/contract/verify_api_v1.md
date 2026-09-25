@@ -371,7 +371,9 @@ probe/login/setup, of een nog niet gebootstrapte app (geen root-context).
 
 ### `POST /v1/connections/seed`
 
-Body: `{"base_url": "...", "server_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.
+Body: `{"base_url": "...", "server_id": "...", "user_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.
+`user_id` is optioneel voor oude single-userfixtures; nieuwe multi-userfixtures
+geven hem mee zodat twee accounts op dezelfde server aparte connection-ids krijgen.
 De snelle route voor een scenario dat alleen een werkende verbinding nodig
 heeft en niet elke run opnieuw de sign-in-UI wil bewijzen: slaat de
 probe/login-HTTP-omweg over en bouwt de `PleyaServerConnection` rechtstreeks

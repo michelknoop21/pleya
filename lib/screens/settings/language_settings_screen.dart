@@ -1,7 +1,7 @@
 /// Mijn Pleya ▸ Instellingen ▸ Taal en ondertitels — mockup 31 A, and the only
-/// place a language preference is managed (DEC-096 lid 9).
+/// place a language preference is managed (DEC-109 lid 9).
 ///
-/// Two things live here, and the split is the whole point of DEC-096: the
+/// Two things live here, and the split is the whole point of DEC-109: the
 /// **global preference**, which belongs to the Pleya profile and therefore
 /// holds across Plex, Jellyfin, Pleya Server and offline alike, and the
 /// **series preferences**, which are the overrides that appear by themselves

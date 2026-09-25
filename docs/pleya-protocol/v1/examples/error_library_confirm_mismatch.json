@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "library.confirm_mismatch",
+    "message": "confirm must be the library title",
+    "retryable": false,
+    "details": {
+      "expected": "Documentaires"
+    }
+  }
+}

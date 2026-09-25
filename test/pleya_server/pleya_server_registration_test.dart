@@ -15,16 +15,19 @@ void main() {
   late AppDatabase db;
   late ConnectionRegistry registry;
 
-  PleyaServerConnection connection({String id = 'pleyaServer.srv-1', String refreshToken = 'rt-secret'}) =>
-      PleyaServerConnection(
-        id: id,
-        baseUrl: 'http://nas.lan:8832',
-        serverId: 'srv-1',
-        serverName: 'Zolder',
-        userName: 'michel',
-        refreshToken: refreshToken,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(1000000),
-      );
+  PleyaServerConnection connection({
+    String id = 'pleyaServer.srv-1',
+    String userName = 'michel',
+    String refreshToken = 'rt-secret',
+  }) => PleyaServerConnection(
+    id: id,
+    baseUrl: 'http://nas.lan:8832',
+    serverId: 'srv-1',
+    serverName: 'Zolder',
+    userName: userName,
+    refreshToken: refreshToken,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(1000000),
+  );
 
   setUp(() {
     resetSharedPreferencesForTest();
@@ -33,6 +36,37 @@ void main() {
   });
 
   tearDown(() async => db.close());
+
+  test('connection ids separate accounts on the same server and keep the legacy fallback', () {
+    expect(pleyaServerConnectionId(serverId: 'srv-1', userId: 'user-a'), 'pleyaServer.srv-1.user-a');
+    expect(pleyaServerConnectionId(serverId: 'srv-1', userId: 'user-b'), 'pleyaServer.srv-1.user-b');
+    expect(pleyaServerConnectionId(serverId: 'srv-1'), 'pleyaServer.srv-1');
+  });
+
+  test('two accounts on the same server keep separate connection rows and credentials', () async {
+    await registry.upsert(
+      connection(
+        id: pleyaServerConnectionId(serverId: 'srv-1', userId: 'user-a'),
+        userName: 'alice',
+        refreshToken: 'rt-alice',
+      ),
+    );
+    await registry.upsert(
+      connection(
+        id: pleyaServerConnectionId(serverId: 'srv-1', userId: 'user-b'),
+        userName: 'bob',
+        refreshToken: 'rt-bob',
+      ),
+    );
+
+    final alice = await registry.getPleyaServer('pleyaServer.srv-1.user-a');
+    final bob = await registry.getPleyaServer('pleyaServer.srv-1.user-b');
+    expect(await registry.listPleyaServers(), hasLength(2));
+    expect(alice?.userName, 'alice');
+    expect(alice?.refreshToken, 'rt-alice');
+    expect(bob?.userName, 'bob');
+    expect(bob?.refreshToken, 'rt-bob');
+  });
 
   test('a stored connection comes back as a Pleya Server connection', () async {
     await registry.upsert(connection());

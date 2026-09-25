@@ -11,7 +11,33 @@ import (
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
 	"github.com/edde746/plezy/pleya_server/internal/auth"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 )
+
+func TestInvalidJSONBodyDoesNotExposeDecoderInternals(t *testing.T) {
+	e := newEnv(t)
+	since := time.Now()
+	rec := e.do(http.MethodPost, "/pleya/v1/auth/login", map[string]string{}, withoutAuth,
+		rawBody(`{"username":123,"password":false}`))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, verwacht 401: %s", rec.Code, rec.Body.String())
+	}
+	var envelope struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Error.Message != "request body invalid" {
+		t.Fatalf("publieke fout = %q, verwacht vaste boodschap", envelope.Error.Message)
+	}
+	if _, ok := e.logs.firstAfter("request body invalid", since); !ok {
+		t.Fatal("decoderdetail is niet intern gelogd")
+	}
+}
 
 // setup wisselt de setupcode in en zet het tokenpaar in de omgeving.
 func (e *env) setup(code string) api.TokenPair {
@@ -64,16 +90,22 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 		t.Fatalf("capabilities zijn %+v", before.Capabilities)
 	}
 	// Capabilities is leidend. Kijkstatus staat sinds PS-4 aan, met het
-	// eigendomsmodel en de streamsessies eronder; een afspeelplan, transcodering,
-	// downloads, Live TV, realtime en gebruikers zijn latere fasen en horen dus
-	// nog steeds uit te staan.
+	// eigendomsmodel en de streamsessies eronder; gebruikers sinds stap 4 van
+	// PS-9 en sessies sinds stap 6, nu GET/DELETE /sessions en /auth/logout er
+	// zijn. Een afspeelplan, transcodering, downloads, Live TV en realtime zijn
+	// latere fasen en horen dus nog steeds uit te staan.
+	//
+	// Sessions stond hier eerder niet bij, en dat is precies de soort assertie
+	// die je niet mist: de vlag ging bij stap 6 aan in handlers_auth.go en geen
+	// test zou het gemerkt hebben als hij er weer uit was gevallen.
 	if !before.Capabilities.WatchState || !before.Capabilities.WatchStateOwnership ||
-		!before.Capabilities.StreamSessions {
+		!before.Capabilities.StreamSessions || !before.Capabilities.Users ||
+		!before.Capabilities.Sessions {
 		t.Fatalf("een capability van deze fase staat uit: %+v", before.Capabilities)
 	}
 	if before.Capabilities.PlaybackPlan || before.Capabilities.Transcode ||
 		before.Capabilities.Downloads || before.Capabilities.LiveTV ||
-		before.Capabilities.Realtime || before.Capabilities.Users {
+		before.Capabilities.Realtime {
 		t.Fatalf("een capability staat aan die deze fase niet heeft: %+v", before.Capabilities)
 	}
 	if before.Server.ID == "" {
@@ -82,8 +114,15 @@ func TestInfoBeforeAndAfterSetup(t *testing.T) {
 
 	// /info draagt geen servernaam, versie of buildnummer: die staan achter
 	// authenticatie in /server.
+	//
+	// De verboden lijst noemde tot S1.6 ook `"name"` en `"version"` als kale
+	// woorden. Dat werkte zolang er geen veld bestond waar die letters
+	// onschuldig in voorkomen, en `setup_accepts_name` (J.2 rij 10) is dat veld:
+	// hij draagt geen naam, hij zegt of setup er een aanneemt. De sleutels staan
+	// hier daarom met hun JSON-vorm erbij, zodat de meting over velden gaat en
+	// niet over letters.
 	raw := e.do(http.MethodGet, "/pleya/v1/info", nil, withoutAuth).Body.String()
-	for _, forbidden := range []string{"Zolder", "0.2.0-test", "version", "name"} {
+	for _, forbidden := range []string{"Zolder", "0.2.0-test", `"version"`, `"name"`, `"build"`} {
 		if strings.Contains(raw, forbidden) {
 			t.Fatalf("/info lekt %q: %s", forbidden, raw)
 		}
@@ -165,16 +204,130 @@ func TestLoginAndRefreshRotation(t *testing.T) {
 		t.Fatal("het refreshtoken roteerde niet")
 	}
 
-	// Hergebruik van het oude token wordt herkend en maakt de keten ongeldig.
-	reused := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+	// Het oude token opnieuw aanbieden terwijl zijn opvolger nooit is gebruikt
+	// is sinds het rotatierespijt geen hergebruik maar de herhaling van een
+	// verloren antwoord: de aanvrager krijgt een verse rotatie en de
+	// nooit-geziene opvolger vervalt.
+	replayed := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
 		map[string]string{"refresh_token": pair.RefreshToken}, withoutAuth)
+	if replayed.Code != http.StatusOK {
+		t.Fatalf("herhaling binnen het respijt hoort bediend te worden, kreeg %d", replayed.Code)
+	}
+	var replayPair api.TokenPair
+	if err := json.Unmarshal(replayed.Body.Bytes(), &replayPair); err != nil {
+		t.Fatal(err)
+	}
+	// Echt hergebruik: de keten is inmiddels doorgeroteerd, dus de opvolger
+	// van replayPair is aantoonbaar bij een client aangekomen. Het oude token
+	// daarna nog eens aanbieden maakt de hele keten ongeldig.
+	next := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": replayPair.RefreshToken}, withoutAuth)
+	if next.Code != http.StatusOK {
+		t.Fatalf("verse rotatie hoort te werken, kreeg %d", next.Code)
+	}
+	var nextPair api.TokenPair
+	if err := json.Unmarshal(next.Body.Bytes(), &nextPair); err != nil {
+		t.Fatal(err)
+	}
+	next2 := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": nextPair.RefreshToken}, withoutAuth)
+	if next2.Code != http.StatusOK {
+		t.Fatalf("verse rotatie hoort te werken, kreeg %d", next2.Code)
+	}
+	var next2Pair api.TokenPair
+	if err := json.Unmarshal(next2.Body.Bytes(), &next2Pair); err != nil {
+		t.Fatal(err)
+	}
+	// replayPair's opvolger is nu aantoonbaar doorgeroteerd, dus dit is geen
+	// verloren antwoord meer maar een tweede partij met hetzelfde token.
+	reused := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": replayPair.RefreshToken}, withoutAuth)
 	e.expectCode(reused, api.CodeRefreshTokenReused)
 	e.record("ErrorEnvelope", http.MethodPost, "/pleya/v1/auth/refresh", reused)
 
 	afterBreach := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
-		map[string]string{"refresh_token": rotated.RefreshToken}, withoutAuth)
+		map[string]string{"refresh_token": next2Pair.RefreshToken}, withoutAuth)
 	if afterBreach.Code == http.StatusOK {
 		t.Fatal("na hergebruikdetectie hoort de hele keten ongeldig te zijn")
+	}
+
+	// De opvolger die de replay verving heeft nooit een client bereikt; wie
+	// hem aanbiedt kan alleen de server zelf zijn geweest. Niet eerder in de
+	// test proberen: het aanbieden ervan is zelf een ketenintrekking.
+	staleSuccessor := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": rotated.RefreshToken}, withoutAuth)
+	if staleSuccessor.Code == http.StatusOK {
+		t.Fatal("de door de replay vervangen opvolger hoort niet meer te werken")
+	}
+}
+
+func TestRefreshTokenReuseRevokesWholeSession(t *testing.T) {
+	e := newEnv(t)
+	pair := e.setup(e.putSetupCode())
+
+	refresh := func(secret string) api.TokenPair {
+		t.Helper()
+		rec := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+			map[string]string{"refresh_token": secret}, withoutAuth)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("refresh gaf %d: %s", rec.Code, rec.Body.String())
+		}
+		var next api.TokenPair
+		if err := json.Unmarshal(rec.Body.Bytes(), &next); err != nil {
+			t.Fatal(err)
+		}
+		return next
+	}
+
+	first := refresh(pair.RefreshToken)
+	second := refresh(first.RefreshToken)
+	claims, err := e.signer.Verify(second.AccessToken, auth.TokenAccess)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionID, err := id.Parse(claims.Sid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	subjectID, err := id.Parse(claims.Subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var versionID id.ID
+	if err := e.pool.QueryRow(t.Context(), `SELECT id FROM media_versions LIMIT 1`).Scan(&versionID); err != nil {
+		t.Fatal(err)
+	}
+	streamSession, err := e.auth.CreateStreamSession(t.Context(), subjectID, sessionID, versionID,
+		30*time.Minute, auth.MaxActiveStreamSessions, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reused := e.do(http.MethodPost, "/pleya/v1/auth/refresh",
+		map[string]string{"refresh_token": pair.RefreshToken}, withoutAuth)
+	if reused.Code != http.StatusUnauthorized {
+		t.Fatalf("hergebruik gaf %d, verwacht 401: %s", reused.Code, reused.Body.String())
+	}
+	e.expectCode(reused, api.CodeRefreshTokenReused)
+
+	access := e.do(http.MethodGet, "/pleya/v1/users/me", nil, asUser(second.AccessToken))
+	if access.Code != http.StatusUnauthorized {
+		t.Fatalf("access token uit hergebruikte sessie bleef werken: %d %s", access.Code, access.Body.String())
+	}
+	if !e.revocations.IsRevoked(sessionID) {
+		t.Fatal("de hergebruikte sessie ontbreekt in het intrekkingsregister")
+	}
+	var sessionRevoked, streamRevoked bool
+	if err := e.pool.QueryRow(t.Context(), `SELECT revoked_at IS NOT NULL FROM sessions WHERE id = $1`, sessionID).
+		Scan(&sessionRevoked); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.pool.QueryRow(t.Context(), `SELECT revoked_at IS NOT NULL FROM stream_sessions WHERE id = $1`, streamSession.ID).
+		Scan(&streamRevoked); err != nil {
+		t.Fatal(err)
+	}
+	if !sessionRevoked || !streamRevoked {
+		t.Fatalf("hergebruik liet sessie actief: session_revoked=%v stream_revoked=%v", sessionRevoked, streamRevoked)
 	}
 }
 
@@ -228,4 +381,55 @@ func (e *env) expectCode(rec *httptest.ResponseRecorder, want string) {
 	if envelope.Error.Message == "" {
 		e.t.Fatal("een foutantwoord zonder message")
 	}
+}
+
+// TestSetupRejectsWrongAndExpiredCode is de kant van acceptatiecriterium 4 die
+// TestSetupIsSingleUse niet raakt.
+//
+// Dat criterium zegt "zonder setup-code komt niemand binnen", en dat is een
+// uitspraak over het afwijzen. Eenmaligheid bewijst alleen dat een geslaagde
+// setup niet nog eens kan; een code die nooit klopte en een code die verlopen
+// is lopen langs een ander pad (auth.ErrSetupCodeInvalid), en dat pad had geen
+// enkele test. Een server die elke code accepteerde was hier tot nu toe groen.
+func TestSetupRejectsWrongAndExpiredCode(t *testing.T) {
+	e := newEnv(t)
+	e.putSetupCode()
+
+	attempt := func(code string) *httptest.ResponseRecorder {
+		return e.do(http.MethodPost, "/pleya/v1/auth/setup", map[string]string{
+			"setup_code": code,
+			"username":   "michel",
+			"password":   "een-lang-genoeg-wachtwoord",
+		}, withoutAuth)
+	}
+
+	rec := attempt("FOUT-CODE")
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("een verkeerde setupcode gaf %d, verwacht 401: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeSetupCodeInvalid)
+
+	// En er is niets ontstaan: geen owner, en de server vraagt nog om setup.
+	var info api.Info
+	e.getJSON("/pleya/v1/info", "", http.StatusOK, &info)
+	if !info.Auth.SetupRequired {
+		t.Fatal("setup_required staat op false na een afgewezen setupcode")
+	}
+
+	// Een verlopen code wordt niet anders behandeld dan een verkeerde. Zou de
+	// vervaldatum alleen bij het uitgeven gelden, dan bleef een code die ooit
+	// op een terminal stond onbeperkt geldig.
+	const expired = "OUDE-CODE"
+	if err := e.auth.PutSetupCode(context.Background(), auth.HashOpaque(expired),
+		time.Now().Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	rec = attempt(expired)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("een verlopen setupcode gaf %d, verwacht 401: %s", rec.Code, rec.Body.String())
+	}
+	e.expectCode(rec, api.CodeSetupCodeInvalid)
+
+	// De geldige code werkt daarna gewoon: het pad is afwijzend, niet stuk.
+	e.setup(e.putSetupCode())
 }

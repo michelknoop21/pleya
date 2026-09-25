@@ -56,6 +56,20 @@ const appleBitstreamCodecs = {'ac3', 'eac3'};
 /// list mpv is configured with there.
 const desktopBitstreamCodecs = {'ac3', 'eac3', 'dts', 'dtshd', 'truehd'};
 
+/// The same set in mpv's `audio-spdif` spelling.
+///
+/// mpv writes DTS-HD with a hyphen while [normalizeAudioCodec] collapses every
+/// spelling to `dtshd`, and that difference is exactly why this list used to
+/// exist three times in two spellings: once here, once in `player_native.dart`
+/// and once in `player_android.dart`. All three answer the same question, so
+/// there is one answer and one translation of it.
+///
+/// Order is preserved, because it is the order mpv walks the list in.
+String spdifCodecList(Set<String> normalizedCodecs) =>
+    normalizedCodecs.map((codec) => _spdifSpellings[codec] ?? codec).join(',');
+
+const _spdifSpellings = {'dtshd': 'dts-hd'};
+
 /// Normalizes the codec spellings the two backends and mpv each use
 /// (`EAC3`, `ec-3`, `E-AC-3`, `a52`, `DTS-HD MA`, …) to a single token.
 String? normalizeAudioCodec(String? codec) {

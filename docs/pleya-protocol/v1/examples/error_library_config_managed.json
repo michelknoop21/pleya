@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.config_managed",
+    "message": "config-managed library cannot be changed",
+    "retryable": false
+  }
+}

@@ -1,0 +1,28 @@
+<!-- widths: 1600, 393 -->
+<style>
+.setup { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px; }
+.setup .box { width: 100%; max-width: 620px; }
+.setup .box > img { height: 36px; margin-bottom: 26px; }
+.setup h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.setup .sub { color: var(--ink-2); margin-top: 6px; font-size: 15px; line-height: 1.45; }
+.setup .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+@media (max-width: 899px) { .setup { padding: 24px 16px 40px; } }
+</style>
+<div class="setup"><div class="box">
+  <img src="../assets/pleya_wordmark.png" alt="Pleya">
+  <div class="steps"><div class="st on"><span class="n">1</span><span>Eigenaar</span></div><div class="ln"></div><div class="st"><span class="n">2</span><span>Opslag</span></div><div class="ln"></div><div class="st"><span class="n">3</span><span>Bibliotheek</span></div><div class="ln"></div><div class="st"><span class="n">4</span><span>Scannen</span></div></div>
+  <h1>Welkom bij je Pleya-server</h1>
+  <p class="sub">Deze server heeft nog geen eigenaar. Vul de setupcode in die bij het opstarten in de containerlog stond, en kies je eigen account. Er is precies één eigenaar; die maakt later de andere gebruikers aan.</p>
+  <label class="label">Setupcode uit de log</label>
+  <div class="field mono focus">PLEYA-7K3M-<span class="caret"></span></div>
+  <p class="help">Geldig tot 30 minuten na het opstarten. Verlopen? Herstart de container, dan staat er een nieuwe code in de log.</p>
+  <div class="form-2">
+    <div><label class="label">Gebruikersnaam</label><div class="field">michel</div></div>
+    <div><label class="label">Servernaam</label><div class="field">Pleya-server</div></div>
+  </div>
+  <label class="label">Wachtwoord</label>
+  <div class="field">••••••••••••<span class="dim" style="margin-left:auto">{{icon:eye}}</span></div>
+  <p class="help">Minimaal 12 tekens. Er is geen wachtwoordherstel via e-mail; bewaar het in een wachtwoordmanager.</p>
+  <div class="foot"><span class="hint">Stap 1 van 4</span><a class="btn primary" href="#">Eigenaar aanmaken {{icon:chev}}</a></div>
+</div></div>
+<div class="note">NORTHSTAR · 40 Setup stap 1 · POST /auth/setup bestaat al; servernaam komt erbij als eerste serverinstelling</div>

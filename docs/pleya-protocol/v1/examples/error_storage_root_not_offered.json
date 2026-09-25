@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "storage.root_not_offered",
+    "message": "root not offered",
+    "retryable": false
+  }
+}

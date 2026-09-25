@@ -1,0 +1,6 @@
+{
+  "permissions": [
+    { "library_id": "0198f2a1-0001-7000-8000-000000000001", "permission": "view" },
+    { "library_id": "0198f2a1-0001-7000-8000-000000000002", "permission": "download" }
+  ]
+}

@@ -2,6 +2,8 @@ package scanner_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -11,8 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
+	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/scanner"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -37,6 +43,7 @@ type harness struct {
 	t      *testing.T
 	root   string
 	store  *catalog.Store
+	pool   *pgxpool.Pool
 	sc     *scanner.Scanner
 	prober *countingProber
 	lib    catalog.Library
@@ -77,7 +84,7 @@ func newHarness(t *testing.T, kind string) *harness {
 	}
 
 	prober := &countingProber{inner: ffprobe.New("ffprobe", 60*time.Second)}
-	h := &harness{t: t, root: root, store: store, prober: prober, lib: libs[0]}
+	h := &harness{t: t, root: root, store: store, pool: pool, prober: prober, lib: libs[0]}
 	h.sc = scanner.New(scanner.Options{
 		Store:       store,
 		Prober:      prober,
@@ -438,6 +445,48 @@ func TestFailedProbeReleasesTheOldVersion(t *testing.T) {
 	}
 }
 
+// Een bestand waarvan de probe faalde wordt niet elke ronde opnieuw geprobed:
+// pas na de wachttijd, of zodra het bestand zelf verandert.
+func TestFailedProbeIsNotRepeatedBeforeTheBackoff(t *testing.T) {
+	h := newHarness(t, "movies")
+	broken := h.path("Kapot (2001)", "Kapot (2001).mkv")
+	if err := os.MkdirAll(filepath.Dir(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(broken, []byte(strings.Repeat("dit is geen video\n", 64)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h.scanAllowingErrors()
+	first := h.prober.calls.Load()
+	if first != 1 {
+		t.Fatalf("eerste ronde probede %d keer, verwacht 1", first)
+	}
+	h.scanAllowingErrors()
+	if got := h.prober.calls.Load(); got != first {
+		t.Fatalf("tweede ronde probede het kapotte bestand opnieuw binnen de wachttijd (%d calls)", got)
+	}
+
+	// Een uur is de wachttijd na één mislukte poging; twee uur terug is dus voorbij.
+	if _, err := h.pool.Exec(context.Background(),
+		`UPDATE media_files SET last_probe_at = now() - interval '2 hours' WHERE probe_attempts > 0`); err != nil {
+		t.Fatal(err)
+	}
+	h.scanAllowingErrors()
+	if got := h.prober.calls.Load(); got != first+1 {
+		t.Fatalf("na de wachttijd is niet precies één keer opnieuw geprobed: %d", got-first)
+	}
+
+	// Verandert het bestand zelf, dan wacht het niet, ook al is de poging vers.
+	if err := os.WriteFile(broken, []byte(strings.Repeat("nog steeds geen video\n", 80)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h.scanAllowingErrors()
+	if got := h.prober.calls.Load(); got != first+2 {
+		t.Fatalf("een gewijzigd bestand hoort direct opnieuw geprobed te worden: %d calls", got)
+	}
+}
+
 func (h *harness) untrustInodes() {
 	h.t.Helper()
 
@@ -460,5 +509,134 @@ func (h *harness) untrustInodes() {
 		}},
 	}}); err != nil {
 		h.t.Fatal(err)
+	}
+}
+
+// Annuleren wordt gezien binnen één walk-stap: na de cancel levert de walk
+// hooguit nog één entry af en wordt er niet meer geprobed.
+func TestCancelStopsTheScanWithinOneWalkStep(t *testing.T) {
+	h := newHarness(t, "movies")
+	for i := 0; i < 6; i++ {
+		name := fmt.Sprintf("Film %d (200%d)", i, i)
+		testsupport.MakeVideo(t, h.path(name, name+".mkv"), 1)
+	}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+	var delivered, afterCancel atomic.Int32
+	h.walkOverride = func(wctx context.Context, root string, onEntry func(scanner.Entry) error, onProblem func(string, error)) error {
+		return scanner.Walk(wctx, root, func(e scanner.Entry) error {
+			n := delivered.Add(1)
+			if wctx.Err() != nil {
+				afterCancel.Add(1)
+			}
+			if n == 2 {
+				cancel(jobs.ErrCancelled)
+			}
+			return onEntry(e)
+		}, onProblem)
+	}
+	_, err := h.sc.ScanLibrary(ctx, h.lib, "manual")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("scan gaf %v, verwacht context.Canceled", err)
+	}
+	if afterCancel.Load() > 1 {
+		t.Fatalf("walk leverde na de annulering nog %d entries af", afterCancel.Load())
+	}
+	if h.prober.calls.Load() != 0 {
+		t.Fatalf("er is na de annulering nog %d keer geprobed", h.prober.calls.Load())
+	}
+	runID, _, _, err := h.store.LatestScanRun(context.Background(), h.lib.ID)
+	if err != nil || runID == id.Nil {
+		t.Fatal(err)
+	}
+	run, err := h.store.ScanRun(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.State != "cancelled" || run.FinishedAt == nil {
+		t.Fatalf("scan_runs staat op %q, finished_at %v; verwacht cancelled met tijdstip", run.State, run.FinishedAt)
+	}
+}
+
+// Annuleert de aanroeper vóór BeginQueuedScanRun (bijvoorbeeld de scanjob is
+// al gecancelled terwijl de scanner de ronde nog niet heeft geadopteerd), dan
+// mag de queued rij niet voor altijd queued blijven staan (S2.4 M-1).
+func TestCancelBeforeAdoptionCancelsTheQueuedRun(t *testing.T) {
+	h := newHarness(t, "movies")
+	bg := context.Background()
+	runID, err := h.store.CreateQueuedScanRun(bg, h.lib.ID, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(bg)
+	cancel(jobs.ErrCancelled)
+	if _, err := h.sc.ScanLibraryRun(ctx, h.lib, "manual", runID); err == nil {
+		t.Fatal("verwacht een fout bij een al geannuleerde ctx")
+	}
+	run, err := h.store.ScanRun(bg, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.State != "cancelled" || run.FinishedAt == nil {
+		t.Fatalf("queued rij staat op %q, finished_at %v; verwacht cancelled met tijdstip", run.State, run.FinishedAt)
+	}
+}
+
+func TestQueuedScanRunIsAdoptedByTheScan(t *testing.T) {
+	h := newHarness(t, "movies")
+	runID, err := h.store.CreateQueuedScanRun(context.Background(), h.lib.ID, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.sc.ScanLibraryRun(context.Background(), h.lib, "manual", runID); err != nil {
+		t.Fatal(err)
+	}
+	run, err := h.store.ScanRun(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.State != "succeeded" || run.FinishedAt == nil {
+		t.Fatalf("overgenomen rij eindigt op %+v", run)
+	}
+	if latest, _, _, err := h.store.LatestScanRun(context.Background(), h.lib.ID); err != nil || latest != runID {
+		t.Fatalf("laatste ronde is %v (%v), verwacht de overgenomen rij", latest, err)
+	}
+}
+
+// Een shutdown is geen annulering: de rij wordt failed, en een rij die na de
+// shutdown niet meer queued is wordt bij de herstart vervangen door een nieuwe.
+func TestShutdownFailsTheRunAndRerunGetsAFreshRow(t *testing.T) {
+	h := newHarness(t, "movies")
+	for i := 0; i < 3; i++ {
+		name := fmt.Sprintf("Film %d (200%d)", i, i)
+		testsupport.MakeVideo(t, h.path(name, name+".mkv"), 1)
+	}
+	bg := context.Background()
+	runID, err := h.store.CreateQueuedScanRun(bg, h.lib.ID, "manual")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(bg)
+	h.walkOverride = func(wctx context.Context, root string, onEntry func(scanner.Entry) error, onProblem func(string, error)) error {
+		return scanner.Walk(wctx, root, func(e scanner.Entry) error {
+			cancel(context.Canceled)
+			return onEntry(e)
+		}, onProblem)
+	}
+	if _, err := h.sc.ScanLibraryRun(ctx, h.lib, "manual", runID); !errors.Is(err, context.Canceled) {
+		t.Fatalf("scan gaf %v, verwacht context.Canceled", err)
+	}
+	run, err := h.store.ScanRun(bg, runID)
+	if err != nil || run.State != "failed" || run.LastError == "" {
+		t.Fatalf("na shutdown staat de rij op %+v (%v), verwacht failed met last_error", run, err)
+	}
+
+	h.walkOverride = nil
+	if _, err := h.sc.ScanLibraryRun(bg, h.lib, "manual", runID); err != nil {
+		t.Fatalf("herstart met een niet-queued rij faalde: %v", err)
+	}
+	latest, state, _, err := h.store.LatestScanRun(bg, h.lib.ID)
+	if err != nil || latest == runID || state != "succeeded" {
+		t.Fatalf("herstart gaf rij %v state %q (%v), verwacht een nieuwe succeeded rij", latest, state, err)
 	}
 }

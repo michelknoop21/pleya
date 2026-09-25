@@ -1,0 +1,6 @@
+{
+  "title": "Documentaires",
+  "kind": "movies",
+  "root_paths": ["/media/docs"],
+  "scan_on_start": true
+}

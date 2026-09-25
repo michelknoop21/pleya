@@ -42,6 +42,9 @@ tags:
   - name: library
   - name: playback
   - name: watch-state
+  - name: users
+  - name: sessions
+  - name: administration
 
 security:
   - bearerAuth: []
@@ -63,6 +66,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Info" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /auth/setup:
     post:
@@ -87,6 +91,7 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /auth/login:
     post:
@@ -113,8 +118,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "403":
+          description: |
+            auth.origin_rejected. Alleen op het cookiepad: de aanvraag droeg
+            credential_mode cookie en kwam van een origin die deze server niet
+            toestaat, of droeg helemaal geen Origin. Zie hoofdstuk 17d.4.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "409": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /auth/refresh:
     post:
@@ -139,6 +153,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/TokenPair" }
         "401": { $ref: "#/components/responses/Error" }
+        "403":
+          description: |
+            auth.origin_rejected. Alleen op het cookiepad; zie hoofdstuk 17d.4.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /auth/stream-token:
     post:
@@ -163,6 +184,7 @@ paths:
               schema: { $ref: "#/components/schemas/StreamToken" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /auth/stream-session:
     post:
@@ -221,26 +243,642 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Beëindig de huidige sessie.
+      description: |
+        Klasse `authenticated`. Trekt uitsluitend de sessie in waarvan het
+        accesstoken op deze aanvraag `sid` draagt. Geen vervanging van
+        DELETE /sessions/{id}: een ander toestel intrekken kan hiermee niet.
+      responses:
+        "204": { description: Sessie ingetrokken. }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /auth/api-tokens:
+    post:
+      tags: [auth]
+      operationId: createApiToken
+      summary: Maak een API-token.
+      description: |
+        Klasse `authenticated` op zichzelf, `admin` met `user_id` van een ander.
+        Dezelfde regel als `GET /sessions`, en met opzet geen beheerroute: RB-20
+        beschrijft een token dat een gebruiker voor zichzelf maakt, of een
+        beheerder namens iemand.
+
+        Een API-token is een sessie met `kind: api`. Het valt onder
+        `DELETE /sessions/{id}`, onder dezelfde intrekking binnen twee seconden,
+        en het staat in `GET /sessions` naast de toestellen.
+
+        `secret` staat precies één keer in een antwoord: hier. De server bewaart
+        alleen de hash ervan, dus een tweede kans is er niet.
+
+        Het bereik komt nooit boven de rol van de eigenaar. Een aanvraag die dat
+        wel doet krijgt `auth.scope_exceeds_role`, met het gevraagde bereik en de
+        rol in `details`.
+
+        Een aanvraag die zelf met een API-token is geauthenticeerd kan alleen
+        tokens maken wanneer dat token bereik `admin` heeft; anders is het
+        antwoord `404`, byte-gelijk aan dat van een beheerroute. Zonder die
+        regel zou een `read`-token van een beheerder een `admin`-token kunnen
+        maken, want het bereik wordt tegen de rol getoetst en de rol is dan
+        `admin`.
+
+        Beschikbaar wanneer `capabilities.api_tokens` waar is.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApiTokenRequest" }
+      responses:
+        "201":
+          description: Het token, met het geheim erbij.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiTokenCreated" }
+        "400":
+          description: |
+            auth.scope_exceeds_role wanneer het bereik boven de rol van de
+            eigenaar uitkomt, session.invalid bij een naam, bereik of
+            geldigheidsduur die niet klopt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            auth.user_not_found. user_id is niet van de aanvrager en de
+            aanvrager is geen admin, of de aanvraag komt van een API-token
+            zonder bereik `admin`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+    get:
+      tags: [auth]
+      operationId: listApiTokens
+      summary: De levende API-tokens van een gebruiker.
+      description: |
+        Klasse `authenticated` op zichzelf, `admin` met `?user_id=`. Zonder
+        geheimen: die bestaan na het aanmaken alleen nog bij de aanvrager.
+
+        Ingetrokken en verlopen tokens staan er niet in, om dezelfde reden als
+        bij `GET /sessions`: de lijst beantwoordt wat er nú met dit account kan
+        praten.
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          description: Alleen bruikbaar door `owner` en `admin`. Zonder deze parameter de eigen tokens.
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: De tokens.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiTokenList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. user_id is niet van de aanvrager en de aanvrager is geen admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /audit:
+    get:
+      tags: [administration]
+      operationId: listAudit
+      summary: Het auditlog.
+      description: |
+        Klasse `admin`. Eén regel per beherende handeling, nieuwste eerst.
+
+        Het bereik is ruimer dan alleen mutaties op beheerendpoints: geslaagde
+        en mislukte logins, het aanmaken en intrekken van tokens en sessies,
+        rol- en rechtenwijzigingen, en de configuratie die de beveiliging raakt.
+        Wat er niet in staat is even bewust: catalogusreads, playbackticks en
+        leesvoortgang zijn volume zonder beveiligingsbetekenis.
+
+        Regels worden negentig dagen bewaard en daarna door de opruimronde
+        verwijderd. Die termijn is geen instelling: een bewaartermijn die een
+        beheerder kan verlagen, kan een aanvaller met beheerrechten verlagen.
+
+        `detail` uit de tabel staat niet in het antwoord. Het is vrije vorm, en
+        vrije vorm in een antwoord is de weg waarlangs er ooit iets in belandt
+        dat er niet in hoort.
+      parameters:
+        - name: source
+          in: query
+          required: false
+          description: |
+            `http` of `mcp`. Een onbekende waarde is geen fout maar een filter
+            dat niets oplevert.
+          schema: { type: string }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: De regels.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditPage" }
+        "400":
+          description: library.cursor_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager is geen admin of owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /users:
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Maak een nieuwe gebruiker aan.
+      description: |
+        Klasse `admin`. `role` mag niet `owner` zijn; er is precies één owner
+        en die ontstaat uitsluitend via /auth/setup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateUserRequest" }
+      responses:
+        "200":
+          description: De aangemaakte gebruiker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager is geen admin of owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: auth.username_taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: Gebruikers van dit huishouden.
+      description: |
+        Klasse `authenticated`. `owner` en `admin` zien iedereen; `member` en
+        `restricted` zien in dit antwoord uitsluitend zichzelf.
+      responses:
+        "200":
+          description: Gebruikers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /users/me:
+    get:
+      tags: [users]
+      operationId: getCurrentUser
+      summary: De gebruiker die deze aanvraag doet.
+      description: |
+        Klasse `authenticated`, en de enige beheerachtige route waar elke rol
+        `200` krijgt. Dat is geen uitzondering op de 404-regel maar de
+        toepassing ervan: het doel is de aanvrager zelf, er staat geen id in het
+        pad en er is geen parameter, dus er valt niets te raden.
+
+        Beschikbaar wanneer `capabilities.users` waar is; `administration` is
+        hier niet voor nodig. Een oudere server kent de route niet en antwoordt
+        `404`; een client valt dan terug op de naam waarmee hij inlogde.
+
+        `me` botst niet met een id: er is geen `GET /users/{id}`.
+      responses:
+        "200":
+          description: De eigen gebruiker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            auth.user_not_found. De gebruiker achter dit token bestaat niet
+            meer; het accesstoken heeft zijn gebruiker overleefd.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /users/{id}:
+    patch:
+      tags: [users]
+      operationId: updateUser
+      summary: Wijzig rol of wachtwoord van een gebruiker.
+      description: |
+        Klasse `admin`, of `owner` op de eigen gebruiker. Een gebruiker die
+        niet van de aanvrager is en waar de aanvrager geen recht op heeft
+        geeft `404`.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUserRequest" }
+      responses:
+        "200":
+          description: De bijgewerkte gebruiker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: auth.owner_immutable. De owner kan niet gedegradeerd worden.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [users]
+      operationId: deleteUser
+      summary: Verwijder een gebruiker.
+      description: Klasse `admin`. De owner verwijderen wordt geweigerd.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204": { description: Gebruiker verwijderd. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: auth.owner_immutable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /users/{id}/permissions:
+    put:
+      tags: [users]
+      operationId: setUserPermissions
+      summary: Zet de bibliotheekrechten van een gebruiker.
+      description: |
+        Klasse `admin`. Vervangt de volledige rechtenlijst van deze gebruiker.
+        `owner` en `admin` hebben hier geen rijen voor: hun toegang volgt uit
+        de rol.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PermissionsRequest" }
+      responses:
+        "200":
+          description: De nu geldende rechten.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryPermissionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: |
+            auth.user_not_found (aanvrager is geen admin, of de gebruiker
+            bestaat niet) of library.not_found (een library_id in de aanvraag
+            bestaat niet).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: |
+            auth.permission_not_allowed. De rol van het doel verbiedt deze
+            trede: `restricted` krijgt nooit `manage` (DEC-119). Geen `404`,
+            want de aanvrager is een beheerder die de gebruiker en de
+            bibliotheek allebei al mag zien; er valt niets te verbergen. De
+            hele lijst wordt geweigerd, ook de treden die op zichzelf mochten.
+            `details` draagt `permission` en `role`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /sessions:
+    get:
+      tags: [sessions]
+      operationId: listSessions
+      summary: Sessies van een gebruiker.
+      description: |
+        Klasse `owner` op de eigen sessies. Met `?user_id=` kunnen `owner` en
+        `admin` de sessies van een ander opvragen.
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          description: Alleen bruikbaar door `owner` en `admin`. Zonder deze parameter de eigen sessies.
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: Sessies.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. user_id is niet van de aanvrager en de aanvrager is geen admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /sessions/{id}:
+    delete:
+      tags: [sessions]
+      operationId: revokeSession
+      summary: Trek precies één sessie in.
+      description: |
+        Klasse `owner` op de eigen sessies, `admin` op elke sessie. Zet
+        `revoked_at`, cascadeert naar de refreshtokens en browserstreamsessies
+        van deze sessie, en werkt het intrekkingsregister bij. Een sessie-id
+        dat niet van de aanvrager is en waar de aanvrager geen recht op heeft
+        geeft `404`.
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204": { description: Sessie ingetrokken. }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.session_not_found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /stream-sessions:
+    get:
+      tags: [administration]
+      operationId: listStreamSessions
+      summary: Wie er op dit moment kijkt.
+      description: |
+        Klasse `admin`. De browser-streamsessies (6.4a) die op dit moment nog
+        bytes kunnen ophalen: niet ingetrokken, niet verlopen, en de auth-sessie
+        waaruit ze zijn uitgegeven evenmin ingetrokken. Een sessie die aan een
+        van die drie voorwaarden niet voldoet staat er niet in, want een
+        overzicht dat iemand toont die op zijn eerstvolgende aanvraag geweigerd
+        wordt is misleidend.
+
+        Ongepagineerd. Het aantal is per gebruiker begrensd door
+        `max_stream_sessions` (1 tot 32), dus de lijst groeit met het
+        huishouden en niet met de bibliotheek.
+
+        Er staat geen geheim in. Het geheim van een streamsessie leeft
+        uitsluitend in de cookie `pleya_ss_<id>`; de id zelf is niet geheim en
+        reist als `ss` in de media-URL.
+      responses:
+        "200":
+          description: De lopende streams.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StreamSessionList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager is geen admin of owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /server:
     get:
       tags: [discovery]
       operationId: getServer
       summary: Serverdetail achter authenticatie.
+      description: |
+        Klasse `authenticated`. Voor klasse `admin` komen er acht velden bij
+        (S1.3): `public_url`, `listen`, `behind_proxy`, `trusted_proxies`,
+        `build`, `database`, `ffprobe` en `health`. Een lid krijgt hetzelfde
+        antwoord als altijd, zonder die velden en zonder een aanwijzing dat ze
+        bestaan.
       responses:
         "200":
-          description: Naam, versie en starttijd.
+          description: Naam, versie en starttijd; voor een beheerder ook hoe de server draait.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ServerDetail" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/environment:
+    get:
+      tags: [administration]
+      operationId: getServerEnvironment
+      summary: De omgevingsvariabelen van deze server.
+      description: |
+        Klasse `admin`. Alleen `PLEYA_SERVER_*` plus een gemaskeerde
+        `DATABASE_URL`; de rest van de procesomgeving hoort bij de container en
+        kan credentials van heel andere diensten dragen. Een lid of een
+        beperkte gebruiker krijgt `404`.
+      responses:
+        "200":
+          description: De variabelen, gesorteerd op naam.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerEnvironment" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/log:
+    get:
+      tags: [administration]
+      operationId: getServerLog
+      summary: De laatste logregels.
+      description: |
+        Klasse `admin`. De regels komen uit een ringbuffer in het geheugen en
+        nooit uit een bestand, en ze zijn geredigeerd op de weg de buffer in.
+        Nieuwste eerst.
+      parameters:
+        - name: level
+          in: query
+          required: false
+          description: Ondergrens. Een waarde die deze server niet kent is geen fout maar geen filter.
+          schema: { $ref: "#/components/schemas/LogLevel" }
+        - name: limit
+          in: query
+          required: false
+          description: Hoogstens 500, de capaciteit van de buffer. Een hogere waarde wordt daarheen teruggebracht.
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: De regels, nieuwste eerst.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerLog" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/connectivity-check:
+    post:
+      tags: [administration]
+      operationId: checkConnectivity
+      summary: Is deze server van buiten bereikbaar, en komen ranges heel aan.
+      description: |
+        Klasse `admin`. Er is geen aanvraagbody, en dat is de beveiliging: het
+        doel is altijd het eigen `public_url` en er is dus niets aan de
+        aanvrager om het ergens anders heen te richten. Vaste time-out, geen
+        omleidingen. Zonder ingesteld `public_url` is het antwoord `false` op
+        beide metingen, want er is dan niets aan te roepen.
+      responses:
+        "200":
+          description: De uitkomst van de twee metingen.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectivityCheck" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /server/rotate-signing-key:
+    post:
+      tags: [administration]
+      operationId: rotateSigningKey
+      summary: Vervang de ondertekensleutel en trek elke sessie in.
+      description: |
+        Klasse `admin`, en de bevestiging is verplicht: `confirm` moet
+        letterlijk `rotate` zijn.
+
+        De handeling trekt eerst elke sessie in en vervangt daarna pas de
+        sleutel. Andersom zou een mislukte schrijfactie een server achterlaten
+        waarvan de accesstokens dood zijn en de refreshtokens leven, en dan
+        logt elke client zichzelf meteen weer in met precies de keten die de
+        beheerder wilde verbreken.
+
+        Ook het token van de aanvrager is hierna dood; opnieuw inloggen hoort
+        erbij. Het antwoord draagt de nieuwe sleutel niet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RotateSigningKeyRequest" }
+      responses:
+        "204": { description: "Sleutel vervangen; alle sessies zijn ingetrokken." }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: server.confirm_mismatch. De bevestiging ontbreekt of klopt niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /settings:
+    get:
+      tags: [administration]
+      operationId: getSettings
+      summary: De beheerbare serverinstellingen.
+      description: |
+        Klasse `admin`. Per sleutel de waarde die nu geldt plus de laag die hem
+        levert: `env` is de omgeving waarmee de server startte, `db` een waarde
+        die een beheerder heeft opgeslagen. Een lid of een beperkte gebruiker
+        krijgt `404`, dezelfde weigering als overal (hoofdstuk 7.1).
+
+        Wat hier niet in staat is een keuze en geen omissie: bindadres,
+        vertrouwde proxy's, paden en de ondertekensleutel horen bij het draaien
+        van de container en niet bij beheer in de app.
+      responses:
+        "200":
+          description: De set zoals hij nu geldt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Settings" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: [administration]
+      operationId: patchSettings
+      summary: Wijzig een of meer instellingen.
+      description: |
+        Klasse `admin`. De body is gesloten: een onbekende sleutel is een fout
+        en geen veld dat stil wegvalt. Elke waarde heeft een grens; een waarde
+        erbuiten geeft `settings.invalid_value` met het veld en de grens in
+        `details`, en dan wijzigt er niets, ook niet aan de sleutels die wel
+        klopten.
+
+        Een geslaagde wijziging geldt vanaf het eerstvolgende verzoek: een
+        nieuwe TTL zit dus in het eerstvolgende token, zonder herstart.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsPatch" }
+      responses:
+        "200":
+          description: De set na de wijziging.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Settings" }
+        "400":
+          description: settings.invalid_value. Onbekende sleutel, verkeerd type, of buiten de grens.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /libraries:
     get:
       tags: [library]
       operationId: listLibraries
       summary: Alle zichtbare bibliotheken.
-      description: Niet gepagineerd; een huishouden heeft er een handvol.
+      description: |
+        Niet gepagineerd; een huishouden heeft er een handvol.
+
+        `managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee
+        voor klasse `admin` (S2.2, J.3); voor de rest ziet dit endpoint er
+        precies zo uit als vóór S2.
       responses:
         "200":
           description: Bibliotheken.
@@ -248,6 +886,305 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/LibraryList" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [library]
+      operationId: createLibrary
+      summary: Maak een door de API beheerde bibliotheek aan.
+      description: |
+        Klasse `admin`. De aangemaakte bibliotheek draagt `managed: db`, en
+        blijft dat: de config-sync die `PLEYA_SERVER_LIBRARIES` leest raakt
+        haar niet aan.
+
+        `root_paths` worden structureel gevalideerd (geen overlap met een
+        bestaande root of met een andere root in dezelfde aanvraag) en tegen
+        de opsomming uit `GET /storage/roots`: een root_path moet onder een
+        van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` vallen. Geen van beide
+        controles raakt het bestandssysteem aan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateLibraryRequest" }
+      responses:
+        "201":
+          description: De aangemaakte bibliotheek.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Library" }
+        "400":
+          description: storage.root_not_offered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "409":
+          description: library.slug_taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /libraries/{library_id}:
+    patch:
+      tags: [library]
+      operationId: updateLibrary
+      summary: Werk een bibliotheek bij.
+      description: |
+        Klasse `admin`. Elk veld is optioneel; alleen wat wordt meegestuurd
+        verandert. `kind` mag alleen wisselen zolang de bibliotheek geen enkel
+        item draagt.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateLibraryRequest" }
+      responses:
+        "200":
+          description: De bijgewerkte bibliotheek.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Library" }
+        "400":
+          description: storage.root_not_offered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.not_empty of library.config_managed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [library]
+      operationId: deleteLibrary
+      summary: Verwijder een bibliotheek.
+      description: |
+        Klasse `admin`, en de bevestiging is verplicht: `confirm` moet
+        letterlijk de titel van de bibliotheek zijn (K rij 16).
+
+        Verwijdert uitsluitend in de database. Geen bestand op schijf wordt
+        aangeraakt.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeleteLibraryRequest" }
+      responses:
+        "204": { description: "Bibliotheek verwijderd." }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.confirm_mismatch of library.config_managed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /libraries/{library_id}/scan:
+    post:
+      tags: [administration]
+      operationId: startScan
+      summary: Start een scan van een bibliotheek.
+      description: |
+        Klasse `admin`. Maakt een scanrij op `queued` en een scanjob aan.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "202":
+          description: De nieuwe scan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Scan" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.scan_in_progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /scans:
+    get:
+      tags: [administration]
+      operationId: listScans
+      summary: Lijst scans, nieuwste eerst.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: library_id
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/Id" }
+      responses:
+        "200":
+          description: Een pagina scans.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScanPage" }
+        "400":
+          description: library.cursor_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /scans/{scan_id}:
+    get:
+      tags: [administration]
+      operationId: getScan
+      summary: Lees een scan.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/ScanId"
+      responses:
+        "200":
+          description: De scan.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Scan" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /jobs:
+    get:
+      tags: [administration]
+      operationId: listJobs
+      summary: Lijst jobs, nieuwste eerst.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Een pagina jobs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobPage" }
+        "400":
+          description: library.cursor_invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /jobs/{job_id}/cancel:
+    post:
+      tags: [administration]
+      operationId: cancelJob
+      summary: Annuleer een job.
+      description: Klasse `admin`.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: De job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: job.not_cancellable. details.reason is finished (de job is al klaar).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /jobs/{job_id}/retry:
+    post:
+      tags: [administration]
+      operationId: retryJob
+      summary: Zet een job opnieuw in de wachtrij.
+      description: |
+        Klasse `admin`. Werkt op elke job die niet al `pending` of `running` is,
+        dus ook een `succeeded` job; niet beperkt tot `failed` of `cancelled`.
+        Staat de job nog op `pending` of `running`, dan verandert er niets en
+        komt dezelfde job ongewijzigd terug.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: De job.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: job.not_cancellable. details.reason is duplicate_in_flight (dezelfde dedupe-sleutel staat al in de wachtrij).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /storage/roots:
+    get:
+      tags: [administration]
+      operationId: listStorageRoots
+      summary: Welke mediamounts deze installatie kent, en wie ze gebruikt.
+      description: |
+        Klasse `admin`. De lijst is de opsomming uit `PLEYA_SERVER_MEDIA_DIRS`
+        (S2.3), aangevuld met elke root die al aan een bibliotheek hangt: een
+        root die uit die instelling is verdwenen blijft zichtbaar met
+        `mounted: false` in plaats van stilzwijgend te verdwijnen.
+
+        `root_paths` op `POST`/`PATCH /libraries` moeten letterlijk onder een
+        van deze mounts vallen (hoofdstuk 17e.4 van de specificatie).
+      responses:
+        "200":
+          description: De mounts, gesorteerd op pad.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageRootList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /storage/roots/recheck:
+    post:
+      tags: [administration]
+      operationId: recheckStorageRoots
+      summary: Meet elke geclaimde root opnieuw.
+      description: |
+        Klasse `admin`. Plant een meetronde in (bestandssysteemtype en
+        inodevertrouwen) op elke geclaimde root en antwoordt meteen met `202`;
+        de meting zelf loopt buiten de aanvraag om via de jobwachtrij, zodat
+        een trage of tijdelijk onbereikbare mount de aanvrager niet laat
+        wachten. Een tweede tik terwijl de eerste nog loopt wordt
+        gededupliceerd.
+      responses:
+        "202": { description: "Meetronde ingepland." }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager haalt de klasse admin niet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /libraries/{library_id}/items:
     get:
@@ -279,6 +1216,7 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /items/{item_id}:
     get:
@@ -295,6 +1233,7 @@ paths:
               schema: { $ref: "#/components/schemas/Item" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /items/{item_id}/children:
     get:
@@ -314,6 +1253,7 @@ paths:
               schema: { $ref: "#/components/schemas/ItemPage" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /search:
     get:
@@ -349,6 +1289,7 @@ paths:
               schema: { $ref: "#/components/schemas/ItemPage" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /hubs/{hub_id}:
     get:
@@ -359,6 +1300,21 @@ paths:
         De server levert bouwstenen en geen schermindeling; de client bouwt zijn
         eigen rijen. Een server zonder kijkstatus levert lege lijsten voor
         continue_watching en next_up, en geen fout.
+
+        Staat capabilities.watch_state op true, dan geldt hoofdstuk 15 van de
+        specificatie, dat de inhoud van beide hubs normatief vastlegt.
+        continue_watching bevat films en afleveringen met watched false en
+        position_ms boven nul, aflopend op het moment van de laatste wijziging.
+        next_up bevat per serie precies een aflevering: de laagst genummerde
+        aflevering vanaf de hoogst genummerde aflevering waar deze identiteit
+        kijkstatus op heeft, die ongekeken is en waaraan nog niet begonnen is.
+        Specials (seizoen met item_index 0) en ongenummerde afleveringen tellen
+        niet mee, niet als kandidaat en niet als ankerpunt. Een serie zonder
+        kijkstatus staat niet in next_up, en een serie die uit is verdwijnt
+        eruit. De twee hubs leveren nooit hetzelfde item.
+
+        Een cursor hoort bij de hub die hem uitgaf; hem op een andere hub
+        aanbieden levert library.cursor_invalid.
       parameters:
         - name: hub_id
           in: path
@@ -381,6 +1337,7 @@ paths:
               schema: { $ref: "#/components/schemas/ItemPage" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /artwork/{artwork_id}:
     get:
@@ -416,6 +1373,7 @@ paths:
         "304": { description: Niet gewijzigd. }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /subtitles/{subtitle_id}:
     get:
@@ -439,6 +1397,7 @@ paths:
             text/vtt: { schema: { type: string } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /stream/{version_id}:
     get:
@@ -534,6 +1493,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "503": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /watch-state:
     post:
@@ -575,6 +1535,7 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
     get:
       tags: [watch-state]
       operationId: listWatchState
@@ -597,6 +1558,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/WatchStatePage" }
         "401": { $ref: "#/components/responses/Error" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
 components:
 
@@ -644,8 +1606,28 @@ components:
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
+    ScanId:
+      name: scan_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    JobId:
+      name: job_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
     ItemId:
       name: item_id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Id" }
+    SessionId:
+      name: id
       in: path
       required: true
       schema: { $ref: "#/components/schemas/Id" }
@@ -665,6 +1647,19 @@ components:
   responses:
     Error:
       description: Fout met een stabiele machineleesbare code.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    InternalError:
+      description: |
+        `server.internal`. Elke operatie kan hem geven, want hij is het antwoord
+        op een fout die de handler zelf niet had voorzien: de recovery-laag vangt
+        een panic af en maakt er een envelop van in plaats van een verbroken
+        verbinding of een leeg lichaam.
+
+        `details.request_id` draagt dezelfde id als de logregel die de stack
+        bevat. Dat is het enige dat een client ermee doet: tonen zodat een
+        gebruiker hem kan doorgeven. De stack zelf verlaat de server nooit.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -699,8 +1694,21 @@ components:
           properties:
             code:
               type: string
-              pattern: "^(auth|library|playback|session|storage)\\.[a-z0-9_]+$"
-              description: Het contract. De client vertaalt codes en matcht nooit op message.
+              pattern: "^(auth|library|playback|session|settings|storage|server|job)\\.[a-z0-9_]+$"
+              description: |
+                Het contract. De client vertaalt codes en matcht nooit op message.
+
+                Het domein is de helft voor de punt. De lijst is niet gesloten
+                maar groeit per protocolvenster, en elke uitbreiding is een
+                besluit: `server` en `settings` kwamen erbij met venster 1
+                (DEC-135 en DEC-136). `job` kwam erbij met venster 2 (DEC-138),
+                zodra S2.4 `job.not_cancellable` stuurde. Een client die een code
+                niet kent valt terug op een generieke melding en takt niet op het domein.
+
+                Codes die een client zelf verzint horen hier niet thuis. De
+                webclient draagt `client.transport` en
+                `client.malformed_response`; die komen nooit over de lijn en
+                het contract keurt ze af.
             message:
               type: string
               description: Voor logs, niet voor de UI.
@@ -737,6 +1745,18 @@ components:
           required: [id]
           properties:
             id: { $ref: "#/components/schemas/Id" }
+            setup_accepts_name:
+              type: boolean
+              default: false
+              description: |
+                De server neemt `server_name` aan op `POST /auth/setup` en legt
+                hem vast als de instelling `server_name`. Optioneel en op `Info`
+                en niet in `capabilities`, want het is geen functie die aan of
+                uit staat maar een eigenschap van dit ene endpoint, en het is het
+                enige veld dat een client vóór het inloggen moet weten. Zonder
+                deze vlag laat een client `server_name` weg: `SetupRequest` is
+                gesloten, dus een oudere server wijst het veld af in plaats van
+                het te negeren.
         capabilities:
           $ref: "#/components/schemas/Capabilities"
         auth:
@@ -787,15 +1807,226 @@ components:
             De server kent POST /auth/stream-session en de ss-parameter op
             /stream. Voor browsers; externe spelers blijven het streamtoken in
             de querystring gebruiken.
+        sessions:
+          type: boolean
+          default: false
+          description: |
+            De server kent device-scoped sessies (DEC-123): device_id en
+            device_name op LoginRequest en SetupRequest, GET/DELETE /sessions
+            en POST /auth/logout. Een client stuurt device_id/device_name pas
+            wanneer deze vlag waar is; zonder de vlag krijgt de sessie
+            device_id NULL en een vaste plaatshouder als naam.
+        api_tokens:
+          type: boolean
+          default: false
+          description: |
+            De server kent API-tokens als sessies (RB-20): POST en GET
+            /auth/api-tokens bestaan, en Session draagt kind, scope en
+            expires_at. De vlag staat naast `sessions` en niet erin: een client
+            die sessies kent maar deze vlag niet ziet, toont het
+            sessieoverzicht zonder tokens, en dat is een geldig scherm.
+        cookie_auth:
+          type: boolean
+          default: false
+          description: |
+            De server kent `credential_mode` op POST /auth/login en
+            POST /auth/refresh (RB-29, hoofdstuk 17d) en zet het refreshcredential
+            desgevraagd in een HttpOnly-cookie. Bedoeld voor browsers; een client
+            zonder cookiejar heeft er niets aan en laat het veld weg.
+        administration:
+          type: boolean
+          default: false
+          description: |
+            De server heeft een beheeroppervlak: `GET`/`PATCH /settings`, de vier
+            routes onder `/server`, `GET /stream-sessions` en `GET /audit`. Een
+            client die de vlag niet ziet toont geen beheer, en dat is geen
+            beveiliging maar netheid: de server weigert onafhankelijk daarvan met
+            `404` voor wie er niet bij mag (hoofdstuk 16.4, regel 16 tot en met
+            26).
+
+            Eén vlag voor het hele oppervlak en niet één per endpoint. De zes
+            routes kwamen in vier slices tegelijk met deze vlag, en een client
+            die ze los zou moeten onderhandelen krijgt zes vragen waarvan het
+            antwoord altijd hetzelfde is.
+        mcp:
+          type: boolean
+          default: false
+          description: |
+            De server biedt een MCP-endpoint aan waarmee een agent hem kan
+            beheren (RB-19, RB-20). Staat op `false` tot de slice die het bouwt;
+            `Server.mcp` draagt dan het adres en het aantal tools.
 
     ServerDetail:
       type: object
       required: [id, name, version, started_at]
+      description: |
+        De eerste vier velden zijn klasse `authenticated`. De tien daaronder
+        gaan alleen mee voor klasse `admin` (acht met S1.3, `web_origin` met
+        S1.8, `mcp` met S1.6): ze beschrijven hoe deze server draait, en dat is
+        voor een huisgenoot geen informatie maar een verkenning. Een client die
+        ze niet krijgt is dus geen beheerder, en verbergt het beheeroppervlak.
       properties:
         id: { $ref: "#/components/schemas/Id" }
         name: { type: string }
         version: { type: string }
         started_at: { $ref: "#/components/schemas/Timestamp" }
+        public_url:
+          type: string
+          description: |
+            Het adres waarop deze server van buiten bereikbaar hoort te zijn.
+            Leeg wanneer er geen is ingesteld. Ook een instelling
+            (`Settings.public_url`); dit veld toont de waarde die nu geldt.
+        web_origin:
+          type: string
+          description: |
+            De canonieke origin van de webclient die bij deze server hoort,
+            bijvoorbeeld `https://pleya.thuis`. Leeg wanneer er geen is
+            ingesteld. Ook een instelling (`Settings.web_origin`); dit veld toont
+            de waarde die nu geldt. `cors_origins` staat hier bewust niet naast:
+            dat is beleid en geen adres, en een lijst vertrouwde origins vertelt
+            wie het proberen waard is (hoofdstuk 17d.3).
+        listen:
+          type: string
+          description: Het bindadres van het proces, bijvoorbeeld `:8080`. Geen instelling.
+        behind_proxy:
+          type: boolean
+          description: |
+            True wanneer déze aanvraag via een vertrouwde proxy binnenkwam: de
+            tegenpartij staat in `trusted_proxies` én er stond een
+            forwarding-header op. Zonder de eerste voorwaarde zou elke client
+            het antwoord zelf kunnen bepalen.
+        trusted_proxies:
+          type: array
+          description: De adressen en bereiken waarvan de server forwarding-headers aanneemt. Geen instelling.
+          items: { type: string }
+        build:
+          type: string
+          description: Versie, toolchain en platform van de draaiende binary.
+        database:
+          type: object
+          required: [version, schema]
+          properties:
+            version:
+              type: string
+              description: Het versienummer van Postgres, zonder de distributieregel erachter.
+            schema:
+              type: integer
+              description: De hoogste toegepaste migratie.
+        ffprobe:
+          type: object
+          description: Gemeten bij het opstarten, niet per aanvraag.
+          required: [found]
+          properties:
+            found: { type: boolean }
+            version: { type: string }
+        health:
+          type: object
+          required: [ready, jobs_running, jobs_failed]
+          properties:
+            ready:
+              type: boolean
+              description: Hetzelfde antwoord als /readyz, maar dan achter authenticatie en met de tellers ernaast.
+            jobs_running: { type: integer }
+            jobs_failed: { type: integer }
+        mcp:
+          type: object
+          required: [enabled, tool_count]
+          description: |
+            De MCP-beheerlaag, klasse `admin` net als de velden erboven. Zolang
+            `capabilities.mcp` `false` is staat hier `enabled: false` met
+            `tool_count: 0` en geen `url`: het object bestaat dan wel en zegt
+            precies dat er niets aanstaat, wat een ander antwoord is dan een
+            server die de vraag niet kent.
+          properties:
+            enabled: { type: boolean }
+            url:
+              type: string
+              description: Het adres van het MCP-endpoint. Afwezig zolang het uit staat.
+            tool_count:
+              type: integer
+              description: Het aantal tools dat het endpoint aanbiedt, zodat een beheerscherm ziet of de laag compleet is.
+
+    ServerEnvironment:
+      type: object
+      required: [entries]
+      description: |
+        De omgevingsvariabelen van deze server, en niet die van de container
+        eromheen: alleen `PLEYA_SERVER_*` plus een gemaskeerde `DATABASE_URL`.
+        Een variabele waarvan de naam een geheim aankondigt gaat er in zijn
+        geheel af, ook wanneer de waarde er geen is: de TTL's staan met hun
+        bron en hun grens in `GET /settings`, dus die uitzondering kost niets.
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required: [key, value, redacted]
+            properties:
+              key: { type: string }
+              value: { type: string }
+              redacted:
+                type: boolean
+                description: |
+                  True wanneer de waarde hierboven niet de echte is. Zonder dit
+                  veld zou een beheerder een gemaskeerde DSN voor de werkelijke
+                  instelling aanzien.
+
+    LogLevel:
+      type: string
+      description: Het niveau van een logregel, en de ondergrens van `?level=`.
+      enum: [debug, info, warn, error]
+      x-unknown-safe: true
+
+    ServerLog:
+      type: object
+      required: [entries]
+      description: |
+        De laatste regels uit een ringbuffer in het geheugen, nieuwste eerst.
+        Nooit uit een bestand: een endpoint dat een pad opent is een
+        bestandsbrowser met een filter ervoor. De regels zijn geredigeerd op de
+        weg de buffer in, dus er is geen leespad dat die redactie overslaat.
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required: [at, level, message]
+            properties:
+              at: { $ref: "#/components/schemas/Timestamp" }
+              level: { $ref: "#/components/schemas/LogLevel" }
+              component:
+                type: string
+                description: Het subsysteem dat de regel schreef, bijvoorbeeld `scanner` of `http`.
+              message:
+                type: string
+                description: Het bericht met zijn attributen erachter, geredigeerd en afgekapt.
+
+    ConnectivityCheck:
+      type: object
+      required: [public_url_reachable, range_intact, behind_proxy]
+      properties:
+        public_url_reachable:
+          type: boolean
+          description: Het eigen `public_url` gaf `200` op `/pleya/v1/info`, binnen de vaste time-out en zonder omleiding.
+        range_intact:
+          type: boolean
+          description: |
+            Een `Range`-aanvraag kwam als `206` met een `Content-Range` terug.
+            Een tussenliggende proxy die ranges wegbuffert antwoordt `200` met
+            het hele bestand, en dat breekt direct play: aan de clientkant is
+            dat een speler die bij elke seek hapert.
+        behind_proxy: { type: boolean }
+
+    RotateSigningKeyRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm:
+          type: string
+          description: Moet letterlijk `rotate` zijn. Een vast woord en geen boolean, want dit is een handeling die iemand met opzet uitschrijft.
+          enum: [rotate]
+          x-unknown-safe: false
 
     SetupRequest:
       type: object
@@ -805,6 +2036,19 @@ components:
         setup_code: { type: string, minLength: 1 }
         username: { type: string, minLength: 1 }
         password: { type: string, minLength: 8 }
+        device_id: { $ref: "#/components/schemas/DeviceId" }
+        device_name: { $ref: "#/components/schemas/DeviceName" }
+        server_name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: |
+            De naam van deze server, meteen bij het aanmaken van de eigenaar.
+            Alleen te sturen wanneer `info.server.setup_accepts_name` waar is;
+            deze body is gesloten. Dezelfde grenzen als de instelling
+            `server_name`, want het is diezelfde instelling: setup schrijft hem,
+            `GET /server` toont hem, en `GET /settings` noemt hem daarna met
+            bron `db`.
 
     LoginRequest:
       type: object
@@ -813,22 +2057,71 @@ components:
       properties:
         username: { type: string, minLength: 1 }
         password: { type: string, minLength: 1 }
+        device_id: { $ref: "#/components/schemas/DeviceId" }
+        device_name: { $ref: "#/components/schemas/DeviceName" }
+        credential_mode: { $ref: "#/components/schemas/CredentialMode" }
 
     RefreshRequest:
       type: object
-      required: [refresh_token]
       additionalProperties: false
+      minProperties: 1
+      description: |
+        Zonder `credential_mode`, of met `credential_mode: token`, is
+        `refresh_token` verplicht en is dit de body die er sinds v1 in staat. Met
+        `credential_mode: cookie` komt het credential uit de cookie
+        `pleya_refresh` en hoort `refresh_token` er niet bij; staan ze er
+        allebei, dan weigert de server met `auth.token_invalid`, want dan zijn er
+        twee bronnen en geen manier om te weten welke bedoeld is.
       properties:
         refresh_token: { type: string, minLength: 1 }
+        credential_mode: { $ref: "#/components/schemas/CredentialMode" }
+
+    CredentialMode:
+      type: string
+      description: |
+        Waar het refreshcredential heen gaat. Optioneel, en alleen te sturen
+        wanneer `capabilities.cookie_auth` waar is: de bodies zijn gesloten, dus
+        een oudere server wijst het veld af in plaats van het stil te laten
+        vallen.
+
+        Afwezig betekent `token`, en `token` reproduceert het gedrag van v1: het
+        credential staat als `refresh_token` in het antwoord. Bij `cookie` zet de
+        server het in een `HttpOnly`-, `SameSite=Strict`-cookie op
+        `Path=/pleya/v1/auth/refresh`, blijft `refresh_token` uit het antwoord,
+        en moet de aanvraag een toegestane `Origin` dragen (hoofdstuk 17d).
+      enum: [token, cookie]
+      x-unknown-safe: false
+
+    DeviceId:
+      type: string
+      minLength: 1
+      description: |
+        PreferenceDeviceId van de client: stabiel, niet gesynchroniseerd, en
+        geen Plex-clientidentifier. Optioneel; alleen sturen wanneer
+        capabilities.sessions waar is. Weglaten geeft een sessie met
+        device_id NULL, hetzelfde als een client die de capability niet kent.
+
+    DeviceName:
+      type: string
+      minLength: 1
+      description: Mensleesbare naam, bijvoorbeeld "iPhone van Michel".
 
     TokenPair:
       type: object
-      required: [access_token, refresh_token, token_type, expires_in_ms]
+      required: [access_token, token_type, expires_in_ms]
       properties:
         access_token: { type: string }
         refresh_token:
           type: string
-          description: Roteert bij elk gebruik; het oude vervalt onmiddellijk.
+          description: |
+            Roteert bij elk gebruik; het oude vervalt onmiddellijk.
+
+            Aanwezig tenzij de aanvraag `credential_mode: cookie` droeg; dan
+            staat het credential in de cookie `pleya_refresh` en komt het niet in
+            het lichaam. Het veld staat daarom niet in `required`. Voor een
+            client die `credential_mode` niet stuurt verandert er niets: die
+            krijgt het altijd, en de voorwaarde ligt volledig bij de client zelf
+            (hoofdstuk 17d.1).
         token_type: { type: string, const: bearer }
         expires_in_ms: { $ref: "#/components/schemas/DurationMs" }
 
@@ -859,6 +2152,62 @@ components:
             nergens anders voor.
         expires_at: { $ref: "#/components/schemas/Timestamp" }
 
+    StreamSessionSummary:
+      type: object
+      required: [id, user_id, username, item_id, item_title, item_kind, started_at, expires_at]
+      description: |
+        Eén lopende stream in het beheeroverzicht. De vier dingen die het scherm
+        toont zijn de gebruiker, het toestel, het item en de positie; de rest is
+        wat een rij van een andere onderscheidt.
+
+        Er staat bewust geen uitgeschreven stamboom van een aflevering in. Wie
+        "serie S2 · A3" wil tonen haalt dat met `item_id` uit
+        `GET /items/{item_id}`; een tweede kopie van de itemgegevens hier zou
+        een tweede bron maken voor dezelfde vraag.
+      properties:
+        id:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: |
+            De id van de streamsessie. Niet geheim: hij reist als `ss` in de
+            media-URL en mag in browsergeschiedenis en logs staan.
+        user_id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+        device_name:
+          type: string
+          description: |
+            Ontbreekt wanneer de streamsessie geen auth-sessie draagt, en dat
+            is een rij van vóór de migratie die sessies introduceerde. Een
+            client verzint er zelf een plaatshouder bij als hij die wil tonen.
+        item_id: { $ref: "#/components/schemas/Id" }
+        item_title: { type: string }
+        item_kind: { $ref: "#/components/schemas/ItemKind" }
+        position_ms:
+          allOf: [{ $ref: "#/components/schemas/DurationMs" }]
+          description: |
+            De laatst gemelde positie van deze gebruiker op dit item. Ontbreekt
+            zolang er niets is gerapporteerd, en dat is iets anders dan nul: een
+            client die het verschil niet maakt tekent een balk op 0% voor iemand
+            die net begon.
+        duration_ms:
+          allOf: [{ $ref: "#/components/schemas/DurationMs" }]
+          description: |
+            De lengte waartegen `position_ms` telt. Staat er alleen wanneer
+            `position_ms` er ook staat; zonder positie zegt hij niets dat niet
+            al op het item staat.
+        started_at: { $ref: "#/components/schemas/Timestamp" }
+        last_used_at:
+          allOf: [{ $ref: "#/components/schemas/Timestamp" }]
+          description: Ontbreekt zolang de sessie nog geen byte heeft opgehaald.
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+
+    StreamSessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/StreamSessionSummary" }
+
     StreamToken:
       type: object
       required: [stream_token, expires_at]
@@ -874,6 +2223,14 @@ components:
         Er mag binnen v1 een soort bij komen. Een client die de soort niet kent
         toont de bibliotheek niet, en faalt niet.
 
+    LibraryManaged:
+      type: string
+      enum: [config, db]
+      x-unknown-safe: true
+      description: |
+        config: overschreven door PLEYA_SERVER_LIBRARIES bij elke sync. db:
+        alleen door deze API (S2.2).
+
     Library:
       type: object
       required: [id, title, kind, item_count]
@@ -882,6 +2239,18 @@ components:
         title: { type: string }
         kind: { $ref: "#/components/schemas/LibraryKind" }
         item_count: { type: integer, minimum: 0 }
+        managed:
+          allOf: [{ $ref: "#/components/schemas/LibraryManaged" }]
+          description: Alleen voor klasse admin (S2.2, J.3).
+        scan_interval_seconds:
+          type: [integer, "null"]
+          minimum: 1
+          description: |
+            Alleen voor klasse admin. null betekent: gebruik de globale
+            scan-interval van de server (S2.2, J.3).
+        scan_on_start:
+          type: boolean
+          description: Alleen voor klasse admin (S2.2, J.3).
 
     LibraryList:
       type: object
@@ -890,6 +2259,99 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/Library" }
+
+    CreateLibraryRequest:
+      type: object
+      required: [title, kind, root_paths]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1 }
+        kind: { $ref: "#/components/schemas/LibraryKind" }
+        root_paths:
+          type: array
+          minItems: 1
+          items: { type: string }
+        scan_interval_seconds: { type: integer, minimum: 1 }
+        scan_on_start: { type: boolean }
+
+    UpdateLibraryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1 }
+        kind: { $ref: "#/components/schemas/LibraryKind" }
+        root_paths:
+          type: array
+          minItems: 1
+          items: { type: string }
+        scan_interval_seconds: { type: [integer, "null"], minimum: 1 }
+        scan_on_start: { type: boolean }
+
+    DeleteLibraryRequest:
+      type: object
+      required: [confirm]
+      additionalProperties: false
+      properties:
+        confirm:
+          type: string
+          description: Moet letterlijk de titel van de bibliotheek zijn (K rij 16).
+          x-unknown-safe: false
+
+    InodeTrustSource:
+      type: string
+      enum: [fstype_default, config_override, measured]
+      x-unknown-safe: true
+      description: |
+        fstype_default: afgeleid uit het bestandssysteemtype. config_override:
+        `PLEYA_SERVER_INODE_TRUST`. measured: het resultaat van
+        `POST /storage/roots/recheck` (S2.3).
+
+    StorageRootLibraryRef:
+      type: object
+      required: [id, title]
+      description: |
+        Met de unieke constraint op een root_path is dit vandaag hoogstens één
+        element per root; het schema draagt een lijst omdat J.3 dat vastlegt.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        title: { type: string }
+
+    StorageRoot:
+      type: object
+      required:
+        [
+          path,
+          fs_type,
+          inode_trusted,
+          inode_trust_source,
+          mounted,
+          free_bytes,
+          total_bytes,
+          libraries,
+        ]
+      properties:
+        path: { type: string }
+        fs_type:
+          oneOf:
+            - { type: string }
+            - { type: "null" }
+          description: null zolang de root niet gemount is of nog nooit gemeten is.
+        inode_trusted: { type: boolean }
+        inode_trust_source: { $ref: "#/components/schemas/InodeTrustSource" }
+        mounted: { type: boolean }
+        free_bytes: { type: integer, minimum: 0 }
+        total_bytes: { type: integer, minimum: 0 }
+        libraries:
+          type: array
+          items: { $ref: "#/components/schemas/StorageRootLibraryRef" }
+
+    StorageRootList:
+      type: object
+      required: [roots]
+      properties:
+        roots:
+          type: array
+          items: { $ref: "#/components/schemas/StorageRoot" }
 
     ItemKind:
       type: string
@@ -1064,6 +2526,78 @@ components:
             - { $ref: "#/components/schemas/UserState" }
             - { type: "null" }
 
+    ScanState:
+      type: string
+      enum: [queued, running, done, failed, cancelled]
+      x-unknown-safe: true
+    ScanTrigger:
+      type: string
+      enum: [startup, schedule, manual]
+      x-unknown-safe: true
+    Scan:
+      type: object
+      required: [id, library_id, trigger, state, started_at, finished_at, files_seen, files_new,
+                 files_renamed, files_changed, files_probed, files_missing, bytes_hashed,
+                 items_created, versions_created, error_count, last_error, current_path]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        library_id: { $ref: "#/components/schemas/Id" }
+        trigger: { $ref: "#/components/schemas/ScanTrigger" }
+        state: { $ref: "#/components/schemas/ScanState" }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        files_seen: { type: integer, minimum: 0 }
+        files_new: { type: integer, minimum: 0 }
+        files_renamed: { type: integer, minimum: 0 }
+        files_changed: { type: integer, minimum: 0 }
+        files_probed: { type: integer, minimum: 0 }
+        files_missing: { type: integer, minimum: 0 }
+        bytes_hashed: { type: integer, minimum: 0 }
+        items_created: { type: integer, minimum: 0 }
+        versions_created: { type: integer, minimum: 0 }
+        error_count: { type: integer, minimum: 0 }
+        last_error: { type: [string, "null"] }
+        current_path:
+          type: [string, "null"]
+          description: Afgekort tot de bestandsnaam met een ellipsis ervoor; nooit het volledige pad.
+    ScanPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/Scan" } }
+    JobState:
+      type: string
+      enum: [pending, running, succeeded, failed, cancelled]
+      x-unknown-safe: true
+    Job:
+      type: object
+      required: [id, kind, state, attempts, max_attempts, last_error, run_at, created_at, finished_at, cancel_requested_at]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        kind: { type: string }
+        state: { $ref: "#/components/schemas/JobState" }
+        attempts: { type: integer, minimum: 0 }
+        max_attempts: { type: integer, minimum: 1 }
+        last_error: { type: [string, "null"] }
+        run_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        cancel_requested_at: { type: [string, "null"], format: date-time }
+        library_id:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Alleen voor jobs van soort scan_library.
+        scan_id:
+          allOf: [{ $ref: "#/components/schemas/Id" }]
+          description: Alleen voor een scanjob die via POST /libraries/{id}/scan is gestart.
+    JobPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/Job" } }
     Page:
       type: object
       required: [items, next_cursor]
@@ -1192,3 +2726,387 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/WatchStateEntry" }
+
+    Role:
+      type: string
+      enum: [owner, admin, member, restricted]
+      x-unknown-safe: false
+      description: |
+        Vier rollen (DEC-119), gesloten. Een client moet weten wat een rol
+        betekent voordat hij ernaar handelt: `owner` (precies één, niet te
+        verwijderen of te degraderen), `admin`, `member`, `restricted`
+        (als member, kan nooit manage krijgen en beheert zijn eigen
+        wachtwoord niet).
+
+    Permission:
+      type: string
+      enum: [view, download, manage]
+      x-unknown-safe: false
+      description: |
+        Een geordende ladder (DEC-119): download impliceert view, manage
+        impliceert beide. Gesloten, om dezelfde reden als Role.
+
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+
+    UserList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/User" }
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      additionalProperties: false
+      properties:
+        username: { type: string, minLength: 1 }
+        password: { type: string, minLength: 8 }
+        role: { $ref: "#/components/schemas/Role" }
+
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: Minimaal één van beide velden; een leeg object is geen geldige aanvraag.
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+        password: { type: string, minLength: 8 }
+
+    LibraryPermission:
+      type: object
+      required: [library_id, permission]
+      properties:
+        library_id: { $ref: "#/components/schemas/Id" }
+        permission: { $ref: "#/components/schemas/Permission" }
+
+    LibraryPermissionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LibraryPermission" }
+
+    PermissionsRequest:
+      type: object
+      required: [permissions]
+      additionalProperties: false
+      properties:
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/LibraryPermission" }
+
+    SettingSource:
+      type: string
+      description: |
+        De laag die deze waarde levert. `env` is de omgeving waarmee de server
+        startte (inclusief zijn ingebouwde default), `db` een waarde die een
+        beheerder heeft opgeslagen.
+      enum: [env, db]
+      x-unknown-safe: true
+
+    SettingDuration:
+      type: object
+      required: [value, source]
+      description: Een duur in de vorm die de omgevingsvariabele ernaast ook gebruikt, bijvoorbeeld `15m` of `720h`.
+      properties:
+        value: { type: string }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    SettingString:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: string }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    SettingInteger:
+      type: object
+      required: [value, source]
+      properties:
+        value: { type: integer }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    SettingStringList:
+      type: object
+      required: [value, source]
+      description: |
+        Een sleutel met een lijst als waarde. De lijst staat als JSON-array in de
+        kolom en in het antwoord, en niet als tekst met scheidingstekens: dat
+        laatste zou een waarde met een scheidingsteken erin stil in tweeën
+        knippen. De lege lijst is een geldige waarde en betekent "geen".
+      properties:
+        value:
+          type: array
+          items: { type: string }
+        source: { $ref: "#/components/schemas/SettingSource" }
+
+    Settings:
+      type: object
+      required:
+        [server_name, access_token_ttl, refresh_token_ttl, stream_token_ttl, stream_session_ttl,
+         max_stream_sessions, public_url, web_origin, cors_origins]
+      description: |
+        De volledige set. Elke sleutel is er altijd, ook wanneer niemand hem ooit
+        heeft gewijzigd; dan staat er de waarde uit de omgeving met `source:
+        env`.
+      properties:
+        server_name: { $ref: "#/components/schemas/SettingString" }
+        access_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        refresh_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        stream_token_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        stream_session_ttl: { $ref: "#/components/schemas/SettingDuration" }
+        max_stream_sessions: { $ref: "#/components/schemas/SettingInteger" }
+        public_url: { $ref: "#/components/schemas/SettingString" }
+        web_origin: { $ref: "#/components/schemas/SettingString" }
+        cors_origins: { $ref: "#/components/schemas/SettingStringList" }
+
+    SettingsPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      description: |
+        Alleen bekende sleutels, minimaal één. De grenzen staan in de
+        beschrijving per veld; een waarde erbuiten geeft
+        `settings.invalid_value` en wijzigt niets.
+      properties:
+        server_name:
+          type: string
+          description: 1 tot 64 tekens.
+          minLength: 1
+          maxLength: 64
+        access_token_ttl:
+          type: string
+          description: 1m tot 60m.
+        refresh_token_ttl:
+          type: string
+          description: 24h tot 2160h (1 tot 90 dagen).
+        stream_token_ttl:
+          type: string
+          description: 1m tot 15m.
+        stream_session_ttl:
+          type: string
+          description: 5m tot 120m.
+        max_stream_sessions:
+          type: integer
+          description: 1 tot 32.
+          minimum: 1
+          maximum: 32
+        public_url:
+          type: string
+          description: |
+            Absolute `http`- of `https`-URL zonder inloggegevens, querystring of
+            fragment; leeg maakt de sleutel leeg en laat de omgeving weer
+            gelden. Een letterlijk privé-, loopback- of link-local-adres wordt
+            geweigerd: dit is het enige doel dat
+            `POST /server/connectivity-check` aanroept, en een adres in het
+            interne netwerk maakt van die knop een scanner. Een naam wordt niet
+            opgezocht, want wie de zone beheert kan hem na de controle toch
+            verzetten; de omgeving valt er bewust buiten, want op een
+            thuisnetwerk ís `192.168.x.y` het juiste antwoord.
+          maxLength: 2048
+        web_origin:
+          type: string
+          description: |
+            Een origin: `schema://host[:poort]`, `http` of `https`, zonder pad,
+            inloggegevens, querystring of fragment. Leeg maakt de sleutel leeg.
+            Anders dan bij `public_url` is een privé-adres hier wél toegestaan:
+            dit is geen doel dat de server aanroept maar een verwachting over wie
+            hém aanroept, en `http://nas:8832` is op een thuisnetwerk precies de
+            juiste waarde.
+          maxLength: 2048
+        cors_origins:
+          type: array
+          description: |
+            Origins die deze API cross-origin mogen aanroepen, elk in dezelfde
+            vorm als `web_origin`. Ten hoogste zestien, elk uniek, en `*` wordt
+            geweigerd. De lege lijst betekent: geen, en is de default.
+          maxItems: 16
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 2048
+
+    Session:
+      type: object
+      required: [id, device_name, created_at, last_seen_at, current]
+      description: |
+        kind, scope en expires_at kwamen met S1.5. Ze zijn optioneel omdat een
+        oudere client ze niet kent en een oudere server ze niet stuurt; een
+        client die ze wel leest onderscheidt een agent van een telefoon en
+        trekt daarmee de juiste in.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        device_name:
+          type: string
+          description: |
+            Een vaste plaatshouder voor een sessie zonder bekend toestel. Voor
+            een API-token is dit de naam die de beheerder gaf.
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        last_seen_at: { $ref: "#/components/schemas/Timestamp" }
+        current:
+          type: boolean
+          description: True voor de sessie die deze aanvraag zelf doet.
+        kind: { $ref: "#/components/schemas/SessionKind" }
+        scope:
+          allOf:
+            - $ref: "#/components/schemas/ApiTokenScope"
+          description: Alleen aanwezig op een sessie met kind `api`.
+        expires_at:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: |
+            Alleen aanwezig op een sessie met kind `api`. Een toestelsessie
+            eindigt met haar refreshketen en niet op een datum in haar eigen rij.
+
+    SessionKind:
+      type: string
+      x-unknown-safe: true
+      enum: [device, api, legacy]
+      description: |
+        `device` is een toestel, `api` een API-token (RB-20), `legacy` een keten
+        die migratie 0007 overnam en waar geen toestel bij hoort. Nieuwe waarden
+        mogen erbij; een client die er een niet kent behandelt hem als `device`.
+
+    ApiTokenScope:
+      type: string
+      x-unknown-safe: true
+      enum: [read, maintenance, admin]
+      description: |
+        Een ladder, laag naar hoog. `read` mag lezen wat de eigenaar mag lezen
+        en niets beheren; `admin` haalt de adminklasse, mits de rol van de
+        eigenaar dat ook doet. `maintenance` is gereserveerd voor de
+        operationele handelingen die later komen (back-up, onderhoudsmodus,
+        herstel) en onderscheidt zich vandaag in geen enkele operatie van
+        `read`; dat staat hier expliciet in plaats van dat het gedrag het
+        suggereert.
+
+    ApiToken:
+      type: object
+      required: [id, user_id, name, scope, created_at, last_seen_at, expires_at]
+      description: Een API-token zonder zijn geheim.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        user_id: { $ref: "#/components/schemas/Id" }
+        name:
+          type: string
+          maxLength: 64
+          description: Het label in het overzicht. Geen document.
+        scope: { $ref: "#/components/schemas/ApiTokenScope" }
+        created_at: { $ref: "#/components/schemas/Timestamp" }
+        last_seen_at: { $ref: "#/components/schemas/Timestamp" }
+        expires_at: { $ref: "#/components/schemas/Timestamp" }
+
+    ApiTokenList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ApiToken" }
+
+    ApiTokenCreated:
+      type: object
+      required: [token, secret]
+      description: |
+        Een eigen schema en niet ApiToken met een optioneel geheimveld. Een
+        optioneel `secret` op het lijsttype zou een lezer laten denken dat het
+        er soms in kan staan, en dan is de vraag "kan dit antwoord een geheim
+        dragen" niet meer aan het type te zien.
+      properties:
+        token: { $ref: "#/components/schemas/ApiToken" }
+        secret:
+          type: string
+          description: |
+            Het geheim, precies één keer. De server bewaart alleen de hash. Het
+            begint met een herkenbaar voorvoegsel zodat het in een logbestand of
+            een repository terug te vinden is.
+
+    ApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [name, scope]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        scope: { $ref: "#/components/schemas/ApiTokenScope" }
+        expires_in_days:
+          type: integer
+          minimum: 1
+          maximum: 3650
+          default: 90
+          description: |
+            Standaard negentig dagen. "Nooit" bestaat niet: een token zonder
+            vervaldatum is de vorm die jaren later nog in een oude configuratie
+            meeloopt en die niemand mist tot iemand hem vindt.
+        user_id:
+          allOf:
+            - $ref: "#/components/schemas/Id"
+          description: |
+            Alleen bruikbaar door `owner` en `admin`. Zonder dit veld gaat het
+            token over de aanvrager zelf.
+
+    AuditOutcome:
+      type: string
+      x-unknown-safe: true
+      enum: [ok, denied, failed]
+      description: |
+        `denied` is de aanvrager die het niet mocht of iets aanbood dat niet
+        klopte; een mislukte login is `denied` en geen `failed`. `failed` is de
+        server die het niet kon.
+
+    AuditSource:
+      type: string
+      x-unknown-safe: true
+      enum: [http, mcp]
+
+    AuditEntry:
+      type: object
+      required: [id, at, source, operation, outcome]
+      description: |
+        user_id en session_id kunnen ontbreken: een mislukte login heeft geen
+        van beide, want er is dan geen vastgestelde identiteit.
+      properties:
+        id: { $ref: "#/components/schemas/Id" }
+        at: { $ref: "#/components/schemas/Timestamp" }
+        user_id: { $ref: "#/components/schemas/Id" }
+        session_id: { $ref: "#/components/schemas/Id" }
+        source: { $ref: "#/components/schemas/AuditSource" }
+        operation:
+          type: string
+          description: |
+            De operationId uit dit contract, niet het pad. Een pad verandert mee
+            met een route-refactor en breekt dan de leesbaarheid van een log dat
+            jaren teruggaat.
+        target:
+          type: string
+          description: Waar de handeling over ging, meestal een id.
+        outcome: { $ref: "#/components/schemas/AuditOutcome" }
+
+    AuditPage:
+      allOf:
+        - { $ref: "#/components/schemas/Page" }
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/AuditEntry" }
+
+    SessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Session" }

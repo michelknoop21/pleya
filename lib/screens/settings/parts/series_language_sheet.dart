@@ -89,7 +89,7 @@ class SeriesLanguagePanel extends StatelessWidget {
   String _globalSubtitles() => languageDisplayName(global.subtitleLanguage) ?? t.languageSettings.noPreference;
 
   /// Whether this entry is keyed on the logical series rather than on one
-  /// server, which is exactly what decides how far it reaches (DEC-096 lid 7).
+  /// server, which is exactly what decides how far it reaches (DEC-109 lid 7).
   bool get _isLogical => entry.key.startsWith('show:');
 
   @override

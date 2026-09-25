@@ -70,6 +70,7 @@ duplication-report/
 scripts/asc/.venv/
 
 **/fastlane/**/
+!**/fastlane/test/
 **/fastlane/report.xml
 
 pleya_verify/**/.dart_tool/
@@ -93,6 +94,9 @@ pleya_server/.responses/
 # Local golden-diff artifacts from failed test runs (never commit these)
 test/goldens/failures/
 docs/responsive-audit/
+
+# De vangst van de fake server, zoals pleya_server/.responses.
+pleya_verify/fixture_server/.responses/
 
 # Lokale Serena-tooling: index, cache en projectstate per worktree.
 /.serena/

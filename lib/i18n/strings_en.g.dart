@@ -713,6 +713,18 @@ class TranslationsSettingsEn {
 	/// en: 'Used when starting playback. Lower values reduce bandwidth.'
 	String get defaultQualityDescription => 'Used when starting playback. Lower values reduce bandwidth.';
 
+	/// en: 'Maximum Resolution'
+	String get displayMaxResolutionTitle => 'Maximum Resolution';
+
+	/// en: 'Caps what this device asks a server for, even when the file is larger.'
+	String get displayMaxResolutionDescription => 'Caps what this device asks a server for, even when the file is larger.';
+
+	/// en: 'detected: ${resolution}'
+	String displayMaxResolutionNow({required Object resolution}) => 'detected: ${resolution}';
+
+	late final TranslationsSettingsDisplayMaxResolutionOptionsEn displayMaxResolutionOptions = TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(_root);
+	late final TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn displayMaxResolutionOptionDescriptions = TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(_root);
+
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
 
@@ -5848,6 +5860,42 @@ class TranslationsLanguageSettingsEn {
 	String get kindSubtitles => 'Subtitles';
 }
 
+// Path: settings.displayMaxResolutionOptions
+class TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: '1080p'
+	String get hd1080 => '1080p';
+
+	/// en: '4K'
+	String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follow the display where the app can read it'
+	String get auto => 'Follow the display where the app can read it';
+
+	/// en: 'Never ask for more than 1920x1080'
+	String get hd1080 => 'Never ask for more than 1920x1080';
+
+	/// en: 'Never ask for more than 3840x2160'
+	String get uhd2160 => 'Never ask for more than 3840x2160';
+}
+
 // Path: search.filters
 class TranslationsSearchFiltersEn {
 	TranslationsSearchFiltersEn.internal(this._root);
@@ -7267,6 +7315,15 @@ extension on Translations {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB memory available. A ${size}MB buffer may affect playback.',
 			'settings.defaultQualityTitle' => 'Default Quality',
 			'settings.defaultQualityDescription' => 'Used when starting playback. Lower values reduce bandwidth.',
+			'settings.displayMaxResolutionTitle' => 'Maximum Resolution',
+			'settings.displayMaxResolutionDescription' => 'Caps what this device asks a server for, even when the file is larger.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'detected: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Auto',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Follow the display where the app can read it',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Never ask for more than 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Never ask for more than 3840x2160',
 			'settings.subtitleStyling' => 'Subtitle Styling',
 			'settings.subtitleStylingDescription' => 'Customize subtitle appearance',
 			'settings.smallSkipDuration' => 'Small Skip Duration',
@@ -7588,6 +7645,8 @@ extension on Translations {
 			'videoControls.pauseButton' => 'Pause',
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Seek forward ${seconds} seconds',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.previousButton' => 'Previous episode',
 			'videoControls.nextButton' => 'Next episode',
 			'videoControls.previousChapterButton' => 'Previous chapter',
@@ -7597,8 +7656,6 @@ extension on Translations {
 			'videoControls.settingsButton' => 'Playback Settings',
 			'videoControls.tracksButton' => 'Audio & Subtitles',
 			'videoControls.chaptersButton' => 'Chapters',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.versionsButton' => 'Video versions',
 			'videoControls.versionQualityButton' => 'Version & Quality',
 			'videoControls.versionColumnHeader' => 'Version',
@@ -8102,6 +8159,8 @@ extension on Translations {
 			'liveTv.now' => 'Now',
 			'liveTv.today' => 'Today',
 			'liveTv.tomorrow' => 'Tomorrow',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.midnight' => 'Midnight',
 			'liveTv.overnight' => 'Overnight',
 			'liveTv.morning' => 'Morning',
@@ -8111,8 +8170,6 @@ extension on Translations {
 			'liveTv.whatsOn' => 'What\'s On',
 			'liveTv.watchChannel' => 'Watch Channel',
 			'liveTv.favorites' => 'Favorites',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
 			'liveTv.joinSession' => 'Join Session in Progress',
@@ -8616,6 +8673,8 @@ extension on Translations {
 			'seerr.authApiKey' => 'API key',
 			'seerr.email' => 'Email',
 			'seerr.password' => 'Password',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.apiKey' => 'API key',
 			'seerr.apiKeyHint' => 'From Settings → General on your server',
 			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',
@@ -8625,8 +8684,6 @@ extension on Translations {
 			'seerr.disconnect' => 'Disconnect',
 			'seerr.disconnectConfirm' => 'Disconnect requests server?',
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
 			'seerr.permissionAdmin' => 'Administrator',

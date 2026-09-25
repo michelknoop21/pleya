@@ -1,0 +1,62 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Films|navAction=}}
+<div class="admin">
+  {{admin:libraries|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Bibliotheken ▸ Films</div>
+    <h1 class="page-title" style="margin-top:0"><span>Films</span><span class="btn-row"><a class="btn ghost sm" href="#">{{icon:scan}} Nu scannen</a><a class="btn ghost sm" href="#">{{icon:refresh}} Metadata verversen</a></span></h1>
+
+    <div class="cols-3" style="align-items:start">
+      <div>
+        <section class="panel">
+          <h3>Instellingen</h3>
+          <div class="form">
+            <label class="label">Naam</label>
+            <div class="field">Films</div>
+            <label class="label">Soort</label>
+            <div class="choice on"><span class="radio"></span><div class="body"><div class="t">Films</div></div></div>
+            <div class="choice dis"><span class="radio"></span><div class="body"><div class="t">Series</div></div></div>
+            <div class="choice dis"><span class="radio"></span><div class="body"><div class="t">Boeken</div></div></div>
+            <p class="help">De soort is vast zodra de bibliotheek inhoud heeft. Een lege bibliotheek mag nog wisselen; een gevulde niet, ook niet gedeeltelijk.</p>
+            <label class="label">Scannen</label>
+            <div class="field select">Elke 6 uur, en bij het opstarten {{icon:chevd}}</div>
+          </div>
+        </section>
+
+        <section class="panel" style="margin-top:14px">
+          <h3>Opslagroots</h3>
+          <p class="help" style="margin:0 0 10px">De server somt op wat hij kan lezen. Een pad typen is niet mogelijk; dat is de grens uit het dreigingsmodel.</p>
+          <div class="row" style="padding-left:0;padding-right:0"><span class="checkbox on">{{icon:check}}</span><div class="body"><div class="t mono">/volume1/media/Films</div><div class="s">btrfs · inode betrouwbaar (gemeten) · 1,1 TB vrij</div></div><span class="pill ok">gemount</span></div>
+          <div class="row" style="padding-left:0;padding-right:0"><span class="checkbox on">{{icon:check}}</span><div class="body"><div class="t mono">/volume2/media/Films-4K</div><div class="s">btrfs · inode betrouwbaar (gemeten) · 2,1 TB vrij</div></div><span class="pill ok">gemount</span></div>
+          <div class="row" style="padding-left:0;padding-right:0"><span class="checkbox"></span><div class="body"><div class="t mono">/volume1/media/Series</div><div class="s">in gebruik door Series</div></div></div>
+          <div class="row" style="padding-left:0;padding-right:0"><span class="checkbox"></span><div class="body"><div class="t mono">/mnt/usb-archief</div><div class="s">fuseblk.ntfs · inode niet betrouwbaar, de scanner gebruikt de signatuur</div></div><span class="pill warn">ntfs</span></div>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel">
+          <h3>Toegang <a class="all" href="#">Gebruikers</a></h3>
+          <div class="row" style="padding:8px 0">{{icon:person}}<div class="body"><div class="t">Michel</div><div class="s">eigenaar</div></div><span class="pill">alles</span></div>
+          <div class="row" style="padding:8px 0">{{icon:person}}<div class="body"><div class="t">Sanne</div><div class="s">lid</div></div><span class="pill">kijken · downloaden</span></div>
+          <div class="row" style="padding:8px 0">{{icon:person}}<div class="body"><div class="t">Kids</div><div class="s">beperkt</div></div><span class="pill warn">geen toegang</span></div>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Stand</h3>
+          <dl class="kv" style="grid-template-columns:120px 1fr">
+            <dt>Titels</dt><dd>461 · 512 versies · 38 TB</dd>
+            <dt>Laatste scan</dt><dd>vandaag 08:12 · 11 min · 3 nieuw, 0 ontbrekend</dd>
+            <dt>Onanalyseerbaar</dt><dd>1 bestand, <a href="#" style="text-decoration:underline">bekijk</a></dd>
+            <dt>Sidecars</dt><dd>.nfo bij 91% van de films</dd>
+          </dl>
+        </section>
+        <section class="panel" style="margin-top:14px;border:1px solid rgba(229,20,15,.35)">
+          <h3 style="color:#FF6A63">Verwijderen</h3>
+          <p class="help" style="margin:0 0 12px">Haalt de bibliotheek, de kijkstatus erin en de rechten weg. De bestanden op schijf blijven staan; Pleya schrijft nooit in een media-map.</p>
+          <a class="btn danger sm" href="#">{{icon:trash}} Bibliotheek verwijderen</a>
+        </section>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:20px;justify-content:flex-end"><a class="btn ghost" href="#">Annuleren</a><a class="btn primary" href="#">Opslaan</a></div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 22 Bibliotheek bewerken · roots uit de opsomming van de server, soort vast bij inhoud (PS-14 beslissing 4)</div>
