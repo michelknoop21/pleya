@@ -61,6 +61,33 @@ import 'profile_navigation_scope.dart';
 /// Keep profile-owned routes, dialogs, sheets, and virtual keyboards on the
 /// nearest navigator from this subtree. Keep setup/auth/PIN/profile-picker flows
 /// on the root navigator so they survive this subtree being replaced.
+/// Wires the Tautulli provider to the multi-server authority. A Tautulli
+/// record belongs to a server, so the provider has to be able to ask which
+/// servers exist and which of them this profile reads and administers.
+/// Closures, because a server can still register after the profile has bound,
+/// and the listener so a late registration re-resolves instead of going
+/// unnoticed.
+@visibleForTesting
+void attachTautulliServerResolvers(
+  TautulliProvider provider, {
+  required MultiServerProvider multiServer,
+  required PlexHomeService? plexHome,
+}) {
+  provider.attachServerResolvers(
+    serverIds: () => multiServer.serverManager.serverIds,
+    isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
+    // Pairing and unlinking are device-wide: owner rights on the Plex server,
+    // never through a borrowed connection.
+    mayAdminister: multiServer.serverManager.canManagePlexServer,
+    // The credential is the admin's, so the provider resolves whose history it
+    // fetches instead of being told. Nullable read: without a Home service
+    // nothing resolves and the import refuses, which is the right answer
+    // either way.
+    selfAccountId: (profileId) => plexSelfAccountIdIn(profileId, plexHome?.current ?? const {}),
+    registryChanges: multiServer,
+  );
+}
+
 class ProfileSessionScreen extends StatefulWidget {
   const ProfileSessionScreen({super.key, this.isOfflineMode = false, this.initialPromptHandled = false})
     : profileShellBuilder = null;
@@ -156,25 +183,10 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ChangeNotifierProvider(
                 create: (context) {
                   final provider = TautulliProvider();
-                  // A Tautulli record belongs to a server, so the provider has
-                  // to be able to ask which servers exist and which of them this
-                  // profile administers. Closures, because a server can still
-                  // register after the profile has bound, and the listener so a
-                  // late registration re-resolves instead of going unnoticed.
-                  final multiServer = context.read<MultiServerProvider>();
-                  final plexHome = context.read<PlexHomeService?>();
-                  provider.attachServerResolvers(
-                    serverIds: () => multiServer.serverManager.serverIds,
-                    isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
-                    // Pairing and unlinking are device-wide: owner rights on
-                    // the Plex server, never through a borrowed connection.
-                    mayAdminister: multiServer.serverManager.canManagePlexServer,
-                    // The credential is the admin's, so the provider resolves
-                    // whose history it fetches instead of being told. Nullable
-                    // read: without a Home service nothing resolves and the
-                    // import refuses, which is the right answer either way.
-                    selfAccountId: (profileId) => plexSelfAccountIdIn(profileId, plexHome?.current ?? const {}),
-                    registryChanges: multiServer,
+                  attachTautulliServerResolvers(
+                    provider,
+                    multiServer: context.read<MultiServerProvider>(),
+                    plexHome: context.read<PlexHomeService?>(),
                   );
                   unawaited(
                     provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
