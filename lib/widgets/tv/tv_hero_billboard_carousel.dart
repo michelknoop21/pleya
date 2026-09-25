@@ -451,7 +451,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
                 // 33.1 binds a *white* Afspelen capsule at rest, and the shared
                 // button's unfocused 60% dim would render it grey until focused —
                 // a state the north star does not have. The pill draws its own focus
-                // (the ring on its reserved band, and the secondary's inversion), so
+                // (the ring outside the fill, and the secondary's inversion), so
                 // it owns the whole treatment.
                 dimWhenUnfocused: false,
                 onPressed: () => _activate(intent: UnifiedActivationIntent.play, playDirectly: true),
@@ -482,7 +482,7 @@ class TvHeroBillboardCarouselState extends State<TvHeroBillboardCarousel> {
               // 33.1 binds a *white* Afspelen capsule at rest, and the shared
               // button's unfocused 60% dim would render it grey until focused —
               // a state the north star does not have. The pill draws its own focus
-              // (the ring on its reserved band, and the secondary's inversion), so
+              // (the ring outside the fill, and the secondary's inversion), so
               // it owns the whole treatment.
               dimWhenUnfocused: false,
               onPressed: () => _activate(intent: UnifiedActivationIntent.details, playDirectly: false),
@@ -575,29 +575,33 @@ class _HeroPillState extends State<_HeroPill> {
         final bg = filled ? tk.text : tk.text.withValues(alpha: TvHomeLayout.heroSecondaryFillAlpha);
         final fg = filled ? tk.bg : tk.text;
 
-        final ringGap = TvHomeLayout.heroActionFocusRingGap * scale;
+        final radius = TvHomeLayout.heroActionRadius * scale;
+        final motion = reduceMotion(context, FocusTheme.getAnimationDuration(context));
 
-        // The ring stands *off* the pill, on a band of artwork, and the band is
-        // reserved whether or not the pill has the focus so the row's geometry
-        // never moves. Without the gap the primary CTA is a white ring drawn
-        // straight onto a white capsule: the two merge, and the one control
-        // Home rests on stops saying where the remote is at three metres. It is
-        // the same reason [TvDiscoveryLayout.cardFocusRingGap] exists for a
-        // tile — bright surface, white ring, nothing to contrast with.
-        return Container(
-          padding: EdgeInsets.all(ringGap),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(TvHomeLayout.heroActionRadius * scale + ringGap),
-            border: Border.all(color: showFocus ? tk.text : Colors.transparent, width: FocusTheme.focusBorderWidth),
-          ),
+        // VIS-0925-E: one focus contract for the CTAs, the same as every other
+        // TV control. The white ring (never `tk.text`, which is black in Light
+        // and drew a black-and-white double rim) stands directly outside the
+        // fill, with the Light separator line from [FocusTheme]; the scale says
+        // which pill holds the focus when a white ring meets a white pill. The
+        // fill itself starts on the text column's x, the halo goes outward.
+        return AnimatedScale(
+          scale: showFocus ? FocusTheme.focusScale : 1,
+          duration: motion,
+          curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: reduceMotion(context, FocusTheme.getAnimationDuration(context)),
+            key: ValueKey(widget.primary ? 'tvHeroCta.play.fill' : 'tvHeroCta.info.fill'),
+            duration: motion,
             curve: Curves.easeOutCubic,
+            foregroundDecoration: FocusTheme.shapeFocusRing(
+              context,
+              isFocused: showFocus,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+            ),
             height: TvHomeLayout.heroActionHeight * scale,
             padding: EdgeInsets.symmetric(horizontal: TvHomeLayout.heroActionPaddingHorizontal * scale),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(TvHomeLayout.heroActionRadius * scale),
+              borderRadius: BorderRadius.circular(radius),
               boxShadow: showFocus
                   ? [
                       BoxShadow(

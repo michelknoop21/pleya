@@ -1426,12 +1426,14 @@ class TvHomeLayout {
   static const double heroActionHeight = 40;
   static const double heroActionRadius = 20;
   static const double heroActionPaddingHorizontal = 20;
-  static const double heroActionGap = 3;
+
+  /// Between two CTA fills. The pills no longer reserve a ring band of their
+  /// own (VIS-0925-E: the ring stands outside the fill), so the gap carries the
+  /// room two outside rings need without touching.
+  static const double heroActionGap = 11;
   static const double heroActionFontSize = 16;
   static const double heroActionIconSize = 19;
   static const double heroActionIconLabelGap = 8;
-
-  static const double heroActionFocusRingGap = 4;
 
   static const double heroSecondaryFillAlpha = 0.26;
 
@@ -1446,6 +1448,18 @@ class TvHomeLayout {
   /// so they stand on the ground and not on the picture.
   static const List<double> heroScrimVerticalStops = [0, 0.18, 0.52, 0.78, 0.96];
   static const List<double> heroScrimVerticalAlphas = [0.66, 0, 0, 0.70, 1];
+
+  /// Light (VIS-0925-E). The Light wash is `tk.bg`, white, so every alpha
+  /// brightens the picture instead of dimming it: the dark ramp plus the old
+  /// +0.08 of H20 was a white haze over 60% of the backdrop on the hardware
+  /// photos of build 303. Light reads with less: the reading ramp stops just
+  /// past the text column, which ends at 51% of the canonical canvas
+  /// (`(pageInset + cardFocusRingGap + heroTextMaxWidth) * 0.85 / 1038`), and
+  /// still holds 0.55 there so the synopsis keeps 4.5:1 over dark artwork.
+  /// No wash under the top navigation, only the ground under the rail.
+  static const List<double> heroScrimReadingStopsLight = [0, 0.53, 0.64, 1];
+  static const List<double> heroScrimReadingAlphasLight = [0.90, 0.55, 0, 0];
+  static const List<double> heroScrimVerticalAlphasLight = [0, 0, 0, 0.70, 1];
 
   /// Once a row holds the focus the backdrop steps back (mockup 30 B): a veil
   /// at [heroDimAlpha] over the whole picture, and a steeper vertical scrim

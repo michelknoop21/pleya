@@ -374,6 +374,25 @@ void main() {
     _film('arrival-nas', title: 'Arrival', releasedAt: '2024-02-01'),
   ];
 
+  // VIS-0925-E: title, CTA fill and first rail artwork on one x. Build 303
+  // drew them on three (title 48, CTA 48+6.5, tile 48+7.5 reference px).
+  testWidgets('hero title, CTA fills and the first rail artwork share one x', (tester) async {
+    await boot(
+      tester,
+      latestMovies: twoRecentFilms(),
+      onDeck: [_episode('e1', show: 'Harbourlight', season: 2, episode: 4)],
+    );
+    final hero = find.byType(TvHeroBillboardCard);
+    final title = tester.getRect(
+      find.descendant(of: hero, matching: find.text(heroGroup(tester).representativeSource.item.title!)).first,
+    );
+    final play = tester.getRect(find.byKey(const ValueKey('tvHeroCta.play.fill')));
+    final firstTile = find.byType(TvExpandableMediaTile).first;
+    final artwork = tester.getRect(find.descendant(of: firstTile, matching: find.byType(AnimatedContainer)).first);
+    expect(play.left, closeTo(title.left, 0.5));
+    expect(artwork.left, closeTo(title.left, 0.5));
+  });
+
   group('rowfocus is not hero state (hoofdstuk 7.3 / 31.9)', () {
     testWidgets('walking a content row leaves the featured slide exactly where it was', (tester) async {
       // The regression this phase exists to prevent. Before fase 8,
