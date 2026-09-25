@@ -25,8 +25,8 @@ class GlassSurface extends StatelessWidget {
   final bool prominent;
   final Widget? legacy;
 
-  /// Fixed rim width for the fake-tier light edge (only [GlassTokens.tv]
-  /// tokens a non-zero [GlassTokens.edge] today).
+  /// Fixed rim width for the fake-tier light edge ([GlassTokens.tv] and
+  /// [GlassTokens.control] have a non-zero [GlassTokens.edge]).
   static const double _edgeWidth = 1.5;
 
   @override

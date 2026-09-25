@@ -7,25 +7,8 @@ import '../../automation/automation_node.dart';
 import '../../navigation/navigation_tabs.dart';
 import '../../theme/glass/glass_settings.dart';
 import '../../theme/glass/glass_surface.dart';
-import '../../theme/glass/glass_text.dart';
 import '../../theme/mono_theme.dart' show kAccent;
-
-/// The mobile bottom bar's own selected-slot colour: the active label turns
-/// [kAccent], matching the active glyph `_TabIcon` already draws. iOS Unified
-/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9.
-///
-/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
-/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
-/// this red is a decision about this one bar.
-NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
-  final baseLabel = base.labelTextStyle;
-  return base.copyWith(
-    labelTextStyle: WidgetStateProperty.resolveWith((states) {
-      final style = baseLabel?.resolve(states) ?? const TextStyle();
-      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
-    }),
-  );
-}
+import 'mobile_tab_bar_theme.dart';
 
 /// Fill of the active slot's capsule on the glass bar, see [MobileTabBar].
 const Color _kGlassActiveSlot = Color(0x80000000);
@@ -34,33 +17,6 @@ const Color _kGlassActiveSlot = Color(0x80000000);
 /// `extendBody` on this same answer, so the tab roots scroll under the bar
 /// and get its height back as `MediaQuery` bottom padding.
 bool mobileTabBarFloats(BuildContext context) => glassTierFor(context) != GlassTier.off;
-
-/// [mobileTabBarTheme] for the floating glass bar (mockup LG-01): inactive
-/// labels and glyphs full white with the glass drop shadow instead of the
-/// theme's 60% grey, the active slot opaque [kAccent]. The plate itself is
-/// the background, so the bar paints none of its own.
-NavigationBarThemeData mobileGlassTabBarTheme(NavigationBarThemeData base) {
-  final baseLabel = base.labelTextStyle;
-  final baseIcon = base.iconTheme;
-  return base.copyWith(
-    backgroundColor: Colors.transparent,
-    surfaceTintColor: Colors.transparent,
-    shadowColor: Colors.transparent,
-    indicatorColor: Colors.transparent,
-    elevation: 0,
-    height: 64,
-    labelTextStyle: WidgetStateProperty.resolveWith((states) {
-      final selected = states.contains(WidgetState.selected);
-      final style = baseLabel?.resolve(states) ?? const TextStyle();
-      final color = MobileTabBar.debugGlassLabelColor ?? (selected ? kAccent : Colors.white);
-      return glassText(style.copyWith(color: color));
-    }),
-    iconTheme: WidgetStateProperty.resolveWith((states) {
-      final icon = baseIcon?.resolve(states) ?? const IconThemeData();
-      return icon.copyWith(opacity: 1, color: Colors.white, shadows: kGlassIconShadows);
-    }),
-  );
-}
 
 /// The mobile bottom bar, extracted verbatim out of
 /// `_MainScreenState._buildBottomNavigationBar` (no behavior change). State
@@ -74,6 +30,7 @@ class MobileTabBar extends StatelessWidget {
     required this.hideLabels,
     required this.presentation,
     required this.onLibraryLongPress,
+    @visibleForTesting this.debugTransparentForeground = false,
   });
 
   final List<NavigationTab> tabs;
@@ -83,20 +40,27 @@ class MobileTabBar extends StatelessWidget {
   final TabBarPresentation presentation;
   final void Function(BuildContext context) onLibraryLongPress;
 
-  /// Overrides the glass bar's label color. The contrast test paints the
-  /// labels transparent (shadows kept) to read the background under them;
-  /// see `textContrastOverBackground`.
-  @visibleForTesting
-  static Color? debugGlassLabelColor;
+  /// Glass only: labels painted transparent (their shadows kept) and glyphs
+  /// hidden, so the contrast test can read the background under them; see
+  /// `textContrastOverBackground`.
+  final bool debugTransparentForeground;
 
   /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
   /// resolves on both the mobile bar and the desktop/TV rail
   /// ([SideNavigationRail] mounts the same id) — iOS Unified 2026 fase 1,
   /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
-  static NavigationDestination _withNavTabAutomation(NavigationTab tab, TabBarPresentation presentation) {
+  static NavigationDestination _withNavTabAutomation(
+    NavigationTab tab,
+    TabBarPresentation presentation, {
+    bool hideGlyph = false,
+  }) {
     final destination = tab.toDestination(presentation: presentation);
     final id = AutomationIds.navTab(tab.id);
-    Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
+    Widget wrap(Widget icon) => AutomationNode(
+      id: id,
+      role: 'nav.item',
+      child: hideGlyph ? Opacity(opacity: 0, child: icon) : icon,
+    );
     return NavigationDestination(
       icon: wrap(destination.icon),
       selectedIcon: destination.selectedIcon == null ? null : wrap(destination.selectedIcon!),
@@ -109,6 +73,8 @@ class MobileTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUnified = presentation == TabBarPresentation.unified2026;
+    final glassOn = mobileTabBarFloats(context);
+    final transparent = glassOn && debugTransparentForeground;
 
     final bar = NavigationBar(
       selectedIndex: currentIndex >= 0 ? currentIndex : 0,
@@ -116,14 +82,16 @@ class MobileTabBar extends StatelessWidget {
       labelBehavior: hideLabels
           ? NavigationDestinationLabelBehavior.alwaysHide
           : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
+      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation, hideGlyph: transparent)).toList(),
     );
-    final glassOn = mobileTabBarFloats(context);
-    final NavigationBarThemeData Function(NavigationBarThemeData) themed = glassOn
-        ? mobileGlassTabBarTheme
-        : mobileTabBarTheme;
-    final navigationBar = isUnified || glassOn
-        ? NavigationBarTheme(data: themed(NavigationBarTheme.of(context)), child: bar)
+    final base = NavigationBarTheme.of(context);
+    final navigationBar = glassOn
+        ? NavigationBarTheme(
+            data: mobileGlassTabBarTheme(base, labelColor: transparent ? Colors.transparent : Colors.white),
+            child: bar,
+          )
+        : isUnified
+        ? NavigationBarTheme(data: mobileTabBarTheme(base), child: bar)
         : bar;
 
     // Netflix mobile: frosted near-black bar. Blur the content scrolling

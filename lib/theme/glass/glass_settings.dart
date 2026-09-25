@@ -79,8 +79,14 @@ class GlassTokens {
   /// Apple TV nepglas: blur 30, saturation 1.2, dim 0.80, the same dark plate
   /// tint as [phone] (black 50%, Fixronde 1/2) for the same contrast reason,
   /// plus the 1.5px white-40% rim ([edge] holds the 40% alpha; the 1.5px
-  /// width is fixed in [GlassSurface], since only this token draws a rim).
+  /// width is fixed in [GlassSurface], shared with [control]).
   const GlassTokens.tv() : this(blur: 30, saturation: 1.2, dim: 0.80, tint: const Color(0x80000000), edge: 0.40);
+
+  /// A small glass control on the app's black chrome (the search circle in
+  /// the mobile header, LG-01). Over black the dark [phone] plate vanishes,
+  /// so this one carries a light 25% fill and a 35% rim: it reads as a grey
+  /// button, and a white glyph on it still clears 3:1 by a wide margin.
+  const GlassTokens.control() : this(blur: 12, saturation: 1.5, dim: 0.78, tint: const Color(0x40FFFFFF), edge: 0.35);
 
   /// Prominent white glass (e.g. the film-page Resume button): unchanged by
   /// Fixronde 1: same layers as [phone] but tint white 92% and no damping,

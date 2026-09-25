@@ -13,6 +13,7 @@ import '../../mixins/controller_disposer_mixin.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../widgets/desktop_app_bar.dart';
 import 'mobile_seerr_discover_view.dart';
+import '../../widgets/mobile/mobile_discovery_shell.dart';
 import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../providers/seerr_provider.dart';
@@ -764,6 +765,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
                 ),
               ),
             ..._query.isEmpty ? _buildPhoneCatalogSlivers() : _buildSearchSlivers(),
+            mobileDiscoveryTailSliver(context),
           ],
         ),
       ),

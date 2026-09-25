@@ -78,9 +78,10 @@ class MobilePageHeader extends StatelessWidget {
               // LG-01: a glass circle with Liquid Glass on, the plain button
               // otherwise (GlassSurface renders [child] as-is when off).
               child: GlassLayer(
+                tokens: const GlassTokens.control(),
                 child: GlassSurface(
                   shape: const CircleBorder(),
-                  tokens: const GlassTokens.phone(),
+                  tokens: const GlassTokens.control(),
                   child: IconButton(
                     onPressed: onSearchTap,
                     icon: const AppIcon(Symbols.search_rounded),
