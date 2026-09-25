@@ -1,6 +1,8 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import 'preference_sync_policy.dart';
+import 'preference_sync_scope.dart';
 import 'preference_value_portability.dart';
 
 /// Combine two versions of one preference value.
@@ -19,7 +21,13 @@ typedef PreferenceValueMerge = Object? Function(Object? local, Object? remote);
 /// value is a map of independently edited entries cannot be settled by
 /// last-writer-wins without losing the entries the other device edited.
 class PreferenceMergeFamily {
-  const PreferenceMergeFamily({required this.name, required this.inbound, this.outbound});
+  const PreferenceMergeFamily({
+    required this.name,
+    required this.inbound,
+    this.outbound,
+    this.removed,
+    this.adoptStore,
+  });
 
   final String name;
 
@@ -34,6 +42,17 @@ class PreferenceMergeFamily {
   /// merge only ever ran inbound, so an outgoing write pushed the raw local
   /// value over entries another device owned.
   final PreferenceValueMerge? outbound;
+
+  /// A newer tombstone arrived. Returns what this device keeps of [local], or
+  /// null to remove the value. Null when the family has nothing to keep, which
+  /// makes the tombstone a plain removal.
+  final Object? Function(Object? local)? removed;
+
+  /// The store of another iCloud account arrived. Returns what this device
+  /// should store: the store's entries win, entries it lacks stay. Null when
+  /// [inbound] already does that, or when the family has no per-entry order
+  /// to reset.
+  final PreferenceValueMerge? adoptStore;
 
   bool get mergesOutgoing => outbound != null;
 }
@@ -97,7 +116,131 @@ PreferenceMergeFamily buildServerScopedListFamily(IsServerIdPortable isServerIdP
     final seen = mine.toSet();
     return json.encode(<String>[...mine, ...foreign.where(seen.add)]);
   },
+  // The sender removed the list it could see. This device's local-folder
+  // entries were never in it, so they stay.
+  removed: (local) {
+    final keep = PreferenceValuePortability.localOnlyEntries(decodeStringList(local) ?? const [], isServerIdPortable);
+    return keep.isEmpty ? null : json.encode(keep);
+  },
 );
+
+/// Maps keyed by profile scope, where a device speaks for the profiles it has.
+///
+/// Every entry stands on its own: both directions take the union of the two
+/// maps and settle a key present on both sides by the entry's timestamp, so a
+/// series override one device set never erases another's for the same
+/// profile. A removal travels as an entry too: the store writes a tombstone
+/// (an entry with a timestamp and nothing else, which its readers already
+/// skip) in place of deleting the key, and the newer timestamp wins as usual.
+/// Tombstones expire after [profileKeyedMapTombstoneLifetime].
+///
+/// Only portable scopes travel. Inbound keeps this device's non-portable
+/// entries and ignores the sender's; outbound leaves them out and sends null
+/// when nothing portable is left. A whole-record tombstone keeps the
+/// non-portable entries too, for the same reason.
+PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
+  name: PreferenceMergeFamilies.profileKeyedMap,
+  inbound: (local, remote) {
+    final theirs = decodeStringMap(remote);
+    if (theirs == null) return local;
+    final merged = decodeStringMap(local) ?? <String, dynamic>{};
+    for (final e in theirs.entries) {
+      if (!_isPortableMapKey(e.key)) continue;
+      merged[e.key] = merged.containsKey(e.key) ? _newerEntry(e.value, merged[e.key]) : e.value;
+    }
+    return _canonical(merged..removeWhere((_, v) => _isExpiredTombstone(v)));
+  },
+  outbound: (local, remote) {
+    final mine = decodeStringMap(local);
+    if (mine == null) return local;
+    final out = <String, dynamic>{
+      for (final e in mine.entries)
+        if (_isPortableMapKey(e.key)) e.key: e.value,
+    };
+    if (out.isEmpty) return null;
+    for (final e in (decodeStringMap(remote) ?? const <String, dynamic>{}).entries) {
+      if (!_isPortableMapKey(e.key)) continue;
+      out[e.key] = out.containsKey(e.key) ? _newerEntry(out[e.key], e.value) : e.value;
+    }
+    out.removeWhere((_, v) => _isExpiredTombstone(v));
+    return out.isEmpty ? null : _canonical(out);
+  },
+  removed: (local) {
+    final keep = <String, dynamic>{
+      for (final e in (decodeStringMap(local) ?? const <String, dynamic>{}).entries)
+        if (!_isPortableMapKey(e.key)) e.key: e.value,
+    };
+    return keep.isEmpty ? null : json.encode(keep);
+  },
+  // Another account's `u` means nothing against this device's history, so an
+  // entry it holds replaces this device's regardless of the timestamps.
+  adoptStore: (local, remote) {
+    final theirs = decodeStringMap(remote);
+    if (theirs == null) return local;
+    final merged = decodeStringMap(local) ?? <String, dynamic>{};
+    for (final e in theirs.entries) {
+      if (_isPortableMapKey(e.key)) merged[e.key] = e.value;
+    }
+    return _canonical(merged..removeWhere((_, v) => _isExpiredTombstone(v)));
+  },
+);
+
+/// Sorted keys, so two devices holding the same entries hold the same text.
+/// Reconcile compares on the text; without this each device kept its own order
+/// and the map was rewritten on every pass.
+String _canonical(Map<String, dynamic> map) => json.encode(SplayTreeMap<String, dynamic>.of(map));
+
+bool _isPortableMapKey(String key) => PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key));
+
+/// How long a [buildProfileKeyedMapFamily] tombstone is kept. Past this, a
+/// device that stayed offline the whole time can bring the removed entry back;
+/// the bound is what keeps a map of removals from growing into the store's
+/// 100 KB ceiling.
+const Duration profileKeyedMapTombstoneLifetime = Duration(days: 180);
+
+/// A tombstone is an entry holding its timestamp and nothing else.
+// An unseeded, all-default PleyaProfileLanguagePreferences also encodes as
+// {'u': ms}; expiring one after 180 days just drops defaults, so it is harmless.
+bool _isExpiredTombstone(Object? entry) {
+  if (entry is! Map || entry.length != 1) return false;
+  final u = entry['u'];
+  return u is num && u < DateTime.now().millisecondsSinceEpoch - profileKeyedMapTombstoneLifetime.inMilliseconds;
+}
+
+/// The `{profileScope}` half of a map key: everything before the first `|`,
+/// or the whole key when there is none.
+String profileScopeOfMapKey(String key) {
+  final pipe = key.indexOf('|');
+  return pipe < 0 ? key : key.substring(0, pipe);
+}
+
+/// The newer of two versions of one entry, by timestamp. The stores write it
+/// as `u` (`TrackLanguageChoice.toJson`, `PleyaProfileLanguagePreferences.toJson`);
+/// `updatedAt` is accepted too. Equal timestamps fall to the larger encoding,
+/// so two devices settle a tie the same way. Without a timestamp on both
+/// sides, [preferred] stays.
+Object? _newerEntry(Object? preferred, Object? other) {
+  if (preferred is Map && other is Map) {
+    final a = preferred['u'] ?? preferred['updatedAt'];
+    final b = other['u'] ?? other['updatedAt'];
+    if (a is num && b is num) {
+      if (a != b) return b > a ? other : preferred;
+      return json.encode(other).compareTo(json.encode(preferred)) > 0 ? other : preferred;
+    }
+  }
+  return preferred;
+}
+
+/// Decode a JSON object, or null when the value is not one.
+Map<String, dynamic>? decodeStringMap(Object? raw) {
+  if (raw is! String) return null;
+  try {
+    final decoded = json.decode(raw);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 /// The legacy progress maps: progress takes the maximum, watched ORs.
 ///

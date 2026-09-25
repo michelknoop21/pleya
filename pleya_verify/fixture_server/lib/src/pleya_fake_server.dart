@@ -293,6 +293,33 @@ class PleyaFakeServer {
     return id;
   }
 
+  /// Adds a playable film to [libraryId] and puts it at the front of
+  /// `recently_added`, the way a real server lists the newest first.
+  /// `POST /__verify/add_movie`'s implementation, the mutation
+  /// `tvos.home.recently-added-refresh` needs. Returns the new id, or `null`
+  /// when [libraryId] is unknown (the control plane turns that into 404).
+  String? addMovie({required String libraryId, String? title}) {
+    final library = libraries.where((l) => l['id'] == libraryId).firstOrNull;
+    if (library == null) return null;
+    // Counted, not timestamped: the fixture clock is frozen, so two films
+    // added in one scenario would otherwise share an id.
+    final id = '$libraryId/added-movie-${(libraryItems[libraryId]?.length ?? 0) + 1}';
+    addItem(
+      id: id,
+      kind: 'movie',
+      title: title ?? 'Added Movie',
+      libraryId: libraryId,
+      year: clock.now.year,
+      durationMs: 5400000,
+      addedAt: clock.now.toIso8601String(),
+      posterId: id,
+    );
+    artworkById[id] = artworkBytes;
+    hubs['recently_added']!.insert(0, id);
+    library['item_count'] = ((library['item_count'] as int?) ?? 0) + 1;
+    return id;
+  }
+
   /// Sets [itemId]'s watch state to fully watched, the way a client's own
   /// `POST /watch-state` would after a completed play-through — without a
   /// scenario needing to script that whole flow just to get there.

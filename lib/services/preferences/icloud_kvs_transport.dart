@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -45,6 +46,10 @@ class ICloudKvsTransport implements PreferenceTransport {
   /// allowed to starve every other setting.
   @override
   int? get maxValueBytes => 100 * 1024;
+
+  /// Apple's limit for a key-value store key. A longer key is not stored.
+  @override
+  int? get maxKeyBytes => 64;
 
   @override
   Future<bool> isAvailable() async {
@@ -104,6 +109,13 @@ class ICloudKvsTransport implements PreferenceTransport {
 
   @override
   Future<void> write(String key, String encoded) async {
+    // The engine checks first and counts the refusal; this is the backstop.
+    // Refused rather than thrown: an over-long key is a bug to report, not a
+    // reason to fail the rest of the pass.
+    if (utf8.encode(key).length > maxKeyBytes!) {
+      appLogger.w('iCloud set refused: key over the 64-byte limit');
+      return;
+    }
     try {
       await _channel.invokeMethod('set', {'key': key, 'value': encoded});
     } catch (e) {

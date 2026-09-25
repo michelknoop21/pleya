@@ -178,6 +178,16 @@ class FixtureHttpServer {
           return;
         }
         await _json(request, {'ok': true, 'id': id});
+      case '/__verify/add_movie':
+        final body = await _readJsonBody(request);
+        final libraryId = body['library_id'] as String?;
+        final id = libraryId == null ? null : server.addMovie(libraryId: libraryId, title: body['title'] as String?);
+        if (id == null) {
+          request.response.statusCode = HttpStatus.notFound;
+          await _json(request, {'error': 'unknown library_id', 'library_id': libraryId});
+          return;
+        }
+        await _json(request, {'ok': true, 'id': id});
       case '/__verify/mark_watched':
         final body = await _readJsonBody(request);
         final itemId = body['item_id'] as String?;
