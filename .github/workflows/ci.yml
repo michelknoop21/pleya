@@ -171,10 +171,12 @@ jobs:
           go-version-file: pleya_server/go.mod
           cache-dependency-path: pleya_server/go.sum
 
-      - name: Install ffmpeg
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ffmpeg
+      # De tests draaien tegen dezelfde gepinde ffmpeg als de server zelf
+      # (scripts/test-image.sh). De ffmpeg van Ubuntu (6.1) meldt de voortgang
+      # onder loudnorm anders, en dan meet de loudnesstest een verkeerde duur.
+      - name: Build test image with pinned ffmpeg
+        working-directory: pleya_server
+        run: scripts/test-image.sh
 
       - name: Build
         working-directory: pleya_server
@@ -186,15 +188,20 @@ jobs:
 
       - name: Test
         working-directory: pleya_server
-        run: go test ./...
+        env:
+          GO_IMAGE: pleya-server-test:go-ffmpeg
+          PLEYA_TEST_DOCKER_NETWORK: host
+        run: scripts/go-tool.sh test -timeout 30m ./...
 
       - name: Capture responses for the contract check
         working-directory: pleya_server
         env:
-          PLEYA_RESPONSE_DIR: ${{ github.workspace }}/pleya_server/.responses
+          GO_IMAGE: pleya-server-test:go-ffmpeg
+          PLEYA_TEST_DOCKER_NETWORK: host
+          PLEYA_RESPONSE_DIR: /src/.responses
         run: |
           rm -rf .responses && mkdir -p .responses
-          go test -count=1 -timeout 30m ./internal/api/
+          scripts/go-tool.sh test -count=1 -timeout 30m ./internal/api/
 
       - name: Validate responses against openapi.yaml
         run: |
