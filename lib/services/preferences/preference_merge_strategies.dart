@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import 'preference_sync_policy.dart';
@@ -135,7 +136,7 @@ PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
       if (!_isPortableMapKey(e.key)) continue;
       merged[e.key] = merged.containsKey(e.key) ? _newerEntry(e.value, merged[e.key]) : e.value;
     }
-    return json.encode(merged..removeWhere((_, v) => _isExpiredTombstone(v)));
+    return _canonical(merged..removeWhere((_, v) => _isExpiredTombstone(v)));
   },
   outbound: (local, remote) {
     final mine = decodeStringMap(local);
@@ -150,7 +151,7 @@ PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
       out[e.key] = out.containsKey(e.key) ? _newerEntry(out[e.key], e.value) : e.value;
     }
     out.removeWhere((_, v) => _isExpiredTombstone(v));
-    return out.isEmpty ? null : json.encode(out);
+    return out.isEmpty ? null : _canonical(out);
   },
   removed: (local) {
     final keep = <String, dynamic>{
@@ -160,6 +161,11 @@ PreferenceMergeFamily buildProfileKeyedMapFamily() => PreferenceMergeFamily(
     return keep.isEmpty ? null : json.encode(keep);
   },
 );
+
+/// Sorted keys, so two devices holding the same entries hold the same text.
+/// Reconcile compares on the text; without this each device kept its own order
+/// and the map was rewritten on every pass.
+String _canonical(Map<String, dynamic> map) => json.encode(SplayTreeMap<String, dynamic>.of(map));
 
 bool _isPortableMapKey(String key) => PreferenceSyncScope.isPortableProfileScope(profileScopeOfMapKey(key));
 

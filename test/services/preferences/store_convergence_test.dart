@@ -65,4 +65,50 @@ void main() {
       expect(settings.prefs.getInt('subtitle_font_size'), isNull);
     });
   });
+
+  group('I3: a profile-keyed map has one canonical text', () {
+    const s1 = 'plex-home-plex.e434272903092b4e-f870c16b61268c50';
+    const s2 = 'plex-home-plex.e434272903092b4e-a870c16b61268c51';
+    final e1 = {'audio': 'nl', 'u': 1000};
+    final e2 = {'audio': 'en', 'u': 2000};
+    const key = 'pleya_profile_language_preferences';
+
+    test('the same content in another order is not written again', () async {
+      final c = await build();
+      await settings.prefs.setString(key, json.encode({s1: e1, s2: e2}));
+      final cloud = c.cloudKeyFor(key)!;
+      // What another device of this build wrote for the same two profiles:
+      // sorted, so s2 comes first.
+      transport.store[cloud] = json.encode({
+        'type': 'string',
+        'value': json.encode({s2: e2, s1: e1}),
+        't': 1000,
+        'd': 'appletv',
+      });
+
+      await c.reconcile();
+      await c.reconcile();
+
+      expect(transport.writes, isNot(contains(cloud)));
+    });
+
+    test('inbound and outbound both write sorted keys, so two devices converge on the text', () async {
+      final c = await build();
+      await settings.prefs.setString(key, json.encode({s1: e1}));
+      final cloud = c.cloudKeyFor(key)!;
+      transport.store[cloud] = json.encode({
+        'type': 'string',
+        'value': json.encode({s2: e2}),
+        't': 1000,
+        'd': 'appletv',
+      });
+
+      await c.applyAllRemote();
+      final local = settings.prefs.getString(key)!;
+      await c.reconcile();
+
+      expect((json.decode(local) as Map).keys, [s2, s1]);
+      expect(decode(transport.store[cloud]!)['value'], local);
+    });
+  });
 }
