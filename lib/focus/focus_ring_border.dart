@@ -35,11 +35,35 @@ class FocusRingBorder extends ShapeBorder {
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
       shape.getOuterPath(rect, textDirection: textDirection);
 
+  bool get _separatorVisible => separator.style != BorderStyle.none && separator.width > 0 && separator.color.a > 0;
+
+  /// A ring drawn wholly inside its box ([BorderSide.strokeAlignInside] or
+  /// further in) keeps the separator inside the box as well: the separator
+  /// takes the outermost band and the ring moves in by its width. Outside the
+  /// box a clipping ancestor cuts it off; that removed the separator on the
+  /// first and last row of a settings card (VIS-0925 review, FIX 2), where a
+  /// white ring on a light page is then invisible. A stroke align below -1
+  /// moves a stroke further inward, on the same rect, for any [OutlinedBorder].
+  bool get _inside => ring.strokeOutset <= 0;
+
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
-    if (separator.style != BorderStyle.none && separator.width > 0 && separator.color.a > 0) {
-      shape.copyWith(side: _alignedSeparator).paint(canvas, rect, textDirection: textDirection);
+    if (!_separatorVisible) {
+      shape.copyWith(side: ring).paint(canvas, rect, textDirection: textDirection);
+      return;
     }
+    if (_inside) {
+      final w = math.max(ring.width, 0.001);
+      final inset = -ring.strokeOutset + separator.width;
+      shape
+          .copyWith(side: separator.copyWith(strokeAlign: -1 - 2 * -ring.strokeOutset / separator.width))
+          .paint(canvas, rect, textDirection: textDirection);
+      shape
+          .copyWith(side: ring.copyWith(strokeAlign: -1 - 2 * inset / w))
+          .paint(canvas, rect, textDirection: textDirection);
+      return;
+    }
+    shape.copyWith(side: _alignedSeparator).paint(canvas, rect, textDirection: textDirection);
     shape.copyWith(side: ring).paint(canvas, rect, textDirection: textDirection);
   }
 
