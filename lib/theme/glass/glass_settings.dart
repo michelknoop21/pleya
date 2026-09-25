@@ -55,12 +55,16 @@ class GlassTokens {
   final Color tint;
   final double edge;
 
+  /// `LiquidGlassSettings.glassColor` on the real tier; [tint] when null.
+  final Color? realTint;
+
   const GlassTokens({
     required this.blur,
     required this.saturation,
     required this.dim,
     required this.tint,
     required this.edge,
+    this.realTint,
   });
 
   /// iPhone glass: blur 12, saturation 1.5, dim 0.78. Fixronde 1 replaced the
@@ -75,7 +79,22 @@ class GlassTokens {
   /// point instead of climbing to the old ceiling. The white rim ([edge])
   /// and the subtle top highlight (`GlassSurface`'s own paint) stay: that's
   /// what still reads as glass instead of a flat dark chip.
-  const GlassTokens.phone() : this(blur: 12, saturation: 1.5, dim: 0.78, tint: const Color(0x80000000), edge: 0);
+  ///
+  /// [realTint] is black 60% instead of 50% (final review B2): the package
+  /// has no dim, so without the fake tier's 0.78 brightness step the real
+  /// plate would be lighter than the one the contrast tests measure. A darker
+  /// glass color stands in for that dim. The flutter test renderer cannot
+  /// paint the real tier, so this is reasoning, not a measurement: confirm
+  /// the real glass (the red active tab icon first) on a device.
+  const GlassTokens.phone()
+    : this(
+        blur: 12,
+        saturation: 1.5,
+        dim: 0.78,
+        tint: const Color(0x80000000),
+        edge: 0,
+        realTint: const Color(0x99000000),
+      );
 
   /// Apple TV nepglas: blur 30, saturation 1.2, dim 0.80, the same dark plate
   /// tint as [phone] (black 50%, Fixronde 1/2) for the same contrast reason,

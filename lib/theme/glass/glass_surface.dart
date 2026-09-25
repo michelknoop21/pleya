@@ -110,7 +110,7 @@ class _GlassLayerScope extends InheritedWidget {
 
 LiquidGlassSettings _liquidSettings(GlassTokens t) => LiquidGlassSettings(
   blur: t.blur,
-  glassColor: t.tint,
+  glassColor: t.realTint ?? t.tint,
   saturation: t.saturation,
   thickness: 18,
   refractiveIndex: 1.3,

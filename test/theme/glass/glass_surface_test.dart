@@ -149,6 +149,41 @@ void main() {
     expect(find.byType(LiquidGlassLayer), findsOneWidget);
   });
 
+  testWidgets('B2: tier real maakt het donkere vlak 60% zwart, het witte blijft wit', (tester) async {
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() => SettingsService.getInstance());
+    await SettingsService.instance.write(SettingsService.liquidGlass, true);
+
+    await tester.pumpWidget(
+      wrap(
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GlassLayer(
+              child: GlassSurface(shape: const StadiumBorder(), child: const Text('dark')),
+            ),
+            GlassLayer(
+              tokens: const GlassTokens.prominent(),
+              child: GlassSurface(shape: const StadiumBorder(), prominent: true, child: const Text('white')),
+            ),
+          ],
+        ),
+        platform: TargetPlatform.iOS,
+      ),
+    );
+
+    Color glassColorAbove(String text) => tester
+        .widget<LiquidGlassLayer>(find.ancestor(of: find.text(text), matching: find.byType(LiquidGlassLayer)).first)
+        .settings
+        .glassColor;
+    expect(glassColorAbove('dark'), const Color(0x99000000));
+    expect(glassColorAbove('white'), const GlassTokens.prominent().tint);
+    // The fake tier keeps the measured 50% plate.
+    expect(const GlassTokens.phone().tint, const Color(0x80000000));
+  });
+
   group('glassAppliesTo per platform (B4)', () {
     // (platform, physical size, dpr, Apple TV, Android TV, expected). The
     // desktop window is deliberately phone-small: the old diagonal-only rule
