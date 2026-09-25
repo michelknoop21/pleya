@@ -76,3 +76,21 @@ steps:
   - assert: {id: "discover.rail.item[2.0]", state: {title: Verify Tweede}}
   - assert: {id: "discover.rail.item[2.4]", focused: true, state: {title: Cascade}}
   - snapshot: 03-focus-kept-on-cascade
+
+  # Back from a detail page (review I2). On TV a detail opened from Home is a
+  # nested route, not a push on the profile navigator, so `didPopNext` never
+  # ran and nothing refreshed on the way back. A third film arrives while the
+  # detail is open; after the return threshold, Back has to bring it to the
+  # front of the rail and put the ring back on the card the detail was opened
+  # from. The timer cannot be what refreshes here: it last fired about a
+  # minute before the detail opened and its next tick is minutes away.
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 15000}
+  - settle: 1500
+  - fixture_mutate: {op: add_movie, library_id: "{{fixture_id:library/movies}}", title: Verify Derde}
+  - settle: 125000
+  - press: menu
+  - settle: 5000
+  - assert: {id: "discover.rail.item[2.0]", state: {title: Verify Derde}}
+  - assert: {id: "discover.rail.item[2.5]", focused: true, state: {title: Cascade}}
+  - snapshot: 04-back-from-detail

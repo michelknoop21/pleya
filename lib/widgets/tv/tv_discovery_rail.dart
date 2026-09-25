@@ -352,8 +352,14 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   /// under the ring. Moving the band by the same number of places keeps the
   /// card where the viewer is looking. This frame's layout clamps the offset
   /// to the new content extent, so no frame shows the card out of place.
+  ///
+  /// A rail that is not being looked at gets the same correction once it has
+  /// been walked (scrolled): that is the rail a detail page was opened from,
+  /// and the reload on the way back can land before the ring does. A rail at
+  /// its start keeps its offset, so a new title shows up in view.
   void _keepFocusedTileInPlace(List<UnifiedMediaGroup> oldGroups, String groupId) {
-    if (!_holdsFocus.value || !_scroll.hasClients) return;
+    if (!_scroll.hasClients) return;
+    if (!_holdsFocus.value && _scroll.position.pixels <= _scroll.position.minScrollExtent) return;
     final oldIndex = oldGroups.indexWhere((g) => g.groupId == groupId);
     final newIndex = widget.groups.indexWhere((g) => g.groupId == groupId);
     if (oldIndex < 0 || oldIndex == newIndex) return;

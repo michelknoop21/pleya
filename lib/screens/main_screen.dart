@@ -2324,6 +2324,12 @@ class _MainScreenState extends State<MainScreen>
   /// opens where the remote already is, and the lit pill does not move under it.
   Future<Object?> _pushTvContentRoute(TvNestedRoute route) {
     final destination = _tvNav.active;
+    // A route over Home's root hides Home the way a push on the profile
+    // navigator does (`didPushNext`): the hero stops and the refresh timer
+    // pauses, so no reload reorders a rail nobody is looking at.
+    if (destination == TvDestinationId.home && _tvNav.activeNestedRoute == null) {
+      if (_discoverKey.currentState case final TabVisibilityAware aware) aware.onTabHidden();
+    }
     // Await the route that ends up on top: a re-push of the id already there is
     // discarded, and it is that one which will be popped.
     final live = _tvNav.pushNested(destination, route);
@@ -2400,6 +2406,14 @@ class _MainScreenState extends State<MainScreen>
   bool _popTvNestedRoute([Object? result]) {
     final popped = _tvNav.popNested(result);
     if (popped == null) return false;
+    // Back onto Home's root: the TV counterpart of `didPopNext`, so a return
+    // from a detail page refreshes like it does on the phone (review I2).
+    // Not a re-selection of Home, so hoofdstuk 7.2 does not apply.
+    final revealsHome = _tvNav.active == TvDestinationId.home && _tvNav.activeNestedRoute == null;
+    if (revealsHome && _currentTab == NavigationTabId.discover) {
+      if (_discoverKey.currentState case final TabVisibilityAware aware) aware.onTabShown();
+      _onDiscoverBecameVisible();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final key = popped.restoreFocusKey;

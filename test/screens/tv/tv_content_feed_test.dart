@@ -1055,6 +1055,60 @@ void main() {
       expect(tester.getSize(tile(third)).width, moreOrLessEquals(widthBefore, epsilon: 0.5));
     });
 
+    testWidgets('a reload while the rail is left keeps the remembered card in place in a scrolled rail', (
+      tester,
+    ) async {
+      // Back from a detail page: the reload can land before the ring is back
+      // on the card. The rail does not hold the focus at that moment, but it
+      // was walked and scrolled, so its remembered card must not slide
+      // sideways (review M8; seen on the simulator as a one-place jump).
+      final films = [for (var i = 0; i < 12; i++) _film('tp$i', title: 'Film $i')];
+      await boot(tester, hubs: [_hub('recent', 'Recently Added', films)]);
+      final seventh = rows(tester).single.hub.groups[6].groupId;
+      Finder tile(String groupId) =>
+          find.byWidgetPredicate((w) => w is TvExpandableMediaTile && w.group.groupId == groupId);
+
+      tileNode(tester, seventh).requestFocus();
+      await tester.pumpAndSettle();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final xBefore = tester.getTopLeft(tile(seventh)).dx;
+
+      aggregation.hubs = [
+        _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
+      ];
+      await discover.refreshIfStale(maxAge: Duration.zero);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(tile(seventh)).dx, moreOrLessEquals(xBefore, epsilon: 0.5));
+      expect(tester.state<TvContentFeedState>(find.byType(TvContentFeed)).focusRestored(), isTrue);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$seventh');
+    });
+
+    testWidgets('an unscrolled rail that is not being looked at shows the new title', (tester) async {
+      final films = [for (var i = 0; i < 12; i++) _film('tp$i', title: 'Film $i')];
+      await boot(tester, hubs: [_hub('recent', 'Recently Added', films)]);
+      Finder tile(String groupId) =>
+          find.byWidgetPredicate((w) => w is TvExpandableMediaTile && w.group.groupId == groupId);
+      final firstX = tester.getTopLeft(tile(rows(tester).single.hub.groups.first.groupId)).dx;
+
+      aggregation.hubs = [
+        _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
+      ];
+      await discover.refreshIfStale(maxAge: Duration.zero);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pumpAndSettle();
+
+      final newGroup = rows(tester).single.hub.groups.first.groupId;
+      expect(tester.getTopLeft(tile(newGroup)).dx, moreOrLessEquals(firstX, epsilon: 0.5), reason: 'first in view');
+    });
+
     testWidgets('rows keep their own state identity across a re-projection', (tester) async {
       await boot(
         tester,
