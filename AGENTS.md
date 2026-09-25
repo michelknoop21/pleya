@@ -23,7 +23,7 @@ This is the default Pleya workflow for changes that head to a TestFlight build (
 **Bundle review (one reviewer seat per bundle)**
 - One review package file: commit list, stat and diff per branch, plus the paths of the branch reports and screenshot manifests. The reviewer reads that file and does not re-explore the codebase or re-run evidence that is already in the reports.
 - Scale by risk, not by branch: documentation-only and mechanical branches get a skim; UI, playback, sync and permission changes get the full read. Split into parallel reviewers only when the combined diff exceeds about 3000 changed lines or spans unrelated domains.
-- Security-sensitive changes (authentication, permissions, credentials, payments) get adversarial negative controls inside the bundle review, not a separate seat.
+- Security-sensitive branches (authentication, permissions, credentials, payments, data migrations for existing connections) keep their own independent adversarial review of the exact diff before they join the bundle: implement, fix round, gates, adversarial review, fix and re-test (a scoped re-review of the fixes), and only then the bundle review and the normal merge flow. The bundle review is an extra check there, not a replacement (owner decision, 25 September 2026).
 - The visual gate covers only screens listed in the manifests.
 - Findings go to one file with Critical, Important and Minor per branch, each with file:line and a failure scenario.
 
