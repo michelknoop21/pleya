@@ -155,10 +155,12 @@ void main() {
     expect(tester.getRect(videoPill()).center.dx, closeTo(off[1].center.dx, 1));
   });
 
-  testWidgets('contrast over Big Buck Bunny: pillabel en rijtitel 4,5:1', (tester) async {
+  testWidgets('contrast over Big Buck Bunny: pillabel en rijtitel 4,5:1, rijwaarde niet slechter dan de oude kaart', (
+    tester,
+  ) async {
     await _pumpPanel(tester, glass: true, scene: true, initial: TvInfoPanelRequest.video);
     final card = tester.getRect(find.byType(GlassSurface));
-    final cardShape = tester.widget<GlassSurface>(find.byType(GlassSurface)).shape;
+    final cardSurface = tester.widget<GlassSurface>(find.byType(GlassSurface));
     // On the Video tab, Information is an inactive pill: white on glass.
     final pillLabel = informationPill();
     final pillText = tester.widget<Text>(pillLabel).data!;
@@ -170,84 +172,113 @@ void main() {
     final rowRect = tester.getRect(rowTitle);
     final rowStyle = DefaultTextStyle.of(tester.element(rowTitle)).style.merge(tester.widget<Text>(rowTitle).style);
     final rowText = tester.widget<Text>(rowTitle).data!;
+    // A row value (the current track, aspect, ...): the muted tier, unfocused.
+    final value = find
+        .descendant(
+          of: find.byType(TvPanelRow),
+          matching: find.byWidgetPredicate((w) => w is Text && w.style?.color == TvPanelTheme.textMuted),
+        )
+        .first;
+    final valueRect = tester.getRect(value);
+    final valueStyle = DefaultTextStyle.of(tester.element(value)).style.merge(tester.widget<Text>(value).style);
+    final valueText = tester.widget<Text>(value).data!;
 
     final now = find.textContaining('$_kTitle · ');
     final nowRect = tester.getRect(now);
     final nowStyle = DefaultTextStyle.of(tester.element(now)).style.merge(tester.widget<Text>(now).style);
     final nowText = tester.widget<Text>(now).data!;
 
-    const pillKey = Key('pill'), rowKey = Key('row'), nowKey = Key('now');
+    const pillKey = Key('pill'), rowKey = Key('row'), nowKey = Key('now'), valueKey = Key('value');
     Widget at(Rect r, Widget child) => Positioned.fromRect(rect: r, child: child);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: RepaintBoundary(
-          key: _kSceneKey,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              RawImage(image: _scene, fit: BoxFit.cover),
-              at(
-                card,
-                GlassSurface(
-                  shape: cardShape,
-                  tokens: const GlassTokens.tv(),
-                  backdrop: false,
-                  child: const SizedBox(),
-                ),
-              ),
-              at(
-                pillBox,
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: TvPanelTheme.glassInactivePill,
-                    borderRadius: BorderRadius.circular(pillBox.height / 2),
+    Future<void> pumpScene(Widget cardWidget) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RepaintBoundary(
+            key: _kSceneKey,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                RawImage(image: _scene, fit: BoxFit.cover),
+                at(card, cardWidget),
+                at(
+                  pillBox,
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: TvPanelTheme.glassInactivePill,
+                      borderRadius: BorderRadius.circular(pillBox.height / 2),
+                    ),
                   ),
                 ),
-              ),
-              at(rowRect.inflate(12), const ColoredBox(color: TvPanelTheme.group)),
-              at(
-                pillRect,
-                Text(
-                  pillText,
-                  key: pillKey,
-                  style: pillStyle.copyWith(color: Colors.transparent),
-                ),
-              ),
-              at(
-                nowRect,
-                Text(
-                  nowText,
-                  key: nowKey,
-                  style: nowStyle.copyWith(color: Colors.transparent),
-                ),
-              ),
-              at(
-                rowRect,
-                Text(
-                  rowText,
-                  key: rowKey,
-                  style: rowStyle.copyWith(color: Colors.transparent),
-                ),
-              ),
-            ],
+                at(rowRect.inflate(12), const ColoredBox(color: TvPanelTheme.group)),
+                at(valueRect.inflate(12), const ColoredBox(color: TvPanelTheme.group)),
+                for (final (rect, key, text, style) in [
+                  (pillRect, pillKey, pillText, pillStyle),
+                  (nowRect, nowKey, nowText, nowStyle),
+                  (rowRect, rowKey, rowText, rowStyle),
+                  (valueRect, valueKey, valueText, valueStyle),
+                ])
+                  at(
+                    rect,
+                    Text(
+                      text,
+                      key: key,
+                      style: style.copyWith(color: Colors.transparent),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
+    }
 
     Future<double> m(Key k, Color c) =>
         textContrastOverBackground(tester, area: find.byKey(k), textColor: c, boundary: find.byKey(_kSceneKey));
+
+    // The real card's own surface and tokens, not a copy of a constant.
+    await pumpScene(
+      GlassSurface(
+        shape: cardSurface.shape,
+        tokens: cardSurface.tokens,
+        backdrop: cardSurface.backdrop,
+        child: const SizedBox(),
+      ),
+    );
     final ratios = {
       'pillLabel': await m(pillKey, Color.alphaBlend(pillStyle.color!, Colors.black)),
       'rowTitle': await m(rowKey, Color.alphaBlend(rowStyle.color!, Colors.black)),
+      'rowValue': await m(valueKey, Color.alphaBlend(valueStyle.color!, Colors.black)),
       // Informational: the secondary now-line (textFaint, white 50%) is a
       // panel-wide muted tier, not part of this surface swap.
       'nowLineFaint': await m(nowKey, Color.alphaBlend(nowStyle.color!, Colors.black)),
     };
+
+    // The old card (glass off): 24-sigma blur under TvPanelTheme.card.
+    final radius = (cardSurface.shape as RoundedRectangleBorder).borderRadius;
+    await pumpScene(
+      ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: kTvPanelBlurSigma, sigmaY: kTvPanelBlurSigma),
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: TvPanelTheme.card, borderRadius: radius),
+          ),
+        ),
+      ),
+    );
+    final legacyRowValue = await m(valueKey, Color.alphaBlend(valueStyle.color!, Colors.black));
+
     // ignore: avoid_print - the measured ratios belong in the test log
-    print('tv player panel glass contrast: $ratios');
+    print('tv player panel glass contrast: $ratios, legacy rowValue: $legacyRowValue');
     expect(ratios['pillLabel'], greaterThanOrEqualTo(4.5));
     expect(ratios['rowTitle'], greaterThanOrEqualTo(4.5));
+    // B3 floor: the row value is muted text (textMuted, white 72%). The old
+    // card reads 4.38 over this light fixture, under 4.5:1, so 4.5 is not a
+    // requirement the panel ever met. The chosen floor is the old card itself,
+    // measured here on the same scene with the same meter: glass may not be
+    // worse than the card it replaces (70% tint: 4.66; the 50% tint of
+    // GlassTokens.tv gave 2.70).
+    expect(ratios['rowValue'], greaterThanOrEqualTo(legacyRowValue));
   });
 }

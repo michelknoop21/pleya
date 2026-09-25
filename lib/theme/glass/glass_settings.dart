@@ -102,6 +102,13 @@ class GlassTokens {
   /// width is fixed in [GlassSurface], shared with [control]).
   const GlassTokens.tv() : this(blur: 30, saturation: 1.2, dim: 0.80, tint: const Color(0x80000000), edge: 0.40);
 
+  /// The Apple TV player panel card (LG-05): [tv] with a black 70% tint, the
+  /// old card's density (`TvPanelTheme.card`). The card has no backdrop over
+  /// mpv, so the 50% of [tv] let the video through brighter than the blurred
+  /// old card and the muted row values lost contrast (final review B3). The
+  /// top bar and the search pill keep [tv].
+  const GlassTokens.tvPanel() : this(blur: 30, saturation: 1.2, dim: 0.80, tint: const Color(0xB3000000), edge: 0.40);
+
   /// A small glass control on the app's black chrome (the search circle in
   /// the mobile header, LG-01). Over black the dark [phone] plate vanishes,
   /// so this one carries a light 25% fill and a 35% rim: it reads as a grey

@@ -14,8 +14,8 @@ const double kTvPanelBlurSigma = 24;
 /// The surface of the TV player panel (mockup 33, DEC-101; LG-05 with glass).
 ///
 /// Glass off: today's card, a 24-sigma blur under a 70% dark fill.
-/// Glass on: a [GlassSurface] with [GlassTokens.tv] and no backdrop. mpv draws
-/// into a native layer under the FlutterView on tvOS, as on iOS
+/// Glass on: a [GlassSurface] with [GlassTokens.tvPanel] and no backdrop.
+/// mpv draws into a native layer under the FlutterView on tvOS, as on iOS
 /// (`ios/Runner/MpvPlayer/MpvPlayerCore.swift`, shared via
 /// `tvos/scripts/wire_mpv.rb`), so a Flutter backdrop cannot sample the video;
 /// the tint and the rim carry the glass. Text on it inherits [kGlassTextShadows].
@@ -55,7 +55,7 @@ class TvPanelCard extends StatelessWidget {
     );
     return GlassSurface(
       shape: RoundedRectangleBorder(borderRadius: borderRadius),
-      tokens: const GlassTokens.tv(),
+      tokens: const GlassTokens.tvPanel(),
       backdrop: false,
       legacy: legacy,
       child: Container(
