@@ -18,10 +18,10 @@ import (
 
 func TestNormalizeOriginAcceptsWhatEenBrowserStuurt(t *testing.T) {
 	cases := map[string]string{
-		"https://web.pleya.app":  "https://web.pleya.app",
-		"http://nas:8832":        "http://nas:8832",
-		"https://WEB.Pleya.App":  "https://web.pleya.app",
-		"https://web.pleya.app/": "https://web.pleya.app",
+		"https://web.pleya.app":    "https://web.pleya.app",
+		"http://nas:8832":          "http://nas:8832",
+		"https://WEB.Pleya.App":    "https://web.pleya.app",
+		"https://web.pleya.app/":   "https://web.pleya.app",
 		"  http://localhost:5173 ": "http://localhost:5173",
 
 		// De poort hoort bij de origin en gaat er niet af: :8832 en de default
@@ -43,15 +43,15 @@ func TestNormalizeOriginAcceptsWhatEenBrowserStuurt(t *testing.T) {
 
 func TestNormalizeOriginWeigertWatGeenOriginIs(t *testing.T) {
 	cases := map[string]string{
-		"":                             "leeg",
-		"*":                            "jokerteken",
-		"web.pleya.app":                "geen schema",
-		"ftp://web.pleya.app":          "verkeerd schema",
-		"https://":                     "geen host",
+		"":                              "leeg",
+		"*":                             "jokerteken",
+		"web.pleya.app":                 "geen schema",
+		"ftp://web.pleya.app":           "verkeerd schema",
+		"https://":                      "geen host",
 		"https://user:pw@web.pleya.app": "inloggegevens",
-		"https://web.pleya.app?x=1":    "querystring",
-		"https://web.pleya.app#top":    "fragment",
-		"https://web.pleya.app/admin":  "pad",
+		"https://web.pleya.app?x=1":     "querystring",
+		"https://web.pleya.app#top":     "fragment",
+		"https://web.pleya.app/admin":   "pad",
 	}
 
 	for raw, why := range cases {

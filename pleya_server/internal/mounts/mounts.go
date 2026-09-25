@@ -17,11 +17,11 @@ import (
 
 // Info beschrijft één pad.
 type Info struct {
-	Path      string
-	Exists    bool
-	IsDir     bool
-	Readable  bool
-	Writable  bool
+	Path       string
+	Exists     bool
+	IsDir      bool
+	Readable   bool
+	Writable   bool
 	ReadOnly   bool   // het bestandssysteem is read-only gemount
 	FSType     string // btrfs, ext4, fuseblk, overlay, ...
 	FreeBytes  uint64

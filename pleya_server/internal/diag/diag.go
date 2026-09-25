@@ -60,7 +60,7 @@ func (s *Store) Read(ctx context.Context) (Snapshot, error) {
 		return Snapshot{}, fmt.Errorf("diagnostiek lezen: %w", err)
 	}
 
-	out.DatabaseVersion = strings.TrimSpace(strings.Fields(version+" ")[0])
+	out.DatabaseVersion = strings.TrimSpace(strings.Fields(version + " ")[0])
 	out.JobsRunning = int(running)
 	out.JobsFailed = int(failed)
 	return out, nil
