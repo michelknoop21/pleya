@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -102,13 +103,15 @@ class MobileTabBar extends StatelessWidget {
 
     Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
 
-    // Glass (LG-01): a floating capsule 16 from the sides and 10 above the
-    // home indicator, instead of the full-width frosted strip. The bar's own
-    // SafeArea is stripped, the Padding already carries the inset.
+    // Glass (LG-01): a floating capsule 16 from the sides, instead of the
+    // full-width frosted strip. Bottom margin max(10, inset - 12): on a home
+    // indicator iPhone the capsule sits lower, into the inset, and without an
+    // inset it keeps 10. The bar's own SafeArea is stripped, the Padding
+    // carries the margin; the Scaffold measures the result for the body.
     Widget shell(Widget bar) {
       if (!glassOn) return frosted(bar);
       return Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.paddingOf(context).bottom + 10),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, math.max(10.0, MediaQuery.paddingOf(context).bottom - 12)),
         child: GlassLayer(
           child: GlassSurface(
             shape: const StadiumBorder(),

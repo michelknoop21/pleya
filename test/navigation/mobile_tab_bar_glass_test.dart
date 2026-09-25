@@ -88,10 +88,32 @@ void main() {
     expect(plate.left, 16);
     expect(plate.right, 393 - 16);
     expect(plate.height, 64);
-    expect(plate.bottom, 852 - 34 - 10);
+    expect(plate.bottom, 852 - 22);
     final theme = NavigationBarTheme.of(tester.element(find.byType(NavigationBar)));
     expect(theme.backgroundColor, Colors.transparent);
   });
+
+  // Bottom margin max(10, inset - 12): the capsule sits lower on a home
+  // indicator phone, keeps 10 without one, and the Scaffold still hands the
+  // body exactly the bar's footprint as bottom padding.
+  for (final (inset, margin) in const [(0.0, 10.0), (20.0, 10.0), (34.0, 22.0)]) {
+    testWidgets('(b) onderinset $inset: capsule $margin boven de rand, body houdt de balk vrij', (tester) async {
+      await _phone(tester, glass: true);
+      tester.view.padding = FakeViewPadding(top: 62 * 3, bottom: inset * 3);
+      late EdgeInsets bodyPadding;
+      await tester.pumpWidget(
+        _shell((context) {
+          bodyPadding = MediaQuery.paddingOf(context);
+          return const SizedBox.expand();
+        }),
+      );
+      await tester.pumpAndSettle();
+
+      final plate = tester.getRect(find.byType(GlassSurface));
+      expect(plate.bottom, 852 - margin);
+      expect(bodyPadding.bottom, 852 - plate.top);
+    });
+  }
 
   testWidgets('(c) Review Focus 3: de laatste rij scrollt vrij boven de zwevende balk', (tester) async {
     await _phone(tester, glass: true);
