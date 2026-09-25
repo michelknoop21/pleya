@@ -179,7 +179,7 @@ void main() {
     test('maps the carousel fields and asks for a 1920x1080 backdrop', () {
       final film = build([item('h1', MediaKind.movie, art: '/a/h1', durationMs: 5400000)], const []).single;
       expect(film['title'], 'h1');
-      expect(film['summary'], 'summary h1');
+      expect(film['summary'], 'h1 · ${t.discover.recentlyReleased}\nsummary h1');
       expect(film['genre'], 'Drama');
       expect(film['releaseDate'], '2024-03-15');
       expect(film['duration'], 5400000);
@@ -255,7 +255,35 @@ void main() {
       final withBackdrop = item('e2', MediaKind.episode, grandparentArt: '/a/show', grandparentTitle: 'Show');
       final entry = build(const [], [withBackdrop], hideSpoilers: true).single;
       expect(entry['imageUri'], 'img:/a/show@1920x1080');
-      expect(entry['summary'], isNull);
+      expect(entry['summary'], 'Show · ${t.discover.continueWatching}', reason: 'first line only, no summary');
+    });
+
+    // tvOS 26.5 does not draw title or contextTitle in `.details`; they lead the summary.
+    test('summary starts with title and context line, once, then the full summary', () {
+      MediaItem film(String? summary) => MediaItem(
+        id: 'm',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Dune',
+        serverId: 'srv',
+        artPath: '/a/m',
+        summary: summary,
+      );
+      final line = 'Dune · ${t.discover.recentlyReleased}';
+      expect(build([film(null)], const []).single['summary'], line, reason: 'empty summary: first line only');
+      expect(build([film('  ')], const []).single['summary'], line);
+
+      final long = 'Paul Atreides. ' * 200;
+      expect(
+        build([film(long)], const []).single['summary'],
+        '$line\n${long.trim()}',
+        reason: 'Apple documents no summary limit; tvOS truncates on screen, we keep it whole',
+      );
+
+      final already = '$line\nPaul';
+      final summary = build([film(already)], const []).single['summary'] as String;
+      expect(summary, already, reason: 'no title duplication');
+      expect(summary.split('Dune').length - 1, 1);
     });
 
     test('nothing with an image yields an empty carousel (the sectioned row stays)', () {

@@ -239,11 +239,12 @@ class SystemShelfService {
       if (imageUri == null) return;
       final isEpisode = item.kind == MediaKind.episode && item.grandparentTitle != null;
       final spoilerSafe = hideSpoilers && item.shouldHideSpoiler;
+      final title = isEpisode ? item.grandparentTitle! : item.title ?? '';
       result.add({
         'contentId': contentId,
-        'title': isEpisode ? item.grandparentTitle! : item.title ?? '',
+        'title': title,
         'contextTitle': contextTitle,
-        'summary': spoilerSafe ? null : item.summary,
+        'summary': _carouselSummary(title, contextTitle, spoilerSafe ? null : item.summary),
         'genre': item.genres?.firstOrNull,
         'releaseDate': _releaseDate(item),
         'duration': item.durationMs,
@@ -260,6 +261,21 @@ class SystemShelfService {
       add(item, _continueWatchingContext(item));
     }
     return result;
+  }
+
+  /// tvOS 26.5 does not draw `title` or `contextTitle` in the `.details`
+  /// style, so both lead the summary as its first line ("Dune · Verder kijken
+  /// · 42 min over"), followed by the real summary. Apple documents no length
+  /// limit for `summary`; tvOS truncates it on screen, which keeps the first
+  /// line visible. The fields stay set for a tvOS that does draw them.
+  static String? _carouselSummary(String title, String contextTitle, String? summary) {
+    final firstLine = [title, contextTitle].map((s) => s.trim()).where((s) => s.isNotEmpty).join(' · ');
+    final body = summary?.trim() ?? '';
+    if (firstLine.isEmpty) return body.isEmpty ? null : body;
+    if (body.isEmpty) return firstLine;
+    // Idempotent: never stack the line twice.
+    if (body.startsWith(firstLine)) return body;
+    return '$firstLine\n$body';
   }
 
   /// Director and cast for the details style; tvOS shows at most four.

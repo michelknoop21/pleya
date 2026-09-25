@@ -137,8 +137,10 @@ final class TopShelfProvider: TVTopShelfContentProvider {
 
     let carouselItems = (payload.carousel ?? []).compactMap(makeCarouselItem)
     if !carouselItems.isEmpty {
-      // `.details` shows title, context line, summary, genre, duration, year
-      // and named attributes next to the buttons; `.actions` shows buttons only.
+      // `.details` shows summary, genre, duration, year and named attributes
+      // next to the buttons; `.actions` shows buttons only. tvOS 26.5 draws
+      // no title or context line here, so the app puts both as the first
+      // line of `summary` (SystemShelfService._carouselSummary).
       return TVTopShelfCarouselContent(style: .details, items: carouselItems)
     }
 
