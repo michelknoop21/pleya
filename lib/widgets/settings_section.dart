@@ -4,6 +4,7 @@ import '../focus/card_focus_scope.dart';
 import '../focus/focus_theme.dart';
 import '../focus/focusable_wrapper.dart';
 import '../theme/mono_tokens.dart';
+import '../theme/tv_switch_theme.dart';
 import '../utils/platform_detector.dart';
 import '../utils/tv_hig.dart';
 import 'app_icon.dart';
@@ -43,25 +44,8 @@ class TvSettingsDensity extends StatelessWidget {
     if (!PlatformDetector.isTV()) return child;
     final pt = TvHig.of(context);
     final t = tokens(context);
-    // VIS-0925-C: an unselected Material 3 Switch has a surfaceContainerHighest
-    // track and an `outline` rim and thumb; this palette maps the first onto
-    // the card and keeps the outline at 10-12%, so in Light an off switch
-    // vanished into its card on the tv. Scoped to the TV settings rows (review
-    // FIX 4): phone and desktop keep Material's switch. Selected and disabled
-    // states resolve to null, Material's own defaults.
-    Color? offOnly(Set<WidgetState> states, Color color) =>
-        states.contains(WidgetState.selected) || states.contains(WidgetState.disabled) ? null : color;
-    final theme = Theme.of(context);
-    return Theme(
-      data: theme.copyWith(
-        switchTheme: theme.switchTheme.copyWith(
-          trackColor: WidgetStateProperty.resolveWith(
-            (states) => offOnly(states, t.text.withValues(alpha: t.isLight ? 0.14 : 0.18)),
-          ),
-          trackOutlineColor: WidgetStateProperty.resolveWith((states) => offOnly(states, Colors.transparent)),
-          thumbColor: WidgetStateProperty.resolveWith((states) => offOnly(states, t.textMuted)),
-        ),
-      ),
+    // The TV switch theme (VIS-0925-C), shared with the overlay sheets.
+    return TvSwitchTheme(
       child: ListTileTheme.merge(
         dense: false,
         visualDensity: VisualDensity.standard,

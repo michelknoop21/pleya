@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:pleya/widgets/settings_section.dart';
 
 /// VIS-0925-C: an unselected Switch in Light vanished into its settings card
@@ -74,5 +75,40 @@ void main() {
     final theme = await themeUnderDensity(tester, dark: false);
     expect(theme.switchTheme, monoTheme(dark: false).switchTheme);
     expect(theme.switchTheme.trackColor, isNull);
+  });
+
+  // Recheck item 6: the TV overlay sheets (Seerr 4K request, recording
+  // options, filters) host switches on `colorScheme.surface` too.
+  testWidgets('on TV a switch inside an overlay sheet gets the TV switch theme', (tester) async {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+    late ThemeData inSheet;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: monoTheme(dark: false),
+        home: OverlaySheetHost(
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => OverlaySheetController.of(context).show<void>(
+                  builder: (sheetContext) {
+                    inSheet = Theme.of(sheetContext);
+                    return Switch(value: false, onChanged: (_) {});
+                  },
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Switch), findsOneWidget);
+    final tk = inSheet.extension<MonoTokens>()!;
+    final track = inSheet.switchTheme.trackColor?.resolve(<WidgetState>{});
+    expect(track, isNotNull);
+    expect(ratio(Color.alphaBlend(track!, tk.surface), tk.surface), greaterThan(1.1));
   });
 }
