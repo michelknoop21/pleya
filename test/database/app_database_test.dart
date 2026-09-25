@@ -40,8 +40,8 @@ class _AppDatabaseTestSuite {
     // ============================================================
 
     group('schema', () {
-      test('schemaVersion is 19', () {
-        expect(db.schemaVersion, 19);
+      test('schemaVersion is 20', () {
+        expect(db.schemaVersion, 20);
       });
 
       test('all tables are accessible and start empty', () async {
@@ -132,6 +132,32 @@ class _AppDatabaseTestSuite {
               .customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_connections_kind'")
               .get();
           expect(rows, hasLength(1));
+        } finally {
+          await reopened?.close();
+          await seeded?.close();
+          await tempDir.delete(recursive: true);
+          db = AppDatabase.forTesting(NativeDatabase.memory());
+        }
+      });
+      test('v20 migration adds the borrowed column to an existing profile_connections table', () async {
+        await db.close();
+        final tempDir = await Directory.systemTemp.createTemp('pleya_db_v20_migration_test_');
+        final file = File('${tempDir.path}/pleya_downloads.db');
+        AppDatabase? seeded;
+        AppDatabase? reopened;
+
+        try {
+          seeded = AppDatabase.forTesting(NativeDatabase(file));
+          await seeded.select(seeded.profileConnections).get();
+          await seeded.customStatement('ALTER TABLE profile_connections DROP COLUMN borrowed');
+          await seeded.customStatement('PRAGMA user_version = 19');
+          await seeded.close();
+          seeded = null;
+
+          reopened = AppDatabase.forTesting(NativeDatabase(file));
+          expect(await reopened.select(reopened.profileConnections).get(), isEmpty);
+          final columns = await reopened.customSelect('PRAGMA table_info(profile_connections)').get();
+          expect(columns.map((c) => c.read<String>('name')), contains('borrowed'));
         } finally {
           await reopened?.close();
           await seeded?.close();

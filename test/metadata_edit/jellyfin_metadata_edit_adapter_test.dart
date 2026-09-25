@@ -45,6 +45,8 @@ void main() {
       }),
     );
     addTearDown(client.close);
+    // Saving is an owner-only write; this test is about the payload.
+    client.canManageServerMetadata = () => true;
 
     final adapter = JellyfinMetadataEditAdapter(client);
     final item = MediaItem(id: 'item-1', backend: MediaBackend.jellyfin, kind: MediaKind.movie);

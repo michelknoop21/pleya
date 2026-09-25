@@ -4926,6 +4926,21 @@ class $ProfileConnectionsTable extends ProfileConnections
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _borrowedMeta = const VerificationMeta(
+    'borrowed',
+  );
+  @override
+  late final GeneratedColumn<bool> borrowed = GeneratedColumn<bool>(
+    'borrowed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("borrowed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _tokenAcquiredAtMeta = const VerificationMeta(
     'tokenAcquiredAt',
   );
@@ -4955,6 +4970,7 @@ class $ProfileConnectionsTable extends ProfileConnections
     userToken,
     userIdentifier,
     isDefault,
+    borrowed,
     tokenAcquiredAt,
     lastUsedAt,
   ];
@@ -5012,6 +5028,12 @@ class $ProfileConnectionsTable extends ProfileConnections
         isDefault.isAcceptableOrUnknown(data['is_default']!, _isDefaultMeta),
       );
     }
+    if (data.containsKey('borrowed')) {
+      context.handle(
+        _borrowedMeta,
+        borrowed.isAcceptableOrUnknown(data['borrowed']!, _borrowedMeta),
+      );
+    }
     if (data.containsKey('token_acquired_at')) {
       context.handle(
         _tokenAcquiredAtMeta,
@@ -5059,6 +5081,10 @@ class $ProfileConnectionsTable extends ProfileConnections
         DriftSqlType.bool,
         data['${effectivePrefix}is_default'],
       )!,
+      borrowed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}borrowed'],
+      )!,
       tokenAcquiredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}token_acquired_at'],
@@ -5083,6 +5109,12 @@ class ProfileConnectionRow extends DataClass
   final String userToken;
   final String userIdentifier;
   final bool isDefault;
+
+  /// Attached through the borrow flow rather than signed in on this profile.
+  /// A borrowed connection never carries owner rights on the server, even
+  /// when the lender is its owner or admin (see
+  /// `MultiServerManager.canManageServerMetadata`).
+  final bool borrowed;
   final int? tokenAcquiredAt;
   final int? lastUsedAt;
   const ProfileConnectionRow({
@@ -5091,6 +5123,7 @@ class ProfileConnectionRow extends DataClass
     required this.userToken,
     required this.userIdentifier,
     required this.isDefault,
+    required this.borrowed,
     this.tokenAcquiredAt,
     this.lastUsedAt,
   });
@@ -5102,6 +5135,7 @@ class ProfileConnectionRow extends DataClass
     map['user_token'] = Variable<String>(userToken);
     map['user_identifier'] = Variable<String>(userIdentifier);
     map['is_default'] = Variable<bool>(isDefault);
+    map['borrowed'] = Variable<bool>(borrowed);
     if (!nullToAbsent || tokenAcquiredAt != null) {
       map['token_acquired_at'] = Variable<int>(tokenAcquiredAt);
     }
@@ -5118,6 +5152,7 @@ class ProfileConnectionRow extends DataClass
       userToken: Value(userToken),
       userIdentifier: Value(userIdentifier),
       isDefault: Value(isDefault),
+      borrowed: Value(borrowed),
       tokenAcquiredAt: tokenAcquiredAt == null && nullToAbsent
           ? const Value.absent()
           : Value(tokenAcquiredAt),
@@ -5138,6 +5173,7 @@ class ProfileConnectionRow extends DataClass
       userToken: serializer.fromJson<String>(json['userToken']),
       userIdentifier: serializer.fromJson<String>(json['userIdentifier']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
+      borrowed: serializer.fromJson<bool>(json['borrowed']),
       tokenAcquiredAt: serializer.fromJson<int?>(json['tokenAcquiredAt']),
       lastUsedAt: serializer.fromJson<int?>(json['lastUsedAt']),
     );
@@ -5151,6 +5187,7 @@ class ProfileConnectionRow extends DataClass
       'userToken': serializer.toJson<String>(userToken),
       'userIdentifier': serializer.toJson<String>(userIdentifier),
       'isDefault': serializer.toJson<bool>(isDefault),
+      'borrowed': serializer.toJson<bool>(borrowed),
       'tokenAcquiredAt': serializer.toJson<int?>(tokenAcquiredAt),
       'lastUsedAt': serializer.toJson<int?>(lastUsedAt),
     };
@@ -5162,6 +5199,7 @@ class ProfileConnectionRow extends DataClass
     String? userToken,
     String? userIdentifier,
     bool? isDefault,
+    bool? borrowed,
     Value<int?> tokenAcquiredAt = const Value.absent(),
     Value<int?> lastUsedAt = const Value.absent(),
   }) => ProfileConnectionRow(
@@ -5170,6 +5208,7 @@ class ProfileConnectionRow extends DataClass
     userToken: userToken ?? this.userToken,
     userIdentifier: userIdentifier ?? this.userIdentifier,
     isDefault: isDefault ?? this.isDefault,
+    borrowed: borrowed ?? this.borrowed,
     tokenAcquiredAt: tokenAcquiredAt.present
         ? tokenAcquiredAt.value
         : this.tokenAcquiredAt,
@@ -5186,6 +5225,7 @@ class ProfileConnectionRow extends DataClass
           ? data.userIdentifier.value
           : this.userIdentifier,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
+      borrowed: data.borrowed.present ? data.borrowed.value : this.borrowed,
       tokenAcquiredAt: data.tokenAcquiredAt.present
           ? data.tokenAcquiredAt.value
           : this.tokenAcquiredAt,
@@ -5203,6 +5243,7 @@ class ProfileConnectionRow extends DataClass
           ..write('userToken: $userToken, ')
           ..write('userIdentifier: $userIdentifier, ')
           ..write('isDefault: $isDefault, ')
+          ..write('borrowed: $borrowed, ')
           ..write('tokenAcquiredAt: $tokenAcquiredAt, ')
           ..write('lastUsedAt: $lastUsedAt')
           ..write(')'))
@@ -5216,6 +5257,7 @@ class ProfileConnectionRow extends DataClass
     userToken,
     userIdentifier,
     isDefault,
+    borrowed,
     tokenAcquiredAt,
     lastUsedAt,
   );
@@ -5228,6 +5270,7 @@ class ProfileConnectionRow extends DataClass
           other.userToken == this.userToken &&
           other.userIdentifier == this.userIdentifier &&
           other.isDefault == this.isDefault &&
+          other.borrowed == this.borrowed &&
           other.tokenAcquiredAt == this.tokenAcquiredAt &&
           other.lastUsedAt == this.lastUsedAt);
 }
@@ -5239,6 +5282,7 @@ class ProfileConnectionsCompanion
   final Value<String> userToken;
   final Value<String> userIdentifier;
   final Value<bool> isDefault;
+  final Value<bool> borrowed;
   final Value<int?> tokenAcquiredAt;
   final Value<int?> lastUsedAt;
   final Value<int> rowid;
@@ -5248,6 +5292,7 @@ class ProfileConnectionsCompanion
     this.userToken = const Value.absent(),
     this.userIdentifier = const Value.absent(),
     this.isDefault = const Value.absent(),
+    this.borrowed = const Value.absent(),
     this.tokenAcquiredAt = const Value.absent(),
     this.lastUsedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -5258,6 +5303,7 @@ class ProfileConnectionsCompanion
     this.userToken = const Value.absent(),
     required String userIdentifier,
     this.isDefault = const Value.absent(),
+    this.borrowed = const Value.absent(),
     this.tokenAcquiredAt = const Value.absent(),
     this.lastUsedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -5270,6 +5316,7 @@ class ProfileConnectionsCompanion
     Expression<String>? userToken,
     Expression<String>? userIdentifier,
     Expression<bool>? isDefault,
+    Expression<bool>? borrowed,
     Expression<int>? tokenAcquiredAt,
     Expression<int>? lastUsedAt,
     Expression<int>? rowid,
@@ -5280,6 +5327,7 @@ class ProfileConnectionsCompanion
       if (userToken != null) 'user_token': userToken,
       if (userIdentifier != null) 'user_identifier': userIdentifier,
       if (isDefault != null) 'is_default': isDefault,
+      if (borrowed != null) 'borrowed': borrowed,
       if (tokenAcquiredAt != null) 'token_acquired_at': tokenAcquiredAt,
       if (lastUsedAt != null) 'last_used_at': lastUsedAt,
       if (rowid != null) 'rowid': rowid,
@@ -5292,6 +5340,7 @@ class ProfileConnectionsCompanion
     Value<String>? userToken,
     Value<String>? userIdentifier,
     Value<bool>? isDefault,
+    Value<bool>? borrowed,
     Value<int?>? tokenAcquiredAt,
     Value<int?>? lastUsedAt,
     Value<int>? rowid,
@@ -5302,6 +5351,7 @@ class ProfileConnectionsCompanion
       userToken: userToken ?? this.userToken,
       userIdentifier: userIdentifier ?? this.userIdentifier,
       isDefault: isDefault ?? this.isDefault,
+      borrowed: borrowed ?? this.borrowed,
       tokenAcquiredAt: tokenAcquiredAt ?? this.tokenAcquiredAt,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
       rowid: rowid ?? this.rowid,
@@ -5326,6 +5376,9 @@ class ProfileConnectionsCompanion
     if (isDefault.present) {
       map['is_default'] = Variable<bool>(isDefault.value);
     }
+    if (borrowed.present) {
+      map['borrowed'] = Variable<bool>(borrowed.value);
+    }
     if (tokenAcquiredAt.present) {
       map['token_acquired_at'] = Variable<int>(tokenAcquiredAt.value);
     }
@@ -5346,6 +5399,7 @@ class ProfileConnectionsCompanion
           ..write('userToken: $userToken, ')
           ..write('userIdentifier: $userIdentifier, ')
           ..write('isDefault: $isDefault, ')
+          ..write('borrowed: $borrowed, ')
           ..write('tokenAcquiredAt: $tokenAcquiredAt, ')
           ..write('lastUsedAt: $lastUsedAt, ')
           ..write('rowid: $rowid')
@@ -10224,6 +10278,7 @@ typedef $$ProfileConnectionsTableCreateCompanionBuilder =
       Value<String> userToken,
       required String userIdentifier,
       Value<bool> isDefault,
+      Value<bool> borrowed,
       Value<int?> tokenAcquiredAt,
       Value<int?> lastUsedAt,
       Value<int> rowid,
@@ -10235,6 +10290,7 @@ typedef $$ProfileConnectionsTableUpdateCompanionBuilder =
       Value<String> userToken,
       Value<String> userIdentifier,
       Value<bool> isDefault,
+      Value<bool> borrowed,
       Value<int?> tokenAcquiredAt,
       Value<int?> lastUsedAt,
       Value<int> rowid,
@@ -10305,6 +10361,11 @@ class $$ProfileConnectionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get borrowed => $composableBuilder(
+    column: $table.borrowed,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get tokenAcquiredAt => $composableBuilder(
     column: $table.tokenAcquiredAt,
     builder: (column) => ColumnFilters(column),
@@ -10368,6 +10429,11 @@ class $$ProfileConnectionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get borrowed => $composableBuilder(
+    column: $table.borrowed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get tokenAcquiredAt => $composableBuilder(
     column: $table.tokenAcquiredAt,
     builder: (column) => ColumnOrderings(column),
@@ -10424,6 +10490,9 @@ class $$ProfileConnectionsTableAnnotationComposer
 
   GeneratedColumn<bool> get isDefault =>
       $composableBuilder(column: $table.isDefault, builder: (column) => column);
+
+  GeneratedColumn<bool> get borrowed =>
+      $composableBuilder(column: $table.borrowed, builder: (column) => column);
 
   GeneratedColumn<int> get tokenAcquiredAt => $composableBuilder(
     column: $table.tokenAcquiredAt,
@@ -10497,6 +10566,7 @@ class $$ProfileConnectionsTableTableManager
                 Value<String> userToken = const Value.absent(),
                 Value<String> userIdentifier = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
+                Value<bool> borrowed = const Value.absent(),
                 Value<int?> tokenAcquiredAt = const Value.absent(),
                 Value<int?> lastUsedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -10506,6 +10576,7 @@ class $$ProfileConnectionsTableTableManager
                 userToken: userToken,
                 userIdentifier: userIdentifier,
                 isDefault: isDefault,
+                borrowed: borrowed,
                 tokenAcquiredAt: tokenAcquiredAt,
                 lastUsedAt: lastUsedAt,
                 rowid: rowid,
@@ -10517,6 +10588,7 @@ class $$ProfileConnectionsTableTableManager
                 Value<String> userToken = const Value.absent(),
                 required String userIdentifier,
                 Value<bool> isDefault = const Value.absent(),
+                Value<bool> borrowed = const Value.absent(),
                 Value<int?> tokenAcquiredAt = const Value.absent(),
                 Value<int?> lastUsedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -10526,6 +10598,7 @@ class $$ProfileConnectionsTableTableManager
                 userToken: userToken,
                 userIdentifier: userIdentifier,
                 isDefault: isDefault,
+                borrowed: borrowed,
                 tokenAcquiredAt: tokenAcquiredAt,
                 lastUsedAt: lastUsedAt,
                 rowid: rowid,

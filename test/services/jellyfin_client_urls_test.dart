@@ -3389,6 +3389,8 @@ void main() {
         }),
       );
       addTearDown(client.close);
+      // Metadata edits are owner-only; this test is about the wire format.
+      client.canManageServerMetadata = () => true;
 
       final success = await client.updateMetadataItem('item-1', {
         'Id': 'item-1',
@@ -3429,6 +3431,8 @@ void main() {
         }),
       );
       addTearDown(client.close);
+      // Metadata edits are owner-only; this test is about the wire format.
+      client.canManageServerMetadata = () => true;
 
       final result = await client.getRemoteImages(
         'item-1',
@@ -3467,6 +3471,8 @@ void main() {
         }),
       );
       addTearDown(client.close);
+      // Metadata edits are owner-only; this test is about the wire format.
+      client.canManageServerMetadata = () => true;
 
       final success = await client.uploadItemImage(
         'item-1',

@@ -98,7 +98,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration {
@@ -297,6 +297,13 @@ class AppDatabase extends _$AppDatabase {
           await _ignoreAlreadyExists(
             'MediaInteractions imported-event unique index',
             () => customStatement(_sqlImportedInteractionUniqueIndex),
+          );
+        }
+        if (from < 20) {
+          appLogger.i('Adding borrowed column to ProfileConnections (v20 migration)');
+          await _ignoreAlreadyExists(
+            'ProfileConnections.borrowed column',
+            () => m.addColumn(profileConnections, profileConnections.borrowed),
           );
         }
       },

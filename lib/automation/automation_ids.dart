@@ -418,6 +418,11 @@ class AutomationIds {
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
 
+  /// The TV library action sheet (LIB7, mockup 27 B). Its state lists the
+  /// offered actions in order, so a scenario can prove that a non-owner gets
+  /// only "Openen in catalogus" and "Verbergen" (the owner rule).
+  static const String sheetLibraryActions = 'sheet.library_actions';
+
   /// The Alle films/Alle series catalogue screens and the matching Aanvragen
   /// and Kijklijst phone controls (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
@@ -626,6 +631,7 @@ class AutomationIds {
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
     {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetLibraryActions, 'role': 'sheet', 'instanceable': false},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},

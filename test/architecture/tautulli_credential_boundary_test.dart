@@ -145,6 +145,7 @@ void main() {
       p.attachServerResolvers(
         serverIds: () => servers,
         isOwnerOrAdmin: (_) => isAdmin,
+        mayAdminister: (_) => isAdmin,
         selfAccountId: (profileId) => profileId == uuid ? accountId : null,
       );
       await p.onActiveProfileChanged(uuid);
@@ -214,6 +215,7 @@ void main() {
       p.attachServerResolvers(
         serverIds: () => const [_machine],
         isOwnerOrAdmin: (_) => true,
+        mayAdminister: (_) => true,
         selfAccountId: (_) => 999999,
       );
 
@@ -244,7 +246,11 @@ void main() {
     await TautulliIntegrationStore.instance.saveLegacySession('uuid-kid', session);
 
     final other = TautulliProvider();
-    other.attachServerResolvers(serverIds: () => const [_machine], isOwnerOrAdmin: (_) => true);
+    other.attachServerResolvers(
+      serverIds: () => const [_machine],
+      isOwnerOrAdmin: (_) => true,
+      mayAdminister: (_) => true,
+    );
     await other.onActiveProfileChanged('uuid-someone-else');
     addTearDown(other.dispose);
 

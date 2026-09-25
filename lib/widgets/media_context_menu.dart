@@ -36,8 +36,6 @@ import '../providers/offline_mode_provider.dart';
 import '../providers/watchlist_provider.dart';
 import '../providers/watchlist_store.dart';
 import '../services/watchlist_ui_actions.dart';
-import '../profiles/active_profile_provider.dart';
-import '../profiles/profile.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/app_logger.dart';
 import '../utils/library_refresh_notifier.dart';
@@ -73,16 +71,6 @@ class _MenuAction {
   final bool destructive;
 
   _MenuAction({required this.value, required this.icon, required this.label, this.destructive = false});
-}
-
-bool isAdminActionAllowedForMediaItem({
-  required bool isOwnerOrAdmin,
-  required MediaBackend? itemBackend,
-  required Profile? activeProfile,
-}) {
-  final blockedByPlexHomeRole =
-      itemBackend == MediaBackend.plex && activeProfile != null && activeProfile.isPlexHome && !activeProfile.plexAdmin;
-  return isOwnerOrAdmin && !blockedByPlexHomeRole;
 }
 
 String mediaDeletionFailureMessage(Object error, MediaBackend? backend) {
@@ -246,19 +234,13 @@ class MediaContextMenuState extends State<MediaContextMenu> {
 
     final useBottomSheet = Platform.isIOS || Platform.isAndroid;
 
-    // Check if user has admin privileges. Backend-neutral: Plex uses the
-    // server-owned flag (folded with the active Plex Home profile's admin
-    // bit, when applicable); Jellyfin uses `JellyfinConnection.isAdministrator`
-    // captured at sign-in.
+    // The owner rule: canonical server data (metadata, match, deletes,
+    // collections) is only offered to the server's owner. Everyone else does
+    // not see those entries at all. See
+    // `MultiServerManager.canManageServerMetadata` for the per-backend roles.
     final multiServerProvider = Provider.of<MultiServerProvider>(context, listen: false);
-    final activeProfile = context.read<ActiveProfileProvider>().active;
-    final isOwnerOrAdmin =
-        _itemServerId != null && multiServerProvider.serverManager.isOwnerOrAdmin(ServerId(_itemServerId!));
-    final isAdmin = isAdminActionAllowedForMediaItem(
-      isOwnerOrAdmin: isOwnerOrAdmin,
-      itemBackend: itemBackend,
-      activeProfile: activeProfile,
-    );
+    final isAdmin =
+        _itemServerId != null && multiServerProvider.serverManager.canManageServerMetadata(ServerId(_itemServerId!));
 
     // Backend capabilities gate menu items so we don't expose actions the
     // active server cannot perform.
@@ -300,9 +282,12 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         }
       }
 
-      menuActions.add(
-        _MenuAction(value: 'delete', icon: Symbols.delete_rounded, label: t.common.delete, destructive: true),
-      );
+      // A playlist is the user's own; a collection is canonical server data.
+      if (isPlaylist || isAdmin) {
+        menuActions.add(
+          _MenuAction(value: 'delete', icon: Symbols.delete_rounded, label: t.common.delete, destructive: true),
+        );
+      }
     } else {
       if (hasActiveProgress) {
         menuActions.add(
@@ -400,7 +385,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       // Remove from Collection (only when viewing items within a collection).
       // Plex-only — uses `removeFromCollection` API; Jellyfin's collection
       // membership API isn't wired here yet.
-      if (isPlex && widget.collectionId != null) {
+      if (isPlex && isAdmin && widget.collectionId != null) {
         menuActions.add(
           _MenuAction(
             value: 'remove_from_collection',
@@ -722,7 +707,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           break;
 
         case 'add_to':
-          await _showAddToSubmenu(context);
+          await _showAddToSubmenu(context, canManageCollections: isAdmin);
           break;
 
         case 'shuffle_play':
@@ -963,8 +948,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     await launcher.launchShuffledShow(metadata: mediaItem, showLoadingIndicator: true);
   }
 
-  /// Show submenu for Add to... (Playlist or Collection)
-  Future<void> _showAddToSubmenu(BuildContext context) async {
+  /// Show submenu for Add to... (Playlist or Collection). Collections are
+  /// canonical server data, so without owner rights this goes straight to
+  /// the playlist picker.
+  Future<void> _showAddToSubmenu(BuildContext context, {required bool canManageCollections}) async {
+    if (!canManageCollections) {
+      await _showAddToPlaylistDialog(context);
+      return;
+    }
     final selected = await showOptionPickerDialog<String>(
       context,
       title: t.common.addTo,

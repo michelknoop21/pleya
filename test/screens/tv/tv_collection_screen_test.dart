@@ -11,6 +11,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/screens/tv/tv_collection_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/tv/tv_catalog_card.dart';
 
 MediaItem _collection() => MediaItem(
   id: 'col-1',
@@ -121,5 +122,41 @@ void main() {
     expect(find.text('No server answered'), findsOneWidget);
     expect(find.text(t.common.retry), findsOneWidget);
     expect(retried, isFalse);
+  });
+  Widget screen({VoidCallback? onDelete, ValueChanged<MediaItem>? onRemoveItem}) => _harness(
+    TvCollectionScreen(
+      collection: _collection(),
+      items: [_movie('m1', 'Dune')],
+      totalSize: 1,
+      isLoading: false,
+      isLoadingMore: false,
+      errorMessage: null,
+      client: null,
+      backendLabel: 'Plex',
+      onRetry: () {},
+      onLoadMore: () {},
+      onPlay: () {},
+      onShuffle: () {},
+      onDelete: onDelete,
+      onSelectItem: (_) {},
+      onRemoveItem: onRemoveItem,
+    ),
+  );
+
+  testWidgets('without owner rights there is no delete button and no remove action', (tester) async {
+    await tester.pumpWidget(screen());
+    await tester.pump();
+
+    expect(find.text(t.common.play), findsOneWidget);
+    expect(find.text(t.common.delete), findsNothing);
+    expect(tester.widget<TvCatalogCard>(find.byType(TvCatalogCard)).onContextMenu, isNull);
+  });
+
+  testWidgets('with owner rights delete and remove are offered', (tester) async {
+    await tester.pumpWidget(screen(onDelete: () {}, onRemoveItem: (_) {}));
+    await tester.pump();
+
+    expect(find.text(t.common.delete), findsOneWidget);
+    expect(tester.widget<TvCatalogCard>(find.byType(TvCatalogCard)).onContextMenu, isNotNull);
   });
 }

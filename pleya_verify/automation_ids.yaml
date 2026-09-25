@@ -294,6 +294,9 @@ ids:
   - id: sheet.context_menu.item
     role: list.item
     instanceable: true
+  - id: sheet.library_actions
+    role: sheet
+    instanceable: false
   - id: screen.catalog_movies
     role: screen
     instanceable: false

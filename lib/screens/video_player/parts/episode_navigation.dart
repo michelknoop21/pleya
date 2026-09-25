@@ -252,7 +252,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       final choice = await TrackPreferenceStore.read(item);
       if (choice == null || choice.isEmpty) return;
 
-      await _plexSeriesLanguagePersister(() => plexClient)(
+      await plexSeriesLanguagePersister(() => plexClient)(
         seriesRatingKey: seriesRatingKey,
         audioLanguage: choice.audioLanguage,
         subtitleLanguage: choice.plexSubtitleLanguage,

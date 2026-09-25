@@ -40,6 +40,28 @@ import 'pin_entry_dialog.dart';
 ///    fresh user-token.
 /// 3. For Jellyfin sources: copy the existing `userToken` (one user per
 ///    Jellyfin connection).
+/// The one write of the borrow flow, shared by Plex and Jellyfin. The row is
+/// always `borrowed`: the borrower acts as the lender on the server, so without
+/// the flag it would inherit the lender's owner rights.
+Future<void> recordBorrowedConnection(
+  ProfileConnectionRegistry registry, {
+  required String targetProfileId,
+  required String connectionId,
+  required String? userToken,
+  required String userIdentifier,
+}) {
+  return registry.upsert(
+    ProfileConnection(
+      profileId: targetProfileId,
+      connectionId: connectionId,
+      userToken: userToken,
+      userIdentifier: userIdentifier,
+      borrowed: true,
+      tokenAcquiredAt: DateTime.now(),
+    ),
+  );
+}
+
 class BorrowConnectionScreen extends StatefulWidget {
   final Profile targetProfile;
   final bool popOnSuccess;
@@ -318,14 +340,12 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
         }
         return;
       }
-      await pcRegistry.upsert(
-        ProfileConnection(
-          profileId: widget.targetProfile.id,
-          connectionId: account.id,
-          userToken: result.userToken!,
-          userIdentifier: cand.pc.userIdentifier,
-          tokenAcquiredAt: DateTime.now(),
-        ),
+      await recordBorrowedConnection(
+        pcRegistry,
+        targetProfileId: widget.targetProfile.id,
+        connectionId: account.id,
+        userToken: result.userToken!,
+        userIdentifier: cand.pc.userIdentifier,
       );
       if (mounted) {
         unawaited(context.read<ActiveProfileBinder>().rebindIfActive(widget.targetProfile.id));
@@ -348,14 +368,12 @@ class _BorrowConnectionScreenState extends State<BorrowConnectionScreen> {
   Future<void> _borrowJellyfin(_BorrowCandidate cand) async {
     final jelly = cand.connection as JellyfinConnection;
     final pcRegistry = context.read<ProfileConnectionRegistry>();
-    await pcRegistry.upsert(
-      ProfileConnection(
-        profileId: widget.targetProfile.id,
-        connectionId: jelly.id,
-        userToken: cand.pc.hasToken ? cand.pc.userToken : jelly.accessToken,
-        userIdentifier: cand.pc.userIdentifier.isNotEmpty ? cand.pc.userIdentifier : jelly.userId,
-        tokenAcquiredAt: DateTime.now(),
-      ),
+    await recordBorrowedConnection(
+      pcRegistry,
+      targetProfileId: widget.targetProfile.id,
+      connectionId: jelly.id,
+      userToken: cand.pc.hasToken ? cand.pc.userToken : jelly.accessToken,
+      userIdentifier: cand.pc.userIdentifier.isNotEmpty ? cand.pc.userIdentifier : jelly.userId,
     );
     if (mounted) {
       unawaited(context.read<ActiveProfileBinder>().rebindIfActive(widget.targetProfile.id));

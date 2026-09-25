@@ -39,14 +39,21 @@ TautulliSession _session({String url = 'https://tautulli.example', String token 
 void main() {
   setUp(resetSharedPreferencesForTest);
 
-  /// [isAdmin] is the only difference between the two kinds of profile.
+  /// [isAdmin] is the read-side probe; [mayAdminister] (owner rights on the
+  /// Plex server) defaults to it. They differ only for a borrowed connection,
+  /// which runs on the owner's token.
   Future<TautulliProvider> provider({
     bool isAdmin = true,
+    bool? mayAdminister,
     List<String> servers = const [_machine],
     String uuid = 'uuid-a',
   }) async {
     final p = TautulliProvider();
-    p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => isAdmin);
+    p.attachServerResolvers(
+      serverIds: () => servers,
+      isOwnerOrAdmin: (_) => isAdmin,
+      mayAdminister: (_) => mayAdminister ?? isAdmin,
+    );
     await p.onActiveProfileChanged(uuid);
     return p;
   }
@@ -143,7 +150,7 @@ void main() {
       await seedIntegration();
       var servers = <String>[];
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true, mayAdminister: (_) => true);
       await p.onActiveProfileChanged('uuid-a');
       expect(p.isConfigured, isFalse);
 
@@ -250,7 +257,7 @@ void main() {
       await seedIntegration();
       var servers = <String>[];
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true, mayAdminister: (_) => true);
       await p.onActiveProfileChanged('uuid-a');
       expect(p.enabledImportServerIds(), isEmpty);
 
@@ -265,7 +272,11 @@ void main() {
     test('is not announced before the store has been read', () async {
       await seedIntegration();
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => const [_machine], isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(
+        serverIds: () => const [_machine],
+        isOwnerOrAdmin: (_) => true,
+        mayAdminister: (_) => true,
+      );
       expect(p.isHydrated, isFalse, reason: 'an empty map before the load is not an answer');
 
       var ready = false;
@@ -332,6 +343,36 @@ void main() {
       await p.commit(_session(token: 'stolen'));
       expect((await TautulliIntegrationStore.instance.loadAll())[_machine]!.token, 'tok');
       addTearDown(p.dispose);
+    });
+  });
+
+  group('a borrowed connection (reads as owned, no owner rights)', () {
+    test('cannot unlink the owner\'s Tautulli', () async {
+      await seedIntegration();
+      final p = await provider(mayAdminister: false);
+      addTearDown(p.dispose);
+      await p.disconnect();
+      final stored = (await TautulliIntegrationStore.instance.loadAll())[_machine]!;
+      expect(stored.connectionState, TautulliConnectionState.connected);
+      expect(stored.hasCredential, isTrue);
+    });
+
+    test('cannot re-pair or change the policy', () async {
+      await seedIntegration();
+      final p = await provider(mayAdminister: false);
+      addTearDown(p.dispose);
+      await p.commit(_session(token: 'borrowed'));
+      await p.setHistoryForRecommendations(false);
+      final stored = (await TautulliIntegrationStore.instance.loadAll())[_machine]!;
+      expect(stored.token, 'tok');
+      expect(stored.useHistoryForRecommendations, isNull);
+    });
+
+    test('still reads: the admin surface stays on the read-side probe', () async {
+      await seedIntegration();
+      final p = await provider(mayAdminister: false);
+      addTearDown(p.dispose);
+      expect(p.adminStatus, isNotNull);
     });
   });
 
