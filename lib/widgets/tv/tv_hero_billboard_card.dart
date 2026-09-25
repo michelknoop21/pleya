@@ -242,13 +242,6 @@ class TvHeroBillboardCard extends StatelessWidget {
   }
 }
 
-/// The dimmed-hero strength for the active theme. Light keeps H20's +0.08 here:
-/// once a row holds the focus the picture is meant to step back, and a white
-/// veil has to wash harder to do that. VIS-0925-E only took the extra wash out
-/// of the reading scrim, where it was the haze over the resting hero.
-double _dimmed(MonoTokens tk, double dark) =>
-    tk.artworkScrimAlpha(dark: dark, light: (dark == 0 ? 0.0 : dark + 0.08).clamp(0.0, 1.0));
-
 /// The backdrop stepping back once a row holds the focus (mockup 30 B): a veil
 /// of [TvHomeLayout.heroDimAlpha] over the whole picture, and a vertical scrim
 /// that reaches the page ground at 40% so the focused band under it sits on
@@ -278,11 +271,13 @@ class TvHeroDimVeil extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: tk.artworkScrim.withValues(alpha: _dimmed(tk, TvHomeLayout.heroDimAlpha))),
+            // One strength in every theme: a Light hero is as clear as a Dark one,
+            // dimmed or not (VIS-0925 review, Michel).
+            ColoredBox(color: tk.artworkScrim.withValues(alpha: TvHomeLayout.heroDimAlpha)),
             _VerticalScrim(
               color: tk.artworkScrim,
               stops: TvHomeLayout.heroDimScrimStops,
-              alphas: [for (final a in TvHomeLayout.heroDimScrimAlphas) _dimmed(tk, a)],
+              alphas: TvHomeLayout.heroDimScrimAlphas,
             ),
           ],
         ),

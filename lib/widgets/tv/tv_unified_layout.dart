@@ -1448,16 +1448,19 @@ class TvHomeLayout {
   static const List<double> heroScrimVerticalStops = [0, 0.18, 0.52, 0.78, 0.96];
   static const List<double> heroScrimVerticalAlphas = [0.66, 0, 0, 0.70, 1];
 
-  /// Light (VIS-0925-E). The Light wash is `tk.bg`, white, so every alpha
-  /// brightens the picture instead of dimming it: the dark ramp plus the old
-  /// +0.08 of H20 was a white haze over 60% of the backdrop on the hardware
-  /// photos of build 303. Light reads with less: the reading ramp stops just
-  /// past the text column, which ends at 51% of the canonical canvas
-  /// (`(pageInset + heroTextMaxWidth) * 0.85 / 1038`), and
-  /// still holds 0.55 there so the synopsis keeps 4.5:1 over dark artwork.
-  /// No wash under the top navigation, only the ground under the rail.
-  static const List<double> heroScrimReadingStopsLight = [0, 0.53, 0.64, 1];
-  static const List<double> heroScrimReadingAlphasLight = [0.90, 0.55, 0, 0];
+  /// Light (VIS-0925-E and the review). The Light wash is `tk.bg`, white, so
+  /// every alpha brightens the picture instead of dimming it; H20's +0.08 on
+  /// top of the dark ramp was a white haze over 60% of the backdrop on the
+  /// hardware photos of build 303. Michel's rule: the Light artwork is as clear
+  /// as in Dark and OLED, and the scrim only does what the text needs. So Light
+  /// holds 0.90 to 0.55 across the text column, which ends at 51% of the
+  /// canonical canvas (`(pageInset + heroTextMaxWidth) * 0.85 / 1038`), because
+  /// dark text over dark artwork needs that for 4.5:1, then drops to the dark
+  /// ramp's own 0.12 at 56% and follows it to 0: from there on the Light scrim
+  /// covers the picture exactly as the dark one does. No wash under the top
+  /// navigation, only the ground under the rail.
+  static const List<double> heroScrimReadingStopsLight = [0, 0.52, 0.56, 1];
+  static const List<double> heroScrimReadingAlphasLight = [0.90, 0.55, 0.12, 0];
   static const List<double> heroScrimVerticalAlphasLight = [0, 0, 0, 0.70, 1];
 
   /// Once a row holds the focus the backdrop steps back (mockup 30 B): a veil
