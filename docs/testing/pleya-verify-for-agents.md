@@ -65,7 +65,7 @@ setup:
 steps:
   - wait_until: {id: <automation id>, timeout: 30000}
   - assert: {id: <automation id>, insideViewport: true, state: {<field>: <value>}}
-  - assert: {id: <automation id>, present: false}         # the node is not in the tree; stands alone
+  - assert: {id: <automation id>, present: false}         # the node is not in the tree; no predicate beside it
   - press: <up|down|left|right|select|menu|delete>       # tvOS only
   - snapshot: <name>                                      # writes screenshot + ui-tree
 ```
@@ -86,6 +86,13 @@ the kind of false-PASS Fase 12 exists to catch; see
 `pleya_verify/scenarios/tvos.nav.focus-switches-destination.yaml` for a commented example that
 asserts `state.active` after every press instead of where the ring is. Since DEC-120 that scenario
 is the reference gate DEC-081 named; `tvos.sidebar.collapse` went with the sidebar.
+
+`present: false` is one snapshot of the tree: the runner looks once and does not wait
+(`_idReady` in `pleya_verify/runner/lib/src/engine/run_scenario.dart`). Before the screen has
+rendered, every id is absent, so the assert would pass on a blank frame. Put a positive anchor from
+the same render directly before it (a `wait_until` or `assert` on a node that must be there), as
+`pleya_verify/scenarios/tvos.search.profile-scope.yaml` does with `tv.search.pill` before asserting
+that the Recent gezocht row is gone.
 
 For geometry assertions (`insideViewport`, `notOverlapping`, `minimumTapTarget`, `below`/`above`/
 `leftOf`/`rightOf`, `sameRow`/`sameColumn`), see `pleya_verify/geometry/SPEC.md` for the full

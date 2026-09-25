@@ -259,7 +259,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     if (!mounted) return;
     final hadFocus = _railNodes[_active]?.hasFocus ?? false;
     setState(() {
-      _options = options;
+      _options = options.withStoredContentRatings(_draft.officialRatings);
       _isLoadingOptions = false;
       _active = _survivingSection(_active);
     });
@@ -280,8 +280,11 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
   void _toggleAudioLanguage(String language) =>
       setState(() => _draft = _draft.copyWith(audioLanguages: _toggled(_draft.audioLanguages, language)));
 
-  void _toggleContentRating(String rating) =>
-      setState(() => _draft = _draft.copyWith(officialRatings: _toggled(_draft.officialRatings, rating)));
+  void _toggleContentRating(UnifiedFilterValue rating) => setState(
+    () => _draft = _draft.copyWith(
+      officialRatings: toggleContentRating(_draft.officialRatings, label: rating.label, value: rating.value),
+    ),
+  );
 
   void _toggleYear(int year) => setState(() => _draft = _draft.copyWith(years: _toggled(_draft.years, year)));
 
@@ -347,8 +350,8 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
       for (final rating in _options.contentRatings)
         _RowSpec(
           label: rating.label,
-          isSelected: _draft.officialRatings.contains(rating.value),
-          onPressed: () => _toggleContentRating(rating.value),
+          isSelected: isContentRatingSelected(_draft.officialRatings, rating.label),
+          onPressed: () => _toggleContentRating(rating),
         ),
     ],
     TvCatalogFilterSection.servers => [
@@ -382,7 +385,7 @@ class _TvCatalogFilterPanelState extends State<TvCatalogFilterPanel> {
     TvCatalogFilterSection.genre => _draft.genres.length,
     TvCatalogFilterSection.audioLanguage => _draft.audioLanguages.length,
     TvCatalogFilterSection.year => _draft.years.length,
-    TvCatalogFilterSection.contentRating => _draft.officialRatings.length,
+    TvCatalogFilterSection.contentRating => contentRatingLabels(_draft.officialRatings).length,
     TvCatalogFilterSection.servers => _draft.serverIds.length,
     TvCatalogFilterSection.libraries => _draft.libraryKeys.length,
   };

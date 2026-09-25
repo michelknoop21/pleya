@@ -169,6 +169,24 @@ void main() {
   // level below what the original bug report and its own test covered.
   // ---------------------------------------------------------------------------
 
+  // I-A: which raw ratings a Leeftijd choice joins depends on which servers
+  // were online when it was ticked; selection and toggling go by label.
+  group('Leeftijd selection by label', () {
+    test('a stored merged value is the choice a single server now offers', () {
+      expect(isContentRatingSelected({'12|gb/12'}, '12'), isTrue);
+      expect(isContentRatingSelected({'gb/12'}, '12'), isTrue);
+      expect(isContentRatingSelected({'gb/12'}, '16'), isFalse);
+    });
+
+    test('switching off removes every stored value with that label', () {
+      expect(toggleContentRating({'12|gb/12', '12', 'PG-13'}, label: '12', value: '12'), {'PG-13'});
+    });
+
+    test('switching on adds what the reachable servers name now', () {
+      expect(toggleContentRating({'PG-13'}, label: '12', value: '12|gb/12'), {'PG-13', '12|gb/12'});
+    });
+  });
+
   group('pruneStoredSourceFilter, CAT20', () {
     const stored = UnifiedCatalogPreferences(
       filters: UnifiedCatalogFilterSelection(serverIds: {'plexflix', 'nas'}, libraryKeys: {'plexflix:7', 'nas:1'}),

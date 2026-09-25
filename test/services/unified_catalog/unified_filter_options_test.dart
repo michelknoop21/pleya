@@ -89,6 +89,33 @@ void main() {
     expect(options.contentRatings.map((v) => (v.value, v.label)), [('6', '6'), ('12|gb/12', '12')]);
   });
 
+  // m1: a lone `%` in a path used to throw out of the decode and cost every
+  // rating of the library after it.
+  test('a malformed escape in a path keeps the raw segment and the other ratings', () async {
+    final client = _Client('a', {
+      'contentRating': [
+        MediaFilterValue(key: '/library/sections/1/contentRating/bad%', title: 'bad'),
+        MediaFilterValue(key: '/library/sections/1/contentRating/%E9', title: 'e'),
+        MediaFilterValue(key: 'PG-13', title: 'PG-13'),
+      ],
+    });
+    final options = await loadUnifiedFilterOptions(libraries: [_library('a')], clientFor: (_) => client);
+    expect(options.contentRatings.map((v) => v.value), containsAll(['bad%', '%E9', 'PG-13']));
+  });
+
+  // I-A: a stored rating whose only server is offline still gets its row.
+  test('withStoredContentRatings adds a row for a stored label nobody offers', () {
+    const options = UnifiedFilterOptions(
+      contentRatings: [
+        UnifiedFilterValue(value: '12', label: '12'),
+        UnifiedFilterValue(value: 'PG-13', label: 'PG-13'),
+      ],
+    );
+    final merged = options.withStoredContentRatings({'12|gb/12', 'gb/6'});
+    expect(merged.contentRatings.map((v) => (v.value, v.label)), [('gb/6', '6'), ('12', '12'), ('PG-13', 'PG-13')]);
+    expect(identical(options.withStoredContentRatings({'12'}), options), isTrue);
+  });
+
   test('a server without audio languages leaves the list empty, not padded', () async {
     final client = _Client('a', {
       'genre': [MediaFilterValue(key: 'Drama', title: 'Drama')],

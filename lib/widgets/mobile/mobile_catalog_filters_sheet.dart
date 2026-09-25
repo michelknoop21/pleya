@@ -155,7 +155,7 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     );
     if (!mounted) return;
     setState(() {
-      _options = options;
+      _options = options.withStoredContentRatings(_draft.officialRatings);
       _isLoadingOptions = false;
       // A placeholder row that turned out empty goes; if it was open, the
       // nearest row above it opens instead.
@@ -178,8 +178,11 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
   void _toggleAudioLanguage(String language) =>
       setState(() => _draft = _draft.copyWith(audioLanguages: _toggled(_draft.audioLanguages, language)));
 
-  void _toggleContentRating(String rating) =>
-      setState(() => _draft = _draft.copyWith(officialRatings: _toggled(_draft.officialRatings, rating)));
+  void _toggleContentRating(UnifiedFilterValue rating) => setState(
+    () => _draft = _draft.copyWith(
+      officialRatings: toggleContentRating(_draft.officialRatings, label: rating.label, value: rating.value),
+    ),
+  );
 
   void _toggleYear(int year) => setState(() => _draft = _draft.copyWith(years: _toggled(_draft.years, year)));
 
@@ -241,8 +244,8 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
       for (final rating in _options.contentRatings)
         _OptionRowSpec(
           label: rating.label,
-          isSelected: _draft.officialRatings.contains(rating.value),
-          onPressed: () => _toggleContentRating(rating.value),
+          isSelected: isContentRatingSelected(_draft.officialRatings, rating.label),
+          onPressed: () => _toggleContentRating(rating),
         ),
     ],
     MobileCatalogFilterSection.servers => [
@@ -269,7 +272,7 @@ class _MobileCatalogFiltersSheetState extends State<MobileCatalogFiltersSheet> {
     MobileCatalogFilterSection.genre => _draft.genres.length,
     MobileCatalogFilterSection.audioLanguage => _draft.audioLanguages.length,
     MobileCatalogFilterSection.year => _draft.years.length,
-    MobileCatalogFilterSection.contentRating => _draft.officialRatings.length,
+    MobileCatalogFilterSection.contentRating => contentRatingLabels(_draft.officialRatings).length,
     MobileCatalogFilterSection.servers => _draft.serverIds.length,
     MobileCatalogFilterSection.libraries => _draft.libraryKeys.length,
   };

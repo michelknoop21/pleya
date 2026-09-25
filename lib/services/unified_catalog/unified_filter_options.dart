@@ -67,6 +67,28 @@ class UnifiedFilterOptions {
   static const empty = UnifiedFilterOptions();
 
   bool get isEmpty => genres.isEmpty && audioLanguages.isEmpty && contentRatings.isEmpty && years.isEmpty;
+
+  /// These options plus a Leeftijd row for every stored rating whose label no
+  /// reachable server names right now, so a saved "12" whose only server is
+  /// offline stays visible in the panel and can still be switched off.
+  UnifiedFilterOptions withStoredContentRatings(Iterable<String> stored) {
+    final offered = {for (final rating in contentRatings) rating.label};
+    final missing = <String, String>{};
+    for (final value in stored) {
+      final label = contentRatingLabel(value);
+      if (!offered.contains(label)) missing.putIfAbsent(label, () => value);
+    }
+    if (missing.isEmpty) return this;
+    return UnifiedFilterOptions(
+      genres: genres,
+      audioLanguages: audioLanguages,
+      contentRatings: [
+        ...contentRatings,
+        for (final entry in missing.entries) UnifiedFilterValue(value: entry.value, label: entry.key),
+      ]..sort((a, b) => compareContentRatingLabels(a.label, b.label)),
+      years: years,
+    );
+  }
 }
 
 /// Loads the options for [libraries].
@@ -177,11 +199,23 @@ void _addContentRatings(List<MediaFilterValue>? values, Map<String, Set<String>>
     final rating = key.contains('?')
         ? (Uri.splitQueryString(key.substring(key.indexOf('?') + 1))[_contentRatingKey] ?? '')
         : key.startsWith('/')
-        ? Uri.decodeComponent(key.split('/').last)
+        ? _decodeOrRaw(key.split('/').last)
         : key;
     final raw = rating.isNotEmpty ? rating : value.title.trim();
     if (raw.isEmpty || raw.contains(contentRatingValueSeparator)) continue;
     into.putIfAbsent(contentRatingLabel(raw), () => <String>{}).add(raw);
+  }
+}
+
+/// A malformed escape (a lone `%`) keeps the segment as it came instead of
+/// throwing, which would cost every category of the library still loading.
+String _decodeOrRaw(String segment) {
+  try {
+    return Uri.decodeComponent(segment);
+  } on ArgumentError {
+    return segment;
+  } on FormatException {
+    return segment;
   }
 }
 

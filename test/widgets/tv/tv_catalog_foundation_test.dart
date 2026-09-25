@@ -981,6 +981,7 @@ void main() {
       List<String> contentRatings = const [],
       Size size = const Size(1038, 584),
       Completer<void>? release,
+      UnifiedCatalogFilterSelection selection = UnifiedCatalogFilterSelection.empty,
     }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
@@ -993,7 +994,7 @@ void main() {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: size.width * 0.8, maxHeight: size.height * 0.9),
                 child: TvCatalogFilterPanel(
-                  selection: UnifiedCatalogFilterSelection.empty,
+                  selection: selection,
                   capabilities: unifiedFilterCapabilitiesFor(libraries.map((l) => l.backend)),
                   libraries: libraries,
                   initialSection: section,
@@ -1075,6 +1076,46 @@ void main() {
       await _activateByLabel(tester, 'PG-13');
       await _activateByLabel(tester, t.unifiedCatalog.filters.apply);
       expect(applied.single.officialRatings, {'PG-13'});
+    });
+
+    // I-A: "12" was ticked with Plex (gb/12) and Jellyfin (12) online; now
+    // only Jellyfin answers and names it plain `12`.
+    testWidgets('a stored Leeftijd stays ticked and switches off when a server is offline', (tester) async {
+      bool ticked(String label) => tester
+          .widgetList(
+            find.descendant(
+              of: find.ancestor(of: find.text(label), matching: find.byType(TvCatalogOptionRow)),
+              matching: find.byIcon(Symbols.check_rounded),
+            ),
+          )
+          .isNotEmpty;
+      final applied = await render(
+        tester,
+        libraries: jellyfinOnly,
+        section: TvCatalogFilterSection.contentRating,
+        contentRatings: const ['12', 'PG-13'],
+        selection: const UnifiedCatalogFilterSelection(officialRatings: {'12|gb/12'}),
+      );
+      await _activateByLabel(tester, t.unifiedCatalog.filters.contentRating);
+      expect(ticked('12'), isTrue);
+      await _activateByLabel(tester, '12');
+      expect(ticked('12'), isFalse);
+      await _activateByLabel(tester, t.unifiedCatalog.filters.apply);
+      expect(applied.single.officialRatings, isEmpty);
+    });
+
+    testWidgets('a stored Leeftijd no reachable server names keeps a row to switch it off', (tester) async {
+      final applied = await render(
+        tester,
+        libraries: jellyfinOnly,
+        section: TvCatalogFilterSection.contentRating,
+        contentRatings: const ['PG-13'],
+        selection: const UnifiedCatalogFilterSelection(officialRatings: {'gb/12'}),
+      );
+      await _activateByLabel(tester, t.unifiedCatalog.filters.contentRating);
+      await _activateByLabel(tester, '12');
+      await _activateByLabel(tester, t.unifiedCatalog.filters.apply);
+      expect(applied.single.officialRatings, isEmpty);
     });
 
     for (final size in const [Size(1038, 584), Size(1920, 1080), Size(1440, 900)]) {

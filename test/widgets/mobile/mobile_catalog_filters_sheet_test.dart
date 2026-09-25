@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_filter_result.dart';
@@ -56,6 +57,7 @@ void main() {
     required List<CatalogLibrary> libraries,
     List<String> audioLanguages = const [],
     List<String> contentRatings = const [],
+    UnifiedCatalogFilterSelection selection = UnifiedCatalogFilterSelection.empty,
   }) async {
     // iPhone 15 logical size.
     tester.view.physicalSize = const Size(393, 852);
@@ -70,7 +72,7 @@ void main() {
             body: Align(
               alignment: Alignment.bottomCenter,
               child: MobileCatalogFiltersSheet(
-                selection: UnifiedCatalogFilterSelection.empty,
+                selection: selection,
                 capabilities: unifiedFilterCapabilitiesFor(libraries.map((l) => l.backend)),
                 libraries: libraries,
                 clientFor: (_) => _ValuesClient(audioLanguages: audioLanguages, contentRatings: contentRatings),
@@ -135,5 +137,41 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(applied.single.officialRatings, {'PG-13'});
+  });
+
+  // I-A: "12" was ticked with Plex (gb/12) and Jellyfin (12) online; now only
+  // Jellyfin answers and names it plain `12`.
+  testWidgets('a stored Leeftijd stays ticked and switches off when a server is offline', (tester) async {
+    final applied = await render(
+      tester,
+      libraries: jellyfinOnly,
+      contentRatings: const ['12', 'PG-13'],
+      selection: const UnifiedCatalogFilterSelection(officialRatings: {'12|gb/12'}),
+    );
+    await tester.tap(find.text(t.unifiedCatalog.filters.contentRating));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Symbols.check_rounded), findsOneWidget);
+    await tester.tap(find.text('12'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Symbols.check_rounded), findsNothing);
+    await tester.tap(find.text(t.unifiedCatalog.filters.apply));
+    await tester.pumpAndSettle();
+    expect(applied.single.officialRatings, isEmpty);
+  });
+
+  testWidgets('a stored Leeftijd no reachable server names keeps a row to switch it off', (tester) async {
+    final applied = await render(
+      tester,
+      libraries: jellyfinOnly,
+      contentRatings: const ['PG-13'],
+      selection: const UnifiedCatalogFilterSelection(officialRatings: {'gb/12'}),
+    );
+    await tester.tap(find.text(t.unifiedCatalog.filters.contentRating));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('12'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.unifiedCatalog.filters.apply));
+    await tester.pumpAndSettle();
+    expect(applied.single.officialRatings, isEmpty);
   });
 }
