@@ -129,18 +129,32 @@ rm -f "$out"
 
 # 3. flutter analyze (mirrors ci.yml "Analyze code")
 section "flutter analyze"
+# Alleen de diagnostics van de analyzer zelf tellen mee. Regels van de
+# dart_code_linter-plugin (kebab-case, bv. `prefer-first`) komen bij een
+# eenmalige `flutter analyze` willekeurig binnen: de CLI stopt zodra de server
+# klaar is en wacht niet op de plugin, die bestand voor bestand in mapvolgorde
+# werkt. Lokaal kwam test/ binnen en lib/ niet, in CI andersom, en soms elke
+# melding dubbel. Een steekproef kan geen gate zijn; ci.yml filtert hetzelfde.
+# De pluginmeldingen blijven hieronder zichtbaar als advies, en in de IDE.
 out="$(mktemp)"
 flutter analyze >"$out" 2>&1 || true
-if grep -q "error •" "$out"; then
+plugin_rule='• [a-z0-9]+(-[a-z0-9]+)+[[:space:]]*$'
+core="$(grep -E "error •|warning •" "$out" | grep -vE "$plugin_rule" || true)"
+if printf '%s\n' "$core" | grep -q "error •"; then
   fail "errors"
-  grep -E "error •|warning •" "$out" | sed 's/^/    /'
+  printf '%s\n' "$core" | sed 's/^/    /'
   FAILED=1
-elif grep -q "warning •" "$out"; then
+elif [ -n "$core" ]; then
   fail "warnings (treated as failure, matching CI)"
-  grep "warning •" "$out" | sed 's/^/    /'
+  printf '%s\n' "$core" | sed 's/^/    /'
   FAILED=1
 else
   ok "no errors or warnings"
+fi
+advice="$(grep -E "error •|warning •" "$out" | grep -E "$plugin_rule" | sort -u || true)"
+if [ -n "$advice" ]; then
+  printf "  %sadvies van dart_code_linter, telt niet mee:%s\n" "$DIM" "$RST"
+  printf '%s\n' "$advice" | sed 's/^/    /'
 fi
 rm -f "$out"
 
