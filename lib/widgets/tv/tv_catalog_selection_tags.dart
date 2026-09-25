@@ -18,8 +18,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../i18n/strings.g.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
+import '../../utils/home_custom_row_labels.dart';
 import '../../utils/language_codes.dart';
 import '../../theme/mono_tokens.dart';
 import 'tv_catalog_sort_panel.dart';
@@ -63,7 +63,8 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
   int? overflowAfter = TvCatalogLayout.tagOverflowThreshold,
 }) {
   final tags = <TvCatalogSelectionTag>[
-    if (filters.watchState != UnifiedWatchFilter.all) TvCatalogSelectionTag(t.unifiedCatalog.filters.unwatched),
+    if (filters.watchState != UnifiedWatchFilter.all)
+      TvCatalogSelectionTag(unifiedWatchFilterLabel(filters.watchState)),
     // Sorted, so the same selection always produces the same row: the sets
     // behind these are unordered, and an order that changed between builds
     // would make a golden and a screenshot disagree for no reason.
@@ -71,6 +72,7 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
     for (final language in filters.audioLanguages.toList()..sort())
       TvCatalogSelectionTag(languageDisplayName(language) ?? language),
     for (final year in filters.years.toList()..sort()) TvCatalogSelectionTag('$year'),
+    for (final rating in filters.officialRatings.toList()..sort()) TvCatalogSelectionTag(rating),
     if (sourcesLabel != null) TvCatalogSelectionTag(sourcesLabel),
   ];
 

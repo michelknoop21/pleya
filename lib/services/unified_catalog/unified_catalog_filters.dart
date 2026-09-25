@@ -80,38 +80,68 @@ enum UnifiedCatalogSort {
 
 /// Hoofdstuk 10.4's watch-state filter, reduced to what a backend can answer.
 ///
-/// [all] and [unwatched] are the two states `LibraryQuery.includeWatched`
-/// expresses, and both Plex (`unwatched=1`) and Jellyfin (`Filters=IsUnplayed`)
-/// execute them. "Bekeken" and "actief bezig" are *not* here: neither is a
-/// field on the neutral query, so offering them would mean filtering after the
-/// merge — which breaks paging (see this library's doc) — or inventing
-/// per-backend query shapes the contract does not define. They are listed in
-/// 10.4 as globally safe *filters*; making them so needs a query field, which
-/// is a contract change and not a fase-5 GUI decision.
-enum UnifiedWatchFilter { all, unwatched }
+/// Every state is a field on the neutral query, so the backend applies it
+/// before the merge and paging keeps its meaning (see this library's doc):
+///
+/// - [unwatched]: `includeWatched: false`, Plex `unwatched=1`, Jellyfin
+///   `Filters=IsUnplayed`.
+/// - [inProgress]: `inProgressOnly`, Plex `inProgress=1` (a documented
+///   boolean section filter), Jellyfin `Filters=IsResumable`.
+/// - [watched]: `watchedOnly`, Jellyfin `Filters=IsPlayed`. Plex has no
+///   documented "watched only" filter (`unwatched=0` is unmeasured), so this
+///   state is gated by [UnifiedFilterCapabilities.supportsWatchedFilter] and
+///   absent whenever a Plex library takes part.
+enum UnifiedWatchFilter {
+  all,
+  unwatched,
+  inProgress,
+  watched;
+
+  static UnifiedWatchFilter byName(Object? name) {
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return all;
+  }
+}
 
 /// Which filters the participating backends can execute correctly.
 class UnifiedFilterCapabilities {
   /// Genre and year, both of which ride on the neutral query's typed fields.
   final bool supportsMetadataFilters;
 
-  /// `includeWatched: false`.
+  /// `includeWatched: false` and `inProgressOnly`.
   final bool supportsWatchFilter;
 
-  const UnifiedFilterCapabilities({required this.supportsMetadataFilters, required this.supportsWatchFilter});
+  /// `watchedOnly`, which only Jellyfin executes.
+  final bool supportsWatchedFilter;
+
+  const UnifiedFilterCapabilities({
+    required this.supportsMetadataFilters,
+    required this.supportsWatchFilter,
+    this.supportsWatchedFilter = false,
+  });
 
   /// The answer for an empty catalog: nothing participates, so nothing is
   /// promised. Rendering a filter panel here would offer choices over no data.
   static const none = UnifiedFilterCapabilities(supportsMetadataFilters: false, supportsWatchFilter: false);
 
+  /// Whether [state] can be executed by every participating backend.
+  bool supportsWatchState(UnifiedWatchFilter state) => switch (state) {
+    UnifiedWatchFilter.all => true,
+    UnifiedWatchFilter.unwatched || UnifiedWatchFilter.inProgress => supportsWatchFilter,
+    UnifiedWatchFilter.watched => supportsWatchFilter && supportsWatchedFilter,
+  };
+
   @override
   bool operator ==(Object other) =>
       other is UnifiedFilterCapabilities &&
       other.supportsMetadataFilters == supportsMetadataFilters &&
-      other.supportsWatchFilter == supportsWatchFilter;
+      other.supportsWatchFilter == supportsWatchFilter &&
+      other.supportsWatchedFilter == supportsWatchedFilter;
 
   @override
-  int get hashCode => Object.hash(supportsMetadataFilters, supportsWatchFilter);
+  int get hashCode => Object.hash(supportsMetadataFilters, supportsWatchFilter, supportsWatchedFilter);
 }
 
 /// What [backends] can all honour.
@@ -128,6 +158,7 @@ UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> ba
   return UnifiedFilterCapabilities(
     supportsMetadataFilters: all.every(_executesMetadataFilters),
     supportsWatchFilter: all.every(_executesWatchFilter),
+    supportsWatchedFilter: all.every(_executesWatchedFilter),
   );
 }
 
@@ -140,8 +171,14 @@ UnifiedFilterCapabilities unifiedFilterCapabilitiesFor(Iterable<MediaBackend> ba
 /// the local folder client browses a filesystem with no such index.
 bool _executesMetadataFilters(MediaBackend backend) => backend == MediaBackend.plex || backend == MediaBackend.jellyfin;
 
-/// Whether [backend]'s client translates `includeWatched: false`.
+/// Whether [backend]'s client translates `includeWatched: false` and
+/// `inProgressOnly`.
 bool _executesWatchFilter(MediaBackend backend) => backend == MediaBackend.plex || backend == MediaBackend.jellyfin;
+
+/// Whether [backend]'s client translates `watchedOnly`. Jellyfin only: the
+/// Plex translator ignores it until a live server proves what `unwatched=0`
+/// returns.
+bool _executesWatchedFilter(MediaBackend backend) => backend == MediaBackend.jellyfin;
 
 /// One catalog's current narrowing, as the user set it.
 ///
@@ -152,6 +189,11 @@ class UnifiedCatalogFilterSelection {
   /// Genre names, OR-ed within the field by both backends.
   final Set<String> genres;
   final Set<String> audioLanguages;
+
+  /// Content ratings as each server names them ("PG-13", "12"). The value list
+  /// is a union of rating systems; a value one server does not use simply
+  /// matches nothing there. Plex `contentRating`, Jellyfin `OfficialRatings`.
+  final Set<String> officialRatings;
 
   final Set<int> years;
   final UnifiedWatchFilter watchState;
@@ -168,6 +210,7 @@ class UnifiedCatalogFilterSelection {
   const UnifiedCatalogFilterSelection({
     this.genres = const {},
     this.audioLanguages = const {},
+    this.officialRatings = const {},
     this.years = const {},
     this.watchState = UnifiedWatchFilter.all,
     this.serverIds = const {},
@@ -184,6 +227,7 @@ class UnifiedCatalogFilterSelection {
   int get activeCount =>
       (genres.isEmpty ? 0 : 1) +
       (audioLanguages.isEmpty ? 0 : 1) +
+      (officialRatings.isEmpty ? 0 : 1) +
       (years.isEmpty ? 0 : 1) +
       (watchState == UnifiedWatchFilter.all ? 0 : 1) +
       (serverIds.isEmpty ? 0 : 1) +
@@ -203,6 +247,7 @@ class UnifiedCatalogFilterSelection {
   int get itemFilterCount =>
       (genres.isEmpty ? 0 : 1) +
       (audioLanguages.isEmpty ? 0 : 1) +
+      (officialRatings.isEmpty ? 0 : 1) +
       (years.isEmpty ? 0 : 1) +
       (watchState == UnifiedWatchFilter.all ? 0 : 1);
 
@@ -213,6 +258,7 @@ class UnifiedCatalogFilterSelection {
   UnifiedCatalogFilterSelection copyWith({
     Set<String>? genres,
     Set<String>? audioLanguages,
+    Set<String>? officialRatings,
     Set<int>? years,
     UnifiedWatchFilter? watchState,
     Set<String>? serverIds,
@@ -220,6 +266,7 @@ class UnifiedCatalogFilterSelection {
   }) => UnifiedCatalogFilterSelection(
     genres: genres ?? this.genres,
     audioLanguages: audioLanguages ?? this.audioLanguages,
+    officialRatings: officialRatings ?? this.officialRatings,
     years: years ?? this.years,
     watchState: watchState ?? this.watchState,
     serverIds: serverIds ?? this.serverIds,
@@ -246,8 +293,9 @@ class UnifiedCatalogFilterSelection {
   UnifiedCatalogFilterSelection constrainedTo(UnifiedFilterCapabilities capabilities) => UnifiedCatalogFilterSelection(
     genres: capabilities.supportsMetadataFilters ? genres : const {},
     audioLanguages: capabilities.supportsMetadataFilters ? audioLanguages : const {},
+    officialRatings: capabilities.supportsMetadataFilters ? officialRatings : const {},
     years: capabilities.supportsMetadataFilters ? years : const {},
-    watchState: capabilities.supportsWatchFilter ? watchState : UnifiedWatchFilter.all,
+    watchState: capabilities.supportsWatchState(watchState) ? watchState : UnifiedWatchFilter.all,
     serverIds: serverIds,
     libraryKeys: libraryKeys,
   );
@@ -288,6 +336,7 @@ class UnifiedCatalogFilterSelection {
       other is UnifiedCatalogFilterSelection &&
           _setEquals(other.genres, genres) &&
           _setEquals(other.audioLanguages, audioLanguages) &&
+          _setEquals(other.officialRatings, officialRatings) &&
           _setEquals(other.years, years) &&
           other.watchState == watchState &&
           _setEquals(other.serverIds, serverIds) &&
@@ -297,6 +346,7 @@ class UnifiedCatalogFilterSelection {
   int get hashCode => Object.hash(
     Object.hashAllUnordered(genres),
     Object.hashAllUnordered(audioLanguages),
+    Object.hashAllUnordered(officialRatings),
     Object.hashAllUnordered(years),
     watchState,
     Object.hashAllUnordered(serverIds),
@@ -345,6 +395,7 @@ class UnifiedCatalogPreferences {
     'sort': sort.name,
     if (filters.genres.isNotEmpty) 'genres': filters.genres.toList()..sort(),
     if (filters.audioLanguages.isNotEmpty) 'audioLanguages': filters.audioLanguages.toList()..sort(),
+    if (filters.officialRatings.isNotEmpty) 'officialRatings': filters.officialRatings.toList()..sort(),
     if (filters.years.isNotEmpty) 'years': filters.years.toList()..sort(),
     if (filters.watchState != UnifiedWatchFilter.all) 'watch': filters.watchState.name,
     if (filters.serverIds.isNotEmpty) 'servers': filters.serverIds.toList()..sort(),
@@ -363,10 +414,9 @@ class UnifiedCatalogPreferences {
     filters: UnifiedCatalogFilterSelection(
       genres: _stringSet(json['genres']),
       audioLanguages: _stringSet(json['audioLanguages']),
+      officialRatings: _stringSet(json['officialRatings']),
       years: _intSet(json['years']),
-      watchState: json['watch'] == UnifiedWatchFilter.unwatched.name
-          ? UnifiedWatchFilter.unwatched
-          : UnifiedWatchFilter.all,
+      watchState: UnifiedWatchFilter.byName(json['watch']),
       serverIds: _stringSet(json['servers']),
       libraryKeys: _stringSet(json['libraries']),
     ),
@@ -399,9 +449,12 @@ UnifiedCatalogQuery buildUnifiedCatalogQuery({
     kind: kind,
     sortField: preferences.sort.field,
     sortDirection: preferences.sort.direction,
-    includeWatched: filters.watchState == UnifiedWatchFilter.all,
+    includeWatched: filters.watchState != UnifiedWatchFilter.unwatched,
+    inProgressOnly: filters.watchState == UnifiedWatchFilter.inProgress,
+    watchedOnly: filters.watchState == UnifiedWatchFilter.watched,
     genres: filters.genres.isEmpty ? null : (filters.genres.toList()..sort()),
     audioLanguages: filters.audioLanguages.isEmpty ? null : (filters.audioLanguages.toList()..sort()),
+    officialRatings: filters.officialRatings.isEmpty ? null : (filters.officialRatings.toList()..sort()),
     years: filters.years.isEmpty ? null : (filters.years.toList()..sort()),
   );
 }

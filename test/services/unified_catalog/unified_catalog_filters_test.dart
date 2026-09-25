@@ -47,6 +47,18 @@ void main() {
       expect(capabilities.supportsWatchFilter, isFalse);
     });
 
+    // Jellyfin has `Filters=IsPlayed`; Plex `unwatched=0` is undocumented as
+    // "watched only", so one Plex library withholds Bekeken for everyone.
+    test('watched is offered only when every backend is Jellyfin', () {
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.jellyfin]).supportsWatchedFilter, isTrue);
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.plex, MediaBackend.jellyfin]).supportsWatchedFilter, isFalse);
+      expect(unifiedFilterCapabilitiesFor([MediaBackend.plex]).supportsWatchedFilter, isFalse);
+      expect(
+        unifiedFilterCapabilitiesFor([MediaBackend.jellyfin, MediaBackend.pleyaServer]).supportsWatchedFilter,
+        isFalse,
+      );
+    });
+
     test('an empty catalog promises nothing rather than everything', () {
       expect(unifiedFilterCapabilitiesFor(const []), UnifiedFilterCapabilities.none);
     });
@@ -193,12 +205,14 @@ void main() {
       const selection = UnifiedCatalogFilterSelection(
         genres: {'Drama'},
         audioLanguages: {'eng'},
+        officialRatings: {'PG-13'},
         years: {2024},
         watchState: UnifiedWatchFilter.unwatched,
         serverIds: {'nas'},
         libraryKeys: {'nas:1'},
       );
-      expect(selection.activeCount, 6);
+      expect(selection.activeCount, 7);
+      expect(selection.itemFilterCount, 5);
     });
 
     test('the default selection is empty and restricts no source', () {
@@ -248,6 +262,56 @@ void main() {
         ),
       );
       expect(query.includeWatched, isFalse);
+    });
+
+    test('content ratings reach the query sorted', () {
+      final query = build(
+        const UnifiedCatalogPreferences(filters: UnifiedCatalogFilterSelection(officialRatings: {'PG-13', '12'})),
+      );
+      expect(query.officialRatings, ['12', 'PG-13']);
+      expect(query.toLibraryQuery(offset: 0, limit: 10).officialRatings, ['12', 'PG-13']);
+    });
+
+    test('content ratings need the metadata capability, like genre', () {
+      final query = build(
+        const UnifiedCatalogPreferences(filters: UnifiedCatalogFilterSelection(officialRatings: {'PG-13'})),
+        capabilities: UnifiedFilterCapabilities.none,
+      );
+      expect(query.officialRatings, isNull);
+    });
+
+    test('in progress becomes inProgressOnly and keeps watched items in', () {
+      final query = build(
+        const UnifiedCatalogPreferences(
+          filters: UnifiedCatalogFilterSelection(watchState: UnifiedWatchFilter.inProgress),
+        ),
+      );
+      expect(query.inProgressOnly, isTrue);
+      expect(query.watchedOnly, isFalse);
+      expect(query.includeWatched, isTrue);
+      expect(query.toLibraryQuery(offset: 0, limit: 10).inProgressOnly, isTrue);
+    });
+
+    test('watched becomes watchedOnly where the backends can execute it', () {
+      final query = build(
+        const UnifiedCatalogPreferences(filters: UnifiedCatalogFilterSelection(watchState: UnifiedWatchFilter.watched)),
+        capabilities: const UnifiedFilterCapabilities(
+          supportsMetadataFilters: true,
+          supportsWatchFilter: true,
+          supportsWatchedFilter: true,
+        ),
+      );
+      expect(query.watchedOnly, isTrue);
+      expect(query.includeWatched, isTrue);
+      expect(query.toLibraryQuery(offset: 0, limit: 10).watchedOnly, isTrue);
+    });
+
+    test('watched without the capability falls back to everything, not to a guess', () {
+      const stored = UnifiedCatalogFilterSelection(watchState: UnifiedWatchFilter.watched);
+      final query = build(const UnifiedCatalogPreferences(filters: stored));
+      expect(query.watchedOnly, isFalse);
+      expect(query, build(UnifiedCatalogPreferences.defaults));
+      expect(stored.watchState, UnifiedWatchFilter.watched, reason: 'the stored choice is never rewritten');
     });
 
     test('metadata filters reach the query sorted, so equal selections are equal queries', () {
@@ -315,6 +379,7 @@ void main() {
         filters: UnifiedCatalogFilterSelection(
           genres: {'Drama', 'Comedy'},
           audioLanguages: {'eng', 'nld'},
+          officialRatings: {'PG-13', '12'},
           years: {2024, 1999},
           watchState: UnifiedWatchFilter.unwatched,
           serverIds: {'nas'},
@@ -322,6 +387,25 @@ void main() {
         ),
       );
       expect(UnifiedCatalogPreferences.fromJson(preferences.toJson()), preferences);
+      expect(preferences.toJson()['officialRatings'], ['12', 'PG-13']);
+    });
+
+    test('every watch state survives encode and decode', () {
+      for (final state in UnifiedWatchFilter.values) {
+        final preferences = UnifiedCatalogPreferences(filters: UnifiedCatalogFilterSelection(watchState: state));
+        expect(UnifiedCatalogPreferences.fromJson(preferences.toJson()).filters.watchState, state);
+      }
+    });
+
+    // Home rows and catalog setups stored by older builds carry `watch:
+    // unwatched` or nothing; a value from a newer build must not throw.
+    test('old and unknown watch values decode safely', () {
+      expect(
+        UnifiedCatalogPreferences.fromJson({'watch': 'unwatched'}).filters.watchState,
+        UnifiedWatchFilter.unwatched,
+      );
+      expect(UnifiedCatalogPreferences.fromJson({'watch': 'rewatching'}).filters.watchState, UnifiedWatchFilter.all);
+      expect(UnifiedCatalogPreferences.fromJson(const {}).filters.watchState, UnifiedWatchFilter.all);
     });
 
     test('the defaults serialise to just their sort', () {

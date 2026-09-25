@@ -82,10 +82,12 @@ Future<void> _activateByLabel(WidgetTester tester, String label, {int index = 0}
 /// [values] null means "never answers", which is how the loading state is
 /// reached without a timer or a real network.
 class _FilterValuesClient implements MediaServerClient {
-  _FilterValuesClient({required this.genres});
+  _FilterValuesClient({required this.genres, this.audioLanguages = const [], this.contentRatings = const []});
 
   /// Null hangs forever; a list resolves immediately.
   final List<String>? genres;
+  final List<String> audioLanguages;
+  final List<String> contentRatings;
 
   @override
   Future<LibraryFilterResult> fetchLibraryFiltersWithValues(String libraryId) {
@@ -96,6 +98,8 @@ class _FilterValuesClient implements MediaServerClient {
         filters: const [],
         cachedValues: {
           'genre': [for (final genre in answer) MediaFilterValue(key: genre, title: genre)],
+          'audioLanguage': [for (final code in audioLanguages) MediaFilterValue(key: code, title: code)],
+          'contentRating': [for (final rating in contentRatings) MediaFilterValue(key: rating, title: rating)],
         },
       ),
     );
@@ -309,6 +313,7 @@ void main() {
       UnifiedCatalogFilterSelection selection = UnifiedCatalogFilterSelection.empty,
       List<CatalogLibrary>? withLibraries,
       TvCatalogFilterSection section = TvCatalogFilterSection.status,
+      MediaServerClient? client,
     }) async {
       UnifiedCatalogFilterSelection? result;
       var completed = false;
@@ -324,7 +329,7 @@ void main() {
                     capabilities: unifiedFilterCapabilitiesFor((withLibraries ?? libraries).map((l) => l.backend)),
                     libraries: withLibraries ?? libraries,
                     initialSection: section,
-                    clientFor: (_) => null,
+                    clientFor: (_) => client,
                   );
                   completed = true;
                 },
@@ -367,6 +372,13 @@ void main() {
           libraryKeys: {'nas:1'},
           watchState: UnifiedWatchFilter.unwatched,
         ),
+        // Audiotaal and Leeftijd only join the rail once a server names a
+        // value, so the full rail needs a client that names some.
+        client: _FilterValuesClient(
+          genres: const ['Drama'],
+          audioLanguages: const ['eng'],
+          contentRatings: const ['12'],
+        ),
       );
 
       final labels = [
@@ -374,6 +386,7 @@ void main() {
         t.unifiedCatalog.filters.genre,
         t.libraries.filterCategories.audioLanguage,
         t.unifiedCatalog.filters.year,
+        t.unifiedCatalog.filters.contentRating,
         t.unifiedCatalog.filters.servers,
         t.unifiedCatalog.filters.libraries,
       ];
@@ -940,5 +953,119 @@ void main() {
         reason: '"there are none" is a different claim from "we have not looked yet"',
       );
     });
+  });
+
+  // Fase 1 of the search-and-filters plan: Status gains Actief bezig and, where
+  // every backend can run it, Bekeken; Leeftijd is a new category; Audiotaal
+  // and Leeftijd stay out of the rail until a server names a value.
+  group('fase 1 filter rows', () {
+    CatalogLibrary library(String server, MediaBackend backend) =>
+        (serverId: ServerId(server), serverName: server, libraryId: '1', libraryTitle: 'Films', backend: backend);
+    final mixed = [library('nas', MediaBackend.plex), library('attic', MediaBackend.jellyfin)];
+    final jellyfinOnly = [library('attic', MediaBackend.jellyfin)];
+
+    Future<List<UnifiedCatalogFilterSelection>> render(
+      WidgetTester tester, {
+      required List<CatalogLibrary> libraries,
+      required TvCatalogFilterSection section,
+      List<String> audioLanguages = const [],
+      List<String> contentRatings = const [],
+      Size size = const Size(1038, 584),
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final applied = <UnifiedCatalogFilterSelection>[];
+      await tester.pumpWidget(
+        _shell(
+          (context) => Scaffold(
+            body: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: size.width * 0.8, maxHeight: size.height * 0.9),
+                child: TvCatalogFilterPanel(
+                  selection: UnifiedCatalogFilterSelection.empty,
+                  capabilities: unifiedFilterCapabilitiesFor(libraries.map((l) => l.backend)),
+                  libraries: libraries,
+                  initialSection: section,
+                  onApply: applied.add,
+                  onClose: () {},
+                  clientFor: (_) => _FilterValuesClient(
+                    genres: const ['Drama'],
+                    audioLanguages: audioLanguages,
+                    contentRatings: contentRatings,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return applied;
+    }
+
+    testWidgets('Status offers Actief bezig everywhere and Bekeken only without Plex', (tester) async {
+      await render(tester, libraries: mixed, section: TvCatalogFilterSection.status);
+      expect(find.text(t.unifiedCatalog.filters.unwatched), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.inProgress), findsOneWidget);
+      expect(find.text(t.unifiedCatalog.filters.watched), findsNothing, reason: 'Plex has no proven watched filter');
+
+      await render(tester, libraries: jellyfinOnly, section: TvCatalogFilterSection.status);
+      expect(find.text(t.unifiedCatalog.filters.watched), findsOneWidget);
+    });
+
+    testWidgets('Actief bezig applies as the in-progress watch state', (tester) async {
+      final applied = await render(tester, libraries: mixed, section: TvCatalogFilterSection.status);
+      await _activateByLabel(tester, t.unifiedCatalog.filters.inProgress);
+      await _activateByLabel(tester, t.unifiedCatalog.filters.apply);
+      expect(applied.single.watchState, UnifiedWatchFilter.inProgress);
+    });
+
+    testWidgets('no audio languages and no ratings: neither category, and no apology', (tester) async {
+      await render(tester, libraries: jellyfinOnly, section: TvCatalogFilterSection.status);
+      expect(find.text(t.libraries.filterCategories.audioLanguage), findsNothing);
+      expect(find.text(t.unifiedCatalog.filters.contentRating), findsNothing);
+      expect(
+        find.text(t.unifiedCatalog.filters.someUnavailable),
+        findsNothing,
+        reason: 'nothing was withheld by a backend; there was just nothing to offer',
+      );
+    });
+
+    testWidgets('Leeftijd lists the server values and applies them as official ratings', (tester) async {
+      final applied = await render(
+        tester,
+        libraries: mixed,
+        section: TvCatalogFilterSection.contentRating,
+        contentRatings: const ['12', 'PG-13'],
+      );
+      expect(find.text(t.unifiedCatalog.filters.contentRating), findsOneWidget);
+      await _activateByLabel(tester, t.unifiedCatalog.filters.contentRating);
+      await _activateByLabel(tester, 'PG-13');
+      await _activateByLabel(tester, t.unifiedCatalog.filters.apply);
+      expect(applied.single.officialRatings, {'PG-13'});
+    });
+
+    for (final size in const [Size(1038, 584), Size(1920, 1080), Size(1440, 900)]) {
+      testWidgets('the full rail lays out without overflow at ${size.width.toInt()}x${size.height.toInt()}', (
+        tester,
+      ) async {
+        await render(
+          tester,
+          libraries: mixed,
+          section: TvCatalogFilterSection.contentRating,
+          audioLanguages: const ['eng', 'nld'],
+          contentRatings: const ['12', '16', 'PG-13'],
+          size: size,
+        );
+        // Leeftijd joins the rail once its values arrive, after the panel has
+        // already opened on the first available category.
+        await _activateByLabel(tester, t.unifiedCatalog.filters.contentRating);
+        expect(tester.takeException(), isNull);
+        expect(find.text(t.unifiedCatalog.filters.contentRating), findsOneWidget);
+        expect(find.text(t.libraries.filterCategories.audioLanguage), findsOneWidget);
+        expect(find.text('PG-13'), findsOneWidget);
+      });
+    }
   });
 }

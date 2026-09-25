@@ -54,6 +54,16 @@ sealed class LibraryQuery with _$LibraryQuery {
     /// per-user favorite flag ignore it.
     @Default(false) bool favoritesOnly,
 
+    /// Restrict the result to items the active user started and has not
+    /// finished. Plex `inProgress=1`, Jellyfin `Filters=IsResumable`.
+    @Default(false) bool inProgressOnly,
+
+    /// Restrict the result to items the active user has watched. Jellyfin
+    /// `Filters=IsPlayed`. Plex has no documented equivalent, so its
+    /// translator ignores this and the unified catalog never offers it there
+    /// (`unifiedFilterCapabilitiesFor`).
+    @Default(false) bool watchedOnly,
+
     /// Restrict the result to items whose sort name starts with this string —
     /// the alpha-jump bar's filter UX. The literal `#` is a sentinel for
     /// "non-alphabetic" and translates to a `NameLessThan=A` query for backends

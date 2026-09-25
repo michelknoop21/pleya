@@ -387,9 +387,7 @@ class _TvHomeRowWizardState extends State<TvHomeRowWizard> {
       (
         icon: Symbols.visibility_rounded,
         label: t.unifiedCatalog.homeRows.status,
-        value: filters.watchState == UnifiedWatchFilter.unwatched
-            ? t.unifiedCatalog.filters.unwatched
-            : t.unifiedCatalog.filters.all,
+        value: unifiedWatchFilterLabel(filters.watchState),
         onPressed: () => _openFilters(TvCatalogFilterSection.status),
         key: 'status',
       ),

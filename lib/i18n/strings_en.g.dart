@@ -6756,6 +6756,9 @@ class TranslationsUnifiedCatalogFiltersEn {
 	/// en: 'Year'
 	String get year => 'Year';
 
+	/// en: 'Age rating'
+	String get contentRating => 'Age rating';
+
 	/// en: 'Servers'
 	String get servers => 'Servers';
 
@@ -6773,6 +6776,12 @@ class TranslationsUnifiedCatalogFiltersEn {
 
 	/// en: 'Unwatched'
 	String get unwatched => 'Unwatched';
+
+	/// en: 'In progress'
+	String get inProgress => 'In progress';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
 
 	/// en: 'Not available for the current sources'
 	String get unsupported => 'Not available for the current sources';
@@ -8931,12 +8940,15 @@ extension on Translations {
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',
+			'unifiedCatalog.filters.contentRating' => 'Age rating',
 			'unifiedCatalog.filters.servers' => 'Servers',
 			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
 			'unifiedCatalog.filters.all' => 'All',
 			'unifiedCatalog.filters.unwatched' => 'Unwatched',
+			'unifiedCatalog.filters.inProgress' => 'In progress',
+			'unifiedCatalog.filters.watched' => 'Watched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
