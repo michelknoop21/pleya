@@ -2075,6 +2075,11 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  /// False only for Home on the TV shell with a nested route still open above
+  /// its root; every other tab and shell shows its root when selected.
+  bool _showsRootOf(NavigationTabId tab) =>
+      !_isTvShell || tab != NavigationTabId.discover || _tvNav.showsRootOf(TvDestinationId.home);
+
   void _onDiscoverBecameVisible() {
     appLogger.d('Navigated to home');
     // Refresh content when returning to discover page
@@ -2234,9 +2239,11 @@ class _MainScreenState extends State<MainScreen>
       if (_screenKeyFor(previousTab)?.currentState case final TabVisibilityAware aware) {
         aware.onTabHidden();
       }
-      // Notify and focus new screen
+      // Notify and focus new screen. Not Home while a detail is still open
+      // over it on TV (review N2): that detail is what is on screen, and
+      // `_popTvNestedRoute` shows and refreshes Home once it closes.
       final newState = _screenKeyFor(tab)?.currentState;
-      if (newState case final TabVisibilityAware aware) {
+      if (newState case final TabVisibilityAware aware when _showsRootOf(tab)) {
         aware.onTabShown();
       }
       // Not on the TV shell. There, moving the focus is the shell's decision
@@ -2255,7 +2262,7 @@ class _MainScreenState extends State<MainScreen>
     }
 
     // Discover: always refresh content (even on re-selection)
-    if (!_isOffline && tab == NavigationTabId.discover) {
+    if (!_isOffline && tab == NavigationTabId.discover && _showsRootOf(tab)) {
       _onDiscoverBecameVisible();
     }
 
