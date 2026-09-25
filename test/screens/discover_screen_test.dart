@@ -239,7 +239,7 @@ void main() {
 
     Future<void> checkTimer(WidgetTester tester, _RecordingDiscoverProvider recording, State screen) async {
       await tester.pump(kHomeRefreshInterval);
-      expect(recording.requests, [kHomeRefreshOnReturn], reason: 'Home active and resumed: the timer fires');
+      expect(recording.requests, ['tick 2m'], reason: 'Home active and resumed: the timer fires');
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
@@ -252,7 +252,7 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       recording.requests.clear();
       await tester.pump(kHomeRefreshInterval);
-      expect(recording.requests, [kHomeRefreshOnReturn], reason: 'resumed again: the timer is back');
+      expect(recording.requests, ['tick 2m'], reason: 'resumed again: the timer is back');
 
       (screen as TabVisibilityAware).onTabHidden();
       recording.requests.clear();
@@ -261,7 +261,16 @@ void main() {
 
       (screen as TabVisibilityAware).onTabShown();
       await tester.pump(kHomeRefreshInterval);
-      expect(recording.requests, [kHomeRefreshOnReturn]);
+      expect(recording.requests, ['tick 2m']);
+
+      // A desktop window that loses focus goes `inactive` and stays visible;
+      // the timer keeps running there (M4). On iOS and tvOS `inactive` is a
+      // short step on the way to `hidden`/`paused`, which do stop it.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'an unfocused but visible window still refreshes');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     }
 
     testWidgets('TV: a silent refresh every interval while Home is active and the app resumed', (tester) async {
@@ -285,7 +294,23 @@ void main() {
 
       (key.currentState! as Refreshable).refresh();
 
-      expect(recording.requests, [kHomeRefreshOnReturn]);
+      expect(recording.requests, ['return 2m']);
+    });
+
+    testWidgets('resume on a mobile or TV platform asks for the return refresh', (tester) async {
+      // The host running the tests is not iOS; the gate is lifted explicitly.
+      DiscoverScreen.debugRefreshOnResume = true;
+      addTearDown(() => DiscoverScreen.debugRefreshOnResume = null);
+      final (recording, _) = await pumpRecording(tester);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
+      expect(recording.requests, ['return 2m']);
     });
   });
 
@@ -383,10 +408,13 @@ class _RecordingDiscoverProvider extends DiscoverProvider {
     required super.isProfileBinding,
   });
 
-  final requests = <Duration>[];
+  /// `tick` for the periodic refresh, `return` for the return/resume one
+  /// (which also rescans local folders), with the threshold in minutes.
+  final requests = <String>[];
 
   @override
-  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval}) async => requests.add(maxAge);
+  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval, bool rescanLocalFolders = false}) async =>
+      requests.add('${rescanLocalFolders ? 'return' : 'tick'} ${maxAge.inMinutes}m');
 }
 
 /// Bundle of everything a pumped [DiscoverScreen] test harness needs to keep

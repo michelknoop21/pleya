@@ -81,6 +81,11 @@ import 'companion_remote/mobile_remote_screen.dart';
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key, this.onManageServers, this.onOpenSearch});
 
+  /// Overrides the "refresh on resume" platform gate in tests; the test host
+  /// is not iOS or Android.
+  @visibleForTesting
+  static bool? debugRefreshOnResume;
+
   /// Hoofdstuk 14.7's escape hatch from the unified source picker's
   /// `NoUsableSource` state ("every source for this title is
   /// offline/auth-failing") to the Servers settings tab — the same
@@ -650,7 +655,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _appResumed = state == AppLifecycleState.resumed;
+    // `inactive` is a desktop window losing focus while it stays on screen,
+    // and a short step towards `hidden` on iOS and tvOS; only the states in
+    // which the app is really out of sight stop the timer.
+    _appResumed = switch (state) {
+      AppLifecycleState.hidden || AppLifecycleState.paused || AppLifecycleState.detached => false,
+      AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+    };
     _syncRefreshTicker();
     if (state == AppLifecycleState.resumed) {
       // Restart auto-scroll only if discover tab is visible
@@ -658,8 +669,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       // Mobile and Apple TV only (on desktop, "resumed" fires on every window
       // focus gain; the ticker covers desktop). Continue Watching always, the
       // other rows when they are older than the return threshold.
-      if (Platform.isIOS || Platform.isAndroid) {
-        unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn));
+      if (DiscoverScreen.debugRefreshOnResume ?? (Platform.isIOS || Platform.isAndroid)) {
+        unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true));
       }
     } else if (state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
       // Stop animations to prevent scroll state corruption while backgrounded
@@ -850,7 +861,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   // other rows silently when they are older than the return threshold.
   @override
   void refresh() {
-    unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn));
+    unawaited(_discover.refreshIfStale(maxAge: kHomeRefreshOnReturn, rescanLocalFolders: true));
   }
 
   // Public method to fully reload all content (for profile switches)
