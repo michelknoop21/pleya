@@ -108,6 +108,8 @@ class MacosDriver implements VerificationDriver {
 
   @override
   Future<void> build() async {
+    // Buildmappen naar de externe SSD (no-op zonder SSD of op CI).
+    await _run('${repoRoot.path}/scripts/link_build_dirs.sh', const [], workingDirectory: repoRoot.path);
     _log('flutter build macos --debug --dart-define=PLEYA_VERIFY=true');
     final gitCommit = await _gitCommit();
     final result = await _run('flutter', [

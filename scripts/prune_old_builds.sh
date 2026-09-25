@@ -11,9 +11,12 @@
 # die worden bij elke build hergebruikt, wissen kost alleen een koude build.
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+"$ROOT/scripts/link_build_dirs.sh"
+
 [[ "${PLEYA_KEEP_BUILDS:-}" == 1 ]] && exit 0
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KEEP_BUNDLES="${PLEYA_KEEP_VERIFY_BUNDLES:-2}"
 KEEP_ARCHIVES="${PLEYA_KEEP_ARCHIVES:-3}"
 freed=0
@@ -50,3 +53,17 @@ if [[ -d "$archives" ]]; then
 fi
 
 echo "prune_old_builds: $((freed / 1024)) MB vrijgemaakt"
+
+# Alleen melden, nooit verwijderen: gemergede worktrees die een week stilliggen.
+main_ref=$(git -C "$ROOT" rev-parse -q --verify github/main || git -C "$ROOT" rev-parse -q --verify origin/main || true)
+if [[ -n "$main_ref" ]]; then
+  week_ago=$(( $(date +%s) - 7 * 86400 ))
+  git -C "$ROOT" worktree list --porcelain | awk '/^worktree /{wt=substr($0,10)} /^branch /{print wt"\t"substr($0,19)}' \
+    | while IFS=$'\t' read -r wt branch; do
+        [[ "$wt" == "$ROOT" ]] && continue
+        git -C "$ROOT" merge-base --is-ancestor "$branch" "$main_ref" 2>/dev/null || continue
+        index=$(git -C "$wt" rev-parse --git-path index 2>/dev/null) || continue
+        [[ -f "$index" ]] && (( $(stat -f %m "$index") < week_ago )) || continue
+        echo "prune_old_builds: gemerged en een week stil, kan weg: $wt ($branch)"
+      done
+fi
