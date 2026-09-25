@@ -20,6 +20,7 @@ import 'package:pleya/theme/glass/glass_settings.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/tv_hig.dart';
+import 'package:pleya/widgets/tv/tv_catalog_selection_tags.dart';
 import 'package:pleya/widgets/tv/tv_top_nav_item.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 
@@ -173,6 +174,16 @@ List<_Row> _audit(MonoTokens tk, GlassTokens glass) {
       plateOver(tk.bg),
       _pt(TvCatalogLayout.cardMetaFontSize),
     ),
+    _Row('selection tag (secondary) on bg', ink(TvCatalogLayout.inkSecondary), tk.bg, _pt(TvCatalogLayout.tagFontSize)),
+    _Row(
+      'muted selection tag ("Populair nu") on bg',
+      ink(tvCatalogTagMutedInk),
+      tk.bg,
+      _pt(TvCatalogLayout.tagFontSize),
+    ),
+    // The pill field's hint (textMuted) at bodyLarge 16 on its 8% and 18% fill.
+    _Row('search field hint on its fill', tk.textMuted, _over(ink(0.08), tk.bg), 16 * 1.85),
+    _Row('search field hint on its focused fill', tk.textMuted, _over(ink(0.18), tk.bg), 16 * 1.85),
     _Row(
       'source picker status (tertiary) on surface',
       ink(TvSourcePickerLayout.inkTertiary),

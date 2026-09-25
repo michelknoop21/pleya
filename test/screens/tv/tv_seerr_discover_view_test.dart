@@ -451,11 +451,11 @@ void main() {
       controller.dispose();
     });
 
-    Future<void> pumpRoute(WidgetTester tester) async {
+    Future<void> pumpRoute(WidgetTester tester, {bool dark = true}) async {
       await tester.pumpWidget(
         TranslationProvider(
           child: MaterialApp(
-            theme: monoTheme(dark: true),
+            theme: monoTheme(dark: dark),
             home: InputModeTracker(
               // The shell: it owns Back inside a nested route.
               child: Focus(
@@ -547,24 +547,25 @@ void main() {
 
     // Review FIX 3 and D2: the focused field shows the white ring, and the
     // field starts on the page title's x.
-    testWidgets('the focused field carries the ring, and sits on the title x', (tester) async {
-      await pumpRoute(tester);
-      topnav.requestFocus();
-      await tester.pumpAndSettle();
-      Color ringColor() {
-        final box = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('seerrSearchField.ring')));
-        return ((box.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring.color;
-      }
+    for (final dark in [true, false])
+      testWidgets('the focused field carries the ring, and sits on the title x (dark: $dark)', (tester) async {
+        await pumpRoute(tester, dark: dark);
+        topnav.requestFocus();
+        await tester.pumpAndSettle();
+        Color ringColor() {
+          final box = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('seerrSearchField.ring')));
+          return ((box.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring.color;
+        }
 
-      expect(ringColor().a, 0, reason: 'no ring while the field does not hold the focus');
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(field.hasFocus, isTrue);
-      expect(ringColor(), Colors.white);
+        expect(ringColor().a, 0, reason: 'no ring while the field does not hold the focus');
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        expect(field.hasFocus, isTrue);
+        expect(ringColor(), Colors.white);
 
-      final title = tester.getRect(find.text(t.seerr.title));
-      final pill = tester.getRect(find.byKey(const ValueKey('seerrSearchField.ring')));
-      expect(pill.left, closeTo(title.left, 0.5));
-    });
+        final title = tester.getRect(find.text(t.seerr.title));
+        final pill = tester.getRect(find.byKey(const ValueKey('seerrSearchField.ring')));
+        expect(pill.left, closeTo(title.left, 0.5));
+      });
 
     testWidgets('RIGHT to the inbox button, which has the same UP and DOWN, and LEFT back', (tester) async {
       await pumpRoute(tester);
