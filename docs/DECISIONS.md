@@ -2997,7 +2997,11 @@ device-local; `tv_live_tv_capability` als runtime cache. `live_tv_default_favori
 **Consequences:** Wat een gebruiker anders ziet: een wijziging op de Mac verschijnt op de Apple TV
 zonder herstart; een teruggezette instelling blijft teruggezet; de statusregel toont geen tijdstip
 als iCloud uitgelogd is; uit en weer aan werkt binnen één sessie; de taal van het Pleya-profiel
-volgt over toestellen heen. Wat niet is gebouwd: profielscope voor Jellyfin- en Pleya
+volgt over toestellen heen; `hidden_libraries`, `library_order` en de `library_*`-sleutels reizen
+voor een Plex Home-profiel met de echte scopevorm `plex-home-plex.<16hex>-<16hex>`, onder het
+volledige profiel-id als cloudnamespace (`PreferenceSyncScope.forProfile` gebruikt dezelfde
+`isPortableProfileScope` als de taalkaarten, eindreview I5), met een stempel per profiel (I1). Een
+accountverbinding die terugviel op de client-id van het toestel blijft thuis. Wat niet is gebouwd: profielscope voor Jellyfin- en Pleya
 Server-profielen (`local-<uuid>` is per toestel; `hidden_libraries`, `library_order`, `library_*`
 en de taalvoorkeur reizen voor die profielen niet), een per-account-scheiding van lokale
 voorkeuren, een serverId-gefilterde familie voor `unified_source_preferences` en

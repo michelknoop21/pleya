@@ -86,4 +86,49 @@ void main() {
     active = profA;
     expect(c.localRevision(base)!.deleted, isTrue, reason: "A's own removal is still remembered");
   });
+
+  group('I5: profile-scoped keys travel for a real Plex Home profile', () {
+    // The shapes production makes: two 16-hex uuids, or the account connection
+    // fell back to this device's client identifier (a v4 uuid).
+    final real = plexHomeProfileId(accountConnectionId: 'plex.a1b2c3d4e5f60718', homeUserUuid: 'e434272903092b4e');
+    final fallback = plexHomeProfileId(
+      accountConnectionId: 'plex.9a8b7c6d-1111-4222-8333-444455556666',
+      homeUserUuid: 'e434272903092b4e',
+    );
+
+    test('the real 16-hex shape gets a cloud key under its own id, local prefix unchanged', () async {
+      active = real;
+      final c = await build();
+      expect(c.activeUserScope, real);
+      final key = 'user_${real}_hidden_libraries';
+      expect(c.cloudKeyFor(key), '__pleya_pref_v2/profile/$real/hidden_libraries');
+      expect(c.cloudKeyFor('user_${real}_$base'), isNotNull);
+      expect(c.cloudKeyFor('user_${real}_library_order'), isNotNull);
+    });
+
+    test('a round trip lands on the same profile on the other device', () async {
+      active = real;
+      final c = await build();
+      final key = 'user_${real}_library_order';
+      await settings.prefs.setString(key, '["plex:1","plex:2"]');
+      await c.apply(PreferenceMutation.set(key, '["plex:1","plex:2"]'));
+      final cloud = c.cloudKeyFor(key)!;
+      expect(decode(transport.store[cloud]!)['value'], '["plex:1","plex:2"]');
+
+      // The other device: no local value, no stamp.
+      await settings.prefs.remove(key);
+      await c.clearRevisions();
+      await c.applyEntries({cloud: transport.store[cloud]});
+      expect(settings.prefs.getString(key), '["plex:1","plex:2"]');
+    });
+
+    test('the client-id fallback and a local profile stay on the device', () async {
+      for (final id in [fallback, 'local-9a8b7c6d-1111-2222-3333-444455556666']) {
+        active = id;
+        final c = await build();
+        expect(c.cloudKeyFor('user_${id}_hidden_libraries'), isNull, reason: id);
+        expect(c.cloudKeyFor('user_${id}_$base'), isNull, reason: id);
+      }
+    });
+  });
 }

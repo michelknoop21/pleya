@@ -59,18 +59,22 @@ class PreferenceSyncScope {
   /// Resolve the scope for [profileId], the id [StorageService] stores under
   /// `active_app_profile_id`.
   ///
-  /// A Plex Home profile resolves to its home-user UUID, which is what the
-  /// existing `user_{scope}_` prefixes already use, so no local key changes
-  /// shape. Anything else resolves to a non-portable scope carrying the full
-  /// profile id: still usable for local storage, never usable as a cloud
-  /// namespace.
+  /// The id is what the existing `user_{scope}_` prefixes already use, so no
+  /// local key changes shape: the home-user UUID when `parsePlexHomeProfileId`
+  /// recognises one, otherwise the full profile id. In production that is the
+  /// full id for every Plex Home profile, because Plex issues 16-hex home uuids
+  /// and the parser only knows 36-character ones (register row F1).
+  ///
+  /// Portable is the same predicate the language maps use,
+  /// [isPortableProfileScope]: the real Plex Home shape travels, the client-id
+  /// fallback, `local-<uuid>` and anything else stay on the device.
   static PreferenceSyncScope forProfile(String? profileId) {
     if (profileId == null || profileId.isEmpty) return none;
     final home = parsePlexHomeProfileId(profileId);
     if (home != null) {
       return PreferenceSyncScope._(PreferenceScopeKind.profile, home.homeUserUuid, true);
     }
-    return PreferenceSyncScope._(PreferenceScopeKind.profile, profileId, false);
+    return PreferenceSyncScope._(PreferenceScopeKind.profile, profileId, isPortableProfileScope(profileId));
   }
 
   /// The local prefs prefix for this scope. Matches what `StorageService`
