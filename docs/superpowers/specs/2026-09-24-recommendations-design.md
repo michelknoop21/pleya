@@ -169,9 +169,10 @@ eerdere affiniteitsrij staan; een acteur wiens films allemaal al in een genre-ri
 rij, en zijn plek gaat naar de volgende kandidaat.
 
 Koude start (minder dan acht onderscheiden titels met positief bewijs, `kWarmDistinctTitles`):
-Top Picks op kwaliteit en nieuwheid, plus seed-rijen zodra er één seed is. Levert het log geen
-bruikbare seed op, dan blijft het huidige pad via `fetchRecentlyWatched` de fallback, zodat een vers profiel op een oude
-Plex-server niet slechter af is dan vandaag. Warm: alles uit de tabel.
+Top Picks op kwaliteit en nieuwheid, plus seed-rijen zodra er één seed is. Levert het log minder
+dan drie bruikbare seeds op, dan vult het huidige pad via `fetchRecentlyWatched` aan tot drie (een seed per titel), zodat
+een vers profiel op een oude Plex-server niet slechter af is dan vandaag en plays in andere apps blijven seeden.
+Besluit eindreview 25 september: eerst "alleen als het log leeg is", nu "aanvullen tot drie". Warm: alles uit de tabel.
 
 ### 2.2 Hoe een rij zichzelf uitlegt
 
@@ -225,9 +226,10 @@ aanmerking; een seed op een andere bron neemt geen plek in (sluit D2). Een `part
 titel "Omdat je X kijkt", een `completed`-seed de bestaande titel (sluit D3). Wijziging één ten
 opzichte van de audit: geen voorrang van `partial` boven `completed` op dezelfde dag, gewoon
 recency; de regel is simpeler uit te leggen en het verschil is zelden zichtbaar. Wijziging twee: de
-seed-rij filtert voortaan `isWatched`. Fallback als het log geen bruikbare seed oplevert (leeg, of
-alleen titels op bronnen zonder `relatedHubs` of die niet meer op te halen zijn): het huidige
-`fetchRecentlyWatched`-pad.
+seed-rij filtert voortaan `isWatched`. Levert het log minder dan drie bruikbare seeds op (leeg, of
+titels die niet meer op te halen zijn), dan vult het huidige `fetchRecentlyWatched`-pad aan tot drie, met dezelfde
+identiteitsdedup. Dat serverpad slaat een Jellyfin-verbinding over die meer dan één profiel deelt, in beide
+richtingen, en valt weg als dat niet te bepalen is. Een sleutel waarvan de nieuwste rij negatief is, seedt niet.
 
 **(2) Lokaal partieel signaal bij stoppen: geaccepteerd.** `WatchStateEvent` krijgt `durationMs`
 en `isFinal`; `WatchStateNotifier.notifyProgress` krijgt `isFinal` en
@@ -315,7 +317,7 @@ een vaste `nowMs` zodat verval en jitter deterministisch zijn:
   venster van 30 dagen, `_scoringScope` sluit een uitgeschakelde Tautulli-server uit.
 - Seedselectie in `DiscoverProvider`: een `partial`-seed levert "Omdat je X kijkt"; een seed op een
   client zonder `relatedHubs` neemt geen plek in en krijgt geen `fetchItem`; afgekeken items
-  vallen uit de seed-rij; een leeg log valt terug op `fetchRecentlyWatched`; seeds vier tot zes
+  vallen uit de seed-rij; minder dan drie logseeds worden aangevuld uit `fetchRecentlyWatched`; seeds vier tot zes
   komen als `hubItems` bij `buildRows` aan.
 - `InteractionRecorder`: eindstop op 60 procent geeft één `partial` 0,4; onder 50 niets; een
   tweede eindstop binnen zes uur stapelt niet; een tussentijdse tick schrijft niets.

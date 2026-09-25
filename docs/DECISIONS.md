@@ -2952,7 +2952,9 @@ zelf hadden gekeken.
 *Seeds uit het log.* De drie seed-rijen komen uit `MediaInteractions` van het actieve profiel:
 de nieuwste onderscheiden evidence-sleutels met gewicht >= 0,4 binnen 30 dagen, alleen voor
 servers met de capability `relatedHubs`. Een `partial`-seed heet "Omdat je X kijkt", een
-`completed`-seed "Omdat je X gekeken hebt". Een leeg log valt terug op `fetchRecentlyWatched`.
+`completed`-seed "Omdat je X gekeken hebt". Levert het log minder dan drie seeds, dan vult
+`fetchRecentlyWatched` aan tot drie, een seed per titel; een Jellyfin-verbinding die meer dan één profiel deelt,
+doet daarin niet mee. Een titel die na de play uit Verder kijken is gehaald, seedt niet.
 Seeds vier tot en met zes leveren alleen kandidaten voor Top Picks.
 
 *Eén partieel signaal, lokaal en geïmporteerd gelijk.* Een eindstop tussen 50 procent en de
