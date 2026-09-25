@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../connection/connection.dart';
 import '../media/media_backend.dart';
 import '../media/media_server_client.dart';
+import '../media/server_authority_guard.dart';
 import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
@@ -222,9 +223,18 @@ class MultiServerManager {
 
   String? get _currentPlexLanguageCode => SettingsService.instanceOrNull?.read(SettingsService.appLocale).languageCode;
 
+  /// Wire the service-side owner check into [client]. The check is live: it
+  /// reads the predicate at call time, and a client that is no longer the
+  /// registered one for [serverId] (a replaced Jellyfin user, a removed
+  /// server) is refused.
+  void _wireServerAuthority(ServerAuthorityGuard client, ServerId serverId) {
+    client.canManageServerMetadata = () => identical(_clients[serverId], client) && canManageServerMetadata(serverId);
+  }
+
   @visibleForTesting
   void debugRegisterJellyfinClientForTesting(JellyfinClient client, {bool online = true}) {
     _wireJellyfinConnectionUpdates(client);
+    _wireServerAuthority(client, ServerId(client.connection.serverMachineId));
     final compoundId = client.connection.id;
     final machineId = client.connection.serverMachineId;
     _jellyfinByCompoundId[compoundId] = client;
@@ -236,6 +246,7 @@ class MultiServerManager {
 
   @visibleForTesting
   void debugRegisterClientForTesting(MediaServerClient client, {bool online = true}) {
+    if (client case final ServerAuthorityGuard guarded) _wireServerAuthority(guarded, client.serverId);
     _clients[client.serverId] = client;
     _serverStatus[client.serverId] = online;
   }
@@ -445,6 +456,7 @@ class MultiServerManager {
       onAllEndpointsExhausted: () => _onServerEndpointsExhausted(ServerId(serverId)),
       seedTranscoderVideoSupport: observedTranscoderVideo,
     );
+    _wireServerAuthority(client, ServerId(serverId));
 
     // Save the initial endpoint
     await storage.saveServerEndpoint(ServerId(serverId), baseUrl);
@@ -733,6 +745,7 @@ class MultiServerManager {
       // Admin status can change server-side; re-broadcast and persist so
       // admin-gated UI survives app restarts without requiring re-auth.
       _wireJellyfinConnectionUpdates(client);
+      _wireServerAuthority(client, ServerId(resolvedConnection.serverMachineId));
       if (resolvedConnection.baseUrl != connection.baseUrl ||
           !listEquals(resolvedConnection.baseUrls, connection.baseUrls)) {
         await onJellyfinConnectionUpdated?.call(resolvedConnection);
@@ -792,6 +805,7 @@ class MultiServerManager {
         },
       );
       final serverId = connection.serverId;
+      _wireServerAuthority(client, ServerId(serverId));
       final oldClient = _clients[serverId];
       if (oldClient != null) _closeClient(oldClient);
       _clients[serverId] = client;

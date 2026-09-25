@@ -135,6 +135,8 @@ const _detailFields =
     'ProviderIds';
 
 mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
+  void assertCanManageServerMetadata();
+
   JellyfinConnection get connection;
   FailoverHttpClient get _http;
   MediaItem? _mapItem(Map<String, dynamic> json);
@@ -520,6 +522,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   /// preserves user edits — same UX as Plex's `refresh?force=1`.
   @override
   Future<void> refreshLibraryMetadata(String libraryId) async {
+    assertCanManageServerMetadata();
     final response = await _http.post(
       '/Items/${_segment(libraryId)}/Refresh',
       queryParameters: {

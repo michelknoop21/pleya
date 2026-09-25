@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../connection/connection.dart';
 import '../media/episode_collection.dart';
+import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
@@ -88,7 +89,8 @@ class JellyfinClient
         _JellyfinFileInfoMethods,
         _JellyfinLiveTvMethods,
         _JellyfinImageDownloadMethods,
-        _JellyfinMetadataEditMethods
+        _JellyfinMetadataEditMethods,
+        ServerAuthorityGuard
     implements
         MediaServerClient,
         SeasonEpisodePagingClient,

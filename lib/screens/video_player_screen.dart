@@ -214,6 +214,10 @@ TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
 /// choice would never reach Android, Windows or the official Plex clients,
 /// because iCloud key-value sync is Apple-only.
 ///
+/// Only on a server the active profile owns (the owner rule, see
+/// `MultiServerManager.canManageServerMetadata`); the prefs are the item's,
+/// shared by every user of the server.
+///
 /// A mirror, never the authority (DEC-096 lid 6). A failed write is logged by
 /// the caller and leaves the Pleya preference exactly as it was; nothing here
 /// rolls anything back, and nothing reads Plex's answer back as truth.
@@ -221,6 +225,9 @@ SeriesLanguagePersister _plexSeriesLanguagePersister(PlexClient? Function() reso
   return ({required String seriesRatingKey, String? audioLanguage, String? subtitleLanguage, int? subtitleMode}) async {
     final client = resolve();
     if (client == null) return;
+    // Item prefs are canonical server data: only the owner mirrors them. For
+    // anyone else this is a silent skip, not a refused write in the log.
+    if (client.canManageServerMetadata?.call() != true) return;
 
     if (!(await PleyaProfileLanguagePreferenceStore.read()).mirrorToPlex) return;
 

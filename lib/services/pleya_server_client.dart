@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../connection/connection.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
+import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
@@ -88,7 +89,8 @@ class PleyaServerClient
         _PleyaServerSearchMethods,
         _PleyaServerArtworkMethods,
         _PleyaServerPlaybackMethods,
-        _PleyaServerUnsupportedMethods
+        _PleyaServerUnsupportedMethods,
+        ServerAuthorityGuard
     implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
     : _session = session,
