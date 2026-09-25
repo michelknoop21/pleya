@@ -406,7 +406,9 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         if (trailer != null) ...[
           GlassCircleButton(
             icon: Icons.movie_outlined,
-            tooltip: t.discover.extras,
+            // The button starts the trailer straight away: say so, for
+            // VoiceOver too.
+            tooltip: t.tooltips.playTrailer,
             onPressed: () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
           ),
           const SizedBox(width: 12),

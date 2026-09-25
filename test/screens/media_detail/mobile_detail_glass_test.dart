@@ -19,7 +19,10 @@ import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/watchlist_entry.dart';
 import 'package:pleya/media/watchlist_scope.dart';
 import 'package:pleya/media/watchlist_source.dart';
@@ -93,8 +96,50 @@ class _CountingWatchlistSource implements WatchlistSource {
   Future<bool?> contains(MediaItem item) async => null;
 }
 
+/// A server that only answers what the film page asks for: the film itself
+/// and one trailer among its extras.
+class _TrailerClient implements MediaServerClient {
+  @override
+  ServerId get serverId => ServerId('server_1');
+
+  @override
+  String? get serverName => 'Server';
+
+  @override
+  MediaBackend get backend => MediaBackend.jellyfin;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+
+  @override
+  Future<({MediaItem? item, MediaItem? onDeckEpisode})> fetchItemWithOnDeck(String id) async =>
+      (item: _movie, onDeckEpisode: null);
+
+  @override
+  Future<List<MediaItem>> fetchExtras(String id) async => [
+    MediaItem(
+      id: 'trailer_bbb',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.clip,
+      title: 'Trailer',
+      raw: const {'ExtraType': 'Trailer'},
+    ),
+  ];
+
+  @override
+  void close() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// The real detail screen on an iPhone 17 Pro, glass [glass].
-Future<_CountingWatchlistSource> _pumpDetail(WidgetTester tester, {required bool glass, bool realTier = false}) async {
+Future<_CountingWatchlistSource> _pumpDetail(
+  WidgetTester tester, {
+  required bool glass,
+  bool realTier = false,
+  MediaServerClient? client,
+}) async {
   TvDetectionService.debugSetAppleTVOverride(false);
   await glassPhone(tester, glass: glass, realTier: realTier);
 
@@ -115,6 +160,7 @@ Future<_CountingWatchlistSource> _pumpDetail(WidgetTester tester, {required bool
   );
   final watchlistStore = WatchlistStore();
   final manager = MultiServerManager();
+  if (client != null) manager.debugRegisterClientForTesting(client);
   final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
   final watchStateStore = WatchStateStore();
   addTearDown(() async {
@@ -221,6 +267,14 @@ void main() {
     expect(source.added, hasLength(1));
     expect(find.byTooltip(t.watchlist.remove), findsOneWidget);
     expect(find.byIcon(Icons.bookmark_added_rounded), findsOneWidget);
+  });
+
+  testWidgets('K8: de trailerknop heet "Trailer afspelen", niet "Extras"', (tester) async {
+    await _pumpDetail(tester, glass: true, client: _TrailerClient());
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byTooltip(t.tooltips.playTrailer), findsOneWidget);
+    expect(find.byTooltip(t.discover.extras), findsNothing);
   });
 
   testWidgets('B5: terug en meer blijven in beeld na scrollen', (tester) async {
