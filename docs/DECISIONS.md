@@ -4140,3 +4140,15 @@ schermen worden stale en gaan via `goldens.yml` opnieuw. De meting van `ekeb2` b
 op het toestel 1038x584 logische pixels geeft (DPR1); de engine, de DPR en de opbouw van
 `_AppleTvScale` en `scaleForHeight` blijven ongewijzigd. Alleen de doc-comment bij `_AppleTvScale`,
 die nog dpr 1,0 en een halvering beschreef, is naar deze meting gecorrigeerd.
+
+**Amendement 25 september 2026 (VIS-0926-S1):** op de 77 inch tv (build 304) bleek de
+verdichting van de instellingen te ver te gaan. Titel en waarderegel raakten elkaar bijna en de
+kaart van Uiterlijk > Startscherm stopte op 836 van de 1020 pt die boven de veilige rand
+beschikbaar zijn. De regels van dit besluit blijven staan: alleen `TvHig`-punten, geen wijziging
+aan engine, DPR, `_AppleTvScale` of `scaleForHeight`, en de tekst blijft op Body en Caption 1.
+Wat verandert is de lucht. Rijen worden 70 en 106 pt (16 pt inzet, titelregel 38 pt, waarderegel
+36 pt), het sectielabel 28 pt erboven en 12 pt eronder, en de categorierail krijgt een pil van
+92 pt met 16 pt ertussen. Op Uiterlijk komt er 12 pt tussen paginatitel en kolommen en 6 pt extra
+tussen label en kaart. Apple geeft voor tvOS geen vaste rijhoogte; de maat volgt uit de ruimte op
+1038x584: zes rijen vullen de kolom tot 20 pt boven de veilige rand. Rijen rekken niet mee met de
+pagina, dus een pagina met meer rijen scrolt op dezelfde hoogte.
