@@ -267,7 +267,9 @@ class TvMenuTile extends StatelessWidget {
       onNavigateRight: onNavigateRight,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
-      borderRadius: radius,
+      // VIS-0925-A: the ring surrounds the tile plus its ring gap, so its
+      // radius is the tile's plus that gap, or its corners would not follow.
+      borderRadius: radius + TvMyPleyaLayout.tileFocusRingGap * scale,
       automationId: AutomationIds.myPleyaSectionTile,
       automationInstance: automationInstance,
       automationRole: 'grid.item',

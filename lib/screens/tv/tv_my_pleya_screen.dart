@@ -580,7 +580,9 @@ class _Tile extends StatelessWidget {
       onNavigateRight: onNavigateRight,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
-      borderRadius: radius,
+      // VIS-0925-A: the ring surrounds the tile plus its ring gap, so its
+      // radius is the tile's plus that gap, or its corners would not follow.
+      borderRadius: radius + TvMyPleyaLayout.tileFocusRingGap * scale,
       // Suffixed by section name, not by index: the tile order follows what
       // the profile actually has (Aanvragen only with a Seerr server), so an
       // index would address a different section on a different fixture.

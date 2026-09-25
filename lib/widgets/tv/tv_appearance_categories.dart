@@ -110,6 +110,8 @@ class _TvAppearanceCategoriesState extends State<TvAppearanceCategories> {
                       focusNode: _categoryNode(index),
                       autofocus: index == 0,
                       disableScale: true,
+                      // VIS-0925-A: the ring follows the pill's own corners.
+                      borderRadius: tk.radiusMd,
                       onSelect: () => setState(() => _selected = index),
                       onNavigateRight: () => _enterCategory(index),
                       child: GestureDetector(
