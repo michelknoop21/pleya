@@ -88,6 +88,19 @@ steps:
   - assert: {id: nav.search, leftOf: nav.discover}
   - snapshot: 02-home-glass-focus-home
 
+  # The hero CTA with the focus, in Light (VIS-0925-E, review D1), then back.
+  - press: down
+  - wait_until: {focused: discover.hero.play, timeout: 5000}
+  - settle: 800
+  - snapshot: 02b-home-light-play-focused
+  - press: right
+  - settle: 800
+  - snapshot: 02c-home-light-details-focused
+  - press: left
+  - settle: 300
+  - press: up
+  - wait_until: {focused: nav.discover, timeout: 5000}
+
   # LG-06: Zoeken, "as", the pill at rest with the results under it.
   - press: left
   - wait_until: {focused: nav.search, timeout: 5000}
