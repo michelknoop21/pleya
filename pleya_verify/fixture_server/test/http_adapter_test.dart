@@ -138,6 +138,31 @@ void main() {
     });
   });
 
+  group('/__verify/add_movie', () {
+    test('adds a film that the recently_added hub lists first', () async {
+      await verify('POST', '/__verify/seed', body: {'fixture': 'catalog.mixed.v1'});
+      final library = server.libraries.firstWhere((l) => l['kind'] == 'movies');
+
+      final addResponse = await verify(
+        'POST',
+        '/__verify/add_movie',
+        body: {'library_id': library['id'], 'title': 'Verify Nieuw'},
+      );
+      final addBody = await jsonBody(addResponse);
+      expect(addResponse.statusCode, HttpStatus.ok);
+      expect(addBody['ok'], true);
+
+      final hubResponse = await pleyaApi('GET', '/hubs/recently_added', bearer: 'at-0');
+      final hubBody = await jsonBody(hubResponse);
+      expect(((hubBody['items'] as List).first as Map)['title'], 'Verify Nieuw');
+    });
+
+    test('an unknown library_id 404s', () async {
+      final response = await verify('POST', '/__verify/add_movie', body: {'library_id': 'does-not-exist'});
+      expect(response.statusCode, HttpStatus.notFound);
+    });
+  });
+
   group('/__verify/mark_watched', () {
     test('an unknown item_id 404s', () async {
       final response = await verify('POST', '/__verify/mark_watched', body: {'item_id': 'does-not-exist'});

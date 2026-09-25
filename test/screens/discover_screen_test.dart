@@ -26,6 +26,7 @@ import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
+import 'package:pleya/providers/discover_refresh_policy.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
@@ -226,6 +227,105 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
   });
 
+  group('Home ververst zichzelf', () {
+    Future<(_RecordingDiscoverProvider, GlobalKey<State<DiscoverScreen>>)> pumpRecording(
+      WidgetTester tester, {
+      Size size = const Size(1280, 720),
+      double devicePixelRatio = 1.0,
+    }) async {
+      late _RecordingDiscoverProvider recording;
+      final key = GlobalKey<State<DiscoverScreen>>();
+      final harness = await _pumpTvDiscoverScreen(
+        tester,
+        size: size,
+        devicePixelRatio: devicePixelRatio,
+        screenKey: key,
+        createDiscover: (multiServer, hidden, libraries, isBinding) =>
+            recording = _RecordingDiscoverProvider(multiServer, hidden, libraries, isProfileBinding: isBinding),
+      );
+      addTearDown(harness.disposeAll);
+      await tester.pumpAndSettle();
+      recording.requests.clear();
+      return (recording, key);
+    }
+
+    Future<void> checkTimer(WidgetTester tester, _RecordingDiscoverProvider recording, State screen) async {
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'Home active and resumed: the timer fires');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(kHomeRefreshInterval * 3);
+      expect(recording.requests, hasLength(1), reason: 'a paused app runs no timer');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'resumed again: the timer is back');
+
+      (screen as TabVisibilityAware).onTabHidden();
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval * 3);
+      expect(recording.requests, isEmpty, reason: 'leaving Home stops the timer');
+
+      (screen as TabVisibilityAware).onTabShown();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m']);
+
+      // A desktop window that loses focus goes `inactive` and stays visible;
+      // the timer keeps running there (M4). On iOS and tvOS `inactive` is a
+      // short step on the way to `hidden`/`paused`, which do stop it.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'an unfocused but visible window still refreshes');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    }
+
+    testWidgets('TV: a silent refresh every interval while Home is active and the app resumed', (tester) async {
+      final (recording, key) = await pumpRecording(tester);
+      await checkTimer(tester, recording, key.currentState!);
+    });
+
+    testWidgets(
+      'phone: the same timer runs on a phone viewport',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        TvDetectionService.debugSetAppleTVOverride(false);
+        final (recording, key) = await pumpRecording(tester, size: const Size(390, 844), devicePixelRatio: 3);
+        expect(PlatformDetector.isPhone(key.currentContext!), isTrue, reason: 'sanity: phone layout');
+        await checkTimer(tester, recording, key.currentState!);
+      },
+    );
+
+    testWidgets('returning to Home asks for a refresh with the short threshold', (tester) async {
+      final (recording, key) = await pumpRecording(tester);
+
+      (key.currentState! as Refreshable).refresh();
+
+      expect(recording.requests, ['return 2m']);
+    });
+
+    testWidgets('resume on a mobile or TV platform asks for the return refresh', (tester) async {
+      // The host running the tests is not iOS; the gate is lifted explicitly.
+      DiscoverScreen.debugRefreshOnResume = true;
+      addTearDown(() => DiscoverScreen.debugRefreshOnResume = null);
+      final (recording, _) = await pumpRecording(tester);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
+      expect(recording.requests, ['return 2m']);
+    });
+  });
+
   // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
   // hoofdstuk 27): this group locks in the existing Home-focus traversal that
   // fase 0 must not change before any unified-catalog work begins. It asserts
@@ -364,6 +464,25 @@ void main() {
   });
 }
 
+/// Records what Home asked for instead of fetching, so the tests below measure
+/// when a refresh is requested and with which threshold.
+class _RecordingDiscoverProvider extends DiscoverProvider {
+  _RecordingDiscoverProvider(
+    super.multiServer,
+    super.hiddenLibraries,
+    super.libraries, {
+    required super.isProfileBinding,
+  });
+
+  /// `tick` for the periodic refresh, `return` for the return/resume one
+  /// (which also rescans local folders), with the threshold in minutes.
+  final requests = <String>[];
+
+  @override
+  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval, bool rescanLocalFolders = false}) async =>
+      requests.add('${rescanLocalFolders ? 'return' : 'tick'} ${maxAge.inMinutes}m');
+}
+
 /// Bundle of everything a pumped [DiscoverScreen] test harness needs to keep
 /// alive for the duration of one test, plus a single teardown entry point.
 class _TvDiscoverHarness {
@@ -411,13 +530,18 @@ class _TvDiscoverHarness {
 /// wiring instead of a hand-rolled substitute.
 Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(
   WidgetTester tester, {
+  DiscoverProvider Function(MultiServerProvider, HiddenLibrariesProvider, LibrariesProvider, bool Function())?
+  createDiscover,
+  GlobalKey<State<DiscoverScreen>>? screenKey,
+  Size size = const Size(1280, 720),
+  double devicePixelRatio = 1.0,
   List<MediaItem> recentlyWatched = const [],
   List<MediaHub> related = const [],
 }) async {
   final settings = await SettingsService.getInstance();
   await settings.write(SettingsService.libraryDensity, LibraryDensity.max);
-  tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = const Size(1280, 720);
+  tester.view.devicePixelRatio = devicePixelRatio;
+  tester.view.physicalSize = size * devicePixelRatio;
   addTearDown(() {
     tester.view.resetDevicePixelRatio();
     tester.view.resetPhysicalSize();
@@ -457,14 +581,22 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(
     connections: connectionRegistry,
     storage: storage,
   );
-  final discoverProvider = DiscoverProvider(
-    multiServerProvider,
-    hiddenLibrariesProvider,
-    librariesProvider,
-    isProfileBinding: () => activeProfileProvider.isBinding,
-  );
-  final discoverKey = GlobalKey<State<DiscoverScreen>>();
-  const foregroundWidth = 1280 - SideNavigationRailState.tvCollapsedWidth;
+  final discoverProvider =
+      createDiscover?.call(
+        multiServerProvider,
+        hiddenLibrariesProvider,
+        librariesProvider,
+        () => activeProfileProvider.isBinding,
+      ) ??
+      DiscoverProvider(
+        multiServerProvider,
+        hiddenLibrariesProvider,
+        librariesProvider,
+        isProfileBinding: () => activeProfileProvider.isBinding,
+      );
+  final discoverKey = screenKey ?? GlobalKey<State<DiscoverScreen>>();
+  // A phone has no side rail to reserve room for.
+  final foregroundWidth = size.width < 600 ? size.width : size.width - SideNavigationRailState.tvCollapsedWidth;
 
   await tester.pumpWidget(
     TranslationProvider(
@@ -497,12 +629,12 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(
             reservedSideNavigationWidth: SideNavigationRailState.tvCollapsedWidth,
             foregroundLeft: 120.0,
             foregroundWidth: foregroundWidth,
-            viewportWidth: 1280,
+            viewportWidth: size.width,
             child: Align(
               alignment: Alignment.centerLeft,
               child: SizedBox(
                 width: foregroundWidth,
-                height: 720,
+                height: size.height,
                 child: DiscoverScreen(key: discoverKey),
               ),
             ),

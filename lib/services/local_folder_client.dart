@@ -1,4 +1,5 @@
 import '../media/media_identity.dart';
+import '../providers/discover_refresh_policy.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -108,6 +109,44 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   /// In-memory scan cache: file URI → MediaItem.
   final Map<String, MediaItem> _itemCache = {};
 
+  /// Set by [invalidateScanCache]; the scan in flight, so concurrent readers
+  /// share one pass; and the ids that pass has seen, to drop removed files.
+  bool _scanStale = false;
+
+  /// After a rescan that could not read everything, the next automatic try
+  /// waits until this moment; until then every reader gets the last good
+  /// catalog. [invalidateScanCache] skips the wait.
+  DateTime? _retryIncompleteAt;
+
+  bool get _needsRescan {
+    if (_scanStale) return true;
+    final retryAt = _retryIncompleteAt;
+    return retryAt != null && !_now().isBefore(retryAt);
+  }
+
+  /// A rescan that failed or missed a folder keeps the old items and asks
+  /// for one more try after the return threshold, never on every read.
+  void _retryIncompleteLater() => _retryIncompleteAt = _now().add(kHomeRefreshOnReturn);
+
+  final DateTime Function() _now;
+
+  /// Folder scans run so far, for tests that bound how often a read rescans.
+  @visibleForTesting
+  int debugScanCount = 0;
+  Future<List<MediaItem>>? _scanInFlight;
+  Set<String>? _scanSeen;
+
+  /// A subfolder could not be listed during this scan. Its items are then
+  /// unknown, not gone, so a rescan keeps them and stays stale for a retry.
+  bool _scanIncomplete = false;
+
+  /// Lists a folder below the root, recording an unreadable one.
+  Future<List<SafDocumentFile>?> _listSubfolder(String uri) async {
+    final children = await SafStorageService.instance.list(uri);
+    if (children == null) _scanIncomplete = true;
+    return children;
+  }
+
   /// In-memory library list (one library per configured root).
   late final List<MediaLibrary> _libraries;
 
@@ -123,7 +162,8 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   @override
   final ApiCache cache;
 
-  LocalFolderClient({required this.connection, required this.cache}) {
+  LocalFolderClient({required this.connection, required this.cache, DateTime Function()? now})
+    : _now = now ?? DateTime.now {
     _libraries = [
       MediaLibrary(
         id: connection.id,
@@ -267,6 +307,18 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
     return [];
   }
 
+  /// Marks the scan as out of date: the next read that needs the catalog
+  /// rescans the folder. The old items stay readable meanwhile, so a title
+  /// that is playing or open never disappears mid-rescan.
+  void invalidateScanCache() => _scanStale = true;
+
+  /// [invalidateScanCache] for every local-folder client among [clients].
+  static void invalidateAllScans(Iterable<MediaServerClient> clients) {
+    for (final client in clients.whereType<LocalFolderClient>()) {
+      client.invalidateScanCache();
+    }
+  }
+
   @override
   Future<void> refreshLibraryMetadata(String libraryId) async {
     _itemCache.clear();
@@ -377,6 +429,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   @override
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async {
+    if (_needsRescan || _scanInFlight != null) await _scanLibrary(connection.id);
     final all = _itemCache.values
         .where((item) => item.kind == MediaKind.movie || item.kind == MediaKind.episode)
         .toList();
@@ -857,10 +910,21 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   Future<List<MediaItem>> scanAllItems() => _scanLibrary(connection.id);
 
   /// Scan the configured directory and populate [_itemCache].
-  Future<List<MediaItem>> _scanLibrary(String libraryId) async {
-    if (_itemCache.isNotEmpty) return _itemCache.values.toList();
+  Future<List<MediaItem>> _scanLibrary(String libraryId) {
+    final inFlight = _scanInFlight;
+    if (inFlight != null) return inFlight;
+    if (_itemCache.isNotEmpty && !_needsRescan) return Future.value(_itemCache.values.toList());
+    final rescan = _needsRescan && _itemCache.isNotEmpty;
+    _scanStale = false;
+    _retryIncompleteAt = null;
+    return _scanInFlight = _runScan(libraryId, rescan: rescan).whenComplete(() => _scanInFlight = null);
+  }
 
+  Future<List<MediaItem>> _runScan(String libraryId, {required bool rescan}) async {
+    debugScanCount++;
     await _loadWatchState();
+    if (rescan) _scanSeen = {};
+    _scanIncomplete = false;
 
     try {
       appLogger.i('LocalFolderClient: scan start for ${connection.displayName} (${connection.libraryType})');
@@ -876,6 +940,8 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
         // permanently serving an empty library from a dead path.
         lastScanError = SecureFolderService.instance.lastListError ?? 'unreadable: $rootUri';
         SecureFolderService.instance.forget(connection.id);
+        // A failed rescan keeps what the last good scan found and tries again.
+        if (rescan) return _keepAfterFailedRescan();
         return [];
       }
       lastScanError = children.isEmpty ? 'empty: $rootUri' : null;
@@ -914,19 +980,34 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
         }
       }
 
+      final seen = _scanSeen;
+      if (_scanIncomplete) {
+        // Only a rescan retries; a first scan keeps its old behaviour.
+        if (rescan) _retryIncompleteLater();
+      } else if (seen != null) {
+        _itemCache.removeWhere((id, _) => !seen.contains(id));
+      }
       _applyWatchStateToCache();
       appLogger.i('LocalFolderClient: scan done for ${connection.displayName} → ${_itemCache.length} items');
     } catch (e, st) {
       appLogger.w('LocalFolderClient: scan failed for $libraryId', error: e, stackTrace: st);
       lastScanError = '$e';
+      if (rescan) return _keepAfterFailedRescan();
       // A mid-scan failure would otherwise freeze a partial catalog for the
       // whole session (the isNotEmpty guard above). Drop the partial cache and
       // the resolved scope so the next call retries a full scan.
       _itemCache.clear();
       SecureFolderService.instance.forget(connection.id);
       return const [];
+    } finally {
+      _scanSeen = null;
     }
 
+    return _itemCache.values.toList();
+  }
+
+  List<MediaItem> _keepAfterFailedRescan() {
+    _retryIncompleteLater();
     return _itemCache.values.toList();
   }
 
@@ -946,7 +1027,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   }
 
   Future<void> _scanMovieFolder(SafDocumentFile folder) async {
-    final children = await SafStorageService.instance.list(folder.uri);
+    final children = await _listSubfolder(folder.uri);
     if (children == null) return;
 
     // An unpacked disc is one movie, not a folder of streams.
@@ -977,7 +1058,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
     );
     _cacheItem(showItem);
 
-    final seasonDirs = await SafStorageService.instance.list(showFolder.uri);
+    final seasonDirs = await _listSubfolder(showFolder.uri);
     if (seasonDirs == null) return;
 
     int seasonNum = 0;
@@ -1001,7 +1082,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
       );
       _cacheItem(seasonItem);
 
-      final episodeFiles = await SafStorageService.instance.list(seasonDir.uri);
+      final episodeFiles = await _listSubfolder(seasonDir.uri);
       if (episodeFiles == null) continue;
 
       int epNum = 0;
@@ -1188,7 +1269,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
   }
 
   Future<void> _scanGenericFolder(SafDocumentFile folder, String libraryId) async {
-    final children = await SafStorageService.instance.list(folder.uri);
+    final children = await _listSubfolder(folder.uri);
     if (children == null) return;
 
     if (_isDiscFolderListing(children)) {
@@ -1254,6 +1335,7 @@ class LocalFolderClient implements ServerMatchableClient, MediaServerClient {
 
   void _cacheItem(MediaItem item) {
     _itemCache[item.id] = item;
+    _scanSeen?.add(item.id);
   }
 
   /// Seed an item into the in-memory catalog without a folder scan — used by

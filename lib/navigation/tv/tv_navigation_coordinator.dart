@@ -184,6 +184,9 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// screen is on show.
   List<TvNestedRoute> nestedRoutesFor(TvDestinationId id) => List.unmodifiable(_nested[id] ?? const []);
 
+  /// Whether [id]'s own root screen is on show, i.e. nothing is open above it.
+  bool showsRootOf(TvDestinationId id) => _nested[id]?.isEmpty ?? true;
+
   /// What the active destination is currently showing above its root, or null.
   TvNestedRoute? get activeNestedRoute {
     final stack = _nested[_active];

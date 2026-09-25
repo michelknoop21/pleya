@@ -11,6 +11,7 @@ import '../mixins/event_aware.dart';
 import '../services/settings_service.dart';
 import '../services/data_aggregation_service.dart';
 import '../services/discover_snapshot.dart';
+import '../services/local_folder_client.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_message_utils.dart';
@@ -19,6 +20,7 @@ import '../utils/watch_state_notifier.dart';
 import 'discover/continue_watching_row.dart';
 import 'discover/discover_hubs.dart';
 import 'discover/recommendation_rows.dart';
+import 'discover_refresh_policy.dart';
 import 'hidden_libraries_provider.dart';
 import 'libraries_provider.dart';
 import 'multi_server_provider.dart';
@@ -45,7 +47,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     this._libraries, {
     required this.isProfileBinding,
     this.recommendations,
-  }) {
+    DateTime Function()? now,
+  }) : _refreshPolicy = DiscoverRefreshPolicy(now: now) {
     // Late server connects (reconnect after outage, slow wave) refresh
     // discover the same way they refresh libraries. Removed in [dispose] so a
     // profile switch can't leave a stale listener on the app-global provider.
@@ -96,6 +99,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   );
 
   StreamSubscription<WatchStateEvent>? _watchStateSubscription;
+  final DiscoverRefreshPolicy _refreshPolicy;
 
   List<MediaHub> _hubs = [];
 
@@ -124,6 +128,13 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   Future<void>? _inFlightLoad;
   bool _hasPendingLoad = false;
+
+  /// The pass in flight came from [refreshIfStale]: no refresh indicator and
+  /// no hero reset. A [load] arriving mid-pass clears it.
+  bool _silentPass = false;
+
+  /// What [loadGeneration] reports; not bumped by silent passes.
+  int _visibleLoadGeneration = 0;
 
   /// Newly-online servers queued for a delta pass — fetched and merged
   /// without repeating the full multi-server fan-out.
@@ -166,12 +177,13 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// the refresh-with-content-on-screen case, where the states deliberately
   /// stay `loaded` so the rows aren't swapped for a skeleton — leaving the
   /// header's refresh action as the only place that can show progress.
-  bool get isRefreshing => _inFlightLoad != null;
+  bool get isRefreshing => _inFlightLoad != null && !_silentPass;
 
   /// Bumped each time a [load] pass replaces the on-deck list. The screen
   /// uses this to distinguish "full reload — reset the hero carousel" from
-  /// a background Continue Watching refresh (clamp only).
-  int get loadGeneration => _loadGeneration;
+  /// a background Continue Watching refresh (clamp only). A silent
+  /// [refreshIfStale] pass counts as background.
+  int get loadGeneration => _visibleLoadGeneration;
 
   /// Refresh when a server comes online *mid-session* (reconnect, late wave) —
   /// its hubs and continue-watching rows are otherwise missing until a manual
@@ -198,6 +210,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// the in-flight pass plus at most one trailing pass (so a request that
   /// arrives mid-load still observes its own fresh fetch).
   Future<void> load() {
+    _silentPass = false;
     _hasPendingLoad = true;
     return _ensureLoadLoop();
   }
@@ -211,6 +224,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     // something else happened to rebuild them.
     final load = _runLoadLoop().whenComplete(() {
       _inFlightLoad = null;
+      _silentPass = false;
       _notifyRefreshingChanged();
     });
     _inFlightLoad = load;
@@ -244,13 +258,16 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     appLogger.d('DiscoverProvider: loading content from all servers');
     await _tryApplySnapshot();
     // With a snapshot on screen, stay in the loaded state during the network
-    // refresh — flipping to loading would swap the rows for a skeleton.
-    final showingSnapshot = _onDeck.isNotEmpty || _hubs.isNotEmpty;
+    // refresh — flipping to loading would swap the rows for a skeleton. A
+    // silent pass never flips, even over an empty Home, and leaves an error
+    // message up until it succeeds.
+    final audit = DiscoverPassAudit(silent: _silentPass, asked: _askedServerIds);
+    final showingSnapshot = audit.silent || _onDeck.isNotEmpty || _hubs.isNotEmpty;
     if (!showingSnapshot) {
       _onDeckState = DiscoverLoadState.loading;
       _hubsState = DiscoverLoadState.loading;
     }
-    _errorMessage = null;
+    if (!audit.silent) _errorMessage = null;
     safeNotifyListeners();
 
     try {
@@ -289,25 +306,33 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
       final fetchedOnDeck = await onDeckFuture;
       if (isDisposed) return;
-      _continueWatching.apply(fetchedOnDeck.items);
+      if (!audit.keepOld(fetchedOnDeck.succeededServerIds, 'continue watching')) {
+        _continueWatching.apply(fetchedOnDeck.items);
+        _continueWatching.loadedServerIds = fetchedOnDeck.succeededServerIds;
+      }
       _onDeckState = DiscoverLoadState.loaded;
-      _continueWatching.loadedServerIds = fetchedOnDeck.succeededServerIds;
       _loadGeneration++;
+      if (!_silentPass) _visibleLoadGeneration++;
       safeNotifyListeners();
       unawaited(_continueWatching.syncShelf());
 
       final fetchedLatestMovies = await latestMoviesFuture;
       if (isDisposed) return;
-      _latestMovies = fetchedLatestMovies.items;
+      if (!audit.keepOld(fetchedLatestMovies.succeededServerIds, 'latest movies')) {
+        _latestMovies = fetchedLatestMovies.items;
+      }
       safeNotifyListeners();
 
       final fetchedLatestShows = await latestShowsFuture;
       if (isDisposed) return;
-      _latestShowsHub = buildLatestShowsHub(fetchedLatestShows.items);
+      if (!audit.keepOld(fetchedLatestShows.succeededServerIds, 'latest shows')) {
+        _latestShowsHub = buildLatestShowsHub(fetchedLatestShows.items);
+      }
       safeNotifyListeners();
 
       final fetchedHubs = await hubsFuture;
       if (isDisposed) return;
+      if (audit.keepOld(fetchedHubs.succeededServerIds, 'hubs')) return;
 
       final filteredHubs = filterDiscoverHubs(fetchedHubs.hubs);
       orderDiscoverHubs(filteredHubs, _libraries.libraries);
@@ -315,8 +340,13 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       appLogger.d('DiscoverProvider: ${_onDeck.length} on-deck items, ${filteredHubs.length} hubs');
       _hubs = dedupeDiscoverHubs(filteredHubs, _onDeck);
       _hubsState = DiscoverLoadState.loaded;
+      _errorMessage = null;
       _loadedHubServerIds = fetchedHubs.succeededServerIds;
+      if (audit.complete) _refreshPolicy.markFullLoad();
       safeNotifyListeners();
+      // Refreshed on silent passes too: the rows keep what they showed on a
+      // failure and never refetch a hub, and new titles and watch history are
+      // exactly what they are built from.
       unawaited(_recommendationRows.load());
       unawaited(
         DiscoverSnapshot(
@@ -356,6 +386,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     _onDeckState = DiscoverLoadState.loaded;
     _hubsState = DiscoverLoadState.loaded;
     _loadGeneration++;
+    _visibleLoadGeneration++;
     safeNotifyListeners();
   }
 
@@ -426,6 +457,34 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// or surfaces errors (a stale row beats an error flash), never refetches
   /// hubs.
   Future<void> refreshContinueWatching() => _continueWatching.refresh();
+
+  /// Home's return/resume/timer refresh: a silent full reload when the rows
+  /// are older than [maxAge], otherwise only Continue Watching. Silent means
+  /// the states stay `loaded`, [isRefreshing] stays false and a server that
+  /// does not answer leaves its rows on screen. A pass already in flight is
+  /// joined, never doubled. [rescanLocalFolders] also invalidates the
+  /// local-folder scans; it costs a full listing, so only the return and
+  /// resume paths ask for it.
+  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval, bool rescanLocalFolders = false}) {
+    final inFlight = _inFlightLoad;
+    if (inFlight != null) return inFlight;
+    if (!_refreshPolicy.isStale(maxAge, hasContent: _hubsState == DiscoverLoadState.loaded)) {
+      return refreshContinueWatching();
+    }
+    if (rescanLocalFolders) LocalFolderClient.invalidateAllScans(_multiServer.serverManager.onlineClients.values);
+    _silentPass = true;
+    _hasPendingLoad = true;
+    return _ensureLoadLoop();
+  }
+
+  /// The servers a full pass asks: the aggregation's own set.
+  Set<String> _askedServerIds() {
+    final manager = _multiServer.serverManager;
+    return {
+      for (final id in manager.onlineClients.keys)
+        if (manager.isServerVisible(ServerId(id))) id,
+    };
+  }
 
   /// The full unlimited Continue Watching list for the hub's load-more path.
   Future<List<MediaItem>> loadAllContinueWatching() => _continueWatching.loadAll();
