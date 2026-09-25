@@ -86,7 +86,22 @@ class TvVideoTab extends StatelessWidget {
     required this.onOpenSubView,
   });
 
-  static bool get _hdrSupported => Platform.isIOS || Platform.isMacOS || Platform.isWindows;
+  static bool? _debugHdrOverride;
+
+  static bool get _hdrSupported => _debugHdrOverride ?? (Platform.isIOS || Platform.isMacOS || Platform.isWindows);
+
+  /// Overrides the platform gate above, for tests only. Same shape as
+  /// `TvDetectionService.debugSetAppleTVOverride`.
+  ///
+  /// The HDR row exists on Apple and Windows and not on Linux, so the tab a
+  /// widget test otherwise renders depends on the host it runs on: the same
+  /// test draws eleven rows on a developer's Mac and ten on the Linux CI
+  /// runner. PLR4 measures whether the tallest Video tab still fits inside the
+  /// card, so it has to be the tallest one on every host.
+  @visibleForTesting
+  static void debugSetHdrSupported(bool? value) {
+    _debugHdrOverride = value;
+  }
 
   String _boxFitLabel(int mode) => switch (mode) {
     1 => t.videoControls.fillScreen,

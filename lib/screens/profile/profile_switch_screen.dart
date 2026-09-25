@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../connection/connection_registry.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_backend.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
@@ -48,7 +50,12 @@ import 'profile_detail_screen.dart';
 class ProfileSwitchScreen extends StatefulWidget {
   final bool requireSelection;
 
-  const ProfileSwitchScreen({super.key, this.requireSelection = false});
+  /// PROF1: the in-app switch on TV draws the launch gate's composition
+  /// (mockup 21) without its contract. Back closes this route; only
+  /// [requireSelection] turns Back into leaving the app.
+  final bool presentAsGate;
+
+  const ProfileSwitchScreen({super.key, this.requireSelection = false, this.presentAsGate = false});
 
   @override
   State<ProfileSwitchScreen> createState() => _ProfileSwitchScreenState();
@@ -214,7 +221,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
 
           // Launch gate: Netflix "Who's watching?" avatar grid. The in-app
           // manage flow keeps the detailed list (with per-profile menus).
-          if (widget.requireSelection && view.profiles.isNotEmpty) {
+          if ((widget.requireSelection || widget.presentAsGate) && view.profiles.isNotEmpty) {
             return _wrapWithOverlay(_buildSelectionGate(view, activeId));
           }
 
@@ -341,12 +348,22 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
   /// `FocusableActionDetector` below. Desktop and mobile are untouched.
   Widget _buildSelectionGate(ProfilesView view, String? activeId) {
     if (PlatformDetector.isTV()) {
-      return TvProfileGate(
+      final gate = TvProfileGate(
         profiles: view.profiles,
+        activeId: activeId,
         switching: _switching,
         focusNodeFor: _profileFocusNode,
         onSelect: _switchTo,
         onManageProfiles: _openManageProfiles,
+      );
+      if (widget.requireSelection) return gate;
+      // PROF1: in the app Menu reaches this screen as a key, not as a system
+      // Back, and the gate has no scaffold that pops on it the way the list's
+      // FocusedScrollScaffold does.
+      return Focus(
+        canRequestFocus: false,
+        onKeyEvent: (_, event) => handleBackKeyNavigation(context, event),
+        child: gate,
       );
     }
     final theme = Theme.of(context);
@@ -433,6 +450,10 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
             autofocus: isFirstSelectable,
             focusNode: profileFocusNode,
             disableScale: true,
+            automationId: AutomationIds.profileTile,
+            automationInstance: '$index',
+            automationRole: 'grid.item',
+            automationState: () => {'name': profile.displayName, 'active': isActive},
             enableLongPress: hasMenu,
             onLongPress: hasMenu ? () => _openProfileMenu(profile) : null,
             onNavigateRight: hasMenu ? () => menuFocusNode.requestFocus() : null,

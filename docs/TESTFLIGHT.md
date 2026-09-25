@@ -80,15 +80,18 @@ camera, dus die kant is daar principieel niet te testen.
 Loop dit één keer af op een fysiek toestel vóór de eerstvolgende upload. Het is
 een smoketest, geen regressiesuite; hij duurt een paar minuten.
 
-- [ ] Pleya Share openen en de scanner starten.
-- [ ] De camera-permissievraag verschijnt en toestaan werkt.
-- [ ] Een geldige Pleya-pair-QR scannen; de pairing gaat door.
-- [ ] `barcode.rawValue` levert de verwachte `pleya://`-URI (log meelezen via
+- [x] Pleya Share openen en de scanner starten.
+- [x] De camera-permissievraag verschijnt en toestaan werkt.
+- [x] Een geldige Pleya-pair-QR scannen; de pairing gaat door.
+- [x] `barcode.rawValue` levert de verwachte `pleya://`-URI (log meelezen via
       de debug-pref, of het gedrag afleiden uit een geslaagde pairing).
-- [ ] Een onleesbare of niet-Pleya QR aanbieden: de scanner blijft doorzoeken
+- [x] Een onleesbare of niet-Pleya QR aanbieden: de scanner blijft doorzoeken
       in plaats van te stoppen of te crashen.
-- [ ] Scanner sluiten en opnieuw openen; de camera komt terug.
-- [ ] Eén ronde bij matig licht.
+- [x] Scanner sluiten en opnieuw openen; de camera komt terug.
+- [x] Eén ronde bij matig licht.
+
+Afgerond op 20 september 2026 op een fysieke iPhone 16 Pro met de releasebuild
+van `a08dc6f4`; de volledige smoketest was groen.
 
 Faalt hier iets, dan is dat een blokkade voor de upload en niet iets voor de
 volgende ronde: QR-pairing is de enige manier om een host te koppelen.
@@ -142,7 +145,7 @@ Per platform moet het versierecord hebben:
 | Beschrijving, keywords, support-URL | ja, `appStoreVersionLocalizations` | |
 | Reviewnotities, demo-account, contactpersoon | ja, `appStoreReviewDetail` | demo-account is `applereview` op `demo.pleya.app` |
 | Copyright | ja, `appStoreVersions.copyright` | jaartal **plus** rechthebbende, dus `2026 Michel Knoop`; alleen een naam wordt geweigerd |
-| Screenshots | ja, maar omslachtig | minimaal één per platform, en tvOS en macOS erven die van iOS **niet** |
+| Screenshots | ja, via `scripts/asc/screenshots.py` | minimaal één per platform, en tvOS en macOS erven die van iOS **niet** |
 
 Copyright zetten of controleren:
 
@@ -159,6 +162,18 @@ De version-id's van 2.8.0: iOS `c5f974ea-55e7-46fb-8258-5f534cf03a35`, tvOS
 `f885b8de-2677-4034-ae7f-07ee7c1a9e45`, macOS
 `b185cff8-3c5e-4913-9cdb-cbb85df97b47`. Een nieuwe versie krijgt nieuwe id's;
 haal ze op met `GET /v1/apps/6787464031/appStoreVersions`.
+
+Screenshotsets opvragen en vervangen gaat via `scripts/asc/screenshots.py`
+(zie de setup en het argument-overzicht in dat bestand zelf):
+
+```bash
+python3 scripts/asc/screenshots.py sets --version c5f974ea-55e7-46fb-8258-5f534cf03a35
+python3 scripts/asc/screenshots.py replace --set <setId> --dir screenshots/ipad
+```
+
+Herindienen na een afwijzing gaat via `scripts/asc/submit.py version` (status
+en gekoppelde build tonen) en `scripts/asc/submit.py submit ... --confirm`
+(zonder `--confirm` alleen een dry-run die de payloads print).
 
 ### Twee dingen die de API niet toont
 

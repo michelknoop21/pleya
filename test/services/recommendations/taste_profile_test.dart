@@ -109,6 +109,45 @@ void main() {
       expect(b.of('decade', '1990s'), closeTo(a.of('decade', '1990s'), 1e-9));
       expect(b.eventCount, a.eventCount);
     });
+
+    test('topFeatures breaks a tie by name, whatever the event order', () {
+      for (final order in [
+        ['Zed', 'Amy'],
+        ['Amy', 'Zed'],
+      ]) {
+        final v = AffinityVector.build([
+          for (final name in order) _ev(weight: 1.0, evidenceKey: name, actors: [name]),
+        ], nowMs: _nowMs);
+        expect(v.topFeatures('actor', limit: 1), ['amy']);
+      }
+    });
+
+    test('person evidence counts distinct positive titles and survives json', () {
+      final v = AffinityVector.build([
+        for (var i = 0; i < 20; i++)
+          _ev(
+            weight: 1.0,
+            evidenceKey: 't$i',
+            genres: const ['Drama'],
+            actors: [if (i < 3) 'Three Titles', if (i < 2) 'Two Titles'],
+            // Five plays of one title are still one title.
+            directors: [if (i == 0) 'One Title'],
+          ),
+        for (var i = 0; i < 5; i++) _ev(weight: 1.0, evidenceKey: 't0', directors: const ['One Title']),
+      ], nowMs: _nowMs);
+      expect(v.hasPersonEvidence('actor', 'Three Titles'), isTrue, reason: '3 titles and 15% of 20');
+      expect(v.hasPersonEvidence('actor', 'Two Titles'), isFalse);
+      expect(v.hasPersonEvidence('director', 'One Title'), isFalse);
+      expect(AffinityVector.fromJson(v.toJson()).hasPersonEvidence('actor', 'three titles'), isTrue);
+    });
+
+    test('the share floor scales with the titles that warmed the model', () {
+      final v = AffinityVector.build([
+        for (var i = 0; i < 40; i++)
+          _ev(weight: 1.0, evidenceKey: 't$i', genres: const ['Drama'], actors: [if (i < 5) 'Five Titles']),
+      ], nowMs: _nowMs);
+      expect(v.hasPersonEvidence('actor', 'Five Titles'), isFalse, reason: '5 of 40 is under 15%');
+    });
   });
 
   group('recommendationScore', () {

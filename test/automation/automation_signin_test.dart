@@ -16,8 +16,11 @@ import 'package:pleya/profiles/plex_home_service.dart';
 import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/seerr/seerr_constants.dart';
+import 'package:pleya/services/seerr/seerr_session.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya_verify_fixture_server/http_adapter.dart';
 import 'package:pleya_verify_fixture_server/pleya_fake_server.dart';
@@ -80,6 +83,37 @@ class _TestProfileNavigatorState extends State<_TestProfileNavigator> {
         onGenerateRoute: (settings) => MaterialPageRoute<void>(builder: (_) => const SizedBox()),
       ),
     );
+  }
+}
+
+class _FakeSeerrProvider extends SeerrProvider {
+  static const expectedBaseUrl = 'http://127.0.0.1:47500/seerr';
+  static const expectedApiKey = 'verify-seerr-key';
+  static const testedSession = SeerrSession(
+    baseUrl: expectedBaseUrl,
+    authMode: SeerrAuthMode.apiKey,
+    apiKey: expectedApiKey,
+    permissions: SeerrPermission.admin,
+  );
+
+  @override
+  Future<SeerrTestResult> test({
+    required String baseUrl,
+    required SeerrAuthMode mode,
+    String? apiKey,
+    String? email,
+    String? password,
+    String? plexToken,
+  }) async {
+    if (baseUrl != expectedBaseUrl || mode != SeerrAuthMode.apiKey || apiKey != expectedApiKey) {
+      throw StateError('unexpected Seerr test arguments');
+    }
+    return (version: '1.33.2', displayName: 'verify-admin', permissions: SeerrPermission.admin, session: testedSession);
+  }
+
+  @override
+  Future<void> commit(SeerrSession session) async {
+    if (!identical(session, testedSession)) throw StateError('unexpected Seerr session');
   }
 }
 
@@ -189,11 +223,14 @@ void main() {
 
     // 1. Before signin: no active profile, and the profile-session seam
     // does not exist yet — /v1/open must fail clearly on it, not crash.
-    // This particular call returns on the early "no profile session" check,
-    // before ever reaching the readiness-poll loop, so it's safe outside
-    // runAsync — unlike the second call below.
+    // This call gives up on the profile-session wait (timeoutMs) before ever
+    // reaching the readiness-poll loop. The wait is a real Future.delayed, so it
+    // needs runAsync like the second call below.
     expect(activeProfile.active, isNull);
-    final openBefore = await handleAutomationOpen({'screen': AutomationIds.screenMain, 'timeoutMs': 50});
+    late Map<String, Object?> openBefore;
+    await tester.runAsync(() async {
+      openBefore = await handleAutomationOpen({'screen': AutomationIds.screenMain, 'timeoutMs': 50});
+    });
     expect(openBefore['ok'], isFalse);
     expect(openBefore['error'], contains('no profile session'));
 
@@ -232,6 +269,110 @@ void main() {
     expect(openAfter['ok'], isFalse);
     expect(openAfter['error'], contains('timeout'), reason: openAfter.toString());
     expect(profileNavigationRegistry.navigator, isNotNull);
+  });
+
+  testWidgets('seed_seerr waits for the first profile session to mount after sign-in', (tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ConnectionRegistry>.value(value: connections),
+          Provider<ProfileRegistry>.value(value: profiles),
+          Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+          ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+          Provider<ActiveProfileBinder>.value(value: binder),
+          ChangeNotifierProvider<SeerrProvider>(create: (_) => _FakeSeerrProvider()),
+        ],
+        child: MaterialApp(navigatorKey: rootNavigatorKey, home: const _ProfileGate()),
+      ),
+    );
+    await tester.pump();
+
+    late Map<String, Object?> signinResult;
+    await tester.runAsync(() async {
+      signinResult = await handleAutomationSignIn({
+        'base_url': 'http://127.0.0.1:${fixtureAdapter.port}',
+        'username': 'verify-owner',
+        'password': 'verify-password',
+        'setup_code': fakeServer.setupCode,
+      });
+    });
+    expect(signinResult['ok'], isTrue, reason: signinResult.toString());
+    expect(profileNavigationRegistry.navigator, isNull);
+
+    final seedFuture = handleAutomationSeedSeerr({
+      'base_url': _FakeSeerrProvider.expectedBaseUrl,
+      'api_key': _FakeSeerrProvider.expectedApiKey,
+    });
+    await tester.pump();
+    expect(profileNavigationRegistry.navigator, isNotNull);
+    await tester.pump(const Duration(milliseconds: 100));
+
+    late Map<String, Object?> seedResult;
+    await tester.runAsync(() async => seedResult = await seedFuture);
+    expect(seedResult['ok'], isTrue, reason: seedResult.toString());
+  });
+
+  Future<void> pumpProfileGate(WidgetTester tester, {required bool withSeerr}) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ConnectionRegistry>.value(value: connections),
+          Provider<ProfileRegistry>.value(value: profiles),
+          Provider<ProfileConnectionRegistry>.value(value: profileConnections),
+          ChangeNotifierProvider<ActiveProfileProvider>.value(value: activeProfile),
+          Provider<ActiveProfileBinder>.value(value: binder),
+          if (withSeerr) ChangeNotifierProvider<SeerrProvider>(create: (_) => _FakeSeerrProvider()),
+        ],
+        child: MaterialApp(navigatorKey: rootNavigatorKey, home: const _ProfileGate()),
+      ),
+    );
+    await tester.pump();
+    late Map<String, Object?> signinResult;
+    await tester.runAsync(() async {
+      signinResult = await handleAutomationSignIn({
+        'base_url': 'http://127.0.0.1:${fixtureAdapter.port}',
+        'username': 'verify-owner',
+        'password': 'verify-password',
+        'setup_code': fakeServer.setupCode,
+      });
+    });
+    expect(signinResult['ok'], isTrue, reason: signinResult.toString());
+    expect(profileNavigationRegistry.navigator, isNull);
+  }
+
+  testWidgets('/v1/open waits for the first profile session to mount after sign-in', (tester) async {
+    await pumpProfileGate(tester, withSeerr: false);
+
+    // Straight after signin, before the session screen exists: the wait, not an immediate
+    // "no profile session", and then the readiness timeout of a screen this harness lacks.
+    // Both polls are Future.delayed timers of the fake clock, so the test drives them with
+    // pump and lets real time pass in between for the DateTime.now() deadline.
+    final openFuture = handleAutomationOpen({'screen': AutomationIds.screenMain, 'timeoutMs': 50});
+    await tester.pump();
+    expect(profileNavigationRegistry.navigator, isNotNull);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final openResult = await openFuture;
+    expect(openResult['ok'], isFalse);
+    expect(openResult['error'], contains('timeout waiting'), reason: openResult.toString());
+  });
+
+  testWidgets('seed_seerr answers ok:false, not a thrown error, when the session has no SeerrProvider', (tester) async {
+    await pumpProfileGate(tester, withSeerr: false);
+
+    final seedFuture = handleAutomationSeedSeerr({
+      'base_url': _FakeSeerrProvider.expectedBaseUrl,
+      'api_key': _FakeSeerrProvider.expectedApiKey,
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    late Map<String, Object?> seedResult;
+    await tester.runAsync(() async => seedResult = await seedFuture);
+    expect(seedResult['ok'], isFalse);
+    expect(seedResult['error'], contains('seerr connect failed'), reason: seedResult.toString());
   });
 
   group('rejectNonLoopbackBaseUrl', () {
@@ -293,6 +434,15 @@ void main() {
       });
       expect(result['ok'], isFalse);
       expect(result['error'], contains('scheme'));
+    });
+
+    test('handleAutomationSeedSeerr rejects a non-loopback base_url', () async {
+      final result = await handleAutomationSeedSeerr({
+        'base_url': 'http://169.254.169.254/latest/meta-data/',
+        'api_key': 'not-sent',
+      });
+      expect(result['ok'], isFalse);
+      expect(result['error'], contains('loopback'));
     });
   });
 }

@@ -52,6 +52,14 @@ class WatchStateEvent with HierarchicalEventMixin {
   /// numeric id, Jellyfin sends a UUID; both round-trip as strings.
   final String? librarySectionID;
 
+  /// Media duration in milliseconds, when the emitter knows it. Together with
+  /// [viewOffset] this is the completion percentage of a stop.
+  final int? durationMs;
+
+  /// The terminal notification of a playback session. Fires at most once per
+  /// session (see PlaybackProgressTracker); a progress tick is never final.
+  final bool isFinal;
+
   WatchStateEvent({
     required this.itemId,
     required this.serverId,
@@ -62,6 +70,8 @@ class WatchStateEvent with HierarchicalEventMixin {
     this.viewOffset,
     this.isNowWatched,
     this.librarySectionID,
+    this.durationMs,
+    this.isFinal = false,
   }) : globalKey = buildGlobalKey(ServerId(serverId), itemId);
 
   /// `serverId:librarySectionID`, matching [MediaLibrary.globalKey]. Null when
@@ -125,6 +135,7 @@ class WatchStateNotifier extends BaseNotifier<WatchStateEvent> {
     required int viewOffset,
     required int duration,
     double watchedThreshold = 0.9,
+    bool isFinal = false,
   }) {
     final serverId = serverIdOrNull(item.serverId);
     if (serverId == null) {
@@ -143,6 +154,8 @@ class WatchStateNotifier extends BaseNotifier<WatchStateEvent> {
         viewOffset: viewOffset,
         isNowWatched: isNowWatched,
         librarySectionID: item.libraryId,
+        durationMs: duration,
+        isFinal: isFinal,
       ),
     );
   }

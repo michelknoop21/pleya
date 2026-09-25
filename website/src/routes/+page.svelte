@@ -1,33 +1,36 @@
 <script lang="ts">
-  import Hero from '$lib/components/Hero.svelte';
-  import Features from '$lib/components/Features.svelte';
-  import Screenshots from '$lib/components/Screenshots.svelte';
-  import FAQ from '$lib/components/FAQ.svelte';
+  import '$lib/components/home/home.css';
+  import Hero from '$lib/components/home/Hero.svelte';
+  import Unified from '$lib/components/home/Unified.svelte';
+  import Reel from '$lib/components/home/Reel.svelte';
+  import Devices from '$lib/components/home/Devices.svelte';
+  import Share from '$lib/components/home/Share.svelte';
+  import Extras from '$lib/components/home/Extras.svelte';
+  import Faq from '$lib/components/home/Faq.svelte';
+  import Final from '$lib/components/home/Final.svelte';
   import Footer from '$lib/components/Footer.svelte';
-  import NoiseOverlay from '$lib/components/NoiseOverlay.svelte';
+  import TopNav from '$lib/components/TopNav.svelte';
   import { faqSchemaMainEntity } from '$lib/content/faqs';
+  import { pageMotion } from '$lib/motion';
+  import { startHomeMotion } from '$lib/components/home/motion';
 
-  const title = "Pleya: Your library, the cinematic way";
-  const description = "Pleya is a cinematic, fast, and private client for Plex and Jellyfin. Now in TestFlight beta for iPhone, Apple TV, and macOS, with on-device recommendations, HDR, Dolby Vision, and direct play.";
-  const url = "https://pleya.app/";
-  const image = "https://pleya.app/og/pleya-social.png";
+  const title = 'Pleya: Your library, the cinematic way';
+  const description =
+    'Pleya is a cinematic, fast and private client for Plex and Jellyfin. Private TestFlight beta for iPhone, Apple TV and Mac, with on-device recommendations and direct play.';
+  const url = 'https://pleya.app/';
+  const image = 'https://pleya.app/og/pleya-social.png';
 
   const softwareAppSchema = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Pleya",
-    "description": description,
-    "url": "https://pleya.app",
-    "applicationCategory": "MultimediaApplication",
-    "operatingSystem": "iOS, tvOS, macOS",
-    "softwareVersion": "beta"
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Pleya',
+    description,
+    url: 'https://pleya.app',
+    applicationCategory: 'MultimediaApplication',
+    operatingSystem: 'iOS, tvOS, macOS',
+    softwareVersion: 'beta',
   };
-
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": faqSchemaMainEntity
-  };
+  const faqSchema = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqSchemaMainEntity };
 </script>
 
 <svelte:head>
@@ -51,72 +54,17 @@
   {@html `<script type="application/ld+json">${JSON.stringify(faqSchema)}</script>`}
 </svelte:head>
 
-<NoiseOverlay />
-<Hero />
-<Screenshots />
-<Features />
-<FAQ />
-
-<section class="more-reading" aria-labelledby="more-reading-heading">
-  <h2 id="more-reading-heading">Still wondering how something works?</h2>
-  <p>
-    The guide covers every screen in the app, from connecting a server to what to change
-    when playback struggles. The release notes list what changed in each build.
-  </p>
-  <div class="more-links">
-    <a class="primary" href="/docs">Read the guide</a>
-    <a href="/releases">See what changed</a>
-  </div>
-</section>
-
+<div class="home" use:pageMotion={startHomeMotion}>
+  <TopNav />
+  <Hero />
+  <main>
+    <Unified />
+    <Reel />
+    <Devices />
+    <Share />
+    <Extras />
+    <Faq />
+    <Final />
+  </main>
+</div>
 <Footer />
-
-<style>
-  .more-reading {
-    max-width: 44rem;
-    margin-inline: auto;
-    padding: 0 1.5rem 4rem;
-    text-align: center;
-  }
-
-  .more-reading h2 {
-    margin-bottom: 0.75rem;
-    font-size: 1.5rem;
-  }
-
-  .more-reading p {
-    color: var(--color-text-muted);
-  }
-
-  .more-links {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-  }
-
-  .more-links a {
-    padding: 0.625rem 1.25rem;
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    transition: border-color 180ms ease, background-color 180ms ease;
-  }
-
-  .more-links a:hover {
-    border-color: var(--color-accent-glow);
-    background: var(--color-surface);
-  }
-
-  .more-links .primary {
-    border-color: transparent;
-    background: var(--gradient-brand);
-    color: #0e0e10;
-  }
-
-  .more-links .primary:hover {
-    filter: brightness(1.08);
-  }
-</style>

@@ -7,9 +7,10 @@ target: tvos-sim
 # and Select opens the action sheet, not a tab bar with content.
 #
 # `tvos.my-pleya.library-chooser` and `tvos.library.sort` exercised the
-# tab/chooser/grid contract this decision removes on TV; they were not
-# rewritten here (out of LIB7's own scope) and are expected to fail against
-# this build until they are retired or rebuilt against bronbeheer.
+# tab/chooser/grid contract this decision removes on TV. TV6 retired both:
+# this file replaces the chooser. Sorting lives in the catalog rail now;
+# `tvos.catalog.rail-sort-focus` covers its focus, and the order it produces
+# is TV8's "filters en sorteren" row.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -65,3 +66,13 @@ steps:
   - wait_until: {id: "tv.catalog.grid[movies]", timeout: 15000}
   - settle: 1000
   - snapshot: 03-opened-in-catalog
+
+  # SYS-1d: the catalog opens through `tvContentRouteRegistry`, inside the
+  # shell, so the top navigation stays on screen above it and Menu pops back
+  # to the row that opened it. The old plain push covered the shell.
+  - assert: {id: nav.movies, insideViewport: true}
+  - assert: {id: "tv.catalog.grid[movies]", below: nav.movies}
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+  - settle: 800
+  - snapshot: 04-back-on-row

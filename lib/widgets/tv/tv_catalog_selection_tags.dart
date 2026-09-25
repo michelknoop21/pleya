@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
+import '../../utils/language_codes.dart';
 import '../../theme/mono_tokens.dart';
 import 'tv_catalog_sort_panel.dart';
 import 'tv_unified_layout.dart';
@@ -67,6 +68,8 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
     // behind these are unordered, and an order that changed between builds
     // would make a golden and a screenshot disagree for no reason.
     for (final genre in filters.genres.toList()..sort()) TvCatalogSelectionTag(genre),
+    for (final language in filters.audioLanguages.toList()..sort())
+      TvCatalogSelectionTag(languageDisplayName(language) ?? language),
     for (final year in filters.years.toList()..sort()) TvCatalogSelectionTag('$year'),
     if (sourcesLabel != null) TvCatalogSelectionTag(sourcesLabel),
   ];

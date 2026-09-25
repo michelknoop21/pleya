@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>LG-01 Home</title>
+<link rel="stylesheet" href="ios.css">
+<style>
+.hdr { position: absolute; left: var(--inset); right: var(--inset); top: 58px; height: 44px; display: flex; align-items: center; }
+.hdr img.wm { height: 26px; display: block; }
+.hdr .sp { flex: 1; }
+.hdr .search { position: relative; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; margin-right: 12px; font-size: 22px; }
+.hdr .ava { width: 36px; height: 36px; border-radius: 999px; background: #C2185B; display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+.chips { position: absolute; left: var(--inset); top: 112px; display: flex; gap: 8px; }
+.chips div { height: 34px; padding: 0 16px; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.35); display: flex; align-items: center; font-size: 14px; font-weight: 500; }
+.hero { position: absolute; left: var(--inset); right: var(--inset); top: 160px; height: 320px; border-radius: 14px; overflow: hidden; background: var(--surface); border: 1px solid rgba(255,255,255,.08); }
+.hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 40%; }
+.hero .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,0) 35%, rgba(20,20,20,.75) 68%, rgba(20,20,20,.95) 100%); }
+.hero .txt { position: absolute; left: 20px; right: 20px; bottom: 18px; text-align: center; }
+.hero h1 { font-size: 30px; font-weight: 700; letter-spacing: .12em; }
+.hero .meta { font-size: 12.5px; color: var(--ink-2); margin-top: 6px; }
+.hero .meta b { display: inline-block; border: 1px solid rgba(255,255,255,.5); border-radius: 3px; padding: 0 4px; font-weight: 500; font-size: 11px; }
+.hero .syn { font-size: 12.5px; line-height: 1.4; color: rgba(255,255,255,.85); margin-top: 6px; }
+.hero .btns { display: flex; gap: 10px; margin-top: 14px; }
+.hero .btns div { flex: 1; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.hero .btns .play { background: #F1F0F5; color: #141414; }
+.hero .btns .list { background: rgba(47,47,47,.9); font-weight: 500; }
+.dots { position: absolute; left: 0; right: 0; top: 490px; display: flex; justify-content: center; gap: 10px; }
+.dots i { width: 6px; height: 6px; border-radius: 999px; background: rgba(255,255,255,.35); }
+.dots i:first-child { background: var(--accent); }
+.rowhead { position: absolute; left: var(--inset); right: var(--inset); display: flex; align-items: baseline; justify-content: space-between; }
+.rowhead h2 { font-size: 19px; font-weight: 700; }
+.rowhead span { font-size: 13px; color: var(--ink-2); }
+.row { position: absolute; left: var(--inset); display: flex; gap: 8px; }
+.pc { width: 112px; flex: none; border-radius: 8px; overflow: hidden; background: var(--surface); border: 1px solid rgba(255,255,255,.10); }
+.pc .a { height: 164px; position: relative; }
+.pc .a img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pc .p { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 3px; background: rgba(255,255,255,.3); border-radius: 2px; }
+.pc .p i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.pc .l { height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 12px; color: var(--ink-2); }
+.pc.bare { border: 0; }
+.pc.bare .a { height: 168px; }
+/* zwevende tabbalk */
+.tabbar { left: 20px; right: 20px; bottom: 34px; height: 62px; border-radius: 31px; display: flex; align-items: center; padding: 0 6px; }
+.tabbar .t { flex: 1; height: 52px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 500; }
+.tabbar .t svg { font-size: 24px; }
+.tabbar .t.on { color: var(--accent); background: rgba(255,255,255,.16); }
+</style></head><body>
+<div class="status"><span>9:41</span><div class="island"></div><div class="r">
+  <svg class="ic" viewBox="0 0 18 12" style="width:18px;height:12px" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+  <svg class="ic" viewBox="0 0 16 12" style="width:16px;height:12px" fill="#fff"><path d="M8 2.2c2.3 0 4.4.9 6 2.4l1.3-1.4A10.5 10.5 0 0 0 8 .3 10.5 10.5 0 0 0 .7 3.2L2 4.6a8.6 8.6 0 0 1 6-2.4zm0 3.7c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4a6.9 6.9 0 0 0-4.7 1.8l1.3 1.4C5.5 6.4 6.7 5.9 8 5.9zM8 9.6l2-2.1a3 3 0 0 0-4 0z"/></svg>
+  <svg class="ic" viewBox="0 0 27 13" style="width:27px;height:13px"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="rgba(255,255,255,.4)"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#fff"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="rgba(255,255,255,.4)"/></svg>
+</div></div>
+
+<div class="hdr">
+  <img class="wm" src="../../../tvos-unified/src/assets/pleya_wordmark.png" alt="Pleya">
+  <div class="sp"></div>
+  <div class="search glass on-glass"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+  <div class="ava">A</div>
+</div>
+<div class="chips"><div>Series</div><div>Movies</div></div>
+
+<div class="hero"><img src="../art/sintel-wide.jpg"><div class="scrim"></div><div class="txt">
+  <h1>SINTEL</h1>
+  <div class="meta">Fantasy &nbsp;•&nbsp; 2010 &nbsp;•&nbsp; 14min &nbsp;•&nbsp; <b>PG</b></div>
+  <div class="syn">A wandering warrior finds an unlikely friend in the form of a young dragon.</div>
+  <div class="btns"><div class="play"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" style="font-size:20px"><path d="M7 4v16l13-8z"/></svg>Play</div><div class="list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="font-size:20px"><path d="M12 5v14M5 12h14"/></svg>My List</div></div>
+</div></div>
+<div class="dots"><i></i><i></i><i></i><i></i><i></i></div>
+
+<div class="rowhead" style="top:510px"><h2>Continue Watching</h2><span>See all ›</span></div>
+<div class="row" style="top:538px">
+  <div class="pc"><div class="a"><img src="../art/elephants-poster.jpg"><div class="p"><i style="width:22%"></i></div></div><div class="l">8 min left <span>ⓘ</span></div></div>
+  <div class="pc"><div class="a"><img src="../art/spring-poster.jpg"><div class="p"><i style="width:55%"></i></div></div><div class="l">4 min left <span>ⓘ</span></div></div>
+  <div class="pc"><div class="a"><img src="../art/tears-poster.jpg"><div class="p"><i style="width:18%"></i></div></div><div class="l">10 min left <span>ⓘ</span></div></div>
+  <div class="pc"><div class="a"><img src="../art/charge-poster.jpg"><div class="p"><i style="width:70%"></i></div></div><div class="l">2 min left <span>ⓘ</span></div></div>
+</div>
+
+<div class="rowhead" style="top:748px"><h2>Recently Added in Movies</h2><span>See all ›</span></div>
+<div class="row" style="top:776px">
+  <div class="pc bare"><div class="a"><img src="../art/caminandes-poster.jpg"></div></div>
+  <div class="pc bare"><div class="a"><img src="../art/coffeerun-poster.jpg"></div></div>
+  <div class="pc bare"><div class="a"><img src="../art/sintel-poster.jpg"></div></div>
+  <div class="pc bare"><div class="a"><img src="../art/dweebs-poster.jpg"></div></div>
+</div>
+
+<nav class="tabbar glass on-glass">
+  <div class="t on"><svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 3 10.5V21h6.5v-6h5v6H21V10.5z"/></svg>Home</div>
+  <div class="t"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="m8 3 4 4 4-4"/></svg>Series</div>
+  <div class="t"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="11" rx="1.5"/><path d="M3 9 5 4.5h14L21 9M8 4.5 7 9M13 4.5 12 9M18 4.5 17 9"/></svg>Movies</div>
+  <div class="t"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6.5 6.5 0 0 1 11 0"/></svg>My Pleya</div>
+</nav>
+<div class="homebar"></div>
+</body></html>

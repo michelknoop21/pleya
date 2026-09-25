@@ -39,7 +39,7 @@ void main() {
       await expectLater(response.stream.toList(), completion(isEmpty));
     });
 
-    test('closeGracefully can retry after a drain timeout', () async {
+    test('closeGracefully keeps one shutdown deadline after a drain timeout', () async {
       final inner = _DeferredSendClient();
       final client = ManagedHttpClient(inner, debugLabel: 'test');
       addTearDown(() => client.closeGracefully(drainTimeout: Duration.zero));
@@ -47,19 +47,17 @@ void main() {
       final responseFuture = client.send(http.Request('GET', Uri.parse('https://example.test/slow')));
       await Future<void>.delayed(Duration.zero);
 
-      await client.closeGracefully(drainTimeout: const Duration(milliseconds: 1));
+      final firstClose = client.closeGracefully(drainTimeout: const Duration(milliseconds: 1));
+      await firstClose;
       expect(inner.closeCount, 0);
 
-      var retryCompleted = false;
-      final retryClose = client.closeGracefully(drainTimeout: const Duration(seconds: 1));
-      unawaited(retryClose.whenComplete(() => retryCompleted = true));
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      expect(retryCompleted, isFalse);
+      final repeatedClose = client.closeGracefully(drainTimeout: const Duration(seconds: 1));
+      expect(repeatedClose, same(firstClose));
+      await repeatedClose;
 
       inner.completeWithEmptyResponse();
       final response = await responseFuture;
       await response.stream.drain<void>();
-      await retryClose;
 
       expect(inner.closeCount, 1);
     });

@@ -557,6 +557,7 @@ void main() {
 
       final firstLoad = state.loadInitialPageWithStatus(10);
 
+      // Same reset, now while the first load is still in flight.
       // ignore: invalid_use_of_protected_member
       state.setState(() => state.resetPaginationState());
 

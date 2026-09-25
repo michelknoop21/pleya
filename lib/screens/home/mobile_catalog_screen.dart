@@ -48,6 +48,7 @@ import '../../services/unified_catalog/unified_catalog_query_store.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/global_key_utils.dart';
+import '../../utils/language_codes.dart';
 import '../../widgets/app_icon.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/focusable_filter_chip.dart';
@@ -274,6 +275,10 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
   String? _filterSummary(UnifiedCatalogFilterSelection filters) {
     final parts = <String>[];
     if (filters.genres.isNotEmpty) parts.add((filters.genres.toList()..sort()).join(', '));
+    if (filters.audioLanguages.isNotEmpty) {
+      final languages = filters.audioLanguages.map((code) => languageDisplayName(code) ?? code).toList()..sort();
+      parts.add(languages.join(', '));
+    }
     if (filters.years.isNotEmpty) {
       final years = filters.years.toList()..sort();
       parts.add(years.length == 1 ? '${years.first}' : '${years.first}-${years.last}');
@@ -401,51 +406,52 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
     );
   }
 
+  /// Sources, Filters and Sort use the same compact line for Movies and Series.
+  /// Long labels scroll as a group instead of making one catalogue two rows
+  /// high while the other stays one row high.
   Widget _buildChips(BuildContext sheetContext, UnifiedCatalogFilterSelection filters) {
-    return Padding(
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            AutomationNode(
-              id: AutomationIds.catalogChipSources,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: FocusableFilterChip(
-                variant: FilterChipVariant.filled,
-                icon: Symbols.dns_rounded,
-                label: _sourcesLabel(filters),
-                onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
-              ),
+      child: Row(
+        children: [
+          AutomationNode(
+            id: AutomationIds.catalogChipSources,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: FocusableFilterChip(
+              variant: FilterChipVariant.filled,
+              icon: Symbols.dns_rounded,
+              label: _sourcesLabel(filters),
+              onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.servers),
             ),
-            const SizedBox(width: 8),
-            AutomationNode(
-              id: AutomationIds.catalogChipFilters,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: FocusableFilterChip(
-                variant: FilterChipVariant.filled,
-                icon: Symbols.filter_list_rounded,
-                label: t.unifiedCatalog.filters.title,
-                badgeCount: filters.activeCount,
-                onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
-              ),
+          ),
+          const SizedBox(width: 8),
+          AutomationNode(
+            id: AutomationIds.catalogChipFilters,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: FocusableFilterChip(
+              variant: FilterChipVariant.filled,
+              icon: Symbols.filter_list_rounded,
+              label: t.unifiedCatalog.filters.title,
+              badgeCount: filters.activeCount,
+              onPressed: () => _openFilters(sheetContext, initialSection: MobileCatalogFilterSection.status),
             ),
-            const SizedBox(width: 8),
-            AutomationNode(
-              id: AutomationIds.catalogChipSort,
-              instance: widget.kind.automationInstance,
-              role: 'button',
-              child: FocusableFilterChip(
-                variant: FilterChipVariant.filled,
-                icon: Symbols.swap_vert_rounded,
-                label: mobileCatalogSortLabel(_preferences.sort),
-                onPressed: () => _openSort(sheetContext),
-              ),
+          ),
+          const SizedBox(width: 8),
+          AutomationNode(
+            id: AutomationIds.catalogChipSort,
+            instance: widget.kind.automationInstance,
+            role: 'button',
+            child: FocusableFilterChip(
+              variant: FilterChipVariant.filled,
+              icon: Symbols.swap_vert_rounded,
+              label: mobileCatalogSortLabel(_preferences.sort),
+              onPressed: () => _openSort(sheetContext),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -460,9 +466,13 @@ class _MobileCatalogScreenState extends State<MobileCatalogScreen> {
         padding: const EdgeInsets.symmetric(horizontal: mobileRailInset),
         child: Row(
           children: [
-            Text(
-              t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
-              style: TextStyle(color: tokens(context).textMuted),
+            Flexible(
+              child: Text(
+                t.unifiedCatalog.titlesLoaded(count: _catalog.snapshot.groups.length),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: tokens(context).textMuted),
+              ),
             ),
             if (summary != null) ...[
               const Spacer(),

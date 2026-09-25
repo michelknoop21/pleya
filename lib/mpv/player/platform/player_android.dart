@@ -303,8 +303,10 @@ class PlayerAndroid extends PlayerBase {
   /// Sends the *resolved* loudness state to ExoPlayer.
   ///
   /// The native side is `LoudnessAudioProcessor`, which runs the same chain as
-  /// mpv: the programme gain planned here, the optional compressor, and the
-  /// true-peak limiter; realtime mode is its own short-term estimator. Handing
+  /// mpv: the programme gain planned here, the optional compressor, the volume
+  /// boost, and the true-peak limiter; realtime mode is its own short-term
+  /// estimator. The boost travels as dB because ExoPlayer's own volume is
+  /// clamped to unity and cannot carry it. Handing
   /// it the resolved state rather than the request is what keeps
   /// `ExoPlayerCore` from forcing decoded non-tunneled PCM while a bitstream is
   /// running, so the arbitration needs no Kotlin side.
@@ -314,6 +316,7 @@ class PlayerAndroid extends PlayerBase {
       'mode': loudness.mode.name,
       'gainDb': loudness.programmeGainDb,
       'drc': loudness.reduceLoudSounds,
+      'boostDb': loudness.boostDb,
       'profileVersion': AudioLoudness.profileVersion,
     };
     _loudnessPayload = payload;

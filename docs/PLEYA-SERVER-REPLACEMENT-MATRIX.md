@@ -601,7 +601,7 @@ Dit bestand is de bron voor de vraag of iets nog bij het eindproduct hoort. Vier
    status uit hoofdstuk 4, het DEC-nummer waaronder hij is opgenomen en zijn afhankelijkheden. Hij
    telt niet mee in de gate en niet in de telling in 9.1, en dat is het enige verschil.
 
-Zie ook de sectie Pleya Server in [CLAUDE.md](../CLAUDE.md) voor de werkregels per sessie, en
+Zie ook [de Pleya Server-werkregels](agents/server.md) voor de werkregels per sessie, en
 [hoofdstuk 25](pleya-server-architecture.md#25-definition-of-done-pleya-server-als-zelfstandig-mediaserverproduct)
 van de architectuur voor de definitie van "volwaardig".
 

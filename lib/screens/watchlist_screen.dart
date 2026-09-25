@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../widgets/focusable_filter_chip.dart';
 import '../i18n/strings.g.dart';
 import '../media/media_kind.dart';
@@ -22,6 +26,7 @@ import '../widgets/sliver_cross_axis_layout_builder.dart';
 import '../widgets/state_view.dart';
 import '../widgets/watchlist_card.dart';
 import '../widgets/watchlist_item_sheet.dart';
+import '../widgets/watchlist_filter_sheet.dart';
 import '../widgets/watchlist_sort_sheet.dart';
 import '../mixins/refreshable.dart';
 import '../navigation/main_screen_scope.dart';
@@ -30,6 +35,7 @@ import '../media/ids.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
+import '../utils/media_navigation_helper.dart';
 import 'tv/tv_watchlist_view.dart';
 
 /// The full kijklijst.
@@ -115,6 +121,21 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
     final picked = await showWatchlistSortSheet(context, current: _sort);
     if (picked == null || !mounted) return;
     setState(() => _sort = picked);
+  }
+
+  Future<void> _pickFilters() async {
+    final picked = await showWatchlistFilterSheet(context, current: _selection, showAvailable: !_isOffline);
+    if (picked == null || !mounted) return;
+    await _setSelection(picked);
+  }
+
+  Future<void> _activateEntry(WatchlistProvider provider, WatchlistEntry entry) async {
+    final match = entry.lastKnownMatch;
+    if (provider.isPlayable(entry) && match != null) {
+      await navigateToMediaItem(context, match);
+      return;
+    }
+    await _openSheet(provider, entry);
   }
 
   List<WatchlistEntry> _sorted(WatchlistProvider provider) =>
@@ -214,11 +235,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
             child: _FilterBar(
               firstChipFocusNode: _filterBarFocus,
               selection: _selection,
-              // Availability needs live servers, so offline the filter is not
-              // a slower answer but a wrong one. Sorting has no such problem
-              // and stays where it is.
-              showAvailable: !isOffline,
-              onChanged: (chip) => _setSelection(WatchlistFilterSelection.chip(chip)),
+              onFiltersPressed: _pickFilters,
               sort: _sort,
               onSortPressed: _pickSort,
             ),
@@ -267,7 +284,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> implements FocusableT
       sort: _sort,
       onSelectionChanged: _setSelection,
       onSortChanged: (sort) => setState(() => _sort = sort),
-      onActivate: provider == null ? (_) {} : (entry) => _openSheet(provider, entry),
+      onActivate: provider == null ? (_) {} : (entry) => unawaited(_activateEntry(provider, entry)),
+      onContextMenu: provider == null ? (_) {} : (entry) => unawaited(_openSheet(provider, entry)),
       isLoading: provider == null || (provider.isLoading && all.isEmpty),
       coverageComplete: provider?.isComplete ?? true,
       offerAvailability: !isOffline,
@@ -382,8 +400,7 @@ class _FilterBar extends StatefulWidget {
   const _FilterBar({
     required this.firstChipFocusNode,
     required this.selection,
-    required this.showAvailable,
-    required this.onChanged,
+    required this.onFiltersPressed,
     required this.sort,
     required this.onSortPressed,
   });
@@ -393,8 +410,7 @@ class _FilterBar extends StatefulWidget {
   final FocusNode firstChipFocusNode;
 
   final WatchlistFilterSelection selection;
-  final bool showAvailable;
-  final ValueChanged<WatchlistFilterChip> onChanged;
+  final VoidCallback onFiltersPressed;
   final WatchlistSort sort;
   final VoidCallback onSortPressed;
 
@@ -403,124 +419,48 @@ class _FilterBar extends StatefulWidget {
 }
 
 class _FilterBarState extends State<_FilterBar> {
-  final ScrollController _controller = ScrollController();
-  final Map<WatchlistFilterChip, GlobalKey> _chipKeys = {for (final f in WatchlistFilterChip.values) f: GlobalKey()};
-
   /// Matches the grid's own inset, so the first chip lines up with the first
   /// poster instead of starting somewhere of its own.
   static const double _inset = 8;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
-  }
-
-  @override
-  void didUpdateWidget(_FilterBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selection != widget.selection) _revealSelected();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  /// Which chip stands for the selection on screen, or null when the rail set
-  /// something no single chip can express — which cannot happen from this bar,
-  /// but can from the TV rail on a build that shares the state.
-  WatchlistFilterChip? get _selectedChip {
-    for (final chip in WatchlistFilterChip.values) {
-      if (WatchlistFilterSelection.chip(chip) == widget.selection) return chip;
-    }
-    return null;
-  }
-
-  /// Scrolls the active filter fully into view. Without this the selected chip
-  /// could sit off-screen on a phone, and coming back to the tab showed a strip
-  /// that started halfway through a word.
-  void _revealSelected() {
-    if (!mounted || !_controller.hasClients) return;
-    final context = _chipKeys[_selectedChip]?.currentContext;
-    if (context == null) return;
-    Scrollable.ensureVisible(
-      context,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
-      alignment: 0.5,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final options = <(WatchlistFilterChip, String)>[
-      (WatchlistFilterChip.all, t.watchlist.filterAll),
-      (WatchlistFilterChip.movies, t.watchlist.filterMovies),
-      (WatchlistFilterChip.shows, t.watchlist.filterShows),
-      if (widget.showAvailable) (WatchlistFilterChip.available, t.watchlist.filterAvailable),
-    ];
+    final activeCount =
+        (widget.selection.kind == WatchlistKindFilter.all ? 0 : 1) + (widget.selection.availableOnly ? 1 : 0);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        // Chips and sort read as one toolbar: both sit on the same centre line
-        // instead of each carrying its own top padding.
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // The chips scroll and the sort button does not. At 360dp the four
-          // chips no longer fit beside it, and scrolling them is the only
-          // answer that keeps the bar one row high; wrapping would push the
-          // first row of posters down on exactly the screens with the least
-          // room for that.
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _controller,
-              scrollDirection: Axis.horizontal,
-              // Inset on the scroll view, not around it. Around the scrollport
-              // it sits outside the scrollable area, so the first chip ended up
-              // hard against the edge the moment the strip was dragged. There
-              // used to be a fade over the last 12% here as well, which erased
-              // the tail of the final chip and read as a clipped word rather
-              // than as "there is more".
-              padding: const EdgeInsets.symmetric(horizontal: _inset),
-              child: Row(
-                children: [
-                  for (final (value, label) in options)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FocusableFilterChip(
-                        variant: PlatformDetector.isPhone(context)
-                            ? FilterChipVariant.scope
-                            : FilterChipVariant.outlined,
-                        key: _chipKeys[value],
-                        focusNode: value == options.first.$1 ? widget.firstChipFocusNode : null,
-                        label: label,
-                        selected: WatchlistFilterSelection.chip(value) == widget.selection,
-                        onPressed: () => widget.onChanged(value),
-                      ),
-                    ),
-                ],
+      padding: const EdgeInsets.fromLTRB(_inset, 0, _inset, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            AutomationNode(
+              id: AutomationIds.catalogChipFilters,
+              instance: 'watchlist',
+              role: 'button',
+              child: FocusableFilterChip(
+                variant: FilterChipVariant.filled,
+                focusNode: widget.firstChipFocusNode,
+                icon: Symbols.filter_list_rounded,
+                label: t.unifiedCatalog.filters.title,
+                badgeCount: activeCount,
+                onPressed: widget.onFiltersPressed,
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: _inset),
-            // The order is in the label, the way the libraries header shows it.
-            // It used to ride along as a tooltip, and tooltips never open on an
-            // iOS touch, so on a phone there was no way to see what the list
-            // was sorted by.
-            child: FocusableFilterChip(
-              icon: Symbols.sort_rounded,
-              label: t.libraries.sort,
-              value: watchlistSortLabel(widget.sort),
-              variant: FilterChipVariant.text,
-              onPressed: widget.onSortPressed,
+            const SizedBox(width: 8),
+            AutomationNode(
+              id: AutomationIds.catalogChipSort,
+              instance: 'watchlist',
+              role: 'button',
+              child: FocusableFilterChip(
+                icon: Symbols.swap_vert_rounded,
+                label: watchlistSortLabel(widget.sort),
+                variant: FilterChipVariant.filled,
+                onPressed: widget.onSortPressed,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -8,6 +8,8 @@ class MpvPlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler, MpvPluginS
   // MARK: - Properties
 
   private var playerCore: MpvPlayerCore?
+  private var isDisposingPlayer = false
+  private var pendingDisposeResults: [FlutterResult] = []
   var eventSink: FlutterEventSink?
   private weak var registrar: FlutterPluginRegistrar?
   var nameToId: [String: Int] = [:]
@@ -296,6 +298,13 @@ class MpvPlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler, MpvPluginS
         return
       }
 
+      guard !self.isDisposingPlayer else {
+        result(
+          FlutterError(
+            code: "MPV_DISPOSING", message: "Previous player is still shutting down", details: nil))
+        return
+      }
+
       if self.playerCore?.isInitialized == true {
         self.registerSceneActivationObserver()
         result(true)
@@ -338,9 +347,26 @@ class MpvPlayerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler, MpvPluginS
       self.pendingInlineRestoreAfterPip = false
       self.unregisterSceneActivationObserver()
       self.stopPipTimebaseSync()
-      self.playerCore?.dispose(preserveDisplayCriteria: preserveDisplayMode)
-      self.playerCore = nil
-      result(nil)
+      self.pendingDisposeResults.append(result)
+      guard !self.isDisposingPlayer else { return }
+
+      guard let core = self.playerCore else {
+        let results = self.pendingDisposeResults
+        self.pendingDisposeResults.removeAll()
+        results.forEach { $0(nil) }
+        return
+      }
+
+      self.isDisposingPlayer = true
+      core.dispose(preserveDisplayCriteria: preserveDisplayMode) {
+        if self.playerCore === core {
+          self.playerCore = nil
+        }
+        self.isDisposingPlayer = false
+        let results = self.pendingDisposeResults
+        self.pendingDisposeResults.removeAll()
+        results.forEach { $0(nil) }
+      }
     }
   }
 

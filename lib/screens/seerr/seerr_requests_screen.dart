@@ -31,7 +31,12 @@ import '../../models/seerr/seerr_media.dart';
 /// filter chips, page-append pagination, and per-row approve / decline / cancel
 /// actions. Fully d-pad focusable for TV.
 class SeerrRequestsScreen extends StatefulWidget {
-  const SeerrRequestsScreen({super.key});
+  /// [mineOnly] scopes the list to the viewer's own requests, also for a manager. The
+  /// phone's "Mijn aanvragen" header opens it that way; the header must not promise the
+  /// viewer's own requests and then show everyone's.
+  const SeerrRequestsScreen({super.key, this.mineOnly = false});
+
+  final bool mineOnly;
 
   @override
   State<SeerrRequestsScreen> createState() => _SeerrRequestsScreenState();
@@ -46,6 +51,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   int _totalPages = 1;
   bool _loading = true;
   bool _loadingMore = false;
+  bool _loadMoreFailed = false;
   bool _initialized = false;
   String? _error;
 
@@ -115,8 +121,9 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     }
     // A non-manager may only see their own requests; without a known userId
     // a null requestedBy would return everyone's requests (privacy leak).
-    final requestedBy = provider.canManageRequests ? null : provider.session?.userId;
-    if (!provider.canManageRequests && requestedBy == null) {
+    final ownOnly = widget.mineOnly || !provider.canManageRequests;
+    final requestedBy = ownOnly ? provider.session?.userId : null;
+    if (ownOnly && requestedBy == null) {
       setState(() {
         _items = const [];
         _loading = false;
@@ -132,6 +139,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         _error = null;
       } else {
         _loadingMore = true;
+        _loadMoreFailed = false;
       }
     });
     try {
@@ -143,6 +151,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
         _totalPages = result.totalPages;
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = false;
         _error = null;
       });
 
@@ -161,6 +170,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       setState(() {
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = !reset;
         _error = _errorText(e);
       });
     } catch (_) {
@@ -168,6 +178,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
       setState(() {
         _loading = false;
         _loadingMore = false;
+        _loadMoreFailed = !reset;
         _error = t.seerr.errorGeneric;
       });
     }
@@ -175,7 +186,9 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
 
   Future<void> _loadCounts() async {
     final client = context.read<SeerrProvider>().client;
-    if (client == null) return;
+    // The counts endpoint has no requester filter: next to the viewer's own list they would
+    // be everyone's, so that list shows its tabs without a number.
+    if (client == null || widget.mineOnly) return;
     final counts = await client.getRequestCounts();
     if (mounted) setState(() => _counts = counts);
   }
@@ -251,7 +264,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     if (PlatformDetector.isTV()) return _buildTv(canManage);
 
     return FocusedScrollScaffold(
-      title: Text(canManage ? t.seerr.allRequests : t.seerr.myRequests),
+      title: Text(canManage && !widget.mineOnly ? t.seerr.allRequests : t.seerr.myRequests),
       slivers: [
         SliverToBoxAdapter(child: _filterRow()),
         SliverToBoxAdapter(child: _discoverBar()),
@@ -269,7 +282,7 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   Widget _buildTv(bool canManage) {
     return TvSeerrRequestsView(
       key: _tvKey,
-      title: canManage ? t.seerr.allRequests : t.seerr.myRequests,
+      title: canManage && !widget.mineOnly ? t.seerr.allRequests : t.seerr.myRequests,
       requests: _items,
       filter: _filter,
       onFilterChanged: _onFilter,
@@ -439,8 +452,15 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
     final showLoadMore = _page < _totalPages && !_loading;
     return [
       SliverList.builder(
-        itemCount: _items.length,
+        itemCount: _items.length + (showLoadMore ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == _items.length) {
+            return SeerrAutoLoadMoreListTile(
+              loading: _loadingMore,
+              failed: _loadMoreFailed,
+              onLoadMore: () => unawaited(_load()),
+            );
+          }
           final req = _items[index];
           final isOwn = ownUserId != null && req.requestedById == ownUserId;
           final actionable = canManage && req.isPending;
@@ -452,16 +472,6 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           );
         },
       ),
-      if (showLoadMore)
-        SliverToBoxAdapter(
-          child: FocusableListTile(
-            leading: _loadingMore
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const AppIcon(Symbols.expand_more_rounded),
-            title: Text(t.seerr.loadMore),
-            onTap: _loadingMore ? null : () => _load(),
-          ),
-        ),
     ];
   }
 
@@ -473,6 +483,46 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
           child: Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
         ),
       ),
+    );
+  }
+}
+
+/// Starts the next request page when its trailing row enters the viewport.
+/// A failed attempt becomes an explicit retry action and never loops by itself.
+class SeerrAutoLoadMoreListTile extends StatefulWidget {
+  const SeerrAutoLoadMoreListTile({super.key, required this.loading, required this.failed, required this.onLoadMore});
+
+  final bool loading;
+  final bool failed;
+  final VoidCallback onLoadMore;
+
+  @override
+  State<SeerrAutoLoadMoreListTile> createState() => _SeerrAutoLoadMoreListTileState();
+}
+
+class _SeerrAutoLoadMoreListTileState extends State<SeerrAutoLoadMoreListTile> {
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.loading && !widget.failed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onLoadMore();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.failed) {
+      return FocusableListTile(
+        leading: const AppIcon(Symbols.refresh_rounded),
+        title: Text(t.common.retry),
+        onTap: widget.onLoadMore,
+      );
+    }
+    return const Padding(
+      padding: EdgeInsets.all(20),
+      child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
     );
   }
 }

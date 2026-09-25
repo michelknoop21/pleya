@@ -59,6 +59,30 @@ class LoudnessDspTest {
   }
 
   @Test
+  fun theBoostIsAGainStageUnderTheCeiling() {
+    // 150% read linearly is +3,52 dB, and it stacks on the programme gain.
+    val dsp = LoudnessDsp(rate, 2)
+    val buf = tone(1.0, 0.05)
+    val before = rms(buf)
+    dsp.process(buf, buf.size / 2, programme(6.0).copy(boostDb = 3.52))
+    val ratio = rms(buf, 2 * 1000) / before
+    assertEquals(LoudnessDsp.dbToLin(9.52), ratio, 0.02)
+  }
+
+  @Test
+  fun theLimiterStillHoldsAboveTheBoost() {
+    // The boost is applied before the limiter, so a loud source plus a boost
+    // lands under the ceiling instead of clipping the output.
+    val dsp = LoudnessDsp(rate, 2)
+    val buf = tone(2.0, 0.9, freq = rate / 4.0, phase = PI / 4)
+    dsp.process(buf, buf.size / 2, programme(0.0).copy(boostDb = 9.54))
+    var samplePeak = 0.0
+    for (i in rate until buf.size) samplePeak = max(samplePeak, abs(buf[i].toDouble()))
+    val truePeak = samplePeak * sqrt(2.0)
+    assertTrue("true peak $truePeak over the ceiling", truePeak <= LoudnessDsp.dbToLin(-2.0) * 1.02)
+  }
+
+  @Test
   fun ceilingHoldsOnIntersamplePeaks() {
     // fs/4 at 45 degrees: every sample sits at 0,707 of the waveform peak, so
     // a sample-peak limiter would let the true peak through 3 dB high. For a

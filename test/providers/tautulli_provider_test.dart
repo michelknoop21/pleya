@@ -2,7 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/item_watcher.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/tautulli_provider.dart';
+import 'package:pleya/services/item_watchers_service.dart';
+import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/tautulli/tautulli_account_store.dart';
 import 'package:pleya/services/tautulli/tautulli_constants.dart';
 import 'package:pleya/services/tautulli/tautulli_integration_store.dart';
@@ -12,6 +18,20 @@ import 'package:pleya/services/tautulli/tautulli_session.dart';
 import '../test_helpers/prefs.dart';
 
 const _machine = 'pms-1';
+
+/// Plex history for one title, the fallback behind the "Watched by" row.
+class _PlexWithHistory implements PlexClient {
+  final asked = <String>[];
+
+  @override
+  Future<List<PlexWatcherRow>> fetchItemWatchers(String ratingKey, {String? authToken}) async {
+    asked.add(ratingKey);
+    return const [(accountId: 7, displayName: 'Robin', thumbUrl: null, viewedAt: 1700000000)];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 TautulliSession _session({String url = 'https://tautulli.example', String token = 'tok', String? id = _machine}) =>
     TautulliSession(baseUrl: url, authMode: TautulliAuthMode.device, token: token, machineIdentifier: id);
@@ -44,6 +64,50 @@ void main() {
       );
 
   group('who sees what', () {
+    test('the admin client is only handed out for the server Tautulli monitors', () async {
+      await seedIntegration();
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      expect(p.client, isNotNull, reason: 'the admin surface still has its client');
+      expect(p.clientForServer(ServerId(_machine)), isNotNull);
+      expect(p.clientForServer(ServerId('pms-2')), isNull, reason: 'rating keys on pms-2 are a different id space');
+      expect(p.monitoredServerId, ServerId(_machine));
+    });
+
+    test('without a pairing there is no monitored server and no client for any server', () async {
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      expect(p.monitoredServerId, isNull);
+      expect(p.clientForServer(ServerId(_machine)), isNull);
+      expect(p.clientForServer(ServerId('pms-2')), isNull);
+    });
+
+    // The detail page on the second server, from provider to rendered roster:
+    // what _loadWatchers hands ItemWatchersService for an item on pms-2.
+    test('a title on the unmonitored server gets its watchers from Plex, not an empty row', () async {
+      await seedIntegration();
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      final plex = _PlexWithHistory();
+      final onB = MediaItem(id: '57752', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 'pms-2');
+
+      // Handing pms-1's client here was the bug: a successful empty Tautulli
+      // answer is final and suppresses the Plex fallback.
+      final tautulli = p.clientForServer(ServerId(onB.serverId!));
+      expect(tautulli, isNull);
+
+      final result = await const ItemWatchersService().resolve(
+        onB,
+        tautulli: tautulli,
+        plex: plex,
+        plexOwnerToken: 'owner',
+      );
+
+      expect(plex.asked, ['57752'], reason: 'Tautulli must not answer for pms-2, so Plex is asked');
+      expect(result.watchers.map((w) => w.displayName), ['Robin']);
+      expect(result.scope, ItemWatchersScope.watched);
+    });
+
     test('an admin profile gets the full admin surface', () async {
       await seedIntegration();
       final p = await provider();

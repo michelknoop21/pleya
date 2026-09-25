@@ -1,0 +1,70 @@
+name: tvos.player.osd
+target: tvos-sim
+# MOC-18 (Speler-OSD): the controls the player opens with on TV, and what Menu
+# does to them. The walk into the player is the one `tvos.player.panel` uses.
+#
+# What this proves:
+#   1. the player opens with its controls up and play/pause focused, and Select
+#      on it really pauses (`player.play_pause.state.playing` mirrors the icon);
+#   2. the title block, the timeline and the title-safe rect are on screen;
+#   3. Menu with the controls up hides them (focus leaves play/pause) and does
+#      not leave the player; UP brings them back with play/pause focused.
+#
+# The fixture clip lasts fifteen seconds, so pausing is the first thing the
+# scenario does. The bottom-row entry points into the panel are proven by
+# `tvos.player.panel`, the bron line under the title (`TvQualitySummaryLine`)
+# only by the screenshot: it carries no automation id.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - wait_until: {id: discover.hero, timeout: 15000}
+  - press: down
+  - settle: 800
+  - press: down
+  - settle: 800
+  - press: select
+  - wait_until: {id: screen.media_detail, timeout: 20000}
+  - settle: 1500
+  - press: select
+  - wait_until: {id: player.surface, timeout: 25000}
+
+  # Controls up, play/pause under the ring; Select pauses.
+  # No wait for the ring first: an idb press takes one to two seconds to land,
+  # and the clip was two seconds long, so a press sent after polling for the
+  # focus arrived when mpv had already ended (run of 23 September). The clip
+  # is fifteen seconds since VER7; the press still goes out first and lands on
+  # play/pause, which the next asserts check.
+  - settle: 200
+  - press: select
+  - settle: 500
+  - assert: {id: player.play_pause, focused: true, state: {playing: false}}
+  - assert: {id: player.title, insideViewport: true}
+  - assert: {id: player.timeline, insideViewport: true}
+  - assert: {id: player.timeline, below: player.title}
+  - assert: {id: player.settings_button, insideViewport: true}
+  - assert: {id: player.settings_button, sameRow: player.play_pause}
+  - snapshot: 01-osd-paused
+
+  # Menu with the controls up hides them and stays in the player.
+  - press: menu
+  - settle: 800
+  - assert: {id: player.play_pause, focused: false}
+  - assert: {id: player.play_pause, state: {playing: false}}
+  # No snapshot here: with the bar gone the frame is the fixture clip alone, a
+  # single flat colour, and the runner rightly refuses that as a blank capture.
+
+  # UP shows them again with play/pause focused.
+  - press: up
+  - settle: 500
+  - assert: {id: player.play_pause, focused: true}
+  - assert: {id: player.title, insideViewport: true}
+  - snapshot: 03-osd-shown-again
+
+  # Not asserted: resuming. The clip has under a second left at this point, so
+  # a resumed player reaches its end and returns to the detail page before the
+  # next poll can read `playing: true` (run of 23 September).

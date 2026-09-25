@@ -34,6 +34,7 @@ import 'package:pleya/services/unified_catalog/unified_catalog_query_store.dart'
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
+import 'package:pleya/widgets/focusable_filter_chip.dart';
 import 'package:pleya/widgets/mobile/mobile_catalog_sort_sheet.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
 import 'package:provider/provider.dart';
@@ -171,8 +172,10 @@ void main() {
     WidgetTester tester, {
     MobileCatalogKind kind = MobileCatalogKind.movies,
     bool useEmpty = false,
+    double width = 393,
+    double textScale = 1,
   }) async {
-    tester.view.physicalSize = const Size(393, 852);
+    tester.view.physicalSize = Size(width, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -184,6 +187,10 @@ void main() {
         ],
         child: MaterialApp(
           theme: monoTheme(dark: true),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           home: OverlaySheetHost(
             child: MobileCatalogScreen(
               kind: kind,
@@ -257,10 +264,9 @@ void main() {
     await tester.pump();
   }
 
-  /// Taps [finder], scrolling the chip row into view first: three chips at
-  /// full label width do not all fit inside a 393pt viewport, so the row
-  /// scrolls horizontally the same way the mockup's own chip row would on a
-  /// real phone.
+  /// Taps [finder]. The `ensureVisible` is a no-op for the chip row itself,
+  /// which fits the viewport by construction, and is kept for the chips that
+  /// a sheet puts inside a scrollable.
   Future<void> tapChip(WidgetTester tester, Finder finder) async {
     await tester.ensureVisible(finder);
     await tester.pump();
@@ -287,6 +293,7 @@ void main() {
     await tapChip(tester, find.text(t.unifiedCatalog.filters.title));
     await tester.pumpAndSettle();
     expect(find.text(t.unifiedCatalog.filters.genre), findsOneWidget, reason: 'the Filters chip must open its sheet');
+    expect(find.text(t.libraries.filterCategories.audioLanguage), findsOneWidget);
     await tester.tap(find.text(t.unifiedCatalog.filters.apply));
     await settle(tester);
 
@@ -385,6 +392,63 @@ void main() {
     await settle(tester);
 
     expect(find.text(mobileCatalogSortLabel(UnifiedCatalogSort.recentlyAdded)), findsOneWidget);
+  });
+
+  testWidgets('long catalog controls stay on one horizontally scrollable line', (tester) async {
+    await tester.runAsync(
+      () => UnifiedCatalogQueryStore.write(
+        MediaKind.movie,
+        UnifiedCatalogPreferences.defaults.copyWith(sort: UnifiedCatalogSort.recentlyAdded),
+      ),
+    );
+
+    const width = 393.0;
+    await pumpCatalog(tester, width: width);
+    await settle(tester);
+
+    final chips = tester.widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip)).toList();
+    final tops = chips.map((chip) => tester.getTopLeft(find.byWidget(chip)).dy).toSet();
+    expect(tops, hasLength(1), reason: 'Movies and Series use one compact control line');
+
+    final scroller = find.ancestor(
+      of: find.byType(FocusableFilterChip).first,
+      matching: find.byType(SingleChildScrollView),
+    );
+    expect(scroller, findsOneWidget);
+
+    final first = find.byWidget(chips.first);
+    final before = tester.getTopLeft(first).dx;
+    await tester.drag(scroller, const Offset(-80, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(first).dx, lessThan(before));
+  });
+
+  testWidgets('every chip stays within the screen at large accessibility text scales', (tester) async {
+    const width = 393.0;
+    await pumpCatalog(tester, width: width, textScale: 3);
+    await settle(tester);
+
+    expect(tester.takeException(), isNull);
+    final tops = tester
+        .widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))
+        .map((chip) => tester.getTopLeft(find.byWidget(chip)).dy)
+        .toSet();
+    expect(tops, hasLength(1));
+  });
+
+  // The other half of the same rule: wrapping is what happens when there is no
+  // room, not a second line the screen grows by default. Series' short labels
+  // (`1 bron`, `Recent bekeken`) stay on one line, and so does everything else
+  // that fits.
+  testWidgets('chips that fit stay on a single line', (tester) async {
+    await pumpCatalog(tester, width: 1200);
+    await settle(tester);
+
+    final tops = tester
+        .widgetList<FocusableFilterChip>(find.byType(FocusableFilterChip))
+        .map((chip) => tester.getTopLeft(find.byWidget(chip)).dy)
+        .toSet();
+    expect(tops, hasLength(1));
   });
 
   testWidgets('a stored library restriction naming a library that no longer exists is dropped on open', (tester) async {

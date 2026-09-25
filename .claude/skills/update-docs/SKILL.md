@@ -156,8 +156,8 @@ Dat leest dezelfde sectie uit `docs/RELEASES.md` die je zojuist geschreven hebt 
 "What to Test" op alle drie de platforms. De lane is idempotent, dus opnieuw draaien na een
 correctie kan gewoon.
 
-De pre-push hook draait `gen_release_notes.sh` nog een keer. Schrijft hij iets, dan commit hij
-dat en breekt de push af met de melding om opnieuw te pushen. Dat is bedoeld gedrag: git heeft
-de te pushen refs al vastgesteld voordat de hook draaide.
+De pre-push hook draait sinds 23 september 2026 alleen nog `gen_release_notes.sh --check`: hij
+schrijft niets, commit niets en blokkeert de push niet, hij meldt hooguit dat `docs/RELEASES.md`
+achterloopt. Deze skill blijft de plek waar het bijwerken echt gebeurt.
 
 Er wordt geen Dart aangeraakt, dus `dart run slang` en `flutter analyze` zijn hier niet nodig.

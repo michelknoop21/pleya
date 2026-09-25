@@ -1,8 +1,7 @@
 <script lang="ts">
   import '../docs/docs.css';
-  import DocsBar from '$lib/components/DocsBar.svelte';
+  import TopNav from '$lib/components/TopNav.svelte';
   import Footer from '$lib/components/Footer.svelte';
-  import NoiseOverlay from '$lib/components/NoiseOverlay.svelte';
   import type { SectionKind } from '$lib/server/releases';
   import type { PageData } from './$types';
 
@@ -63,8 +62,7 @@
 </svelte:head>
 
 <div class="docs">
-  <NoiseOverlay />
-  <DocsBar />
+  <TopNav sticky />
 
   <main class="docs-shell">
     <div class="docs-lede">

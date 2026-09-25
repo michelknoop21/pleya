@@ -373,10 +373,15 @@ class TvBrowseRailLayout {
     double tallPosterScale = 1.0,
     double widePosterScale = 1.0,
     bool includeNextHubPeek = true,
+    // The scale the rail renders at, `TvLayoutConstants.scaleOf` of its
+    // context (SYS-3c). A nested route's `size` is its content box, shorter
+    // than the panel, so deriving the scale from it reserves less than the
+    // rail draws (SYS-3d/SYS-3e). Omitted, it falls back to the box.
+    double? scale,
   }) {
     if (hubs.isEmpty) return 0;
 
-    final scale = scaleForSize(size);
+    scale ??= scaleForSize(size);
     final availableWidth = size.width - horizontalInsetForScale(scale);
     if (availableWidth <= 0) return 0;
 
@@ -410,7 +415,7 @@ class TvBrowseRail extends StatefulWidget {
 
   /// Optional per-hub leading icon. When null, headers render text-only
   /// (Netflix-style home). Other callers still pass an icon.
-  final IconData Function(MediaHub hub, int index)? iconForHub;
+  final IconData? Function(MediaHub hub, int index)? iconForHub;
 
   /// Whether to show each hub's originating server name in its header. Used when
   /// the loaded hubs span more than one connected server so their origin stays
@@ -1555,7 +1560,15 @@ class TvBrowseRailState extends State<TvBrowseRail> {
   Widget _wrapHubRailForAutomation({required MediaHub hub, required int hubIndex, required Widget child}) {
     final id = widget.automationIdForHub?.call(hub, hubIndex);
     if (id == null) return child;
-    return AutomationNode(id: id, role: 'list', state: () => {'child_count': hub.items.length}, child: child);
+    // The rail is one focus node over virtual cards, so `focused` on a hub's
+    // id means "the rail holds focus and this is its active hub".
+    return AutomationNode(
+      id: id,
+      role: 'list',
+      focusNode: hubIndex == _hubIndex ? _focusNode : null,
+      state: () => {'child_count': hub.items.length},
+      child: child,
+    );
   }
 
   Widget _buildHubRail({

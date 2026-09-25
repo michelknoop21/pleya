@@ -57,6 +57,7 @@ class TvWatchlistCard extends StatelessWidget {
     required this.entry,
     required this.width,
     required this.onSelect,
+    this.onContextMenu,
     this.clientFor,
     this.focusNode,
     this.onNavigateUp,
@@ -69,9 +70,12 @@ class TvWatchlistCard extends StatelessWidget {
   final WatchlistEntry entry;
   final double width;
 
-  /// Opens the kijklijst item sheet — request, remove, cancel. The card
-  /// navigates nowhere itself.
+  /// Opens the normal detail page when the title is playable, or the
+  /// kijklijst item sheet while it is unavailable.
   final VoidCallback onSelect;
+
+  /// Opens kijklijst actions such as removing the title.
+  final VoidCallback? onContextMenu;
 
   /// Resolves the client that can sign a resolved match's artwork. Only used
   /// when the entry carries no catalogue poster of its own.
@@ -101,6 +105,7 @@ class TvWatchlistCard extends StatelessWidget {
       title: entry.item.displayTitle,
       meta: tvCatalogMetaLine(entry.item),
       onSelect: onSelect,
+      onContextMenu: onContextMenu,
       focusNode: focusNode,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,

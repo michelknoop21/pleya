@@ -71,7 +71,7 @@ extension _PlexVideoControlsVisibilityMethods on _PlexVideoControlsState {
       _cancelAutoSkipFromUserInteraction();
       final delta = event.scrollDelta.dy;
       final volume = widget.player.state.volume;
-      final maxVol = _keyboardService!.maxVolume.toDouble();
+      final maxVol = kNormalVolumeMax.toDouble();
       final newVolume = (volume - delta / 20).clamp(0.0, maxVol);
       widget.player.setVolume(newVolume);
       unawaited(SettingsService.getInstance().then((s) => s.write(SettingsService.volume, newVolume)));

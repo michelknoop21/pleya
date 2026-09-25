@@ -44,8 +44,10 @@ ul {
   margin: 0;
 }
 
+/* No scroll-behavior: smooth here. It turns SvelteKit's scroll reset on
+   navigation into an animation that Lenis on the next page interrupts, so a
+   page could open halfway down. Lenis does the smoothing where there is motion. */
 html {
-  scroll-behavior: smooth;
   background-color: var(--color-bg);
   color: var(--color-text);
 }
@@ -174,18 +176,6 @@ ul {
     0 8px 32px rgba(0, 0, 0, 0.3),
     0 0 0 1px var(--color-accent-glow),
     0 0 40px -12px var(--color-accent-glow);
-}
-
-/* Noise overlay texture */
-.noise-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 50;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
 }
 
 /* Scroll indicator */

@@ -64,9 +64,15 @@ sealed class LibraryQuery with _$LibraryQuery {
     /// take multiple values (Jellyfin) AND/intersect; those that take one
     /// (Plex's existing flow) consult `filters` instead.
     List<String>? genres,
+    List<String>? audioLanguages,
     List<String>? officialRatings,
     List<int>? years,
     List<String>? tags,
+
+    /// Ask for the taste fields (genres, studio) as well. Only the candidate
+    /// pool of the recommendations sets it; Jellyfin leaves them off every
+    /// other library page because they are slow on large libraries.
+    @Default(false) bool withTasteFields,
   }) = _LibraryQuery;
 }
 

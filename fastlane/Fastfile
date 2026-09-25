@@ -557,8 +557,15 @@ def git_commit_define
   " --dart-define=GIT_COMMIT=#{sha}"
 end
 
+# Oude Verify-bundels en Pleya-archives opruimen vóór een nieuwe build
+# (PLEYA_KEEP_BUILDS=1 slaat over).
+def prune_old_builds
+  sh(File.join(PROJECT_ROOT, "scripts/prune_old_builds.sh"))
+end
+
 desc "iOS → TestFlight"
 lane :ios_beta do
+  prune_old_builds
   build_number = ensure_build_number("ios")
   flutter_sh("flutter build ios --config-only --release#{git_commit_define}")
   patch_spm_min_ios
@@ -575,6 +582,7 @@ end
 
 desc "tvOS → TestFlight"
 lane :tvos_beta do
+  prune_old_builds
   build_number = ensure_build_number("appletvos")
   flutter_sh("flutter pub get")
   # tvOS bouwt op een eigen engine-fork (edde746/flutter-tvos) uit
@@ -588,6 +596,10 @@ lane :tvos_beta do
   # en herschrijft Generated.xcconfig — daarom ná ensure_build_number, want het
   # neemt het buildnummer uit pubspec.yaml over.
   sh("cd #{PROJECT_ROOT} && PLEYA_GIT_COMMIT=$(git rev-parse --short HEAD) tvos/scripts/fetch_engine.sh")
+  # Op een verse worktree ontbreekt tvos/Pods; de archive faalt dan op een
+  # ontbrekende xcfilelist. pod install kan pas na fetch_engine.sh, dat
+  # Generated.xcconfig schrijft waar de Podfile op leunt.
+  sh("cd #{PROJECT_ROOT} && tvos/scripts/pod_install.sh") unless Dir.exist?(File.join(PROJECT_ROOT, "tvos/Pods"))
   build_app(
     workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
     scheme: "Runner",
@@ -600,8 +612,94 @@ lane :tvos_beta do
   attach_after_upload("appletvos", build_number)
 end
 
+# Release-identiteit volgens docs/unified-2026-closure.md §7-§8: één archive
+# per release, en exact die archive gaat de hardware-eindronde in en daarna naar
+# TestFlight. tvos_beta bouwt en uploadt in één stap, dus daar bestaat geen
+# geaccepteerde archive om te uploaden. Deze drie lanes splitsen dat.
+TVOS_ARCHIVE_DIR = File.join(PROJECT_ROOT, "build/fastlane/tvos")
+
+# SHA-256 over de inhoud van een .xcarchive: elk bestand op relatief pad,
+# gesorteerd, zodat dezelfde archive altijd dezelfde hash geeft.
+def archive_hash(archive)
+  sh("cd #{archive.shellescape} && find . -type f -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256 | cut -d' ' -f1", log: false).strip
+end
+
+def verified_tvos_archive(options)
+  archive = options[:archive] || UI.user_error!("Geef archive:<pad naar .xcarchive> mee")
+  archive = File.expand_path(archive, PROJECT_ROOT)
+  UI.user_error!("Archive bestaat niet: #{archive}") unless File.directory?(archive)
+  recorded = File.read("#{archive}.sha256").strip rescue UI.user_error!("Geen #{archive}.sha256 naast de archive")
+  actual = archive_hash(archive)
+  UI.user_error!("Archive gewijzigd: hash #{actual} ≠ vastgelegd #{recorded}") unless actual == recorded
+  archive
+end
+
+def archive_build_number(archive)
+  sh("/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleVersion' #{File.join(archive, 'Info.plist').shellescape}", log: false).strip
+end
+
+desc "tvOS: bouw de release-archive (geen upload), met hash"
+lane :tvos_archive do
+  dirty = sh("cd #{PROJECT_ROOT} && git status --porcelain --untracked-files=no", log: false).strip
+  UI.user_error!("Werkboom niet schoon; de archive moet exact een commit zijn:\n#{dirty}") unless dirty.empty?
+  build_number = ensure_build_number("appletvos")
+  unless sh("cd #{PROJECT_ROOT} && git status --porcelain --untracked-files=no", log: false).strip.empty?
+    UI.user_error!("pubspec.yaml is opgehoogd naar #{build_number}. Commit en merge dat eerst, en draai deze lane dan opnieuw op die SHA.")
+  end
+  prune_old_builds
+  sh("cd #{PROJECT_ROOT} && tvos/scripts/fetch_engine.sh")
+  sha = sh("cd #{PROJECT_ROOT} && git rev-parse HEAD", log: false).strip
+  archive = File.join(TVOS_ARCHIVE_DIR, "Pleya-tvOS-#{build_number}-#{sha[0, 8]}.xcarchive")
+  build_app(
+    workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
+    scheme: "Runner",
+    configuration: "Release",
+    destination: "generic/platform=tvOS",
+    archive_path: archive,
+    skip_package_ipa: true,
+    xcargs: auth_xcargs,
+  )
+  hash = archive_hash(archive)
+  File.write("#{archive}.sha256", "#{hash}\n")
+  UI.success("Archive: #{archive}\nSHA: #{sha}\nBuild: #{build_number}\nSHA-256: #{hash}")
+end
+
+desc "tvOS: development-export uit een bestaande archive, voor devicectl"
+lane :tvos_device_export do |options|
+  archive = verified_tvos_archive(options)
+  build_app(
+    # gym still resolves the project for an export-only run.
+    workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
+    scheme: "Runner",
+    skip_build_archive: true,
+    archive_path: archive,
+    export_method: "development",
+    output_directory: File.join(TVOS_ARCHIVE_DIR, "device"),
+    xcargs: auth_xcargs,
+  )
+end
+
+desc "tvOS → TestFlight uit een bestaande, geaccepteerde archive (geen compilatie)"
+lane :tvos_upload do |options|
+  archive = verified_tvos_archive(options)
+  build_number = archive_build_number(archive)
+  build_app(
+    # gym still resolves the project for an export-only run.
+    workspace: File.join(PROJECT_ROOT, "tvos/Runner.xcworkspace"),
+    scheme: "Runner",
+    skip_build_archive: true,
+    archive_path: archive,
+    export_method: "app-store",
+    output_directory: File.join(TVOS_ARCHIVE_DIR, "upload"),
+    xcargs: auth_xcargs,
+  )
+  upload_beta(app_platform: "appletvos")
+  attach_after_upload("appletvos", build_number)
+end
+
 desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
+  prune_old_builds
   build_number = ensure_build_number("osx")
   flutter_sh("flutter build macos --config-only --release#{git_commit_define}")
   # Buildnummer/-naam expliciet aan xcodebuild meegeven: DerivedData herprocesst

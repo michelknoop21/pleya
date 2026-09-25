@@ -26,7 +26,7 @@ for arg in "$@"; do
   case "$arg" in
     --strict) STRICT=1 ;;
     --quiet) QUIET=1 ;;
-    -h|--help) sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "check_hooks_installed: onbekende optie: $arg" >&2; exit 64 ;;
   esac
 done
@@ -46,6 +46,18 @@ if [ -z "$configured" ]; then
   problem="core.hooksPath staat niet ingesteld"
 elif [ "$configured" != ".githooks" ]; then
   problem="core.hooksPath staat op '$configured' in plaats van '.githooks'"
+  # Een absoluut pad is het geval dat het meest misleidt. Het staat in de
+  # gedeelde .git/config, dus het geldt voor elke worktree tegelijk, en die
+  # draaien dan allemaal de hooks van die ene checkout op de branch die daar
+  # toevallig uitstaat. De hooks lijken dus aan te staan en doen ook iets, alleen
+  # niet wat er in deze worktree op schijf staat.
+  # `~/...` hoort er ook bij: git expandeert die tilde zelf, maar `--get` geeft
+  # de letterlijke string terug, dus op '/' alleen matchen mist precies dat geval.
+  case "$configured" in
+    /*|'~'|'~'/*)
+      problem="$problem; een absoluut pad geldt voor elke worktree, dus hier draaien de hooks van een andere checkout"
+      ;;
+  esac
 else
   for hook in pre-commit pre-push; do
     if [ ! -x "$ROOT/.githooks/$hook" ]; then
@@ -63,7 +75,7 @@ if [ "$QUIET" != 1 ]; then
   git-hooks staan niet aan: $problem
 
     pre-commit  draait de CI-gate voordat je commit
-    pre-push    houdt docs/RELEASES.md bij met de commits sinds de laatste build
+    pre-push    meldt het wanneer docs/RELEASES.md achterloopt; hij schrijft niets
 
   Aanzetten:  scripts/setup_hooks.sh
   Bewust uit? Draai dan zelf scripts/ci_checks.sh vóór een commit en

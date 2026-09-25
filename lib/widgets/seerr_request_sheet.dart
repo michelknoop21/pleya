@@ -99,8 +99,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         _servers = _isTv ? await client.getSonarrServers() : await client.getRadarrServers();
         // Open on the server Overseerr would have used, so the profile list has
         // something to show without the user first having to pick a server.
-        final preferred = _servers.where((s) => s.is4k == _is4k && s.isDefault).firstOrNull ?? _servers.firstOrNull;
-        if (preferred != null) _serverId = preferred.id;
+        _serverId = preferredSeerrServer(_servers, is4k: _is4k)?.id;
       }
       if (mounted) setState(() => _loading = false);
       if (_serverId != null) unawaited(_loadServerDetail(_serverId!));
@@ -241,12 +240,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
                     child: Text(quotaText, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
                   ),
                 if (_isTv) ..._buildSeasonList(theme),
-                if (provider.canRequest4k)
+                if (provider.canRequest4kFor(isMovie: !_isTv))
                   FocusableListTile(
                     leading: const AppIcon(Symbols.high_quality_rounded, fill: 1),
                     title: Text(t.seerr.fourK),
-                    trailing: Switch(value: _is4k, onChanged: (v) => setState(() => _is4k = v)),
-                    onTap: () => setState(() => _is4k = !_is4k),
+                    trailing: Switch(value: _is4k, onChanged: _setIs4k),
+                    onTap: () => _setIs4k(!_is4k),
                   ),
                 if (provider.isAdmin && _servers.isNotEmpty) ..._buildAdvanced(theme),
               ],
@@ -369,17 +368,39 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     );
   }
 
-  void _selectServer(SeerrServiceServer server) {
-    if (_serverId == server.id) return;
+  /// Flip the 4K request and re-point the target at an instance of that kind.
+  ///
+  /// 4K lives on its own Radarr/Sonarr instance, so the flag and the server are
+  /// one choice, not two. Leaving the server on what was picked while the flag
+  /// was still off submitted `is4k: true` with the SD instance's id, and an
+  /// explicit id overrides Overseerr's own (correct) default lookup outright.
+  void _setIs4k(bool value) {
+    if (_is4k == value) return;
+    setState(() => _is4k = value);
+    _bindServer(preferredSeerrServer(_servers, is4k: value)?.id);
+  }
+
+  void _selectServer(SeerrServiceServer server) => _bindServer(server.id);
+
+  /// Point the request at [serverId] and drop everything that described the
+  /// previous one. A null id means "no opinion": Overseerr then applies its own
+  /// default rule instead of being handed a server of the wrong kind.
+  void _bindServer(int? serverId) {
+    if (_serverId == serverId) return;
     setState(() {
-      _serverId = server.id;
+      _serverId = serverId;
       // The old server's profiles say nothing about the new one.
       _profiles = const [];
       _rootFolders = const [];
       _profileId = null;
       _rootFolder = null;
+      // A load still running for the previous server returns through the stale
+      // guard in [_loadServerDetail] without touching this flag, so binding to
+      // nothing has to clear it here or the spinner never stops. Binding to a
+      // server sets it again on the next line.
+      _loadingServerDetail = false;
     });
-    unawaited(_loadServerDetail(server.id));
+    if (serverId != null) unawaited(_loadServerDetail(serverId));
   }
 
   /// Loads one server's profiles and root folders, seeded on that server's own

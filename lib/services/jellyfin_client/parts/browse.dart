@@ -52,6 +52,16 @@ const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,Origi
 /// queries because it is the heaviest item field Jellyfin returns.
 const _episodeRowFields = '$_browseFields,MediaSources';
 
+/// Candidate pool and Similar: genres and studio, so a Jellyfin candidate can
+/// fill a genre row and be scored on taste. `People` stays out for cost; person
+/// rows on a Jellyfin-only profile are deferred (recommendations register).
+const _poolFields = '$_browseFields,Genres,Studios';
+
+/// Watch-history import: the taste features (genres, cast, director, studio)
+/// come along on the page, so a film costs no separate item lookup. Only the
+/// background history sync asks for these, never a visible list.
+const _historyFields = '$_browseFields,Genres,People,Studios';
+
 /// Folder-tree field set for MEDIA children. The tree renders
 /// title/thumb/watch state plus default dto fields (year, runtime, ratings);
 /// it deliberately skips `RecursiveItemCount`/`ChildCount` — per-item COUNT
@@ -181,7 +191,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final translator = JellyfinLibraryQueryTranslator(
       userId: connection.userId,
       parentId: libraryId,
-      fields: _browseFields,
+      fields: query.withTasteFields ? _poolFields : _browseFields,
     );
     final params = translator.toQueryParameters(query);
 
@@ -281,8 +291,8 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     return LibraryPage<MediaItem>(items: _mapItems(items), totalCount: total, offset: offset);
   }
 
-  /// Jellyfin's `/Items/Filters` returns Genres / OfficialRatings / Tags /
-  /// Categories + values from `/Items/Filters` in a single call. The unwatched
+  /// Jellyfin's `/Items/Filters` returns Genres / AudioLanguages /
+  /// OfficialRatings / Tags / Categories + values in a single call. The unwatched
   /// boolean is synthetic because Jellyfin exposes it as an `/Items` query
   /// filter, not a filter-listing category. Keys are translated to Plex's
   /// filter naming so the existing filter-param map round-trips through
@@ -309,6 +319,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
     final raw = <String, List<String>>{
       'genre': stringList(data['Genres']),
+      'audioLanguage': stringList(data['AudioLanguages']),
       'contentRating': stringList(data['OfficialRatings']),
       'tag': stringList(data['Tags']),
       'year': (data['Years'] is List)
@@ -316,9 +327,10 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
           : const <String>[],
     };
 
-    const order = ['genre', 'year', 'contentRating', 'tag'];
+    const order = ['genre', 'audioLanguage', 'year', 'contentRating', 'tag'];
     final titles = {
       'genre': t.libraries.filterCategories.genre,
+      'audioLanguage': t.libraries.filterCategories.audioLanguage,
       'year': t.libraries.filterCategories.year,
       'contentRating': t.libraries.filterCategories.contentRating,
       'tag': t.libraries.filterCategories.tag,
@@ -1176,7 +1188,8 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       '/Users/${_segment(connection.userId)}/Items/Latest',
       queryParameters: {
         'Limit': limit.toString(),
-        'Fields': _browseFields,
+        // The candidate pool reads this list; the home hero shares the call.
+        'Fields': _poolFields,
         'IncludeItemTypes': 'Movie,Series,Episode',
         ...jellyfinImageQueryParameters,
       },
@@ -1647,6 +1660,41 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     return _mapItems(items);
   }
 
+  /// [JellyfinHistorySource]: only this connection's own user, never another
+  /// account on the server (DEC-062).
+  ///
+  /// Both history reads throw on failure instead of reading as empty: an empty
+  /// page ends the importer's paging as if it were the last one, and the
+  /// watermark would then skip the plays it never read.
+  Future<List<MediaItem>> fetchPlayedHistoryPage({required int startIndex, int limit = kJellyfinPageLength}) async {
+    final items = await _fetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Episode',
+      'Filters': 'IsPlayed',
+      'SortBy': 'DatePlayed',
+      'SortOrder': 'Descending',
+      'StartIndex': startIndex.toString(),
+      'Limit': limit.toString(),
+      'Fields': _historyFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
+  Future<List<MediaItem>> fetchResumableItems({int limit = kJellyfinResumeLimit}) async {
+    final items = await _fetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Episode',
+      'Filters': 'IsResumable',
+      'Limit': limit.toString(),
+      'Fields': _historyFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async {
     final response = await _http.get(
@@ -1654,7 +1702,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       queryParameters: {
         'userId': connection.userId,
         'Limit': count.toString(),
-        'Fields': _browseFields,
+        'Fields': _poolFields,
         ...jellyfinImageQueryParameters,
       },
     );

@@ -1461,6 +1461,9 @@ class TranslationsMediaMenuEn {
 	/// en: 'Failed to delete media item'
 	String get mediaFailedToDelete => 'Failed to delete media item';
 
+	/// en: 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.'
+	String get plexDeletionDisabled => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.';
+
 	/// en: 'Rate'
 	String get rate => 'Rate';
 
@@ -2461,6 +2464,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Because you watched ${title}'
 	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
 
+	/// en: 'Because you're watching ${title}'
+	String becauseYouAreWatching({required Object title}) => 'Because you\'re watching ${title}';
+
 	/// en: 'Recently Added Shows'
 	String get latestShows => 'Recently Added Shows';
 
@@ -2475,6 +2481,12 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Because you like ${genre}'
 	String becauseYouLike({required Object genre}) => 'Because you like ${genre}';
+
+	/// en: 'More with ${name}'
+	String moreWithActor({required Object name}) => 'More with ${name}';
+
+	/// en: 'More from ${name}'
+	String moreFromDirector({required Object name}) => 'More from ${name}';
 
 	/// en: 'Hidden Gems'
 	String get hiddenGems => 'Hidden Gems';
@@ -3844,6 +3856,9 @@ class TranslationsDownloadsEn {
 
 	/// en: 'Synced ${count} new episodes for ${title}'
 	String syncedNewEpisodes({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}';
+
+	/// en: 'Synced ${count} new episodes across ${shows} shows'
+	String syncedNewEpisodesAcrossShows({required Object count, required Object shows}) => 'Synced ${count} new episodes across ${shows} shows';
 
 	/// en: 'Sync rules'
 	String get activeSyncRules => 'Sync rules';
@@ -5599,6 +5614,15 @@ class TranslationsTvMyPleyaEn {
 	/// en: 'Media, collections, playlists'
 	String get librariesSubtitle => 'Media, collections, playlists';
 
+	/// en: 'Manage media libraries'
+	String get libraryManagementSubtitle => 'Manage media libraries';
+
+	/// en: 'Browse collections across libraries'
+	String get collectionsSubtitle => 'Browse collections across libraries';
+
+	/// en: 'Playlists from connected servers'
+	String get playlistsSubtitle => 'Playlists from connected servers';
+
 	/// en: 'Connections and local sources'
 	String get serversSubtitle => 'Connections and local sources';
 
@@ -6194,6 +6218,9 @@ class TranslationsLibrariesFilterCategoriesEn {
 
 	/// en: 'Genre'
 	String get genre => 'Genre';
+
+	/// en: 'Audio language'
+	String get audioLanguage => 'Audio language';
 
 	/// en: 'Year'
 	String get year => 'Year';
@@ -7560,6 +7587,7 @@ extension on Translations {
 			'mediaMenu.deleteMultipleWarning' => 'This includes all episodes and their files.',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media item deleted successfully',
 			'mediaMenu.mediaFailedToDelete' => 'Failed to delete media item',
+			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
 			'mediaMenu.rate' => 'Rate',
 			'mediaMenu.playFromBeginning' => 'Play from Beginning',
 			'mediaMenu.playVersion' => 'Play Version...',
@@ -7617,9 +7645,9 @@ extension on Translations {
 			'videoControls.pauseButton' => 'Pause',
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Seek forward ${seconds} seconds',
-			'videoControls.previousButton' => 'Previous episode',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.previousButton' => 'Previous episode',
 			'videoControls.nextButton' => 'Next episode',
 			'videoControls.previousChapterButton' => 'Previous chapter',
 			'videoControls.nextChapterButton' => 'Next chapter',
@@ -7902,11 +7930,14 @@ extension on Translations {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
 			'discover.topRated' => 'Top Rated',
 			'discover.somethingDifferent' => 'Something Different',
 			'discover.topPicksForYou' => 'Top Picks for You',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
+			'discover.moreWithActor' => ({required Object name}) => 'More with ${name}',
+			'discover.moreFromDirector' => ({required Object name}) => 'More from ${name}',
 			'discover.hiddenGems' => 'Hidden Gems',
 			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
 			'discover.watchedByYou' => 'You',
@@ -8009,6 +8040,7 @@ extension on Translations {
 			'libraries.groupings.episodes' => 'Episodes',
 			'libraries.groupings.folders' => 'Folders',
 			'libraries.filterCategories.genre' => 'Genre',
+			'libraries.filterCategories.audioLanguage' => 'Audio language',
 			'libraries.filterCategories.year' => 'Year',
 			'libraries.filterCategories.contentRating' => 'Content Rating',
 			'libraries.filterCategories.tag' => 'Tag',
@@ -8127,13 +8159,13 @@ extension on Translations {
 			'liveTv.now' => 'Now',
 			'liveTv.today' => 'Today',
 			'liveTv.tomorrow' => 'Tomorrow',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.midnight' => 'Midnight',
 			'liveTv.overnight' => 'Overnight',
 			'liveTv.morning' => 'Morning',
 			'liveTv.daytime' => 'Daytime',
 			'liveTv.evening' => 'Evening',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.lateNight' => 'Late Night',
 			'liveTv.whatsOn' => 'What\'s On',
 			'liveTv.watchChannel' => 'Watch Channel',
@@ -8350,6 +8382,7 @@ extension on Translations {
 			'downloads.syncRuleUpdated' => 'Sync rule updated',
 			'downloads.syncRuleRemoved' => 'Sync rule removed',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => 'Synced ${count} new episodes for ${title}',
+			'downloads.syncedNewEpisodesAcrossShows' => ({required Object count, required Object shows}) => 'Synced ${count} new episodes across ${shows} shows',
 			'downloads.activeSyncRules' => 'Sync rules',
 			'downloads.noSyncRules' => 'No sync rules',
 			'downloads.manageSyncRule' => 'Manage sync',
@@ -8640,14 +8673,14 @@ extension on Translations {
 			'seerr.authApiKey' => 'API key',
 			'seerr.email' => 'Email',
 			'seerr.password' => 'Password',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.apiKey' => 'API key',
 			'seerr.apiKeyHint' => 'From Settings → General on your server',
 			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',
 			'seerr.setupOnDesktopNote' => 'Tip: this is easier to set up on your phone or computer.',
 			'seerr.testConnection' => 'Test connection',
 			'seerr.save' => 'Save',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.disconnect' => 'Disconnect',
 			'seerr.disconnectConfirm' => 'Disconnect requests server?',
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
@@ -9064,6 +9097,9 @@ extension on Translations {
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
 			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
 			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
+			'tvMyPleya.libraryManagementSubtitle' => 'Manage media libraries',
+			'tvMyPleya.collectionsSubtitle' => 'Browse collections across libraries',
+			'tvMyPleya.playlistsSubtitle' => 'Playlists from connected servers',
 			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
 			'tvMyPleya.activitySubtitle' => 'Now watching',
 			'tvMyPleya.watchTogetherSubtitle' => 'Watch in sync with friends',

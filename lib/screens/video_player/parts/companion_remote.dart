@@ -37,16 +37,14 @@ extension _VideoPlayerCompanionRemoteMethods on VideoPlayerScreenState {
     receiver.onVolumeUp = () async {
       if (player == null) return;
       final settings = await SettingsService.getInstance();
-      final maxVol = settings.read(SettingsService.maxVolume).toDouble();
-      final newVolume = (player!.state.volume + 10).clamp(0.0, maxVol);
+      final newVolume = (player!.state.volume + 10).clamp(0.0, kNormalVolumeMax.toDouble());
       unawaited(player!.setVolume(newVolume));
       unawaited(settings.write(SettingsService.volume, newVolume));
     };
     receiver.onVolumeDown = () async {
       if (player == null) return;
       final settings = await SettingsService.getInstance();
-      final maxVol = settings.read(SettingsService.maxVolume).toDouble();
-      final newVolume = (player!.state.volume - 10).clamp(0.0, maxVol);
+      final newVolume = (player!.state.volume - 10).clamp(0.0, kNormalVolumeMax.toDouble());
       unawaited(player!.setVolume(newVolume));
       unawaited(settings.write(SettingsService.volume, newVolume));
     };

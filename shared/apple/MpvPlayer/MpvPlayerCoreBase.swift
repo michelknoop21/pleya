@@ -15,6 +15,20 @@ protocol MpvPlayerDelegate: AnyObject {
   func onEvent(name: String, data: [String: Any]?)
 }
 
+enum MpvTeardownScheduler {
+  static func run(
+    on queue: DispatchQueue,
+    destroy: @escaping () -> Void,
+    completionQueue: DispatchQueue = .main,
+    completion: @escaping () -> Void
+  ) {
+    queue.async {
+      destroy()
+      completionQueue.async(execute: completion)
+    }
+  }
+}
+
 #if os(macOS)
   // Workaround for MoltenVK problems that cause flicker.
   // https://github.com/mpv-player/mpv/pull/13651
@@ -728,7 +742,7 @@ class MpvPlayerCoreBase: NSObject {
     return CGSize(width: cachedWidth, height: cachedHeight)
   }
 
-  func disposeSharedState(destroySynchronously: Bool) {
+  func disposeSharedState(destroySynchronously: Bool, completion: (() -> Void)? = nil) {
     isDisposing = true
     cancelPendingRequests()
 
@@ -764,6 +778,9 @@ class MpvPlayerCoreBase: NSObject {
       } else {
         queue.sync(execute: destroy)
       }
+      completion?()
+    } else if let completion {
+      MpvTeardownScheduler.run(on: queue, destroy: destroy, completion: completion)
     } else {
       queue.async(execute: destroy)
     }

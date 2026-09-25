@@ -49,11 +49,17 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
 
   Widget _buildActionButtons(MediaItem metadata) {
     final isTv = PlatformDetector.isTV();
-    final tvScale = TvLayoutConstants.scaleOf(context);
-    final actionSize = isTv ? _tvDetailActionSize * tvScale : 48.0;
+    // DENS1: on TV the row is sized in HIG points. A 60 pt button (tvOS asks
+    // for at least 56) carrying Body text (29 pt), where `scaleOf` made it a
+    // 72 pt button around a 27 pt label.
+    final pt = TvHig.of(context);
+    final actionSize = isTv ? _tvDetailActionPt * pt : 48.0;
     final playButtonLabel = _getPlayButtonLabel(metadata);
-    final playIconSize = isTv ? 22 * tvScale : 20.0;
-    final playTextStyle = TextStyle(fontSize: isTv ? 17 * tvScale : 16, fontWeight: .w700);
+    final playIconSize = isTv ? TvHig.body * pt : 20.0;
+    final playTextStyle = TextStyle(fontSize: isTv ? TvHig.body * pt : 16, fontWeight: .w700);
+    // The icon helpers below size their glyph as `21 * tvScale`; this scale
+    // puts that glyph at Body size too, level with the play icon.
+    final tvScale = TvHig.body * pt / 21;
     final playButtonIcon = AppIcon(_getPlayButtonIcon(metadata), fill: 1, size: playIconSize);
 
     Future<void> onPlayPressed() => _handlePlayPressed(metadata);
@@ -107,7 +113,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         ? null
         : () => unawaited(navigateToVideoPlayer(context, metadata: primaryTrailer));
 
-    final gap = isTv ? 8.0 * tvScale : 12.0;
+    final gap = isTv ? 16 * pt : 12.0;
 
     // Pressable adds the press-down scale; the buttons below keep owning the
     // tap (they win the gesture arena as the deeper recognizer).
@@ -120,14 +126,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
             onPressed: onPlayPressed,
             style: actionButtonStyle(
               showFocus: state.showFocus,
-              padding: .symmetric(horizontal: isTv ? 17 * tvScale : 16, vertical: isTv ? 9 * tvScale : 0),
+              padding: .symmetric(horizontal: isTv ? 26 * pt : 16, vertical: 0),
             ),
             child: playButtonLabel.isNotEmpty
                 ? Row(
                     mainAxisSize: .min,
                     children: [
                       playButtonIcon,
-                      SizedBox(width: isTv ? 7 * tvScale : 8),
+                      SizedBox(width: isTv ? 10 * pt : 8),
                       Text(playButtonLabel, style: playTextStyle),
                     ],
                   )
@@ -150,7 +156,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
           onPressed: onPressed,
           icon: icon,
           tooltip: tooltip,
-          iconSize: isTv ? 21 * tvScale : 20,
+          iconSize: isTv ? TvHig.body * pt : 20,
           style: actionButtonStyle(foregroundColor: foregroundColor, showFocus: state.showFocus),
         ),
       );
@@ -161,7 +167,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       focusNode: _playButtonFocusNode,
       autofocus: isKeyboardMode,
       onPressed: onPlayPressed,
-      builder: (context, state) => playButton(state),
+      builder: (context, state) => AutomationNode(
+        id: AutomationIds.mediaDetailPlay,
+        role: 'button',
+        focusNode: _playButtonFocusNode,
+        child: playButton(state),
+      ),
     );
 
     final trailerAction = primaryTrailer == null
@@ -300,8 +311,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       )..layout();
       final textWidth = textPainter.width;
       textPainter.dispose();
-      final horizontalPadding = isTv ? 34.0 * tvScale : 32.0;
-      final iconGap = isTv ? 7.0 * tvScale : 8.0;
+      final horizontalPadding = isTv ? 52 * pt : 32.0;
+      final iconGap = isTv ? 10 * pt : 8.0;
       return (horizontalPadding + playIconSize + iconGap + textWidth).clamp(64.0, double.infinity).toDouble();
     }
 
@@ -377,7 +388,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
     ];
     final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
-    final fontSize = isTv ? 13.0 * tvScale : 13.0;
+    // DENS1: HIG Caption 2 (23 pt), the tvOS minimum; `13 * scaleOf` was 20.
+    final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
     final onChangeSource = widget.onChangeSource;
 
     return Padding(
@@ -444,7 +456,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     if (routeContext == null || !routeContext.hasAlternativeSources) return 0.0;
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
-    final fontSize = isTv ? 13.0 * tvScale : 13.0;
+    final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
     final topPadding = isTv ? 10 * tvScale : 12.0;
     final chipVerticalPadding = isTv ? 6 * tvScale : 6.0;
     final baseStyle = DefaultTextStyle.of(context).style;
@@ -494,6 +506,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       if (!mounted) return;
       switch (outcome) {
         case WatchMarkOutcome.queuedOffline:
+          // The queue applies the mark locally and emits the event, so the
+          // state this screen was opened from is stale either way. Since the
+          // outcome widened from "the app is offline" to "this item's server
+          // is", leaving the flag unset meant popping with `false` and a rail
+          // that kept showing the old state.
+          _watchStateChanged = true;
           showAppSnackBar(context, isWatched ? t.messages.markedAsUnwatchedOffline : t.messages.markedAsWatchedOffline);
         case WatchMarkOutcome.marked:
           _watchStateChanged = true;

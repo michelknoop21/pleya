@@ -25,6 +25,7 @@ import '../../automation/automation_ids.dart';
 import '../../focus/focus_memory_tracker.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
 import '../../focus/focusable_wrapper.dart';
 import 'tv_page_surface.dart';
 import 'tv_unified_layout.dart';
@@ -254,6 +255,7 @@ class TvMenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final radius = TvMyPleyaLayout.tileRadius * scale;
+    final pt = TvHig.of(context);
     final secondary = item.value ?? item.subtitle;
 
     return FocusableWrapper(
@@ -291,8 +293,11 @@ class TvMenuTile extends StatelessWidget {
               return AnimatedContainer(
                 duration: TvTopNavLayout.focusDuration,
                 curve: Curves.easeOut,
-                constraints: BoxConstraints(minHeight: TvMyPleyaLayout.tileMinHeight * scale),
-                padding: EdgeInsets.all(TvMyPleyaLayout.tilePadding * scale),
+                // DENS1: HIG points. The glyph sits beside the text instead of
+                // on a line of its own; title in Body (29 pt), value in
+                // Caption 1 (25 pt). The old stacked tile was 160 pt tall
+                // around 24/19 pt text, the value line below tvOS's 23 pt floor.
+                padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 16 * pt),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(radius),
                   color: tk.text.withValues(
@@ -301,56 +306,58 @@ class TvMenuTile extends StatelessWidget {
                         : TvMyPleyaLayout.tileFillAlpha,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          item.icon,
-                          size: TvMyPleyaLayout.tileIconSize * scale,
-                          color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-                        ),
-                        const Spacer(),
-                        if (item.selected)
-                          Icon(Icons.check_rounded, size: TvMyPleyaLayout.tileIconSize * scale, color: tk.text)
-                        else if (item.toggled != null)
-                          Icon(
-                            item.toggled! ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-                            size: TvMyPleyaLayout.tileIconSize * scale,
-                            color: tk.text.withValues(
-                              alpha: item.toggled! ? TvMyPleyaLayout.inkPrimary : TvMyPleyaLayout.inkTertiary,
+                    Icon(
+                      item.icon,
+                      size: TvHig.body * pt,
+                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                    ),
+                    SizedBox(width: 20 * pt),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: tk.text,
+                              fontSize: TvHig.body * pt,
+                              height: TvHig.bodyLeading / TvHig.body,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                      ],
-                    ),
-                    SizedBox(height: TvMyPleyaLayout.tileIconTitleGap * scale),
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tk.text,
-                        fontSize: TvMyPleyaLayout.tileTitleFontSize * scale,
-                        fontWeight: FontWeight.w600,
+                          if (secondary != null)
+                            Text(
+                              secondary,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: tk.text.withValues(
+                                  alpha: item.value != null
+                                      ? TvMyPleyaLayout.inkSecondary
+                                      : TvMyPleyaLayout.inkTertiary,
+                                ),
+                                fontSize: TvHig.caption1 * pt,
+                                height: TvHig.caption1Leading / TvHig.caption1,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (secondary != null) ...[
-                      SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
-                      Text(
-                        secondary,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: tk.text.withValues(
-                            alpha: item.value != null ? TvMyPleyaLayout.inkSecondary : TvMyPleyaLayout.inkTertiary,
-                          ),
-                          fontSize: TvMyPleyaLayout.tileSubtitleFontSize * scale,
+                    if (item.selected)
+                      Icon(Icons.check_rounded, size: TvHig.body * pt, color: tk.text)
+                    else if (item.toggled != null)
+                      Icon(
+                        item.toggled! ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
+                        size: TvHig.body * pt,
+                        color: tk.text.withValues(
+                          alpha: item.toggled! ? TvMyPleyaLayout.inkPrimary : TvMyPleyaLayout.inkTertiary,
                         ),
                       ),
-                    ],
                   ],
                 ),
               );

@@ -345,8 +345,10 @@ describe('artwork', () => {
     let auth: string | null = null;
     const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       auth = new Headers(init?.headers).get('Authorization');
-      // Geen jsdom-Blob als body: die mist `stream()`, en undici's Response vraagt
-      // daarom. Op macOS valt dat toevallig goed uit, op de Linux-runner niet.
+      // Een kale string als body, geen Blob. jsdom's Blob mist `stream()`, waar
+      // undici's Response om vraagt (op macOS valt dat toevallig goed uit, op de
+      // Linux-runner niet), en Response.blob() bouwt zelf een Blob uit de string,
+      // zodat er geen Blob uit een ander realm dan de Response binnenkomt.
       return new Response('bytes', { status: 200, headers: { 'content-type': 'image/jpeg' } });
     }) as unknown as FetchLike;
 

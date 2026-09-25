@@ -1063,21 +1063,27 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
                   child: PlayPauseStreamBuilder(
                     player: widget.player,
                     builder: (context, isPlaying) {
-                      return _buildFocusableButton(
+                      return AutomationNode(
+                        id: AutomationIds.playerPlayPause,
+                        role: 'button',
                         focusNode: _playPauseFocusNode,
-                        index: 3,
-                        icon: isPlaying ? Symbols.pause_rounded : Symbols.play_arrow_rounded,
-                        iconSize: 32,
-                        onPressed: _canControl
-                            ? () {
-                                if (isPlaying) {
-                                  widget.player.pause();
-                                } else {
-                                  widget.player.play();
+                        state: () => {'playing': isPlaying},
+                        child: _buildFocusableButton(
+                          focusNode: _playPauseFocusNode,
+                          index: 3,
+                          icon: isPlaying ? Symbols.pause_rounded : Symbols.play_arrow_rounded,
+                          iconSize: 32,
+                          onPressed: _canControl
+                              ? () {
+                                  if (isPlaying) {
+                                    widget.player.pause();
+                                  } else {
+                                    widget.player.play();
+                                  }
                                 }
-                              }
-                            : null,
-                        semanticLabel: isPlaying ? t.videoControls.pauseButton : t.videoControls.playButton,
+                              : null,
+                          semanticLabel: isPlaying ? t.videoControls.pauseButton : t.videoControls.playButton,
+                        ),
                       );
                     },
                   ),

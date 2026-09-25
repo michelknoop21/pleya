@@ -7,6 +7,7 @@ import '../../../mpv/mpv.dart';
 import '../../../services/apple_audio_session_service.dart';
 import '../../../services/audio_output_coordinator.dart';
 import '../../../services/audio_output_decision.dart';
+import '../../../services/loudness/loudness_planner.dart';
 import '../../../services/settings_service.dart';
 import '../../../utils/audio_output_labels.dart';
 import '../../../utils/formatters.dart';
@@ -43,23 +44,21 @@ class TvAudioTab extends StatelessWidget {
     required this.onOpenAudioSync,
   });
 
-  /// Raises the ceiling first, then the level: mpv clamps `volume` to
-  /// `volume-max`, so the other order would leave the boost at the old cap.
-  /// Both are persisted the way playback start reads them back
-  /// (`video_player_screen.dart`, `volume-max` then `volume`).
+  /// The boost is a stage of the loudness chain, not mpv's software volume.
+  /// Stored first, then pushed, because the chain is rebuilt from the stored
+  /// switches (`audioLoudnessPrefs`); the running player picks it up in the
+  /// same call.
   static Future<void> applyVolumeBoost(Player player, int percent) async {
-    await player.setProperty('volume-max', percent.toString());
-    await player.setVolume(percent.toDouble());
-    final settings = SettingsService.instance;
-    await settings.write(SettingsService.maxVolume, percent);
-    await settings.write(SettingsService.volume, percent.toDouble());
+    await SettingsService.instance.write(SettingsService.volumeBoost, percent);
+    await player.setAudioNormalization(audioLoudnessPrefs());
   }
 
   static String volumeBoostLabel(int percent) =>
       percent <= 100 ? t.common.off : t.videoControls.tvPanel.volumeBoostStep(percent: percent - 100);
 
-  /// The boost row while mpv can still act on it. `volume-max` is stepped
-  /// clamped (LEFT/RIGHT) and cycled (Select) like every other value row.
+  /// The boost row. The percentage is stepped clamped (LEFT/RIGHT) and cycled
+  /// (Select) like every other value row, and it means a linear factor: 150%
+  /// is 1,5x, +3,52 dB.
   Widget _boostRow({required FocusNode? focusNode, required int maxVol}) {
     final steps = clampedSteps(kTvPanelVolumeBoostSteps, maxVol, (value) => applyVolumeBoost(player, value));
     return TvPanelRow.value(
@@ -107,13 +106,7 @@ class TvAudioTab extends StatelessWidget {
   }
 
   Future<void> _pushLoudness() async {
-    final settings = SettingsService.instance;
-    await player.setAudioNormalization(
-      AudioLoudness(
-        levelVolume: settings.read(SettingsService.audioLevelVolume),
-        reduceLoudSounds: settings.read(SettingsService.audioReduceLoudSounds),
-      ),
-    );
+    await player.setAudioNormalization(audioLoudnessPrefs());
   }
 
   int? _selectedSourceAudioId() {
@@ -126,11 +119,7 @@ class TvAudioTab extends StatelessWidget {
   }
 
   List<Widget> _trackRows(Tracks? tracks, TrackSelection? selection, FocusNode? Function() nodeFor) {
-    final hasExternalSourceAudio = state.sourceAudioTracks.any((track) => track.isExternal);
-    final useSourceAudio =
-        (state.isTranscoding || hasExternalSourceAudio) &&
-        state.sourceAudioTracks.length > 1 &&
-        state.onSwitchAudioStreamId != null;
+    final useSourceAudio = state.shouldUseSourceAudio(tracks);
     final rows = <Widget>[];
     if (useSourceAudio) {
       final selectedId = _selectedSourceAudioId();
@@ -241,7 +230,7 @@ class TvAudioTab extends StatelessWidget {
               builder: (context, bitstreaming, _) {
                 final output = <Widget>[
                   ValueListenableBuilder<int>(
-                    valueListenable: settings.listenable(SettingsService.maxVolume),
+                    valueListenable: settings.listenable(SettingsService.volumeBoost),
                     builder: (context, maxVol, _) => bitstreaming
                         ? TvPanelRow(
                             focusNode: boostNode,

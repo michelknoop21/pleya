@@ -303,6 +303,35 @@ class PlayerNative extends PlayerBase {
     await command(args);
   }
 
+  /// Clears the old chain, writes the new one and checks that mpv kept it.
+  ///
+  /// mpv answers an `af` it cannot build with an error code the method channel
+  /// does not carry, and leaves the property empty. It rejects the string as a
+  /// whole, so one filter the build lacks takes the rest of the chain with it:
+  /// MPVKit 1.0.26 ships fourteen audio filters, without `acompressor` or
+  /// `alimiter`, and on Apple that silently disabled levelling, reducing loud
+  /// sounds and the boost all at once. Reading `af` back is the one signal
+  /// available here. Clearing first matters: a rejected update otherwise
+  /// leaves the previous valid `af` value behind, which a merely non-empty
+  /// readback would mistake for success. The fallback drops the two dynamics
+  /// filters and keeps the gain, which is worse audio than intended, but
+  /// audible and honest in the log.
+  @override
+  Future<void> applyNormalization(AudioLoudness loudness) async {
+    final chain = loudness.mpvFilter;
+    if (chain.isEmpty) {
+      await setProperty('af', chain);
+      return;
+    }
+    await setProperty('af', '');
+    await setProperty('af', chain);
+    final applied = await getProperty('af');
+    if (applied != null && applied.isNotEmpty) return;
+    final fallback = loudness.mpvFilterWithoutDynamics;
+    appLogger.w('mpv refused the audio filter chain "$chain"; retrying as "$fallback"');
+    if (fallback != chain) await setProperty('af', fallback);
+  }
+
   @override
   Future<void> setVolume(double volume) async {
     await setProperty('volume', volume.toString());

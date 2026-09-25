@@ -48,7 +48,14 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
 
   bool get canRequest => _hasPerm(SeerrPermission.request);
   bool get canManageRequests => _hasPerm(SeerrPermission.manageRequests);
-  bool get canRequest4k => _hasPerm(SeerrPermission.anyRequest4k);
+
+  /// Whether a 4K version may be requested for this media type. Per type, the
+  /// way Overseerr itself checks it: see [SeerrPermission.canRequest4k].
+  bool canRequest4kFor({required bool isMovie}) {
+    final session = _session;
+    return session != null && SeerrPermission.canRequest4k(session.permissions, isMovie: isMovie);
+  }
+
   bool get isAdmin => _session != null && SeerrPermission.has(_session!.permissions, SeerrPermission.admin);
 
   bool _hasPerm(int flag) => _session != null && SeerrPermission.has(_session!.permissions, flag);

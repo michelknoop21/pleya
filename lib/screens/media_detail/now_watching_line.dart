@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../media/ids.dart';
 import '../../providers/now_watching_provider.dart';
 import '../../theme/mono_theme.dart';
 import '../../widgets/watcher_avatar.dart';
@@ -16,19 +17,27 @@ import '../../widgets/watcher_avatar.dart';
 /// Silent by default. No session for this title, no Tautulli, no server
 /// ownership: no line, no placeholder, no reserved height.
 class NowWatchingLine extends StatelessWidget {
-  const NowWatchingLine({super.key, required this.ratingKey, this.textStyle});
+  const NowWatchingLine({super.key, required this.ratingKey, required this.serverId, this.textStyle});
 
   /// The Plex rating key of the item on screen. An episode matches on its own
   /// key, so a series page stays quiet while someone watches one episode of it:
   /// that is the episode's news, not the show's.
   final String ratingKey;
 
+  /// The server the item on screen lives on. A session only speaks of the
+  /// monitored server, so a key match on any other server is a coincidence.
+  final ServerId? serverId;
+
   final TextStyle? textStyle;
 
   @override
   Widget build(BuildContext context) {
-    final sessions = context.watch<NowWatchingProvider?>()?.sessions ?? const [];
-    final session = sessions.where((s) => s.ratingKey == ratingKey).firstOrNull;
+    final provider = context.watch<NowWatchingProvider?>();
+    final monitored = provider?.monitoredServerId;
+    if (provider == null || monitored == null || serverId == null || monitored != serverId) {
+      return const SizedBox.shrink();
+    }
+    final session = provider.sessions.where((s) => s.ratingKey == ratingKey).firstOrNull;
     if (session == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);

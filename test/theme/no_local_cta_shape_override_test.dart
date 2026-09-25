@@ -14,6 +14,8 @@ void main() {
   const allowed = <String, String>{
     // A round D-pad-style key on the companion remote layout, not a text CTA.
     'lib/screens/companion_remote/mobile_remote_screen.dart': 'deliberately round D-pad control',
+    // The mobile detail northstar explicitly uses two full-width capsule CTAs.
+    'lib/screens/media_detail/mobile_detail_view.dart': 'northstar-defined mobile detail capsules',
   };
 
   test('no local shape: override on FilledButton/ElevatedButton/OutlinedButton/TextButton.styleFrom', () {

@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../connection/connection.dart';
 import '../../connection/connection_registry.dart';
 import '../../focus/focus_memory_tracker.dart';
@@ -126,6 +127,8 @@ class _TvOfflineHomeScreenState extends State<TvOfflineHomeScreen> {
                         autofocus: true,
                         focusNode: _nodes.get(_reconnectKey, debugLabel: _reconnectKey),
                         onPressed: widget.isReconnecting ? () {} : widget.onReconnect,
+                        automationId: AutomationIds.offlineHomeAction,
+                        automationInstance: 'reconnect',
                         onNavigateRight: () => _nodes.get(_manageServersKey).requestFocus(),
                         onNavigateDown: servers.isEmpty ? null : focusFirstServer,
                       ),
@@ -137,6 +140,8 @@ class _TvOfflineHomeScreenState extends State<TvOfflineHomeScreen> {
                         primary: false,
                         focusNode: _nodes.get(_manageServersKey, debugLabel: _manageServersKey),
                         onPressed: widget.onManageServers,
+                        automationId: AutomationIds.offlineHomeAction,
+                        automationInstance: 'manage_servers',
                         onNavigateLeft: () => _nodes.get(_reconnectKey).requestFocus(),
                         onNavigateDown: servers.isEmpty ? null : focusFirstServer,
                       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/watch_session.dart';
@@ -91,11 +93,15 @@ class NowWatchingButtonState extends State<NowWatchingButton> {
         context: context,
         showDragHandle: true,
         isScrollControlled: true,
-        builder: (_) => SafeArea(
-          child: SingleChildScrollView(
-            child: ListenableBuilder(
-              listenable: provider,
-              builder: (context, _) => NowWatchingPanel(now: provider.now, onOpenSession: _openSession),
+        builder: (_) => AutomationNode(
+          id: AutomationIds.activitySheet,
+          role: 'sheet',
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: ListenableBuilder(
+                listenable: provider,
+                builder: (context, _) => NowWatchingPanel(now: provider.now, onOpenSession: _openSession),
+              ),
             ),
           ),
         ),
@@ -183,36 +189,44 @@ class NowWatchingButtonState extends State<NowWatchingButton> {
     final theme = Theme.of(context);
     final shown = now.sessions.take(_maxAvatars).toList();
 
-    return Semantics(
-      button: true,
+    return AutomationNode(
+      id: AutomationIds.activityButton,
+      role: 'button',
       label: t.nowWatching.tooltip,
-      child: Tooltip(
-        message: t.nowWatching.tooltip,
-        child: ClickableCursor(
-          child: GestureDetector(
-            key: _buttonKey,
-            onTap: togglePanel,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.fromLTRB(7, 4, 9, 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
-                border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
-              ),
-              child: Row(
-                mainAxisSize: .min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: now.hasTranscode ? kAccentAlt : kSuccess),
-                  ),
-                  const SizedBox(width: 7),
-                  _AvatarCluster(sessions: shown),
-                  const SizedBox(width: 6),
-                  Text('${now.sessions.length}', style: theme.textTheme.labelMedium?.copyWith(fontWeight: .w700)),
-                ],
+      child: Semantics(
+        button: true,
+        label: t.nowWatching.tooltip,
+        child: Tooltip(
+          message: t.nowWatching.tooltip,
+          child: ClickableCursor(
+            child: GestureDetector(
+              key: _buttonKey,
+              onTap: togglePanel,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.fromLTRB(7, 4, 9, 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
+                  border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
+                ),
+                child: Row(
+                  mainAxisSize: .min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: now.hasTranscode ? kAccentAlt : kSuccess,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    _AvatarCluster(sessions: shown),
+                    const SizedBox(width: 6),
+                    Text('${now.sessions.length}', style: theme.textTheme.labelMedium?.copyWith(fontWeight: .w700)),
+                  ],
+                ),
               ),
             ),
           ),

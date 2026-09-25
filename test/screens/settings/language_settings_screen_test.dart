@@ -13,6 +13,7 @@ import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_user_profile.dart';
 import 'package:pleya/media/pleya_profile_language_preferences.dart';
 import 'package:pleya/media/track_language_choice.dart';
 import 'package:pleya/screens/settings/language_settings_screen.dart';
@@ -185,4 +186,86 @@ void main() {
     final remaining = await tester.runAsync(TrackPreferenceStore.readAllForActiveScope);
     expect(remaining, isEmpty);
   });
+
+  // ────────────────────────────────────────────────────────────────
+  // CONTROL S — een keuze op deze pagina sluit de seed
+  // ────────────────────────────────────────────────────────────────
+  //
+  // De seed mag maar één keer lopen, en hij mag nooit over een keuze van de
+  // kijker heen. `isUnset` kan een bewust gewiste rij niet onderscheiden van
+  // een rij die nooit is aangeraakt, dus de grendel moet bij de bewerking zelf
+  // dichtgaan. Dat gebeurt doordat elke editor op deze pagina
+  // `updateFromViewer` gebruikt in plaats van `update`.
+  //
+  // Zonder deze test bewijst niets die bedrading: de winkeltest roept
+  // `updateFromViewer` rechtstreeks aan en blijft groen wanneer een van de vier
+  // editors terugvalt op `update`, of wanneer er later een vijfde rij bij komt
+  // die de grendel vergeet.
+  testWidgets('CONTROL S — een keuze op deze pagina sluit de seed voor een later serverprofiel', (tester) async {
+    await _pumpPage(tester);
+
+    final before = await tester.runAsync(PleyaProfileLanguagePreferenceStore.read);
+    expect(before!.seeded, isFalse, reason: 'zonder serverprofiel blijft de seed open staan');
+
+    // Met de aanwijzer, niet met SELECT: een instellingenrij die de focus
+    // terugpakt wanneer de dialoog sluit tekent zijn ink onder het eigen
+    // oppervlak, waar Flutter in debug over klaagt. Control Q loopt om dezelfde
+    // reden over dit pad.
+    await tester.tap(find.text('Show subtitles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Always'));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pumpAndSettle();
+
+    final edited = await tester.runAsync(PleyaProfileLanguagePreferenceStore.read);
+    expect(edited!.subtitlePolicy, SubtitleDisplayPolicy.always, reason: 'de keuze is opgeslagen');
+    expect(edited.seeded, isTrue, reason: 'en de pagina heeft de seed gesloten');
+
+    // Zet de taalrijen daarna weer leeg, zoals "gebruik globale voorkeur" op
+    // elke rij doet. Dat gebeurt hier via de winkel in plaats van via de
+    // dialoog, omdat de tekst van die optie ook op de pagina erachter staat en
+    // een tekstmatch dan de verkeerde rij pakt. De opzet is het punt, niet de
+    // route ernaartoe: waar het om gaat is dat de voorkeur weer `isUnset` is
+    // terwijl de grendel dicht blijft.
+    await tester.runAsync(
+      () => PleyaProfileLanguagePreferenceStore.update((p) => p.copyWith(clearSubtitlePolicy: true)),
+    );
+
+    final cleared = await tester.runAsync(PleyaProfileLanguagePreferenceStore.read);
+    expect(cleared!.isUnset, isTrue, reason: 'terug naar geen mening');
+    expect(cleared.seeded, isTrue, reason: 'maar de pagina had de grendel al gesloten');
+
+    await tester.runAsync(() => PleyaProfileLanguagePreferenceStore.ensureInitialised(_dutchServerProfile));
+
+    final after = await tester.runAsync(PleyaProfileLanguagePreferenceStore.read);
+    expect(after!.audioLanguage, isNull, reason: 'een serverprofiel dat later inlogt overschrijft niets meer');
+    expect(after.subtitleLanguage, isNull);
+    expect(after.subtitlePolicy, isNull);
+  });
 }
+
+/// Minimaal serverprofiel met talen, om te bewijzen dat de seed na een
+/// bewerking op de pagina niets meer overneemt.
+class _ServerProfile implements MediaServerUserProfile {
+  const _ServerProfile();
+
+  @override
+  bool get autoSelectAudio => true;
+
+  @override
+  String? get defaultAudioLanguage => 'eng';
+
+  @override
+  List<String>? get defaultAudioLanguages => null;
+
+  @override
+  String? get defaultSubtitleLanguage => 'nld';
+
+  @override
+  List<String>? get defaultSubtitleLanguages => const ['nld', 'eng'];
+
+  @override
+  SubtitlePlaybackMode? get subtitleMode => SubtitlePlaybackMode.always;
+}
+
+const _dutchServerProfile = _ServerProfile();

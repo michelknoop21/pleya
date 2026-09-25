@@ -622,6 +622,7 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get deleteMultipleWarning => 'Dit omvat alle afleveringen en hun bestanden.';
 	@override String get mediaDeletedSuccessfully => 'Media-item succesvol verwijderd';
 	@override String get mediaFailedToDelete => 'Verwijderen van media-item mislukt';
+	@override String get plexDeletionDisabled => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.';
 	@override String get rate => 'Beoordelen';
 	@override String get playFromBeginning => 'Afspelen vanaf het begin';
 	@override String get playVersion => 'Versie afspelen...';
@@ -1028,11 +1029,14 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
+	@override String becauseYouAreWatching({required Object title}) => 'Omdat je ${title} kijkt';
 	@override String get latestShows => 'Recent toegevoegde series';
 	@override String get topRated => 'Hoogst gewaardeerd';
 	@override String get somethingDifferent => 'Eens iets anders';
 	@override String get topPicksForYou => 'Aanbevolen voor jou';
 	@override String becauseYouLike({required Object genre}) => 'Omdat je van ${genre} houdt';
+	@override String moreWithActor({required Object name}) => 'Meer met ${name}';
+	@override String moreFromDirector({required Object name}) => 'Meer van ${name}';
 	@override String get hiddenGems => 'Verborgen parels';
 	@override String watchedBy({required Object names}) => 'Bekeken door ${names}';
 	@override String get watchedByYou => 'Jij';
@@ -1596,6 +1600,7 @@ class _TranslationsDownloadsNl extends TranslationsDownloadsEn {
 	@override String get syncRuleUpdated => 'Synchronisatieregel bijgewerkt';
 	@override String get syncRuleRemoved => 'Synchronisatieregel verwijderd';
 	@override String syncedNewEpisodes({required Object count, required Object title}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${title}';
+	@override String syncedNewEpisodesAcrossShows({required Object count, required Object shows}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${shows} series';
 	@override String get activeSyncRules => 'Synchronisatieregels';
 	@override String get noSyncRules => 'Geen synchronisatieregels';
 	@override String get manageSyncRule => 'Synchronisatie beheren';
@@ -2313,6 +2318,9 @@ class _TranslationsTvMyPleyaNl extends TranslationsTvMyPleyaEn {
 	@override String get requestsSubtitle => 'Verzoeken en ontdekken';
 	@override String get downloadsSubtitle => 'Offline en synchronisatieregels';
 	@override String get librariesSubtitle => 'Media, collecties, afspeellijsten';
+	@override String get libraryManagementSubtitle => 'Mediabibliotheken beheren';
+	@override String get collectionsSubtitle => 'Collecties uit je bibliotheken';
+	@override String get playlistsSubtitle => 'Afspeellijsten van verbonden servers';
 	@override String get serversSubtitle => 'Verbindingen en lokale bronnen';
 	@override String get activitySubtitle => 'Nu aan het kijken';
 	@override String get watchTogetherSubtitle => 'Kijk gelijk met vrienden';
@@ -2584,6 +2592,7 @@ class _TranslationsLibrariesFilterCategoriesNl extends TranslationsLibrariesFilt
 
 	// Translations
 	@override String get genre => 'Genre';
+	@override String get audioLanguage => 'Audiotaal';
 	@override String get year => 'Jaar';
 	@override String get contentRating => 'Leeftijdsclassificatie';
 	@override String get tag => 'Tag';
@@ -3499,6 +3508,7 @@ extension on TranslationsNl {
 			'mediaMenu.deleteMultipleWarning' => 'Dit omvat alle afleveringen en hun bestanden.',
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media-item succesvol verwijderd',
 			'mediaMenu.mediaFailedToDelete' => 'Verwijderen van media-item mislukt',
+			'mediaMenu.plexDeletionDisabled' => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.',
 			'mediaMenu.rate' => 'Beoordelen',
 			'mediaMenu.playFromBeginning' => 'Afspelen vanaf het begin',
 			'mediaMenu.playVersion' => 'Versie afspelen...',
@@ -3556,9 +3566,9 @@ extension on TranslationsNl {
 			'videoControls.pauseButton' => 'Pauzeren',
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Terugspoelen ${seconds} seconden',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Vooruitspoelen ${seconds} seconden',
-			'videoControls.previousButton' => 'Vorige aflevering',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.previousButton' => 'Vorige aflevering',
 			'videoControls.nextButton' => 'Volgende aflevering',
 			'videoControls.previousChapterButton' => 'Vorig hoofdstuk',
 			'videoControls.nextChapterButton' => 'Volgend hoofdstuk',
@@ -3841,11 +3851,14 @@ extension on TranslationsNl {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Omdat je ${title} kijkt',
 			'discover.latestShows' => 'Recent toegevoegde series',
 			'discover.topRated' => 'Hoogst gewaardeerd',
 			'discover.somethingDifferent' => 'Eens iets anders',
 			'discover.topPicksForYou' => 'Aanbevolen voor jou',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Omdat je van ${genre} houdt',
+			'discover.moreWithActor' => ({required Object name}) => 'Meer met ${name}',
+			'discover.moreFromDirector' => ({required Object name}) => 'Meer van ${name}',
 			'discover.hiddenGems' => 'Verborgen parels',
 			'discover.watchedBy' => ({required Object names}) => 'Bekeken door ${names}',
 			'discover.watchedByYou' => 'Jij',
@@ -3948,6 +3961,7 @@ extension on TranslationsNl {
 			'libraries.groupings.episodes' => 'Afleveringen',
 			'libraries.groupings.folders' => 'Mappen',
 			'libraries.filterCategories.genre' => 'Genre',
+			'libraries.filterCategories.audioLanguage' => 'Audiotaal',
 			'libraries.filterCategories.year' => 'Jaar',
 			'libraries.filterCategories.contentRating' => 'Leeftijdsclassificatie',
 			'libraries.filterCategories.tag' => 'Tag',
@@ -4066,13 +4080,13 @@ extension on TranslationsNl {
 			'liveTv.now' => 'Nu',
 			'liveTv.today' => 'Vandaag',
 			'liveTv.tomorrow' => 'Morgen',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.midnight' => 'Middernacht',
 			'liveTv.overnight' => 'Nacht',
 			'liveTv.morning' => 'Ochtend',
 			'liveTv.daytime' => 'Overdag',
 			'liveTv.evening' => 'Avond',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.lateNight' => 'Late avond',
 			'liveTv.whatsOn' => 'Nu op TV',
 			'liveTv.watchChannel' => 'Kanaal bekijken',
@@ -4289,6 +4303,7 @@ extension on TranslationsNl {
 			'downloads.syncRuleUpdated' => 'Synchronisatieregel bijgewerkt',
 			'downloads.syncRuleRemoved' => 'Synchronisatieregel verwijderd',
 			'downloads.syncedNewEpisodes' => ({required Object count, required Object title}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${title}',
+			'downloads.syncedNewEpisodesAcrossShows' => ({required Object count, required Object shows}) => '${count} nieuwe afleveringen gesynchroniseerd voor ${shows} series',
 			'downloads.activeSyncRules' => 'Synchronisatieregels',
 			'downloads.noSyncRules' => 'Geen synchronisatieregels',
 			'downloads.manageSyncRule' => 'Synchronisatie beheren',
@@ -4579,14 +4594,14 @@ extension on TranslationsNl {
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Synchroniseer kijkvoortgang met Trakt en andere diensten.',
 			'trackers.notConnected' => 'Niet verbonden',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trackers.scrobble' => 'Voortgang automatisch volgen',
 			'trackers.scrobbleDescription' => 'Werk je lijst bij wanneer je een aflevering of film afrondt.',
 			'trackers.disconnectConfirm' => ({required Object service}) => '${service} loskoppelen?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.',
 			'trackers.connectFailed' => ({required Object service}) => 'Kan niet verbinden met ${service}. Probeer opnieuw.',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.services.mal' => 'MyAnimeList',
 			'trackers.services.anilist' => 'AniList',
 			'trackers.services.simkl' => 'Simkl',
@@ -5003,6 +5018,9 @@ extension on TranslationsNl {
 			'tvMyPleya.requestsSubtitle' => 'Verzoeken en ontdekken',
 			'tvMyPleya.downloadsSubtitle' => 'Offline en synchronisatieregels',
 			'tvMyPleya.librariesSubtitle' => 'Media, collecties, afspeellijsten',
+			'tvMyPleya.libraryManagementSubtitle' => 'Mediabibliotheken beheren',
+			'tvMyPleya.collectionsSubtitle' => 'Collecties uit je bibliotheken',
+			'tvMyPleya.playlistsSubtitle' => 'Afspeellijsten van verbonden servers',
 			'tvMyPleya.serversSubtitle' => 'Verbindingen en lokale bronnen',
 			'tvMyPleya.activitySubtitle' => 'Nu aan het kijken',
 			'tvMyPleya.watchTogetherSubtitle' => 'Kijk gelijk met vrienden',

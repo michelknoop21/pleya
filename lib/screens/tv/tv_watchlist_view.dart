@@ -87,6 +87,7 @@ class TvWatchlistView extends StatefulWidget {
     required this.onSelectionChanged,
     required this.onSortChanged,
     required this.onActivate,
+    this.onContextMenu,
     required this.isLoading,
     required this.coverageComplete,
     required this.offerAvailability,
@@ -112,8 +113,12 @@ class TvWatchlistView extends StatefulWidget {
   final ValueChanged<WatchlistFilterSelection> onSelectionChanged;
   final ValueChanged<WatchlistSort> onSortChanged;
 
-  /// Select on a card — the kijklijst item sheet.
+  /// Select on a card — detail for playable titles, the kijklijst item sheet
+  /// for unavailable titles.
   final ValueChanged<WatchlistEntry> onActivate;
+
+  /// Long Select or Menu on a card — kijklijst actions such as removal.
+  final ValueChanged<WatchlistEntry>? onContextMenu;
 
   final bool isLoading;
 
@@ -687,6 +692,7 @@ class TvWatchlistViewState extends State<TvWatchlistView> {
               clientFor: widget.clientFor,
               focusNode: cell.focusNode,
               onSelect: () => widget.onActivate(entry),
+              onContextMenu: widget.onContextMenu == null ? null : () => widget.onContextMenu!(entry),
               onFocusChange: cell.onFocusChange,
               onNavigateUp: cell.onNavigateUp,
               onNavigateDown: cell.onNavigateDown,

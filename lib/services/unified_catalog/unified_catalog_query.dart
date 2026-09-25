@@ -43,6 +43,7 @@ class UnifiedCatalogQuery {
   final bool favoritesOnly;
   final String? nameStartsWith;
   final List<String>? genres;
+  final List<String>? audioLanguages;
   final List<String>? officialRatings;
   final List<int>? years;
   final List<String>? tags;
@@ -57,6 +58,7 @@ class UnifiedCatalogQuery {
     this.favoritesOnly = false,
     this.nameStartsWith,
     this.genres,
+    this.audioLanguages,
     this.officialRatings,
     this.years,
     this.tags,
@@ -82,6 +84,7 @@ class UnifiedCatalogQuery {
     favoritesOnly: favoritesOnly,
     nameStartsWith: nameStartsWith,
     genres: genres,
+    audioLanguages: audioLanguages,
     officialRatings: officialRatings,
     years: years,
     tags: tags,
@@ -100,6 +103,7 @@ class UnifiedCatalogQuery {
           other.favoritesOnly == favoritesOnly &&
           other.nameStartsWith == nameStartsWith &&
           _listEquals(other.genres, genres) &&
+          _listEquals(other.audioLanguages, audioLanguages) &&
           _listEquals(other.officialRatings, officialRatings) &&
           _listEquals(other.years, years) &&
           _listEquals(other.tags, tags);
@@ -115,6 +119,7 @@ class UnifiedCatalogQuery {
     favoritesOnly,
     nameStartsWith,
     genres == null ? null : Object.hashAll(genres!),
+    audioLanguages == null ? null : Object.hashAll(audioLanguages!),
     officialRatings == null ? null : Object.hashAll(officialRatings!),
     years == null ? null : Object.hashAll(years!),
     tags == null ? null : Object.hashAll(tags!),

@@ -166,7 +166,11 @@ except Exception:
     record flutter-sdk 3 UNKNOWN "$pin" "$latest" "kon de enginelijnen van edde746/flutter-tvos niet ophalen"
     return
   fi
-  if printf '%s\n' "$tags" | grep -q "^${engine_line}+"; then
+  # Here-string, geen pijp: dezelfde SIGPIPE-onder-pipefail-val die de
+  # CI-workflows in deze ronde ook al raakte. grep -q sluit zijn leeskant
+  # zodra hij zijn antwoord heeft; een printf die dan nog schrijft krijgt
+  # SIGPIPE, en onder pipefail wordt dat de uitkomst van de hele pijp.
+  if grep -q "^${engine_line}+" <<<"$tags"; then
     record flutter-sdk 3 OUTDATED "$pin" "$latest" ""
   else
     record flutter-sdk 3 BLOCKED "$pin" "$latest" \
@@ -302,11 +306,103 @@ FORKS=(
   "connectivity_plus|https://github.com/edde746/plus_plugins|refs/heads/main|3|netwerkdetectie met platformcode op elk doel"
   "os_media_controls|https://github.com/edde746/media_controls|refs/heads/main|3|native mediasessie-integratie"
   "wakelock_plus|https://github.com/edde746/wakelock_plus|refs/heads/main|3|platformcode voor schermwaak"
+  # Bewust upstream en niet de mirror uit pubspec.yaml: nieuw werk landt bij
+  # edde746, de mirror draagt alleen de gepinde commit. Zie DEC-118.
   "background_downloader|https://github.com/edde746/background_downloader|refs/heads/main|3|achtergronddownloads, iOS 14-eis"
   "sentry_flutter|https://github.com/edde746/sentry-dart|refs/heads/build/fetch-native-zip|3|fork-branch die de native zip ophaalt in plaats van meebouwt; sentry (pure Dart) beweegt hier atomair mee"
   "auto_updater|https://github.com/edde746/auto_updater|refs/heads/main|3|Sparkle/WinSparkle-integratie op desktop"
   "material_symbols_icons|https://github.com/edde746/material_symbols_icons|refs/heads/master|2|alleen fontassets en Dart"
 )
+
+# Bewijst iets anders dan check_forks hierboven: niet "lopen we achter op wat
+# we volgen", maar "bestaat de gepinde commit nog op de plek waar
+# pubspec.yaml hem zoekt". Precies dat gat liet de background_downloader-pin
+# vier weken onopgemerkt rot staan (DEC-118): de fork rebasede zijn main, de
+# gepinde SHA werd onbereikbaar vanaf elke branch of tag, en `pub get` faalde
+# keihard — maar niets in dit rapport keek naar bereikbaarheid, alleen naar
+# "is de HEAD van de gevolgde ref gelijk aan wat we pinnen". Pub fetcht een
+# git-ref alleen tegen geadverteerde refs (branches/tags) en doet nooit een
+# blinde `git fetch <sha>`, dus een object dat nog op GitHub bestaat maar van
+# geen enkele ref bereikbaar is, is voor pub even dood als een verwijderde
+# repo.
+#
+# Resultaat: reachable | unreachable | unknown (netwerk- of gereedschapsfout).
+pin_reachable() {
+  local url="$1" sha="$2"
+  if [ -n "$FIXTURES" ]; then
+    local f="$FIXTURES/reachable_$(slug "$url")_$(slug "$sha")"
+    [ -f "$f" ] || { echo unknown; return; }
+    tr -d '[:space:]' <"$f"
+    return
+  fi
+  local tmp
+  tmp="$(mktemp -d)" || { echo unknown; return; }
+  # lowSpeedLimit/Time in plaats van `timeout`: dat laatste is geen coreutil op
+  # macOS, en elke pin hier is een https-URL waar deze twee wél op grijpen. Ze
+  # begrenzen een tragere overdracht, niet de tijd tot DNS/TLS zich opzet en
+  # niet een credential-helper die om input vraagt — alle zeven FORKS-entries
+  # zijn vandaag publieke https-URL's, dus dat pad bestaat hier niet, maar het
+  # is geen garantie voor een toekomstige geauthenticeerde pin.
+  #
+  # `--` vóór $url: die komt uit pubspec.lock, en zonder `--` zou een waarde
+  # die met een streepje begint (`--upload-pack=...`) door git als optie
+  # gelezen worden in plaats van als repository.
+  if ! git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=15 \
+       init --bare -q "$tmp" 2>/dev/null ||
+     ! git -C "$tmp" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=15 \
+       fetch -q --no-tags -- "$url" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' \
+       2>/dev/null; then
+    rm -rf "$tmp"
+    echo unknown
+    return
+  fi
+  if git -C "$tmp" cat-file -e "${sha}^{commit}" -- 2>/dev/null; then
+    rm -rf "$tmp"
+    echo reachable
+  else
+    rm -rf "$tmp"
+    echo unreachable
+  fi
+}
+
+check_pin_reachability() {
+  local lock="$ROOT/pubspec.lock"
+  if [ ! -f "$lock" ]; then
+    record pin-reachability 3 UNKNOWN "?" "?" "pubspec.lock ontbreekt"
+    return
+  fi
+  local entry pkg url pinned status
+  local problems=() unknown=0
+  for entry in "${FORKS[@]}"; do
+    IFS='|' read -r pkg _ _ _ _ <<<"$entry"
+    # De eigen url uit de lock, niet de gevolgde ref uit FORKS hierboven: dat
+    # zijn voor background_downloader met opzet twee verschillende repo's
+    # (DEC-118), en reachability gaat over waar pubspec.yaml daadwerkelijk
+    # naartoe wijst.
+    url="$(awk -v n="  $pkg:" '$0==n{f=1; next} f&&/^ {2,3}[a-z]/{f=0} f&&/^ {4,8}url:/{gsub(/[",]/,"");print $2; exit}' "$lock")"
+    pinned="$(awk -v n="  $pkg:" '$0==n{f=1; next} f&&/^ {2,3}[a-z]/{f=0} f&&/resolved-ref:/{gsub(/[",]/,"");print $2; exit}' "$lock")"
+    if [ -z "$url" ] || [ -z "$pinned" ]; then
+      unknown=1
+      problems+=("$pkg: url of resolved-ref ontbreekt in pubspec.lock")
+      continue
+    fi
+    status="$(pin_reachable "$url" "$pinned")"
+    case "$status" in
+      reachable) ;;
+      unreachable) problems+=("$pkg: ${pinned:0:12} niet bereikbaar vanaf $url (geen branch of tag wijst ernaar)") ;;
+      *) unknown=1; problems+=("$pkg: bereikbaarheid van $url niet vast te stellen") ;;
+    esac
+  done
+  if [ ${#problems[@]} -eq 0 ]; then
+    record pin-reachability 3 CURRENT "${#FORKS[@]} pins" "allemaal bereikbaar op hun eigen url" ""
+  else
+    # Altijd UNKNOWN, nooit OUTDATED: een onbereikbare pin is geen "er is een
+    # nieuwere versie" maar "pub get faalt hier vandaag al", en dat mag nooit
+    # stilvallen achter --strict-through-ring zoals OUTDATED dat wel doet.
+    record pin-reachability 3 UNKNOWN "${#FORKS[@]} pins" "?" "$(printf '%s; ' "${problems[@]}")"
+    unknown=1
+  fi
+}
 
 check_forks() {
   local lock="$ROOT/pubspec.lock"
@@ -500,7 +596,7 @@ for p in pkgs:
       moved="$(printf '%s\n' "$probe" | sed -n 's/^> \([^ ]*\) .*/\1/p')"
       local still=() coupled=()
       for pkg in "${r1[@]}"; do
-        if printf '%s\n' "$moved" | grep -qx "${pkg%% *}"; then still+=("$pkg"); else coupled+=("$pkg"); fi
+        if grep -qx "${pkg%% *}" <<<"$moved"; then still+=("$pkg"); else coupled+=("$pkg"); fi
       done
       r1=("${still[@]:-}")
       [ -z "${r1[0]:-}" ] && r1=()
@@ -615,6 +711,7 @@ wanted libass   && check_pinned_release libass 3 android/libass/src/main/cpp/CMa
   's/^set(LIBASS_VERSION "\([^"]*\)").*/\1/p' https://github.com/edde746/libass \
   "ASS/SSA-styling, timing en shaping; flutter analyze ziet hier niets van"
 wanted forks    && check_forks
+wanted pins     && check_pin_reachability
 wanted analyzer && check_analyzer_stack
 wanted dart     && check_dart_packages
 wanted actions  && check_actions

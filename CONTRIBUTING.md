@@ -37,6 +37,11 @@ The project includes automated CI checks that run on all pull requests:
 3. **Tests**: Runs unit and widget tests (when available)
    - Run locally: `flutter test`
 
+4. **Unused code and files**: `dart_code_linter` scans the whole `lib/` tree
+   - CI runs this on every pull request
+   - Locally it is opt-in: `scripts/ci_checks.sh --with-unused`. It takes about a minute and a
+     half and judges the tree rather than the diff, so it is not part of the pre-commit gate.
+
 All these checks must pass before your changes can be merged.
 
 ## Documentatie en releasenotes
@@ -62,13 +67,16 @@ staat in `docs/archive/`.
 
 ### De pre-push hook
 
-`scripts/setup_hooks.sh` installeert naast `pre-commit` ook een `pre-push`. Die ververst
-`docs/RELEASES.md` met de commits sinds de laatst gepubliceerde build. Schrijft hij iets, dan
-commit hij dat en **breekt de push af** met de melding om opnieuw te pushen.
+`scripts/setup_hooks.sh` installeert naast `pre-commit` ook een `pre-push`. Die draait
+`scripts/gen_release_notes.sh --check` en meldt het wanneer `docs/RELEASES.md` achterloopt op
+de commits sinds de laatst gepubliceerde build. Meer niet: hij schrijft niets, commit niets en
+blokkeert de push niet.
 
-Dat afbreken is opzet. Een pre-push hook draait nadat git de te pushen refs al heeft
-vastgesteld, dus een commit die de hook zelf maakt gaat niet meer mee. De keuze is stilzwijgend
-achterlopen of één keer opnieuw pushen. Overslaan kan met `SKIP_HOOKS=1 git push`.
+Dat is sinds 23 september 2026 zo. Daarvoor schreef en committe hij zelf, en brak hij de push
+af met de melding om opnieuw te pushen — want een pre-push hook draait nadat git de te pushen
+refs al heeft vastgesteld, dus zo'n commit ging toch niet mee. Elke push kostte daardoor een
+tweede ronde, en de commit belandde buiten de review van de PR waarin hij ontstond. Bijwerken
+hoort bij `/update-docs` en de releaseflow, die `gen_release_notes.sh` als eerste stap draaien.
 
 **`scripts/setup_hooks.sh` hoort bij het opzetten van een clone**, niet bij de losse eindjes.
 `core.hooksPath` staat in `.git/config` en reist dus niet mee: sla die stap over en je hebt

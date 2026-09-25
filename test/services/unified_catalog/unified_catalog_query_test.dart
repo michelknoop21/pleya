@@ -32,6 +32,7 @@ void main() {
         sortField: UnifiedCatalogSortField.addedAt,
         sortDirection: LibrarySortDirection.descending,
         favoritesOnly: true,
+        audioLanguages: ['eng'],
       );
 
       final libraryQuery = query.toLibraryQuery(offset: 40, limit: 20);
@@ -42,6 +43,7 @@ void main() {
       expect(libraryQuery.sort?.field, 'addedAt');
       expect(libraryQuery.sort?.direction, LibrarySortDirection.descending);
       expect(libraryQuery.favoritesOnly, isTrue);
+      expect(libraryQuery.audioLanguages, ['eng']);
     });
   });
 

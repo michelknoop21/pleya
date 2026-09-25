@@ -1,9 +1,12 @@
 part of '../media_detail_screen.dart';
 
-/// The mobile film/series detail presentation (northstar 06/07,
-/// `docs/assets/ios-unified/northstar/06-film-detail.png` and
-/// `07-serie-afleveringen.png`). iOS Unified 2026 workitem 5 (I6),
-/// `docs/unified-2026-closure.md` §5 row 5.
+/// The mobile film/series detail presentation: one scrolling page in the
+/// order of northstar 06 (`docs/assets/ios-unified/northstar/06-film-detail.png`)
+/// for films and series alike. Northstar 07's tab strip for a series is
+/// dropped on Michel's instruction (DEC-131); the episodes, extras, cast and
+/// related rows follow the header inline, the way the TV detail stacks its
+/// rails. iOS Unified 2026 workitem 5 (I6), `docs/unified-2026-closure.md`
+/// §5 row 5.
 ///
 /// This is presentation only. Every action it triggers (play, download,
 /// watchlist, rate, mark watched, source change) reuses the exact methods
@@ -16,6 +19,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   Widget _buildMobileDetailScreen(BuildContext context, MediaItem metadata) {
     final theme = Theme.of(context);
     final client = _getMediaClientForMetadata(context);
+    _scheduleDetailAudioTracksLoad(metadata);
     // Same shell the pre-northstar mobile layout used: OverlaySheetHost owns
     // the back-pop suppression while a sheet (source picker, context menu,
     // rating) is open, and Focus(onKeyEvent: _handleMediaDetailBackKey) is
@@ -47,57 +51,68 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                               child: Column(
                                 crossAxisAlignment: .start,
                                 children: [
-                                  // Mockup 07 opens a series on the Hervatten
-                                  // capsule and goes straight into the tabs:
-                                  // no 16:9 preview, no second title under the
-                                  // app bar's, no tags row, and no full-width
-                                  // Downloaden CTA (download lives per episode
-                                  // row instead). Those belong to 06, the film
-                                  // detail, which keeps them unchanged below.
-                                  if (!metadata.isShow) ...[
-                                    _buildMobilePreviewCard(context, metadata, client),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      metadata.displayTitle,
-                                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildMobileTagsRow(context, metadata),
-                                    const SizedBox(height: 16),
-                                  ],
+                                  // DEC-131: one scrolling page for film and
+                                  // series alike, the order of mockup 06.
+                                  // Mockup 07's tabs (Afleveringen /
+                                  // Vergelijkbaar / Extra's / Details) are
+                                  // gone; a series gets the same header and
+                                  // its episodes, extras, cast and related
+                                  // rows follow inline, like the TV detail.
+                                  _buildMobilePreviewCard(context, metadata, client),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    metadata.displayTitle,
+                                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: .bold),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildMobileTagsRow(context, metadata),
+                                  const SizedBox(height: 16),
                                   _buildMobilePrimaryCta(context, metadata),
+                                  // Downloading a series happens per episode
+                                  // row; the full-width capsule is the film's.
                                   if (!metadata.isShow) ...[
                                     const SizedBox(height: 10),
                                     _buildMobileDownloadCta(context, metadata),
                                   ],
-                                  // Kept for a series too: this is the only way
-                                  // to change source from the detail page, and
-                                  // it already draws nothing unless the item
-                                  // actually has alternative sources
+                                  // The only way to change source from the
+                                  // detail page; draws nothing unless the item
+                                  // has alternative sources
                                   // (`hasAlternativeSources`, action_buttons.dart).
                                   _buildUnifiedSourceLine(),
-                                  const SizedBox(height: 16),
-                                  if (metadata.isShow)
-                                    _buildMobileEpisodesTabs(context, metadata)
-                                  else ...[
-                                    _buildMobileSynopsisAndCredits(context, metadata),
-                                    const SizedBox(height: 16),
-                                    _buildMobileActionRow(context, metadata),
+                                  if (_detailAudioTracks.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    _buildMobileAudioSelector(),
                                   ],
-                                  // For a show, "Meer zoals dit" lives in the
-                                  // Vergelijkbaar tab instead (_buildMobileEpisodesTabs)
-                                  // so it isn't rendered twice.
-                                  if (!metadata.isShow)
-                                    for (int i = 0; i < _relatedHubs.length; i++) ...[
-                                      const SizedBox(height: 8),
-                                      HubSection(
-                                        key: _relatedHubKeys[i],
-                                        hub: _relatedHubs[i],
-                                        icon: _getRelatedHubIcon(_relatedHubs[i]),
-                                        inset: true,
-                                        onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
-                                      ),
-                                    ],
+                                  const SizedBox(height: 16),
+                                  _buildMobileSynopsisAndCredits(context, metadata),
+                                  const SizedBox(height: 16),
+                                  _buildMobileActionRow(context, metadata),
+                                  if (metadata.isShow) ...[
+                                    const SizedBox(height: 24),
+                                    _buildMobileEpisodesSection(context, metadata),
+                                  ],
+                                  if (!widget.isOffline && _extras != null && _extras!.isNotEmpty) ...[
+                                    const SizedBox(height: 24),
+                                    _buildMobileSectionTitle(context, t.discover.extras, key: _extrasSectionKey),
+                                    const SizedBox(height: 12),
+                                    _buildExtrasSection(),
+                                  ],
+                                  if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
+                                    const SizedBox(height: 24),
+                                    _buildMobileSectionTitle(context, t.discover.cast, key: _castSectionKey),
+                                    const SizedBox(height: 12),
+                                    _buildCastSection(metadata),
+                                  ],
+                                  for (int i = 0; i < _relatedHubs.length; i++) ...[
+                                    const SizedBox(height: 16),
+                                    HubSection(
+                                      key: _relatedHubKeys[i],
+                                      hub: _relatedHubs[i],
+                                      icon: _getRelatedHubIcon(_relatedHubs[i]),
+                                      inset: true,
+                                      onVerticalNavigation: (isUp) => _handleRelatedHubNavigation(i, isUp),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -245,11 +260,20 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// the title. Reuses [_buildMetadataChip] and [buildMediaQualityLabels]
   /// unchanged; only the row composition is new.
   Widget _buildMobileTagsRow(BuildContext context, MediaItem metadata) {
+    final seasonCount = metadata.isShow ? metadata.childCount : null;
     final chips = <Widget>[
       if (metadata.year != null) _buildMetadataChip('${metadata.year}'),
       if (metadata.contentRating != null) _buildMetadataChip(formatContentRating(metadata.contentRating)),
       if (metadata.durationMs != null) _buildMetadataChip(formatDurationTextual(metadata.durationMs!)),
+      // A series says how many seasons it has where a film says how long it
+      // is. Only from two up: the string is plural, and a single season is
+      // already named by the season pill below.
+      if (seasonCount != null && seasonCount > 1)
+        _buildMetadataChip('$seasonCount ${t.libraries.groupings.seasons.toLowerCase()}'),
       for (final label in buildMediaQualityLabels(metadata)) _buildMetadataChip(label),
+      // Critic and audience ratings, the chips the tablet header shows. The own
+      // rating is not repeated here: "Beoordelen" sits in the action row.
+      ..._buildRatingChips(metadata, includeUserRating: false),
     ];
     if (chips.isEmpty) return const SizedBox.shrink();
     return Wrap(spacing: 8, runSpacing: 8, children: chips);
@@ -363,43 +387,41 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     final summary = metadata.summary;
     final roles = metadata.roles;
     final directors = metadata.directors;
+    final genres = metadata.genres;
+    final studio = metadata.studio;
     final mutedStyle = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+    Widget labelled(String label, String value) => Text.rich(
+      TextSpan(
+        style: mutedStyle,
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: mutedStyle?.copyWith(fontWeight: .w600),
+          ),
+          TextSpan(text: value),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: .start,
       children: [
+        // The genre line the TV detail draws under its metadata.
+        if (genres != null && genres.isNotEmpty) ...[
+          Text(genres.join(' · '), style: mutedStyle?.copyWith(fontWeight: .w600)),
+          const SizedBox(height: 8),
+        ],
         if (summary != null && summary.isNotEmpty) ...[
           CollapsibleText(text: summary, maxLines: 6, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
           const SizedBox(height: 12),
         ],
-        if (roles != null && roles.isNotEmpty)
-          Text.rich(
-            TextSpan(
-              style: mutedStyle,
-              children: [
-                TextSpan(
-                  text: '${t.discover.cast}: ',
-                  style: mutedStyle?.copyWith(fontWeight: .w600),
-                ),
-                TextSpan(text: roles.take(3).map((r) => r.tag).join(', ')),
-              ],
-            ),
-          ),
+        if (roles != null && roles.isNotEmpty) labelled(t.discover.cast, roles.take(3).map((r) => r.tag).join(', ')),
         if (directors != null && directors.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text.rich(
-            TextSpan(
-              style: mutedStyle,
-              children: [
-                TextSpan(
-                  text: '${t.metadataEdit.director}: ',
-                  style: mutedStyle?.copyWith(fontWeight: .w600),
-                ),
-                TextSpan(text: directors.join(', ')),
-              ],
-            ),
-          ),
+          labelled(t.metadataEdit.director, directors.join(', ')),
         ],
+        if (studio != null && studio.isNotEmpty) ...[const SizedBox(height: 4), labelled(t.discover.studio, studio)],
       ],
     );
   }
@@ -427,30 +449,32 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     Widget action({
       required IconData icon,
       required String label,
-      required VoidCallback? onPressed,
+      required void Function(BuildContext buttonContext)? onPressed,
       bool active = false,
     }) {
       final color = active ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
       final effectiveColor = onPressed == null ? color.withValues(alpha: 0.4) : color;
       return Expanded(
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: effectiveColor),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: .ellipsis,
-                  textAlign: .center,
-                  style: TextStyle(fontSize: 12, color: effectiveColor),
-                ),
-              ],
+        child: Builder(
+          builder: (buttonContext) => InkWell(
+            onTap: onPressed == null ? null : () => onPressed(buttonContext),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: effectiveColor),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    textAlign: .center,
+                    style: TextStyle(fontSize: 12, color: effectiveColor),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -462,26 +486,56 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
         action(
           icon: onWatchlist ? Icons.bookmark_added_rounded : Icons.add_rounded,
           label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
-          onPressed: canOfferWatchlist ? () => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
+          onPressed: canOfferWatchlist ? (_) => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
         ),
         action(
           icon: isNumericRating ? Icons.star_rounded : Icons.thumb_up_rounded,
           label: t.mediaMenu.rate,
           active: hasRating,
-          onPressed: widget.isOffline ? null : () => unawaited(_showRatingDialog(context, metadata)),
+          onPressed: widget.isOffline ? null : (_) => unawaited(_showRatingDialog(context, metadata)),
         ),
         action(
           icon: metadata.isWatched ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
           label: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
           active: metadata.isWatched,
-          onPressed: () => unawaited(_handleWatchedTogglePressed(metadata)),
+          onPressed: (_) => unawaited(_handleWatchedTogglePressed(metadata)),
         ),
         action(
           icon: Icons.send_rounded,
           label: t.common.share,
-          onPressed: () => unawaited(SharePlus.instance.share(ShareParams(text: metadata.displayTitle))),
+          onPressed: (buttonContext) => unawaited(_shareMobileItem(buttonContext, metadata)),
         ),
       ],
+    );
+  }
+
+  /// The iOS share sheet anchored to the tapped button. share_plus needs
+  /// `sharePositionOrigin` for the popover (required on iPad, and without it
+  /// the sheet could fail to appear or leave the UI unresponsive); Michel saw
+  /// exactly that on 24 September ("delen werkt niet"). A failure to present
+  /// the sheet is shown, a dismissed sheet is not.
+  Future<void> _shareMobileItem(BuildContext buttonContext, MediaItem metadata) async {
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    final year = metadata.year;
+    final text = year == null ? metadata.displayTitle : '${metadata.displayTitle} ($year)';
+    try {
+      await SharePlus.instance.share(
+        ShareParams(text: text, subject: metadata.displayTitle, sharePositionOrigin: origin),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showErrorSnackBar(context, t.errors.failedToLoad(context: t.common.share));
+    }
+  }
+
+  /// Section heading over the inline episodes, extras and cast blocks: the
+  /// same `titleLarge` bold the tablet/desktop layout uses for its sections.
+  Widget _buildMobileSectionTitle(BuildContext context, String title, {Key? key}) {
+    return Text(
+      key: key,
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: .bold),
     );
   }
 }

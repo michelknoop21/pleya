@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
 
 /// Every automation ID is either a literal `static const`/method on
 /// [AutomationIds] (`lib/automation/automation_ids.dart`), or its output —
@@ -41,5 +42,21 @@ void main() {
           'Use a static member on AutomationIds (lib/automation/automation_ids.dart) instead of a raw '
           'string literal, or add the file to the allowlist in this test with a reason.\n${offenders.join('\n')}',
     );
+  });
+
+  test('auth exposes one closed five-id domain and only choices are instanceable', () {
+    final authCatalog = AutomationIds.catalog().where((entry) {
+      final id = entry['id']! as String;
+      return id == AutomationIds.screenAuth || id.startsWith('auth.');
+    }).toList();
+
+    expect(authCatalog, [
+      {'id': AutomationIds.screenAuth, 'role': 'screen', 'instanceable': false},
+      {'id': AutomationIds.authHeading, 'role': 'heading', 'instanceable': false},
+      {'id': AutomationIds.authChoice, 'role': 'button', 'instanceable': true},
+      {'id': AutomationIds.authPanel, 'role': 'region', 'instanceable': false},
+      {'id': AutomationIds.authRetry, 'role': 'button', 'instanceable': false},
+    ]);
+    expect(AutomationIds.instanceableIds.where((id) => id.startsWith('auth.')), [AutomationIds.authChoice]);
   });
 }

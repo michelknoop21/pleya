@@ -23,12 +23,14 @@ import '../providers/home_custom_rows_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/personal_media_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/unified_catalogs.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../profiles/plex_self_account.dart';
+import '../profiles/profile_connection_registry.dart';
 import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
@@ -39,6 +41,7 @@ import '../i18n/strings.g.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
 import '../services/recommendations/interaction_recorder.dart';
+import '../services/recommendations/jellyfin_history_importer.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/recommendations/tautulli_history_importer.dart';
@@ -213,6 +216,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   return NowWatchingProvider(
                     client: () => tautulli.client,
                     enabled: ownsAServer,
+                    monitoredServerId: monitoredServerId,
                     selfUserId: () => plexSelfAccountId(activeProfile.activeId, plexHome),
                     // Tautulli hands out Plex library paths for artwork, which
                     // only a Plex client can turn into a loadable URL.
@@ -238,6 +242,13 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   storageService: context.read<StorageService>(),
                   multiServer: context.read<MultiServerProvider>(),
                 ),
+              ),
+              ChangeNotifierProvider(
+                create: (context) => PersonalMediaProvider(
+                  multiServer: context.read<MultiServerProvider>(),
+                  libraries: context.read<LibrariesProvider>(),
+                ),
+                lazy: true,
               ),
               // ROW1/DEC-100: the content of the rows this profile defined
               // itself. Registered after LibrariesProvider because it reads
@@ -291,6 +302,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   // resolve which Plex account this profile is, and the binding
                   // then refuses with `ambiguousUser` instead of guessing.
                   final plexHome = context.read<PlexHomeService?>();
+                  final profileConnections = context.read<ProfileConnectionRegistry>();
                   final profileId = activeId ?? '';
 
                   return RecommendationService(
@@ -300,6 +312,8 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       topPicks: t.discover.topPicksForYou,
                       becauseYouLike: (genre) => t.discover.becauseYouLike(genre: genre),
                       hiddenGems: t.discover.hiddenGems,
+                      moreWithActor: (name) => t.discover.moreWithActor(name: name),
+                      moreFromDirector: (name) => t.discover.moreFromDirector(name: name),
                     ),
                     enabledImportServerIds: tautulli.enabledImportServerIds,
                     // The store load is asynchronous and Discover routinely
@@ -344,6 +358,34 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                         isCurrentProfile: () => activeProfile.activeId == importProfileId,
                       );
                     },
+                    // Only the profile's own Jellyfin logins, never a borrowed
+                    // one (DEC-062, DEC-132), and nothing while the binder is
+                    // still swapping the previous profile's servers out.
+                    historyImporters: () => ownJellyfinHistoryImporters(
+                      database: database,
+                      profileId: profileId,
+                      connectionsForProfile: profileConnections.listForProfile,
+                      profilesForConnection: profileConnections.listForConnection,
+                      onlineSource: (connectionId) {
+                        final manager = multiServer.serverManager;
+                        final client = manager.getJellyfinClientByCompoundId(connectionId);
+                        if (client == null) return null;
+                        return manager.isClientOnline(client.serverId, clientScopeId: connectionId) ? client : null;
+                      },
+                      isCurrentProfile: () => activeProfile.activeId == profileId && !activeProfile.isBinding,
+                      // A load during binding waits for it (bounded) rather
+                      // than skipping the import until the next load.
+                      whenBound: () => activeProfile.awaitBindingSettle(),
+                    ),
+                    // Same rule for the seed rows' server path: a shared
+                    // Jellyfin connection's history is not this profile's.
+                    sharedHistoryServerIds: () => sharedJellyfinServerIds(
+                      profileId: profileId,
+                      connectionsForProfile: profileConnections.listForProfile,
+                      profilesForConnection: profileConnections.listForConnection,
+                      jellyfinServerId: (connectionId) =>
+                          multiServer.serverManager.getJellyfinClientByCompoundId(connectionId)?.serverId,
+                    ),
                   );
                 },
               ),
@@ -353,6 +395,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   database: context.read<AppDatabase>(),
                   profileId: activeId ?? '',
                   clientResolver: context.read<MultiServerProvider>().getClientForServer,
+                  enabledImportServerIds: context.read<TautulliProvider>().enabledImportServerIds,
                 )..start(),
                 dispose: (_, recorder) => recorder.dispose(),
               ),

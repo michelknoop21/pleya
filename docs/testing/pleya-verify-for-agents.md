@@ -18,7 +18,7 @@ Before running anything against a real target, check whether the target can actu
 
 Everything below assumes the working directory is `pleya_verify/runner/` (every subcommand resolves
 `../scenarios`, `../automation_ids.yaml`, and `../..` for the repo root relative to that directory),
-and that the Flutter SDK pinned in `.fvmrc` is on `PATH` (see CLAUDE.md, dependency section, for why
+and that the Flutter SDK pinned in `.fvmrc` is on `PATH` (see `docs/agents/dependencies.md`, for why
 a different SDK silently breaks formatting/codegen expectations elsewhere in this repo).
 
 ## Running an existing scenario
@@ -80,9 +80,10 @@ fall back to a label-based or geometry-only assertion to work around a missing i
 For a `state:` assertion, use the field the widget itself renders from (a `state:` callback
 mirroring a real `bool`/`enum`), never a proxy that merely correlates with it. `assert:
 {state: {collapsed: !isCollapsed}}` (asserting the boolean *without inverting the bug*) is exactly
-the kind of false-PASS Fase 12 exists to catch; see `pleya_verify/scenarios/tvos.sidebar.collapse.yaml`
-for a fully commented, worked example, including why that scenario asserts on `state.collapsed`
-specifically instead of geometry alone.
+the kind of false-PASS Fase 12 exists to catch; see
+`pleya_verify/scenarios/tvos.nav.focus-switches-destination.yaml` for a commented example that
+asserts `state.active` after every press instead of where the ring is. Since DEC-120 that scenario
+is the reference gate DEC-081 named; `tvos.sidebar.collapse` went with the sidebar.
 
 For geometry assertions (`insideViewport`, `notOverlapping`, `minimumTapTarget`, `below`/`above`/
 `leftOf`/`rightOf`, `sameRow`/`sameColumn`), see `pleya_verify/geometry/SPEC.md` for the full
@@ -104,7 +105,7 @@ function/argument table before guessing a shape.
 ## Never do this
 
 - **Never drive tvOS input through `/v1/input/*`.** The gated engine fork claims every remote press
-  before UIKit's responder chain runs (see CLAUDE.md, Gotchas section); a press synthesized over the
+  before UIKit's responder chain runs (see `docs/agents/ui-and-tv.md`, Known failure modes section); a press synthesized over the
   automation transport does not exercise that path and proves nothing about a real Siri Remote.
   `TvosSimulatorDriver` only ever sends input through `scripts/tvos_sim.sh` (idb HID); do not add a
   tvOS scenario step or a driver change that routes around that.

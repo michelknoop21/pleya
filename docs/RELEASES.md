@@ -49,16 +49,6 @@ under `Notes`.
 - S2.3, GET /storage/roots uit de mounts en de recheck
 - D0 goedgekeurd, D1 canoniek loudnessbewijs per audiostroom
 - D2, package internal/loudness
-- automation-ids op de mobiele My Pleya, Verify voor 18
-- automation-ids op de mobiele Bibliotheken-picker, Verify voor 15
-- automation-ids op de mobiele Instellingen, Verify voor 14
-- metadata-subregel in het unified contextmenu (CTX1)
-- de hervat-rij toont de resterende tijd (CTX2)
-- icoon per actierij in het unified contextmenu (CTX3)
-- Live TV krijgt op tvOS één secundaire laag in de capsuletaal (MOC-17, LIVE1)
-- bronregel en zenderteller onder de Live TV-kop (MOC-17)
-- de Live TV-gids krijgt binnen de shell tien-voet-dichtheid (MOC-17)
-- blijvende detailbalk onder de Live TV-gids (MOC-17)
 - rescue-migraties geland als 0010 (S2.4) en 0011 (loudness), docs hernummerd
 - jobs annuleren, opnieuw proberen en lezen in de runner (S2.4)
 - scanner stopt binnen één walk-stap en neemt een queued scan_runs-rij over (S2.4)
@@ -68,7 +58,6 @@ under `Notes`.
 
 ### Improved
 - semantische bronaudit op codec- en containerlijsten
-- bereken showReconnect op één plek in tvTopNavFocusKeys
 
 ### Fixed
 - "Opnieuw aanmelden" probeert eerst één echte refresh
@@ -80,44 +69,6 @@ under `Notes`.
 - de merge liet twee capability-fixtures en de gegenereerde client achter
 - drie bevindingen uit de codex-challenge op de merge
 - vijf codex-bevindingen op /libraries vóór S2.3
-- de echte focus volgt een verdwijnende TV-bestemming (FOC1)
-- de serverstip leest kSuccess (TOK2)
-- add filled and scope chip variants for the mobile northstar
-- gedeelde staat- en lege-presentatie op TV-maat (SYS-4)
-- pin the northstar control pill to an exact 32pt surface
-- SYS-4 fix-ronde 1, geen verzonnen schaalfactor meer
-- FOC1 post-frame focus restore mist een focus-guard
-- TOK2 serverstip-key botst bij meerdere online servers
-- breng het mobiele detailscherm terug naar northstar 06/07
-- eigen tablabels voor de mobiele detailtabs (mockup 07)
-- catalogus-openers in Bibliotheken en Home via de content-route-registry (SYS-1d)
-- SYS-1d review, Alle-N route-id op hubId in plaats van target.hashCode
-- echte long-press-input in Pleya Verify, sluit 09 Contextmenu-sheet
-- route drie resterende TV-shell-bypasses via openTvContentRoute
-- comment overclaimde showReconnect-consolidatie corrigeren
-- de resultatenviewport op Zoeken clipt weer aan zijn bovenrand (SEARCH2)
-- een lege landing houdt de route naar de complete catalogus (LAND6)
-- de actieve rail op een landing krijgt het anker dat Home al had (LAND7)
-- een verwijderde kijklijstkaart geeft de ring door (WL3)
-- sluit F5 - phone-heldenvloer forceerde overflow op de fold
-- een Jellyfin-hub leidt zijn type af uit zijn items (REV1)
-- em-dash in twee REV1-docstrings vervangen (anti-slop)
-- een trage server verdwijnt niet uit het opgeslagen bronfilter (CAT20)
-- whole-branch review findings, CAT20 library keys, LAND7/REV1a docs
-- de seizoenchiprij reserveert de hoogte die een chip echt vraagt (DET4)
-- de detailrail leest dezelfde schaal als het scherm eronder (SYS-3c)
-- whole-branch review findings, meta line and Resume row can disagree
-- Live TV tekent binnen de unified shell geen tweede navigatiebalk (LIVE1)
-- overbodige await op buildProvider() weghalen (analyzer-lint)
-- het Live TV-showschema opent binnen de TV-shell (LIVE1)
-- showschema sluit correct af binnen de TV-shell (LIVE1d)
-- en-dash als gedachtestreepje uit de nieuwe tvOfflineHome-vertaling
-- _focusedChannel las de verkeerde lijst bij meer dan één bron
-- de detailbalk voedt zich ook op de kanaalkolom, niet pas na Right (MOC-17)
-- de nieuwe MOC-17-regressietest scopen en de gemiste pump toevoegen
-- keep Apple viewer zoom on the display layer
-- review-correcties op het layer-owned zoompad
-- drop stale sub-pos zoom compensation and rebuild filter state after a player retry
 - harden completion integration after review
 - offline-melding noemt de server die echt onbereikbaar was (L26)
 - dubbele common.timedOut uit nl verwijderd, parser bewaakt dubbele sleutels (L27)
@@ -144,6 +95,26 @@ under `Notes`.
   read comfortably from the couch, with a progress line under whatever is airing now.
 - **A detail bar under the Apple TV guide always shows what's focused**: the title, channel,
   time, and a short synopsis, without taking the remote's focus away from the guide itself.
+- **A Pleya Server can now be shared by a household.** The owner adds an account per person and
+  decides which libraries each of them sees. A library somebody has no access to does not show
+  up in their list, in their search results, or when they open a link straight to it. Watch
+  position, resume and Continue Watching are per person, so two people watching the same film
+  keep their own place in it.
+- **Four roles, and one rung of access per library.** The owner and administrators see every
+  library. A member sees the libraries they were given. A restricted account is a member with
+  three differences: it cannot be given management rights, only an owner or administrator sets
+  its password, and it sees no one but itself in the account list. Adding accounts and setting
+  their libraries runs over the server API for now; `pleya_server/README.md` has the commands.
+  The screen for it comes with the management interface.
+- **Signing in registers the device, not just the account.** Each device gets its own session,
+  which means signing out on a phone that was lost leaves the television logged in. The owner
+  can see and end anyone's sessions; everyone else sees and ends their own.
+
+### Improved
+
+- **Ending a session takes effect while a film is playing.** A revoked session stops the stream
+  it was feeding rather than letting it run to the end of the file. Measured at under half a
+  second on the test rig, against a documented ceiling of two seconds.
 
 ### Fixed
 
@@ -152,6 +123,116 @@ under `Notes`.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing
   consistently with the rest of the screen**, instead of running slightly smaller when the page
   is nested under the top bar.
+
+## 2.8.0 · build 298 · 24 September 2026 · Apple TV
+
+<!-- commit: 53e2704a -->
+
+### Improved
+
+- **Search on Apple TV has a new field.** It is narrower, starts on the same edge as the
+  results below it, and shows the result count in the middle. The hint text stays on one line.
+- **The season selector on a series page now sits on the "Episodes" heading line**, next to
+  the count of episodes and how many you have watched. The seasons are filled pills with the
+  active one in white, and the row steps aside when you move to the cast or extras below.
+- **The Appearance settings page has clearer focus movement.** Left from any row returns to the
+  active category, and right from a category opens it with the first row selected.
+
+### Fixed
+
+- **Reconnecting a server for the profile you are already using no longer throws you back to
+  the start of My Pleya.** The section you had open stays open. It only closes when the server
+  behind it (Seerr or Tautulli) went away.
+- **The profile button now opens the "Who's watching?" screen** instead of the plain profile
+  list. Menu closes it and returns to the button. Managing profiles still opens the list.
+- **Full durations now have a space between number and unit**, for example "5 minutes" in the
+  sleep timer.
+
+## 2.8.0 · build 296 · 24 September 2026 · iPhone, iPad and Mac
+
+<!-- commit: 5b937630 -->
+
+### Fixed
+
+- **Signing in with Plex from your own Home profile no longer lands on an empty "Nothing to
+  borrow yet" page.** The app now recognizes when the target profile already has that Plex
+  account, through its own Home profile or a saved connection, and reconnects it directly
+  instead of routing through the borrow step.
+- **The collapsed sidebar on Mac now fades out the server name and arrow next to a server
+  icon**, the same way every other row already does when the sidebar is collapsed, instead of
+  leaving clipped text behind.
+
+## 2.8.0 · build 297 · 24 September 2026 · Apple TV
+
+<!-- commit: 5b937630 -->
+
+### Fixed
+
+- **Signing in with Plex from your own Home profile no longer lands on an empty "Nothing to
+  borrow yet" page.** The app now recognizes when the target profile already has that Plex
+  account, through its own Home profile or a saved connection, and reconnects it directly
+  instead of routing through the borrow step.
+
+### Notes
+
+- The collapsed-sidebar fix in build 296 is for the Mac and iPad rail; Apple TV does not use
+  that layout.
+
+## 2.8.0 · build 295 · 24 September 2026 · iPhone and iPad
+
+<!-- commit: 81b8be59 -->
+
+### Improved
+
+- **Watchlist filters now open in one sheet**, so you can choose the type and availability together.
+- **Marking a title watched while its server is offline updates the screen immediately** and queues the change for that server.
+
+### Fixed
+
+- **A 4K request now picks a matching Overseerr server** instead of retaining the standard-quality server and its profile.
+- **Audio and subtitle language choices you set yourself stay saved**, even if server profile data arrives later.
+
+### Worth checking
+
+- On iPhone or iPad, filter the Watchlist, mark a title watched while one server is unavailable,
+  and switch a request between standard and 4K quality if your account supports it.
+
+### Notes
+
+- This iOS build includes shared reliability fixes. The latest Home hero and settings redesign
+  in build 294 is for Apple TV; the iPhone and iPad layout has not been changed to match it.
+
+## 2.8.0 · build 294 · 23 September 2026 · Apple TV
+
+<!-- commit: 3e46c035 -->
+
+### New
+
+- **Home can feature up to twelve recent films**, and each hero title shows whether it is
+  unwatched, in progress (with a percentage), or watched.
+- **Collections and Playlists have their own entries in My Pleya** where the connected Plex or
+  Jellyfin server provides them. Each overview keeps its source visible.
+
+### Improved
+
+- **Appearance settings are grouped into four TV-friendly categories** while keeping the
+  existing options and saved preferences.
+- **Home layout makes similar recent rows easier to tell apart** by naming the media type and
+  keeps their existing ordering and visibility controls.
+- **Add Connection shows all six existing routes in a two-column TV picker** with remote focus
+  and a clear way back to Servers.
+
+### Worth checking
+
+- On Apple TV, move through the Home hero with the remote and compare unwatched, in-progress,
+  and watched titles. Check that Play, Resume, and Details stay reachable.
+- Open Collections, Playlists, Appearance, Home layout, and Add Connection from My Pleya; use
+  Back to confirm focus returns to the tile you came from.
+
+### Notes
+
+- This build is for Apple TV. The connection forms and other remaining windows are still being
+  redesigned; their existing routes and actions remain available.
 
 ## 2.8.0 · build 282 · 16 September 2026
 
@@ -349,6 +430,37 @@ screenshots. Four things in particular:
   number of a build that had been installed straight from Xcode earlier that day and never
   reached TestFlight, which left two different builds wearing one number. It was expired to end
   that, and expiring cannot be undone.
+
+## 2.8.0 · build 242 · 23 August 2026
+
+<!-- commit: aa74004 -->
+
+### New
+
+- **A "Maximum Resolution" setting for playback.** Under Settings → Playback → Maximum
+  Resolution, you can cap what the app asks a server for, even when the file itself is larger.
+  Useful on a connection where 4K would be more than the link should carry.
+- **A Pleya Server can be disconnected from Settings → Connections.** It had no entry there at
+  all before; removing one meant going two screens deeper into a profile's management screen,
+  and if the session there had expired, that screen only offered to sign back in.
+
+### Improved
+
+- **Jellyfin now plays TrueHD audio tracks directly instead of transcoding them**, on desktop,
+  iPhone, iPad and Apple TV. Nothing about the video or the audio changes: the app simply stops
+  asking the server to re-encode a track it could already decode itself.
+
+### Fixed
+
+- **A "Session expired" banner that kept coming back after every restart is gone.** Reconnecting
+  cleared it once, but the very next launch showed it again, with re-entering the server address
+  from scratch as the only way out. A session that was not actually dead now recovers on its own.
+- **Disconnecting a Pleya Server now removes it for good.** It could keep the connection around
+  behind the scenes, so a stale reconnect banner came back, sometimes only after restarting the
+  app.
+- **The sidebar no longer gets stuck open with nothing selected.** It could happen when the row
+  you were focused on, such as the reconnect prompt or "Now watching", disappeared on its own
+  while you were on it.
 
 ## 2.8.0 · build 240 · 21 August 2026
 

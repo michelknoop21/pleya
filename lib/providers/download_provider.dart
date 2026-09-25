@@ -1669,8 +1669,9 @@ class DownloadProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// offline-sync drains) to bypass the executor's cooldown. Defaults to
   /// `false` for background probes (e.g. connectivity reconnects).
   ///
-  /// Returns titles of newly queued items (for snackbar display).
-  Future<List<String>> executeSyncRules(MultiServerManager serverManager, {bool force = false}) async {
+  /// Returns one result per rule that queued something, counts included, so
+  /// the caller can report how many episodes actually landed.
+  Future<List<SyncRuleResult>> executeSyncRules(MultiServerManager serverManager, {bool force = false}) async {
     if (!_downloadManager.downloadsSupported) return [];
 
     final profileId = _activeProfileId;
@@ -1689,10 +1690,10 @@ class DownloadProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       force: force,
     );
 
-    return results.where((r) => r.queuedCount > 0).map((r) {
-      final title = r.title ?? t.common.unknown;
-      return '$title (${r.queuedCount})';
-    }).toList();
+    // Returned whole: the caller needs the per-rule counts to say how many
+    // episodes actually landed. Flattening to display strings here is what
+    // left it counting rules instead.
+    return results.where((r) => r.queuedCount > 0).toList();
   }
 
   /// Execute a single sync rule immediately (eager path for `addToPlaylist` /

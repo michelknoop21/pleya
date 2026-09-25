@@ -12,36 +12,24 @@ ROOT="$(git rev-parse --show-toplevel)"
 # docs/RELEASES.md laten we de push met rust.
 [ -f "$ROOT/docs/RELEASES.md" ] || exit 0
 
-if ! git -C "$ROOT" diff --quiet -- docs/RELEASES.md \
-   || ! git -C "$ROOT" diff --cached --quiet -- docs/RELEASES.md; then
-  echo "[pre-push] docs/RELEASES.md heeft al onopgeslagen wijzigingen — overgeslagen"
+# Deze hook schrijft niets meer en breekt niets meer af. Hij commit ook niet
+# meer zelf: een pre-push hook draait nadat git de te pushen refs al heeft
+# vastgesteld, dus zo'n commit ging toch niet mee en de push moest alsnog over.
+# Dat kostte elke keer een ronde, en de commit belandde buiten de review van de
+# PR waarin hij ontstond.
+#
+# De echte generatie hoort bij /update-docs en de releaseflow; die draait
+# gen_release_notes.sh als eerste stap. Wat hier overblijft is de signalering.
+if "$ROOT/scripts/gen_release_notes.sh" --check --quiet >/dev/null 2>&1; then
   exit 0
 fi
 
-if ! "$ROOT/scripts/gen_release_notes.sh" --quiet; then
-  echo "[pre-push] gen_release_notes.sh faalde — push afgebroken" >&2
-  exit 1
-fi
+cat >&2 <<'MSG'
+[pre-push] docs/RELEASES.md loopt achter op de commits sinds de laatste build.
 
-if git -C "$ROOT" diff --quiet -- docs/RELEASES.md; then
-  exit 0
-fi
+Dit blokkeert niets. Bijwerken doe je waar het hoort, in de documentatieronde:
 
-# --only, want een kale commit neemt alles mee wat er al in de index staat.
-# Wie met gestagede wijzigingen pusht zag die anders stilzwijgend in een commit
-# met deze boodschap verdwijnen; dat is een keer gebeurd met 87 bestanden.
-SKIP_HOOKS=1 git -C "$ROOT" commit --only docs/RELEASES.md \
-  -m "docs: releasenotes bijwerken" --no-verify >/dev/null
+  scripts/gen_release_notes.sh
 
-cat >&2 <<'EOF'
-[pre-push] docs/RELEASES.md liep achter en is bijgewerkt en gecommit.
-
-Deze push is afgebroken, met opzet: git heeft de te pushen refs al vastgesteld
-voordat deze hook draaide, dus de zojuist gemaakte commit gaat er niet meer in
-mee. Push nog een keer en alles gaat mee.
-
-  git push
-
-Overslaan kan met SKIP_HOOKS=1 git push
-EOF
-exit 1
+MSG
+exit 0

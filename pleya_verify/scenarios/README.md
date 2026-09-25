@@ -21,13 +21,20 @@ instanceable as `id[instance]`).
 
 Three of the four scenarios the Pleya Verify Definition of Done requires
 (`tvos.sidebar.collapse`, `discover.layout`, `media-detail.episode-refresh`)
-land here in Fase 11. `tvos.library.filters` does not: the Pleya Server wire
+landed here in Fase 11; the sidebar one went with the sidebar, and DEC-120 moved
+its role to `tvos.nav.focus-switches-destination`. The fourth,
+`tvos.library.filters`, did not land: the Pleya Server wire
 contract carries no filter parameter or endpoint at all (G13 in
 `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`, not scheduled before a catalog
 phase or a contract question ahead of PS-7), so there is no real filter path
-to prove yet. `tvos.library.sort.yaml` exercises the library header's Sort
-control instead, a fully supported feature today, under its own, honest
-name.
+to prove yet. `tvos.library.sort.yaml` used to exercise the library
+header's Sort control in its place, including the reordered result; it was
+retired in TV6 because LIB7 (DEC-092) removed that header on TV. Sorting now
+lives in the catalog rail. `tvos.catalog.rail-sort-focus.yaml` proves the
+rail keeps focus through a sort; `tvos.catalog.sort-order.yaml` (TV8) proves
+the order it produces. Each Films/Series card registers as
+`tv.catalog.grid.item[<surface>.<i>]` with its title in `state`, so Titel
+A-Z and Titel Z-A are asserted card by card.
 
 `tvos.library.filters` is formally **DEFERRED: blocked by Pleya Server
 catalog/filter contract G13** ([DEC-080](../../docs/DECISIONS.md#dec-080-tvoslibraryfilters-is-deferred-geblokkeerd-door-het-pleya-server-cataloguscontract-g13)).

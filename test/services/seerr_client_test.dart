@@ -57,7 +57,8 @@ void main() {
   group('SeerrPermission', () {
     test('admin implies every flag', () {
       expect(SeerrPermission.has(SeerrPermission.admin, SeerrPermission.manageRequests), isTrue);
-      expect(SeerrPermission.has(SeerrPermission.admin, SeerrPermission.anyRequest4k), isTrue);
+      expect(SeerrPermission.canRequest4k(SeerrPermission.admin, isMovie: true), isTrue);
+      expect(SeerrPermission.canRequest4k(SeerrPermission.admin, isMovie: false), isTrue);
     });
 
     test('non-admin only has explicit flags', () {
@@ -65,10 +66,18 @@ void main() {
       expect(SeerrPermission.has(SeerrPermission.request, SeerrPermission.manageRequests), isFalse);
     });
 
-    test('anyRequest4k matches each 4k variant', () {
-      for (final flag in [SeerrPermission.request4k, SeerrPermission.request4kMovie, SeerrPermission.request4kTv]) {
-        expect(SeerrPermission.has(flag, SeerrPermission.anyRequest4k), isTrue);
-      }
+    // The full per-media-type matrix lives in `seerr_permissions_test.dart`.
+    // This one only holds the line the union used to cross: the flags are not
+    // interchangeable, so the umbrella is the only one that covers both.
+    test('the 4k flags are not interchangeable across media types', () {
+      expect(SeerrPermission.canRequest4k(SeerrPermission.request4k, isMovie: true), isTrue);
+      expect(SeerrPermission.canRequest4k(SeerrPermission.request4k, isMovie: false), isTrue);
+
+      expect(SeerrPermission.canRequest4k(SeerrPermission.request4kMovie, isMovie: true), isTrue);
+      expect(SeerrPermission.canRequest4k(SeerrPermission.request4kMovie, isMovie: false), isFalse);
+
+      expect(SeerrPermission.canRequest4k(SeerrPermission.request4kTv, isMovie: false), isTrue);
+      expect(SeerrPermission.canRequest4k(SeerrPermission.request4kTv, isMovie: true), isFalse);
     });
   });
 
@@ -201,6 +210,32 @@ void main() {
 
       await client.getRequests();
       expect(seen!.queryParameters.containsKey('requestedBy'), isFalse);
+    });
+
+    test('discover threads filters and server-side sort into movie and TV queries', () async {
+      final seen = <Uri>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen.add(request.url);
+          return _json({'page': 1, 'totalPages': 1, 'results': []}, 200);
+        }),
+      );
+
+      await client.discoverMovies(genre: 28, watchProvider: 337, watchRegion: 'NL', sortBy: 'vote_average.desc');
+      await client.discoverTv(genre: 18, sortBy: 'first_air_date.desc');
+
+      expect(seen[0].path, endsWith('/discover/movies'));
+      expect(seen[0].queryParameters, {
+        'page': '1',
+        'genre': '28',
+        'watchProviders': '337',
+        'watchRegion': 'NL',
+        'sortBy': 'vote_average.desc',
+      });
+      expect(seen[1].path, endsWith('/discover/tv'));
+      expect(seen[1].queryParameters['genre'], '18');
+      expect(seen[1].queryParameters['sortBy'], 'first_air_date.desc');
     });
   });
 

@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
 import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../profiles/profile.dart';
@@ -42,6 +43,7 @@ class TvProfileGate extends StatelessWidget {
   const TvProfileGate({
     super.key,
     required this.profiles,
+    this.activeId,
     required this.switching,
     required this.focusNodeFor,
     required this.onSelect,
@@ -49,6 +51,9 @@ class TvProfileGate extends StatelessWidget {
   });
 
   final List<Profile> profiles;
+
+  /// The profile in use, reported on its tile. Null at launch, when none is.
+  final String? activeId;
 
   /// A switch is already in flight elsewhere in `ProfileSwitchScreen`
   /// (`_switching`); mirrors the existing gate's own guard against a second
@@ -89,7 +94,9 @@ class TvProfileGate extends StatelessWidget {
                 children: [
                   for (var i = 0; i < profiles.length; i++)
                     _TvProfileGateTile(
+                      index: i,
                       profile: profiles[i],
+                      active: profiles[i].id == activeId,
                       autofocus: i == 0,
                       focusNode: focusNodeFor(profiles[i]),
                       scale: scale,
@@ -117,14 +124,18 @@ class TvProfileGate extends StatelessWidget {
 /// other surface uses) with the name below and a white ring on focus.
 class _TvProfileGateTile extends StatelessWidget {
   const _TvProfileGateTile({
+    required this.index,
     required this.profile,
+    required this.active,
     required this.autofocus,
     required this.focusNode,
     required this.scale,
     required this.onSelect,
   });
 
+  final int index;
   final Profile profile;
+  final bool active;
   final bool autofocus;
   final FocusNode focusNode;
   final double scale;
@@ -144,6 +155,10 @@ class _TvProfileGateTile extends StatelessWidget {
           focusNode: focusNode,
           autofocus: autofocus,
           onSelect: onSelect,
+          automationId: AutomationIds.profileTile,
+          automationInstance: '$index',
+          automationRole: 'grid.item',
+          automationState: () => {'name': profile.displayName, 'active': active},
           borderRadius: tileRadius + ringGap,
           semanticLabel: profile.displayName,
           child: Padding(

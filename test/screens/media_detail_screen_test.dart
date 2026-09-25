@@ -1623,7 +1623,7 @@ void main() {
       Color? capsuleColour(WidgetTester tester, Finder button) =>
           tester.widgetList<Material>(find.descendant(of: button, matching: find.byType(Material))).last.color;
 
-      testWidgets('a series opens on the capsule, without the film header (mockup 07)', (tester) async {
+      testWidgets('a series gets the film header and its episodes inline, no tabs (DEC-131)', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
         final client = _FakeMediaServerClient(
@@ -1636,12 +1636,18 @@ void main() {
 
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // The app bar carries the title; mockup 07 has no second one beneath it.
-        expect(find.text('The Show'), findsOneWidget);
-        // On a series, downloading is per episode row — not a full-width CTA.
+        // App bar title plus the headline under the preview card, like a film.
+        expect(find.text('The Show'), findsNWidgets(2));
+        // On a series, downloading is per episode row, not a full-width CTA.
         expect(find.widgetWithText(FilledButton, 'Download'), findsNothing);
-        // What follows the capsule is the tab row.
-        expect(find.byType(TabBar), findsOneWidget);
+        // No tab strip: the action row and the episodes block sit on the page.
+        expect(find.byType(TabBar), findsNothing);
+        expect(find.text('Share'), findsOneWidget);
+        expect(find.text('Episodes'), findsOneWidget);
+        // The season pill and its count show for a one-season series too.
+        expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+        expect(find.text('Season 1'), findsOneWidget);
+        expect(find.text('Episode S1E1'), findsOneWidget);
       });
 
       testWidgets('a film keeps its preview, second title and Download capsule (mockup 06)', (tester) async {
@@ -1699,7 +1705,52 @@ void main() {
         expect(decoration.color, isNot(tk.surface));
       });
 
-      testWidgets('NL tab strip reads Afleveringen · Vergelijkbaar · Extra\'s · Details (mockup 07)', (tester) async {
+      testWidgets('a series shows its description and the information around it on the page (DEC-131)', (tester) async {
+        final show = MediaItem(
+          id: 'show_info',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.show,
+          title: 'The Show',
+          year: 2022,
+          childCount: 2,
+          leafCount: 4,
+          viewedLeafCount: 1,
+          summary: 'Mark leidt een team dat hun werkherinneringen chirurgisch heeft laten scheiden.',
+          genres: const ['Drama', 'Mysterie'],
+          studio: 'Apple TV+',
+          directors: const ['Ben Stiller'],
+          roles: const [
+            MediaRole(tag: 'Adam Scott', role: 'Mark'),
+            MediaRole(tag: 'Britt Lower', role: 'Helly'),
+          ],
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final season1 = buildSeason(show, 1);
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1],
+            season1.id: [buildEpisode(show, season1, 1)],
+          },
+        );
+
+        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        // Nothing sits behind a tab: description, genres, cast, director,
+        // studio and the seasons chip are on the page as it opens.
+        expect(find.byType(TabBar), findsNothing);
+        expect(find.textContaining('werkherinneringen'), findsOneWidget);
+        expect(find.text('Drama · Mysterie'), findsOneWidget);
+        expect(find.textContaining('Adam Scott, Britt Lower'), findsOneWidget);
+        expect(find.textContaining('Ben Stiller'), findsOneWidget);
+        expect(find.textContaining('Apple TV+'), findsOneWidget);
+        expect(find.text('2 seasons'), findsOneWidget);
+        // Rating lives in the action row only, not doubled as a chip in the tags.
+        expect(find.text('Rate'), findsOneWidget);
+      });
+
+      testWidgets('NL: the episodes block reads Afleveringen and no tab labels are left (DEC-131)', (tester) async {
         // nl is a deferred library (slang lazy loading): loading it for real
         // needs the real event loop, not testWidgets' fake-async zone.
         await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
@@ -1717,12 +1768,10 @@ void main() {
 
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // The global Discover labels ("Meer zoals dit" / "Trailers & Extra's")
-        // are too long for this tab strip and must not appear here — only
-        // the mobileDetail-scoped, tab-length translations.
-        final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-        final labels = tabBar.tabs.map((tab) => (tab as Tab).text).toList();
-        expect(labels, ['Afleveringen', 'Vergelijkbaar', "Extra's", 'Details']);
+        expect(find.byType(TabBar), findsNothing);
+        expect(find.text('Afleveringen'), findsOneWidget);
+        expect(find.text('Vergelijkbaar'), findsNothing);
+        expect(find.text('Details'), findsNothing);
       });
     });
   });
@@ -3305,6 +3354,14 @@ void main() {
           'the chip\'s true, unclamped desired height must fit the band; a clamped '
           'tester.getSize comparison alone cannot tell a fit from a squeeze',
     );
+
+    // VIS2/37 C: the heading and the chips are one line, and the rail under
+    // it does not name the season hub a second time.
+    final heading = find.descendant(of: band, matching: find.text(t.libraries.groupings.episodes));
+    expect(heading, findsOneWidget);
+    expect(find.text(t.libraries.groupings.episodes), findsOneWidget);
+    expect(tester.getCenter(heading).dy, moreOrLessEquals(tester.getCenter(chipFinder).dy, epsilon: 1));
+    expect(tester.getTopLeft(chipFinder).dx, greaterThan(tester.getTopRight(heading).dx));
   });
 }
 

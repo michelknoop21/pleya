@@ -552,6 +552,12 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 
 *De credentialgrens.* `TautulliImportAccess` biedt alleen `enabledImportServerIds()` en `fetchImportHistory(serverId, userId: …)`. Er is geen publiek veld en geen getter waarlangs UI-code of een ander profiel de token bereikt, en de enige uitgaande call is een `get_history` met vastgezet `user_id`. Binnen één Dart-isolate bestaat geen taalgrens die geheugen afschermt, dus dit is een API-grens en geen sandbox; die claim wordt niet groter gemaakt dan hij is.
 
+*Addendum 24 september 2026 (DEC-132).* Twee namen in deze tekst zijn ingehaald door de code:
+`SettingsExportService._denyPrefixes` is vervangen door de registry in
+`lib/services/preferences/preference_sync_policy.dart` (onbekende sleutel is `localOnly`), en
+`fetchImportHistory` neemt `profileId`, niet `userId` (`lib/services/tautulli/tautulli_import_access.dart`).
+Het gedrag is zoals hier bedoeld; alleen de namen verschoven.
+
 *Bredere kandidatenpool.* `CandidatePool` voegt per server vier lagen samen: de al geladen hub-items, `fetchRecentlyAdded` (12u TTL), top-rated per bibliotheek en een deterministisch roterende steekproef uit de oudste toevoegingen (beide 24u TTL). Dat is een bronreparatie: "Verborgen parels" eist items ouder dan 90 dagen maar kreeg uitsluitend recent-toegevoegd voer. Het budget is `1 + 2 * kMaxLibraries = 13` calls per server per 24u, gehaald door `totalCount` uit de top-rated pagina te hergebruiken voor de offset in plaats van er een probe-call aan te besteden. Top Picks-items worden nu ook uitgesloten van Verborgen parels.
 
 *Serverpopulariteit blijft buiten scope.* `get_home_stats` wordt niet toegevoegd, ook niet als ongebruikte clientmethode, model of fixture. De integratie gebruikt uitsluitend de kijkgeschiedenis van de exact gekoppelde actieve gebruiker; geaggregeerd gedrag van andere servergebruikers wordt niet opgehaald en krijgt geen gewicht en geen verborgen prior.
@@ -1451,6 +1457,8 @@ handmatige route is uit de README gehaald: een afgeleid merkbeeld hoort geen eig
 **Context:** De Pleya Verify Definition of Done voor Fase 11 noemt vier scenario's, waaronder `tvos.library.filters`. De onafhankelijke Fase-11-audit (feat/testplane @ 02d038b) sloot de andere drie af maar kon dit scenario niet eerlijk end-to-end bouwen: het bevroren Pleya Server-cataloguscontract (`pleya_verify/contract/verify_api_v1.md`, gespiegeld aan het bevroren `docs/pleya-protocol/v1/openapi.yaml`) draagt op `/libraries/{id}/items` alleen `limit`, `cursor` en `sort`, geen filterparameter en geen filterendpoint. Dat gat staat als G13 in `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md`, toegewezen aan "een catalogusfase, of een contractvraag vóór PS-7", niet aan een fase die al gesloten is. Client-side filteren over een gecursorde lijst van duizenden items zou het scenario technisch laten slagen zonder dat het bewijst wat het beweert te bewijzen, en Verify mag geen productiegedrag verzinnen om een eigen gate groen te krijgen. Het bestaande scenario dat er wél is (`tvos.library.sort.yaml`) test de Sort-control van de bibliotheekheader, een volledig ondersteunde functie vandaag, en is als zodanig al eerlijk hernoemd van `tvos.library.filters` naar `tvos.library.sort`.
 
 **Decision:** `tvos.library.filters` is voor Pleya Verify Core 1.0 **DEFERRED: blocked by Pleya Server catalog/filter contract G13**. Dit is geen ontbrekende runner- of driver-capability: de scenario-grammatica, `assert.state`, geometrie-assertions en de generieke runner-infrastructuur kunnen het scenario morgen dragen. Het is een productcontract dat nog niet bestaat. De requirement wordt niet geschrapt en niet stilzwijgend versimpeld: hij blijft in de Fase-11 Definition of Done staan als open item, en wordt actief zodra Pleya Server een echt filterendpoint levert (de catalogusfase of contractwijziging waar G13 in de matrix naar wijst). Tot die tijd bouwt Verify geen placeholder-scenario dat op PASS kan komen te staan voor een capability die niet bestaat, en dit besluit ontwerpt geen filterprotocol vooruit. Met deze formalisering is Fase 11 voor Verify Core 1.0 administratief gesloten met precies één expliciet gedeferred productcontract-requirement; Fase 12 kan beginnen zonder dat een volgende sessie opnieuw hoeft te bepalen of Fase 11 "bijna groen" of "rood" is.
+
+**Aanvulling 23 september 2026 (TV6):** `tvos.library.sort` is ingetrokken, omdat LIB7 (DEC-092) de bibliotheekkop met de Sort-control op TV door bronbeheer heeft vervangen. De volgorde na een sortering heeft sindsdien geen Verify-dekking; die hoort bij de TV8-rij "filters en sorteren". De rest van dit besluit (`tvos.library.filters` DEFERRED op G13) blijft staan. Onderstaande Consequences beschrijven de stand van 30 augustus.
 
 **Consequences:** `tvos.library.sort` blijft als aparte, geldige regressie-/acceptatiescenario staan en vervangt `tvos.library.filters` niet inhoudelijk. `pleya_verify/scenarios/README.md` benoemt de DEFERRED-status expliciet naast de bestaande uitleg over G13. Reactivering hoort bij het moment waarop het cataloguscontract een filterparameter of filterendpoint krijgt, niet bij een latere Verify-fase op eigen initiatief.
 
@@ -2702,6 +2710,60 @@ topnav blijft bereikbaar, maar hij staat daar standaard ingeklapt. Een geopende 
 over de bovenrand van het detail, zonder eigen achtergrond behalve een scrim voor leesbaarheid. Een
 volgend scherm dat dit gedrag wil, kiest het bij de opener; de shell kent geen schermnamen.
 
+## DEC-117: De volumeversterking is een gain-stage in de loudnessketen, niet mpv's softwarevolume
+
+**Date:** 2026-09-20
+**Status:** accepted
+
+**Context:** AUD3 in `docs/tvos-fysieke-correctieronde.md`. Michel hoorde op een fysieke Apple TV
+vals geluid met Volumeversterking aan en leverde log `5r9eo` van build 289. De versterking schreef
+tot nu toe mpv's `volume` en `volume-max` (`TvAudioTab.applyVolumeBoost`, AUD1). Dat is een
+softwaregain die mpv in `ao_post_process_data` toepast, ná elk filter inclusief de limiter, en hij
+schaalt cubisch: de log rekent +50% voor als `ao_gain=3.375 (+10,57 dBFS)`, met een clipdrempel van
+-10,57 dBFS terwijl `loudnorm` tevreden is op -2 dBTP. +200% is +28,6 dB. De versterking deelde
+daarbij één instelling met het normale volume, dus een boost verzette ook de volumeschuif.
+
+Dezelfde log legde een tweede ding bloot. MPVKit 1.0.26 levert veertien audiofilters en
+`acompressor`, `alimiter` en `astats` zitten er geen van drieën bij; `nm -gU` op de tvos-, ios- en
+macos-slice van `Libavfilter.xcframework` geeft alle drie de platformen dezelfde lijst. mpv weigert
+een `af`-string in zijn geheel om één onbekend filter, dus elke `af`-schrijf in die log kwam terug
+met -4 en liet `af=none` achter. De programmaketen van [DEC-111](#dec-111) en "harde geluiden
+dempen" zijn daarmee op Apple nooit hoorbaar geweest, en het meetprotocol waar die log uit voortkomt
+mat in werkelijkheid alleen 100% tegen 150%.
+
+**Decision:**
+(1) **De versterking is een stage van de keten.** `AudioLoudness.boostPercent` draagt hem, en hij
+staat ná de vaste gain en de compressor en vóór de limiter: dat is waar de limiter hem nog ziet.
+mpv's `volume-max` blijft op 100 en `volume` is het normale volume, niets anders.
+(2) **De percentages zijn lineair.** 150% is 1,5x, +3,52 dB; 300% is +9,54 dB. De rij op TV en de
+instelling op desktop houden hun stappen, maar ze betekenen nu wat ze zeggen. Cubisch was een
+eigenschap van mpv's softvol, geen productkeuze.
+(3) **In de realtime-keten verhoogt de versterking het `loudnorm`-doel** in plaats van er een
+`volume`-stage achter te hangen. Single-pass `loudnorm` limiteert op `TP` nadat het `I` heeft
+gehaald, dus een hoger `I` is een luider programma onder hetzelfde plafond; een stage erachter zou
+juist voorbij de enige limiter in die keten staan. `I=-22` wordt `I=-18.48` bij +50%.
+(4) **De versterking is audioverwerking.** `isEnabled` telt hem mee, dus de arbiter behandelt hem
+als de rest van de keten: hij vraagt gedecodeerde PCM en een lopende bitstream schort hem op
+([DEC-013](#dec-013)), met dezelfde melding.
+(5) **Een geweigerde keten wordt niet stilzwijgend geslikt.** `PlayerNative.applyNormalization`
+leest `af` terug en valt bij een lege terugmelding terug op de keten zonder `acompressor` en
+`alimiter`, met een waarschuwing in de log. Dat is slechter geluid dan bedoeld, maar hoorbaar en
+zichtbaar, in plaats van drie instellingen die samen uitvallen. De structurele oplossing is een
+MPVKit met die filters erin; zolang die er niet is, is dit de vangrail.
+(6) **Android krijgt dezelfde stage.** `LoudnessDsp.Params.boostDb` gaat over de wire en wordt in
+`process()` tussen de compressor en de limiter toegepast. Dat sluit een tweede gat: ExoPlayer's
+eigen volume is op 1,0 geklemd (`ExoPlayerCore.setVolume`), dus een versterking boven 100% kwam daar
+nooit aan.
+
+**Consequences:** AUD1 uit de correctieronde is hiermee vervangen; zijn test bewaakte precies het
+gedrag dat hier verdwijnt en is herschreven. Een opgeslagen `volume` boven 100 uit de oude opzet
+wordt bij het lezen op 100 geklemd, en de volumeschuif loopt niet langer tot 300% met een
+100%-markering. De sleutel `max_volume` blijft, want de opgeslagen getallen betekenen nog hetzelfde;
+alleen het Dart-symbool heet nu `volumeBoost`. Negatieve controle voor (1): met de boost ná de
+limiter meet `theLimiterStillHoldsAboveTheBoost` een true peak van 2,37, +7,5 dBFS; ervóór blijft
+hij onder -2 dBTP. Open: `scripts/loudness/prove.sh` rendert de ketens zonder versterking, dus de
+gemeten proef dekt (1) en (3) nog niet, en de hoorbaarheid op de Apple TV is HARDWARE ONLY.
+
 ## DEC-117: Refreshtokenrotatie krijgt een respijtvenster voor een verloren antwoord
 
 **Date:** 2026-08-24
@@ -2712,6 +2774,78 @@ volgend scherm dat dit gedrag wil, kiest het bij de opener; de shell kent geen s
 **Decision:** Migratie 6 voegt `replaced_by` toe: elke geslaagde rotatie wijst naar zijn opvolger. Biedt een client een ingetrokken token aan waarvan de opvolger *nooit is gebruikt* en de rotatie korter dan `PLEYA_SERVER_REFRESH_GRACE_WINDOW` (default twee minuten) terug ligt, dan is dat de vingerafdruk van een verloren antwoord en geen aanval: wie het antwoord wél ontving zou de opvolger uitgeven. De nooit-geziene opvolger wordt ingetrokken en de aanvrager krijgt een verse rotatie (`RefreshReplayed`, met een eigen logregel zodat de frequentie meetbaar is). De server bewaart alleen hashes, dus de oorspronkelijke opvolger opnieuw uitgeven kán niet; vervangen is het enige dat de hash-only-opslag toelaat. Het venster rekt niet op: `revoked_at` blijft het moment van de oorspronkelijke rotatie. Alles daarbuiten — een gebruikte opvolger, een herhaling buiten het venster, of het aanbieden van een nooit-uitgeleverde opvolger zelf — blijft de bestaande ketenintrekking.
 
 **Consequences:** Een verloren rotatie-antwoord herstelt zichzelf in plaats van een herlogin op elk apparaat te kosten. De aanvalsruimte die erbij komt is smal en benoemd: een dief van het oude token moet binnen twee minuten na de rotatie toeslaan én de echte client mag het antwoord dan net niet ontvangen hebben; daarbuiten verandert er niets aan de detectie. De bestaande api-test kon niet blijven staan zoals hij was, want het scenario dat hij als hergebruik bestempelde ís het verloren-antwoord-scenario; hij toetst nu beide kanten, inclusief dat het aanbieden van de vervangen opvolger de keten alsnog omlegt.
+
+## DEC-118: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
+
+**Date:** 2026-09-22
+**Status:** accepted
+
+**Context:** `edde746/background_downloader` heeft zijn `main` op 17 september 2026 gerebased
+(`1bcc9978 fix: post-rebase merge corrections`). Daarmee werd `b4d36f88`, de revisie waar
+`pubspec.yaml` op pinde, vanaf geen enkele branch of tag meer bereikbaar. Pub haalt geadverteerde
+refs op en doet daarna `rev-parse`; een losse `git fetch <sha>` slaagt nog wel, maar pub gebruikt
+die route niet. Vanaf 19 september, toen een losse pubspec-wijziging de `actions/cache`-sleutel
+brak en de warme pub-cache in CI verviel, faalde daardoor elke Flutter-job op
+`Could not find a file named "pubspec.yaml"`: Code Analysis, Unit Tests, Dependency Validation,
+Verify - macOS + iOS simulator en de wekelijkse Dependency health. Die laatste stierf op dezelfde
+regel en kwam dus niet eens toe aan zijn eigen fork-rapport.
+
+Meepinnen met de rebase kan niet zonder een tweede beslissing: elke revisie op de `main` van die
+fork eist inmiddels Flutter >= 3.47.0, terwijl `.fvmrc` 3.44.0 pint, en het is bovendien een sprong
+van 9.5.4 naar 9.6.2 (153 bestanden, ruim 17.000 regels, nieuwe transfer-widgets en mTLS). De
+branches die 3.24.0 nog toestaan (`V8`, `dev`) dragen de patches van de fork niet: `V8` staat op
+V8.9.5 van maart 2025.
+
+**Decision:** De commit blijft ongewijzigd en wordt bereikbaar gemaakt onder eigen beheer.
+`michelknoop21/background_downloader` is een GitHub-fork van `edde746/background_downloader` met
+precies één extra ref: de lichte tag `pleya-pin-b4d36f88` op `b4d36f88`. In `pubspec.yaml` en
+`pubspec.lock` verandert alleen de `url`; `ref` en `resolved-ref` blijven de volle SHA.
+
+**Consequences:** De opgeloste code is dezelfde: een koude `flutter pub get --enforce-lockfile`
+geeft exit 0 met een ongewijzigde `resolved-ref`, en een `diff -r` van de oude en de nieuwe
+uitgecheckte boom verschilt alleen in Xcode's lokale `xcuserdata`. Wat beschermt is de SHA en niet
+de tag: wordt de tag verplaatst, dan faalt pub luid op `bad object` in plaats van stil andere code
+te trekken. Wat wél kwetsbaar is, is beschikbaarheid: de tag verwijderen of de fork verwijderen
+herhaalt de storing, nu onder een eigen account. GitHub ruimt het object niet op zolang de ref
+bestaat, want forks delen hun objectopslag.
+
+`scripts/check_updates.sh` blijft bewust upstream volgen: nieuw werk landt bij `edde746`, de
+spiegel draagt alleen deze commit. De regel heeft daar een comment gekregen zodat de url niet voor
+een fout wordt aangezien.
+
+**Update 2026-09-23: de twee toolinggaten zijn gesloten.** `check_forks` vergeleek de pin alleen
+met de head van de gevolgde ref en meldde dus "loopt achter", nooit "niet meer oplosbaar", terwijl
+dat laatste precies de vraag was die deze hele storing veroorzaakte. `scripts/check_updates.sh`
+heeft nu een aparte `check_pin_reachability` (`--only pins`) die voor elke fork de eigen
+`url`+`resolved-ref` uit `pubspec.lock` haalt en echt fetcht: een `git fetch` van alle branches en
+tags gevolgd door `git cat-file -e <sha>^{commit}`, niet de blinde `git fetch <sha>` die pub zelf
+ook niet gebruikt. Onbereikbaar levert UNKNOWN op, altijd exit 2, ongeacht
+`--strict-through-ring`: een kapotte pin is geen "er is een nieuwere versie" en mag dus nooit
+stilvallen achter een ring.
+
+`scripts/classify_lock_diff.sh` sloot `url` inderdaad uit zijn identiteitssleutel: `identity_of`
+keek voor git alleen naar `resolved-ref`, dus de pin-fix hierboven (dezelfde commit, andere host)
+was voor dat script onzichtbaar. `from == to`, en de vergelijking stopte voor er ooit een ring werd
+toegekend. `identity_of` zelf blijft ongewijzigd; `classify_pair` doet er nu, ná die vergelijking,
+een aparte controle bovenop, met opzet beperkt tot git. Blijft de ref bij een git-pakket gelijk
+terwijl de url verandert, dan classificeert het script dat bewust als UNKNOWN in plaats van via de
+gewone plugin/native-diff-weg: de pub-cache benoemt een git-checkout naar
+`<repo-basisnaam>-<ref>`, en twee url's met dezelfde basisnaam en dezelfde ref, precies
+`edde746/background_downloader` en `michelknoop21/background_downloader`, wijzen naar hetzelfde
+cachepad. Een `nativeDiff: identical` zou daar toeval in de naamgeving meten, geen bewijs; wie dit
+ziet, verifieert zelf met twee koude checkouts en `diff -r`, zoals deze pin-fix zelf deed.
+
+Voor een hosted pakket (pub.dev) blijft een url-wijziging bij gelijkblijvende versie onopgemerkt:
+`resolved-ref` en `path` zijn daar in de lock allebei altijd leeg, en bash's `IFS=$'\t' read` smelt
+twee opeenvolgende lege velden samen tot één scheiding, waardoor de echte url in het ref-veld
+terechtkomt en niet betrouwbaar af te lezen is. Dat is bewust geen automatisch gecontroleerd geval:
+een verkeerde detectie op basis van verschoven velden zou erger zijn dan geen detectie. Een hosted
+pakket dat van registry wisselt zonder versiewijziging blijft dus een handmatig te herkennen geval.
+
+De spiegel is een tussenstap, geen eindstand. `docs/upstream-decoupling-plan.md` noemt het
+spiegelen van exacte commits expliciet als voorkeursstap en het vendoren naar `plugins/` als
+eindbeeld; dat laatste haalt de laatste externe host uit het buildpad en heeft in deze repo al een
+precedent in `plugins/pleya_aware`.
 
 ## DEC-118: het openstaande hardwarecriterium van PS-5 blokkeert PS-9 niet
 
@@ -2725,6 +2859,29 @@ volgend scherm dat dit gedrag wil, kiest het bij de opener; de shell kent geen s
 Voor PS-5 concreet: acceptatiecriterium 4 blijft **open** en **niet gehaald**. PS-9 mag beginnen. Deze afwijking dekt uitsluitend het starten van PS-9; ze sluit PS-5 niet af, verandert niets aan wat PS-5 moet bewijzen, en geldt niet automatisch voor een volgende keer dat dit patroon zich voordoet. Elke herhaling wordt opnieuw langs deze vier voorwaarden getoetst. De hardwareronde blijft schuld: ze moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag meeneemt alsnog gedraaid worden, een TestFlight-indiening naar App Review of een merge van `feat/pleyaserver` naar `main`, wat zich het eerst voordoet.
 
 **Consequences:** PS-9 kan starten zonder op de deviceronde te wachten. `docs/pleya-server-architecture.md` en `STATUS.md` blijven PS-5's status tonen als "opgeleverd, niet gesloten" met criterium 4 expliciet open, en verwijzen hiernaartoe. Wie de PS-5-hardwareronde later draait en hem laat slagen, sluit PS-5 formeel af zoals elke andere fase: met een Roadmap Drift Check. Faalt de ronde, dan is dat een regressie op bestaand afspeelgedrag en gaat de reparatie voor PS-9-werk, ongeacht hoever PS-9 dan gevorderd is.
+
+## DEC-119: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** `docs/unified-2026-closure.md` §5 zet iOS en tvOS in één volgorde met één
+hardware-eindronde en één releasegate (§6) voor beide platforms. Op 24 september, na de merge van
+TV8 (`76b83521`), is de tvOS-kant op code- en simulatorniveau rond, op een handvol besluiten na.
+Aan iOS-kant staan nog elf northstar-schermen en vier comps op OPEN of IN PROGRESS
+(`docs/ios-unified-implementation-register.md`): I7-children 11, 12 en 13, I8, I9a, I9b,
+IOS-HOME-AB en de visuele acceptatie I10. Wachten op dat spoor houdt een klare tvOS-build weken
+van de Apple TV af.
+
+**Decision:** Michel koos op 24 september voor tvOS eerst. Voor deze release geldt de releasegate
+alleen in de tvOS-kolom van §6, plus de regels die voor beide platforms gelden. De
+hardware-eindronde (§7) en de TestFlight-regel (§8) gelden onverkort: één SHA, één archive, en
+exact die archive gaat naar TestFlight. Het plan staat in
+`docs/superpowers/plans/2026-09-24-tv9-tvos-release.md`.
+
+**Consequences:** De iOS-stappen I7 tot en met I10 worden het volgende spoor en krijgen later hun
+eigen hardwareronde. Een iOS-build die in de tussentijd naar TestFlight gaat, valt niet onder deze
+DEC en claimt geen redesign-acceptatie.
 
 ## DEC-119: Rollen- en rechtenmodel voor PS-9, vier rollen, een ladder, precies één owner
 
@@ -2774,6 +2931,25 @@ altijd via de rol én de permission-tabel moet lezen, nooit via de tabel alleen;
 verwachting in de testmatrix (hoofdstuk 8, autorisatiematrix). `manage` bestaat vanaf PS-9 in het
 schema maar handhaaft niets tot PS-7/PS-11A; de Roadmap Drift Check voor PS-9 bewaakt dat expliciet
 zodat niemand die kolom per ongeluk als "af" leest.
+
+## DEC-120: De DEC-081-referentiegate gaat over op de topnavigatiescenario's
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** DEC-081 wees `tvos.sidebar.collapse` aan als referentiegate voor een toekomstige
+false-PASS-toets. De zijbalk is sindsdien vervangen door de topnavigatie, en in de volledige
+tvOS-suite van TV8 faalt het scenario op `"sidebar.rail" is not ready/present`
+(correctieronde VER6). Een gate die altijd rood is, bewijst niets.
+
+**Decision:** `tvos.nav.focus-switches-destination` wordt de referentiegate. Het scenario toetst
+na elke echte HID-druk een automation-state (`state: {active: true}` op de pil met focus en
+`active: false` op de vorige), dezelfde soort invariant die de sabotage in DEC-081 omdraaide.
+`tvos.nav.walk` dekt de route over alle pillen. `tvos.sidebar.collapse.yaml` verdwijnt, en de
+MCP-tests en docs die hem als voorbeeld noemen gaan naar het nieuwe scenario.
+
+**Consequences:** De false-PASS-matrix van DEC-081 blijft geldig; die hangt aan de runner, niet aan
+het scenario. Een nieuwe sabotageronde draait tegen de `active`-state van de navigatiepillen.
 
 ## DEC-120: AC3 ("onmiddellijk ongeldig") wordt een in-process intrekkingsregister met een grens van twee seconden
 
@@ -2840,6 +3016,31 @@ vooruitgebouwd.
 wijziging 4 en 5 uit hoofdstuk 3 van het PS-9-ontwerp, onder het contractvenster van DEC-122. PS-11A
 erft een werkende API en bouwt er alleen het scherm boven; PS-9 mag dat scherm niet vooruitbouwen
 (Roadmap Drift Check).
+
+## DEC-122: Liquid Glass wordt de oppervlaktestijl op iPhone en Apple TV
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Apple's Liquid Glass is de systeemstijl van iOS 26 en tvOS 26. Flutter tekent hem niet
+zelf (flutter/flutter#170310). Het pakket `liquid_glass_renderer` levert op Impeller echt glas met
+breking; op tvOS bestaat dat niet en is alleen blur met tint en lichtlijn haalbaar. De acht
+mockups in `docs/assets/liquid-glass/mockups-2026-09-24/` tonen beide gradaties, met de layout van
+de iOS-northstar (DEC-090) en de goedgekeurde tvOS-mockups 30, 33 en 36.
+
+**Decision:** De richting is goedgekeurd. Tabbalk, zoekveld, knoppen en spelerbediening worden
+glas: echt glas op iPhone via `liquid_glass_renderer`, nepglas (BackdropFilter met tint en
+lichtlijn) op Apple TV en als terugval op Skia. De twee layoutwijzigingen in LG-02 (hero over de
+volle breedte achter de statusbalk, kijklijst als ronde knop naast Download) horen bij de
+goedkeuring. LG-06 geldt in ruststand: zoekpil onder de topbalk, resultaten eronder. Eis bij de
+goedkeuring: goed contrast, uitgewerkt in de sectie Contrast van
+[liquid-glass-mockups-2026-09.md](liquid-glass-mockups-2026-09.md); tekst op glas haalt 4,5:1 op
+de lichtste scène.
+
+**Consequences:** De bouw begint met een proefversie achter een instelling (tabbalk en speler op
+iPhone), met een toesteltest op prestaties voordat de rest van de app volgt. De iPad houdt zijn
+presentatie tot een eigen northstar bestaat (DEC-103). DEC-121 is op `feat/unified-desktop-ipad`
+in gebruik; daarom krijgt dit besluit nummer 122.
 
 ## DEC-122: het protocolvenster gaat open voor PS-9 en de vriezingsformulering ontkoppelt van PS-5
 
@@ -3293,6 +3494,134 @@ afspraak dat een volgende sessie leest als toestemming.
 
 ---
 
+## DEC-130: TV-instellingen en detail volgen Apple's tvOS-HIG in punten
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Michel noemde de instellingenvensters, seriedetail en filmdetail op zijn 77 inch tv
+"nog steeds enorm opgeblazen" (DENS1) en vroeg om eerdere eigen keuzes los te laten en te doen wat
+voorgeschreven wordt. De oorzaak is één getal: `TvLayoutConstants.scaleOf` klemt op 0,85, terwijl
+Flutter op een Apple TV een paneel van 584 logische pixels ziet (de wrapper vermenigvuldigt met
+1,85). Alles wat door die schaal gaat, komt op het scherm 1,57 keer zijn nominale waarde uit. De
+getallen tegen Apple's Human Interface Guidelines (Typography, Layout, Designing for games; ook via
+Context7): tvOS-tekst is standaard 29 pt en nooit onder 23 pt, Title 1 is 76 pt, een tvOS-knop is
+minstens 56x56 pt. Gemeten in de app: een instellingenrij van 138 pt rond 26/22 pt tekst, een
+indextegel van 160 pt met een waarderegel van 19 pt, een detailtitel van 88 pt, een actieknop van
+72 pt rond een label van 27 pt en een bronregel van 20 pt.
+
+**Decision:** `TvHig` (`lib/utils/tv_hig.dart`) zet Apple's punten één op één om: `TvHig.of`
+is de ongeklemde paneelhoogte gedeeld door 1080. De instellingenrijen (via `TvSettingsDensity` in
+`TvPageSurface` en `SettingsPage`), de indextegels van `TvMenuGrid`, de categoriekolom van
+Uiterlijk en het informatieblok en de actierij van seriedetail en filmdetail rekenen in die punten:
+Body 29 pt voor titels en labels, Caption 1 25 pt voor waarde- en metadataregels, Caption 2 23 pt
+voor de kleinste regel, Title 1 76 pt voor de detailtitel, knoppen van 60 pt. Mockups 20 en 37
+zijn voor deze maten niet meer leidend; waar ze kleiner tekenden dan 23 pt wint de HIG.
+
+**Consequences:** Rijen en tegels worden lager en de tekst erin wordt op een paar plekken groter
+(instellingen van 26 naar 29 pt), zodat een instellingenpagina ongeveer twee keer zoveel rijen
+toont. De globale klem van 0,85 blijft voor de rest van de app staan; de rails, catalogus en Home
+zijn niet omgezet. Wie die schermen op dezelfde manier wil corrigeren, rekent ze om naar `TvHig`
+in plaats van de klem te verlagen, want de klem verplaatst elk scherm tegelijk.
+
+## DEC-131: iPhone-detail in één scroll, zonder de tabs van northstar 07
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** Michel (24 september, met een schermfoto van het seriedetail op zijn iPhone): "maak het
+meer zoals tvOS maar dan mobiel, dus met beschrijving enz, maar dan niet achter tabs", en "ook voor
+films". Northstar 06 (filmdetail) is al één scrollende pagina: artwork, titel, metadata, Hervatten,
+Downloaden, bron, beschrijving, cast, acties. Northstar 07 (seriedetail) zet de beschrijving, cast
+en acties achter een tabstrip Afleveringen / Vergelijkbaar / Extra's / Details en laat de kop weg.
+DEC-090 maakt de 21 northstar-beelden leidend en vraagt voor elke afwijking een DEC.
+
+**Decision:** Film en serie krijgen op de iPhone dezelfde pagina, in de volgorde van northstar 06:
+voorvertoning, titel, tags, Afspelen of Hervatten, Downloaden (alleen film), bron, audio,
+beschrijving met cast- en regieregel, de actierij, en daaronder de blokken die het TV-detail als
+rails stapelt: Afleveringen (seizoenpil en rijen, alleen serie), Trailers & Extra's, Acteurs en
+"Meer zoals dit". De tabstrip van northstar 07 vervalt; `mobile_episodes_tab.dart` wordt
+`mobile_episodes_section.dart`. Northstar 07 blijft de referentie voor de afleveringrij zelf.
+
+**Consequences:** De seriepagina wordt langer en scrolt; niets staat meer twee tikken diep. De
+vertalingen `mobileDetail.similarTab` en `mobileDetail.extrasTab` zijn niet meer in gebruik. De
+Verify-scenario's `ios.detail.northstar` en `ios.detail-episodes.northstar` maken alleen
+schermafbeeldingen en veranderen niet; de comp `serie-detail-comp` (register rij 63) is hiermee
+achterhaald.
+
+## DEC-132: Home-aanbevelingen seeden uit het eigen interactielog; Tautulli blijft één adapter naast een lokaal partieel signaal en een Jellyfin-import
+
+**Date:** 2026-09-24
+**Status:** accepted
+
+**Context:** De audit van 24 september 2026 op de Tautulli-integratie vond drie defecten en vijf
+verbeteringen. De seeds voor "Omdat je X gekeken hebt" kwamen uit `fetchRecentlyWatched` van elke
+online client, dus een Pleya Server-kijkbeurt nam een van de drie plekken in zonder rij op te
+leveren, en een lopende serie seedde nooit omdat `isWatched` voor een serie "alles gezien"
+betekent. Op de detailpagina ging de adminclient van Tautulli mee voor elk beheerd Plex-item, ook
+op een tweede server die Tautulli niet monitort. Het lokale log kende alleen "afgekeken" en "uit
+Verder kijken gehaald", zodat Jellyfin- en Pleya Server-profielen koud bleven tot ze in Pleya
+zelf hadden gekeken.
+
+**Decision:**
+
+*Seeds uit het log.* De drie seed-rijen komen uit `MediaInteractions` van het actieve profiel:
+de nieuwste onderscheiden evidence-sleutels met gewicht >= 0,4 binnen 30 dagen, alleen voor
+servers met de capability `relatedHubs`. Een `partial`-seed heet "Omdat je X kijkt", een
+`completed`-seed "Omdat je X gekeken hebt". Levert het log minder dan drie seeds, dan vult
+`fetchRecentlyWatched` aan tot drie, een seed per titel; een Jellyfin-verbinding die meer dan één profiel deelt,
+doet daarin niet mee. Een titel die na de play uit Verder kijken is gehaald, seedt niet.
+Seeds vier tot en met zes leveren alleen kandidaten voor Top Picks.
+
+*Eén partieel signaal, lokaal en geïmporteerd gelijk.* Een eindstop tussen 50 procent en de
+kijkdrempel van de client schrijft `partial` 0,4, hoogstens één per titel per zes uur. De
+cross-source-deduplicatie van de importer onderdrukt een geïmporteerd event alleen door een lokale
+rij met minstens hetzelfde gewicht.
+
+*Jellyfin als tweede adapter op dezelfde tabel.* `source = 'jellyfin'`, eigen gebruikerstoken,
+geen adminbeleid, watermark op `LastPlayedDate`, geen backfill voorbij de retentiecap. Een
+Jellyfin-verbinding die meer dan één profiel gebruikt, importeert voor niemand geschiedenis. De
+lener niet, want dat token is niet zijn eigen login; de uitlener ook niet, want zijn
+Jellyfin-gebruiker draagt vanaf dat moment ook de plays van de lener (DEC-062).
+
+*Eén persoonsrij, gedeelde cap.* Genre-, acteur- en regisseursrijen delen twee plekken; sorteren
+op genormaliseerd gewicht, bij gelijkspel genre, dan acteur, dan regisseur. Persoonsdrempel 0,7.
+
+*De Tautulli-client volgt de gemonitorde server.* `TautulliProvider.clientForServer` geeft de
+adminclient alleen voor de server die `tautulliMonitoredServer` aanwijst. "Nu aan het kijken" op
+detail vergelijkt server én rating key.
+
+**Consequences:** `ServerCapabilities.relatedHubs` (Plex en Jellyfin `true`). `WatchStateEvent`
+draagt `durationMs` en `isFinal`. Drie nieuwe i18n-sleutels (`discover.becauseYouAreWatching`,
+`discover.moreWithActor`, `discover.moreFromDirector`), andere locales vallen terug op Engels.
+`HistorySyncCursors` krijgt rijen met `source = 'jellyfin'`; geen schemawijziging. Buiten scope
+blijven: `get_home_stats`, een engine op Pleya Server, een negatief signaal uit een afgebroken
+play, een rewatch-rij, een nieuw instellingenscherm. Open: P4 (devicetoken verbruikt bij een
+mislukte test), P7 (client per importpagina), P9 (`owned` voor een beheerd Home-profiel) en de
+Pleya Server-follow-ups `GET /items/{id}/related` en per-gebruiker watch-state. Register:
+`docs/recommendations-register.md`.
+
+## DEC-133: De avatar in de mobiele header opent de profielwisselaar
+
+**Date:** 2026-09-25
+**Status:** accepted, scherpt [DEC-023](#dec-023) aan
+
+**Context:** Michel (25 september): "iOS account switcher op Home werkt niet, het icoon rechtsboven
+doet niks." Dat klopte: sinds `86f04463` (5 september) is de avatar in `MobilePageHeader` een
+kaal plaatje met automation-rol `image`. De tik was toen weggehaald omdat geen aanroeper hem
+doorgaf, met de notitie dat profielwisselen in fase 6 een eigen ingang zou krijgen; die ingang is
+er nooit gekomen. DEC-023 verhuisde het accountmenu naar Mijn Pleya om te voorkomen dat een
+telefoon twee wisselaars heeft.
+
+**Decision:** Een tik op de avatar opent `AccountUiActions.openProfiles`, dus hetzelfde
+`ProfileSwitchScreen` als "Profiel wisselen" in Mijn Pleya. Dat is geen tweede wisselaar en geen
+tweede menu, maar een tweede ingang naar dezelfde lijst, met dezelfde PIN-flow. Het geldt voor
+Home en voor de Series- en Filmslanding, want die delen de header. De automation-rol van
+`home.header.avatar` en `landing.header.avatar` gaat terug naar `button`.
+
+**Consequences:** Wisselen kost op mobiel weer één tik minder. Uitloggen en de overige
+accountacties blijven in Mijn Pleya, zoals DEC-023 bepaalde.
+
 ## DEC-133: het protocolvenster gaat open voor S1, en `server` wordt het zesde foutdomein
 
 **Date:** 2026-09-05
@@ -3635,7 +3964,7 @@ naar het oorspronkelijke DEC-096. De zeventien unieke serverbesluiten zijn als v
 | 107 | 128 | e-books als serverdomein |
 | 108 | 129 | PS-11A vóór PS-14 |
 | 109 | 096 | taalvoorkeuren; duplicaat van `main` verwijderd |
-| 110 | 130 | protocolvenster S1 open |
-| 111 | 131 | foutdomeinen van venster 1 |
-| 112 | 132 | protocolvenster 1 dicht |
-| 113 | 133 | protocolvenster S2 open |
+| 110 | 133 | protocolvenster S1 open |
+| 111 | 134 | foutdomeinen van venster 1 |
+| 112 | 135 | protocolvenster 1 dicht |
+| 113 | 136 | protocolvenster S2 open |

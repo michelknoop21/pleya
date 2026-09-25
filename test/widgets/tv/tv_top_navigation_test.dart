@@ -456,10 +456,19 @@ void main() {
       expect(find.text(t.common.reconnect), findsNothing);
     });
 
-    testWidgets('sits between the profile chip and Mijn Pleya in the walk', (tester) async {
+    // The item is the leftmost member of the centred cluster, so Right from it
+    // reaches `destinations.first`, not Mijn Pleya directly. That read as "the
+    // one before Mijn Pleya" while offline showed a single destination; since
+    // `bf0dd7c3` gave Home its own offline screen, offline draws Home as well.
+    // The walk runs the whole bar both ways, so a destination inserted anywhere
+    // in it fails here.
+    testWidgets('sits between the profile chip and the destinations in the walk', (tester) async {
+      final destinations = offlineDestinations();
+      expect(destinations, [TvDestinationId.home, TvDestinationId.myPleya], reason: 'MOC-23: Home, dan Mijn Pleya');
+
       await pump(
         tester,
-        destinations: offlineDestinations(),
+        destinations: destinations,
         active: TvDestinationId.myPleya,
         isOfflineMode: true,
         hasOnReconnect: true,
@@ -467,17 +476,16 @@ void main() {
 
       focus('tvNav_profile');
       await tester.pump();
-      await press(tester, LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), 'tvNav_reconnect');
 
-      await press(tester, LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), TvDestinationId.myPleya.focusKey);
-
-      await press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), 'tvNav_reconnect');
-
-      await press(tester, LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), 'tvNav_profile');
+      final rightward = ['tvNav_reconnect', ...destinations.map((d) => d.focusKey)];
+      for (final key in rightward) {
+        await press(tester, LogicalKeyboardKey.arrowRight);
+        expect(focusedLabel(), key);
+      }
+      for (final key in [...rightward.reversed.skip(1), 'tvNav_profile']) {
+        await press(tester, LogicalKeyboardKey.arrowLeft);
+        expect(focusedLabel(), key);
+      }
     });
 
     testWidgets('Select triggers reconnect, not a destination select', (tester) async {

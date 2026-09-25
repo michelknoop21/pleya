@@ -1,0 +1,186 @@
+name: CI - Server en Web
+
+# Pleya Server en Pleya Web horen bij dit product maar hadden tot nu toe geen
+# enkele CI-dekking: alles wat ze bewijst stond in scripts die iemand met de
+# hand moest draaien. Dit is de goedkope helft daarvan — formatteren, vet,
+# unittests, typecontrole en een build. De zware kanten (verify-local.sh met
+# een echte Postgres en een gebouwd image, en de Playwright-suite tegen een
+# draaiende server) blijven bewust lokaal en bij de release, want die vragen
+# een stack en niet een runner.
+#
+# Beide jobs houden een vaste checknaam en draaien altijd (`if: always()`,
+# ook als `changes` zelf faalt), het paths-filter zit binnenin. Dat is met
+# opzet: `on.pull_request.paths` op de job zelf zou de status bij een
+# ongeraakte map helemaal laten verdwijnen, en een required check die nooit
+# verschijnt laat GitHub eeuwig wachten. De stap-condities hieronder vallen
+# bovendien open: alleen een succesvolle `changes`-run mét expliciet "false"
+# slaat het echte werk over. Faalt die job of levert hij niets op, dan draait
+# de gate gewoon door.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Bereik bepalen
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Welke van de twee is geraakt?
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          files="$(scripts/ci_changed_files.sh "$BASE" "${HEAD:-HEAD}")"
+          # head sluit de pijp na 50 regels; bij meer bestanden dan dat krijgt
+          # echo een SIGPIPE en breekt de stap af onder pipefail. Alleen om te
+          # tonen, dus een falende preview mag de uitkomst niet meenemen.
+          printf '%s\n' "$files" | head -50 || true
+
+          # Het contract staat in docs/pleya-protocol en telt voor allebei:
+          # de server valideert zijn antwoorden ertegen en de web-client
+          # genereert er zijn types uit. Dit filter zelf telt ook mee — een
+          # wijziging eraan zonder dat zou allebei de gates stil kunnen laten
+          # verlopen op een oud antwoord.
+          #
+          # Bewust een here-string, geen pijp: `grep -q` sluit zijn leeskant
+          # zodra hij zijn antwoord heeft, en een printf die op dat moment nog
+          # bezig was met schrijven krijgt SIGPIPE (141). Onder pipefail wordt
+          # dat de uitkomst van de hele pijp, en een echte match verdween hier
+          # stilzwijgend achter server=false/web=false — precies de gates die
+          # dit bestand net had toegevoegd. Geverifieerd tegen de echte
+          # pleya_server/-bestanden in deze repo: met de pijp server=false,
+          # met de here-string het juiste server=true.
+          match() { grep -qE "$1" <<< "$files"; }
+
+          if match '^(pleya_server/|docs/pleya-protocol/|scripts/check_protocol|scripts/ci_changed_files\.sh$|\.github/workflows/server-web\.yml$)'; then
+            echo "server=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "server=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if match '^(pleya_web/|docs/pleya-protocol/|scripts/ci_changed_files\.sh$|\.github/workflows/server-web\.yml$)'; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+  server:
+    name: Pleya Server
+    needs: changes
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
+        name: Checkout code
+        uses: actions/checkout@v7
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
+        name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: pleya_server/go.mod
+          cache-dependency-path: pleya_server/go.sum
+
+      # Lokaal draait de toolchain in de gepinde builder-image omdat er geen Go
+      # op de machine staat (scripts/go-tool.sh). Hier is dat omgekeerd: de
+      # versie komt uit go.mod, dus het is dezelfde Go zonder de omweg.
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
+        name: gofmt
+        working-directory: pleya_server
+        run: |
+          set -euo pipefail
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then
+            echo "::error::niet gofmt-schoon:"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          echo "gofmt schoon"
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
+        name: go vet
+        working-directory: pleya_server
+        run: go vet ./...
+
+      # Zonder PLEYA_TEST_DATABASE_URL slaan de integratietests zichzelf over;
+      # wat overblijft zijn de unittests, en dat is precies wat een runner
+      # zonder Postgres eerlijk kan bewijzen.
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
+        name: go test
+        working-directory: pleya_server
+        run: go test ./...
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
+        name: Protocolcontract
+        run: scripts/check_protocol.sh
+
+      - if: ${{ needs.changes.result == 'success' && needs.changes.outputs.server == 'false' }}
+        name: Niets te draaien
+        run: echo "pleya_server en het protocol zijn niet geraakt."
+
+  web:
+    name: Pleya Web
+    needs: changes
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: Checkout code
+        uses: actions/checkout@v7
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: Install dependencies
+        working-directory: pleya_web
+        run: bun install --frozen-lockfile
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: svelte-check
+        working-directory: pleya_web
+        run: bun run check
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: Unittests
+        working-directory: pleya_web
+        run: bun run test
+
+      # De tegenhanger van de codegen-versheidscontrole in ci.yml: opnieuw
+      # genereren uit het contract en byte-voor-byte vergelijken.
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: API-types tegen het contract
+        working-directory: pleya_web
+        run: bun run api:check
+
+      - if: ${{ needs.changes.result != 'success' || needs.changes.outputs.web != 'false' }}
+        name: Build
+        working-directory: pleya_web
+        run: bun run build
+
+      - if: ${{ needs.changes.result == 'success' && needs.changes.outputs.web == 'false' }}
+        name: Niets te draaien
+        run: echo "pleya_web en het protocol zijn niet geraakt."

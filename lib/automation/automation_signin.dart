@@ -13,8 +13,10 @@ import '../profiles/active_profile_provider.dart';
 import '../profiles/profile.dart';
 import '../profiles/profile_connection.dart';
 import '../profiles/profile_registry.dart';
+import '../providers/seerr_provider.dart';
 import '../screens/settings/connection_persistence.dart';
 import '../services/pleya_server_auth_service.dart';
+import '../services/seerr/seerr_constants.dart';
 import 'automation_ids.dart';
 import 'automation_navigation_hooks.dart';
 import 'automation_screen.dart';
@@ -65,6 +67,16 @@ Future<BuildContext?> _waitForRootContext({Duration timeout = const Duration(sec
   final deadline = DateTime.now().add(timeout);
   while (true) {
     final context = rootNavigatorKey.currentContext;
+    if (context != null && context.mounted) return context;
+    if (DateTime.now().isAfter(deadline)) return null;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+}
+
+Future<BuildContext?> _waitForProfileContext({Duration timeout = const Duration(seconds: 5)}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (true) {
+    final context = profileNavigationRegistry.navigator?.context;
     if (context != null && context.mounted) return context;
     if (DateTime.now().isAfter(deadline)) return null;
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -183,6 +195,39 @@ Future<Map<String, Object?>> handleAutomationConnectionsSeed(Map<String, Object?
   return _persistConnectionAndBindProfile(context, connection);
 }
 
+/// `POST /v1/seerr/seed`: connects the active profile's [SeerrProvider] to a
+/// fixture Seerr server without driving the Settings form. It deliberately
+/// calls the same test/commit pair as that form; this only makes the
+/// Seerr-gated Aanvragen destination reachable to a touch scenario.
+Future<Map<String, Object?>> handleAutomationSeedSeerr(Map<String, Object?> body) async {
+  final baseUrl = body['base_url'] as String?;
+  final apiKey = body['api_key'] as String?;
+  if (baseUrl == null || apiKey == null) {
+    return {'ok': false, 'error': 'base_url and api_key are required'};
+  }
+  final rejectedBaseUrl = rejectNonLoopbackBaseUrl(baseUrl);
+  if (rejectedBaseUrl != null) return {'ok': false, 'error': rejectedBaseUrl};
+
+  final context = await _waitForProfileContext();
+  if (context == null || !context.mounted) {
+    return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
+  }
+
+  try {
+    // Inside the try: a session tree without a SeerrProvider is a failed seed, answered
+    // like every other failure of this endpoint, not an empty 500.
+    final provider = context.read<SeerrProvider>();
+    final result = await provider.test(baseUrl: baseUrl, mode: SeerrAuthMode.apiKey, apiKey: apiKey);
+    // The test is a network round trip; committing to a provider whose session went away
+    // during it would store the credentials for a profile nobody is looking at.
+    if (!context.mounted) return {'ok': false, 'error': 'profile session unmounted during the seerr test'};
+    await provider.commit(result.session);
+  } on Exception catch (e) {
+    return {'ok': false, 'error': 'seerr connect failed: $e'};
+  }
+  return {'ok': true};
+}
+
 /// Shared tail of `/v1/signin` and `/v1/connections/seed`: persist
 /// [connection], creating the first local profile if none is active yet
 /// (mirrors `add_pleya_server_screen.dart`'s `_persist()`), then
@@ -264,6 +309,7 @@ const Map<String, NavigationTabId> _screenToTab = {
   // coordinates that shift the moment the tabset changes.
   AutomationIds.screenSeries: NavigationTabId.series,
   AutomationIds.screenMovies: NavigationTabId.movies,
+  AutomationIds.screenRequests: NavigationTabId.requests,
 };
 
 /// `POST /v1/open` body: `{"screen": "screen.discover", "timeoutMs"?}`.
@@ -282,8 +328,11 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
   final screen = body['screen'] as String?;
   if (screen == null) return {'ok': false, 'error': 'screen is required'};
 
-  final context = profileNavigationRegistry.navigator?.context;
-  if (context == null || !context.mounted) {
+  // `/v1/signin` returns before `ProfileSessionScreen` has attached its navigator, so a
+  // scenario that opens a screen straight after signing in has to wait for it, exactly like
+  // `/v1/seerr/seed` does.
+  final timeoutMs = (body['timeoutMs'] as num?)?.toInt() ?? 5000;
+  if (await _waitForProfileContext(timeout: Duration(milliseconds: timeoutMs)) == null) {
     return {'ok': false, 'error': 'no profile session is mounted yet — sign in first'};
   }
 
@@ -301,13 +350,13 @@ Future<Map<String, Object?>> handleAutomationOpen(Map<String, Object?> body) asy
     }
   }
 
-  final timeoutMs = (body['timeoutMs'] as num?)?.toInt() ?? 5000;
   final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
   while (true) {
     final entry = AutomationScreenRegistry.instance.snapshot().firstWhereOrNull((s) => s['id'] == screen);
     if (entry != null && entry['ready'] == true) return {'ok': true, 'screen': screen};
-    if (DateTime.now().isAfter(deadline))
+    if (DateTime.now().isAfter(deadline)) {
       return {'ok': false, 'error': 'timeout waiting for "$screen" to become ready'};
+    }
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
 }

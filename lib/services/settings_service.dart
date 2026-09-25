@@ -199,6 +199,16 @@ class _UseExternalPlayerPref extends Pref<bool> {
   Future<void> writeTo(BaseSharedPreferencesService svc, bool value) => svc.writeBool(key, value);
 }
 
+/// The ceiling on normal playback volume. mpv's software volume is a cubic
+/// gain applied after the whole filter chain, so anything above unity there is
+/// an unlimited boost behind the limiter; the boost lives in the chain instead
+/// ([SettingsService.volumeBoost]).
+const int kNormalVolumeMax = 100;
+
+/// Normal volume never leaves unity. A stored value above 100 is from before
+/// the boost moved into the filter chain, when this pref carried both.
+double _clampVolume(double v) => v.clamp(0.0, kNormalVolumeMax.toDouble());
+
 String? _trimEmptyAsNull(String? v) {
   final t = v?.trim();
   return (t == null || t.isEmpty) ? null : t;
@@ -371,7 +381,10 @@ class SettingsService extends BaseSharedPreferencesService {
   static const audioSyncOffset = IntPref('audio_sync_offset');
   static const subtitleSyncOffset = IntPref('subtitle_sync_offset');
   static const subtitleSearchLanguage = NullableStringPref('subtitle_search_language');
-  static const volume = DoublePref('volume', defaultValue: 100.0);
+
+  /// Normal playback volume, 0 to 100. Never above: a boost is a separate
+  /// setting with its own stage in the filter chain ([volumeBoost]).
+  static const volume = DoublePref('volume', defaultValue: 100.0, transform: _clampVolume);
   static const rotationLocked = BoolPref('rotation_locked', defaultValue: true);
   static const subtitleFontSize = IntPref('subtitle_font_size', defaultValue: 38);
   static const subtitleTextColor = StringPref('subtitle_text_color', defaultValue: '#FFFFFF');
@@ -536,7 +549,13 @@ class SettingsService extends BaseSharedPreferencesService {
     transform: _trimEmptyAsNull,
   );
 
-  static final maxVolume = IntPref('max_volume', defaultValue: 100, transform: (v) => v.clamp(100, 300));
+  /// The volume boost, as a linear percentage; 100 is off. Keeps the old
+  /// `max_volume` key, because the stored numbers carry over unchanged: what
+  /// moved is where the boost is applied. It used to raise mpv's `volume-max`
+  /// and `volume` together, a cubic software gain behind the whole filter
+  /// chain; it is now a gain stage inside that chain, in front of the limiter
+  /// (`AudioLoudness.boostPercent`).
+  static final volumeBoost = IntPref('max_volume', defaultValue: 100, transform: (v) => v.clamp(100, 300));
   static final subtitlePosition = IntPref('subtitle_position', defaultValue: 100, transform: (v) => v.clamp(0, 100));
   static final defaultPlaybackSpeed = DoublePref(
     'default_playback_speed',
@@ -984,7 +1003,7 @@ class SettingsService extends BaseSharedPreferencesService {
     subtitleSyncOffset,
     subtitleSearchLanguage,
     volume,
-    maxVolume,
+    volumeBoost,
     subtitleFontSize,
     subtitleTextColor,
     subtitleBorderSize,

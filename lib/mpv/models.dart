@@ -1,4 +1,6 @@
 // ignore_for_file: invalid_annotation_target
+import 'dart:math' show ln10, log;
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'models.freezed.dart';
@@ -63,6 +65,7 @@ class AudioLoudness {
   const AudioLoudness({
     this.levelVolume = false,
     this.reduceLoudSounds = false,
+    this.boostPercent = 100,
     this.programmeGainDb,
     this.gainLimit = ProgrammeGainLimit.none,
   });
@@ -72,6 +75,20 @@ class AudioLoudness {
 
   /// Narrow the gap between dialogue and loud effects.
   final bool reduceLoudSounds;
+
+  /// The user's volume boost as a linear percentage; 100 is off.
+  ///
+  /// It is a stage of this chain and not mpv's `volume` property, because that
+  /// property is a software gain applied in `ao_post_process_data`, after every
+  /// filter including the limiter, and scaled cubically: 150% is +10,57 dB and
+  /// 300% is +28,6 dB, with nothing between it and the output. Read as a
+  /// linear factor here, 150% is +3,52 dB and it lands in front of the ceiling
+  /// that the rest of the chain guarantees.
+  final int boostPercent;
+
+  /// [boostPercent] in dB, 0 when the boost is off. Linear, so 150% is
+  /// +3,52 dB, which is what the percentage on the row claims to mean.
+  double get boostDb => boostPercent <= 100 ? 0 : 20 * (log(boostPercent / 100) / ln10);
 
   /// The fixed gain for this programme, from stored loudness evidence, or null
   /// when there is none and levelling has to run in realtime.
@@ -98,6 +115,16 @@ class AudioLoudness {
   /// louder is pulled in; at the old -38 dB the fixtures dropped to -39 LUFS.
   static const programmeCompressor = 'acompressor=threshold=-18dB:ratio=8:attack=5:release=250:makeup=1';
 
+  /// The realtime target, and what the boost does to it. Raising `loudnorm`'s
+  /// own target is how the boost gets in behind the normalisation without
+  /// stepping past the limiter: single-pass `loudnorm` limits to `TP` after it
+  /// has reached `I`, so a higher `I` is a louder programme under the same
+  /// ceiling. A `volume` stage after `loudnorm` would sit behind that limiter
+  /// instead, and would need the ceiling lowered by the boost to stay safe.
+  static const realtimeTargetLufs = -22.0;
+
+  String _realtimeTarget(double boost) => boost == 0 ? '-22' : (realtimeTargetLufs + boost).toStringAsFixed(2);
+
   /// mpv `af` chain ('' disables filtering).
   ///
   /// Without a programme gain the realtime chains run unchanged: single-pass
@@ -105,25 +132,40 @@ class AudioLoudness {
   /// reduced (that compressor narrowed a real excerpt from 10,2 to 6,4 LU at
   /// -22,5 LUFS; `LRA` alone barely moves single-pass loudnorm). With a gain,
   /// or with only loud sounds reduced, the chain is fixed and deterministic:
-  /// gain, optional compressor, true-peak limiter. The limiter is what makes
-  /// reduce-only safe now; a compressor with makeup and no ceiling once ran an
-  /// excerpt to +5,4 dBFS.
-  String get mpvFilter {
+  /// gain, optional compressor, boost, true-peak limiter. The limiter is what
+  /// makes reduce-only safe now; a compressor with makeup and no ceiling once
+  /// ran an excerpt to +5,4 dBFS, and it is also what makes a boost safe.
+  String get mpvFilter => _chain(dynamics: true);
+
+  /// The same chain for a build whose ffmpeg has neither `acompressor` nor
+  /// `alimiter`. Nothing here guarantees a ceiling, so it is a fallback for a
+  /// chain mpv refused, never a first choice; [PlayerNative] logs when it uses
+  /// one. MPVKit 1.0.26 ships fourteen audio filters and neither of those two
+  /// is among them.
+  String get mpvFilterWithoutDynamics => _chain(dynamics: false);
+
+  String _chain({required bool dynamics}) {
     if (!isEnabled) return '';
+    final boost = boostDb;
     final gain = programmeGainDb;
     if (levelVolume && gain == null) {
-      if (!reduceLoudSounds) return 'loudnorm=I=-22:TP=-2:LRA=9';
-      return 'acompressor=threshold=-38dB:ratio=8:attack=5:release=250,loudnorm=I=-22:TP=-2:LRA=3';
+      final target = _realtimeTarget(boost);
+      if (!reduceLoudSounds) return 'loudnorm=I=$target:TP=-2:LRA=9';
+      if (!dynamics) return 'loudnorm=I=$target:TP=-2:LRA=3';
+      return 'acompressor=threshold=-38dB:ratio=8:attack=5:release=250,loudnorm=I=$target:TP=-2:LRA=3';
     }
     return [
       if (levelVolume) 'volume=${gain!.toStringAsFixed(2)}dB:precision=float',
-      if (reduceLoudSounds) programmeCompressor,
-      truePeakLimiter,
+      if (reduceLoudSounds && dynamics) programmeCompressor,
+      if (boost > 0) 'volume=${boost.toStringAsFixed(2)}dB:precision=float',
+      if (dynamics) truePeakLimiter,
     ].join(',');
   }
 
-  /// Whether any loudness processing is active.
-  bool get isEnabled => levelVolume || reduceLoudSounds;
+  /// Whether any audio processing is active. The boost counts: it needs decoded
+  /// PCM exactly like the rest of the chain, so the arbiter has to know about
+  /// it or a bitstream would keep running underneath a filter that never lands.
+  bool get isEnabled => levelVolume || reduceLoudSounds || boostDb > 0;
 
   LoudnessMode get mode {
     if (!isEnabled) return LoudnessMode.off;
@@ -136,15 +178,17 @@ class AudioLoudness {
       other is AudioLoudness &&
       other.levelVolume == levelVolume &&
       other.reduceLoudSounds == reduceLoudSounds &&
+      other.boostPercent == boostPercent &&
       other.programmeGainDb == programmeGainDb &&
       other.gainLimit == gainLimit;
 
   @override
-  int get hashCode => Object.hash(levelVolume, reduceLoudSounds, programmeGainDb, gainLimit);
+  int get hashCode => Object.hash(levelVolume, reduceLoudSounds, boostPercent, programmeGainDb, gainLimit);
 
   @override
   String toString() =>
       'AudioLoudness(level: $levelVolume, reduceLoud: $reduceLoudSounds, mode: ${mode.name}'
+      '${boostPercent <= 100 ? '' : ', boost: $boostPercent% (+${boostDb.toStringAsFixed(2)} dB)'}'
       '${programmeGainDb == null ? '' : ', gain: ${programmeGainDb!.toStringAsFixed(2)} dB'}'
       '${gainLimit == ProgrammeGainLimit.none ? '' : ', limit: ${gainLimit.name}'})';
 }

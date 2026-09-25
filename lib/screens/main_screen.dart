@@ -89,6 +89,7 @@ import 'libraries/library_quick_picker_sheet.dart';
 import 'libraries/libraries_screen.dart';
 import 'libraries/mobile_libraries_screen.dart';
 import 'tv/sections/tv_libraries_screen.dart';
+import 'tv/sections/tv_personal_media_overview_screens.dart';
 import 'livetv/live_tv_screen.dart';
 import 'search_screen.dart';
 import 'seerr/seerr_discover_screen.dart';
@@ -581,6 +582,8 @@ class _MainScreenState extends State<MainScreen>
   /// gave TV its own bronbeheer screen; the shared class still backs
   /// [_librariesKey] above for desktop and mobile.
   final GlobalKey<State<TvLibrariesScreen>> _tvLibrariesKey = GlobalKey();
+  final GlobalKey<State<TvCollectionsOverviewScreen>> _tvCollectionsKey = GlobalKey();
+  final GlobalKey<State<TvPlaylistsOverviewScreen>> _tvPlaylistsKey = GlobalKey();
 
   /// The remembered Live TV capability for this profile. See
   /// [TvLiveTvCapabilityStore] for why a poll may not clear it.
@@ -973,7 +976,7 @@ class _MainScreenState extends State<MainScreen>
     // sidebar reflects the new server set without an app restart.
     if (action == ProfileInvalidationAction.invalidateNow) {
       _wasBindingPrev = isBindingNow;
-      unawaited(_invalidateAllScreens());
+      unawaited(_invalidateAllScreens(sameProfileRebind: true));
       return;
     }
     _wasBindingPrev = isBindingNow;
@@ -1512,6 +1515,9 @@ class _MainScreenState extends State<MainScreen>
             onManageServers: () => _selectTab(NavigationTabId.settings),
             onBack: _isPhone ? _closeSearch : null,
           ),
+          NavigationTabId.requests when _isPhone => SeerrDiscoverScreen(
+            onBack: () => _selectTab(NavigationTabId.myPleya),
+          ),
           NavigationTabId.requests => const SeerrDiscoverScreen(),
           NavigationTabId.downloads => DownloadsScreen(key: _downloadsKey),
           NavigationTabId.settings => SettingsScreen(key: _settingsKey),
@@ -1673,6 +1679,8 @@ class _MainScreenState extends State<MainScreen>
     // remote would be left on a focus stop that no longer exists, so arrow
     // presses would have nothing to move.
     final reconnectWasFocused = _isTvShell && _tvNavNodes.isFocused(tvReconnectFocusKey);
+    final barWasFocused = _isTvShell && _tvNavNodes.hasFocus;
+    NavigationTabId? restoredTab;
     setState(() {
       _isReconnecting = false;
       _isOffline = newOffline;
@@ -1694,8 +1702,11 @@ class _MainScreenState extends State<MainScreen>
       } else {
         // Coming back online: restore the last online tab if we forced a switch to Downloads.
         if (_autoSwitchedToDownloads) {
-          final restoredTab = _lastOnlineTabId ?? NavigationTabId.discover;
-          _currentTab = _normalizeTabForMode(restoredTab, _isOffline);
+          // Applied through `_selectTab` below, after the bar has its online
+          // destinations back: a bare `_currentTab` assignment here skipped
+          // `onTabHidden`, the Verify route state and the bar (OFF5b).
+          _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
+          restoredTab = _normalizeTabForMode(_lastOnlineTabId ?? NavigationTabId.discover, _isOffline);
         } else {
           _currentTab = _normalizeTabForMode(_currentTab, _isOffline);
         }
@@ -1707,14 +1718,18 @@ class _MainScreenState extends State<MainScreen>
     // left Home/Series/Films/Search as focusable pills whose Select did
     // nothing, because the bar was never told the mode changed (MOC-23a).
     _syncTvDestinations();
+    if (restoredTab case final tab? when tab != _currentTab) _selectTab(tab, isUserInitiated: false);
     _updateTvosMenuPassthrough();
 
     // Refresh sidebar focus after rebuilding navigation
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // A restore moves the bar's ring to the restored destination; the node
+      // the remote is on has to follow, or the ring and the page disagree.
       if (shouldRecoverTvTopNavFocusAfterReconnect(
-        reconnectItemWasFocused: reconnectWasFocused,
-        isOfflineNow: _isOffline,
-      )) {
+            reconnectItemWasFocused: reconnectWasFocused,
+            isOfflineNow: _isOffline,
+          ) ||
+          (restoredTab != null && barWasFocused)) {
         // The item the remote was on just left the tree; land it on the bar's
         // own current item instead of leaving it with nothing focused.
         _focusSidebar();
@@ -1873,7 +1888,8 @@ class _MainScreenState extends State<MainScreen>
   Future<void> _openProfilesFromShell() async {
     _isShowingProfileSelection = true;
     _setTvosMenuPassthrough(false);
-    await AccountUiActions.openProfiles(context);
+    // PROF1: on TV the switch is mockup 21's gate, not the management list.
+    await AccountUiActions.openProfiles(context, asGate: true);
     if (!mounted) return;
     _isShowingProfileSelection = false;
     _updateTvosMenuPassthrough();
@@ -2076,7 +2092,12 @@ class _MainScreenState extends State<MainScreen>
   /// The [ActiveProfileBinder] has already pushed fresh per-server tokens
   /// into [MultiServerManager], so this just clears UI caches and refreshes
   /// the visible screens.
-  Future<void> _invalidateAllScreens() async {
+  ///
+  /// [sameProfileRebind] is a rebind of the profile that was already active
+  /// (a reconnect, a borrowed or removed connection). The viewer stays where
+  /// they are then (OFF6): the nested routes and the focus memory belong to
+  /// this same profile, so the privacy rule below does not apply.
+  Future<void> _invalidateAllScreens({bool sameProfileRebind = false}) async {
     appLogger.d('Invalidating screen data after profile switch');
 
     // Hoofdstuk 7.6: "profielwissel → geheugen volledig wissen". A remembered
@@ -2085,9 +2106,12 @@ class _MainScreenState extends State<MainScreen>
     // odd jump. The Live TV capability is per profile in storage, so it is
     // re-read rather than carried over.
     if (_isTvShell) {
-      _tvNav.clearFocusMemory();
-      _tvNav.clearNestedRoutes();
-      _tvLiveTvRemembered = false;
+      if (!sameProfileRebind) {
+        _tvNav.clearFocusMemory();
+        _tvNav.clearNestedRoutes();
+        _tvLiveTvRemembered = false;
+      }
+      // A rebind can change the server set, and Live TV with it.
       unawaited(_loadTvLiveTvCapability());
     }
 
@@ -2135,6 +2159,27 @@ class _MainScreenState extends State<MainScreen>
     if (mounted) {
       unawaited(context.userProfile.refreshProfileSettings());
     }
+    if (sameProfileRebind && _isTvShell) _closeUnavailableTvMyPleyaSection();
+  }
+
+  /// OFF6: after a rebind of the same profile the open Mijn Pleya section
+  /// stays, unless its tile is gone from the hub (a Seerr or a Tautulli that
+  /// went with the connection). Then the hub comes back with the focus on it.
+  ///
+  /// ponytail: checked once, after the refresh above has settled. A provider
+  /// that only reports its capability later cannot close the section; the
+  /// section then shows its own empty or error state, as it does today.
+  void _closeUnavailableTvMyPleyaSection() {
+    final stack = _tvNav.nestedRoutesFor(TvDestinationId.myPleya);
+    if (stack.isEmpty) return;
+    const prefix = 'tvMyPleya_';
+    final id = stack.first.id;
+    if (!id.startsWith(prefix)) return;
+    final section = TvMyPleyaSection.values.asNameMap()[id.substring(prefix.length)];
+    final available = _tvMyPleyaKey.currentState?.availableSections;
+    if (section == null || available == null || available.contains(section)) return;
+    _tvNav.clearNestedRoutesFor(TvDestinationId.myPleya);
+    if (_tvNav.active == TvDestinationId.myPleya) _focusContent(restorePreviousFocus: false);
   }
 
   /// `false` when [tab] is not visible in the current mode: the tab is
@@ -2241,7 +2286,13 @@ class _MainScreenState extends State<MainScreen>
     _selectTab(NavigationTabId.myPleya);
     _tvNav.pushNested(
       TvDestinationId.myPleya,
-      tvMyPleyaNestedRoute(section, librariesKey: _tvLibrariesKey, watchlistKey: _tvWatchlistKey),
+      tvMyPleyaNestedRoute(
+        section,
+        librariesKey: _tvLibrariesKey,
+        watchlistKey: _tvWatchlistKey,
+        collectionsKey: _tvCollectionsKey,
+        playlistsKey: _tvPlaylistsKey,
+      ),
     );
     _focusContent(restorePreviousFocus: false);
   }

@@ -60,6 +60,8 @@ import 'jellyfin_playback_bundle.dart';
 import 'jellyfin_playback_urls.dart';
 import 'jellyfin_trickplay_service.dart';
 import 'playback_initialization_types.dart';
+import 'recommendations/jellyfin_history_importer.dart'
+    show JellyfinHistorySource, kJellyfinPageLength, kJellyfinResumeLimit;
 import 'scrub_preview_source.dart';
 import '../mpv/mpv.dart';
 
@@ -96,6 +98,7 @@ class JellyfinClient
         SeasonEpisodePagingClient,
         ScopedMediaServerClient,
         PersonSearchClient,
+        JellyfinHistorySource,
         GracefullyCloseable {
   JellyfinClient._({required this._connection, required this._http, FavoriteChannelsRepository? favoritesRepository})
     : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository();

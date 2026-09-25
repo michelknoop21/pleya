@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../automation/automation_ids.dart';
 import '../focus/card_focus_scope.dart';
 import '../focus/focus_theme.dart';
 import '../focus/focusable_wrapper.dart';
 import '../theme/mono_tokens.dart';
+import '../utils/platform_detector.dart';
+import '../utils/tv_hig.dart';
 import 'app_icon.dart';
 import 'settings_rows.dart';
 
@@ -16,6 +19,52 @@ const double kSettingsMaxWidth = 880;
 /// Row inset used by every settings tile. Slightly wider than the Material
 /// default so the icon badge does not touch the card edge.
 const EdgeInsets kSettingRowPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 6);
+
+/// The row inset a settings tile passes to its `ListTile`. On TV it is null,
+/// so the tile takes [TvSettingsDensity]'s HIG inset from the theme instead of
+/// a phone value that the TV wrapper would blow up 1.85 times.
+EdgeInsetsGeometry? settingRowPadding() => PlatformDetector.isTV() ? null : kSettingRowPadding;
+
+/// DENS1: settings rows on TV in Apple's tvOS HIG sizes. Title in Body (29 pt),
+/// value line in Caption 1 (25 pt), a 12 pt vertical inset and no enforced
+/// minimum height. Without it a two-line row inherited `ListTile`'s dense
+/// minimum of 64 logical pixels plus phone padding, which the TV wrapper turns
+/// into a 138 pt row around 26/22 pt text: 4.5 rows on a screen that holds 9.
+/// Off TV it returns [child] unchanged.
+class TvSettingsDensity extends StatelessWidget {
+  final Widget child;
+
+  const TvSettingsDensity({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!PlatformDetector.isTV()) return child;
+    final pt = TvHig.of(context);
+    final t = tokens(context);
+    return ListTileTheme.merge(
+      dense: false,
+      visualDensity: VisualDensity.standard,
+      minTileHeight: 0,
+      minVerticalPadding: 0,
+      minLeadingWidth: 0,
+      horizontalTitleGap: 20 * pt,
+      contentPadding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 12 * pt),
+      titleTextStyle: TextStyle(
+        color: t.text,
+        fontSize: TvHig.body * pt,
+        height: TvHig.bodyLeading / TvHig.body,
+        fontWeight: FontWeight.w500,
+      ),
+      subtitleTextStyle: TextStyle(
+        color: t.textMuted,
+        fontSize: TvHig.caption1 * pt,
+        height: TvHig.caption1Leading / TvHig.caption1,
+      ),
+      leadingAndTrailingTextStyle: TextStyle(color: t.textMuted, fontSize: TvHig.caption1 * pt),
+      child: child,
+    );
+  }
+}
 
 /// Alpha of a [SettingsGroup]'s outer card border, against [MonoTokens.outline].
 const double kSettingsOutlineAlpha = 0.6;
@@ -72,14 +121,18 @@ class SettingsSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = PlatformDetector.isTV();
+    final pt = tv ? TvHig.of(context) : 1.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+      padding: tv ? EdgeInsets.fromLTRB(24 * pt, 32 * pt, 24 * pt, 12 * pt) : const EdgeInsets.fromLTRB(20, 24, 20, 10),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
           color: tokens(context).textMuted,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
+          // DENS1: HIG Caption 2 (23 pt) on TV, the tvOS minimum.
+          fontSize: tv ? TvHig.caption2 * pt : null,
         ),
       ),
     );
@@ -157,7 +210,20 @@ class SettingRowFocus extends StatelessWidget {
   final FocusNode? focusNode;
   final bool enabled;
 
-  const SettingRowFocus({super.key, required this.child, required this.onSelect, this.focusNode, this.enabled = true});
+  /// Registers the row as `my_pleya.section.tile[<automationInstance>]` for
+  /// Pleya Verify, the id every other TV settings row already uses.
+  final String? automationInstance;
+  final Object? Function()? automationState;
+
+  const SettingRowFocus({
+    super.key,
+    required this.child,
+    required this.onSelect,
+    this.focusNode,
+    this.enabled = true,
+    this.automationInstance,
+    this.automationState,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +239,10 @@ class SettingRowFocus extends StatelessWidget {
       // no ring at all.
       mode: FocusIndicatorMode.delegated,
       onSelect: enabled ? onSelect : null,
+      automationId: automationInstance == null ? null : AutomationIds.myPleyaSectionTile,
+      automationInstance: automationInstance,
+      automationRole: 'grid.item',
+      automationState: automationState,
       child: _SettingRowSurface(child: child),
     );
   }
@@ -223,15 +293,19 @@ class SettingsIconBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = tokens(context);
     final color = tint ?? t.text;
+    // DENS1: on TV a 44 pt badge around a Body-sized (29 pt) glyph, where the
+    // phone's 36/20 came out at 67/37 pt, taller than the text beside it.
+    final pt = PlatformDetector.isTV() ? TvHig.of(context) : null;
+    final box = pt == null ? 36.0 : 44 * pt;
     return Container(
-      width: 36,
-      height: 36,
+      width: box,
+      height: box,
       decoration: BoxDecoration(
         color: color.withValues(alpha: t.isLight ? 0.08 : 0.12),
         borderRadius: BorderRadius.circular(t.radiusSm),
       ),
       alignment: Alignment.center,
-      child: AppIcon(icon, fill: 1, size: 20, color: color),
+      child: AppIcon(icon, fill: 1, size: pt == null ? 20 : TvHig.body * pt, color: color),
     );
   }
 }

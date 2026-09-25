@@ -8,7 +8,16 @@
 /// implemented: nothing defines what either verb should actually do. Add
 /// them back only alongside a real engine case and a real contract for what
 /// they mean.
-const Set<String> setupVerbs = {'reset_app', 'seed', 'sign_in', 'open', 'install', 'launch', 'fixture_mutate'};
+const Set<String> setupVerbs = {
+  'reset_app',
+  'seed',
+  'sign_in',
+  'seed_seerr',
+  'open',
+  'install',
+  'launch',
+  'fixture_mutate',
+};
 
 /// Step vocabulary — disjoint from [setupVerbs].
 ///

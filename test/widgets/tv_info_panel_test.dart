@@ -18,6 +18,7 @@ import 'package:pleya/widgets/video_controls/models/track_controls_state.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_audio_subtitle_tabs.dart';
 import 'package:pleya/widgets/video_controls/tv_info_panel/tv_panel_widgets.dart';
+import 'package:pleya/widgets/video_controls/tv_info_panel/tv_video_tab.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:pleya/widgets/video_controls/widgets/track_chapter_controls.dart';
 
@@ -84,7 +85,7 @@ void main() {
     expect(h.player.state.rate, 1.25);
   });
 
-  testWidgets('volume boost raises the ceiling and then the level (AUD1)', (tester) async {
+  testWidgets('volume boost is a linear gain stage in the filter chain (AUD1)', (tester) async {
     final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.audio);
     await h.focusRow(tester, 'Volume boost');
     // Select enters the row and RIGHT steps it (DEC-107); Select no longer
@@ -94,9 +95,17 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
 
-    expect(h.player.writes, containsAllInOrder(['volume-max=150', 'volume=150.0']));
-    expect(SettingsService.instance.read(SettingsService.maxVolume), 150);
-    expect(SettingsService.instance.read(SettingsService.volume), 150.0);
+    // 150% is a linear 1,5x, +3,52 dB, and it lands in front of the limiter.
+    // It used to be written to mpv's `volume`, a cubic software gain behind
+    // every filter: 3,375x, +10,57 dB, with nothing to catch it.
+    expect(h.player.writes, contains('af=volume=3.52dB:precision=float,${AudioLoudness.truePeakLimiter}'));
+    expect(h.player.writes.where((w) => w.startsWith('volume')), isEmpty);
+    expect(SettingsService.instance.read(SettingsService.volumeBoost), 150);
+    expect(
+      SettingsService.instance.read(SettingsService.volume),
+      100.0,
+      reason: 'normal volume is a separate setting and the boost must not move it',
+    );
     expect(find.text('+50%'), findsOneWidget);
   });
 
@@ -109,7 +118,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
-    expect(h.player.writes.where((w) => w.startsWith('volume')), isEmpty, reason: 'a paused row writes nothing');
+    expect(h.player.writes, isEmpty, reason: 'a paused row writes nothing');
   });
 
   testWidgets('audio tracks carry the technical second line (PNL1)', (tester) async {
@@ -156,7 +165,7 @@ void main() {
     expect(stepValueClamped(kTvPanelVolumeBoostSteps, 100, -1), isNull);
     expect(stepValueClamped(kTvPanelVolumeBoostSteps, 150, 1), 200);
 
-    await SettingsService.instance.write(SettingsService.maxVolume, 300);
+    await SettingsService.instance.write(SettingsService.volumeBoost, 300);
     final h = await _pumpPanel(tester, initial: TvInfoPanelRequest.audio);
     final boost = h.row(tester, 'Volume boost');
     expect(boost.onStepRight, isNull, reason: 'at the top there is nothing to step to');
@@ -389,6 +398,11 @@ Future<_Harness> _pumpFullVideoTab(
 }) async {
   final shaderPlayer = _PanelPlayer();
   addTearDown(shaderPlayer.dispose);
+  // The HDR row is platform-gated, so without this the Linux CI runner renders
+  // ten rows where a Mac renders eleven, and PLR4 measures a shorter tab than
+  // the one it is about.
+  TvVideoTab.debugSetHdrSupported(true);
+  addTearDown(() => TvVideoTab.debugSetHdrSupported(null));
   return _pumpPanel(
     tester,
     initial: TvInfoPanelRequest.video,

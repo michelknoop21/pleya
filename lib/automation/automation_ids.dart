@@ -1,14 +1,36 @@
 import '../navigation/navigation_tab_id.dart';
 
 /// Stable, agent-addressable automation IDs on a closed set of domains:
-/// `screen`, `nav`, `sidebar`, `library`, `discover`, `detail`, `player`,
-/// `search`, `settings`, `dialog`, `sheet`, `hub`, `profile`, `overlay`.
+/// `screen`, `auth`, `nav`, `sidebar`, `library`, `discover`, `detail`,
+/// `player`, `search`, `settings`, `dialog`, `sheet`, `hub`, `profile`,
+/// `overlay`.
 ///
 /// Every automation ID in the app is either a literal here, or the output of
 /// [navTab] — never a raw string literal at the call site. Enforced by
 /// test/architecture/automation_ids_test.dart.
 class AutomationIds {
   AutomationIds._();
+
+  /// The first-start authentication composition. Ready as soon as the
+  /// composition is mounted; backend service readiness lives on
+  /// [authChoice]'s `enabled` state instead.
+  static const String screenAuth = 'screen.auth';
+
+  /// The visible first-start heading in the left column.
+  static const String authHeading = 'auth.heading';
+
+  /// One of the two first-start authentication choices, suffixed with the
+  /// backend (`auth.choice[plex]` or `auth.choice[jellyfin]`). The id lives on
+  /// the focusable row itself so automation observes the same bounds and
+  /// enabled state as the viewer operating it.
+  static const String authChoice = 'auth.choice';
+
+  /// The right-hand first-start state panel. Its state is the exact
+  /// `TvAuthPanelState.name` being rendered and never contains credentials.
+  static const String authPanel = 'auth.panel';
+
+  /// The visible retry control for a failed or timed-out auth attempt.
+  static const String authRetry = 'auth.retry';
 
   /// `nav.<NavigationTabId.name>` — derived from the enum itself, not a
   /// second hand-written list that could drift out of sync with it.
@@ -60,6 +82,9 @@ class AutomationIds {
   /// tracker/requests gating), so a slot index would shift under those
   /// conditions in a way a real user's route never depends on.
   static const String settingsTile = 'settings.tile';
+
+  /// One category in the TV Appearance page, in its visible display order.
+  static const String settingsAppearanceCategory = 'settings.appearance.category';
 
   /// The nav rail as a whole — bounds for collapse/expand geometry checks.
   static const String sidebarRail = 'sidebar.rail';
@@ -148,6 +173,10 @@ class AutomationIds {
   /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailSeasonChip = 'media-detail.season-chip';
 
+  /// The play button in the media-detail action row. On TV the page opens
+  /// with the ring here, and Menu from the detail rail comes back to it.
+  static const String mediaDetailPlay = 'media-detail.play';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -231,6 +260,14 @@ class AutomationIds {
   /// mounts on all three, so one id family covers it everywhere.
   static const String activityRow = 'activity.row';
 
+  /// The presence control in the mobile Home header that opens I7-21's
+  /// approved Activiteit sheet.
+  static const String activityButton = 'activity.button';
+
+  /// I7-21's mobile Activiteit sheet. The stream rows inside it keep using
+  /// [activityRow], shared with desktop and TV.
+  static const String activitySheet = 'activity.sheet';
+
   /// The library page's heading, carrying which library is actually open.
   ///
   /// Hoofdstuk 16's contract is that concrete libraries are visible and
@@ -273,6 +310,18 @@ class AutomationIds {
   /// reaches the panel on a simulator that cannot swipe.
   static const String playerSettingsButton = 'player.settings_button';
 
+  /// The play/pause button in the player bar; `state.playing` mirrors the
+  /// icon it draws. On TV the player opens with this button focused.
+  static const String playerPlayPause = 'player.play_pause';
+
+  /// An action button on the TV offline Home (`TvOfflineHomeScreen`),
+  /// suffixed `reconnect` or `manage_servers`.
+  static const String offlineHomeAction = 'offline_home.action';
+
+  /// One profile on the profile picker, suffixed by its position
+  /// (`profile.tile[0]`); `state` carries the name and whether it is active.
+  static const String profileTile = 'profile.tile';
+
   /// The mobile bottom navigation bar as a whole (bounds, not per-tab). The
   /// per-tab nodes are [navTab], mounted on both the side rail and this bar.
   static const String navBar = 'nav.bar';
@@ -304,6 +353,12 @@ class AutomationIds {
   static const String screenSeries = 'screen.series';
   static const String screenMovies = 'screen.movies';
 
+  /// The iPhone Aanvragen page (northstar 19).
+  static const String screenRequests = 'screen.requests';
+
+  /// One row of "Mijn aanvragen" on that page, by position (`requests.mine.item[0]`).
+  static const String requestsMineItem = 'requests.mine.item';
+
   /// A landing's header, title line, "Alle series"/"Alle films" action and one
   /// of its rails. All four are instanceable and all four carry the landing's
   /// kind, because Home, Series and Films are children of the same
@@ -333,6 +388,10 @@ class AutomationIds {
   /// `<family>.<index>` shape [landingRailItem]/[discoverRailItem] use.
   static const String searchResultsItem = 'search.results.item';
 
+  /// The TV search pill (36 B). Its state carries the result count the pill
+  /// shows, or null while there is nothing to count.
+  static const String tvSearchPill = 'tv.search.pill';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -351,10 +410,12 @@ class AutomationIds {
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
 
-  /// The Alle films/Alle series catalogue screens (iOS Unified 2026 fase 3,
+  /// The Alle films/Alle series catalogue screens and the matching Aanvragen
+  /// and Kijklijst phone controls (iOS Unified 2026 fase 3,
   /// `docs/ios-unified-2026-fase3-plan.md`). Two separate consts rather than
   /// one instanceable id, the same choice [screenSeries]/[screenMovies] made:
-  /// each screen is pushed on its own, kind is the whole identity.
+  /// each screen is pushed on its own, kind is the whole identity. Aanvragen
+  /// reuses the instanceable catalog controls with the `requests` instance.
   static const String screenCatalogMovies = 'screen.catalog_movies';
   static const String screenCatalogSeries = 'screen.catalog_series';
 
@@ -410,10 +471,12 @@ class AutomationIds {
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
   static const Set<String> instanceableIds = {
+    authChoice,
     sidebarLibraryRow,
     libraryGridItem,
     libraryPickerCard,
     settingsTile,
+    settingsAppearanceCategory,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
     discoverRail,
@@ -426,6 +489,7 @@ class AutomationIds {
     myPleyaLogRow,
     playerPanelTab,
     playerPanelRow,
+    requestsMineItem,
     homeRail,
     homeRailItem,
     landingHeader,
@@ -455,6 +519,8 @@ class AutomationIds {
     tvCatalogRail,
     tvCatalogRailRow,
     tvCatalogState,
+    offlineHomeAction,
+    profileTile,
   };
 
   /// The static, autoritative id catalogue `GET /v1/automation_ids` serves,
@@ -464,6 +530,11 @@ class AutomationIds {
   /// holds whatever screen happens to be on screen, while a scenario needs
   /// the full, screen-independent set.
   static List<Map<String, Object?>> catalog() => [
+    {'id': screenAuth, 'role': 'screen', 'instanceable': false},
+    {'id': authHeading, 'role': 'heading', 'instanceable': false},
+    {'id': authChoice, 'role': 'button', 'instanceable': true},
+    {'id': authPanel, 'role': 'region', 'instanceable': false},
+    {'id': authRetry, 'role': 'button', 'instanceable': false},
     {'id': screenMain, 'role': 'screen', 'instanceable': false},
     {'id': screenDiscover, 'role': 'screen', 'instanceable': false},
     {'id': screenLibraries, 'role': 'screen', 'instanceable': false},
@@ -495,16 +566,21 @@ class AutomationIds {
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionContent, 'role': 'region', 'instanceable': true},
     {'id': myPleyaSectionTile, 'role': 'grid.item', 'instanceable': true},
+    {'id': settingsAppearanceCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},
+    {'id': activityButton, 'role': 'button', 'instanceable': false},
+    {'id': activitySheet, 'role': 'sheet', 'instanceable': false},
     {'id': playerSurface, 'role': 'surface', 'instanceable': false},
     {'id': playerTitle, 'role': 'region', 'instanceable': false},
     {'id': playerTimeline, 'role': 'region', 'instanceable': false},
@@ -517,15 +593,17 @@ class AutomationIds {
     {'id': tvosNativeTextEntry, 'role': 'service', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},
     {'id': homeHeaderSearch, 'role': 'button', 'instanceable': false},
-    {'id': homeHeaderAvatar, 'role': 'image', 'instanceable': false},
+    {'id': homeHeaderAvatar, 'role': 'button', 'instanceable': false},
     {'id': homeChips, 'role': 'filter', 'instanceable': false},
     {'id': homeRail, 'role': 'rail', 'instanceable': true},
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': screenSeries, 'role': 'screen', 'instanceable': false},
     {'id': screenMovies, 'role': 'screen', 'instanceable': false},
+    {'id': screenRequests, 'role': 'screen', 'instanceable': false},
+    {'id': requestsMineItem, 'role': 'list.item', 'instanceable': true},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
-    {'id': landingHeaderAvatar, 'role': 'image', 'instanceable': true},
+    {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},
     {'id': landingTitle, 'role': 'region', 'instanceable': true},
     {'id': landingViewAll, 'role': 'button', 'instanceable': true},
     {'id': landingRail, 'role': 'rail', 'instanceable': true},
@@ -558,5 +636,8 @@ class AutomationIds {
     {'id': tvCatalogRail, 'role': 'region', 'instanceable': true},
     {'id': tvCatalogRailRow, 'role': 'list.item', 'instanceable': true},
     {'id': tvCatalogState, 'role': 'region', 'instanceable': true},
+    {'id': playerPlayPause, 'role': 'button', 'instanceable': false},
+    {'id': offlineHomeAction, 'role': 'button', 'instanceable': true},
+    {'id': profileTile, 'role': 'grid.item', 'instanceable': true},
   ];
 }

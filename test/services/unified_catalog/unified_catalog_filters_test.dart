@@ -93,6 +93,7 @@ void main() {
   group('the stored selection survives what it cannot currently execute', () {
     const stored = UnifiedCatalogFilterSelection(
       genres: {'Drama'},
+      audioLanguages: {'eng'},
       years: {2024},
       watchState: UnifiedWatchFilter.unwatched,
       serverIds: {'nas'},
@@ -101,6 +102,7 @@ void main() {
     test('constrainedTo drops what cannot run, and only that', () {
       final effective = stored.constrainedTo(UnifiedFilterCapabilities.none);
       expect(effective.genres, isEmpty);
+      expect(effective.audioLanguages, isEmpty);
       expect(effective.years, isEmpty);
       expect(effective.watchState, UnifiedWatchFilter.all);
       expect(effective.serverIds, {'nas'}, reason: 'source filters are backend-independent');
@@ -109,6 +111,7 @@ void main() {
     test('constrainedTo never mutates the stored value', () {
       stored.constrainedTo(UnifiedFilterCapabilities.none);
       expect(stored.genres, {'Drama'}, reason: 'suppressing a filter must be reversible');
+      expect(stored.audioLanguages, {'eng'});
       expect(stored.years, {2024});
       expect(stored.watchState, UnifiedWatchFilter.unwatched);
     });
@@ -189,12 +192,13 @@ void main() {
     test('every field counts once', () {
       const selection = UnifiedCatalogFilterSelection(
         genres: {'Drama'},
+        audioLanguages: {'eng'},
         years: {2024},
         watchState: UnifiedWatchFilter.unwatched,
         serverIds: {'nas'},
         libraryKeys: {'nas:1'},
       );
-      expect(selection.activeCount, 5);
+      expect(selection.activeCount, 6);
     });
 
     test('the default selection is empty and restricts no source', () {
@@ -220,6 +224,7 @@ void main() {
       expect(query.sortDirection, LibrarySortDirection.ascending);
       expect(query.includeWatched, isTrue);
       expect(query.genres, isNull);
+      expect(query.audioLanguages, isNull);
       expect(query.years, isNull);
     });
 
@@ -245,18 +250,27 @@ void main() {
       expect(query.includeWatched, isFalse);
     });
 
-    test('genres and years reach the query sorted, so equal selections are equal queries', () {
+    test('metadata filters reach the query sorted, so equal selections are equal queries', () {
       final a = build(
         const UnifiedCatalogPreferences(
-          filters: UnifiedCatalogFilterSelection(genres: {'Horror', 'Drama'}, years: {2024, 1999}),
+          filters: UnifiedCatalogFilterSelection(
+            genres: {'Horror', 'Drama'},
+            audioLanguages: {'nld', 'eng'},
+            years: {2024, 1999},
+          ),
         ),
       );
       final b = build(
         const UnifiedCatalogPreferences(
-          filters: UnifiedCatalogFilterSelection(genres: {'Drama', 'Horror'}, years: {1999, 2024}),
+          filters: UnifiedCatalogFilterSelection(
+            genres: {'Drama', 'Horror'},
+            audioLanguages: {'eng', 'nld'},
+            years: {1999, 2024},
+          ),
         ),
       );
       expect(a.genres, ['Drama', 'Horror']);
+      expect(a.audioLanguages, ['eng', 'nld']);
       expect(a.years, [1999, 2024]);
       expect(a, b, reason: 'an unstable order would restart the merge on every rebuild');
     });
@@ -267,6 +281,7 @@ void main() {
         const UnifiedCatalogPreferences(
           filters: UnifiedCatalogFilterSelection(
             genres: {'Drama'},
+            audioLanguages: {'eng'},
             years: {2024},
             watchState: UnifiedWatchFilter.unwatched,
           ),
@@ -274,6 +289,7 @@ void main() {
         capabilities: UnifiedFilterCapabilities.none,
       );
       expect(query.genres, isNull);
+      expect(query.audioLanguages, isNull);
       expect(query.years, isNull);
       expect(query.includeWatched, isTrue);
     });
@@ -298,6 +314,7 @@ void main() {
         sort: UnifiedCatalogSort.newestRelease,
         filters: UnifiedCatalogFilterSelection(
           genres: {'Drama', 'Comedy'},
+          audioLanguages: {'eng', 'nld'},
           years: {2024, 1999},
           watchState: UnifiedWatchFilter.unwatched,
           serverIds: {'nas'},

@@ -111,7 +111,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
       allowOriginal: true,
     );
     if (picked == null) return;
-    await PleyaProfileLanguagePreferenceStore.update(
+    await PleyaProfileLanguagePreferenceStore.updateFromViewer(
       (preferences) => preferences.copyWith(
         useOriginalAudio: picked.isOriginal,
         audioLanguage: picked.code,
@@ -127,7 +127,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
       current: LanguageChoiceValue.code(current.subtitleLanguage),
     );
     if (picked == null) return;
-    await PleyaProfileLanguagePreferenceStore.update(
+    await PleyaProfileLanguagePreferenceStore.updateFromViewer(
       (preferences) => preferences.copyWith(subtitleLanguage: picked.code, clearSubtitleLanguage: picked.code == null),
     );
   }
@@ -139,7 +139,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
       current: LanguageChoiceValue.code(current.subtitleFallbackLanguage),
     );
     if (picked == null) return;
-    await PleyaProfileLanguagePreferenceStore.update(
+    await PleyaProfileLanguagePreferenceStore.updateFromViewer(
       (preferences) => preferences.copyWith(
         subtitleFallbackLanguage: picked.code,
         clearSubtitleFallbackLanguage: picked.code == null,
@@ -169,7 +169,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
     );
     if (picked == null) return;
     final policy = SubtitleDisplayPolicy.values.where((value) => value.name == picked).firstOrNull;
-    await PleyaProfileLanguagePreferenceStore.update(
+    await PleyaProfileLanguagePreferenceStore.updateFromViewer(
       (preferences) => preferences.copyWith(subtitlePolicy: policy, clearSubtitlePolicy: policy == null),
     );
   }
@@ -357,7 +357,7 @@ class _ValueRow extends StatelessWidget {
     return SettingRowFocus(
       onSelect: onSelect,
       child: ListTile(
-        contentPadding: kSettingRowPadding,
+        contentPadding: settingRowPadding(),
         leading: SettingsIconBadge(icon),
         title: Text(title),
         subtitle: Text(subtitle),

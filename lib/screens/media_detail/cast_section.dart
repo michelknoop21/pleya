@@ -42,7 +42,10 @@ class CastSection extends StatelessWidget {
     const innerPadding = 3.0;
     final imageSize = cardWidth;
     // image + inner padding + text area + outer list padding + focus scale headroom
-    final containerHeight = imageSize + innerPadding * 2 + 58 + 10;
+    // Under the image: an 8 px gap, a name of up to two bodyMedium lines
+    // (about 40 px), 2 px and a bodySmall role line (about 17 px). 58 was
+    // short by 8 px for a two-line name and overflowed the card.
+    final containerHeight = imageSize + innerPadding * 2 + 68 + 10;
 
     final theme = Theme.of(context);
     final actorNameStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600);

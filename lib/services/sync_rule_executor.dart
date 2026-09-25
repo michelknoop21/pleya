@@ -30,6 +30,27 @@ class SyncRuleResult {
   const SyncRuleResult({required this.globalKey, this.title, required this.queuedCount});
 }
 
+/// What a finished sync-rule pass amounts to, for the one sentence the user
+/// gets to read about it.
+///
+/// [episodes] is the number of items actually queued, which is the only number
+/// the message claims. It used to be handed the number of *rules* that did
+/// something, so three rules queueing five, two and one episodes announced
+/// "3 new episodes" and named only the first show.
+///
+/// [soleTitle] is non-null exactly when one rule produced everything, which is
+/// the only case where naming a title is honest.
+typedef SyncRuleSummary = ({int episodes, int rules, String? soleTitle});
+
+SyncRuleSummary summariseSyncRuleResults(Iterable<SyncRuleResult> results) {
+  final queued = results.where((r) => r.queuedCount > 0).toList(growable: false);
+  return (
+    episodes: queued.fold(0, (total, r) => total + r.queuedCount),
+    rules: queued.length,
+    soleTitle: queued.length == 1 ? queued.single.title : null,
+  );
+}
+
 /// Evaluates sync rules and queues downloads so the device matches the rule's target.
 ///
 /// Rule types:

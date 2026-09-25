@@ -281,6 +281,20 @@ Future<void> _pumpPicker(
     ),
   );
 
+  // `Image.asset` decodes through the engine codec, which is real async work the
+  // test binding's fake clock never drives. Without this the Pleya Server badge
+  // paints as an empty but correctly indented gap, and because the reference was
+  // captured that way it stayed green over anything that could go wrong with
+  // that glyph. `runAsync` is what lets the bundle load and the codec run; the
+  // row then takes it from `ImageCache` a microtask later, well inside the
+  // pumping below. The two SVG badges beside it need nothing of the sort and
+  // measurably do not: `flutter_svg` decodes in pure Dart, so the committed
+  // reference already shows the Plex chevron and the Jellyfin mark while the
+  // PNG beside them is blank.
+  await tester.runAsync(
+    () => precacheImage(const AssetImage('assets/branding/pleya_logo.png'), tester.element(find.byType(Scaffold))),
+  );
+
   await tester.tap(find.text('open'));
   // A resolving picker holds an indeterminate progress indicator, so there is
   // no settled frame to wait for; pump past the panel's enter animation

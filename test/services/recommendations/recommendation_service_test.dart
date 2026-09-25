@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +20,8 @@ final _titles = PersonalizedRowTitles(
   topPicks: 'Top Picks',
   becauseYouLike: (g) => 'Because you like $g',
   hiddenGems: 'Hidden Gems',
+  moreWithActor: (n) => 'More with $n',
+  moreFromDirector: (n) => 'More from $n',
 );
 
 /// Stands in for the real importer so the service's own logic is what is under
@@ -149,6 +152,36 @@ void main() {
       ).syncImportedHistory();
       expect(result, isFalse);
       expect(built, 0);
+    });
+  });
+
+  group('own-history importers', () {
+    test('run without a Tautulli factory or any enabled server', () async {
+      final own = _FakeImporter(outcome: const TautulliImportOutcome(imported: 2));
+      final result = await RecommendationService(
+        profileId: 'p1',
+        database: db,
+        titles: _titles,
+        historyImporters: () async => [own],
+      ).syncImportedHistory();
+      expect(result, isTrue);
+      expect(own.syncs, 1);
+    });
+
+    test('a failing one never takes the Tautulli import or the next one down', () async {
+      final tautulli = _FakeImporter(outcome: const TautulliImportOutcome());
+      final next = _FakeImporter(outcome: const TautulliImportOutcome(imported: 1));
+      final result = await RecommendationService(
+        profileId: 'p1',
+        database: db,
+        titles: _titles,
+        enabledImportServerIds: () => const {'srvA'},
+        importerFactory: (_, _) => tautulli,
+        historyImporters: () async => [_FakeImporter(throws: Exception('boom')), next],
+      ).syncImportedHistory();
+      expect(result, isTrue);
+      expect(tautulli.syncs, 1);
+      expect(next.syncs, 1);
     });
   });
 
@@ -327,6 +360,61 @@ void main() {
 
     test('no clients yields no rows', () async {
       expect(await service().buildRows([]), isEmpty);
+    });
+  });
+
+  group('recentSeeds', () {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    const day = Duration.millisecondsPerDay;
+
+    Future<void> insert(String globalKey, {String? seriesKey, double weight = 1.0, required int at}) =>
+        db.insertMediaInteraction(
+          MediaInteractionsCompanion.insert(
+            profileId: 'p1',
+            globalKey: globalKey,
+            seriesKey: Value(seriesKey),
+            mediaKind: seriesKey == null ? 'movie' : 'episode',
+            eventType: weight >= 1.0 ? 'completed' : 'partial',
+            eventWeight: weight,
+            occurredAt: at,
+          ),
+          profileId: 'p1',
+        );
+
+    test('maps an episode to its series, a movie to itself, and the weight to completed', () async {
+      await insert('pms:ep7', seriesKey: 'pms:show', at: now - 1 * day);
+      await insert('pms:film', weight: 0.4, at: now - 2 * day);
+
+      final seeds = await service().recentSeeds(nowMs: now);
+
+      expect(seeds.map((s) => s.globalKey), ['pms:show', 'pms:film']);
+      expect(seeds.map((s) => s.completed), [true, false]);
+      expect(seeds.first.occurredAtMs, now - 1 * day);
+    });
+
+    test('serverIds narrows the seeds before the limit', () async {
+      for (var i = 0; i < 6; i++) {
+        await insert('pleya:$i', at: now - i * 1000);
+      }
+      await insert('pms:film', at: now - day);
+
+      final seeds = await service().recentSeeds(limit: 6, serverIds: const {'pms'}, nowMs: now);
+
+      expect(seeds.map((s) => s.globalKey), ['pms:film']);
+    });
+
+    test('the window is measured from nowMs', () async {
+      await insert('pms:film', at: now - 10 * day);
+
+      expect(await service().recentSeeds(nowMs: now), hasLength(1));
+      expect(await service().recentSeeds(nowMs: now + 25 * day), isEmpty, reason: 'now 35 days old');
+    });
+
+    test('the settings gate yields no seeds', () async {
+      await insert('pms:film', at: now);
+      await SettingsService.instance.write(SettingsService.personalizedRecommendations, false);
+
+      expect(await service().recentSeeds(nowMs: now), isEmpty);
     });
   });
 }

@@ -71,6 +71,16 @@ class PleyaProfileLanguagePreferences {
   /// second server signing in later cannot overwrite what the viewer set.
   final bool seeded;
 
+  /// Whether the one-time migration of the two legacy device switches has run.
+  ///
+  /// A latch of its own, because the two jobs finish at different moments. The
+  /// migration has everything it needs on the very first call; the seed needs a
+  /// server profile that may not have arrived yet, or at all. Sharing one flag
+  /// meant a call without a profile either spent the seed it could not perform,
+  /// or left the migration free to run again and put a legacy device pref back
+  /// over what the viewer had since set.
+  final bool migratedLegacySwitches;
+
   const PleyaProfileLanguagePreferences({
     this.audioLanguage,
     this.useOriginalAudio = false,
@@ -81,6 +91,7 @@ class PleyaProfileLanguagePreferences {
     this.mirrorToPlex = true,
     this.updatedAt = 0,
     this.seeded = false,
+    this.migratedLegacySwitches = false,
   });
 
   /// Nothing the viewer chose — only the defaults. Used to decide whether a
@@ -108,6 +119,7 @@ class PleyaProfileLanguagePreferences {
     bool? mirrorToPlex,
     int? updatedAt,
     bool? seeded,
+    bool? migratedLegacySwitches,
   }) => PleyaProfileLanguagePreferences(
     audioLanguage: clearAudioLanguage ? null : (audioLanguage ?? this.audioLanguage),
     useOriginalAudio: useOriginalAudio ?? this.useOriginalAudio,
@@ -120,6 +132,7 @@ class PleyaProfileLanguagePreferences {
     mirrorToPlex: mirrorToPlex ?? this.mirrorToPlex,
     updatedAt: updatedAt ?? this.updatedAt,
     seeded: seeded ?? this.seeded,
+    migratedLegacySwitches: migratedLegacySwitches ?? this.migratedLegacySwitches,
   );
 
   /// Short keys: the whole map is one iCloud key-value entry under a 100 KB
@@ -134,6 +147,7 @@ class PleyaProfileLanguagePreferences {
     if (!rememberPerSeries) 'rp': false,
     if (!mirrorToPlex) 'mp': false,
     if (seeded) 'sd': true,
+    if (migratedLegacySwitches) 'mg': true,
     'u': updatedAt,
   };
 
@@ -147,6 +161,11 @@ class PleyaProfileLanguagePreferences {
     mirrorToPlex: json['mp'] != false,
     updatedAt: (json['u'] as num?)?.toInt() ?? 0,
     seeded: json['sd'] == true,
+    // Older entries had one flag for both jobs, and `ensureInitialised` always
+    // ran the migration before the seed. A stored `sd` therefore proves the
+    // migration ran too; without this the migration would replay on every
+    // existing install and undo switches the viewer has changed since.
+    migratedLegacySwitches: json['mg'] == true || json['sd'] == true,
   );
 
   /// An unknown name means a newer build wrote a policy this one does not

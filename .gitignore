@@ -67,6 +67,8 @@ duplication-report/
 .env
 !.env.example
 
+scripts/asc/.venv/
+
 **/fastlane/**/
 !**/fastlane/test/
 **/fastlane/report.xml
@@ -95,3 +97,6 @@ docs/responsive-audit/
 
 # De vangst van de fake server, zoals pleya_server/.responses.
 pleya_verify/fixture_server/.responses/
+
+# Lokale Serena-tooling: index, cache en projectstate per worktree.
+/.serena/
