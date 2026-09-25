@@ -68,6 +68,46 @@ void main() {
       expect(transport.writes, isEmpty);
     });
 
+    test('a key over the transport key cap is refused and counted, on every write path', () async {
+      final coordinator = await build();
+      transport.keyCap = 20; // every cloud key is longer
+      await settings.prefs.setInt('seek_time_small', 5);
+
+      await coordinator.apply(const PreferenceMutation.set('theme_mode', 'dark'));
+      expect(coordinator.status.value.oversize, 1);
+      await coordinator.apply(const PreferenceMutation.remove('subtitle_font_size'));
+      expect(coordinator.status.value.oversize, 2, reason: 'a tombstone is refused the same way');
+      await coordinator.requestReconcile(ReconcileTrigger.imported);
+
+      expect(transport.writes, isEmpty);
+      expect(coordinator.status.value.oversize, greaterThanOrEqualTo(1));
+      expect(coordinator.status.value.state, PreferenceSyncState.warning, reason: 'refused, not crashed');
+    });
+
+    test('the cap counts UTF-8 bytes, not code units', () async {
+      final coordinator = await build();
+      transport.valueCap = 250;
+
+      // About 190 code units either way; the CJK value is about 430 bytes.
+      await coordinator.apply(PreferenceMutation.set('theme_mode', '日' * 120));
+      expect(coordinator.status.value.oversize, 1, reason: 'under the cap in code units, over it in bytes');
+      expect(transport.writes, isEmpty);
+
+      await coordinator.apply(PreferenceMutation.set('theme_mode', 'x' * 120));
+      expect(transport.writes, hasLength(1), reason: 'the same length in ASCII fits');
+    });
+
+    test('a reconcile counts UTF-8 bytes too', () async {
+      final coordinator = await build();
+      await settings.prefs.setString('theme_mode', '日' * 120);
+      transport.valueCap = 250;
+
+      await coordinator.reconcile();
+
+      expect(transport.store[coordinator.cloudKeyFor('theme_mode')!], isNull);
+      expect(coordinator.status.value.oversize, greaterThan(0));
+    });
+
     test('it never turns into a removal', () async {
       final coordinator = await build();
       final cloudKey = coordinator.cloudKeyFor('theme_mode')!;
