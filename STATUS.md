@@ -10,15 +10,15 @@ Go volledig zonder FAIL of SKIP, de relaysuite, `check_protocol.sh`, `verify-pro
 en `verify-local.sh`. Bewijs staat in `.superpowers/sdd/2026-09-24-pleya-server-completion-afronding/gates-ronde-2.md`. Pleya Verify en de volledige
 `flutter test` zijn bewust niet gedraaid: dit werk raakt geen UI. Er is geen rollout gedaan.
 
-Twee punten staan bewust open en zijn geen resultaat van dit werk:
+Eén punt staat bewust open en is geen resultaat van dit werk: goldentests die op macOS falen, falen
+daar ook op de main-tip. Het is rendering per platform (bijvoorbeeld `tv_shell_my_pleya.png` wijkt
+2,03 procent af), geen layoutwijziging. Linux-CI beslist, en die draait pas op deze branch zodra de
+PR er is.
 
-- Drie Fluttertests falen door bestanden die `main` inmiddels heeft hersteld
-  (`http_lifecycle_test`, `no_local_cta_shape_override_test`, `tv_top_navigation_test`), en 77
-  goldens zijn op macOS niet te beoordelen; Linux-CI beslist.
-- `scripts/check_authority_merge.sh 0b9699ec^1` geeft 7 pass en 5 fail: de merges `4e78b160` en
-  `0b9699ec` namen `docs/RELEASES.md`, `docs/CHANGELOG.md` en `STATUS.md` (en `CLAUDE.md` bij
-  `4e78b160`) van één ouder over. De CI-job `authority-merge` blijft daardoor rood tot een echte
-  driewegmerge bij de main-sync de merge-base verschuift. Er zijn geen ALLOW-regels toegevoegd.
+De authority-poort is groen (`scripts/check_authority_merge.sh 0b08bcba`: exit 0). De merges
+`4e78b160` en `0b9699ec` namen authority-bestanden van één ouder over; dat verlies is hersteld in
+`b020d648` en `778315dc`, en die twee merges staan nu per merge-sha en pad in `ALLOW_MERGES`, met
+het herstelcommit als reden. De bestandsbrede `ALLOW` blijft leeg.
 
 Volgende stap: S2.5 (`.env`-overname met dezelfde id en slug), daarna S2.6 (migratietest op de
 NAS-fixture en sluiting van protocolvenster 2). PS-11A blijft geblokkeerd op S0.6 en S0.7.
