@@ -18,6 +18,7 @@ import '../../profiles/profile_avatar.dart';
 import '../../services/account_ui_actions.dart';
 import '../../theme/glass/glass_settings.dart';
 import '../../theme/glass/glass_surface.dart';
+import '../../theme/mono_tokens.dart';
 import '../app_icon.dart';
 import '../pleya_wordmark.dart';
 
@@ -69,7 +70,9 @@ class MobilePageHeader extends StatelessWidget {
         padding: EdgeInsets.only(left: 16, right: 16, top: topInset + 12, bottom: 12),
         child: Row(
           children: [
-            const PleyaWordmark(height: 28),
+            // The header sits on the page ground, so the lettering takes the
+            // theme ink; white lettering vanishes on the light palette (J18).
+            PleyaWordmark(height: 28, letteringColor: tokens(context).text),
             const Spacer(),
             ...actions,
             AutomationNode(
