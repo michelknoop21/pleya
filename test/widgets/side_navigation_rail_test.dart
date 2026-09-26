@@ -23,6 +23,7 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -405,6 +406,19 @@ void main() {
     expect(tester.getSize(rail).width, SideNavigationRailState.expandedWidth);
 
     expect(_hasOpaqueSurface(tester), isFalse);
+  });
+
+  testWidgets('the rail header draws the Pleya lockup in the theme ink', (tester) async {
+    await _pumpBasicRail(tester, alwaysExpanded: true);
+    final expanded = tester.widget<PleyaWordmark>(find.byType(PleyaWordmark));
+    expect(expanded.letteringColor, _testTokens.text);
+    expect(expanded.letteringOpacity, 1);
+    expect(find.text('PLEYA'), findsNothing);
+  });
+
+  testWidgets('a collapsed rail keeps the mark and hides the lettering', (tester) async {
+    await _pumpBasicRail(tester);
+    expect(tester.widget<PleyaWordmark>(find.byType(PleyaWordmark)).letteringOpacity, 0);
   });
 
   testWidgets('expanded rail keeps selected background outside sidebar keyboard focus', (tester) async {

@@ -37,7 +37,7 @@ import '../theme/mono_tokens.dart';
 /// replaced, and a caller that had pinned a width would have silently squashed
 /// or cropped it.
 class PleyaWordmark extends StatelessWidget {
-  const PleyaWordmark({super.key, required this.height, this.letteringColor});
+  const PleyaWordmark({super.key, required this.height, this.letteringColor, this.letteringOpacity = 1});
 
   /// The intended visual height of the lockup.
   final double height;
@@ -48,6 +48,10 @@ class PleyaWordmark extends StatelessWidget {
   /// white. Pass a colour only where the lockup sits on a themed surface — the
   /// mark is never affected either way.
   final Color? letteringColor;
+
+  /// Lets a caller fade the lettering out while the mark stays, as the
+  /// collapsed desktop rail does. The mark is never faded.
+  final double letteringOpacity;
 
   /// The brand half. Generated; never tinted.
   static const String markAsset = 'assets/branding/pleya_wordmark_mark.png';
@@ -77,7 +81,10 @@ class PleyaWordmark extends StatelessWidget {
       child: Stack(
         children: [
           _layer(markAsset),
-          _layer(letteringAsset, color: letteringColor),
+          Opacity(
+            opacity: letteringOpacity,
+            child: _layer(letteringAsset, color: letteringColor),
+          ),
         ],
       ),
     );
