@@ -25,6 +25,12 @@
 #                  (remote or tvOS), not the engine (DBL1, first seen in log oc8pw,
 #                  build 303). Shows `uikit=` gaps when the log carries `ts=` (DBL1
 #                  diagnostic, UIPress.timestamp).
+#                  With the DBL1 hardware fields (`gcA=` clickpad click,
+#                  `gcX=`/`gcY=` thumb position, `gcN=` controllers) each bounce
+#                  also says what the remote reported at the ended before it, at
+#                  its began and at its ended: click-held (one held click became two
+#                  presses), no-click (presses from the touch position alone) or
+#                  click-toggles (the switch itself went up and down).
 #   ENABLE-HELD    a menuPassthroughEnabled=true sent while a key is down: the
 #                  message that triggers the release (needs 7786a952 or later to be logged)
 #
@@ -63,6 +69,26 @@ pressdiag = re.compile(r'native press=(\w+)(?:\(\d+\))? phase=(-?\d+) uipress=([
                        r'(?: t=\d+)?(?: ts=(\d+))?')
 DIRECTION_KEYS = {'up': 'arrowUp', 'down': 'arrowDown', 'left': 'arrowLeft', 'right': 'arrowRight'}
 BOUNCE_MS = 40
+hwfield = re.compile(r'\b(gcN|gcA|gcX|gcY|resp|gr)=(\S+)')
+
+def hw_of(line):
+    return dict(hwfield.findall(line))
+
+def hw_summary(states):
+    """states: hw dicts at the ended before a bounce, at its began and at its ended."""
+    clicks = [st.get('gcA') for st in states]
+    if None in clicks:
+        return ''
+    prev_end, began, _ = clicks
+    if prev_end == '1':
+        verdict = 'click-held'      # UIKit ended a press while the click was still down
+    elif began == '0':
+        verdict = 'no-click'        # a began without any click: the touch position made it
+    else:
+        verdict = 'click-toggles'   # the click really went up and down again
+    last = states[-1]
+    pos = f" x={last.get('gcX', '?')} y={last.get('gcY', '?')}" if 'gcX' in last else ''
+    return f" hw={verdict} gcA={''.join(c or '?' for c in clicks)}{pos} gcN={last.get('gcN', '?')}"
 
 MENU_KEY = 'escape'  # tvOS delivers Menu on release; expected, not a defect (NAV2)
 RETAP_WINDOW_MS = 400
@@ -93,6 +119,7 @@ retap = set()         # keys whose current keydown was a re-tap; their keyup is 
 diag_events = []      # (time, press name, phase) from `native press=` lines (NAV2)
 native_ended = {}     # press name -> (time, uikit ts) of its last native ended (phase 3)
 native_began = {}     # press name -> (time, uikit ts, bounce candidate) of its open began
+last_end_hw = {}      # press name -> hw dict at its last native ended
 flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'NATIVE-BOUNCE': 0, 'ENABLE-HELD': 0}
 verdicts = {'uikit-began': 0, 'engine-synth': 0, 'unknown': 0}
 prev = None
@@ -118,16 +145,18 @@ with open(path, errors='replace') as fh:
             if phase == '0':
                 prev_end = native_ended.get(name)
                 candidate = prev_end is not None and t - prev_end[0] <= BOUNCE_MS
-                native_began[name] = (t, uikit, candidate and prev_end)
+                native_began[name] = (t, uikit, candidate and prev_end, hw_of(line))
             elif phase == '3' and name in native_began:
-                bt, buikit, prev_end = native_began.pop(name)
+                bt, buikit, prev_end, began_hw = native_began.pop(name)
                 if prev_end and t - bt <= BOUNCE_MS:
                     detail = f'gap={bt - prev_end[0]}ms hold={t - bt}ms'
                     if buikit is not None and prev_end[1] is not None and uikit is not None:
                         detail += f' uikit gap={buikit - prev_end[1]}ms hold={uikit - buikit}ms'
+                    detail += hw_summary([last_end_hw.get(name, {}), began_hw, hw_of(line)])
                     tags.append(f'NATIVE-BOUNCE({detail})')
                     flags['NATIVE-BOUNCE'] += 1
                 native_ended[name] = (t, uikit)
+                last_end_hw[name] = hw_of(line)
         elif kd:
             k = kd.group(1)
             if k in early_up_at and t - early_up_at[k] <= RETAP_WINDOW_MS:
