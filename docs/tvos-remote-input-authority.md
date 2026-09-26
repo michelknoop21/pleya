@@ -172,6 +172,25 @@ delivery, `HardwareKeyboard`-events en focusmoves moeten samen twee volledige, a
 platform-press-levenscycli laten zien. Zonder dat bewijs is de juiste uitkomst
 `UNKNOWN_HARDWARE_EVIDENCE_REQUIRED`, niet een aanname over de gebruiker of de hardware.
 
+### 4a. `same-uipress` is evenmin bewijs (DBL1, 25 september 2026)
+
+Log `oc8pw` (build 303) laat zien dat de hash per druktype constant is over losse drukken heen:
+`6961` voor elke up en `62775` voor elke right, minutenlang. UIKit hergebruikt dus één
+`UIPress`-object per type, en `same-uipress` klopt voor elk paar drukken in dezelfde richting.
+De beslisregel in §6 die `same-uipress` als bevestiging van ENGINE_DUPLICATE telt, steunt
+daarmee niet op wat hij meet. Het RAIL2-hardwareresultaat op build 282 (nul `RE-TAP`s) blijft een
+meting; de toeschrijving aan zijdeur 4 is sindsdien onbewezen.
+
+Wat wél onderscheidt, en wat `scripts/tvos_press_trace.sh` sinds DBL1 gebruikt:
+
+- een keydown in Dart **zonder** eigen `native press=… phase=0`-regel is door de engine
+  gesynthetiseerd (`RE-TAP(engine-synth)`, zijdeur 2 of 4);
+- een keydown **met** eigen `phase=0`-regel is door UIKit geleverd (`RE-TAP(uikit-began)`); komt
+  die binnen 40 ms na de ended van dezelfde toets en duurt hij zelf korter dan 40 ms, dan is het
+  `NATIVE-BOUNCE`, station 1;
+- dezelfde fase twee keer achter elkaar is een herhaalde aflevering (zijdeur 4); sinds DBL1 draagt
+  zo'n herhaling ook dezelfde `ts=` (`UIPress.timestamp`), een nieuwe levering een nieuwe.
+
 ## 5. Wat hier expliciet niet verandert
 
 - Station 3 (`tvos/Runner/AppDelegate.swift`) krijgt geen nieuwe state, geen teller, geen
@@ -226,7 +245,8 @@ referentiebuild.
 
 **Beslisregels.**
 
-- `same-uipress` op een fantoom Down/Up-paar → **ENGINE_DUPLICATE** bevestigd; een
+- (Vervangen door §4a, DBL1: `same-uipress` onderscheidt geen drukken. Gebruik `RE-TAP(engine-synth)`
+  of een herhaalde fase-regel met dezelfde `ts=`.) `same-uipress` op een fantoom Down/Up-paar → **ENGINE_DUPLICATE** bevestigd; een
   engine-lifecyclepatch (de asymmetrie in `tapIfMissingKeyDown` wegnemen, of de tweede dispatch voor
   dezelfde fase van hetzelfde `UIPress`-object herkennen) is dan gerechtvaardigd.
 - `new-uipress` → betekent niet automatisch een defecte remote of een tweede fysieke druk (§4); eerst
