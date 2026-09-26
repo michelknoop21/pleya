@@ -5,7 +5,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
-import 'package:pleya/widgets/pleya_logo.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -1020,19 +1020,17 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           clipBehavior: Clip.hardEdge,
           child: SizedBox(
             width: expandedWidth - 24,
-            child: Row(
-              children: [
-                const PleyaLogo(size: logoSize),
-                const SizedBox(width: 12),
-                AnimatedOpacity(
-                  opacity: isCollapsed ? 0.0 : 1.0,
-                  duration: reduceMotion(context, t.fast),
-                  child: Text(
-                    'PLEYA',
-                    style: TextStyle(fontSize: 16, fontWeight: .w800, letterSpacing: 4.8, color: t.text),
-                  ),
-                ),
-              ],
+            // The same lockup as the iPhone header and the TV top bar; the
+            // lettering takes the theme ink and fades out when the rail
+            // collapses, the mark stays in the icon column.
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: isCollapsed ? 0.0 : 1.0),
+                duration: reduceMotion(context, t.fast),
+                builder: (context, opacity, _) =>
+                    PleyaWordmark(height: logoSize, letteringColor: t.text, letteringOpacity: opacity),
+              ),
             ),
           ),
         ),
