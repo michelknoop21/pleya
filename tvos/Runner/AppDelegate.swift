@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import AVFoundation
+import GameController
 import os
 import universal_gamepad
 import os_media_controls
@@ -117,6 +118,13 @@ import wakelock_plus
       "phase": press.phase.rawValue,
       "uipress": ObjectIdentifier(press).hashValue & 0xffff,
       "systemUptimeMs": Int(ProcessInfo.processInfo.systemUptime * 1000),
+      // DBL1: UIKit's own time for this phase (HID origin, same clock as
+      // systemUptime). `systemUptimeMs` is when this hook ran; this is when the
+      // press happened. A re-dispatch of one phase repeats it, a new delivery
+      // does not. `uipress` cannot tell those apart: UIKit reuses one UIPress
+      // object per press type (log oc8pw, build 303).
+      "uikitMs": Int(press.timestamp * 1000),
+      "hw": Self.pressHardwareSnapshot(press),
     ])
     guard NativeInputSession.isActive else {
       if press === lastForwardedPress, press.phase == lastForwardedPhase {
@@ -154,6 +162,30 @@ import wakelock_plus
   // 0.4 s / 80 ms repeat timer then steps in that direction forever. The
   // engine file is reconstructed by `scripts/tvos_engine_source.sh`; the
   // contract is in `docs/tvos-remote-press-pipeline.md`.
+
+  /// DBL1: what the remote itself reports at the moment UIKit hands over a
+  /// phase, read-only, so one hardware log can tell where a burst of extra
+  /// arrow lifecycles comes from. `gcA` is the clickpad click
+  /// (`GCMicroGamepad.buttonA`); still 1 on every `.ended` of a burst means one
+  /// held click became several presses. `gcX`/`gcY` is the thumb position
+  /// relative to the pad centre (the engine sets `reportsAbsoluteDpadValues`),
+  /// so a value near 1 is the ring edge. `gcN` counts connected controllers
+  /// (the iPhone Remote app is a second one under
+  /// `GCSupportsMultipleMicroGamepads`). `resp` and `gr` are the responder
+  /// UIKit targeted and how many gesture recognizers track the press. Only
+  /// properties are read: no handler is set, so the engine's own
+  /// `dpad.valueChangedHandler` stays the only one.
+  private static func pressHardwareSnapshot(_ press: UIPress) -> String {
+    let pads = GCController.controllers().compactMap(\.microGamepad)
+    var fields = ["gcN=\(pads.count)"]
+    if let pad = pads.first {
+      fields.append("gcA=\(pad.buttonA.isPressed ? 1 : 0)")
+      fields.append(String(format: "gcX=%.2f gcY=%.2f", pad.dpad.xAxis.value, pad.dpad.yAxis.value))
+    }
+    fields.append("resp=\(press.responder.map { String(describing: type(of: $0)) } ?? "nil")")
+    fields.append("gr=\(press.gestureRecognizers?.count ?? 0)")
+    return fields.joined(separator: " ")
+  }
 
   /// For the log line only. The symbolic cases are not reliable on tvOS 26 (the
   /// runtime delivers 2040 for select and 2041 for menu where the SDK compiles
