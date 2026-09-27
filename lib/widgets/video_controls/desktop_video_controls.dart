@@ -18,7 +18,9 @@ import '../../utils/desktop_window_padding.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../utils/platform_detector.dart';
+import '../../utils/layout_constants.dart';
 import '../tv/tv_page_surface.dart';
+import '../tv/tv_unified_layout.dart';
 import '../../utils/formatters.dart';
 import '../../i18n/strings.g.dart';
 import '../../focus/focusable_wrapper.dart';
@@ -969,10 +971,18 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     // surface. `main.dart` zeroes tvOS's own overscan insets app-wide, so
     // `SafeArea` gives nothing here and the macOS branch above resolved to 0:
     // the first glyph of the title sat on scan line zero of a 1080p canvas,
-    // and a set that overscans cut it off (PLR1).
-    final tvInset = PlatformDetector.isTV() ? tvPageInset(context) : null;
+    // and a set that overscans cut it off (PLR1). The top edge pays the same
+    // band as the catalog header and the Verify probe `PlayerSafeArea`: on an
+    // Apple TV that is 47.6 logical, 88 pt, past the 60 pt title-safe line
+    // (PLR-TITLE1).
+    final isTv = PlatformDetector.isTV();
+    final tvInset = isTv ? tvPageInset(context) : null;
     final topBar = Padding(
-      padding: .only(left: tvInset ?? leftPadding, right: tvInset ?? 16),
+      padding: .only(
+        left: tvInset ?? leftPadding,
+        right: tvInset ?? 16,
+        top: isTv ? TvCatalogLayout.topSafeInset * TvLayoutConstants.scaleOf(context) : 0,
+      ),
       child: Column(
         crossAxisAlignment: .start,
         mainAxisSize: .min,

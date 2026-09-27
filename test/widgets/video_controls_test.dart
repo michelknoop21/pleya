@@ -69,14 +69,14 @@ void main() {
 
     /// The overlay on a 1920x1080 canvas, the way an Apple TV lays it out,
     /// with the controls shown and the video's chrome "visible".
-    Future<void> pumpTvOverlay(WidgetTester tester) async {
+    Future<void> pumpTvOverlay(WidgetTester tester, {Size size = const Size(1920, 1080)}) async {
       final player = FakeSyncPlayer(
         playing: true,
         position: const Duration(minutes: 3, seconds: 9),
         duration: const Duration(minutes: 7),
       );
       addTearDown(player.dispose);
-      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       final watchTogether = WatchTogetherProvider();
@@ -88,8 +88,8 @@ void main() {
             theme: ThemeData(extensions: const [_testTokens]),
             home: Scaffold(
               body: SizedBox(
-                width: 1920,
-                height: 1080,
+                width: size.width,
+                height: size.height,
                 child: DesktopVideoControls(
                   player: player,
                   metadata: MediaItem(
@@ -138,6 +138,21 @@ void main() {
       expect(timeline.dx, greaterThanOrEqualTo(inset), reason: 'timeline starts at ${timeline.dx}');
       final timelineRight = tester.getBottomRight(find.byType(VideoTimelineBar)).dx;
       expect(1920 - timelineRight, greaterThanOrEqualTo(inset - 1), reason: 'timeline ends at $timelineRight');
+    });
+
+    // PLR-TITLE1: on the Apple TV panel (584 logical tall, 1080 pt) the title
+    // sat on scan line zero. Its top edge must clear Apple's 60 pt title-safe
+    // line; pt = logical x 1080 / 584.
+    testWidgets('de titel staat op TV onder de 60 pt title-safe lijn', (tester) async {
+      await pumpTvOverlay(tester, size: const Size(1038, 584));
+      final top = tester.getTopLeft(find.byType(VideoControlsHeader)).dy;
+      expect(top * 1080 / 584, greaterThanOrEqualTo(60), reason: 'title top at $top logical');
+    });
+
+    testWidgets('buiten TV krijgt de titelbalk geen bovenruimte', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      await pumpTvOverlay(tester);
+      expect(tester.getTopLeft(find.byType(VideoControlsHeader)).dy, 0);
     });
   });
 
