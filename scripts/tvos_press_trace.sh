@@ -35,7 +35,9 @@
 #                  message that triggers the release (needs 7786a952 or later to be logged)
 #   DROP-HALF      the DBL1 filter at station 3 dropped a began but forwarded that
 #                  lifecycle's ended (or the other way round): the engine got half a
-#                  pair, which is side door 2 or 3. Must never happen.
+#                  pair, which is side door 2 or 3. Must never happen. A drop that
+#                  station 3 undid because the began reached UIKit in a mixed event
+#                  (`tvos_press_filter undo`) is a normal press again and does not count.
 #
 # Since the DBL1 filter (station 3 drops bounced and click-less arrow presses),
 # a press line may end in `tvos_press_filter drop ...`. Those lifecycles are
@@ -129,8 +131,8 @@ native_ended = {}     # press name -> (time, uikit ts) of its last native ended 
 native_began = {}     # press name -> (time, uikit ts, bounce candidate) of its open began
 last_end_hw = {}      # press name -> hw dict at its last native ended
 flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'NATIVE-BOUNCE': 0, 'ENABLE-HELD': 0, 'DROP-HALF': 0}
-drops = {'bounce': 0, 'no-click': 0, 'bounce-caught': 0}
-dropfield = re.compile(r'tvos_press_filter drop (bounce|no-click|lifecycle)')
+drops = {'bounce': 0, 'bounce-caught': 0, 'undone': 0}
+dropfield = re.compile(r'tvos_press_filter (?:drop (bounce|lifecycle)|(undo))')
 verdicts = {'uikit-began': 0, 'engine-synth': 0, 'unknown': 0}
 prev = None
 
@@ -153,8 +155,15 @@ with open(path, errors='replace') as fh:
             uikit = int(uikit) if uikit else None
             dm = dropfield.search(line)
             dropped = dm.group(1) if dm else None
-            diag_events.append((t, name, phase))
-            if phase == '0':
+            if not (dm and dm.group(2)):
+                diag_events.append((t, name, phase))
+            if dm and dm.group(2) and name in native_began:
+                # A mixed event reached UIKit: station 3 undid the drop and the
+                # engine got this began after all (see undoDropsReachingResponderChain).
+                native_began[name] = native_began[name][:4] + (None,)
+                drops['undone'] += 1
+                tags.append('drop undone (mixed event)')
+            elif phase == '0':
                 prev_end = native_ended.get(name)
                 candidate = prev_end is not None and t - prev_end[0] <= BOUNCE_MS
                 native_began[name] = (t, uikit, candidate and prev_end, hw_of(line), dropped)

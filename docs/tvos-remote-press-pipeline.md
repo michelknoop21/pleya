@@ -180,11 +180,11 @@ uitkomst met en zonder de deferral staat in de correctieronde bij NAV1.
 - Nooit: losse fasen inslikken of doorgeven in `AppDelegate`, of tijd meten in Dart. Beide zijn
   op het toestel gemeten en beide zijn slechter dan het defect.
 - De ene uitzondering is het DBL1-filter in `PleyaFlutterViewController.filterArrowPress`. Het
-  laat een pijldruk vallen die minder dan 35 ms na de ended van dezelfde richting begint, of
-  zonder klik aan de rand van een analoog clickpad. Het mag omdat het drie dingen anders doet
-  dan builds 254, 256 en 257: het leest `UIPress.timestamp` en `GCMicroGamepad.buttonA` in
-  plaats van een eigen klok, het beslist bij de began en laat dan de hele levenscyclus vallen
-  (geclaimd zonder `super`, dus UIKit en de engine zien geen van beide helften), en het is
-  getoetst tegen drie hardwarelogs (`oc8pw`, `v5okk`, `76ott`, replay in
-  `test/services/tvos_press_filter_replay_test.dart`). De drempels zijn benoemde constanten
-  (`bounceGapMs`, `clicklessEdge`); de test houdt de Dart-spiegel en de Swift gelijk.
+  laat een pijldruk vallen die minder dan 30 ms (`bounceGapMs`) na de ended van dezelfde
+  richting begint. Het mag omdat het drie dingen anders doet dan builds 254, 256 en 257: het
+  leest `UIPress.timestamp` in plaats van een eigen klok, het beslist bij de began en laat dan
+  de hele levenscyclus vallen (geclaimd zonder `super`, dus UIKit en de engine zien geen van
+  beide helften; bereikt de began UIKit toch via een gemengd event, dan wordt de drop
+  ongedaan gemaakt), en het is getoetst tegen log `76ott`, de enige met `ts=`. Replay en
+  levenscyclusmodel: `test/services/tvos_press_filter_replay_test.dart`, dat ook de
+  Swift-regels vastpint. Bewijs en marge: rij DBL1 in `docs/tvos-fysieke-correctieronde.md`.

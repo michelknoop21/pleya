@@ -40,7 +40,7 @@ De belangrijkste vlaggen, exit 2 zodra er één is (de volledige lijst staat bov
 | `RE-TAP` | verse keydown binnen 400 ms na een early keyup | 2: `.ended` tikte opnieuw, dat is stap twee |
 | `ENABLE-HELD` | `menuPassthroughEnabled=true` verstuurd terwijl een toets ingedrukt is | 1: het bericht dat de release uitlokt |
 | `NATIVE-BOUNCE` | UIKit levert zelf binnen 40 ms na een ended een nieuwe began van dezelfde toets, en die druk duurt korter dan 40 ms, en station 3 heeft hem niet gefilterd | geen: station 1, remote of tvOS (DBL1, log `oc8pw`) |
-| `DROP-HALF` | het DBL1-filter liet een began vallen maar niet zijn ended, of andersom | zijdeur 2 of 3: de engine kreeg een half paar |
+| `DROP-HALF` | het DBL1-filter liet een began vallen maar niet zijn ended, of andersom (een ongedane drop bij een gemengd event telt niet) | zijdeur 2 of 3: de engine kreeg een half paar |
 
 Vertrouw `uipress` niet als bewijs van één druk: UIKit hergebruikt één `UIPress`-object per
 druktype, dus de hash is gelijk voor elke druk in dezelfde richting. Of een keydown van UIKit of
@@ -82,11 +82,13 @@ dart run bin/verify.dart run ../scenarios/tvos.nav.held-press-lands-once.yaml --
   de herhaaltimer eeuwig lopen (build 257), doorgeven crasht UIKit op `_verifyTrackingPresses:`
   (build 256). Nooit tijd meten in Dart (build 254 at 65 echte drukken).
 - Eén toegestane uitzondering: het DBL1-filter (`filterArrowPress`, `pressFilterDrop`). Het
-  gebruikt UIKit's eigen HID-tijd (`UIPress.timestamp`) en de knopstand van de remote
-  (`GCMicroGamepad.buttonA`), beslist bij de began en claimt dan de hele levenscyclus zonder
-  `super`. Bewijs: logs `oc8pw`, `v5okk` en `76ott`. Wie een drempel verschuift, draait eerst
-  `test/services/tvos_press_filter_replay_test.dart` en past Swift en Dart samen aan. Een
-  nieuwe filterregel naast deze vraagt eigen hardwarelogs.
+  gebruikt UIKit's eigen HID-tijd (`UIPress.timestamp`), laat een pijl vallen die minder dan
+  30 ms na de ended van dezelfde richting begint, en claimt dan de hele levenscyclus zonder
+  `super`. Een gemengd event wordt nooit gefilterd. Bewijs: log `76ott`. Wie een drempel
+  verschuift, draait eerst `test/services/tvos_press_filter_replay_test.dart` en past Swift en
+  Dart samen aan. Een doorgelaten bounce is beter dan een opgegeten druk (build 254): een
+  nieuwe regel, zoals een klikloze op `gcA`, vraagt een log waarin hij als enige een drop
+  verklaart.
 - Is het contract van de engine zelf fout, dan is het een patch in de reeks plus een eigen
   engine-build; het pad staat in de pijplijn-doc onder "Waar een fix hoort".
 

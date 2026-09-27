@@ -31,16 +31,21 @@ import wakelock_plus
   /// `log stream --level debug --predicate 'processImagePath CONTAINS "Runner"'`.
   private static let pressLog = Logger(subsystem: "nl.michelknoop.pleya", category: "PleyaTvosPress")
 
-  // RAIL2 (zijdeur 4): the (press, phase) pair last forwarded to `super`, and
-  // what `super` returned for it. `UIPress` keeps the same identity across its
-  // `.began`/`.changed`/`.ended` lifecycle, and a new physical press gets a new
-  // object, so identity plus phase pins the exact delivery. Weak: the press
-  // object is UIKit's, not ours to retain.
-  private weak var lastForwardedPress: UIPress?
-  private var lastForwardedPhase: UIPress.Phase?
-  private var lastForwardedResult = false
-  /// The remembered delivery was dropped by the DBL1 filter, not answered by `super`.
-  private var lastForwardedDropped = false
+  // RAIL2 (zijdeur 4): per press type, the last delivery answered here and
+  // what it was answered with. Both swizzle hops of one `sendEvent:` carry the
+  // same `UIPress` in the same phase with the same `timestamp`; any new
+  // delivery has a new timestamp. So type + phase + timestamp pins one
+  // delivery exactly. Not the object: UIKit reuses one `UIPress` per type (§4a
+  // of docs/tvos-remote-input-authority.md), so an object-keyed slot could
+  // mistake the next real press for a repeat. One entry per type, so a second
+  // press in the same event cannot evict it.
+  private struct Delivery {
+    let phase: UIPress.Phase
+    let timestamp: TimeInterval
+    let result: Bool
+    let dropped: Bool
+  }
+  private var lastDelivery: [Int: Delivery] = [:]
 
   // DBL1 press filter, see `pressFilterDrop`. Keyed by `press.type.rawValue`,
   // not by the press object: UIKit reuses one `UIPress` per type (§4a of
@@ -111,7 +116,7 @@ import wakelock_plus
   /// second call finds the key `super` already removed, mistakes that for a
   /// missed `.began`, and synthesizes a phantom Down/Up pair (build 281, log
   /// `8x94u`, 15 sep 2026; `docs/tvos-remote-input-authority.md` §3). See
-  /// `lastForwardedPress` below.
+  /// `lastDelivery` below.
   ///
   /// Menu needs no exception. The engine's `shouldPassMenuPressToSystem:` sits
   /// ahead of this point, and with the session branch returning `false` Menu
@@ -125,9 +130,10 @@ import wakelock_plus
     NSLog(
       "[PleyaTvosPress] press=%@ phase=%ld uipress=%lx", Self.pressName(press), press.phase.rawValue,
       ObjectIdentifier(press).hashValue & 0xffff)
-    let isRepeatDelivery = press === lastForwardedPress && press.phase == lastForwardedPhase
+    let previous = lastDelivery[press.type.rawValue]
+    let isRepeatDelivery = previous?.phase == press.phase && previous?.timestamp == press.timestamp
     // The second swizzle hop of a dropped phase is dropped too, session or not.
-    if isRepeatDelivery, lastForwardedDropped {
+    if isRepeatDelivery, previous?.dropped == true {
       return true
     }
     let filter = isRepeatDelivery ? nil : filterArrowPress(press)
@@ -158,68 +164,72 @@ import wakelock_plus
       return rememberDelivery(press, result: true, dropped: true)
     }
     guard NativeInputSession.isActive else {
-      if isRepeatDelivery {
-        return lastForwardedResult
+      if isRepeatDelivery, let previous {
+        return previous.result
       }
       return rememberDelivery(press, result: super.tvosHandlePress(fromUIEvent: press), dropped: false)
     }
-    // Nothing is remembered for a session delivery, so forget the last one:
-    // a stale entry for the same press object and phase would otherwise
-    // replay a claim for a press UIKit is tracking.
-    lastForwardedPress = nil
     Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> yield to UIKit")
     return false
   }
 
   private func rememberDelivery(_ press: UIPress, result: Bool, dropped: Bool) -> Bool {
-    lastForwardedPress = press
-    lastForwardedPhase = press.phase
-    lastForwardedResult = result
-    lastForwardedDropped = dropped
+    lastDelivery[press.type.rawValue] = Delivery(
+      phase: press.phase, timestamp: press.timestamp, result: result, dropped: dropped)
     return result
   }
 
+  /// A dropped `.began` that still reaches the responder chain came in an
+  /// event with a second, unclaimed press (Menu under passthrough, say): the
+  /// swizzle then runs UIKit's own `sendEvent:`, UIKit tracks the press, and
+  /// the engine's `pressesBegan:` would synthesize its Down. Such a press is
+  /// not filtered: the drop is undone here, before `super`, so the Down goes
+  /// out and the `.ended` later reaches the engine as usual. Without this the
+  /// engine would hold a Down whose `.ended` the filter swallows (build 257).
+  private func undoDropsReachingResponderChain(_ presses: Set<UIPress>) {
+    for press in presses where press.phase == .began {
+      let type = press.type.rawValue
+      guard droppedArrowLifecycles[type] == press.timestamp * 1000 else { continue }
+      droppedArrowLifecycles[type] = nil
+      lastDelivery[type] = nil
+      tvosPressDiagChannel.sendMessage([
+        "press": Self.pressName(press), "phase": press.phase.rawValue,
+        "uipress": ObjectIdentifier(press).hashValue & 0xffff,
+        "systemUptimeMs": Int(ProcessInfo.processInfo.systemUptime * 1000),
+        "uikitMs": Int(press.timestamp * 1000),
+        "filter": "undo mixed-event type=\(Self.arrowName(press) ?? "?")",
+      ])
+    }
+  }
+
   // DBL1: tvOS hands Pleya extra arrow lifecycles that its own home screen
-  // filters out. In log 76ott (build 307, AppleTV14,1) three were the clickpad
-  // switch clicking again 15-28 ms (UIKit time) after the release, one was a
-  // press without any click (buttonA 0, thumb at y=-0.90). The fastest real
-  // re-press in logs oc8pw, v5okk and 76ott starts 46 ms after the release.
-  // This is the one sanctioned exception to "no timing at station 3": it reads
-  // UIKit's own HID timestamps and the remote's button state, never the clock
-  // of this hook. Mirrored 1:1 in test/services/tvos_press_filter_replay_test.dart,
-  // which replays the three logs through it; change both together.
+  // filters out. In log 76ott (build 307, AppleTV14,1) the clickpad switch
+  // clicked again 15, 15, 15 and 28 ms (UIKit time) after the release; the
+  // fastest real re-press there starts 46 ms after the release. This is the
+  // one sanctioned exception to "no timing at station 3": it reads UIKit's own
+  // HID timestamps, never the clock of this hook. A bounce that slips through
+  // costs one extra step; a real press eaten is worse (build 254), so the
+  // threshold sits just above the slowest bounce measured. Mirrored 1:1 in
+  // test/services/tvos_press_filter_replay_test.dart; change both together.
 
   /// Calibration: a same-direction re-press whose `.began` comes sooner than
-  /// this after the previous `.ended` (UIKit time) is a bounce.
-  static let bounceGapMs = 35.0
-  /// Calibration: a press without a click only counts as the ring edge from
-  /// this thumb distance on (1 is the edge).
-  static let clicklessEdge = 0.8
+  /// this after the previous `.ended` (UIKit time) is a bounce. 76ott: 2 ms
+  /// above the slowest bounce (28), 16 ms below the fastest real press (46).
+  static let bounceGapMs = 30.0
 
   /// The decision for an arrow `.began`: a drop reason, or nil to keep it.
-  /// `clickpadThumb` is the thumb distance on an analog Siri Remote clickpad,
-  /// nil when none is connected: a remote with digital arrows (Apple's own
-  /// example is the Universal Electronics remote) or a TV remote over HDMI-CEC
-  /// presses arrows without `buttonA` and must never be judged click-less.
-  static func pressFilterDrop(
-    beganMs: Double, previousEndedMs: Double?, clicked: Bool, clickpadThumb: Double?
-  ) -> String? {
-    if let previousEndedMs {
-      let gap = beganMs - previousEndedMs
-      if gap >= 0, gap < bounceGapMs {
-        return String(format: "bounce gapMs=%.0f", gap)
-      }
-    }
-    if !clicked, let clickpadThumb, clickpadThumb >= clicklessEdge {
-      return String(format: "no-click edge=%.2f", clickpadThumb)
-    }
-    return nil
+  static func pressFilterDrop(beganMs: Double, previousEndedMs: Double?) -> String? {
+    guard let previousEndedMs else { return nil }
+    let gap = beganMs - previousEndedMs
+    guard gap >= 0, gap < bounceGapMs else { return nil }
+    return String(format: "bounce gapMs=%.0f", gap)
   }
 
   /// Applies `pressFilterDrop` to a live press and keeps the whole lifecycle
-  /// together: a dropped `.began` drops its `.changed`/`.ended`/`.cancelled`.
-  /// Select, Menu and Play/Pause are never filtered. During a native session
-  /// no new lifecycle is dropped (UIKit owns the remote and filters for itself).
+  /// together: a dropped `.began` drops its `.changed`/`.ended`/`.cancelled`,
+  /// and every `.began` starts a fresh lifecycle. Select, Menu and Play/Pause
+  /// are never filtered. During a native session no new lifecycle is dropped
+  /// (UIKit owns the remote and filters for itself).
   private func filterArrowPress(_ press: UIPress) -> String? {
     guard let arrow = Self.arrowName(press) else { return nil }
     let type = press.type.rawValue
@@ -227,14 +237,8 @@ import wakelock_plus
     switch press.phase {
     case .began:
       droppedArrowLifecycles[type] = nil
-      guard !NativeInputSession.isActive else { return nil }
-      let pads = GCController.controllers().compactMap(\.microGamepad)
-      let clickpadThumb = pads.filter { $0 is GCDirectionalGamepad && $0.dpad.isAnalog }
-        .map { Double(max(abs($0.dpad.xAxis.value), abs($0.dpad.yAxis.value))) }.max()
-      guard
-        let reason = Self.pressFilterDrop(
-          beganMs: atMs, previousEndedMs: lastArrowEndedMs[type],
-          clicked: pads.contains { $0.buttonA.isPressed }, clickpadThumb: clickpadThumb)
+      guard !NativeInputSession.isActive,
+        let reason = Self.pressFilterDrop(beganMs: atMs, previousEndedMs: lastArrowEndedMs[type])
       else { return nil }
       droppedArrowLifecycles[type] = atMs
       return "drop \(reason) type=\(arrow)"
@@ -288,8 +292,9 @@ import wakelock_plus
   /// held click became several presses. `gcX`/`gcY` is the thumb position
   /// relative to the pad centre (the engine sets `reportsAbsoluteDpadValues`),
   /// so a value near 1 is the ring edge. `gcD=1` marks an analog clickpad
-  /// (`GCDirectionalGamepad`, Siri Remote 2nd generation on), the only kind
-  /// the DBL1 no-click rule judges. `gcN` counts connected controllers
+  /// (`GCDirectionalGamepad`, Siri Remote 2nd generation on); with `gcA` it is
+  /// what a future log needs before a click-less rule could be justified
+  /// (DBL1 dropped that rule for lack of evidence). `gcN` counts connected controllers
   /// (the iPhone Remote app is a second one under
   /// `GCSupportsMultipleMicroGamepads`). `resp` and `gr` are the responder
   /// UIKit targeted and how many gesture recognizers track the press. Only
@@ -374,6 +379,7 @@ import wakelock_plus
   }
 
   override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+    undoDropsReachingResponderChain(presses)
     if handlePlayPausePress(presses) {
       return
     }
