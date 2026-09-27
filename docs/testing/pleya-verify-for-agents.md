@@ -15,6 +15,16 @@ Before running anything against a real target, check whether the target can actu
 - **macOS / iOS-simulator**: there is no separate readiness command. `dart run bin/verify.dart run
   <scenario.yaml>` builds and boots as part of the run; a missing toolchain or simulator surfaces
   as a `run`-time `ERROR`, not a silent skip.
+- **iOS with more than one booted iPhone simulator**: set `PLEYA_VERIFY_IOS_UDID`. Without it the
+  run stops before the build, reported as `FAILED` with a `failure_message` that lists the booted
+  devices, instead of picking one.
+
+Every external tool call a driver makes (`simctl`, `plutil`, `codesign`, the build) goes through
+`runBounded` (`pleya_verify/runner/lib/src/driver/bounded_process.dart`): 3 minutes by default,
+30 for a build, 5 for `simctl bootstatus`. A call that outlives its limit is killed with its child
+processes and the run ends as `FAILED` with a `ProcessTimeoutException` naming the command in
+`failure_message` (not `ERROR`: the engine reports every exception during a run as a scenario
+failure). A run that shows no progress is therefore a defect to report, not something to wait out.
 
 Everything below assumes the working directory is `pleya_verify/runner/` (every subcommand resolves
 `../scenarios`, `../automation_ids.yaml`, and `../..` for the repo root relative to that directory),
