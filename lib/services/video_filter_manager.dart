@@ -45,6 +45,10 @@ class VideoFilterManager {
   /// Current player viewport size
   Size? _playerSize;
 
+  /// Percent of the screen height the subtitles must clear at the bottom
+  /// (the TV player's control block while it is up); 0 when nothing covers it.
+  int _subtitleLiftPercent = 0;
+
   /// Debounced video filter update with leading edge execution
   late final Debounce _debouncedUpdateVideoFilter;
 
@@ -141,6 +145,27 @@ class VideoFilterManager {
     final target = basePosition / 100;
     final compensated = 0.5 + (target - 0.5) / scale;
     return (compensated * 100).round().clamp(0, 100);
+  }
+
+  /// On-screen `sub-pos` target that keeps the subtitle bottom above a block
+  /// covering the bottom [liftPercent] of the screen. libass moves the line up
+  /// by (100 - sub-pos)% of (screen height - sub-margin-y), and at sub-pos 100
+  /// it already sits one margin above the bottom, so lifting by the block's
+  /// full screen share over-clears by less than that margin. A user position
+  /// that is already higher stays where it is.
+  static int liftedSubtitlePosition(int basePosition, int liftPercent) {
+    if (liftPercent <= 0) return basePosition;
+    return math.min(basePosition, math.max(0, 100 - liftPercent));
+  }
+
+  /// Keep subtitles clear of the bottom [fraction] of the screen. Rounds up to
+  /// whole sub-pos percent and only re-applies when that value changes, so a
+  /// rebuild with the same block height writes nothing.
+  void setSubtitleLift(double fraction) {
+    final percent = (fraction.clamp(0.0, 1.0) * 100).ceil();
+    if (percent == _subtitleLiftPercent) return;
+    _subtitleLiftPercent = percent;
+    updateVideoFilter();
   }
 
   double setZoomScale(double scale) {
@@ -336,7 +361,10 @@ class VideoFilterManager {
           scale = normalizeZoomScale(zoomScale) * coverScale;
         }
         if (scale != null) {
-          await _applyProperty('sub-pos', subtitlePositionForScale(basePosition, scale).toString());
+          // The lift is an on-screen target, so it goes in before the
+          // crop/zoom compensation maps that target back through the scale.
+          final target = liftedSubtitlePosition(basePosition, _subtitleLiftPercent);
+          await _applyProperty('sub-pos', subtitlePositionForScale(target, scale).toString());
         }
       }
     } catch (e) {

@@ -16,6 +16,7 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
 
   bool _controlsVisible;
   bool _contentStripVisible = false;
+  double _bottomChromeFraction = 0;
   bool _playing = false;
   bool _hasFirstFrame = true;
   Duration _hideDelay = const Duration(seconds: 3);
@@ -30,6 +31,19 @@ class PlayerChromeController extends ChangeNotifier implements ValueListenable<b
 
   bool get controlsVisible => _controlsVisible;
   bool get contentStripVisible => _contentStripVisible;
+
+  /// What the subtitles must clear: the share of the player height the
+  /// bottom block (controls, or the content strip that replaces them) took at
+  /// its last measurement while the chrome is up, nothing once it hides
+  /// (PLR-SUBS1). Only the TV controls report the block.
+  double get subtitleLift => _controlsVisible ? _bottomChromeFraction : 0;
+
+  void setBottomChromeFraction(double fraction) {
+    if (_bottomChromeFraction == fraction) return;
+    _bottomChromeFraction = fraction;
+    notifyListeners();
+  }
+
   bool get hasVisibleHold => _holds.isNotEmpty;
   bool isHeld(PlayerChromeHold hold) => _holds.contains(hold);
   PlayerChromeFocusTarget? get pendingFocusTarget => _pendingFocusTarget;

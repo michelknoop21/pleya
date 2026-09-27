@@ -32,6 +32,7 @@ import 'widgets/content_strip.dart';
 import 'widgets/live_timeline_bar.dart';
 import 'widgets/first_frame_guard.dart';
 import 'widgets/play_pause_stream_builder.dart';
+import 'widgets/tv_title_scrim.dart';
 import 'widgets/video_controls_header.dart';
 import 'widgets/video_timeline_bar.dart';
 import 'widgets/tv_quality_summary_line.dart';
@@ -142,6 +143,11 @@ class DesktopVideoControls extends StatefulWidget {
   /// menu (DEC-101); the sheets stay for desktop and mobile.
   final ValueChanged<TvInfoPanelRequest>? onTvInfoPanelTabRequested;
 
+  /// TV only: the share of this overlay's height the bottom block (controls
+  /// or content strip) takes, reported after layout when it changes. The
+  /// player lifts subtitles by it while the chrome is up (PLR-SUBS1).
+  final ValueChanged<double>? onBottomChromeFractionChanged;
+
   /// Called when a seek should be executed by the owning screen.
   final Future<void> Function(Duration position)? onSeekRequested;
 
@@ -192,6 +198,7 @@ class DesktopVideoControls extends StatefulWidget {
     this.onContentStripVisibilityChanged,
     this.onTvInfoPanelRequested,
     this.onTvInfoPanelTabRequested,
+    this.onBottomChromeFractionChanged,
     this.onSeekRequested,
     this.onSeekCompleted,
   });
@@ -257,6 +264,7 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   bool _contentStripVisible = false;
   bool _preferQueueTabOnOpen = false;
   final GlobalKey<ContentStripState> _contentStripKey = GlobalKey<ContentStripState>();
+  final GlobalKey _bottomBlockKey = GlobalKey(debugLabel: 'playerBottomBlock');
 
   // Track which button was last focused (for returning from content strip)
   FocusNode? _lastFocusedButtonNode;
@@ -865,8 +873,23 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
     return KeyEventResult.ignored;
   }
 
+  /// Measures the bottom block against the whole overlay after this frame.
+  /// Both the controls and the content strip sit in that slot; with neither
+  /// laid out (no first frame yet) the share is 0.
+  void _reportBottomChromeFraction() {
+    if (widget.onBottomChromeFractionChanged == null || !PlatformDetector.isTV()) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final report = widget.onBottomChromeFractionChanged;
+      if (!mounted || report == null) return;
+      final total = context.size?.height ?? 0;
+      final block = _bottomBlockKey.currentContext?.size?.height ?? 0;
+      report(total > 0 ? block / total : 0);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    _reportBottomChromeFraction();
     return Column(
       children: [
         // Top bar with back button and title (always visible)
@@ -878,66 +901,85 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
             child: Column(
               children: [
                 const Spacer(),
-                // When content strip is visible, hide the normal controls (like mobile)
-                if (!_contentStripVisible)
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _buildBottomControlsContent(context, hasFrame: true),
-                      // Down arrow hint when strip content is available
-                      if (widget.useDpadNavigation && _hasStripContent)
-                        const Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 12,
-                          child: Icon(Symbols.keyboard_arrow_down_rounded, color: Colors.white24, size: 24),
-                        ),
-                    ],
-                  ),
-                // Content strip (TV/dpad only) — replaces normal controls
-                if (_contentStripVisible && widget.useDpadNavigation)
-                  Container(
-                    padding: EdgeInsets.only(
-                      left: tvPageInset(context),
-                      right: tvPageInset(context),
-                      bottom: 8,
-                      top: 32,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.65),
-                          Colors.black.withValues(alpha: 0.7),
+                // One keyed slot for whichever bottom block is up, so its height
+                // can be measured; the notifier catches later growth (a strip
+                // whose rows load after it opens).
+                NotificationListener<SizeChangedLayoutNotification>(
+                  onNotification: (_) {
+                    _reportBottomChromeFraction();
+                    return true;
+                  },
+                  child: SizeChangedLayoutNotifier(
+                    child: KeyedSubtree(
+                      key: _bottomBlockKey,
+                      child: Column(
+                        mainAxisSize: .min,
+                        children: [
+                          // When content strip is visible, hide the normal controls (like mobile)
+                          if (!_contentStripVisible)
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                _buildBottomControlsContent(context, hasFrame: true),
+                                // Down arrow hint when strip content is available
+                                if (widget.useDpadNavigation && _hasStripContent)
+                                  const Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 12,
+                                    child: Icon(Symbols.keyboard_arrow_down_rounded, color: Colors.white24, size: 24),
+                                  ),
+                              ],
+                            ),
+                          // Content strip (TV/dpad only) — replaces normal controls
+                          if (_contentStripVisible && widget.useDpadNavigation)
+                            Container(
+                              padding: EdgeInsets.only(
+                                left: tvPageInset(context),
+                                right: tvPageInset(context),
+                                bottom: 8,
+                                top: 32,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.65),
+                                    Colors.black.withValues(alpha: 0.7),
+                                  ],
+                                  stops: const [0.0, 0.42, 1.0],
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: .min,
+                                children: [
+                                  const Icon(Symbols.keyboard_arrow_up_rounded, color: Colors.white38, size: 20),
+                                  const SizedBox(height: 4),
+                                  ContentStrip(
+                                    key: _contentStripKey,
+                                    player: widget.player,
+                                    chapters: widget.chapters,
+                                    chaptersLoaded: widget.chaptersLoaded,
+                                    serverId: widget.serverId,
+                                    showQueueTab: widget.showQueueTab,
+                                    preferQueueTab: _preferQueueTabOnOpen,
+                                    onQueueItemSelected: widget.onQueueItemSelected,
+                                    onSeekRequested: widget.onSeekRequested,
+                                    onSeekCompleted: widget.onSeekCompleted,
+                                    useFocusNavigation: true,
+                                    onNavigateUp: _onContentStripNavigateUp,
+                                    onFocusActivity: widget.onFocusActivity,
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
-                        stops: const [0.0, 0.42, 1.0],
                       ),
                     ),
-                    child: Column(
-                      mainAxisSize: .min,
-                      children: [
-                        const Icon(Symbols.keyboard_arrow_up_rounded, color: Colors.white38, size: 20),
-                        const SizedBox(height: 4),
-                        ContentStrip(
-                          key: _contentStripKey,
-                          player: widget.player,
-                          chapters: widget.chapters,
-                          chaptersLoaded: widget.chaptersLoaded,
-                          serverId: widget.serverId,
-                          showQueueTab: widget.showQueueTab,
-                          preferQueueTab: _preferQueueTabOnOpen,
-                          onQueueItemSelected: widget.onQueueItemSelected,
-                          onSeekRequested: widget.onSeekRequested,
-                          onSeekCompleted: widget.onSeekCompleted,
-                          useFocusNavigation: true,
-                          onNavigateUp: _onContentStripNavigateUp,
-                          onFocusActivity: widget.onFocusActivity,
-                        ),
-                      ],
-                    ),
                   ),
+                ),
               ],
             ),
           ),
@@ -1026,7 +1068,13 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
       ),
     );
 
-    return DesktopAppBarHelper.wrapWithGestureDetector(topBar, opaque: true);
+    final bar = DesktopAppBarHelper.wrapWithGestureDetector(topBar, opaque: true);
+    if (!isTv) return bar;
+    // PLR-SCRIM1: after PLR-TITLE1 the title block sits where the shared
+    // top fade had dropped to about 35% black, too thin over a bright frame.
+    // On TV the scrim follows the block instead, flat down to the bottom of
+    // the quality line and then fading out over the height of the top inset.
+    return TvTitleScrim(fade: TvCatalogLayout.topSafeInset * TvLayoutConstants.scaleOf(context), child: bar);
   }
 
   Widget _buildBottomControlsContent(BuildContext _, {required bool hasFrame}) {

@@ -89,7 +89,11 @@ Widget playerGlassPlate(BuildContext context, Widget child, {bool childPadded = 
 /// black over the title's height before it fades: on the Big Buck Bunny
 /// fixture a plain 35% fade measured 2.2:1 for the title, today's 70% fade
 /// 2.8:1, this band 5.5:1 (`mobile_video_controls_glass_test.dart`).
-BoxDecoration playerOverlayScrim({required bool hasFrame, required bool glass}) {
+///
+/// [topFade] false drops the top band: the TV title block paints its own
+/// scrim sized to the block (`DesktopVideoControls`, PLR-SCRIM1), and a
+/// second fade on top of it would only darken the frame further.
+BoxDecoration playerOverlayScrim({required bool hasFrame, required bool glass, bool topFade = true}) {
   if (!hasFrame) return const BoxDecoration(color: Colors.black);
   if (glass) {
     return BoxDecoration(
@@ -106,7 +110,7 @@ BoxDecoration playerOverlayScrim({required bool hasFrame, required bool glass}) 
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        Colors.black.withValues(alpha: 0.7),
+        topFade ? Colors.black.withValues(alpha: 0.7) : Colors.transparent,
         Colors.transparent,
         Colors.transparent,
         Colors.black.withValues(alpha: 0.7),

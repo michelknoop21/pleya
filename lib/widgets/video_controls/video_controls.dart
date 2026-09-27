@@ -892,6 +892,7 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                                       decoration: playerOverlayScrim(
                                         hasFrame: hasFrame,
                                         glass: isMobile && playerGlassOn(context),
+                                        topFade: !PlatformDetector.isTV(),
                                       ),
                                       child: child,
                                     );
