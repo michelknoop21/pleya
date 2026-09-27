@@ -33,6 +33,16 @@
 #                  click-toggles (the switch itself went up and down).
 #   ENABLE-HELD    a menuPassthroughEnabled=true sent while a key is down: the
 #                  message that triggers the release (needs 7786a952 or later to be logged)
+#   DROP-HALF      the DBL1 filter at station 3 dropped a began but forwarded that
+#                  lifecycle's ended (or the other way round): the engine got half a
+#                  pair, which is side door 2 or 3. Must never happen. A drop that
+#                  station 3 undid because the began reached UIKit in a mixed event
+#                  (`tvos_press_filter undo`) is a normal press again and does not count.
+#
+# Since the DBL1 filter (station 3 drops bounced and click-less arrow presses),
+# a press line may end in `tvos_press_filter drop ...`. Those lifecycles are
+# counted as drops; a NATIVE-BOUNCE whose began was dropped is reported as
+# caught and does not flag. One that got through still flags NATIVE-BOUNCE.
 #
 # Exit 0 when nothing is flagged, 2 when something is. See
 # docs/tvos-remote-press-pipeline.md for what each flag points at.
@@ -120,7 +130,9 @@ diag_events = []      # (time, press name, phase) from `native press=` lines (NA
 native_ended = {}     # press name -> (time, uikit ts) of its last native ended (phase 3)
 native_began = {}     # press name -> (time, uikit ts, bounce candidate) of its open began
 last_end_hw = {}      # press name -> hw dict at its last native ended
-flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'NATIVE-BOUNCE': 0, 'ENABLE-HELD': 0}
+flags = {'EARLY-KEYUP': 0, 'KEYUP-ONLY': 0, 'RE-TAP': 0, 'NATIVE-BOUNCE': 0, 'ENABLE-HELD': 0, 'DROP-HALF': 0}
+drops = {'bounce': 0, 'bounce-caught': 0, 'undone': 0}
+dropfield = re.compile(r'tvos_press_filter (?:drop (bounce|lifecycle)|(undo))')
 verdicts = {'uikit-began': 0, 'engine-synth': 0, 'unknown': 0}
 prev = None
 
@@ -141,14 +153,32 @@ with open(path, errors='replace') as fh:
         if pd:
             name, phase, uikit = pd.group(1), pd.group(2), pd.group(4)
             uikit = int(uikit) if uikit else None
-            diag_events.append((t, name, phase))
-            if phase == '0':
+            dm = dropfield.search(line)
+            dropped = dm.group(1) if dm else None
+            if not (dm and dm.group(2)):
+                diag_events.append((t, name, phase))
+            if dm and dm.group(2) and name in native_began:
+                # A mixed event reached UIKit: station 3 undid the drop and the
+                # engine got this began after all (see undoDropsReachingResponderChain).
+                native_began[name] = native_began[name][:4] + (None,)
+                drops['undone'] += 1
+                tags.append('drop undone (mixed event)')
+            elif phase == '0':
                 prev_end = native_ended.get(name)
                 candidate = prev_end is not None and t - prev_end[0] <= BOUNCE_MS
-                native_began[name] = (t, uikit, candidate and prev_end, hw_of(line))
-            elif phase == '3' and name in native_began:
-                bt, buikit, prev_end, began_hw = native_began.pop(name)
-                if prev_end and t - bt <= BOUNCE_MS:
+                native_began[name] = (t, uikit, candidate and prev_end, hw_of(line), dropped)
+                if dropped in drops:
+                    drops[dropped] += 1
+                    tags.append(f'dropped({dropped})')
+            elif phase in ('3', '4') and name in native_began:
+                bt, buikit, prev_end, began_hw, began_dropped = native_began.pop(name)
+                if bool(began_dropped) != (dropped == 'lifecycle'):
+                    tags.append('DROP-HALF')
+                    flags['DROP-HALF'] += 1
+                if prev_end and t - bt <= BOUNCE_MS and began_dropped:
+                    drops['bounce-caught'] += 1
+                    tags.append('bounce dropped at station 3')
+                elif prev_end and t - bt <= BOUNCE_MS:
                     detail = f'gap={bt - prev_end[0]}ms hold={t - bt}ms'
                     if buikit is not None and prev_end[1] is not None and uikit is not None:
                         detail += f' uikit gap={buikit - prev_end[1]}ms hold={uikit - buikit}ms'
@@ -199,13 +229,22 @@ with open(path, errors='replace') as fh:
 
 print()
 print('summary: ' + ', '.join(f'{k}={v}' for k, v in flags.items()))
+if any(drops.values()):
+    print('dropped at station 3 (DBL1): ' + ', '.join(f'{k}={v}' for k, v in drops.items()))
+if flags['DROP-HALF']:
+    print('verdict: the DBL1 filter split a lifecycle; the engine got half a pair (side door 2/3)')
+    sys.exit(2)
 if flags['RE-TAP']:
     print('re-tap origin: ' + ', '.join(f'{k}={v}' for k, v in verdicts.items()))
 if verdicts['engine-synth']:
     print(f"verdict: {verdicts['engine-synth']} RE-TAP(engine-synth): a keydown without its own UIKit "
           'began, the engine synthesized it; side door 2/4 in docs/tvos-remote-press-pipeline.md')
     sys.exit(2)
-if flags['NATIVE-BOUNCE'] or verdicts['uikit-began']:
+if verdicts['uikit-began'] and not flags['NATIVE-BOUNCE']:
+    print('verdict: every RE-TAP has its own UIKit began and none is a NATIVE-BOUNCE: short real presses '
+          '(EARLY-KEYUP counts any hold up to 40 ms); check the hold times before calling it a defect')
+    sys.exit(2)
+if flags['NATIVE-BOUNCE']:
     print('verdict: UIKit delivered a second press lifecycle itself (station 1, NATIVE-BOUNCE); the '
           'engine is not involved, see the DBL1 row in docs/tvos-remote-press-pipeline.md')
     sys.exit(2)
