@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/services/ambient_lighting_service.dart';
 import 'package:pleya/services/video_filter_manager.dart';
+import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 
 void main() {
   test('zoom scale snaps to whole percentages', () {
@@ -277,6 +278,113 @@ void main() {
     final subPosWrites = player.writes.where((write) => write.key == 'sub-pos').toList();
     expect(subPosWrites, isNotEmpty);
     expect(subPosWrites.last.value, '80');
+  });
+
+  group('PLR-SUBS1: ondertitels wijken voor de TV-bediening', () {
+    List<String> subPos(_RecordingPlayer player) =>
+        player.writes.where((write) => write.key == 'sub-pos').map((write) => write.value).toList();
+
+    Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+    test('tonen tilt de ondertitel, verbergen zet de oude waarde exact terug', () async {
+      final player = _RecordingPlayer();
+      final chrome = PlayerChromeController(controlsVisible: false);
+      addTearDown(chrome.dispose);
+      final manager = VideoFilterManager(
+        player: player,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: true,
+      );
+      addTearDown(manager.dispose);
+      // The screen's wiring (`_syncTvSubtitleLift`).
+      chrome.addListener(() => manager.setSubtitleLift(chrome.subtitleLift));
+      await manager.updateVideoFilter();
+      player.clearRecords();
+
+      // Measured while hidden: nothing moves yet.
+      chrome.setBottomChromeFraction(0.183);
+      await settle();
+      expect(subPos(player), isEmpty);
+
+      chrome.show(restartAutoHide: false);
+      await settle();
+      expect(subPos(player), ['81']);
+
+      chrome.hide(ignoreHolds: true);
+      await settle();
+      expect(subPos(player), ['81', '100']);
+    });
+
+    test('rebuilds zonder zichtbaarheids- of hoogtewijziging schrijven niets', () async {
+      final player = _RecordingPlayer();
+      final manager = VideoFilterManager(
+        player: player,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: true,
+      );
+      addTearDown(manager.dispose);
+      manager.setSubtitleLift(0.183);
+      await settle();
+      player.clearRecords();
+
+      manager.setSubtitleLift(0.183);
+      manager.setSubtitleLift(0.1801); // same whole percent after rounding up
+      await settle();
+      expect(player.writes, isEmpty);
+    });
+
+    test('componeert met de crop-compensatie in cover mode (tvOS-laagpad)', () async {
+      final player = _RecordingPlayer();
+      final manager = VideoFilterManager(
+        player: player,
+        initialBoxFitMode: 1,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: true,
+      );
+      addTearDown(manager.dispose);
+      await manager.updateVideoFilter();
+      final cropped = VideoFilterManager.subtitlePositionForScale(100, 1.33);
+      expect(subPos(player), [cropped.toString()]);
+      player.clearRecords();
+
+      manager.setSubtitleLift(0.2);
+      await settle();
+      // The lift sets the on-screen target (80), then the crop maps it back.
+      expect(subPos(player), [VideoFilterManager.subtitlePositionForScale(80, 1.33).toString()]);
+      expect(int.parse(subPos(player).single), lessThan(cropped));
+
+      manager.setSubtitleLift(0);
+      await settle();
+      expect(subPos(player).last, cropped.toString());
+    });
+
+    test('componeert met zoom op het mpv-native pad', () async {
+      final player = _RecordingPlayer();
+      final manager = VideoFilterManager(
+        player: player,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: false,
+      );
+      addTearDown(manager.dispose);
+      manager.setZoomScale(1.5);
+      await settle();
+      final zoomed = subPos(player).last;
+      expect(zoomed, VideoFilterManager.subtitlePositionForScale(100, 1.5).toString());
+
+      manager.setSubtitleLift(0.2);
+      await settle();
+      expect(subPos(player).last, VideoFilterManager.subtitlePositionForScale(80, 1.5).toString());
+
+      manager.setSubtitleLift(0);
+      await settle();
+      expect(subPos(player).last, zoomed);
+    });
+
+    test('een ondertitel die al hoger staat dan het blok blijft staan', () {
+      expect(VideoFilterManager.liftedSubtitlePosition(70, 20), 70);
+      expect(VideoFilterManager.liftedSubtitlePosition(95, 20), 80);
+      expect(VideoFilterManager.liftedSubtitlePosition(100, 0), 100);
+    });
   });
 }
 

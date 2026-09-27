@@ -59,6 +59,7 @@ extension _PlexVideoControlsNavigationMethods on _PlexVideoControlsState {
         },
         onTvInfoPanelRequested: _showTvInfoPanel,
         onTvInfoPanelTabRequested: _showTvInfoPanel,
+        onBottomChromeFractionChanged: widget.chromeController.setBottomChromeFraction,
       ),
     );
   }

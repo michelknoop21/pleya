@@ -53,11 +53,22 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
         subtitleBasePosition: () => settings.read(SettingsService.subtitlePosition),
       );
       unawaited(_videoFilterManager!.updateVideoFilter());
+      _syncTvSubtitleLift();
     }
 
     _videoPIPManager ??= VideoPIPManager(player: currentPlayer, initialPlayerSize: initialPlayerSize);
     _videoPIPManager!.onBeforeEnterPip = _preparePipFiltersForEntry;
     _attachPipStateListener();
+  }
+
+  /// TV only: while the player chrome is up, lift subtitles above the bottom
+  /// control block; when it hides, drop the lift so the manager writes the
+  /// crop/zoom-compensated base position again (PLR-SUBS1). The manager ignores
+  /// an unchanged lift, so chrome notifications without a visibility or height
+  /// change write nothing.
+  void _syncTvSubtitleLift() {
+    if (!PlatformDetector.isTV()) return;
+    _videoFilterManager?.setSubtitleLift(_chromeController.subtitleLift);
   }
 
   Future<void> _togglePIPMode() async {

@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +21,9 @@ import 'package:pleya/widgets/video_controls/video_controls.dart';
 import 'package:pleya/widgets/video_controls/desktop_video_controls.dart';
 import 'package:pleya/widgets/video_controls/helpers/apple_tv_scrub_pan.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_controls_header.dart';
+import 'package:pleya/widgets/video_controls/widgets/tv_quality_summary_line.dart';
+import 'package:pleya/widgets/video_controls/widgets/tv_title_scrim.dart';
+import 'package:pleya/widgets/video_controls/mobile_video_controls_glass.dart';
 import 'package:pleya/widgets/tv/tv_page_surface.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
@@ -50,6 +56,57 @@ const _testTokens = MonoTokens(
   splashFactory: NoSplash.splashFactory,
 );
 
+const _kTvSceneKey = Key('tvScene');
+
+/// Plays a 1080p HEVC stream, so the TV quality line has something to show.
+class _QualityLinePlayer extends FakeSyncPlayer {
+  _QualityLinePlayer({super.playing, super.position, super.duration});
+
+  @override
+  Future<String?> getProperty(String name) async => switch (name) {
+    'height' => '1080',
+    'video-codec' => 'hevc',
+    _ => null,
+  };
+}
+
+/// The brightest pixel of the TV scene inside [rect].
+Future<Color> _brightestPixel(WidgetTester tester, Rect rect) async {
+  final element = tester.element(find.byKey(_kTvSceneKey));
+  final result = await tester.runAsync<Color>(() async {
+    final image = await captureImage(element);
+    try {
+      final data = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+      final px = data.buffer.asUint8List();
+      var best = const Color(0xFF000000);
+      var bestLum = -1.0;
+      for (var y = rect.top.floor(); y < rect.bottom.ceil(); y++) {
+        for (var x = rect.left.floor(); x < rect.right.ceil(); x++) {
+          final i = (y * image.width + x) * 4;
+          final c = Color.fromARGB(255, px[i], px[i + 1], px[i + 2]);
+          final lum = c.computeLuminance();
+          if (lum > bestLum) {
+            bestLum = lum;
+            best = c;
+          }
+        }
+      }
+      return best;
+    } finally {
+      image.dispose();
+    }
+  });
+  return result!;
+}
+
+/// WCAG contrast of [ink] (blended over [background] when translucent)
+/// against [background].
+double _contrastOverBrightest(Color background, Color ink) {
+  final text = Color.alphaBlend(ink, background).computeLuminance();
+  final bg = background.computeLuminance();
+  return (math.max(text, bg) + 0.05) / (math.min(text, bg) + 0.05);
+}
+
 void main() {
   // ============================================================
   // PLR1: the overlay pays the title-safe inset on TV
@@ -69,8 +126,12 @@ void main() {
 
     /// The overlay on a 1920x1080 canvas, the way an Apple TV lays it out,
     /// with the controls shown and the video's chrome "visible".
-    Future<void> pumpTvOverlay(WidgetTester tester, {Size size = const Size(1920, 1080)}) async {
-      final player = FakeSyncPlayer(
+    Future<void> pumpTvOverlay(
+      WidgetTester tester, {
+      Size size = const Size(1920, 1080),
+      ValueChanged<double>? onBottomChromeFractionChanged,
+    }) async {
+      final player = _QualityLinePlayer(
         playing: true,
         position: const Duration(minutes: 3, seconds: 9),
         duration: const Duration(minutes: 7),
@@ -86,35 +147,44 @@ void main() {
           value: watchTogether,
           child: MaterialApp(
             theme: ThemeData(extensions: const [_testTokens]),
-            home: Scaffold(
-              body: SizedBox(
-                width: size.width,
-                height: size.height,
-                child: DesktopVideoControls(
-                  player: player,
-                  metadata: MediaItem(
-                    id: '1',
-                    backend: MediaBackend.plex,
-                    kind: MediaKind.episode,
-                    title: 'Curry Quest',
-                    grandparentTitle: 'Bluey',
-                    parentIndex: 3,
-                    index: 9,
+            home: RepaintBoundary(
+              key: _kTvSceneKey,
+              child: ColoredBox(
+                // A pure-white frame: the worst case for the title scrim.
+                color: Colors.white,
+                child: SizedBox(
+                  width: size.width,
+                  height: size.height,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: DesktopVideoControls(
+                      player: player,
+                      metadata: MediaItem(
+                        id: '1',
+                        backend: MediaBackend.plex,
+                        kind: MediaKind.episode,
+                        title: 'Curry Quest',
+                        grandparentTitle: 'Bluey',
+                        parentIndex: 3,
+                        index: 9,
+                      ),
+                      chapters: const [],
+                      chaptersLoaded: true,
+                      seekTimeSmall: 10,
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeekToPreviousChapter: () {},
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeekToNextChapter: () {},
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeek: (_) {},
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeekEnd: (_) {},
+                      getReplayIcon: (_) => Icons.replay_10,
+                      getForwardIcon: (_) => Icons.forward_10,
+                      useDpadNavigation: true,
+                      onBottomChromeFractionChanged: onBottomChromeFractionChanged,
+                    ),
                   ),
-                  chapters: const [],
-                  chaptersLoaded: true,
-                  seekTimeSmall: 10,
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeekToPreviousChapter: () {},
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeekToNextChapter: () {},
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeek: (_) {},
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeekEnd: (_) {},
-                  getReplayIcon: (_) => Icons.replay_10,
-                  getForwardIcon: (_) => Icons.forward_10,
-                  useDpadNavigation: true,
                 ),
               ),
             ),
@@ -147,6 +217,83 @@ void main() {
       await pumpTvOverlay(tester, size: const Size(1038, 584));
       final top = tester.getTopLeft(find.byType(VideoControlsHeader)).dy;
       expect(top * 1080 / 584, greaterThanOrEqualTo(60), reason: 'title top at $top logical');
+    });
+
+    // PLR-SCRIM1: the title block keeps 4.5:1 over a pure-white frame. The
+    // scrim is horizontally uniform, so the background behind each line is
+    // read from a glyph-free strip at the right edge over the same rows; the
+    // brightest pixel there sets the bar.
+    for (final size in const [Size(1038, 584), Size(1920, 1080)]) {
+      testWidgets('titel, metaregel en kwaliteitsregel halen 4,5:1 over wit beeld (${size.width.toInt()})', (
+        tester,
+      ) async {
+        await pumpTvOverlay(tester, size: size);
+        await tester.pump();
+        // The macOS test host lays the header out on one line; tvOS stacks
+        // title and meta. The scrim is sized to the bar either way, so the
+        // whole header band is also read against the dimmer white70 ink.
+        final header = find.byType(VideoControlsHeader);
+        final title = find.descendant(of: header, matching: find.byType(Text)).first;
+        final quality = find.byType(TvQualitySummaryLine);
+        expect(tester.getSize(quality).height, greaterThan(10), reason: 'the quality line renders');
+        final ratios = <String, double>{};
+        for (final (name, finder, ink) in [
+          ('title', title, Colors.white),
+          ('header band', header, Colors.white70),
+          ('quality', quality, Colors.white70),
+        ]) {
+          final rows = tester.getRect(finder);
+          final strip = Rect.fromLTRB(size.width - 70, rows.top, size.width - 10, rows.bottom);
+          ratios[name] = _contrastOverBrightest(await _brightestPixel(tester, strip), ink);
+        }
+        // ignore: avoid_print - the ratios go into the register row
+        print('PLR-SCRIM1 ${size.width.toInt()}x${size.height.toInt()}: $ratios');
+        for (final entry in ratios.entries) {
+          expect(entry.value, greaterThanOrEqualTo(4.5), reason: '${entry.key} at ${entry.value}');
+        }
+      });
+    }
+
+    testWidgets('de titelscrim loopt onder de kwaliteitsregel uit en wordt geen donkere band', (tester) async {
+      await pumpTvOverlay(tester, size: const Size(1038, 584));
+      await tester.pump();
+      final qualityBottom = tester.getRect(find.byType(TvQualitySummaryLine)).bottom;
+      final timelineTop = tester.getRect(find.byType(VideoTimelineBar)).top;
+      final belowFade = Rect.fromLTRB(968, qualityBottom + 60, 1028, timelineTop - 20);
+      final pixel = await _brightestPixel(tester, belowFade);
+      expect(pixel, Colors.white, reason: 'the frame between title block and controls stays untouched');
+    });
+
+    // PLR-SUBS1: the TV controls report the share of the screen their bottom
+    // block covers; the player lifts sub-pos by it (rounded up) while they
+    // are visible. Lifting by that share must put the subtitle bottom above
+    // the timeline.
+    testWidgets('de onderste bedieningsband meldt zijn schermaandeel op TV', (tester) async {
+      final reports = <double>[];
+      await pumpTvOverlay(tester, size: const Size(1038, 584), onBottomChromeFractionChanged: reports.add);
+      await tester.pump();
+      expect(reports, isNotEmpty);
+      final fraction = reports.last;
+      final timelineTop = tester.getRect(find.byType(VideoTimelineBar)).top;
+      final liftPercent = (fraction * 100).ceil();
+      expect(fraction, inExclusiveRange(0.05, 0.5));
+      expect((100 - liftPercent) / 100 * 584, lessThanOrEqualTo(timelineTop), reason: 'fraction $fraction');
+      // Stable layout, no new report per rebuild value.
+      final count = reports.length;
+      await tester.pump();
+      expect(reports.sublist(count - 1).toSet(), {fraction});
+    });
+
+    testWidgets('buiten TV meldt de bediening geen schermaandeel en geen titelscrim', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      final reports = <double>[];
+      await pumpTvOverlay(tester, onBottomChromeFractionChanged: reports.add);
+      await tester.pump();
+      expect(reports, isEmpty);
+      expect(find.byType(TvTitleScrim), findsNothing);
+      expect(await _brightestPixel(tester, const Rect.fromLTRB(1850, 0, 1910, 40)), Colors.white);
+      final shared = playerOverlayScrim(hasFrame: true, glass: false).gradient! as LinearGradient;
+      expect(shared.colors.first, Colors.black.withValues(alpha: 0.7), reason: 'desktop/mobile top fade unchanged');
     });
 
     testWidgets('buiten TV krijgt de titelbalk geen bovenruimte', (tester) async {
