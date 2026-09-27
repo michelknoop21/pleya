@@ -37,6 +37,9 @@ Drie regels die hieruit volgen:
    kanaalregel) mag; gedragslogica (tellen, filteren, een fase inslikken of doorgeven) niet. Twee
    builds hebben dat op hardware bewezen: swallowen liet de herhaaltimer van station 6 eeuwig
    doorlopen (build 257), doorgeven crashte UIKit op `_verifyTrackingPresses:` (build 256).
+   Uitzondering sinds 27 september 2026: het DBL1-filter laat een hele pijl-levenscyclus vallen
+   (began tot ended, geclaimd zonder `super`) als UIKit's eigen tijdstempels een bounce tonen.
+   Het RAIL2-geheugen is daarvoor per druktype op fase plus `UIPress.timestamp` gezet. Bewijs en drempel: `docs/tvos-fysieke-correctieronde.md`, rij DBL1.
 2. **Een synthesefout van station 4-6 hoort in de patchreeks**, niet in een filterlaag erboven.
    Elke poging om engine-gedrag vanuit de app te maskeren is al gemeten en afgekeurd (station 3,
    station 9 met een tijdvenster: build 254, log `ld1t1`, 65 echte drukken gegeten).

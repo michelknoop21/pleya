@@ -360,7 +360,9 @@ class AppleTvRemoteTouchService {
     _log(
       'native press=${arguments['press']} phase=${arguments['phase']} '
       'uipress=${arguments['uipress']} t=${arguments['systemUptimeMs']} ts=${arguments['uikitMs']}'
-      '${arguments['hw'] is String ? ' ${arguments['hw']}' : ''}',
+      '${arguments['hw'] is String ? ' ${arguments['hw']}' : ''}'
+      // DBL1: set when station 3 dropped this phase (bounce or no-click).
+      '${arguments['filter'] is String ? ' tvos_press_filter ${arguments['filter']}' : ''}',
     );
     return null;
   }

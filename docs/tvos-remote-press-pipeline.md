@@ -91,7 +91,7 @@ leeg is. Een disable laat in de engine niets los en gaat direct.
 | Echte snelle drukken verdwijnen | station 9: een timing-heuristiek in Dart | build 254, log `ld1t1` |
 | Een klik doet niets, een toets blijft in Dart vastzitten na het systeemtoetsenbord | station 3: de sessietak levert de eigen keyup van de druk die de sessie opende nooit aan de engine's synthesepad (SEL2) | build 280, log `ijqxp` |
 | Een echte keyup, dan binnen 1-20 ms een down+up-paar met 1-2 ms ertussen, zonder kanaalbericht in de buurt | zijdeur 4: dezelfde `UIPress`-fase twee keer afgeleverd, `tapIfMissingKeyDown:YES` vindt de toets al weg (bevestigd `same-uipress`) | build 272-280, logs `h6ocl`/`ijqxp` (timing/context); bevestigd met `uipress`-identiteit op build 281, log `8x94u` (15 sep 2026) |
-| Eén druk, twee stappen, verspreid over topnav, dropdown, speler en instellingen. In het log een echte druk van 80-180 ms, dan 0-21 ms later een tweede `phase=0`/`phase=3`-paar van dezelfde richting dat 0-21 ms duurt, elk met een eigen `native press=`-regel, zonder kanaalbericht | station 1: UIKit levert zelf een tweede levenscyclus (`NATIVE-BOUNCE`, `RE-TAP(uikit-began)`). De engine synthetiseert hier niets, en de remote is het niet (twee remotes, en op het tvOS-beginscherm is één druk één stap). Wat UIKit ertoe brengt, beslist het `hw=`-oordeel van de trace op de velden `gcA`/`gcX`/`gcY`/`gcN` (sinds DBL1): `click-held`, `no-click` of `click-toggles` | build 303, log `oc8pw` (25 sep 2026): tien keer, negen op right; build 306, log `v5okk` (26 sep): zes keer, alle op right |
+| Eén druk, twee stappen, verspreid over topnav, dropdown, speler en instellingen. In het log een echte druk van 80-180 ms, dan 0-21 ms later een tweede `phase=0`/`phase=3`-paar van dezelfde richting dat 0-21 ms duurt, elk met een eigen `native press=`-regel, zonder kanaalbericht | station 1: UIKit levert zelf een tweede levenscyclus (`NATIVE-BOUNCE`, `RE-TAP(uikit-began)`). De engine synthetiseert hier niets, en de remote is het niet (twee remotes, en op het tvOS-beginscherm is één druk één stap). Wat UIKit ertoe brengt, beslist het `hw=`-oordeel van de trace op de velden `gcA`/`gcX`/`gcY`/`gcN` (sinds DBL1): `click-held`, `no-click` of `click-toggles` | build 303, log `oc8pw` (25 sep 2026): tien keer, negen op right; build 306, log `v5okk` (26 sep): zes keer, alle op right; build 307, log `76ott` (27 sep): drie `click-toggles`, één `no-click`. Sinds DBL1 gefilterd op station 3 (zie hieronder) |
 
 ## Meetprotocol
 
@@ -177,5 +177,14 @@ uitkomst met en zonder de deferral staat in de correctieronde bij NAV1.
   `tvos/engine.version` bumpen en na de bump `engine press hook available=` in de
   AppDelegate-log controleren. Niet uit te stellen als het nodig is, maar ook niet de eerste
   gok.
-- Nooit: fasen inslikken of doorgeven in `AppDelegate`, of tijd meten in Dart. Beide zijn op
-  het toestel gemeten en beide zijn slechter dan het defect.
+- Nooit: losse fasen inslikken of doorgeven in `AppDelegate`, of tijd meten in Dart. Beide zijn
+  op het toestel gemeten en beide zijn slechter dan het defect.
+- De ene uitzondering is het DBL1-filter in `PleyaFlutterViewController.filterArrowPress`. Het
+  laat een pijldruk vallen die minder dan 30 ms (`bounceGapMs`) na de ended van dezelfde
+  richting begint. Het mag omdat het drie dingen anders doet dan builds 254, 256 en 257: het
+  leest `UIPress.timestamp` in plaats van een eigen klok, het beslist bij de began en laat dan
+  de hele levenscyclus vallen (geclaimd zonder `super`, dus UIKit en de engine zien geen van
+  beide helften; bereikt de began UIKit toch via een gemengd event, dan wordt de drop
+  ongedaan gemaakt), en het is getoetst tegen log `76ott`, de enige met `ts=`. Replay en
+  levenscyclusmodel: `test/services/tvos_press_filter_replay_test.dart`, dat ook de
+  Swift-regels vastpint. Bewijs en marge: rij DBL1 in `docs/tvos-fysieke-correctieronde.md`.
