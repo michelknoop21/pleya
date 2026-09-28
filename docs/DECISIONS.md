@@ -4152,3 +4152,51 @@ Wat verandert is de lucht. Rijen worden 70 en 106 pt (16 pt inzet, titelregel 38
 tussen label en kaart. Apple geeft voor tvOS geen vaste rijhoogte; de maat volgt uit de ruimte op
 1038x584: zes rijen vullen de kolom tot 20 pt boven de veilige rand. Rijen rekken niet mee met de
 pagina, dus een pagina met meer rijen scrolt op dezelfde hoogte.
+
+## DEC-140: iPhone film- en seriedetail naar de mockups D-01 tot en met D-03b, amendement op DEC-090 en DEC-131
+
+**Date:** 2026-09-28
+**Status:** accepted. Amendement op [DEC-090](#dec-090-ios-unified-2026-northstar-bevroren-21-mockups-bindend-voor-de-iphone-interface) en [DEC-131](#dec-131-iphone-detail-in-één-scroll-zonder-de-tabs-van-northstar-07)
+
+**Context:** DEC-131 zette film en serie op de iPhone al in één scroll zonder de tabs van
+northstar 07, maar de opbouw bleef verder die van northstar 06: een 16:9-voorvertoningskaart,
+volle-breedte CTA-capsules, een losse Downloaden-capsule en bij series een inline afleveringenlijst
+met seizoenpil. Vier nieuwe mockups (`D-01-film`, `D-02-audio-sheet`, `D-03-serie`,
+`D-03b-serie-scroll`, gebouwd als HTML in de scratchpad) werken de pagina verder uit: een staande
+poster die overloopt in een waas uit de poster zelf, echte scores per backend in plaats van alleen
+de RT-chip, een activiteitskaart, een techniektabel waarin een audio- of ondertitelkeuze niets
+afspeelt maar meegaat naar de volgende start vanaf de pagina, Plex-recensies en een seizoensrij die naar een eigen
+seizoenspagina navigeert in plaats van de afleveringen inline te tonen. Michel bekeek de vier
+mockups en reageerde met "akkoord" (28 september 2026). Op de vraag of de scores aantikbaar moeten
+zijn: "nee scores hoeven niet aantikbaar te zijn".
+
+**Decision:** De iPhone film- en seriedetailpagina krijgen de volgende opbouw:
+
+- Poster-hero met waas: de staande poster loopt onderaan over in een vervaagde versie van
+  zichzelf, die overgaat in de paginaondergrond.
+- Scorerij met echte iconen per backend (IMDb, Rotten Tomatoes critic/audience, TMDB, community),
+  niet aantikbaar.
+- Hoofdknop (Afspelen of Hervatten) plus, zodra er voortgang is, een aparte "vanaf begin"-actie.
+- Actierij film: Kijklijst, Trailer, Beoordeel, Bekeken, Downloaden, Meer. Actierij serie: dezelfde
+  rij zonder Downloaden; seizoen downloaden, Delen en Aanvragen staan bij een serie onder Meer.
+- Bronregel zoals die nu al bestaat.
+- Activiteitskaart (alleen Plex, alleen voor de eigenaar of een beheerder).
+- Techniektabel (video, audio, ondertiteling). Een audio- of ondertitelkeuze start niets. Ze gaat
+  mee als voorkeursspoor wanneer je vanaf deze pagina afspeelt en telt dan in de volgorde van
+  DEC-109 (vastgelegd in `test/services/detail_pick_precedence_test.dart`): sessie, dan de onthouden
+  serievoorkeur, dan de profieltaal, dan de keuze op de pagina, dan de standaard van de server.
+  Als serievoorkeur opgeslagen wordt de keuze alleen met "per serie onthouden" aan; dan staat ze
+  zelf in de laag van de serievoorkeur. Bij ondertiteling gaat een gewenste profieltaal die niet op
+  het bestand staat voor: dan de terugvaltaal van het profiel of uit, en de keuze op de pagina telt
+  niet. De tabel toont wat de speler met die volgorde kiest, en het keuzevenster belooft alleen
+  onthouden als dat ook gebeurt.
+- Recensies (alleen Plex).
+- Seizoensrij die per seizoen een eigen seizoenspagina opent, in plaats van de afleveringen en de
+  seizoenpil inline te tonen.
+- Titelbalk die bij scrollen verschijnt zodra de poster-hero uit beeld is.
+
+**Consequences:** Dit vervangt de 16:9-voorvertoningskaart en de losse Downloaden-capsule van
+northstar 06. Op de seriepagina vervallen de inline afleveringenlijst en de seizoenpil die DEC-131
+nog aanhield; die afleveringen staan voortaan op de eigen seizoenspagina. Delen verhuist van de
+actierij naar Meer. De vier mockups en hun HTML-bron staan vanaf deze taak in
+`docs/assets/ios-unified/detail-2026/`.

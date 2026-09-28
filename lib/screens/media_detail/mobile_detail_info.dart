@@ -1,8 +1,7 @@
 part of '../media_detail_screen.dart';
 
-/// The Download capsule, synopsis, credits, the action icon row and the
-/// section headings of the mobile detail page (northstar 06, DEC-131), split
-/// out of `mobile_detail_view.dart` unchanged.
+/// Synopsis, credits, the play button with its icon row and the section
+/// headings of the mobile detail page (northstar 06, DEC-131; D-01, DEC-140).
 extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// Synopsis (reuses [CollapsibleText] unchanged, DEC-109: mobile/desktop
   /// keep this in-place expand rather than the TV "Meer lezen" panel) plus
@@ -52,84 +51,148 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     );
   }
 
-  /// Fixed action icon row (add to list / rate / mark watched / share).
-  /// Every icon but share reuses an existing, already-tested handler:
-  /// [WatchlistUiActions.toggle], [_showRatingDialog] and
-  /// [_handleWatchedTogglePressed] are exactly what the pre-northstar action
-  /// row and the long-press context menu already call. Share is genuinely
-  /// new (no prior share capability existed anywhere in the app).
-  ///
-  /// With Liquid Glass on, [includeWatchlist] is false: the toggle moves to
-  /// the round glass button next to Download (LG-02).
-  Widget _buildMobileActionRow(BuildContext context, MediaItem metadata, {bool includeWatchlist = true}) {
-    final (onWatchlist, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
-
-    final mediaClient = _getMediaClientForMetadata(context);
-    final isNumericRating = mediaClient?.capabilities.numericUserRating ?? true;
-    final hasRating = metadata.userRating != null && metadata.userRating! > 0;
-
-    Widget action({
-      required IconData icon,
-      required String label,
-      required void Function(BuildContext buttonContext)? onPressed,
-      bool active = false,
-    }) {
-      final color = active ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
-      final effectiveColor = onPressed == null ? color.withValues(alpha: 0.4) : color;
-      return Expanded(
-        child: Builder(
-          builder: (buttonContext) => InkWell(
-            onTap: onPressed == null ? null : () => onPressed(buttonContext),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: effectiveColor),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: .ellipsis,
-                    textAlign: .center,
-                    style: TextStyle(fontSize: 12, color: effectiveColor),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+  /// Play, "play from start" and the icon row (D-01/D-03, DEC-140). Every
+  /// tap reuses the handler the TV row and the context menu already call;
+  /// Delen and Aanvragen moved into the Meer menu, which this owns
+  /// ([_contextMenuKey]) so the app bar's more button opens the same menu.
+  Widget _buildMobilePrimaryActions(BuildContext context, MediaItem metadata, {bool glass = false}) {
+    final resumeTarget = metadata.isShow
+        ? (_onDeckEpisode ?? metadata)
+        : metadata.isSeason
+        ? (_seasonNextEpisode ?? metadata)
+        : metadata;
+    final viewOffsetMs = resumeTarget.viewOffsetMs ?? 0;
+    final isResuming = viewOffsetMs > 0;
+    final detail = StringBuffer();
+    if ((metadata.isShow || metadata.isSeason) && resumeTarget.parentIndex != null && resumeTarget.index != null) {
+      detail.write(
+        '· ${t.discover.playEpisode(season: resumeTarget.parentIndex.toString(), episode: resumeTarget.index.toString())} ',
       );
     }
+    final remaining = isResuming ? formatRemainingTime(resumeTarget.durationMs, viewOffsetMs) : null;
+    if (remaining != null) detail.write('· $remaining');
+    final playDetail = detail.toString().trim();
 
-    return Row(
-      children: [
-        if (includeWatchlist)
-          action(
-            icon: onWatchlist ? Icons.bookmark_added_rounded : Icons.add_rounded,
-            label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
-            onPressed: canOfferWatchlist ? (_) => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
+    final (onWatchlist, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
+    final isNumericRating = _getMediaClientForMetadata(context)?.capabilities.numericUserRating ?? true;
+    final trailer = _getPrimaryTrailer();
+    final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
+    final canDownload = !metadata.isShow && !widget.isOffline && !PlatformDetector.isAppleTV();
+
+    void openMore() {
+      final box = _contextMenuKey.currentContext?.findRenderObject() as RenderBox?;
+      final position = box == null ? Offset.zero : box.localToGlobal(box.size.center(Offset.zero));
+      _contextMenuKey.currentState?.showContextMenu(context, position: position);
+    }
+
+    DetailPrimaryActions buildActions(DownloadProvider? downloadProvider) => DetailPrimaryActions(
+      glass: glass,
+      playLabel: isResuming ? t.common.resume : t.common.play,
+      playDetail: playDetail.isEmpty ? null : playDetail,
+      // A season plays its next episode, not its first (DEC-140).
+      onPlay: () => unawaited(_handlePlayPressed(metadata.isSeason ? resumeTarget : metadata)),
+      onPlayFromStart: isResuming ? () => unawaited(_handlePlayFromStartPressed(resumeTarget)) : null,
+      actions: [
+        if (canOfferWatchlist)
+          DetailActionItem(
+            key: const Key('media-detail.action.watchlist'),
+            icon: onWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+            label: t.detailActions.watchlist,
+            semanticLabel: onWatchlist ? t.watchlist.remove : t.watchlist.add,
+            active: onWatchlist,
+            onTap: () => unawaited(WatchlistUiActions.toggle(context, metadata)),
           ),
-        action(
-          icon: isNumericRating ? Icons.star_rounded : Icons.thumb_up_rounded,
-          label: t.mediaMenu.rate,
-          active: hasRating,
-          onPressed: widget.isOffline ? null : (_) => unawaited(_showRatingDialog(context, metadata)),
-        ),
-        action(
-          icon: metadata.isWatched ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
-          label: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
+        if (trailer != null)
+          DetailActionItem(
+            key: const Key('media-detail.action.trailer'),
+            icon: Icons.movie_outlined,
+            label: t.detailActions.trailer,
+            semanticLabel: t.tooltips.playTrailer,
+            onTap: () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
+          ),
+        if (!widget.isOffline)
+          DetailActionItem(
+            key: const Key('media-detail.action.rate'),
+            icon: isNumericRating ? Icons.star_border_rounded : Icons.thumb_up_outlined,
+            label: t.detailActions.rate,
+            semanticLabel: t.mediaMenu.rate,
+            onTap: () => unawaited(_showRatingDialog(context, metadata)),
+          ),
+        DetailActionItem(
+          key: const Key('media-detail.action.watched'),
+          icon: Icons.check_circle_outline_rounded,
+          label: t.detailActions.watched,
+          semanticLabel: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
           active: metadata.isWatched,
-          onPressed: (_) => unawaited(_handleWatchedTogglePressed(metadata)),
+          onTap: () => unawaited(_handleWatchedTogglePressed(metadata)),
         ),
-        action(
-          icon: Icons.send_rounded,
-          label: t.common.share,
-          onPressed: (buttonContext) => unawaited(_shareMobileItem(buttonContext, metadata)),
-        ),
+        if (downloadProvider != null) _mobileDownloadAction(downloadProvider, metadata),
+        if (!widget.isOffline)
+          DetailActionItem(
+            key: const Key('media-detail.action.more'),
+            icon: Icons.more_vert_rounded,
+            label: t.detailActions.more,
+            semanticLabel: MaterialLocalizations.of(context).moreButtonTooltip,
+            onTap: openMore,
+          ),
       ],
     );
+
+    return MediaContextMenu(
+      key: _contextMenuKey,
+      item: metadata,
+      onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+      onPlayTrailer: trailer == null ? null : () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
+      onShare: () {
+        final anchor = _contextMenuKey.currentContext;
+        if (anchor != null) unawaited(_shareMobileItem(anchor, metadata));
+      },
+      onRequest: (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
+          ? () => unawaited(_handleRequestPressed(metadata))
+          : null,
+      // Download progress rebuilds only this row, not the whole page.
+      child: canDownload
+          ? Consumer<DownloadProvider>(builder: (context, downloadProvider, _) => buildActions(downloadProvider))
+          : buildActions(null),
+    );
+  }
+
+  /// "Downloaden" with the state of the download as icon and spoken label;
+  /// [_handleDownloadButtonPressed] runs the whole state machine (queue,
+  /// pause/resume, retry, delete) unchanged.
+  DetailActionItem _mobileDownloadAction(DownloadProvider downloadProvider, MediaItem metadata) {
+    final globalKey = metadata.globalKey;
+    final (icon, semanticLabel) = switch (downloadProvider.getProgress(globalKey)?.status) {
+      _ when downloadProvider.isQueueing(globalKey) => (Icons.schedule_rounded, t.downloads.queuedTooltip),
+      DownloadStatus.queued => (Icons.schedule_rounded, t.downloads.queuedTooltip),
+      DownloadStatus.downloading => (Icons.downloading_rounded, t.downloads.downloadingTooltip),
+      DownloadStatus.paused => (Icons.pause_circle_outline_rounded, t.downloads.resumeDownload),
+      DownloadStatus.failed => (Icons.error_outline_rounded, t.downloads.retryDownload),
+      DownloadStatus.cancelled => (Icons.cancel_rounded, t.downloads.cancelledDownload),
+      _ when downloadProvider.isDownloaded(globalKey) => (Icons.download_done_rounded, t.downloads.downloadAction),
+      _ => (Icons.download_rounded, t.downloads.downloadAction),
+    };
+    return DetailActionItem(
+      key: const Key('media-detail.action.download'),
+      icon: icon,
+      label: t.detailActions.download,
+      semanticLabel: semanticLabel,
+      onTap: () => unawaited(_handleDownloadButtonPressed(metadata)),
+    );
+  }
+
+  /// The restart button: the context menu's "Play from beginning" core
+  /// ([playFromBeginning]), then the same refresh a normal play gets.
+  Future<void> _handlePlayFromStartPressed(MediaItem target) async {
+    final pick = _detailTrackPickFor(target);
+    await playFromBeginning(
+      context,
+      target,
+      isOffline: widget.isOffline,
+      preferredAudioTrack: pick.audio,
+      preferredSubtitleTrack: pick.subtitle,
+    );
+    if (!widget.isOffline && mounted) unawaited(refreshAfterPlayback(playedItemId: target.id));
   }
 
   /// The iOS share sheet anchored to the tapped button. share_plus needs
@@ -162,81 +225,8 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     );
   }
 
-  /// Full-width secondary CTA: "Downloaden", reusing
-  /// [_handleDownloadButtonPressed] for the full state machine (queue,
-  /// pause/resume, retry, delete) unchanged; only the label mapping below is
-  /// new, matching the northstar's text button instead of an icon-only one.
-  Widget _buildMobileDownloadCta(BuildContext context, MediaItem metadata, {bool glass = false}) {
-    if (widget.isOffline || PlatformDetector.isAppleTV()) return const SizedBox.shrink();
-
-    return Consumer<DownloadProvider>(
-      builder: (context, downloadProvider, _) {
-        final globalKey = metadata.globalKey;
-        final progress = downloadProvider.getProgress(globalKey);
-        final isDownloaded = downloadProvider.isDownloaded(globalKey);
-
-        final (icon, label) = switch (progress?.status) {
-          _ when downloadProvider.isQueueing(globalKey) => (Icons.schedule_rounded, t.downloads.queuedTooltip),
-          DownloadStatus.queued => (Icons.schedule_rounded, t.downloads.queuedTooltip),
-          DownloadStatus.downloading => (Icons.downloading_rounded, t.downloads.downloadingTooltip),
-          DownloadStatus.paused => (Icons.pause_circle_outline_rounded, t.downloads.resumeDownload),
-          DownloadStatus.failed => (Icons.error_outline_rounded, t.downloads.retryDownload),
-          DownloadStatus.cancelled => (Icons.cancel_rounded, t.downloads.cancelledDownload),
-          _ when isDownloaded => (Icons.check_circle_outline_rounded, t.downloads.downloadAction),
-          _ => (Icons.download_rounded, _mobileDownloadActionLabel(metadata)),
-        };
-
-        if (glass) {
-          return GlassCapsuleButton(
-            icon: icon,
-            label: label,
-            onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
-          );
-        }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.tonalIcon(
-              onPressed: () => unawaited(_handleDownloadButtonPressed(metadata)),
-              // The tonal variant's own defaults never reach this button:
-              // monoTheme's `filledButtonTheme` sets `backgroundColor: c.text`
-              // for every FilledButton, and a theme style outranks a variant
-              // default, so this rendered pure white — the same capsule as the
-              // primary CTA right above it. The mockup has a grey secondary
-              // under a white primary, so name the surface explicitly.
-              style: FilledButton.styleFrom(
-                shape: const StadiumBorder(),
-                backgroundColor: tokens(context).surfaceElevated,
-                foregroundColor: tokens(context).text,
-              ),
-              icon: Icon(icon),
-              label: Text(label, style: const TextStyle(fontWeight: .w700)),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// "Downloaden S7:E18" for a show with an on-deck episode (comp), plain
-  /// "Downloaden" otherwise.
-  String _mobileDownloadActionLabel(MediaItem metadata) {
-    final onDeck = _onDeckEpisode;
-    if (!metadata.isShow || onDeck == null || onDeck.parentIndex == null || onDeck.index == null) {
-      return t.downloads.downloadAction;
-    }
-    final episodeLabel = t.discover.playEpisode(
-      season: onDeck.parentIndex.toString(),
-      episode: onDeck.index.toString(),
-    );
-    return '${t.downloads.downloadAction} $episodeLabel';
-  }
-
   /// Whether the film is on the kijklijst, and whether a toggle can be
-  /// offered (online, a movie or show, a source that takes it). Shared by
-  /// the action row and the glass watchlist button, so both show the same.
+  /// offered (online, a movie or show, a source that takes it).
   (bool onList, bool canOffer) _mobileWatchlistState(BuildContext context, MediaItem metadata) {
     final watchlistProvider = context.watch<WatchlistProvider?>();
     final watchlistStore = context.watch<WatchlistStore?>();

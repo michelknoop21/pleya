@@ -470,6 +470,14 @@
     "optimizedForStreaming": "Optimized for Streaming",
     "has64bitOffsets": "64-bit Offsets"
   },
+  "detailActions": {
+    "watchlist": "Watchlist",
+    "trailer": "Trailer",
+    "rate": "Rate",
+    "watched": "Watched",
+    "download": "Download",
+    "more": "More"
+  },
   "mediaMenu": {
     "markAsWatched": "Mark as Watched",
     "markAsUnwatched": "Mark as Unwatched",
@@ -870,7 +878,30 @@
     "statsViewers": "by ${count} people",
     "statsWatchTime": "${duration} watched",
     "statsRecent": "${count} in the last 30 days",
-    "watchingSeriesBy": "Watching this show: ${names}"
+    "watchingSeriesBy": "Watching this show: ${names}",
+    "activityPlays": "Played ${count}×",
+    "activityViewers": "${count} viewers",
+    "activityOwnProgress": "You're at S${season} E${episode}",
+    "techSubtitles": "Subtitles",
+    "techEpisode": "Next episode · S${season} E${episode}",
+    "seasonsHeading": {
+      "one": "1 season",
+      "other": "${n} seasons"
+    },
+    "seasonEpisodes": {
+      "one": "1 episode",
+      "other": "${n} episodes"
+    },
+    "seasonEpisodesLeft": "${count} left to watch",
+    "trackScopeMovie": "${title} · applies to this film",
+    "trackScopeSeries": "${title} · for this series",
+    "trackChoiceNote": "Your choice is remembered and used when you press Resume or Play.",
+    "trackChoiceNoteOnce": "Not remembered. Applies when you play from this page; your profile language comes first.",
+    "scoreRtCritics": "Rotten Tomatoes critics",
+    "scoreRtAudience": "Rotten Tomatoes audience",
+    "scoreCommunity": "Community score",
+    "reviews": "Reviews",
+    "reviewOpenSource": "Read at source"
   },
   "mobileDetail": {
     "similarTab": "Similar",
@@ -1989,6 +2020,7 @@
     "noneReachableTitle": "No source is currently reachable.",
     "reauthRequiredTitle": "Sign in again to reach this title.",
     "manageServers": "Manage servers",
+    "source": "Source",
     "sourceLabel": "Source: ${source}",
     "change": "Change",
     "playbackFailedTitle": "This source could not be played.",

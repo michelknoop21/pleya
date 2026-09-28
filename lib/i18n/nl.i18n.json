@@ -470,6 +470,14 @@
     "optimizedForStreaming": "Geoptimaliseerd voor streaming",
     "has64bitOffsets": "64-bit Offsets"
   },
+  "detailActions": {
+    "watchlist": "Kijklijst",
+    "trailer": "Trailer",
+    "rate": "Beoordeel",
+    "watched": "Bekeken",
+    "download": "Downloaden",
+    "more": "Meer"
+  },
   "mediaMenu": {
     "markAsWatched": "Markeer als gekeken",
     "markAsUnwatched": "Markeer als ongekeken",
@@ -870,7 +878,30 @@
     "statsViewers": "door ${count} mensen",
     "statsWatchTime": "${duration} bekeken",
     "statsRecent": "${count} in de laatste 30 dagen",
-    "watchingSeriesBy": "Kijken deze serie: ${names}"
+    "watchingSeriesBy": "Kijken deze serie: ${names}",
+    "activityPlays": "${count}× afgespeeld",
+    "activityViewers": "${count} kijkers",
+    "activityOwnProgress": "Jij bent bij S${season} A${episode}",
+    "techSubtitles": "Ondertiteling",
+    "techEpisode": "Volgende aflevering · S${season} A${episode}",
+    "seasonsHeading": {
+      "one": "1 seizoen",
+      "other": "${n} seizoenen"
+    },
+    "seasonEpisodes": {
+      "one": "1 aflevering",
+      "other": "${n} afleveringen"
+    },
+    "seasonEpisodesLeft": "${count} nog te zien",
+    "trackScopeMovie": "${title} · geldt voor deze film",
+    "trackScopeSeries": "${title} · voor deze serie",
+    "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.",
+    "trackChoiceNoteOnce": "Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.",
+    "scoreRtCritics": "Rotten Tomatoes, critici",
+    "scoreRtAudience": "Rotten Tomatoes, publiek",
+    "scoreCommunity": "Communityscore",
+    "reviews": "Recensies",
+    "reviewOpenSource": "Lees bij de bron"
   },
   "mobileDetail": {
     "similarTab": "Vergelijkbaar",
@@ -1989,6 +2020,7 @@
     "noneReachableTitle": "Geen bron is momenteel bereikbaar.",
     "reauthRequiredTitle": "Meld je opnieuw aan om deze titel te bereiken.",
     "manageServers": "Servers beheren",
+    "source": "Bron",
     "sourceLabel": "Bron: ${source}",
     "change": "Wijzigen",
     "playbackFailedTitle": "Deze bron kon niet worden afgespeeld.",

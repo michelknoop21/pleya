@@ -619,7 +619,11 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       return;
     }
     recorder.link(traceId, SelectTraceLink.activatedTarget, item, note: 'strategy=${activation.strategy.name}');
-    recorder.link(traceId, SelectTraceLink.expectedNavigationTarget, mediaDetailNavigationTargetFor(item).metadata);
+    recorder.link(
+      traceId,
+      SelectTraceLink.expectedNavigationTarget,
+      mediaDetailNavigationTargetIn(context, item).metadata,
+    );
     _navigateToItem(item, traceId: traceId);
   }
 

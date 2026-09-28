@@ -10,13 +10,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     if (metadata.isShow) {
       if (_onDeckEpisode != null) {
         appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
-        final playedId = _onDeckEpisode!.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: _onDeckEpisode!,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        await _playWithDetailPick(_onDeckEpisode!);
       } else {
         // No on deck episode, fetch first episode of first season
         await _playFirstEpisode();
@@ -24,27 +18,29 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     } else if (metadata.isSeason) {
       // For seasons, play the first episode
       if (_episodes.isNotEmpty) {
-        final playedId = _episodes.first.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: _episodes.first,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        await _playWithDetailPick(_episodes.first);
       } else {
         await _playFirstEpisode();
       }
     } else {
       appLogger.d('Playing: ${metadata.title}');
       // For movies or episodes, play directly
-      final playedId = metadata.id;
-      await navigateToVideoPlayerWithRefresh(
-        context,
-        metadata: metadata,
-        isOffline: widget.isOffline,
-        onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-      );
+      await _playWithDetailPick(metadata);
     }
+  }
+
+  /// Starts [item] with the tracks picked on this page (inert when the tech
+  /// table describes another item) and refreshes the page afterwards.
+  Future<void> _playWithDetailPick(MediaItem item) async {
+    final pick = _detailTrackPickFor(item);
+    await navigateToVideoPlayerWithRefresh(
+      context,
+      metadata: item,
+      preferredAudioTrack: pick.audio,
+      preferredSubtitleTrack: pick.subtitle,
+      isOffline: widget.isOffline,
+      onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+    );
   }
 
   Widget _buildActionButtons(MediaItem metadata) {
@@ -376,9 +372,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   /// actually has more than one source — a single-source title has nothing to
   /// change to, and a line saying so would be chrome. Returns a zero-size box
   /// otherwise, which is every entry point that is not a unified activation.
-  Widget _buildUnifiedSourceLine() {
+  ///
+  /// [card] is the iPhone look (`.src` in D-01, DEC-140): a full-width tile
+  /// with the whole tile as the change target. TV and the other layouts keep
+  /// the caption plus chip.
+  Widget _buildUnifiedSourceLine({bool card = false}) {
     final routeContext = widget.unifiedRouteContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return const SizedBox.shrink();
+    if (card) return _buildUnifiedSourceCard(routeContext);
 
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
@@ -432,6 +433,50 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildUnifiedSourceCard(UnifiedMediaRouteContext routeContext) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final parts = [
+      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+    ];
+    final onChangeSource = widget.onChangeSource;
+    final tile = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(color: onSurface.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          Text(t.sourcePicker.source, style: TextStyle(color: onSurface.withValues(alpha: 0.70), fontSize: 15)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              parts.join(' · '),
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: TextStyle(color: onSurface, fontSize: 15),
+            ),
+          ),
+          if (onChangeSource != null)
+            Text(
+              t.sourcePicker.change,
+              style: TextStyle(color: onSurface, fontSize: 15, fontWeight: .w700),
+            ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: onChangeSource == null
+          ? tile
+          : FocusableWrapper(
+              borderRadius: 12,
+              disableScale: true,
+              semanticLabel: t.sourcePicker.change,
+              onSelect: () => unawaited(onChangeSource(context)),
+              child: tile,
+            ),
     );
   }
 

@@ -1,4 +1,6 @@
+import '../media/media_file_info.dart';
 import '../media/media_item.dart';
+import '../media/media_source_info.dart';
 import '../media/media_stream.dart';
 import '../media/media_version.dart';
 import 'codec_utils.dart';
@@ -120,3 +122,38 @@ bool _isAtmos(MediaStream stream) {
     stream.displayTitle,
   ].whereType<String>().any((value) => value.toLowerCase().contains('atmos'));
 }
+
+/// The Video row of the detail tech table (mockup D-01), e.g.
+/// `4K Dolby Vision (HEVC Main 10)`. The dynamic range comes from [item]'s
+/// first version, since [MediaFileInfo] does not carry it.
+String? detailVideoLabel(MediaFileInfo info, {MediaItem? item}) {
+  final rawResolution = info.videoResolution ?? resolutionLabelFromDimensions(info.width, info.height);
+  final versions = item?.mediaVersions;
+  final video = versions == null || versions.isEmpty ? null : _firstStreamOfKind(versions.first, MediaStreamKind.video);
+  final range = video?.dolbyVision == true ? 'Dolby Vision' : (video?.hdr == true ? 'HDR' : null);
+  final codec = [
+    if (info.videoCodec case final c? when c.isNotEmpty) CodecUtils.formatVideoCodec(c),
+    if (info.videoProfile case final p? when p.isNotEmpty) _capitalizeWords(p),
+  ].join(' ');
+  final head = [
+    if (rawResolution != null && rawResolution.isNotEmpty) _formatResolutionValue(rawResolution),
+    ?range,
+  ].join(' ');
+  if (head.isEmpty) return codec.isEmpty ? null : codec;
+  return codec.isEmpty ? head : '$head ($codec)';
+}
+
+/// The Audio row of the detail tech table and its sheet, e.g.
+/// `Nederlands (EAC3 5.1)`.
+String detailAudioLabel(MediaAudioTrack track) {
+  final tech = [
+    if (track.codec case final c? when c.isNotEmpty) _formatAudioCodec(c),
+    ?CodecUtils.formatAudioChannels(track.channels),
+    if (track.profile?.toLowerCase().contains('atmos') ?? false) 'Atmos',
+  ];
+  final language = track.label.primary;
+  return tech.isEmpty ? language : '$language (${tech.join(' ')})';
+}
+
+String _capitalizeWords(String value) =>
+    value.split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');

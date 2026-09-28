@@ -1005,6 +1005,7 @@ class PlexClient
               'includeOnDeck': 1,
               'checkFiles': 1,
               'includeStreams': 1,
+              'includeReviews': 1,
             },
           ),
           parseCache: (cachedData) {
@@ -1062,7 +1063,13 @@ class PlexClient
       cacheKey: cacheKey,
       networkCall: () => _http.get(
         '/library/metadata/$ratingKey',
-        queryParameters: {'includeChapters': 1, 'includeMarkers': 1, 'checkFiles': 1, 'includeStreams': 1},
+        queryParameters: {
+          'includeChapters': 1,
+          'includeMarkers': 1,
+          'checkFiles': 1,
+          'includeStreams': 1,
+          'includeReviews': 1,
+        },
       ),
       parseCache: (cachedData) => _parseMetadataWithImagesFromCachedResponse(cachedData),
       parseResponse: (response) {

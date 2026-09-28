@@ -1,0 +1,182 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>D-03 Serie detail</title>
+<style>
+@font-face { font-family: Inter; src: url(Inter-Regular.otf); font-weight: 400; }
+@font-face { font-family: Inter; src: url(Inter-Medium.otf); font-weight: 500; }
+@font-face { font-family: Inter; src: url(Inter-Bold.otf); font-weight: 700; }
+:root { --bg:#141414; --surface:rgba(255,255,255,.08); --elevated:rgba(255,255,255,.14); --accent:#E5140F; --ink:#fff; --ink-2:rgba(255,255,255,.70); --ink-3:rgba(255,255,255,.50); --inset:16px; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { position:relative; width:402px; background:var(--bg); overflow-x:hidden; color:var(--ink); font-family:Inter,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.35; }
+svg.ic { width:1em; height:1em; display:block; flex:none; }
+.hero { position:relative; height:640px; overflow:hidden; }
+.hero img { width:100%; height:100%; object-fit:cover; object-position:50% 18%; -webkit-mask-image:linear-gradient(180deg,#000 55%,rgba(0,0,0,.6) 78%,transparent 100%); mask-image:linear-gradient(180deg,#000 55%,rgba(0,0,0,.6) 78%,transparent 100%); }
+.ambient { position:absolute; left:0; right:0; top:0; height:1500px; z-index:0; overflow:hidden; pointer-events:none; }
+.ambient img { position:absolute; left:-30%; top:300px; width:160%; height:1200px; object-fit:cover; object-position:50% 85%; filter:blur(70px) saturate(1.5); opacity:.85; }
+.ambient::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(20,20,20,0) 0%,rgba(20,20,20,.25) 45%,rgba(20,20,20,.7) 75%,#141414 100%); }
+body > *:not(.ambient) { position:relative; z-index:1; }
+.hero .scrim { position:absolute; inset:0; background:linear-gradient(180deg,rgba(20,20,20,.55) 0%,rgba(20,20,20,0) 14%,rgba(20,20,20,0) 45%,rgba(20,20,20,.15) 80%,rgba(20,20,20,0) 100%); }
+.status { position:absolute; left:0; right:0; top:0; height:54px; display:flex; align-items:center; justify-content:space-between; padding:6px 30px 0 44px; font-weight:700; font-size:17px; z-index:3; }
+.status .island { position:absolute; left:50%; top:11px; width:124px; height:36px; transform:translateX(-50%); background:#000; border-radius:999px; }
+.circ { position:absolute; top:60px; width:44px; height:44px; border-radius:999px; background:rgba(40,40,40,.55); backdrop-filter:blur(12px); display:grid; place-items:center; font-size:22px; z-index:3; border:1px solid rgba(255,255,255,.18); }
+.logo { position:absolute; left:0; right:0; bottom:118px; text-align:center; font-family:Georgia,serif; font-weight:700; font-size:58px; letter-spacing:.14em; text-shadow:0 3px 18px rgba(0,0,0,.6); }
+.logo small { display:block; font-family:Inter; font-size:13px; letter-spacing:.42em; font-weight:500; margin-top:-2px; color:rgba(255,255,255,.9); }
+.meta { position:absolute; left:0; right:0; bottom:74px; display:flex; justify-content:center; align-items:center; gap:9px; font-size:15px; color:var(--ink); }
+.meta .dot { color:var(--ink-3); }
+.meta .box { border:1px solid rgba(255,255,255,.6); border-radius:5px; padding:1px 7px; font-weight:700; font-size:13px; }
+.rates { position:absolute; left:0; right:0; bottom:28px; display:flex; justify-content:center; align-items:center; gap:14px; font-size:14.5px; }
+.rates .r { display:flex; align-items:center; gap:6px; }
+.rates .r img { height:18px; width:auto; }
+.rates .r img.w { height:14px; }
+.rates .chip { border:1px solid rgba(255,255,255,.45); border-radius:6px; padding:2px 7px; font-weight:700; font-size:12.5px; }
+.tom { width:17px; height:17px; border-radius:50%; background:#E5140F; }
+.pop { width:14px; height:17px; border-radius:3px 3px 5px 5px; background:repeating-linear-gradient(90deg,#fff 0 3px,#E5140F 3px 6px); }
+.imdb { background:#F5C518; color:#000; font-weight:800; font-size:11px; border-radius:3px; padding:1px 4px; }
+.pad { padding:0 var(--inset); }
+.cta { display:flex; gap:12px; margin-top:6px; }
+.play { flex:1; height:52px; border-radius:999px; background:#fff; color:#141414; font-weight:700; font-size:17px; display:flex; align-items:center; justify-content:center; gap:10px; }
+.play small { font-weight:400; color:rgba(20,20,20,.62); font-size:15.5px; }
+.restart { width:52px; height:52px; border-radius:999px; background:var(--elevated); display:grid; place-items:center; font-size:23px; }
+.acts { display:grid; grid-template-columns:repeat(6,1fr); margin-top:22px; }
+.acts div { display:flex; flex-direction:column; align-items:center; gap:7px; font-size:11.5px; text-align:center; color:var(--ink); line-height:1.2; }
+.acts .i { width:46px; height:46px; border-radius:999px; background:var(--surface); display:grid; place-items:center; font-size:22px; }
+.acts .on .i { background:#fff; color:#141414; }
+.src { margin-top:20px; background:var(--surface); border-radius:12px; display:flex; align-items:center; padding:13px 16px; font-size:15px; }
+.src span { color:var(--ink-2); margin-right:10px; }
+.src b { margin-left:auto; font-weight:700; }
+.act { margin-top:14px; background:var(--surface); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:14px; }
+.av { display:flex; }
+.av img, .av i { width:36px; height:36px; border-radius:50%; border:2px solid var(--surface); margin-left:-10px; object-fit:cover; display:grid; place-items:center; font-style:normal; font-weight:700; font-size:14px; }
+.av > :first-child { margin-left:0; }
+.act b { display:block; font-size:15px; }
+.act span { font-size:13.5px; color:var(--ink-2); }
+.act .live { color:#fff; font-weight:700; }
+.act .live::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--accent); margin-right:5px; vertical-align:1px; }
+.syn { margin-top:20px; font-size:15.5px; line-height:1.5; }
+.syn em { font-style:normal; color:var(--ink-3); }
+.dir { margin-top:10px; font-size:14px; color:var(--ink-2); }
+.dir b { color:#fff; font-weight:700; }
+.tech { margin-top:22px; }
+.tech div { display:flex; padding:11px 0; border-top:1px solid rgba(255,255,255,.08); font-size:15px; align-items:center; }
+.tech div:first-child { border-top:0; }
+.tech span { width:124px; color:var(--ink-2); flex:none; }
+.tech b { font-weight:500; }
+.tech .sel b { color:#fff; font-weight:700; }
+.tech .sel svg { margin-left:auto; color:var(--ink-3); font-size:18px; }
+h2 { font-size:20px; font-weight:700; margin:30px 0 14px; display:flex; align-items:center; gap:6px; }
+h2 svg { font-size:18px; color:var(--ink-2); }
+.rail { display:flex; gap:12px; overflow:hidden; }
+.cast div { width:104px; flex:none; text-align:center; font-size:13px; }
+.cast img, .cast i { width:96px; height:96px; border-radius:50%; object-fit:cover; display:grid; place-items:center; margin:0 auto 8px; background:var(--elevated); font-style:normal; font-size:26px; font-weight:700; color:var(--ink-2); }
+.cast b { display:block; font-weight:500; font-size:13.5px; }
+.cast span { color:var(--ink-2); font-size:12.5px; }
+.rev div { width:300px; flex:none; background:var(--surface); border-radius:14px; padding:16px; font-size:14px; line-height:1.45; height:150px; }
+.rev b { display:block; font-size:14px; }
+.rev span { color:var(--ink-2); font-size:12.5px; display:block; margin-bottom:10px; }
+.ext div { width:250px; flex:none; font-size:13.5px; }
+.ext img { width:250px; height:140px; border-radius:10px; object-fit:cover; display:block; margin-bottom:8px; }
+.ext span { color:var(--ink-2); font-size:12.5px; }
+.pos div { width:112px; flex:none; font-size:13px; }
+.pos img { width:112px; height:168px; border-radius:8px; object-fit:cover; display:block; margin-bottom:7px; }
+.pos .prog { height:3px; background:rgba(255,255,255,.25); border-radius:2px; margin:-12px 6px 10px; position:relative; }
+.pos .prog i { position:absolute; left:0; top:0; bottom:0; width:45%; background:var(--accent); border-radius:2px; }
+.pos span { color:var(--ink-2); font-size:12px; }
+.proposal { display:inline-block; margin-left:8px; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#141414; background:#F5C518; border-radius:4px; padding:2px 6px; vertical-align:middle; }
+.end { height:40px; }
+.seasons { display:flex; gap:8px; margin:4px 0 14px; }
+.seasons span { padding:8px 14px; border-radius:999px; background:var(--surface); font-size:14px; font-weight:500; }
+.seasons .on { background:#fff; color:#141414; font-weight:700; }
+.seasons .all { margin-left:auto; background:none; color:var(--ink-2); padding-right:0; }
+.ep { display:flex; gap:12px; padding:10px 0; border-top:1px solid rgba(255,255,255,.08); }
+.ep:first-of-type { border-top:0; }
+.ep .th { position:relative; width:138px; height:78px; flex:none; border-radius:8px; overflow:hidden; background:var(--elevated); }
+.ep .th img { width:100%; height:100%; object-fit:cover; }
+.ep .th .bar { position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.3); }
+.ep .th .bar i { display:block; height:100%; background:var(--accent); }
+.ep .th .ok { position:absolute; right:6px; top:6px; width:22px; height:22px; border-radius:50%; background:rgba(20,20,20,.7); display:grid; place-items:center; font-size:13px; }
+.ep .tx { flex:1; min-width:0; }
+.ep .tx b { display:block; font-size:14.5px; font-weight:700; }
+.ep .tx span { display:block; font-size:12.5px; color:var(--ink-2); margin:2px 0 5px; }
+.ep .tx p { font-size:13px; color:var(--ink-2); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ep .dl { align-self:center; color:var(--ink-2); font-size:20px; }
+.ep.next .tx b { color:#fff; }
+.nexttag { display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); margin-bottom:2px; }
+.tech h3 { font-size:13px; font-weight:500; color:var(--ink-3); margin-bottom:4px; }
+.pos .badge { position:absolute; right:0; top:0; background:rgba(20,20,20,.82); font-size:12.5px; font-weight:700; padding:4px 8px; border-radius:0 8px 0 8px; }
+.pos div { position:relative; }
+.seas div { width:130px; } .seas img { width:130px; height:195px; }
+.seas .dim { opacity:.9 }
+.seas .bar2 { position:absolute; left:6px; right:6px; top:186px; height:3px; background:rgba(255,255,255,.3); border-radius:2px; }
+.seas .bar2 i { display:block; height:100%; background:var(--accent); border-radius:2px; }
+.acts5 { grid-template-columns:repeat(5,1fr) !important; }
+.cast img { background:var(--elevated); }
+body > .bar { position:fixed; top:0; left:0; right:0; z-index:9; height:104px; padding-top:54px; background:rgb(58,42,30); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:17px; border-bottom:1px solid rgba(255,255,255,.08); }
+.bar .x { position:absolute; left:16px; top:58px; font-size:22px; }
+.bar .st { position:absolute; top:14px; left:24px; right:24px; display:flex; justify-content:space-between; font-weight:700; font-size:15px; }
+.scroll { margin-top:-1100px; } .scroll > *:not(.ambient) { position:relative; z-index:1; }
+</style></head><body><div class="bar"><div class="st"><span>9:41</span><span style="font-size:14px">100%</span></div><span class="x"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></span>Caminandes</div><div class="scroll">
+<div class="ambient"><img src="caminandes-poster.jpg"></div>
+<div class="hero"><img src="caminandes-poster.jpg" style="object-position:50% 0%; height:545px; -webkit-mask-image:linear-gradient(180deg,#000 70%,transparent 97%); mask-image:linear-gradient(180deg,#000 70%,transparent 97%)"><div class="scrim"></div>
+  <div class="status"><span>9:41</span><div class="island"></div><span style="font-size:14px">100%</span></div>
+  <div class="circ" style="left:var(--inset)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></div>
+  <div class="circ" style="right:var(--inset)"><svg class="ic" viewBox="0 0 24 24" fill="#fff"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></div>
+  
+  <div class="meta"><span>2013–2016</span><span class="dot">·</span><span>1 seizoen</span><span class="dot">·</span><span>Animatie, Komedie</span><span class="box">AL</span></div>
+  <div class="rates">
+    <span class="r"><img src="imdb.svg">7.6</span><span class="r"><img src="rt_fresh.svg">100%</span><span class="r"><img src="rt_upright.svg">91%</span><span class="r"><img src="tmdb.svg" class="w">78%</span>
+  </div>
+</div>
+<div class="pad">
+  <div class="cta">
+    <div class="play"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" style="font-size:18px"><path d="M7 4v16l13-8z"/></svg>Verder <small>· S1 A3 · nog 4 min</small></div>
+    <div class="restart"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M10 9v6l5-3z" fill="#fff" stroke="none"/></svg></div>
+  </div>
+  <div class="acts acts5">
+    <div><span class="i"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></span>Kijklijst</div>
+    <div><span class="i"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9v6l5-3z" fill="#fff"/></svg></span>Trailer</div>
+    <div><span class="i"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/></svg></span>Beoordeel</div>
+    <div><span class="i"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-5.5"/></svg></span>Bekeken</div>
+    <div><span class="i"><svg class="ic" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>Meer</div>
+  </div>
+  <div class="src"><span>Bron</span>NAS · Series<b>Wijzigen</b></div>
+  <div class="act">
+    <div class="av"><img src="avatar.jpg"><i style="background:#3B6E8F">R</i></div>
+    <div><b>Jij en Robin kijken deze serie</b><span>Jij bent bij S1 A3 · Robin heeft alles gezien · 9× afgespeeld</span></div>
+  </div>
+  <p class="syn">Koro de lama wil maar één ding: het gras aan de overkant. Tussen hem en dat gras staan een hek, een weg en een pinguïn met dezelfde honger… <em>meer</em></p>
+  <p class="dir"><b>Gemaakt door</b> Pablo Vazquez · <b>Studio</b> Blender Institute</p>
+  <h2>2 seizoenen</h2>
+  <div class="rail pos seas">
+    <div><img src="caminandes-poster.jpg" style="object-position:30% 50%"><div class="bar2"><i style="width:70%"></i></div>Seizoen 1<br><span>3 afleveringen · 1 nog te zien</span></div>
+    <div><img src="caminandes-poster.jpg" style="object-position:80% 50%"><span class="badge">2</span>Specials<br><span>2 afleveringen</span></div>
+  </div>
+  <h2>Cast &amp; crew<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></h2>
+  <div class="rail cast">
+    <div><i>PV</i><b>Pablo Vazquez</b><span>Regie</span></div>
+    <div><i>JM</i><b>Jan Morgenstern</b><span>Muziek</span></div>
+    <div><i>BL</i><b>Beorn Leonard</b><span>Animatie</span></div>
+    <div><i>HH</i><b>Hjalti Hjálmarsson</b><span>Animatie</span></div>
+  </div>
+  <h2>Recensies</h2>
+  <div class="rail rev">
+    <div><b>Filmkrant</b><span>Recensie · 4/5</span>Drie korte films, één lama en geen woord dialoog. Het werkt elke keer weer.</div>
+    <div><b>Animatieblog</b><span>Recensie · 88%</span>De derde aflevering is de sterkste van de reeks…</div>
+  </div>
+  <h2>Trailers &amp; extra's</h2>
+  <div class="rail ext">
+    <div><img src="caminandes-poster.jpg" style="height:140px;object-position:50% 40%">Caminandes: Llamigos<br><span>Trailer</span></div>
+    <div><img src="bbb-wide.jpg">Zo maak je een open film<br><span>Achter de schermen</span></div>
+  </div>
+  <h2>Verwante series<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></h2>
+  <div class="rail pos">
+    <div><img src="spring-poster.jpg"><span class="badge">8</span>Spring<br><span>1 seizoen</span></div>
+    <div><img src="coffeerun-poster.jpg"><span class="badge">12</span>Coffee Run<br><span>2 seizoenen</span></div>
+    <div><img src="dweebs-poster.jpg"><span class="badge">6</span>Sprite Fright<br><span>1 seizoen</span></div>
+  </div>
+  <h2>Meer met Pablo Vazquez<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></h2>
+  <div class="rail pos">
+    <div><img src="charge-poster.jpg">Charge<br><span>2022</span></div>
+    <div><img src="elephants-poster.jpg">Elephants Dream<br><span>2006</span></div>
+    <div><img src="tears-poster.jpg">Tears of Steel<br><span>2012</span></div>
+  </div>
+  <div class="end"></div>
+</div>
+</div></body></html>

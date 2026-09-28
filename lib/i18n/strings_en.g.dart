@@ -50,6 +50,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsSearchEn search = TranslationsSearchEn.internal(_root);
 	late final TranslationsHotkeysEn hotkeys = TranslationsHotkeysEn.internal(_root);
 	late final TranslationsFileInfoEn fileInfo = TranslationsFileInfoEn.internal(_root);
+	late final TranslationsDetailActionsEn detailActions = TranslationsDetailActionsEn.internal(_root);
 	late final TranslationsMediaMenuEn mediaMenu = TranslationsMediaMenuEn.internal(_root);
 	late final TranslationsRateSheetEn rateSheet = TranslationsRateSheetEn.internal(_root);
 	late final TranslationsAccessibilityEn accessibility = TranslationsAccessibilityEn.internal(_root);
@@ -1420,6 +1421,33 @@ class TranslationsFileInfoEn {
 	String get has64bitOffsets => '64-bit Offsets';
 }
 
+// Path: detailActions
+class TranslationsDetailActionsEn {
+	TranslationsDetailActionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Watchlist'
+	String get watchlist => 'Watchlist';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Rate'
+	String get rate => 'Rate';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'Download'
+	String get download => 'Download';
+
+	/// en: 'More'
+	String get more => 'More';
+}
+
 // Path: mediaMenu
 class TranslationsMediaMenuEn {
 	TranslationsMediaMenuEn.internal(this._root);
@@ -2523,6 +2551,63 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+
+	/// en: 'Played ${count}×'
+	String activityPlays({required Object count}) => 'Played ${count}×';
+
+	/// en: '${count} viewers'
+	String activityViewers({required Object count}) => '${count} viewers';
+
+	/// en: 'You're at S${season} E${episode}'
+	String activityOwnProgress({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}';
+
+	/// en: 'Subtitles'
+	String get techSubtitles => 'Subtitles';
+
+	/// en: 'Next episode · S${season} E${episode}'
+	String techEpisode({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}';
+
+	/// en: '(one) {1 season} (other) {${n} seasons}'
+	String seasonsHeading({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 season',
+		other: '${n} seasons',
+	);
+
+	/// en: '(one) {1 episode} (other) {${n} episodes}'
+	String seasonEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 episode',
+		other: '${n} episodes',
+	);
+
+	/// en: '${count} left to watch'
+	String seasonEpisodesLeft({required Object count}) => '${count} left to watch';
+
+	/// en: '${title} · applies to this film'
+	String trackScopeMovie({required Object title}) => '${title} · applies to this film';
+
+	/// en: '${title} · for this series'
+	String trackScopeSeries({required Object title}) => '${title} · for this series';
+
+	/// en: 'Your choice is remembered and used when you press Resume or Play.'
+	String get trackChoiceNote => 'Your choice is remembered and used when you press Resume or Play.';
+
+	/// en: 'Not remembered. Applies when you play from this page; your profile language comes first.'
+	String get trackChoiceNoteOnce => 'Not remembered. Applies when you play from this page; your profile language comes first.';
+
+	/// en: 'Rotten Tomatoes critics'
+	String get scoreRtCritics => 'Rotten Tomatoes critics';
+
+	/// en: 'Rotten Tomatoes audience'
+	String get scoreRtAudience => 'Rotten Tomatoes audience';
+
+	/// en: 'Community score'
+	String get scoreCommunity => 'Community score';
+
+	/// en: 'Reviews'
+	String get reviews => 'Reviews';
+
+	/// en: 'Read at source'
+	String get reviewOpenSource => 'Read at source';
 }
 
 // Path: mobileDetail
@@ -5470,6 +5555,9 @@ class TranslationsSourcePickerEn {
 	/// en: 'Manage servers'
 	String get manageServers => 'Manage servers';
 
+	/// en: 'Source'
+	String get source => 'Source';
+
 	/// en: 'Source: ${source}'
 	String sourceLabel({required Object source}) => 'Source: ${source}';
 
@@ -7591,6 +7679,12 @@ extension on Translations {
 			'fileInfo.duration' => 'Duration',
 			'fileInfo.optimizedForStreaming' => 'Optimized for Streaming',
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
+			'detailActions.watchlist' => 'Watchlist',
+			'detailActions.trailer' => 'Trailer',
+			'detailActions.rate' => 'Rate',
+			'detailActions.watched' => 'Watched',
+			'detailActions.download' => 'Download',
+			'detailActions.more' => 'More',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -7654,14 +7748,14 @@ extension on Translations {
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playNext' => 'Play Next',
 			'videoControls.nextEpisode' => 'Next Episode',
 			'videoControls.skipIntro' => 'Skip Intro',
 			'videoControls.skipCredits' => 'Skip Credits',
 			'videoControls.playButton' => 'Play',
 			'videoControls.pauseButton' => 'Pause',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Seek forward ${seconds} seconds',
 			'videoControls.previousButton' => 'Previous episode',
@@ -7965,6 +8059,23 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
+			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
+			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
+			'discover.techSubtitles' => 'Subtitles',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}',
+			'discover.seasonsHeading' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 season', other: '${n} seasons', ), 
+			'discover.seasonEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 episode', other: '${n} episodes', ), 
+			'discover.seasonEpisodesLeft' => ({required Object count}) => '${count} left to watch',
+			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
+			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
+			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
+			'discover.trackChoiceNoteOnce' => 'Not remembered. Applies when you play from this page; your profile language comes first.',
+			'discover.scoreRtCritics' => 'Rotten Tomatoes critics',
+			'discover.scoreRtAudience' => 'Rotten Tomatoes audience',
+			'discover.scoreCommunity' => 'Community score',
+			'discover.reviews' => 'Reviews',
+			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
 			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
@@ -8151,6 +8262,8 @@ extension on Translations {
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
 			'watchlist.sortTitle' => 'Title',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
 			'watchlist.coverageIncompleteList' => 'One of your servers could not be reached, so this list may be incomplete.',
@@ -8174,8 +8287,6 @@ extension on Translations {
 			'liveTv.live' => 'LIVE',
 			'liveTv.reloadGuide' => 'Reload Guide',
 			'liveTv.now' => 'Now',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.today' => 'Today',
 			'liveTv.tomorrow' => 'Tomorrow',
 			'liveTv.midnight' => 'Midnight',
@@ -8665,6 +8776,8 @@ extension on Translations {
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
 			'matchScreen.fixMatch' => 'Fix Match...',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
 			'matchScreen.unmatchSuccess' => 'Item unmatched',
@@ -8688,8 +8801,6 @@ extension on Translations {
 			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
 			'seerr.authLocal' => 'Email and password',
 			'seerr.authApiKey' => 'API key',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.email' => 'Email',
 			'seerr.password' => 'Password',
 			'seerr.apiKey' => 'API key',
@@ -8980,6 +9091,7 @@ extension on Translations {
 			'sourcePicker.noneReachableTitle' => 'No source is currently reachable.',
 			'sourcePicker.reauthRequiredTitle' => 'Sign in again to reach this title.',
 			'sourcePicker.manageServers' => 'Manage servers',
+			'sourcePicker.source' => 'Source',
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
 			'sourcePicker.change' => 'Change',
 			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
@@ -9178,6 +9290,8 @@ extension on Translations {
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya profile: ${value}',
 			'languageSettings.useGlobal' => 'Use global preference',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'clears this series preference',
 			'languageSettings.sheetFooter' => 'You pick a different language while watching, in the info panel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}',

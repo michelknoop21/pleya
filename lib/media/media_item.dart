@@ -6,8 +6,10 @@ import 'ids.dart';
 import '../services/settings_service.dart' show EpisodePosterMode;
 import '../utils/global_key_utils.dart';
 import '../utils/json_utils.dart';
+import 'external_rating.dart';
 import 'media_backend.dart';
 import 'media_kind.dart';
+import 'media_review.dart';
 import 'media_role.dart';
 import 'media_version.dart';
 
@@ -383,6 +385,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -455,6 +459,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -522,6 +528,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -587,6 +595,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,

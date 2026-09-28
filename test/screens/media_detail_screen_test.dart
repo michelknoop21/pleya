@@ -15,11 +15,14 @@ import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_file_info.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_review.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_availability.dart';
@@ -42,6 +45,10 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/providers/watchlist_store.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_activity_card.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_seasons_rail.dart';
+import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
@@ -52,6 +59,13 @@ import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/track_preference_store.dart';
+import 'package:pleya/utils/video_player_navigation.dart';
+import 'package:pleya/screens/video_player_screen.dart';
+import 'package:pleya/media/pleya_profile_language_preferences.dart';
+import 'package:pleya/services/pleya_profile_language_preference_store.dart';
+import 'package:pleya/services/offline_watch_sync_service.dart';
+import 'package:pleya/services/pleya_share/pleya_share_device_name.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/collapsible_text.dart';
@@ -1069,6 +1083,13 @@ void main() {
       // phone size/ratio; every other caller keeps today's values unchanged.
       Size viewSize = const Size(1100, 2400),
       double devicePixelRatio = 1,
+      bool isOffline = false,
+      bool withWatchlist = false,
+      List<NavigatorObserver> navigatorObservers = const [],
+      // Routes pushed from the page need the scope above the navigator, the
+      // way the app's profile navigator has it.
+      bool scopeAboveNavigator = false,
+      ThemeData? theme,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1092,9 +1113,21 @@ void main() {
       final manager = MultiServerManager()..debugRegisterClientForTesting(client);
       final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       final watchStateOverlay = WatchStateStore();
+      final offlineWatchSync = OfflineWatchSyncService(database: db, serverManager: manager);
+      final watchlistProvider = withWatchlist
+          ? WatchlistProvider(
+              snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
+              repository: WatchlistRepository(sources: [_CountingWatchlistSource()]),
+            )
+          : null;
+      final watchlistStore = WatchlistStore();
+      if (watchlistProvider != null) await tester.runAsync(watchlistProvider.load);
 
       addTearDown(() async {
         watchStateOverlay.dispose();
+        offlineWatchSync.dispose();
+        watchlistProvider?.dispose();
+        watchlistStore.dispose();
         downloadProvider.dispose();
         downloadManager.dispose();
         multiServerProvider.dispose();
@@ -1108,13 +1141,22 @@ void main() {
               ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
               ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
               ChangeNotifierProvider<WatchStateStore>.value(value: watchStateOverlay),
+              ChangeNotifierProvider<OfflineWatchSyncService>.value(value: offlineWatchSync),
+              if (watchlistProvider != null) ...[
+                ChangeNotifierProvider<WatchlistProvider>.value(value: watchlistProvider),
+                ChangeNotifierProvider<WatchlistStore>.value(value: watchlistStore),
+              ],
             ],
             child: MaterialApp(
-              builder: withNoticeLayer(),
-              theme: monoTheme(dark: true),
+              builder: scopeAboveNavigator
+                  ? (context, child) => withProfileNavigationScope(child: withNoticeLayer()(context, child))
+                  : withNoticeLayer(),
+              theme: theme ?? monoTheme(dark: true),
+              navigatorObservers: navigatorObservers,
               home: withProfileNavigationScope(
                 child: MediaDetailScreen(
                   metadata: show,
+                  isOffline: isOffline,
                   initialSeasonId: initialSeasonId,
                   initialSeasonIndex: initialSeasonIndex,
                   initialEpisodeId: initialEpisodeId,
@@ -1573,41 +1615,225 @@ void main() {
         expect(find.textContaining('YXCV_FULL_SYNOPSIS_TAIL_MARKER'), findsOneWidget);
       });
 
-      testWidgets('switching season on the season-picker chip survives an unrelated rebuild', (tester) async {
+      testWidgets('choosing an audio track stores it and does not start playback', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_audio_choice',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(
+          show: movie,
+          childrenByParent: const {},
+          fileInfo: MediaFileInfo(
+            audioTracks: [
+              MediaAudioTrack(id: 1, languageCode: 'eng', codec: 'aac', channels: 2, selected: true),
+              MediaAudioTrack(id: 2, languageCode: 'nld', codec: 'eac3', channels: 6, selected: false),
+            ],
+          ),
+        );
+        final routes = _RouteLog();
+        TrackPreferenceStore.resetForTesting();
+        TrackPreferenceStore.deviceNameProvider = () async => 'Test';
+        addTearDown(() => TrackPreferenceStore.deviceNameProvider = pleyaShareDeviceName);
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          navigatorObservers: [routes],
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final audioRow = find.text('English (AAC Stereo)');
+        await tester.ensureVisible(audioRow);
+        await tester.pumpAndSettle();
+        final pushesBefore = routes.pushes;
+        await tester.tap(audioRow);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dutch'));
+        // The store writes through shared preferences, which only complete
+        // on real async.
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+
+        expect(routes.pushes, pushesBefore, reason: 'a choice is remembered, the player is not opened');
+        expect(find.text('Dutch (EAC3 5.1)'), findsOneWidget);
+        final stored = await tester.runAsync(() => TrackPreferenceStore.read(movie));
+        expect(stored?.audioLanguage, 'nld');
+      });
+
+      testWidgets('with remembering off, the picked track still reaches the player (I1)', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_audio_remember_off',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(
+          show: movie,
+          childrenByParent: const {},
+          fileInfo: MediaFileInfo(
+            audioTracks: [
+              MediaAudioTrack(id: 1, languageCode: 'eng', codec: 'aac', channels: 2, selected: true),
+              MediaAudioTrack(id: 2, languageCode: 'nld', codec: 'eac3', channels: 6, selected: false),
+            ],
+          ),
+        );
+        final player = _PlayerRouteSpy();
+        TrackPreferenceStore.resetForTesting();
+        TrackPreferenceStore.deviceNameProvider = () async => 'Test';
+        addTearDown(() => TrackPreferenceStore.deviceNameProvider = pleyaShareDeviceName);
+        await tester.runAsync(
+          () => PleyaProfileLanguagePreferenceStore.write(
+            const PleyaProfileLanguagePreferences(rememberPerSeries: false),
+          ),
+        );
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          navigatorObservers: [player],
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final audioRow = find.text('English (AAC Stereo)');
+        await tester.ensureVisible(audioRow);
+        await tester.pumpAndSettle();
+        await tester.tap(audioRow);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dutch'));
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        expect(player.screens, isEmpty, reason: 'choosing never starts playback');
+        final stored = await tester.runAsync(() => TrackPreferenceStore.read(movie));
+        expect(stored?.audioLanguage, isNull, reason: 'the switch is off, so the store keeps nothing');
+
+        final play = find.byKey(const Key('media-detail.play'));
+        await tester.ensureVisible(play);
+        await tester.pumpAndSettle();
+        await tester.tap(play);
+        for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+
+        expect(player.screens, hasLength(1));
+        final audio = player.screens.single.preferredAudioTrack;
+        expect(audio?.id, '2');
+        expect(audio?.language, 'nld');
+        expect(player.screens.single.preferredSubtitleTrack, isNull, reason: 'no subtitle was picked');
+      });
+
+      testWidgets('a Jellyfin item shows no activity card', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_jellyfin_activity',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Dune: Part Two',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        expect(find.byType(MobilePosterHero), findsOneWidget, reason: 'the northstar mobile view must be showing');
+        expect(find.byType(DetailActivityCard), findsOneWidget, reason: 'the card is wired into the mobile view');
+        expect(
+          find.descendant(of: find.byType(DetailActivityCard), matching: find.byType(Text)),
+          findsNothing,
+          reason: 'watchers are Plex-only, so a Jellyfin item has nothing to show',
+        );
+      });
+
+      testWidgets('a series lists its seasons as a poster rail; a tap opens a new page (DEC-140)', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
         final season2 = buildSeason(show, 2);
-        final episode1 = buildEpisode(show, season1, 1);
-        final episode2 = buildEpisode(show, season2, 1);
         final client = _FakeMediaServerClient(
           show: show,
           childrenByParent: {
             show.id: [season1, season2],
-            season1.id: [episode1],
-            season2.id: [episode2],
+            season1.id: [buildEpisode(show, season1, 1)],
+            season2.id: [buildEpisode(show, season2, 1)],
+          },
+        );
+        final routes = _RouteLog();
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          show,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          navigatorObservers: [routes],
+          scopeAboveNavigator: true,
+        );
+
+        expect(find.byType(DetailSeasonsRail), findsOneWidget);
+        expect(find.byType(PopupMenuButton<int>), findsNothing, reason: 'the season pill is gone');
+        expect(find.text('Episode S1E1'), findsNothing, reason: 'episodes live on the season page');
+
+        final poster = find.byKey(const ValueKey('season-poster-season_2'));
+        await tester.ensureVisible(poster);
+        await tester.pump();
+        final pushesBefore = routes.pushes;
+        await tester.tap(poster);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+
+        expect(routes.pushes, pushesBefore + 1);
+        // The iPhone opens the season itself, not the series at that season.
+        final opened = tester.widgetList<MediaDetailScreen>(find.byType(MediaDetailScreen, skipOffstage: false)).last;
+        expect(opened.metadata.id, 'season_2');
+        expect(opened.initialSeasonIndex, isNull);
+      });
+
+      testWidgets('a season page shows its episodes without a season pill and plays the next one (DEC-140)', (
+        tester,
+      ) async {
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final watched = buildEpisode(show, season1, 1).copyWith(viewCount: 1);
+        final next = buildEpisode(show, season1, 2);
+        final client = _FakeMediaServerClient(
+          show: season1,
+          childrenByParent: {
+            season1.id: [watched, next],
           },
         );
 
-        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+        await pumpPhoneDetail(
+          tester,
+          client,
+          season1,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+        );
 
+        expect(find.byType(MobilePosterHero), findsOneWidget);
+        expect(find.byType(DetailSeasonsRail), findsNothing);
+        expect(find.byType(PopupMenuButton<int>), findsNothing);
+        expect(find.text('Episodes'), findsOneWidget);
         expect(find.text('Episode S1E1'), findsOneWidget);
-        expect(find.text('Episode S2E1'), findsNothing);
-
-        await tester.tap(find.byType(PopupMenuButton<int>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Season 2').last);
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-
-        expect(find.text('Episode S2E1'), findsOneWidget);
-        expect(find.text('Episode S1E1'), findsNothing);
-
-        // A rebuild from something entirely unrelated to season selection
-        // (a watch-state event on the show) must not reset _selectedSeasonIndex.
-        await emit(tester, () => WatchStateNotifier().notifyWatched(item: show, isNowWatched: false));
-
-        expect(find.text('Episode S2E1'), findsOneWidget);
-        expect(find.text('Episode S1E1'), findsNothing);
+        expect(find.text('Episode S1E2'), findsOneWidget);
+        expect(find.textContaining('S1E2'), findsWidgets, reason: 'the main button names the next episode');
       });
 
       MediaItem buildMovie() => MediaItem(
@@ -1623,7 +1849,7 @@ void main() {
       Color? capsuleColour(WidgetTester tester, Finder button) =>
           tester.widgetList<Material>(find.descendant(of: button, matching: find.byType(Material))).last.color;
 
-      testWidgets('a series gets the film header and its episodes inline, no tabs (DEC-131)', (tester) async {
+      testWidgets('a series gets the film header and its seasons rail, no tabs (DEC-131, DEC-140)', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
         final client = _FakeMediaServerClient(
@@ -1636,73 +1862,262 @@ void main() {
 
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // App bar title plus the headline under the preview card, like a film.
-        expect(find.text('The Show'), findsNWidgets(2));
-        // On a series, downloading is per episode row, not a full-width CTA.
-        expect(find.widgetWithText(FilledButton, 'Download'), findsNothing);
-        // No tab strip: the action row and the episodes block sit on the page.
+        // No poster in this fixture: the hero shows the title as text, once (DEC-140).
+        expect(find.text('The Show'), findsOneWidget);
+        // On a series, downloading is per episode row, not in the action row.
+        expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
+        // No tab strip: the action row and the seasons rail sit on the page.
         expect(find.byType(TabBar), findsNothing);
-        expect(find.text('Share'), findsOneWidget);
-        expect(find.text('Episodes'), findsOneWidget);
-        // The season pill and its count show for a one-season series too.
-        expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+        expect(find.byKey(const Key('media-detail.action.more')), findsOneWidget);
+        // One season is one poster (Review Focus 4).
+        expect(find.byType(DetailSeasonsRail), findsOneWidget);
+        expect(find.text('1 season'), findsOneWidget);
         expect(find.text('Season 1'), findsOneWidget);
-        expect(find.text('Episode S1E1'), findsOneWidget);
+        expect(find.byType(PopupMenuButton<int>), findsNothing);
       });
 
-      testWidgets('a film keeps its preview, second title and Download capsule (mockup 06)', (tester) async {
+      testWidgets('the page opens on the poster hero over the ambient background, no 16:9 card (DEC-140)', (
+        tester,
+      ) async {
+        final movie = MediaItem(
+          id: 'movie_poster',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Dune: Part Two',
+          thumbPath: 'https://x/poster.jpg',
+          artPath: 'https://x/art.jpg',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        expect(find.byType(MobilePosterHero), findsOneWidget);
+        expect(find.byType(DetailAmbientBackground), findsOneWidget);
+        expect(find.byWidgetPredicate((w) => w is AspectRatio && w.aspectRatio == 16 / 9), findsNothing);
+        // The hero runs behind the status bar.
+        expect(tester.getRect(find.byType(MobilePosterHero)).top, 0);
+      });
+
+      // The back/more glyphs and the meta line sit over the poster and its
+      // fade into the page colour: dark ink on the light page, white on dark.
+      for (final (name, theme) in [
+        ('light', monoTheme(dark: false)),
+        ('dark', monoTheme(dark: true)),
+        ('oled', monoTheme(dark: true, oled: true)),
+      ]) {
+        testWidgets('hero bar glyphs and meta line follow the $name theme (DEC-140)', (tester) async {
+          final movie = MediaItem(
+            id: 'movie_theme',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.movie,
+            title: 'Dune: Part Two',
+            year: 2024,
+            thumbPath: 'https://x/poster.jpg',
+            artPath: 'https://x/art.jpg',
+            serverId: 'server_1',
+            serverName: 'Server',
+          );
+          final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            movie,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            theme: theme,
+          );
+
+          final ink = name == 'light' ? theme.colorScheme.onSurface : Colors.white;
+          expect(find.byType(MobilePosterHero), findsOneWidget);
+          expect(tester.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color, ink);
+          expect(tester.widget<Icon>(find.byIcon(Icons.more_horiz_rounded)).color, ink);
+          expect(tester.widget<Text>(find.text('2024')).style?.color, ink);
+        });
+      }
+
+      testWidgets('a film keeps its title and a white play button (D-01)', (tester) async {
         final movie = buildMovie();
         final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
 
         await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // App bar title plus the headline under the preview card.
-        expect(find.text('Dune: Part Two'), findsNWidgets(2));
-        expect(find.widgetWithText(FilledButton, 'Download'), findsOneWidget);
+        // No poster in this fixture: the hero shows the title as text, once (DEC-140).
+        expect(find.text('Dune: Part Two'), findsOneWidget);
         expect(find.byType(TabBar), findsNothing);
+        final tk = tokens(tester.element(find.text('Dune: Part Two').first));
+        final play = find.descendant(
+          of: find.byKey(const Key('media-detail.play')),
+          matching: find.byType(FilledButton),
+        );
+        expect(capsuleColour(tester, play), tk.text);
+        // No progress: no restart button.
+        expect(find.byKey(const Key('media-detail.play-from-start')), findsNothing);
       });
 
-      testWidgets('the Download capsule is a grey surface, not the primary white', (tester) async {
+      List<String> actionKeys(WidgetTester tester) => tester
+          .widgetList<InkWell>(find.byType(InkWell))
+          .map((w) => w.key)
+          .whereType<ValueKey<String>>()
+          .map((k) => k.value)
+          .where((v) => v.startsWith('media-detail.action.'))
+          .toList();
+
+      testWidgets('a film shows six actions in the D-01 order', (tester) async {
+        final movie = buildMovie();
+        final trailer = MediaItem(
+          id: 'trailer_1',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.clip,
+          title: 'Trailer',
+          raw: const {'ExtraType': 'Trailer'},
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {}, extras: [trailer]);
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+        );
+
+        expect(actionKeys(tester), [
+          'media-detail.action.watchlist',
+          'media-detail.action.trailer',
+          'media-detail.action.rate',
+          'media-detail.action.watched',
+          'media-detail.action.download',
+          'media-detail.action.more',
+        ]);
+        // The trailer moved from the app bar into the row.
+        expect(find.byTooltip(t.tooltips.playTrailer), findsNothing);
+      });
+
+      testWidgets('a film without a trailer leaves the trailer action out', (tester) async {
         final movie = buildMovie();
         final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
 
-        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+        );
 
-        final tk = tokens(tester.element(find.text('Dune: Part Two').first));
-        final primary = capsuleColour(tester, find.widgetWithText(FilledButton, 'Play'));
-        final download = capsuleColour(tester, find.widgetWithText(FilledButton, 'Download'));
-
-        // monoTheme's filledButtonTheme paints every FilledButton c.text, so
-        // the tonal variant used to come out pure white — the same capsule as
-        // the primary directly above it.
-        expect(primary, tk.text);
-        expect(download, tk.surfaceElevated);
-        expect(download, isNot(primary));
+        expect(actionKeys(tester), [
+          'media-detail.action.watchlist',
+          'media-detail.action.rate',
+          'media-detail.action.watched',
+          'media-detail.action.download',
+          'media-detail.action.more',
+        ]);
       });
 
-      testWidgets('the season pill sits on an elevated surface, not the page colour', (tester) async {
+      testWidgets('cast, reviews and extras follow the D-01 order', (tester) async {
+        final movie =
+            MediaItem(
+              id: 'movie_header',
+              backend: MediaBackend.jellyfin,
+              kind: MediaKind.movie,
+              title: 'Dune: Part Two',
+              serverId: 'server_1',
+              serverName: 'Server',
+              roles: const [MediaRole(tag: 'Roger Actor', role: 'Hero')],
+            ).copyWith(
+              reviews: const [MediaReview(author: 'Mike Clark', text: 'Just another retread.', source: 'USA Today')],
+            );
+        final trailer = MediaItem(
+          id: 'trailer_1',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.clip,
+          title: 'Trailer',
+          raw: const {'ExtraType': 'Trailer'},
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {}, extras: [trailer]);
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        double top(String text) => tester.getTopLeft(find.text(text)).dy;
+        expect(top(t.discover.cast), lessThan(top(t.discover.reviews)));
+        expect(top(t.discover.reviews), lessThan(top(t.discover.extras)));
+        expect(find.text('Mike Clark'), findsOneWidget);
+      });
+
+      testWidgets('a series shows five actions, no download', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
-        final season2 = buildSeason(show, 2);
+        final trailer = MediaItem(
+          id: 'trailer_show',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.clip,
+          title: 'Trailer',
+          raw: const {'ExtraType': 'Trailer'},
+        );
         final client = _FakeMediaServerClient(
           show: show,
           childrenByParent: {
-            show.id: [season1, season2],
+            show.id: [season1],
             season1.id: [buildEpisode(show, season1, 1)],
-            season2.id: [buildEpisode(show, season2, 1)],
           },
+          extras: [trailer],
         );
 
-        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+        await pumpPhoneDetail(
+          tester,
+          client,
+          show,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+        );
 
-        final pill = find.descendant(of: find.byType(PopupMenuButton<int>), matching: find.byType(Container)).first;
-        final decoration = tester.widget<Container>(pill).decoration as BoxDecoration;
-        final tk = tokens(tester.element(pill));
+        expect(actionKeys(tester), [
+          'media-detail.action.watchlist',
+          'media-detail.action.trailer',
+          'media-detail.action.rate',
+          'media-detail.action.watched',
+          'media-detail.action.more',
+        ]);
+      });
 
-        // secondaryContainer collapses onto c.surface under monoTheme, which
-        // drew this pill in the exact colour of the page behind it.
-        expect(decoration.color, tk.surfaceElevated);
-        expect(decoration.color, isNot(tk.surface));
+      testWidgets('offline (Review Focus 5): no rate action, play stays', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+          isOffline: true,
+        );
+
+        expect(find.byKey(const Key('media-detail.play')), findsOneWidget);
+        expect(find.byKey(const Key('media-detail.action.rate')), findsNothing);
+        expect(find.byKey(const Key('media-detail.action.watched')), findsOneWidget);
+      });
+
+      testWidgets('Meer opens the context menu with Share', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        final more = find.byKey(const Key('media-detail.action.more'));
+        await tester.ensureVisible(more);
+        await tester.pump();
+        await tester.tap(more);
+        await tester.pumpAndSettle();
+
+        expect(find.text(t.common.share), findsOneWidget);
       });
 
       testWidgets('a series shows its description and the information around it on the page (DEC-131)', (tester) async {
@@ -1750,7 +2165,7 @@ void main() {
         expect(find.text('Rate'), findsOneWidget);
       });
 
-      testWidgets('NL: the episodes block reads Afleveringen and no tab labels are left (DEC-131)', (tester) async {
+      testWidgets('NL: the seasons rail reads 1 seizoen and no tab labels are left (DEC-131, DEC-140)', (tester) async {
         // nl is a deferred library (slang lazy loading): loading it for real
         // needs the real event loop, not testWidgets' fake-async zone.
         await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
@@ -1769,7 +2184,7 @@ void main() {
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
         expect(find.byType(TabBar), findsNothing);
-        expect(find.text('Afleveringen'), findsOneWidget);
+        expect(find.text('1 seizoen'), findsOneWidget);
         expect(find.text('Vergelijkbaar'), findsNothing);
         expect(find.text('Details'), findsNothing);
       });
@@ -3467,6 +3882,7 @@ class _FakeMediaServerClient implements MediaServerClient {
   final Map<String, Object> childrenPageErrors;
   final Future<List<MediaItem>>? pendingPlayableDescendants;
   final List<MediaItem> extras;
+  final MediaFileInfo? fileInfo;
   final childrenPageCalls = <({String parentId, int? start, int? size})>[];
   final fetchItemCalls = <String>[];
 
@@ -3477,12 +3893,16 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.childrenPageErrors = const {},
     this.pendingPlayableDescendants,
     this.extras = const [],
+    this.fileInfo,
     this.id = 'server_1',
     this.name = 'Server',
   });
 
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => extras;
+
+  @override
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfo;
 
   /// D14 mounts two of these at once, so the server a fake speaks for has to
   /// be a parameter rather than a constant.
@@ -3556,6 +3976,10 @@ class _FakeMediaServerClient implements MediaServerClient {
     return null;
   }
 
+  // The poster hero sizes absolute artwork URLs through the client.
+  @override
+  String externalImageUrl(String url, {int? width, int? height}) => url;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -3595,4 +4019,20 @@ class _RouteLog extends NavigatorObserver {
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => pops++;
+}
+
+/// Records the [VideoPlayerScreen] a push would build, then drops the route:
+/// a real player would start mpv, and the claim is about what it was handed.
+class _PlayerRouteSpy extends NavigatorObserver {
+  final screens = <VideoPlayerScreen>[];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is! PageRouteBuilder || route.settings.name != kVideoPlayerRouteName) return;
+    screens.add(
+      route.pageBuilder(route.navigator!.context, kAlwaysCompleteAnimation, kAlwaysCompleteAnimation)
+          as VideoPlayerScreen,
+    );
+    scheduleMicrotask(() => route.navigator?.removeRoute(route));
+  }
 }

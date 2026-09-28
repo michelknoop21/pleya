@@ -49,6 +49,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsSearchNl search = _TranslationsSearchNl._(_root);
 	@override late final _TranslationsHotkeysNl hotkeys = _TranslationsHotkeysNl._(_root);
 	@override late final _TranslationsFileInfoNl fileInfo = _TranslationsFileInfoNl._(_root);
+	@override late final _TranslationsDetailActionsNl detailActions = _TranslationsDetailActionsNl._(_root);
 	@override late final _TranslationsMediaMenuNl mediaMenu = _TranslationsMediaMenuNl._(_root);
 	@override late final _TranslationsRateSheetNl rateSheet = _TranslationsRateSheetNl._(_root);
 	@override late final _TranslationsAccessibilityNl accessibility = _TranslationsAccessibilityNl._(_root);
@@ -604,6 +605,21 @@ class _TranslationsFileInfoNl extends TranslationsFileInfoEn {
 	@override String get has64bitOffsets => '64-bit Offsets';
 }
 
+// Path: detailActions
+class _TranslationsDetailActionsNl extends TranslationsDetailActionsEn {
+	_TranslationsDetailActionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watchlist => 'Kijklijst';
+	@override String get trailer => 'Trailer';
+	@override String get rate => 'Beoordeel';
+	@override String get watched => 'Bekeken';
+	@override String get download => 'Downloaden';
+	@override String get more => 'Meer';
+}
+
 // Path: mediaMenu
 class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	_TranslationsMediaMenuNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -1049,6 +1065,29 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
+	@override String activityViewers({required Object count}) => '${count} kijkers';
+	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
+	@override String get techSubtitles => 'Ondertiteling';
+	@override String techEpisode({required Object season, required Object episode}) => 'Volgende aflevering · S${season} A${episode}';
+	@override String seasonsHeading({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 seizoen',
+		other: '${n} seizoenen',
+	);
+	@override String seasonEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 aflevering',
+		other: '${n} afleveringen',
+	);
+	@override String seasonEpisodesLeft({required Object count}) => '${count} nog te zien';
+	@override String trackScopeMovie({required Object title}) => '${title} · geldt voor deze film';
+	@override String trackScopeSeries({required Object title}) => '${title} · voor deze serie';
+	@override String get trackChoiceNote => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.';
+	@override String get trackChoiceNoteOnce => 'Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.';
+	@override String get scoreRtCritics => 'Rotten Tomatoes, critici';
+	@override String get scoreRtAudience => 'Rotten Tomatoes, publiek';
+	@override String get scoreCommunity => 'Communityscore';
+	@override String get reviews => 'Recensies';
+	@override String get reviewOpenSource => 'Lees bij de bron';
 }
 
 // Path: mobileDetail
@@ -2247,6 +2286,7 @@ class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
 	@override String get noneReachableTitle => 'Geen bron is momenteel bereikbaar.';
 	@override String get reauthRequiredTitle => 'Meld je opnieuw aan om deze titel te bereiken.';
 	@override String get manageServers => 'Servers beheren';
+	@override String get source => 'Bron';
 	@override String sourceLabel({required Object source}) => 'Bron: ${source}';
 	@override String get change => 'Wijzigen';
 	@override String get playbackFailedTitle => 'Deze bron kon niet worden afgespeeld.';
@@ -3502,6 +3542,12 @@ extension on TranslationsNl {
 			'fileInfo.duration' => 'Duur',
 			'fileInfo.optimizedForStreaming' => 'Geoptimaliseerd voor streaming',
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
+			'detailActions.watchlist' => 'Kijklijst',
+			'detailActions.trailer' => 'Trailer',
+			'detailActions.rate' => 'Beoordeel',
+			'detailActions.watched' => 'Bekeken',
+			'detailActions.download' => 'Downloaden',
+			'detailActions.more' => 'Meer',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijder uit Doorgaan met kijken',
@@ -3565,14 +3611,14 @@ extension on TranslationsNl {
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pauze over ${seconds}s',
 			'videoControls.continueWatching' => 'Doorgaan',
 			'videoControls.autoPlayNext' => 'Automatisch volgende afspelen',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playNext' => 'Volgende afspelen',
 			'videoControls.nextEpisode' => 'Volgende aflevering',
 			'videoControls.skipIntro' => 'Intro overslaan',
 			'videoControls.skipCredits' => 'Aftiteling overslaan',
 			'videoControls.playButton' => 'Afspelen',
 			'videoControls.pauseButton' => 'Pauzeren',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Terugspoelen ${seconds} seconden',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Vooruitspoelen ${seconds} seconden',
 			'videoControls.previousButton' => 'Vorige aflevering',
@@ -3876,6 +3922,23 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
+			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
+			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
+			'discover.techSubtitles' => 'Ondertiteling',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Volgende aflevering · S${season} A${episode}',
+			'discover.seasonsHeading' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 seizoen', other: '${n} seizoenen', ), 
+			'discover.seasonEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 aflevering', other: '${n} afleveringen', ), 
+			'discover.seasonEpisodesLeft' => ({required Object count}) => '${count} nog te zien',
+			'discover.trackScopeMovie' => ({required Object title}) => '${title} · geldt voor deze film',
+			'discover.trackScopeSeries' => ({required Object title}) => '${title} · voor deze serie',
+			'discover.trackChoiceNote' => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.',
+			'discover.trackChoiceNoteOnce' => 'Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.',
+			'discover.scoreRtCritics' => 'Rotten Tomatoes, critici',
+			'discover.scoreRtAudience' => 'Rotten Tomatoes, publiek',
+			'discover.scoreCommunity' => 'Communityscore',
+			'discover.reviews' => 'Recensies',
+			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
 			'mobileDetail.extrasTab' => 'Extra\'s',
 			'errors.searchFailed' => 'Zoeken mislukt',
@@ -4062,6 +4125,8 @@ extension on TranslationsNl {
 			'watchlist.filterAvailable' => 'Beschikbaar',
 			'watchlist.sortRecentlyAdded' => 'Recent toegevoegd',
 			'watchlist.sortTitle' => 'Titel',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.sortYear' => 'Jaar',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.',
 			'watchlist.coverageIncompleteList' => 'Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.',
@@ -4085,8 +4150,6 @@ extension on TranslationsNl {
 			'liveTv.live' => 'LIVE',
 			'liveTv.reloadGuide' => 'Gids herladen',
 			'liveTv.now' => 'Nu',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.today' => 'Vandaag',
 			'liveTv.tomorrow' => 'Morgen',
 			'liveTv.midnight' => 'Middernacht',
@@ -4576,6 +4639,8 @@ extension on TranslationsNl {
 			'metadataEdit.mood' => 'Stemming',
 			'matchScreen.match' => 'Koppelen...',
 			'matchScreen.fixMatch' => 'Koppeling herstellen...',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.unmatch' => 'Ontkoppelen',
 			'matchScreen.unmatchConfirm' => 'Deze match wissen? Plex behandelt dit als niet-gematcht tot het opnieuw gematcht is.',
 			'matchScreen.unmatchSuccess' => 'Item ontkoppeld',
@@ -4599,8 +4664,6 @@ extension on TranslationsNl {
 			'trakt.watchedSync' => 'Bekeken-status synchroniseren',
 			'trakt.watchedSyncDescription' => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.',
 			'trackers.title' => 'Trackers',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.hubSubtitle' => 'Synchroniseer kijkvoortgang met Trakt en andere diensten.',
 			'trackers.notConnected' => 'Niet verbonden',
 			'trackers.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
@@ -4891,6 +4954,7 @@ extension on TranslationsNl {
 			'sourcePicker.noneReachableTitle' => 'Geen bron is momenteel bereikbaar.',
 			'sourcePicker.reauthRequiredTitle' => 'Meld je opnieuw aan om deze titel te bereiken.',
 			'sourcePicker.manageServers' => 'Servers beheren',
+			'sourcePicker.source' => 'Bron',
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Bron: ${source}',
 			'sourcePicker.change' => 'Wijzigen',
 			'sourcePicker.playbackFailedTitle' => 'Deze bron kon niet worden afgespeeld.',
@@ -5089,6 +5153,8 @@ extension on TranslationsNl {
 			'languageSettings.sheetScopeServer' => 'Geldt op de bron waar je hem koos.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya-profiel: ${value}',
 			'languageSettings.useGlobal' => 'Gebruik globale voorkeur',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'wist deze serievoorkeur',
 			'languageSettings.sheetFooter' => 'Een andere taal kies je tijdens het kijken, in het infopaneel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · onthouden voor ${title}',

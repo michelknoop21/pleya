@@ -47,7 +47,6 @@ import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../media/media_file_info.dart';
 import '../media/media_source_info.dart';
-import '../media/track_language_choice.dart';
 import '../mpv/models.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/plex_season_display.dart';
@@ -128,15 +127,24 @@ import '../widgets/episode_card.dart';
 import '../widgets/fitting_title_text.dart';
 import 'actor_media_screen.dart';
 import 'media_detail/cast_section.dart';
+import 'media_detail/detail_track_preview.dart';
 import 'media_detail/extras_section.dart';
+import 'media_detail/mobile/detail_activity_card.dart';
+import 'media_detail/mobile/detail_ambient_background.dart';
+import 'media_detail/mobile/detail_primary_actions.dart';
+import 'media_detail/mobile/detail_reviews_section.dart';
+import 'media_detail/mobile/detail_score_row.dart';
+import 'media_detail/mobile/detail_seasons_rail.dart';
+import 'media_detail/mobile/detail_tech_table.dart';
+import 'media_detail/mobile/mobile_poster_hero.dart';
 import 'media_detail/mobile_detail_hero.dart';
 import '../theme/glass/glass_settings.dart';
-import '../theme/glass/glass_surface.dart' show GlassLayer;
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/mobile/mobile_audio_track_picker_sheet.dart';
+import '../widgets/mobile/mobile_subtitle_track_picker_sheet.dart';
 import '../widgets/tv/tv_media_source_picker.dart';
 import '../widgets/tv/tv_panel_primitives.dart';
 import '../widgets/tv/tv_unified_layout.dart';
@@ -341,9 +349,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   bool _isLoadingMetadata = true;
   String? _detailAudioTargetId;
   MediaItem? _detailAudioTarget;
-  List<MediaAudioTrack> _detailAudioTracks = const [];
-  int? _selectedDetailAudioTrackId;
-  bool _detailAudioLoadInFlight = false;
+  MediaFileInfo? _detailFileInfo;
+  int? _selectedDetailAudioTrackId, _selectedDetailSubtitleTrackId, _detailAudioPickId, _detailSubtitlePickId;
+  bool _detailAudioLoadInFlight = false, _detailSubtitlePicked = false, _detailPickRemembered = true;
 
   void _updateDetailAudioState(VoidCallback update) => setState(update);
 
@@ -3587,13 +3595,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       );
       if (mounted) {
         appLogger.d('Playing first episode: ${episodeWithServerId.title}');
-        final playedId = episodeWithServerId.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: episodeWithServerId,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        // Carries the pick when the tech table describes this episode.
+        await _playWithDetailPick(episodeWithServerId);
       }
     } catch (e) {
       if (mounted) {

@@ -147,6 +147,15 @@ ids:
   - id: media-detail.play
     role: button
     instanceable: false
+  - id: media-detail.play-from-start
+    role: button
+    instanceable: false
+  - id: media-detail.action
+    role: button
+    instanceable: true
+  - id: media-detail.season-poster
+    role: grid.item
+    instanceable: true
   - id: tv.search.pill
     role: field
     instanceable: false

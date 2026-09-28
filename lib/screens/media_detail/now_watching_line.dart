@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../media/ids.dart';
+import '../../media/watch_session.dart';
 import '../../providers/now_watching_provider.dart';
 import '../../theme/mono_theme.dart';
 import '../../widgets/watcher_avatar.dart';
@@ -30,14 +31,19 @@ class NowWatchingLine extends StatelessWidget {
 
   final TextStyle? textStyle;
 
-  @override
-  Widget build(BuildContext context) {
+  /// The live session for [ratingKey] on [serverId], or null. Watches the
+  /// provider, so call it from a build method. Shared with the iPhone
+  /// activity card.
+  static WatchSession? sessionFor(BuildContext context, String ratingKey, ServerId? serverId) {
     final provider = context.watch<NowWatchingProvider?>();
     final monitored = provider?.monitoredServerId;
-    if (provider == null || monitored == null || serverId == null || monitored != serverId) {
-      return const SizedBox.shrink();
-    }
-    final session = provider.sessions.where((s) => s.ratingKey == ratingKey).firstOrNull;
+    if (provider == null || monitored == null || serverId == null || monitored != serverId) return null;
+    return provider.sessions.where((s) => s.ratingKey == ratingKey).firstOrNull;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = sessionFor(context, ratingKey, serverId);
     if (session == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);

@@ -16,6 +16,7 @@ import '../screens/media_detail_screen.dart';
 import '../screens/playlist/playlist_detail_screen.dart';
 import '../services/settings_service.dart';
 import '../utils/global_key_utils.dart';
+import 'platform_detector.dart';
 import 'plex_library_section_helpers.dart';
 import 'provider_extensions.dart';
 import 'video_player_navigation.dart';
@@ -56,7 +57,13 @@ class MediaDetailNavigationTarget {
   });
 }
 
-MediaDetailNavigationTarget mediaDetailNavigationTargetFor(MediaItem item, {MediaItem? metadataOverride}) {
+/// [openSeasonItself] keeps a season as its own page (the iPhone, DEC-140);
+/// everywhere else a season opens its series at that season.
+MediaDetailNavigationTarget mediaDetailNavigationTargetFor(
+  MediaItem item, {
+  MediaItem? metadataOverride,
+  bool openSeasonItself = false,
+}) {
   if (item.isEpisode && item.grandparentId != null) {
     return MediaDetailNavigationTarget(
       metadata:
@@ -100,7 +107,7 @@ MediaDetailNavigationTarget mediaDetailNavigationTargetFor(MediaItem item, {Medi
     );
   }
 
-  if (item.isSeason && item.parentId != null) {
+  if (item.isSeason && item.parentId != null && !openSeasonItself) {
     return MediaDetailNavigationTarget(
       metadata:
           metadataOverride ??
@@ -123,6 +130,19 @@ MediaDetailNavigationTarget mediaDetailNavigationTargetFor(MediaItem item, {Medi
 
   return MediaDetailNavigationTarget(metadata: metadataOverride ?? item);
 }
+
+/// [mediaDetailNavigationTargetFor] for the device [context] is on: the
+/// iPhone opens a season as its own page (DEC-140), TV, iPad and desktop
+/// open the series at that season.
+MediaDetailNavigationTarget mediaDetailNavigationTargetIn(
+  BuildContext context,
+  MediaItem item, {
+  MediaItem? metadataOverride,
+}) => mediaDetailNavigationTargetFor(
+  item,
+  metadataOverride: metadataOverride,
+  openSeasonItself: PlatformDetector.isPhone(context),
+);
 
 bool shouldOpenEpisodeDetailsForActivation({
   required bool playDirectly,
@@ -452,7 +472,7 @@ Future<MediaNavigationResult> navigateToMediaItemDetails(
   UnifiedSourceChangeCallback? onChangeSource,
   TvFocusRestoreTarget? restoreTarget,
 }) async {
-  final target = mediaDetailNavigationTargetFor(mi, metadataOverride: metadataOverride);
+  final target = mediaDetailNavigationTargetIn(context, mi, metadataOverride: metadataOverride);
   // The route boundary, not the activation site: comparing this against the
   // expected target recorded back at the row is what catches a swap in between.
   SelectTraceRecorder.instance.link(

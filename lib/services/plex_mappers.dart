@@ -23,6 +23,8 @@ import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_part.dart';
+import '../media/external_rating.dart';
+import '../media/media_review.dart';
 import '../media/media_playlist.dart';
 import '../media/media_role.dart';
 import '../media/media_source_info.dart';
@@ -32,6 +34,7 @@ import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/json_utils.dart';
 import '../utils/obfuscation_utils.dart';
+import '../utils/rating_utils.dart';
 import 'file_info_parser.dart';
 import 'plex_constants.dart';
 
@@ -633,6 +636,10 @@ class PlexMetadataDto {
   final List<String>? style;
   @JsonKey(name: 'Mood', fromJson: _tagListFromJson, includeToJson: false)
   final List<String>? mood;
+  @JsonKey(name: 'Rating', fromJson: _plexRatingsFromJson, includeToJson: false)
+  final List<ExternalRating>? externalRatings;
+  @JsonKey(name: 'Review', fromJson: _plexReviewsFromJson, includeToJson: false)
+  final List<MediaReview>? reviews;
   final String? audioLanguage;
   final String? subtitleLanguage;
   @JsonKey(fromJson: flexibleInt)
@@ -712,6 +719,8 @@ class PlexMetadataDto {
     this.label,
     this.style,
     this.mood,
+    this.externalRatings,
+    this.reviews,
     this.audioLanguage,
     this.subtitleLanguage,
     this.subtitleMode,
@@ -842,6 +851,8 @@ class PlexMetadataDto {
     List<String>? label,
     List<String>? style,
     List<String>? mood,
+    List<ExternalRating>? externalRatings,
+    List<MediaReview>? reviews,
     String? audioLanguage,
     String? subtitleLanguage,
     int? subtitleMode,
@@ -912,6 +923,8 @@ class PlexMetadataDto {
       label: label ?? this.label,
       style: style ?? this.style,
       mood: mood ?? this.mood,
+      externalRatings: externalRatings ?? this.externalRatings,
+      reviews: reviews ?? this.reviews,
       audioLanguage: audioLanguage ?? this.audioLanguage,
       subtitleLanguage: subtitleLanguage ?? this.subtitleLanguage,
       subtitleMode: subtitleMode ?? this.subtitleMode,
@@ -935,6 +948,37 @@ class PlexMetadataDto {
       flattenSeasons: flattenSeasons ?? this.flattenSeasons,
     );
   }
+}
+
+List<ExternalRating>? _plexRatingsFromJson(Object? raw) => raw is List
+    ? [
+        for (final r in raw.whereType<Map>())
+          ?externalRatingFromPlex(r['image']?.toString(), r['type'], flexibleDouble(r['value'])),
+      ]
+    : null;
+
+List<MediaReview>? _plexReviewsFromJson(Object? raw) => raw is List
+    ? [
+        for (final r in raw.whereType<Map>())
+          if (r['tag'] != null && r['text'] != null)
+            MediaReview(
+              author: r['tag'].toString(),
+              text: r['text'].toString(),
+              imageUri: r['image']?.toString(),
+              link: r['link']?.toString(),
+              source: r['source']?.toString(),
+            ),
+      ]
+    : null;
+
+/// `Rating[]` carries every source; older servers only send the flat pair.
+List<ExternalRating> _externalRatings(PlexMetadataDto dto) {
+  final fromArray = dto.externalRatings;
+  if (fromArray != null && fromArray.isNotEmpty) return fromArray;
+  return [
+    ?externalRatingFromPlex(dto.ratingImage, 'critic', dto.rating),
+    ?externalRatingFromPlex(dto.audienceRatingImage, 'audience', dto.audienceRating),
+  ];
 }
 
 Map<String, Object?>? _rawMetadata(PlexMetadataDto dto) {
@@ -1029,6 +1073,8 @@ class PlexMappers {
       labels: dto.label,
       styles: dto.style,
       moods: dto.mood,
+      externalRatings: _externalRatings(dto),
+      reviews: dto.reviews ?? const [],
       roles: dto.role?.map(role).toList(),
       mediaVersions: dto.mediaVersions?.map(mediaVersion).toList(),
       libraryId: dto.librarySectionID?.toString(),

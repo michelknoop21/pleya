@@ -177,6 +177,19 @@ class AutomationIds {
   /// with the ring here, and Menu from the detail rail comes back to it.
   static const String mediaDetailPlay = 'media-detail.play';
 
+  /// The restart button beside [mediaDetailPlay] on the iPhone detail, only
+  /// while the item has progress (DEC-140).
+  static const String mediaDetailPlayFromStart = 'media-detail.play-from-start';
+
+  /// One round action under the play button on the iPhone detail (DEC-140).
+  /// Instanceable, suffixed with the action's name (`media-detail.action[watched]`),
+  /// because which actions show depends on the item and its source.
+  static const String mediaDetailAction = 'media-detail.action';
+
+  /// One poster in the iPhone seasons rail (DEC-140). Instanceable: suffixed
+  /// `[<index>]`.
+  static const String mediaDetailSeasonPoster = 'media-detail.season-poster';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -499,6 +512,8 @@ class AutomationIds {
     settingsAppearanceCategory,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
+    mediaDetailAction,
+    mediaDetailSeasonPoster,
     discoverRail,
     discoverRailItem,
     myPleyaTile,
@@ -588,6 +603,9 @@ class AutomationIds {
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailAction, 'role': 'button', 'instanceable': true},
+    {'id': mediaDetailSeasonPoster, 'role': 'grid.item', 'instanceable': true},
     {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
     {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},
