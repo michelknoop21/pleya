@@ -8,6 +8,7 @@ import '../../../services/image_cache_service.dart';
 import '../../../utils/content_utils.dart';
 import '../../../utils/formatters.dart';
 import '../../../widgets/placeholder_container.dart';
+import 'light_ink_plate.dart';
 
 /// Mockup width the hero sizes below are taken from (D-01, D-03).
 const double _kMockupWidth = 402;
@@ -72,7 +73,8 @@ class MobilePosterHero extends StatelessWidget {
             ),
           ),
           // Status bar band and a touch of shade under the meta line, in the
-          // page colour on the light theme so they back the dark ink.
+          // page colour on the light theme. The ink there owns its contrast
+          // through its own plates; the band only supports it.
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
@@ -158,7 +160,8 @@ class MobilePosterHero extends StatelessWidget {
     );
   }
 
-  /// Year · duration or seasons · genres, then the age rating in a frame.
+  /// Year · duration or seasons · genres, then the age rating in a frame, on
+  /// its own plate in the light theme ([LightInkPlate]).
   Widget _buildMeta(BuildContext context, Color color) {
     final seasons = item.isShow ? item.childCount : null;
     final genres = item.genres ?? const <String>[];
@@ -172,7 +175,7 @@ class MobilePosterHero extends StatelessWidget {
     final rating = item.contentRating == null ? '' : formatContentRating(item.contentRating);
     if (parts.isEmpty && rating.isEmpty) return const SizedBox.shrink();
     final dot = Text('·', style: TextStyle(color: color.withValues(alpha: 0.5)));
-    return Wrap(
+    final line = Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 9,
@@ -198,6 +201,7 @@ class MobilePosterHero extends StatelessWidget {
           ),
       ],
     );
+    return LightInkPlate(child: line);
   }
 
   static Widget _fade(Widget child, {required List<Color> colors, required List<double> stops}) => ShaderMask(

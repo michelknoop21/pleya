@@ -4,6 +4,7 @@ import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
 import '../mobile_detail_hero.dart';
+import 'light_ink_plate.dart';
 
 /// One round icon under the play button (D-01 `.acts`).
 class DetailActionItem {
@@ -58,6 +59,7 @@ class DetailPrimaryActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
+    final dark = theme.brightness == Brightness.dark;
     // The page colour: the capsule inverts with the theme.
     final ink = theme.scaffoldBackgroundColor;
     final detail = playDetail;
@@ -113,7 +115,11 @@ class DetailPrimaryActions extends StatelessWidget {
                   message: t.mediaMenu.playFromBeginning,
                   child: Material(
                     key: const Key('media-detail.play-from-start'),
-                    color: onSurface.withValues(alpha: 0.14),
+                    // Light theme: an opaque page-coloured circle, so the
+                    // glyph does not take its contrast from the glow.
+                    color: dark
+                        ? onSurface.withValues(alpha: 0.14)
+                        : theme.colorScheme.surface.withValues(alpha: kLightInkPlateAlpha),
                     shape: const CircleBorder(),
                     clipBehavior: .antiAlias,
                     child: InkWell(
@@ -131,9 +137,14 @@ class DetailPrimaryActions extends StatelessWidget {
         ),
         if (actions.isNotEmpty) ...[
           const SizedBox(height: 22),
-          Row(
-            crossAxisAlignment: .start,
-            children: [for (final action in actions) Expanded(child: _ActionButton(action: action))],
+          // Light theme: circles and labels share one plate over the glow.
+          LightInkPlate(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            radius: 20,
+            child: Row(
+              crossAxisAlignment: .start,
+              children: [for (final action in actions) Expanded(child: _ActionButton(action: action))],
+            ),
           ),
         ],
       ],

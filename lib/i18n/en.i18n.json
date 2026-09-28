@@ -896,6 +896,10 @@
     "trackScopeMovie": "${title} · applies to this film",
     "trackScopeSeries": "${title} · for this series",
     "trackChoiceNote": "Your choice is remembered and used when you press Resume or Play.",
+    "trackChoiceNoteOnce": "Not remembered. Applies when you play from this page; your profile language comes first.",
+    "scoreRtCritics": "Rotten Tomatoes critics",
+    "scoreRtAudience": "Rotten Tomatoes audience",
+    "scoreCommunity": "Community score",
     "reviews": "Reviews",
     "reviewOpenSource": "Read at source"
   },

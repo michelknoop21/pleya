@@ -39,35 +39,15 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       _detailFileInfo = null;
       _selectedDetailAudioTrackId = null;
       _selectedDetailSubtitleTrackId = null;
-      _detailAudioPicked = false;
+      _detailAudioPickId = null;
+      _detailSubtitlePickId = null;
       _detailSubtitlePicked = false;
     });
 
     try {
-      final results = await Future.wait<Object?>([
-        client.getFileInfo(_detailAudioTarget!),
-        TrackPreferenceStore.read(target),
-      ]);
-      if (!mounted || _detailAudioTargetId != target.id) return;
-      final fileInfo = results[0] as MediaFileInfo?;
-      final choice = results[1] as TrackLanguageChoice?;
-      final tracks = fileInfo?.audioTracks ?? const <MediaAudioTrack>[];
-      MediaAudioTrack? selected;
-      if (choice?.audioLanguage case final language?) {
-        for (final track in tracks) {
-          final code = track.languageCode ?? track.language;
-          if (code == language && (choice?.audioTitle == null || choice!.audioTitle == track.title)) {
-            selected = track;
-            break;
-          }
-        }
-      }
-      selected ??= tracks.where((track) => track.selected).firstOrNull;
-      _updateDetailAudioState(() {
-        _detailFileInfo = fileInfo;
-        _selectedDetailAudioTrackId = selected?.id;
-        _selectedDetailSubtitleTrackId = _rememberedSubtitle(fileInfo?.subtitleTracks ?? const [], choice)?.id;
-      });
+      final fileInfo = await client.getFileInfo(_detailAudioTarget!);
+      if (fileInfo == null || !mounted || _detailAudioTargetId != target.id) return;
+      await _showDetailTracksPlaybackStartsWith(target, fileInfo);
     } catch (e) {
       appLogger.d('Failed to load detail audio tracks', error: e);
     } finally {
@@ -77,20 +57,21 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
     }
   }
 
-  /// The subtitle the next playback starts with: the remembered choice when
-  /// there is one ("Uit" gives null), the server's pick otherwise.
-  MediaSubtitleTrack? _rememberedSubtitle(List<MediaSubtitleTrack> tracks, TrackLanguageChoice? choice) {
-    if (choice?.subtitlesOff ?? false) return null;
-    if (choice?.subtitleLanguage case final language?) {
-      for (final track in tracks) {
-        if ((track.languageCode ?? track.language) == language &&
-            track.forced == choice!.subtitleForced &&
-            (choice.subtitleTitle == null || choice.subtitleTitle == track.title)) {
-          return track;
-        }
-      }
-    }
-    return tracks.where((track) => track.selected).firstOrNull;
+  /// Sets the table to the tracks the next playback from this page starts
+  /// with ([resolveDetailTracks]), the page's own pick included. [loaded]
+  /// is the file just loaded, otherwise the one on the page.
+  Future<void> _showDetailTracksPlaybackStartsWith(MediaItem target, [MediaFileInfo? loaded]) async {
+    final info = loaded ?? _detailFileInfo;
+    if (info == null) return;
+    final pick = _detailTrackPickFor(target);
+    final resolved = await resolveDetailTracks(target, info, audioPick: pick.audio, subtitlePick: pick.subtitle);
+    if (!mounted || _detailAudioTargetId != target.id) return;
+    _updateDetailAudioState(() {
+      _detailFileInfo = info;
+      _selectedDetailAudioTrackId = resolved.audioId;
+      _selectedDetailSubtitleTrackId = resolved.subtitleId;
+      _detailPickRemembered = resolved.remembered;
+    });
   }
 
   /// [sheetContext] sits under the page's own OverlaySheetHost, which the
@@ -119,7 +100,9 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       ? t.discover.trackScopeSeries(title: target.grandparentTitle ?? target.title ?? '')
       : t.discover.trackScopeMovie(title: target.title ?? '');
 
-  /// Remembers the track for the next Hervatten/Afspelen; starts nothing.
+  /// Stores the track as the series preference when "per serie onthouden" is
+  /// on (the store checks), keeps it as this page's pick for the player, and
+  /// shows what playback will then start with. Starts nothing.
   Future<void> _chooseDetailAudioTrack(BuildContext sheetContext) async {
     final target = _detailAudioTarget;
     if (target == null) return;
@@ -128,6 +111,7 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       tracks: _detailAudioTracks,
       selectedTrackId: _selectedDetailAudioTrackId,
       scopeLabel: _trackScopeLabel(target),
+      remembered: _detailPickRemembered,
     );
     if (track == null || !mounted) return;
 
@@ -136,10 +120,8 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       await TrackPreferenceStore.saveAudio(target, language: language, title: track.title);
     }
     if (!mounted) return;
-    _updateDetailAudioState(() {
-      _selectedDetailAudioTrackId = track.id;
-      _detailAudioPicked = true;
-    });
+    _updateDetailAudioState(() => _detailAudioPickId = track.id);
+    await _showDetailTracksPlaybackStartsWith(target);
   }
 
   Future<void> _chooseDetailSubtitleTrack(BuildContext sheetContext) async {
@@ -150,6 +132,7 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       tracks: _detailSubtitleTracks,
       selectedTrackId: _selectedDetailSubtitleTrackId,
       scopeLabel: _trackScopeLabel(target),
+      remembered: _detailPickRemembered,
     );
     if (choice == null || !mounted) return;
 
@@ -161,9 +144,10 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
     }
     if (!mounted) return;
     _updateDetailAudioState(() {
-      _selectedDetailSubtitleTrackId = track?.id;
+      _detailSubtitlePickId = track?.id;
       _detailSubtitlePicked = true;
     });
+    await _showDetailTracksPlaybackStartsWith(target);
   }
 
   /// The tracks picked on this page for [item], for the player to start with.
@@ -171,34 +155,15 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
   /// (remembering switched off, or a track without a language code).
   ({AudioTrack? audio, SubtitleTrack? subtitle}) _detailTrackPickFor(MediaItem item) {
     if (item.id != _detailAudioTargetId) return (audio: null, subtitle: null);
-    final audio = _detailAudioPicked
-        ? _detailAudioTracks.where((track) => track.id == _selectedDetailAudioTrackId).firstOrNull
-        : null;
-    final subtitle = _detailSubtitleTracks.where((track) => track.id == _selectedDetailSubtitleTrackId).firstOrNull;
+    final audio = _detailAudioTracks.where((track) => track.id == _detailAudioPickId).firstOrNull;
+    final subtitle = _detailSubtitleTracks.where((track) => track.id == _detailSubtitlePickId).firstOrNull;
     return (
-      audio: audio == null
-          ? null
-          : AudioTrack(
-              id: audio.id.toString(),
-              title: audio.title ?? audio.displayTitle,
-              language: audio.languageCode ?? audio.language,
-              codec: audio.codec,
-              channels: audio.channels,
-              profile: audio.profile,
-              isDefault: audio.selected,
-            ),
+      audio: audio == null ? null : detailPlayerAudioTrack(audio),
       subtitle: !_detailSubtitlePicked
           ? null
           : subtitle == null
           ? SubtitleTrack.off
-          : SubtitleTrack(
-              id: subtitle.id.toString(),
-              title: subtitle.title ?? subtitle.displayTitle,
-              language: subtitle.languageCode ?? subtitle.language,
-              codec: subtitle.codec,
-              isDefault: subtitle.selected,
-              isForced: subtitle.forced,
-            ),
+          : detailPlayerSubtitleTrack(subtitle),
     );
   }
 }

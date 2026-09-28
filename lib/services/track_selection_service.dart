@@ -389,7 +389,8 @@ class TrackSelectionResult<T> {
 /// Service for selecting and applying audio and subtitle tracks based on
 /// preferences, user profiles, and per-media settings.
 class TrackSelectionService {
-  final Player player;
+  /// Null only for [TrackSelectionService.preview], which never applies.
+  final Player? player;
   final MediaServerUserProfile? profileSettings;
   final MediaItem metadata;
   final MediaSourceInfo? plexMediaInfo;
@@ -419,6 +420,15 @@ class TrackSelectionService {
     this.globalPreferences,
     this.sessionIntent,
   });
+
+  /// Only the choosing half ([selectAudioTrack], [selectSubtitleTrack]), for a
+  /// screen that shows what playback will start with before there is a player
+  /// (the iPhone detail page's tech table, DEC-140).
+  TrackSelectionService.preview({required this.metadata, this.stickyChoice, this.globalPreferences})
+    : player = null,
+      profileSettings = null,
+      plexMediaInfo = null,
+      sessionIntent = null;
 
   /// The intent layers of DEC-109 in order, most specific first.
   late final List<PlaybackLanguageIntent> _intentLayers = PlaybackLanguageIntent.layers(
@@ -1061,6 +1071,7 @@ class TrackSelectionService {
     // only when this episode could not honour a wanted language.
     void Function(PlaybackLanguageNotice)? onLanguageNotice,
   }) async {
+    final player = this.player!;
     // Wait for tracks to be loaded
     if (player.state.tracks.audio.isEmpty && player.state.tracks.subtitle.isEmpty) {
       try {

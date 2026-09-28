@@ -896,6 +896,10 @@
     "trackScopeMovie": "${title} · geldt voor deze film",
     "trackScopeSeries": "${title} · voor deze serie",
     "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.",
+    "trackChoiceNoteOnce": "Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.",
+    "scoreRtCritics": "Rotten Tomatoes, critici",
+    "scoreRtAudience": "Rotten Tomatoes, publiek",
+    "scoreCommunity": "Communityscore",
     "reviews": "Recensies",
     "reviewOpenSource": "Lees bij de bron"
   },

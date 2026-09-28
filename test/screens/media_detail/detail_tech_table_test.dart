@@ -62,4 +62,30 @@ void main() {
     // The language name follows the device locale, not the app's.
     expect(detailAudioLabel(dutch), '${dutch.label.primary} (EAC3 5.1)');
   });
+
+  testWidgets('rows are at least 44 pt high; a tappable row is a button for VoiceOver', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DetailTechTable(
+            videoLabel: '1080p (H.264)',
+            audioLabel: 'Engels (AAC stereo)',
+            subtitleLabel: 'Uit',
+            onSubtitleTap: () {},
+          ),
+        ),
+      ),
+    );
+    for (final value in ['1080p (H.264)', 'Engels (AAC stereo)', 'Uit']) {
+      final row = find.ancestor(of: find.text(value), matching: find.byType(ConstrainedBox)).first;
+      expect(tester.getSize(row).height, greaterThanOrEqualTo(44), reason: value);
+    }
+    expect(
+      tester.getSemantics(find.text('Uit')),
+      isSemantics(isButton: true, hasTapAction: true, label: 'Ondertiteling\nUit'),
+    );
+    expect(tester.getSemantics(find.text('Engels (AAC stereo)')), isSemantics(isButton: false));
+    semantics.dispose();
+  });
 }

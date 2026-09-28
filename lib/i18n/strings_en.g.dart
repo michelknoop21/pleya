@@ -2591,6 +2591,18 @@ class TranslationsDiscoverEn {
 	/// en: 'Your choice is remembered and used when you press Resume or Play.'
 	String get trackChoiceNote => 'Your choice is remembered and used when you press Resume or Play.';
 
+	/// en: 'Not remembered. Applies when you play from this page; your profile language comes first.'
+	String get trackChoiceNoteOnce => 'Not remembered. Applies when you play from this page; your profile language comes first.';
+
+	/// en: 'Rotten Tomatoes critics'
+	String get scoreRtCritics => 'Rotten Tomatoes critics';
+
+	/// en: 'Rotten Tomatoes audience'
+	String get scoreRtAudience => 'Rotten Tomatoes audience';
+
+	/// en: 'Community score'
+	String get scoreCommunity => 'Community score';
+
 	/// en: 'Reviews'
 	String get reviews => 'Reviews';
 
@@ -8058,6 +8070,10 @@ extension on Translations {
 			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
 			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
 			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
+			'discover.trackChoiceNoteOnce' => 'Not remembered. Applies when you play from this page; your profile language comes first.',
+			'discover.scoreRtCritics' => 'Rotten Tomatoes critics',
+			'discover.scoreRtAudience' => 'Rotten Tomatoes audience',
+			'discover.scoreCommunity' => 'Community score',
 			'discover.reviews' => 'Reviews',
 			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
@@ -8246,12 +8262,12 @@ extension on Translations {
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
 			'watchlist.sortTitle' => 'Title',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
 			'watchlist.coverageIncompleteList' => 'One of your servers could not be reached, so this list may be incomplete.',
 			'watchlist.rail.kind' => 'Type',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.rail.availability' => 'Availability',
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
@@ -8760,12 +8776,12 @@ extension on Translations {
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
 			'matchScreen.fixMatch' => 'Fix Match...',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
 			'matchScreen.unmatchSuccess' => 'Item unmatched',
 			'matchScreen.unmatchFailed' => 'Failed to unmatch item',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.matchApplied' => 'Match applied',
 			'matchScreen.matchFailed' => 'Failed to apply match',
 			'matchScreen.titleHint' => 'Title',
@@ -9274,12 +9290,12 @@ extension on Translations {
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya profile: ${value}',
 			'languageSettings.useGlobal' => 'Use global preference',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'clears this series preference',
 			'languageSettings.sheetFooter' => 'You pick a different language while watching, in the info panel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}',
 			'languageSettings.toastRememberedDetail' => ({required Object global}) => 'The next episodes start this way. Your global preference stays ${global}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.toastRememberedDetailNoGlobal' => 'The next episodes start this way.',
 			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · this playback only',
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Remembering per series is off, so nothing was stored for ${title}.',

@@ -75,8 +75,8 @@ class MobileDetailHeroBar extends StatelessWidget {
         ),
       ],
     );
-    if (progress == 0) return bar;
-    // Status bar content that reads on the bar once it shows.
+    // Status bar content in the theme's ink, over the page-coloured band as
+    // well as over the bar once it shows; never left to the previous route.
     final dark = ThemeData.estimateBrightnessForColor(scheme.surface) == Brightness.dark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,

@@ -1082,6 +1082,10 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String trackScopeMovie({required Object title}) => '${title} · geldt voor deze film';
 	@override String trackScopeSeries({required Object title}) => '${title} · voor deze serie';
 	@override String get trackChoiceNote => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.';
+	@override String get trackChoiceNoteOnce => 'Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.';
+	@override String get scoreRtCritics => 'Rotten Tomatoes, critici';
+	@override String get scoreRtAudience => 'Rotten Tomatoes, publiek';
+	@override String get scoreCommunity => 'Communityscore';
 	@override String get reviews => 'Recensies';
 	@override String get reviewOpenSource => 'Lees bij de bron';
 }
@@ -3929,6 +3933,10 @@ extension on TranslationsNl {
 			'discover.trackScopeMovie' => ({required Object title}) => '${title} · geldt voor deze film',
 			'discover.trackScopeSeries' => ({required Object title}) => '${title} · voor deze serie',
 			'discover.trackChoiceNote' => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.',
+			'discover.trackChoiceNoteOnce' => 'Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.',
+			'discover.scoreRtCritics' => 'Rotten Tomatoes, critici',
+			'discover.scoreRtAudience' => 'Rotten Tomatoes, publiek',
+			'discover.scoreCommunity' => 'Communityscore',
 			'discover.reviews' => 'Recensies',
 			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
@@ -4117,12 +4125,12 @@ extension on TranslationsNl {
 			'watchlist.filterAvailable' => 'Beschikbaar',
 			'watchlist.sortRecentlyAdded' => 'Recent toegevoegd',
 			'watchlist.sortTitle' => 'Titel',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.sortYear' => 'Jaar',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.',
 			'watchlist.coverageIncompleteList' => 'Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.',
 			'watchlist.rail.kind' => 'Soort',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.rail.availability' => 'Beschikbaarheid',
 			'myPleya.title' => 'Mijn Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
@@ -4631,12 +4639,12 @@ extension on TranslationsNl {
 			'metadataEdit.mood' => 'Stemming',
 			'matchScreen.match' => 'Koppelen...',
 			'matchScreen.fixMatch' => 'Koppeling herstellen...',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.unmatch' => 'Ontkoppelen',
 			'matchScreen.unmatchConfirm' => 'Deze match wissen? Plex behandelt dit als niet-gematcht tot het opnieuw gematcht is.',
 			'matchScreen.unmatchSuccess' => 'Item ontkoppeld',
 			'matchScreen.unmatchFailed' => 'Kon item niet ontkoppelen',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.matchApplied' => 'Koppeling toegepast',
 			'matchScreen.matchFailed' => 'Koppeling kon niet worden toegepast',
 			'matchScreen.titleHint' => 'Titel',
@@ -5145,12 +5153,12 @@ extension on TranslationsNl {
 			'languageSettings.sheetScopeServer' => 'Geldt op de bron waar je hem koos.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya-profiel: ${value}',
 			'languageSettings.useGlobal' => 'Gebruik globale voorkeur',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'wist deze serievoorkeur',
 			'languageSettings.sheetFooter' => 'Een andere taal kies je tijdens het kijken, in het infopaneel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · onthouden voor ${title}',
 			'languageSettings.toastRememberedDetail' => ({required Object global}) => 'Volgende afleveringen starten zo. Je globale voorkeur blijft ${global}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.toastRememberedDetailNoGlobal' => 'Volgende afleveringen starten zo.',
 			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · alleen deze keer',
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Onthouden per serie staat uit, dus er is niets bewaard voor ${title}.',

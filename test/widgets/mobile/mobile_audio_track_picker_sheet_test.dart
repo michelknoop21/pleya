@@ -57,4 +57,14 @@ void main() {
     await tester.tap(find.text('Off'));
     expect(chosen, isNull);
   });
+
+  testWidgets('the note only promises remembering when the pick is stored', (tester) async {
+    await pump(tester, MobileAudioTrackPickerSheet(tracks: tracks, remembered: false, onChosen: (_) {}));
+    expect(find.text(t.discover.trackChoiceNote), findsNothing);
+    expect(find.text(t.discover.trackChoiceNoteOnce), findsOneWidget);
+    await pump(tester, MobileSubtitleTrackPickerSheet(tracks: const [], remembered: false, onChosen: (_) {}));
+    expect(find.text(t.discover.trackChoiceNoteOnce), findsOneWidget);
+    await pump(tester, MobileSubtitleTrackPickerSheet(tracks: const [], onChosen: (_) {}));
+    expect(find.text(t.discover.trackChoiceNote), findsOneWidget);
+  });
 }

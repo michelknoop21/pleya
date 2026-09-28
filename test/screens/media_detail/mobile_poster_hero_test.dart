@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/external_rating.dart';
@@ -226,4 +227,40 @@ void main() {
       expect(await glyphOf(tester, monoTheme(dark: true, oled: true)), Colors.white);
     });
   });
+
+  testWidgets('score row names each source for VoiceOver', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DetailScoreRow(
+          ratings: [
+            ExternalRating(source: ExternalRatingSource.imdb, value: 7.4),
+            ExternalRating(source: ExternalRatingSource.rottenTomatoesCritic, value: 92),
+          ],
+        ),
+      ),
+    );
+    expect(find.bySemanticsLabel('IMDb 7.4'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'^Rotten Tomatoes.* 92%$')), findsOneWidget);
+    semantics.dispose();
+  });
+
+  // M-2: the bar owns the status bar style also before it collapses.
+  for (final dark in [false, true]) {
+    testWidgets('hero bar sets the status bar style from the theme at rest (dark: $dark)', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: dark),
+          home: Scaffold(body: MobileDetailHeroBar(leading: const SizedBox())),
+        ),
+      );
+      final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.descendant(
+          of: find.byType(MobileDetailHeroBar),
+          matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+        ),
+      );
+      expect(region.value, dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark);
+    });
+  }
 }

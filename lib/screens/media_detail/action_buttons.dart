@@ -10,15 +10,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     if (metadata.isShow) {
       if (_onDeckEpisode != null) {
         appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
-        final playedId = _onDeckEpisode!.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: _onDeckEpisode!,
-          preferredAudioTrack: _detailTrackPickFor(_onDeckEpisode!).audio,
-          preferredSubtitleTrack: _detailTrackPickFor(_onDeckEpisode!).subtitle,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        await _playWithDetailPick(_onDeckEpisode!);
       } else {
         // No on deck episode, fetch first episode of first season
         await _playFirstEpisode();
@@ -26,31 +18,29 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     } else if (metadata.isSeason) {
       // For seasons, play the first episode
       if (_episodes.isNotEmpty) {
-        final playedId = _episodes.first.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: _episodes.first,
-          preferredAudioTrack: _detailTrackPickFor(_episodes.first).audio,
-          preferredSubtitleTrack: _detailTrackPickFor(_episodes.first).subtitle,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        await _playWithDetailPick(_episodes.first);
       } else {
         await _playFirstEpisode();
       }
     } else {
       appLogger.d('Playing: ${metadata.title}');
       // For movies or episodes, play directly
-      final playedId = metadata.id;
-      await navigateToVideoPlayerWithRefresh(
-        context,
-        metadata: metadata,
-        preferredAudioTrack: _detailTrackPickFor(metadata).audio,
-        preferredSubtitleTrack: _detailTrackPickFor(metadata).subtitle,
-        isOffline: widget.isOffline,
-        onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-      );
+      await _playWithDetailPick(metadata);
     }
+  }
+
+  /// Starts [item] with the tracks picked on this page (inert when the tech
+  /// table describes another item) and refreshes the page afterwards.
+  Future<void> _playWithDetailPick(MediaItem item) async {
+    final pick = _detailTrackPickFor(item);
+    await navigateToVideoPlayerWithRefresh(
+      context,
+      metadata: item,
+      preferredAudioTrack: pick.audio,
+      preferredSubtitleTrack: pick.subtitle,
+      isOffline: widget.isOffline,
+      onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+    );
   }
 
   Widget _buildActionButtons(MediaItem metadata) {

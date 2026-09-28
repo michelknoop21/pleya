@@ -63,31 +63,38 @@ class _TechRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectable = onTap != null;
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 124,
-            child: Text(name, style: TextStyle(fontSize: 15, color: onSurface.withValues(alpha: 0.7))),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 2,
-              overflow: .ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: selectable ? FontWeight.w700 : FontWeight.w500,
-                color: onSurface,
+    // At least 44 pt high, the iOS minimum for a tap target.
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 44),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 124,
+              child: Text(name, style: TextStyle(fontSize: 15, color: onSurface.withValues(alpha: 0.7))),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                maxLines: 2,
+                overflow: .ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: selectable ? FontWeight.w700 : FontWeight.w500,
+                  color: onSurface,
+                ),
               ),
             ),
-          ),
-          if (selectable) AppIcon(Symbols.chevron_right_rounded, size: 18, color: onSurface.withValues(alpha: 0.5)),
-        ],
+            if (selectable) AppIcon(Symbols.chevron_right_rounded, size: 18, color: onSurface.withValues(alpha: 0.5)),
+          ],
+        ),
       ),
     );
     if (!selectable) return row;
-    return InkWell(onTap: onTap, child: row);
+    return Semantics(
+      button: true,
+      child: InkWell(onTap: onTap, child: row),
+    );
   }
 }

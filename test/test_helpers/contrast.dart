@@ -32,6 +32,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// nearer one of its own (a `NavigationBar` label does): pass a finder for a
 /// boundary at the screen origin, so its pixels line up with global rects.
 ///
+/// [inset] shrinks the sampled rect on every side, for an [area] laid out
+/// larger than what it paints (an `Icon` under tight constraints fills its
+/// box while the glyph stays at its own size in the middle).
+///
 /// Runs the actual capture inside [WidgetTester.runAsync]: [captureImage] and
 /// [ui.Image.toByteData] settle through a real asynchronous gap that the fake
 /// test clock never fires; outside `runAsync` this hangs until the test
@@ -43,6 +47,7 @@ Future<double> textContrastOverBackground(
   required Color textColor,
   double percentile = 0.95,
   Finder? boundary,
+  double inset = 0,
 }) async {
   final element = tester.element(boundary ?? area);
   // captureImage renders the nearest RepaintBoundary's paintBounds at a 1:1
@@ -50,7 +55,7 @@ Future<double> textContrastOverBackground(
   // sits at the screen origin) logical coordinates: not scaled by
   // devicePixelRatio. tester.getRect is already in that same coordinate
   // space, so it maps directly onto image pixels with no scaling.
-  final rect = tester.getRect(area);
+  final rect = tester.getRect(area).deflate(inset);
 
   final bgLuminances = await tester.runAsync<List<double>>(() async {
     final image = await captureImage(element);

@@ -46,11 +46,13 @@ Future<({TrackSelectionResult<AudioTrack> audio, TrackSelectionResult<SubtitleTr
   required bool remember,
   String? profileAudio = 'eng',
   String? profileSubtitle = 'eng',
+  String? profileSubtitleFallback,
 }) async {
   await PleyaProfileLanguagePreferenceStore.write(
     PleyaProfileLanguagePreferences(
       audioLanguage: profileAudio,
       subtitleLanguage: profileSubtitle,
+      subtitleFallbackLanguage: profileSubtitleFallback,
       rememberPerSeries: remember,
     ),
   );
@@ -107,5 +109,33 @@ void main() {
     expect(r.audio.priority, TrackSelectionPriority.navigation);
     expect(r.subtitle.track.language, 'nld');
     expect(r.subtitle.priority, TrackSelectionPriority.navigation);
+  });
+
+  // Subtitles have a rule of their own: a wanted language the file lacks
+  // ends the search before the navigation layer, so the detail pick is not
+  // reached. Audio has no such rule and falls through to the pick.
+  test('remember off, profile subtitle deu missing from the file: subtitles off, the pick is skipped', () async {
+    final r = await _pickDutchThenPlay(remember: false, profileAudio: null, profileSubtitle: 'deu');
+    expect(r.audio.track.language, 'nld');
+    expect(r.audio.priority, TrackSelectionPriority.navigation);
+    expect(r.subtitle.track, SubtitleTrack.off);
+    expect(r.subtitle.priority, TrackSelectionPriority.off);
+  });
+
+  test('remember off, profile subtitle deu missing, fallback eng: the fallback beats the pick', () async {
+    final r = await _pickDutchThenPlay(
+      remember: false,
+      profileAudio: null,
+      profileSubtitle: 'deu',
+      profileSubtitleFallback: 'eng',
+    );
+    expect(r.subtitle.track.language, 'eng');
+    expect(r.subtitle.priority, TrackSelectionPriority.fallbackLanguage);
+  });
+
+  test('remember on, profile subtitle deu missing: the stored pick (series layer) still wins', () async {
+    final r = await _pickDutchThenPlay(remember: true, profileAudio: null, profileSubtitle: 'deu');
+    expect(r.subtitle.track.language, 'nld');
+    expect(r.subtitle.priority, TrackSelectionPriority.sticky);
   });
 }
