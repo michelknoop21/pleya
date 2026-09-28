@@ -2564,8 +2564,23 @@ class TranslationsDiscoverEn {
 	/// en: 'Subtitles'
 	String get techSubtitles => 'Subtitles';
 
-	/// en: 'Episode S${season} E${episode}'
-	String techEpisode({required Object season, required Object episode}) => 'Episode S${season} E${episode}';
+	/// en: 'Next episode · S${season} E${episode}'
+	String techEpisode({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}';
+
+	/// en: '(one) {1 season} (other) {${n} seasons}'
+	String seasonsHeading({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 season',
+		other: '${n} seasons',
+	);
+
+	/// en: '(one) {1 episode} (other) {${n} episodes}'
+	String seasonEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 episode',
+		other: '${n} episodes',
+	);
+
+	/// en: '${count} left to watch'
+	String seasonEpisodesLeft({required Object count}) => '${count} left to watch';
 
 	/// en: '${title} · applies to this film'
 	String trackScopeMovie({required Object title}) => '${title} · applies to this film';
@@ -8036,7 +8051,10 @@ extension on Translations {
 			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
 			'discover.techSubtitles' => 'Subtitles',
-			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Episode S${season} E${episode}',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}',
+			'discover.seasonsHeading' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 season', other: '${n} seasons', ), 
+			'discover.seasonEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 episode', other: '${n} episodes', ), 
+			'discover.seasonEpisodesLeft' => ({required Object count}) => '${count} left to watch',
 			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
 			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
 			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
@@ -8232,11 +8250,11 @@ extension on Translations {
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
 			'watchlist.coverageIncompleteList' => 'One of your servers could not be reached, so this list may be incomplete.',
 			'watchlist.rail.kind' => 'Type',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.rail.availability' => 'Availability',
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
@@ -8746,11 +8764,11 @@ extension on Translations {
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
 			'matchScreen.unmatchSuccess' => 'Item unmatched',
 			'matchScreen.unmatchFailed' => 'Failed to unmatch item',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.matchApplied' => 'Match applied',
 			'matchScreen.matchFailed' => 'Failed to apply match',
 			'matchScreen.titleHint' => 'Title',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.yearHint' => 'Year',
 			'matchScreen.search' => 'Search',
 			'matchScreen.noMatchesFound' => 'No matches found',
@@ -9260,11 +9278,11 @@ extension on Translations {
 			'languageSettings.sheetFooter' => 'You pick a different language while watching, in the info panel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}',
 			'languageSettings.toastRememberedDetail' => ({required Object global}) => 'The next episodes start this way. Your global preference stays ${global}.',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.toastRememberedDetailNoGlobal' => 'The next episodes start this way.',
 			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · this playback only',
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Remembering per series is off, so nothing was stored for ${title}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'No ${wanted} ${kind} in this episode · now ${actual}',
 			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'No ${wanted} subtitles in this episode · subtitles off',
 			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Your preference for ${title} stays ${wanted} and applies again as soon as an episode has it.',

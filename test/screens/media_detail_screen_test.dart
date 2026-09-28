@@ -47,6 +47,7 @@ import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/providers/watchlist_store.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_activity_card.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_seasons_rail.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
@@ -1080,6 +1081,9 @@ void main() {
       bool isOffline = false,
       bool withWatchlist = false,
       List<NavigatorObserver> navigatorObservers = const [],
+      // Routes pushed from the page need the scope above the navigator, the
+      // way the app's profile navigator has it.
+      bool scopeAboveNavigator = false,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1135,7 +1139,9 @@ void main() {
               ],
             ],
             child: MaterialApp(
-              builder: withNoticeLayer(),
+              builder: scopeAboveNavigator
+                  ? (context, child) => withProfileNavigationScope(child: withNoticeLayer()(context, child))
+                  : withNoticeLayer(),
               theme: monoTheme(dark: true),
               navigatorObservers: navigatorObservers,
               home: withProfileNavigationScope(
@@ -1677,41 +1683,78 @@ void main() {
         );
       });
 
-      testWidgets('switching season on the season-picker chip survives an unrelated rebuild', (tester) async {
+      testWidgets('a series lists its seasons as a poster rail; a tap opens a new page (DEC-140)', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
         final season2 = buildSeason(show, 2);
-        final episode1 = buildEpisode(show, season1, 1);
-        final episode2 = buildEpisode(show, season2, 1);
         final client = _FakeMediaServerClient(
           show: show,
           childrenByParent: {
             show.id: [season1, season2],
-            season1.id: [episode1],
-            season2.id: [episode2],
+            season1.id: [buildEpisode(show, season1, 1)],
+            season2.id: [buildEpisode(show, season2, 1)],
+          },
+        );
+        final routes = _RouteLog();
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          show,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          navigatorObservers: [routes],
+          scopeAboveNavigator: true,
+        );
+
+        expect(find.byType(DetailSeasonsRail), findsOneWidget);
+        expect(find.byType(PopupMenuButton<int>), findsNothing, reason: 'the season pill is gone');
+        expect(find.text('Episode S1E1'), findsNothing, reason: 'episodes live on the season page');
+
+        final poster = find.byKey(const ValueKey('season-poster-season_2'));
+        await tester.ensureVisible(poster);
+        await tester.pump();
+        final pushesBefore = routes.pushes;
+        await tester.tap(poster);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+
+        expect(routes.pushes, pushesBefore + 1);
+        // The iPhone opens the season itself, not the series at that season.
+        final opened = tester.widgetList<MediaDetailScreen>(find.byType(MediaDetailScreen, skipOffstage: false)).last;
+        expect(opened.metadata.id, 'season_2');
+        expect(opened.initialSeasonIndex, isNull);
+      });
+
+      testWidgets('a season page shows its episodes without a season pill and plays the next one (DEC-140)', (
+        tester,
+      ) async {
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final watched = buildEpisode(show, season1, 1).copyWith(viewCount: 1);
+        final next = buildEpisode(show, season1, 2);
+        final client = _FakeMediaServerClient(
+          show: season1,
+          childrenByParent: {
+            season1.id: [watched, next],
           },
         );
 
-        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+        await pumpPhoneDetail(
+          tester,
+          client,
+          season1,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+        );
 
+        expect(find.byType(MobilePosterHero), findsOneWidget);
+        expect(find.byType(DetailSeasonsRail), findsNothing);
+        expect(find.byType(PopupMenuButton<int>), findsNothing);
+        expect(find.text('Episodes'), findsOneWidget);
         expect(find.text('Episode S1E1'), findsOneWidget);
-        expect(find.text('Episode S2E1'), findsNothing);
-
-        await tester.tap(find.byType(PopupMenuButton<int>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Season 2').last);
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-
-        expect(find.text('Episode S2E1'), findsOneWidget);
-        expect(find.text('Episode S1E1'), findsNothing);
-
-        // A rebuild from something entirely unrelated to season selection
-        // (a watch-state event on the show) must not reset _selectedSeasonIndex.
-        await emit(tester, () => WatchStateNotifier().notifyWatched(item: show, isNowWatched: false));
-
-        expect(find.text('Episode S2E1'), findsOneWidget);
-        expect(find.text('Episode S1E1'), findsNothing);
+        expect(find.text('Episode S1E2'), findsOneWidget);
+        expect(find.textContaining('S1E2'), findsWidgets, reason: 'the main button names the next episode');
       });
 
       MediaItem buildMovie() => MediaItem(
@@ -1727,7 +1770,7 @@ void main() {
       Color? capsuleColour(WidgetTester tester, Finder button) =>
           tester.widgetList<Material>(find.descendant(of: button, matching: find.byType(Material))).last.color;
 
-      testWidgets('a series gets the film header and its episodes inline, no tabs (DEC-131)', (tester) async {
+      testWidgets('a series gets the film header and its seasons rail, no tabs (DEC-131, DEC-140)', (tester) async {
         final show = buildShow();
         final season1 = buildSeason(show, 1);
         final client = _FakeMediaServerClient(
@@ -1744,14 +1787,14 @@ void main() {
         expect(find.text('The Show'), findsOneWidget);
         // On a series, downloading is per episode row, not in the action row.
         expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
-        // No tab strip: the action row and the episodes block sit on the page.
+        // No tab strip: the action row and the seasons rail sit on the page.
         expect(find.byType(TabBar), findsNothing);
         expect(find.byKey(const Key('media-detail.action.more')), findsOneWidget);
-        expect(find.text('Episodes'), findsOneWidget);
-        // The season pill and its count show for a one-season series too.
-        expect(find.byType(PopupMenuButton<int>), findsOneWidget);
+        // One season is one poster (Review Focus 4).
+        expect(find.byType(DetailSeasonsRail), findsOneWidget);
+        expect(find.text('1 season'), findsOneWidget);
         expect(find.text('Season 1'), findsOneWidget);
-        expect(find.text('Episode S1E1'), findsOneWidget);
+        expect(find.byType(PopupMenuButton<int>), findsNothing);
       });
 
       testWidgets('the page opens on the poster hero over the ambient background, no 16:9 card (DEC-140)', (
@@ -1960,31 +2003,6 @@ void main() {
         expect(find.text(t.common.share), findsOneWidget);
       });
 
-      testWidgets('the season pill sits on an elevated surface, not the page colour', (tester) async {
-        final show = buildShow();
-        final season1 = buildSeason(show, 1);
-        final season2 = buildSeason(show, 2);
-        final client = _FakeMediaServerClient(
-          show: show,
-          childrenByParent: {
-            show.id: [season1, season2],
-            season1.id: [buildEpisode(show, season1, 1)],
-            season2.id: [buildEpisode(show, season2, 1)],
-          },
-        );
-
-        await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
-
-        final pill = find.descendant(of: find.byType(PopupMenuButton<int>), matching: find.byType(Container)).first;
-        final decoration = tester.widget<Container>(pill).decoration as BoxDecoration;
-        final tk = tokens(tester.element(pill));
-
-        // secondaryContainer collapses onto c.surface under monoTheme, which
-        // drew this pill in the exact colour of the page behind it.
-        expect(decoration.color, tk.surfaceElevated);
-        expect(decoration.color, isNot(tk.surface));
-      });
-
       testWidgets('a series shows its description and the information around it on the page (DEC-131)', (tester) async {
         final show = MediaItem(
           id: 'show_info',
@@ -2030,7 +2048,7 @@ void main() {
         expect(find.text('Rate'), findsOneWidget);
       });
 
-      testWidgets('NL: the episodes block reads Afleveringen and no tab labels are left (DEC-131)', (tester) async {
+      testWidgets('NL: the seasons rail reads 1 seizoen and no tab labels are left (DEC-131, DEC-140)', (tester) async {
         // nl is a deferred library (slang lazy loading): loading it for real
         // needs the real event loop, not testWidgets' fake-async zone.
         await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.nl));
@@ -2049,7 +2067,7 @@ void main() {
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
         expect(find.byType(TabBar), findsNothing);
-        expect(find.text('Afleveringen'), findsOneWidget);
+        expect(find.text('1 seizoen'), findsOneWidget);
         expect(find.text('Vergelijkbaar'), findsNothing);
         expect(find.text('Details'), findsNothing);
       });

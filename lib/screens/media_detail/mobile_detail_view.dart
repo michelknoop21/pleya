@@ -59,7 +59,10 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                 const SizedBox(height: 22),
                 Builder(builder: (context) => _buildMobileTechTable(context, metadata)),
               ],
-              if (metadata.isShow) ...[const SizedBox(height: 24), _buildMobileEpisodesSection(context, metadata)],
+              if (metadata.isShow || metadata.isSeason) ...[
+                const SizedBox(height: 24),
+                _buildMobileSeasonsOrEpisodes(context, metadata),
+              ],
               if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 _buildMobileSectionTitle(context, t.discover.cast, key: _castSectionKey),

@@ -1069,7 +1069,16 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String activityViewers({required Object count}) => '${count} kijkers';
 	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
 	@override String get techSubtitles => 'Ondertiteling';
-	@override String techEpisode({required Object season, required Object episode}) => 'Aflevering S${season} A${episode}';
+	@override String techEpisode({required Object season, required Object episode}) => 'Volgende aflevering · S${season} A${episode}';
+	@override String seasonsHeading({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 seizoen',
+		other: '${n} seizoenen',
+	);
+	@override String seasonEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 aflevering',
+		other: '${n} afleveringen',
+	);
+	@override String seasonEpisodesLeft({required Object count}) => '${count} nog te zien';
 	@override String trackScopeMovie({required Object title}) => '${title} · geldt voor deze film';
 	@override String trackScopeSeries({required Object title}) => '${title} · voor deze serie';
 	@override String get trackChoiceNote => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.';
@@ -3913,7 +3922,10 @@ extension on TranslationsNl {
 			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
 			'discover.techSubtitles' => 'Ondertiteling',
-			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Aflevering S${season} A${episode}',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Volgende aflevering · S${season} A${episode}',
+			'discover.seasonsHeading' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 seizoen', other: '${n} seizoenen', ), 
+			'discover.seasonEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 aflevering', other: '${n} afleveringen', ), 
+			'discover.seasonEpisodesLeft' => ({required Object count}) => '${count} nog te zien',
 			'discover.trackScopeMovie' => ({required Object title}) => '${title} · geldt voor deze film',
 			'discover.trackScopeSeries' => ({required Object title}) => '${title} · voor deze serie',
 			'discover.trackChoiceNote' => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.',
@@ -4109,11 +4121,11 @@ extension on TranslationsNl {
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.',
 			'watchlist.coverageIncompleteList' => 'Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.',
 			'watchlist.rail.kind' => 'Soort',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.rail.availability' => 'Beschikbaarheid',
 			'myPleya.title' => 'Mijn Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
@@ -4623,11 +4635,11 @@ extension on TranslationsNl {
 			'matchScreen.unmatchConfirm' => 'Deze match wissen? Plex behandelt dit als niet-gematcht tot het opnieuw gematcht is.',
 			'matchScreen.unmatchSuccess' => 'Item ontkoppeld',
 			'matchScreen.unmatchFailed' => 'Kon item niet ontkoppelen',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.matchApplied' => 'Koppeling toegepast',
 			'matchScreen.matchFailed' => 'Koppeling kon niet worden toegepast',
 			'matchScreen.titleHint' => 'Titel',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.yearHint' => 'Jaar',
 			'matchScreen.search' => 'Zoeken',
 			'matchScreen.noMatchesFound' => 'Geen overeenkomsten gevonden',
@@ -5137,11 +5149,11 @@ extension on TranslationsNl {
 			'languageSettings.sheetFooter' => 'Een andere taal kies je tijdens het kijken, in het infopaneel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · onthouden voor ${title}',
 			'languageSettings.toastRememberedDetail' => ({required Object global}) => 'Volgende afleveringen starten zo. Je globale voorkeur blijft ${global}.',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.toastRememberedDetailNoGlobal' => 'Volgende afleveringen starten zo.',
 			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · alleen deze keer',
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Onthouden per serie staat uit, dus er is niets bewaard voor ${title}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'Geen ${wanted} ${kind} in deze aflevering · nu ${actual}',
 			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'Geen ${wanted} ondertitels in deze aflevering · ondertitels uit',
 			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Je voorkeur voor ${title} blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',

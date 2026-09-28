@@ -9,6 +9,7 @@ import 'package:pleya/media/unified/unified_route_context.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/utils/media_navigation_helper.dart';
+import 'package:pleya/utils/platform_detector.dart';
 
 void main() {
   test('episode detail target opens parent show and focuses season episode', () {
@@ -52,6 +53,54 @@ void main() {
     expect(target.initialSeasonId, 'season-3');
     expect(target.initialSeasonIndex, 3);
     expect(target.initialEpisodeId, isNull);
+  });
+
+  group('season target per device (DEC-140)', () {
+    final season = MediaItem(
+      id: 'season-3',
+      backend: MediaBackend.plex,
+      kind: MediaKind.season,
+      title: 'Season 3',
+      index: 3,
+      parentId: 'show-1',
+      serverId: 'server-1',
+    );
+
+    Future<MediaDetailNavigationTarget> resolveOn(WidgetTester tester, {required bool tv}) async {
+      TvDetectionService.debugSetTVOverride(tv);
+      addTearDown(() => TvDetectionService.debugSetTVOverride(null));
+      late MediaDetailNavigationTarget target;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.iOS),
+          // An iPhone-class logical viewport: 390x844 at DPR 3.
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(390, 844), devicePixelRatio: 3),
+            child: Builder(
+              builder: (context) {
+                target = mediaDetailNavigationTargetIn(context, season);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      return target;
+    }
+
+    testWidgets('the iPhone opens the season itself', (tester) async {
+      final target = await resolveOn(tester, tv: false);
+
+      expect(target.metadata, same(season));
+      expect(target.initialSeasonIndex, isNull);
+    });
+
+    testWidgets('TV still opens the series at that season', (tester) async {
+      final target = await resolveOn(tester, tv: true);
+
+      expect(target.metadata.id, 'show-1');
+      expect(target.initialSeasonIndex, 3);
+    });
   });
 
   test('movie detail target keeps the movie itself', () {

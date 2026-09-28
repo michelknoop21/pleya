@@ -56,11 +56,15 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// Delen and Aanvragen moved into the Meer menu, which this owns
   /// ([_contextMenuKey]) so the app bar's more button opens the same menu.
   Widget _buildMobilePrimaryActions(BuildContext context, MediaItem metadata, {bool glass = false}) {
-    final resumeTarget = metadata.isShow ? (_onDeckEpisode ?? metadata) : metadata;
+    final resumeTarget = metadata.isShow
+        ? (_onDeckEpisode ?? metadata)
+        : metadata.isSeason
+        ? (_seasonNextEpisode ?? metadata)
+        : metadata;
     final viewOffsetMs = resumeTarget.viewOffsetMs ?? 0;
     final isResuming = viewOffsetMs > 0;
     final detail = StringBuffer();
-    if (metadata.isShow && resumeTarget.parentIndex != null && resumeTarget.index != null) {
+    if ((metadata.isShow || metadata.isSeason) && resumeTarget.parentIndex != null && resumeTarget.index != null) {
       detail.write(
         '· ${t.discover.playEpisode(season: resumeTarget.parentIndex.toString(), episode: resumeTarget.index.toString())} ',
       );
@@ -98,7 +102,8 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
         glass: glass,
         playLabel: isResuming ? t.common.resume : t.common.play,
         playDetail: playDetail.isEmpty ? null : playDetail,
-        onPlay: () => unawaited(_handlePlayPressed(metadata)),
+        // A season plays its next episode, not its first (DEC-140).
+        onPlay: () => unawaited(_handlePlayPressed(metadata.isSeason ? resumeTarget : metadata)),
         onPlayFromStart: isResuming ? () => unawaited(_handlePlayFromStartPressed(resumeTarget)) : null,
         actions: [
           if (canOfferWatchlist)

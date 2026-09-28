@@ -883,7 +883,16 @@
     "activityViewers": "${count} kijkers",
     "activityOwnProgress": "Jij bent bij S${season} A${episode}",
     "techSubtitles": "Ondertiteling",
-    "techEpisode": "Aflevering S${season} A${episode}",
+    "techEpisode": "Volgende aflevering · S${season} A${episode}",
+    "seasonsHeading": {
+      "one": "1 seizoen",
+      "other": "${n} seizoenen"
+    },
+    "seasonEpisodes": {
+      "one": "1 aflevering",
+      "other": "${n} afleveringen"
+    },
+    "seasonEpisodesLeft": "${count} nog te zien",
     "trackScopeMovie": "${title} · geldt voor deze film",
     "trackScopeSeries": "${title} · voor deze serie",
     "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.",

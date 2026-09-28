@@ -4,7 +4,7 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
   MediaItem? _audioTargetFor(MediaItem metadata) {
     if (metadata.isMovie || metadata.isEpisode) return metadata;
     if (metadata.isShow) return _onDeckEpisode ?? (_episodes.isEmpty ? null : _episodes.first);
-    if (metadata.isSeason) return _episodes.isEmpty ? null : _episodes.first;
+    if (metadata.isSeason) return _seasonNextEpisode;
     return null;
   }
 

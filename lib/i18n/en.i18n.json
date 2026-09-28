@@ -883,7 +883,16 @@
     "activityViewers": "${count} viewers",
     "activityOwnProgress": "You're at S${season} E${episode}",
     "techSubtitles": "Subtitles",
-    "techEpisode": "Episode S${season} E${episode}",
+    "techEpisode": "Next episode · S${season} E${episode}",
+    "seasonsHeading": {
+      "one": "1 season",
+      "other": "${n} seasons"
+    },
+    "seasonEpisodes": {
+      "one": "1 episode",
+      "other": "${n} episodes"
+    },
+    "seasonEpisodesLeft": "${count} left to watch",
     "trackScopeMovie": "${title} · applies to this film",
     "trackScopeSeries": "${title} · for this series",
     "trackChoiceNote": "Your choice is remembered and used when you press Resume or Play.",
