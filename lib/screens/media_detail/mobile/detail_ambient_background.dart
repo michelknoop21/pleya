@@ -27,7 +27,10 @@ class DetailAmbientBackground extends StatelessWidget {
     final image = this.image;
     if (image == null) return child;
     final bg = Theme.of(context).scaffoldBackgroundColor;
+    // No clip: on a page shorter than the glow, the glow runs on below the
+    // content instead of ending in a hard edge.
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         Positioned(
           top: 0,

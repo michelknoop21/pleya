@@ -36,14 +36,15 @@ class DetailTechTable extends StatelessWidget {
       if (subtitleLabel != null) _TechRow(name: t.discover.techSubtitles, value: subtitleLabel!, onTap: onSubtitleTap),
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
-    final divider = Divider(height: 1, thickness: 1, color: Colors.white.withValues(alpha: 0.08));
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final divider = Divider(height: 1, thickness: 1, color: onSurface.withValues(alpha: 0.08));
     return Column(
       crossAxisAlignment: .stretch,
       children: [
         if (heading != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(heading!, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.5))),
+            child: Text(heading!, style: TextStyle(fontSize: 13, color: onSurface.withValues(alpha: 0.5))),
           ),
         for (var i = 0; i < rows.length; i++) ...[if (i > 0) divider, rows[i]],
       ],
@@ -61,13 +62,14 @@ class _TechRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectable = onTap != null;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
         children: [
           SizedBox(
             width: 124,
-            child: Text(name, style: TextStyle(fontSize: 15, color: Colors.white.withValues(alpha: 0.7))),
+            child: Text(name, style: TextStyle(fontSize: 15, color: onSurface.withValues(alpha: 0.7))),
           ),
           Expanded(
             child: Text(
@@ -77,11 +79,11 @@ class _TechRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: selectable ? FontWeight.w700 : FontWeight.w500,
-                color: Colors.white,
+                color: onSurface,
               ),
             ),
           ),
-          if (selectable) AppIcon(Symbols.chevron_right_rounded, size: 18, color: Colors.white.withValues(alpha: 0.5)),
+          if (selectable) AppIcon(Symbols.chevron_right_rounded, size: 18, color: onSurface.withValues(alpha: 0.5)),
         ],
       ),
     );

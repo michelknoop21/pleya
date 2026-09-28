@@ -3,14 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/item_watcher.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_activity_card.dart';
+import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/watcher_avatar.dart';
 
 void main() {
   setUp(() async => LocaleSettings.setLocale(AppLocale.nl));
   tearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
 
-  Future<void> pump(WidgetTester tester, DetailActivityCard card) =>
-      tester.pumpWidget(MaterialApp(home: Scaffold(body: card)));
+  Future<void> pump(WidgetTester tester, DetailActivityCard card) => tester.pumpWidget(
+    MaterialApp(
+      theme: monoTheme(dark: true),
+      home: Scaffold(body: card),
+    ),
+  );
 
   const watchers = [
     ItemWatcher(id: '1', displayName: 'Michel', isSelf: true),

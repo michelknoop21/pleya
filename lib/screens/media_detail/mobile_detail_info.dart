@@ -78,13 +78,65 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
     final trailer = _getPrimaryTrailer();
     final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
     final canDownload = !metadata.isShow && !widget.isOffline && !PlatformDetector.isAppleTV();
-    final downloadProvider = canDownload ? context.watch<DownloadProvider>() : null;
 
     void openMore() {
       final box = _contextMenuKey.currentContext?.findRenderObject() as RenderBox?;
       final position = box == null ? Offset.zero : box.localToGlobal(box.size.center(Offset.zero));
       _contextMenuKey.currentState?.showContextMenu(context, position: position);
     }
+
+    DetailPrimaryActions buildActions(DownloadProvider? downloadProvider) => DetailPrimaryActions(
+      glass: glass,
+      playLabel: isResuming ? t.common.resume : t.common.play,
+      playDetail: playDetail.isEmpty ? null : playDetail,
+      // A season plays its next episode, not its first (DEC-140).
+      onPlay: () => unawaited(_handlePlayPressed(metadata.isSeason ? resumeTarget : metadata)),
+      onPlayFromStart: isResuming ? () => unawaited(_handlePlayFromStartPressed(resumeTarget)) : null,
+      actions: [
+        if (canOfferWatchlist)
+          DetailActionItem(
+            key: const Key('media-detail.action.watchlist'),
+            icon: onWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+            label: t.detailActions.watchlist,
+            semanticLabel: onWatchlist ? t.watchlist.remove : t.watchlist.add,
+            active: onWatchlist,
+            onTap: () => unawaited(WatchlistUiActions.toggle(context, metadata)),
+          ),
+        if (trailer != null)
+          DetailActionItem(
+            key: const Key('media-detail.action.trailer'),
+            icon: Icons.movie_outlined,
+            label: t.detailActions.trailer,
+            semanticLabel: t.tooltips.playTrailer,
+            onTap: () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
+          ),
+        if (!widget.isOffline)
+          DetailActionItem(
+            key: const Key('media-detail.action.rate'),
+            icon: isNumericRating ? Icons.star_border_rounded : Icons.thumb_up_outlined,
+            label: t.detailActions.rate,
+            semanticLabel: t.mediaMenu.rate,
+            onTap: () => unawaited(_showRatingDialog(context, metadata)),
+          ),
+        DetailActionItem(
+          key: const Key('media-detail.action.watched'),
+          icon: Icons.check_circle_outline_rounded,
+          label: t.detailActions.watched,
+          semanticLabel: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
+          active: metadata.isWatched,
+          onTap: () => unawaited(_handleWatchedTogglePressed(metadata)),
+        ),
+        if (downloadProvider != null) _mobileDownloadAction(downloadProvider, metadata),
+        if (!widget.isOffline)
+          DetailActionItem(
+            key: const Key('media-detail.action.more'),
+            icon: Icons.more_vert_rounded,
+            label: t.detailActions.more,
+            semanticLabel: MaterialLocalizations.of(context).moreButtonTooltip,
+            onTap: openMore,
+          ),
+      ],
+    );
 
     return MediaContextMenu(
       key: _contextMenuKey,
@@ -98,58 +150,10 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
       onRequest: (seerrConfigured && !widget.isOffline && (metadata.isMovie || metadata.isShow))
           ? () => unawaited(_handleRequestPressed(metadata))
           : null,
-      child: DetailPrimaryActions(
-        glass: glass,
-        playLabel: isResuming ? t.common.resume : t.common.play,
-        playDetail: playDetail.isEmpty ? null : playDetail,
-        // A season plays its next episode, not its first (DEC-140).
-        onPlay: () => unawaited(_handlePlayPressed(metadata.isSeason ? resumeTarget : metadata)),
-        onPlayFromStart: isResuming ? () => unawaited(_handlePlayFromStartPressed(resumeTarget)) : null,
-        actions: [
-          if (canOfferWatchlist)
-            DetailActionItem(
-              key: const Key('media-detail.action.watchlist'),
-              icon: onWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-              label: t.detailActions.watchlist,
-              semanticLabel: onWatchlist ? t.watchlist.remove : t.watchlist.add,
-              active: onWatchlist,
-              onTap: () => unawaited(WatchlistUiActions.toggle(context, metadata)),
-            ),
-          if (trailer != null)
-            DetailActionItem(
-              key: const Key('media-detail.action.trailer'),
-              icon: Icons.movie_outlined,
-              label: t.detailActions.trailer,
-              semanticLabel: t.tooltips.playTrailer,
-              onTap: () => unawaited(navigateToVideoPlayer(context, metadata: trailer)),
-            ),
-          if (!widget.isOffline)
-            DetailActionItem(
-              key: const Key('media-detail.action.rate'),
-              icon: isNumericRating ? Icons.star_border_rounded : Icons.thumb_up_outlined,
-              label: t.detailActions.rate,
-              semanticLabel: t.mediaMenu.rate,
-              onTap: () => unawaited(_showRatingDialog(context, metadata)),
-            ),
-          DetailActionItem(
-            key: const Key('media-detail.action.watched'),
-            icon: Icons.check_circle_outline_rounded,
-            label: t.detailActions.watched,
-            semanticLabel: metadata.isWatched ? t.tooltips.markAsUnwatched : t.tooltips.markAsWatched,
-            active: metadata.isWatched,
-            onTap: () => unawaited(_handleWatchedTogglePressed(metadata)),
-          ),
-          if (downloadProvider != null) _mobileDownloadAction(downloadProvider, metadata),
-          if (!widget.isOffline)
-            DetailActionItem(
-              key: const Key('media-detail.action.more'),
-              icon: Icons.more_vert_rounded,
-              label: t.detailActions.more,
-              semanticLabel: MaterialLocalizations.of(context).moreButtonTooltip,
-              onTap: openMore,
-            ),
-        ],
-      ),
+      // Download progress rebuilds only this row, not the whole page.
+      child: canDownload
+          ? Consumer<DownloadProvider>(builder: (context, downloadProvider, _) => buildActions(downloadProvider))
+          : buildActions(null),
     );
   }
 

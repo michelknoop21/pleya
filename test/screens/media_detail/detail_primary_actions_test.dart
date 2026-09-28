@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_primary_actions.dart';
+import 'package:pleya/theme/mono_theme.dart';
 
 void main() {
   testWidgets('play-from-start only shows while there is progress', (tester) async {
@@ -44,6 +45,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: monoTheme(dark: true),
         home: Scaffold(
           body: DetailPrimaryActions(
             playLabel: 'Afspelen',
@@ -86,5 +88,36 @@ void main() {
     expect(find.bySemanticsLabel('spoken watched'), findsOneWidget);
     await tester.tap(find.byKey(const Key('media-detail.action.more')));
     expect(tapped, ['more']);
+  });
+
+  testWidgets('light theme: the play capsule and the active circle invert, nothing white on white', (tester) async {
+    final theme = monoTheme(dark: false);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: DetailPrimaryActions(
+            playLabel: 'Afspelen',
+            onPlay: () {},
+            actions: [
+              DetailActionItem(
+                key: const Key('media-detail.action.watched'),
+                icon: Icons.circle,
+                label: 'watched',
+                active: true,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final play = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(play.style?.backgroundColor?.resolve({}), theme.colorScheme.onSurface);
+    expect(play.style?.foregroundColor?.resolve({}), theme.scaffoldBackgroundColor);
+    final circle = tester.widget<DecoratedBox>(
+      find.descendant(of: find.byKey(const Key('media-detail.action.watched')), matching: find.byType(DecoratedBox)),
+    );
+    expect((circle.decoration as BoxDecoration).color, theme.colorScheme.onSurface);
   });
 }

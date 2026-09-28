@@ -124,7 +124,12 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
               body: Stack(
                 children: [
                   content,
-                  Positioned(top: 0, left: 0, right: 0, child: _buildMobileGlassHeroBar(context, metadata)),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildMobileGlassHeroBar(context, metadata, overImage: ambientUrl != null),
+                  ),
                 ],
               ),
             ),
@@ -187,10 +192,11 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
 
   /// The app bar's more button opens the menu the action row's Meer owns
   /// (`_buildMobilePrimaryActions`, `_contextMenuKey`).
-  Widget _buildMobileMoreButton(BuildContext context) {
+  Widget _buildMobileMoreButton(BuildContext context, Color color) {
     return Builder(
       builder: (buttonContext) => GlassCircleButton(
         icon: Icons.more_horiz_rounded,
+        foregroundColor: color,
         tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
         onPressed: () {
           final renderBox = buttonContext.findRenderObject() as RenderBox?;
@@ -204,24 +210,29 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// The LG-02 back/more row, pinned over the page (see [MobileDetailHeroBar]).
   /// Only the bar listens to the scroll offset; it turns opaque with the title
   /// over the last 60 pt before the poster hero passes under it (D-03b).
-  Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata) {
-    final back = GlassCircleButton(
-      icon: Icons.arrow_back_rounded,
-      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-      onPressed: () => Navigator.pop(context, _watchStateChanged),
-    );
-    final trailing = [if (!widget.isOffline) _buildMobileMoreButton(context)];
+  /// The glyphs are white over the image, the page text colour otherwise.
+  Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata, {required bool overImage}) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     // The hero is 640 pt on the 402 pt mockup (MobilePosterHero).
     final heroBottom = MediaQuery.sizeOf(context).width * 640 / 402;
     final collapsedAt = heroBottom - MediaQuery.paddingOf(context).top - 60;
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffset,
-      builder: (context, offset, _) => MobileDetailHeroBar(
-        leading: back,
-        trailing: trailing,
-        title: metadata.displayTitle,
-        collapseProgress: (offset - (collapsedAt - 60)) / 60,
-      ),
+      builder: (context, offset, _) {
+        final progress = (offset - (collapsedAt - 60)) / 60;
+        final glyph = overImage && progress < 0.5 ? Colors.white : onSurface;
+        return MobileDetailHeroBar(
+          leading: GlassCircleButton(
+            icon: Icons.arrow_back_rounded,
+            foregroundColor: glyph,
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: () => Navigator.pop(context, _watchStateChanged),
+          ),
+          trailing: [if (!widget.isOffline) _buildMobileMoreButton(context, glyph)],
+          title: metadata.displayTitle,
+          collapseProgress: progress,
+        );
+      },
     );
   }
 }

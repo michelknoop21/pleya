@@ -40,8 +40,9 @@ class DetailActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = nowWatchingName;
     if (watchers.isEmpty && name == null) return const SizedBox.shrink();
+    final onSurface = Theme.of(context).colorScheme.onSurface;
 
-    final muted = Colors.white.withValues(alpha: 0.70);
+    final muted = onSurface.withValues(alpha: 0.70);
     final progress = isSeries ? ownProgressLabel : null;
     final plays = playCount;
     final viewers = viewerCount;
@@ -54,7 +55,7 @@ class DetailActivityCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: onSurface.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
           if (watchers.isNotEmpty) ...[_avatars(), const SizedBox(width: 14)],
@@ -67,7 +68,7 @@ class DetailActivityCard extends StatelessWidget {
                     isSeries
                         ? t.discover.watchingSeriesBy(names: WatchedByRow.namesSentence(watchers))
                         : t.discover.watchedBy(names: WatchedByRow.namesSentence(watchers)),
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: .w700),
+                    style: TextStyle(color: onSurface, fontSize: 15, fontWeight: .w700),
                     maxLines: 2,
                     overflow: .ellipsis,
                   ),
@@ -88,7 +89,7 @@ class DetailActivityCard extends StatelessWidget {
                           ),
                           TextSpan(
                             text: t.nowWatching.watchingNow(name: name),
-                            style: const TextStyle(color: Colors.white, fontWeight: .w700),
+                            style: TextStyle(color: onSurface, fontWeight: .w700),
                           ),
                           if (details.isNotEmpty) const TextSpan(text: ' · '),
                         ],

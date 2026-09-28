@@ -54,11 +54,12 @@ class DetailPrimaryActions extends StatelessWidget {
   /// Liquid Glass on: the play button is the prominent glass capsule (LG-02).
   final bool glass;
 
-  static const _dark = Color(0xFF141414);
-
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    // The page colour: the capsule inverts with the theme.
+    final ink = theme.scaffoldBackgroundColor;
     final detail = playDetail;
     final label = detail == null ? playLabel : '$playLabel $detail';
     final Widget play = glass
@@ -74,11 +75,7 @@ class DetailPrimaryActions extends StatelessWidget {
             height: 52,
             child: FilledButton.icon(
               onPressed: onPlay,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: _dark,
-                shape: const StadiumBorder(),
-              ),
+              style: FilledButton.styleFrom(backgroundColor: onSurface, foregroundColor: ink),
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text.rich(
                 TextSpan(
@@ -87,7 +84,7 @@ class DetailPrimaryActions extends StatelessWidget {
                     if (detail != null)
                       TextSpan(
                         text: ' $detail',
-                        style: TextStyle(fontWeight: .w400, color: _dark.withValues(alpha: 0.62)),
+                        style: TextStyle(fontWeight: .w400, color: ink.withValues(alpha: 0.62)),
                       ),
                   ],
                 ),
@@ -147,7 +144,8 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
     return Semantics(
       button: true,
       selected: action.active,
@@ -164,11 +162,11 @@ class _ActionButton extends StatelessWidget {
               DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: action.active ? Colors.white : onSurface.withValues(alpha: 0.08),
+                  color: action.active ? onSurface : onSurface.withValues(alpha: 0.08),
                 ),
                 child: SizedBox.square(
                   dimension: 46,
-                  child: Icon(action.icon, size: 22, color: action.active ? DetailPrimaryActions._dark : onSurface),
+                  child: Icon(action.icon, size: 22, color: action.active ? theme.scaffoldBackgroundColor : onSurface),
                 ),
               ),
               const SizedBox(height: 7),

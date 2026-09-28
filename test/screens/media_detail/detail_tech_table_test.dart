@@ -5,6 +5,7 @@ import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_file_info.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_tech_table.dart';
+import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/media_quality_labels.dart';
 
 void main() {
@@ -27,6 +28,22 @@ void main() {
     expect(find.byIcon(Symbols.chevron_right_rounded), findsOneWidget); // alleen de ondertitelrij
     expect(find.text('Ondertiteling'), findsOneWidget);
     expect(find.ancestor(of: find.text('Engels (AAC stereo)'), matching: find.byType(InkWell)), findsNothing);
+  });
+
+  testWidgets('light theme: values take the page text colour, not white', (tester) async {
+    final theme = monoTheme(dark: false);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: DetailTechTable(videoLabel: '1080p (H.264)', audioLabel: 'Engels (AAC stereo)', subtitleLabel: 'Uit'),
+        ),
+      ),
+    );
+    for (final value in ['1080p (H.264)', 'Engels (AAC stereo)', 'Uit']) {
+      expect(tester.widget<Text>(find.text(value)).style?.color, theme.colorScheme.onSurface, reason: value);
+    }
+    expect(tester.widget<Text>(find.text('Video')).style?.color, isNot(Colors.white.withValues(alpha: 0.7)));
   });
 
   testWidgets('no labels draws nothing', (tester) async {

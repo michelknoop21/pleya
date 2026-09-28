@@ -57,7 +57,7 @@ class CastSection extends StatelessWidget {
         ? const TextStyle(fontSize: 13.5, fontWeight: .w500)
         : theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600);
     final actorRoleStyle = round
-        ? TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.70))
+        ? TextStyle(fontSize: 12.5, color: theme.colorScheme.onSurface.withValues(alpha: 0.70))
         : theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final radius = round ? imageSize / 2 : tokens(context).radiusSm;
     final textAlign = round ? TextAlign.center : TextAlign.start;

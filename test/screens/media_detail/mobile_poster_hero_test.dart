@@ -120,4 +120,23 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: DetailAmbientBackground(image: null, child: Text('page'))));
     expect(find.byType(ImageFiltered), findsNothing);
   });
+
+  testWidgets('on a short page the glow runs on past the content, not cut at its height', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topCenter,
+          child: DetailAmbientBackground(
+            image: MemoryImage(_onePixelPng),
+            child: const SizedBox(height: 300, width: 390, child: Text('page')),
+          ),
+        ),
+      ),
+    );
+    final outer = find.descendant(of: find.byType(DetailAmbientBackground), matching: find.byType(Stack)).first;
+    expect(tester.widget<Stack>(outer).clipBehavior, Clip.none);
+    expect(tester.getSize(outer).height, 300);
+    final glow = find.descendant(of: outer, matching: find.byType(RepaintBoundary)).first;
+    expect(tester.getSize(glow).height, 1500, reason: 'the glow keeps its full height below a 300 pt page');
+  });
 }

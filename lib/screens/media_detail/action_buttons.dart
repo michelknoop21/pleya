@@ -447,6 +447,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   }
 
   Widget _buildUnifiedSourceCard(UnifiedMediaRouteContext routeContext) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     final parts = [
       _metadata.serverName ?? routeContext.sourceKey.split(':').first,
       if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
@@ -454,23 +455,23 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     final onChangeSource = widget.onChangeSource;
     final tile = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: onSurface.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
-          Text(t.sourcePicker.source, style: TextStyle(color: Colors.white.withValues(alpha: 0.70), fontSize: 15)),
+          Text(t.sourcePicker.source, style: TextStyle(color: onSurface.withValues(alpha: 0.70), fontSize: 15)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               parts.join(' · '),
               maxLines: 1,
               overflow: .ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(color: onSurface, fontSize: 15),
             ),
           ),
           if (onChangeSource != null)
             Text(
               t.sourcePicker.change,
-              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: .w700),
+              style: TextStyle(color: onSurface, fontSize: 15, fontWeight: .w700),
             ),
         ],
       ),

@@ -71,7 +71,8 @@ class _SeasonPoster extends StatelessWidget {
       if (total > 0) t.discover.seasonEpisodes(n: total),
       if (partlyWatched) t.discover.seasonEpisodesLeft(count: left),
     ].join(' · ');
-    final muted = Colors.white.withValues(alpha: 0.7);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final muted = onSurface.withValues(alpha: 0.7);
 
     return SizedBox(
       width: _width,
@@ -138,7 +139,7 @@ class _SeasonPoster extends StatelessWidget {
               season.title ?? '',
               maxLines: 1,
               overflow: .ellipsis,
-              style: const TextStyle(fontSize: 13, color: Colors.white),
+              style: TextStyle(fontSize: 13, color: onSurface),
             ),
             if (subtitle.isNotEmpty)
               Text(

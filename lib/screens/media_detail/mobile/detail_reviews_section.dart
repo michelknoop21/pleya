@@ -68,7 +68,7 @@ class _SourceLine extends StatelessWidget {
               source,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: 0.70)),
+              style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70)),
             ),
           ),
       ],
@@ -89,7 +89,7 @@ class _ReviewCard extends StatelessWidget {
       width: DetailReviewsSection._cardWidth,
       height: DetailReviewsSection._cardHeight,
       child: Material(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
         borderRadius: radius,
         child: InkWell(
           borderRadius: radius,
