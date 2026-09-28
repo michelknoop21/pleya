@@ -4164,8 +4164,8 @@ volle-breedte CTA-capsules, een losse Downloaden-capsule en bij series een inlin
 met seizoenpil. Vier nieuwe mockups (`D-01-film`, `D-02-audio-sheet`, `D-03-serie`,
 `D-03b-serie-scroll`, gebouwd als HTML in de scratchpad) werken de pagina verder uit: een staande
 poster die overloopt in een waas uit de poster zelf, echte scores per backend in plaats van alleen
-de RT-chip, een activiteitskaart, een techniektabel waarin audio- en ondertitelkeuze alleen
-onthouden worden voor de volgende start, Plex-recensies en een seizoensrij die naar een eigen
+de RT-chip, een activiteitskaart, een techniektabel waarin een audio- of ondertitelkeuze niets
+afspeelt maar meegaat naar de volgende start vanaf de pagina, Plex-recensies en een seizoensrij die naar een eigen
 seizoenspagina navigeert in plaats van de afleveringen inline te tonen. Michel bekeek de vier
 mockups en reageerde met "akkoord" (28 september 2026). Op de vraag of de scores aantikbaar moeten
 zijn: "nee scores hoeven niet aantikbaar te zijn".
@@ -4181,8 +4181,15 @@ zijn: "nee scores hoeven niet aantikbaar te zijn".
   rij zonder Downloaden; seizoen downloaden, Delen en Aanvragen staan bij een serie onder Meer.
 - Bronregel zoals die nu al bestaat.
 - Activiteitskaart (alleen Plex, alleen voor de eigenaar of een beheerder).
-- Techniektabel (video, audio, ondertiteling) waarin een audio- of ondertitelkeuze niet meer direct
-  afspelen start, maar alleen onthouden wordt voor de volgende keer starten.
+- Techniektabel (video, audio, ondertiteling). Een audio- of ondertitelkeuze start niets. Ze gaat
+  mee als voorkeursspoor wanneer je vanaf deze pagina afspeelt en telt dan in de volgorde van
+  DEC-109 (vastgelegd in `test/services/detail_pick_precedence_test.dart`): sessie, dan de onthouden
+  serievoorkeur, dan de profieltaal, dan de keuze op de pagina, dan de standaard van de server.
+  Als serievoorkeur opgeslagen wordt de keuze alleen met "per serie onthouden" aan; dan staat ze
+  zelf in de laag van de serievoorkeur. Bij ondertiteling gaat een gewenste profieltaal die niet op
+  het bestand staat voor: dan de terugvaltaal van het profiel of uit, en de keuze op de pagina telt
+  niet. De tabel toont wat de speler met die volgorde kiest, en het keuzevenster belooft alleen
+  onthouden als dat ook gebeurt.
 - Recensies (alleen Plex).
 - Seizoensrij die per seizoen een eigen seizoenspagina opent, in plaats van de afleveringen en de
   seizoenpil inline te tonen.
