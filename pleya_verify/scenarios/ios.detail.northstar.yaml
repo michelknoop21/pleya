@@ -4,10 +4,10 @@ target: ios-sim
 # §5 rij 5), tegen `docs/assets/ios-unified/northstar/06-film-detail.png`. Reached zoals
 # een gebruiker dat doet: Films-landing -> "Alle films" -> een postertegel, dezelfde weg
 # als `ios.catalog.northstar` tot aan de grid, met precies één tik verder de detailpagina
-# in. `mobile_detail_view.dart` draagt geen eigen automation-ids (alleen het bestaande
-# `screen.media_detail` op de omvattende `AutomationScreen`), dus dit is een
-# observatiescenario: bereiken en een snapshot vastleggen voor visuele vergelijking, geen
-# assertions op de nieuwe compositie zelf.
+# in. Sinds DEC-140 hoort de snapshot naast `docs/assets/ios-unified/detail-2026/D-01-film.png`
+# (posterhero, scores, afspeelknop, actierij). Van de nieuwe compositie is alleen de
+# afspeelknop een automation-id (`media-detail.play`); de actierij en de techtabel dragen
+# alleen widget-keys, dus die blijven visuele evidence in de snapshot.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -25,4 +25,5 @@ steps:
   - tap: {id: "catalog.grid.item[movies.0]"}
   - wait_until: {id: screen.media_detail, timeout: 15000}
   - settle: 2000
+  - assert: {id: media-detail.play, insideViewport: true, minimumTapTarget: 44}
   - snapshot: detail-film-northstar

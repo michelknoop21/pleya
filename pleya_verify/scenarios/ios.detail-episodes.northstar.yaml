@@ -7,8 +7,12 @@ target: ios-sim
 # `ios.detail.northstar` maar dan de series-catalogus. `catalog.mixed.v1`'s Driftwood
 # heeft één seizoen met 3 afleveringen (`named_fixtures.dart`), genoeg om de
 # Afleveringen-tab in `mobile_episodes_tab.dart` te tonen zonder een seizoenwissel nodig
-# te hebben. Geen eigen automation-ids op de nieuwe compositie, dus observatiescenario:
-# bereiken en een snapshot, geen assertions op de tabs/seizoenkiezer zelf.
+# te hebben. Sinds DEC-140 hoort de snapshot naast
+# `docs/assets/ios-unified/detail-2026/D-03-serie.png`. Alleen de afspeelknop is een
+# automation-id (`media-detail.play`); de seizoensrij draagt widget-keys, geen id.
+# Daarna de seizoenspagina: op het 402x874-toestel (iPhone 17 Pro) begint de eerste
+# seizoensposter op de onderrand, en zonder scroll-verb is een tik op (60, 872) de enige
+# weg erheen. Op een kleiner toestel landt die tik ergens anders.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -26,4 +30,11 @@ steps:
   - tap: {id: "catalog.grid.item[series.0]"}
   - wait_until: {id: screen.media_detail, timeout: 15000}
   - settle: 2000
+  - assert: {id: media-detail.play, insideViewport: true, minimumTapTarget: 44}
   - snapshot: detail-series-episodes-northstar
+  - tap: {x: 60, y: 872}
+  - settle: 2500
+  # Geen assert op `media-detail.play` hier: de seriepagina eronder blijft in de
+  # boom staan, met haar knop op x = -118 (de parallax van de push), en de runner
+  # pakt die eerste. De snapshot is het bewijs.
+  - snapshot: detail-season-page
