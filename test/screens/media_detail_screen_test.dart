@@ -19,6 +19,7 @@ import 'package:pleya/media/media_file_info.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_review.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/media_source_info.dart';
@@ -1856,6 +1857,36 @@ void main() {
           'media-detail.action.download',
           'media-detail.action.more',
         ]);
+      });
+
+      testWidgets('cast, reviews and extras follow the D-01 order', (tester) async {
+        final movie =
+            MediaItem(
+              id: 'movie_header',
+              backend: MediaBackend.jellyfin,
+              kind: MediaKind.movie,
+              title: 'Dune: Part Two',
+              serverId: 'server_1',
+              serverName: 'Server',
+              roles: const [MediaRole(tag: 'Roger Actor', role: 'Hero')],
+            ).copyWith(
+              reviews: const [MediaReview(author: 'Mike Clark', text: 'Just another retread.', source: 'USA Today')],
+            );
+        final trailer = MediaItem(
+          id: 'trailer_1',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.clip,
+          title: 'Trailer',
+          raw: const {'ExtraType': 'Trailer'},
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {}, extras: [trailer]);
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        double top(String text) => tester.getTopLeft(find.text(text)).dy;
+        expect(top(t.discover.cast), lessThan(top(t.discover.reviews)));
+        expect(top(t.discover.reviews), lessThan(top(t.discover.extras)));
+        expect(find.text('Mike Clark'), findsOneWidget);
       });
 
       testWidgets('a series shows five actions, no download', (tester) async {

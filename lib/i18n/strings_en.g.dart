@@ -2575,6 +2575,12 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Your choice is remembered and used when you press Resume or Play.'
 	String get trackChoiceNote => 'Your choice is remembered and used when you press Resume or Play.';
+
+	/// en: 'Reviews'
+	String get reviews => 'Reviews';
+
+	/// en: 'Read at source'
+	String get reviewOpenSource => 'Read at source';
 }
 
 // Path: mobileDetail
@@ -8034,6 +8040,8 @@ extension on Translations {
 			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
 			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
 			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
+			'discover.reviews' => 'Reviews',
+			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
 			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
@@ -8227,10 +8235,10 @@ extension on Translations {
 			'watchlist.rail.availability' => 'Availability',
 			'myPleya.title' => 'My Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
-			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
-			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
+			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
 			'liveTv.title' => 'Live TV',
 			'liveTv.guide' => 'Guide',
 			'liveTv.noChannels' => 'No channels available',
@@ -8741,10 +8749,10 @@ extension on Translations {
 			'matchScreen.matchApplied' => 'Match applied',
 			'matchScreen.matchFailed' => 'Failed to apply match',
 			'matchScreen.titleHint' => 'Title',
-			'matchScreen.yearHint' => 'Year',
-			'matchScreen.search' => 'Search',
 			_ => null,
 		} ?? switch (path) {
+			'matchScreen.yearHint' => 'Year',
+			'matchScreen.search' => 'Search',
 			'matchScreen.noMatchesFound' => 'No matches found',
 			'serverTasks.title' => 'Server Tasks',
 			'serverTasks.failedToLoad' => 'Failed to load tasks',
@@ -9255,10 +9263,10 @@ extension on Translations {
 			'languageSettings.toastRememberedDetailNoGlobal' => 'The next episodes start this way.',
 			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · this playback only',
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Remembering per series is off, so nothing was stored for ${title}.',
-			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'No ${wanted} ${kind} in this episode · now ${actual}',
-			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'No ${wanted} subtitles in this episode · subtitles off',
 			_ => null,
 		} ?? switch (path) {
+			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'No ${wanted} ${kind} in this episode · now ${actual}',
+			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'No ${wanted} subtitles in this episode · subtitles off',
 			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Your preference for ${title} stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',

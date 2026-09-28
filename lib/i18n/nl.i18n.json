@@ -886,7 +886,9 @@
     "techEpisode": "Aflevering S${season} A${episode}",
     "trackScopeMovie": "${title} · geldt voor deze film",
     "trackScopeSeries": "${title} · voor deze serie",
-    "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt."
+    "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.",
+    "reviews": "Recensies",
+    "reviewOpenSource": "Lees bij de bron"
   },
   "mobileDetail": {
     "similarTab": "Vergelijkbaar",

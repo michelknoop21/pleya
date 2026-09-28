@@ -1073,6 +1073,8 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String trackScopeMovie({required Object title}) => '${title} · geldt voor deze film';
 	@override String trackScopeSeries({required Object title}) => '${title} · voor deze serie';
 	@override String get trackChoiceNote => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.';
+	@override String get reviews => 'Recensies';
+	@override String get reviewOpenSource => 'Lees bij de bron';
 }
 
 // Path: mobileDetail
@@ -3915,6 +3917,8 @@ extension on TranslationsNl {
 			'discover.trackScopeMovie' => ({required Object title}) => '${title} · geldt voor deze film',
 			'discover.trackScopeSeries' => ({required Object title}) => '${title} · voor deze serie',
 			'discover.trackChoiceNote' => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.',
+			'discover.reviews' => 'Recensies',
+			'discover.reviewOpenSource' => 'Lees bij de bron',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
 			'mobileDetail.extrasTab' => 'Extra\'s',
 			'errors.searchFailed' => 'Zoeken mislukt',
@@ -4108,10 +4112,10 @@ extension on TranslationsNl {
 			'watchlist.rail.availability' => 'Beschikbaarheid',
 			'myPleya.title' => 'Mijn Pleya',
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
-			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
-			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			_ => null,
 		} ?? switch (path) {
+			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
+			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
 			'liveTv.title' => 'Live TV',
 			'liveTv.guide' => 'Gids',
 			'liveTv.noChannels' => 'Geen zenders beschikbaar',
@@ -4622,10 +4626,10 @@ extension on TranslationsNl {
 			'matchScreen.matchApplied' => 'Koppeling toegepast',
 			'matchScreen.matchFailed' => 'Koppeling kon niet worden toegepast',
 			'matchScreen.titleHint' => 'Titel',
-			'matchScreen.yearHint' => 'Jaar',
-			'matchScreen.search' => 'Zoeken',
 			_ => null,
 		} ?? switch (path) {
+			'matchScreen.yearHint' => 'Jaar',
+			'matchScreen.search' => 'Zoeken',
 			'matchScreen.noMatchesFound' => 'Geen overeenkomsten gevonden',
 			'serverTasks.title' => 'Servertaken',
 			'serverTasks.failedToLoad' => 'Taken konden niet worden geladen',
@@ -5136,10 +5140,10 @@ extension on TranslationsNl {
 			'languageSettings.toastRememberedDetailNoGlobal' => 'Volgende afleveringen starten zo.',
 			'languageSettings.toastSessionOnly' => ({required Object kind, required Object language}) => '${kind}: ${language} · alleen deze keer',
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Onthouden per serie staat uit, dus er is niets bewaard voor ${title}.',
-			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'Geen ${wanted} ${kind} in deze aflevering · nu ${actual}',
-			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'Geen ${wanted} ondertitels in deze aflevering · ondertitels uit',
 			_ => null,
 		} ?? switch (path) {
+			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'Geen ${wanted} ${kind} in deze aflevering · nu ${actual}',
+			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'Geen ${wanted} ondertitels in deze aflevering · ondertitels uit',
 			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Je voorkeur voor ${title} blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.kindAudio' => 'Audio',

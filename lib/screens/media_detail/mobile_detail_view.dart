@@ -60,17 +60,24 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
                 Builder(builder: (context) => _buildMobileTechTable(context, metadata)),
               ],
               if (metadata.isShow) ...[const SizedBox(height: 24), _buildMobileEpisodesSection(context, metadata)],
+              if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                _buildMobileSectionTitle(context, t.discover.cast, key: _castSectionKey),
+                const SizedBox(height: 12),
+                _buildMobileCastSection(context, metadata),
+              ],
+              // D-01/D-03 order: cast, reviews, trailers and extras, then the related rows.
+              if (metadata.reviews.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                _buildMobileSectionTitle(context, t.discover.reviews),
+                const SizedBox(height: 12),
+                DetailReviewsSection(reviews: metadata.reviews),
+              ],
               if (!widget.isOffline && _extras != null && _extras!.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 _buildMobileSectionTitle(context, t.discover.extras, key: _extrasSectionKey),
                 const SizedBox(height: 12),
                 _buildExtrasSection(),
-              ],
-              if (metadata.roles != null && metadata.roles!.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                _buildMobileSectionTitle(context, t.discover.cast, key: _castSectionKey),
-                const SizedBox(height: 12),
-                _buildCastSection(metadata),
               ],
               for (int i = 0; i < _relatedHubs.length; i++) ...[
                 const SizedBox(height: 16),
@@ -136,6 +143,22 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
       viewerCount: _watchStats?.userCount,
       isSeries: metadata.isShow,
       ownProgressLabel: ownProgress,
+    );
+  }
+
+  /// The cast rail as round portraits (D-01); the square card stays on
+  /// TV, iPad and desktop (`_buildCastSection`).
+  Widget _buildMobileCastSection(BuildContext context, MediaItem metadata) {
+    return CastSection(
+      metadata: metadata,
+      cardWidth: 104,
+      round: true,
+      client: getServerBoundMediaClient(context),
+      focusNode: _castFocusNode,
+      onKeyEvent: _handleCastKeyEvent,
+      scrollController: _castScrollController,
+      focusedIndex: _focusedCastIndex,
+      onActorTap: _navigateToActorMedia,
     );
   }
 

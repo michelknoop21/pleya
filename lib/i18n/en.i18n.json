@@ -886,7 +886,9 @@
     "techEpisode": "Episode S${season} E${episode}",
     "trackScopeMovie": "${title} · applies to this film",
     "trackScopeSeries": "${title} · for this series",
-    "trackChoiceNote": "Your choice is remembered and used when you press Resume or Play."
+    "trackChoiceNote": "Your choice is remembered and used when you press Resume or Play.",
+    "reviews": "Reviews",
+    "reviewOpenSource": "Read at source"
   },
   "mobileDetail": {
     "similarTab": "Similar",
