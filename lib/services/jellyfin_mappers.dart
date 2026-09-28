@@ -1,3 +1,4 @@
+import '../media/external_rating.dart';
 import '../media/media_backend.dart';
 import '../media/ids.dart';
 import '../media/media_hub.dart';
@@ -198,6 +199,7 @@ class JellyfinMappers {
       addedAt: jellyfinIsoToEpochSeconds(item['DateCreated'] as String?),
       updatedAt: jellyfinIsoToEpochSeconds(item['DateLastSaved'] as String? ?? item['DateModified'] as String?),
       rating: (item['CommunityRating'] as num?)?.toDouble(),
+      externalRatings: _externalRatings(item),
       // Jellyfin stores a binary `Likes` flag rather than a numeric rating.
       // Map true → 10 / false → 0 so the existing UI's `userRating > 0`
       // check renders the chip as filled for liked items.
@@ -561,4 +563,15 @@ class JellyfinMappers {
     final tag = item[tagField] as String?;
     return _itemImagePath(id, type, tag: tag);
   }
+}
+
+/// Jellyfin's `CriticRating` is the Rotten Tomatoes critic percentage and
+/// `CommunityRating` the provider score on a 0 to 10 scale.
+List<ExternalRating> _externalRatings(Map<String, dynamic> item) {
+  final critic = (item['CriticRating'] as num?)?.toDouble();
+  final community = (item['CommunityRating'] as num?)?.toDouble();
+  return [
+    if (critic != null) ExternalRating(source: ExternalRatingSource.rottenTomatoesCritic, value: critic),
+    if (community != null) ExternalRating(source: ExternalRatingSource.community, value: community),
+  ];
 }
