@@ -881,7 +881,12 @@
     "watchingSeriesBy": "Kijken deze serie: ${names}",
     "activityPlays": "${count}× afgespeeld",
     "activityViewers": "${count} kijkers",
-    "activityOwnProgress": "Jij bent bij S${season} A${episode}"
+    "activityOwnProgress": "Jij bent bij S${season} A${episode}",
+    "techSubtitles": "Ondertiteling",
+    "techEpisode": "Aflevering S${season} A${episode}",
+    "trackScopeMovie": "${title} · geldt voor deze film",
+    "trackScopeSeries": "${title} · voor deze serie",
+    "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt."
   },
   "mobileDetail": {
     "similarTab": "Vergelijkbaar",

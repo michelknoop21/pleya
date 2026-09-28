@@ -2560,6 +2560,21 @@ class TranslationsDiscoverEn {
 
 	/// en: 'You're at S${season} E${episode}'
 	String activityOwnProgress({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}';
+
+	/// en: 'Subtitles'
+	String get techSubtitles => 'Subtitles';
+
+	/// en: 'Episode S${season} E${episode}'
+	String techEpisode({required Object season, required Object episode}) => 'Episode S${season} E${episode}';
+
+	/// en: '${title} · applies to this film'
+	String trackScopeMovie({required Object title}) => '${title} · applies to this film';
+
+	/// en: '${title} · for this series'
+	String trackScopeSeries({required Object title}) => '${title} · for this series';
+
+	/// en: 'Your choice is remembered and used when you press Resume or Play.'
+	String get trackChoiceNote => 'Your choice is remembered and used when you press Resume or Play.';
 }
 
 // Path: mobileDetail
@@ -8014,6 +8029,11 @@ extension on Translations {
 			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
 			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
+			'discover.techSubtitles' => 'Subtitles',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Episode S${season} E${episode}',
+			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
+			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
+			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
 			'mobileDetail.similarTab' => 'Similar',
 			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
@@ -8209,13 +8229,13 @@ extension on Translations {
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV server is not available.',
 			'liveTv.serverNotConnected' => 'Live TV server is not connected.',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.title' => 'Live TV',
 			'liveTv.guide' => 'Guide',
 			'liveTv.noChannels' => 'No channels available',
 			'liveTv.noDvr' => 'No DVR configured on any server',
 			'liveTv.noPrograms' => 'No program data available',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.liveStreamFailed' => 'Live stream failed',
 			'liveTv.unknownProgram' => 'Unknown Program',
 			'liveTv.unknownHub' => 'Unknown',
@@ -8723,13 +8743,13 @@ extension on Translations {
 			'matchScreen.titleHint' => 'Title',
 			'matchScreen.yearHint' => 'Year',
 			'matchScreen.search' => 'Search',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.noMatchesFound' => 'No matches found',
 			'serverTasks.title' => 'Server Tasks',
 			'serverTasks.failedToLoad' => 'Failed to load tasks',
 			'serverTasks.noTasks' => 'No tasks running',
 			'seerr.title' => 'Requests',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.hubSubtitle' => 'Request movies and shows from your Jellyseerr or Overseerr server.',
 			'seerr.notConfigured' => 'Not configured',
 			'seerr.serverUrl' => 'Server URL',
@@ -9237,6 +9257,8 @@ extension on Translations {
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Remembering per series is off, so nothing was stored for ${title}.',
 			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'No ${wanted} ${kind} in this episode · now ${actual}',
 			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'No ${wanted} subtitles in this episode · subtitles off',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Your preference for ${title} stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',

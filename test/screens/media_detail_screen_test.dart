@@ -15,11 +15,13 @@ import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_file_info.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_role.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/source_availability.dart';
@@ -55,6 +57,8 @@ import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/track_preference_store.dart';
+import 'package:pleya/services/pleya_share/pleya_share_device_name.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/collapsible_text.dart';
@@ -1074,6 +1078,7 @@ void main() {
       double devicePixelRatio = 1,
       bool isOffline = false,
       bool withWatchlist = false,
+      List<NavigatorObserver> navigatorObservers = const [],
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1131,6 +1136,7 @@ void main() {
             child: MaterialApp(
               builder: withNoticeLayer(),
               theme: monoTheme(dark: true),
+              navigatorObservers: navigatorObservers,
               home: withProfileNavigationScope(
                 child: MediaDetailScreen(
                   metadata: show,
@@ -1591,6 +1597,61 @@ void main() {
         await tester.pump();
 
         expect(find.textContaining('YXCV_FULL_SYNOPSIS_TAIL_MARKER'), findsOneWidget);
+      });
+
+      testWidgets('choosing an audio track stores it and does not start playback', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_audio_choice',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(
+          show: movie,
+          childrenByParent: const {},
+          fileInfo: MediaFileInfo(
+            audioTracks: [
+              MediaAudioTrack(id: 1, languageCode: 'eng', codec: 'aac', channels: 2, selected: true),
+              MediaAudioTrack(id: 2, languageCode: 'nld', codec: 'eac3', channels: 6, selected: false),
+            ],
+          ),
+        );
+        final routes = _RouteLog();
+        TrackPreferenceStore.resetForTesting();
+        TrackPreferenceStore.deviceNameProvider = () async => 'Test';
+        addTearDown(() => TrackPreferenceStore.deviceNameProvider = pleyaShareDeviceName);
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          navigatorObservers: [routes],
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final audioRow = find.text('English (AAC Stereo)');
+        await tester.ensureVisible(audioRow);
+        await tester.pumpAndSettle();
+        final pushesBefore = routes.pushes;
+        await tester.tap(audioRow);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dutch'));
+        // The store writes through shared preferences, which only complete
+        // on real async.
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+
+        expect(routes.pushes, pushesBefore, reason: 'a choice is remembered, the player is not opened');
+        expect(find.text('Dutch (EAC3 5.1)'), findsOneWidget);
+        final stored = await tester.runAsync(() => TrackPreferenceStore.read(movie));
+        expect(stored?.audioLanguage, 'nld');
       });
 
       testWidgets('a Jellyfin item shows no activity card', (tester) async {
@@ -3655,6 +3716,7 @@ class _FakeMediaServerClient implements MediaServerClient {
   final Map<String, Object> childrenPageErrors;
   final Future<List<MediaItem>>? pendingPlayableDescendants;
   final List<MediaItem> extras;
+  final MediaFileInfo? fileInfo;
   final childrenPageCalls = <({String parentId, int? start, int? size})>[];
   final fetchItemCalls = <String>[];
 
@@ -3665,12 +3727,16 @@ class _FakeMediaServerClient implements MediaServerClient {
     this.childrenPageErrors = const {},
     this.pendingPlayableDescendants,
     this.extras = const [],
+    this.fileInfo,
     this.id = 'server_1',
     this.name = 'Server',
   });
 
   @override
   Future<List<MediaItem>> fetchExtras(String id) async => extras;
+
+  @override
+  Future<MediaFileInfo?> getFileInfo(MediaItem item) async => fileInfo;
 
   /// D14 mounts two of these at once, so the server a fake speaks for has to
   /// be a parameter rather than a constant.

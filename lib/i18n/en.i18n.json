@@ -881,7 +881,12 @@
     "watchingSeriesBy": "Watching this show: ${names}",
     "activityPlays": "Played ${count}×",
     "activityViewers": "${count} viewers",
-    "activityOwnProgress": "You're at S${season} E${episode}"
+    "activityOwnProgress": "You're at S${season} E${episode}",
+    "techSubtitles": "Subtitles",
+    "techEpisode": "Episode S${season} E${episode}",
+    "trackScopeMovie": "${title} · applies to this film",
+    "trackScopeSeries": "${title} · for this series",
+    "trackChoiceNote": "Your choice is remembered and used when you press Resume or Play."
   },
   "mobileDetail": {
     "similarTab": "Similar",

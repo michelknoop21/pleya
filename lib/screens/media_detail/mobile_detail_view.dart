@@ -52,9 +52,13 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
               // (`hasAlternativeSources`, action_buttons.dart).
               _buildUnifiedSourceLine(card: true),
               _buildMobileActivityCard(context, metadata),
-              if (_detailAudioTracks.isNotEmpty) ...[const SizedBox(height: 10), _buildMobileAudioSelector()],
               const SizedBox(height: 16),
               _buildMobileSynopsisAndCredits(context, metadata),
+              // D-01: the tech table follows synopsis and credits.
+              if (_detailFileInfo != null) ...[
+                const SizedBox(height: 22),
+                Builder(builder: (context) => _buildMobileTechTable(context, metadata)),
+              ],
               if (metadata.isShow) ...[const SizedBox(height: 24), _buildMobileEpisodesSection(context, metadata)],
               if (!widget.isOffline && _extras != null && _extras!.isNotEmpty) ...[
                 const SizedBox(height: 24),

@@ -1068,6 +1068,11 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
 	@override String activityViewers({required Object count}) => '${count} kijkers';
 	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
+	@override String get techSubtitles => 'Ondertiteling';
+	@override String techEpisode({required Object season, required Object episode}) => 'Aflevering S${season} A${episode}';
+	@override String trackScopeMovie({required Object title}) => '${title} · geldt voor deze film';
+	@override String trackScopeSeries({required Object title}) => '${title} · voor deze serie';
+	@override String get trackChoiceNote => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.';
 }
 
 // Path: mobileDetail
@@ -3905,6 +3910,11 @@ extension on TranslationsNl {
 			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
 			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
 			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
+			'discover.techSubtitles' => 'Ondertiteling',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Aflevering S${season} A${episode}',
+			'discover.trackScopeMovie' => ({required Object title}) => '${title} · geldt voor deze film',
+			'discover.trackScopeSeries' => ({required Object title}) => '${title} · voor deze serie',
+			'discover.trackChoiceNote' => 'Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
 			'mobileDetail.extrasTab' => 'Extra\'s',
 			'errors.searchFailed' => 'Zoeken mislukt',
@@ -4100,13 +4110,13 @@ extension on TranslationsNl {
 			'myPleya.downloadsCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 download', other: '{n} downloads', ), 
 			'liveTv.serverNotAvailable' => 'Live TV-server is niet beschikbaar.',
 			'liveTv.serverNotConnected' => 'Live TV-server is niet verbonden.',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.title' => 'Live TV',
 			'liveTv.guide' => 'Gids',
 			'liveTv.noChannels' => 'Geen zenders beschikbaar',
 			'liveTv.noDvr' => 'Geen DVR geconfigureerd op een server',
 			'liveTv.noPrograms' => 'Geen programmagegevens beschikbaar',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.liveStreamFailed' => 'Livestream mislukt',
 			'liveTv.unknownProgram' => 'Onbekend programma',
 			'liveTv.unknownHub' => 'Onbekend',
@@ -4614,13 +4624,13 @@ extension on TranslationsNl {
 			'matchScreen.titleHint' => 'Titel',
 			'matchScreen.yearHint' => 'Jaar',
 			'matchScreen.search' => 'Zoeken',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.noMatchesFound' => 'Geen overeenkomsten gevonden',
 			'serverTasks.title' => 'Servertaken',
 			'serverTasks.failedToLoad' => 'Taken konden niet worden geladen',
 			'serverTasks.noTasks' => 'Geen actieve taken',
 			'trakt.title' => 'Trakt',
-			_ => null,
-		} ?? switch (path) {
 			'trakt.connected' => 'Verbonden',
 			'trakt.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trakt.disconnectConfirm' => 'Trakt-account loskoppelen?',
@@ -5128,6 +5138,8 @@ extension on TranslationsNl {
 			'languageSettings.toastSessionOnlyDetail' => ({required Object title}) => 'Onthouden per serie staat uit, dus er is niets bewaard voor ${title}.',
 			'languageSettings.toastFallback' => ({required Object wanted, required Object kind, required Object actual}) => 'Geen ${wanted} ${kind} in deze aflevering · nu ${actual}',
 			'languageSettings.toastFallbackOff' => ({required Object wanted}) => 'Geen ${wanted} ondertitels in deze aflevering · ondertitels uit',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.toastFallbackDetailSeries' => ({required Object title, required Object wanted}) => 'Je voorkeur voor ${title} blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.kindAudio' => 'Audio',
