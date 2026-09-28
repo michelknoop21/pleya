@@ -60,6 +60,11 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_preference_store.dart';
+import 'package:pleya/utils/video_player_navigation.dart';
+import 'package:pleya/screens/video_player_screen.dart';
+import 'package:pleya/media/pleya_profile_language_preferences.dart';
+import 'package:pleya/services/pleya_profile_language_preference_store.dart';
+import 'package:pleya/services/offline_watch_sync_service.dart';
 import 'package:pleya/services/pleya_share/pleya_share_device_name.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
@@ -1107,6 +1112,7 @@ void main() {
       final manager = MultiServerManager()..debugRegisterClientForTesting(client);
       final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       final watchStateOverlay = WatchStateStore();
+      final offlineWatchSync = OfflineWatchSyncService(database: db, serverManager: manager);
       final watchlistProvider = withWatchlist
           ? WatchlistProvider(
               snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
@@ -1118,6 +1124,7 @@ void main() {
 
       addTearDown(() async {
         watchStateOverlay.dispose();
+        offlineWatchSync.dispose();
         watchlistProvider?.dispose();
         watchlistStore.dispose();
         downloadProvider.dispose();
@@ -1133,6 +1140,7 @@ void main() {
               ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
               ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
               ChangeNotifierProvider<WatchStateStore>.value(value: watchStateOverlay),
+              ChangeNotifierProvider<OfflineWatchSyncService>.value(value: offlineWatchSync),
               if (watchlistProvider != null) ...[
                 ChangeNotifierProvider<WatchlistProvider>.value(value: watchlistProvider),
                 ChangeNotifierProvider<WatchlistStore>.value(value: watchlistStore),
@@ -1659,6 +1667,76 @@ void main() {
         expect(find.text('Dutch (EAC3 5.1)'), findsOneWidget);
         final stored = await tester.runAsync(() => TrackPreferenceStore.read(movie));
         expect(stored?.audioLanguage, 'nld');
+      });
+
+      testWidgets('with remembering off, the picked track still reaches the player (I1)', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_audio_remember_off',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Sintel',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(
+          show: movie,
+          childrenByParent: const {},
+          fileInfo: MediaFileInfo(
+            audioTracks: [
+              MediaAudioTrack(id: 1, languageCode: 'eng', codec: 'aac', channels: 2, selected: true),
+              MediaAudioTrack(id: 2, languageCode: 'nld', codec: 'eac3', channels: 6, selected: false),
+            ],
+          ),
+        );
+        final player = _PlayerRouteSpy();
+        TrackPreferenceStore.resetForTesting();
+        TrackPreferenceStore.deviceNameProvider = () async => 'Test';
+        addTearDown(() => TrackPreferenceStore.deviceNameProvider = pleyaShareDeviceName);
+        await tester.runAsync(
+          () => PleyaProfileLanguagePreferenceStore.write(
+            const PleyaProfileLanguagePreferences(rememberPerSeries: false),
+          ),
+        );
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          navigatorObservers: [player],
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final audioRow = find.text('English (AAC Stereo)');
+        await tester.ensureVisible(audioRow);
+        await tester.pumpAndSettle();
+        await tester.tap(audioRow);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dutch'));
+        await tester.pumpAndSettle();
+        for (var i = 0; i < 5; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        expect(player.screens, isEmpty, reason: 'choosing never starts playback');
+        final stored = await tester.runAsync(() => TrackPreferenceStore.read(movie));
+        expect(stored?.audioLanguage, isNull, reason: 'the switch is off, so the store keeps nothing');
+
+        final play = find.byKey(const Key('media-detail.play'));
+        await tester.ensureVisible(play);
+        await tester.pumpAndSettle();
+        await tester.tap(play);
+        for (var i = 0; i < 10 && player.screens.isEmpty; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+
+        expect(player.screens, hasLength(1));
+        final audio = player.screens.single.preferredAudioTrack;
+        expect(audio?.id, '2');
+        expect(audio?.language, 'nld');
+        expect(player.screens.single.preferredSubtitleTrack, isNull, reason: 'no subtitle was picked');
       });
 
       testWidgets('a Jellyfin item shows no activity card', (tester) async {
@@ -3902,4 +3980,20 @@ class _RouteLog extends NavigatorObserver {
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => pops++;
+}
+
+/// Records the [VideoPlayerScreen] a push would build, then drops the route:
+/// a real player would start mpv, and the claim is about what it was handed.
+class _PlayerRouteSpy extends NavigatorObserver {
+  final screens = <VideoPlayerScreen>[];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is! PageRouteBuilder || route.settings.name != kVideoPlayerRouteName) return;
+    screens.add(
+      route.pageBuilder(route.navigator!.context, kAlwaysCompleteAnimation, kAlwaysCompleteAnimation)
+          as VideoPlayerScreen,
+    );
+    scheduleMicrotask(() => route.navigator?.removeRoute(route));
+  }
 }

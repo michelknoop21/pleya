@@ -362,10 +362,18 @@ Future<bool?> navigateToVideoPlayerWithRefresh(
 
 /// Plays [item] from 0:00, ignoring its saved progress. The context menu's
 /// "Play from beginning" and the detail page's restart button share this.
-Future<bool?> playFromBeginning(BuildContext context, MediaItem item, {bool isOffline = false}) {
+Future<bool?> playFromBeginning(
+  BuildContext context,
+  MediaItem item, {
+  bool isOffline = false,
+  AudioTrack? preferredAudioTrack,
+  SubtitleTrack? preferredSubtitleTrack,
+}) {
   return navigateToVideoPlayer(
     context,
     metadata: item.copyWith(viewOffsetMs: 0),
+    preferredAudioTrack: preferredAudioTrack,
+    preferredSubtitleTrack: preferredSubtitleTrack,
     resolveWatchState: false,
     isOffline: isOffline,
   );

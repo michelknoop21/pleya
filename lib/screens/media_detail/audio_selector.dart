@@ -39,6 +39,8 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       _detailFileInfo = null;
       _selectedDetailAudioTrackId = null;
       _selectedDetailSubtitleTrackId = null;
+      _detailAudioPicked = false;
+      _detailSubtitlePicked = false;
     });
 
     try {
@@ -134,7 +136,10 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       await TrackPreferenceStore.saveAudio(target, language: language, title: track.title);
     }
     if (!mounted) return;
-    _updateDetailAudioState(() => _selectedDetailAudioTrackId = track.id);
+    _updateDetailAudioState(() {
+      _selectedDetailAudioTrackId = track.id;
+      _detailAudioPicked = true;
+    });
   }
 
   Future<void> _chooseDetailSubtitleTrack(BuildContext sheetContext) async {
@@ -155,6 +160,45 @@ extension _MediaDetailAudioSelector on _MediaDetailScreenState {
       await TrackPreferenceStore.saveSubtitle(target, language: language, title: track.title, forced: track.forced);
     }
     if (!mounted) return;
-    _updateDetailAudioState(() => _selectedDetailSubtitleTrackId = track?.id);
+    _updateDetailAudioState(() {
+      _selectedDetailSubtitleTrackId = track?.id;
+      _detailSubtitlePicked = true;
+    });
+  }
+
+  /// The tracks picked on this page for [item], for the player to start with.
+  /// Held in the page, so the pick also holds when the store keeps nothing
+  /// (remembering switched off, or a track without a language code).
+  ({AudioTrack? audio, SubtitleTrack? subtitle}) _detailTrackPickFor(MediaItem item) {
+    if (item.id != _detailAudioTargetId) return (audio: null, subtitle: null);
+    final audio = _detailAudioPicked
+        ? _detailAudioTracks.where((track) => track.id == _selectedDetailAudioTrackId).firstOrNull
+        : null;
+    final subtitle = _detailSubtitleTracks.where((track) => track.id == _selectedDetailSubtitleTrackId).firstOrNull;
+    return (
+      audio: audio == null
+          ? null
+          : AudioTrack(
+              id: audio.id.toString(),
+              title: audio.title ?? audio.displayTitle,
+              language: audio.languageCode ?? audio.language,
+              codec: audio.codec,
+              channels: audio.channels,
+              profile: audio.profile,
+              isDefault: audio.selected,
+            ),
+      subtitle: !_detailSubtitlePicked
+          ? null
+          : subtitle == null
+          ? SubtitleTrack.off
+          : SubtitleTrack(
+              id: subtitle.id.toString(),
+              title: subtitle.title ?? subtitle.displayTitle,
+              language: subtitle.languageCode ?? subtitle.language,
+              codec: subtitle.codec,
+              isDefault: subtitle.selected,
+              isForced: subtitle.forced,
+            ),
+    );
   }
 }

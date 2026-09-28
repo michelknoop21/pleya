@@ -180,7 +180,14 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// The restart button: the context menu's "Play from beginning" core
   /// ([playFromBeginning]), then the same refresh a normal play gets.
   Future<void> _handlePlayFromStartPressed(MediaItem target) async {
-    await playFromBeginning(context, target, isOffline: widget.isOffline);
+    final pick = _detailTrackPickFor(target);
+    await playFromBeginning(
+      context,
+      target,
+      isOffline: widget.isOffline,
+      preferredAudioTrack: pick.audio,
+      preferredSubtitleTrack: pick.subtitle,
+    );
     if (!widget.isOffline && mounted) unawaited(refreshAfterPlayback(playedItemId: target.id));
   }
 

@@ -48,6 +48,7 @@ import '../media/media_hub.dart';
 import '../media/media_file_info.dart';
 import '../media/media_source_info.dart';
 import '../media/track_language_choice.dart';
+import '../mpv/models.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/plex_season_display.dart';
 import '../diagnostics/select_trace.dart';
@@ -350,7 +351,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   MediaItem? _detailAudioTarget;
   MediaFileInfo? _detailFileInfo;
   int? _selectedDetailAudioTrackId, _selectedDetailSubtitleTrackId;
-  bool _detailAudioLoadInFlight = false;
+  bool _detailAudioLoadInFlight = false, _detailAudioPicked = false, _detailSubtitlePicked = false;
 
   void _updateDetailAudioState(VoidCallback update) => setState(update);
 

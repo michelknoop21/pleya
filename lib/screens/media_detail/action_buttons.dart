@@ -14,6 +14,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         await navigateToVideoPlayerWithRefresh(
           context,
           metadata: _onDeckEpisode!,
+          preferredAudioTrack: _detailTrackPickFor(_onDeckEpisode!).audio,
+          preferredSubtitleTrack: _detailTrackPickFor(_onDeckEpisode!).subtitle,
           isOffline: widget.isOffline,
           onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
         );
@@ -28,6 +30,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         await navigateToVideoPlayerWithRefresh(
           context,
           metadata: _episodes.first,
+          preferredAudioTrack: _detailTrackPickFor(_episodes.first).audio,
+          preferredSubtitleTrack: _detailTrackPickFor(_episodes.first).subtitle,
           isOffline: widget.isOffline,
           onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
         );
@@ -41,6 +45,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       await navigateToVideoPlayerWithRefresh(
         context,
         metadata: metadata,
+        preferredAudioTrack: _detailTrackPickFor(metadata).audio,
+        preferredSubtitleTrack: _detailTrackPickFor(metadata).subtitle,
         isOffline: widget.isOffline,
         onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
       );
