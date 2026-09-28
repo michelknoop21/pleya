@@ -1900,6 +1900,38 @@ void main() {
         expect(tester.getRect(find.byType(MobilePosterHero)).top, 0);
       });
 
+      // Plex's hero: textless square art from the top, the clear logo over its
+      // bottom, and Play plus the whole action row still on an iPhone 17 Pro's
+      // first screen (402x874).
+      testWidgets('textless art with the clear logo keeps the actions on the first screen (402x874)', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_logo',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Puss in Boots',
+          year: 2011,
+          thumbPath: 'https://x/poster.jpg',
+          artPath: 'https://x/art.jpg',
+          backgroundSquarePath: 'https://x/square.jpg',
+          clearLogoPath: 'https://x/logo.png',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: const Size(1206, 2622), devicePixelRatio: 3);
+
+        final hero = find.byType(MobilePosterHero);
+        expect(tester.widget<MobilePosterHero>(hero).artUrl, contains('square'));
+        expect(find.byWidgetPredicate((w) => w is Image && w.semanticLabel == 'Puss in Boots'), findsOneWidget);
+        expect(tester.getTopLeft(find.descendant(of: hero, matching: find.byType(ShaderMask))).dy, 0);
+        for (final key in ['rate', 'watched', 'download', 'more']) {
+          final action = find.byKey(Key('media-detail.action.$key'));
+          expect(action, findsOneWidget, reason: key);
+          expect(tester.getRect(action).bottom, lessThanOrEqualTo(874), reason: '$key must be on the first screen');
+        }
+      });
+
       // The back/more glyphs and the meta line sit over the poster and its
       // fade into the page colour: dark ink on the light page, white on dark.
       for (final (name, theme) in [

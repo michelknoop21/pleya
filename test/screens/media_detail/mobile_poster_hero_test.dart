@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +11,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_score_row.dart';
+import 'package:pleya/screens/media_detail/mobile/light_ink_plate.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail/mobile_detail_hero.dart';
 import 'package:pleya/theme/mono_theme.dart';
@@ -44,8 +46,98 @@ void main() {
     expect(find.byType(Text), findsNothing);
   });
 
-  // Review Focus 1.
-  testWidgets('hero without poster falls back to the art image and a text title', (tester) async {
+  // Plex's layout: textless art over the full width from the very top, the
+  // app draws the title (logo or text) over its bottom.
+  test('hero art prefers square art, then the backdrop, never the poster', () {
+    MediaItem item({String? square, String? art}) => MediaItem(
+      id: 'm',
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: 'Puss in Boots',
+      thumbPath: '/poster',
+      artPath: art,
+      backgroundSquarePath: square,
+    );
+    expect(MobilePosterHero.textlessArtPath(item(square: '/square', art: '/art')), '/square');
+    expect(MobilePosterHero.textlessArtPath(item(art: '/art')), '/art');
+    expect(MobilePosterHero.textlessArtPath(item()), isNull);
+  });
+
+  group('textless art hero', () {
+    final item = MediaItem(
+      id: 'm',
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: 'Puss in Boots',
+      year: 2011,
+      serverId: 's',
+      serverName: 'S',
+    );
+
+    Future<void> pumpArt(WidgetTester tester, {String? logoUrl, String? posterUrl, ThemeData? theme}) async {
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 62);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MobilePosterHero(
+                item: item,
+                artUrl: 'https://x/square.jpg',
+                posterUrl: posterUrl,
+                logoUrl: logoUrl,
+                scoreRow: const SizedBox(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Finder logo() => find.byWidgetPredicate((w) => w is Image && w.semanticLabel == 'Puss in Boots');
+
+    testWidgets('art runs full-bleed from the top, under the status bar and the buttons', (tester) async {
+      await pumpArt(tester, posterUrl: 'https://x/poster.jpg');
+      expect(tester.getSize(find.byType(MobilePosterHero)).height, 640);
+      expect(tester.getTopLeft(find.byType(ShaderMask)).dy, 0);
+      expect(tester.getSize(find.byType(ShaderMask)).width, 402);
+      expect(
+        find.byWidgetPredicate((w) => w is CachedNetworkImage && w.imageUrl == 'https://x/poster.jpg'),
+        findsNothing,
+        reason: 'textless art wins over the poster',
+      );
+      expect(find.text('2011'), findsOneWidget);
+    });
+
+    testWidgets('clear logo over the art, centred, at most 85% wide, named for VoiceOver', (tester) async {
+      await pumpArt(tester, logoUrl: 'https://x/logo.png');
+      expect(logo(), findsOneWidget);
+      expect(find.text('Puss in Boots'), findsNothing);
+      final rect = tester.getRect(logo());
+      expect(rect.width, lessThanOrEqualTo(402 * 0.85 + 0.01));
+      expect(rect.center.dx, moreOrLessEquals(201));
+      expect(rect.bottom, lessThan(tester.getTopLeft(find.text('2011')).dy));
+    });
+
+    testWidgets('without a logo the title is bold text', (tester) async {
+      await pumpArt(tester);
+      expect(logo(), findsNothing);
+      final title = tester.widget<Text>(find.text('Puss in Boots'));
+      expect(title.style?.fontWeight, FontWeight.bold);
+    });
+
+    testWidgets('light theme: the title text is dark ink on a plate', (tester) async {
+      final theme = monoTheme(dark: false);
+      await pumpArt(tester, theme: theme);
+      expect(tester.widget<Text>(find.text('Puss in Boots')).style?.color, theme.colorScheme.onSurface);
+      expect(find.ancestor(of: find.text('Puss in Boots'), matching: find.byType(LightInkPlate)), findsOneWidget);
+    });
+  });
+
+  testWidgets('without any art the title is text under the back/more bar', (tester) async {
     final item = MediaItem(
       id: 'm',
       backend: MediaBackend.jellyfin,
@@ -57,20 +149,15 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: MobilePosterHero(
-            item: item,
-            posterUrl: null,
-            fallbackArtUrl: 'https://x/art.jpg',
-            scoreRow: const SizedBox(),
-          ),
+          body: MobilePosterHero(item: item, artUrl: null, posterUrl: null, logoUrl: null, scoreRow: const SizedBox()),
         ),
       ),
     );
     expect(find.text('Sintel'), findsOneWidget);
-    expect(find.byType(AspectRatio), findsOneWidget);
+    expect(find.byType(ShaderMask), findsNothing);
   });
 
-  testWidgets('hero is 640 high at 402 wide, poster starts under the back/more bar and fades through a dstIn mask', (
+  testWidgets('poster-only: 640 high at 402 wide, poster starts under the back/more bar, no logo or title over it', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(402, 900);
@@ -94,8 +181,9 @@ void main() {
           body: SingleChildScrollView(
             child: MobilePosterHero(
               item: item,
+              artUrl: null,
               posterUrl: 'https://x/poster.jpg',
-              fallbackArtUrl: null,
+              logoUrl: 'https://x/logo.png',
               scoreRow: const SizedBox(),
             ),
           ),
@@ -112,8 +200,9 @@ void main() {
     expect(find.text('2010'), findsOneWidget);
     expect(find.text('Animation, Fantasy'), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
-    // The poster carries the title; no second headline over it.
+    // The poster carries the title; no logo and no second headline over it.
     expect(find.text('Sintel'), findsNothing);
+    expect(find.byWidgetPredicate((w) => w is Image && w.semanticLabel == 'Sintel'), findsNothing);
   });
 
   testWidgets('ambient background blurs once and sits behind the child', (tester) async {
@@ -177,8 +266,9 @@ void main() {
             body: SingleChildScrollView(
               child: MobilePosterHero(
                 item: item,
+                artUrl: null,
                 posterUrl: 'https://x/poster.jpg',
-                fallbackArtUrl: null,
+                logoUrl: null,
                 scoreRow: Builder(
                   builder: (context) {
                     score = DefaultTextStyle.of(context).style.color;

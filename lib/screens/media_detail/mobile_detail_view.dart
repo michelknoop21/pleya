@@ -6,8 +6,10 @@ part of '../media_detail_screen.dart';
 /// dropped on Michel's instruction (DEC-131); the episodes, extras, cast and
 /// related rows follow the header inline, the way the TV detail stacks its
 /// rails. iOS Unified 2026 workitem 5 (I6), `docs/unified-2026-closure.md`
-/// §5 row 5. Since DEC-140 the page opens on the portrait poster over its
-/// own blurred glow (mockups D-01 and D-03 in `docs/assets/ios-unified/detail-2026/`).
+/// §5 row 5. Since DEC-140 the page opens on a hero over its own blurred glow
+/// (mockups D-01 and D-03 in `docs/assets/ios-unified/detail-2026/`): textless
+/// art with the clear logo, the way Plex lays it out, or the portrait poster
+/// when no textless art exists ([MobilePosterHero]).
 ///
 /// This is presentation only. Every action it triggers (play, download,
 /// watchlist, rate, mark watched, source change) reuses the exact methods
@@ -30,15 +32,17 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
     // itself is the same either way (DEC-140).
     final glass = glassTierFor(context) != GlassTier.off;
     final posterUrl = _mobileImageUrl(context, client, metadata.thumbPath, ImageType.poster);
-    final artUrl = _mobileImageUrl(context, client, metadata.artPath, ImageType.art);
-    final ambientUrl = posterUrl ?? artUrl;
+    final artUrl = _mobileImageUrl(context, client, MobilePosterHero.textlessArtPath(metadata), ImageType.art);
+    final logoUrl = _mobileImageUrl(context, client, metadata.clearLogoPath, ImageType.logo);
+    final ambientUrl = artUrl ?? posterUrl;
     final page = Column(
       crossAxisAlignment: .stretch,
       children: [
         MobilePosterHero(
           item: metadata,
+          artUrl: artUrl,
           posterUrl: posterUrl,
-          fallbackArtUrl: artUrl,
+          logoUrl: logoUrl,
           scoreRow: DetailScoreRow(ratings: metadata.externalRatings),
         ),
         Padding(
