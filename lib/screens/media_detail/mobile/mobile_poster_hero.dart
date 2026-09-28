@@ -13,25 +13,44 @@ import 'light_ink_plate.dart';
 /// Mockup width the hero sizes below are taken from (D-01, D-03).
 const double _kMockupWidth = 402;
 
-/// The top of the iPhone detail page (D-01 film, D-03 series): the portrait
-/// poster over the full width, starting under the back/more bar so the title
-/// art at the top of the poster stays visible, fading out at the
-/// bottom into [DetailAmbientBackground], with the meta line and [scoreRow]
-/// over the fade. Without a poster it falls back to [fallbackArtUrl] in 16:9
-/// with the title as text (Review Focus 1); with neither, only the text.
+/// The top of the iPhone detail page (D-01 film, D-03 series), laid out the
+/// way Plex does it: textless art ([artUrl], see [textlessArtPath]) over the
+/// full width from the very top, under the status bar and the back/more bar,
+/// fading out into [DetailAmbientBackground]. The app draws the title over
+/// the bottom of the art: the clear logo ([logoUrl]) centred, or the title as
+/// bold text without one. The meta line and [scoreRow] follow.
+///
+/// Without textless art it falls back to the portrait poster, which carries
+/// its own title: that starts under the back/more bar so the buttons do not
+/// cover it, and gets no logo or text title on top. With neither, only the
+/// text.
 class MobilePosterHero extends StatelessWidget {
   const MobilePosterHero({
     super.key,
     required this.item,
+    required this.artUrl,
     required this.posterUrl,
-    required this.fallbackArtUrl,
+    required this.logoUrl,
     required this.scoreRow,
   });
 
   final MediaItem item;
+
+  /// Textless art for the hero, from [textlessArtPath].
+  final String? artUrl;
+
+  /// The portrait poster, only used when there is no [artUrl].
   final String? posterUrl;
-  final String? fallbackArtUrl;
+
+  /// The item's clear logo, drawn over [artUrl].
+  final String? logoUrl;
   final Widget scoreRow;
+
+  /// The textless art for the hero: square art first, then the 16:9 backdrop
+  /// cropped to the hero box, never the poster (it has the title baked in).
+  /// The fill order of [MediaItem.heroArtCandidates] on a narrow box.
+  static String? textlessArtPath(MediaItem item) =>
+      item.heroArtCandidates(containerAspectRatio: _kMockupWidth / 640).firstOrNull;
 
   /// Room above the poster for the status bar and the back/more bar.
   static double topInset(BuildContext context) => MediaQuery.paddingOf(context).top + 60;
@@ -43,11 +62,78 @@ class MobilePosterHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final artUrl = this.artUrl;
     final posterUrl = this.posterUrl;
     return LayoutBuilder(
-      builder: (context, constraints) => posterUrl == null
-          ? _buildFallback(context)
-          : _buildPoster(context, posterUrl, constraints.maxWidth / _kMockupWidth),
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        if (artUrl != null) return _buildArt(context, artUrl, width);
+        if (posterUrl != null) return _buildPoster(context, posterUrl, width / _kMockupWidth);
+        return _buildFallback(context);
+      },
+    );
+  }
+
+  Widget _buildArt(BuildContext context, String url, double width) {
+    final scale = width / _kMockupWidth;
+    final theme = Theme.of(context);
+    final ink = theme.colorScheme.onSurface;
+    return SizedBox(
+      height: 640 * scale,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 520 * scale,
+            child: _fade(
+              _image(url, Alignment.topCenter),
+              colors: const [Colors.black, Colors.black, Color(0x99000000), Colors.transparent],
+              stops: const [0, 0.6, 0.82, 1],
+            ),
+          ),
+          _statusBand(theme),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 28,
+            child: _foreground(
+              context,
+              ink,
+              title: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildLogoOrTitle(context, ink, maxWidth: width * 0.85, maxHeight: 110 * scale),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The clear logo, or the title as bold text when there is none or it
+  /// fails to load. The text gets the same light-theme plate as the meta line.
+  Widget _buildLogoOrTitle(BuildContext context, Color ink, {required double maxWidth, required double maxHeight}) {
+    final title = LightInkPlate(
+      child: Text(
+        item.displayTitle,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: ink, fontWeight: FontWeight.bold),
+      ),
+    );
+    final logoUrl = this.logoUrl;
+    if (logoUrl == null) return title;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
+      child: Image(
+        image: CachedNetworkImageProvider(logoUrl, cacheManager: PlexImageCacheManager.instance),
+        semanticLabel: item.displayTitle,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => title,
+      ),
     );
   }
 
@@ -58,7 +144,6 @@ class MobilePosterHero extends StatelessWidget {
     // Text over the fade: white on the dark themes, dark ink on the light
     // one, where the fade ends on a near-white page.
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final ink = theme.colorScheme.onSurface;
     final topInset = MobilePosterHero.topInset(context);
     return SizedBox(
@@ -83,74 +168,70 @@ class MobilePosterHero extends StatelessWidget {
               ),
             ),
           ),
-          // Status bar band and a touch of shade under the meta line, in the
-          // page colour on the light theme. The ink there owns its contrast
-          // through its own plates; the band only supports it.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: dark
-                        ? const [
-                            Color(0x8C000000),
-                            Colors.transparent,
-                            Colors.transparent,
-                            Color(0x26000000),
-                            Colors.transparent,
-                          ]
-                        : [
-                            theme.scaffoldBackgroundColor.withAlpha(0x8C),
-                            Colors.transparent,
-                            Colors.transparent,
-                            theme.scaffoldBackgroundColor.withAlpha(0x26),
-                            Colors.transparent,
-                          ],
-                    stops: const [0, 0.14, 0.45, 0.8, 1],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 28,
-            child: DefaultTextStyle.merge(
-              style: TextStyle(
-                color: ink,
-                shadows: dark ? const [Shadow(blurRadius: 8, color: Color(0x80000000))] : null,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [_buildMeta(context, ink), const SizedBox(height: 24), scoreRow],
-              ),
-            ),
-          ),
+          _statusBand(theme),
+          Positioned(left: 16, right: 16, bottom: 28, child: _foreground(context, ink)),
         ],
+      ),
+    );
+  }
+
+  /// Status bar band and a touch of shade under the meta line, in the page
+  /// colour on the light theme. The ink there owns its contrast through its
+  /// own plates; the band only supports it.
+  static Widget _statusBand(ThemeData theme) {
+    final dark = theme.brightness == Brightness.dark;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: dark
+                  ? const [
+                      Color(0x8C000000),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Color(0x26000000),
+                      Colors.transparent,
+                    ]
+                  : [
+                      theme.scaffoldBackgroundColor.withAlpha(0x8C),
+                      Colors.transparent,
+                      Colors.transparent,
+                      theme.scaffoldBackgroundColor.withAlpha(0x26),
+                      Colors.transparent,
+                    ],
+              stops: const [0, 0.14, 0.45, 0.8, 1],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// [title] (if any), the meta line and [scoreRow] over the fade: white
+  /// with a soft shadow on the dark themes, dark ink on the light one.
+  Widget _foreground(BuildContext context, Color ink, {Widget? title}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return DefaultTextStyle.merge(
+      style: TextStyle(
+        color: ink,
+        shadows: dark ? const [Shadow(blurRadius: 8, color: Color(0x80000000))] : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [?title, _buildMeta(context, ink), const SizedBox(height: 24), scoreRow],
       ),
     );
   }
 
   Widget _buildFallback(BuildContext context) {
     final theme = Theme.of(context);
-    final art = fallbackArtUrl;
     return Column(
       children: [
-        if (art != null)
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: _fade(
-              _image(art, Alignment.center),
-              colors: const [Colors.black, Color(0x99000000), Colors.transparent],
-              stops: const [0.55, 0.78, 1.0],
-            ),
-          )
-        else
-          // Room for the back/more bar over the status bar.
-          SizedBox(height: MobilePosterHero.topInset(context)),
+        // Room for the back/more bar over the status bar.
+        SizedBox(height: MobilePosterHero.topInset(context)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           child: Column(

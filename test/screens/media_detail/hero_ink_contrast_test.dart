@@ -65,8 +65,9 @@ Future<void> _pumpScene(WidgetTester tester, ThemeData theme, Color scene, Widge
 Widget _hero() => SingleChildScrollView(
   child: MobilePosterHero(
     item: _item,
+    artUrl: null,
     posterUrl: 'https://x/poster.jpg',
-    fallbackArtUrl: null,
+    logoUrl: null,
     scoreRow: const DetailScoreRow(ratings: _ratings),
   ),
 );
