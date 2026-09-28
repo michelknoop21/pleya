@@ -2551,6 +2551,15 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+
+	/// en: 'Played ${count}×'
+	String activityPlays({required Object count}) => 'Played ${count}×';
+
+	/// en: '${count} viewers'
+	String activityViewers({required Object count}) => '${count} viewers';
+
+	/// en: 'You're at S${season} E${episode}'
+	String activityOwnProgress({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}';
 }
 
 // Path: mobileDetail
@@ -5498,6 +5507,9 @@ class TranslationsSourcePickerEn {
 	/// en: 'Manage servers'
 	String get manageServers => 'Manage servers';
 
+	/// en: 'Source'
+	String get source => 'Source';
+
 	/// en: 'Source: ${source}'
 	String sourceLabel({required Object source}) => 'Source: ${source}';
 
@@ -7999,6 +8011,9 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
+			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
+			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
 			'mobileDetail.similarTab' => 'Similar',
 			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
@@ -8199,11 +8214,11 @@ extension on Translations {
 			'liveTv.noChannels' => 'No channels available',
 			'liveTv.noDvr' => 'No DVR configured on any server',
 			'liveTv.noPrograms' => 'No program data available',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.liveStreamFailed' => 'Live stream failed',
 			'liveTv.unknownProgram' => 'Unknown Program',
 			'liveTv.unknownHub' => 'Unknown',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.unknownError' => 'Unknown error',
 			'liveTv.channelNumber' => ({required Object number}) => 'Channel ${number}',
 			'liveTv.unknownChannel' => 'Unknown channel',
@@ -8713,11 +8728,11 @@ extension on Translations {
 			'serverTasks.failedToLoad' => 'Failed to load tasks',
 			'serverTasks.noTasks' => 'No tasks running',
 			'seerr.title' => 'Requests',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.hubSubtitle' => 'Request movies and shows from your Jellyseerr or Overseerr server.',
 			'seerr.notConfigured' => 'Not configured',
 			'seerr.serverUrl' => 'Server URL',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.serverUrlHint' => 'https://requests.example.com',
 			'seerr.authMode' => 'Sign-in method',
 			'seerr.authPlex' => 'Sign in with Plex',
@@ -9014,6 +9029,7 @@ extension on Translations {
 			'sourcePicker.noneReachableTitle' => 'No source is currently reachable.',
 			'sourcePicker.reauthRequiredTitle' => 'Sign in again to reach this title.',
 			'sourcePicker.manageServers' => 'Manage servers',
+			'sourcePicker.source' => 'Source',
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
 			'sourcePicker.change' => 'Change',
 			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',

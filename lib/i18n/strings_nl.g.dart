@@ -1065,6 +1065,9 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String statsWatchTime({required Object duration}) => '${duration} bekeken';
 	@override String statsRecent({required Object count}) => '${count} in de laatste 30 dagen';
 	@override String watchingSeriesBy({required Object names}) => 'Kijken deze serie: ${names}';
+	@override String activityPlays({required Object count}) => '${count}× afgespeeld';
+	@override String activityViewers({required Object count}) => '${count} kijkers';
+	@override String activityOwnProgress({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}';
 }
 
 // Path: mobileDetail
@@ -2263,6 +2266,7 @@ class _TranslationsSourcePickerNl extends TranslationsSourcePickerEn {
 	@override String get noneReachableTitle => 'Geen bron is momenteel bereikbaar.';
 	@override String get reauthRequiredTitle => 'Meld je opnieuw aan om deze titel te bereiken.';
 	@override String get manageServers => 'Servers beheren';
+	@override String get source => 'Bron';
 	@override String sourceLabel({required Object source}) => 'Bron: ${source}';
 	@override String get change => 'Wijzigen';
 	@override String get playbackFailedTitle => 'Deze bron kon niet worden afgespeeld.';
@@ -3898,6 +3902,9 @@ extension on TranslationsNl {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} bekeken',
 			'discover.statsRecent' => ({required Object count}) => '${count} in de laatste 30 dagen',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Kijken deze serie: ${names}',
+			'discover.activityPlays' => ({required Object count}) => '${count}× afgespeeld',
+			'discover.activityViewers' => ({required Object count}) => '${count} kijkers',
+			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'Jij bent bij S${season} A${episode}',
 			'mobileDetail.similarTab' => 'Vergelijkbaar',
 			'mobileDetail.extrasTab' => 'Extra\'s',
 			'errors.searchFailed' => 'Zoeken mislukt',
@@ -4098,11 +4105,11 @@ extension on TranslationsNl {
 			'liveTv.noChannels' => 'Geen zenders beschikbaar',
 			'liveTv.noDvr' => 'Geen DVR geconfigureerd op een server',
 			'liveTv.noPrograms' => 'Geen programmagegevens beschikbaar',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.liveStreamFailed' => 'Livestream mislukt',
 			'liveTv.unknownProgram' => 'Onbekend programma',
 			'liveTv.unknownHub' => 'Onbekend',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.unknownError' => 'Onbekende fout',
 			'liveTv.channelNumber' => ({required Object number}) => 'Kanaal ${number}',
 			'liveTv.unknownChannel' => 'Onbekend kanaal',
@@ -4612,11 +4619,11 @@ extension on TranslationsNl {
 			'serverTasks.failedToLoad' => 'Taken konden niet worden geladen',
 			'serverTasks.noTasks' => 'Geen actieve taken',
 			'trakt.title' => 'Trakt',
+			_ => null,
+		} ?? switch (path) {
 			'trakt.connected' => 'Verbonden',
 			'trakt.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trakt.disconnectConfirm' => 'Trakt-account loskoppelen?',
-			_ => null,
-		} ?? switch (path) {
 			'trakt.disconnectConfirmBody' => 'Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.',
 			'trakt.scrobble' => 'Realtime scrobbling',
 			'trakt.scrobbleDescription' => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.',
@@ -4913,6 +4920,7 @@ extension on TranslationsNl {
 			'sourcePicker.noneReachableTitle' => 'Geen bron is momenteel bereikbaar.',
 			'sourcePicker.reauthRequiredTitle' => 'Meld je opnieuw aan om deze titel te bereiken.',
 			'sourcePicker.manageServers' => 'Servers beheren',
+			'sourcePicker.source' => 'Bron',
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Bron: ${source}',
 			'sourcePicker.change' => 'Wijzigen',
 			'sourcePicker.playbackFailedTitle' => 'Deze bron kon niet worden afgespeeld.',

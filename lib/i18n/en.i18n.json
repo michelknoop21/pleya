@@ -878,7 +878,10 @@
     "statsViewers": "by ${count} people",
     "statsWatchTime": "${duration} watched",
     "statsRecent": "${count} in the last 30 days",
-    "watchingSeriesBy": "Watching this show: ${names}"
+    "watchingSeriesBy": "Watching this show: ${names}",
+    "activityPlays": "Played ${count}×",
+    "activityViewers": "${count} viewers",
+    "activityOwnProgress": "You're at S${season} E${episode}"
   },
   "mobileDetail": {
     "similarTab": "Similar",
@@ -1997,6 +2000,7 @@
     "noneReachableTitle": "No source is currently reachable.",
     "reauthRequiredTitle": "Sign in again to reach this title.",
     "manageServers": "Manage servers",
+    "source": "Source",
     "sourceLabel": "Source: ${source}",
     "change": "Change",
     "playbackFailedTitle": "This source could not be played.",

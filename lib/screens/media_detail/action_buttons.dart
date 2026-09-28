@@ -376,9 +376,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   /// actually has more than one source — a single-source title has nothing to
   /// change to, and a line saying so would be chrome. Returns a zero-size box
   /// otherwise, which is every entry point that is not a unified activation.
-  Widget _buildUnifiedSourceLine() {
+  ///
+  /// [card] is the iPhone look (`.src` in D-01, DEC-140): a full-width tile
+  /// with the whole tile as the change target. TV and the other layouts keep
+  /// the caption plus chip.
+  Widget _buildUnifiedSourceLine({bool card = false}) {
     final routeContext = widget.unifiedRouteContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return const SizedBox.shrink();
+    if (card) return _buildUnifiedSourceCard(routeContext);
 
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
@@ -432,6 +437,49 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildUnifiedSourceCard(UnifiedMediaRouteContext routeContext) {
+    final parts = [
+      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+    ];
+    final onChangeSource = widget.onChangeSource;
+    final tile = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          Text(t.sourcePicker.source, style: TextStyle(color: Colors.white.withValues(alpha: 0.70), fontSize: 15)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              parts.join(' · '),
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
+          ),
+          if (onChangeSource != null)
+            Text(
+              t.sourcePicker.change,
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: .w700),
+            ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: onChangeSource == null
+          ? tile
+          : FocusableWrapper(
+              borderRadius: 12,
+              disableScale: true,
+              semanticLabel: t.sourcePicker.change,
+              onSelect: () => unawaited(onChangeSource(context)),
+              child: tile,
+            ),
     );
   }
 

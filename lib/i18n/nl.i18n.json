@@ -878,7 +878,10 @@
     "statsViewers": "door ${count} mensen",
     "statsWatchTime": "${duration} bekeken",
     "statsRecent": "${count} in de laatste 30 dagen",
-    "watchingSeriesBy": "Kijken deze serie: ${names}"
+    "watchingSeriesBy": "Kijken deze serie: ${names}",
+    "activityPlays": "${count}× afgespeeld",
+    "activityViewers": "${count} kijkers",
+    "activityOwnProgress": "Jij bent bij S${season} A${episode}"
   },
   "mobileDetail": {
     "similarTab": "Vergelijkbaar",
@@ -1997,6 +2000,7 @@
     "noneReachableTitle": "Geen bron is momenteel bereikbaar.",
     "reauthRequiredTitle": "Meld je opnieuw aan om deze titel te bereiken.",
     "manageServers": "Servers beheren",
+    "source": "Bron",
     "sourceLabel": "Bron: ${source}",
     "change": "Wijzigen",
     "playbackFailedTitle": "Deze bron kon niet worden afgespeeld.",

@@ -50,7 +50,8 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
               // The only way to change source from the detail page; draws
               // nothing unless the item has alternative sources
               // (`hasAlternativeSources`, action_buttons.dart).
-              _buildUnifiedSourceLine(),
+              _buildUnifiedSourceLine(card: true),
+              _buildMobileActivityCard(context, metadata),
               if (_detailAudioTracks.isNotEmpty) ...[const SizedBox(height: 10), _buildMobileAudioSelector()],
               const SizedBox(height: 16),
               _buildMobileSynopsisAndCredits(context, metadata),
@@ -109,6 +110,28 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           ),
         ),
       ),
+    );
+  }
+
+  /// Watchers, the live viewer and play counts in one card (D-01/D-03). Reads
+  /// what `_loadWatchers` and the Home poll already hold; the Plex, owner and
+  /// Tautulli gates stay there, so Jellyfin never gets a card.
+  Widget _buildMobileActivityCard(BuildContext context, MediaItem metadata) {
+    final session = NowWatchingLine.sessionFor(context, metadata.id, serverIdOrNull(metadata.serverId));
+    final onDeck = _onDeckEpisode;
+    // Only once the user actually started the series; the on-deck fallback is
+    // S1E1 for someone who never watched it.
+    final ownProgress =
+        metadata.isShow && (metadata.viewedLeafCount ?? 0) > 0 && onDeck?.parentIndex != null && onDeck?.index != null
+        ? t.discover.activityOwnProgress(season: onDeck!.parentIndex!, episode: onDeck.index!)
+        : null;
+    return DetailActivityCard(
+      watchers: _watchers?.watchers ?? const [],
+      nowWatchingName: session?.userName,
+      playCount: _watchStats?.totalPlays,
+      viewerCount: _watchStats?.userCount,
+      isSeries: metadata.isShow,
+      ownProgressLabel: ownProgress,
     );
   }
 

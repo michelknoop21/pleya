@@ -42,6 +42,7 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/providers/watchlist_store.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_activity_card.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
@@ -1590,6 +1591,28 @@ void main() {
         await tester.pump();
 
         expect(find.textContaining('YXCV_FULL_SYNOPSIS_TAIL_MARKER'), findsOneWidget);
+      });
+
+      testWidgets('a Jellyfin item shows no activity card', (tester) async {
+        final movie = MediaItem(
+          id: 'movie_jellyfin_activity',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Dune: Part Two',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        expect(find.byType(MobilePosterHero), findsOneWidget, reason: 'the northstar mobile view must be showing');
+        expect(find.byType(DetailActivityCard), findsOneWidget, reason: 'the card is wired into the mobile view');
+        expect(
+          find.descendant(of: find.byType(DetailActivityCard), matching: find.byType(Text)),
+          findsNothing,
+          reason: 'watchers are Plex-only, so a Jellyfin item has nothing to show',
+        );
       });
 
       testWidgets('switching season on the season-picker chip survives an unrelated rebuild', (tester) async {

@@ -129,6 +129,7 @@ import '../widgets/fitting_title_text.dart';
 import 'actor_media_screen.dart';
 import 'media_detail/cast_section.dart';
 import 'media_detail/extras_section.dart';
+import 'media_detail/mobile/detail_activity_card.dart';
 import 'media_detail/mobile/detail_ambient_background.dart';
 import 'media_detail/mobile/detail_primary_actions.dart';
 import 'media_detail/mobile/detail_score_row.dart';
