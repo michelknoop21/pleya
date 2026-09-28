@@ -42,6 +42,8 @@ import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
 import 'package:pleya/providers/watchlist_provider.dart';
 import 'package:pleya/providers/watchlist_store.dart';
+import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
+import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
@@ -1636,8 +1638,8 @@ void main() {
 
         await pumpPhoneDetail(tester, client, show, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // App bar title plus the headline under the preview card, like a film.
-        expect(find.text('The Show'), findsNWidgets(2));
+        // No poster in this fixture: the hero shows the title as text, once (DEC-140).
+        expect(find.text('The Show'), findsOneWidget);
         // On a series, downloading is per episode row, not a full-width CTA.
         expect(find.widgetWithText(FilledButton, 'Download'), findsNothing);
         // No tab strip: the action row and the episodes block sit on the page.
@@ -1650,14 +1652,38 @@ void main() {
         expect(find.text('Episode S1E1'), findsOneWidget);
       });
 
-      testWidgets('a film keeps its preview, second title and Download capsule (mockup 06)', (tester) async {
+      testWidgets('the page opens on the poster hero over the ambient background, no 16:9 card (DEC-140)', (
+        tester,
+      ) async {
+        final movie = MediaItem(
+          id: 'movie_poster',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.movie,
+          title: 'Dune: Part Two',
+          thumbPath: 'https://x/poster.jpg',
+          artPath: 'https://x/art.jpg',
+          serverId: 'server_1',
+          serverName: 'Server',
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
+
+        expect(find.byType(MobilePosterHero), findsOneWidget);
+        expect(find.byType(DetailAmbientBackground), findsOneWidget);
+        expect(find.byWidgetPredicate((w) => w is AspectRatio && w.aspectRatio == 16 / 9), findsNothing);
+        // The hero runs behind the status bar.
+        expect(tester.getRect(find.byType(MobilePosterHero)).top, 0);
+      });
+
+      testWidgets('a film keeps its title and Download capsule (mockup 06)', (tester) async {
         final movie = buildMovie();
         final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
 
         await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        // App bar title plus the headline under the preview card.
-        expect(find.text('Dune: Part Two'), findsNWidgets(2));
+        // No poster in this fixture: the hero shows the title as text, once (DEC-140).
+        expect(find.text('Dune: Part Two'), findsOneWidget);
         expect(find.widgetWithText(FilledButton, 'Download'), findsOneWidget);
         expect(find.byType(TabBar), findsNothing);
       });
@@ -3555,6 +3581,10 @@ class _FakeMediaServerClient implements MediaServerClient {
     }
     return null;
   }
+
+  // The poster hero sizes absolute artwork URLs through the client.
+  @override
+  String externalImageUrl(String url, {int? width, int? height}) => url;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

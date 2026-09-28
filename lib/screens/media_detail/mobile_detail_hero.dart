@@ -3,115 +3,10 @@ import 'package:flutter/material.dart';
 import '../../theme/glass/glass_settings.dart';
 import '../../theme/glass/glass_surface.dart';
 import '../../theme/glass/glass_text.dart';
-import '../../theme/mono_tokens.dart';
 
-/// Hero height as a fraction of the screen height (LG-02).
-const double kMobileDetailHeroFraction = 0.62;
-
-/// The scrim over the hero artwork: a light band under the status bar and
-/// the glass circles, clear through the middle of the picture, then dark
-/// under the title, chips and buttons, ending on the page colour [bg] so the
-/// hero runs into the page without a seam. The dark stops are black rather
-/// than [bg]: the text on them is always white, also in the light theme.
-BoxDecoration mobileDetailHeroScrim(Color bg) => BoxDecoration(
-  gradient: LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Colors.black.withValues(alpha: 0.35),
-      Colors.transparent,
-      Colors.black.withValues(alpha: 0.35),
-      Colors.black.withValues(alpha: 0.75),
-      bg,
-    ],
-    stops: const [0, 0.2, 0.55, 0.8, 1],
-  ),
-);
-
-/// The detail-page hero (film, and since DEC-131 series) with Liquid Glass on
-/// (mockup LG-02): the artwork over the full width behind the status bar, at
-/// least [kMobileDetailHeroFraction] of the screen high, with [title],
-/// [chips], [extraChips] and [actions] on the scrim at the
-/// bottom. The top keeps room for [MobileDetailHeroBar], which the page pins
-/// above the scroll view so back and more stay reachable. Grows past that
-/// height instead of clipping when a long title wraps.
-class MobileDetailHero extends StatelessWidget {
-  const MobileDetailHero({
-    super.key,
-    required this.artwork,
-    required this.title,
-    required this.chips,
-    this.extraChips = const [],
-    required this.actions,
-    @visibleForTesting this.debugTransparentForeground = false,
-  });
-
-  final Widget artwork;
-  final String title;
-  final List<String> chips;
-
-  /// Ready-made chips after [chips], such as the page's critic/audience
-  /// rating badges (DEC-131), which carry their own source icon.
-  final List<Widget> extraChips;
-  final Widget actions;
-
-  /// Title and chip labels painted transparent (shadows kept), so the
-  /// contrast test can read the background under them; see
-  /// `textContrastOverBackground`.
-  final bool debugTransparentForeground;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final mq = MediaQuery.of(context);
-    final foreground = debugTransparentForeground ? Colors.transparent : Colors.white;
-
-    return Stack(
-      children: [
-        Positioned.fill(child: artwork),
-        Positioned.fill(child: DecoratedBox(decoration: mobileDetailHeroScrim(tokens(context).bg))),
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: mq.size.height * kMobileDetailHeroFraction),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(16, mq.padding.top + 72, 16, 24),
-            child: Column(
-              mainAxisAlignment: .end,
-              crossAxisAlignment: .stretch,
-              children: [
-                Text(
-                  title,
-                  maxLines: 3,
-                  overflow: .ellipsis,
-                  style: glassText(
-                    theme.textTheme.headlineMedium!.copyWith(fontWeight: .w800, color: foreground, height: 1.1),
-                  ),
-                ),
-                if (chips.isNotEmpty || extraChips.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final c in chips) _HeroChip(c, color: foreground),
-                      ...extraChips,
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 20),
-                actions,
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The glass back/more row over the film page (LG-02). Not part of
-/// [MobileDetailHero]: the page pins it above its scroll view, so it stays on
-/// screen when the hero scrolls away (final review B5). A [Positioned]: place
-/// it directly in a [Stack].
+/// The glass back/more row over the detail page (LG-02). The page pins it
+/// above its scroll view, so it stays on screen when the hero scrolls away
+/// (final review B5). A [Positioned]: place it directly in a [Stack].
 class MobileDetailHeroBar extends StatelessWidget {
   const MobileDetailHeroBar({super.key, required this.leading, this.trailing = const []});
 
@@ -125,32 +20,6 @@ class MobileDetailHeroBar extends StatelessWidget {
       left: 16,
       right: 16,
       child: GlassLayer(child: Row(children: [leading, const Spacer(), ...trailing])),
-    );
-  }
-}
-
-/// Outlined tag on the scrim (year, rating, duration, quality), LG-02.
-class _HeroChip extends StatelessWidget {
-  const _HeroChip(this.text, {required this.color});
-
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.7), width: 1.5),
-        borderRadius: const BorderRadius.all(Radius.circular(6)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          text,
-          style: glassText(TextStyle(color: color, fontSize: 14, fontWeight: .w700)),
-        ),
-      ),
     );
   }
 }

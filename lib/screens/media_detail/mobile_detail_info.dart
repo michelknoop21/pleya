@@ -58,10 +58,7 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
   /// [_handleWatchedTogglePressed] are exactly what the pre-northstar action
   /// row and the long-press context menu already call. Share is genuinely
   /// new (no prior share capability existed anywhere in the app).
-  ///
-  /// With Liquid Glass on, [includeWatchlist] is false: the toggle moves to
-  /// the round glass button next to Download (LG-02).
-  Widget _buildMobileActionRow(BuildContext context, MediaItem metadata, {bool includeWatchlist = true}) {
+  Widget _buildMobileActionRow(BuildContext context, MediaItem metadata) {
     final (onWatchlist, canOfferWatchlist) = _mobileWatchlistState(context, metadata);
 
     final mediaClient = _getMediaClientForMetadata(context);
@@ -105,12 +102,11 @@ extension _MobileMediaDetailInfo on _MediaDetailScreenState {
 
     return Row(
       children: [
-        if (includeWatchlist)
-          action(
-            icon: onWatchlist ? Icons.bookmark_added_rounded : Icons.add_rounded,
-            label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
-            onPressed: canOfferWatchlist ? (_) => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
-          ),
+        action(
+          icon: onWatchlist ? Icons.bookmark_added_rounded : Icons.add_rounded,
+          label: onWatchlist ? t.watchlist.remove : t.watchlist.add,
+          onPressed: canOfferWatchlist ? (_) => unawaited(WatchlistUiActions.toggle(context, metadata)) : null,
+        ),
         action(
           icon: isNumericRating ? Icons.star_rounded : Icons.thumb_up_rounded,
           label: t.mediaMenu.rate,
