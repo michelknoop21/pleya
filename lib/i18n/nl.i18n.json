@@ -470,6 +470,14 @@
     "optimizedForStreaming": "Geoptimaliseerd voor streaming",
     "has64bitOffsets": "64-bit Offsets"
   },
+  "detailActions": {
+    "watchlist": "Kijklijst",
+    "trailer": "Trailer",
+    "rate": "Beoordeel",
+    "watched": "Bekeken",
+    "download": "Downloaden",
+    "more": "Meer"
+  },
   "mediaMenu": {
     "markAsWatched": "Markeer als gekeken",
     "markAsUnwatched": "Markeer als ongekeken",

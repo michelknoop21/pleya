@@ -470,6 +470,14 @@
     "optimizedForStreaming": "Optimized for Streaming",
     "has64bitOffsets": "64-bit Offsets"
   },
+  "detailActions": {
+    "watchlist": "Watchlist",
+    "trailer": "Trailer",
+    "rate": "Rate",
+    "watched": "Watched",
+    "download": "Download",
+    "more": "More"
+  },
   "mediaMenu": {
     "markAsWatched": "Mark as Watched",
     "markAsUnwatched": "Mark as Unwatched",

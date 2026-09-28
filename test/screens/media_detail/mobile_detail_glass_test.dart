@@ -232,12 +232,12 @@ void main() {
 
     expect(find.byType(MobilePosterHero), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNothing);
-    expect(find.widgetWithText(FilledButton, 'Download'), findsOneWidget);
-    expect(find.text(t.watchlist.add), findsOneWidget);
-    expect(find.text(t.mediaMenu.rate), findsOneWidget);
+    expect(find.byKey(const Key('media-detail.action.download')), findsOneWidget);
+    expect(find.byKey(const Key('media-detail.action.watchlist')), findsOneWidget);
+    expect(find.byKey(const Key('media-detail.action.rate')), findsOneWidget);
   });
 
-  testWidgets('glas aan: posterhero, prominente Resume, Download en glazen terug/meer', (tester) async {
+  testWidgets('glas aan: posterhero, prominente Resume en glazen terug/meer', (tester) async {
     final source = await _pumpDetail(tester, glass: true);
     expect(glassTierFor(tester.element(find.byType(MobilePosterHero))), GlassTier.fake);
 
@@ -249,26 +249,25 @@ void main() {
     final resume = _surface(shape: StadiumBorder, prominent: true);
     expect(resume, findsOneWidget);
     expect(find.descendant(of: resume, matching: find.textContaining(t.common.resume)), findsOneWidget);
-    final download = _surface(shape: StadiumBorder, prominent: false);
-    expect(download, findsOneWidget);
-    expect(find.descendant(of: download, matching: find.text('Download')), findsOneWidget);
+    // Download is an icon in the action row now (D-01), not a glass capsule.
+    expect(_surface(shape: StadiumBorder, prominent: false), findsNothing);
     expect(tester.getRect(resume).top, greaterThanOrEqualTo(hero.bottom));
     // Back and more are glass circles.
     expect(_surface(shape: CircleBorder), findsNWidgets(2));
     expect(find.byTooltip(MaterialLocalizations.of(tester.element(resume)).backButtonTooltip), findsOneWidget);
     expect(find.byTooltip(MaterialLocalizations.of(tester.element(resume)).moreButtonTooltip), findsOneWidget);
 
-    // The watchlist is back in the action row and calls the same toggle.
-    expect(find.text(t.mediaMenu.rate), findsOneWidget);
-    final watchlist = find.text(t.watchlist.add);
-    expect(watchlist, findsOneWidget);
+    // The watchlist is in the action row and calls the same toggle.
+    expect(find.byKey(const Key('media-detail.action.rate')), findsOneWidget);
+    final watchlist = find.byKey(const Key('media-detail.action.watchlist'));
+    expect(find.bySemanticsLabel(t.watchlist.add), findsOneWidget);
     await tester.ensureVisible(watchlist);
     await tester.pump();
     await tester.tap(watchlist);
     await tester.pump();
     await tester.pump();
     expect(source.added, hasLength(1));
-    expect(find.text(t.watchlist.remove), findsOneWidget);
+    expect(find.bySemanticsLabel(t.watchlist.remove), findsOneWidget);
   });
 
   testWidgets('glas aan, serie (DEC-131): hero met seizoenen, geen Download, watchlist in de actierij', (tester) async {
@@ -287,17 +286,19 @@ void main() {
     final hero = find.byType(MobilePosterHero);
     expect(hero, findsOneWidget);
     expect(find.descendant(of: hero, matching: find.text(t.unifiedCatalog.seasons(count: 3))), findsOneWidget);
-    // A series downloads per episode: no Download capsule.
-    expect(_surface(shape: StadiumBorder, prominent: false), findsNothing);
-    expect(find.text(t.watchlist.add), findsOneWidget);
+    // A series downloads per episode: no download action.
+    expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
+    expect(find.byKey(const Key('media-detail.action.watchlist')), findsOneWidget);
   });
 
   testWidgets('K8: de trailerknop heet "Trailer afspelen", niet "Extras"', (tester) async {
     await _pumpDetail(tester, glass: true, client: _TrailerClient());
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byTooltip(t.tooltips.playTrailer), findsOneWidget);
-    expect(find.byTooltip(t.discover.extras), findsNothing);
+    // The trailer sits in the action row (D-01); VoiceOver reads what it does.
+    final trailer = find.byKey(const Key('media-detail.action.trailer'));
+    expect(trailer, findsOneWidget);
+    expect(tester.getSemantics(trailer).label, t.tooltips.playTrailer);
   });
 
   testWidgets('B5: terug en meer blijven in beeld na scrollen', (tester) async {
@@ -322,7 +323,7 @@ void main() {
   // B6: the real tier (liquid_glass_renderer) on the iPhone theme. Only
   // proves the package widgets build on each surface; contrast is measured
   // on tier fake above.
-  testWidgets('rooktest echt glas op iOS: knoppenrij, Resume en downloadrij', (tester) async {
+  testWidgets('rooktest echt glas op iOS: knoppenrij en Resume', (tester) async {
     await _pumpDetail(tester, glass: true, realTier: true);
     expect(glassTierFor(tester.element(find.byType(MobilePosterHero))), GlassTier.real);
     expect(tester.takeException(), isNull);
@@ -332,18 +333,15 @@ void main() {
     final l10n = MaterialLocalizations.of(tester.element(find.byType(MobilePosterHero)));
     final bar = find.ancestor(of: find.byTooltip(l10n.backButtonTooltip), matching: find.byType(LiquidGlassLayer));
     final resume = find.ancestor(of: find.textContaining(t.common.resume), matching: find.byType(LiquidGlassLayer));
-    final download = find.ancestor(of: find.text('Download'), matching: find.byType(LiquidGlassLayer));
 
     // Each surface sits in exactly one layer of its own.
     expect(layersAbove(find.byTooltip(l10n.backButtonTooltip)), 1);
     expect(layersAbove(find.textContaining(t.common.resume)), 1);
-    expect(layersAbove(find.text('Download')), 1);
-    expect(find.byType(LiquidGlassLayer), findsNWidgets(3));
-    // Back and more; Resume; Download.
+    expect(find.byType(LiquidGlassLayer), findsNWidgets(2));
+    // Back and more; Resume.
     expect(platesIn(bar), findsNWidgets(2));
     expect(platesIn(resume), findsOneWidget);
-    expect(platesIn(download), findsOneWidget);
-    expect(find.byType(LiquidGlass), findsNWidgets(4));
+    expect(find.byType(LiquidGlass), findsNWidgets(3));
   });
 
   testWidgets('contrast over Big Buck Bunny: glasknoppen', (tester) async {

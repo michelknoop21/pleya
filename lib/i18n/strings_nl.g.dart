@@ -49,6 +49,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _TranslationsSearchNl search = _TranslationsSearchNl._(_root);
 	@override late final _TranslationsHotkeysNl hotkeys = _TranslationsHotkeysNl._(_root);
 	@override late final _TranslationsFileInfoNl fileInfo = _TranslationsFileInfoNl._(_root);
+	@override late final _TranslationsDetailActionsNl detailActions = _TranslationsDetailActionsNl._(_root);
 	@override late final _TranslationsMediaMenuNl mediaMenu = _TranslationsMediaMenuNl._(_root);
 	@override late final _TranslationsRateSheetNl rateSheet = _TranslationsRateSheetNl._(_root);
 	@override late final _TranslationsAccessibilityNl accessibility = _TranslationsAccessibilityNl._(_root);
@@ -602,6 +603,21 @@ class _TranslationsFileInfoNl extends TranslationsFileInfoEn {
 	@override String get duration => 'Duur';
 	@override String get optimizedForStreaming => 'Geoptimaliseerd voor streaming';
 	@override String get has64bitOffsets => '64-bit Offsets';
+}
+
+// Path: detailActions
+class _TranslationsDetailActionsNl extends TranslationsDetailActionsEn {
+	_TranslationsDetailActionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watchlist => 'Kijklijst';
+	@override String get trailer => 'Trailer';
+	@override String get rate => 'Beoordeel';
+	@override String get watched => 'Bekeken';
+	@override String get download => 'Downloaden';
+	@override String get more => 'Meer';
 }
 
 // Path: mediaMenu
@@ -3502,6 +3518,12 @@ extension on TranslationsNl {
 			'fileInfo.duration' => 'Duur',
 			'fileInfo.optimizedForStreaming' => 'Geoptimaliseerd voor streaming',
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
+			'detailActions.watchlist' => 'Kijklijst',
+			'detailActions.trailer' => 'Trailer',
+			'detailActions.rate' => 'Beoordeel',
+			'detailActions.watched' => 'Bekeken',
+			'detailActions.download' => 'Downloaden',
+			'detailActions.more' => 'Meer',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
 			'mediaMenu.removeFromContinueWatching' => 'Verwijder uit Doorgaan met kijken',
@@ -3565,14 +3587,14 @@ extension on TranslationsNl {
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pauze over ${seconds}s',
 			'videoControls.continueWatching' => 'Doorgaan',
 			'videoControls.autoPlayNext' => 'Automatisch volgende afspelen',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playNext' => 'Volgende afspelen',
 			'videoControls.nextEpisode' => 'Volgende aflevering',
 			'videoControls.skipIntro' => 'Intro overslaan',
 			'videoControls.skipCredits' => 'Aftiteling overslaan',
 			'videoControls.playButton' => 'Afspelen',
 			'videoControls.pauseButton' => 'Pauzeren',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Terugspoelen ${seconds} seconden',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Vooruitspoelen ${seconds} seconden',
 			'videoControls.previousButton' => 'Vorige aflevering',
@@ -4079,14 +4101,14 @@ extension on TranslationsNl {
 			'liveTv.liveStreamFailed' => 'Livestream mislukt',
 			'liveTv.unknownProgram' => 'Onbekend programma',
 			'liveTv.unknownHub' => 'Onbekend',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.unknownError' => 'Onbekende fout',
 			'liveTv.channelNumber' => ({required Object number}) => 'Kanaal ${number}',
 			'liveTv.unknownChannel' => 'Onbekend kanaal',
 			'liveTv.live' => 'LIVE',
 			'liveTv.reloadGuide' => 'Gids herladen',
 			'liveTv.now' => 'Nu',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.today' => 'Vandaag',
 			'liveTv.tomorrow' => 'Morgen',
 			'liveTv.midnight' => 'Middernacht',
@@ -4593,14 +4615,14 @@ extension on TranslationsNl {
 			'trakt.connected' => 'Verbonden',
 			'trakt.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trakt.disconnectConfirm' => 'Trakt-account loskoppelen?',
+			_ => null,
+		} ?? switch (path) {
 			'trakt.disconnectConfirmBody' => 'Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.',
 			'trakt.scrobble' => 'Realtime scrobbling',
 			'trakt.scrobbleDescription' => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.',
 			'trakt.watchedSync' => 'Bekeken-status synchroniseren',
 			'trakt.watchedSyncDescription' => 'Wanneer je items als bekeken markeert in Pleya, worden ze ook op Trakt gemarkeerd.',
 			'trackers.title' => 'Trackers',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.hubSubtitle' => 'Synchroniseer kijkvoortgang met Trakt en andere diensten.',
 			'trackers.notConnected' => 'Niet verbonden',
 			'trackers.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',

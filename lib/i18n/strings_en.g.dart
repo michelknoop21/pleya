@@ -50,6 +50,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsSearchEn search = TranslationsSearchEn.internal(_root);
 	late final TranslationsHotkeysEn hotkeys = TranslationsHotkeysEn.internal(_root);
 	late final TranslationsFileInfoEn fileInfo = TranslationsFileInfoEn.internal(_root);
+	late final TranslationsDetailActionsEn detailActions = TranslationsDetailActionsEn.internal(_root);
 	late final TranslationsMediaMenuEn mediaMenu = TranslationsMediaMenuEn.internal(_root);
 	late final TranslationsRateSheetEn rateSheet = TranslationsRateSheetEn.internal(_root);
 	late final TranslationsAccessibilityEn accessibility = TranslationsAccessibilityEn.internal(_root);
@@ -1418,6 +1419,33 @@ class TranslationsFileInfoEn {
 
 	/// en: '64-bit Offsets'
 	String get has64bitOffsets => '64-bit Offsets';
+}
+
+// Path: detailActions
+class TranslationsDetailActionsEn {
+	TranslationsDetailActionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Watchlist'
+	String get watchlist => 'Watchlist';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Rate'
+	String get rate => 'Rate';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'Download'
+	String get download => 'Download';
+
+	/// en: 'More'
+	String get more => 'More';
 }
 
 // Path: mediaMenu
@@ -7591,6 +7619,12 @@ extension on Translations {
 			'fileInfo.duration' => 'Duration',
 			'fileInfo.optimizedForStreaming' => 'Optimized for Streaming',
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
+			'detailActions.watchlist' => 'Watchlist',
+			'detailActions.trailer' => 'Trailer',
+			'detailActions.rate' => 'Rate',
+			'detailActions.watched' => 'Watched',
+			'detailActions.download' => 'Download',
+			'detailActions.more' => 'More',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -7654,14 +7688,14 @@ extension on Translations {
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playNext' => 'Play Next',
 			'videoControls.nextEpisode' => 'Next Episode',
 			'videoControls.skipIntro' => 'Skip Intro',
 			'videoControls.skipCredits' => 'Skip Credits',
 			'videoControls.playButton' => 'Play',
 			'videoControls.pauseButton' => 'Pause',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.seekBackwardButton' => ({required Object seconds}) => 'Seek backward ${seconds} seconds',
 			'videoControls.seekForwardButton' => ({required Object seconds}) => 'Seek forward ${seconds} seconds',
 			'videoControls.previousButton' => 'Previous episode',
@@ -8168,14 +8202,14 @@ extension on Translations {
 			'liveTv.liveStreamFailed' => 'Live stream failed',
 			'liveTv.unknownProgram' => 'Unknown Program',
 			'liveTv.unknownHub' => 'Unknown',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.unknownError' => 'Unknown error',
 			'liveTv.channelNumber' => ({required Object number}) => 'Channel ${number}',
 			'liveTv.unknownChannel' => 'Unknown channel',
 			'liveTv.live' => 'LIVE',
 			'liveTv.reloadGuide' => 'Reload Guide',
 			'liveTv.now' => 'Now',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.today' => 'Today',
 			'liveTv.tomorrow' => 'Tomorrow',
 			'liveTv.midnight' => 'Midnight',
@@ -8682,14 +8716,14 @@ extension on Translations {
 			'seerr.hubSubtitle' => 'Request movies and shows from your Jellyseerr or Overseerr server.',
 			'seerr.notConfigured' => 'Not configured',
 			'seerr.serverUrl' => 'Server URL',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.serverUrlHint' => 'https://requests.example.com',
 			'seerr.authMode' => 'Sign-in method',
 			'seerr.authPlex' => 'Sign in with Plex',
 			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
 			'seerr.authLocal' => 'Email and password',
 			'seerr.authApiKey' => 'API key',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.email' => 'Email',
 			'seerr.password' => 'Password',
 			'seerr.apiKey' => 'API key',

@@ -1071,6 +1071,8 @@ void main() {
       // phone size/ratio; every other caller keeps today's values unchanged.
       Size viewSize = const Size(1100, 2400),
       double devicePixelRatio = 1,
+      bool isOffline = false,
+      bool withWatchlist = false,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1094,9 +1096,19 @@ void main() {
       final manager = MultiServerManager()..debugRegisterClientForTesting(client);
       final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
       final watchStateOverlay = WatchStateStore();
+      final watchlistProvider = withWatchlist
+          ? WatchlistProvider(
+              snapshots: WatchlistSnapshotStore(cache: PlexApiCache.instance),
+              repository: WatchlistRepository(sources: [_CountingWatchlistSource()]),
+            )
+          : null;
+      final watchlistStore = WatchlistStore();
+      if (watchlistProvider != null) await tester.runAsync(watchlistProvider.load);
 
       addTearDown(() async {
         watchStateOverlay.dispose();
+        watchlistProvider?.dispose();
+        watchlistStore.dispose();
         downloadProvider.dispose();
         downloadManager.dispose();
         multiServerProvider.dispose();
@@ -1110,6 +1122,10 @@ void main() {
               ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
               ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
               ChangeNotifierProvider<WatchStateStore>.value(value: watchStateOverlay),
+              if (watchlistProvider != null) ...[
+                ChangeNotifierProvider<WatchlistProvider>.value(value: watchlistProvider),
+                ChangeNotifierProvider<WatchlistStore>.value(value: watchlistStore),
+              ],
             ],
             child: MaterialApp(
               builder: withNoticeLayer(),
@@ -1117,6 +1133,7 @@ void main() {
               home: withProfileNavigationScope(
                 child: MediaDetailScreen(
                   metadata: show,
+                  isOffline: isOffline,
                   initialSeasonId: initialSeasonId,
                   initialSeasonIndex: initialSeasonIndex,
                   initialEpisodeId: initialEpisodeId,
@@ -1640,11 +1657,11 @@ void main() {
 
         // No poster in this fixture: the hero shows the title as text, once (DEC-140).
         expect(find.text('The Show'), findsOneWidget);
-        // On a series, downloading is per episode row, not a full-width CTA.
-        expect(find.widgetWithText(FilledButton, 'Download'), findsNothing);
+        // On a series, downloading is per episode row, not in the action row.
+        expect(find.byKey(const Key('media-detail.action.download')), findsNothing);
         // No tab strip: the action row and the episodes block sit on the page.
         expect(find.byType(TabBar), findsNothing);
-        expect(find.text('Share'), findsOneWidget);
+        expect(find.byKey(const Key('media-detail.action.more')), findsOneWidget);
         expect(find.text('Episodes'), findsOneWidget);
         // The season pill and its count show for a one-season series too.
         expect(find.byType(PopupMenuButton<int>), findsOneWidget);
@@ -1676,7 +1693,7 @@ void main() {
         expect(tester.getRect(find.byType(MobilePosterHero)).top, 0);
       });
 
-      testWidgets('a film keeps its title and Download capsule (mockup 06)', (tester) async {
+      testWidgets('a film keeps its title and a white play button (D-01)', (tester) async {
         final movie = buildMovie();
         final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
 
@@ -1684,26 +1701,148 @@ void main() {
 
         // No poster in this fixture: the hero shows the title as text, once (DEC-140).
         expect(find.text('Dune: Part Two'), findsOneWidget);
-        expect(find.widgetWithText(FilledButton, 'Download'), findsOneWidget);
         expect(find.byType(TabBar), findsNothing);
+        final tk = tokens(tester.element(find.text('Dune: Part Two').first));
+        final play = find.descendant(
+          of: find.byKey(const Key('media-detail.play')),
+          matching: find.byType(FilledButton),
+        );
+        expect(capsuleColour(tester, play), tk.text);
+        // No progress: no restart button.
+        expect(find.byKey(const Key('media-detail.play-from-start')), findsNothing);
       });
 
-      testWidgets('the Download capsule is a grey surface, not the primary white', (tester) async {
+      List<String> actionKeys(WidgetTester tester) => tester
+          .widgetList<InkWell>(find.byType(InkWell))
+          .map((w) => w.key)
+          .whereType<ValueKey<String>>()
+          .map((k) => k.value)
+          .where((v) => v.startsWith('media-detail.action.'))
+          .toList();
+
+      testWidgets('a film shows six actions in the D-01 order', (tester) async {
+        final movie = buildMovie();
+        final trailer = MediaItem(
+          id: 'trailer_1',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.clip,
+          title: 'Trailer',
+          raw: const {'ExtraType': 'Trailer'},
+        );
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {}, extras: [trailer]);
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+        );
+
+        expect(actionKeys(tester), [
+          'media-detail.action.watchlist',
+          'media-detail.action.trailer',
+          'media-detail.action.rate',
+          'media-detail.action.watched',
+          'media-detail.action.download',
+          'media-detail.action.more',
+        ]);
+        // The trailer moved from the app bar into the row.
+        expect(find.byTooltip(t.tooltips.playTrailer), findsNothing);
+      });
+
+      testWidgets('a film without a trailer leaves the trailer action out', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+        );
+
+        expect(actionKeys(tester), [
+          'media-detail.action.watchlist',
+          'media-detail.action.rate',
+          'media-detail.action.watched',
+          'media-detail.action.download',
+          'media-detail.action.more',
+        ]);
+      });
+
+      testWidgets('a series shows five actions, no download', (tester) async {
+        final show = buildShow();
+        final season1 = buildSeason(show, 1);
+        final trailer = MediaItem(
+          id: 'trailer_show',
+          backend: MediaBackend.jellyfin,
+          kind: MediaKind.clip,
+          title: 'Trailer',
+          raw: const {'ExtraType': 'Trailer'},
+        );
+        final client = _FakeMediaServerClient(
+          show: show,
+          childrenByParent: {
+            show.id: [season1],
+            season1.id: [buildEpisode(show, season1, 1)],
+          },
+          extras: [trailer],
+        );
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          show,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+        );
+
+        expect(actionKeys(tester), [
+          'media-detail.action.watchlist',
+          'media-detail.action.trailer',
+          'media-detail.action.rate',
+          'media-detail.action.watched',
+          'media-detail.action.more',
+        ]);
+      });
+
+      testWidgets('offline (Review Focus 5): no rate action, play stays', (tester) async {
+        final movie = buildMovie();
+        final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+        await pumpPhoneDetail(
+          tester,
+          client,
+          movie,
+          viewSize: phoneViewSize,
+          devicePixelRatio: phoneDevicePixelRatio,
+          withWatchlist: true,
+          isOffline: true,
+        );
+
+        expect(find.byKey(const Key('media-detail.play')), findsOneWidget);
+        expect(find.byKey(const Key('media-detail.action.rate')), findsNothing);
+        expect(find.byKey(const Key('media-detail.action.watched')), findsOneWidget);
+      });
+
+      testWidgets('Meer opens the context menu with Share', (tester) async {
         final movie = buildMovie();
         final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
 
         await pumpPhoneDetail(tester, client, movie, viewSize: phoneViewSize, devicePixelRatio: phoneDevicePixelRatio);
 
-        final tk = tokens(tester.element(find.text('Dune: Part Two').first));
-        final primary = capsuleColour(tester, find.widgetWithText(FilledButton, 'Play'));
-        final download = capsuleColour(tester, find.widgetWithText(FilledButton, 'Download'));
+        final more = find.byKey(const Key('media-detail.action.more'));
+        await tester.ensureVisible(more);
+        await tester.pump();
+        await tester.tap(more);
+        await tester.pumpAndSettle();
 
-        // monoTheme's filledButtonTheme paints every FilledButton c.text, so
-        // the tonal variant used to come out pure white — the same capsule as
-        // the primary directly above it.
-        expect(primary, tk.text);
-        expect(download, tk.surfaceElevated);
-        expect(download, isNot(primary));
+        expect(find.text(t.common.share), findsOneWidget);
       });
 
       testWidgets('the season pill sits on an elevated surface, not the page colour', (tester) async {

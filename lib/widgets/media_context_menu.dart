@@ -98,6 +98,11 @@ class MediaContextMenu extends StatefulWidget {
   /// keeps the trailer reachable even when the detail row hides its trailer
   /// button to fit a small screen.
   final VoidCallback? onPlayTrailer;
+
+  /// Share and request (Seerr) entries. Only the phone detail page passes
+  /// these: its action row has no room for them (DEC-140).
+  final VoidCallback? onShare;
+  final VoidCallback? onRequest;
   final Widget child;
   final bool isInContinueWatching;
   final String? collectionId; // The collection ID if displaying within a collection
@@ -122,6 +127,8 @@ class MediaContextMenu extends StatefulWidget {
     this.onListRefresh,
     this.onTap,
     this.onPlayTrailer,
+    this.onShare,
+    this.onRequest,
     required this.child,
     this.isInContinueWatching = false,
     this.collectionId,
@@ -301,6 +308,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         menuActions.add(
           _MenuAction(value: 'play_trailer', icon: Symbols.theaters_rounded, label: t.tooltips.playTrailer),
         );
+      }
+
+      if (widget.onShare != null) {
+        menuActions.add(_MenuAction(value: 'share', icon: Symbols.ios_share_rounded, label: t.common.share));
+      }
+
+      if (widget.onRequest != null) {
+        menuActions.add(_MenuAction(value: 'request', icon: Symbols.playlist_add_rounded, label: t.seerr.request));
       }
 
       if (!mediaItem!.isWatched || isPartiallyWatched || hasActiveProgress) {
@@ -567,18 +582,20 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       switch (selected) {
         case 'play_from_beginning':
           didNavigate = true;
-          if (context.mounted) {
-            await navigateToVideoPlayer(
-              context,
-              metadata: mediaItem!.copyWith(viewOffsetMs: 0),
-              resolveWatchState: false,
-            );
-          }
+          if (context.mounted) await playFromBeginning(context, mediaItem!);
           break;
 
         case 'play_trailer':
           didNavigate = true;
           widget.onPlayTrailer?.call();
+          break;
+
+        case 'share':
+          widget.onShare?.call();
+          break;
+
+        case 'request':
+          widget.onRequest?.call();
           break;
 
         case 'watch':
