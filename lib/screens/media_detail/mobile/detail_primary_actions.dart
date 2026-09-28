@@ -106,18 +106,22 @@ class DetailPrimaryActions extends StatelessWidget {
             ),
             if (onPlayFromStart != null) ...[
               const SizedBox(width: 12),
-              Tooltip(
-                message: t.mediaMenu.playFromBeginning,
-                child: Material(
-                  key: const Key('media-detail.play-from-start'),
-                  color: onSurface.withValues(alpha: 0.14),
-                  shape: const CircleBorder(),
-                  clipBehavior: .antiAlias,
-                  child: InkWell(
-                    onTap: onPlayFromStart,
-                    child: SizedBox.square(
-                      dimension: 52,
-                      child: Icon(Icons.replay_rounded, size: 23, color: onSurface),
+              AutomationNode(
+                id: AutomationIds.mediaDetailPlayFromStart,
+                role: 'button',
+                child: Tooltip(
+                  message: t.mediaMenu.playFromBeginning,
+                  child: Material(
+                    key: const Key('media-detail.play-from-start'),
+                    color: onSurface.withValues(alpha: 0.14),
+                    shape: const CircleBorder(),
+                    clipBehavior: .antiAlias,
+                    child: InkWell(
+                      onTap: onPlayFromStart,
+                      child: SizedBox.square(
+                        dimension: 52,
+                        child: Icon(Icons.replay_rounded, size: 23, color: onSurface),
+                      ),
                     ),
                   ),
                 ),
@@ -146,38 +150,49 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
-    return Semantics(
-      button: true,
-      selected: action.active,
-      label: action.semanticLabel ?? action.label,
-      excludeSemantics: true,
-      child: InkWell(
-        key: action.key,
-        onTap: action.onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-          child: Column(
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: action.active ? onSurface : onSurface.withValues(alpha: 0.08),
+    // `media-detail.action.watched` becomes `media-detail.action[watched]`.
+    final key = action.key;
+    return AutomationNode(
+      id: AutomationIds.mediaDetailAction,
+      instance: key is ValueKey<String> ? key.value.split('.').last : null,
+      role: 'button',
+      child: Semantics(
+        button: true,
+        selected: action.active,
+        label: action.semanticLabel ?? action.label,
+        excludeSemantics: true,
+        child: InkWell(
+          key: action.key,
+          onTap: action.onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: Column(
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: action.active ? onSurface : onSurface.withValues(alpha: 0.08),
+                  ),
+                  child: SizedBox.square(
+                    dimension: 46,
+                    child: Icon(
+                      action.icon,
+                      size: 22,
+                      color: action.active ? theme.scaffoldBackgroundColor : onSurface,
+                    ),
+                  ),
                 ),
-                child: SizedBox.square(
-                  dimension: 46,
-                  child: Icon(action.icon, size: 22, color: action.active ? theme.scaffoldBackgroundColor : onSurface),
+                const SizedBox(height: 7),
+                Text(
+                  action.label,
+                  maxLines: 1,
+                  overflow: .ellipsis,
+                  textAlign: .center,
+                  style: TextStyle(fontSize: 11.5, height: 1.2, color: onSurface),
                 ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                action.label,
-                maxLines: 1,
-                overflow: .ellipsis,
-                textAlign: .center,
-                style: TextStyle(fontSize: 11.5, height: 1.2, color: onSurface),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -5,9 +5,10 @@ target: ios-sim
 # een gebruiker dat doet: Films-landing -> "Alle films" -> een postertegel, dezelfde weg
 # als `ios.catalog.northstar` tot aan de grid, met precies één tik verder de detailpagina
 # in. Sinds DEC-140 hoort de snapshot naast `docs/assets/ios-unified/detail-2026/D-01-film.png`
-# (posterhero, scores, afspeelknop, actierij). Van de nieuwe compositie is alleen de
-# afspeelknop een automation-id (`media-detail.play`); de actierij en de techtabel dragen
-# alleen widget-keys, dus die blijven visuele evidence in de snapshot.
+# (posterhero, scores, afspeelknop, actierij). De afspeelknop (`media-detail.play`), de
+# herstartknop (`media-detail.play-from-start`) en de actierij (`media-detail.action[<naam>]`)
+# zijn automation-ids; de techtabel blijft visuele evidence in de snapshot. Het fixture
+# heeft geen voortgang, dus de herstartknop hoort er niet te staan.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -26,4 +27,9 @@ steps:
   - wait_until: {id: screen.media_detail, timeout: 15000}
   - settle: 2000
   - assert: {id: media-detail.play, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: media-detail.play-from-start, present: false}
+  - assert: {id: "media-detail.action[rate]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "media-detail.action[watched]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "media-detail.action[download]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "media-detail.action[more]", insideViewport: true, minimumTapTarget: 44}
   - snapshot: detail-film-northstar

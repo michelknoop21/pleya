@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/media_item.dart';
 import '../../../media/media_server_client.dart';
@@ -36,11 +38,16 @@ class DetailSeasonsRail extends StatelessWidget {
             children: [
               for (var i = 0; i < seasons.length; i++) ...[
                 if (i > 0) const SizedBox(width: 12),
-                _SeasonPoster(
-                  key: ValueKey('season-poster-${seasons[i].id}'),
-                  season: seasons[i],
-                  client: client,
-                  onTap: () => onOpen(seasons[i]),
+                AutomationNode(
+                  id: AutomationIds.mediaDetailSeasonPoster,
+                  instance: '$i',
+                  role: 'grid.item',
+                  child: _SeasonPoster(
+                    key: ValueKey('season-poster-${seasons[i].id}'),
+                    season: seasons[i],
+                    client: client,
+                    onTap: () => onOpen(seasons[i]),
+                  ),
                 ),
               ],
             ],

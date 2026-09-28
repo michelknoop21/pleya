@@ -8,11 +8,13 @@ target: ios-sim
 # heeft één seizoen met 3 afleveringen (`named_fixtures.dart`), genoeg om de
 # Afleveringen-tab in `mobile_episodes_tab.dart` te tonen zonder een seizoenwissel nodig
 # te hebben. Sinds DEC-140 hoort de snapshot naast
-# `docs/assets/ios-unified/detail-2026/D-03-serie.png`. Alleen de afspeelknop is een
-# automation-id (`media-detail.play`); de seizoensrij draagt widget-keys, geen id.
+# `docs/assets/ios-unified/detail-2026/D-03-serie.png`. Afspeelknop, actierij
+# (`media-detail.action[<naam>]`) en seizoensposters (`media-detail.season-poster[<index>]`)
+# zijn automation-ids. Een serie heeft geen Downloaden in de actierij.
 # Daarna de seizoenspagina: op het 402x874-toestel (iPhone 17 Pro) begint de eerste
-# seizoensposter op de onderrand, en zonder scroll-verb is een tik op (60, 872) de enige
-# weg erheen. Op een kleiner toestel landt die tik ergens anders.
+# seizoensposter op de onderrand. Een tik op id mikt op het midden van de poster, en dat
+# ligt onder de rand; zonder scroll-verb blijft een tik op (60, 872) de enige weg erheen.
+# Op een kleiner toestel landt die tik ergens anders.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -31,6 +33,10 @@ steps:
   - wait_until: {id: screen.media_detail, timeout: 15000}
   - settle: 2000
   - assert: {id: media-detail.play, insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "media-detail.action[watched]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "media-detail.action[more]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "media-detail.action[download]", present: false}
+  - assert: {id: "media-detail.season-poster[0]"}
   - snapshot: detail-series-episodes-northstar
   - tap: {x: 60, y: 872}
   - settle: 2500
