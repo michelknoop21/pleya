@@ -70,9 +70,12 @@ void main() {
     expect(find.byType(AspectRatio), findsOneWidget);
   });
 
-  testWidgets('poster hero is 640 high at 402 wide and fades out through a dstIn mask', (tester) async {
+  testWidgets('hero is 640 high at 402 wide, poster starts under the back/more bar and fades through a dstIn mask', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(402, 900);
     tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 62);
     addTearDown(tester.view.reset);
     final item = MediaItem(
       id: 'm',
@@ -99,7 +102,12 @@ void main() {
         ),
       ),
     );
+    // The hero keeps its 640 so the actions stay on the first screen; the
+    // poster starts under the status bar (62) and the back/more bar (60), so
+    // the title art at its top is not covered by the buttons.
     expect(tester.getSize(find.byType(MobilePosterHero)).height, 640);
+    expect(tester.getTopLeft(find.byType(ShaderMask)).dy, 62 + 60);
+    expect(tester.getSize(find.byType(ShaderMask)).height, 640 - 62 - 60);
     expect(tester.widget<ShaderMask>(find.byType(ShaderMask)).blendMode, BlendMode.dstIn);
     expect(find.text('2010'), findsOneWidget);
     expect(find.text('Animation, Fantasy'), findsOneWidget);

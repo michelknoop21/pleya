@@ -241,10 +241,16 @@ void main() {
     final source = await _pumpDetail(tester, glass: true);
     expect(glassTierFor(tester.element(find.byType(MobilePosterHero))), GlassTier.fake);
 
-    // The hero runs behind the status bar, 640 high at the mockup's 402 wide.
+    // The hero is 640 high at the mockup's 402 wide; the poster inside it
+    // starts under the status bar and the back/more bar.
     final hero = tester.getRect(find.byType(MobilePosterHero));
+    final barBottom = tester.view.padding.top / tester.view.devicePixelRatio + 60;
     expect(hero.top, 0);
     expect(hero.height, moreOrLessEquals(640 * hero.width / 402));
+    final poster = tester.getRect(
+      find.descendant(of: find.byType(MobilePosterHero), matching: find.byType(ShaderMask)),
+    );
+    expect(poster.top, moreOrLessEquals(barBottom));
 
     final resume = _surface(shape: StadiumBorder, prominent: true);
     expect(resume, findsOneWidget);
