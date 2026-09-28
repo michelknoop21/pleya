@@ -85,10 +85,13 @@ class MobileDetailHeroBar extends StatelessWidget {
   }
 }
 
-/// A round glass button (back, more, watchlist). The glyph defaults to the
-/// theme's `onSurface`: white on the dark themes, dark ink on the light one,
-/// where the poster fades into a near-white page. The drop shadow only helps
-/// a light glyph, so the light theme draws none.
+/// A round glass button (back, more) over the poster. The glyph defaults to
+/// the theme's `onSurface`: white on the dark themes, dark ink on the light
+/// one. Dark ink on a dark poster does not read, so in the light theme the
+/// button brings its own backdrop, a near-opaque `surface` circle (the glass
+/// tint when glass is on), and its contrast no longer depends on the artwork
+/// (DEC-140). The drop shadow only helps a light glyph, so the light theme
+/// draws none.
 class GlassCircleButton extends StatelessWidget {
   const GlassCircleButton({
     super.key,
@@ -110,21 +113,31 @@ class GlassCircleButton extends StatelessWidget {
     final theme = Theme.of(context);
     final fg = foregroundColor ?? theme.colorScheme.onSurface;
     final color = onPressed == null ? fg.withValues(alpha: 0.4) : fg;
-    return GlassSurface(
-      shape: const CircleBorder(),
-      child: SizedBox.square(
-        dimension: size,
-        child: IconButton(
-          onPressed: onPressed,
-          tooltip: tooltip,
-          padding: EdgeInsets.zero,
-          icon: Icon(
-            icon,
-            color: color,
-            size: 24,
-            shadows: theme.brightness == Brightness.dark ? kGlassIconShadows : null,
-          ),
+    final dark = theme.brightness == Brightness.dark;
+    final button = SizedBox.square(
+      dimension: size,
+      child: IconButton(
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, color: color, size: 24, shadows: dark ? kGlassIconShadows : null),
+      ),
+    );
+    if (dark) return GlassSurface(shape: const CircleBorder(), child: button);
+    final backdrop = theme.colorScheme.surface.withValues(alpha: 0.92);
+    // The prominent recipe with the theme's surface as tint; its own layer,
+    // because on the real tier a plate takes its tint from the nearest one.
+    final tokens = GlassTokens(blur: 12, saturation: 1.5, dim: 1, tint: backdrop, edge: 0);
+    return GlassLayer(
+      tokens: tokens,
+      child: GlassSurface(
+        shape: const CircleBorder(),
+        tokens: tokens,
+        legacy: DecoratedBox(
+          decoration: ShapeDecoration(shape: const CircleBorder(), color: backdrop),
+          child: button,
         ),
+        child: button,
       ),
     );
   }
