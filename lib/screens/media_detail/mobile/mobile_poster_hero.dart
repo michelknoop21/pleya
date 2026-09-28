@@ -14,7 +14,8 @@ import 'light_ink_plate.dart';
 const double _kMockupWidth = 402;
 
 /// The top of the iPhone detail page (D-01 film, D-03 series): the portrait
-/// poster over the full width behind the status bar, fading out at the
+/// poster over the full width, starting under the back/more bar so the title
+/// art at the top of the poster stays visible, fading out at the
 /// bottom into [DetailAmbientBackground], with the meta line and [scoreRow]
 /// over the fade. Without a poster it falls back to [fallbackArtUrl] in 16:9
 /// with the title as text (Review Focus 1); with neither, only the text.
@@ -31,6 +32,14 @@ class MobilePosterHero extends StatelessWidget {
   final String? posterUrl;
   final String? fallbackArtUrl;
   final Widget scoreRow;
+
+  /// Room above the poster for the status bar and the back/more bar.
+  static double topInset(BuildContext context) => MediaQuery.paddingOf(context).top + 60;
+
+  /// Height of the poster hero at [width]. The poster starts under
+  /// [topInset] and gives up that room at its bottom, where it fades out
+  /// anyway, so the Play button and action row stay on the first screen.
+  static double heightFor(double width) => 640 * width / _kMockupWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -51,24 +60,26 @@ class MobilePosterHero extends StatelessWidget {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
     final ink = theme.colorScheme.onSurface;
+    final topInset = MobilePosterHero.topInset(context);
     return SizedBox(
       height: 640 * scale,
       child: Stack(
         children: [
           Positioned(
-            top: 0,
+            top: topInset,
             left: 0,
             right: 0,
-            height: (isShow ? 545 : 640) * scale,
+            height: (isShow ? 545 : 640) * scale - topInset,
             child: Semantics(
               image: true,
               label: item.displayTitle,
               child: _fade(
                 _image(url, const Alignment(0, -1)),
+                // A short fade at the top edge too, into the glow under the bar.
                 colors: isShow
-                    ? const [Colors.black, Colors.transparent]
-                    : const [Colors.black, Color(0x99000000), Colors.transparent],
-                stops: isShow ? const [0.7, 0.97] : const [0.55, 0.78, 1.0],
+                    ? const [Colors.transparent, Colors.black, Colors.black, Colors.transparent]
+                    : const [Colors.transparent, Colors.black, Colors.black, Color(0x99000000), Colors.transparent],
+                stops: isShow ? const [0, 0.06, 0.7, 0.97] : const [0, 0.05, 0.55, 0.78, 1.0],
               ),
             ),
           ),
@@ -139,7 +150,7 @@ class MobilePosterHero extends StatelessWidget {
           )
         else
           // Room for the back/more bar over the status bar.
-          SizedBox(height: MediaQuery.paddingOf(context).top + 60),
+          SizedBox(height: MobilePosterHero.topInset(context)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           child: Column(

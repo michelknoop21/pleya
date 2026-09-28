@@ -207,8 +207,7 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   /// The glyphs take the page text colour ([GlassCircleButton]): white on
   /// the dark themes, dark ink on the light one.
   Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata) {
-    // The hero is 640 pt on the 402 pt mockup (MobilePosterHero).
-    final heroBottom = MediaQuery.sizeOf(context).width * 640 / 402;
+    final heroBottom = MobilePosterHero.heightFor(MediaQuery.sizeOf(context).width);
     final collapsedAt = heroBottom - MediaQuery.paddingOf(context).top - 60;
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffset,

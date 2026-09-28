@@ -42,11 +42,14 @@ class DetailAmbientBackground extends StatelessWidget {
               child: ClipRect(
                 child: Stack(
                   children: [
+                    // From the top: the band above the poster (status bar and
+                    // back/more bar) takes the glow too, so the poster has no
+                    // hard edge against a bare page.
                     Positioned(
-                      top: 300,
+                      top: 0,
                       left: 0,
                       right: 0,
-                      height: 1200,
+                      height: _height,
                       child: FractionallySizedBox(
                         widthFactor: 1.6,
                         child: ImageFiltered(
