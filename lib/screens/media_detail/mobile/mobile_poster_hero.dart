@@ -45,6 +45,11 @@ class MobilePosterHero extends StatelessWidget {
     // A series poster stops higher and fades faster (D-03), leaving room for
     // the meta line on the glow.
     final isShow = item.isShow;
+    // Text over the fade: white on the dark themes, dark ink on the light
+    // one, where the fade ends on a near-white page.
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final ink = theme.colorScheme.onSurface;
     return SizedBox(
       height: 640 * scale,
       child: Stack(
@@ -66,22 +71,31 @@ class MobilePosterHero extends StatelessWidget {
               ),
             ),
           ),
-          // Status bar band and a touch of shade under the meta line.
-          const Positioned.fill(
+          // Status bar band and a touch of shade under the meta line, in the
+          // page colour on the light theme so they back the dark ink.
+          Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0x8C000000),
-                      Colors.transparent,
-                      Colors.transparent,
-                      Color(0x26000000),
-                      Colors.transparent,
-                    ],
-                    stops: [0, 0.14, 0.45, 0.8, 1],
+                    colors: dark
+                        ? const [
+                            Color(0x8C000000),
+                            Colors.transparent,
+                            Colors.transparent,
+                            Color(0x26000000),
+                            Colors.transparent,
+                          ]
+                        : [
+                            theme.scaffoldBackgroundColor.withAlpha(0x8C),
+                            Colors.transparent,
+                            Colors.transparent,
+                            theme.scaffoldBackgroundColor.withAlpha(0x26),
+                            Colors.transparent,
+                          ],
+                    stops: const [0, 0.14, 0.45, 0.8, 1],
                   ),
                 ),
               ),
@@ -92,13 +106,13 @@ class MobilePosterHero extends StatelessWidget {
             right: 16,
             bottom: 28,
             child: DefaultTextStyle.merge(
-              style: const TextStyle(
-                color: Colors.white,
-                shadows: [Shadow(blurRadius: 8, color: Color(0x80000000))],
+              style: TextStyle(
+                color: ink,
+                shadows: dark ? const [Shadow(blurRadius: 8, color: Color(0x80000000))] : null,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [_buildMeta(context, Colors.white), const SizedBox(height: 24), scoreRow],
+                children: [_buildMeta(context, ink), const SizedBox(height: 24), scoreRow],
               ),
             ),
           ),

@@ -10,6 +10,8 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_ambient_background.dart';
 import 'package:pleya/screens/media_detail/mobile/detail_score_row.dart';
 import 'package:pleya/screens/media_detail/mobile/mobile_poster_hero.dart';
+import 'package:pleya/screens/media_detail/mobile_detail_hero.dart';
+import 'package:pleya/theme/mono_theme.dart';
 
 // A 1x1 transparent PNG, so the test never touches the network.
 final _onePixelPng = base64Decode(
@@ -138,5 +140,90 @@ void main() {
     expect(tester.getSize(outer).height, 300);
     final glow = find.descendant(of: outer, matching: find.byType(RepaintBoundary)).first;
     expect(tester.getSize(glow).height, 1500, reason: 'the glow keeps its full height below a 300 pt page');
+  });
+
+  // Light theme: the poster fades into a near-white page, so the meta line,
+  // the rating frame and the score labels over the fade must be dark ink.
+  group('hero foreground follows the theme', () {
+    final item = MediaItem(
+      id: 'm',
+      backend: MediaBackend.jellyfin,
+      kind: MediaKind.movie,
+      title: 'Sintel',
+      year: 2010,
+      contentRating: '12',
+      serverId: 's',
+      serverName: 'S',
+    );
+
+    Future<({Color? meta, Color? rating, Color? score})> pumpPoster(WidgetTester tester, ThemeData theme) async {
+      tester.view.physicalSize = const Size(402, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      Color? score;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MobilePosterHero(
+                item: item,
+                posterUrl: 'https://x/poster.jpg',
+                fallbackArtUrl: null,
+                scoreRow: Builder(
+                  builder: (context) {
+                    score = DefaultTextStyle.of(context).style.color;
+                    return const SizedBox();
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      return (
+        meta: tester.widget<Text>(find.text('2010')).style?.color,
+        rating: tester.widget<Text>(find.text('12')).style?.color,
+        score: score,
+      );
+    }
+
+    testWidgets('light theme: meta, rating and scores are dark ink', (tester) async {
+      final theme = monoTheme(dark: false);
+      final c = await pumpPoster(tester, theme);
+      expect(c.meta, theme.colorScheme.onSurface);
+      expect(c.rating, theme.colorScheme.onSurface);
+      expect(c.score, theme.colorScheme.onSurface);
+    });
+
+    for (final oled in [false, true]) {
+      testWidgets('dark theme (oled: $oled): meta, rating and scores stay white', (tester) async {
+        final c = await pumpPoster(tester, monoTheme(dark: true, oled: oled));
+        expect(c.meta, Colors.white);
+        expect(c.rating, Colors.white);
+        expect(c.score, Colors.white);
+      });
+    }
+
+    Future<Color?> glyphOf(WidgetTester tester, ThemeData theme) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: GlassCircleButton(icon: Icons.arrow_back_rounded, onPressed: () {}, tooltip: 'Back'),
+          ),
+        ),
+      );
+      // MaterialApp animates a theme change; let it land.
+      await tester.pumpAndSettle();
+      return tester.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color;
+    }
+
+    testWidgets('glass circle glyph is dark ink in light theme, white in dark', (tester) async {
+      final light = monoTheme(dark: false);
+      expect(await glyphOf(tester, light), light.colorScheme.onSurface);
+      expect(await glyphOf(tester, monoTheme(dark: true)), Colors.white);
+      expect(await glyphOf(tester, monoTheme(dark: true, oled: true)), Colors.white);
+    });
   });
 }

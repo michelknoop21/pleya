@@ -85,7 +85,10 @@ class MobileDetailHeroBar extends StatelessWidget {
   }
 }
 
-/// A round glass button (back, more, watchlist) with a white glyph.
+/// A round glass button (back, more, watchlist). The glyph defaults to the
+/// theme's `onSurface`: white on the dark themes, dark ink on the light one,
+/// where the poster fades into a near-white page. The drop shadow only helps
+/// a light glyph, so the light theme draws none.
 class GlassCircleButton extends StatelessWidget {
   const GlassCircleButton({
     super.key,
@@ -93,18 +96,20 @@ class GlassCircleButton extends StatelessWidget {
     required this.onPressed,
     required this.tooltip,
     this.size = 44,
-    this.foregroundColor = Colors.white,
+    this.foregroundColor,
   });
 
   final IconData icon;
   final VoidCallback? onPressed;
   final String tooltip;
   final double size;
-  final Color foregroundColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
-    final color = onPressed == null ? foregroundColor.withValues(alpha: 0.4) : foregroundColor;
+    final theme = Theme.of(context);
+    final fg = foregroundColor ?? theme.colorScheme.onSurface;
+    final color = onPressed == null ? fg.withValues(alpha: 0.4) : fg;
     return GlassSurface(
       shape: const CircleBorder(),
       child: SizedBox.square(
@@ -113,7 +118,12 @@ class GlassCircleButton extends StatelessWidget {
           onPressed: onPressed,
           tooltip: tooltip,
           padding: EdgeInsets.zero,
-          icon: Icon(icon, color: color, size: 24, shadows: kGlassIconShadows),
+          icon: Icon(
+            icon,
+            color: color,
+            size: 24,
+            shadows: theme.brightness == Brightness.dark ? kGlassIconShadows : null,
+          ),
         ),
       ),
     );

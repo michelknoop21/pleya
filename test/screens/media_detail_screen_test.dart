@@ -1089,6 +1089,7 @@ void main() {
       // Routes pushed from the page need the scope above the navigator, the
       // way the app's profile navigator has it.
       bool scopeAboveNavigator = false,
+      ThemeData? theme,
     }) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       await SettingsService.getInstance();
@@ -1150,7 +1151,7 @@ void main() {
               builder: scopeAboveNavigator
                   ? (context, child) => withProfileNavigationScope(child: withNoticeLayer()(context, child))
                   : withNoticeLayer(),
-              theme: monoTheme(dark: true),
+              theme: theme ?? monoTheme(dark: true),
               navigatorObservers: navigatorObservers,
               home: withProfileNavigationScope(
                 child: MediaDetailScreen(
@@ -1898,6 +1899,44 @@ void main() {
         // The hero runs behind the status bar.
         expect(tester.getRect(find.byType(MobilePosterHero)).top, 0);
       });
+
+      // The back/more glyphs and the meta line sit over the poster and its
+      // fade into the page colour: dark ink on the light page, white on dark.
+      for (final (name, theme) in [
+        ('light', monoTheme(dark: false)),
+        ('dark', monoTheme(dark: true)),
+        ('oled', monoTheme(dark: true, oled: true)),
+      ]) {
+        testWidgets('hero bar glyphs and meta line follow the $name theme (DEC-140)', (tester) async {
+          final movie = MediaItem(
+            id: 'movie_theme',
+            backend: MediaBackend.jellyfin,
+            kind: MediaKind.movie,
+            title: 'Dune: Part Two',
+            year: 2024,
+            thumbPath: 'https://x/poster.jpg',
+            artPath: 'https://x/art.jpg',
+            serverId: 'server_1',
+            serverName: 'Server',
+          );
+          final client = _FakeMediaServerClient(show: movie, childrenByParent: const {});
+
+          await pumpPhoneDetail(
+            tester,
+            client,
+            movie,
+            viewSize: phoneViewSize,
+            devicePixelRatio: phoneDevicePixelRatio,
+            theme: theme,
+          );
+
+          final ink = name == 'light' ? theme.colorScheme.onSurface : Colors.white;
+          expect(find.byType(MobilePosterHero), findsOneWidget);
+          expect(tester.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color, ink);
+          expect(tester.widget<Icon>(find.byIcon(Icons.more_horiz_rounded)).color, ink);
+          expect(tester.widget<Text>(find.text('2024')).style?.color, ink);
+        });
+      }
 
       testWidgets('a film keeps its title and a white play button (D-01)', (tester) async {
         final movie = buildMovie();
