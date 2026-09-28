@@ -320,6 +320,33 @@ void main() {
     expect(more.hitTestable(), findsOneWidget);
   });
 
+  testWidgets('B5/D-03b: de balk krijgt titel en achtergrond pas na de hero', (tester) async {
+    await _pumpDetail(tester, glass: true);
+    final bar = find.byType(MobileDetailHeroBar);
+    double titleOpacity() => tester
+        .widget<Opacity>(
+          find
+              .ancestor(
+                of: find.descendant(of: bar, matching: find.text(_movie.displayTitle)),
+                matching: find.byType(Opacity),
+              )
+              .first,
+        )
+        .opacity;
+    expect(find.descendant(of: bar, matching: find.text(_movie.displayTitle)), findsNothing);
+    expect(tester.widget<MobileDetailHeroBar>(bar).collapseProgress, lessThanOrEqualTo(0));
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.pump();
+    expect(titleOpacity(), 1);
+    final title = tester.widget<Text>(find.descendant(of: bar, matching: find.text(_movie.displayTitle)));
+    expect(title.style?.fontSize, 17);
+    expect(title.style?.fontWeight, FontWeight.w700);
+    // Back stays tappable over the opaque bar.
+    final l10n = MaterialLocalizations.of(tester.element(bar));
+    expect(find.byTooltip(l10n.backButtonTooltip).hitTestable(), findsOneWidget);
+  });
+
   // B6: the real tier (liquid_glass_renderer) on the iPhone theme. Only
   // proves the package widgets build on each surface; contrast is measured
   // on tier fake above.
@@ -394,13 +421,18 @@ void main() {
                         ],
                       ),
                     ),
-                    MobileDetailHeroBar(
-                      leading: GlassCircleButton(
-                        key: backKey,
-                        icon: Icons.arrow_back_rounded,
-                        tooltip: 'Back',
-                        foregroundColor: Colors.transparent,
-                        onPressed: () {},
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: MobileDetailHeroBar(
+                        leading: GlassCircleButton(
+                          key: backKey,
+                          icon: Icons.arrow_back_rounded,
+                          tooltip: 'Back',
+                          foregroundColor: Colors.transparent,
+                          onPressed: () {},
+                        ),
                       ),
                     ),
                   ],

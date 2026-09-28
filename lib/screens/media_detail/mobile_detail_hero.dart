@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../theme/glass/glass_settings.dart';
 import '../../theme/glass/glass_surface.dart';
@@ -6,20 +7,80 @@ import '../../theme/glass/glass_text.dart';
 
 /// The glass back/more row over the detail page (LG-02). The page pins it
 /// above its scroll view, so it stays on screen when the hero scrolls away
-/// (final review B5). A [Positioned]: place it directly in a [Stack].
+/// (final review B5); place it at the top of a [Stack]. As
+/// [collapseProgress] goes from 0 to 1 the bar fades in an opaque background
+/// with [title] centred (D-03b). The page has no cheap source for the poster's
+/// tone, so the background is the theme's `surface`.
 class MobileDetailHeroBar extends StatelessWidget {
-  const MobileDetailHeroBar({super.key, required this.leading, this.trailing = const []});
+  const MobileDetailHeroBar({
+    super.key,
+    required this.leading,
+    this.trailing = const [],
+    this.title = '',
+    this.collapseProgress = 0,
+  });
 
   final Widget leading;
   final List<Widget> trailing;
+  final String title;
+  final double collapseProgress;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: MediaQuery.paddingOf(context).top + 8,
-      left: 16,
-      right: 16,
-      child: GlassLayer(child: Row(children: [leading, const Spacer(), ...trailing])),
+    final top = MediaQuery.paddingOf(context).top;
+    final scheme = Theme.of(context).colorScheme;
+    final progress = collapseProgress.clamp(0.0, 1.0);
+    final bar = Stack(
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: progress,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  border: const Border(bottom: BorderSide(color: Color(0x14FFFFFF))),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Only once it shows: the hero already carries the title for
+        // screen readers.
+        if (progress > 0)
+          Positioned(
+            top: top,
+            bottom: 0,
+            left: 68,
+            right: 68,
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: progress,
+                child: ExcludeSemantics(
+                  child: Center(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: .ellipsis,
+                      style: TextStyle(color: scheme.onSurface, fontSize: 17, fontWeight: .w700),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, top + 8, 16, 8),
+          child: GlassLayer(child: Row(children: [leading, const Spacer(), ...trailing])),
+        ),
+      ],
+    );
+    if (progress == 0) return bar;
+    // Status bar content that reads on the bar once it shows.
+    final dark = ThemeData.estimateBrightnessForColor(scheme.surface) == Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: bar,
     );
   }
 }

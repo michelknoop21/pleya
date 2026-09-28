@@ -120,7 +120,14 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
           canPop: !blockSystemBack,
           child: Focus(
             onKeyEvent: _handleMediaDetailBackKey,
-            child: Scaffold(body: Stack(children: [content, _buildMobileGlassHeroBar(context, metadata)])),
+            child: Scaffold(
+              body: Stack(
+                children: [
+                  content,
+                  Positioned(top: 0, left: 0, right: 0, child: _buildMobileGlassHeroBar(context, metadata)),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -195,14 +202,26 @@ extension _MobileMediaDetailView on _MediaDetailScreenState {
   }
 
   /// The LG-02 back/more row, pinned over the page (see [MobileDetailHeroBar]).
+  /// Only the bar listens to the scroll offset; it turns opaque with the title
+  /// over the last 60 pt before the poster hero passes under it (D-03b).
   Widget _buildMobileGlassHeroBar(BuildContext context, MediaItem metadata) {
-    return MobileDetailHeroBar(
-      leading: GlassCircleButton(
-        icon: Icons.arrow_back_rounded,
-        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-        onPressed: () => Navigator.pop(context, _watchStateChanged),
+    final back = GlassCircleButton(
+      icon: Icons.arrow_back_rounded,
+      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+      onPressed: () => Navigator.pop(context, _watchStateChanged),
+    );
+    final trailing = [if (!widget.isOffline) _buildMobileMoreButton(context)];
+    // The hero is 640 pt on the 402 pt mockup (MobilePosterHero).
+    final heroBottom = MediaQuery.sizeOf(context).width * 640 / 402;
+    final collapsedAt = heroBottom - MediaQuery.paddingOf(context).top - 60;
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffset,
+      builder: (context, offset, _) => MobileDetailHeroBar(
+        leading: back,
+        trailing: trailing,
+        title: metadata.displayTitle,
+        collapseProgress: (offset - (collapsedAt - 60)) / 60,
       ),
-      trailing: [if (!widget.isOffline) _buildMobileMoreButton(context)],
     );
   }
 }
