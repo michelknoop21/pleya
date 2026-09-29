@@ -33,6 +33,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # sessie verkeerd. Aanvullen wanneer er een bijkomt.
 FILES=(
   "CLAUDE.md"
+  "AGENTS.md"
   "docs/RELEASES.md"
   "docs/DECISIONS.md"
   "docs/CHANGELOG.md"

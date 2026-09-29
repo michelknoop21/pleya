@@ -67,8 +67,8 @@ Vóór elk workitem, en na elke merge opnieuw:
 ```bash
 git status --porcelain                      # leeg, op ongetrackte sessielogs na
 git fetch --prune origin && git fetch --prune github
-git rev-parse HEAD origin/main github/main  # drie gelijke SHA's
-git rev-list --left-right --count HEAD...origin/main   # 0 0 (origin is de canonical remote)
+git rev-parse HEAD github/main             # twee gelijke SHA's
+git rev-list --left-right --count HEAD...github/main   # 0 0 (GitHub is de canonical remote; Gitea/origin kan achterlopen)
 ```
 
 Dan een verse branch vanaf die `main`. Werk stapelt nooit op de baseline van een vorig workitem.
@@ -95,7 +95,8 @@ Voordat er code verandert, vier vragen, en de antwoorden gaan in het register:
 
 Preflight, bewijs dat het probleem er is, fix bij de gedeelde eigenaar, gerichte tests en de
 Verify-stap die het item vraagt, commit. Het register krijgt de SHA in een volgende commit en niet
-met een amend, want een amend verandert de hash die je er net in zette. Dan mergen.
+met een amend, want een amend verandert de hash die je er net in zette. Dan de review volgens
+AGENTS.md ("Review and release bundling"), en dan pas mergen.
 
 Voor tvOS-bevindingen uit de correctieronde gelden daarbovenop de zes stappen bovenaan dat
 document, inclusief de negatieve controle die aantoonbaar rood was.
