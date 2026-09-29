@@ -6,22 +6,14 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in [de Pleya Server-werkregels](../docs/agents/server.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **PS-9 is gesloten op 4 september 2026** en
-**PS-11A loopt sindsdien**, vrijgegeven met [DEC-129](../docs/DECISIONS.md). De uitvoering gaat per
-slice en per commitgrens; welke er open staat leest `docs/PLEYA-SERVER-MASTERLIST.md`. Werk buiten de
-lopende commitgrens is te vroeg, ook binnen dezelfde fase.
+fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase, het lopende
+protocolvenster, de open commitgrens en welk werk er bewust naast de fase loopt staan in
+[../docs/PLEYA-SERVER-MASTERLIST.md](../docs/PLEYA-SERVER-MASTERLIST.md)** en het plan in
+[../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaseline/). Werk buiten de lopende
+commitgrens is te vroeg, ook binnen dezelfde fase. Werk je hier, vink dan af in dezelfde commit.
 
-De stand van de ontwikkeling staat in [../docs/PLEYA-SERVER-MASTERLIST.md](../docs/PLEYA-SERVER-MASTERLIST.md)
-en het plan in [../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaseline/). Werk je hier,
-vink dan af in dezelfde commit.
-
-Eén stuk werk loopt daar bewust naast: de lege hubs `continue_watching` en `next_up` in `handleHub`
-zijn met [DEC-127](../docs/DECISIONS.md) aangemerkt als defect in het gesloten PS-4, en worden als
-zodanig gecorrigeerd. Datzelfde besluit voegt PS-4E, PS-7N en PS-7A toe aan de roadmap; geen van
-drieën is begonnen.
-
-`internal/web/` hoort niet bij deze fase maar bij PS-3W, een aparte afwijking met een eigen voorstel in
-[../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
+`internal/web/` hoort niet bij de lopende fase maar bij PS-3W, een aparte afwijking met een eigen
+voorstel in [../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
 
 ## Er staat geen Go op deze machine, en dat is opzet
 
@@ -88,34 +80,22 @@ internal/testsupport/  wegwerpschema en mediabestanden voor tests
 ## Regels die je stil kunt breken
 
 **Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren tot een besluit
-het venster expliciet opent, en is niet aan een vast fasenummer gehangen (DEC-122): een anker op een
-specifiek nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Het anker op
-"de lopende fase" had een eigen gat, zichtbaar geworden bij het sluiten van PS-9: tussen twee fasen
-in loopt er geen fase, en dat is geen open venster. Het venster ging twee
-keer eerder open: bij het sluiten van PS-3, voor de drie poortbesluiten (DEC-049, DEC-050, DEC-051),
-en voor PS-9, voor precies de zeven wijzigingen uit DEC-122 (gebruikers-, sessie- en
-logout-endpoints, `device_id`/`device_name`, `capabilities.sessions`, nieuwe foutcodes). Dat venster
-is na stap 1 van de PS-9-implementatievolgorde alweer gesloten. Een probleem daarin is een
-protocolwijziging langs de zes compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een
-aanpassing in de YAML omdat het zo uitkomt.
+het venster expliciet opent, en is niet aan een vast fasenummer gehangen: een anker op een specifiek
+nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Er is geen moment
+waarop het contract vanzelf open staat, ook niet tussen twee fasen in. Welk venster nu open staat en
+voor welke wijzigingen staat in
+[`../docs/PLEYA-SERVER-MASTERLIST.md`](../docs/PLEYA-SERVER-MASTERLIST.md). Een probleem in het contract is een protocolwijziging langs de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een aanpassing in de YAML omdat
+het zo uitkomt.
 
 **Wire-types leven alleen in `internal/api`.** Domeintype en wire-type zijn twee dingen met een
 expliciete mapper ertussen (hoofdstuk 12.1). De foutcode is het contract; het bericht is voor logs en
 een client mag er nooit op matchen.
 
-**Endpoints die er niet horen te zijn, blijven weg.** Sinds PS-4 antwoorden `stream/{version_id}`,
-beide kijkstatus-endpoints en `POST /auth/stream-session`; sinds PS-9 de vijf routes onder `/users`
-(DEC-121), `GET`/`DELETE /sessions` en `POST /auth/logout` (DEC-124). `capabilities.watch_state`,
-`watch_state_ownership`, `stream_sessions`, `users` en `sessions` staan daarmee alle vijf op `true`.
-Sinds S1.2 en S1.3 staat het eerste stuk beheer erbij: `GET`/`PATCH /settings`, en de
-serverdiagnostiek `GET /server/environment`, `GET /server/log`, `POST /server/connectivity-check` en
-`POST /server/rotate-signing-key`, alle vijf klasse admin. `GET /server` groeit daarbij met de klasse
-van de aanvrager en niet met een parameter. `capabilities.administration` staat er nog niet bij: die
-vlag hoort bij S1.6, wanneer protocolvenster 1 sluit.
-
-Wat er níét is blijft 404: `playback/plan` (PS-6), afspeelsessies (PS-8), verzamelingen (PS-9C),
-geschiedenis (PS-9P) en de rest van beheer (bibliotheken, opslag en scans in S2, API-tokens en audit
-in S1.5). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
+**Endpoints die er niet horen te zijn, blijven weg.** Welke routes en `capabilities`-vlaggen bij de
+huidige fase en het huidige commitgrens horen staat in `docs/PLEYA-SERVER-MASTERLIST.md`; `GET
+/server` groeit met de klasse van de aanvrager en niet met een parameter. `verify-local.sh` en
+`TestScopeBoundaryAfterPS4` controleren dat wat er níét hoort te zijn 404 blijft.
 
 **Intrekken is in het geheugen, en dat is een keuze met een grens.** `auth.Revocations`
 (`internal/auth/revocation.go`) is een set ingetrokken sessie-ids, gevuld bij het opstarten uit
