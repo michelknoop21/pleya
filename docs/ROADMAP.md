@@ -52,6 +52,9 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | A-16 | P1 | Bestaande app | Activiteit: ACT1 | Besluit nodig |
 | A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Status herijken; geen bewijs van volledige afronding |
 | A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | Gepland |
+| A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | Nieuw; spec vóór ontwerp |
+| A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | Na A-19; Opus; expliciet akkoord vóór bouw |
+| A-21 | P1 | Requests 2.0 | Implementatie en acceptatie van het goedgekeurde redesign | Na A-20; platform- en rolbewijs vereist |
 | C-01 | P1 | Server | S2.5 configuratiebibliotheken overnemen | Volgens register open |
 | C-02 | P1 | Server | S2.6 migratie en protocolvenster 2 sluiten | Volgens register open |
 | C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | Status herijken |
@@ -60,6 +63,9 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | D-01 | P2 | E-books/routes | Bestaande e-bookbranch en schermen | Status herijken |
 | D-02 | P2 | E-books/routes | Resterende e-bookuitbreidingen uit northstar | Volgens actueel branchmanifest vast te stellen |
 | D-03 | P2 | E-books/routes | Eigen routes muziek, boeken en overige typen | Besluit nodig |
+| D-04 | P2 | Audioboeken | Product-, bron-, metadata-, playback- en voortgangsspec | Nieuw contentdomein; besluiten nodig |
+| D-05 | P2 | Audioboeken | Northstar/mockups voor bestaande apps en Pleya Web | Na D-04; Opus; akkoord vóór bouw |
+| D-06 | P2 | Audioboeken | Pleya Server-, client- en webimplementatie plus acceptatie | Na D-05 en toepasselijke server/protocolpoorten |
 | E-01 | P1 | Commercieel/site | Free/Pro en prijsbesluit | Voorstel, niet besloten |
 | E-02 | P0 | Commercieel/site | Licenties en publicatiegereedheid | Status herijken |
 | E-03 | P2 | Commercieel/site | Aankoop, herstel en Pro-toegang | Gepland |
@@ -87,7 +93,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 ### Phase 2 — Valid UI remainder
 
-Finish the currently valid app surfaces and evidence only: Home/landings/catalog/filters, source picker, context menus, Mijn Pleya, lists/downloads/notifications, Live TV/player, Liquid Glass, desktop/iPad unified work, and tvOS focus/Menu/routes/scrubbing/Top Shelf/4K/overscan. Check every applicable existing platform separately; a shared widget or an iPhone screenshot does not prove iPad, Android, Android TV, macOS, Windows or Linux completion. Preserve explicitly excluded platform presentations until their own design decision changes. The latest approved DEC/northstar wins.
+Finish the currently valid app surfaces and evidence only: Home/landings/catalog/filters, source picker, context menus, Mijn Pleya, lists/downloads/notifications, Live TV/player, Liquid Glass, desktop/iPad unified work, tvOS focus/Menu/routes/scrubbing/Top Shelf/4K/overscan, and the explicitly gated Requests 2.0 flow. Check every applicable existing platform separately; a shared widget or an iPhone screenshot does not prove iPad, Android, Android TV, macOS, Windows or Linux completion. Preserve explicitly excluded platform presentations until their own design decision changes. The latest approved DEC/northstar wins.
 
 ### Phase 3 — Real-world acceptance
 
@@ -120,10 +126,30 @@ This list groups scope, not a new serial dependency chain. In particular, the ex
 
 Loudness D5 gets its own protocol window only after D1-D4 are proven; it does not ride on S2.
 
+## Requests 2.0
+
+Requests is an existing product surface, not a new blank feature. The current implementation already spans discovery/search, a Seerr media detail page, movie/show request submission, per-season selection for shows, 4K when permitted, remaining quota, admin target selection (Radarr/Sonarr server, quality profile and root folder), request lists and manager/user actions such as approve, decline, edit and cancel. The redesign must preserve valid existing capability unless a later approved product decision changes it.
+
+Order is strict:
+1. **A-19 — audit/spec.** Inventory the complete current flow, roles, permissions, API behavior and states across applicable existing platforms. Decide what Requests 2.0 adds or changes before drawing it. Cover at least discovery/search, detail, request creation, season selection, 4K, quotas, advanced targeting, own/all requests, filters/counts, approve/decline/edit/cancel, pending/processing/available/declined states, loading/empty/error/retry, pagination, permissions and post-request refresh.
+2. **A-20 — design.** Opus produces a coherent approved northstar set for every required window/state and the responsive/TV variants. Do not treat today's single iPhone or TV image as complete coverage. Include dialogs/sheets and manager-only states, not only the landing screen.
+3. **A-21 — implementation.** Only after explicit design approval: implement through shared behavior owners where appropriate, preserve D-pad/focus/touch/keyboard contracts, add automation IDs/fixtures/tests, run independent code review plus separate visual review, then simulator/browser and applicable hardware acceptance.
+
+REG-01 must map each current Requests route/window to A-19/A-20/A-21 so no old behavior is silently lost. If Pleya Web is later chosen as a Requests surface, add it to the same product spec and create explicit Web implementation tasks rather than assuming the mobile/TV design transfers directly.
 ## E-books and other routes
 
 Do not rebuild the existing e-book work. Reconcile the branch against current `main`, current shell/navigation and server gates; keep valid work and build only missing surfaces. Use the actual branch manifest and later commits, not an old count of built or missing screens in DESIGN-INDEX. For music/books/photos/unknown library kinds choose an explicit destination or unsupported state instead of silently opening the wrong catalog.
 
+## Audiobooks
+
+Audiobooks is a new first-class content domain and is not folded silently into the existing e-book implementation. Current repository search found no established audiobook domain, so the roadmap starts with product/protocol design rather than code.
+
+Order is strict:
+1. **D-04 — product/protocol spec.** Decide supported source model and ingestion path, library kind and permissions, media/container baseline, metadata and artwork, author/narrator/series semantics, chapter model, playback and resume semantics, speed, sleep timer/bookmarks if included, search/filter/facet behavior, downloads/offline, multi-user progress and compatibility with existing player/backends. Explicitly decide whether integration with an external audiobook server is in scope; do not assume one.
+2. **D-05 — design.** Opus creates and reviews the complete audiobook northstar for each applicable existing app and Pleya Web. At minimum evaluate Home/landing, all audiobooks, search/filter, audiobook detail, player/now playing, chapters/queue, resume/progress, downloads/offline and empty/loading/error states; only include surfaces approved by D-04.
+3. **D-06 — implementation.** After design approval and applicable Server/API window decisions: build Pleya Server storage/catalog/search/progress/playback support, then client/Web support in dependency order. Reuse shared media/player infrastructure only where its contract genuinely fits audiobooks; do not distort video or e-book semantics to avoid a proper boundary.
+
+Audiobooks must receive the same completion evidence as other domains: server contract/tests, migration safety where applicable, client/Web tests, visual comparison to approved mockups, real playback/progress evidence and release identity. It may be developed as an independent later increment but may not bypass the WIP limit or server phase gates.
 ## Commercial/site order
 
 Free/Pro and prices remain proposals until explicitly decided. Order:
@@ -143,7 +169,7 @@ Payment entitlement never substitutes for media-server administration rights.
 | 5-9 Oct | permissions/profiles, issue #112 bugs, valid UI remainder | at most one independent server package |
 | 12-16 Oct | real account/simulator/hardware acceptance | C-02 after C-01 or design/spec without shared code owner |
 | 19-23 Oct | release bundle and actual distribution if gates pass | website/release copy aligned to that build |
-| 26-30 Oct | choose and close one next product increment | one released Server/Web/e-book package; S7/S10/S11 are explicit candidates after their prerequisites |
+| 26-30 Oct | choose and close one next product increment | one released Server/Web/e-book package; Requests A-19/A-20 or Audiobooks D-04/D-05 may run as design/spec work when they do not delay the primary stream |
 
 These are work windows, not guaranteed completion dates. Missing evidence or a regression moves the window; evidence is not planned away. They do not promise delivery of all 46 Web designs or the full Server completion scope within October.
 
@@ -168,6 +194,8 @@ Each applicable window must identify: platform and viewport/input mode; approved
 | Android mobile/tablet | applicable A-items, coordinated by REG-01 | identify the approved or intentionally retained design and affected shared components; no automatic extension of Apple-only Liquid Glass |
 | Android TV | A-11/A-12 where applicable, coordinated by REG-01 | shared TV surface plus Android-specific playback, downloads and remote behavior; tvOS evidence is insufficient |
 | E-book windows in existing clients | D-01/D-02 plus C-05/S14 | actual branch manifest, missing windows, backend availability and integration into the current shell |
+| Requests / Aanvragen | A-19/A-20/A-21 | complete current capability + role/state inventory, approved multi-window redesign, implementation and visual/functional acceptance |
+| Audiobooks | D-04/D-05/D-06 | new domain: spec first, then approved cross-platform/Web designs, then Server/client/Web implementation and playback/progress evidence |
 
 An absent platform-specific design decision is a design gap to record, not permission to invent a new redesign. Valid already-built work is retained. Opus owns graphical implementation and a separate visual review. No whole-app redesign closes while an applicable window is unowned, unverified, or silently dropped; explicit deferrals remain visible and distinguish partial release from full completion.
 
