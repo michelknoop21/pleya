@@ -18,6 +18,14 @@ section's shape.
 - Keep decisions and verification results in the task context. Create a short handoff only when transferring work: changes, evidence and remaining work. Existing domain work registers remain required.
 - Preserve unrelated working-tree changes. Keep full verification logs/evidence outside tracked source; inspect summaries first and relevant details on failure. UI verification still requires reading the evidence bundle and relevant screenshots.
 
+## Roadmap authority
+
+- `docs/ROADMAP.md` owns cross-project priority and execution order for the existing Pleya product line: the current app, Pleya Server/Web, e-books/routes, commercial/release work and optional expansions. A ground-up client rebuild is explicitly outside that roadmap.
+- Before implementation starts, map the task to an existing roadmap work-package ID. PRs and handoffs state `Roadmap: <ID>`. If work fits no ID or changes priority/order/scope, stop and record a roadmap deviation first; product choices require Michel's decision.
+- Open P0 work precedes lower-priority work unless the lower item is demonstrably independent and does not delay review or release of the primary stream. Keep at most one primary implementation stream plus one truly independent parallel implementation.
+- Security, data-loss, regression and release-blocking hotfixes may interrupt the order; reconcile the roadmap and owning register in the same PR or the next documentation commit.
+- The roadmap owns order, not detailed item status. Existing registers and masterplans remain the status authority for their domains.
+
 ## Review and release bundling
 
 This is the default Pleya workflow for changes that head to a TestFlight build (owner decision, 25 September 2026). Goal: fewer agent turns, fewer tokens, less wall-clock time, without dropping evidence.
