@@ -30,6 +30,10 @@ extension _VideoPlayerShaderMethods on VideoPlayerScreenState {
     final settings = await SettingsService.getInstance();
     if (!mounted) return;
     if (!settings.read(SettingsService.ambientLighting)) return;
+    // A deliberate title-specific crop/zoom takes precedence over the global
+    // ambient preference, which otherwise resets the restored settings.
+    final display = _videoDisplayPreferenceStore?.read();
+    if (display != null && (display.boxFitMode != 0 || display.zoomScale != 1.0)) return;
 
     final ambientLighting = _ambientLightingService;
     if (ambientLighting == null || !ambientLighting.isSupported) return;

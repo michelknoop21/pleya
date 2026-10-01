@@ -570,6 +570,8 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         },
       );
       if (!didOpen || !isCurrentReload()) return true;
+      await _initVideoFilterAndPip();
+      if (!isCurrentReload()) return true;
       _completionLatch.reset();
 
       // Versions/mediaInfo come from the committed session; rebuild so the

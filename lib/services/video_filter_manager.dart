@@ -32,6 +32,8 @@ class VideoFilterManager {
 
   /// Store the zoom level before entering PiP so it can be restored
   double? _prePipZoomScale;
+  bool _isInPipMode = false;
+  int _displayRestoreGeneration = 0;
 
   /// Store whether ambient lighting was active before entering PiP
   bool? _prePipAmbientLighting;
@@ -65,6 +67,10 @@ class VideoFilterManager {
   /// Callback invoked when boxFitMode changes, for external persistence
   final void Function(int mode)? onBoxFitModeChanged;
 
+  /// User changes only: restoring a title, PiP and ambient resets never write
+  /// over the remembered fit/zoom pair.
+  final void Function(int mode, double zoomScale)? onDisplaySettingsChanged;
+
   /// The user's configured `sub-pos`, read fresh on every apply. Used to keep
   /// subtitles inside the visible rect while cropped or zoomed.
   final int Function()? subtitleBasePosition;
@@ -77,11 +83,14 @@ class VideoFilterManager {
   VideoFilterManager({
     required this.player,
     int initialBoxFitMode = 0,
+    double initialZoomScale = 1.0,
     Size? initialPlayerSize,
     this.onBoxFitModeChanged,
+    this.onDisplaySettingsChanged,
     this.subtitleBasePosition,
     bool? useLayerScaleCompensation,
   }) : _boxFitMode = initialBoxFitMode,
+       _zoomScale = normalizeZoomScale(initialZoomScale),
        _playerSize = initialPlayerSize,
        useLayerScaleCompensation = useLayerScaleCompensation ?? Platform.isIOS {
     _debouncedUpdateVideoFilter = debounce(
@@ -172,6 +181,7 @@ class VideoFilterManager {
     final next = normalizeZoomScale(scale);
     if (_zoomScale == next) return _zoomScale;
     _zoomScale = next;
+    onDisplaySettingsChanged?.call(_boxFitMode, _zoomScale);
     updateVideoFilter();
     return _zoomScale;
   }
@@ -187,6 +197,24 @@ class VideoFilterManager {
   void setBoxFitMode(int mode) {
     _boxFitMode = mode.clamp(0, 2);
     onBoxFitModeChanged?.call(_boxFitMode);
+    onDisplaySettingsChanged?.call(_boxFitMode, _zoomScale);
+    updateVideoFilter();
+  }
+
+  /// Restore a different title without treating it as a user selection.
+  Future<void> restoreDisplaySettings({required int boxFitMode, required double zoomScale}) async {
+    final generation = ++_displayRestoreGeneration;
+    if ((boxFitMode != 0 || zoomScale != 1.0) && ambientLightingService?.isEnabled == true) {
+      await ambientLightingService!.disable();
+      if (generation != _displayRestoreGeneration) return;
+    }
+    if (_isInPipMode) {
+      _prePipBoxFitMode = boxFitMode.clamp(0, 2);
+      _prePipZoomScale = normalizeZoomScale(zoomScale);
+      return;
+    }
+    _boxFitMode = boxFitMode.clamp(0, 2);
+    _zoomScale = normalizeZoomScale(zoomScale);
     updateVideoFilter();
   }
 
@@ -201,6 +229,8 @@ class VideoFilterManager {
 
   /// Force contain mode for PiP (no cropping/stretching)
   void enterPipMode() {
+    if (_isInPipMode) return;
+    _isInPipMode = true;
     // Disable ambient lighting for PiP — it wastes space on blurred borders
     if (ambientLightingService?.isEnabled == true) {
       _prePipAmbientLighting = true;
@@ -221,6 +251,7 @@ class VideoFilterManager {
 
   /// Restore previous mode when exiting PiP
   void exitPipMode() {
+    _isInPipMode = false;
     var shouldUpdate = false;
     if (_prePipBoxFitMode != null) {
       _boxFitMode = _prePipBoxFitMode!;

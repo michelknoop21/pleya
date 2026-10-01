@@ -571,6 +571,15 @@ class SettingsService extends BaseSharedPreferencesService {
     transform: (v) => v.clamp(0.5, 3.0),
   );
   static final defaultBoxFitMode = IntPref('default_box_fit_mode', transform: (v) => v.clamp(0, 2));
+
+  /// Device-local, profile/title-keyed fit and zoom. A display setting chosen
+  /// for one screen should not change how that title fills another device.
+  static final videoDisplayPreferences = JsonPref<Map<String, dynamic>>(
+    'video_display_preferences',
+    defaultValue: const {},
+    encode: json.encode,
+    decode: (raw) => Map<String, dynamic>.from(raw as Map),
+  );
   static final displaySwitchDelay = IntPref('display_switch_delay', transform: (v) => v.clamp(0, 10));
 
   // Dark-first: OLED (true black) is the default on every platform, not just TV.
@@ -1037,6 +1046,7 @@ class SettingsService extends BaseSharedPreferencesService {
     dvConversionMode,
     defaultPlaybackSpeed,
     defaultBoxFitMode,
+    videoDisplayPreferences,
     autoPlayNextEpisode,
     useExoPlayer,
     startupSection,
