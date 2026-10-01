@@ -31,7 +31,7 @@ station het misgaat vóór hij iets wijzigt.
 |---|---------|------|------------------|
 | 1 | UIKit levert een `UIPress` met fase `.began`, later `.ended` | tvOS | het `UIPress`-object is per druk hetzelfde |
 | 2 | `flutterTvos_sendEvent:` op `UIApplication` én `UIWindow` | engine, swizzle | niets; bij een geclaimde druk wordt de originele `sendEvent:` overgeslagen en ziet UIKit de druk nooit |
-| 3 | `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` | `tvos/Runner/AppDelegate.swift` | de enige app-hook; `false` zonder `super` tijdens een native tekstsessie (DEC-019) |
+| 3 | `PleyaFlutterViewController.tvosHandlePress(fromUIEvent:)` | `tvos/Runner/PleyaFlutterViewController.swift` | de enige app-hook; `false` zonder `super` tijdens een native tekstsessie (DEC-019) |
 | 4 | `tvosHandlePressFromUIEvent:` | engine | `.began` → keydown, `.ended` of `.cancelled` → keyup met `tapIfMissingKeyDown:YES` |
 | 5 | `sendSynthesizedKeyEventOfType:` | engine | `synthesizedPressedKeys`: een down voor een toets die er al in zit wordt genegeerd, een up voor een toets die er niet in zit ook |
 | 6 | herhaaltimer | engine | pijltjes: na 0,4 s een repeat, daarna elke 80 ms, tot de up de toets uit de set haalt |
