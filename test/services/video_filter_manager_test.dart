@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/mpv/mpv.dart';
@@ -6,6 +8,113 @@ import 'package:pleya/services/video_filter_manager.dart';
 import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 
 void main() {
+  test('ambient restoration started during title restore cannot overwrite the incoming framing', () async {
+    final player = _RecordingPlayer();
+    final disableGate = Completer<void>();
+    final titleApplied = Completer<void>();
+    final ambient = _FakeAmbientLightingService(player)
+      ..fakeEnabled = true
+      ..disableGate = disableGate.future;
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    final titleRestore = manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.4);
+    final ambientRestore = manager.runAmbientRestore(() async {
+      await titleApplied.future;
+      manager.resetToContain();
+      ambient.fakeEnabled = true;
+    });
+    disableGate.complete();
+    await titleRestore;
+    titleApplied.complete();
+    await ambientRestore;
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.4);
+    expect(ambient.isEnabled, isFalse);
+    await manager.updateVideoFilter();
+  });
+
+  test('incoming title restoration waits for an in-flight PiP ambient restore', () async {
+    final player = _RecordingPlayer();
+    final ambient = _FakeAmbientLightingService(player);
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    final gate = Completer<void>();
+    final ambientRestore = manager.runAmbientRestore(() async {
+      await gate.future;
+      manager.resetToContain();
+      ambient.fakeEnabled = true;
+    });
+    final titleRestore = manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.4);
+    gate.complete();
+    await Future.wait([ambientRestore, titleRestore]);
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.4);
+    expect(ambient.isEnabled, isFalse);
+    await manager.updateVideoFilter();
+  });
+
+  test('restoring a cropped title disables ambient lighting on the reused player', () async {
+    final player = _RecordingPlayer();
+    final ambient = _FakeAmbientLightingService(player)..fakeEnabled = true;
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    await manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.25);
+    await manager.updateVideoFilter();
+    expect(ambient.isEnabled, isFalse);
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.25);
+    expect(player.writes.where((write) => write.key == 'video-aspect-override'), isNotEmpty);
+  });
+
+  test('restoring another title in PiP waits until PiP exits', () async {
+    final player = _RecordingPlayer();
+    final manager = VideoFilterManager(player: player, initialBoxFitMode: 1, initialZoomScale: 1.2);
+    addTearDown(manager.dispose);
+    manager.enterPipMode();
+    manager.enterPipMode();
+    await manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.5);
+    expect(manager.boxFitMode, 0);
+    expect(manager.zoomScale, 1.0);
+    manager.exitPipMode();
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.5);
+    await manager.updateVideoFilter();
+  });
+
+  test('restores fit and zoom without persisting temporary changes', () async {
+    final player = _RecordingPlayer();
+    final changes = <({int boxFitMode, double zoomScale})>[];
+    final manager = VideoFilterManager(
+      player: player,
+      initialBoxFitMode: 2,
+      initialZoomScale: 1.37,
+      onDisplaySettingsChanged: (mode, zoom) => changes.add((boxFitMode: mode, zoomScale: zoom)),
+    );
+    addTearDown(manager.dispose);
+    await manager.updateVideoFilter();
+    expect(player.zoomCalls, [1.37]);
+    expect(changes, isEmpty);
+
+    manager.enterPipMode();
+    manager.exitPipMode();
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.37);
+    expect(changes, isEmpty);
+
+    manager.resetToContain();
+    await manager.restoreDisplaySettings(boxFitMode: 1, zoomScale: 1.23);
+    expect(changes, isEmpty);
+    manager.setZoomScale(1.345);
+    manager.setBoxFitMode(2);
+    manager.resetZoom();
+    expect(changes, [
+      (boxFitMode: 1, zoomScale: 1.35),
+      (boxFitMode: 2, zoomScale: 1.35),
+      (boxFitMode: 2, zoomScale: 1.0),
+    ]);
+    await manager.updateVideoFilter();
+  });
+
   test('zoom scale snaps to whole percentages', () {
     final player = _RecordingPlayer();
     final manager = VideoFilterManager(player: player);
@@ -445,7 +554,14 @@ class _FakeAmbientLightingService extends AmbientLightingService {
   _FakeAmbientLightingService(super.player);
 
   bool fakeEnabled = false;
+  Future<void>? disableGate;
 
   @override
   bool get isEnabled => fakeEnabled;
+
+  @override
+  Future<void> disable() async {
+    if (disableGate != null) await disableGate;
+    fakeEnabled = false;
+  }
 }

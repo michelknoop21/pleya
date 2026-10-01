@@ -33,6 +33,7 @@ import '../database/app_database.dart';
 import '../media/media_stream.dart';
 import '../media/playback_language_intent.dart';
 import '../services/pleya_profile_language_preference_store.dart';
+import '../services/video_display_preference_store.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../media/media_source_info.dart';
@@ -521,6 +522,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   /// Rebuilt per tracked item alongside [_progressTracker].
   ObservedPlaybackAuthority? _playbackWriteAuthority;
   VideoFilterManager? _videoFilterManager;
+  VideoDisplayPreferenceStore? _videoDisplayPreferenceStore;
   VideoPIPManager? _videoPIPManager;
   ShaderService? _shaderService;
   AmbientLightingService? _ambientLightingService;
