@@ -34,6 +34,13 @@ class VideoFilterManager {
   double? _prePipZoomScale;
   bool _isInPipMode = false;
   int _displayRestoreGeneration = 0;
+  Future<void>? _pendingAmbientRestore;
+
+  /// PiP/startup ambient restoration can be waiting on player properties when
+  /// another title opens. Keep it visible to the title restoration path.
+  Future<void> runAmbientRestore(Future<void> Function() restore) {
+    return _pendingAmbientRestore ??= restore().whenComplete(() => _pendingAmbientRestore = null);
+  }
 
   /// Store whether ambient lighting was active before entering PiP
   bool? _prePipAmbientLighting;
@@ -204,6 +211,9 @@ class VideoFilterManager {
   /// Restore a different title without treating it as a user selection.
   Future<void> restoreDisplaySettings({required int boxFitMode, required double zoomScale}) async {
     final generation = ++_displayRestoreGeneration;
+    final ambientRestore = _pendingAmbientRestore;
+    if (ambientRestore != null) await ambientRestore;
+    if (generation != _displayRestoreGeneration) return;
     if ((boxFitMode != 0 || zoomScale != 1.0) && ambientLightingService?.isEnabled == true) {
       await ambientLightingService!.disable();
       if (generation != _displayRestoreGeneration) return;

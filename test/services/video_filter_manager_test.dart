@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/mpv/mpv.dart';
@@ -6,6 +8,26 @@ import 'package:pleya/services/video_filter_manager.dart';
 import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 
 void main() {
+  test('incoming title restoration waits for an in-flight PiP ambient restore', () async {
+    final player = _RecordingPlayer();
+    final ambient = _FakeAmbientLightingService(player);
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    final gate = Completer<void>();
+    final ambientRestore = manager.runAmbientRestore(() async {
+      await gate.future;
+      manager.resetToContain();
+      ambient.fakeEnabled = true;
+    });
+    final titleRestore = manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.4);
+    gate.complete();
+    await Future.wait([ambientRestore, titleRestore]);
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.4);
+    expect(ambient.isEnabled, isFalse);
+    await manager.updateVideoFilter();
+  });
+
   test('restoring a cropped title disables ambient lighting on the reused player', () async {
     final player = _RecordingPlayer();
     final ambient = _FakeAmbientLightingService(player)..fakeEnabled = true;
