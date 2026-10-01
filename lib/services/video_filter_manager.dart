@@ -35,11 +35,21 @@ class VideoFilterManager {
   bool _isInPipMode = false;
   int _displayRestoreGeneration = 0;
   Future<void>? _pendingAmbientRestore;
+  Future<void>? _pendingDisplayRestore;
 
   /// PiP/startup ambient restoration can be waiting on player properties when
   /// another title opens. Keep it visible to the title restoration path.
   Future<void> runAmbientRestore(Future<void> Function() restore) {
-    return _pendingAmbientRestore ??= restore().whenComplete(() => _pendingAmbientRestore = null);
+    final displayRestore = _pendingDisplayRestore;
+    return _pendingAmbientRestore ??= (() async {
+      if (displayRestore != null) {
+        await displayRestore;
+        // Ambient restore started during a title switch: the incoming title
+        // now owns the geometry, so a saved crop/zoom must keep taking priority.
+        if (_boxFitMode != 0 || _zoomScale != 1.0) return;
+      }
+      await restore();
+    })().whenComplete(() => _pendingAmbientRestore = null);
   }
 
   /// Store whether ambient lighting was active before entering PiP
@@ -209,7 +219,15 @@ class VideoFilterManager {
   }
 
   /// Restore a different title without treating it as a user selection.
-  Future<void> restoreDisplaySettings({required int boxFitMode, required double zoomScale}) async {
+  Future<void> restoreDisplaySettings({required int boxFitMode, required double zoomScale}) {
+    final restoration = _restoreDisplaySettings(boxFitMode: boxFitMode, zoomScale: zoomScale);
+    _pendingDisplayRestore = restoration;
+    return restoration.whenComplete(() {
+      if (identical(_pendingDisplayRestore, restoration)) _pendingDisplayRestore = null;
+    });
+  }
+
+  Future<void> _restoreDisplaySettings({required int boxFitMode, required double zoomScale}) async {
     final generation = ++_displayRestoreGeneration;
     final ambientRestore = _pendingAmbientRestore;
     if (ambientRestore != null) await ambientRestore;

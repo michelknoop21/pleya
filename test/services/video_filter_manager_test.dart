@@ -8,6 +8,31 @@ import 'package:pleya/services/video_filter_manager.dart';
 import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 
 void main() {
+  test('ambient restoration started during title restore cannot overwrite the incoming framing', () async {
+    final player = _RecordingPlayer();
+    final disableGate = Completer<void>();
+    final titleApplied = Completer<void>();
+    final ambient = _FakeAmbientLightingService(player)
+      ..fakeEnabled = true
+      ..disableGate = disableGate.future;
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    final titleRestore = manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.4);
+    final ambientRestore = manager.runAmbientRestore(() async {
+      await titleApplied.future;
+      manager.resetToContain();
+      ambient.fakeEnabled = true;
+    });
+    disableGate.complete();
+    await titleRestore;
+    titleApplied.complete();
+    await ambientRestore;
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.4);
+    expect(ambient.isEnabled, isFalse);
+    await manager.updateVideoFilter();
+  });
+
   test('incoming title restoration waits for an in-flight PiP ambient restore', () async {
     final player = _RecordingPlayer();
     final ambient = _FakeAmbientLightingService(player);
@@ -529,12 +554,14 @@ class _FakeAmbientLightingService extends AmbientLightingService {
   _FakeAmbientLightingService(super.player);
 
   bool fakeEnabled = false;
+  Future<void>? disableGate;
 
   @override
   bool get isEnabled => fakeEnabled;
 
   @override
   Future<void> disable() async {
+    if (disableGate != null) await disableGate;
     fakeEnabled = false;
   }
 }
