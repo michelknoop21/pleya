@@ -14,7 +14,6 @@ import UIKit
 /// a scene connection option on a cold start and through `openURLContexts`
 /// while running, no longer through `launchOptions` or
 /// `application(_:open:options:)`.
-@objc(PleyaSceneDelegate)
 class PleyaSceneDelegate: FlutterSceneDelegate {
   override func scene(
     _ scene: UIScene,
@@ -22,6 +21,9 @@ class PleyaSceneDelegate: FlutterSceneDelegate {
     options connectionOptions: UIScene.ConnectionOptions
   ) {
     super.scene(scene, willConnectTo: session, options: connectionOptions)
+    // Proof the manifest found this class: without it UIKit still builds the window from the storyboard,
+    // the app runs, and only the Top Shelf links go missing.
+    NSLog("[PleyaScene] scene delegate connected")
     for context in connectionOptions.urlContexts {
       _ = SystemShelfPlugin.handleOpenURL(context.url)
     }
