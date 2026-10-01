@@ -64,6 +64,9 @@ scripts/check_updates.sh || true
 # xattr-passes over de hele repo voordat xcodebuild ook maar begon. Zie
 # DEC-029; scripts/xattr-fast/xattr doet hetzelfde werk parallel. Uitzetten met
 # PLEYA_XATTR_FAST=0, dan geldt weer het kale gedrag van Flutter.
+# Xcode 27's lipo rejects `-verify_arch`, which Flutter 3.44 runs before every macOS archive; the shim in
+# scripts/lipo-shim answers it from `lipo -archs` (see the comment in that file).
+export PATH="$ROOT/scripts/lipo-shim:$PATH"
 XATTR_MARKER=""
 if [[ "${PLEYA_XATTR_FAST:-1}" != "0" ]]; then
   export PATH="$ROOT/scripts/xattr-fast:$PATH"

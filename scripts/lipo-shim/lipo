@@ -1,0 +1,26 @@
+#!/bin/bash
+# Runs under macOS's bash 3.2: no negative array indices.
+# lipo from Xcode 27 rejects `lipo <file> -verify_arch <arch>...` with "-verify_arch requires exactly one
+# input file", for every file and arch list (measured 1 Oct 2026, Xcode 27A266a). Flutter 3.44 runs exactly
+# that check in thinFramework (flutter_tools/lib/src/build_system/targets/darwin.dart) before every macOS
+# build and every iOS simulator build, so both fail with "does not contain architectures" although lipo
+# -info lists them. This shim answers -verify_arch from `lipo -archs` and hands everything else to the real
+# lipo. testflight_release.sh puts it on PATH; remove it once Xcode's lipo or Flutter changes.
+REAL=/usr/bin/lipo
+args=("$@")
+for i in "${!args[@]}"; do
+  if [[ "${args[$i]}" == "-verify_arch" ]]; then
+    files=() archs=()
+    for j in "${!args[@]}"; do
+      if ((j < i)); then files+=("${args[$j]}"); elif ((j > i)); then archs+=("${args[$j]}"); fi
+    done
+    # `lipo -verify_arch <archs> <file>` puts the file last
+    if ((${#files[@]} == 0)); then
+      n=$((${#archs[@]} - 1)); files=("${archs[$n]}"); unset "archs[$n]"
+    fi
+    present=" $("$REAL" -archs "${files[0]}") "
+    for a in "${archs[@]}"; do [[ "$present" == *" $a "* ]] || exit 1; done
+    exit 0
+  fi
+done
+exec "$REAL" "$@"
