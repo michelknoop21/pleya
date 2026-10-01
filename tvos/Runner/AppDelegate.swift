@@ -508,7 +508,7 @@ import wakelock_plus
 }
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   /// One line at startup so an engine bump cannot break the press hook in
   /// silence.
   ///
@@ -540,51 +540,54 @@ import wakelock_plus
 
     application.beginReceivingRemoteControlEvents()
 
-    if let url = launchOptions?[UIApplication.LaunchOptionsKey.url] as? URL {
-      _ = SystemShelfPlugin.handleOpenURL(url)
-    }
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
 
-    if let r = self.registrar(forPlugin: "SharedPreferencesPlugin") {
+  /// Plugins register once the implicit engine exists. Under the UIScene
+  /// lifecycle (required since tvOS 27, see `PleyaSceneDelegate`) the window,
+  /// and with it the storyboard's `FlutterViewController`, is created by the
+  /// scene after `didFinishLaunching`, so `self.registrar(forPlugin:)` there
+  /// would find no engine and register nothing.
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "SharedPreferencesPlugin") {
       SharedPreferencesPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "MpvPlayerPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "MpvPlayerPlugin") {
       MpvPlayerPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "PackageInfoPlusPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "PackageInfoPlusPlugin") {
       PackageInfoPlusPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "PathProviderPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "PathProviderPlugin") {
       PathProviderPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "GamepadPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "GamepadPlugin") {
       GamepadPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "DeviceInfoPlusPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "DeviceInfoPlusPlugin") {
       DeviceInfoPlusPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "ConnectivityPlusPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "ConnectivityPlusPlugin") {
       ConnectivityPlusPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "OsMediaControlsPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "OsMediaControlsPlugin") {
       OsMediaControlsPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "WakelockPlusPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "WakelockPlusPlugin") {
       WakelockPlusPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "SystemShelfPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "SystemShelfPlugin") {
       SystemShelfPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "ICloudKvsPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "ICloudKvsPlugin") {
       ICloudKvsPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "AudioSessionPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "AudioSessionPlugin") {
       AudioSessionPlugin.register(with: r)
     }
-    if let r = self.registrar(forPlugin: "NativeTextEntryPlugin") {
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "NativeTextEntryPlugin") {
       NativeTextEntryPlugin.register(with: r)
     }
-
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   override func application(
