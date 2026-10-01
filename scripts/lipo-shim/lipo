@@ -5,7 +5,9 @@
 # that check in thinFramework (flutter_tools/lib/src/build_system/targets/darwin.dart) before every macOS
 # build and every iOS simulator build, so both fail with "does not contain architectures" although lipo
 # -info lists them. This shim answers -verify_arch from `lipo -archs` and hands everything else to the real
-# lipo. testflight_release.sh puts it on PATH; remove it once Xcode's lipo or Flutter changes.
+# lipo. macos/Runner.xcodeproj puts it first on PATH, both in the scheme's prepare pre-action and in the
+# Flutter Assemble phase (archive reruns that phase with Xcode's toolchain in front, so a PATH set by the
+# caller loses). Remove once Xcode's lipo or Flutter changes.
 REAL=/usr/bin/lipo
 args=("$@")
 for i in "${!args[@]}"; do
@@ -19,7 +21,8 @@ for i in "${!args[@]}"; do
       n=$((${#archs[@]} - 1)); files=("${archs[$n]}"); unset "archs[$n]"
     fi
     present=" $("$REAL" -archs "${files[0]}") "
-    for a in "${archs[@]}"; do [[ "$present" == *" $a "* ]] || exit 1; done
+    # Flutter splits $ARCHS on single spaces, so a double space yields an empty name: skip those
+    for a in "${archs[@]}"; do [[ -z "$a" || "$present" == *" $a "* ]] || exit 1; done
     exit 0
   fi
 done
