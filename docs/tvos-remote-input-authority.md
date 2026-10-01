@@ -24,7 +24,7 @@ dit document voegt er een vierde aan toe (§3) en legt de autoriteitstabel vast 
 |---|---|---|---|---|
 | 1 | `UIPress` `.began`/`.changed`/`.ended`/`.cancelled` | tvOS | n.v.t. | nee |
 | 2 | `flutterTvos_sendEvent:` swizzle op `UIApplication` én `UIWindow` | engine-fork | nee | nee |
-| 3 | `tvosHandlePress(fromUIEvent:)` | `tvos/Runner/AppDelegate.swift` | **nee** (kan twee keer per drukcyclus lopen: één keer bij `.began`, één keer bij `.ended`) | **nee** |
+| 3 | `tvosHandlePress(fromUIEvent:)` | `tvos/Runner/PleyaFlutterViewController.swift` | **nee** (kan twee keer per drukcyclus lopen: één keer bij `.began`, één keer bij `.ended`) | **nee** |
 | 4-6 | `synthesizeRemotePressType:`, `synthesizedPressedKeys`, de herhaaltimer | engine-fork | **ja, exclusief** | ja, op fysieke key-identiteit |
 | 7 | `sendKeyEvent:` → `flutter/keydata` | engine-fork | nee | nee |
 | 8 | `HardwareKeyboard.handleKeyEvent` | Flutter SDK | `physicalKeysPressed` | nee |
@@ -196,7 +196,7 @@ Wat wél onderscheidt, en wat `scripts/tvos_press_trace.sh` sinds DBL1 gebruikt:
 
 ## 5. Wat hier expliciet niet verandert
 
-- Station 3 (`tvos/Runner/AppDelegate.swift`) krijgt geen nieuwe state, geen teller, geen
+- Station 3 (`tvos/Runner/PleyaFlutterViewController.swift`) krijgt geen nieuwe state, geen teller, geen
   duplicate-detectie. Alleen de reeds geporte diagnostiek (`nl.michelknoop.pleya/tvos_press_diag`).
 - Er komt geen nieuwe `TvRemoteInputCoordinator`. `AppleTvRemoteTouchService` blijft de enige
   Dart-autoriteit op station 9.
