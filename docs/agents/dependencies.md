@@ -25,9 +25,9 @@ over de complete `pubspec.lock` (ook transitieve meeverhuizers) niets boven de v
 vindt, en de gates van die ring groen zijn. Dat geldt ook voor een handmatig opgepakte major, plugin,
 generator, fork, engine of native dependency.
 
-**Wekelijks onderhoud** (`dependency-health.yml`, maandag, job `onderhoud`): `scripts/deps_update.sh`
+**Wekelijks onderhoud** (`dependency-health.yml`, maandag, job `onderhoud`, alleen vanaf main): `scripts/deps_update.sh`
 neemt alle ring-1-kandidaten uit het rapport in één batch, resolveert de hele graph en classificeert de
-volledige diff. Daarna draaien `check_updates.sh` en `ci_checks.sh`, wordt `chore/deps-ring1` gepusht
+volledige diff. Daarna draaien `check_updates.sh` (geen ring-1-controle mag UNKNOWN zijn) en `ci_checks.sh`, wordt `chore/deps-ring1` gepusht
 met één PR, en draait `ci.yml` (met de volledige `flutter test`) op exact die SHA. Alleen als de hele diff
 ring 1 is, beide gates groen zijn en main niet verder is, merget de job de PR zelf. Anders blijft de PR
 open voor handmatige analyse; geen bisect en geen terugdraaien per pakket. Zolang die PR open staat, slaat de job
