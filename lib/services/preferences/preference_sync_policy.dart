@@ -560,6 +560,7 @@ class PreferenceSyncPolicyRegistry {
     'credential_vault_key_v1': _secret,
     'seerr_session': _secret,
     'tautulli_session': _secret,
+    'assistant_provider': _secret,
     'pleya_share_tokens': _secret,
     'pleya_share_guests': _secret,
     'pleya_share_relay_host_id': _secret,
