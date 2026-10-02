@@ -47,7 +47,7 @@ final List<AssistantTool> _adminTools = [
                 ctx.showUser(
                   id,
                   s.userId,
-                  AssistantKnownUser(name: s.name, plexHomeMember: s.homeMember, plexManaged: s.managed),
+                  AssistantKnownUser(name: clipText(s.name, 64), plexHomeMember: s.homeMember, plexManaged: s.managed),
                 );
                 return {
                   'user_id': s.userId,
@@ -70,7 +70,7 @@ final List<AssistantTool> _adminTools = [
               ctx.showUser(
                 id,
                 u.id,
-                AssistantKnownUser(name: u.name, isAdmin: admin, accessKnown: u.libraryAccessKnown),
+                AssistantKnownUser(name: clipText(u.name, 64), isAdmin: admin, accessKnown: u.libraryAccessKnown),
               );
               return {
                 'user_id': u.id,
@@ -136,8 +136,10 @@ final List<AssistantTool> _adminTools = [
   ),
   AssistantTool(
     name: 'cancel_job',
-    description: 'Stop a running job listed by list_jobs. $_serverIdNote',
-    risk: AssistantToolRisk.mutation,
+    description: 'Stop a running job listed by list_jobs. The user confirms in Pleya. $_serverIdNote',
+    // Stopping work is not undone by a retry of the same request, so it gets
+    // a card, unlike a scan or a refresh.
+    risk: AssistantToolRisk.sensitive,
     properties: const {
       'job_id': {'type': 'string'},
     },
@@ -146,14 +148,22 @@ final List<AssistantTool> _adminTools = [
     run: (ctx, id, args) async {
       final jobId = _string(args, 'job_id');
       ctx.requireShownJob(id!, jobId);
-      await ctx.admin<ServerJobsClient>(id)!.cancelJob(jobId);
-      return AssistantToolResult(
-        {'status': 'cancel_requested'},
-        record: AssistantActionRecord(
-          kind: AssistantActionKind.cancelJob,
-          serverName: ctx.serverName(id),
-          subject: jobId,
-        ),
+      // The card names the job as the server lists it now, not as the model
+      // calls it.
+      final job = (await ctx.admin<ServerJobsClient>(id)!.listJobs()).where((j) => j.id == jobId).firstOrNull;
+      if (job == null) throw const AssistantToolError('unknown_job_id');
+      if (!job.cancellable) throw const AssistantToolError('job_not_cancellable');
+      return AssistantPendingAction(
+        kind: AssistantActionKind.cancelJob,
+        serverId: id,
+        serverName: ctx.serverName(id),
+        subject: clipText(job.title),
+        execute: ({password}) async {
+          await (ctx.admin<ServerJobsClient>(id) ?? (throw const AssistantToolError('server_not_available'))).cancelJob(
+            jobId,
+          );
+          return {'status': 'cancel_requested'};
+        },
       );
     },
   ),
@@ -206,7 +216,7 @@ final List<AssistantTool> _adminTools = [
           serverId: id,
           serverName: ctx.serverName(id),
           subject: name,
-          libraryNames: [for (final l in libraries) l.title],
+          libraryNames: [for (final l in libraries) clipText(l.title)],
           allLibraries: all,
           note: AssistantBackendNote.plexManagedHomeUser,
           execute: ({password}) async {
@@ -227,7 +237,7 @@ final List<AssistantTool> _adminTools = [
         serverId: id,
         serverName: ctx.serverName(id),
         subject: name,
-        libraryNames: [for (final l in libraries) l.title],
+        libraryNames: [for (final l in libraries) clipText(l.title)],
         allLibraries: all,
         password: admin.createUserRequiresPassword ? AssistantPasswordMode.required : AssistantPasswordMode.optional,
         execute: ({password}) async {
@@ -280,7 +290,7 @@ final List<AssistantTool> _adminTools = [
         serverId: id,
         serverName: ctx.serverName(id),
         subject: user.name,
-        libraryNames: [for (final l in libraries) l.title],
+        libraryNames: [for (final l in libraries) clipText(l.title)],
         allLibraries: all,
         note: plex ? AssistantBackendNote.plexShare : AssistantBackendNote.replacesAllAccess,
         execute: ({password}) async {

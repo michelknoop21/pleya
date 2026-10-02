@@ -98,6 +98,7 @@ void main() {
         () => c.listUsers(),
         () => c.createUser(name: 'kim', password: 'secret123'),
         () => c.deleteUser('u-2'),
+        () => c.streamSessions(),
       ];
       for (final call in calls) {
         await expectLater(call(), throwsA(isA<MediaServerAuthException>()));
@@ -181,6 +182,66 @@ void main() {
         }, status: 404),
       );
       await expectLater(c.listJobs(), throwsA(isA<MediaServerHttpException>()));
+    });
+  });
+
+  group('stream sessions', () {
+    test('streamSessions reads GET /stream-sessions without passing on the session id', () async {
+      final c = client(
+        (_) => json(const {
+          'items': [
+            {
+              'id': 'ss-secret',
+              'user_id': 'u-1',
+              'username': 'kim',
+              'device_name': 'iPad',
+              'item_id': 'i-1',
+              'item_title': 'Dune',
+              'item_kind': 'movie',
+              'position_ms': 1500,
+              'duration_ms': 6000,
+              'started_at': '2026-10-02T10:00:00Z',
+              'expires_at': '2026-10-02T12:00:00Z',
+            },
+            {
+              'id': 'ss-2',
+              'user_id': 'u-2',
+              'username': 'sam',
+              'item_id': 'i-2',
+              'item_title': 'Up',
+              'item_kind': 'movie',
+              'started_at': '2026-10-02T10:00:00Z',
+              'expires_at': '2026-10-02T12:00:00Z',
+            },
+          ],
+        }),
+      );
+      final streams = await c.streamSessions();
+      expect(sent.single.$1, 'GET /stream-sessions');
+      expect(streams.first, (
+        userName: 'kim',
+        title: 'Dune',
+        episode: null,
+        progressPercent: 25,
+        paused: null,
+        transcoding: null,
+        device: 'iPad',
+      ));
+      expect(streams.last.device, isNull, reason: 'a row without an auth session has no device');
+      expect(streams.last.progressPercent, 0);
+      expect('$streams', isNot(contains('ss-secret')));
+    });
+
+    test('the 404 a non-admin gets throws', () async {
+      final c = client(
+        (_) => json(const {
+          'error': {'code': 'auth.user_not_found', 'message': 'not found', 'retryable': false},
+        }, status: 404),
+      );
+      await expectLater(
+        c.streamSessions(),
+        throwsA(isA<MediaServerHttpException>().having((e) => e.statusCode, 'statusCode', 404)),
+      );
     });
   });
 

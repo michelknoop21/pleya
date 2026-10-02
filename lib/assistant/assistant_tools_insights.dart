@@ -48,7 +48,8 @@ class AssistantServerComparison extends AssistantDisplay {
   final bool partial;
 }
 
-/// Who watches what on one server, from its Tautulli.
+/// Who watches what on one server: Tautulli for Plex, the server itself for
+/// Jellyfin, Emby and (streams only) Pleya Server.
 class AssistantWatchStats extends AssistantDisplay {
   const AssistantWatchStats({
     required this.serverName,
@@ -66,7 +67,7 @@ class AssistantWatchStats extends AssistantDisplay {
   final List<({String title, int plays, List<String> viewers})> titles;
   final List<({String name, int plays, int seconds})> users;
 
-  /// False when the server has no history source (no Tautulli, or not Plex).
+  /// False when the server has no source for the asked scope.
   final bool available;
 }
 
@@ -77,6 +78,12 @@ const _lookupCap = 300;
 const _missingShown = 500;
 const _historyPage = 500;
 const _historyCap = 5000;
+const _playsUserCap = 50;
+const _playsPerUser = 200;
+
+/// One play for the period aggregate, already clipped. [userKey] is the
+/// account, so two people who clip to one display name stay two users.
+typedef _Play = ({String titleKey, String title, String userKey, String user, int seconds});
 
 /// The wall-clock budget of one tool call. [race] answers null once it is
 /// spent, so a slow server ends the reading instead of the whole tool.
@@ -212,112 +219,6 @@ Future<({List<MediaItem> missing, bool lookupsCapped})> _missingOn(
   return (missing: missing, lookupsCapped: lookupsCapped);
 }
 
-String _day(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-/// A series counts as one title, named by Tautulli's `grandparent_title`.
-String _historyTitle(TautulliHistoryEntry e) {
-  final show = e.grandparentTitle;
-  if (e.mediaType == 'episode' && show != null && show.isNotEmpty) return show;
-  return e.fullTitle ?? '';
-}
-
-Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx, ServerId id, TautulliClient tautulli) async {
-  final name = ctx.serverName(id);
-  final now = await const NowWatchingService().resolve(tautulli);
-  if (now == null) throw const AssistantToolError('source_unavailable');
-  final sessions = now.sessions.take(20).toList();
-  return AssistantToolResult({
-    'server': clipText(name),
-    'sessions': [
-      for (final s in sessions)
-        {
-          'user': clipText(s.userName, 40),
-          'title': clipText(s.title),
-          if (s.subtitle != null) 'episode': clipText(s.subtitle),
-          'progress_percent': s.progressPercent,
-          'paused': s.isPaused,
-          'transcoding': s.isTranscoding,
-          if (s.playerLabel != null) 'player': clipText(s.playerLabel, 40),
-        },
-    ],
-  }, display: AssistantWatchStats(serverName: name, sessions: sessions));
-}
-
-Future<AssistantToolResult> _watchedPeriod(
-  AssistantToolContext ctx,
-  ServerId id,
-  TautulliClient tautulli,
-  int days,
-) async {
-  final name = ctx.serverName(id);
-  final after = _day(DateTime.now().subtract(Duration(days: days - 1)));
-  final entries = <TautulliHistoryEntry>[];
-  var capped = false;
-  while (true) {
-    final page = await tautulli.history(
-      after: after,
-      length: _historyPage,
-      start: entries.length,
-      // Grouped: consecutive plays of one item by one person are one view.
-      grouping: true,
-      orderColumn: 'date',
-      orderDir: 'desc',
-    );
-    entries.addAll(page.entries);
-    if (page.entries.length < _historyPage) break;
-    if (entries.length >= _historyCap) {
-      capped = true;
-      break;
-    }
-  }
-
-  final titles = <String, ({String title, int plays, Set<String> viewers})>{};
-  final users = <String, ({String name, int plays, int seconds})>{};
-  var plays = 0;
-  for (final e in entries) {
-    // Music and live TV are not what "most watched" asks about.
-    if (e.mediaType != 'movie' && e.mediaType != 'episode') continue;
-    plays++;
-    final key = e.mediaType == 'episode' ? 'g${e.grandparentRatingKey}' : 'r${e.ratingKey}';
-    final viewer = clipText(e.displayName, 40);
-    final t = titles[key];
-    titles[key] = (
-      title: t?.title ?? clipText(_historyTitle(e)),
-      plays: (t?.plays ?? 0) + 1,
-      viewers: {...?t?.viewers, viewer},
-    );
-    // Keyed by account: two people may clip to the same display name.
-    final userKey = e.userId != null ? 'id${e.userId}' : 'name${e.user ?? viewer}';
-    final u = users[userKey];
-    users[userKey] = (
-      name: u?.name ?? viewer,
-      plays: (u?.plays ?? 0) + 1,
-      seconds: (u?.seconds ?? 0) + (e.playSeconds ?? 0),
-    );
-  }
-  final topTitles = [
-    for (final t in titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays)))
-      (title: t.title, plays: t.plays, viewers: t.viewers.toList()),
-  ];
-  final topUsers = [
-    for (final u in users.values.toList()..sort((a, b) => b.plays.compareTo(a.plays)))
-      (name: u.name, plays: u.plays, seconds: u.seconds),
-  ];
-  return AssistantToolResult({
-    'server': clipText(name),
-    'days': days,
-    'plays': plays,
-    'top_titles': [
-      for (final t in topTitles.take(10)) {'title': t.title, 'plays': t.plays, 'viewers': t.viewers.take(5).toList()},
-    ],
-    'top_users': [
-      for (final u in topUsers.take(10)) {'user': u.name, 'plays': u.plays, 'hours': (u.seconds / 3600).round()},
-    ],
-    if (capped) 'capped_at_plays': _historyCap,
-  }, display: AssistantWatchStats(serverName: name, days: days, titles: topTitles, users: topUsers));
-}
-
 final List<AssistantTool> _insightTools = [
   AssistantTool(
     name: 'compare_servers',
@@ -394,7 +295,9 @@ final List<AssistantTool> _insightTools = [
     description:
         'What is being watched on a server and by whom: scope "now" for current streams, "period" for the most '
         'watched titles and most active users over the last days (1-31). One server per call; to cover several '
-        'servers, call once per server.',
+        'servers, call once per server. On Jellyfin and Emby a period counts each title once per user, at its '
+        'last play (the server keeps no play log), and only finished titles; on Pleya Server only "now" is '
+        'available.',
     risk: AssistantToolRisk.read,
     properties: const {
       'scope': {
@@ -413,16 +316,25 @@ final List<AssistantTool> _insightTools = [
         final int d when d >= 1 && d <= 31 => d,
         _ => throw const AssistantToolError('invalid_days'),
       };
+      // Tautulli answers only for the Plex server it monitors.
       final tautulli = ctx.insights!.tautulliFor(id!);
-      if (tautulli == null) {
-        final name = ctx.serverName(id);
-        return AssistantToolResult({
-          'server': clipText(name),
-          // Tautulli is the only source; Jellyfin and Pleya Server have none.
-          scope == 'now' ? 'now_unavailable_for' : 'history_unavailable_for': [clipText(name)],
-        }, display: AssistantWatchStats(serverName: name, days: scope == 'now' ? null : days, available: false));
+      if (tautulli != null) {
+        return scope == 'now' ? _watchedNow(ctx, id, tautulli) : _watchedPeriod(ctx, id, tautulli, days);
       }
-      return scope == 'now' ? _watchedNow(ctx, id, tautulli) : _watchedPeriod(ctx, id, tautulli, days);
+      switch (ctx.adminClient(id)) {
+        case final JellyfinClient jf:
+          return scope == 'now'
+              ? _streamsNow(ctx, id, await jf.listActiveSessions())
+              : _jellyfinPeriod(ctx, id, jf, days);
+        case final PleyaServerClient ps when scope == 'now':
+          return _streamsNow(ctx, id, await ps.streamSessions());
+      }
+      final name = ctx.serverName(id);
+      return AssistantToolResult({
+        'server': clipText(name),
+        // Plex without Tautulli, or Pleya Server history (it keeps none).
+        scope == 'now' ? 'now_unavailable_for' : 'history_unavailable_for': [clipText(name)],
+      }, display: AssistantWatchStats(serverName: name, days: scope == 'now' ? null : days, available: false));
     },
   ),
 ];

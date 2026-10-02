@@ -38,6 +38,7 @@ part 'assistant_tools_admin.dart';
 part 'assistant_tools_catalog.dart';
 part 'assistant_tools_catalog_query.dart';
 part 'assistant_tools_insights.dart';
+part 'assistant_tools_insights_watch.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_media.dart';

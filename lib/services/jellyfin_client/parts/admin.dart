@@ -1,5 +1,22 @@
 part of '../../jellyfin_client.dart';
 
+/// One stream on the server as an admin sees it. Carries no session id,
+/// token or address: only what an admin reads off a "now playing" list. Null
+/// [paused]/[transcoding] means the server did not say.
+typedef JellyfinActiveSession = ({
+  String userName,
+  String title,
+  String? episode,
+  int progressPercent,
+  bool? paused,
+  bool? transcoding,
+  String? device,
+});
+
+/// One finished film or episode of one user, with the server's single
+/// last-played date for it (a replay moves the date, it adds no row).
+typedef JellyfinPlayedItem = ({String id, String title, String? seriesId, String? seriesName, DateTime lastPlayed});
+
 /// Server administration ([ServerUserAdministration], [RetryableJobsClient],
 /// library scans, item refresh) for Jellyfin and Emby.
 ///
@@ -212,6 +229,10 @@ mixin _JellyfinAdminMethods {
     final p = dto['Policy'];
     final policy = p is Map<String, dynamic> ? p : const <String, dynamic>{};
     final folders = (policy['EnabledFolders'] as List?)?.whereType<String>() ?? const <String>[];
+    // An Emby folder Guid that maps to no library would vanish from the list;
+    // replacing access from that list would then drop the grant. Unknown
+    // beats incomplete.
+    final unmapped = guidToId != null && folders.any((g) => !guidToId.containsKey(g));
     return ServerUser(
       id: dto['Id'] as String,
       name: dto['Name'] as String? ?? '',
@@ -219,6 +240,7 @@ mixin _JellyfinAdminMethods {
       disabled: policy['IsDisabled'] == true,
       allLibraries: policy['EnableAllFolders'] == true,
       libraryIds: guidToId == null ? folders.toList() : folders.map((g) => guidToId[g]).whereType<String>().toList(),
+      libraryAccessKnown: !unmapped,
     );
   }
 
@@ -261,4 +283,77 @@ mixin _JellyfinAdminMethods {
 
   MediaServerHttpException _adminError(String message) =>
       MediaServerHttpException(type: MediaServerHttpErrorType.unknown, message: message);
+
+  /// Everything playing on the server right now, every user's: an admin's
+  /// `GET /Sessions` is not limited to its own. Same route and `SessionInfo`
+  /// shape on Emby. Sessions without a `NowPlayingItem` are idle clients.
+  Future<List<JellyfinActiveSession>> listActiveSessions() async {
+    assertCanAdministerServer();
+    final response = await _http.get('/Sessions');
+    throwIfHttpError(response);
+    final data = response.data;
+    return [
+      if (data is List)
+        for (final s in data.whereType<Map<String, dynamic>>())
+          if (s['NowPlayingItem'] case final Map<String, dynamic> item) _activeSession(s, item),
+    ];
+  }
+
+  JellyfinActiveSession _activeSession(Map<String, dynamic> s, Map<String, dynamic> item) {
+    final state = s['PlayState'] is Map<String, dynamic> ? s['PlayState'] as Map<String, dynamic> : const {};
+    final position = state['PositionTicks'];
+    final runtime = item['RunTimeTicks'];
+    final isEpisode = item['Type'] == 'Episode';
+    final season = item['ParentIndexNumber'], number = item['IndexNumber'];
+    final name = item['Name'] as String?;
+    final device = [?s['DeviceName'] as String?, ?s['Client'] as String?].join(' · ');
+    return (
+      userName: s['UserName'] as String? ?? '',
+      title: (isEpisode ? item['SeriesName'] as String? : null) ?? name ?? '',
+      episode: isEpisode ? [if (season is int && number is int) 'S$season · E$number', ?name].join(' ') : null,
+      progressPercent: position is num && runtime is num && runtime > 0
+          ? (position * 100 / runtime).round().clamp(0, 100).toInt()
+          : 0,
+      paused: state['IsPaused'] as bool?,
+      transcoding: state['PlayMethod'] is String ? state['PlayMethod'] == 'Transcode' : null,
+      device: device.isEmpty ? null : device,
+    );
+  }
+
+  /// Films and episodes [userId] has finished, most recently played first,
+  /// at most [limit]. Jellyfin scopes `/Items` by `userId`; Emby's `/Items`
+  /// has no user parameter, so it takes `/Users/{id}/Items`.
+  Future<List<JellyfinPlayedItem>> listPlayedItemsOf(String userId, {int limit = 200}) async {
+    assertCanAdministerServer();
+    final response = await _http.get(
+      connection.isEmby ? '/Users/${adminPathSegment(userId)}/Items' : '/Items',
+      queryParameters: {
+        if (!connection.isEmby) 'userId': userId,
+        'Recursive': 'true',
+        'IncludeItemTypes': 'Movie,Episode',
+        'Filters': 'IsPlayed',
+        'SortBy': 'DatePlayed',
+        'SortOrder': 'Descending',
+        'Limit': limit.toString(),
+        'EnableUserData': 'true',
+        'EnableImages': 'false',
+      },
+    );
+    throwIfHttpError(response);
+    final data = response.data;
+    final items = data is Map<String, dynamic> ? data['Items'] : null;
+    return [
+      if (items is List)
+        for (final i in items.whereType<Map<String, dynamic>>())
+          if ((i['UserData'] is Map ? i['UserData']['LastPlayedDate'] : null) case final String played?)
+            if (DateTime.tryParse(played) case final at? when i['Id'] is String)
+              (
+                id: i['Id'] as String,
+                title: i['Name'] as String? ?? '',
+                seriesId: i['Type'] == 'Episode' ? i['SeriesId'] as String? : null,
+                seriesName: i['Type'] == 'Episode' ? i['SeriesName'] as String? : null,
+                lastPlayed: at,
+              ),
+    ];
+  }
 }

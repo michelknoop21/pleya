@@ -14,7 +14,9 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/services/jellyfin_client.dart';
+import 'package:pleya/media/server_administration.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/tautulli/tautulli_client.dart';
 import 'package:pleya/services/tautulli/tautulli_constants.dart';
 import 'package:pleya/services/tautulli/tautulli_session.dart';
@@ -36,6 +38,10 @@ class _Jf implements JellyfinClient {
     this.backend = MediaBackend.jellyfin,
     this.pageDelay = Duration.zero,
     this.leadingCollections = 0,
+    this.sessions = const [],
+    this.users = const [],
+    this.played = const {},
+    this.playedDelay = Duration.zero,
   });
   final String machine;
   final String name;
@@ -46,7 +52,12 @@ class _Jf implements JellyfinClient {
   final MediaBackend backend;
   final Duration pageDelay;
   final int leadingCollections;
+  final List<JellyfinActiveSession> sessions;
+  final List<ServerUser> users;
+  final Map<String, List<JellyfinPlayedItem>> played;
+  final Duration playedDelay;
   final pages = <int>[];
+  final playedReads = <(String, int)>[];
   var externalIdCalls = 0;
 
   @override
@@ -116,16 +127,68 @@ class _Jf implements JellyfinClient {
   }
 
   @override
+  Future<List<JellyfinActiveSession>> listActiveSessions() async => sessions;
+
+  @override
+  Future<List<ServerUser>> listUsers() async => users;
+
+  @override
+  Future<List<JellyfinPlayedItem>> listPlayedItemsOf(String userId, {int limit = 200}) async {
+    playedReads.add((userId, limit));
+    if (playedDelay > Duration.zero) await Future<void>.delayed(playedDelay);
+    return played[userId] ?? const [];
+  }
+
+  @override
   Future<void> closeGracefully({Duration drainTimeout = Duration.zero}) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
+/// A Pleya Server the profile administers, with [streams] running.
+class _Ps implements PleyaServerClient {
+  _Ps(this.machine, this.name, {this.streams = const []});
+  final String machine;
+  final String name;
+  final List<PleyaActiveStream> streams;
+
+  @override
+  PleyaServerConnection get connection => PleyaServerConnection(
+    id: 'pleyaServer.$machine',
+    baseUrl: 'http://$machine.lan',
+    serverId: machine,
+    serverName: name,
+    userName: 'u',
+    refreshToken: 'r',
+    role: 'owner',
+    createdAt: DateTime.utc(2026),
+  );
+  @override
+  ServerId get serverId => ServerId(machine);
+  @override
+  String get serverName => name;
+  @override
+  MediaBackend get backend => MediaBackend.pleyaServer;
+  @override
+  bool get supportsServerAdministration => true;
+  @override
+  Future<List<PleyaActiveStream>> streamSessions() async => streams;
+  @override
+  Future<void> closeGracefully({Duration drainTimeout = Duration.zero}) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+JellyfinPlayedItem _played(String id, String title, DateTime at, {String? series}) =>
+    (id: id, title: title, seriesId: series == null ? null : 'S-$series', seriesName: series, lastPlayed: at);
+
 AssistantTool _tool(String name) => assistantTools.singleWhere((t) => t.name == name);
 
 AssistantToolContext _ctx(
   List<_Jf> servers, {
+  List<_Ps> pleya = const [],
   TautulliClient? tautulli,
   bool insights = true,
   Set<String>? borrowed,
@@ -135,6 +198,9 @@ AssistantToolContext _ctx(
   addTearDown(m.dispose);
   for (final s in servers) {
     m.debugRegisterJellyfinClientForTesting(s, online: !offline.contains(s.machine));
+  }
+  for (final p in pleya) {
+    m.debugRegisterClientForTesting(p);
   }
   if (borrowed != null) m.setServerAuthorityRestrictions(serverIds: borrowed);
   return AssistantToolContext(
@@ -471,12 +537,140 @@ void main() {
       expect(users.every((u) => u['plays'] == 1), isTrue);
     });
 
-    test('a server without a history source says so', () async {
-      final ctx = _ctx([_Jf('woon', 'Woonkamer')]);
+    test('Jellyfin now: sessions from the server, names clipped, unknown state left out', () async {
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        sessions: [
+          (
+            userName: _injected,
+            title: 'Severance',
+            episode: 'S1 · E2 Half Loop',
+            progressPercent: 30,
+            paused: true,
+            transcoding: null,
+            device: 'Apple TV',
+          ),
+        ],
+      );
       final result =
-          await _tool('watch_stats').run(ctx, ServerId('woon'), {'scope': 'period', 'days': 3}) as AssistantToolResult;
-      expect(result.data['history_unavailable_for'], ['Woonkamer']);
-      expect((result.display! as AssistantWatchStats).available, isFalse);
+          await _tool('watch_stats').run(_ctx([jf]), ServerId('woon'), {'scope': 'now'}) as AssistantToolResult;
+      final session = (result.data['sessions']! as List).single as Map<String, Object?>;
+      expect(session['title'], 'Severance');
+      expect(session['episode'], 'S1 · E2 Half Loop');
+      expect(session['paused'], isTrue);
+      expect(session, isNot(contains('transcoding')));
+      expect((session['user']! as String).length, lessThanOrEqualTo(41));
+      expect(session['user'], isNot(contains('\n')));
+      expect((result.display! as AssistantWatchStats).sessions.single.title, 'Severance');
+    });
+
+    test('Jellyfin period: last plays in the period, series by name, users by account', () async {
+      final now = DateTime.now();
+      final inside = now.subtract(const Duration(days: 1));
+      final outside = now.subtract(const Duration(days: 9));
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        users: const [
+          ServerUser(id: 'u1', name: 'Alex', role: ServerUserRole.admin, allLibraries: true),
+          ServerUser(id: 'u2', name: 'Alex', role: ServerUserRole.member, allLibraries: true),
+        ],
+        played: {
+          'u1': [
+            _played('e1', 'Half Loop', inside, series: 'Severance'),
+            _played('e2', 'Good News', inside, series: 'Severance'),
+            _played('m1', 'Dune', outside),
+          ],
+          'u2': [_played('e1', 'Half Loop', inside, series: 'Severance')],
+        },
+      );
+      final result =
+          await _tool('watch_stats').run(_ctx([jf]), ServerId('woon'), {'scope': 'period', 'days': 7})
+              as AssistantToolResult;
+      expect(jf.playedReads, [('u1', 200), ('u2', 200)]);
+      expect(result.data['plays'], 3, reason: 'Dune was last played before the period');
+      final top = (result.data['top_titles']! as List).cast<Map<String, Object?>>();
+      expect(top.single['title'], 'Severance');
+      expect(top.single['plays'], 3);
+      final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
+      expect(users, hasLength(2), reason: 'two accounts that share a name stay two users');
+      expect(users.first, {'user': 'Alex', 'plays': 2}, reason: 'no hours: the server reports no durations');
+      expect(result.data, isNot(contains('partial')));
+    });
+
+    test('Jellyfin period: users and plays per user are capped', () async {
+      final day = DateTime.now();
+      final jf = _Jf(
+        'woon',
+        'W',
+        users: [
+          for (var i = 0; i < 60; i++)
+            ServerUser(id: 'u$i', name: 'User $i', role: ServerUserRole.member, allLibraries: true),
+        ],
+        played: {
+          'u0': [for (var i = 0; i < 200; i++) _played('m$i', 'Film $i', day)],
+        },
+      );
+      final result =
+          await _tool('watch_stats').run(_ctx([jf]), ServerId('woon'), {'scope': 'period', 'days': 1})
+              as AssistantToolResult;
+      expect(jf.playedReads, hasLength(50));
+      expect(result.data['capped_at_users'], 50);
+      expect(result.data['capped_at_plays_per_user'], 200);
+    });
+
+    test('Jellyfin period: slow reads end in a partial answer at the deadline', () {
+      fakeAsync((async) {
+        final jf = _Jf(
+          'woon',
+          'W',
+          playedDelay: const Duration(seconds: 25),
+          users: [
+            for (var i = 0; i < 5; i++)
+              ServerUser(id: 'u$i', name: 'U$i', role: ServerUserRole.member, allLibraries: true),
+          ],
+        );
+        AssistantToolResult? result;
+        _tool('watch_stats')
+            .run(_ctx([jf]), ServerId('woon'), {'scope': 'period', 'days': 7})
+            .then((r) => result = r as AssistantToolResult);
+        async.elapse(const Duration(seconds: 61));
+        expect(result, isNotNull);
+        expect(result!.data['partial'], isTrue);
+        expect(jf.playedReads, hasLength(3), reason: 'the third read is abandoned, no fourth is asked');
+      });
+    });
+
+    test('Pleya Server: streams now, no history', () async {
+      final ps = _Ps(
+        'zolder',
+        'Zolder',
+        streams: const [
+          (
+            userName: 'kim',
+            title: 'Dune',
+            episode: null,
+            progressPercent: 25,
+            paused: null,
+            transcoding: null,
+            device: 'iPad',
+          ),
+        ],
+      );
+      final ctx = _ctx(const [], pleya: [ps]);
+      final tool = _tool('watch_stats');
+      expect(tool.serves(ctx, ServerId('zolder')), isTrue);
+      final now = await tool.run(ctx, ServerId('zolder'), {'scope': 'now'}) as AssistantToolResult;
+      expect((now.data['sessions']! as List).single, {
+        'user': 'kim',
+        'title': 'Dune',
+        'progress_percent': 25,
+        'player': 'iPad',
+      });
+      final period = await tool.run(ctx, ServerId('zolder'), {'scope': 'period'}) as AssistantToolResult;
+      expect(period.data['history_unavailable_for'], ['Zolder']);
+      expect((period.display! as AssistantWatchStats).available, isFalse);
     });
 
     test('days outside 1-31 are refused', () async {

@@ -83,11 +83,19 @@ class _Server {
           ],
         });
       }
+      if (request.method == 'GET' && path == '/jobs') {
+        return _json({
+          'items': [
+            {'id': 'j1', 'kind': 'scan_library', 'state': 'running', 'created_at': '2026-10-02T10:00:00Z'},
+          ],
+        });
+      }
       if (request.method == 'GET' && path == '/users') {
         return _json({
           'items': [
             {'id': 'u1', 'username': 'michel', 'role': 'owner'},
             {'id': 'u7', 'username': 'Sam', 'role': 'member'},
+            {'id': 'u8', 'username': 'Tim\u202Enimda', 'role': 'member'},
           ],
         });
       }
@@ -560,6 +568,41 @@ void main() {
       (1, 'scan_library', null, AssistantStepPhase.started),
       (1, 'scan_library', null, AssistantStepPhase.failed),
     ]);
+  });
+
+  test('cancelling a job needs a card that names the job as the server lists it', () async {
+    AssistantPendingAction? card;
+    final (_, model, server) = await run(
+      [
+        _call('list_jobs', {'server_id': 'srv-1'}),
+        _call('cancel_job', {'server_id': 'srv-1', 'job_id': 'j1'}, id: 'c2'),
+        _say('x'),
+      ],
+      confirm: (action) async {
+        card = action;
+        return null;
+      },
+    );
+    expect(card!.kind, AssistantActionKind.cancelJob);
+    expect(card!.subject, 'scan_library');
+    expect(model.toolResults.last, {'status': 'cancelled_by_user'});
+    expect(server.writes, isEmpty);
+  });
+
+  test('a server user name cannot hide a different name on the card', () async {
+    AssistantPendingAction? card;
+    await run(
+      [
+        _call('list_users', {'server_id': 'srv-1'}),
+        _call('remove_user', {'server_id': 'srv-1', 'user_id': 'u8'}, id: 'c2'),
+        _say('x'),
+      ],
+      confirm: (action) async {
+        card = action;
+        return null;
+      },
+    );
+    expect(card!.subject, isNot(contains('\u202E')));
   });
 
   test('the step limit ends a model that keeps calling tools', () async {

@@ -256,9 +256,87 @@ void main() {
       routes['DELETE /Users/u2'] = (_) => http.Response('', 403);
       await expectLater(client(emby: false).deleteUser('u2'), throwsA(isA<MediaServerHttpException>()));
     });
+
+    test('listActiveSessions keeps playing sessions and passes on no id, token or address', () async {
+      routes['GET /Sessions'] = (_) => _json([
+        {
+          'Id': 'sess-secret',
+          'UserName': 'Sam',
+          'DeviceName': 'Apple TV',
+          'Client': 'Pleya',
+          'RemoteEndPoint': '203.0.113.9',
+          'PlayState': {'PositionTicks': 300, 'IsPaused': true, 'PlayMethod': 'Transcode'},
+          'NowPlayingItem': {
+            'Type': 'Episode',
+            'Name': 'Half Loop',
+            'SeriesName': 'Severance',
+            'ParentIndexNumber': 1,
+            'IndexNumber': 2,
+            'RunTimeTicks': 1000,
+          },
+        },
+        {'Id': 'idle', 'UserName': 'Kim', 'DeviceName': 'Phone'},
+      ]);
+      final sessions = await client(emby: false).listActiveSessions();
+      expect(calls(), ['GET /Sessions']);
+      final s = sessions.single;
+      expect(s.userName, 'Sam');
+      expect(s.title, 'Severance');
+      expect(s.episode, 'S1 · E2 Half Loop');
+      expect(s.progressPercent, 30);
+      expect(s.paused, isTrue);
+      expect(s.transcoding, isTrue);
+      expect(s.device, 'Apple TV · Pleya');
+      expect('$s', isNot(anyOf(contains('sess-secret'), contains('203.0.113.9'))));
+    });
+
+    test('listPlayedItemsOf reads /Items for that user, bounded, with last-played dates', () async {
+      routes['GET /Items'] = (_) => _json({
+        'Items': [
+          {
+            'Id': 'e1',
+            'Type': 'Episode',
+            'Name': 'Half Loop',
+            'SeriesId': 's1',
+            'SeriesName': 'Severance',
+            'UserData': {'LastPlayedDate': '2026-09-30T20:00:00.0000000Z'},
+          },
+          {'Id': 'm1', 'Type': 'Movie', 'Name': 'Dune', 'UserData': <String, Object?>{}},
+        ],
+      });
+      final played = await client(emby: false).listPlayedItemsOf('u2', limit: 50);
+      final q = requests.single.url.queryParameters;
+      expect(q['userId'], 'u2');
+      expect(q['Limit'], '50');
+      expect(q['Filters'], 'IsPlayed');
+      expect(q['SortBy'], 'DatePlayed');
+      expect(q['IncludeItemTypes'], 'Movie,Episode');
+      expect(q['EnableUserData'], 'true');
+      expect(played.single.seriesName, 'Severance');
+      expect(played.single.seriesId, 's1');
+      expect(played.single.lastPlayed, DateTime.utc(2026, 9, 30, 20));
+    });
   });
 
   group('Emby', () {
+    test('listPlayedItemsOf takes /Users/{id}/Items: Emby /Items has no user parameter', () async {
+      routes['GET /Users/u2/Items'] = (_) => _json({'Items': <Object>[]});
+      await client(emby: true).listPlayedItemsOf('u2');
+      expect(calls(), ['GET /Users/u2/Items']);
+      expect(requests.single.url.queryParameters, isNot(contains('userId')));
+      expect(requests.single.url.queryParameters['Limit'], '200');
+    });
+
+    test('listActiveSessions reads the same /Sessions route', () async {
+      routes['GET /Sessions'] = (_) => _json([
+        {
+          'UserName': 'Kim',
+          'NowPlayingItem': {'Type': 'Movie', 'Name': 'Dune'},
+        },
+      ]);
+      final s = (await client(emby: true).listActiveSessions()).single;
+      expect((s.title, s.episode, s.paused, s.device), ('Dune', null, null, null));
+    });
     test('scanLibrary adds Recursive and an empty refresh body', () async {
       routes['POST /Items/7/Refresh'] = (_) => http.Response('', 204);
       await client(emby: true).scanLibrary('7');
@@ -368,6 +446,8 @@ void main() {
         () => c.createUser(name: 'x'),
         () => c.setUserLibraryAccess('u', allLibraries: true),
         () => c.deleteUser('u'),
+        c.listActiveSessions,
+        () => c.listPlayedItemsOf('u'),
       ];
       for (final op in ops) {
         await expectLater(op(), throwsA(isA<MediaServerAuthException>()));
@@ -381,5 +461,25 @@ void main() {
     expect(c.supportsServerAdministration, isTrue);
     expect(c.createUserRequiresPassword, isFalse);
     expect(c, isA<MediaServerClient>());
+  });
+
+  test('Emby: a grant whose folder Guid maps to no library makes access unknown', () async {
+    routes['GET /Users/Query'] = (_) => _json({
+      'Items': [
+        {
+          'Id': 'u1',
+          'Name': 'Kim',
+          'Policy': {
+            'EnableAllFolders': false,
+            'EnabledFolders': ['guid-films', 'guid-gone'],
+          },
+        },
+      ],
+    });
+    routes['GET /Library/SelectableMediaFolders'] = (_) => _json([
+      {'Name': 'Films', 'Id': '7', 'Guid': 'guid-films'},
+    ]);
+    final users = await client(emby: true).listUsers();
+    expect(users.single.libraryAccessKnown, isFalse);
   });
 }

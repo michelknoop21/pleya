@@ -151,9 +151,12 @@ class AssistantRun {
     ];
 
     for (var step = 0; step < maxSteps; step++) {
-      // No server for this profile (any more): nothing for the model to do.
-      if (_ctx.userServers.isEmpty) return _end(AssistantRunEnd.noTools);
       final available = _available();
+      // Nothing to act on (no server and no serverless service such as
+      // Seerr): do not spend a model call.
+      if (_ctx.userServers.isEmpty && available.keys.every((t) => t.name == 'list_servers')) {
+        return _end(AssistantRunEnd.noTools);
+      }
       final AssistantReply reply;
       try {
         reply = await model.chat(messages, [for (final e in available.entries) e.key.spec(e.value)]);
@@ -193,6 +196,10 @@ class AssistantRun {
     providerError: error,
   );
 
+  /// Stand-in id for asking a serverless tool whether it serves at all, so a
+  /// profile with Seerr but no media server still gets its request tools.
+  static final _noServer = ServerId('none');
+
   /// Each tool with the servers it may act on right now.
   Map<AssistantTool, List<String>> _available() {
     // Each tool decides through `serves` whether it needs administration.
@@ -201,7 +208,7 @@ class AssistantRun {
       for (final tool in tools ?? assistantTools)
         // A serverless tool still asks `serves`: a missing service (no Seerr)
         // keeps it out.
-        if (!tool.needsServer && servers.any((id) => tool.serves(_ctx, id)))
+        if (!tool.needsServer && [...servers, _noServer].any((id) => tool.serves(_ctx, id)))
           tool: const <String>[]
         else if (!tool.needsServer)
           ...const <AssistantTool, List<String>>{}
