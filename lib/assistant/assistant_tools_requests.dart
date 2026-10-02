@@ -136,7 +136,7 @@ final List<AssistantTool> _requestTools = [
     description:
         'Ask the request service to add a title found with find_request_title. The user confirms in Pleya. '
         'For a series, seasons lists season numbers; leave it out for every season not yet requested. '
-        'four_k only where can_request_4k was true. $_serverIdNote',
+        'four_k only where can_request_4k was true. Use seerr_id exactly as find_request_title returned it.',
     risk: AssistantToolRisk.sensitive,
     needsServer: false,
     properties: const {

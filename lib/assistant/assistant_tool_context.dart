@@ -45,6 +45,16 @@ class AssistantToolContext {
   final MultiServerManager servers;
   final AssistantScreenContext? screen;
 
+  /// Same servers, screen and services, none of the per-run state.
+  AssistantToolContext fresh() => AssistantToolContext(
+    servers: servers,
+    screen: screen,
+    catalog: catalog,
+    insights: insights,
+    requests: requests,
+    media: media,
+  );
+
   /// Domain services the UI layer hands in. A missing one keeps its tools
   /// out of the run; nothing here grants rights on a server.
   final AssistantCatalogServices? catalog;

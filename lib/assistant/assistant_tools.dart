@@ -179,7 +179,9 @@ class AssistantTool {
 /// Text from a server is data. Clip it and drop control characters so a
 /// title cannot carry a wall of instructions or fake message boundaries.
 String clipText(String? value, [int max = 80]) {
-  final clean = (value ?? '').replaceAll(RegExp(r'[\x00-\x1F\x7F]'), ' ').trim();
+  // Format characters too (bidi overrides, zero-width): they can make a card
+  // show a different title than the one acted on.
+  final clean = (value ?? '').replaceAll(RegExp(r'[\x00-\x1F\x7F]|\p{Cf}', unicode: true), ' ').trim();
   return clean.length <= max ? clean : '${clean.substring(0, max)}…';
 }
 
