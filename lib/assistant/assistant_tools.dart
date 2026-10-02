@@ -198,7 +198,15 @@ final List<AssistantTool> assistantTools = [
     serves: (ctx, id) => ctx.adminClient(id) != null,
     run: (ctx, id, _) async => AssistantToolResult({
       'libraries': [
-        for (final l in await ctx.libraries(id!)) {'library_id': l.id, 'title': clipText(l.title), 'kind': l.kind.name},
+        for (final l in await ctx.libraries(id!))
+          {
+            'library_id': l.id,
+            'title': clipText(l.title),
+            'kind': l.kind.name,
+            // Lets "which library was scanned longest ago" be answered.
+            if (l.updatedAt != null)
+              'updated_at': DateTime.fromMillisecondsSinceEpoch(l.updatedAt! * 1000, isUtc: true).toIso8601String(),
+          },
       ],
     }),
   ),

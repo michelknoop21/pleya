@@ -540,6 +540,29 @@ void main() {
     expect(result.actions, hasLength(1));
   });
 
+  test('the live step list names Pleya servers and never model text', () async {
+    final server = _Server();
+    final m = await server.manager();
+    final steps = <AssistantStep>[];
+    await AssistantRun(
+      model: _Model(AssistantProviderKind.ollamaServer, [
+        _call('list_libraries', {'server_id': 'srv-1'}),
+        _call('scan_library', {'server_id': 'nope', 'library_id': 'lib-films'}, id: 'c2'),
+        _say('x'),
+      ]).client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      onStep: steps.add,
+    ).ask('Scan');
+    expect(steps.map((s) => (s.index, s.tool, s.serverName, s.phase)), [
+      (0, 'list_libraries', 'Zolder', AssistantStepPhase.started),
+      (0, 'list_libraries', 'Zolder', AssistantStepPhase.done),
+      (1, 'scan_library', null, AssistantStepPhase.started),
+      (1, 'scan_library', null, AssistantStepPhase.failed),
+    ]);
+  });
+
   test('the step limit ends a model that keeps calling tools', () async {
     final (result, model, _) = await run(
       List.generate(10, (i) => _call('list_servers', const {}, id: 'c$i')),
