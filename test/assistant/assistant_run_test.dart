@@ -502,6 +502,44 @@ void main() {
     expect(result.actions.single.kind, AssistantActionKind.createUser);
   });
 
+  test('Pleya Server: changing an existing user\'s access is not offered and cannot be forced', () async {
+    final (_, model, server) = await run([
+      _call('list_users', {'server_id': 'srv-1'}),
+      _call('set_user_library_access', {
+        'server_id': 'srv-1',
+        'user_id': 'u7',
+        'library_ids': ['lib-kids'],
+      }, id: 'c2'),
+      _say('x'),
+    ], confirm: (_) async => fail('no card for a change Pleya refuses'));
+    expect(model.toolNamesOffered(0), isNot(contains('set_user_library_access')));
+    expect(model.toolResults.last, {'error': 'unknown_tool'});
+    expect(server.writes, isEmpty);
+  });
+
+  test('"Sam with only Kids" is one card and one create with its access', () async {
+    var cards = 0;
+    final (result, _, server) = await run(
+      [
+        _call('list_libraries', {'server_id': 'srv-1'}),
+        _call('create_user', {
+          'server_id': 'srv-1',
+          'name': 'Sam',
+          'library_ids': ['lib-kids'],
+        }, id: 'c2'),
+        _say('klaar'),
+      ],
+      confirm: (action) async {
+        cards++;
+        expect(action.libraryNames, ['Kids']);
+        return const AssistantConfirmation(password: 'geheim123');
+      },
+    );
+    expect(cards, 1);
+    expect(server.writes, ['POST /users', 'PUT /users/u9/permissions']);
+    expect(result.actions, hasLength(1));
+  });
+
   test('the step limit ends a model that keeps calling tools', () async {
     final (result, model, _) = await run(
       List.generate(10, (i) => _call('list_servers', const {}, id: 'c$i')),

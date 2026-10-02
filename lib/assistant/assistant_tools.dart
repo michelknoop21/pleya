@@ -304,7 +304,11 @@ final List<AssistantTool> assistantTools = [
           for (final u in users)
             () {
               final admin = u.role == ServerUserRole.owner || u.role == ServerUserRole.admin;
-              ctx.showUser(id, u.id, AssistantKnownUser(name: u.name, isAdmin: admin));
+              ctx.showUser(
+                id,
+                u.id,
+                AssistantKnownUser(name: u.name, isAdmin: admin, accessKnown: u.libraryAccessKnown),
+              );
               return {
                 'user_id': u.id,
                 'name': clipText(u.name),
@@ -465,12 +469,19 @@ final List<AssistantTool> assistantTools = [
         password: admin.createUserRequiresPassword ? AssistantPasswordMode.required : AssistantPasswordMode.optional,
         execute: ({password}) async {
           final users = _userAdmin(ctx, id) ?? (throw const AssistantToolError('server_not_available'));
-          final user = await users.createUser(name: name, password: password);
-          return _grantAfterCreate(
-            name,
-            all || libraries.isNotEmpty,
-            () => users.setUserLibraryAccess(user.id, allLibraries: all, libraryIds: [for (final l in libraries) l.id]),
-          );
+          // One write path: the initial access goes with the create, where
+          // the user's grants are known to be empty.
+          try {
+            await users.createUser(
+              name: name,
+              password: password,
+              allLibraries: all,
+              libraryIds: [for (final l in libraries) l.id],
+            );
+          } on ServerUserAccessNotGranted {
+            return {'status': 'created', 'name': name, 'library_access': 'failed'};
+          }
+          return {'status': 'created', 'name': name};
         },
       );
     },
@@ -489,10 +500,13 @@ final List<AssistantTool> assistantTools = [
       'all_libraries': {'type': 'boolean'},
     },
     required: const ['user_id'],
-    serves: _managesUsers,
+    // Only where an existing user's access can be replaced without losing
+    // anything nobody asked to change (not Pleya Server, see DEC-142).
+    serves: (ctx, id) => ctx.plexSharing(id) != null || (_userAdmin(ctx, id)?.canChangeLibraryAccess ?? false),
     run: (ctx, id, args) async {
       final userId = _string(args, 'user_id');
       final user = ctx.requireShownUser(id!, userId);
+      if (!user.accessKnown) throw const AssistantToolError('library_access_unknown');
       if (user.isAdmin) throw const AssistantToolError('user_is_admin');
       final all = _bool(args, 'all_libraries');
       final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id, _strings(args, 'library_ids'));

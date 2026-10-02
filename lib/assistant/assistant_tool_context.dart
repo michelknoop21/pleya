@@ -20,11 +20,16 @@ class AssistantKnownUser {
     this.isAdmin = false,
     this.plexHomeMember = false,
     this.plexManaged = false,
+    this.accessKnown = true,
   });
   final String name;
   final bool isAdmin;
   final bool plexHomeMember;
   final bool plexManaged;
+
+  /// False when the server did not say which libraries this user sees; an
+  /// access change is then refused rather than replacing the unknown.
+  final bool accessKnown;
 }
 
 /// Per-run state between the tools and the server manager.
