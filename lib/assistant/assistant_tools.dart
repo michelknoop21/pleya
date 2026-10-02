@@ -18,6 +18,8 @@ import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
+import '../services/jellyfin_client.dart';
+import '../services/pleya_server_client.dart';
 import '../media/ids.dart';
 import '../media/episode_collection.dart';
 import '../media/media_item.dart';
@@ -37,6 +39,7 @@ part 'assistant_tools_catalog.dart';
 part 'assistant_tools_catalog_query.dart';
 part 'assistant_tools_insights.dart';
 part 'assistant_tools_requests.dart';
+part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_media.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
