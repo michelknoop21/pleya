@@ -31,13 +31,11 @@ import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../services/speech_search_service.dart';
 import '../../../utils/app_logger.dart';
 import '../../../utils/dialogs.dart';
-import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
 import '../../../widgets/overlay_sheet.dart';
-import '../../../widgets/overlay_sheet_geometry.dart';
 import '../../settings/assistant_settings_screen.dart';
-import 'tv_assistant_confirm_card.dart';
+import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
 import 'tv_assistant_labels.dart';
@@ -240,63 +238,19 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   }
 
   Future<void> _showConfirm(AssistantPendingAction pending) async {
-    _shownPending = pending;
-    final result = await OverlaySheetController.showAdaptive<AssistantConfirmation>(
-      context,
-      presentation: OverlaySheetPresentation.panel,
-      restoreLauncherFocus: true,
-      initialFocusNode: _confirmCancelNode,
-      backgroundColor: Colors.transparent,
-      constraints: BoxConstraints(maxWidth: 880 * TvHig.of(context)),
-      builder: (sheetContext) {
-        _sheetContext = sheetContext;
-        return TvAssistantConfirmCard(
-          action: pending,
-          cancelNode: _confirmCancelNode,
-          onCancel: () => OverlaySheetController.closeAdaptive(sheetContext),
-          onConfirm: (password) =>
-              OverlaySheetController.closeAdaptive(sheetContext, AssistantConfirmation(password: password)),
-          readPassword: _readPassword,
-        );
-      },
-    );
-    _sheetContext = null;
-    _shownPending = null;
     final c = _c;
-    if (!mounted || c == null || !identical(c.pending, pending)) return;
-    if (result == null) {
-      c.cancelPending();
-    } else {
-      setState(() => _nod++); // Big P nods when you confirm
-      c.confirmPending(password: result.password);
-    }
-  }
-
-  /// Pleya's secure field: the system keyboard with a masked field on Apple
-  /// TV. The value goes to the card, and from there to [confirmPending] only.
-  Future<String?> _readPassword() async {
-    if (PlatformDetector.isAppleTV()) {
-      try {
-        final result = await _entry.edit(
-          text: '',
-          hint: t.assistant.confirm.passwordPlaceholder,
-          obscure: true,
-          autocorrect: false,
-        );
-        return result.submitted && result.text.isNotEmpty ? result.text : null;
-      } catch (e) {
-        appLogger.w('Big P: password entry failed', error: e);
-        return null;
-      }
-    }
-    // ponytail: a plain, unmasked dialog off Apple TV (Android TV). Upgrade
-    // path: an obscure flag on showTextInputDialog.
-    return showTextInputDialog(
+    if (c == null) return;
+    _shownPending = pending;
+    final confirmed = await showTvAssistantConfirm(
       context,
-      title: t.assistant.confirm.password,
-      labelText: t.assistant.confirm.password,
-      hintText: t.assistant.confirm.passwordPlaceholder,
+      controller: c,
+      pending: pending,
+      cancelNode: _confirmCancelNode,
+      entry: _entry,
+      onSheet: (sheet) => _sheetContext = sheet,
     );
+    _shownPending = null;
+    if (confirmed && mounted) setState(() => _nod++); // Big P nods when you confirm
   }
 
   void _dismiss() {

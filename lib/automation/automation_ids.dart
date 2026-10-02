@@ -282,6 +282,11 @@ class AutomationIds {
   /// approve button reports `enabled`.
   static const String assistantConfirmButton = 'assistant.confirm.button';
 
+  /// Big P summoned with a long Play/Pause press, over any TV screen. State
+  /// carries `shown`, `state`, `error`, `pending` and `lingering` (a good
+  /// result counting down to leaving on its own).
+  static const String assistantSummon = 'assistant.summon';
+
   /// A text field on a connect-a-service settings screen, suffixed with the
   /// service and the field (`settings.form.field[seerr.url]`,
   /// `settings.form.field[tautulli.apiKey]`). One shared id rather than a
@@ -658,6 +663,7 @@ class AutomationIds {
     {'id': assistantOption, 'role': 'list.item', 'instanceable': true},
     {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantSummon, 'role': 'region', 'instanceable': false},
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},

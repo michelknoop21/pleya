@@ -213,6 +213,9 @@ ids:
   - id: assistant.confirm.button
     role: button
     instanceable: true
+  - id: assistant.summon
+    role: region
+    instanceable: false
   - id: settings.form.field
     role: field
     instanceable: true

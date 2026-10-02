@@ -1,0 +1,227 @@
+/// Big P summoned with a long Play/Pause press (mockup 38, "Oproepen vanaf
+/// elk scherm"): when he may come, what he opens, and how he leaves.
+library;
+
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_tool_context.dart';
+import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/media/ids.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
+import 'package:pleya/services/apple_tv_native_text_entry.dart';
+import 'package:pleya/services/speech_search_service.dart';
+import 'package:pleya/utils/native_input_session.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/video_player_navigation.dart';
+import 'package:pleya/widgets/big_p/big_p_avatar.dart';
+
+import 'tv_assistant_test_support.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const channel = MethodChannel('test_assistant_summon_entry');
+  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  const screen = AssistantScreenContext(serverId: 'zolder', libraryId: '1');
+  late FakeAssistantController c;
+  late StreamController<void> presses;
+  late List<Map<Object?, Object?>> edits;
+  late FocusNode behind;
+
+  setUp(() {
+    TvDetectionService.debugSetAppleTVOverride(true);
+    c = FakeAssistantController();
+    presses = StreamController<void>.broadcast();
+    edits = [];
+    behind = FocusNode(debugLabel: 'behind');
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      edits.add(call.arguments as Map<Object?, Object?>);
+      return <String, dynamic>{'text': 'Scan deze bibliotheek opnieuw', 'submitted': true};
+    });
+  });
+
+  tearDown(() {
+    TvDetectionService.debugSetAppleTVOverride(null);
+    messenger.setMockMethodCallHandler(channel, null);
+    NativeInputSession.debugReset();
+    unawaited(presses.close());
+    behind.dispose();
+    c.dispose();
+  });
+
+  Future<void> pumpHost(WidgetTester tester) async {
+    final entry = AppleTvNativeTextEntry(channel: channel);
+    await pumpTvFrame(
+      tester,
+      c,
+      TvAssistantSummonHost(
+        longPresses: presses.stream,
+        speech: SpeechSearchService(textEntry: entry),
+        textEntry: entry,
+        screenContext: () => screen,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Focus(focusNode: behind, child: const SizedBox(width: 200, height: 200)),
+        ),
+      ),
+    );
+    behind.requestFocus();
+    await settle(tester);
+  }
+
+  Future<void> longPress(WidgetTester tester) async {
+    presses.add(null);
+    await settle(tester);
+  }
+
+  Future<void> press(WidgetTester tester, LogicalKeyboardKey key) async {
+    await tester.sendKeyEvent(key);
+    await settle(tester);
+  }
+
+  Finder bigP() => find.byType(BigPAvatar);
+
+  /// Summoned and asked: the keyboard sent the question, Big P works.
+  Future<void> summoned(WidgetTester tester) async {
+    await pumpHost(tester);
+    await longPress(tester);
+  }
+
+  group('when he may come', () {
+    testWidgets('a long press opens the system keyboard with a send key and this screen as context', (tester) async {
+      await summoned(tester);
+
+      expect(bigP(), findsOneWidget);
+      expect(edits.single['action'], 'send');
+      expect(c.listenContexts.single, same(screen));
+      expect(c.submitted, ['Scan deze bibliotheek opnieuw']);
+    });
+
+    testWidgets('never during playback', (tester) async {
+      await pumpHost(tester);
+      unawaited(
+        Navigator.of(tester.element(find.byType(TvAssistantSummonHost))).push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: kVideoPlayerRouteName),
+            builder: (_) => const SizedBox(),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await longPress(tester);
+
+      expect(edits, isEmpty);
+      expect(c.listenContexts, isEmpty);
+    });
+
+    testWidgets('never while the system keyboard is up', (tester) async {
+      await pumpHost(tester);
+      NativeInputSession.begin();
+
+      await longPress(tester);
+
+      expect(edits, isEmpty);
+      expect(bigP(), findsNothing);
+    });
+
+    testWidgets('never where the controller hides him', (tester) async {
+      c.availability = AssistantAvailability.hidden;
+      await pumpHost(tester);
+
+      await longPress(tester);
+
+      expect(c.refreshes, 1, reason: 'the press is the first time availability is read');
+      expect(edits, isEmpty);
+      expect(bigP(), findsNothing);
+    });
+
+    testWidgets('locked opens the full surface with its gate instead', (tester) async {
+      c.availability = AssistantAvailability.locked;
+      await pumpHost(tester);
+
+      await longPress(tester);
+
+      expect(find.byType(TvAssistantScreen), findsOneWidget);
+      expect(edits, isEmpty);
+    });
+  });
+
+  group('how he leaves', () {
+    testWidgets('Menu dismisses, lets the run go and puts the remote back', (tester) async {
+      await summoned(tester);
+      expect(focusedLabel(), 'assistant.cancel');
+
+      // Trapped: the remote cannot wander off to the screen behind.
+      for (final key in [LogicalKeyboardKey.arrowUp, LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowDown]) {
+        await press(tester, key);
+        expect(focusedLabel(), isNot('behind'));
+      }
+
+      await press(tester, LogicalKeyboardKey.escape);
+
+      expect(bigP(), findsNothing);
+      expect(focusedLabel(), 'behind');
+      expect(c.resets, 2, reason: 'one fresh start on summon, one on leaving');
+    });
+
+    testWidgets('a good result leaves on its own after about 4 s', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'De scan van Films loopt.'
+        ..emit();
+      await tester.pump(const Duration(milliseconds: 3800));
+      expect(bigP(), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      await settle(tester);
+
+      expect(bigP(), findsNothing);
+      expect(focusedLabel(), 'behind');
+    });
+
+    testWidgets('an error stays until Menu', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..resultIsError = true
+        ..emit();
+      await tester.pump(const Duration(seconds: 10));
+      await settle(tester);
+      expect(bigP(), findsOneWidget);
+      expect(tester.widget<BigPAvatar>(bigP()).mood, BigPMood.error);
+
+      await press(tester, LogicalKeyboardKey.escape);
+      expect(bigP(), findsNothing);
+    });
+
+    testWidgets('a sensitive action raises the Pleya card; Menu cancels it and Big P stays', (tester) async {
+      await summoned(tester);
+      c
+        ..pending = AssistantPendingAction(
+          kind: AssistantActionKind.scanLibrary,
+          serverId: ServerId('zolder'),
+          serverName: 'Zolder',
+          subject: 'Films',
+          execute: ({password}) async => const {},
+        )
+        ..emit();
+      await settle(tester);
+      expect(find.byType(TvAssistantConfirmCard), findsOneWidget);
+      expect(focusedLabel(), 'assistant.confirm.cancel');
+      expect(tester.widget<BigPAvatar>(bigP()).mood, BigPMood.attentive);
+
+      await press(tester, LogicalKeyboardKey.escape);
+
+      expect(c.cancelledPending, 1);
+      expect(find.byType(TvAssistantConfirmCard), findsNothing);
+      expect(bigP(), findsOneWidget);
+    });
+  });
+}

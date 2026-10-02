@@ -415,6 +415,7 @@ import wakelock_plus
 
   override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      sendPlayPauseUpEvent(detail: "pressesEnded")
       return
     }
     if yieldPressToNativeSession(
@@ -431,6 +432,7 @@ import wakelock_plus
 
   override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      sendPlayPauseUpEvent(detail: "pressesCancelled")
       return
     }
     if yieldPressToNativeSession(
@@ -477,6 +479,12 @@ import wakelock_plus
   private func sendPlayPauseEvent(source: String, detail: String) {
     print("PleyaTvRemote: intercepted play/pause source=\(source) detail=\(detail)")
     tvRemoteChannel.sendMessage(["type": "play_pause", "source": source, "detail": detail])
+  }
+
+  // DEC-142: the release, so Dart can tell a long press (Big P) from a tap.
+  // The down event above stays the one playback acts on.
+  private func sendPlayPauseUpEvent(detail: String) {
+    tvRemoteChannel.sendMessage(["type": "play_pause_up", "source": "presses", "detail": detail])
   }
 
   private func remoteControlSubtypeName(_ subtype: UIEvent.EventSubtype) -> String {
