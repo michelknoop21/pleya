@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../connection/connection.dart';
 import '../media/media_backend.dart';
 import '../media/media_server_client.dart';
+import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
@@ -17,9 +18,11 @@ import 'pleya_share/pleya_share_client.dart';
 import 'pleya_share/pleya_share_host_service.dart';
 import 'pleya_server_client.dart';
 import 'plex_client.dart';
+import 'plex_sharing_service.dart';
 import 'server_matchable_client.dart';
 import '../models/plex/plex_config.dart';
 import '../utils/app_logger.dart';
+import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
 import '../utils/future_extensions.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -118,6 +121,14 @@ class MultiServerManager {
   final Map<String, String> _clientIdByServer = {};
 
   String? _resolveClientIdentifier(ServerId serverId) => _clientIdByServer[serverId];
+
+  /// The Plex account each server was bound through, kept in memory only for
+  /// [plexSharingFor]. Its `accountToken` is the plex.tv account token; the
+  /// per-server `accessToken` may be a Home member's `/switch` token.
+  final Map<String, PlexAccountConnection> _plexAccountByServer = {};
+
+  /// Shared plex.tv client for [plexSharingFor]; closed in [dispose].
+  MediaServerHttpClient? _plexTvHttp;
 
   /// All Jellyfin clients ever added, keyed by the compound connection id
   /// (`{serverMachineId}/{userId}`). Lets two users on the same Jellyfin
@@ -384,6 +395,39 @@ class MultiServerManager {
     return canManageServerMetadata(serverId);
   }
 
+  /// Plex Home and share administration for an owned Plex server, or null.
+  ///
+  /// Non-null only when [serverId] is a registered [PlexClient], the server is
+  /// `owned` by the signed-in account, [canAdministerServer] holds (so not a
+  /// restricted or non-admin Home member, not a borrowed row) and the account
+  /// it was bound through has a plex.tv account token.
+  ///
+  /// The token is `PlexAccountConnection.accountToken`, never
+  /// `PlexServer.accessToken`: for a Home member profile the latter is a
+  /// `/switch` user token, a different identity with no right to manage the
+  /// Home or its shares. plex.tv sharing must run as the Home admin.
+  ///
+  /// The returned service re-checks [canAdministerServer] live before every
+  /// call, so a profile switch after this returns still refuses. Ask again
+  /// per operation rather than holding on to it; the token can rotate.
+  PlexSharingAdministration? plexSharingFor(ServerId serverId) {
+    if (_clients[serverId] is! PlexClient) return null;
+    if (_plexServers[serverId]?.owned != true) return null;
+    if (!canAdministerServer(serverId)) return null;
+    final account = _plexAccountByServer[serverId];
+    if (account == null || account.accountToken.isEmpty) return null;
+    return PlexSharingService(
+      accountToken: account.accountToken,
+      clientIdentifier: account.clientIdentifier,
+      machineIdentifier: serverId.value,
+      canAdminister: () => canAdministerServer(serverId),
+      http: _plexTvHttp ??= MediaServerHttpClient(
+        connectTimeout: MediaServerTimeouts.plexTvConnect,
+        receiveTimeout: MediaServerTimeouts.plexTvReceive,
+      ),
+    );
+  }
+
   /// [canManageServerMetadata] on a Plex server. Gates administering the
   /// Tautulli integration and its settings tile: Tautulli watches Plex only,
   /// so a Jellyfin administrator gets no say in it.
@@ -588,6 +632,7 @@ class MultiServerManager {
       if (client != null) _closeClient(client);
     }
     _plexServers.remove(serverId);
+    _plexAccountByServer.remove(serverId);
     _serverStatus.remove(serverId);
     _authErrorServers.remove(serverId);
     _releaseGeneration(serverId);
@@ -634,6 +679,7 @@ class MultiServerManager {
     final futures = connection.servers.map((server) async {
       final serverId = server.clientIdentifier;
       _clientIdByServer[serverId] = connection.clientIdentifier;
+      _plexAccountByServer[serverId] = connection;
       _plexServers[serverId] = server;
       try {
         final client = await _createClientForServer(
@@ -689,6 +735,7 @@ class MultiServerManager {
     final futures = connection.servers.map((server) async {
       final serverId = server.clientIdentifier;
       _clientIdByServer[serverId] = connection.clientIdentifier;
+      _plexAccountByServer[serverId] = connection;
       _plexServers[serverId] = server;
       final existing = _clients[serverId];
       if (existing is PlexClient && ((_serverStatus[serverId] ?? false) || _authErrorServers.contains(serverId))) {
@@ -742,6 +789,7 @@ class MultiServerManager {
       _serverStatus.remove(id);
       _authErrorServers.remove(id);
       _clientIdByServer.remove(id);
+      _plexAccountByServer.remove(id);
       _unreachableSince.remove(id);
       _releaseGeneration(ServerId(id));
     }
@@ -1667,6 +1715,7 @@ class MultiServerManager {
     _authErrorServers.clear();
     _serverGenerations.clear();
     _clientIdByServer.clear();
+    _plexAccountByServer.clear();
     _activeOptimizations.clear();
     _sharePollTimer?.cancel();
     _sharePollTimer = null;
@@ -1682,6 +1731,8 @@ class MultiServerManager {
 
   /// Dispose resources
   void dispose() {
+    _plexTvHttp?.close();
+    _plexTvHttp = null;
     _sharePollTimer?.cancel();
     _sharePollTimer = null;
     disconnectAll();

@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../connection/connection.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
+import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
 import '../media/library_filter_result.dart';
@@ -54,6 +55,7 @@ part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/unsupported.dart';
+part 'pleya_server_client/parts/admin.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
 ///
@@ -77,6 +79,7 @@ part 'pleya_server_client/parts/unsupported.dart';
 /// adds direct play and watch state, with the ownership model from DEC-049
 /// behind it. Downloads, playlists, collections, favourites, ratings and Live
 /// TV are later phases and answer through `_PleyaServerUnsupportedMethods`.
+/// Scans, jobs and user administration live in `_PleyaServerAdminMethods`.
 // The private fields below are assigned from named constructor parameters
 // rather than through initializing formals, because Dart has no private named
 // parameter. dart_code_linter flags the pattern; here it is unavoidable.
@@ -90,6 +93,7 @@ class PleyaServerClient
         _PleyaServerArtworkMethods,
         _PleyaServerPlaybackMethods,
         _PleyaServerUnsupportedMethods,
+        _PleyaServerAdminMethods,
         ServerAuthorityGuard
     implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
@@ -127,6 +131,7 @@ class PleyaServerClient
 
   @override
   final PleyaServerSession _session;
+  @override
   final MediaServerHttpClient _http;
 
   @override

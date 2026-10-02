@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../connection/connection.dart';
 import '../media/episode_collection.dart';
+import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
@@ -77,6 +78,7 @@ part 'jellyfin_client/parts/file_info.dart';
 part 'jellyfin_client/parts/live_tv.dart';
 part 'jellyfin_client/parts/images_downloads.dart';
 part 'jellyfin_client/parts/metadata_edit.dart';
+part 'jellyfin_client/parts/admin.dart';
 
 /// [MediaServerClient] over a Jellyfin server.
 ///
@@ -96,6 +98,7 @@ class JellyfinClient
         _JellyfinLiveTvMethods,
         _JellyfinImageDownloadMethods,
         _JellyfinMetadataEditMethods,
+        _JellyfinAdminMethods,
         ServerAuthorityGuard
     implements
         MediaServerClient,
@@ -103,6 +106,10 @@ class JellyfinClient
         ScopedMediaServerClient,
         PersonSearchClient,
         JellyfinHistorySource,
+        LibraryScanClient,
+        ItemMetadataRefreshClient,
+        RetryableJobsClient,
+        ServerUserAdministration,
         GracefullyCloseable {
   JellyfinClient._({required this._connection, required this._http, FavoriteChannelsRepository? favoritesRepository})
     : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository() {

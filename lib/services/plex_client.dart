@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../media/download_resolution.dart';
+import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
@@ -209,7 +210,14 @@ typedef PlexWatcherRow = ({int accountId, String displayName, String? thumbUrl, 
 
 class PlexClient
     with MediaServerCacheMixin, _PlexLiveTvClientMethods, ServerAuthorityGuard
-    implements MediaServerClient, SeasonEpisodePagingClient, PersonSearchClient, GracefullyCloseable {
+    implements
+        MediaServerClient,
+        SeasonEpisodePagingClient,
+        PersonSearchClient,
+        GracefullyCloseable,
+        LibraryScanClient,
+        ItemMetadataRefreshClient,
+        ServerJobsClient {
   @override
   PlexConfig config;
 
@@ -830,16 +838,49 @@ class PlexClient
   /// Get running background tasks (thumbnail generation, credit detection, etc.)
   Future<List<PlexActivity>> getActivities() async {
     try {
-      final response = await _getWithFailover('/activities');
-      final container = _getMediaContainer(response);
-      if (container == null) return [];
-      final activityList = container['Activity'] as List?;
-      if (activityList == null) return [];
-      return activityList.map((json) => PlexActivity.fromJson(json as Map<String, dynamic>)).toList();
+      return await _fetchActivities();
     } catch (e) {
       appLogger.e('Failed to get activities', error: e);
       return [];
     }
+  }
+
+  Future<List<PlexActivity>> _fetchActivities() async {
+    final response = await _getWithFailover('/activities');
+    final container = _getMediaContainer(response);
+    if (container == null) return [];
+    final activityList = container['Activity'] as List?;
+    if (activityList == null) return [];
+    return activityList.map((json) => PlexActivity.fromJson(json as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  bool get supportsServerAdministration => true;
+
+  /// Plex activities as [ServerJob]s. Unlike [getActivities] a failed read
+  /// throws: an admin screen must not show "no jobs" for "could not ask".
+  /// Plex lists only work in progress and has no retry, so every job is
+  /// [ServerJobState.running] and never retryable.
+  @override
+  Future<List<ServerJob>> listJobs() async {
+    assertCanAdministerServer();
+    final activities = await _fetchActivities();
+    return [
+      for (final a in activities)
+        ServerJob(
+          id: a.uuid,
+          title: a.subtitle == null || a.subtitle!.isEmpty ? a.title : '${a.title}: ${a.subtitle}',
+          state: ServerJobState.running,
+          progress: (a.progress.clamp(0, 100)) / 100,
+          cancellable: a.cancellable,
+        ),
+    ];
+  }
+
+  @override
+  Future<void> cancelJob(String jobId) async {
+    assertCanAdministerServer();
+    throwIfHttpError(await _http.delete('/activities/$jobId'));
   }
 
   /// Cancel a running background task by its UUID.
@@ -2914,9 +2955,18 @@ class PlexClient
   }
 
   /// Scan/refresh a library section to detect new files
-  Future<void> scanLibrary(String sectionId) async {
+  @override
+  Future<void> scanLibrary(String libraryId) async {
     assertCanManageServerMetadata();
-    await _getWithFailover('/library/sections/$sectionId/refresh');
+    await _getWithFailover('/library/sections/$libraryId/refresh');
+  }
+
+  /// Re-read one item's metadata from its agents
+  /// (`PUT /library/metadata/{ratingKey}/refresh`, official PMS API).
+  @override
+  Future<void> refreshItemMetadata(String itemId) async {
+    assertCanAdministerServer();
+    throwIfHttpError(await _http.put('/library/metadata/$itemId/refresh'));
   }
 
   /// Refresh metadata for a library section
