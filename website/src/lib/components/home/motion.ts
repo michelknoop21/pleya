@@ -37,7 +37,7 @@ export const startHomeMotion = (root: HTMLElement) =>
           scrollTrigger: { trigger: q('.sources'), start: 'top 80%', end: 'top 35%', scrub: true },
         },
       );
-      gsap.from(q('.unified-shots .phone'), { yPercent: 20, autoAlpha: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: q('.unified-shots'), start: 'top 75%', once: true } });
+      gsap.from(q('.unified-shots .phone'), { yPercent: 20, autoAlpha: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: q('.unified-shots'), start: 'top 75%', end: 'top 45%', scrub: 0.35 } });
     }
 
     // Apple TV reel: on wide screens the section pins and the frames travel
@@ -67,9 +67,18 @@ export const startHomeMotion = (root: HTMLElement) =>
         duration: 1.1,
         ease: 'expo.out',
         stagger: 0.12,
-        scrollTrigger: { trigger: q('.devices-stage'), start: 'top 70%', once: true },
+        scrollTrigger: { trigger: q('.devices-stage'), start: 'top 70%', end: 'top 40%', scrub: 0.35 },
       });
     }
 
-    return () => wide.revert();
+    const moments = [...root.querySelectorAll<HTMLElement>('[data-moment]')];
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) entry.target.classList.toggle('is-visible', entry.isIntersecting);
+    }, { rootMargin: '0px 0px -26% 0px' });
+    for (const moment of moments) observer.observe(moment);
+
+    return () => {
+      observer.disconnect();
+      wide.revert();
+    };
   });

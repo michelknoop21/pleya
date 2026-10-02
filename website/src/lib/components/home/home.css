@@ -59,10 +59,59 @@
   .unified-shots .cap { margin-left: 26%; }
 
   /* Apple TV reel */
-  .video { padding-top: 6rem; }
+  .video { padding-top: 4rem; }
   .video .lede { margin-top: 1.4rem; }
-  .video-frame { margin-top: 3rem; }
-  .video-frame video { display: block; width: 100%; height: auto; }
+  .video-title { line-height: 1.04; letter-spacing: -0.035em; }
+  .video-title-p { font-family: var(--font-sans); letter-spacing: -0.025em; }
+  .video-frame { margin-top: 2rem; }
+  .video-stage { position: relative; isolation: isolate; padding-bottom: 13%; }
+  .video-floor {
+    position: absolute; z-index: -1; inset: 80% -4% -2%; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, #ffffff0c, transparent 68%);
+  }
+  .television { position: relative; }
+  .television-bezel {
+    position: relative; z-index: 2;
+    padding: clamp(3px, 0.45vw, 6px);
+    padding-bottom: clamp(7px, 0.9vw, 12px);
+    border-radius: clamp(6px, 0.8vw, 11px);
+    background: linear-gradient(140deg, #56565a, #222224 16%, #101012 75%, #353538);
+    box-shadow: inset 0 1px 0 #ffffff45, inset 0 -1px 0 #ffffff15, 0 22px 60px -28px #000;
+  }
+  .video-frame video {
+    display: block; width: 100%; height: auto; aspect-ratio: 16 / 9;
+    object-fit: contain; background: #000; border-radius: clamp(3px, 0.35vw, 5px);
+  }
+  .television-chin {
+    position: absolute; z-index: 3; bottom: 0; left: 45%; right: 45%;
+    height: clamp(7px, 0.9vw, 12px); display: grid; place-items: center; pointer-events: none;
+  }
+  .television-chin span { width: 2px; height: 2px; border-radius: 50%; background: #d4d4d4; box-shadow: 0 0 4px #ffffff40; }
+  .television-feet {
+    position: absolute; top: calc(100% - 2px); left: 8%; right: 8%; height: clamp(21px, 4.3vw, 60px);
+    display: flex; justify-content: space-between; z-index: 1;
+  }
+  .television-feet span {
+    width: 9%; height: 100%; transform: skewX(-27deg);
+    background: linear-gradient(100deg, #19191b, #515154 44%, #242426 54%, #111113);
+    clip-path: polygon(55% 0, 71% 0, 100% 95%, 100% 100%, 0 100%, 0 90%, 56% 90%);
+  }
+  .television-feet span:last-child { transform: scaleX(-1) skewX(-27deg); }
+  .television-cable { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; z-index: 0; }
+  .apple-tv-device {
+    position: absolute; z-index: 3; right: 9%; bottom: 0;
+    width: 15%; aspect-ratio: 180 / 112;
+    filter: drop-shadow(0 8px 9px #000a);
+  }
+  .apple-tv-body { display: block; width: 100%; height: 100%; }
+  .apple-tv-mark {
+    position: absolute; top: 27%; left: 20%; right: 20%; height: 26%;
+    display: flex; align-items: center; justify-content: center; gap: 2px;
+    transform: scaleY(0.8); color: #aaaab0;
+    font: 600 clamp(10px, 2.4vw, 29px) / 1 var(--font-sans); letter-spacing: -0.055em;
+    text-shadow: 0 1px 0 #0008;
+  }
+  .apple-tv-mark svg { width: 0.9em; height: 1em; }
   .reel { padding-top: 6rem; }
   .reel-head { display: grid; gap: 1.2rem; }
   .reel-viewport { margin-top: 3rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
@@ -173,3 +222,74 @@
     .devices-stage { padding-bottom: 22%; }
   }
 }
+
+/* Keep the tour and its hardware readable within ordinary laptop heights. */
+@media (min-width: 900px) {
+  .home .video .wrap { display: grid; grid-template-columns: 1.35fr 1fr; gap: 0.75rem 3rem; align-items: center; }
+  .home .video .kicker { grid-column: 1 / -1; }
+  .home .video-title { font-size: clamp(2.6rem, 4.6vw, 4.3rem); }
+  .home .video .lede { margin-top: 0; font-size: 1rem; }
+  .home .video-frame { grid-column: 1 / -1; width: min(100%, max(32rem, calc((100svh - 20rem) * 1.36))); justify-self: center; }
+}
+
+/* Keep every TV capture and its caption visible while the desktop reel is pinned. */
+@media (min-width: 900px) {
+  .home .reel { padding-top: 2.5rem; }
+  .home .reel-head .big { font-size: clamp(2.75rem, 4.8vw, 5rem); }
+  .home .reel-head { gap: 1rem; }
+  .home .reel-viewport { margin-top: 1.5rem; }
+  .home .reel-track { padding-bottom: 2rem; }
+  .home .frame { width: min(80vw, 60rem, calc((100svh - 28rem) * 16 / 9)); }
+  .home .frame h3 { margin-top: 1rem; }
+}
+
+/* Big P stays behind the device frames and reverses on leaving the viewport. */
+.home .peek-stage { isolation: isolate; }
+.home .peek-stage > .tv, .home .peek-stage > .mac { position: relative; z-index: 2; }
+.home .peek-stage > .phone { z-index: 4; }
+.home .peek-side, .home .peek-ledge, .home .final-peek-window { position: absolute; pointer-events: none; user-select: none; opacity: 0; }
+.home .hero-stage { margin-top: 10rem; }
+.home .peek-side { width: 260px; right: 3%; top: -152px; z-index: 1; transform: translateY(130px); transform-origin: center bottom; transition: transform 900ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease; }
+.home .peek-side img, .home .peek-ledge img { display: block; width: 100%; height: auto; max-width: none; }
+.home [data-moment="side"].is-visible .peek-side { opacity: 1; transform: translateY(0); }
+.home .big-p-intro { position: absolute; z-index: 5; right: calc(3% + 250px); top: -114px; width: 238px; padding: 17px 22px; border-radius: 20px; color: #201813; font-size: 1.08rem; line-height: 1.4; opacity: 0; transform: translate(6px,7px); transition: opacity 400ms ease 500ms, transform 400ms ease 500ms; background: linear-gradient(135deg,#fff9,#f4f1ecb8 55%,#fff7); border: 1px solid #ffffffa3; box-shadow: inset 0 1px 0 #ffffffb3, inset 0 -1px 0 #ffffff38, 0 12px 32px #0005; -webkit-backdrop-filter: blur(24px) saturate(145%); backdrop-filter: blur(24px) saturate(145%); }
+.home .big-p-intro span { display: block; }
+.home .big-p-intro strong { font-weight: 700; }
+.home .big-p-intro::after { content: ""; position: absolute; right: -8px; top: 66%; width: 18px; height: 18px; transform: rotate(45deg); border-radius: 0 3px 0 0; background: #f4f1ecad; }
+.home [data-moment="side"].is-visible .big-p-intro { opacity: 1; transform: translateY(0); }
+.home .devices-stage { margin-top: 7rem; }
+.home .peek-ledge { width: 190px; left: 24%; top: -114px; z-index: 1; transform: translateY(112px) rotate(-4deg); transform-origin: 50% 95%; transition: transform 1100ms cubic-bezier(.2,.85,.25,1), opacity 220ms ease; }
+.home [data-moment="ledge"].is-visible .peek-ledge { opacity: 1; transform: translateY(0) rotate(2deg); transition-delay: 120ms; }
+.home .final-peek-window { right: 12%; bottom: 0; width: 130px; height: 103px; overflow: hidden; z-index: 1; transform: translateY(102px) rotate(-4deg); transition: transform 850ms cubic-bezier(.2,.8,.2,1), opacity 250ms ease; }
+.home .final-peek-window img { position: absolute; width: 170px; max-width: none; left: -20px; top: -18px; }
+.home [data-moment="goodbye"].is-visible .final-peek-window { opacity: 1; transform: translateY(0) rotate(-4deg); }
+.home .unified-shots { display: grid; grid-template-columns: minmax(0,1fr) minmax(85px,20%); gap: 1.4rem; align-items: center; }
+.home .unified-shots .phone { position: static; width: 100%; max-width: none; left: auto; bottom: auto; }
+.home .unified-shots .cap { grid-column: 1 / -1; margin-left: 0; }
+@media (min-width: 900px) { .home .unified-grid { grid-template-columns: .8fr 1.2fr; gap: 3rem; } }
+@media (min-width: 900px) and (max-height: 950px) {
+ .home .hero { padding-top: 4rem; padding-bottom: 4rem; }
+ .home .hero-title { font-size: clamp(3.5rem,6.4vw,6rem); }
+ .home .hero-row { margin-top: 1.4rem; gap: 1rem 3rem; }
+ .home .hero-row .lede { font-size: 1rem; line-height: 1.55; }
+ .home .works { margin-top: 1rem; font-size: .82rem; }
+ .home .hero-stage { margin-top: 7rem; }
+ .home .peek-side { width: 220px; top: -128px; }
+ .home .big-p-intro { right: calc(3% + 212px); top: -102px; font-size: .95rem; padding: 14px 18px; }
+}
+@media (max-width: 559px) {
+ .home .hero-stage { margin-top: 9rem; }
+ .home .peek-side { width: 195px; right: -4px; top: -115px; }
+ .home .big-p-intro { left: 0; right: auto; top: -109px; width: calc(100% - 159px); max-width: 210px; padding: 14px 15px; border-radius: 17px; font-size: .9rem; }
+ .home .big-p-intro::after { right: -7px; width: 15px; height: 15px; }
+ .home .peek-ledge { left: 15%; width: 145px; top: -86px; }
+ .home .devices-stage { margin-top: 6rem; }
+ .home .final-peek-window { right: 8%; width: 90px; height: 70px; }
+ .home .final-peek-window img { width: 120px; left: -17px; top: -15px; }
+ .home .unified-shots { gap: .8rem; grid-template-columns: minmax(0,1fr) 22%; }
+}
+@media (max-width: 359px) { .home .hero { padding-top: 8rem; } }
+@media (prefers-reduced-motion: reduce) {
+ .home [data-moment] .peek-side, .home [data-moment] .peek-ledge, .home [data-moment] .big-p-intro, .home [data-moment] .final-peek-window { transition: none; opacity: 1; transform: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .home .big-p-intro { background: #f4f1ec; } }

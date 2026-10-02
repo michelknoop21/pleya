@@ -1,38 +1,22 @@
 <script lang="ts">
-  import tvRail from '$lib/assets/home/tv-rail.webp';
-  import tvDetail from '$lib/assets/home/tv-detail.webp';
-  import tvPlayer from '$lib/assets/home/tv-player.webp';
-  import tvRecs from '$lib/assets/home/tv-recs.webp';
+  import screen0 from '$lib/assets/home/tv-home-315-glass.webp';
+  import screen1 from '$lib/assets/home/tv-movies-315-glass.webp';
+  import screen2 from '$lib/assets/home/tv-all-movies-315-glass.webp';
+  import screen3 from '$lib/assets/home/tv-series-detail-315-glass.webp';
+  import screen4 from '$lib/assets/home/tv-player-information-315-glass.webp';
+  import screen5 from '$lib/assets/home/tv-player-video-315-glass.webp';
+  import screen6 from '$lib/assets/home/tv-player-audio-315-glass.webp';
+  import screen7 from '$lib/assets/home/tv-player-subtitles-315-glass.webp';
 
   const frames = [
-    {
-      src: tvRail,
-      alt: 'Continue Watching on Apple TV, the focused title enlarged with its progress bar',
-      title: 'Pick up where you stopped',
-      text: 'The focused title grows and shows how much is left. Your progress follows you to every device.',
-      specs: [],
-    },
-    {
-      src: tvDetail,
-      alt: 'A film page on Apple TV with 4K, Dolby Vision profile 8 and EAC3 5.1 labels',
-      title: 'See the version before you press play',
-      text: 'Resolution, HDR format and audio are on the page, read from the file itself.',
-      specs: ['4K', 'DV P8', 'EAC3 5.1'],
-    },
-    {
-      src: tvPlayer,
-      alt: 'The Apple TV player showing Direct play in its header',
-      title: 'Direct play, and it says so',
-      text: 'The server sends the file untouched. Transcoding only starts when the device or the connection cannot take the original.',
-      specs: [],
-    },
-    {
-      src: tvRecs,
-      alt: 'The Movies page on Apple TV with a row titled Because you watched Puss in Boots: The Last Wish',
-      title: 'Recommendations that stay home',
-      text: '"Because you watched" rows are computed on the device from your own history. That profile never leaves it.',
-      specs: [],
-    },
+    { src: screen0, alt: "Pleya Home on Apple TV with Liquid Glass navigation and original demo artwork", title: "Pick up where you stopped", text: "The focused title grows and shows how much is left. Your progress follows you to every device.", specs: [] },
+    { src: screen1, alt: "Pleya Movies discovery on Apple TV with original demo titles", title: "Your collection, at a glance", text: "Browse two demo collections with the Siri Remote. Original posters and artwork fill the current Pleya build.", specs: [] },
+    { src: screen2, alt: "All movies on Apple TV, with a focused poster and Liquid Glass navigation", title: "All movies. One view.", text: "Your complete movie library, sorted by title. A clear focus ring keeps every poster within reach of the remote.", specs: [] },
+    { src: screen3, alt: "NORTH series details on Apple TV, showing two seasons and three episodes", title: "A season ahead", text: "Move between seasons and episodes without leaving the series. The selected episode stays clear, even from the couch.", specs: [] },
+    { src: screen4, alt: "The Apple TV player Information tab in a translucent Liquid Glass panel", title: "Know what is playing", text: "The Information tab puts the title, resolution, video codec and audio format together over the picture.", specs: [] },
+    { src: screen5, alt: "The Apple TV player Video tab, with aspect ratio, zoom, HDR and playback controls", title: "Make the picture yours", text: "Aspect ratio, zoom, HDR and playback speed share one Video tab. The picture stays visible behind the glass.", specs: [] },
+    { src: screen6, alt: "The Apple TV player Audio tab, with track, sync and volume controls", title: "Sound, in one place", text: "Choose an audio track, adjust sync and manage volume from the Audio tab, using the same remote controls.", specs: [] },
+    { src: screen7, alt: "The Apple TV player Subtitles tab, with timing and text appearance controls", title: "Subtitles at your fingertips", text: "Change subtitle timing, text size and background from the Subtitles tab. Keep watching while you adjust.", specs: [] },
   ];
 </script>
 
@@ -44,7 +28,7 @@
     </div>
     <p class="lede">
       Every screen on Apple TV is reachable with the Siri Remote's D-pad. These are captures from the current beta build,
-      with a real library behind them.
+      with original demo movies and series.
     </p>
     <p class="links internal"><a href="/apple-tv">Everything on Apple TV</a></p>
   </div>

@@ -39,4 +39,9 @@
     nav { gap: 1rem; font-size: 0.85rem; }
     .brand img { width: 5.2rem; }
   }
+  nav { padding: .25rem 1rem; border-radius: 999px; background: linear-gradient(135deg,#ffffff16,#ffffff05 55%,#ffffff0c); border: 1px solid #ffffff21; box-shadow: inset 0 1px 0 #ffffff16,0 8px 24px #0003; -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); }
+  nav a { display: inline-flex; align-items: center; min-height: 44px; }
+  @media (max-width: 559px) { nav { padding-inline: .65rem; gap: .65rem; font-size: .78rem; } .brand img { width: 4.5rem; } .inner { gap: .5rem; } }
+  @media (max-width: 359px) { .topnav.sticky { height: auto; } .sticky .inner { height: auto; } .inner { flex-wrap: wrap; gap: .3rem; padding-block: .7rem; } nav { width: 100%; justify-content: space-between; gap: .4rem; } }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { nav { background: #171719; } }
 </style>

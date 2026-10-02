@@ -1,8 +1,8 @@
 <script lang="ts">
   import PlexIcon from '~icons/simple-icons/plex';
   import JellyfinIcon from '~icons/simple-icons/jellyfin';
-  import tvServers from '$lib/assets/home/tv-servers.webp';
-  import iosServers from '$lib/assets/home/ios-servers.webp';
+  import tvServers from '$lib/assets/home/mac-home-315.webp';
+  import iosServers from '$lib/assets/home/ios-home-315-glass.webp';
 </script>
 
 <section class="unified" id="unified">
@@ -22,11 +22,10 @@
       </p>
     </div>
     <figure class="unified-shots">
-      <img class="tv" src={tvServers} width="1920" height="1080" loading="lazy" alt="Pleya on Apple TV: My Pleya, reporting 3 of 3 servers online" />
-      <img class="phone" src={iosServers} width="603" height="1311" loading="lazy" alt="Pleya on iPhone at launch, connecting to three servers" />
+      <img class="tv" src={tvServers} width="1920" height="1080" loading="lazy" alt="Pleya on Mac showing films from two original demo collections together" />
+      <img class="phone" src={iosServers} width="603" height="1311" loading="lazy" alt="Pleya Home on iPhone with the original demo library" />
       <figcaption class="cap">
-        Apple TV: one profile, three connections online (Plex, Jellyfin, Pleya Server). iPhone: connecting to all three
-        at launch.
+        Two demo collections, together in the real Pleya app. Original artwork created for this preview.
       </figcaption>
     </figure>
   </div>
