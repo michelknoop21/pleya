@@ -75,29 +75,49 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 .card.focus .art { transform: scale(1.05); box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink), 0 24px 48px rgba(0,0,0,.6); }
 .card.focus .t { font-weight: 700; }
 
-/* ---------- Big P-scherm ---------- */
-#bigp-screen .under { position: absolute; inset: 0; transition: opacity .4s; }
-#bigp-screen.behind .under { opacity: .3; }
-.ctx { position: absolute; right: var(--inset); top: 140px; display: flex; align-items: center; gap: 26px; font-size: 21px; color: var(--ink-2); }
+/* ---------- Big P als laag over Pleya (tweede ronde) ----------
+   Het Pleya-scherm blijft zichtbaar, vervaagd en gedimd. Het gesprek staat in een zwevend glaspaneel van
+   800 px rechts van Big P, nieuwste onderaan. Glas: tvOS-nepglas uit docs/assets/liquid-glass/src/tv-glass.css
+   (LG-04 tot en met LG-06), hier ingevoegd zodat het prototype los van schijf opent. */
+.tvglass {
+  -webkit-backdrop-filter: blur(30px) saturate(1.2) brightness(.80); backdrop-filter: blur(30px) saturate(1.2) brightness(.80);
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0) 50%), rgba(255,255,255,.12);
+  box-shadow: inset 0 1.5px 0 rgba(255,255,255,.40), inset 0 0 0 1px rgba(255,255,255,.12), 0 12px 32px rgba(0,0,0,.30);
+}
+.on-glass { text-shadow: 0 0 1px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.40); }
+#films-screen { transition: opacity .45s, filter .5s; }
+#films-screen.backdrop { filter: blur(14px) brightness(.45) saturate(1.1); }
+#bigp-screen .under { position: absolute; inset: 0; }
+.apanel, .ctx { transition: opacity .4s; }
+#bigp-screen.behind .apanel, #bigp-screen.behind .ctx { opacity: .3; }
+#bigp-screen.behind .fig { transform: translateX(-200px); } /* schuift opzij en kijkt naar de kaart */
+.ctx { position: absolute; right: var(--inset); top: 132px; display: flex; align-items: center; gap: 26px; font-size: 21px; color: var(--ink-2); }
 .ctx span { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
 .ctx .sep { width: 1px; height: 26px; background: var(--hair); }
 .ctx .jobs { color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.fig { position: absolute; left: 60px; top: 236px; width: 448px; height: 560px; transform-origin: 0 0; transition: transform .55s var(--ease), opacity .4s; }
-.fig.small { transform: translate(80px, 14px) scale(.6); }
-.col { position: absolute; left: 600px; top: 290px; width: 1180px; }
-.st { font-size: 21px; color: var(--ink-3); display: flex; align-items: center; gap: 12px; }
-.h { font-size: 44px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; margin-top: 14px; }
-.p { font-size: 26px; line-height: 1.45; color: var(--ink-2); margin-top: 16px; max-width: 1040px; }
-.q { font-size: 24px; color: var(--ink-3); }
+.fig { position: absolute; left: 230px; top: 260px; width: 560px; height: 700px; transform-origin: 50% 100%; transition: transform .55s var(--ease), opacity .4s; }
+.fig.small { transform: translateY(-300px) scale(.6); }
+.apanel { position: absolute; left: 870px; bottom: 80px; width: 800px; max-height: 820px; padding: 34px 40px 38px; border-radius: 36px;
+  display: flex; flex-direction: column; justify-content: flex-end; transition: bottom .5s var(--ease); }
+#bigp-screen.kbup .apanel { bottom: 470px; }
+.col { display: flex; flex-direction: column; align-items: stretch; }
+.st { font-size: 20px; color: var(--ink-2); display: flex; align-items: center; gap: 12px; }
+.h { font-size: 34px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; margin-top: 12px; }
+.p { font-size: 25px; line-height: 1.45; color: var(--ink-2); margin-top: 12px; }
+.tw { opacity: 0; transition: opacity .16s; } .tw.on { opacity: 1; }
+/* de vraag van de gebruiker: compacte geciteerde regel, rechts uitgelijnd zoals een eigen bericht */
+.q { align-self: flex-end; max-width: 88%; font-size: 21px; line-height: 1.35; color: var(--ink-2); background: rgba(255,255,255,.12); border-radius: 22px 22px 6px 22px; padding: 12px 20px; margin-bottom: 8px; }
 .q b { color: var(--ink); font-weight: 500; }
-.col .btn-row { margin-top: 40px; }
-.ex-label { font-size: 22px; color: var(--ink-3); margin: 44px 0 16px; }
-.ex { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
-.ctxchip { margin-top: 26px; }
+.col .btn-row { margin-top: 28px; flex-wrap: wrap; gap: 14px; }
+.ex-label { font-size: 20px; color: var(--ink-2); margin: 30px 0 12px; }
+.ex { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.ex .btn { white-space: normal; height: auto; min-height: 56px; padding: 12px 26px; font-size: 21px; line-height: 1.3; text-align: left; }
+.ctxchip { margin-top: 20px; }
+.ctxchip .chip-btn { background: rgba(0,0,0,.30); color: var(--ink); }
 
 /* stappenlijst: de diepte van het werk */
-.steps { margin-top: 30px; width: 1040px; display: flex; flex-direction: column; gap: 6px; }
-.step { display: flex; align-items: center; gap: 18px; min-height: 58px; padding: 0 22px; border-radius: 14px; background: var(--surface); font-size: 24px; }
+.steps { margin-top: 22px; display: flex; flex-direction: column; gap: 6px; }
+.step { display: flex; align-items: center; gap: 18px; min-height: 58px; padding: 0 22px; border-radius: 14px; background: rgba(10,10,10,.45); font-size: 23px; }
 .step .t { flex: 1; }
 .step .m { font-size: 21px; color: var(--ink-3); white-space: nowrap; transition: opacity .3s; }
 .mark { width: 30px; height: 30px; border-radius: 999px; flex: none; display: grid; place-items: center; border: 3px solid var(--ink-4); animation: pulse 1.4s ease-in-out infinite; }
@@ -108,7 +128,7 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 @keyframes pulse { 50% { border-color: var(--ink-2); } }
 
 /* Pleya-resultaatkaart */
-.pcard { background: var(--surface); border-radius: var(--r-tile); padding: 26px 32px; margin-top: 30px; width: 1040px; }
+.pcard { background: rgba(20,20,20,.72); border-radius: var(--r-tile); padding: 24px 28px; margin-top: 22px; text-shadow: none; }
 .pcard .hd { display: flex; align-items: center; gap: 12px; font-size: 20px; color: var(--ink-3); }
 .pcard .hd .ic { width: 22px; height: 22px; color: var(--ink-2); }
 .pcard .line { display: flex; align-items: flex-start; gap: 18px; margin-top: 20px; }
@@ -117,6 +137,19 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 .pcard .line .s { font-size: 21px; color: var(--ink-3); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .pcard .mark { width: 40px; height: 40px; }
 .pcard .mark .ic { width: 24px; height: 24px; }
+/* keuzekaarten (scene 7): poster als kleurvlak, titel, jaar, één regel beschrijving, status */
+.opts { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.opt { display: flex; align-items: center; gap: 18px; padding: 12px 18px 12px 12px; border-radius: 18px; background: rgba(20,20,20,.62); text-shadow: none; transition: box-shadow .25s var(--ease), transform .25s var(--ease); }
+.opt.focus { transform: scale(1.02); background: rgba(40,40,40,.85); }
+.opt .post { width: 68px; height: 100px; border-radius: 10px; flex: none; position: relative; overflow: hidden; }
+.opt .post b { position: absolute; left: 6px; right: 6px; bottom: 6px; font-size: 12px; line-height: 1.1; font-weight: 700; }
+.opt .txt { flex: 1; min-width: 0; }
+.opt .t { font-size: 23px; font-weight: 700; }
+.opt .y { font-weight: 400; color: var(--ink-3); }
+.opt .d { font-size: 19px; color: var(--ink-3); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.schip { flex: none; font-size: 17px; font-weight: 500; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.14); color: var(--ink); }
+.schip.ok { background: rgba(53,199,89,.22); color: #7fe39c; }
+.schip.req { background: rgba(255,176,32,.20); color: var(--amber); }
 .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.12); margin-top: 12px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 99px; }
 
@@ -146,8 +179,8 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 #float.kbup { transform: translateY(-400px); }
 #float .ffig { position: absolute; right: 50px; bottom: 30px; width: 272px; height: 340px; opacity: 0; transform: translateX(120px) scale(.85); transform-origin: 50% 85%;
   transition: opacity .35s, transform .55s cubic-bezier(.3,1.35,.5,1); }
-#float .panel { position: absolute; right: 330px; bottom: 70px; width: 620px; background: var(--surface); border-radius: 20px; padding: 26px 30px 28px;
-  box-shadow: 0 30px 80px rgba(0,0,0,.55); opacity: 0; transform: translateX(40px); transition: opacity .35s, transform .5s var(--ease); }
+#float .panel { position: absolute; right: 330px; bottom: 70px; width: 570px; border-radius: 32px; padding: 26px 30px 28px;
+  opacity: 0; transform: translateX(40px); transition: opacity .35s, transform .5s var(--ease); }
 #float .ffig::before { content: ""; position: absolute; inset: -40px -60px -30px; border-radius: 50%; background: radial-gradient(closest-side, rgba(20,20,20,.9), rgba(20,20,20,.6) 60%, rgba(20,20,20,0)); }
 #float.on .ffig, #float.on .panel { opacity: 1; transform: none; }
 #float.on .panel { transition-delay: .12s; }
@@ -157,10 +190,10 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 #float .panel .ctxl { font-size: 20px; color: var(--ink-3); margin-top: 14px; display: flex; gap: 10px; align-items: center; }
 #float .panel .ctxl .ic { width: 22px; height: 22px; }
 #float .steps { width: auto; margin-top: 18px; }
-#float .step { font-size: 21px; min-height: 52px; background: var(--elevated); padding: 0 16px; gap: 14px; }
+#float .step { font-size: 21px; min-height: 52px; padding: 0 16px; gap: 14px; }
 #float .step .m { font-size: 19px; }
 #float .mark { width: 26px; height: 26px; }
-#float .pcard { width: auto; margin-top: 18px; background: var(--elevated); padding: 20px 22px; }
+#float .pcard { margin-top: 18px; padding: 20px 22px; }
 #float .pcard .line .t { font-size: 23px; }
 #float .pcard .line .s { font-size: 19px; }
 #float .pcard .mark { width: 34px; height: 34px; }
@@ -168,7 +201,7 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 /* ---------- bevestiging door Pleya (38 H) ---------- */
 .scrim { position: absolute; inset: 0; background: rgba(20,20,20,.55); opacity: 0; transition: opacity .4s; pointer-events: none; z-index: 4; }
 .scrim.on { opacity: 1; }
-#modal { position: absolute; left: 50%; top: 50%; width: 1080px; padding: 40px 48px 44px; background: var(--surface); border-radius: 22px; box-shadow: 0 40px 100px rgba(0,0,0,.6);
+#modal { position: absolute; left: 50%; top: 50%; width: 880px; padding: 40px 48px 44px; background: var(--surface); border-radius: 22px; box-shadow: 0 40px 100px rgba(0,0,0,.6);
   transform: translate(-50%, -44%); opacity: 0; transition: opacity .35s, transform .5s var(--ease); z-index: 7; pointer-events: none; }
 #modal.on { transform: translate(-50%, -50%); opacity: 1; }
 #modal .src { display: flex; align-items: center; gap: 12px; font-size: 20px; color: var(--ink-3); }
@@ -176,7 +209,7 @@ svg.ic { width: 1em; height: 1em; flex: none; display: inline-block; vertical-al
 #modal h2 { font-size: 36px; font-weight: 700; line-height: 1.15; margin-top: 12px; }
 .kvs { margin-top: 26px; border-top: 1px solid var(--hair); }
 .kv { display: flex; align-items: center; min-height: 70px; border-bottom: 1px solid var(--hair); font-size: 24px; }
-.kv .k { width: 220px; color: var(--ink-3); flex: none; }
+.kv .k { width: 190px; color: var(--ink-3); flex: none; }
 .kv .v { font-weight: 500; }
 .pw { flex: 1; height: 56px; border-radius: 12px; background: var(--elevated); display: flex; align-items: center; gap: 14px; padding: 0 20px; font-size: 22px; transition: box-shadow .25s; }
 .pw .ic { width: 22px; height: 22px; color: var(--ink-2); }
@@ -219,16 +252,15 @@ body.rm .mark { animation: none; }
 
   <section class="screen" id="bigp-screen">
     <div class="under">
-      <div class="page"><div class="page-title">Big P</div><div class="page-sub">Mijn Pleya ▸ Big P</div></div>
-      <div class="ctx" id="ctx"></div>
+      <div class="ctx on-glass" id="ctx"></div>
       <div class="fig" id="fig"></div>
-      <div class="col swap" id="col"></div>
+      <div class="apanel tvglass on-glass"><div class="col swap" id="col"></div></div>
     </div>
   </section>
 
   <div class="dim" id="dim"></div>
   <div class="scrim" id="scrim"></div>
-  <div id="float"><div class="panel swap" id="panel"></div><div class="ffig" id="ffig"></div></div>
+  <div id="float"><div class="panel swap tvglass on-glass" id="panel"></div><div class="ffig" id="ffig"></div></div>
   <div id="kb">
     <div class="lbl">Vraag Big P</div>
     <div class="fld"><span id="typed"></span><span class="caret"></span><span class="live" id="kblive"></span></div>

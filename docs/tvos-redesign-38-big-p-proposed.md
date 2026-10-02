@@ -197,3 +197,56 @@ Dezelfde vier gevallen als bij 09 tot en met 37: een andere compositie dan het b
 componentfamilie die niet in de set voorkomt, een dichtheid die van de getekende afwijkt, en een
 gedragswijziging die het beeld niet kan tonen maar die een eerder productbesluit raakt. Voor Big P
 komt daar een vijfde bij: elke plek buiten Mijn Pleya waar Big P zichtbaar wordt.
+
+## Motion, tweede ronde (2 oktober)
+
+Michels oordeel over de eerste ronde: "Big P is nog steeds te statisch." Deze sectie vervangt de
+tabel "Per plek en stand" uit het hoofdstuk Motion. De productregel blijft: Big P bedekt geen
+informatie en concurreert niet met de beheeractie. Het prototype staat in
+`docs/assets/tvos-unified/src/prototype/38-big-p-motion/` met de getallen in de README; de stills in
+`mockups-2026-10-02-big-p/motion/` (`38-motion-0` tot en met `38-motion-7`).
+
+**Altijd, buiten minder beweging.** Big P zweeft een paar pixels boven de vloer (schaduw krimpt mee),
+wiegt rond zijn voeten, ademt en kantelt om de paar seconden zijn hoofd. Hij knippert om de 2 tot 4 s,
+soms twee keer snel achter elkaar. Overgangen lopen via een veer die een fractie doorschiet. Bij
+binnenkomst, aan het begin van een scherm en bij succes maakt hij een sprong met inveren, strekken en
+landen; weggaan is een sprongetje richting de uitgang.
+
+**Houdingen en armen.** Lagen uit de big-p-skill: zwaaien met een draaiende arm, wijzen met een losse
+arm achter het lichaam (bereik -12 tot 60 graden), vinger omhoog, duim omhoog, juichen. Een wissel
+duurt 270 ms en springt halverwege om terwijl het lichaam inveert, zonder overvloeien.
+
+**Praten.** Zijn antwoord verschijnt woord voor woord en de mond loopt mee op het ritme van de
+lettergrepen (zeven mondstanden, dicht tussen zinnen). Op lange woorden, namen en cijfers knikt het
+lijf en gaan de wenkbrauwen omhoog. Geen stem, geen lipsync-engine.
+
+| Stand | Wat Big P doet |
+|------|------|
+| rust | levende lus, om de 6 tot 11 s even kijken naar de voorbeeldvragen, om de 15 tot 25 s zwaaien |
+| luisteren | zakt iets in naar het toetsenbord, wenkbrauwen omhoog, ronde mond, hoofd scheef dat van kant wisselt, knikje per binnenkomend woord |
+| werken | wijst de nieuwste stap aan en volgt de lijst, hoofd draait mee bij elke stap, denkende wenkbrauwen, vinger omhoog als een stap klaar is |
+| succes | juicht met een sprong, zegt het antwoord met een duim omhoog, komt tot rust |
+| fout | hoofdschudden, zakt door, bezorgde wenkbrauwen; zegt de foutmelding rustig, zonder nadruk |
+| bevestigingskaart | stapt opzij, kijkt naar de kaart, zweeft weinig, knikt als je bevestigt |
+| opgeroepen | dezelfde figuur kleiner in de hoek, met sprong erin en eruit, kijkrichting naar het paneel links |
+
+**Minder beweging.** Geen lussen, sprongen of knikken. Alleen houding, wenkbrauwen en mond wisselen,
+direct. Tijdens praten staat de mond half open.
+
+**Paneel.** Het gesprek staat niet meer over de volle breedte. Op de Big P-plek ligt een zwevend
+glaspaneel van 800 px (ongeveer 42 procent van 1920) rechts van een grotere Big P, onderaan
+verankerd zodat het nieuwste onderaan staat; antwoordregels komen uit op 45 tot 55 tekens. De vraag
+van de gebruiker staat als korte geciteerde regel boven het antwoord, stappen, resultaat- en
+keuzekaarten en voorbeeldvragen passen binnen het paneel. Het Pleya-scherm blijft vervaagd en gedimd
+zichtbaar eronder. Het glas is het tvOS-nepglas van LG-04 tot en met LG-06; kaarten op het glas houden
+een donkere ondergrond voor contrast, de focusring blijft wit. Bevestigingskaarten blijven
+ondoorzichtige Pleya-kaarten midden in beeld, 880 px breed. Opgeroepen is het paneel 570 px.
+
+**Nieuw: aanvragen op beschrijving** (scene 7). De gebruiker beschrijft een film in plaats van de
+titel. Big P bedenkt titels en doorzoekt Seerr, toont vier keuzekaarten in het paneel (poster, titel,
+jaar, één regel beschrijving, status Aan te vragen, Beschikbaar of Al aangevraagd) en wijst de kaart
+met focus aan. Kiezen opent direct de Pleya-kaart om aan te vragen, met focus op Annuleren.
+
+**Grenzen.** Geen pupillen, dus kijken blijft een kanteling. De mondsprites komen uit lachende
+mockups; bezorgd gebruikt de ronde mond. De driekwart-wijshouding van de opgeroepen Big P heeft een
+eigen gezicht, dus daarin knippert hij niet. Getest in Chromium, niet in Safari of op een Apple TV.
