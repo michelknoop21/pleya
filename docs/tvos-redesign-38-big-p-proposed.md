@@ -42,23 +42,23 @@ De kunst komt ongewijzigd uit `~/.claude/skills/big-p/avatar/`, verkleind naar 5
 | Werken (38 F) en achter de bevestiging (38 H, I) | `bigp-vinger_presenteren` | Een stilstaande houding die "momentje" zegt, zonder draaiend wiel of animatie. |
 | Resultaat (38 G) | `bigp-duim_presenteren` | Duim omhoog plus een open hand naar de resultaatkaart: de figuur wijst naar wat Pleya deed. |
 
-Bij een mislukte actie is `bigp-bezorgd` de logische kunst. Die stand is niet getekend, zie de open
-vragen.
+| Resultaat met fout (38 J) | `bigp-bezorgd` | Hoort bij de resultaatstand, niet bij een vijfde stand. De Pleya-kaart draagt de fout; Big P laat alleen zien dat het niet goed ging. |
 
 ## De beelden
 
 | Nr | Bestand | Wat het beslist | Focus bij openen |
 |----|---------|-----------------|------------------|
-| 38 A | 38-big-p-a.png | Big P is een gewone hub-tegel in de groep Pleya, op plek twee na Instellingen. In plaats van een lijnicoon draagt hij een klein portret van Big P rechts in de tegel. Ondertitel "Beheer Pleya met je stem". Uitloggen schuift naar een tweede rij onder de vouw. De rest van de hub volgt `buildTvMyPleyaGroups` en de Nederlandse teksten uit `nl.i18n.json`. | Big P-tegel (getekend als de gefocuste tegel; bij binnenkomst geldt de bestaande hubregel) |
+| 38 A | 38-big-p-a.png | Big P is een gewone hub-tegel, vooraan in de groep Pleya, met dezelfde maat, dichtheid en focusstijl als de andere tegels. In plaats van een lijnicoon draagt hij een klein portret van Big P rechts in de tegel. Ondertitel "Pleya Assistant". Uitloggen schuift naar een tweede rij onder de vouw. De rest van de hub volgt `buildTvMyPleyaGroups` en de Nederlandse teksten uit `nl.i18n.json`. | Big P-tegel (getekend als de gefocuste tegel; bij binnenkomst geldt de bestaande hubregel) |
 | 38 B | 38-big-p-b.png | Beheerder zonder toegang. Big P staat er wel, met een korte uitleg en de zin dat je hem hier niet kunt aanzetten of kopen. Geen vraagknop, geen prijs, geen link naar een winkel. | "Terug naar Mijn Pleya", de enige knop |
 | 38 C1 | 38-big-p-c1.png | Geen provider ingesteld. De letterlijke zin uit de opdracht als kop, één zin over wie wat doet, en "Big P instellen" als primaire actie. | "Big P instellen" |
 | 38 C2 | 38-big-p-c2.png | Providerkeuze als drie gewone rijen: Ollama-server, Ollama Cloud, OpenRouter. Rechts staat wat je daarna nodig hebt (adres of API-sleutel). Onder de rijen staat welke gegevens naar de provider gaan en dat wachtwoorden en tokens in Pleya blijven. | Ollama-server, omdat dat de enige keuze is waarbij je vragen thuis blijven |
 | 38 D | 38-big-p-d.png | Rust. Statusregel met de servers waarop Big P kan handelen, een begroeting, één primaire knop "Vraag Big P" en drie voorbeeldvragen als gewone focusbare knoppen. Een voorbeeld kiezen stuurt die vraag meteen. | "Vraag Big P" |
-| 38 E | 38-big-p-e.png | Luisteren gebeurt in het systeemtoetsenbord van tvOS met dicteren, onderaan over het scherm. Pleya tekent geen eigen microfoonscherm. Big P staat kleiner in de luisterstand met "Ik luister". | Bepaalt tvOS |
+| 38 E | 38-big-p-e.png | Luisteren gebeurt in het systeemtoetsenbord van tvOS met dicteren, onderaan over het scherm. Pleya tekent geen eigen microfoonscherm. Big P staat kleiner in de luisterstand met "Ik luister…" en de kop "Spreek je vraag in.". | Bepaalt tvOS |
 | 38 F | 38-big-p-f.png | Werken. De vraag staat er letterlijk boven, daaronder één statusregel "Bezig met je vraag…". Geen voortgangsbalk, geen tussenstappen. Annuleren is de enige knop. | "Annuleren" |
-| 38 G | 38-big-p-g.png | Resultaat. Big P geeft een antwoord van één zin plus één zin uitleg. Daaronder staat een kaart van Pleya ("Uitgevoerd door Pleya · tijd") met per actie een regel: "Scan gestart · Films · Zolder". Daarna "Nog een vraag" en "Klaar". | "Nog een vraag" |
-| 38 H | 38-big-p-h.png | Bevestiging, Pleya Server. Pleya-kaart "Gebruiker aanmaken" met gebruiker, server, toegang en een afgeschermd wachtwoordveld. Aanmaken is uitgeschakeld tot het wachtwoord is ingevuld. De kleine letters zeggen dat het wachtwoord niet naar Big P en niet naar de AI-provider gaat. | "Annuleren" |
-| 38 I | 38-big-p-i.png | Dezelfde kaart voor Plex, zonder wachtwoordveld: een beheerde Home-gebruiker heeft geen eigen login, en een pincode instellen zit niet in deze ronde. Aanmaken is meteen bruikbaar. De kleine letters zeggen wat er op Plex echt ontstaat: "Beheerde Plex Home-gebruiker, met een share op deze server." | "Annuleren" |
+| 38 G | 38-big-p-g.png | Resultaat. Big P geeft een antwoord van één zin plus één zin uitleg. Daaronder staat een kaart van Pleya ("Uitgevoerd door Pleya · tijd") met per actie een regel: "Scan gestart · Films · Zolder". Daarna "Vraag Big P" en "Klaar". | "Vraag Big P" |
+| 38 H | 38-big-p-h.png | Bevestiging, Pleya Server. Pleya-kaart "Gebruiker aanmaken" met gebruiker, server, toegang, "Beheerder: Nee" en een afgeschermd wachtwoordveld. Eén kaart voor het hele doel: aanmaken plus de toegang die erbij gevraagd is. Aanmaken is uitgeschakeld tot het wachtwoord is ingevuld. De kleine letters zeggen dat het wachtwoord niet naar Big P en niet naar de AI-provider gaat. | "Annuleren" |
+| 38 I | 38-big-p-i.png | Dezelfde kaart voor Plex, met "Beheerder: Nee" en zonder wachtwoordveld: een beheerde Home-gebruiker heeft geen eigen login, en een pincode instellen zit niet in deze ronde. Aanmaken is meteen bruikbaar. De kleine letters zeggen wat er op Plex echt ontstaat: "Beheerde Plex Home-gebruiker, met een share op deze server." | "Annuleren" |
+| 38 J | 38-big-p-j.png | Resultaat met fout, geen aparte stand: result(error). De bezorgde Big P, één zin over wat er misging en dat er niets veranderde, en een gewone Pleya-foutkaart: "Scan niet gestart · Films · Zolder" met een rode status. Daarna "Vraag Big P" en "Klaar". | "Vraag Big P" |
 
 ## Waarom Annuleren de standaardfocus is
 
@@ -85,39 +85,43 @@ wachtwoord invullen in het systeemtoetsenbord, terug naar rechts naar Aanmaken.
 - De exacte vorm van het tvOS-toetsenbord. 38 E is een benadering; het echte toetsenbord tekent
   tvOS zelf, en de compositie geldt alleen voor wat Pleya eromheen tekent.
 
-## Open vragen voor Michel
+## Besluiten van Michel, 2 oktober 2026
 
-1. **Plek van de tegel.** Na Instellingen (getekend) of als eerste in de groep Pleya? Op plek twee
-   blijft Instellingen waar het nu staat; op plek één is Big P de eerste tegel die je in de groep
-   raakt. In beide gevallen schuift Uitloggen naar een tweede rij.
-2. **Portret in de tegel.** De Big P-tegel is de enige hub-tegel met kunst in plaats van een
-   icoon. Akkoord, of liever een lijnicoon zoals de rest en Big P pas op het scherm zelf?
-3. **Label van de primaire knop.** "Vraag Big P" met microfoonicoon (getekend) of "Spreek je vraag
-   in"? Het systeemtoetsenbord laat ook typen toe, dus "Spreek" belooft alleen de helft.
-4. **Voorbeeldvragen.** Vast drietal, of drie die Pleya kiest op basis van wat er op de servers
-   speelt (bijvoorbeeld "Welke taken zijn mislukt?" alleen als er een mislukte taak is)?
-5. **Foutstand.** Moet `bigp-bezorgd` als vijfde stand bij "actie mislukt", of blijft het bij vier
-   standen en draagt de Pleya-kaart de fout met een rode status?
-6. **Kaart bij meerdere acties.** Bij "Maak Sam aan en geef hem toegang tot Kids" zijn het twee
-   acties. Eén bevestigingskaart voor het geheel (getekend) of één per actie?
-7. **Annuleren tijdens werken.** Kan Pleya een al gestarte servertaak terugdraaien, of betekent
-   Annuleren in 38 F alleen "stop met wachten op het model"? Dat bepaalt of de knop er mag staan
-   nadat een actie is begonnen.
+1. De tegel staat vooraan in de groep Pleya: Big P, Instellingen, Logs en diagnose, Over, Uitloggen.
+2. De tegel draagt het portret van Big P, geen lijnicoon, maar blijft een gewone hub-tegel. Geen
+   afwijkende advertentiekaart.
+3. De primaire knop heet "Vraag Big P". Hij beschrijft de actie en niet het invoermiddel; typen via
+   het systeemtoetsenbord of een iPhone kan ook. Tijdens luisteren staat er "Ik luister…".
+4. Geen vijfde stand. Een mislukking is de resultaatstand met fout (38 J): bezorgde Big P plus een
+   gewone Pleya-foutkaart.
+5. Eén logisch doel is één bevestiging. "Maak Sam aan en geef hem alleen toegang tot Kids" is één
+   kaart (38 H, 38 I) met de toegang erin; Pleya voert de stappen daarna na elkaar uit en meldt
+   eerlijk welk deel mislukte. Twee losse gevoelige acties blijven twee kaarten. Er komt geen
+   algemene bundel- of transactielaag.
+
+## Nog open
+
+1. **Voorbeeldvragen.** Voorstel: een vast drietal in deze ronde. Kiezen op basis van wat er op de
+   servers speelt kan later zonder ander ontwerp.
+2. **Annuleren tijdens werken (38 F).** In de core stopt Annuleren het wachten op het model; een
+   actie die Pleya al heeft uitgevoerd wordt niet teruggedraaid, en een gevoelige actie loopt nooit
+   zonder kaart. De knop blijft daarom staan, en de resultaatkaart toont wat er al gebeurd was.
 
 ## De beelden, hashes
 
 | Nr | Bestand | SHA256 |
 |----|---------|--------|
-| 38 A | 38-big-p-a.png | `a72f10c9bac2d6b253e4964e4597bd6be2e6330624d95827fd9478052a9ce7f8` |
+| 38 A | 38-big-p-a.png | `faf2f99fa862663f7a6ee7fff84769abc6008fc7ebea4607a00bce2e9568e024` |
 | 38 B | 38-big-p-b.png | `4d75b1277c8bd91fbcbe8d201bf5934dd8e7522ee6eb0eb9b59e0cab893432ac` |
 | 38 C1 | 38-big-p-c1.png | `47bcea3eb61579e24a0e8be8e68d519106e8a7a7cb213584c8043a108b57a427` |
 | 38 C2 | 38-big-p-c2.png | `da775770dbebee4afa112107cecd587dd121fdda0840ecc6872362faf9a23964` |
 | 38 D | 38-big-p-d.png | `dcdc7db885c71248dbe60406a2e378d2d6278593e2b0ca2dbc6363d0f8053475` |
-| 38 E | 38-big-p-e.png | `895442766636bc01c3d5a35ce9093f6e5b562f67a3b0650e2cbb4581f61d3268` |
+| 38 E | 38-big-p-e.png | `d5394f64509ffd5de4edf6bd68d4f2489918872f118979dddc5540551b159c4c` |
 | 38 F | 38-big-p-f.png | `c51f2ccb5d2f8791022249c292b1ec30d55deedec60a16ee32de3975d3fbc17d` |
-| 38 G | 38-big-p-g.png | `712aa0986c3d97f496f89c608e27237c1772d0ccc90f0475cd3ef5443022bfc1` |
-| 38 H | 38-big-p-h.png | `a1ce8caa0f02ac65c1d566e84791430e241c747157f0e96c534316e0559e3bdb` |
-| 38 I | 38-big-p-i.png | `8803f43bf6000ca0c6bb0ecdd49859963482a94478a510bc0eb6fef65de41d56` |
+| 38 G | 38-big-p-g.png | `4a66b95debe58ff9a9c7d1accf86b637fc42e0001e2ad4eb8575d7c46a9a5a61` |
+| 38 H | 38-big-p-h.png | `4287a7fbf5f74bc5b24fdae3694fe720c192589fa6b0f1d5851b2d5e1270368b` |
+| 38 I | 38-big-p-i.png | `6c6b732261c340e5a6b083ea6d3e1148f93fd9aee1f6dc4e8c932935f5bdb47a` |
+| 38 J | 38-big-p-j.png | `c8c345b52b093794ee004e4b692de3737c7465f70d5eb07dcb8830013db979a5` |
 
 Herschieten: `cd docs/assets/tvos-unified/src && PLEYA_MOCKUP_DEST=$PWD/../mockups-2026-10-02-big-p node build.mjs 38-big-p`.
 Een andere pixel betekent een andere hash; werk dan deze tabel bij.

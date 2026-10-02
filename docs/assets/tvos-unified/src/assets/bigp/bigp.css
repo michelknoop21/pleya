@@ -21,3 +21,5 @@
 .pcard .line .s { font-size: 20px; color: var(--ink-3); margin-top: 4px; }
 .pcard .check { width: 40px; height: 40px; background: var(--ok); }
 .pcard .check .ic { width: 24px; height: 24px; }
+
+.pcard .check.fail { background: #c0392b; }
