@@ -6,6 +6,7 @@ import 'package:pleya/assistant/assistant_find_match.dart';
 import 'package:pleya/assistant/assistant_find_route.dart';
 import 'package:pleya/assistant/assistant_plot_index.dart';
 import 'package:pleya/assistant/assistant_web_lookup.dart';
+import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/utils/external_ids.dart';
 
@@ -20,6 +21,17 @@ class _SlowIdsServer extends FakeServer {
   Future<ExternalIds> fetchExternalIds(String itemId) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     return const ExternalIds(tmdb: 194);
+  }
+}
+
+/// Season 4's episode list arrives after the deadline; season 3's in time.
+class _SlowSeasonServer extends FakeServer {
+  _SlowSeasonServer(super.id, {super.libraries, super.children});
+
+  @override
+  Future<List<MediaItem>> fetchChildren(String parentId) async {
+    if (parentId == 's4') await Future<void>.delayed(const Duration(milliseconds: 400));
+    return super.fetchChildren(parentId);
   }
 }
 
@@ -120,5 +132,43 @@ void main() {
     expect(web.search.queries, isNotEmpty, reason: 'the web was asked and named S04E99');
     expect(rows.where((r) => r['kind'] == 'episode'), isEmpty);
     expect(rows.map((r) => r['title']), contains('Doctor Who'));
+  });
+
+  test('an episode list that completes in time adds nothing once the deadline has passed', () async {
+    final server = _SlowSeasonServer(
+      'zolder',
+      libraries: {
+        'series': [fakeItem('dw', 'Doctor Who', kind: MediaKind.show, summary: 'A time traveller.')],
+      },
+      children: {
+        'dw': [
+          fakeItem('s3', 'Season 3', kind: MediaKind.season).copyWith(index: 3),
+          fakeItem('s4', 'Season 4', kind: MediaKind.season).copyWith(index: 4),
+        ],
+        's3': [
+          fakeItem(
+            'e10',
+            'Blink',
+            kind: MediaKind.episode,
+            summary: 'Weeping angels: statues that move when you blink.',
+          ).copyWith(index: 10, parentIndex: 3),
+        ],
+        's4': const [],
+      },
+    );
+    final ctx = findCtx([server], libraries: [fakeLib('zolder', 'series', kind: MediaKind.show)]);
+    final result = await findTitles(
+      ctx,
+      const FindQuery(
+        kind: MediaKind.episode,
+        series: 'Doctor Who',
+        variants: ['statues that move when you blink', 'beelden'],
+      ),
+      budget: const Duration(milliseconds: 150),
+      headStart: Duration.zero,
+      plots: AssistantPlotIndexCache(),
+    );
+
+    expect(result.matches.where((m) => m.kind == MediaKind.episode), isEmpty);
   });
 }

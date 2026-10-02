@@ -121,6 +121,9 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   @override
   void dispose() {
     _c?.removeListener(_onChange);
+    // Leaving Big P stops the ask, as the summoned panel's dismissal does.
+    // abort() does not notify, so this is safe while the tree unmounts.
+    _c?.abort();
     _talkTimer?.cancel();
     for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode]) {
       node.dispose();

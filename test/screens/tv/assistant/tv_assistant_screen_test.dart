@@ -71,6 +71,14 @@ void main() {
 
   BigPAvatar avatar(WidgetTester tester) => tester.widget<BigPAvatar>(find.byType(BigPAvatar));
 
+  testWidgets('leaving the surface lets a running ask go, as the summoned panel does', (tester) async {
+    await pumpSurface(tester);
+    final before = c.aborts;
+    await tester.pumpWidget(const SizedBox());
+
+    expect(c.aborts, before + 1);
+  });
+
   group('gates', () {
     testWidgets('locked shows 38 B with one way back and no ask button', (tester) async {
       c.availability = AssistantAvailability.locked;

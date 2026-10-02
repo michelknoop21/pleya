@@ -165,7 +165,8 @@ String _episodeTitle(String raw) =>
     webTitle(raw).title.replaceAll(RegExp(r'\s*\([^)]*\)$'), '').replaceAll(RegExp(r'["“”]'), '').trim();
 
 bool _add(FindRun run, FindMatch show, _Episode? best, [FindSource? source]) {
-  if (best == null) return false;
+  // Every caller has awaited deadline-bound work; past the deadline nothing lands.
+  if (best == null || run.settled) return false;
   final match = FindMatch(best.title, year: show.year, kind: MediaKind.episode, sources: {...show.sources, ?source})
     ..ids = show.ids
     ..seerr = show.seerr
