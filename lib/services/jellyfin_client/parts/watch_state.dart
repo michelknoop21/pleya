@@ -7,7 +7,7 @@ mixin _JellyfinWatchStateMethods on MediaServerCacheMixin {
   @override
   Future<void> markWatched(MediaItem item) async {
     final response = await _http.post(
-      '/UserPlayedItems/${_segment(item.id)}',
+      connection.playedItemPath(item.id),
       queryParameters: {'userId': connection.userId},
     );
     throwIfHttpError(response);
@@ -16,15 +16,24 @@ mixin _JellyfinWatchStateMethods on MediaServerCacheMixin {
   @override
   Future<void> markUnwatched(MediaItem item) async {
     final response = await _http.delete(
-      '/UserPlayedItems/${_segment(item.id)}',
+      connection.playedItemPath(item.id),
       queryParameters: {'userId': connection.userId},
     );
     throwIfHttpError(response);
   }
 
+  /// Only Emby can: `HideFromResume`. Jellyfin has no equivalent, which is
+  /// why its capabilities keep the menu entry hidden.
   @override
   Future<void> removeFromContinueWatching(MediaItem item) async {
-    throw UnsupportedError('Jellyfin does not support removing items from Continue Watching.');
+    if (!connection.isEmby) {
+      throw UnsupportedError('Jellyfin does not support removing items from Continue Watching.');
+    }
+    final response = await _http.post(
+      '/Users/${_segment(connection.userId)}/Items/${_segment(item.id)}/HideFromResume',
+      queryParameters: {'Hide': 'true'},
+    );
+    throwIfHttpError(response);
   }
 
   @override
@@ -33,9 +42,9 @@ mixin _JellyfinWatchStateMethods on MediaServerCacheMixin {
     // a negative input as "clear the rating" (DELETE), >= 6/10 as a like
     // (POST Likes=true), and the rest as a dislike (POST Likes=false).
     final response = rating < 0
-        ? await _http.delete('/UserItems/${_segment(item.id)}/Rating', queryParameters: {'userId': connection.userId})
+        ? await _http.delete(connection.ratingPath(item.id), queryParameters: {'userId': connection.userId})
         : await _http.post(
-            '/UserItems/${_segment(item.id)}/Rating',
+            connection.ratingPath(item.id),
             queryParameters: {'userId': connection.userId, 'Likes': (rating >= 6.0).toString()},
           );
     throwIfHttpError(response);

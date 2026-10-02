@@ -70,9 +70,11 @@ mixin _JellyfinMetadataEditMethods on MediaServerCacheMixin {
     required String contentType,
   }) async {
     assertCanManageServerMetadata();
+    // Jellyfin (`GetFromBase64Stream`) and Emby both decode this body as
+    // base64; raw image bytes get a 500.
     final response = await _http.post(
       '/Items/${_segment(itemId)}/Images/${_segment(imageType)}',
-      body: bytes,
+      body: utf8.encode(base64Encode(bytes)),
       headers: {'Content-Type': contentType},
     );
     throwIfHttpError(response);

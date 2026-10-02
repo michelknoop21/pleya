@@ -18,8 +18,11 @@ class JellyfinLanDiscoveryService {
   static const int discoveryPort = 7359;
   static const String discoveryMessage = 'who is JellyfinServer?';
 
-  /// Sends two discovery packets 350 ms apart, then listens for
-  /// [responseWindow] after the second packet.
+  /// Emby listens on the same port but only answers its own name.
+  static const String embyDiscoveryMessage = 'who is EmbyServer?';
+
+  /// Sends the Jellyfin and the Emby probe, twice with 350 ms between the
+  /// rounds, then listens for [responseWindow] after the second round.
   Future<List<DiscoveredJellyfinServer>> discover({
     Duration responseWindow = const Duration(seconds: 2),
     InternetAddress? broadcastAddress,
@@ -34,11 +37,15 @@ class JellyfinLanDiscoveryService {
         discovered.putIfAbsent(server.id, () => server);
       }, debugLabel: 'Jellyfin LAN discovery');
 
-      final data = utf8.encode(discoveryMessage);
+      final packets = [utf8.encode(discoveryMessage), utf8.encode(embyDiscoveryMessage)];
       final target = broadcastAddress ?? UdpBroadcastSockets.limitedBroadcastAddress;
-      socketSet.send(data, target, discoveryPort);
+      for (final data in packets) {
+        socketSet.send(data, target, discoveryPort);
+      }
       await Future<void>.delayed(const Duration(milliseconds: 350));
-      socketSet.send(data, target, discoveryPort);
+      for (final data in packets) {
+        socketSet.send(data, target, discoveryPort);
+      }
       await Future<void>.delayed(responseWindow);
     } catch (e, st) {
       appLogger.w('Jellyfin LAN discovery failed', error: e, stackTrace: st);

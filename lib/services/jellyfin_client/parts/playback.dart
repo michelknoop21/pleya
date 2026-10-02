@@ -567,7 +567,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
         'PlayMethod': playMethod ?? 'DirectPlay',
         'RepeatMode': 'RepeatNone',
         'PlaybackOrder': 'Default',
-        'PlaySessionId': ?playSessionId,
+        'PlaySessionId': ?connection.playSessionIdFor(itemId, playSessionId),
       },
     );
     throwIfHttpError(response);
@@ -602,7 +602,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
         'PlayMethod': playMethod ?? 'DirectPlay',
         'RepeatMode': 'RepeatNone',
         'PlaybackOrder': 'Default',
-        'PlaySessionId': ?playSessionId,
+        'PlaySessionId': ?connection.playSessionIdFor(itemId, playSessionId),
       },
     );
     throwIfHttpError(response);
@@ -626,7 +626,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
         'MediaSourceId': ?mediaSourceId,
         'PositionTicks': msToJellyfinTicks(position.inMilliseconds),
         'Failed': false,
-        'PlaySessionId': ?playSessionId,
+        'PlaySessionId': ?connection.playSessionIdFor(itemId, playSessionId),
       },
     );
     throwIfHttpError(response);

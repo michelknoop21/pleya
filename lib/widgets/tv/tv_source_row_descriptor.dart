@@ -20,6 +20,8 @@ import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_stream.dart';
 import '../../media/unified/source_availability.dart';
+import '../../media/unified/source_row_descriptor.dart' show backendDisplayLabel;
+export '../../media/unified/source_row_descriptor.dart' show backendDisplayLabel;
 import '../../media/unified/unified_media_source.dart';
 import '../../utils/codec_utils.dart';
 import '../../utils/formatters.dart';
@@ -33,6 +35,9 @@ class TvSourceRowDescriptor {
   /// of [contextParts]' own backend word, which only appears there when
   /// [describeSources] found more than one backend worth naming in text.
   final MediaBackend backend;
+
+  /// Lets the badge tell an Emby server from Jellyfin (DEC-141).
+  final String? serverId;
 
   /// Line one, left: the server the user recognises.
   final String serverName;
@@ -69,6 +74,7 @@ class TvSourceRowDescriptor {
   const TvSourceRowDescriptor({
     required this.sourceKey,
     required this.backend,
+    this.serverId,
     required this.serverName,
     required this.contextParts,
     required this.qualityParts,
@@ -121,7 +127,7 @@ List<TvSourceRowDescriptor> describeSources(
   String? currentSourceKey,
   String? preferredServerId,
 }) {
-  final showBackend = sources.map((s) => s.backend).toSet().length > 1;
+  final showBackend = sources.map((s) => backendDisplayLabel(s.backend, serverId: s.serverId)).toSet().length > 1;
   return [
     for (final source in sources)
       describeSource(
@@ -147,11 +153,12 @@ TvSourceRowDescriptor describeSource(
   return TvSourceRowDescriptor(
     sourceKey: source.sourceKey,
     backend: source.backend,
+    serverId: source.serverId.value,
     // `serverName` already falls back to the server id in
     // `UnifiedMediaSource.fromItem`, so a row always has something to head it.
     serverName: source.serverName,
     contextParts: [
-      if (showBackend) backendDisplayLabel(source.backend),
+      if (showBackend) backendDisplayLabel(source.backend, serverId: source.serverId),
       if (_present(source.libraryTitle)) source.libraryTitle!.trim(),
       if (_present(item.editionTitle)) item.editionTitle!.trim(),
     ],
@@ -168,16 +175,6 @@ TvSourceRowDescriptor describeSource(
     progressFraction: _progressFraction(item),
   );
 }
-
-/// Brand names, matching the labels the rating sheet already shows. Note what
-/// is *not* here: hoofdstuk 33.6 #3 records that the mockups show an "Emby"
-/// backend that Pleya does not have, and the code wins.
-String backendDisplayLabel(MediaBackend backend) => switch (backend) {
-  MediaBackend.plex => 'Plex',
-  MediaBackend.jellyfin => 'Jellyfin',
-  MediaBackend.local => 'Local',
-  MediaBackend.pleyaServer => 'Pleya Server',
-};
 
 bool _present(String? value) => value != null && value.trim().isNotEmpty;
 

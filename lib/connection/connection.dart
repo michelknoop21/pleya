@@ -60,6 +60,9 @@ sealed class Connection {
   /// (badges, etc.). Just a passthrough to [kind.backend].
   MediaBackend get backend => kind.backend;
 
+  /// Whether this is an Emby server riding the Jellyfin backend (DEC-141).
+  bool get isEmby => false;
+
   /// Primary label shown in connection-list UIs. Plex shows the active
   /// profile/account name; Jellyfin shows the server name.
   String get displayLabel;
@@ -254,6 +257,11 @@ class JellyfinConnection extends Connection {
   /// match/unmatch, edit metadata) without an extra round-trip.
   final bool isAdministrator;
 
+  /// Emby server instead of Jellyfin. Same API family; the client branches
+  /// only on the few routes and headers where Emby differs (DEC-141).
+  @override
+  final bool isEmby;
+
   JellyfinConnection({
     required this.id,
     required this.baseUrl,
@@ -265,6 +273,7 @@ class JellyfinConnection extends Connection {
     required this.accessToken,
     required this.deviceId,
     this.isAdministrator = false,
+    this.isEmby = false,
     this.status = ConnectionStatus.unknown,
     required this.createdAt,
     this.lastAuthenticatedAt,
@@ -319,6 +328,7 @@ class JellyfinConnection extends Connection {
     String? accessToken,
     String? deviceId,
     bool? isAdministrator,
+    bool? isEmby,
     ConnectionStatus? status,
     DateTime? createdAt,
     DateTime? lastAuthenticatedAt,
@@ -335,6 +345,7 @@ class JellyfinConnection extends Connection {
       accessToken: accessToken ?? this.accessToken,
       deviceId: deviceId ?? this.deviceId,
       isAdministrator: isAdministrator ?? this.isAdministrator,
+      isEmby: isEmby ?? this.isEmby,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
@@ -353,6 +364,7 @@ class JellyfinConnection extends Connection {
       'accessToken': accessToken,
       'deviceId': deviceId,
       'isAdministrator': isAdministrator,
+      'isEmby': isEmby,
     };
   }
 
@@ -380,6 +392,7 @@ class JellyfinConnection extends Connection {
       accessToken: json['accessToken'] as String? ?? '',
       deviceId: json['deviceId'] as String? ?? '',
       isAdministrator: json['isAdministrator'] as bool? ?? false,
+      isEmby: json['isEmby'] as bool? ?? false,
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,

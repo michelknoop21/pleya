@@ -160,11 +160,15 @@ void main() {
       expect(_describe(_source(libraryTitle: '   ')).contextParts, isEmpty);
     });
 
-    test('every backend Pleya actually has gets a label, and there is no Emby', () {
+    test('every backend gets a label; only a registered Emby server reads as Emby', () {
       for (final backend in MediaBackend.values) {
         expect(backendDisplayLabel(backend), isNotEmpty);
         expect(backendDisplayLabel(backend), isNot('Emby'));
       }
+      embyServerIds.add('emby-1');
+      addTearDown(() => embyServerIds.remove('emby-1'));
+      expect(backendDisplayLabel(MediaBackend.jellyfin, serverId: 'emby-1'), 'Emby');
+      expect(backendDisplayLabel(MediaBackend.jellyfin, serverId: 'other'), 'Jellyfin');
     });
   });
 

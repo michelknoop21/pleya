@@ -17,7 +17,7 @@ import '../utils/media_server_http_client.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/notice/notice_controller.dart';
-import '../widgets/tv/tv_source_row_descriptor.dart' show backendDisplayLabel;
+import '../media/unified/source_row_descriptor.dart' show backendDisplayLabel;
 import '../i18n/strings.g.dart';
 import 'base_media_list_detail_screen.dart';
 import 'focusable_detail_screen_mixin.dart';
@@ -295,7 +295,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       isLoadingMore: _isLoadingMoreOnTv,
       errorMessage: errorMessage,
       client: mediaClient,
-      backendLabel: backendDisplayLabel(mediaClient.backend),
+      backendLabel: backendDisplayLabel(mediaClient.backend, serverId: mediaClient.serverId),
       onRetry: loadItems,
       onLoadMore: _loadMoreOnTv,
       onPlay: playItems,

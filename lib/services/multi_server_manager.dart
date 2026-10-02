@@ -790,6 +790,11 @@ class MultiServerManager {
 
       final health = await client.checkHealth();
       final healthy = health == HealthStatus.online;
+      // A legacy Emby connection fails over on the 500 from `/Users/Me` before
+      // checkHealth migrates it (DEC-141); drop that stale offline debounce.
+      if (healthy && client.connection.isEmby != resolvedConnection.isEmby) {
+        _reconnectDebounce.remove(machineId)?.cancel();
+      }
       _jellyfinHealthByCompoundId[compoundId] = health;
       _applyHealth(ServerId(machineId), health);
 

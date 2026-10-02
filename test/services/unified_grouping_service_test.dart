@@ -13,6 +13,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_version.dart';
 import 'package:pleya/media/unified/canonical_media_identity.dart';
 import 'package:pleya/media/unified/identity_evidence.dart';
+import 'package:pleya/media/unified/source_row_descriptor.dart' show backendDisplayLabel;
 import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/services/unified_catalog/grouping_service.dart';
 import 'package:pleya/utils/external_ids.dart';
@@ -49,6 +50,40 @@ void main() {
       expect(groups, hasLength(1));
       expect(groups.single.sources, hasLength(2));
       expect(groups.single.sources.map((s) => s.sourceKey), containsAll([duneA.item.globalKey, duneB.item.globalKey]));
+    });
+
+    test('DEC-141: one film on Plex, Jellyfin and Emby becomes one group, each source labelled by its server', () {
+      embyServerIds.add('server-emby');
+      addTearDown(() => embyServerIds.remove('server-emby'));
+      const ids = ExternalIds(tmdb: 777);
+      MediaItem jellyfinFamily(String serverId) => MediaItem.jellyfin(
+        id: '$serverId-film',
+        kind: MediaKind.movie,
+        title: 'Big Buck Bunny',
+        year: 2008,
+        serverId: serverId,
+        serverName: serverId,
+      );
+      final plex = MediaItem.plex(
+        id: 'plex-film',
+        kind: MediaKind.movie,
+        title: 'Big Buck Bunny',
+        year: 2008,
+        serverId: 'server-plex',
+        serverName: 'server-plex',
+      );
+
+      final groups = groupUnifiedMediaSources([
+        _candidateFromItem(plex, ids: ids),
+        _candidateFromItem(jellyfinFamily('server-jellyfin'), ids: ids),
+        _candidateFromItem(jellyfinFamily('server-emby'), ids: ids),
+      ]);
+
+      expect(groups, hasLength(1));
+      expect(
+        groups.single.sources.map((s) => backendDisplayLabel(s.backend, serverId: s.serverId)),
+        unorderedEquals(['Plex', 'Jellyfin', 'Emby']),
+      );
     });
 
     test('C9: a remake with the same title but a different year stays a separate group', () {

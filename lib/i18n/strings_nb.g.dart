@@ -864,6 +864,7 @@ class _TranslationsConnectionsNb extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Økten er utløpt for ${count} servere';
 	@override String get signInAgain => 'Logg inn igjen';
 	@override String get editJellyfinTitle => 'Rediger Jellyfin-tilkobling';
+	@override String get editEmbyTitle => 'Rediger Emby-tilkobling';
 	@override String editJellyfinIntro({required Object serverName}) => 'Legg til eller fjern URL-er for ${serverName}. Pleya bruker den tilgjengelige URL-en med lavest forsinkelse.';
 	@override String get localSources => 'Kilder på denne enheten';
 	@override String get removeSource => 'Fjern kilde';
@@ -1646,11 +1647,12 @@ class _TranslationsAddServerNb extends TranslationsAddServerEn {
 
 	// Translations
 	@override String get addJellyfinTitle => 'Legg til Jellyfin-server';
+	@override String get addEmbyTitle => 'Legg til Emby-server';
 	@override String get serverUrls => 'Server-URL-er';
 	@override String get serverUrlsHelper => 'Flere URL-er er tillatt, atskilt med komma.';
 	@override String get findServer => 'Finn server';
-	@override String get searchingLocalServers => 'Søker etter lokale Jellyfin-servere...';
-	@override String get localServers => 'Lokale Jellyfin-servere';
+	@override String get searchingLocalServers => 'Søker etter lokale servere...';
+	@override String get localServers => 'Lokale servere';
 	@override String get username => 'Brukernavn';
 	@override String get password => 'Passord';
 	@override String get signIn => 'Logg på';
@@ -1664,14 +1666,17 @@ class _TranslationsAddServerNb extends TranslationsAddServerEn {
 	@override String get duplicatePlexAccount => 'Allerede logget inn på Plex. Logg ut for å bytte konto.';
 	@override String get failedToRegisterAccount => 'Kunne ikke registrere kontoen';
 	@override String get enterJellyfinUrlError => 'Oppgi URL-en til Jellyfin-serveren din';
+	@override String get enterEmbyUrlError => 'Oppgi URL-en til Emby-serveren din';
 	@override String get addConnectionTitle => 'Legg til tilkobling';
 	@override String addConnectionTitleScoped({required Object name}) => 'Legg til i ${name}';
 	@override String get signInWithPlexCard => 'Logg på med Plex';
 	@override String get signInWithPlexCardSubtitle => 'Autoriser denne enheten. Delte servere legges til.';
 	@override String get signInWithPlexCardSubtitleScoped => 'Autoriser en Plex-konto. Home-brukere blir profiler.';
 	@override String get connectToJellyfinCard => 'Koble til Jellyfin';
+	@override String get connectToEmbyCard => 'Koble til Emby';
 	@override String get connectToJellyfinCardSubtitle => 'Skriv inn server-URL, brukernavn og passord.';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Logg på en Jellyfin-server. Knyttes til ${name}.';
+	@override String connectToEmbyCardSubtitleScoped({required Object name}) => 'Logg på en Emby-server. Knyttes til ${name}.';
 	@override String get borrowFromAnotherProfile => 'Lån fra en annen profil';
 	@override String get borrowFromAnotherProfileSubtitle => 'Gjenbruk en annen profils tilkobling. PIN-beskyttede profiler krever PIN.';
 }
@@ -2895,6 +2900,7 @@ extension on TranslationsNb {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Økten er utløpt for ${count} servere',
 			'connections.signInAgain' => 'Logg inn igjen',
 			'connections.editJellyfinTitle' => 'Rediger Jellyfin-tilkobling',
+			'connections.editEmbyTitle' => 'Rediger Emby-tilkobling',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Legg til eller fjern URL-er for ${serverName}. Pleya bruker den tilgjengelige URL-en med lavest forsinkelse.',
 			'connections.localSources' => 'Kilder på denne enheten',
 			'connections.removeSource' => 'Fjern kilde',
@@ -3302,9 +3308,9 @@ extension on TranslationsNb {
 			'companionRemote.session.startServer' => 'Start server',
 			'companionRemote.session.stopServer' => 'Stopp server',
 			'companionRemote.session.minimize' => 'Minimer',
-			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samme Plex-konto vises her',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.discoveryDescription' => 'Pleya-enheter med samme Plex-konto vises her',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Kobler til...',
 			'companionRemote.pairing.searchingForDevices' => 'Søker etter enheter...',
@@ -3545,11 +3551,12 @@ extension on TranslationsNb {
 			'trackers.libraryFilter.libraries' => 'Biblioteker',
 			'trackers.libraryFilter.noLibraries' => 'Ingen biblioteker tilgjengelige',
 			'addServer.addJellyfinTitle' => 'Legg til Jellyfin-server',
+			'addServer.addEmbyTitle' => 'Legg til Emby-server',
 			'addServer.serverUrls' => 'Server-URL-er',
 			'addServer.serverUrlsHelper' => 'Flere URL-er er tillatt, atskilt med komma.',
 			'addServer.findServer' => 'Finn server',
-			'addServer.searchingLocalServers' => 'Søker etter lokale Jellyfin-servere...',
-			'addServer.localServers' => 'Lokale Jellyfin-servere',
+			'addServer.searchingLocalServers' => 'Søker etter lokale servere...',
+			'addServer.localServers' => 'Lokale servere',
 			'addServer.username' => 'Brukernavn',
 			'addServer.password' => 'Passord',
 			'addServer.signIn' => 'Logg på',
@@ -3563,14 +3570,17 @@ extension on TranslationsNb {
 			'addServer.duplicatePlexAccount' => 'Allerede logget inn på Plex. Logg ut for å bytte konto.',
 			'addServer.failedToRegisterAccount' => 'Kunne ikke registrere kontoen',
 			'addServer.enterJellyfinUrlError' => 'Oppgi URL-en til Jellyfin-serveren din',
+			'addServer.enterEmbyUrlError' => 'Oppgi URL-en til Emby-serveren din',
 			'addServer.addConnectionTitle' => 'Legg til tilkobling',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Legg til i ${name}',
 			'addServer.signInWithPlexCard' => 'Logg på med Plex',
 			'addServer.signInWithPlexCardSubtitle' => 'Autoriser denne enheten. Delte servere legges til.',
 			'addServer.signInWithPlexCardSubtitleScoped' => 'Autoriser en Plex-konto. Home-brukere blir profiler.',
 			'addServer.connectToJellyfinCard' => 'Koble til Jellyfin',
+			'addServer.connectToEmbyCard' => 'Koble til Emby',
 			'addServer.connectToJellyfinCardSubtitle' => 'Skriv inn server-URL, brukernavn og passord.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Logg på en Jellyfin-server. Knyttes til ${name}.',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Logg på en Emby-server. Knyttes til ${name}.',
 			'addServer.borrowFromAnotherProfile' => 'Lån fra en annen profil',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Gjenbruk en annen profils tilkobling. PIN-beskyttede profiler krever PIN.',
 			'addLocalFolder.cardTitle' => 'Local Folder',

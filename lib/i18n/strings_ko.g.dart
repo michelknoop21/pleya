@@ -864,6 +864,7 @@ class _TranslationsConnectionsKo extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => '${count} 개의 서버에서 세션이 만료되었습니다';
 	@override String get signInAgain => '다시 로그인';
 	@override String get editJellyfinTitle => 'Jellyfin 연결 편집';
+	@override String get editEmbyTitle => 'Emby 연결 편집';
 	@override String editJellyfinIntro({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.';
 	@override String get localSources => '이 기기의 소스';
 	@override String get removeSource => '소스 제거';
@@ -1646,11 +1647,12 @@ class _TranslationsAddServerKo extends TranslationsAddServerEn {
 
 	// Translations
 	@override String get addJellyfinTitle => 'Jellyfin 서버 추가';
+	@override String get addEmbyTitle => 'Emby 서버 추가';
 	@override String get serverUrls => '서버 URL';
 	@override String get serverUrlsHelper => '쉼표로 구분하여 여러 URL을 입력할 수 있습니다.';
 	@override String get findServer => '서버 찾기';
-	@override String get searchingLocalServers => '로컬 Jellyfin 서버 검색 중...';
-	@override String get localServers => '로컬 Jellyfin 서버';
+	@override String get searchingLocalServers => '로컬 서버 검색 중...';
+	@override String get localServers => '로컬 서버';
 	@override String get username => '사용자 이름';
 	@override String get password => '비밀번호';
 	@override String get signIn => '로그인';
@@ -1664,14 +1666,17 @@ class _TranslationsAddServerKo extends TranslationsAddServerEn {
 	@override String get duplicatePlexAccount => '이미 Plex에 로그인되어 있습니다. 계정을 전환하려면 로그아웃하세요.';
 	@override String get failedToRegisterAccount => '계정 등록 실패';
 	@override String get enterJellyfinUrlError => 'Jellyfin 서버 URL을 입력하세요';
+	@override String get enterEmbyUrlError => 'Emby 서버 URL을 입력하세요';
 	@override String get addConnectionTitle => '연결 추가';
 	@override String addConnectionTitleScoped({required Object name}) => '${name}에 추가';
 	@override String get signInWithPlexCard => 'Plex로 로그인';
 	@override String get signInWithPlexCardSubtitle => '이 기기를 승인합니다. 공유 서버가 추가됩니다.';
 	@override String get signInWithPlexCardSubtitleScoped => 'Plex 계정을 승인합니다. Home 사용자는 프로필이 됩니다.';
 	@override String get connectToJellyfinCard => 'Jellyfin에 연결';
+	@override String get connectToEmbyCard => 'Emby에 연결';
 	@override String get connectToJellyfinCardSubtitle => '서버 URL, 사용자 이름, 비밀번호를 입력하세요.';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Jellyfin 서버에 로그인합니다. ${name}에 연결됩니다.';
+	@override String connectToEmbyCardSubtitleScoped({required Object name}) => 'Emby 서버에 로그인합니다. ${name}에 연결됩니다.';
 	@override String get borrowFromAnotherProfile => '다른 프로필에서 빌리기';
 	@override String get borrowFromAnotherProfileSubtitle => '다른 프로필의 연결을 재사용합니다. PIN으로 보호된 프로필에는 PIN이 필요합니다.';
 }
@@ -2895,6 +2900,7 @@ extension on TranslationsKo {
 			'connections.sessionExpiredMany' => ({required Object count}) => '${count} 개의 서버에서 세션이 만료되었습니다',
 			'connections.signInAgain' => '다시 로그인',
 			'connections.editJellyfinTitle' => 'Jellyfin 연결 편집',
+			'connections.editEmbyTitle' => 'Emby 연결 편집',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName}의 URL을 추가하거나 제거하세요. Pleya는 연결 가능한 URL 중 지연 시간이 가장 낮은 URL을 사용합니다.',
 			'connections.localSources' => '이 기기의 소스',
 			'connections.removeSource' => '소스 제거',
@@ -3302,9 +3308,9 @@ extension on TranslationsKo {
 			'companionRemote.session.startServer' => '서버 시작',
 			'companionRemote.session.stopServer' => '서버 중지',
 			'companionRemote.session.minimize' => '최소화',
-			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.discoveryDescription' => '같은 Plex 계정의 Pleya 기기가 여기에 표시됩니다',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '연결 중...',
 			'companionRemote.pairing.searchingForDevices' => '기기 검색 중...',
@@ -3545,11 +3551,12 @@ extension on TranslationsKo {
 			'trackers.libraryFilter.libraries' => '라이브러리',
 			'trackers.libraryFilter.noLibraries' => '사용 가능한 라이브러리가 없습니다',
 			'addServer.addJellyfinTitle' => 'Jellyfin 서버 추가',
+			'addServer.addEmbyTitle' => 'Emby 서버 추가',
 			'addServer.serverUrls' => '서버 URL',
 			'addServer.serverUrlsHelper' => '쉼표로 구분하여 여러 URL을 입력할 수 있습니다.',
 			'addServer.findServer' => '서버 찾기',
-			'addServer.searchingLocalServers' => '로컬 Jellyfin 서버 검색 중...',
-			'addServer.localServers' => '로컬 Jellyfin 서버',
+			'addServer.searchingLocalServers' => '로컬 서버 검색 중...',
+			'addServer.localServers' => '로컬 서버',
 			'addServer.username' => '사용자 이름',
 			'addServer.password' => '비밀번호',
 			'addServer.signIn' => '로그인',
@@ -3563,14 +3570,17 @@ extension on TranslationsKo {
 			'addServer.duplicatePlexAccount' => '이미 Plex에 로그인되어 있습니다. 계정을 전환하려면 로그아웃하세요.',
 			'addServer.failedToRegisterAccount' => '계정 등록 실패',
 			'addServer.enterJellyfinUrlError' => 'Jellyfin 서버 URL을 입력하세요',
+			'addServer.enterEmbyUrlError' => 'Emby 서버 URL을 입력하세요',
 			'addServer.addConnectionTitle' => '연결 추가',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => '${name}에 추가',
 			'addServer.signInWithPlexCard' => 'Plex로 로그인',
 			'addServer.signInWithPlexCardSubtitle' => '이 기기를 승인합니다. 공유 서버가 추가됩니다.',
 			'addServer.signInWithPlexCardSubtitleScoped' => 'Plex 계정을 승인합니다. Home 사용자는 프로필이 됩니다.',
 			'addServer.connectToJellyfinCard' => 'Jellyfin에 연결',
+			'addServer.connectToEmbyCard' => 'Emby에 연결',
 			'addServer.connectToJellyfinCardSubtitle' => '서버 URL, 사용자 이름, 비밀번호를 입력하세요.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Jellyfin 서버에 로그인합니다. ${name}에 연결됩니다.',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Emby 서버에 로그인합니다. ${name}에 연결됩니다.',
 			'addServer.borrowFromAnotherProfile' => '다른 프로필에서 빌리기',
 			'addServer.borrowFromAnotherProfileSubtitle' => '다른 프로필의 연결을 재사용합니다. PIN으로 보호된 프로필에는 PIN이 필요합니다.',
 			'addLocalFolder.cardTitle' => 'Local Folder',

@@ -569,7 +569,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
       final parentId = profile.parentConnectionId;
       if (parentId != null) {
         final conn = view.connectionsById[parentId];
-        if (conn != null) chips.add(_ChipData(backend: conn.backend, label: conn.displayLabel));
+        if (conn != null) chips.add(_ChipData(backend: conn.backend, isEmby: conn.isEmby, label: conn.displayLabel));
       }
     }
     final pcs = visibleProfileConnections(
@@ -578,7 +578,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
     );
     for (final pc in pcs) {
       final conn = view.connectionsById[pc.connectionId];
-      if (conn != null) chips.add(_ChipData(backend: conn.backend, label: conn.displayLabel));
+      if (conn != null) chips.add(_ChipData(backend: conn.backend, isEmby: conn.isEmby, label: conn.displayLabel));
     }
     return chips;
   }
@@ -859,7 +859,7 @@ class _ConnectionChips extends StatelessWidget {
             child: Row(
               mainAxisSize: .min,
               children: [
-                BackendBadge(backend: c.backend, size: 12),
+                BackendBadge(backend: c.backend, isEmby: c.isEmby, size: 12),
                 const SizedBox(width: 4),
                 Text(c.label, style: theme.textTheme.labelSmall),
               ],
@@ -872,6 +872,7 @@ class _ConnectionChips extends StatelessWidget {
 
 class _ChipData {
   final MediaBackend backend;
+  final bool isEmby;
   final String label;
-  const _ChipData({required this.backend, required this.label});
+  const _ChipData({required this.backend, this.isEmby = false, required this.label});
 }

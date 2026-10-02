@@ -1337,7 +1337,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
       focusKey: _serverHeaderFocusKey(section, serverId),
       icon: Symbols.dns_rounded,
       iconSize: 14,
-      leading: backend == null ? null : BackendBadge(backend: backend, size: 14, color: t.textMuted),
+      leading: backend == null
+          ? null
+          : BackendBadge(backend: backend, serverId: serverId, size: 14, color: t.textMuted),
       label: serverName,
       labelStyle: TextStyle(fontSize: 11, fontWeight: .w600, letterSpacing: 0.4, color: t.textMuted),
       verticalPadding: 6,

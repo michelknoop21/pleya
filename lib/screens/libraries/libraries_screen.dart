@@ -926,7 +926,7 @@ class _LibrariesScreenState extends State<LibrariesScreen>
     return Row(
       mainAxisSize: .min,
       children: [
-        BackendBadge(backend: library.backend, size: badgeSize, color: style?.color),
+        BackendBadge(backend: library.backend, serverId: library.serverId, size: badgeSize, color: style?.color),
         const SizedBox(width: 4),
         if (constrainText) Flexible(child: text) else text,
       ],
