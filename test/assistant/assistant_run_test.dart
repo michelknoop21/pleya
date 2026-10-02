@@ -22,6 +22,7 @@ class _Server {
   bool administration = true;
   String filmsTitle = 'Films';
   bool online = true;
+  bool failPermissions = false;
 
   /// Goes offline as soon as the first write arrives.
   bool dropOnWrite = false;
@@ -102,7 +103,9 @@ class _Server {
         }, status: 404);
       }
       if (path == '/users' && request.method == 'POST') return _json({'id': 'u9', 'username': 'Sam', 'role': 'member'});
-      if (path.endsWith('/permissions')) return _json(const {'items': []});
+      if (path.endsWith('/permissions')) {
+        return failPermissions ? _json(const {'error': 'boom'}, status: 500) : _json(const {'items': []});
+      }
       return _json(const {'status': 'queued'}, status: 202);
     }),
   );
@@ -442,6 +445,61 @@ void main() {
       expect(result.actions, isEmpty);
       expect(result.end, AssistantRunEnd.noTools, reason: 'no server left to administer');
     });
+  });
+
+  test('one reply cannot fire a burst of mutations', () async {
+    final (_, model, server) = await run([
+      _call('list_libraries', {'server_id': 'srv-1'}),
+      {
+        'role': 'assistant',
+        'content': '',
+        'tool_calls': [
+          for (var i = 0; i < 8; i++)
+            {
+              'id': 'b$i',
+              'type': 'function',
+              'function': {
+                'name': 'scan_library',
+                'arguments': jsonEncode({'server_id': 'srv-1', 'library_id': 'lib-films'}),
+              },
+            },
+        ],
+      },
+      _say('x'),
+    ]);
+    expect(server.writes, hasLength(AssistantRun.maxCallsPerReply));
+    expect(
+      model.toolResults.where((r) => r['error'] == 'too_many_calls'),
+      hasLength(8 - AssistantRun.maxCallsPerReply),
+    );
+  });
+
+  test('a user name with invisible or bidi characters is refused', () async {
+    final (_, model, server) = await run([
+      _call('create_user', {'server_id': 'srv-1', 'name': 'Sam\u202Enimda'}),
+      _say('x'),
+    ], confirm: (_) async => fail('no card for an invalid name'));
+    expect(model.toolResults.single, {'error': 'invalid_name'});
+    expect(server.writes, isEmpty);
+  });
+
+  test('a user created without its access grant is reported as created', () async {
+    final server = _Server()..failPermissions = true;
+    final (result, model, _) = await run(
+      [
+        _call('list_libraries', {'server_id': 'srv-1'}),
+        _call('create_user', {
+          'server_id': 'srv-1',
+          'name': 'Sam',
+          'library_ids': ['lib-kids'],
+        }, id: 'c2'),
+        _say('x'),
+      ],
+      server: server,
+      confirm: (_) async => const AssistantConfirmation(password: 'geheim123'),
+    );
+    expect(model.toolResults.last, {'status': 'created', 'name': 'Sam', 'library_access': 'failed'});
+    expect(result.actions.single.kind, AssistantActionKind.createUser);
   });
 
   test('the step limit ends a model that keeps calling tools', () async {

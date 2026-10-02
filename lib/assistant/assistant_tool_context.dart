@@ -78,7 +78,9 @@ class AssistantToolContext {
     if (cached != null) return cached;
     final client = adminClient(serverId);
     if (client == null) throw const AssistantToolError('server_not_available');
-    final libraries = (await client.fetchLibraries()).where((l) => !l.hidden).toList();
+    // Every library, hidden ones included: hiding is a browse preference of
+    // this profile, and access edits must see what they replace.
+    final libraries = await client.fetchLibraries();
     return _libraries[serverId.value] = libraries;
   }
 

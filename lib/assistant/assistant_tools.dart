@@ -2,6 +2,7 @@ import '../media/ids.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/server_administration.dart';
+import '../utils/app_logger.dart';
 import 'assistant_tool_context.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
@@ -136,7 +137,11 @@ bool _bool(Map<String, Object?> args, String key) => args[key] == true;
 
 String _userName(Map<String, Object?> args) {
   final name = _string(args, 'name');
-  if (name.length > 64 || RegExp(r'[\x00-\x1F\x7F/\\]').hasMatch(name)) throw const AssistantToolError('invalid_name');
+  // Control and format characters (bidi overrides, zero-width) would make
+  // the card show a different name than the one created.
+  if (name.length > 64 || RegExp(r'[\p{Cc}\p{Cf}/\\]', unicode: true).hasMatch(name)) {
+    throw const AssistantToolError('invalid_name');
+  }
   return name;
 }
 
@@ -147,6 +152,20 @@ Future<List<MediaLibrary>> _resolveLibraries(AssistantToolContext ctx, ServerId 
 ServerUserAdministration? _userAdmin(AssistantToolContext ctx, ServerId id) => ctx.admin<ServerUserAdministration>(id);
 
 bool _managesUsers(AssistantToolContext ctx, ServerId id) => _userAdmin(ctx, id) != null || ctx.plexSharing(id) != null;
+
+/// After a create the user exists, whatever happens next. A failed grant is
+/// reported as exactly that, so nobody creates the same user twice.
+Future<Map<String, Object?>> _grantAfterCreate(String name, bool grant, Future<void> Function() apply) async {
+  if (grant) {
+    try {
+      await apply();
+    } catch (e) {
+      appLogger.w('Assistant: user created, granting library access failed', error: e.runtimeType);
+      return {'status': 'created', 'name': name, 'library_access': 'failed'};
+    }
+  }
+  return {'status': 'created', 'name': name};
+}
 
 const _serverIdNote = 'Use ids exactly as earlier tool results returned them.';
 
@@ -425,12 +444,13 @@ final List<AssistantTool> assistantTools = [
           note: AssistantBackendNote.plexManagedHomeUser,
           execute: ({password}) async {
             final userId = await ctx.plexSharing(id)!.createManagedHomeUser(name);
-            if (all || libraries.isNotEmpty) {
-              await ctx
+            return _grantAfterCreate(
+              name,
+              all || libraries.isNotEmpty,
+              () => ctx
                   .plexSharing(id)!
-                  .setShareLibraries(userId, allLibraries: all, libraryIds: [for (final l in libraries) l.id]);
-            }
-            return {'status': 'created', 'name': name};
+                  .setShareLibraries(userId, allLibraries: all, libraryIds: [for (final l in libraries) l.id]),
+            );
           },
         );
       }
@@ -446,10 +466,11 @@ final List<AssistantTool> assistantTools = [
         execute: ({password}) async {
           final users = _userAdmin(ctx, id) ?? (throw const AssistantToolError('server_not_available'));
           final user = await users.createUser(name: name, password: password);
-          if (all || libraries.isNotEmpty) {
-            await users.setUserLibraryAccess(user.id, allLibraries: all, libraryIds: [for (final l in libraries) l.id]);
-          }
-          return {'status': 'created', 'name': name};
+          return _grantAfterCreate(
+            name,
+            all || libraries.isNotEmpty,
+            () => users.setUserLibraryAccess(user.id, allLibraries: all, libraryIds: [for (final l in libraries) l.id]),
+          );
         },
       );
     },

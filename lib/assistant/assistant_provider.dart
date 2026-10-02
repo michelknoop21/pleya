@@ -121,6 +121,21 @@ class AssistantProviderStore {
   }
 }
 
+/// The base URL without trailing slashes or the `/v1` / `/api` suffix that
+/// provider docs print, so `https://ollama.com/v1` and `https://ollama.com`
+/// reach the same endpoints.
+String normaliseBaseUrl(String url) {
+  var result = url.trim().replaceAll(RegExp(r'/+$'), '');
+  if (result.endsWith('/v1')) result = result.substring(0, result.length - 3);
+  if (result.endsWith('/api') && !result.endsWith('openrouter.ai/api')) result = result.substring(0, result.length - 4);
+  return result;
+}
+
+/// A header the user may add for a reverse proxy: an HTTP token as name and
+/// a value without line breaks.
+bool isValidProxyHeader(String name, String value) =>
+    RegExp(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$").hasMatch(name) && !RegExp(r'[\r\n\x00]').hasMatch(value);
+
 enum AssistantModelError { toolsUnsupported, unauthorized, unreachable, timeout, badResponse }
 
 class AssistantModelException implements Exception {
@@ -165,12 +180,13 @@ class AssistantModelClient {
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     if (config.apiKey.isNotEmpty) 'Authorization': 'Bearer ${config.apiKey}',
-    if (config.headerName.isNotEmpty && config.headerValue.isNotEmpty) config.headerName: config.headerValue,
+    if (config.headerName.isNotEmpty && isValidProxyHeader(config.headerName, config.headerValue))
+      config.headerName: config.headerValue,
     if (config.kind == AssistantProviderKind.openRouter) ...{'HTTP-Referer': 'https://pleya.app', 'X-Title': 'Pleya'},
   };
 
   Uri _uri(String path, [Map<String, String>? query]) =>
-      Uri.parse('${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}$path').replace(queryParameters: query);
+      Uri.parse('${normaliseBaseUrl(config.baseUrl)}$path').replace(queryParameters: query);
 
   Future<AssistantReply> chat(List<Map<String, Object?>> messages, List<Map<String, Object?>> tools) async {
     final body = {
@@ -188,7 +204,8 @@ class AssistantModelClient {
     if (response.statusCode == 400 || response.statusCode == 404) {
       // Ollama: 400 "does not support tools". OpenRouter: 404 "No endpoints
       // found that support tool use".
-      if (response.body.toLowerCase().contains('tool')) {
+      final body = response.body.toLowerCase();
+      if (body.contains('does not support tools') || body.contains('support tool use')) {
         throw const AssistantModelException(AssistantModelError.toolsUnsupported);
       }
     }
@@ -200,10 +217,12 @@ class AssistantModelClient {
     if (message is! Map) throw const AssistantModelException(AssistantModelError.badResponse, 'no message');
     final rawCalls = message['tool_calls'];
     final calls = <AssistantToolCall>[];
+    final kept = <Map<String, Object?>>[];
     if (rawCalls is List) {
       for (final (index, raw) in rawCalls.indexed) {
         final function = raw is Map ? raw['function'] : null;
         if (function is! Map || function['name'] is! String) continue;
+        kept.add((raw as Map).cast<String, Object?>());
         final args = function['arguments'];
         calls.add(
           AssistantToolCall(
@@ -215,23 +234,21 @@ class AssistantModelClient {
       }
     }
     final content = message['content'] is String ? message['content'] as String : '';
-    return AssistantReply(
-      content: content,
-      toolCalls: calls,
-      message: {
-        'role': 'assistant',
-        'content': content,
-        if (calls.isNotEmpty)
-          'tool_calls': [
-            for (final c in calls)
-              {
-                'id': c.id,
-                'type': 'function',
-                'function': {'name': c.name, 'arguments': c.arguments},
-              },
-          ],
-      },
-    );
+    // Back unchanged (reasoning fields included; OpenRouter requires that),
+    // with only ids filled in and arguments as text.
+    final echo = Map<String, Object?>.of(message.cast<String, Object?>())..['content'] = content;
+    if (calls.isNotEmpty) {
+      echo['tool_calls'] = [
+        for (final (index, c) in calls.indexed)
+          {
+            ...kept[index],
+            'id': c.id,
+            'type': 'function',
+            'function': {'name': c.name, 'arguments': c.arguments},
+          },
+      ];
+    }
+    return AssistantReply(content: content, toolCalls: calls, message: echo);
   }
 
   /// Models that can call tools. Anything else cannot drive the Assistant,
@@ -258,20 +275,33 @@ class AssistantModelClient {
           if (m is Map && m['name'] is String) m['name'] as String,
     ];
     // `/api/tags` says nothing about tools; `/api/show` does, per model.
+    // Four at a time: fast on a LAN, gentle on a small box.
     final result = <String>[];
-    for (final name in names) {
-      try {
-        final show = _json(
-          await _send(
-            () => _http.post(_uri('/api/show'), headers: _headers, body: jsonEncode({'model': name})),
-            _lookupTimeout,
-          ),
-        );
-        final capabilities = show['capabilities'];
-        if (capabilities is List && capabilities.contains('tools')) result.add(name);
-      } on AssistantModelException catch (e) {
-        if (e.error == AssistantModelError.unauthorized) rethrow;
-      }
+    var failures = 0;
+    for (var i = 0; i < names.length; i += 4) {
+      final batch = names.skip(i).take(4);
+      await Future.wait([
+        for (final name in batch)
+          () async {
+            try {
+              final show = _json(
+                await _send(
+                  () => _http.post(_uri('/api/show'), headers: _headers, body: jsonEncode({'model': name})),
+                  _lookupTimeout,
+                ),
+              );
+              final capabilities = show['capabilities'];
+              if (capabilities is List && capabilities.contains('tools')) result.add(name);
+            } on AssistantModelException catch (e) {
+              if (e.error == AssistantModelError.unauthorized) rethrow;
+              failures++;
+            }
+          }(),
+      ]);
+    }
+    // Every lookup failing is a broken connection, not "no tool models".
+    if (names.isNotEmpty && failures == names.length) {
+      throw const AssistantModelException(AssistantModelError.badResponse, 'model details unavailable');
     }
     return result..sort();
   }
@@ -282,10 +312,14 @@ class AssistantModelClient {
       response = await request().timeout(timeout);
     } on TimeoutException {
       throw const AssistantModelException(AssistantModelError.timeout);
-    } on SocketException catch (e) {
-      throw AssistantModelException(AssistantModelError.unreachable, e.message);
-    } on http.ClientException catch (e) {
-      throw AssistantModelException(AssistantModelError.unreachable, e.message);
+    } on IOException {
+      // Sockets, TLS handshakes (a self-signed NAS certificate), HTTP.
+      throw const AssistantModelException(AssistantModelError.unreachable);
+    } on http.ClientException {
+      throw const AssistantModelException(AssistantModelError.unreachable);
+    } on FormatException {
+      // A malformed header or URL; its message may hold the value.
+      throw const AssistantModelException(AssistantModelError.badResponse, 'invalid request');
     }
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw const AssistantModelException(AssistantModelError.unauthorized);

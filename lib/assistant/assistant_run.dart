@@ -79,7 +79,14 @@ class AssistantRun {
       'for passwords.\n'
       '- Reply briefly, in $languageName, without technical details such as ids or tool names.';
 
+  /// Calls carried out per model reply and per run. A reply with a hundred
+  /// scans, or a planted instruction that asks for them, stops here.
+  static const int maxCallsPerReply = 4;
+  static const int maxCallsPerRun = 10;
+
   Future<AssistantRunResult> ask(String prompt) async {
+    _actions.clear();
+    var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
     }
@@ -111,12 +118,21 @@ class AssistantRun {
               : AssistantRunEnd.providerError,
           error: e.error,
         );
+      } catch (e, st) {
+        // Anything else from the provider path is still a provider failure,
+        // not a crash of the run.
+        appLogger.w('Assistant model call failed', error: e.runtimeType, stackTrace: st);
+        return _end(AssistantRunEnd.providerError, error: AssistantModelError.badResponse);
       }
       messages.add(reply.message);
       if (reply.toolCalls.isEmpty) return _end(AssistantRunEnd.answered, text: reply.content);
       // Serial on purpose: a write must see the state the previous one left.
-      for (final call in reply.toolCalls) {
-        final output = await _execute(call);
+      for (final (index, call) in reply.toolCalls.indexed) {
+        // Every call gets an answer, so the history stays valid.
+        final output = index >= maxCallsPerReply || callsThisRun >= maxCallsPerRun
+            ? const {'error': 'too_many_calls'}
+            : await _execute(call);
+        callsThisRun++;
         messages.add({'role': 'tool', 'tool_call_id': call.id, 'content': jsonEncode(output)});
       }
     }
