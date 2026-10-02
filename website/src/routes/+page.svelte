@@ -2,6 +2,7 @@
   import '$lib/components/home/home.css';
   import Hero from '$lib/components/home/Hero.svelte';
   import Unified from '$lib/components/home/Unified.svelte';
+  import Video from '$lib/components/home/Video.svelte';
   import Reel from '$lib/components/home/Reel.svelte';
   import Devices from '$lib/components/home/Devices.svelte';
   import Share from '$lib/components/home/Share.svelte';
@@ -58,6 +59,7 @@
   <TopNav />
   <Hero />
   <main>
+    <Video />
     <Unified />
     <Reel />
     <Devices />

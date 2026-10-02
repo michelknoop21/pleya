@@ -59,6 +59,10 @@
   .unified-shots .cap { margin-left: 26%; }
 
   /* Apple TV reel */
+  .video { padding-top: 6rem; }
+  .video .lede { margin-top: 1.4rem; }
+  .video-frame { margin-top: 3rem; }
+  .video-frame video { display: block; width: 100%; height: auto; }
   .reel { padding-top: 6rem; }
   .reel-head { display: grid; gap: 1.2rem; }
   .reel-viewport { margin-top: 3rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }

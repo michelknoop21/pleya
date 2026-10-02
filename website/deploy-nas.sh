@@ -8,8 +8,8 @@ echo "→ building static site"
 bun run build
 
 echo "→ shipping to NAS (/volume1/docker/pleya)"
-tar czf - Dockerfile nginx.conf docker-compose.yml .dockerignore build \
-  | ssh synology 'mkdir -p /volume1/docker/pleya && rm -rf /volume1/docker/pleya/build \
+tar czf - Dockerfile nginx.conf docker-compose.yml download_counter.py .dockerignore build \
+  | ssh synology 'mkdir -p /volume1/docker/pleya/download-data && rm -rf /volume1/docker/pleya/build \
       && tar xzf - -C /volume1/docker/pleya'
 
 echo "→ rebuilding container"
