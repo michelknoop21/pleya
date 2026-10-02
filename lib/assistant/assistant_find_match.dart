@@ -1,8 +1,14 @@
+import '../media/media_backend.dart';
+import '../media/media_identity.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
+import '../media/unified/canonical_media_identity.dart';
+import '../media/unified/identity_evidence.dart';
+import '../media/unified/unified_media_source.dart';
 import '../models/seerr/seerr_media.dart';
+import '../services/unified_catalog/grouping_service.dart';
+import '../services/unified_catalog/identity_resolver.dart';
 import '../utils/external_ids.dart';
-import 'assistant_plot_index.dart';
 
 /// A title the model proposed: never an id, only words.
 typedef FindCandidate = ({String title, int? year, MediaKind? kind});
@@ -91,13 +97,32 @@ class FindMatch {
     _ => 0,
   };
 
-  bool sameAs(FindMatch other) {
+  /// The match in the type `findAllByIdentity` takes.
+  MediaIdentity get identity =>
+      MediaIdentity(externalIds: ids, title: title, year: year, kind: kind ?? MediaKind.unknown);
+
+  /// What [MediaIdentity.pickAllMatches] compares against: the concrete
+  /// library copies, or every name a source gave the title.
+  List<({MediaItem item, ExternalIds ids})> get _probes => library.isNotEmpty
+      ? [for (final item in library) MediaIdentity.candidate(item, ids)]
+      : [
+          for (final t in titles)
+            MediaIdentity.candidate(
+              MediaItem(id: '', backend: MediaBackend.plex, kind: kind ?? MediaKind.unknown, title: t, year: year),
+              ids,
+            ),
+        ];
+
+  /// Whether [other] names the same title, by [MediaIdentity]'s own rules
+  /// (an external id is proof, a title with a year that does not disagree
+  /// the fallback), and no external id of one contradicts the other.
+  bool namesSameTitle(FindMatch other) {
     if (kind != null && other.kind != null && kind != other.kind) return false;
-    if (ids.tmdb != null && other.ids.tmdb != null) return ids.tmdb == other.ids.tmdb;
-    if (ids.imdb != null && other.ids.imdb != null) return ids.imdb == other.ids.imdb;
-    if (year != null && other.year != null && (year! - other.year!).abs() > 1) return false;
-    final keys = {for (final t in titles) titleKey(t)};
-    return other.titles.any((t) => keys.contains(titleKey(t)));
+    final mine = externalIdTokens(scope: 'title', ids: ids);
+    final theirs = externalIdTokens(scope: 'title', ids: other.ids);
+    if (mine.any((a) => theirs.any((b) => a.namespace == b.namespace && a.value != b.value))) return false;
+    bool picks(FindMatch a, FindMatch b) => b._probes.any((p) => a.identity.pickAllMatches([p]).isNotEmpty);
+    return picks(this, other) || picks(other, this);
   }
 
   void absorb(FindMatch other) {
@@ -126,21 +151,71 @@ class FindMatch {
   }
 }
 
-/// Adds [m] to [matches], or folds it into the match it is the same title as.
+/// Adds [m] to [matches], or folds it into the match naming the same title.
+/// Two matches that both hold library copies are left apart here: those are
+/// grouped by the unified catalog's identity pipeline once their ids are in.
 FindMatch addMatch(List<FindMatch> matches, FindMatch m) {
   for (final existing in matches) {
-    if (existing.sameAs(m)) return existing..absorb(m);
+    if (existing.library.isNotEmpty && m.library.isNotEmpty) continue;
+    if (existing.namesSameTitle(m)) return existing..absorb(m);
   }
   matches.add(m);
   return m;
 }
 
-/// Folds matches that turned out to be one title once their ids are known.
-void collapseMatches(List<FindMatch> matches) {
-  for (var i = 0; i < matches.length; i++) {
-    for (var j = matches.length - 1; j > i; j--) {
-      if (matches[i].sameAs(matches[j])) matches[i].absorb(matches.removeAt(j));
+/// Library copies become one title through the unified catalog's own
+/// identity pipeline (resolver evidence, then `groupUnifiedMediaSources`), as
+/// search_catalog and compare_servers group them: matches whose copies land
+/// in one group are folded together. [fetchExternalIds] serves the resolver.
+Future<void> groupLibraryMatches(
+  List<FindMatch> matches,
+  Future<ExternalIds> Function(String serverId, String targetId) fetchExternalIds,
+) async {
+  final owners = <String, List<FindMatch>>{};
+  final items = <MediaItem>[];
+  for (final m in matches) {
+    for (final item in m.library) {
+      if (item.kind != MediaKind.movie && item.kind != MediaKind.show) continue;
+      final owned = owners[item.globalKey] ??= [];
+      if (owned.isEmpty) items.add(item);
+      owned.add(m);
     }
+  }
+  if (owners.length < 2) return;
+  final evidence = await UnifiedIdentityResolver(fetchExternalIds: fetchExternalIds).resolveEvidence([
+    for (final item in items)
+      ResolvableItem(
+        item: item,
+        identity: canonicalIdentityOf(item),
+        scope: (canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque()).granularity.name,
+        externalIdTarget: normalizeStableGuid(item.guid) == null ? (serverId: item.serverId!, targetId: item.id) : null,
+      ),
+  ]);
+  final groups = groupUnifiedMediaSources([
+    for (var i = 0; i < items.length; i++)
+      GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
+  ]);
+  for (final group in groups) {
+    final same = {for (final s in group.sources) ...?owners[s.sourceKey]}.where(matches.contains).toList();
+    for (final other in same.skip(1)) {
+      same.first.absorb(other);
+      matches.remove(other);
+    }
+  }
+}
+
+/// A match without library copies (the model's, Wikipedia's, the web's,
+/// Seerr's) joins the match it names by [FindMatch.namesSameTitle]: a shared
+/// TMDB id from Seerr or Wikidata, or the title.
+void attachLooseMatches(List<FindMatch> matches) {
+  for (final loose in [
+    for (final m in matches)
+      if (m.library.isEmpty) m,
+  ]) {
+    final home = matches.where((m) => !identical(m, loose) && m.namesSameTitle(loose)).firstOrNull;
+    if (home == null) continue;
+    home.absorb(loose);
+    matches.remove(loose);
   }
 }
 

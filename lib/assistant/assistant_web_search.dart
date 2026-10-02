@@ -2,13 +2,17 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../utils/abortable_http_request.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
+
 /// One web search result: page title, address and a text snippet.
 typedef WebSearchHit = ({String title, String url, String snippet});
 
 /// A real web search, separate from the chat model: find_title calls it at
 /// most once per question, and only when the cheap sources fell short.
 abstract class WebSearchClient {
-  Future<List<WebSearchHit>> search(String query, {int maxResults = 5});
+  /// [abort] cancels the request on the wire.
+  Future<List<WebSearchHit>> search(String query, {int maxResults = 5, AbortController? abort});
 }
 
 /// `POST https://ollama.com/api/web_search` with a Bearer key: `query` and
@@ -21,9 +25,12 @@ class OllamaWebSearch implements WebSearchClient {
   static final endpoint = Uri.parse('https://ollama.com/api/web_search');
 
   @override
-  Future<List<WebSearchHit>> search(String query, {int maxResults = 5}) async {
-    final response = await _client.post(
+  Future<List<WebSearchHit>> search(String query, {int maxResults = 5, AbortController? abort}) async {
+    final response = await sendAbortableHttpRequest(
+      _client,
+      'POST',
       endpoint,
+      abortTrigger: abort?.trigger,
       headers: {'Authorization': 'Bearer $apiKey', 'Content-Type': 'application/json'},
       body: jsonEncode({'query': query, 'max_results': maxResults.clamp(1, 10)}),
     );
@@ -51,9 +58,12 @@ class OpenRouterWebSearch implements WebSearchClient {
   static final endpoint = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
 
   @override
-  Future<List<WebSearchHit>> search(String query, {int maxResults = 5}) async {
-    final response = await _client.post(
+  Future<List<WebSearchHit>> search(String query, {int maxResults = 5, AbortController? abort}) async {
+    final response = await sendAbortableHttpRequest(
+      _client,
+      'POST',
       endpoint,
+      abortTrigger: abort?.trigger,
       headers: {'Authorization': 'Bearer $apiKey', 'Content-Type': 'application/json'},
       body: jsonEncode({
         'model': model,

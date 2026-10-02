@@ -109,6 +109,11 @@ void main() {
       'in the export service and unregistered in the policy registry, so it reaches neither an '
       'export nor iCloud',
     ),
+    'lib/assistant/assistant_provider.dart': RawWriteRecord(
+      WriteCategory.secret,
+      2,
+      'the vault-protected Big P provider config with its API keys; device-local, the key is registered secret',
+    ),
     'lib/services/credential_vault.dart': RawWriteRecord(
       WriteCategory.secret,
       1,
@@ -246,8 +251,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 94, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 26, reason: 'files containing them');
+    expect(total, 96, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 27, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {

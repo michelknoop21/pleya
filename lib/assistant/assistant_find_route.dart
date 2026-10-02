@@ -1,24 +1,32 @@
 /// find_title's route: model interpretation, then the local plot index and
 /// Wikipedia, then Pleya's own identity pipeline, then library and Seerr,
-/// and a single web search only when that still leaves doubt.
+/// and a single web search only when that still leaves doubt. Web answers
+/// are cached per profile session; web calls still running when evidence
+/// suffices or the deadline hits are aborted on the wire.
 library;
 
 import 'dart:async';
 
+import 'package:http/http.dart' as http;
+
 import '../media/ids.dart';
-import '../media/media_identity.dart';
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
+import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems;
 import '../services/seerr/seerr_client.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../services/unified_catalog/source_resolver.dart';
 import '../utils/app_logger.dart';
 import '../utils/external_ids.dart';
+import '../utils/global_key_utils.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_find_episodes.dart';
 import 'assistant_find_match.dart';
 import 'assistant_plot_index.dart';
 import 'assistant_tool_context.dart';
+import 'assistant_web_lookup.dart';
+import 'assistant_web_search.dart';
 
 class FindResult {
   const FindResult(this.matches, {this.partial = false, this.webSearched = false});
@@ -30,23 +38,39 @@ class FindResult {
 }
 
 /// Runs the route for [q] within [budget]. Never throws; what did not answer
-/// in time is left out and flagged as partial. Calls still in flight when it
-/// returns are ignored, and no new one starts.
+/// in time is left out and flagged as partial. Web calls still in flight when
+/// it returns are aborted; media-server and Seerr calls, whose clients take
+/// no abort, are left to finish unread. No new call starts.
 Future<FindResult> findTitles(
   AssistantToolContext ctx,
   FindQuery q, {
   Duration budget = const Duration(seconds: 8),
   Duration headStart = const Duration(milliseconds: 800),
   AssistantPlotIndexCache? plots,
-}) => FindRun(ctx, q, budget, plots ?? AssistantPlotIndexCache.shared).run(headStart);
+  AssistantWebCache? webCache,
+}) => FindRun(
+  ctx,
+  q,
+  budget,
+  plots ?? AssistantPlotIndexCache.shared,
+  webCache ?? AssistantWebCache.shared,
+).run(headStart);
 
 class FindRun {
-  FindRun(this.ctx, this.q, this.budget, this.plots);
+  FindRun(this.ctx, this.q, this.budget, this.plots, this.webCache);
   final AssistantToolContext ctx;
   final FindQuery q;
   final Duration budget;
   final AssistantPlotIndexCache plots;
+  final AssistantWebCache webCache;
   final _clock = Stopwatch()..start();
+
+  /// Fires when the run ends or its deadline passes: every web call of the
+  /// run listens to it.
+  final _abort = AbortController();
+
+  /// External ids already fetched, per library copy, for the identity resolver.
+  final _knownIds = <String, ExternalIds>{};
   final matches = <FindMatch>[];
   var partial = false;
   var _webSearched = false;
@@ -64,7 +88,11 @@ class FindRun {
     }
     try {
       return await call().timeout(_left);
+    } on http.RequestAbortedException {
+      // Cancelled on purpose: enough evidence already, or the run is over.
+      return null;
     } catch (e) {
+      if (e is TimeoutException) _abort.abort();
       partial = true;
       appLogger.w('Assistant: find_title source failed', error: e.runtimeType);
       return null;
@@ -83,7 +111,16 @@ class FindRun {
     _ => const [],
   };
 
-  late final Set<String> _libraryKeys = {for (final l in libraries) '${l.client.serverId.value}/${l.libraryId}'};
+  /// Movie and series libraries of [server] that Home hides from this
+  /// profile. A deny-list, like normal search: a copy whose `libraryId` names
+  /// no known library (Jellyfin falls back to `ParentId`) stays in.
+  Future<Set<String>> _hiddenKeys(ServerId server) async {
+    final visible = {for (final l in libraries) buildGlobalKey(l.client.serverId, l.libraryId)};
+    return {
+      for (final l in await ctx.libraries(server))
+        if ((l.kind == MediaKind.movie || l.kind == MediaKind.show) && !visible.contains(l.globalKey)) l.globalKey,
+    };
+  }
 
   Future<FindResult> run(Duration headStart) async {
     final series = q.series;
@@ -98,10 +135,15 @@ class FindRun {
     // only joins when that does not already settle it.
     final local = attempt(_local);
     await Future.any([local, Future<void>.delayed(headStart)]);
+    final wikiAbort = _child();
     Future<void>? wiki;
-    if (!sufficient) wiki = attempt(_wikipedia);
+    if (!sufficient) wiki = attempt(() => _wikipedia(wikiAbort));
     await local;
-    if (!sufficient) wiki ??= attempt(_wikipedia);
+    if (sufficient) {
+      wikiAbort.abort();
+    } else {
+      wiki ??= attempt(() => _wikipedia(wikiAbort));
+    }
     await wiki;
 
     // Wave 2: ids through the existing pipeline, then library and Seerr.
@@ -110,6 +152,7 @@ class FindRun {
     if (q.wantsEpisode) await findEpisode(this);
 
     _done = true;
+    _abort.abort();
     matches.sort((a, b) {
       final byRank = b.rank.compareTo(a.rank);
       if (byRank != 0) return byRank;
@@ -139,12 +182,40 @@ class FindRun {
     }
   }
 
-  Future<void> _wikipedia() async {
+  /// An abort that also fires with the run's own.
+  AbortController _child() {
+    final child = AbortController();
+    _abort.trigger.then((_) => child.abort());
+    return child;
+  }
+
+  String get _profile => ctx.catalog?.activeProfileId() ?? '';
+
+  /// Wikipedia search on [lang], from the session cache when asked before.
+  Future<List<WikiHit>> wikipedia(String query, String lang, [AbortController? abort]) => webCache.get(
+    _profile,
+    'wikipedia:$lang',
+    query,
+    () => ctx.web!.wikipedia(query, lang: lang, abort: abort ?? _abort),
+  );
+
+  /// The one real web search of the question; null once it was spent, when
+  /// there is none, or when it failed.
+  Future<List<WebSearchHit>?> searchWebOnce(String query) async {
+    final search = ctx.web?.search;
+    if (search == null || _webSearched || query.isEmpty || _done || _left <= Duration.zero) return null;
+    _webSearched = true;
+    return attempt(
+      () => webCache.get(_profile, 'web', query, () => search.search(query, maxResults: 5, abort: _abort)),
+    );
+  }
+
+  Future<void> _wikipedia(AbortController abort) async {
     final web = ctx.web;
     if (web == null || q.variants.isEmpty) return;
     final searches = [
       for (final (i, lang) in web.languages.indexed)
-        if (i < q.variants.length) web.wikipedia(q.variants[i], lang: lang),
+        if (i < q.variants.length) wikipedia(q.variants[i], lang, abort),
     ];
     for (final hits in await Future.wait(searches)) {
       for (final hit in hits.take(3)) {
@@ -154,7 +225,7 @@ class FindRun {
           ..qid = hit.qid
           ..snippet = hit.description;
         // An untyped page only counts when it names a title already in play.
-        if (hit.kind == null && !matches.any((e) => e.sameAs(m))) continue;
+        if (hit.kind == null && !matches.any((e) => e.namesSameTitle(m))) continue;
         addMatch(matches, m);
       }
     }
@@ -169,7 +240,7 @@ class FindRun {
           attempt(() async {
             final item = m.library.first;
             final client = ctx.userClient(ServerId(item.serverId!));
-            if (client != null) m.ids = await client.fetchExternalIds(item.id);
+            if (client != null) m.ids = _knownIds[item.globalKey] = await client.fetchExternalIds(item.id);
           }),
     ]);
     final client = seerr;
@@ -185,18 +256,27 @@ class FindRun {
     ];
     final web = ctx.web;
     if (bridge.isNotEmpty && web != null) {
-      final ids = await attempt(() => web.wikidataIds(bridge.map((m) => m.qid!)));
+      final qids = [for (final m in bridge) m.qid!]..sort();
+      final ids = await attempt(
+        () => webCache.get(_profile, 'wikidata', qids.join(' '), () => web.wikidataIds(qids, abort: _abort)),
+      );
       for (final m in bridge) {
         m.ids = ids?[m.qid] ?? m.ids;
       }
     }
-    collapseMatches(matches);
+    attachLooseMatches(matches);
     final live = [
       for (final m in todo)
         if (matches.contains(m)) m,
     ];
     await Future.wait([for (final m in live) _link(m)]);
-    collapseMatches(matches);
+    await groupLibraryMatches(matches, (serverId, targetId) async {
+      if (_knownIds[buildGlobalKey(ServerId(serverId), targetId)] case final known?) return known;
+      final client = ctx.userClient(ServerId(serverId));
+      if (client == null || _done || _left <= Duration.zero) throw StateError('no lookup');
+      return client.fetchExternalIds(targetId).timeout(_left);
+    });
+    attachLooseMatches(matches);
   }
 
   void _pickSeerr(FindMatch m, List<SeerrMedia> found) {
@@ -221,14 +301,15 @@ class FindRun {
   /// for the title, side by side.
   Future<void> _link(FindMatch m) async {
     final kind = m.kind;
-    final identity = MediaIdentity(externalIds: m.ids, title: m.title, year: m.year, kind: kind ?? MediaKind.unknown);
+    final identity = m.identity;
     final servers = {for (final l in libraries) l.client.serverId: l.client};
     final client = seerr;
     final tmdb = m.ids.tmdb;
     await Future.wait([
       if (servers.isNotEmpty && kind != MediaKind.episode)
-        attempt(
-          () => fanOutFindAllByIdentity(
+        attempt(() async {
+          final hidden = {for (final id in servers.keys) id.value: await _hiddenKeys(id)};
+          return fanOutFindAllByIdentity(
             servers: [
               for (final MapEntry(:key, :value) in servers.entries)
                 if (isIdentityEligibleBackend(value.backend)) (serverId: key, client: value, online: true),
@@ -238,15 +319,16 @@ class FindRun {
             onBatch: (batch) {
               for (final r in batch) {
                 m.addLibrary([
-                  for (final item in r.matches)
-                    if (item.libraryId == null || _libraryKeys.contains('${r.serverId.value}/${item.libraryId}'))
-                      _stamp(item, r.serverId.value),
+                  for (final item in filterHiddenLibraryItems([
+                    for (final item in r.matches) _stamp(item, r.serverId.value),
+                  ], hidden[r.serverId.value]))
+                    item,
                 ]);
               }
               return false;
             },
-          ),
-        ),
+          );
+        }),
       if (client != null && m.seerr == null && tmdb != null && kind != null)
         attempt(() async {
           final movie = kind == MediaKind.movie;
@@ -259,10 +341,7 @@ class FindRun {
   /// One real web search for the whole question, only when the cheap
   /// sources left it open.
   Future<void> _webFallback() async {
-    final search = ctx.web?.search;
-    if (search == null || _webSearched || q.variants.isEmpty || _done || _left <= Duration.zero) return;
-    _webSearched = true;
-    final hits = await attempt(() => search.search(q.variants.first, maxResults: 5));
+    final hits = await searchWebOnce(q.variants.firstOrNull ?? '');
     if (hits == null) return;
     final fresh = <FindMatch>[];
     for (final hit in hits) {
@@ -274,7 +353,7 @@ class FindRun {
       if (parsed.title.isEmpty || parsed.title.length > 80 || fresh.length >= 3) continue;
       final m = FindMatch(parsed.title, year: parsed.year, kind: q.kind, sources: [FindSource.web])
         ..snippet = hit.snippet;
-      if (!matches.any((e) => e.sameAs(m))) fresh.add(addMatch(matches, m));
+      if (!matches.any((e) => e.namesSameTitle(m))) fresh.add(addMatch(matches, m));
     }
     if (fresh.isNotEmpty) await _resolve(fresh);
   }

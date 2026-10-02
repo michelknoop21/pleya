@@ -183,6 +183,17 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   final found = <MediaItem>[];
   final genreChecked = <String>{};
   var partial = false;
+  // The libraries Home shows this profile (`librariesFor`: visible server,
+  // library not hidden), as find_title reads them. A server's other movie
+  // and series libraries are hidden here; its hits there are dropped with
+  // the app's own predicate, which keeps a hit that names no library.
+  final visible = switch (ctx.catalog?.rowLoader) {
+    final CatalogHomeCustomRowLoader loader => {
+      for (final kind in const [MediaKind.movie, MediaKind.show])
+        for (final l in loader.librariesFor(kind)) buildGlobalKey(l.serverId, l.libraryId),
+    },
+    _ => null,
+  };
   for (final id in ctx.userServers) {
     final client = ctx.userClient(id);
     if (client == null || (person != null && client is! PersonSearchClient)) {
@@ -190,6 +201,13 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       continue;
     }
     try {
+      final hidden = visible == null
+          ? const <String>{}
+          : {
+              for (final l in await ctx.libraries(id))
+                if ((l.kind == MediaKind.movie || l.kind == MediaKind.show) && !visible.contains(l.globalKey))
+                  l.globalKey,
+            };
       final List<MediaItem> hits;
       if (person != null) {
         final people = await (client as PersonSearchClient).searchPeople(person, limit: 1);
@@ -206,6 +224,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
         if (unwatched && hit.isWatched) continue;
         if (inProgress && !hit.hasActiveProgress) continue;
         final item = (hit.serverId?.isEmpty ?? true) ? hit.copyWith(serverId: id.value) : hit;
+        if (filterHiddenLibraryItems([item], hidden).isEmpty) continue;
         // Search hits often carry no genres (Jellyfin's never do): such a hit
         // stays in and is reported as unverified rather than dropped.
         final itemGenres = {for (final g in item.genres ?? const <String>[]) g.toLowerCase()};

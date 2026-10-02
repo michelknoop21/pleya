@@ -73,6 +73,7 @@ const _redPlanet = AssistantTitleMatch(
   confidence: 'low',
   targets: [],
   request: _request,
+  snippet: 'Astronauts stranded on a dying Mars.',
 );
 
 final _episode = AssistantTitleMatch(
@@ -231,6 +232,12 @@ void main() {
 
       expect(find.textContaining(t.assistant.match.maybe), findsOneWidget);
       expect(find.text('${t.assistant.match.movie} · ${t.assistant.match.maybe}'), findsOneWidget);
+    });
+
+    testWidgets('the plot line is the text the title was matched on', (tester) async {
+      await pumpSurface(tester);
+
+      expect(find.text('Astronauts stranded on a dying Mars.'), findsOneWidget);
     });
   });
 

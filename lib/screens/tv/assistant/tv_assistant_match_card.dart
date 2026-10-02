@@ -60,9 +60,9 @@ class TvAssistantMatchCard extends StatelessWidget {
     return request == null ? (null, null) : tvAssistantRequestStatus(request.status);
   }
 
-  // ponytail: the display carries no snippet yet, so this is the library
-  // summary or the Seerr overview; switch to the find snippet once it has one.
-  String get _plot => clipText(match.targets.firstOrNull?.item.summary ?? match.request?.overview, 160);
+  String get _plot => match.snippet.isNotEmpty
+      ? match.snippet
+      : clipText(match.targets.firstOrNull?.item.summary ?? match.request?.overview, 160);
 
   Widget _poster(BuildContext context) {
     final target = match.targets.firstOrNull;

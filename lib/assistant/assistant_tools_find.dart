@@ -22,6 +22,7 @@ class AssistantTitleMatch {
     this.series,
     this.season,
     this.episode,
+    this.snippet = '',
   });
   final String matchId;
   final String title;
@@ -39,6 +40,9 @@ class AssistantTitleMatch {
   final String? series;
   final int? season;
   final int? episode;
+
+  /// The plot text the title was matched on, clipped; may be empty.
+  final String snippet;
 }
 
 class AssistantTitleMatches extends AssistantDisplay {
@@ -196,6 +200,7 @@ final List<AssistantTool> _findTools = [
             series: m.series == null ? null : clipText(m.series),
             season: m.season,
             episode: m.episode,
+            snippet: clipText(m.snippet, 160),
           ),
         );
       }

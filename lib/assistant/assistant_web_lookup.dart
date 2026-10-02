@@ -7,7 +7,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../media/media_kind.dart';
+import '../utils/abortable_http_request.dart';
 import '../utils/external_ids.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
+import 'assistant_plot_index.dart';
 import 'assistant_web_search.dart';
 
 /// A Wikipedia search hit with what its short description says about it.
@@ -47,8 +50,9 @@ class AssistantWebServices {
   /// Full-text search on [lang].wikipedia.org through the Action API:
   /// `generator=search` plus `pageprops` (the Wikidata item) and the short
   /// description, in one request.
-  Future<List<WikiHit>> wikipedia(String query, {String lang = 'en', int limit = 5}) async {
+  Future<List<WikiHit>> wikipedia(String query, {String lang = 'en', int limit = 5, AbortController? abort}) async {
     final body = await _get(
+      abort,
       Uri.https('$lang.wikipedia.org', '/w/api.php', {
         'action': 'query',
         'format': 'json',
@@ -72,13 +76,14 @@ class AssistantWebServices {
 
   /// TMDB, IMDb and TVDB ids for Wikidata items, in one `wbgetentities` call:
   /// P4947 TMDB movie, P4983 TMDB TV series, P345 IMDb, P4835 TheTVDB series.
-  Future<Map<String, ExternalIds>> wikidataIds(Iterable<String> qids) async {
+  Future<Map<String, ExternalIds>> wikidataIds(Iterable<String> qids, {AbortController? abort}) async {
     final wanted = {
       for (final q in qids)
         if (RegExp(r'^Q\d+$').hasMatch(q)) q,
     };
     if (wanted.isEmpty) return const {};
     final body = await _get(
+      abort,
       Uri.https('www.wikidata.org', '/w/api.php', {
         'action': 'wbgetentities',
         'format': 'json',
@@ -109,8 +114,15 @@ class AssistantWebServices {
     );
   }
 
-  Future<Map> _get(Uri uri) async {
-    final response = await (client ?? _defaultClient).get(uri, headers: _headers);
+  /// A GET that [abort] really cancels on the wire, not only stops waiting for.
+  Future<Map> _get(AbortController? abort, Uri uri) async {
+    final response = await sendAbortableHttpRequest(
+      client ?? _defaultClient,
+      'GET',
+      uri,
+      headers: _headers,
+      abortTrigger: abort?.trigger,
+    );
     if (response.statusCode != 200) throw http.ClientException('${response.statusCode}', uri);
     final body = jsonDecode(response.body);
     return body is Map ? body : const {};
@@ -138,4 +150,32 @@ WikiHit wikiHit(String title, String description, Object? pageprops) {
     kind: kind,
     qid: qid is String ? qid : null,
   );
+}
+
+/// Wikipedia, Wikidata and web search answers for one profile session, keyed
+/// by their normalised query and kept for [ttl], beside the plot index cache.
+/// Another profile starts a new session; a failed or aborted call is not kept.
+class AssistantWebCache {
+  AssistantWebCache({this.ttl = const Duration(minutes: 30), DateTime Function()? now}) : _now = now ?? DateTime.now;
+  final Duration ttl;
+  final DateTime Function() _now;
+  String? _profile;
+  final _entries = <String, ({DateTime at, Object value})>{};
+
+  static final shared = AssistantWebCache();
+
+  void clear() => _entries.clear();
+
+  Future<T> get<T extends Object>(String profile, String kind, String query, Future<T> Function() fetch) async {
+    if (profile != _profile) {
+      _entries.clear();
+      _profile = profile;
+    }
+    final key = '$kind:${foldText(query).trim().replaceAll(RegExp(r'\s+'), ' ')}';
+    final hit = _entries[key];
+    if (hit != null && _now().difference(hit.at) < ttl && hit.value is T) return hit.value as T;
+    final value = await fetch();
+    if (profile == _profile) _entries[key] = (at: _now(), value: value);
+    return value;
+  }
 }
