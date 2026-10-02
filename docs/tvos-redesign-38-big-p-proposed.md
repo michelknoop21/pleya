@@ -133,6 +133,23 @@ kantelen. Standen wisselen alleen mond en wenkbrauwen, met een korte opacity-ove
 **Geen lipsync** in deze ronde. De mondlaag is wel een losse laag, zodat een gesproken antwoord hem
 later kan aansturen.
 
+## Oproepen vanaf elk scherm
+
+Bijgesteld door Michel op 2 oktober 2026, na de eerste ronde beelden.
+
+- Een lange druk op Play/Pause (minstens 600 ms) roept Big P op vanaf elk scherm buiten de speler.
+  Tijdens playback blijft Play/Pause gewoon afspelen en pauzeren.
+- Big P verschijnt zwevend rechtsonder, levend volgens de motion-spec, met een compact paneel en het
+  systeemtoetsenbord met dicteren al open. Het scherm erachter dimt licht en blijft de context:
+  "Scan deze bibliotheek opnieuw" op de Films-catalogus betekent die bibliotheek.
+- Werken en resultaat staan in het compacte paneel. Na het resultaat schuift Big P weer weg. Een
+  gevoelige actie toont dezelfde Pleya-bevestigingskaart, gecentreerd, en Big P blijft tot die is
+  afgehandeld.
+- Big P staat niet permanent in beeld. Alleen beheerders kunnen hem oproepen.
+- Techniek: tvOS stuurt Play/Pause nu al bij het indrukken door; er komt een bericht bij het
+  loslaten bij, zodat de duur buiten de speler gemeten kan worden. De Siri-knop zelf is van tvOS en
+  wordt niet gebruikt. Op echte hardware te bewijzen.
+
 ## Besluiten van Michel, 2 oktober 2026
 
 1. De tegel staat vooraan in de groep Pleya: Big P, Instellingen, Logs en diagnose, Over, Uitloggen.
