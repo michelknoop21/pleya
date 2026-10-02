@@ -309,7 +309,9 @@ class AssistantRun {
     if (await entitlement.check() != AssistantEntitlementState.entitled) return {'error': 'not_entitled'};
     if (!tool.serves(_ctx, action.serverId)) return {'error': 'not_allowed'};
     final result = await action.execute(password: answer.password);
-    _actions.add(action.record);
+    // A confirmed action that changed nothing (`done: false`) is not shown
+    // as done.
+    if (result['done'] != false && !result.containsKey('error')) _actions.add(action.record);
     return result;
   }
 }

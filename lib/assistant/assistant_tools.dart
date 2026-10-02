@@ -127,7 +127,8 @@ class AssistantPendingAction extends AssistantToolOutcome {
   final AssistantDisplay? preview;
 
   /// Runs the action. [password] comes from Pleya's secure input, never
-  /// from the model.
+  /// from the model. A result with `done: false` means nothing changed, and
+  /// the run then does not list the action as done.
   final Future<Map<String, Object?>> Function({String? password}) execute;
 
   AssistantActionRecord get record => AssistantActionRecord(kind: kind, serverName: serverName, subject: subject);

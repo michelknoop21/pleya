@@ -34,6 +34,7 @@ Map<String, Object?> _episode(String id, int index, {bool watched = false}) => {
   'index': index,
   'parentIndex': 1,
   'grandparentTitle': 'Severance',
+  'grandparentRatingKey': '10',
   'originallyAvailableAt': '2022-02-${10 + index}',
   if (watched) 'viewCount': 1,
 };
@@ -63,6 +64,7 @@ class _Plex {
             {
               'Metadata': {'ratingKey': '21', 'type': 'movie', 'title': 'Arrival'},
             },
+            {'Metadata': _episode('13', 3)},
           ],
         }),
       );
@@ -73,6 +75,13 @@ class _Plex {
           'Metadata': [
             {'ratingKey': '10', 'type': 'show', 'title': 'Severance'},
           ],
+        }),
+      );
+    }
+    if (path == '/library/metadata/13') {
+      return _json(
+        _container({
+          'Metadata': [_episode('13', 3)],
         }),
       );
     }
@@ -249,8 +258,11 @@ Future<_Run> _ask(
 
 final _findSeries = _call('find_media', {'server_id': 'plex-1', 'query': 'Severance'});
 final _findFilm = _call('find_media', {'server_id': 'plex-1', 'query': 'Arrival'});
-Map<String, Object?> _downloadNext(int count) =>
-    _call('download_next', {'server_id': 'plex-1', 'item_id': '10', 'count': count}, id: 'c2');
+Map<String, Object?> _downloadNext(int count, {String itemId = '10'}) =>
+    _call('download_next', {'server_id': 'plex-1', 'item_id': itemId, 'count': count}, id: 'c2');
+List<(Object?, Object?)> _rows(Map<String, dynamic> out) => [
+  for (final e in out['episodes'] as List) (e['episode'], e['status']),
+];
 final _findSubs = _call('find_subtitles', {'server_id': 'plex-1', 'item_id': '21', 'language': 'nl'}, id: 'c2');
 Map<String, Object?> _downloadSub(String subtitleId, {String id = 'c3'}) =>
     _call('download_subtitle', {'server_id': 'plex-1', 'item_id': '21', 'subtitle_id': subtitleId}, id: id);
@@ -259,18 +271,84 @@ void main() {
   setUp(resetSharedPreferencesForTest);
 
   group('download_next', () {
-    test('queues the next unwatched episodes, skipping watched and reporting what is on the device', () async {
-      final downloads = _Downloads()..status['plex-1:12'] = DownloadStatus.completed;
-      final run = await _ask(await _Plex().manager(), [_findSeries, _downloadNext(3)], media: downloads.services());
+    test('queues N new episodes: watched and on-device ones are skipped without counting', () async {
+      final downloads = _Downloads()
+        ..status['plex-1:12'] = DownloadStatus.completed
+        ..status['plex-1:13'] = DownloadStatus.queued;
+      final run = await _ask(await _Plex().manager(), [_findSeries, _downloadNext(2)], media: downloads.services());
       final out = run.toolResults.last;
       expect(out['series'], 'Severance');
-      expect(
-        [for (final e in out['episodes'] as List) (e['episode'], e['status'])],
-        [(2, 'already_on_device'), (3, 'queued'), (4, 'queued')],
-      );
-      expect(downloads.queued, ['plex-1:13', 'plex-1:14']);
+      expect(out['already_on_device'], 2);
+      expect(_rows(out), [(4, 'queued'), (5, 'queued')]);
+      expect(downloads.queued, ['plex-1:14', 'plex-1:15']);
       expect(run.result.actions.single.kind, AssistantActionKind.downloadEpisodes);
       expect(run.result.actions.single.subject, 'Severance');
+    });
+
+    test('everything already on the device queues nothing and says so', () async {
+      final downloads = _Downloads();
+      for (final id in ['12', '13', '14', '15']) {
+        downloads.status['plex-1:$id'] = DownloadStatus.completed;
+      }
+      final run = await _ask(await _Plex().manager(), [_findSeries, _downloadNext(3)], media: downloads.services());
+      expect(run.toolResults.last['status'], 'all_on_device');
+      expect(downloads.queued, isEmpty);
+      expect(run.result.actions, isEmpty);
+    });
+
+    test('more than three new episodes wait for the card; cancelled queues nothing', () async {
+      final downloads = _Downloads();
+      final cards = <AssistantPendingAction>[];
+      final run = await _ask(
+        await _Plex().manager(),
+        [_findSeries, _downloadNext(4)],
+        media: downloads.services(),
+        confirm: (action) async {
+          cards.add(action);
+          expect(downloads.queued, isEmpty);
+          return null;
+        },
+      );
+      expect(cards.single.kind, AssistantActionKind.downloadEpisodes);
+      expect(cards.single.subject, 'Severance');
+      expect(cards.single.items, ['S1 E2 Episode 2', 'S1 E3 Episode 3', 'S1 E4 Episode 4', 'S1 E5 Episode 5']);
+      expect(run.toolResults.last, {'status': 'cancelled_by_user'});
+      expect(downloads.queued, isEmpty);
+    });
+
+    test('a confirmed card queues each episode and reports it', () async {
+      final downloads = _Downloads();
+      final run = await _ask(
+        await _Plex().manager(),
+        [_findSeries, _downloadNext(10)],
+        media: downloads.services(),
+        confirm: (_) async => const AssistantConfirmation(),
+      );
+      expect(_rows(run.toolResults.last), [(2, 'queued'), (3, 'queued'), (4, 'queued'), (5, 'queued')]);
+      expect(downloads.queued, ['plex-1:12', 'plex-1:13', 'plex-1:14', 'plex-1:15']);
+      expect(run.result.actions.single.kind, AssistantActionKind.downloadEpisodes);
+    });
+
+    test('an episode is a starting point: it and the episodes after it', () async {
+      final downloads = _Downloads();
+      final run = await _ask(await _Plex().manager(), [
+        _findSeries,
+        _downloadNext(2, itemId: '13'),
+      ], media: downloads.services());
+      final out = run.toolResults.last;
+      expect(out['series'], 'Severance');
+      expect(_rows(out), [(3, 'queued'), (4, 'queued')]);
+      expect(downloads.queued, ['plex-1:13', 'plex-1:14']);
+    });
+
+    test('a film is not a series', () async {
+      final downloads = _Downloads();
+      final run = await _ask(await _Plex().manager(), [
+        _findSeries,
+        _downloadNext(1, itemId: '21'),
+      ], media: downloads.services());
+      expect(run.toolResults.last, {'error': 'not_a_series'});
+      expect(downloads.queued, isEmpty);
     });
 
     test('an item this run never showed is refused', () async {

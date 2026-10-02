@@ -64,11 +64,83 @@ Map<String, Object?> _episodeRow(MediaItem episode, String status) => {
   'status': status,
 };
 
+/// More new downloads than this go through a confirmation card, so one
+/// planted instruction cannot fill the device unseen.
+const _directDownloadLimit = 3;
+
+/// Candidate episodes after [start], in aired order: a show or season gives
+/// its next unwatched episodes (in progress counts as unwatched, Specials only
+/// when the season is that folder), as the download dialog does; an episode
+/// gives itself and every later episode of its series, watched or not.
+Future<List<MediaItem>> _episodesFrom(MediaServerClient client, MediaItem start) async {
+  final episodes = <MediaItem>[];
+  switch (start.kind) {
+    case MediaKind.show:
+      await collectEpisodesForShow(
+        client,
+        start.id,
+        unwatchedOnly: true,
+        out: episodes,
+        fallback: start,
+        includeSpecials: false,
+      );
+    case MediaKind.season:
+      await collectEpisodesForSeason(client, start.id, unwatchedOnly: true, out: episodes, fallback: start);
+    case MediaKind.episode:
+      final showId = start.grandparentId ?? (throw const AssistantToolError('not_a_series'));
+      await collectEpisodesForShow(
+        client,
+        showId,
+        unwatchedOnly: false,
+        out: episodes,
+        includeSpecials: isSpecialSeasonNumber(start.parentIndex),
+      );
+      final at = episodes.indexWhere((e) => e.id == start.id);
+      if (at < 0) throw const AssistantToolError('episode_not_in_series');
+      return episodes.sublist(at);
+    default:
+      throw const AssistantToolError('not_a_series');
+  }
+  return episodes;
+}
+
+/// Queues [episodes] one by one, as the download button would.
+Future<({List<Map<String, Object?>> report, int queued})> _queueEpisodes(
+  AssistantToolContext ctx,
+  ServerId id,
+  List<MediaItem> episodes,
+) async {
+  final media = ctx.media!;
+  var queued = 0;
+  final report = <Map<String, Object?>>[];
+  for (final episode in episodes) {
+    // Visibility or connectivity may change between episodes.
+    final live = ctx.userClient(id) ?? (throw const AssistantToolError('server_not_available'));
+    String status;
+    try {
+      status = await media.queueEpisode(episode, live) ? 'queued' : 'not_downloadable';
+    } catch (e) {
+      appLogger.w('Assistant: queueing an episode failed', error: e.runtimeType);
+      status = 'failed';
+    }
+    if (status == 'queued') queued++;
+    report.add(_episodeRow(episode, status));
+  }
+  return (report: report, queued: queued);
+}
+
+String _episodeLabel(MediaItem e) => clipText(
+  [if (e.parentIndex != null) 'S${e.parentIndex}', if (e.index != null) 'E${e.index}', ?e.title].join(' '),
+  60,
+);
+
 final List<AssistantTool> _mediaTools = [
   AssistantTool(
     name: 'download_next',
     description:
-        'Download the next unwatched episodes of a series or season (item_id from find_media) to this device. $_serverIdNote',
+        'Download the next N new episodes to this device. item_id from find_media: a series or season continues '
+        'with its next unwatched episodes; an episode starts at that episode. Episodes already on the device are '
+        'skipped and do not count. More than $_directDownloadLimit episodes: the user confirms in Pleya. $_serverIdNote',
     risk: AssistantToolRisk.mutation,
     properties: const {
       'item_id': {'type': 'string'},
@@ -80,52 +152,59 @@ final List<AssistantTool> _mediaTools = [
       final count = args['count'];
       if (count is! int || count < 1 || count > 10) throw const AssistantToolError('invalid_count');
       final client = ctx.userClient(id!)!;
-      final container = await _shownItem(ctx, client, id, _string(args, 'item_id'));
-      if (container.kind != MediaKind.show && container.kind != MediaKind.season) {
+      final start = await _shownItem(ctx, client, id, _string(args, 'item_id'));
+      if (start.kind != MediaKind.show && start.kind != MediaKind.season && start.kind != MediaKind.episode) {
         throw const AssistantToolError('not_a_series');
       }
       final media = ctx.media!;
       if (await media.blockedOnCellular()) throw const AssistantToolError('downloads_blocked_on_cellular');
-      // The download dialog's "next N unwatched": aired order, in progress
-      // counts as unwatched, Specials only when the season is that folder.
-      final episodes = <MediaItem>[];
-      if (container.kind == MediaKind.show) {
-        await collectEpisodesForShow(
-          client,
-          container.id,
-          unwatchedOnly: true,
-          out: episodes,
-          fallback: container,
-          includeSpecials: false,
-        );
-      } else {
-        await collectEpisodesForSeason(client, container.id, unwatchedOnly: true, out: episodes, fallback: container);
-      }
-      var queued = 0;
-      final report = <Map<String, Object?>>[];
-      for (final episode in episodes.take(count)) {
-        if (_onDevice.contains(media.downloadStatus(episode.globalKey))) {
-          report.add(_episodeRow(episode, 'already_on_device'));
+      final episodes = await _episodesFrom(client, start);
+      // As DownloadProvider's skipExisting: what is on the device is passed
+      // over without counting, so N means N new downloads.
+      final picked = <MediaItem>[];
+      var onDevice = 0;
+      for (final episode in episodes) {
+        final withServer = episode.serverId == null ? episode.copyWith(serverId: start.serverId) : episode;
+        if (_onDevice.contains(media.downloadStatus(withServer.globalKey))) {
+          onDevice++;
           continue;
         }
-        // Visibility or connectivity may change between episodes.
-        final live = ctx.userClient(id) ?? (throw const AssistantToolError('server_not_available'));
-        String status;
-        try {
-          status = await media.queueEpisode(episode, live) ? 'queued' : 'not_downloadable';
-        } catch (e) {
-          appLogger.w('Assistant: queueing an episode failed', error: e.runtimeType);
-          status = 'failed';
-        }
-        if (status == 'queued') queued++;
-        report.add(_episodeRow(episode, status));
+        picked.add(withServer);
+        if (picked.length == count) break;
       }
-      final title = container.kind == MediaKind.season
-          ? (container.parentTitle ?? container.title ?? container.id)
-          : (container.title ?? container.id);
+      final title =
+          switch (start.kind) {
+            MediaKind.season => start.parentTitle,
+            MediaKind.episode => start.grandparentTitle,
+            _ => start.title,
+          } ??
+          start.title ??
+          start.id;
+      Map<String, Object?> summary(List<Map<String, Object?>> rows) => {
+        'series': clipText(title),
+        'episodes': rows,
+        if (onDevice > 0) 'already_on_device': onDevice,
+        if (episodes.isEmpty) 'status': 'nothing_unwatched' else if (picked.isEmpty) 'status': 'all_on_device',
+      };
+      if (picked.length > _directDownloadLimit) {
+        return AssistantPendingAction(
+          kind: AssistantActionKind.downloadEpisodes,
+          serverId: id,
+          serverName: ctx.serverName(id),
+          subject: clipText(title),
+          items: [for (final e in picked) _episodeLabel(e)],
+          execute: ({password}) async {
+            // The card may have been open while the device left Wi-Fi.
+            if (await media.blockedOnCellular()) throw const AssistantToolError('downloads_blocked_on_cellular');
+            final queued = await _queueEpisodes(ctx, id, picked);
+            return {...summary(queued.report), if (queued.queued == 0) 'done': false};
+          },
+        );
+      }
+      final result = await _queueEpisodes(ctx, id, picked);
       return AssistantToolResult(
-        {'series': clipText(title), 'episodes': report, if (episodes.isEmpty) 'status': 'nothing_unwatched'},
-        record: queued == 0
+        summary(result.report),
+        record: result.queued == 0
             ? null
             : AssistantActionRecord(
                 kind: AssistantActionKind.downloadEpisodes,
@@ -222,7 +301,7 @@ final List<AssistantTool> _mediaTools = [
             forced: r.forced,
             providerTitle: r.providerTitle ?? '',
           );
-          return {'status': ok ? 'subtitle_requested' : 'failed'};
+          return {'status': ok ? 'subtitle_requested' : 'failed', if (!ok) 'done': false};
         },
       );
     },
