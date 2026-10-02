@@ -1,0 +1,145 @@
+[
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "dbdc9e920974e75a9314ad6965f7039e70c9ca9a58a51c5a48277f6576d0e7f5",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-home-315-glass.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "4095bc7e7df8ac3c5e04803cc70c2dafeef6c668de842986fb0d1a410bc5c87e",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-movies-315-glass.webp"
+  },
+  {
+    "platform": "iOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      1206,
+      2622
+    ],
+    "captureSha256": "180907ef149bbd867e39fc7eeb6877503a7f6dc9f673995b2916e7f506668b34",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/ios-home-315-glass.webp"
+  },
+  {
+    "platform": "iOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      1206,
+      2622
+    ],
+    "captureSha256": "afaccc173631f18511abad74ca7017e947aba479c9c1657734b62e2b0e83d3d9",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/ios-detail-315-glass.webp"
+  },
+  {
+    "platform": "macOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": false,
+    "size": [
+      1920,
+      1050
+    ],
+    "captureSha256": "23af53284865448d0efcac609e4f420ddfc50b5b5101b9671da186c1375c93ca",
+    "captureMethod": "native macOS window screenshot via CUA",
+    "sourceAsset": "website/src/lib/assets/home/mac-home-315.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "8b91952c4bb58e576028ce2c61ccb0cc0f416f9346cb7e903ac0c01e83c4a956",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-all-movies-315-glass.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "bf545148520a092c78d2cee56be600611b2db89982fd2796bb193bfc7c7f074f",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-series-detail-315-glass.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "0e7955f64f67026a082e818926a4c76c27d0c3015c9ba0a1c7250d832418073c",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-player-information-315-glass.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "9a230386f4cee146c32ea7dcae27dac2af4b663d4b884b823b7577dc355f7936",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-player-video-315-glass.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "a35c3b82c2a0a4d7654224d9a37002ec0fa865533536719fb2c3d8e49c90b2a4",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-player-audio-315-glass.webp"
+  },
+  {
+    "platform": "tvOS",
+    "build": "2.8.1+315",
+    "sourceCommit": "5bf8573c713bcd228d2bc9e56d10de938b26b3da",
+    "glassEnabled": true,
+    "size": [
+      3840,
+      2160
+    ],
+    "captureSha256": "e5d07eb32ea370cec9f9c12624e8594aa7ac3abf6e527dae33c2dd5484cf0189",
+    "captureMethod": "native screenshot via simctl",
+    "sourceAsset": "website/src/lib/assets/home/tv-player-subtitles-315-glass.webp"
+  }
+]

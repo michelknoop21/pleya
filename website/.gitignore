@@ -22,5 +22,7 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Explainer video (20 MB): lives on the NAS deploy, not in git
-/static/video/
+# Keep the published explainer reproducible; ignore intermediate video files.
+/static/video/*
+!/static/video/pleya-with-big-p.mp4
+!/static/video/pleya-with-big-p.jpg

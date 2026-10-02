@@ -33,7 +33,7 @@ export async function startPageMotion(root: HTMLElement, extra?: (kit: Kit) => v
         mask: 'words',
         autoSplit: true,
         onSplit: (self) =>
-          gsap.from(self.words, { yPercent: 105, duration: 0.95, ease: 'expo.out', stagger: 0.05, scrollTrigger: { trigger: el, start: 'top 85%', once: true } }),
+          gsap.from(self.words, { yPercent: 105, duration: 0.95, ease: 'expo.out', stagger: 0.05, scrollTrigger: { trigger: el, start: 'top 85%', end: 'top 60%', scrub: 0.35 } }),
       });
     });
 
@@ -42,7 +42,7 @@ export async function startPageMotion(root: HTMLElement, extra?: (kit: Kit) => v
     root.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
       const kids = [...el.children].filter((c) => !c.hasAttribute('aria-hidden'));
       if (kids.length)
-        gsap.from(kids, { y: 28, autoAlpha: 0, duration: 0.85, ease: 'power3.out', stagger: 0.08, scrollTrigger: { trigger: el, start: 'top 82%', once: true } });
+        gsap.from(kids, { y: 28, autoAlpha: 0, duration: 0.85, ease: 'power3.out', stagger: 0.08, scrollTrigger: { trigger: el, start: 'top 82%', end: 'top 60%', scrub: 0.35 } });
     });
 
     const undoExtra = extra?.({ gsap, ScrollTrigger, q });

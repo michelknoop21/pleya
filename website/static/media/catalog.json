@@ -1,0 +1,98 @@
+[
+  {
+    "id": "tide",
+    "title": "TIDE",
+    "scene": "A lone lighthouse on a dramatic Atlantic cliff, enormous ocean waves in blue dusk, a tiny lone woman in a ochre coat on the path, fog and warm lighthouse beam, atmospheric adult drama. Elegant widely spaced ivory title TIDE near lower third.",
+    "source": "generated_images/exec-c188898c-5038-4ff5-93af-a9e5f3f2b63b.png",
+    "poster": "tide-poster.png",
+    "backdrop": "tide-backdrop.png"
+  },
+  {
+    "id": "nightfall",
+    "title": "NIGHTFALL",
+    "scene": "Rainy neon Tokyo alley at midnight, one lone detective silhouette, richly textured wet pavement reflecting a narrow vermilion neon strip, teal shadows, layered architectural perspective, stylish contemporary thriller. Bold condensed offwhite NIGHTFALL title near bottom.",
+    "source": "generated_images/exec-44697010-d529-4d05-9ffb-dda4d548c53c.png",
+    "poster": "nightfall-poster.png",
+    "backdrop": "nightfall-backdrop.png"
+  },
+  {
+    "id": "orbital",
+    "title": "ORBITAL",
+    "scene": "A tiny orbital research station silhouetted against the immense sunlit crescent of a rust-colored distant planet, white astronaut drifting foreground, black velvet cosmos, photorealistic science fiction with practical-camera realism, no lasers. Geometric ivory ORBITAL title at upper third.",
+    "source": "generated_images/exec-933f2086-7c9e-4a90-b1d5-a2cebd81ba8d.png",
+    "poster": "orbital-poster.png",
+    "backdrop": "orbital-backdrop.png"
+  },
+  {
+    "id": "wild-earth",
+    "title": "WILD EARTH",
+    "scene": "Majestic mountain range and misty primeval emerald valley at dawn, a golden eagle soaring at a scale visible in the foreground, extraordinary nature cinematography, pale sunlight through cloud layers. Elegant ivory title WILD EARTH in two lines lower quarter.",
+    "source": "generated_images/exec-38cd3014-d016-4ad3-b837-5fc85054fbfc.png",
+    "poster": "wild-earth-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "the-last-train",
+    "title": "THE LAST TRAIN",
+    "scene": "A vintage sleeper train crossing a snowy alpine viaduct at blue hour, warm gold light in the windows, cinematic smoke in mountain air, mysterious quiet travel drama, deep navy and amber. Beautiful compact ivory serif title THE LAST TRAIN at bottom.",
+    "source": "generated_images/exec-b9c34807-8ac7-407c-b3eb-feb45508b8de.png",
+    "poster": "the-last-train-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "solstice",
+    "title": "SOLSTICE",
+    "scene": "A cinematic close portrait of an original woman with windswept dark hair on a Mediterranean shore, warm copper summer sunset, salt-water sparkle and a linen collar, intimate mature indie drama, nuanced real skin no glamour retouching. Restrained elegant ivory SOLSTICE title lower quarter.",
+    "source": "generated_images/exec-bbb32e11-2f73-4ac6-9f8e-43d10e7906d0.png",
+    "poster": "solstice-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "redline",
+    "title": "REDLINE",
+    "scene": "A red vintage racing car accelerating across a desert highway at dusk, panning cinematography and distant dust plume, burnt orange sky and deep petrol shadows, bold italic ivory REDLINE title near bottom.",
+    "source": "generated_images/exec-a1aeec40-39de-4dfd-8292-a9c6b8158a49.png",
+    "poster": "redline-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "after-hours",
+    "title": "AFTER HOURS",
+    "scene": "A mysterious quiet piano bar after closing, an original woman in black seen from behind near a grand piano, deep burgundy velvet, warm spotlight, elegant noir drama. Refined ivory AFTER HOURS title.",
+    "source": "generated_images/exec-77786e3a-7cfe-4234-93cb-d48fd1b1883c.png",
+    "poster": "after-hours-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "north",
+    "title": "NORTH",
+    "scene": "A tiny expedition cabin under spectacular green aurora over frozen Norwegian fjord and snow peaks, contemplative rugged adventure cinematography, deep blue and jade, beautifully spaced ivory NORTH title.",
+    "source": "generated_images/exec-0f0d5af4-f0a9-4497-873a-8da27ad0ba1a.png",
+    "poster": "north-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "the-archive",
+    "title": "THE ARCHIVE",
+    "scene": "A lone archivist in a monumental dim library of handwritten manuscripts, shafts of dusty amber sunlight in tall windows, tiny character large scale architectural perspective, sophisticated historical mystery, ivory serif THE ARCHIVE title.",
+    "source": "generated_images/exec-d8284b86-995f-4f89-a48d-1d826fe6df7a.png",
+    "poster": "the-archive-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "blue-hour",
+    "title": "BLUE HOUR",
+    "scene": "An original young man on the roof of a New York apartment, city skyline after rain at blue hour, a little amber window glow, intimate urban drama photography, rich indigo and warm skin tones, refined BLUE HOUR typography.",
+    "source": "generated_images/exec-33c6e529-772b-4bf3-a288-1eaad64a3364.png",
+    "poster": "blue-hour-poster.png",
+    "backdrop": null
+  },
+  {
+    "id": "terra",
+    "title": "TERRA",
+    "scene": "Aerial cinematic landscape of monumental desert dunes, an extremely small group of nomads traveling diagonally through the frame, orange sand and black sharp shadows, documentary photography, bold ivory TERRA title bottom.",
+    "source": "generated_images/exec-dd6330da-e87b-4a48-b8f5-4e44790ca56c.png",
+    "poster": "terra-poster.png",
+    "backdrop": null
+  }
+]
