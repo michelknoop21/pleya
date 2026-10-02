@@ -112,7 +112,10 @@ class JellyfinConnectionAuthService {
     );
     final client = _buildHttpClient(
       baseUrl: normalised,
-      headers: {'Authorization': authHeader, 'Content-Type': 'application/json'},
+      headers: {
+        ...jellyfinAuthHeaders(authHeader, isEmby: info.isEmby),
+        'Content-Type': 'application/json',
+      },
     );
     try {
       final response = await client.post(
@@ -359,7 +362,7 @@ class JellyfinConnectionAuthService {
     if (connection is! JellyfinConnection) return false;
     final client = _authenticatedClient(connection);
     try {
-      final response = await client.get('/Users/Me', timeout: MediaServerTimeouts.jellyfinProbe);
+      final response = await client.get(connection.currentUserPath, timeout: MediaServerTimeouts.jellyfinProbe);
       return response.statusCode == 200;
     } on MediaServerHttpException catch (e) {
       if (e.statusCode == 401 || e.statusCode == 403) return false;
@@ -397,12 +400,15 @@ class JellyfinConnectionAuthService {
       baseUrl: connection.baseUrl,
       headers: {
         'X-Emby-Token': connection.accessToken,
-        'Authorization': buildJellyfinAuthHeader(
-          clientName: clientName,
-          clientVersion: clientVersion,
-          deviceName: deviceName,
-          deviceId: connection.deviceId,
-          accessToken: connection.accessToken,
+        ...jellyfinAuthHeaders(
+          buildJellyfinAuthHeader(
+            clientName: clientName,
+            clientVersion: clientVersion,
+            deviceName: deviceName,
+            deviceId: connection.deviceId,
+            accessToken: connection.accessToken,
+          ),
+          isEmby: connection.isEmby,
         ),
       },
     );
@@ -437,6 +443,7 @@ class JellyfinConnectionAuthService {
       accessToken: accessToken,
       deviceId: deviceId,
       isAdministrator: isAdministrator,
+      isEmby: info.isEmby,
       status: ConnectionStatus.online,
       createdAt: now,
       lastAuthenticatedAt: now,

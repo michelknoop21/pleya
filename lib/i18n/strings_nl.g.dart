@@ -1003,6 +1003,7 @@ class _TranslationsConnectionsNl extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Sessie verlopen voor ${count} servers';
 	@override String get signInAgain => 'Opnieuw aanmelden';
 	@override String get editJellyfinTitle => 'Jellyfin-verbinding bewerken';
+	@override String get editEmbyTitle => 'Emby-verbinding bewerken';
 	@override String editJellyfinIntro({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.';
 	@override String get localSources => 'Bronnen op dit apparaat';
 	@override String get removeSource => 'Bron verwijderen';
@@ -1978,8 +1979,8 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get serverUrls => 'Server-URL\'s';
 	@override String get serverUrlsHelper => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.';
 	@override String get findServer => 'Server zoeken';
-	@override String get searchingLocalServers => 'Lokale Jellyfin-servers zoeken...';
-	@override String get localServers => 'Lokale Jellyfin-servers';
+	@override String get searchingLocalServers => 'Servers in je netwerk zoeken...';
+	@override String get localServers => 'Servers in je netwerk';
 	@override String get username => 'Gebruikersnaam';
 	@override String get password => 'Wachtwoord';
 	@override String get signIn => 'Inloggen';
@@ -1993,6 +1994,7 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get duplicatePlexAccount => 'Al aangemeld bij Plex. Meld je af om van account te wisselen.';
 	@override String get failedToRegisterAccount => 'Account registreren mislukt';
 	@override String get enterJellyfinUrlError => 'Voer de URL van je Jellyfin-server in';
+	@override String get enterEmbyUrlError => 'Voer de URL van je Emby-server in';
 	@override String get addConnectionTitle => 'Verbinding toevoegen';
 	@override String addConnectionTitleScoped({required Object name}) => 'Toevoegen aan ${name}';
 	@override String get signInWithPlexCard => 'Inloggen met Plex';
@@ -2001,6 +2003,9 @@ class _TranslationsAddServerNl extends TranslationsAddServerEn {
 	@override String get connectToJellyfinCard => 'Verbinden met Jellyfin';
 	@override String get connectToJellyfinCardSubtitle => 'Voer je server-URL, gebruikersnaam en wachtwoord in.';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.';
+	@override String get addEmbyTitle => 'Emby-server toevoegen';
+	@override String get connectToEmbyCard => 'Verbinden met Emby';
+	@override String connectToEmbyCardSubtitleScoped({required Object name}) => 'Log in op een Emby-server. Wordt gekoppeld aan ${name}.';
 	@override String get connectToPleyaServerCard => 'Verbinden met Pleya Server';
 	@override String get connectToPleyaServerCardSubtitle => 'Je eigen server. Voer het adres in om door te gaan.';
 	@override String connectToPleyaServerCardSubtitleScoped({required Object name}) => 'Log in op een Pleya Server. Wordt gekoppeld aan ${name}.';
@@ -3869,6 +3874,7 @@ extension on TranslationsNl {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Sessie verlopen voor ${count} servers',
 			'connections.signInAgain' => 'Opnieuw aanmelden',
 			'connections.editJellyfinTitle' => 'Jellyfin-verbinding bewerken',
+			'connections.editEmbyTitle' => 'Emby-verbinding bewerken',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Voeg URL\'s voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.',
 			'connections.localSources' => 'Bronnen op dit apparaat',
 			'connections.removeSource' => 'Bron verwijderen',
@@ -4124,9 +4130,9 @@ extension on TranslationsNl {
 			'watchlist.filterShows' => 'Series',
 			'watchlist.filterAvailable' => 'Beschikbaar',
 			'watchlist.sortRecentlyAdded' => 'Recent toegevoegd',
-			'watchlist.sortTitle' => 'Titel',
 			_ => null,
 		} ?? switch (path) {
+			'watchlist.sortTitle' => 'Titel',
 			'watchlist.sortYear' => 'Jaar',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.',
 			'watchlist.coverageIncompleteList' => 'Eén server was niet bereikbaar, dus deze lijst is mogelijk niet compleet.',
@@ -4638,9 +4644,9 @@ extension on TranslationsNl {
 			'metadataEdit.style' => 'Stijl',
 			'metadataEdit.mood' => 'Stemming',
 			'matchScreen.match' => 'Koppelen...',
-			'matchScreen.fixMatch' => 'Koppeling herstellen...',
 			_ => null,
 		} ?? switch (path) {
+			'matchScreen.fixMatch' => 'Koppeling herstellen...',
 			'matchScreen.unmatch' => 'Ontkoppelen',
 			'matchScreen.unmatchConfirm' => 'Deze match wissen? Plex behandelt dit als niet-gematcht tot het opnieuw gematcht is.',
 			'matchScreen.unmatchSuccess' => 'Item ontkoppeld',
@@ -4700,8 +4706,8 @@ extension on TranslationsNl {
 			'addServer.serverUrls' => 'Server-URL\'s',
 			'addServer.serverUrlsHelper' => 'Meerdere URL\'s toegestaan, gescheiden door komma\'s.',
 			'addServer.findServer' => 'Server zoeken',
-			'addServer.searchingLocalServers' => 'Lokale Jellyfin-servers zoeken...',
-			'addServer.localServers' => 'Lokale Jellyfin-servers',
+			'addServer.searchingLocalServers' => 'Servers in je netwerk zoeken...',
+			'addServer.localServers' => 'Servers in je netwerk',
 			'addServer.username' => 'Gebruikersnaam',
 			'addServer.password' => 'Wachtwoord',
 			'addServer.signIn' => 'Inloggen',
@@ -4715,6 +4721,7 @@ extension on TranslationsNl {
 			'addServer.duplicatePlexAccount' => 'Al aangemeld bij Plex. Meld je af om van account te wisselen.',
 			'addServer.failedToRegisterAccount' => 'Account registreren mislukt',
 			'addServer.enterJellyfinUrlError' => 'Voer de URL van je Jellyfin-server in',
+			'addServer.enterEmbyUrlError' => 'Voer de URL van je Emby-server in',
 			'addServer.addConnectionTitle' => 'Verbinding toevoegen',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Toevoegen aan ${name}',
 			'addServer.signInWithPlexCard' => 'Inloggen met Plex',
@@ -4723,6 +4730,9 @@ extension on TranslationsNl {
 			'addServer.connectToJellyfinCard' => 'Verbinden met Jellyfin',
 			'addServer.connectToJellyfinCardSubtitle' => 'Voer je server-URL, gebruikersnaam en wachtwoord in.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.',
+			'addServer.addEmbyTitle' => 'Emby-server toevoegen',
+			'addServer.connectToEmbyCard' => 'Verbinden met Emby',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Log in op een Emby-server. Wordt gekoppeld aan ${name}.',
 			'addServer.connectToPleyaServerCard' => 'Verbinden met Pleya Server',
 			'addServer.connectToPleyaServerCardSubtitle' => 'Je eigen server. Voer het adres in om door te gaan.',
 			'addServer.connectToPleyaServerCardSubtitleScoped' => ({required Object name}) => 'Log in op een Pleya Server. Wordt gekoppeld aan ${name}.',
@@ -5148,13 +5158,13 @@ extension on TranslationsNl {
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Gekozen op ${date} · ${device}',
 			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Gekozen op ${date}',
 			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Serievoorkeur, gekozen op ${date} bij ${episode} op ${device}.',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.sheetOrigin' => ({required Object date}) => 'Serievoorkeur, gekozen op ${date}.',
 			'languageSettings.sheetScopeLogical' => 'Geldt overal waar Pleya deze serie als dezelfde herkent.',
 			'languageSettings.sheetScopeServer' => 'Geldt op de bron waar je hem koos.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya-profiel: ${value}',
 			'languageSettings.useGlobal' => 'Gebruik globale voorkeur',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'wist deze serievoorkeur',
 			'languageSettings.sheetFooter' => 'Een andere taal kies je tijdens het kijken, in het infopaneel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · onthouden voor ${title}',

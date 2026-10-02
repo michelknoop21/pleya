@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
+import '../media/media_backend.dart';
 import '../services/credential_vault.dart';
 import '../utils/app_logger.dart';
 import 'connection.dart';
@@ -211,6 +212,9 @@ class ConnectionRegistry {
           lastAuthenticatedAt: lastAuth,
         ),
       };
+      // Labels and badges read this set; registering on load covers a cold
+      // start or an offline server before any client exists (DEC-141).
+      if (connection is JellyfinConnection && connection.isEmby) embyServerIds.add(connection.serverMachineId);
       if (revealed.migrated) {
         await upsert(connection);
       }

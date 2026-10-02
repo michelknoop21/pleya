@@ -596,7 +596,7 @@ Wat bewust open blijft staan:
 
 *Afbakening tegen [DEC-020](#dec-020).* DEC-020 legt vast dat watchlist-verwijdering een titel uit **alle** `WatchlistMembership`-records tegelijk haalt, zonder bronkeuze — dat blijft ongewijzigd. De source picker uit hoofdstuk 14 introduceert géén bronkeuze voor verwijderen uit de watchlist. De picker geldt uitsluitend voor: availability tonen (hoofdstuk 14.7/14.8), een item openen, de detailpagina met source switching (hoofdstuk 15), en afspelen. Watchlist-add/-remove, de partially-failed-afhandeling en de ordinale bronvolgorde uit DEC-020 lopen buiten de unified-picker om.
 
-*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share; Pleya heeft geen Emby-backend (`MediaBackend` kent alleen plex, jellyfin, pleyaServer, local, pleyaShare).
+*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share. *Bijgesteld door [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend):* Emby bestaat sinds oktober 2026 als variant van de Jellyfin-backend en merget zoals Jellyfin.
 **Consequences:** DEC-023, DEC-002 en DEC-020 blijven allemaal `accepted` en worden niet op `superseded` gezet: dit is per paragraaf een partiële supersede/afbakening, geen vervanging van de hele beslissing. Toekomstige lezers van DEC-002 moeten de kleurwaarden hier lezen, niet de oorspronkelijke hexcodes; toekomstige lezers van DEC-023 moeten voor tvOS naar hoofdstuk 6/7 van het unified-plan, voor mobiel blijft DEC-023 zelf de bron. De zes architectuurbesluiten hierboven zijn vanaf nu bindend voor elke fase van Pleya Unified TV 2026 en worden, net als de rest van dit besluit, niet per fase herwogen — een latere fase die een van deze punten wil heropenen heeft een nieuw ADR nodig, geen stille afwijking in code of plan.
 
 
@@ -4200,3 +4200,72 @@ northstar 06. Op de seriepagina vervallen de inline afleveringenlijst en de seiz
 nog aanhield; die afleveringen staan voortaan op de eigen seizoenspagina. Delen verhuist van de
 actierij naar Meer. De vier mockups en hun HTML-bron staan vanaf deze taak in
 `docs/assets/ios-unified/detail-2026/`.
+
+## DEC-141: Emby als variant van de Jellyfin-backend
+
+**Date:** 2026-10-02
+**Status:** accepted. Stelt de laatste zin van de cross-server-paragraaf in [DEC-063](#dec-063) bij ("Pleya heeft geen Emby-backend").
+
+**Context:** Michel wil Emby-servers kunnen toevoegen. Jellyfin is in 2018 geforkt van Emby 3.5 en
+de twee delen nog steeds het grootste deel van hun REST-API. Een eigen `MediaBackend.emby` of
+`ConnectionKind.emby` zou alle exhaustieve switches raken (ruim dertig bestanden, plus Drift,
+downloads en watchlist). Een nieuwe `ConnectionKind` valt in `credential_vault.dart` bovendien
+terug op onversleutelde opslag van het token.
+
+De verschillen zijn op twee manieren vastgesteld. Eerst tegen de OpenAPI-specificatie van Emby 4.10.1
+(`Resources/OpenApi/openapi_v3.json` in `MediaBrowser/Emby.SDK`), daarna met
+`test/live/emby_live_test.dart` tegen een echte `emby/embyserver` 4.9.3 in Docker. Die test doorloopt
+de echte auth-service en client: inloggen, bibliotheken, filters, details, extra's, zoeken, direct
+play, transcode, ondertitels, voortgang, hervatten, kijkstatus, favorieten, playlists, collecties en
+metadata bewerken. Eindstand 77 van 77 tegen Emby. Dezelfde test met `PLEYA_LIVE_EXPECT=jellyfin`
+haalt 74 van 74 tegen Jellyfin 12.1, dus de Emby-takken laten Jellyfin ongemoeid.
+
+**Decision:** Emby draait op `MediaBackend.jellyfin`. `JellyfinConnection` krijgt `isEmby`
+(JSON-veld, ontbreekt het dan is het `false`), gevuld door de probe: Jellyfin stuurt
+`ProductName: "Jellyfin Server"`, Emby 4.9 stuurt geen ProductName en dan beslist de versie (Emby
+4.x, Jellyfin 10.x en hoger). De client vertakt alleen waar Emby aantoonbaar anders is:
+
+| Jellyfin | Emby | Wat er live misging zonder vertakking |
+| --- | --- | --- |
+| `/Users/Me` | `/Users/{uid}` | 500, gezondheidscheck en validatie faalden |
+| `/UserItems/Resume`, `/UserPlayedItems/{id}`, `/UserItems/{id}/Rating` | `/Users/{uid}/Items/Resume`, `/Users/{uid}/PlayedItems/{id}`, `/Users/{uid}/Items/{id}/Rating` | 404 |
+| `/Items/{id}/LocalTrailers`, `/Items/{id}/SpecialFeatures` | onder `/Users/{uid}/Items/{id}/` | 404, extra's stil leeg |
+| `/Items/Filters` | `/Genres`, `/OfficialRatings`, `/Tags`, `/Years` samengevoegd; een geweigerde lijst valt alleen zelf weg | 404 kwam als fout in de filterweergave |
+| `PlaySessionId` optioneel | verplicht bij `/Sessions/Playing` en `/Progress` | 400 "Value cannot be null. (Parameter 'key')"; externe speler en offline-sync sturen er geen, Emby krijgt dan `pleya-{deviceId}-{itemId}` |
+| geen verbergen uit Verder kijken | `POST /Users/{uid}/Items/{id}/HideFromResume?Hide=true` | nieuw: `continueWatchingRemoval` staat aan voor Emby |
+| LAN `who is JellyfinServer?` | `who is EmbyServer?` (zelfde poort 7359, zelfde antwoordvorm) | Emby antwoordt niet op de Jellyfin-vraag |
+
+De `MediaBrowser`-headerwaarde gaat voor Emby ook mee als `X-Emby-Authorization`, de header die
+Emby documenteert. Emby 4.9 accepteert de gewone `Authorization` ook. `scrubThumbnails` staat uit
+voor Emby; trickplay bestaat daar niet en BIF is nog niet aangesloten.
+
+Een fout die beide servers raakte kwam ook boven: `uploadItemImage` stuurde ruwe bytes, terwijl
+Jellyfin (`GetFromBase64Stream` in `ImageController`) en Emby de body als base64 lezen. Ruwe bytes
+gaven op beide een 500. De upload stuurt nu base64.
+
+Op tvOS is de nieuwe Emby-tegel bewezen met `tvos.settings.add-connection-grid` (vijf keer PASS op
+de tvOS 26.5-simulator). Dat scenario assert de beginfocus nu pas na een `wait_until`: de focus komt
+een frame na het openen van de route, en met een tegel meer verloor de directe assert die race in
+twee van zes runs.
+
+Omdat de backend gelijk blijft, lopen Emby-bronnen mee in grouping, identiteit, catalogus, zoeken en
+bronkeuze. Een film op Plex, Jellyfin en Emby met hetzelfde TMDB-id wordt één groep met drie bronnen
+(test in `unified_grouping_service_test.dart`). Alleen label en badge moeten het verschil zien:
+`ConnectionRegistry` zet het server-id in `embyServerIds` zodra een opgeslagen Emby-verbinding wordt
+ingelezen (dus ook bij een koude start of een offline server), `JellyfinClient` doet dat bij een
+nieuwe verbinding, en `backendDisplayLabel` en `BackendBadge` lezen die set. De bronkiezer toont het backendwoord zodra de labels verschillen, dus ook bij alleen
+Jellyfin plus Emby. De twee kopieën van `backendDisplayLabel` zijn samengevoegd.
+
+**Consequences:** QuickConnect (`/QuickConnect/Enabled` geeft 404) en `/MediaSegments` vallen op
+Emby stil terug: geen knop, geen markers. Niet gebouwd: Emby Connect, BIF-scrubthumbnails en
+intro-markers via chapter `MarkerType`. Een Emby-server die vóór deze wijziging als Jellyfin is
+toegevoegd, heeft `isEmby: false` en krijgt op `/Users/Me` een 500. De health check vraagt dan
+`/System/Info/Public` op en zet de vlag alleen als dat antwoord van hetzelfde server-id komt en
+Emby identificeert; de nieuwe vlag wordt direct opgeslagen. Een transportfout (timeout, DNS, TLS)
+leidt nooit tot detectie en een echte Jellyfin met een falende `/Users/Me` blijft Jellyfin
+(`jellyfin_emby_migration_test.dart`, live bewezen tegen beide servers). De Emby-teksten staan in
+alle zestien talen, afgeleid van de bestaande Jellyfin-vertaling. Live TV is niet live getest
+(geen tuner in de testserver); de gebruikte paden `/LiveTv/Channels` en `/LiveTv/Programs` staan wel
+in de Emby-specificatie. Twee Emby-eigenaardigheden zonder gevolg voor de app: een collectie
+aanmaken met de naam van een eerder verwijderde geeft een SQLite-500, en items korter dan de
+minimale hervatduur (standaard 5 minuten) bewaren geen positie, net als bij Jellyfin.

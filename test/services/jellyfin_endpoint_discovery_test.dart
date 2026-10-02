@@ -215,4 +215,31 @@ void main() {
       );
     });
   });
+
+  group('isEmbyServerInfo', () {
+    test('ProductName decides when the server sends one', () {
+      expect(isEmbyServerInfo('Jellyfin Server', '10.10.7'), isFalse);
+      expect(isEmbyServerInfo('Emby Server', '4.8.11.0'), isTrue);
+    });
+
+    test('without ProductName, Emby 4.x and Jellyfin 10.x tell themselves apart', () {
+      expect(isEmbyServerInfo(null, '4.8.11.0'), isTrue);
+      expect(isEmbyServerInfo(null, '10.9.0'), isFalse);
+      expect(isEmbyServerInfo(null, ''), isFalse);
+    });
+
+    test('probe carries the flavor through', () async {
+      final discovery = JellyfinEndpointDiscovery(
+        testHttpClientFactory: () => MockClient(
+          (_) async => http.Response(
+            jsonEncode({'Id': 'emby-1', 'ServerName': 'Emby', 'Version': '4.8.11.0'}),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+      final info = await discovery.probe('https://emby.example.com');
+      expect(info.isEmby, isTrue);
+    });
+  });
 }

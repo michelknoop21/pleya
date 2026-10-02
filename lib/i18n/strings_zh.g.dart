@@ -864,6 +864,7 @@ class _TranslationsConnectionsZh extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => '${count} 个服务器的会话已过期';
 	@override String get signInAgain => '重新登录';
 	@override String get editJellyfinTitle => '编辑 Jellyfin 连接';
+	@override String get editEmbyTitle => '编辑 Emby 连接';
 	@override String editJellyfinIntro({required Object serverName}) => '添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。';
 	@override String get localSources => '此设备上的来源';
 	@override String get removeSource => '移除来源';
@@ -1646,11 +1647,12 @@ class _TranslationsAddServerZh extends TranslationsAddServerEn {
 
 	// Translations
 	@override String get addJellyfinTitle => '添加 Jellyfin 服务器';
+	@override String get addEmbyTitle => '添加 Emby 服务器';
 	@override String get serverUrls => '服务器 URL';
 	@override String get serverUrlsHelper => '可输入多个 URL，以逗号分隔。';
 	@override String get findServer => '查找服务器';
-	@override String get searchingLocalServers => '正在查找本地 Jellyfin 服务器...';
-	@override String get localServers => '本地 Jellyfin 服务器';
+	@override String get searchingLocalServers => '正在查找本地服务器...';
+	@override String get localServers => '本地服务器';
 	@override String get username => '用户名';
 	@override String get password => '密码';
 	@override String get signIn => '登录';
@@ -1664,14 +1666,17 @@ class _TranslationsAddServerZh extends TranslationsAddServerEn {
 	@override String get duplicatePlexAccount => '已登录 Plex。请退出登录以切换账号。';
 	@override String get failedToRegisterAccount => '注册帐户失败';
 	@override String get enterJellyfinUrlError => '输入你的 Jellyfin 服务器 URL';
+	@override String get enterEmbyUrlError => '输入你的 Emby 服务器 URL';
 	@override String get addConnectionTitle => '添加连接';
 	@override String addConnectionTitleScoped({required Object name}) => '添加到 ${name}';
 	@override String get signInWithPlexCard => '使用 Plex 登录';
 	@override String get signInWithPlexCardSubtitle => '授权此设备。共享服务器会被添加。';
 	@override String get signInWithPlexCardSubtitleScoped => '授权一个 Plex 账号。Home 用户会成为个人资料。';
 	@override String get connectToJellyfinCard => '连接到 Jellyfin';
+	@override String get connectToEmbyCard => '连接到 Emby';
 	@override String get connectToJellyfinCardSubtitle => '输入服务器 URL、用户名和密码。';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => '登录到 Jellyfin 服务器。绑定到 ${name}。';
+	@override String connectToEmbyCardSubtitleScoped({required Object name}) => '登录到 Emby 服务器。绑定到 ${name}。';
 	@override String get borrowFromAnotherProfile => '从另一个配置文件借用';
 	@override String get borrowFromAnotherProfileSubtitle => '复用另一个个人资料的连接。受 PIN 保护的个人资料需要 PIN。';
 }
@@ -2895,6 +2900,7 @@ extension on TranslationsZh {
 			'connections.sessionExpiredMany' => ({required Object count}) => '${count} 个服务器的会话已过期',
 			'connections.signInAgain' => '重新登录',
 			'connections.editJellyfinTitle' => '编辑 Jellyfin 连接',
+			'connections.editEmbyTitle' => '编辑 Emby 连接',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => '添加或移除 ${serverName} 的 URL。Pleya 会使用可访问且延迟最低的 URL。',
 			'connections.localSources' => '此设备上的来源',
 			'connections.removeSource' => '移除来源',
@@ -3302,9 +3308,9 @@ extension on TranslationsZh {
 			'companionRemote.session.startServer' => '启动服务器',
 			'companionRemote.session.stopServer' => '停止服务器',
 			'companionRemote.session.minimize' => '最小化',
-			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.discoveryDescription' => '使用同一 Plex 账号的 Pleya 设备会显示在这里',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '正在连接...',
 			'companionRemote.pairing.searchingForDevices' => '正在搜索设备...',
@@ -3545,11 +3551,12 @@ extension on TranslationsZh {
 			'trackers.libraryFilter.libraries' => '媒体库',
 			'trackers.libraryFilter.noLibraries' => '没有可用的媒体库',
 			'addServer.addJellyfinTitle' => '添加 Jellyfin 服务器',
+			'addServer.addEmbyTitle' => '添加 Emby 服务器',
 			'addServer.serverUrls' => '服务器 URL',
 			'addServer.serverUrlsHelper' => '可输入多个 URL，以逗号分隔。',
 			'addServer.findServer' => '查找服务器',
-			'addServer.searchingLocalServers' => '正在查找本地 Jellyfin 服务器...',
-			'addServer.localServers' => '本地 Jellyfin 服务器',
+			'addServer.searchingLocalServers' => '正在查找本地服务器...',
+			'addServer.localServers' => '本地服务器',
 			'addServer.username' => '用户名',
 			'addServer.password' => '密码',
 			'addServer.signIn' => '登录',
@@ -3563,14 +3570,17 @@ extension on TranslationsZh {
 			'addServer.duplicatePlexAccount' => '已登录 Plex。请退出登录以切换账号。',
 			'addServer.failedToRegisterAccount' => '注册帐户失败',
 			'addServer.enterJellyfinUrlError' => '输入你的 Jellyfin 服务器 URL',
+			'addServer.enterEmbyUrlError' => '输入你的 Emby 服务器 URL',
 			'addServer.addConnectionTitle' => '添加连接',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => '添加到 ${name}',
 			'addServer.signInWithPlexCard' => '使用 Plex 登录',
 			'addServer.signInWithPlexCardSubtitle' => '授权此设备。共享服务器会被添加。',
 			'addServer.signInWithPlexCardSubtitleScoped' => '授权一个 Plex 账号。Home 用户会成为个人资料。',
 			'addServer.connectToJellyfinCard' => '连接到 Jellyfin',
+			'addServer.connectToEmbyCard' => '连接到 Emby',
 			'addServer.connectToJellyfinCardSubtitle' => '输入服务器 URL、用户名和密码。',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => '登录到 Jellyfin 服务器。绑定到 ${name}。',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => '登录到 Emby 服务器。绑定到 ${name}。',
 			'addServer.borrowFromAnotherProfile' => '从另一个配置文件借用',
 			'addServer.borrowFromAnotherProfileSubtitle' => '复用另一个个人资料的连接。受 PIN 保护的个人资料需要 PIN。',
 			'addLocalFolder.cardTitle' => 'Local Folder',

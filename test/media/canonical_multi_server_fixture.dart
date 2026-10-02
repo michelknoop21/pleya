@@ -33,7 +33,7 @@
 ///   the scenario needs.
 ///
 /// Server C is [MediaBackend.pleyaServer]. The approved mockups show "Emby"
-/// for the third source, but Pleya has no Emby backend — read it as Pleya
+/// for the third source; that third source is Pleya Server, read it as Pleya
 /// Server (DEC-063; hoofdstuk 33.6 conflictpunt 3).
 library;
 

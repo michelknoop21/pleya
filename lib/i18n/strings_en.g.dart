@@ -2384,6 +2384,9 @@ class TranslationsConnectionsEn {
 	/// en: 'Edit Jellyfin connection'
 	String get editJellyfinTitle => 'Edit Jellyfin connection';
 
+	/// en: 'Edit Emby connection'
+	String get editEmbyTitle => 'Edit Emby connection';
+
 	/// en: 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.'
 	String editJellyfinIntro({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.';
 
@@ -5207,11 +5210,11 @@ class TranslationsAddServerEn {
 	/// en: 'Find server'
 	String get findServer => 'Find server';
 
-	/// en: 'Looking for local Jellyfin servers...'
-	String get searchingLocalServers => 'Looking for local Jellyfin servers...';
+	/// en: 'Looking for servers on your network...'
+	String get searchingLocalServers => 'Looking for servers on your network...';
 
-	/// en: 'Local Jellyfin servers'
-	String get localServers => 'Local Jellyfin servers';
+	/// en: 'Servers on your network'
+	String get localServers => 'Servers on your network';
 
 	/// en: 'Username'
 	String get username => 'Username';
@@ -5252,6 +5255,9 @@ class TranslationsAddServerEn {
 	/// en: 'Enter your Jellyfin server URL'
 	String get enterJellyfinUrlError => 'Enter your Jellyfin server URL';
 
+	/// en: 'Enter your Emby server URL'
+	String get enterEmbyUrlError => 'Enter your Emby server URL';
+
 	/// en: 'Add connection'
 	String get addConnectionTitle => 'Add connection';
 
@@ -5275,6 +5281,15 @@ class TranslationsAddServerEn {
 
 	/// en: 'Sign in to a Jellyfin server. Binds to ${name}.'
 	String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Sign in to a Jellyfin server. Binds to ${name}.';
+
+	/// en: 'Add Emby server'
+	String get addEmbyTitle => 'Add Emby server';
+
+	/// en: 'Connect to Emby'
+	String get connectToEmbyCard => 'Connect to Emby';
+
+	/// en: 'Sign in to an Emby server. Binds to ${name}.'
+	String connectToEmbyCardSubtitleScoped({required Object name}) => 'Sign in to an Emby server. Binds to ${name}.';
 
 	/// en: 'Connect to Pleya Server'
 	String get connectToPleyaServerCard => 'Connect to Pleya Server';
@@ -8006,6 +8021,7 @@ extension on Translations {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Session expired for ${count} servers',
 			'connections.signInAgain' => 'Sign in again',
 			'connections.editJellyfinTitle' => 'Edit Jellyfin connection',
+			'connections.editEmbyTitle' => 'Edit Emby connection',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.',
 			'connections.localSources' => 'Sources on this device',
 			'connections.removeSource' => 'Remove source',
@@ -8261,9 +8277,9 @@ extension on Translations {
 			'watchlist.filterShows' => 'Shows',
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
-			'watchlist.sortTitle' => 'Title',
 			_ => null,
 		} ?? switch (path) {
+			'watchlist.sortTitle' => 'Title',
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
 			'watchlist.coverageIncompleteList' => 'One of your servers could not be reached, so this list may be incomplete.',
@@ -8775,9 +8791,9 @@ extension on Translations {
 			'metadataEdit.style' => 'Style',
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
-			'matchScreen.fixMatch' => 'Fix Match...',
 			_ => null,
 		} ?? switch (path) {
+			'matchScreen.fixMatch' => 'Fix Match...',
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
 			'matchScreen.unmatchSuccess' => 'Item unmatched',
@@ -8984,8 +9000,8 @@ extension on Translations {
 			'addServer.serverUrls' => 'Server URLs',
 			'addServer.serverUrlsHelper' => 'Multiple URLs allowed, separated by commas.',
 			'addServer.findServer' => 'Find server',
-			'addServer.searchingLocalServers' => 'Looking for local Jellyfin servers...',
-			'addServer.localServers' => 'Local Jellyfin servers',
+			'addServer.searchingLocalServers' => 'Looking for servers on your network...',
+			'addServer.localServers' => 'Servers on your network',
 			'addServer.username' => 'Username',
 			'addServer.password' => 'Password',
 			'addServer.signIn' => 'Sign in',
@@ -8999,6 +9015,7 @@ extension on Translations {
 			'addServer.duplicatePlexAccount' => 'Already signed in to Plex. Sign out to switch accounts.',
 			'addServer.failedToRegisterAccount' => 'Failed to register account',
 			'addServer.enterJellyfinUrlError' => 'Enter your Jellyfin server URL',
+			'addServer.enterEmbyUrlError' => 'Enter your Emby server URL',
 			'addServer.addConnectionTitle' => 'Add connection',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Add to ${name}',
 			'addServer.signInWithPlexCard' => 'Sign in with Plex',
@@ -9007,6 +9024,9 @@ extension on Translations {
 			'addServer.connectToJellyfinCard' => 'Connect to Jellyfin',
 			'addServer.connectToJellyfinCardSubtitle' => 'Enter your server URL, username, and password.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Sign in to a Jellyfin server. Binds to ${name}.',
+			'addServer.addEmbyTitle' => 'Add Emby server',
+			'addServer.connectToEmbyCard' => 'Connect to Emby',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Sign in to an Emby server. Binds to ${name}.',
 			'addServer.connectToPleyaServerCard' => 'Connect to Pleya Server',
 			'addServer.connectToPleyaServerCardSubtitle' => 'Your own server. Enter its address to continue.',
 			'addServer.connectToPleyaServerCardSubtitleScoped' => ({required Object name}) => 'Sign in to a Pleya Server. Binds to ${name}.',
@@ -9285,13 +9305,13 @@ extension on Translations {
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Chosen on ${date} · ${device}',
 			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Chosen on ${date}',
 			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Series preference, chosen on ${date} at ${episode} on ${device}.',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.sheetOrigin' => ({required Object date}) => 'Series preference, chosen on ${date}.',
 			'languageSettings.sheetScopeLogical' => 'Applies wherever Pleya recognises this series as the same one.',
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya profile: ${value}',
 			'languageSettings.useGlobal' => 'Use global preference',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'clears this series preference',
 			'languageSettings.sheetFooter' => 'You pick a different language while watching, in the info panel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}',

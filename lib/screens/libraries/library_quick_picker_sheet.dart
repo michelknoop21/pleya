@@ -78,7 +78,7 @@ class LibraryQuickPickerSheet extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
-          BackendBadge(backend: library.backend, size: 12, color: labelStyle?.color),
+          BackendBadge(backend: library.backend, serverId: library.serverId, size: 12, color: labelStyle?.color),
           const SizedBox(width: 6),
           Expanded(
             child: Text(library.serverName ?? fallbackServerName, style: labelStyle, maxLines: 1, overflow: .ellipsis),
@@ -95,7 +95,7 @@ class LibraryQuickPickerSheet extends StatelessWidget {
     return Row(
       mainAxisSize: .min,
       children: [
-        BackendBadge(backend: library.backend, size: 10, color: style?.color),
+        BackendBadge(backend: library.backend, serverId: library.serverId, size: 10, color: style?.color),
         const SizedBox(width: 4),
         Flexible(
           child: Text(library.serverName!, style: style, maxLines: 1, overflow: .ellipsis),

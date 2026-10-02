@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
@@ -51,6 +52,7 @@ import '../exceptions/media_server_exceptions.dart';
 import '../i18n/strings.g.dart';
 import '../utils/jellyfin_time.dart';
 import 'jellyfin_auth_header.dart';
+import 'jellyfin_endpoint_discovery.dart' show isEmbyServerInfo;
 import '../media/download_resolution.dart';
 import 'api_cache.dart';
 import 'download_artwork_helpers.dart';
@@ -103,7 +105,9 @@ class JellyfinClient
         JellyfinHistorySource,
         GracefullyCloseable {
   JellyfinClient._({required this._connection, required this._http, FavoriteChannelsRepository? favoritesRepository})
-    : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository();
+    : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository() {
+    if (_connection.isEmby) embyServerIds.add(_connection.serverMachineId);
+  }
 
   /// Build a fully-initialised [JellyfinClient]. Endpoint reachability is
   /// raced before construction by onboarding/profile binding; this factory
@@ -140,7 +144,7 @@ class JellyfinClient
       accessToken: connection.accessToken,
     );
     final headers = {
-      'Authorization': authHeader,
+      ...jellyfinAuthHeaders(authHeader, isEmby: connection.isEmby),
       'X-Emby-Token': connection.accessToken,
       'Accept': 'application/json',
       // Jellyfin's session reporting endpoints (`/Sessions/Playing*`) reject
@@ -252,7 +256,14 @@ class JellyfinClient
   MediaBackend get backend => MediaBackend.jellyfin;
 
   @override
-  ServerCapabilities get capabilities => ServerCapabilities.jellyfin;
+  ServerCapabilities get capabilities => connection.isEmby ? _embyCapabilities : ServerCapabilities.jellyfin;
+
+  /// Emby has no Jellyfin trickplay (BIF scrub thumbnails are not wired yet),
+  /// but it can hide an item from Continue Watching.
+  static final _embyCapabilities = ServerCapabilities.jellyfin.copyWith(
+    scrubThumbnails: false,
+    continueWatchingRemoval: true,
+  );
 
   /// Jellyfin doesn't expose a per-server played-threshold pref, so we mirror
   /// Plex's default of 90%.
@@ -288,7 +299,7 @@ class JellyfinClient
   @override
   Future<HealthStatus> checkHealth() async {
     try {
-      final response = await _http.get('/Users/Me', timeout: const Duration(seconds: 8));
+      final response = await _http.get(connection.currentUserPath, timeout: const Duration(seconds: 8));
       final ok = response.statusCode >= 200 && response.statusCode < 300;
       if (ok) {
         final data = response.data;
@@ -314,13 +325,46 @@ class JellyfinClient
       if (response.statusCode == 401 || response.statusCode == 403) {
         return HealthStatus.authError;
       }
-      return HealthStatus.offline;
+      return await _migrateToEmbyIfDetected() ? checkHealth() : HealthStatus.offline;
     } on MediaServerHttpException catch (e) {
       if (e.statusCode == 401 || e.statusCode == 403) return HealthStatus.authError;
+      if (e.statusCode != null && await _migrateToEmbyIfDetected()) return checkHealth();
       return HealthStatus.offline;
     } catch (_) {
       return HealthStatus.offline;
     }
+  }
+
+  /// Emby connections saved before Pleya knew Emby carry `isEmby: false`, and
+  /// Emby answers the Jellyfin-only `/Users/Me` with 500. Only an HTTP answer
+  /// gets here (never a transport failure), and only a public info response
+  /// from the same server that identifies as Emby flips the flag. The flag is
+  /// persisted, so this runs once per connection.
+  Future<bool> _migrateToEmbyIfDetected() async {
+    if (_connection.isEmby) return false;
+    try {
+      final response = await _http.get('/System/Info/Public', timeout: const Duration(seconds: 8));
+      final data = response.data;
+      if (response.statusCode != 200 || data is! Map<String, dynamic>) return false;
+      if (data['Id'] != _connection.serverMachineId) return false;
+      if (!isEmbyServerInfo(data['ProductName'], data['Version'] as String? ?? '')) return false;
+    } catch (_) {
+      return false;
+    }
+    appLogger.i('Jellyfin connection ${_connection.serverName} is an Emby server; migrating');
+    _connection = _connection.copyWith(isEmby: true);
+    embyServerIds.add(_connection.serverMachineId);
+    final auth = _http.defaultHeaders['Authorization'];
+    if (auth != null) _http.defaultHeaders = {..._http.defaultHeaders, ...jellyfinAuthHeaders(auth, isEmby: true)};
+    final listener = onConnectionUpdated;
+    if (listener != null) {
+      try {
+        await Future.sync(() => listener(_connection));
+      } catch (e, st) {
+        appLogger.w('Failed to persist Emby migration', error: e, stackTrace: st);
+      }
+    }
+    return true;
   }
 
   @override
@@ -331,7 +375,7 @@ class JellyfinClient
   /// Returns null on transport failures — caller treats as "no preference".
   Future<JellyfinUserProfile?> fetchUserProfile() async {
     try {
-      final response = await _http.get('/Users/Me');
+      final response = await _http.get(connection.currentUserPath);
       throwIfHttpError(response);
       final data = response.data;
       if (data is! Map<String, dynamic>) return null;

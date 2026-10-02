@@ -17,7 +17,11 @@ import '../../test_helpers/prefs.dart';
 Profile _profile(String id) =>
     Profile.local(id: id, displayName: id, sortOrder: 0, createdAt: DateTime.fromMillisecondsSinceEpoch(0));
 
-JellyfinConnectionAuthService _jellyfinAuthService({bool quickConnectEnabled = false, Duration? initiateDelay}) {
+JellyfinConnectionAuthService _jellyfinAuthService({
+  bool quickConnectEnabled = false,
+  Duration? initiateDelay,
+  String version = '10.9.0',
+}) {
   return JellyfinConnectionAuthService(
     clientName: 'Plezy',
     clientVersion: 'test',
@@ -26,7 +30,7 @@ JellyfinConnectionAuthService _jellyfinAuthService({bool quickConnectEnabled = f
       switch (request.url.path) {
         case '/System/Info/Public':
           return http.Response(
-            jsonEncode({'Id': 'srv-1', 'ServerName': 'Home', 'Version': '10.9.0'}),
+            jsonEncode({'Id': 'srv-1', 'ServerName': 'Home', 'Version': version}),
             200,
             headers: {'content-type': 'application/json'},
           );
@@ -352,6 +356,27 @@ void main() {
     final field = tester.widget<TextField>(find.byType(TextField).first);
     expect(field.controller?.text, contains('http://192.168.1.20:8096'));
     expect(find.text('Jellyfin 10.9.0'), findsOneWidget);
+  });
+
+  testWidgets('a discovered Emby server is confirmed as Emby, not Jellyfin', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AddJellyfinScreen(
+          emby: true,
+          authServiceFactory: () => _jellyfinAuthService(version: '4.9.3.0'),
+          localDiscoveryFactory: () async => [
+            DiscoveredJellyfinServer(address: 'http://192.168.1.20:8096', id: 'srv-1', name: 'Home'),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Home'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Emby 4.9.3.0'), findsOneWidget);
+    expect(find.text('Jellyfin 4.9.3.0'), findsNothing);
   });
 
   testWidgets('D-pad can navigate through discovered Jellyfin servers', (tester) async {

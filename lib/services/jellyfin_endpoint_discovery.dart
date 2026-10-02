@@ -19,7 +19,15 @@ class JellyfinServerInfo {
   /// Server's reported version string.
   final String version;
 
-  const JellyfinServerInfo({required this.serverName, required this.machineId, required this.version});
+  /// Emby rather than Jellyfin. Both answer this probe with the same shape.
+  final bool isEmby;
+
+  const JellyfinServerInfo({
+    required this.serverName,
+    required this.machineId,
+    required this.version,
+    this.isEmby = false,
+  });
 }
 
 class JellyfinEndpointRaceResult {
@@ -86,7 +94,13 @@ class JellyfinEndpointDiscovery {
       if (id is! String || name is! String) {
         throw MediaServerUrlException('Server response missing Id/ServerName — not a Jellyfin server?');
       }
-      return JellyfinServerInfo(serverName: name, machineId: id, version: data['Version'] as String? ?? '');
+      final version = data['Version'] as String? ?? '';
+      return JellyfinServerInfo(
+        serverName: name,
+        machineId: id,
+        version: version,
+        isEmby: isEmbyServerInfo(data['ProductName'], version),
+      );
     } on MediaServerUrlException {
       rethrow;
     } on MediaServerHttpException catch (e) {
@@ -377,4 +391,13 @@ class JellyfinEndpointDiscovery {
     }
     return List.unmodifiable(result);
   }
+}
+
+/// Jellyfin has answered `ProductName: "Jellyfin Server"` since 10.3; Emby
+/// does not. Without a ProductName, Emby's 4.x versioning against Jellyfin's
+/// 10.x settles it.
+bool isEmbyServerInfo(Object? productName, String version) {
+  if (productName is String && productName.isNotEmpty) return !productName.toLowerCase().contains('jellyfin');
+  final major = int.tryParse(version.split('.').first);
+  return major != null && major < 10;
 }

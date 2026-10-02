@@ -357,6 +357,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
   Future<Map<String, dynamic>?> _safeFetchFilterPayload(String libraryId) async {
     try {
+      if (connection.isEmby) return await _fetchEmbyFilterPayload(libraryId);
       final response = await _http.get(
         '/Items/Filters',
         queryParameters: {'userId': connection.userId, 'ParentId': libraryId},
@@ -370,6 +371,38 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       appLogger.w('JellyfinClient: /Items/Filters timed out (filters disabled)', error: e, stackTrace: st);
       return null;
     }
+  }
+
+  /// Emby has no `/Items/Filters`; it lists each facet on its own endpoint.
+  /// Rebuilt into Jellyfin's payload shape so the parsing above is shared.
+  Future<Map<String, dynamic>> _fetchEmbyFilterPayload(String libraryId) async {
+    final query = {'UserId': connection.userId, 'ParentId': libraryId, 'Recursive': 'true'};
+    // One facet the server refuses (an older build, a restricted user) drops
+    // that facet only; the others still make it to the filter sheet.
+    Future<List<String>> names(String path) async {
+      try {
+        final response = await _http.get(path, queryParameters: query, timeout: _filtersTimeout);
+        throwIfHttpError(response);
+        return [for (final item in _itemsArray(response.data)) ?item['Name'] as String?];
+      } on MediaServerHttpException catch (e) {
+        if (e.isTransient) rethrow;
+        appLogger.w('JellyfinClient: Emby $path unavailable (facet skipped)', error: e);
+        return const [];
+      }
+    }
+
+    final [genres, ratings, tags, years] = await Future.wait([
+      names('/Genres'),
+      names('/OfficialRatings'),
+      names('/Tags'),
+      names('/Years'),
+    ]);
+    return {
+      'Genres': genres,
+      'OfficialRatings': ratings,
+      'Tags': tags,
+      'Years': [for (final y in years) ?int.tryParse(y)],
+    };
   }
 
   /// Jellyfin has no `/sorts` listing endpoint, so this returns a hardcoded
@@ -1233,7 +1266,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final results = await Future.wait([
-      _fetchItemsArray('/UserItems/Resume', {
+      _fetchItemsArray(connection.resumeItemsPath, {
         'userId': connection.userId,
         'Limit': ?count?.toString(),
         'Fields': _browseFields,
@@ -1288,7 +1321,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
     final results = await Future.wait([
       latestFuture,
-      _safeFetchItemsArray('/UserItems/Resume', {
+      _safeFetchItemsArray(connection.resumeItemsPath, {
         'userId': connection.userId,
         'Limit': limit.toString(),
         'Fields': _browseFields,
@@ -1420,7 +1453,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final includeNextUp = libraryKind == null || libraryKind == MediaKind.show;
     final results = await Future.wait([
       latestFuture,
-      _safeFetchItemsArray('/UserItems/Resume', {
+      _safeFetchItemsArray(connection.resumeItemsPath, {
         'userId': connection.userId,
         'ParentId': libraryId,
         'Limit': limit.toString(),
@@ -1528,7 +1561,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         );
       case 'continue':
         return _safeFetchMediaPage(
-          '/UserItems/Resume',
+          connection.resumeItemsPath,
           {
             'userId': connection.userId,
             'StartIndex': offset.toString(),
@@ -1731,11 +1764,11 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     if (isOfflineMode) return const [];
 
     final results = await Future.wait([
-      _safeFetchItemsArray('/Items/${_segment(id)}/LocalTrailers', {
+      _safeFetchItemsArray(connection.itemExtrasPath(id, 'LocalTrailers'), {
         'userId': connection.userId,
         ...jellyfinImageQueryParameters,
       }),
-      _safeFetchItemsArray('/Items/${_segment(id)}/SpecialFeatures', {
+      _safeFetchItemsArray(connection.itemExtrasPath(id, 'SpecialFeatures'), {
         'userId': connection.userId,
         ...jellyfinImageQueryParameters,
       }),
