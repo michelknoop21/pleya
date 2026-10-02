@@ -11,7 +11,7 @@
     <h2 class="big" data-split>The same library in your pocket and on your desk.</h2>
     <figure class="devices-stage peek-stage" data-moment="ledge">
       <div class="peek-ledge" aria-hidden="true"><img src={bigP} alt="" /></div>
-      <img class="mac" src={macHome} width="1920" height="1050" loading="lazy" alt="Current Pleya on Mac, with both original demo collections in one Home" />
+      <img class="mac" src={macHome} width="2624" height="1644" loading="lazy" alt="Current Pleya on Mac, with both original demo collections in one Home" />
       <img class="phone p1" src={iosMovies} width="603" height="1311" loading="lazy" alt="Pleya Home on iPhone with original artwork and Liquid Glass" />
       <img class="phone p2" src={iosDetail} width="603" height="1311" loading="lazy" alt="The TIDE film detail page on iPhone with Liquid Glass controls" />
     </figure>

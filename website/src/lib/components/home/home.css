@@ -137,7 +137,16 @@
   .share { position: relative; padding-block: 8rem; overflow: hidden; }
   .share::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 55% at 85% 30%, rgba(255, 140, 40, 0.14), transparent 70%), radial-gradient(50% 50% at 10% 90%, rgba(229, 20, 15, 0.12), transparent 70%); pointer-events: none; }
   .share-grid { position: relative; display: grid; gap: 3rem; }
-  .share-shot { position: relative; margin-top: 3.5rem; max-width: 56rem; }
+  .share-shot { position: relative; margin-top: 3.5rem; max-width: 64rem; }
+  .share-pairing { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
+  .share-screen-label { margin-bottom: 0.8rem; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+  .share-host-crop { position: relative; overflow: hidden; aspect-ratio: 920 / 750; border: 1px solid rgba(255,255,255,0.18); border-radius: 1.1rem; background: #000; }
+  .share-host-crop img { position: absolute; width: 208.695652%; max-width: none; height: auto; left: -54.347826%; top: -9.333333%; }
+  .share-receiver { width: min(58%, 17rem); justify-self: center; }
+  @media (min-width: 700px) {
+    .share-pairing { grid-template-columns: minmax(0, 1fr) minmax(0, 0.34fr); gap: 3rem; }
+    .share-receiver { width: 100%; }
+  }
   .share .tag { display: inline-block; margin-left: 0.6rem; vertical-align: middle; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; padding: 0.2rem 0.6rem; border-radius: 999px; background: rgba(255, 176, 32, 0.14); color: var(--amber); }
   .share .lede { margin-top: 1.4rem; }
   .routes { display: grid; gap: 1.4rem; }

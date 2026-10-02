@@ -22,7 +22,7 @@
       </p>
     </div>
     <figure class="unified-shots">
-      <img class="tv" src={tvServers} width="1920" height="1080" loading="lazy" alt="Pleya on Mac showing films from two original demo collections together" />
+      <img class="tv" src={tvServers} width="2624" height="1644" loading="lazy" alt="Pleya on Mac showing films from two original demo collections together" />
       <img class="phone" src={iosServers} width="603" height="1311" loading="lazy" alt="Pleya Home on iPhone with the original demo library" />
       <figcaption class="cap">
         Two demo collections, together in the real Pleya app. Original artwork created for this preview.
