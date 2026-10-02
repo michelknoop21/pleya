@@ -2492,6 +2492,9 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get summonHint => 'Houd Play/Pauze ingedrukt om Big P op te roepen';
 	@override String get contextAction => 'Vraag Big P';
 	@override late final _TranslationsAssistantSettingsNl settings = _TranslationsAssistantSettingsNl._(_root);
+	@override String get youAsked => 'Je vroeg:';
+	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
+	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -3149,6 +3152,11 @@ class _TranslationsAssistantIdleNl extends TranslationsAssistantIdleEn {
 	@override String status({required Object servers}) => 'Klaar voor je vraag · ${servers}';
 	@override String get ask => 'Vraag Big P';
 	@override String get examplesHeader => 'Bijvoorbeeld';
+	@override List<String> get examples => [
+		'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+		'Scan alle filmbibliotheken op al mijn servers.',
+		'Wie heeft deze week het meest gekeken?',
+	];
 }
 
 // Path: assistant.listening
@@ -3342,6 +3350,29 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get errorTimeout => 'De server antwoordde niet op tijd.';
 	@override String get errorToolsUnsupported => 'Dit model kan geen tools gebruiken.';
 	@override String get errorBadResponse => 'Onverwacht antwoord van de server. Controleer het adres.';
+}
+
+// Path: assistant.option
+class _TranslationsAssistantOptionNl extends TranslationsAssistantOptionEn {
+	_TranslationsAssistantOptionNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get notRequested => 'Aan te vragen';
+}
+
+// Path: assistant.displays
+class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
+	_TranslationsAssistantDisplaysNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String missing({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}';
+	@override String watchStats({required Object server}) => 'Kijkcijfers · ${server}';
+	@override String plays({required Object count}) => '${count}× bekeken';
+	@override String noSource({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -5477,6 +5508,9 @@ extension on TranslationsNl {
 			'assistant.idle.status' => ({required Object servers}) => 'Klaar voor je vraag · ${servers}',
 			'assistant.idle.ask' => 'Vraag Big P',
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
+			'assistant.idle.examples.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+			'assistant.idle.examples.1' => 'Scan alle filmbibliotheken op al mijn servers.',
+			'assistant.idle.examples.2' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.listening.title' => 'Ik luister…',
 			'assistant.listening.body' => 'Spreek je vraag in.',
 			'assistant.working.status' => 'Even kijken…',
@@ -5602,6 +5636,12 @@ extension on TranslationsNl {
 			'assistant.settings.errorTimeout' => 'De server antwoordde niet op tijd.',
 			'assistant.settings.errorToolsUnsupported' => 'Dit model kan geen tools gebruiken.',
 			'assistant.settings.errorBadResponse' => 'Onverwacht antwoord van de server. Controleer het adres.',
+			'assistant.youAsked' => 'Je vroeg:',
+			'assistant.option.notRequested' => 'Aan te vragen',
+			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',
+			'assistant.displays.watchStats' => ({required Object server}) => 'Kijkcijfers · ${server}',
+			'assistant.displays.plays' => ({required Object count}) => '${count}× bekeken',
+			'assistant.displays.noSource' => ({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.',
 			_ => null,
 		};
 	}

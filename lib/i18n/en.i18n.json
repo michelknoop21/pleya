@@ -2292,7 +2292,12 @@
       "greeting": "Hi ${name}, what needs doing?",
       "status": "Ready for your question · ${servers}",
       "ask": "Ask Big P",
-      "examplesHeader": "For example"
+      "examplesHeader": "For example",
+      "examples": [
+        "Which tasks failed on my servers today? Restart them.",
+        "Scan all movie libraries on all my servers.",
+        "Who watched the most this week?"
+      ]
     },
     "listening": {
       "title": "I'm listening…",
@@ -2438,6 +2443,16 @@
       "errorTimeout": "The server did not answer in time.",
       "errorToolsUnsupported": "This model cannot use tools.",
       "errorBadResponse": "Unexpected answer from the server. Check the address."
+    },
+    "youAsked": "You asked:",
+    "option": {
+      "notRequested": "Requestable"
+    },
+    "displays": {
+      "missing": "${count} titles on ${server} are missing on ${other}",
+      "watchStats": "Watch stats · ${server}",
+      "plays": "${count}× watched",
+      "noSource": "No watch data available for ${server}."
     }
   }
 }

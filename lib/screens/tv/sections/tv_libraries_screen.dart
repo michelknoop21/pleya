@@ -26,6 +26,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../../assistant/assistant_controller.dart';
+import '../../../assistant/assistant_tool_context.dart';
 import '../../../focus/focus_memory_tracker.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/library_query.dart';
@@ -52,11 +54,12 @@ import '../../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../../widgets/tv/tv_menu_grid.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 import '../../../widgets/tv/tv_panel_primitives.dart';
+import '../assistant/tv_assistant_screen.dart';
 import '../tv_unified_catalog_screen.dart';
 import 'tv_library_action_sheet.dart';
 
 /// One admin action a library row's action sheet may offer (mockup 27 B).
-enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, analyze, emptyTrash }
+enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, analyze, emptyTrash, askBigP }
 
 /// Which actions [library] offers, in the order mockup 27 B draws them.
 ///
@@ -67,7 +70,7 @@ enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, a
 /// same gate `_getLibraryMenuItems` in the shared [LibrariesScreen] applies.
 /// Openen in catalogus only makes sense for a library the unified catalog
 /// actually browses.
-List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool canManage}) {
+List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool canManage, bool canAskBigP = false}) {
   final isCatalogable = library.kind == MediaKind.movie || library.kind == MediaKind.show;
   final isPlex = canManage && library.backend == MediaBackend.plex;
   return [
@@ -77,6 +80,9 @@ List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool c
     TvLibraryAction.toggleVisibility,
     if (isPlex) TvLibraryAction.analyze,
     if (isPlex) TvLibraryAction.emptyTrash,
+    // DEC-142: Big P with this library as context, only where the
+    // AssistantController shows him at all.
+    if (canAskBigP && library.serverId != null) TvLibraryAction.askBigP,
   ];
 }
 
@@ -223,8 +229,24 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
         onToggleVisibility: () => _toggleVisibility(library, isHidden: isHidden),
         onAnalyze: () => _analyze(library),
         onEmptyTrash: () => _emptyTrash(library),
+        canAskBigP:
+            (context.read<AssistantController?>()?.availability ?? AssistantAvailability.hidden) !=
+            AssistantAvailability.hidden,
+        onAskBigP: () => _askBigP(library),
       ),
     );
+  }
+
+  /// "Vraag Big P" with this library as the screen context: the surface
+  /// opens with the keyboard up, so "scan deze bibliotheek" means this one.
+  void _askBigP(MediaLibrary library) {
+    final screenContext = AssistantScreenContext(serverId: library.serverId, libraryId: library.id);
+    final screenKey = GlobalKey(debugLabel: 'tvAssistant_context');
+    Widget builder(BuildContext _) => TvAssistantScreen(key: screenKey, screenContext: screenContext);
+    final nested = openTvContentRoute(id: 'tvAssistant_${library.globalKey}', builder: builder, screenKey: screenKey);
+    if (nested == null) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
+    }
   }
 
   void _openInCatalog(MediaLibrary library) {

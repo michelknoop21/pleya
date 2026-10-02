@@ -34,6 +34,7 @@ String _labelFor(TvLibraryAction action, MediaLibrary library, {required bool is
   TvLibraryAction.toggleVisibility => isHidden ? t.libraries.showLibrary : t.libraries.hideLibrary,
   TvLibraryAction.analyze => t.libraries.analyze,
   TvLibraryAction.emptyTrash => t.libraries.emptyTrash,
+  TvLibraryAction.askBigP => t.assistant.contextAction,
 };
 
 String? _secondaryFor(TvLibraryAction action) => switch (action) {
@@ -55,8 +56,10 @@ Future<void> showTvLibraryActionSheet(
   required VoidCallback onToggleVisibility,
   required VoidCallback onAnalyze,
   required VoidCallback onEmptyTrash,
+  bool canAskBigP = false,
+  VoidCallback? onAskBigP,
 }) async {
-  final actions = tvLibraryActionsFor(library, canManage: canManage);
+  final actions = tvLibraryActionsFor(library, canManage: canManage, canAskBigP: canAskBigP && onAskBigP != null);
   if (actions.isEmpty) return;
 
   final chosen = await OverlaySheetController.showAdaptive<TvLibraryAction>(
@@ -85,6 +88,8 @@ Future<void> showTvLibraryActionSheet(
       onAnalyze();
     case TvLibraryAction.emptyTrash:
       onEmptyTrash();
+    case TvLibraryAction.askBigP:
+      onAskBigP?.call();
     case null:
       break;
   }

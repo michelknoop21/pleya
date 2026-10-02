@@ -2292,7 +2292,12 @@
       "greeting": "Hoi ${name}, wat moet er gebeuren?",
       "status": "Klaar voor je vraag · ${servers}",
       "ask": "Vraag Big P",
-      "examplesHeader": "Bijvoorbeeld"
+      "examplesHeader": "Bijvoorbeeld",
+      "examples": [
+        "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.",
+        "Scan alle filmbibliotheken op al mijn servers.",
+        "Wie heeft deze week het meest gekeken?"
+      ]
     },
     "listening": {
       "title": "Ik luister…",
@@ -2438,6 +2443,16 @@
       "errorTimeout": "De server antwoordde niet op tijd.",
       "errorToolsUnsupported": "Dit model kan geen tools gebruiken.",
       "errorBadResponse": "Onverwacht antwoord van de server. Controleer het adres."
+    },
+    "youAsked": "Je vroeg:",
+    "option": {
+      "notRequested": "Aan te vragen"
+    },
+    "displays": {
+      "missing": "${count} titels op ${server} ontbreken op ${other}",
+      "watchStats": "Kijkcijfers · ${server}",
+      "plays": "${count}× bekeken",
+      "noSource": "Geen kijkgegevens beschikbaar voor ${server}."
     }
   }
 }

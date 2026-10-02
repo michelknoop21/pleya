@@ -6006,6 +6006,12 @@ class TranslationsAssistantEn {
 	String get contextAction => 'Ask Big P';
 
 	late final TranslationsAssistantSettingsEn settings = TranslationsAssistantSettingsEn.internal(_root);
+
+	/// en: 'You asked:'
+	String get youAsked => 'You asked:';
+
+	late final TranslationsAssistantOptionEn option = TranslationsAssistantOptionEn.internal(_root);
+	late final TranslationsAssistantDisplaysEn displays = TranslationsAssistantDisplaysEn.internal(_root);
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7328,6 +7334,12 @@ class TranslationsAssistantIdleEn {
 
 	/// en: 'For example'
 	String get examplesHeader => 'For example';
+
+	List<String> get examples => [
+		'Which tasks failed on my servers today? Restart them.',
+		'Scan all movie libraries on all my servers.',
+		'Who watched the most this week?',
+	];
 }
 
 // Path: assistant.listening
@@ -7744,6 +7756,39 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: 'Unexpected answer from the server. Check the address.'
 	String get errorBadResponse => 'Unexpected answer from the server. Check the address.';
+}
+
+// Path: assistant.option
+class TranslationsAssistantOptionEn {
+	TranslationsAssistantOptionEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Requestable'
+	String get notRequested => 'Requestable';
+}
+
+// Path: assistant.displays
+class TranslationsAssistantDisplaysEn {
+	TranslationsAssistantDisplaysEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${count} titles on ${server} are missing on ${other}'
+	String missing({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}';
+
+	/// en: 'Watch stats · ${server}'
+	String watchStats({required Object server}) => 'Watch stats · ${server}';
+
+	/// en: '${count}× watched'
+	String plays({required Object count}) => '${count}× watched';
+
+	/// en: 'No watch data available for ${server}.'
+	String noSource({required Object server}) => 'No watch data available for ${server}.';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -9911,6 +9956,9 @@ extension on Translations {
 			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
+			'assistant.idle.examples.0' => 'Which tasks failed on my servers today? Restart them.',
+			'assistant.idle.examples.1' => 'Scan all movie libraries on all my servers.',
+			'assistant.idle.examples.2' => 'Who watched the most this week?',
 			'assistant.listening.title' => 'I\'m listening…',
 			'assistant.listening.body' => 'Speak your question.',
 			'assistant.working.status' => 'Let me check…',
@@ -10036,6 +10084,12 @@ extension on Translations {
 			'assistant.settings.errorTimeout' => 'The server did not answer in time.',
 			'assistant.settings.errorToolsUnsupported' => 'This model cannot use tools.',
 			'assistant.settings.errorBadResponse' => 'Unexpected answer from the server. Check the address.',
+			'assistant.youAsked' => 'You asked:',
+			'assistant.option.notRequested' => 'Requestable',
+			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',
+			'assistant.displays.watchStats' => ({required Object server}) => 'Watch stats · ${server}',
+			'assistant.displays.plays' => ({required Object count}) => '${count}× watched',
+			'assistant.displays.noSource' => ({required Object server}) => 'No watch data available for ${server}.',
 			_ => null,
 		};
 	}

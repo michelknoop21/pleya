@@ -50,10 +50,12 @@ void main() {
       bool showActivity = true,
       bool showCollections = true,
       bool showPlaylists = true,
+      bool showAssistant = true,
       int? watchlistCount,
       int? downloadCount,
     }) => buildTvMyPleyaGroups(
       hasWatchlist: hasWatchlist,
+      showAssistant: showAssistant,
       hasSeerr: hasSeerr,
       showDownloads: showDownloads,
       showActivity: showActivity,
