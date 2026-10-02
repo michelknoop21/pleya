@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -21,14 +22,32 @@ import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
 
 /// A Jellyfin server with one film library, paged like the real client.
+///
+/// [backend] plex hands out stable `plex://` guids, as a Plex server does;
+/// [pageDelay] makes every page slow; [leadingCollections] puts that many
+/// collections in front of the films.
 class _Jf implements JellyfinClient {
-  _Jf(this.machine, this.name, {this.admin = true, this.films = const [], this.ids = const {}});
+  _Jf(
+    this.machine,
+    this.name, {
+    this.admin = true,
+    this.films = const [],
+    this.ids = const {},
+    this.backend = MediaBackend.jellyfin,
+    this.pageDelay = Duration.zero,
+    this.leadingCollections = 0,
+  });
   final String machine;
   final String name;
   final bool admin;
   final List<(String id, String title, int year)> films;
   final Map<String, ExternalIds> ids;
+  @override
+  final MediaBackend backend;
+  final Duration pageDelay;
+  final int leadingCollections;
   final pages = <int>[];
+  var externalIdCalls = 0;
 
   @override
   JellyfinConnection get connection => JellyfinConnection(
@@ -49,8 +68,6 @@ class _Jf implements JellyfinClient {
   @override
   String get serverName => name;
   @override
-  MediaBackend get backend => MediaBackend.jellyfin;
-  @override
   bool get supportsServerAdministration => true;
 
   @override
@@ -68,28 +85,35 @@ class _Jf implements JellyfinClient {
   }) async {
     expect(libraryId, 'films');
     pages.add(query.offset);
-    final slice = films.skip(query.offset).take(query.limit);
+    if (pageDelay > Duration.zero) await Future<void>.delayed(pageDelay);
+    final all = [
+      for (var i = 0; i < leadingCollections; i++)
+        MediaItem(id: 'c$i', backend: backend, kind: MediaKind.collection, title: 'Set $i', serverId: machine),
+      for (final (id, title, year) in films)
+        MediaItem(
+          id: id,
+          backend: backend,
+          kind: MediaKind.movie,
+          // Jellyfin's mapper puts the item id in guid; Plex has a real one.
+          guid: backend == MediaBackend.plex ? 'plex://movie/$id' : id,
+          title: title,
+          year: year,
+          serverId: machine,
+          serverName: name,
+        ),
+    ];
     return LibraryPage(
-      totalCount: films.length,
+      totalCount: all.length,
       offset: query.offset,
-      items: [
-        for (final (id, title, year) in slice)
-          MediaItem(
-            id: id,
-            backend: MediaBackend.jellyfin,
-            kind: MediaKind.movie,
-            guid: id,
-            title: title,
-            year: year,
-            serverId: machine,
-            serverName: name,
-          ),
-      ],
+      items: all.skip(query.offset).take(query.limit).toList(),
     );
   }
 
   @override
-  Future<ExternalIds> fetchExternalIds(String itemId) async => ids[itemId] ?? const ExternalIds();
+  Future<ExternalIds> fetchExternalIds(String itemId) async {
+    externalIdCalls++;
+    return ids[itemId] ?? const ExternalIds();
+  }
 
   @override
   Future<void> closeGracefully({Duration drainTimeout = Duration.zero}) async {}
@@ -100,11 +124,17 @@ class _Jf implements JellyfinClient {
 
 AssistantTool _tool(String name) => assistantTools.singleWhere((t) => t.name == name);
 
-AssistantToolContext _ctx(List<_Jf> servers, {TautulliClient? tautulli, bool insights = true, Set<String>? borrowed}) {
+AssistantToolContext _ctx(
+  List<_Jf> servers, {
+  TautulliClient? tautulli,
+  bool insights = true,
+  Set<String>? borrowed,
+  Set<String> offline = const {},
+}) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
   for (final s in servers) {
-    m.debugRegisterJellyfinClientForTesting(s);
+    m.debugRegisterJellyfinClientForTesting(s, online: !offline.contains(s.machine));
   }
   if (borrowed != null) m.setServerAuthorityRestrictions(serverIds: borrowed);
   return AssistantToolContext(
@@ -138,10 +168,17 @@ void main() {
       final a = _Jf(
         'gplex',
         'G-Plexflix',
-        films: [('a1', 'Dune', 2021), ('a2', 'Arrival', 2016), ('a3', 'The Lion King', 1994), ('a4', _injected, 2020)],
-        ids: {'a1': const ExternalIds(tmdb: 1), 'a2': const ExternalIds(tmdb: 5)},
+        films: [
+          ('a1', 'Dune', 2021),
+          ('a2', 'Arrival', 2016),
+          ('a3', 'The Lion King', 1994),
+          ('a4', _injected, 2020),
+          ('a5', 'Dune', 2021),
+        ],
+        ids: {'a1': const ExternalIds(tmdb: 1), 'a5': const ExternalIds(tmdb: 2)},
       );
-      // Same title and year as a1, but another film: must still be missing.
+      // Two "Dune (2021)" on one server: title+year cannot pair them, so ids
+      // decide, and a1 is still missing. Arrival pairs on title+year alone.
       final b = _Jf(
         'woon',
         'Woonkamer',
@@ -155,9 +192,10 @@ void main() {
       final result =
           await tool.run(ctx, a.serverId, {'other_server_id': 'woon', 'kind': 'movie'}) as AssistantToolResult;
       final data = result.data;
-      expect(data['count_on_server'], 4);
+      expect(data['count_on_server'], 5);
       expect(data['count_on_other'], 2);
       expect(data['missing_count'], 3);
+      expect(a.externalIdCalls + b.externalIdCalls, 3, reason: 'only the Dune bucket costs lookups');
       final examples = (data['examples']! as List).cast<Map<String, Object?>>();
       expect(examples.map((e) => e['item_id']), unorderedEquals(['a1', 'a3', 'a4']));
       expect(data.containsKey('capped_at_items_per_server'), isFalse);
@@ -169,7 +207,9 @@ void main() {
 
       final display = result.display! as AssistantServerComparison;
       expect(display.missing.map((i) => i.id), ['a1', 'a4', 'a3']);
+      expect(display.missingTotal, 3);
       expect(display.capped, isFalse);
+      expect(display.partial, isFalse);
       // Only what was shown may be named by a later tool.
       ctx.requireShownItem(a.serverId, 'a3');
       expect(() => ctx.requireShownItem(a.serverId, 'a2'), throwsA(isA<AssistantToolError>()));
@@ -187,6 +227,90 @@ void main() {
       expect((result.data['examples']! as List), hasLength(20));
       expect((result.display! as AssistantServerComparison).capped, isTrue);
       expect(a.pages.last, lessThan(5000));
+    });
+
+    test('Plex against Jellyfin: lookups stay bounded however many titles they share', () async {
+      final plex = _Jf(
+        'gplex',
+        'G-Plexflix',
+        backend: MediaBackend.plex,
+        films: [
+          for (var i = 0; i < 1200; i++) ('p$i', 'Shared $i', 2001),
+          for (var i = 0; i < 400; i++) ('pd$i', 'Twice $i', 2002),
+          for (var i = 0; i < 200; i++) ('po$i', 'Only $i', 2003),
+        ],
+      );
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        films: [
+          for (var i = 0; i < 1200; i++) ('j$i', 'Shared $i', 2001),
+          // Two copies on one server: only ids can tell them apart.
+          for (var i = 0; i < 400; i++) ...[('jd$i', 'Twice $i', 2002), ('je$i', 'Twice $i', 2002)],
+        ],
+      );
+      final ctx = _ctx([plex, jf]);
+      final result =
+          await _tool('compare_servers').run(ctx, plex.serverId, {'other_server_id': 'woon', 'kind': 'movie'})
+              as AssistantToolResult;
+
+      expect(plex.externalIdCalls, 0, reason: 'a stable guid needs no lookup');
+      expect(jf.externalIdCalls, 300, reason: 'one title per server pairs on title+year; the rest is capped');
+      expect(result.data['identity_lookups_capped_at'], 300);
+      expect(result.data['count_on_server'], 1800);
+      // The 400 doubled titles stay unpaired (C19), plus the 200 only on Plex.
+      expect(result.data['missing_count'], 600);
+      final display = result.display! as AssistantServerComparison;
+      expect(display.missing, hasLength(500));
+      expect(display.missingTotal, 600);
+      expect(result.data.containsKey('partial'), isFalse);
+    });
+
+    test('a slow server ends in a partial answer at the deadline', () {
+      fakeAsync((async) {
+        final a = _Jf('gplex', 'G-Plexflix', films: [('a1', 'Dune', 2021)]);
+        final b = _Jf(
+          'woon',
+          'Woonkamer',
+          pageDelay: const Duration(seconds: 15),
+          films: [for (var i = 0; i < 2000; i++) ('b$i', 'Film $i', 2000)],
+        );
+        final ctx = _ctx([a, b]);
+        AssistantToolResult? result;
+        _tool('compare_servers')
+            .run(ctx, a.serverId, {'other_server_id': 'woon', 'kind': 'movie'})
+            .then((r) => result = r as AssistantToolResult);
+        async.elapse(const Duration(seconds: 59));
+        expect(result, isNull);
+        async.elapse(const Duration(seconds: 2));
+        expect(result, isNotNull);
+        expect(result!.data['partial'], isTrue);
+        expect(result!.data['count_on_other'], 600, reason: 'three of ten pages in 60 s');
+        expect(b.pages, hasLength(4), reason: 'the fourth page is abandoned, no fifth is asked');
+        expect((result!.display! as AssistantServerComparison).partial, isTrue);
+      });
+    });
+
+    test('an offline other server is refused before anything is fetched', () async {
+      final a = _Jf('gplex', 'G', films: [('a1', 'Dune', 2021)]);
+      final b = _Jf('woon', 'W', films: [('b1', 'Dune', 2021)]);
+      final ctx = _ctx([a, b], offline: {'woon'});
+      await expectLater(
+        _tool('compare_servers').run(ctx, a.serverId, {'other_server_id': 'woon', 'kind': 'movie'}),
+        throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'server_not_available')),
+      );
+      expect(a.pages, isEmpty);
+      expect(b.pages, isEmpty);
+    });
+
+    test('a full page with nothing new does not end the library', () async {
+      final a = _Jf('gplex', 'G', leadingCollections: 200, films: [('a1', 'Dune', 2021), ('a2', 'Arrival', 2016)]);
+      final ctx = _ctx([a, _Jf('woon', 'W')]);
+      final result =
+          await _tool('compare_servers').run(ctx, a.serverId, {'other_server_id': 'woon', 'kind': 'movie'})
+              as AssistantToolResult;
+      expect(result.data['count_on_server'], 2);
+      expect(a.pages, [0, 200]);
     });
 
     test('a member or a borrowed server gets no comparison', () async {
@@ -259,6 +383,7 @@ void main() {
               'friendly_name': 'Sam',
               'media_type': 'episode',
               'grandparent_rating_key': 10,
+              'grandparent_title': 'Severance',
               'rating_key': 11,
               'full_title': 'Severance - Good News About Hell',
               'play_duration': 3600,
@@ -268,6 +393,7 @@ void main() {
               'friendly_name': 'Sam',
               'media_type': 'episode',
               'grandparent_rating_key': 10,
+              'grandparent_title': 'Severance',
               'rating_key': 12,
               'full_title': 'Severance - Half Loop',
               'play_duration': 3600,
@@ -277,6 +403,7 @@ void main() {
               'friendly_name': 'Kim',
               'media_type': 'episode',
               'grandparent_rating_key': 10,
+              'grandparent_title': 'Severance',
               'rating_key': 11,
               'full_title': 'Severance - Good News About Hell',
               'play_duration': 1800,
@@ -309,6 +436,39 @@ void main() {
       final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
       expect(users.map((u) => u['user']), unorderedEquals(['Sam', 'Kim']));
       expect((result.display! as AssistantWatchStats).days, 7);
+    });
+
+    test('period: only films and episodes, users by account, series by grandparent_title', () async {
+      final tautulli = _tautulli([], (q) {
+        Map<String, Object?> row(int user, String type, Object key, String full, {String? show, Object? showKey}) => {
+          'user_id': user,
+          'user': 'u$user',
+          'friendly_name': 'Alex',
+          'media_type': type,
+          'rating_key': key,
+          'grandparent_rating_key': ?showKey,
+          'full_title': full,
+          'grandparent_title': ?show,
+          'play_duration': 600,
+        };
+        return {
+          'data': [
+            row(1, 'episode', 31, 'Star Wars - Andor - One Way Out', show: 'Star Wars - Andor', showKey: 30),
+            row(2, 'episode', 32, 'Star Wars - Andor - Narkina 5', show: 'Star Wars - Andor', showKey: 30),
+            row(1, 'track', 40, 'Some Song'),
+            row(2, 'live', 50, 'News'),
+          ],
+        };
+      });
+      final ctx = _ctx([_Jf('gplex', 'G-Plexflix')], tautulli: tautulli);
+      final result =
+          await _tool('watch_stats').run(ctx, ServerId('gplex'), {'scope': 'period', 'days': 7}) as AssistantToolResult;
+      expect(result.data['plays'], 2);
+      final top = (result.data['top_titles']! as List).cast<Map<String, Object?>>();
+      expect(top.single['title'], 'Star Wars - Andor');
+      final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
+      expect(users, hasLength(2), reason: 'two accounts that share a display name stay two users');
+      expect(users.every((u) => u['plays'] == 1), isTrue);
     });
 
     test('a server without a history source says so', () async {

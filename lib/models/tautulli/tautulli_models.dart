@@ -111,6 +111,10 @@ class TautulliHistoryEntry {
   final int? ratingKey;
   final int? grandparentRatingKey;
   final String? fullTitle;
+
+  /// The show's name on an episode row (`grandparent_title`); empty on a
+  /// movie. Splitting [fullTitle] on " - " cuts a show name that contains one.
+  final String? grandparentTitle;
   final String? transcodeDecision;
 
   /// `lan` or `wan`. Kept because it is useful and carries no address.
@@ -134,6 +138,7 @@ class TautulliHistoryEntry {
     this.ratingKey,
     this.grandparentRatingKey,
     this.fullTitle,
+    this.grandparentTitle,
     this.transcodeDecision,
     this.location,
   });
@@ -164,6 +169,7 @@ class TautulliHistoryEntry {
       ratingKey: _int(json['rating_key']),
       grandparentRatingKey: _int(json['grandparent_rating_key']),
       fullTitle: _str(json['full_title']),
+      grandparentTitle: _str(json['grandparent_title']),
       transcodeDecision: _str(json['transcode_decision']),
       location: _str(json['location']),
     );

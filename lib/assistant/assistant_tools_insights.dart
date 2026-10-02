@@ -23,7 +23,9 @@ class AssistantServerComparison extends AssistantDisplay {
     required this.otherServerName,
     required this.kind,
     required this.missing,
+    required this.missingTotal,
     required this.capped,
+    this.partial = false,
   });
   final ServerId serverId;
   final String serverName;
@@ -31,12 +33,19 @@ class AssistantServerComparison extends AssistantDisplay {
   final String otherServerName;
   final MediaKind kind;
 
-  /// Items on [serverId], sorted by title.
+  /// Items on [serverId], sorted by title; the first [_missingShown] only.
   final List<MediaItem> missing;
+
+  /// How many titles are missing in all, [missing] may hold fewer.
+  final int missingTotal;
 
   /// True when a side hit the per-server cap; [missing] may then hold titles
   /// the other server does have beyond the cap.
   final bool capped;
+
+  /// True when the time budget ran out: only part of a library was read, or
+  /// some titles were matched without their external ids.
+  final bool partial;
 }
 
 /// Who watches what on one server, from its Tautulli.
@@ -63,8 +72,28 @@ class AssistantWatchStats extends AssistantDisplay {
 
 const _compareCap = 5000;
 const _comparePage = 200;
+const _compareDeadline = Duration(seconds: 60);
+const _lookupCap = 300;
+const _missingShown = 500;
 const _historyPage = 500;
 const _historyCap = 5000;
+
+/// The wall-clock budget of one tool call. [race] answers null once it is
+/// spent, so a slow server ends the reading instead of the whole tool.
+class _Budget {
+  _Budget(Duration limit) {
+    _spentAt = Future<void>.delayed(limit, () => spent = true);
+  }
+
+  late final Future<void> _spentAt;
+  bool spent = false;
+
+  Future<T?> race<T>(Future<T> work) {
+    if (!spent) return Future.any<T?>([work, _spentAt.then((_) => null)]);
+    work.ignore();
+    return Future<T?>.value();
+  }
+}
 
 /// Pleya Server and local folders are never merged by the unified grouping
 /// (DEC-063): every title would look missing, so they are not compared.
@@ -73,83 +102,124 @@ bool _comparable(AssistantToolContext ctx, ServerId id) => switch (ctx.adminClie
   _ => false,
 };
 
-/// Every item of [kind] in the libraries of that kind, page by page.
-Future<({List<MediaItem> items, bool capped})> _wholeKind(AssistantToolContext ctx, ServerId id, MediaKind kind) async {
+/// Every item of [kind] in the libraries of that kind, page by page, until
+/// the cap or the [budget] runs out.
+Future<({List<MediaItem> items, bool capped, bool partial})> _wholeKind(
+  AssistantToolContext ctx,
+  ServerId id,
+  MediaKind kind,
+  _Budget budget,
+) async {
   final client = ctx.adminClient(id) ?? (throw const AssistantToolError('server_not_available'));
   final items = <MediaItem>[];
   final seen = <String>{};
-  for (final library in await ctx.libraries(id)) {
+  final libraries = await budget.race(ctx.libraries(id));
+  if (libraries == null) return (items: items, capped: false, partial: true);
+  for (final library in libraries) {
     if (library.kind != kind) continue;
     var offset = 0;
     while (true) {
-      if (items.length >= _compareCap) return (items: items.take(_compareCap).toList(), capped: true);
-      final page = await client
-          .fetchLibraryPagedContent(
-            library.id,
-            query: LibraryQuery(kind: kind, offset: offset, limit: _comparePage),
-            libraryKind: kind,
-          )
-          .timeout(const Duration(seconds: 20));
-      var added = 0;
+      if (items.length >= _compareCap) return (items: items.take(_compareCap).toList(), capped: true, partial: false);
+      if (budget.spent) return (items: items, capped: false, partial: true);
+      final page = await budget.race(
+        client
+            .fetchLibraryPagedContent(
+              library.id,
+              query: LibraryQuery(kind: kind, offset: offset, limit: _comparePage),
+              libraryKind: kind,
+            )
+            .timeout(const Duration(seconds: 20)),
+      );
+      if (page == null) return (items: items, capped: false, partial: true);
       for (final item in page.items) {
         // Collections ride along on Plex; an item without a server cannot be
         // grouped (same rule as the unified catalog).
         if (item.kind != kind || (item.serverId?.isEmpty ?? true)) continue;
-        if (seen.add(item.globalKey)) {
-          items.add(item);
-          added++;
-        }
+        if (seen.add(item.globalKey)) items.add(item);
       }
       offset += page.items.length;
-      // A short page ends the library; a page with nothing new is a backend
-      // ignoring the offset, not an endless library.
-      if (page.items.length < _comparePage || added == 0) break;
+      // Only a short page ends the library: a full page of collections or
+      // repeats adds nothing new and still is not the end. The budget bounds
+      // a backend that ignores the offset.
+      if (page.items.length < _comparePage) break;
     }
   }
-  return (items: items, capped: false);
+  return (items: items, capped: false, partial: false);
 }
 
 /// The unified catalog's identity pipeline (canonical bucket, strong tokens,
 /// grouping) over both sides; a group without a source on [other] is missing.
-Future<List<MediaItem>> _missingOn(AssistantToolContext ctx, List<MediaItem> items, ServerId other) async {
+///
+/// Jellyfin items carry no stable guid, so asking the resolver about every
+/// shared title would cost one item fetch per Jellyfin title. A lookup is
+/// only spent where the title+year fallback cannot decide: a server holding
+/// two items in one bucket (C19), or no year. At most [_lookupCap] of those;
+/// the rest stay guid-only.
+Future<({List<MediaItem> missing, bool lookupsCapped})> _missingOn(
+  AssistantToolContext ctx,
+  List<MediaItem> items,
+  ServerId other,
+  _Budget budget,
+) async {
+  final perServer = <String, Map<String, int>>{};
+  for (final item in items) {
+    final key = canonicalIdentityOf(item)?.bucketKey;
+    if (key == null) continue;
+    final counts = perServer.putIfAbsent(key, () => {});
+    counts[item.serverId!] = (counts[item.serverId!] ?? 0) + 1;
+  }
+  var lookups = 0;
+  var lookupsCapped = false;
+  ExternalIdTarget? targetFor(MediaItem item, CanonicalMediaIdentity? identity) {
+    if (normalizeStableGuid(item.guid) != null) return null;
+    final counts = perServer[identity?.bucketKey];
+    if (counts == null || counts.values.fold(0, (a, b) => a + b) < 2) return null;
+    if (identity!.year != null && counts.values.every((n) => n == 1)) return null;
+    if (lookups >= _lookupCap) {
+      lookupsCapped = true;
+      return null;
+    }
+    lookups++;
+    return (serverId: item.serverId!, targetId: item.id);
+  }
+
   final resolver = UnifiedIdentityResolver(
-    fetchExternalIds: (serverId, targetId) =>
-        (ctx.adminClient(ServerId(serverId)) ?? (throw StateError('server gone'))).fetchExternalIds(targetId),
+    fetchExternalIds: (serverId, targetId) async {
+      final client = ctx.adminClient(ServerId(serverId));
+      if (client == null || budget.spent) throw StateError('no lookup');
+      return await budget.race(client.fetchExternalIds(targetId).timeout(const Duration(seconds: 10))) ??
+          (throw StateError('budget spent'));
+    },
   );
   final evidence = await resolver.resolveEvidence([
     for (final item in items)
-      ResolvableItem(
-        item: item,
-        identity: canonicalIdentityOf(item),
-        scope: (canonicalIdentityOf(item) ?? CanonicalMediaIdentity.opaque()).granularity.name,
-        // ponytail: a stable guid already is proof, so only guid-less items in
-        // a colliding bucket cost a request; thousands of shared titles would
-        // otherwise mean thousands of calls. Cross-backend pairs then merge on
-        // title+year without a conflicting id, like the catalog's fallback.
-        externalIdTarget: normalizeStableGuid(item.guid) == null ? (serverId: item.serverId!, targetId: item.id) : null,
-      ),
+      if (canonicalIdentityOf(item) case final identity)
+        ResolvableItem(
+          item: item,
+          identity: identity,
+          scope: (identity ?? CanonicalMediaIdentity.opaque()).granularity.name,
+          externalIdTarget: targetFor(item, identity),
+        ),
   ]);
   final groups = groupUnifiedMediaSources([
     for (var i = 0; i < items.length; i++)
       GroupingCandidate(source: UnifiedMediaSource.fromItem(items[i]), evidence: evidence[i]),
   ]);
-  return [
+  final missing = [
     for (final group in groups)
       if (!group.sources.any((s) => s.serverId == other)) group.sources.first.item,
   ]..sort((a, b) => (a.title ?? '').toLowerCase().compareTo((b.title ?? '').toLowerCase()));
+  return (missing: missing, lookupsCapped: lookupsCapped);
 }
 
 String _day(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-/// A series counts as one title: Tautulli's full title is `Series - Episode`.
+/// A series counts as one title, named by Tautulli's `grandparent_title`.
 String _historyTitle(TautulliHistoryEntry e) {
-  final full = e.fullTitle ?? '';
-  if (e.mediaType != 'episode') return full;
-  final cut = full.indexOf(' - ');
-  // ponytail: a series name containing " - " is cut short; the history row
-  // carries no grandparent_title in our model.
-  return cut > 0 ? full.substring(0, cut) : full;
+  final show = e.grandparentTitle;
+  if (e.mediaType == 'episode' && show != null && show.isNotEmpty) return show;
+  return e.fullTitle ?? '';
 }
 
 Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx, ServerId id, TautulliClient tautulli) async {
@@ -203,8 +273,12 @@ Future<AssistantToolResult> _watchedPeriod(
   }
 
   final titles = <String, ({String title, int plays, Set<String> viewers})>{};
-  final users = <String, ({int plays, int seconds})>{};
+  final users = <String, ({String name, int plays, int seconds})>{};
+  var plays = 0;
   for (final e in entries) {
+    // Music and live TV are not what "most watched" asks about.
+    if (e.mediaType != 'movie' && e.mediaType != 'episode') continue;
+    plays++;
     final key = e.mediaType == 'episode' ? 'g${e.grandparentRatingKey}' : 'r${e.ratingKey}';
     final viewer = clipText(e.displayName, 40);
     final t = titles[key];
@@ -213,21 +287,27 @@ Future<AssistantToolResult> _watchedPeriod(
       plays: (t?.plays ?? 0) + 1,
       viewers: {...?t?.viewers, viewer},
     );
-    final u = users[viewer];
-    users[viewer] = (plays: (u?.plays ?? 0) + 1, seconds: (u?.seconds ?? 0) + (e.playSeconds ?? 0));
+    // Keyed by account: two people may clip to the same display name.
+    final userKey = e.userId != null ? 'id${e.userId}' : 'name${e.user ?? viewer}';
+    final u = users[userKey];
+    users[userKey] = (
+      name: u?.name ?? viewer,
+      plays: (u?.plays ?? 0) + 1,
+      seconds: (u?.seconds ?? 0) + (e.playSeconds ?? 0),
+    );
   }
   final topTitles = [
     for (final t in titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays)))
       (title: t.title, plays: t.plays, viewers: t.viewers.toList()),
   ];
   final topUsers = [
-    for (final u in users.entries.toList()..sort((a, b) => b.value.plays.compareTo(a.value.plays)))
-      (name: u.key, plays: u.value.plays, seconds: u.value.seconds),
+    for (final u in users.values.toList()..sort((a, b) => b.plays.compareTo(a.plays)))
+      (name: u.name, plays: u.plays, seconds: u.seconds),
   ];
   return AssistantToolResult({
     'server': clipText(name),
     'days': days,
-    'plays': entries.length,
+    'plays': plays,
     'top_titles': [
       for (final t in topTitles.take(10)) {'title': t.title, 'plays': t.plays, 'viewers': t.viewers.take(5).toList()},
     ],
@@ -243,6 +323,8 @@ final List<AssistantTool> _insightTools = [
     name: 'compare_servers',
     description:
         'Films or series on server_id that other_server_id does not have, matched by identity across servers. '
+        'One call compares exactly one pair of servers; for more servers, call once per pair. '
+        'partial: true means the time budget ran out and the list is incomplete. '
         '$_serverIdNote',
     risk: AssistantToolRisk.read,
     properties: const {
@@ -267,13 +349,16 @@ final List<AssistantTool> _insightTools = [
         'show' => MediaKind.show,
         _ => throw const AssistantToolError('invalid_kind'),
       };
-      final mine = await _wholeKind(ctx, id, kind);
-      final theirs = await _wholeKind(ctx, other, kind);
-      final missing = await _missingOn(ctx, [...mine.items, ...theirs.items], other);
-      for (final item in missing) {
+      final budget = _Budget(_compareDeadline);
+      final mine = await _wholeKind(ctx, id, kind, budget);
+      final theirs = await _wholeKind(ctx, other, kind, budget);
+      final (:missing, :lookupsCapped) = await _missingOn(ctx, [...mine.items, ...theirs.items], other, budget);
+      final shown = missing.take(_missingShown).toList();
+      for (final item in shown) {
         ctx.showItem(id, item.id);
       }
       final capped = mine.capped || theirs.capped;
+      final partial = mine.partial || theirs.partial || budget.spent;
       return AssistantToolResult(
         {
           'server': clipText(ctx.serverName(id)),
@@ -287,6 +372,8 @@ final List<AssistantTool> _insightTools = [
               {'item_id': item.id, 'title': clipText(item.title), if (item.year != null) 'year': item.year},
           ],
           if (capped) 'capped_at_items_per_server': _compareCap,
+          if (lookupsCapped) 'identity_lookups_capped_at': _lookupCap,
+          if (partial) 'partial': true,
         },
         display: AssistantServerComparison(
           serverId: id,
@@ -294,8 +381,10 @@ final List<AssistantTool> _insightTools = [
           otherServerId: other,
           otherServerName: ctx.serverName(other),
           kind: kind,
-          missing: missing,
+          missing: shown,
+          missingTotal: missing.length,
           capped: capped,
+          partial: partial,
         ),
       );
     },
@@ -304,7 +393,8 @@ final List<AssistantTool> _insightTools = [
     name: 'watch_stats',
     description:
         'What is being watched on a server and by whom: scope "now" for current streams, "period" for the most '
-        'watched titles and most active users over the last days (1-31).',
+        'watched titles and most active users over the last days (1-31). One server per call; to cover several '
+        'servers, call once per server.',
     risk: AssistantToolRisk.read,
     properties: const {
       'scope': {
