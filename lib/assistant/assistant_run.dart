@@ -36,7 +36,13 @@ class AssistantStep {
 enum AssistantRunEnd { answered, stepLimit, notEntitled, noTools, toolsUnsupported, providerError }
 
 class AssistantRunResult {
-  const AssistantRunResult({required this.end, this.text = '', this.actions = const [], this.providerError});
+  const AssistantRunResult({
+    required this.end,
+    this.text = '',
+    this.actions = const [],
+    this.displays = const [],
+    this.providerError,
+  });
   final AssistantRunEnd end;
 
   /// The model's closing words, for display only.
@@ -44,6 +50,9 @@ class AssistantRunResult {
 
   /// What Pleya actually did, in order. Built from validated data.
   final List<AssistantActionRecord> actions;
+
+  /// What tools handed the UI to show (a grid of titles, a comparison).
+  final List<AssistantDisplay> displays;
   final AssistantModelError? providerError;
 }
 
@@ -82,6 +91,7 @@ class AssistantRun {
   final Duration healthRefresh;
 
   final List<AssistantActionRecord> _actions = [];
+  final List<AssistantDisplay> _displays = [];
 
   String get _system =>
       'You are Big P, the Pleya Assistant. You help an administrator manage their media servers, '
@@ -102,6 +112,7 @@ class AssistantRun {
 
   Future<AssistantRunResult> ask(String prompt) async {
     _actions.clear();
+    _displays.clear();
     _stepIndex = 0;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
@@ -122,8 +133,8 @@ class AssistantRun {
     ];
 
     for (var step = 0; step < maxSteps; step++) {
-      // No server to administer (any more): nothing for the model to do.
-      if (context.administeredServers.isEmpty) return _end(AssistantRunEnd.noTools);
+      // No server for this profile (any more): nothing for the model to do.
+      if (context.userServers.isEmpty) return _end(AssistantRunEnd.noTools);
       final available = _available();
       final AssistantReply reply;
       try {
@@ -156,12 +167,18 @@ class AssistantRun {
     return _end(AssistantRunEnd.stepLimit);
   }
 
-  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error}) =>
-      AssistantRunResult(end: end, text: text, actions: List.unmodifiable(_actions), providerError: error);
+  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error}) => AssistantRunResult(
+    end: end,
+    text: text,
+    actions: List.unmodifiable(_actions),
+    displays: List.unmodifiable(_displays),
+    providerError: error,
+  );
 
   /// Each tool with the servers it may act on right now.
   Map<AssistantTool, List<String>> _available() {
-    final servers = context.administeredServers;
+    // Each tool decides through `serves` whether it needs administration.
+    final servers = context.userServers;
     return {
       for (final tool in tools ?? assistantTools)
         if (!tool.needsServer)
@@ -195,7 +212,7 @@ class AssistantRun {
           ? ServerId.tryParse(args['server_id'] is String ? args['server_id'] as String : null)
           : null;
       // Only a server this run may use gets named; anything else stays blank.
-      if (id != null && context.administeredServers.contains(id)) serverName = context.serverName(id);
+      if (id != null && context.userServers.contains(id)) serverName = context.serverName(id);
     } on FormatException {
       // The call itself reports invalid_arguments.
     }
@@ -238,8 +255,9 @@ class AssistantRun {
     try {
       final outcome = await tool.run(context, serverId, args);
       switch (outcome) {
-        case AssistantToolResult(:final data, :final record):
+        case AssistantToolResult(:final data, :final record, :final display):
           if (record != null) _actions.add(record);
+          if (display != null) _displays.add(display);
           return data;
         case final AssistantPendingAction action:
           return await _confirmAndRun(tool, action);

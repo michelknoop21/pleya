@@ -3,6 +3,7 @@ import '../media/media_library.dart';
 import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
+import 'assistant_tools.dart';
 
 /// Where the user opened the Assistant from. Pleya data, never authority:
 /// every id here is checked again like any id the model sends.
@@ -39,15 +40,35 @@ class AssistantKnownUser {
 /// planted in metadata text reaches a server. Library ids are checked against
 /// the server's own library list.
 class AssistantToolContext {
-  AssistantToolContext({required this.servers, this.screen});
+  AssistantToolContext({required this.servers, this.screen, this.catalog, this.insights, this.requests, this.media});
 
   final MultiServerManager servers;
   final AssistantScreenContext? screen;
+
+  /// Domain services the UI layer hands in. A missing one keeps its tools
+  /// out of the run; nothing here grants rights on a server.
+  final AssistantCatalogServices? catalog;
+  final AssistantInsightServices? insights;
+  final AssistantRequestServices? requests;
+  final AssistantMediaServices? media;
 
   final Map<String, Set<String>> _jobs = {};
   final Map<String, Set<String>> _items = {};
   final Map<String, Map<String, AssistantKnownUser>> _users = {};
   final Map<String, List<MediaLibrary>> _libraries = {};
+
+  /// Visible servers of the active profile, online or not. Personal tools
+  /// (search, rows, downloads) act here; administration needs
+  /// [administeredServers].
+  List<ServerId> get userServers => [
+    for (final id in servers.serverIds)
+      if (servers.isServerVisible(ServerId(id))) ServerId(id),
+  ];
+
+  /// The client for [serverId] when it is visible and online, for what any
+  /// profile may do as itself.
+  MediaServerClient? userClient(ServerId serverId) =>
+      servers.isServerVisible(serverId) && servers.isServerOnline(serverId) ? servers.getClient(serverId) : null;
 
   /// Visible servers the active profile may administer, online or not. This
   /// is what Big P's visibility rests on; [adminClient] adds "online now".
@@ -81,7 +102,7 @@ class AssistantToolContext {
   Future<List<MediaLibrary>> libraries(ServerId serverId) async {
     final cached = _libraries[serverId.value];
     if (cached != null) return cached;
-    final client = adminClient(serverId);
+    final client = userClient(serverId);
     if (client == null) throw const AssistantToolError('server_not_available');
     // Every library, hidden ones included: hiding is a browse preference of
     // this profile, and access edits must see what they replace.

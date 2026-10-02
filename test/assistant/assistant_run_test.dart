@@ -305,11 +305,12 @@ void main() {
   });
 
   group('authority', () {
-    test('a member gets no admin tools at all', () async {
+    test('a member gets the personal tools but no admin tools', () async {
       final server = _Server()..role = 'member';
-      final (result, model, _) = await run(scanScript, server: server);
-      expect(result.end, AssistantRunEnd.noTools);
-      expect(model.requests, isEmpty);
+      final (_, model, _) = await run(scanScript, server: server);
+      expect(model.toolNamesOffered(0), containsAll(['list_servers', 'list_libraries']));
+      expect(model.toolNamesOffered(0), isNot(anyOf(contains('scan_library'), contains('create_user'))));
+      expect(model.toolResults.last, {'error': 'unknown_tool'});
       expect(server.writes, isEmpty);
     });
 
@@ -320,7 +321,7 @@ void main() {
         server: server,
         arrange: (m) => m.setServerAuthorityRestrictions(serverIds: {'srv-1'}),
       );
-      expect(result.end, AssistantRunEnd.noTools);
+      expect(result.actions, isEmpty);
       expect(server.writes, isEmpty);
     });
 
@@ -341,15 +342,14 @@ void main() {
       ).ask('Scan');
       expect(server.writes, isEmpty);
       expect(result.actions, isEmpty);
-      expect(result.end, AssistantRunEnd.noTools);
     });
 
     test('a demotion the server already knows about is refused there, and nothing is reported done', () async {
       final server = _Server();
-      final (result, model, _) = await run(scanScript, server: server, arrange: (_) => server.role = 'member');
-      // The health probe at run start reads the new role: no tools.
-      expect(result.end, AssistantRunEnd.noTools);
-      expect(model.requests, isEmpty);
+      final (_, model, _) = await run(scanScript, server: server, arrange: (_) => server.role = 'member');
+      // The health probe at run start reads the new role: no admin tools.
+      expect(model.toolNamesOffered(0), isNot(contains('scan_library')));
+      expect(server.writes, isEmpty);
     });
 
     test('an offline server drops out of the tool list', () async {
@@ -443,7 +443,6 @@ void main() {
       );
       expect(server.writes, isEmpty);
       expect(result.actions, isEmpty);
-      expect(result.end, AssistantRunEnd.noTools, reason: 'no server left to administer');
     });
   });
 
