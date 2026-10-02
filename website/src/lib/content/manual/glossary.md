@@ -34,7 +34,7 @@ updated: 2026-08-17
 | **Watch Together** | Synchronised playback with other people, over a session code |
 | **Pleya Share** | One device serving its local folders to your other Pleya devices |
 | **Companion Remote** | Your phone driving the app on a TV or computer |
-| **Requests** | Asking for a title through Jellyseerr or Overseerr |
+| **Requests** | Asking for a title through Seerr, Jellyseerr or Overseerr |
 | **Watchlist** | One list built from your Plex watchlist and your Jellyfin favourites |
 | **My Pleya** | The personal tab on a phone that holds your watchlist, downloads, requests and settings |
 | **Trakt / MAL / AniList / Simkl** | External services that track what you watched |

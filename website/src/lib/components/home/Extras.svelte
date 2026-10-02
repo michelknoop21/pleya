@@ -7,7 +7,7 @@
     <p class="kicker">More ways to watch</p>
     <div class="cols" data-reveal>
       <div><h3>Watch Together</h3><p>Share a five-character code. Play, pause and seek stay in step for everyone on the same server; the relay passes sync messages only.</p></div>
-      <div><h3>Requests</h3><p>Run Jellyseerr or Overseerr? Search, request and follow a title from pending to available inside Pleya.</p></div>
+      <div><h3>Requests with Seerr</h3><p>Search beyond your library, request a title and follow it from pending to available. <a href="#integrations">Explore the integrations.</a></p></div>
       <div><h3>Live TV</h3><p>If your server has a tuner, watch live channels and record programmes from the same app.</p></div>
     </div>
   </div>

@@ -52,7 +52,7 @@ between profiles.
 | Television | A sidebar on the left that expands, driven by the remote. |
 
 A small cluster of faces appears in the toolbar while other people are streaming from your
-server, if you have connected [Tautulli](/docs/movie-and-show-details). On Apple TV that is
+server, if you have connected [Tautulli](/docs/tautulli). On Apple TV that is
 a sidebar entry instead, because an overlay hanging under a toolbar button cannot be reached
 with a remote.
 

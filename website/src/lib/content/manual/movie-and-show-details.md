@@ -52,9 +52,9 @@ watching.
 
 ![Who watched a title, with the statistics line](/docs-media/detail-watched-by.png)
 
-This is Plex only, and it is for the person who runs the server. Tautulli has a single key
-that opens its entire administration interface, so Pleya keeps that key on the device you
-entered it on, out of settings export and out of iCloud. The people you share your server
+This is Plex only, and it is for the person who runs the server. Both a device token and an API key provide access to Tautulli’s administration API.
+Pleya keeps those credentials on the device you connected, out of settings export and
+out of iCloud. See [Connecting Tautulli](/docs/tautulli) for setup and optional history import. The people you share your server
 with see none of this and have nothing to set up.
 
 ## Versions
