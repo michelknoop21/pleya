@@ -31,6 +31,8 @@ import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/server_administration.dart';
 import '../utils/app_logger.dart';
+import 'assistant_find_match.dart';
+import 'assistant_find_route.dart';
 import 'assistant_tool_context.dart';
 
 part 'assistant_tools_general.dart';
@@ -41,6 +43,7 @@ part 'assistant_tools_insights.dart';
 part 'assistant_tools_insights_watch.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_options.dart';
+part 'assistant_tools_find.dart';
 part 'assistant_tools_media.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
@@ -247,5 +250,6 @@ final List<AssistantTool> assistantTools = [
   ..._catalogTools,
   ..._insightTools,
   ..._requestTools,
+  ..._findTools,
   ..._mediaTools,
 ];

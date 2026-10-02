@@ -4,6 +4,7 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
 import 'assistant_tools.dart';
+import 'assistant_web_lookup.dart';
 
 /// Where the user opened the Assistant from. Pleya data, never authority:
 /// every id here is checked again like any id the model sends.
@@ -40,7 +41,15 @@ class AssistantKnownUser {
 /// planted in metadata text reaches a server. Library ids are checked against
 /// the server's own library list.
 class AssistantToolContext {
-  AssistantToolContext({required this.servers, this.screen, this.catalog, this.insights, this.requests, this.media});
+  AssistantToolContext({
+    required this.servers,
+    this.screen,
+    this.catalog,
+    this.insights,
+    this.requests,
+    this.media,
+    this.web,
+  });
 
   final MultiServerManager servers;
   final AssistantScreenContext? screen;
@@ -53,6 +62,7 @@ class AssistantToolContext {
     insights: insights,
     requests: requests,
     media: media,
+    web: web,
   );
 
   /// Domain services the UI layer hands in. A missing one keeps its tools
@@ -61,6 +71,9 @@ class AssistantToolContext {
   final AssistantInsightServices? insights;
   final AssistantRequestServices? requests;
   final AssistantMediaServices? media;
+
+  /// Web lookup for find_title; null when the user switched it off.
+  final AssistantWebServices? web;
 
   final Map<String, Set<String>> _jobs = {};
   final Map<String, Set<String>> _items = {};
