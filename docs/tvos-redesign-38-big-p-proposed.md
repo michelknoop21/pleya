@@ -85,6 +85,54 @@ wachtwoord invullen in het systeemtoetsenbord, terug naar rechts naar Aanmaken.
 - De exacte vorm van het tvOS-toetsenbord. 38 E is een benadering; het echte toetsenbord tekent
   tvOS zelf, en de compositie geldt alleen voor wat Pleya eromheen tekent.
 
+## Motion
+
+De beelden hierboven blijven de autoriteit voor compositie. Dit hoofdstuk legt vast hoe Big P beweegt;
+er komen geen extra beelden voor tussenstanden.
+
+**Productregels.** Big P is rustig wanneer Pleya hem niet nodig heeft en komt tot leven wanneer de
+gebruiker met de Assistant werkt. Motion ondersteunt status en persoonlijkheid en concurreert nooit
+met de informatie of de beheeractie op het scherm.
+
+**Techniek.** Flutter zelf: één `AnimationController` voor de doorlopende beweging, `Transform`,
+`Opacity` en `AnimatedSwitcher` voor de rest. Geen Rive, Lottie, video of sprite-reeks. Alleen de
+avatar rebuildt, niet het scherm eromheen (eigen `RepaintBoundary`).
+
+**Lagen**, uit `~/.claude/skills/big-p/avatar/lagen/` en verkleind naar de helft:
+
+| Laag | Bron | Beweegt |
+|------|------|---------|
+| Lichaam | `body.png` (rusthouding, zonder wenkbrauwen) | ademen, kantelen rond de voeten, knik |
+| Mond | `mouth-rest`, `mouth-small`, `mouth-laugh`, `mouth-o` op het mondvak uit `bigp-layers.json` | wisselt per stand; dezelfde plek waar later lipsync kan landen |
+| Wenkbrauwen | `brow-l.png`, `brow-r.png` | optillen en kantelen |
+| Oogleden | getekend met een `CustomPainter` op de oogmaten en lidkleuren uit `bigp-layers.json` | knipperen |
+
+Er is geen pupillaag. De blik wordt een kanteling van de hele figuur; een losse pupil is pas nodig als
+dat te weinig blijkt. De bezorgde Big P is dezelfde laag-opbouw met andere wenkbrauwen en mond, geen
+losse afbeelding, zodat de figuur niet verspringt.
+
+**Per plek en stand**
+
+| Waar / stand | Houding en expressie | Wat beweegt | Naar de volgende stand |
+|------|------|------|------|
+| Hub-tegel, rust | stil portret, `mouth-rest` | niets | bij focus één reactie |
+| Hub-tegel, focus | wenkbrauwen even omhoog, figuur tilt 4 px | één keer, 400 ms, geen herhaling | terug naar stil |
+| idle | ontspannen, `mouth-rest`, wenkbrauwen neutraal | ademen (schaal 1,000 tot 1,012 in 4 s), knipperen om de 3 tot 6 s, af en toe een kanteling van 1,5 graad die even blijft staan | naar listening: wenkbrauwen omhoog en rechtop, 250 ms |
+| listening | aandacht naar de kijker: rechtop, wenkbrauwen omhoog, `mouth-small` | ademen trager, minder knipperen, een kleine knik als er gedicteerde tekst binnenkomt (hoogstens één per seconde) | naar working: kantelt richting het resultaatvlak, 300 ms |
+| working | denkt na: 3 graden gekanteld naar rechts, wenkbrauwen licht scheef, `mouth-rest` | ademen, langzaam heen en weer kantelen tussen 2 en 4 graden zolang de run loopt | naar result: korte reactie |
+| result (succes) | `mouth-laugh`, wenkbrauwen omhoog | één knik van 600 ms | na de knik terug naar idle-beweging met `mouth-rest` |
+| result (fout) | bezorgd: wenkbrauwen naar binnen omhoog, `mouth-small` | één kleine zak van het hele figuur, dan stil buiten het knipperen | blijft bezorgd zolang de foutkaart staat; terug naar idle bij een nieuwe vraag |
+
+De statusregel naast Big P zegt wat er gebeurt ("Even kijken…", "Jellyfin controleren…",
+"Bibliotheek scannen…"). Er komt geen spinner en geen golfvorm om de figuur.
+
+**Minder beweging.** Staat de systeeminstelling voor minder beweging aan
+(`MediaQuery.disableAnimations`), dan is er geen doorlopende beweging: geen ademen, knipperen of
+kantelen. Standen wisselen alleen mond en wenkbrauwen, met een korte opacity-overgang.
+
+**Geen lipsync** in deze ronde. De mondlaag is wel een losse laag, zodat een gesproken antwoord hem
+later kan aansturen.
+
 ## Besluiten van Michel, 2 oktober 2026
 
 1. De tegel staat vooraan in de groep Pleya: Big P, Instellingen, Logs en diagnose, Over, Uitloggen.
