@@ -13,6 +13,13 @@ on:
 permissions:
   contents: read
 
+# Eén run tegelijk: twee runs zouden dezelfde branch en hetzelfde issue
+# tegelijk herschrijven. Een hangende run blokkeert niets blijvend; GitHub
+# breekt hem af op de job-timeout.
+concurrency:
+  group: dependency-health
+  cancel-in-progress: false
+
 jobs:
   report:
     runs-on: ubuntu-latest
@@ -55,3 +62,160 @@ jobs:
         with:
           name: dependency-health
           path: dependency-health.json
+
+  # Doet iets met het rapport in plaats van alleen rood te kleuren. Alle
+  # ring-1-kandidaten gaan in één batch; daarna één volledige graph-check en
+  # één gate. Auto-merge alleen als de hoogste ring in de hele lockfile-diff 1
+  # is, ci_checks.sh slaagt en ci.yml op exact dezelfde SHA groen is. Anders
+  # blijft de PR open voor handmatige analyse. Nooit een deploy.
+  # Zie scripts/deps_update.sh, scripts/deps_backlog.py en
+  # docs/agents/dependencies.md.
+  onderhoud:
+    # macOS omdat ci_checks.sh ook swift-format en clang-format draait.
+    runs-on: macos-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: chore/deps-ring1
+      ISSUE_TITLE: Dependency-onderhoud
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version-file: .fvmrc
+          channel: stable
+          cache: true
+
+      - name: Ring-1-batch
+        id: lane
+        run: |
+          flutter pub get --enforce-lockfile
+          scripts/check_updates.sh --json > "$RUNNER_TEMP/pre.json" || true
+          flutter pub outdated --json > "$RUNNER_TEMP/pre-outdated.json" || true
+          # Een open PR is een batch die op handmatige analyse wacht; die
+          # overschrijven we niet met een force-push.
+          open_pr="$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')"
+          if [ -n "$open_pr" ]; then
+            echo "rc=5" >> "$GITHUB_OUTPUT"
+            printf 'Overgeslagen op %s: PR #%s staat nog open en wacht op handmatige analyse.' "$(date +%F)" "$open_pr" > "$RUNNER_TEMP/lane.txt"
+            exit 0
+          fi
+          set +e
+          scripts/deps_update.sh --report "$RUNNER_TEMP/pre.json" | tee "$RUNNER_TEMP/update.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          grep '^summary:' "$RUNNER_TEMP/update.log" > "$RUNNER_TEMP/summary.txt" || true
+
+      # Volledige check_updates.sh op de graph ná de batch, als deel van het
+      # bewijs. Het issue toont deze stand pas als de merge echt gebeurd is.
+      - name: Volledig rapport na de batch
+        if: steps.lane.outputs.rc == '0' || steps.lane.outputs.rc == '4'
+        run: |
+          scripts/check_updates.sh --json > "$RUNNER_TEMP/post.json" || true
+          flutter pub outdated --json > "$RUNNER_TEMP/post-outdated.json" || true
+
+      - name: Gate
+        id: gate
+        if: steps.lane.outputs.rc == '0' || steps.lane.outputs.rc == '4'
+        run: |
+          set +e
+          scripts/ci_checks.sh > "$RUNNER_TEMP/gate.log" 2>&1
+          rc=$?
+          set -e
+          tail -30 "$RUNNER_TEMP/gate.log"
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: PR, CI op dezelfde SHA, merge
+        if: steps.lane.outputs.rc == '0' || steps.lane.outputs.rc == '4'
+        env:
+          LANE_RC: ${{ steps.lane.outputs.rc }}
+          GATE_RC: ${{ steps.gate.outputs.rc }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -qm "chore(deps): ring-1-update $(date +%G-W%V)" pubspec.lock
+          sha="$(git rev-parse HEAD)"
+          git push -f origin "$BRANCH"
+          summary="$(cat "$RUNNER_TEMP/summary.txt" 2>/dev/null)"
+
+          pr="$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')"
+          if [ -z "$pr" ]; then
+            pr="$(gh pr create --base main --head "$BRANCH" --title "chore(deps): ring-1-update" \
+              --body "Wekelijkse batch uit dependency-health.yml. Lockfile-diff: $summary. Run: $RUN_URL" \
+              | sed -n 's#.*/pull/##p')" || pr=""
+          fi
+
+          # Een push of PR met GITHUB_TOKEN start ci.yml niet; workflow_dispatch wel.
+          gh workflow run ci.yml --ref "$BRANCH"
+          ci_id=""
+          for _ in $(seq 1 30); do
+            ci_id="$(gh run list --workflow ci.yml --branch "$BRANCH" --event workflow_dispatch \
+              --json databaseId,headSha -q ".[] | select(.headSha == \"$sha\") | .databaseId" | head -1)"
+            [ -n "$ci_id" ] && break
+            sleep 10
+          done
+          ci_ok=0
+          [ -n "$ci_id" ] && gh run watch "$ci_id" --exit-status > /dev/null && ci_ok=1
+
+          git fetch -q origin main
+          fresh=0; git merge-base --is-ancestor origin/main "$sha" && fresh=1
+
+          why=""
+          [ "$LANE_RC" = 0 ] || why="$why lockfile-diff boven ring 1 of UNKNOWN ($summary);"
+          [ "$GATE_RC" = 0 ] || why="$why ci_checks.sh rood;"
+          [ "$ci_ok" = 1 ] || why="$why ci.yml op $sha niet groen;"
+          [ -n "$pr" ] || why="$why geen PR (repo-instelling 'Allow GitHub Actions to create pull requests');"
+          [ "$fresh" = 1 ] || why="$why main is intussen verder;"
+
+          if [ -z "$why" ]; then
+            gh pr merge "$pr" --merge --match-head-commit "$sha" --delete-branch || true
+            # merge kan ook alleen auto-merge of een queue inschakelen; tel alleen MERGED.
+            [ "$(gh pr view "$pr" --json state -q .state)" = MERGED ] || why=" merge niet voltooid;"
+          fi
+          if [ -z "$why" ]; then
+            touch "$RUNNER_TEMP/merged"
+            lane="PR #$pr automatisch gemerged op $(date +%F): $summary; ci_checks.sh en ci.yml groen op $sha."
+          else
+            lane="**Niet gemerged** op $(date +%F):$why PR ${pr:+#$pr }blijft open voor handmatige analyse. Run: $RUN_URL"
+          fi
+          printf '%s' "$lane" > "$RUNNER_TEMP/lane.txt"
+          [ -z "$why" ]
+
+      - name: Doorlopend issue
+        if: always()
+        env:
+          LANE_RC: ${{ steps.lane.outputs.rc }}
+        run: |
+          if [ ! -s "$RUNNER_TEMP/lane.txt" ]; then
+            case "$LANE_RC" in
+              3) msg="Niets te doen op $(date +%F)." ;;
+              1) msg="**Faalde** op $(date +%F): upgrade of volledige resolutie faalde; main niet aangeraakt. Run: $RUN_URL" ;;
+              *) msg="**Faalde** op $(date +%F): rapport onbruikbaar of job afgebroken. Run: $RUN_URL" ;;
+            esac
+            printf '%s' "$msg" > "$RUNNER_TEMP/lane.txt"
+          fi
+          num="$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
+            -q ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -1)"
+          [ -n "$num" ] && gh issue view "$num" --json body -q .body > "$RUNNER_TEMP/prev.md"
+          # Stand van main: vóór de batch, tenzij de batch echt gemerged is.
+          state=pre; [ -f "$RUNNER_TEMP/merged" ] && state=post
+          scripts/deps_backlog.py --outdated "$RUNNER_TEMP/$state-outdated.json" --report "$RUNNER_TEMP/$state.json" \
+            --previous "$RUNNER_TEMP/prev.md" --lane "$(cat "$RUNNER_TEMP/lane.txt")" > "$RUNNER_TEMP/body.md"
+          if [ -n "$num" ]; then gh issue edit "$num" --body-file "$RUNNER_TEMP/body.md"
+          else gh issue create --title "$ISSUE_TITLE" --body-file "$RUNNER_TEMP/body.md"
+          fi
+
+      - name: Baan gefaald
+        if: steps.lane.outputs.rc == '1' || steps.lane.outputs.rc == '2'
+        run: exit 1
