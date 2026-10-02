@@ -173,6 +173,32 @@ void main() {
       expect(policy['EnabledFolders'], isEmpty);
     });
 
+    test('createUser sets the requested library in the same policy write', () async {
+      routes['GET /Library/VirtualFolders'] = (_) => _json([
+        {'Name': 'Kids', 'ItemId': 'kids1111'},
+      ]);
+      routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'Sam'});
+      routes['GET /Users/u9'] = (_) => _json({'Id': 'u9', 'Policy': _policy()});
+      routes['POST /Users/u9/Policy'] = (_) => http.Response('', 204);
+      final user = await client(emby: false).createUser(name: 'Sam', libraryIds: ['kids1111']);
+      expect(calls().where((c) => c == 'POST /Users/u9/Policy'), hasLength(1));
+      final policy = jsonDecode(requests.last.body) as Map<String, dynamic>;
+      expect(policy['EnableAllFolders'], isFalse);
+      expect(policy['EnabledFolders'], ['kids1111']);
+      expect(user.libraryIds, ['kids1111']);
+    });
+
+    test('an unknown library stops the create before any user exists', () async {
+      routes['GET /Library/VirtualFolders'] = (_) => _json([
+        {'Name': 'Kids', 'ItemId': 'kids1111'},
+      ]);
+      await expectLater(
+        client(emby: false).createUser(name: 'Sam', libraryIds: ['nope']),
+        throwsA(isA<MediaServerHttpException>()),
+      );
+      expect(calls(), ['GET /Library/VirtualFolders']);
+    });
+
     test('a failed lock-down deletes the new user', () async {
       routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
       routes['GET /Users/u9'] = (_) => http.Response('', 500);

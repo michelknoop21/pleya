@@ -97,7 +97,6 @@ void main() {
         () => c.retryJob('job-1'),
         () => c.listUsers(),
         () => c.createUser(name: 'kim', password: 'secret123'),
-        () => c.setUserLibraryAccess('u-2', allLibraries: true),
         () => c.deleteUser('u-2'),
       ];
       for (final call in calls) {
@@ -228,20 +227,34 @@ void main() {
       expect(sent, isEmpty);
     });
 
-    test('setUserLibraryAccess grants view on the given libraries', () async {
+    test('the access of an existing user is never replaced: grants cannot be read back', () async {
       final c = client((_) => json(const {'items': []}));
-      await c.setUserLibraryAccess('u3', allLibraries: false, libraryIds: ['lib-1', 'lib-2']);
-      expect(sent.single.$1, 'PUT /users/u3/permissions');
-      expect(sent.single.$2, {
-        'permissions': [
-          {'library_id': 'lib-1', 'permission': 'view'},
-          {'library_id': 'lib-2', 'permission': 'view'},
-        ],
-      });
+      expect(c.canChangeLibraryAccess, isFalse);
+      await expectLater(
+        c.setUserLibraryAccess('u3', allLibraries: false, libraryIds: ['lib-1']),
+        throwsA(isA<UnsupportedError>()),
+      );
+      expect(sent, isEmpty, reason: 'a replace would turn a download grant into view');
     });
 
-    test('all libraries becomes one view grant per current library', () async {
+    test('a new user gets its initial access as view grants', () async {
       final c = client((request) {
+        if (request.method == 'POST') return json(const {'id': 'u9', 'username': 'sam', 'role': 'member'});
+        return json(const {'items': []});
+      });
+      final user = await c.createUser(name: 'sam', password: 'secret123', libraryIds: ['lib-kids']);
+      expect(sent.map((r) => r.$1), ['POST /users', 'PUT /users/u9/permissions']);
+      expect(sent.last.$2, {
+        'permissions': [
+          {'library_id': 'lib-kids', 'permission': 'view'},
+        ],
+      });
+      expect(user.libraryIds, ['lib-kids']);
+    });
+
+    test('all libraries for a new user is one view grant per current library', () async {
+      final c = client((request) {
+        if (request.method == 'POST') return json(const {'id': 'u9', 'username': 'sam', 'role': 'member'});
         if (request.method == 'GET') {
           return json(const {
             'items': [
@@ -252,14 +265,27 @@ void main() {
         }
         return json(const {'items': []});
       });
-      await c.setUserLibraryAccess('u3', allLibraries: true);
-      expect(sent.map((r) => r.$1), ['GET /libraries', 'PUT /users/u3/permissions']);
+      await c.createUser(name: 'sam', password: 'secret123', allLibraries: true);
+      expect(sent.map((r) => r.$1), ['POST /users', 'GET /libraries', 'PUT /users/u9/permissions']);
       expect(sent.last.$2, {
         'permissions': [
           {'library_id': 'lib-1', 'permission': 'view'},
           {'library_id': 'lib-2', 'permission': 'view'},
         ],
       });
+    });
+
+    test('a failed initial grant reports the created user, not a failed create', () async {
+      final c = client((request) {
+        if (request.method == 'POST') return json(const {'id': 'u9', 'username': 'sam', 'role': 'member'});
+        return json(const {
+          'error': {'code': 'server.internal', 'message': 'no', 'retryable': true},
+        }, status: 500);
+      });
+      await expectLater(
+        c.createUser(name: 'sam', password: 'secret123', libraryIds: ['lib-kids']),
+        throwsA(isA<ServerUserAccessNotGranted>().having((e) => e.user.id, 'user', 'u9')),
+      );
     });
 
     test('deleteUser deletes the user', () async {

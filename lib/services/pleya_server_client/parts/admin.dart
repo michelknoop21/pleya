@@ -80,26 +80,47 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
   @override
   bool get createUserRequiresPassword => true;
 
+  /// The server has no read route for a member's grants and its PUT replaces
+  /// the whole list, so changing an existing user could drop a `download`
+  /// grant nobody asked to touch. Until the protocol can read grants, only a
+  /// new user (whose list is known to be empty) gets access set.
+  @override
+  bool get canChangeLibraryAccess => false;
+
   /// Always role `member`. The server refuses an owner outright and an admin
   /// is not something this path may create.
   @override
-  Future<ServerUser> createUser({required String name, String? password}) async {
+  Future<ServerUser> createUser({
+    required String name,
+    String? password,
+    bool allLibraries = false,
+    List<String> libraryIds = const [],
+  }) async {
     assertCanAdministerServer();
     if (password == null || password.isEmpty) {
       throw ArgumentError.value(password, 'password', 'A Pleya Server account needs a password');
     }
     final json = await _adminSend('POST', '/users', body: {'username': name, 'password': password, 'role': 'member'});
-    final user = PleyaUser.fromJson(json ?? const {});
-    // A fresh member holds no grants yet, so here "none" is known.
-    return ServerUser(id: user.id, name: user.username, role: _role(user.role), allLibraries: false);
+    final created = PleyaUser.fromJson(json ?? const {});
+    final user = ServerUser(id: created.id, name: created.username, role: _role(created.role), allLibraries: false);
+    if (!allLibraries && libraryIds.isEmpty) return user;
+    try {
+      await _putGrants(user.id, allLibraries: allLibraries, libraryIds: libraryIds);
+    } catch (e) {
+      // The member exists and sees nothing, which is the safe side; the
+      // caller reports the missing access instead of a failed create.
+      throw ServerUserAccessNotGranted(user, e);
+    }
+    return ServerUser(
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      allLibraries: false,
+      libraryIds: allLibraries ? const [] : libraryIds,
+      libraryAccessKnown: !allLibraries,
+    );
   }
 
-  /// Replaces the user's whole grant list with `view` per library.
-  ///
-  /// The server has no "all libraries" grant for a member, so [allLibraries]
-  /// becomes one row per library that exists now; a library added later is not
-  /// included. `view` replaces any `download` the user held before, because
-  /// the grant list cannot be read back to keep it. `manage` is never sent.
   @override
   Future<void> setUserLibraryAccess(
     String userId, {
@@ -107,6 +128,13 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
     List<String> libraryIds = const [],
   }) async {
     assertCanAdministerServer();
+    throw UnsupportedError('Pleya Server cannot read existing grants; refusing to replace them');
+  }
+
+  /// `view` per library; for [allLibraries], one row per library that exists
+  /// now (the server has no lasting "all" for a member). Only for a user whose
+  /// grant list is known to be empty. `manage` is never sent.
+  Future<void> _putGrants(String userId, {required bool allLibraries, required List<String> libraryIds}) async {
     final ids = allLibraries
         ? [
             for (final library in PleyaLibrary.listFromJson(await _adminSend('GET', '/libraries') ?? const {}))

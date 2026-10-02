@@ -121,16 +121,41 @@ abstract interface class ServerUserAdministration implements ServerAdministratio
   /// Whether [createUser] needs a password (Pleya Server does).
   bool get createUserRequiresPassword;
 
-  /// Creates a regular, non-admin user. Never a role above member.
-  Future<ServerUser> createUser({required String name, String? password});
+  /// Whether [setUserLibraryAccess] can change an existing user. False where
+  /// the server cannot report a user's current grants (Pleya Server): a
+  /// replace there would silently drop levels nobody asked to change.
+  bool get canChangeLibraryAccess;
+
+  /// Creates a regular, non-admin user (never a role above member) with this
+  /// initial library access. A new user has no grants yet, so setting them
+  /// here changes nothing that was there before.
+  ///
+  /// Throws [ServerUserAccessNotGranted] when the user exists but the access
+  /// could not be set; any other failure means no user was left behind.
+  Future<ServerUser> createUser({
+    required String name,
+    String? password,
+    bool allLibraries = false,
+    List<String> libraryIds = const [],
+  });
 
   /// Replaces the user's whole library access with exactly this. An empty
-  /// [libraryIds] with [allLibraries] false means no libraries. Where a
-  /// backend has no lasting "all" for a member (Pleya Server), [allLibraries]
-  /// grants every library that exists now.
+  /// [libraryIds] with [allLibraries] false means no libraries. Refuses
+  /// before the network when [canChangeLibraryAccess] is false.
   Future<void> setUserLibraryAccess(String userId, {required bool allLibraries, List<String> libraryIds = const []});
 
   Future<void> deleteUser(String userId);
+}
+
+/// [ServerUserAdministration.createUser] made the user, then failed to set
+/// its library access. The user exists without the requested access.
+class ServerUserAccessNotGranted implements Exception {
+  const ServerUserAccessNotGranted(this.user, this.cause);
+  final ServerUser user;
+  final Object cause;
+
+  @override
+  String toString() => 'ServerUserAccessNotGranted(${user.id}: $cause)';
 }
 
 /// Someone who reaches an owned Plex server: a Plex Home member or a friend,

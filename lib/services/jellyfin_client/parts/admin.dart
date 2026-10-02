@@ -121,9 +121,18 @@ mixin _JellyfinAdminMethods {
     return users.map((u) => _userFromDto(u, guidToId)).toList();
   }
 
-  Future<ServerUser> createUser({required String name, String? password}) async {
+  bool get canChangeLibraryAccess => true;
+
+  Future<ServerUser> createUser({
+    required String name,
+    String? password,
+    bool allLibraries = false,
+    List<String> libraryIds = const [],
+  }) async {
     assertCanAdministerServer();
     final hasPassword = password != null && password.isNotEmpty;
+    // An unknown library stops the create before there is a user to undo.
+    if (!allLibraries) await _policyFolderIds(libraryIds);
     // Never a role above member: neither server makes a new user admin.
     final response = await _http.post(
       '/Users/New',
@@ -142,14 +151,21 @@ mixin _JellyfinAdminMethods {
         );
         throwIfHttpError(pw);
       }
-      // Both servers give a new user every library. Close that before the
-      // account can be used; the caller grants what was asked for next.
-      await setUserLibraryAccess(id, allLibraries: false);
+      // Both servers give a new user every library. The requested access
+      // replaces that in the same policy write; if it fails the user goes,
+      // because an account that sees everything is the unsafe side.
+      await setUserLibraryAccess(id, allLibraries: allLibraries, libraryIds: libraryIds);
     } catch (e, st) {
       await _removeHalfCreatedUser(id, name, e);
       Error.throwWithStackTrace(e, st);
     }
-    return ServerUser(id: id, name: dto['Name'] as String? ?? name, role: ServerUserRole.member, allLibraries: false);
+    return ServerUser(
+      id: id,
+      name: dto['Name'] as String? ?? name,
+      role: ServerUserRole.member,
+      allLibraries: allLibraries,
+      libraryIds: allLibraries ? const [] : libraryIds,
+    );
   }
 
   /// Undo a create whose setup failed, so no open or passwordless account is
