@@ -181,8 +181,12 @@ class AssistantRun {
     final servers = context.userServers;
     return {
       for (final tool in tools ?? assistantTools)
-        if (!tool.needsServer)
+        // A serverless tool still asks `serves`: a missing service (no Seerr)
+        // keeps it out.
+        if (!tool.needsServer && servers.any((id) => tool.serves(context, id)))
           tool: const <String>[]
+        else if (!tool.needsServer)
+          ...const <AssistantTool, List<String>>{}
         else if ([
               for (final id in servers)
                 if (tool.serves(context, id)) id.value,
