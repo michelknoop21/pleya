@@ -196,6 +196,9 @@ class AssistantController extends ChangeNotifier {
         tools: _tools,
         languageName: _languageName(),
         confirmTimeout: confirmTimeout,
+        // Cancel, reset or a profile switch (dispose) stops the run: no new
+        // model call, tool call or confirmed action starts after that.
+        isCancelled: () => generation != _generation || _disposed,
         onStep: (step) {
           if (generation != _generation) return;
           final at = _steps.indexWhere((s) => s.index == step.index);
@@ -277,18 +280,28 @@ class AssistantController extends ChangeNotifier {
   /// as a card the model asked for.
   Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async {
     if (_busy) return;
-    final shownIn = _displays
-        .whereType<AssistantRequestOptions>()
-        .where((d) => d.options.any((o) => o.seerrId == option.seerrId))
+    // Option cards and found titles both carry a Seerr request.
+    final ctx = _displays
+        .map(
+          (d) => switch (d) {
+            AssistantRequestOptions(:final context, :final options)
+                when options.any((o) => o.seerrId == option.seerrId) =>
+              context,
+            AssistantTitleMatches(:final context, :final matches)
+                when matches.any((m) => m.request?.seerrId == option.seerrId) =>
+              context,
+            _ => null,
+          },
+        )
+        .nonNulls
         .firstOrNull;
-    if (shownIn == null) return;
+    if (ctx == null) return;
     _busy = true;
     final generation = _generation;
     _state = AssistantSurfaceState.working;
     _notify();
     var failed = true;
     try {
-      final ctx = shownIn.context;
       final outcome = await assistantRequestFromOption(ctx, option.seerrId, fourK: fourK);
       if (generation != _generation) return;
       switch (outcome) {

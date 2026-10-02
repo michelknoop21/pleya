@@ -6012,6 +6012,7 @@ class TranslationsAssistantEn {
 
 	late final TranslationsAssistantOptionEn option = TranslationsAssistantOptionEn.internal(_root);
 	late final TranslationsAssistantDisplaysEn displays = TranslationsAssistantDisplaysEn.internal(_root);
+	late final TranslationsAssistantMatchEn match = TranslationsAssistantMatchEn.internal(_root);
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -7452,6 +7453,9 @@ class TranslationsAssistantStepsEn {
 	/// en: 'Requesting title'
 	String get requestTitle => 'Requesting title';
 
+	/// en: 'Finding the title'
+	String get findTitle => 'Finding the title';
+
 	/// en: 'Working'
 	String get fallback => 'Working';
 }
@@ -7873,6 +7877,33 @@ class TranslationsAssistantDisplaysEn {
 
 	/// en: 'No watch data available for ${server}.'
 	String noSource({required Object server}) => 'No watch data available for ${server}.';
+}
+
+// Path: assistant.match
+class TranslationsAssistantMatchEn {
+	TranslationsAssistantMatchEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'In your library · ${servers}'
+	String inLibrary({required Object servers}) => 'In your library · ${servers}';
+
+	/// en: 'possibly'
+	String get maybe => 'possibly';
+
+	/// en: 'Movie'
+	String get movie => 'Movie';
+
+	/// en: 'Series'
+	String get show => 'Series';
+
+	/// en: 'Episode'
+	String get episode => 'Episode';
+
+	/// en: 'S${season} E${episode}'
+	String episodeCode({required Object season, required Object episode}) => 'S${season} E${episode}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -10071,6 +10102,7 @@ extension on Translations {
 			'assistant.steps.findRequestTitle' => 'Searching Seerr',
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
+			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.fallback' => 'Working',
 			'assistant.result.doneBy' => 'Carried out by Pleya',
 			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
@@ -10199,6 +10231,12 @@ extension on Translations {
 			'assistant.displays.watchStats' => ({required Object server}) => 'Watch stats · ${server}',
 			'assistant.displays.plays' => ({required Object count}) => '${count}× watched',
 			'assistant.displays.noSource' => ({required Object server}) => 'No watch data available for ${server}.',
+			'assistant.match.inLibrary' => ({required Object servers}) => 'In your library · ${servers}',
+			'assistant.match.maybe' => 'possibly',
+			'assistant.match.movie' => 'Movie',
+			'assistant.match.show' => 'Series',
+			'assistant.match.episode' => 'Episode',
+			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
 			_ => null,
 		};
 	}

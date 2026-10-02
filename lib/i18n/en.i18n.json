@@ -2332,6 +2332,7 @@
       "findRequestTitle": "Searching Seerr",
       "discoverRequestTitles": "Finding matching titles",
       "requestTitle": "Requesting title",
+      "findTitle": "Finding the title",
       "fallback": "Working"
     },
     "result": {
@@ -2487,6 +2488,14 @@
       "watchStats": "Watch stats · ${server}",
       "plays": "${count}× watched",
       "noSource": "No watch data available for ${server}."
+    },
+    "match": {
+      "inLibrary": "In your library · ${servers}",
+      "maybe": "possibly",
+      "movie": "Movie",
+      "show": "Series",
+      "episode": "Episode",
+      "episodeCode": "S${season} E${episode}"
     }
   }
 }

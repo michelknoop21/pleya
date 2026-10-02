@@ -305,6 +305,19 @@ void main() {
       expect(find.byType(TvAssistantConfirmCard), findsNothing);
     });
 
+    testWidgets('off Apple TV the password dialog is masked too', (tester) async {
+      await raise(tester, createSam());
+      TvDetectionService.debugSetAppleTVOverride(false);
+
+      Focus.of(tester.element(find.text(t.assistant.confirm.passwordPlaceholder))).requestFocus();
+      await settle(tester);
+      await press(tester, LogicalKeyboardKey.select);
+
+      final field = tester.widget<EditableText>(find.byType(EditableText).last);
+      expect(field.obscureText, isTrue);
+      expect(edits, isEmpty, reason: 'not the Apple TV keyboard');
+    });
+
     testWidgets('without a password field Aanmaken works at once (38 I)', (tester) async {
       await raise(tester, createSam(password: AssistantPasswordMode.none));
 

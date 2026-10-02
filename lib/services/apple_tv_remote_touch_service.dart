@@ -433,7 +433,9 @@ class AppleTvRemoteTouchService {
         _playPauseController.add(AppleTvRemotePlayPauseAction(source: source, detail: detail));
         // Only a UIPress has a release; a remoteControl event never sends one.
         _playPauseHold?.cancel();
-        _playPauseHold = source == 'presses'
+        // Never armed during native text entry: the keyboard could close
+        // before the timer fires and Big P would appear uninvited.
+        _playPauseHold = source == 'presses' && !NativeInputSession.isActive
             ? Timer(playPauseLongPressThreshold, () => _playPauseLongPressController.add(null))
             : null;
       case 'play_pause_up':

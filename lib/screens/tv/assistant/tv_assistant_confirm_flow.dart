@@ -74,12 +74,12 @@ Future<String?> _readPassword(BuildContext context, AppleTvNativeTextEntry entry
     }
   }
   if (!context.mounted) return null;
-  // ponytail: a plain, unmasked dialog off Apple TV (Android TV). Upgrade
-  // path: an obscure flag on showTextInputDialog.
+  // Elsewhere (Android TV) Pleya's own dialog, masked as well.
   return showTextInputDialog(
     context,
     title: t.assistant.confirm.password,
     labelText: t.assistant.confirm.password,
     hintText: t.assistant.confirm.passwordPlaceholder,
+    obscureText: true,
   );
 }

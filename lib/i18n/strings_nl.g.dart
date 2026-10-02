@@ -2495,6 +2495,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get youAsked => 'Je vroeg:';
 	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
 	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
+	@override late final _TranslationsAssistantMatchNl match = _TranslationsAssistantMatchNl._(_root);
 }
 
 // Path: settings.displayMaxResolutionOptions
@@ -3212,6 +3213,7 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get findRequestTitle => 'Seerr doorzoeken';
 	@override String get discoverRequestTitles => 'Passende titels zoeken';
 	@override String get requestTitle => 'Titel aanvragen';
+	@override String get findTitle => 'Titel op beschrijving zoeken';
 	@override String get fallback => 'Bezig';
 }
 
@@ -3407,6 +3409,21 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 	@override String watchStats({required Object server}) => 'Kijkcijfers · ${server}';
 	@override String plays({required Object count}) => '${count}× bekeken';
 	@override String noSource({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.';
+}
+
+// Path: assistant.match
+class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
+	_TranslationsAssistantMatchNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String inLibrary({required Object servers}) => 'In je bibliotheek · ${servers}';
+	@override String get maybe => 'mogelijk';
+	@override String get movie => 'Film';
+	@override String get show => 'Serie';
+	@override String get episode => 'Aflevering';
+	@override String episodeCode({required Object season, required Object episode}) => 'S${season} A${episode}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -5573,6 +5590,7 @@ extension on TranslationsNl {
 			'assistant.steps.findRequestTitle' => 'Seerr doorzoeken',
 			'assistant.steps.discoverRequestTitles' => 'Passende titels zoeken',
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
+			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.fallback' => 'Bezig',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
@@ -5701,6 +5719,12 @@ extension on TranslationsNl {
 			'assistant.displays.watchStats' => ({required Object server}) => 'Kijkcijfers · ${server}',
 			'assistant.displays.plays' => ({required Object count}) => '${count}× bekeken',
 			'assistant.displays.noSource' => ({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.',
+			'assistant.match.inLibrary' => ({required Object servers}) => 'In je bibliotheek · ${servers}',
+			'assistant.match.maybe' => 'mogelijk',
+			'assistant.match.movie' => 'Film',
+			'assistant.match.show' => 'Serie',
+			'assistant.match.episode' => 'Aflevering',
+			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} A${episode}',
 			_ => null,
 		};
 	}

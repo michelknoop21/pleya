@@ -23,6 +23,7 @@ import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../services/apple_tv_remote_touch_service.dart';
 import '../../../services/speech_search_service.dart';
 import '../../../utils/app_logger.dart';
+import '../../../utils/media_navigation_helper.dart';
 import '../../../utils/native_input_session.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
@@ -31,8 +32,9 @@ import '../../../widgets/overlay_sheet.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_labels.dart';
+import 'tv_assistant_results.dart';
 import 'tv_assistant_screen.dart';
-import 'tv_assistant_widgets.dart';
+import 'tv_assistant_summon_layer.dart';
 
 /// Mounted once in the TV shell, above the content. Listens for the long
 /// press only while nothing else owns the remote: not under the player or any
@@ -234,7 +236,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _linger?.cancel();
     final c = _c;
     if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
-    if (c.displays.any((d) => d is AssistantRequestOptions && d.options.isNotEmpty)) return;
+    if (tvAssistantHasChoices(c.displays)) return;
     _linger = Timer(TvAssistantSummonHost.linger, _dismiss);
   }
 
@@ -243,11 +245,17 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (!mounted || c == null || _sheetContext != null) return;
     final node = switch (c.state) {
       AssistantSurfaceState.working => _cancelNode,
-      AssistantSurfaceState.result =>
-        c.displays.any((d) => d is AssistantRequestOptions && d.options.isNotEmpty) ? _optionNode : _askNode,
+      AssistantSurfaceState.result => tvAssistantHasChoices(c.displays) ? _optionNode : _askNode,
       _ => _panelNode,
     };
     (node.context != null && node.canRequestFocus ? node : _panelNode).requestFocus();
+  }
+
+  /// A found title in a library: Big P steps aside and its detail page
+  /// opens in the shell behind him, as from a catalog card.
+  void _openTitle(AssistantTitleTarget target) {
+    _dismiss();
+    unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
   /// Menu, Klaar or the linger: Big P slides out, a run in flight or a
@@ -323,87 +331,42 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
 
   Widget _overlay(BuildContext context, AssistantController? c) {
     final pt = TvHig.of(context);
-    final motion = _motion(context);
-    final listening = c?.state == AssistantSurfaceState.listening;
     final result = c?.state == AssistantSurfaceState.result;
     final headline = c == null ? '' : assistantHeadline(c);
-    return LayoutBuilder(
-      builder: (context, box) => Stack(
-        children: [
-          // The screen behind stays the context: dimmed, not hidden.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _shown ? 1 : 0,
-                duration: motion,
-                child: const ColoredBox(color: Color(0x66000000)),
+    return TvAssistantSummonLayer(
+      shown: _shown,
+      listening: c?.state == AssistantSurfaceState.listening,
+      motion: _motion(context),
+      panel: c == null
+          ? null
+          : TvAssistantConversation(
+              controller: c,
+              name: '',
+              servers: '',
+              compact: true,
+              resultTime: MaterialLocalizations.of(context).formatTimeOfDay(
+                TimeOfDay.fromDateTime(_resultAt),
+                alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
               ),
+              askNode: _askNode,
+              cancelNode: _cancelNode,
+              firstOptionNode: _optionNode,
+              onAsk: () => unawaited(_ask()),
+              onDone: _dismiss,
+              onCancelWork: _dismiss,
+              onExample: (_) {},
+              onPickOption: (option) => unawaited(c.pickRequestOption(option)),
+              onOpenTitle: _openTitle,
             ),
-          ),
-          AnimatedPositioned(
-            duration: motion,
-            curve: Curves.easeOutBack,
-            right: 40 * pt,
-            // Above the system keyboard while listening (38-motion-0).
-            bottom: (listening ? 430 : 60) * pt,
-            child: AnimatedSlide(
-              offset: _shown ? Offset.zero : const Offset(0.35, 0),
-              duration: motion,
-              curve: _shown ? Curves.easeOutBack : Curves.easeIn,
-              child: AnimatedOpacity(
-                opacity: _shown ? 1 : 0,
-                duration: motion,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (c != null)
-                      SizedBox(
-                        width: 570 * pt,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: box.maxHeight - (listening ? 470 : 140) * pt),
-                          child: TvAssistantGlassPanel(
-                            child: SingleChildScrollView(
-                              reverse: true,
-                              child: TvAssistantConversation(
-                                controller: c,
-                                name: '',
-                                servers: '',
-                                resultTime: MaterialLocalizations.of(context).formatTimeOfDay(
-                                  TimeOfDay.fromDateTime(_resultAt),
-                                  alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
-                                ),
-                                askNode: _askNode,
-                                cancelNode: _cancelNode,
-                                firstOptionNode: _optionNode,
-                                onAsk: () => unawaited(_ask()),
-                                onDone: _dismiss,
-                                onCancelWork: _dismiss,
-                                onExample: (_) {},
-                                onPickOption: (option) => unawaited(c.pickRequestOption(option)),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    RepaintBoundary(
-                      child: BigPAvatar(
-                        mood: c == null ? BigPMood.idle : tvAssistantMood(c),
-                        size: 340 * pt,
-                        nodSignal: _nod,
-                        talkingText: result && headline.isNotEmpty ? headline : null,
-                        // He stands right of the panel: point left, down the list.
-                        pointAt: c?.state == AssistantSurfaceState.working
-                            ? Alignment(-1, (0.15 * c!.steps.length).clamp(0.0, 1.0))
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+      avatar: BigPAvatar(
+        mood: c == null ? BigPMood.idle : tvAssistantMood(c),
+        size: 340 * pt,
+        nodSignal: _nod,
+        talkingText: result && headline.isNotEmpty ? headline : null,
+        // He stands right of the panel: point left, down the list.
+        pointAt: c?.state == AssistantSurfaceState.working
+            ? Alignment(-1, (0.15 * c!.steps.length).clamp(0.0, 1.0))
+            : null,
       ),
     );
   }

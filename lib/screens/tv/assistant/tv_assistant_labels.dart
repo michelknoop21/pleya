@@ -35,6 +35,7 @@ String assistantToolLabel(String tool) {
     'find_request_title' => s.findRequestTitle,
     'discover_request_titles' => s.discoverRequestTitles,
     'request_title' => s.requestTitle,
+    'find_title' => s.findTitle,
     _ => s.fallback,
   };
 }

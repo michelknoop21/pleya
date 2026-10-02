@@ -31,6 +31,7 @@ import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../services/speech_search_service.dart';
 import '../../../utils/app_logger.dart';
 import '../../../utils/dialogs.dart';
+import '../../../utils/media_navigation_helper.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
 import '../../../widgets/overlay_sheet.dart';
@@ -39,6 +40,7 @@ import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
 import 'tv_assistant_labels.dart';
+import 'tv_assistant_results.dart';
 import 'tv_assistant_widgets.dart';
 
 /// Big P's mood for the controller's stand; a waiting card wins.
@@ -174,8 +176,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
         AssistantSurfaceState.idle => _askNode,
         AssistantSurfaceState.listening => null,
         AssistantSurfaceState.working => _cancelNode,
-        AssistantSurfaceState.result =>
-          c.displays.any((d) => d is AssistantRequestOptions && d.options.isNotEmpty) ? _optionNode : _askNode,
+        AssistantSurfaceState.result => tvAssistantHasChoices(c.displays) ? _optionNode : _askNode,
       },
     };
   }
@@ -365,6 +366,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
                       onCancelWork: c.reset,
                       onExample: _askExample,
                       onPickOption: (option) => unawaited(c.pickRequestOption(option)),
+                      // Opens over the surface; Menu comes back to these results.
+                      onOpenTitle: (target) => unawaited(navigateToMediaItemDetails(context, target.item)),
                     ),
                   ),
                 ),

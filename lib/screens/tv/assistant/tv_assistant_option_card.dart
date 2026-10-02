@@ -10,6 +10,38 @@ import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/seerr_poster_card.dart';
 
+/// A Seerr status as the option and match cards show it, with its colour.
+(String, Color?) tvAssistantRequestStatus(String status) => switch (status) {
+  'available' => (t.seerr.available, kSuccess),
+  'partially_available' => (t.seerr.partiallyAvailable, kSuccess),
+  'requested' => (t.seerr.alreadyRequested, kAccentAlt),
+  _ => (t.assistant.option.notRequested, null),
+};
+
+/// The rounded status label at the right of a card (38-motion-7).
+class TvAssistantStatusPill extends StatelessWidget {
+  const TvAssistantStatusPill({super.key, required this.label, this.color});
+
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    final c = color ?? tokens(context).text;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14 * pt, vertical: 6 * pt),
+      decoration: BoxDecoration(color: c.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20 * pt)),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: c, fontSize: TvHig.caption2 * pt),
+      ),
+    );
+  }
+}
+
 /// One title Big P found for a description (motion still 7): poster, title,
 /// year, one line of overview and the Seerr status. Built from Seerr data;
 /// selecting it hands the option to Pleya, never to the model.
@@ -27,18 +59,11 @@ class TvAssistantOptionCard extends StatelessWidget {
   final VoidCallback onSelect;
   final FocusNode? focusNode;
 
-  (String, Color?) _status() => switch (option.status) {
-    'available' => (t.seerr.available, kSuccess),
-    'partially_available' => (t.seerr.partiallyAvailable, kSuccess),
-    'requested' => (t.seerr.alreadyRequested, kAccentAlt),
-    _ => (t.assistant.option.notRequested, null),
-  };
-
   @override
   Widget build(BuildContext context) {
     final pt = TvHig.of(context);
     final tk = tokens(context);
-    final (status, statusColor) = _status();
+    final (status, statusColor) = tvAssistantRequestStatus(option.status);
     return FocusableWrapper(
       focusNode: focusNode,
       borderRadius: 18 * pt,
@@ -99,17 +124,7 @@ class TvAssistantOptionCard extends StatelessWidget {
               ),
             ),
             SizedBox(width: 16 * pt),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 14 * pt, vertical: 6 * pt),
-              decoration: BoxDecoration(
-                color: (statusColor ?? tk.text).withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(20 * pt),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(color: statusColor ?? tk.text, fontSize: TvHig.caption2 * pt),
-              ),
-            ),
+            TvAssistantStatusPill(label: status, color: statusColor),
           ],
         ),
       ),

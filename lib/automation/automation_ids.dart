@@ -275,6 +275,10 @@ class AutomationIds {
   /// One request option card (`assistant.option[0]`).
   static const String assistantOption = 'assistant.option';
 
+  /// One title find_title found (`assistant.match[0]`); state carries the
+  /// title, kind, confidence and whether it is in a library.
+  static const String assistantMatch = 'assistant.match';
+
   /// The confirmation card Pleya builds from the pending action.
   static const String assistantConfirm = 'assistant.confirm';
 
@@ -559,6 +563,7 @@ class AutomationIds {
     assistantButton,
     assistantExample,
     assistantOption,
+    assistantMatch,
     assistantConfirmButton,
     playerPanelTab,
     playerPanelRow,
@@ -661,6 +666,7 @@ class AutomationIds {
     {'id': assistantSteps, 'role': 'list', 'instanceable': false},
     {'id': assistantResult, 'role': 'region', 'instanceable': false},
     {'id': assistantOption, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantMatch, 'role': 'list.item', 'instanceable': true},
     {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},

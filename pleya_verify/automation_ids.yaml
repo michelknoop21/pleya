@@ -207,6 +207,9 @@ ids:
   - id: assistant.option
     role: list.item
     instanceable: true
+  - id: assistant.match
+    role: list.item
+    instanceable: true
   - id: assistant.confirm
     role: sheet
     instanceable: false

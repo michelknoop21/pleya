@@ -2332,6 +2332,7 @@
       "findRequestTitle": "Seerr doorzoeken",
       "discoverRequestTitles": "Passende titels zoeken",
       "requestTitle": "Titel aanvragen",
+      "findTitle": "Titel op beschrijving zoeken",
       "fallback": "Bezig"
     },
     "result": {
@@ -2487,6 +2488,14 @@
       "watchStats": "Kijkcijfers · ${server}",
       "plays": "${count}× bekeken",
       "noSource": "Geen kijkgegevens beschikbaar voor ${server}."
+    },
+    "match": {
+      "inLibrary": "In je bibliotheek · ${servers}",
+      "maybe": "mogelijk",
+      "movie": "Film",
+      "show": "Serie",
+      "episode": "Aflevering",
+      "episodeCode": "S${season} A${episode}"
     }
   }
 }

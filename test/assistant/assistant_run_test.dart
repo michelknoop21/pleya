@@ -605,6 +605,24 @@ void main() {
     expect(card!.subject, isNot(contains('\u202E')));
   });
 
+  test('a cancel stops the run: no tool call or write starts after it', () async {
+    final server = _Server();
+    final m = await server.manager();
+    var cancelled = false;
+    final model = _Model(AssistantProviderKind.ollamaServer, scanScript);
+    await AssistantRun(
+      model: AssistantModelClientSpy(model.client(), () {
+        // The user cancels while the model is thinking about the scan.
+        if (model.requests.length == 1) cancelled = true;
+      }),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      isCancelled: () => cancelled,
+    ).ask('Scan');
+    expect(server.writes, isEmpty);
+  });
+
   test('the step limit ends a model that keeps calling tools', () async {
     final (result, model, _) = await run(
       List.generate(10, (i) => _call('list_servers', const {}, id: 'c$i')),

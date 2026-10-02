@@ -89,4 +89,15 @@ void main() {
       expect(longPresses, 0);
     });
   });
+
+  test('a hold that starts during native text entry never summons, even after the keyboard closes', () {
+    run((async) {
+      NativeInputSession.begin();
+      down(async);
+      NativeInputSession.end();
+      async.elapse(const Duration(seconds: 1));
+      expect(longPresses, 0);
+      expect(downs, hasLength(1), reason: 'the player still gets the press');
+    });
+  });
 }

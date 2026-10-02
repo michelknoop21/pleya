@@ -30,6 +30,8 @@ class TvAssistantConversation extends StatelessWidget {
     required this.onCancelWork,
     required this.onExample,
     required this.onPickOption,
+    required this.onOpenTitle,
+    this.compact = false,
   });
 
   final AssistantController controller;
@@ -46,6 +48,10 @@ class TvAssistantConversation extends StatelessWidget {
   final VoidCallback onCancelWork;
   final ValueChanged<String> onExample;
   final ValueChanged<AssistantRequestOption> onPickOption;
+  final ValueChanged<AssistantTitleTarget> onOpenTitle;
+
+  /// The summoned panel (570 pt) rather than the surface.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -141,20 +147,22 @@ class TvAssistantConversation extends StatelessWidget {
     var firstOptionTaken = false;
     final displays = <Widget>[];
     for (final display in c.displays) {
-      final isOptions = display is AssistantRequestOptions;
+      final choices = tvAssistantChoiceCount(display);
       displays.add(
         Padding(
           padding: EdgeInsets.only(bottom: 16 * pt),
           child: TvAssistantDisplayView(
             display: display,
             onPickOption: onPickOption,
+            onOpenTitle: onOpenTitle,
+            compact: compact,
             optionOffset: optionOffset,
-            firstOptionNode: isOptions && !firstOptionTaken ? firstOptionNode : null,
+            firstOptionNode: choices > 0 && !firstOptionTaken ? firstOptionNode : null,
           ),
         ),
       );
-      if (isOptions) {
-        optionOffset += display.options.length;
+      if (choices > 0) {
+        optionOffset += choices;
         firstOptionTaken = true;
       }
     }

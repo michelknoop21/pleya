@@ -75,7 +75,15 @@ class AssistantRun {
     this.confirmTimeout = const Duration(minutes: 2),
     this.healthRefresh = const Duration(seconds: 10),
     this.onStep,
+    this.isCancelled,
   });
+
+  /// True once the user cancelled or left (reset, profile switch). Checked
+  /// before every model call, every tool call and every confirmed action, so
+  /// nothing new starts after a cancel; a call already on the wire finishes.
+  final bool Function()? isCancelled;
+
+  bool get _cancelled => isCancelled?.call() ?? false;
 
   /// Called when a tool call starts and when it ends, for the live step list.
   final void Function(AssistantStep step)? onStep;
@@ -159,6 +167,7 @@ class AssistantRun {
       }
       final AssistantReply reply;
       try {
+        if (_cancelled) return _end(AssistantRunEnd.stepLimit);
         reply = await model.chat(messages, [for (final e in available.entries) e.key.spec(e.value)]);
       } on AssistantModelException catch (e) {
         return _end(
@@ -233,6 +242,7 @@ class AssistantRun {
   int _stepIndex = 0;
 
   Future<Map<String, Object?>> _execute(AssistantToolCall call) async {
+    if (_cancelled) return {'error': 'cancelled'};
     final index = _stepIndex++;
     String? serverName;
     try {
@@ -315,6 +325,7 @@ class AssistantRun {
     // checked again, against the state of this moment.
     if (await entitlement.check() != AssistantEntitlementState.entitled) return {'error': 'not_entitled'};
     if (!tool.serves(_ctx, action.serverId)) return {'error': 'not_allowed'};
+    if (_cancelled) return {'status': 'cancelled_by_user'};
     final result = await action.execute(password: answer.password);
     // A confirmed action that changed nothing (`done: false`) is not shown
     // as done.

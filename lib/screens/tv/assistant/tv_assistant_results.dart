@@ -14,6 +14,7 @@ import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import 'tv_assistant_labels.dart';
+import 'tv_assistant_match_card.dart';
 import 'tv_assistant_option_card.dart';
 import 'tv_assistant_widgets.dart';
 
@@ -133,26 +134,76 @@ class TvAssistantResultCard extends StatelessWidget {
   }
 }
 
-/// A tool's display, drawn on the panel. Request options are the only
-/// focusable kind; selecting one goes to [onPickOption].
+/// How many focusable cards [display] draws: request options and found
+/// titles. The first of them takes the focus after a result (still 7).
+int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
+  AssistantRequestOptions(:final options) => options.length,
+  AssistantTitleMatches(:final matches) => matches.length,
+  _ => 0,
+};
+
+bool tvAssistantHasChoices(List<AssistantDisplay> displays) => displays.any((d) => tvAssistantChoiceCount(d) > 0);
+
+/// A tool's display, drawn on the panel. Request options and found titles
+/// are the focusable kinds: an option goes to [onPickOption]; a found title
+/// opens its library copy through [onOpenTitle], or, not in a library, goes
+/// to [onPickOption] with its Seerr request.
 class TvAssistantDisplayView extends StatelessWidget {
   const TvAssistantDisplayView({
     super.key,
     required this.display,
     required this.onPickOption,
+    this.onOpenTitle,
     this.firstOptionNode,
     this.optionOffset = 0,
+    this.compact = false,
   });
 
   final AssistantDisplay display;
   final ValueChanged<AssistantRequestOption> onPickOption;
+  final ValueChanged<AssistantTitleTarget>? onOpenTitle;
+
+  /// The summoned panel: found titles scroll in a window of three.
+  final bool compact;
 
   /// Gets the first option card, for the surface's default focus (still 7).
   final FocusNode? firstOptionNode;
 
-  /// Index of this display's first option across all displays, so automation
+  /// Index of this display's first card across all displays, so automation
   /// instances stay unique.
   final int optionOffset;
+
+  void _selectMatch(AssistantTitleMatch match) {
+    if (match.targets.firstOrNull case final target?) {
+      onOpenTitle?.call(target);
+    } else if (match.request case final request?) {
+      onPickOption(request);
+    }
+  }
+
+  Widget _matches(double pt, List<AssistantTitleMatch> matches) {
+    final list = Column(
+      children: [
+        for (final (i, match) in matches.indexed)
+          Padding(
+            padding: EdgeInsets.only(bottom: 10 * pt),
+            child: TvAssistantMatchCard(
+              match: match,
+              index: optionOffset + i,
+              compact: compact,
+              focusNode: i == 0 ? firstOptionNode : null,
+              onSelect: () => _selectMatch(match),
+            ),
+          ),
+      ],
+    );
+    if (!compact) return list;
+    // Three cards of 124 pt plus their gaps; focus scrolls the rest in.
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: 3 * 134 * pt),
+      child: SingleChildScrollView(child: list),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +240,7 @@ class TvAssistantDisplayView extends StatelessWidget {
             ),
         ],
       ),
+      AssistantTitleMatches(:final matches) => _matches(pt, matches),
       AssistantMediaGrid(:final entries) => card(null, [
         for (final e in entries.take(12)) titled(e.item.displayTitle, e.item.year),
       ]),
