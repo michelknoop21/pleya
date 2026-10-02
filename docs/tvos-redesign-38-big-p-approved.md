@@ -1,11 +1,12 @@
-# Mockup 38, Big P (Pleya Assistant), voorgesteld
+# Mockup 38, Big P (Pleya Assistant), goedgekeurd
 
 | Veld | Waarde |
 |------|--------|
-| Status | PROPOSED DESIGN TARGET |
-| Goedgekeurd door | nog niet; Michel Knoop beslist |
+| Status | APPROVED DESIGN TARGET |
+| Goedgekeurd door | Michel Knoop |
 | Datum | 2 oktober 2026 |
-| Set | 38 A tot en met I: hub-ingang, geen toegang, instellen (twee beelden), rust, luisteren, werken, resultaat, bevestiging (Pleya Server en Plex) |
+| Motion-autoriteit | `docs/assets/tvos-unified/src/prototype/38-big-p-motion/` (prototype v2) |
+| Set | 38 A tot en met J, plus de motion-stills 38-motion-0 tot en met 7: hub-ingang, geen toegang, instellen (twee beelden), rust, luisteren, werken, resultaat, bevestiging (Pleya Server en Plex) |
 | In de repo | `docs/assets/tvos-unified/mockups-2026-10-02-big-p/` |
 | Bron | `docs/assets/tvos-unified/src/pages/38-big-p-*.html`, gedeelde opmaak in `src/assets/bigp/bigp.css` |
 | Branch | `feat/pleya-assistant-core` |
