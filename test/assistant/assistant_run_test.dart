@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
@@ -608,17 +609,17 @@ void main() {
   test('a cancel stops the run: no tool call or write starts after it', () async {
     final server = _Server();
     final m = await server.manager();
-    var cancelled = false;
+    final cancel = AbortController();
     final model = _Model(AssistantProviderKind.ollamaServer, scanScript);
     await AssistantRun(
       model: AssistantModelClientSpy(model.client(), () {
         // The user cancels while the model is thinking about the scan.
-        if (model.requests.length == 1) cancelled = true;
+        if (model.requests.length == 1) cancel.abort();
       }),
       context: AssistantToolContext(servers: m),
       confirm: (_) async => null,
       entitlement: const _Entitled(),
-      isCancelled: () => cancelled,
+      cancel: cancel,
     ).ask('Scan');
     expect(server.writes, isEmpty);
   });
@@ -650,8 +651,12 @@ class AssistantModelClientSpy extends AssistantModelClient {
   final void Function() onChat;
 
   @override
-  Future<AssistantReply> chat(List<Map<String, Object?>> messages, List<Map<String, Object?>> tools) {
+  Future<AssistantReply> chat(
+    List<Map<String, Object?>> messages,
+    List<Map<String, Object?>> tools, {
+    AbortController? abort,
+  }) {
     onChat();
-    return inner.chat(messages, tools);
+    return inner.chat(messages, tools, abort: abort);
   }
 }

@@ -3,6 +3,7 @@ import '../media/media_library.dart';
 import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
@@ -49,27 +50,27 @@ class AssistantToolContext {
     this.requests,
     this.media,
     this.web,
-    this.isCancelled,
+    this.cancel,
   });
 
   final MultiServerManager servers;
   final AssistantScreenContext? screen;
 
-  /// The run's own cancel check (`AssistantRun.isCancelled`), so a long tool
-  /// such as find_title stops starting calls once the user left.
-  final bool Function()? isCancelled;
-  bool get cancelled => isCancelled?.call() ?? false;
+  /// The ask's cancel signal (`AssistantRun.cancel`): fires once the user
+  /// left, so a long tool such as find_title aborts its calls at once.
+  final AbortController? cancel;
+  bool get cancelled => cancel?.isAborted ?? false;
 
   /// Same servers, screen and services, none of the per-run state.
-  AssistantToolContext fresh({bool Function()? isCancelled}) => AssistantToolContext(
+  AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web}) => AssistantToolContext(
     servers: servers,
     screen: screen,
     catalog: catalog,
     insights: insights,
     requests: requests,
     media: media,
-    web: web,
-    isCancelled: isCancelled ?? this.isCancelled,
+    web: web ?? this.web,
+    cancel: cancel ?? this.cancel,
   );
 
   /// Domain services the UI layer hands in. A missing one keeps its tools

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/assistant/assistant_find_match.dart';
 import 'package:pleya/assistant/assistant_find_route.dart';
 import 'package:pleya/assistant/assistant_plot_index.dart';
@@ -38,12 +39,8 @@ void main() {
 
   test('a cancelled run aborts find_title at once and starts no new call', () async {
     final web = FakeWeb()..stall = Completer();
-    var cancelled = false;
-    final ctx = findCtx(
-      [_amelie()],
-      libraries: [fakeLib('zolder', 'films')],
-      web: web,
-    ).fresh(isCancelled: () => cancelled);
+    final cancel = AbortController();
+    final ctx = findCtx([_amelie()], libraries: [fakeLib('zolder', 'films')], web: web).fresh(cancel: cancel);
     final clock = Stopwatch()..start();
     final pending = findTitles(
       ctx,
@@ -54,7 +51,7 @@ void main() {
       webCache: AssistantWebCache(),
     );
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    cancelled = true;
+    cancel.abort();
     await pending;
 
     expect(clock.elapsed, lessThan(const Duration(seconds: 1)));

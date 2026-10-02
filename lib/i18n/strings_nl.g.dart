@@ -3180,6 +3180,7 @@ class _TranslationsAssistantWorkingNl extends TranslationsAssistantWorkingEn {
 	// Translations
 	@override String get status => 'Even kijken…';
 	@override String get busy => 'Bezig met je vraag…';
+	@override String get stillChecking => 'Tot nu toe gevonden. Big P controleert nog…';
 }
 
 // Path: assistant.steps
@@ -5566,6 +5567,7 @@ extension on TranslationsNl {
 			'assistant.listening.body' => 'Spreek je vraag in.',
 			'assistant.working.status' => 'Even kijken…',
 			'assistant.working.busy' => 'Bezig met je vraag…',
+			'assistant.working.stillChecking' => 'Tot nu toe gevonden. Big P controleert nog…',
 			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
 			'assistant.steps.listServers' => 'Servers controleren',
 			'assistant.steps.listLibraries' => 'Bibliotheken ophalen',

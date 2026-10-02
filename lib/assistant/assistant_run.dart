@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/ids.dart';
 import '../utils/app_logger.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_provider.dart';
 import 'assistant_tool_context.dart';
@@ -26,11 +27,15 @@ enum AssistantStepPhase { started, done, failed }
 /// One tool call as the UI shows it in the live step list. Built from the
 /// tool name and Pleya's own server name, never from model text.
 class AssistantStep {
-  const AssistantStep({required this.index, required this.tool, required this.phase, this.serverName});
+  const AssistantStep({required this.index, required this.tool, required this.phase, this.serverName, this.display});
   final int index;
   final String tool;
   final String? serverName;
   final AssistantStepPhase phase;
+
+  /// What the finished call handed the UI, so it can show while the model
+  /// still composes its reply. Also in [AssistantRunResult.displays].
+  final AssistantDisplay? display;
 }
 
 enum AssistantRunEnd { answered, stepLimit, notEntitled, noTools, toolsUnsupported, providerError }
@@ -75,15 +80,16 @@ class AssistantRun {
     this.confirmTimeout = const Duration(minutes: 2),
     this.healthRefresh = const Duration(seconds: 10),
     this.onStep,
-    this.isCancelled,
+    this.cancel,
   });
 
-  /// True once the user cancelled or left (reset, profile switch). Checked
-  /// before every model call, every tool call and every confirmed action, so
-  /// nothing new starts after a cancel; a call already on the wire finishes.
-  final bool Function()? isCancelled;
+  /// Fires once the user cancelled or left (reset, profile switch): the
+  /// model call on the wire is aborted, tools see it through their context,
+  /// and it is checked before every model call, tool call and confirmed
+  /// action, so nothing new starts after a cancel.
+  final AbortController? cancel;
 
-  bool get _cancelled => isCancelled?.call() ?? false;
+  bool get _cancelled => cancel?.isAborted ?? false;
 
   /// Called when a tool call starts and when it ends, for the live step list.
   final void Function(AssistantStep step)? onStep;
@@ -129,7 +135,7 @@ class AssistantRun {
     if (_busy) throw StateError('AssistantRun.ask is already running');
     _busy = true;
     try {
-      _ctx = context.fresh(isCancelled: isCancelled);
+      _ctx = context.fresh(cancel: cancel);
       return await _ask(prompt);
     } finally {
       _busy = false;
@@ -168,8 +174,9 @@ class AssistantRun {
       final AssistantReply reply;
       try {
         if (_cancelled) return _end(AssistantRunEnd.stepLimit);
-        reply = await model.chat(messages, [for (final e in available.entries) e.key.spec(e.value)]);
+        reply = await model.chat(messages, [for (final e in available.entries) e.key.spec(e.value)], abort: cancel);
       } on AssistantModelException catch (e) {
+        if (_cancelled) return _end(AssistantRunEnd.stepLimit);
         return _end(
           e.error == AssistantModelError.toolsUnsupported
               ? AssistantRunEnd.toolsUnsupported
@@ -258,7 +265,9 @@ class AssistantRun {
     onStep?.call(
       AssistantStep(index: index, tool: call.name, serverName: serverName, phase: AssistantStepPhase.started),
     );
+    final shown = _displays.length;
     final output = await _executeCall(call);
+    final display = _displays.length > shown ? _displays.last : null;
     final failed =
         output.containsKey('error') || output['status'] == 'cancelled_by_user' || output['status'] == 'not_confirmed';
     onStep?.call(
@@ -267,6 +276,7 @@ class AssistantRun {
         tool: call.name,
         serverName: serverName,
         phase: failed ? AssistantStepPhase.failed : AssistantStepPhase.done,
+        display: display,
       ),
     );
     return output;

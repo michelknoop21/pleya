@@ -111,8 +111,10 @@ class TvAssistantConversation extends StatelessWidget {
       ],
       AssistantSurfaceState.working => <Widget>[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
-        Text(t.assistant.working.status, style: headlineStyle),
+        // Results that are in show at once; the model is still composing.
+        Text(c.stillChecking ? t.assistant.working.stillChecking : t.assistant.working.status, style: headlineStyle),
         gap,
+        if (c.stillChecking) ..._displays(pt, focusFirstOption: false),
         TvAssistantStepList(steps: c.steps),
         SizedBox(height: 16 * pt),
         Align(
@@ -134,19 +136,13 @@ class TvAssistantConversation extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: children);
   }
 
-  List<Widget> _result(
-    BuildContext context,
-    double pt,
-    TextStyle headlineStyle,
-    Widget gap,
-    Widget Function({bool primary}) ask,
-  ) {
-    final c = controller;
-    final headline = assistantHeadline(c);
+  /// The run's displays; [focusFirstOption] hands the first choice the
+  /// surface's option node, which only the result stand focuses.
+  List<Widget> _displays(double pt, {bool focusFirstOption = true}) {
     var optionOffset = 0;
-    var firstOptionTaken = false;
+    var firstOptionTaken = !focusFirstOption;
     final displays = <Widget>[];
-    for (final display in c.displays) {
+    for (final display in controller.displays) {
       final choices = tvAssistantChoiceCount(display);
       displays.add(
         Padding(
@@ -166,10 +162,22 @@ class TvAssistantConversation extends StatelessWidget {
         firstOptionTaken = true;
       }
     }
+    return displays;
+  }
+
+  List<Widget> _result(
+    BuildContext context,
+    double pt,
+    TextStyle headlineStyle,
+    Widget gap,
+    Widget Function({bool primary}) ask,
+  ) {
+    final c = controller;
+    final headline = assistantHeadline(c);
     return [
       if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
       if (headline.isNotEmpty) ...[Text(headline, style: headlineStyle), gap],
-      ...displays,
+      ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         gap,

@@ -2305,7 +2305,8 @@
     },
     "working": {
       "status": "Even kijken…",
-      "busy": "Bezig met je vraag…"
+      "busy": "Bezig met je vraag…",
+      "stillChecking": "Tot nu toe gevonden. Big P controleert nog…"
     },
     "steps": {
       "withServer": "${server} · ${step}",

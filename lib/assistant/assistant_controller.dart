@@ -4,12 +4,15 @@ import 'package:flutter/foundation.dart';
 
 import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_provider.dart';
 import 'assistant_run.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
+
+part 'assistant_controller_language.dart';
 
 enum AssistantAvailability { hidden, locked, needsSetup, ready }
 
@@ -79,6 +82,13 @@ class AssistantController extends ChangeNotifier {
   /// Bumped by [reset]: a run that outlives its conversation (Annuleren
   /// while werken) can no longer write state or raise a card.
   int _generation = 0;
+
+  /// The ask in flight's cancel signal: [reset] and [dispose] fire it, which
+  /// aborts the model call on the wire and every find_title source.
+  AbortController? _cancel;
+
+  /// True while a [submit] run is still going, displays streamed or not.
+  bool _asking = false;
   bool _busy = false;
   bool _disposed = false;
 
@@ -98,6 +108,10 @@ class AssistantController extends ChangeNotifier {
   List<AssistantStep> get steps => List.unmodifiable(_steps);
   List<AssistantActionRecord> get actions => List.unmodifiable(_actions);
   List<AssistantDisplay> get displays => List.unmodifiable(_displays);
+
+  /// Results are already on screen but the model is still composing its
+  /// reply: the UI says Big P is still checking, not that it is done.
+  bool get stillChecking => _asking && _state == AssistantSurfaceState.working && _displays.isNotEmpty;
 
   /// Non-null while a confirmation card must show.
   AssistantPendingAction? get pending => _pending;
@@ -164,7 +178,9 @@ class AssistantController extends ChangeNotifier {
     final text = prompt.trim();
     if (_busy || text.isEmpty) return;
     _busy = true;
+    _asking = true;
     final generation = _generation;
+    final cancel = _cancel = AbortController();
     _prompt = text;
     _answer = '';
     _steps.clear();
@@ -190,19 +206,24 @@ class AssistantController extends ChangeNotifier {
       model = _modelFor(config);
       final result = await AssistantRun(
         model: model,
-        context: _withWeb(_buildContext(_screenContext), config.webSearch ? _webFor?.call(config) : null),
+        // The session builds contexts without the provider config, which
+        // decides the web lookup.
+        context: _buildContext(_screenContext).fresh(web: config.webSearch ? _webFor?.call(config) : null),
         confirm: (action) => _confirm(action, generation),
         entitlement: _entitlement,
         tools: _tools,
         languageName: _languageName(),
         confirmTimeout: confirmTimeout,
-        // Cancel, reset or a profile switch (dispose) stops the run: no new
-        // model call, tool call or confirmed action starts after that.
-        isCancelled: () => generation != _generation || _disposed,
+        // Cancel, reset or a profile switch (dispose) aborts the model call
+        // and the tools in flight; nothing new starts after that.
+        cancel: cancel,
         onStep: (step) {
           if (generation != _generation) return;
           final at = _steps.indexWhere((s) => s.index == step.index);
           at < 0 ? _steps.add(step) : _steps[at] = step;
+          // Shown now, not after the model's last turn; the run's own list
+          // repeats these and is not added again.
+          if (step.display case final display?) _displays.add(display);
           _notify();
         },
       ).ask(text);
@@ -213,7 +234,6 @@ class AssistantController extends ChangeNotifier {
       _resultIsError = result.end != AssistantRunEnd.answered;
       _answer = result.text;
       _actions.addAll(result.actions);
-      _displays.addAll(result.displays);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
       _state = AssistantSurfaceState.result;
     } catch (e, st) {
@@ -224,24 +244,14 @@ class AssistantController extends ChangeNotifier {
       }
     } finally {
       model?.close();
-      if (generation == _generation) _busy = false;
+      if (generation == _generation) {
+        _busy = false;
+        _asking = false;
+        _cancel = null;
+      }
       _notify();
     }
   }
-
-  /// [base] with [web] set: the session builds contexts without knowing the
-  /// provider config, which decides the web lookup.
-  static AssistantToolContext _withWeb(AssistantToolContext base, AssistantWebServices? web) => web == null
-      ? base
-      : AssistantToolContext(
-          servers: base.servers,
-          screen: base.screen,
-          catalog: base.catalog,
-          insights: base.insights,
-          requests: base.requests,
-          media: base.media,
-          web: web,
-        );
 
   /// The run's confirm callback: shows [action] through [pending] until the
   /// user answers, [reset] runs, or [confirmTimeout] passes.
@@ -346,6 +356,7 @@ class AssistantController extends ChangeNotifier {
   /// all let go.
   void reset() {
     _generation++;
+    _abortAsk();
     _answerPending(null);
     _pending = null;
     _confirmer = null;
@@ -364,6 +375,12 @@ class AssistantController extends ChangeNotifier {
     _notify();
   }
 
+  void _abortAsk() {
+    _cancel?.abort();
+    _cancel = null;
+    _asking = false;
+  }
+
   void _notify() {
     if (!_disposed) notifyListeners();
   }
@@ -372,27 +389,8 @@ class AssistantController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _generation++;
+    _abortAsk();
     _answerPending(null);
     super.dispose();
   }
 }
-
-/// The app language as the model's system prompt names it.
-String assistantLanguageName() => switch (LocaleSettings.currentLocale) {
-  AppLocale.nl => 'Dutch',
-  AppLocale.de => 'German',
-  AppLocale.fr => 'French',
-  AppLocale.es => 'Spanish',
-  AppLocale.it => 'Italian',
-  AppLocale.da => 'Danish',
-  AppLocale.nb => 'Norwegian',
-  AppLocale.sv => 'Swedish',
-  AppLocale.pl => 'Polish',
-  AppLocale.pt => 'Portuguese',
-  AppLocale.ru => 'Russian',
-  AppLocale.bg => 'Bulgarian',
-  AppLocale.ja => 'Japanese',
-  AppLocale.ko => 'Korean',
-  AppLocale.zh => 'Chinese',
-  AppLocale.en => 'English',
-};

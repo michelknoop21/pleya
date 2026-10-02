@@ -7371,6 +7371,9 @@ class TranslationsAssistantWorkingEn {
 
 	/// en: 'Working on your question…'
 	String get busy => 'Working on your question…';
+
+	/// en: 'Found so far. Big P is still checking…'
+	String get stillChecking => 'Found so far. Big P is still checking…';
 }
 
 // Path: assistant.steps
@@ -10078,6 +10081,7 @@ extension on Translations {
 			'assistant.listening.body' => 'Speak your question.',
 			'assistant.working.status' => 'Let me check…',
 			'assistant.working.busy' => 'Working on your question…',
+			'assistant.working.stillChecking' => 'Found so far. Big P is still checking…',
 			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
 			'assistant.steps.listServers' => 'Checking servers',
 			'assistant.steps.listLibraries' => 'Fetching libraries',

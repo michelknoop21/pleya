@@ -161,6 +161,23 @@ void main() {
     expect(focusedLabel(), 'assistant.cancel');
   });
 
+  testWidgets('werken with streamed results shows them and says Big P is still checking', (tester) async {
+    await pumpSurface(tester);
+    c
+      ..prompt = 'Wie keek er?'
+      ..state = AssistantSurfaceState.working
+      ..displays = [const AssistantWatchStats(serverName: 'Zolder')]
+      ..stillChecking = true
+      ..emit();
+    await settle(tester);
+
+    expect(find.text(t.assistant.working.stillChecking), findsOneWidget);
+    expect(find.text(t.assistant.working.status), findsNothing);
+    expect(find.text(t.assistant.displays.watchStats(server: 'Zolder')), findsOneWidget);
+    expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
+    expect(focusedLabel(), 'assistant.cancel');
+  });
+
   group('resultaat', () {
     testWidgets('success: Big P cheers, then says the answer; Pleya lists what it did', (tester) async {
       await pumpSurface(tester);

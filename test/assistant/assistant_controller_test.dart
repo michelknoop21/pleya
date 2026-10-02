@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
@@ -42,7 +43,11 @@ class _Model extends AssistantModelClient {
   var calls = 0;
 
   @override
-  Future<AssistantReply> chat(List<Map<String, Object?>> messages, List<Map<String, Object?>> tools) async {
+  Future<AssistantReply> chat(
+    List<Map<String, Object?>> messages,
+    List<Map<String, Object?>> tools, {
+    AbortController? abort,
+  }) async {
     await gate?.future;
     return calls < script.length ? script[calls++] : _say('klaar');
   }

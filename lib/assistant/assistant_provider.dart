@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 
 import '../services/base_shared_preferences_service.dart';
 import '../services/credential_vault.dart';
+import '../utils/abortable_http_request.dart';
 import '../utils/log_redaction_manager.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 
 part 'assistant_models.dart';
 
@@ -24,6 +26,7 @@ class AssistantProviderConfig {
     this.headerValue = '',
     this.webSearchChoice,
     this.ollamaWebKey = '',
+    this.timeoutOverride,
   });
 
   static const String ollamaCloudUrl = 'https://ollama.com';
@@ -53,6 +56,21 @@ class AssistantProviderConfig {
 
   bool get isOllama => kind != AssistantProviderKind.openRouter;
 
+  /// A chat timeout set for this provider and model; null uses the
+  /// provider's default.
+  final Duration? timeoutOverride;
+
+  /// How long one chat call may take: [timeoutOverride], else the default
+  /// of the kind. A hosted router answers fast; Ollama Cloud queues; an
+  /// Ollama server may first load the model from disk.
+  Duration get providerTimeout => timeoutOverride ?? defaultProviderTimeout(kind);
+
+  static Duration defaultProviderTimeout(AssistantProviderKind kind) => switch (kind) {
+    AssistantProviderKind.openRouter => const Duration(seconds: 20),
+    AssistantProviderKind.ollamaCloud => const Duration(seconds: 60),
+    AssistantProviderKind.ollamaServer => const Duration(seconds: 90),
+  };
+
   bool get isComplete =>
       baseUrl.isNotEmpty && model.isNotEmpty && (kind == AssistantProviderKind.ollamaServer || apiKey.isNotEmpty);
 
@@ -73,6 +91,8 @@ class AssistantProviderConfig {
     headerValue: headerValue ?? this.headerValue,
     webSearchChoice: webSearch ?? webSearchChoice,
     ollamaWebKey: ollamaWebKey ?? this.ollamaWebKey,
+    // Set for one model: another model starts from the default again.
+    timeoutOverride: model == null || model == this.model ? timeoutOverride : null,
   );
 
   Map<String, Object?> toJson() => {
@@ -84,6 +104,7 @@ class AssistantProviderConfig {
     'headerValue': headerValue,
     if (webSearchChoice != null) 'webSearch': webSearchChoice,
     'ollamaWebKey': ollamaWebKey,
+    if (timeoutOverride case final timeout?) 'timeoutSeconds': timeout.inSeconds,
   };
 
   static AssistantProviderConfig? fromJson(Map<String, Object?> json) {
@@ -100,6 +121,10 @@ class AssistantProviderConfig {
       // Absent until the user chooses: [webSearch] then follows the kind.
       webSearchChoice: json['webSearch'] is bool ? json['webSearch'] as bool : null,
       ollamaWebKey: read('ollamaWebKey'),
+      timeoutOverride: switch (json['timeoutSeconds']) {
+        final int seconds when seconds > 0 => Duration(seconds: seconds),
+        _ => null,
+      },
     );
   }
 }
@@ -199,7 +224,6 @@ class AssistantModelClient {
   final AssistantProviderConfig config;
   final http.Client _http;
 
-  static const Duration _chatTimeout = Duration(seconds: 90);
   static const Duration _lookupTimeout = Duration(seconds: 15);
   static const Duration _preloadTimeout = Duration(seconds: 60);
 
@@ -221,7 +245,14 @@ class AssistantModelClient {
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('${normaliseBaseUrl(config.baseUrl)}$path').replace(queryParameters: query);
 
-  Future<AssistantReply> chat(List<Map<String, Object?>> messages, List<Map<String, Object?>> tools) async {
+  /// One model turn, bounded by [AssistantProviderConfig.providerTimeout].
+  /// [abort] cancels the request on the wire (the user left); it then ends
+  /// as [AssistantModelError.unreachable].
+  Future<AssistantReply> chat(
+    List<Map<String, Object?>> messages,
+    List<Map<String, Object?>> tools, {
+    AbortController? abort,
+  }) async {
     final body = {
       'model': config.model,
       'messages': messages,
@@ -231,8 +262,16 @@ class AssistantModelClient {
       if (config.kind == AssistantProviderKind.openRouter) 'provider': {'require_parameters': true},
     };
     final response = await _send(
-      () => _http.post(_uri('/v1/chat/completions'), headers: _headers, body: jsonEncode(body)),
-      _chatTimeout,
+      () => sendAbortableHttpRequest(
+        _http,
+        'POST',
+        _uri('/v1/chat/completions'),
+        headers: _headers,
+        body: jsonEncode(body),
+        timeout: config.providerTimeout,
+        abortTrigger: abort?.trigger,
+      ),
+      config.providerTimeout,
     );
     if (response.statusCode == 400 || response.statusCode == 404) {
       // Ollama: 400 "does not support tools". OpenRouter: 404 "No endpoints

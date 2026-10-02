@@ -36,6 +36,8 @@ class FakeAssistantController extends AssistantController {
   List<AssistantDisplay> displays = [];
   @override
   AssistantPendingAction? pending;
+  @override
+  bool stillChecking = false;
 
   final submitted = <String>[];
   final listenContexts = <AssistantScreenContext?>[];

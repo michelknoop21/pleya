@@ -28,6 +28,12 @@ import 'assistant_tool_context.dart';
 import 'assistant_web_lookup.dart';
 import 'assistant_web_search.dart';
 
+/// How long find_title waits for its fast sources (library, plot index,
+/// Seerr, Wikipedia/Wikidata, web search). A bound for showing results
+/// quickly, not for the model: its calls run under
+/// `AssistantProviderConfig.providerTimeout`.
+const fastSearchDeadline = Duration(seconds: 8);
+
 class FindResult {
   const FindResult(this.matches, {this.partial = false, this.webSearched = false});
   final List<FindMatch> matches;
@@ -37,7 +43,7 @@ class FindResult {
   final bool webSearched;
 }
 
-/// Runs the route for [q] within [budget]. Never throws; what did not answer
+/// Runs the route for [q] within [budget] ([fastSearchDeadline]). Never throws; what did not answer
 /// in time is left out and flagged as partial. Web calls still in flight when
 /// it returns, or when the run is cancelled, are aborted; media-server and
 /// Seerr calls, whose clients take no abort, are left to finish unread and
@@ -45,7 +51,7 @@ class FindResult {
 Future<FindResult> findTitles(
   AssistantToolContext ctx,
   FindQuery q, {
-  Duration budget = const Duration(seconds: 8),
+  Duration budget = fastSearchDeadline,
   Duration headStart = const Duration(milliseconds: 800),
   AssistantPlotIndexCache? plots,
   AssistantWebCache? webCache,
@@ -129,14 +135,11 @@ class FindRun {
   }
 
   Future<FindResult> run(Duration headStart) async {
-    // ponytail: polled, the run's cancel is a flag without an event; 50 ms of slack.
-    final watch = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      if (ctx.cancelled) _abort.abort();
-    });
+    // The ask's cancel ends the route at once, web calls included.
+    unawaited(ctx.cancel?.trigger.then((_) => _abort.abort()));
     try {
       return await _run(headStart);
     } finally {
-      watch.cancel();
       _abort.abort();
     }
   }

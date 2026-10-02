@@ -2305,7 +2305,8 @@
     },
     "working": {
       "status": "Let me check…",
-      "busy": "Working on your question…"
+      "busy": "Working on your question…",
+      "stillChecking": "Found so far. Big P is still checking…"
     },
     "steps": {
       "withServer": "${server} · ${step}",
