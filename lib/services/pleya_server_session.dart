@@ -211,6 +211,20 @@ class PleyaServerSession {
     );
   }
 
+  /// Record the role `/users/me` just reported. Persisted through the same
+  /// listener as a rotation, so an admin stays known across a cold start
+  /// with the server offline. A failed write is logged, not thrown: the
+  /// in-memory role is already current and the next probe writes again.
+  Future<void> adoptRole(String role) async {
+    if (role == _connection.role) return;
+    _connection = _connection.copyWith(role: role);
+    try {
+      await _persist();
+    } catch (_) {
+      // _persist already logged it.
+    }
+  }
+
   /// A failed write leaves the rotated token stranded in memory: disk still
   /// has the token this rotation just spent, and by the time anyone tries
   /// again the server has already moved past it. A cold start before the

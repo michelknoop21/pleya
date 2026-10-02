@@ -229,6 +229,7 @@ class MultiServerManager {
   /// server) is refused.
   void _wireServerAuthority(ServerAuthorityGuard client, ServerId serverId) {
     client.canManageServerMetadata = () => identical(_clients[serverId], client) && canManageServerMetadata(serverId);
+    client.canAdministerServer = () => identical(_clients[serverId], client) && canAdministerServer(serverId);
   }
 
   @visibleForTesting
@@ -346,9 +347,9 @@ class MultiServerManager {
   ///     its API; administrator is the highest role it exposes and already
   ///     holds metadata rights server-side, so every admin counts as owner
   ///     (owner decision, 25 Sep 2026). A borrowed row never inherits it.
-  ///   - Pleya Server: `false` until PS-9 delivers roles. Only `role == owner`
-  ///     may ever return true there; `admin` is not owner and a library's
-  ///     `read_write` grant is about watch state, never about metadata.
+  ///   - Pleya Server: `false`. The client has no canonical metadata write
+  ///     path there; server administration (scans, jobs, users) goes
+  ///     through [canAdministerServer] instead.
   ///   - A borrowed connection (any backend): `false`.
   ///   - Unknown server: `false`.
   bool canManageServerMetadata(ServerId serverId) {
@@ -362,6 +363,25 @@ class MultiServerManager {
       return client.connection.isAdministrator;
     }
     return false;
+  }
+
+  /// May the active profile administer [serverId]: scans, jobs, users and
+  /// their library access?
+  ///
+  ///   - Plex, Jellyfin, Emby: exactly [canManageServerMetadata]. Their admin
+  ///     role is the owner rule.
+  ///   - Pleya Server: the signed-in role is `owner` or `admin`, which is the
+  ///     line the server itself draws (DEC-142). Metadata stays owner-only.
+  ///   - A borrowed connection (any backend): `false`.
+  ///   - Unknown server: `false`.
+  ///
+  /// Reads the last known role, not live connectivity, so callers that need
+  /// an online server check that separately.
+  bool canAdministerServer(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return false;
+    final client = _clients[serverId];
+    if (client is PleyaServerClient) return client.connection.isServerAdministrator;
+    return canManageServerMetadata(serverId);
   }
 
   /// [canManageServerMetadata] on a Plex server. Gates administering the

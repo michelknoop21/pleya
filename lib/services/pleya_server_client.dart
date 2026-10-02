@@ -271,11 +271,27 @@ class PleyaServerClient
           appLogger.i('PleyaServerClient: server renamed to ${detail.name}');
         }
       }
+      if (_wireCapabilities.users) await _refreshRole();
       return HealthStatus.online;
     } on MediaServerAuthException catch (e) {
       return _provesSignedOut(e) ? HealthStatus.authError : HealthStatus.offline;
     } catch (_) {
       return HealthStatus.offline;
+    }
+  }
+
+  /// Re-read the signed-in user's role, so a promotion or demotion on the
+  /// server reaches the client's authority checks without a re-login. Best
+  /// effort: a failed read keeps the last known role, and the server checks
+  /// the role on every admin request anyway.
+  Future<void> _refreshRole() async {
+    try {
+      final response = await _authorizedGet('/users/me', timeout: MediaServerTimeouts.jellyfinProbe);
+      final data = response.data;
+      if (response.statusCode != 200 || data is! Map<String, dynamic>) return;
+      await _session.adoptRole(PleyaUser.fromJson(data).role);
+    } catch (e) {
+      appLogger.d('PleyaServerClient: /users/me unavailable', error: e);
     }
   }
 
