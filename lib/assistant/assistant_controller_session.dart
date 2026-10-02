@@ -13,7 +13,9 @@ import '../services/download_manager_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_controller.dart';
 import 'assistant_tool_context.dart';
+import 'assistant_provider.dart';
 import 'assistant_tools.dart';
+import 'assistant_web_lookup.dart';
 
 /// The controller for one profile session. Register it lazily inside the
 /// profile-scoped providers (`ProfileSessionScreen`), so a profile switch
@@ -28,8 +30,23 @@ import 'assistant_tools.dart';
 /// [HomeLayoutProvider] is only built once Big P is asked something. A
 /// provider that is not in scope leaves its service null, which keeps those
 /// tools out of the run.
-AssistantController assistantControllerForSession(BuildContext context) =>
-    AssistantController(buildContext: (screen) => _sessionToolContext(context, screen));
+AssistantController assistantControllerForSession(BuildContext context) => AssistantController(
+  buildContext: (screen) => _sessionToolContext(context, screen),
+  webFor: assistantWebServicesFor,
+);
+
+/// Web search for find_title, from the provider settings. Wikipedia needs
+/// no key; the one web search per question uses the Ollama key (the Cloud
+/// key, or the optional ollama.com key next to an Ollama server) or the
+/// OpenRouter key. Whether web search is on at all is decided by the caller.
+AssistantWebServices? assistantWebServicesFor(AssistantProviderConfig config) => AssistantWebServices.forKeys(
+  ollamaWebKey: switch (config.kind) {
+    AssistantProviderKind.ollamaCloud => config.apiKey,
+    AssistantProviderKind.ollamaServer => config.ollamaWebKey,
+    AssistantProviderKind.openRouter => '',
+  },
+  openRouterKey: config.kind == AssistantProviderKind.openRouter ? config.apiKey : '',
+);
 
 AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenContext? screen) {
   final manager = context.read<MultiServerProvider>().serverManager;

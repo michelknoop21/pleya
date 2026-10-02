@@ -81,7 +81,55 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
         primary: false,
         onPressed: _disable,
       ),
+      if (_models != null && !_models!.any((m) => m.id == config.model)) ...[
+        const SizedBox(height: 16),
+        Text(
+          s.savedModelGone(model: config.model),
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+        ),
+      ],
+      ..._webSection(theme, config.kind, config.webSearch),
+      ..._modelSection(theme),
       ..._errorLine(theme),
+    ];
+  }
+
+  /// "Zoeken op internet" and, for an Ollama server in the details step,
+  /// the optional ollama.com key that enables Ollama web search.
+  List<Widget> _webSection(ThemeData theme, AssistantProviderKind kind, bool on) {
+    final s = t.assistant.settings;
+    final muted = _muted(theme);
+    return [
+      const SizedBox(height: 16),
+      AutomationNode(
+        id: AutomationIds.settingsFormButton,
+        instance: 'assistant.webSearch',
+        role: 'button',
+        state: () => {'selected': on},
+        child: SettingSwitchRow(
+          value: on,
+          onChanged: busy ? null : _setWebSearch,
+          icon: Symbols.travel_explore_rounded,
+          title: s.webSearch,
+          subtitle: switch (kind) {
+            AssistantProviderKind.ollamaServer => s.webSearchNoteServer,
+            AssistantProviderKind.ollamaCloud => s.webSearchNoteCloud,
+            AssistantProviderKind.openRouter => s.webSearchNoteOpenRouter,
+          },
+        ),
+      ),
+      if (on && kind == AssistantProviderKind.ollamaServer && !_showSummary) ...[
+        const SizedBox(height: 8),
+        _field(
+          instance: 'ollamaWebKey',
+          controller: _webKeyController,
+          label: s.ollamaWebKey,
+          icon: Symbols.key_rounded,
+          obscure: true,
+          affectsModels: false,
+        ),
+        Text(s.ollamaWebKeyHelp, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+      ],
     ];
   }
 
@@ -133,6 +181,7 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
     bool obscure = false,
     TextInputType? keyboardType,
     FormFieldValidator<String>? validator,
+    bool affectsModels = true,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: AutomationNode(
@@ -148,7 +197,7 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
         autocorrect: false,
         enableSuggestions: false,
         enabled: !busy,
-        onChanged: (_) => _draftChanged(),
+        onChanged: affectsModels ? (_) => _draftChanged() : null,
         decoration: InputDecoration(labelText: label, hintText: hint, prefixIcon: AppIcon(icon, fill: 1)),
         validator: validator,
       ),
@@ -212,45 +261,9 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
           obscure: true,
           validator: (v) => (v == null || v.trim().isEmpty) ? s.errorKeyRequired : null,
         ),
-      _button(
-        instance: 'fetchModels',
-        label: s.fetchModels,
-        icon: Symbols.download_rounded,
-        primary: models == null,
-        onPressed: _fetchModels,
-      ),
-      if (busy)
-        const Padding(
-          padding: EdgeInsets.only(top: 12),
-          child: Center(child: LoadingIndicatorBox()),
-        ),
+      ..._webSection(theme, kind, _webSearch ?? kind != AssistantProviderKind.ollamaServer),
+      ..._modelSection(theme),
       if (models != null) ...[
-        const SizedBox(height: 20),
-        Text(s.modelsHeading, style: theme.textTheme.titleSmall),
-        Text(models.isEmpty ? s.noToolModels : s.modelsHelp, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
-        const SizedBox(height: 8),
-        for (final model in models)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: AutomationNode(
-              id: AutomationIds.settingsFormButton,
-              instance: 'assistant.model.$model',
-              role: 'button',
-              state: () => {'selected': _model == model},
-              child: FocusableButton(
-                onPressed: busy ? null : () => _pickModel(model),
-                child: _model == model
-                    ? FilledButton(
-                        onPressed: busy ? null : () {},
-                        child: Align(alignment: Alignment.centerLeft, child: Text(model)),
-                      )
-                    : OutlinedButton(
-                        onPressed: busy ? null : () => _pickModel(model),
-                        child: Align(alignment: Alignment.centerLeft, child: Text(model)),
-                      ),
-              ),
-            ),
-          ),
         if (_model != null) ...[
           const SizedBox(height: 12),
           _button(

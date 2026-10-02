@@ -7630,6 +7630,9 @@ class TranslationsAssistantEndsEn {
 
 	/// en: 'Nothing was changed.'
 	String get nothingChanged => 'Nothing was changed.';
+
+	/// en: 'The chosen model is gone. Pick another one in the Big P settings.'
+	String get modelMissing => 'The chosen model is gone. Pick another one in the Big P settings.';
 }
 
 // Path: assistant.settings
@@ -7756,6 +7759,87 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: 'Unexpected answer from the server. Check the address.'
 	String get errorBadResponse => 'Unexpected answer from the server. Check the address.';
+
+	/// en: 'Refresh'
+	String get refreshModels => 'Refresh';
+
+	/// en: 'Show more (${count})'
+	String showMore({required Object count}) => 'Show more (${count})';
+
+	/// en: 'Updated today'
+	String get updatedToday => 'Updated today';
+
+	/// en: '(one) {Updated yesterday} (other) {Updated ${n} days ago}'
+	String updatedDays({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Updated yesterday',
+		other: 'Updated ${n} days ago',
+	);
+
+	/// en: '(one) {Updated a month ago} (other) {Updated ${n} months ago}'
+	String updatedMonths({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Updated a month ago',
+		other: 'Updated ${n} months ago',
+	);
+
+	/// en: '(one) {Updated a year ago} (other) {Updated ${n} years ago}'
+	String updatedYears({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Updated a year ago',
+		other: 'Updated ${n} years ago',
+	);
+
+	/// en: '${size} context'
+	String contextLength({required Object size}) => '${size} context';
+
+	/// en: 'Free'
+	String get priceFree => 'Free';
+
+	/// en: 'Low cost'
+	String get priceLow => 'Low cost';
+
+	/// en: 'Mid-priced'
+	String get priceMedium => 'Mid-priced';
+
+	/// en: 'Expensive'
+	String get priceHigh => 'Expensive';
+
+	/// en: '${model} is no longer offered. Pick another model below.'
+	String savedModelGone({required Object model}) => '${model} is no longer offered. Pick another model below.';
+
+	/// en: 'Update model'
+	String get updateModel => 'Update model';
+
+	/// en: 'Updating: ${status}'
+	String updating({required Object status}) => 'Updating: ${status}';
+
+	/// en: '${model} is up to date'
+	String updateDone({required Object model}) => '${model} is up to date';
+
+	/// en: 'Ollama no longer has this model in its library. Pick another model.'
+	String get pullErrorUnknown => 'Ollama no longer has this model in its library. Pick another model.';
+
+	/// en: 'Not enough disk space on the server to update the model.'
+	String get pullErrorDisk => 'Not enough disk space on the server to update the model.';
+
+	/// en: 'Updating the model failed: ${reason}'
+	String pullErrorFailed({required Object reason}) => 'Updating the model failed: ${reason}';
+
+	/// en: 'Search the web'
+	String get webSearch => 'Search the web';
+
+	/// en: 'ollama.com key for web search (optional)'
+	String get ollamaWebKey => 'ollama.com key for web search (optional)';
+
+	/// en: 'Without this key Big P searches Wikipedia only.'
+	String get ollamaWebKeyHelp => 'Without this key Big P searches Wikipedia only.';
+
+	/// en: 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama's web search.'
+	String get webSearchNoteServer => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.';
+
+	/// en: 'The description of a title you look for goes to Wikipedia and Ollama's web search.'
+	String get webSearchNoteCloud => 'The description of a title you look for goes to Wikipedia and Ollama\'s web search.';
+
+	/// en: 'The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.'
+	String get webSearchNoteOpenRouter => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.';
 }
 
 // Path: assistant.option
@@ -10043,6 +10127,7 @@ extension on Translations {
 			'assistant.ends.providerTimeout' => 'The AI provider did not answer in time.',
 			'assistant.ends.providerBadResponse' => 'The AI provider gave an unexpected answer.',
 			'assistant.ends.nothingChanged' => 'Nothing was changed.',
+			'assistant.ends.modelMissing' => 'The chosen model is gone. Pick another one in the Big P settings.',
 			'assistant.summonHint' => 'Hold Play/Pause to call Big P',
 			'assistant.contextAction' => 'Ask Big P',
 			'assistant.settings.title' => 'Set up Big P',
@@ -10084,6 +10169,30 @@ extension on Translations {
 			'assistant.settings.errorTimeout' => 'The server did not answer in time.',
 			'assistant.settings.errorToolsUnsupported' => 'This model cannot use tools.',
 			'assistant.settings.errorBadResponse' => 'Unexpected answer from the server. Check the address.',
+			'assistant.settings.refreshModels' => 'Refresh',
+			'assistant.settings.showMore' => ({required Object count}) => 'Show more (${count})',
+			'assistant.settings.updatedToday' => 'Updated today',
+			'assistant.settings.updatedDays' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Updated yesterday', other: 'Updated ${n} days ago', ), 
+			'assistant.settings.updatedMonths' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Updated a month ago', other: 'Updated ${n} months ago', ), 
+			'assistant.settings.updatedYears' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Updated a year ago', other: 'Updated ${n} years ago', ), 
+			'assistant.settings.contextLength' => ({required Object size}) => '${size} context',
+			'assistant.settings.priceFree' => 'Free',
+			'assistant.settings.priceLow' => 'Low cost',
+			'assistant.settings.priceMedium' => 'Mid-priced',
+			'assistant.settings.priceHigh' => 'Expensive',
+			'assistant.settings.savedModelGone' => ({required Object model}) => '${model} is no longer offered. Pick another model below.',
+			'assistant.settings.updateModel' => 'Update model',
+			'assistant.settings.updating' => ({required Object status}) => 'Updating: ${status}',
+			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
+			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',
+			'assistant.settings.pullErrorDisk' => 'Not enough disk space on the server to update the model.',
+			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Updating the model failed: ${reason}',
+			'assistant.settings.webSearch' => 'Search the web',
+			'assistant.settings.ollamaWebKey' => 'ollama.com key for web search (optional)',
+			'assistant.settings.ollamaWebKeyHelp' => 'Without this key Big P searches Wikipedia only.',
+			'assistant.settings.webSearchNoteServer' => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.',
+			'assistant.settings.webSearchNoteCloud' => 'The description of a title you look for goes to Wikipedia and Ollama\'s web search.',
+			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',

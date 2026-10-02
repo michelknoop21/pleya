@@ -3302,6 +3302,7 @@ class _TranslationsAssistantEndsNl extends TranslationsAssistantEndsEn {
 	@override String get providerTimeout => 'De AI-provider antwoordde niet op tijd.';
 	@override String get providerBadResponse => 'De AI-provider gaf een onverwacht antwoord.';
 	@override String get nothingChanged => 'Er is niets veranderd.';
+	@override String get modelMissing => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.';
 }
 
 // Path: assistant.settings
@@ -3350,6 +3351,39 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get errorTimeout => 'De server antwoordde niet op tijd.';
 	@override String get errorToolsUnsupported => 'Dit model kan geen tools gebruiken.';
 	@override String get errorBadResponse => 'Onverwacht antwoord van de server. Controleer het adres.';
+	@override String get refreshModels => 'Vernieuwen';
+	@override String showMore({required Object count}) => 'Meer tonen (${count})';
+	@override String get updatedToday => 'Vandaag bijgewerkt';
+	@override String updatedDays({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: 'Gisteren bijgewerkt',
+		other: '${n} dagen geleden bijgewerkt',
+	);
+	@override String updatedMonths({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: 'Een maand geleden bijgewerkt',
+		other: '${n} maanden geleden bijgewerkt',
+	);
+	@override String updatedYears({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: 'Een jaar geleden bijgewerkt',
+		other: '${n} jaar geleden bijgewerkt',
+	);
+	@override String contextLength({required Object size}) => '${size} context';
+	@override String get priceFree => 'Gratis';
+	@override String get priceLow => 'Goedkoop';
+	@override String get priceMedium => 'Gemiddelde prijs';
+	@override String get priceHigh => 'Duur';
+	@override String savedModelGone({required Object model}) => '${model} wordt niet meer aangeboden. Kies hieronder een ander model.';
+	@override String get updateModel => 'Model bijwerken';
+	@override String updating({required Object status}) => 'Bijwerken: ${status}';
+	@override String updateDone({required Object model}) => '${model} is bijgewerkt';
+	@override String get pullErrorUnknown => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.';
+	@override String get pullErrorDisk => 'Te weinig schijfruimte op de server om het model bij te werken.';
+	@override String pullErrorFailed({required Object reason}) => 'Model bijwerken mislukt: ${reason}';
+	@override String get webSearch => 'Zoeken op internet';
+	@override String get ollamaWebKey => 'ollama.com-sleutel voor zoeken op internet (optioneel)';
+	@override String get ollamaWebKeyHelp => 'Zonder deze sleutel zoekt Big P alleen op Wikipedia.';
+	@override String get webSearchNoteServer => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.';
+	@override String get webSearchNoteCloud => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.';
+	@override String get webSearchNoteOpenRouter => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.';
 }
 
 // Path: assistant.option
@@ -5595,6 +5629,7 @@ extension on TranslationsNl {
 			'assistant.ends.providerTimeout' => 'De AI-provider antwoordde niet op tijd.',
 			'assistant.ends.providerBadResponse' => 'De AI-provider gaf een onverwacht antwoord.',
 			'assistant.ends.nothingChanged' => 'Er is niets veranderd.',
+			'assistant.ends.modelMissing' => 'Het gekozen model is er niet meer, kies een ander in Big P instellen.',
 			'assistant.summonHint' => 'Houd Play/Pauze ingedrukt om Big P op te roepen',
 			'assistant.contextAction' => 'Vraag Big P',
 			'assistant.settings.title' => 'Big P instellen',
@@ -5636,6 +5671,30 @@ extension on TranslationsNl {
 			'assistant.settings.errorTimeout' => 'De server antwoordde niet op tijd.',
 			'assistant.settings.errorToolsUnsupported' => 'Dit model kan geen tools gebruiken.',
 			'assistant.settings.errorBadResponse' => 'Onverwacht antwoord van de server. Controleer het adres.',
+			'assistant.settings.refreshModels' => 'Vernieuwen',
+			'assistant.settings.showMore' => ({required Object count}) => 'Meer tonen (${count})',
+			'assistant.settings.updatedToday' => 'Vandaag bijgewerkt',
+			'assistant.settings.updatedDays' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: 'Gisteren bijgewerkt', other: '${n} dagen geleden bijgewerkt', ), 
+			'assistant.settings.updatedMonths' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: 'Een maand geleden bijgewerkt', other: '${n} maanden geleden bijgewerkt', ), 
+			'assistant.settings.updatedYears' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: 'Een jaar geleden bijgewerkt', other: '${n} jaar geleden bijgewerkt', ), 
+			'assistant.settings.contextLength' => ({required Object size}) => '${size} context',
+			'assistant.settings.priceFree' => 'Gratis',
+			'assistant.settings.priceLow' => 'Goedkoop',
+			'assistant.settings.priceMedium' => 'Gemiddelde prijs',
+			'assistant.settings.priceHigh' => 'Duur',
+			'assistant.settings.savedModelGone' => ({required Object model}) => '${model} wordt niet meer aangeboden. Kies hieronder een ander model.',
+			'assistant.settings.updateModel' => 'Model bijwerken',
+			'assistant.settings.updating' => ({required Object status}) => 'Bijwerken: ${status}',
+			'assistant.settings.updateDone' => ({required Object model}) => '${model} is bijgewerkt',
+			'assistant.settings.pullErrorUnknown' => 'Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.',
+			'assistant.settings.pullErrorDisk' => 'Te weinig schijfruimte op de server om het model bij te werken.',
+			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Model bijwerken mislukt: ${reason}',
+			'assistant.settings.webSearch' => 'Zoeken op internet',
+			'assistant.settings.ollamaWebKey' => 'ollama.com-sleutel voor zoeken op internet (optioneel)',
+			'assistant.settings.ollamaWebKeyHelp' => 'Zonder deze sleutel zoekt Big P alleen op Wikipedia.',
+			'assistant.settings.webSearchNoteServer' => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.',
+			'assistant.settings.webSearchNoteCloud' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.',
+			'assistant.settings.webSearchNoteOpenRouter' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',

@@ -9,6 +9,7 @@ import 'assistant_provider.dart';
 import 'assistant_run.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
+import 'assistant_web_lookup.dart';
 
 enum AssistantAvailability { hidden, locked, needsSetup, ready }
 
@@ -28,10 +29,14 @@ class AssistantController extends ChangeNotifier {
     this._entitlement = const AssistantEntitlement(),
     Future<AssistantProviderConfig?> Function()? loadConfig,
     AssistantModelClient Function(AssistantProviderConfig config)? modelFor,
+    this._webFor,
     String Function()? languageName,
     this.confirmTimeout = const Duration(minutes: 2),
+    this.preloadWindow = const Duration(minutes: 5),
+    DateTime Function()? now,
     this._tools,
-  }) : _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
+  }) : _now = now ?? DateTime.now,
+       _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
        _languageName = languageName ?? assistantLanguageName;
 
@@ -40,8 +45,18 @@ class AssistantController extends ChangeNotifier {
   final AssistantEntitlement _entitlement;
   final Future<AssistantProviderConfig?> Function() _loadConfig;
   final AssistantModelClient Function(AssistantProviderConfig config) _modelFor;
+
+  /// Web lookup for a run whose config allows it; null keeps the web out.
+  final AssistantWebServices? Function(AssistantProviderConfig config)? _webFor;
   final String Function() _languageName;
   final List<AssistantTool>? _tools;
+  final DateTime Function() _now;
+
+  /// At most one model preload per window; Ollama keeps it loaded for
+  /// [_preloadKeepAlive], which outlasts the window.
+  final Duration preloadWindow;
+  static const String _preloadKeepAlive = '10m';
+  DateTime? _lastPreload;
 
   /// How long a confirmation card waits; then the run hears `not_confirmed`.
   final Duration confirmTimeout;
@@ -51,6 +66,7 @@ class AssistantController extends ChangeNotifier {
   bool _resultIsError = false;
   AssistantRunEnd? _lastEnd;
   AssistantModelError? _lastProviderError;
+  bool _modelMissing = false;
   String? _prompt;
   String _answer = '';
   final List<AssistantStep> _steps = [];
@@ -71,6 +87,10 @@ class AssistantController extends ChangeNotifier {
   bool get resultIsError => _resultIsError;
   AssistantRunEnd? get lastEnd => _lastEnd;
   AssistantModelError? get lastProviderError => _lastProviderError;
+
+  /// The last run failed because the saved model is gone; the UI says so
+  /// with `t.assistant.ends.modelMissing` instead of the generic error.
+  bool get modelMissing => _modelMissing;
   String? get prompt => _prompt;
 
   /// The model's words: display only, never a source of actions.
@@ -105,6 +125,31 @@ class AssistantController extends ChangeNotifier {
     _screenContext = context ?? _screenContext;
     _state = AssistantSurfaceState.listening;
     _notify();
+    unawaited(_preload());
+  }
+
+  /// Warms the Ollama server's model while the user speaks, so the first
+  /// answer does not wait for loading. Fire and forget: never blocks, never
+  /// surfaces an error. Ollama Cloud and OpenRouter keep models hot already.
+  Future<void> _preload() async {
+    final now = _now();
+    final last = _lastPreload;
+    if (last != null && now.difference(last) < preloadWindow) return;
+    _lastPreload = now;
+    AssistantModelClient? client;
+    try {
+      final config = await _loadConfig();
+      if (_disposed || config == null || !config.isComplete || config.kind != AssistantProviderKind.ollamaServer) {
+        return;
+      }
+      client = _modelFor(config);
+      await client.preload(keepAlive: _preloadKeepAlive);
+    } catch (e) {
+      // Type only: a message could echo the server address or a header.
+      appLogger.d('Assistant model preload failed', error: e.runtimeType);
+    } finally {
+      client?.close();
+    }
   }
 
   /// Back to where listening started: the last result when there is one.
@@ -128,6 +173,7 @@ class AssistantController extends ChangeNotifier {
     _resultIsError = false;
     _lastEnd = null;
     _lastProviderError = null;
+    _modelMissing = false;
     _state = AssistantSurfaceState.working;
     _notify();
 
@@ -144,7 +190,7 @@ class AssistantController extends ChangeNotifier {
       model = _modelFor(config);
       final result = await AssistantRun(
         model: model,
-        context: _buildContext(_screenContext),
+        context: _withWeb(_buildContext(_screenContext), config.webSearch ? _webFor?.call(config) : null),
         confirm: (action) => _confirm(action, generation),
         entitlement: _entitlement,
         tools: _tools,
@@ -160,6 +206,7 @@ class AssistantController extends ChangeNotifier {
       if (generation != _generation) return;
       _lastEnd = result.end;
       _lastProviderError = result.providerError;
+      _modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
       _resultIsError = result.end != AssistantRunEnd.answered;
       _answer = result.text;
       _actions.addAll(result.actions);
@@ -178,6 +225,20 @@ class AssistantController extends ChangeNotifier {
       _notify();
     }
   }
+
+  /// [base] with [web] set: the session builds contexts without knowing the
+  /// provider config, which decides the web lookup.
+  static AssistantToolContext _withWeb(AssistantToolContext base, AssistantWebServices? web) => web == null
+      ? base
+      : AssistantToolContext(
+          servers: base.servers,
+          screen: base.screen,
+          catalog: base.catalog,
+          insights: base.insights,
+          requests: base.requests,
+          media: base.media,
+          web: web,
+        );
 
   /// The run's confirm callback: shows [action] through [pending] until the
   /// user answers, [reset] runs, or [confirmTimeout] passes.
@@ -277,6 +338,7 @@ class AssistantController extends ChangeNotifier {
     _resultIsError = false;
     _lastEnd = null;
     _lastProviderError = null;
+    _modelMissing = false;
     _prompt = null;
     _answer = '';
     _steps.clear();

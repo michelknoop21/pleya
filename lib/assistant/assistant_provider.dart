@@ -8,6 +8,8 @@ import '../services/base_shared_preferences_service.dart';
 import '../services/credential_vault.dart';
 import '../utils/log_redaction_manager.dart';
 
+part 'assistant_models.dart';
+
 /// Where the Assistant's language model runs. This is inference only: it
 /// decides nothing about rights or about the Pleya Assistant entitlement.
 enum AssistantProviderKind { ollamaServer, ollamaCloud, openRouter }
@@ -20,6 +22,8 @@ class AssistantProviderConfig {
     this.apiKey = '',
     this.headerName = '',
     this.headerValue = '',
+    this.webSearchChoice,
+    this.ollamaWebKey = '',
   });
 
   static const String ollamaCloudUrl = 'https://ollama.com';
@@ -36,6 +40,17 @@ class AssistantProviderConfig {
   final String headerName;
   final String headerValue;
 
+  /// The user's explicit web-search switch; null until they touch it.
+  final bool? webSearchChoice;
+
+  /// Big P may look a title up on the web. Unset, a cloud provider allows it
+  /// and an Ollama server does not: local stays local until the user says so.
+  bool get webSearch => webSearchChoice ?? kind != AssistantProviderKind.ollamaServer;
+
+  /// An ollama.com key for Ollama web search, for Ollama-server users only;
+  /// Ollama Cloud reuses [apiKey].
+  final String ollamaWebKey;
+
   bool get isOllama => kind != AssistantProviderKind.openRouter;
 
   bool get isComplete =>
@@ -47,6 +62,8 @@ class AssistantProviderConfig {
     String? apiKey,
     String? headerName,
     String? headerValue,
+    bool? webSearch,
+    String? ollamaWebKey,
   }) => AssistantProviderConfig(
     kind: kind,
     baseUrl: baseUrl ?? this.baseUrl,
@@ -54,6 +71,8 @@ class AssistantProviderConfig {
     apiKey: apiKey ?? this.apiKey,
     headerName: headerName ?? this.headerName,
     headerValue: headerValue ?? this.headerValue,
+    webSearchChoice: webSearch ?? webSearchChoice,
+    ollamaWebKey: ollamaWebKey ?? this.ollamaWebKey,
   );
 
   Map<String, Object?> toJson() => {
@@ -63,6 +82,8 @@ class AssistantProviderConfig {
     'apiKey': apiKey,
     'headerName': headerName,
     'headerValue': headerValue,
+    if (webSearchChoice != null) 'webSearch': webSearchChoice,
+    'ollamaWebKey': ollamaWebKey,
   };
 
   static AssistantProviderConfig? fromJson(Map<String, Object?> json) {
@@ -76,6 +97,9 @@ class AssistantProviderConfig {
       apiKey: read('apiKey'),
       headerName: read('headerName'),
       headerValue: read('headerValue'),
+      // Absent until the user chooses: [webSearch] then follows the kind.
+      webSearchChoice: json['webSearch'] is bool ? json['webSearch'] as bool : null,
+      ollamaWebKey: read('ollamaWebKey'),
     );
   }
 }
@@ -118,6 +142,7 @@ class AssistantProviderStore {
   static void _registerSecrets(AssistantProviderConfig config) {
     LogRedactionManager.registerCustomValue(config.apiKey);
     LogRedactionManager.registerCustomValue(config.headerValue);
+    LogRedactionManager.registerCustomValue(config.ollamaWebKey);
   }
 }
 
@@ -176,6 +201,14 @@ class AssistantModelClient {
 
   static const Duration _chatTimeout = Duration(seconds: 90);
   static const Duration _lookupTimeout = Duration(seconds: 15);
+  static const Duration _preloadTimeout = Duration(seconds: 60);
+
+  bool _modelMissing = false;
+
+  /// True once [chat] heard that [AssistantProviderConfig.model] is gone
+  /// (uninstalled, renamed, withdrawn). The run then ends in a provider
+  /// error; the caller reads this to say "pick another model".
+  bool get modelMissing => _modelMissing;
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -207,6 +240,12 @@ class AssistantModelClient {
       final body = response.body.toLowerCase();
       if (body.contains('does not support tools') || body.contains('support tool use')) {
         throw const AssistantModelException(AssistantModelError.toolsUnsupported);
+      }
+      // Ollama: 404 `model "x" not found, try pulling it first`.
+      // OpenRouter: 400 `x is not a valid model ID`.
+      if ((body.contains('model') && body.contains('not found')) || body.contains('not a valid model')) {
+        _modelMissing = true;
+        throw const AssistantModelException(AssistantModelError.badResponse, 'model not found');
       }
     }
     final data = _json(response);
@@ -251,65 +290,22 @@ class AssistantModelClient {
     return AssistantReply(content: content, toolCalls: calls, message: echo);
   }
 
-  /// Models that can call tools. Anything else cannot drive the Assistant,
-  /// so it is never offered.
-  Future<List<String>> toolModels() async {
-    if (config.kind == AssistantProviderKind.openRouter) {
-      final data = _json(
-        await _send(
-          () => _http.get(_uri('/v1/models', {'supported_parameters': 'tools'}), headers: _headers),
-          _lookupTimeout,
-        ),
-      );
-      final models = data['data'];
-      return [
-        if (models is List)
-          for (final m in models)
-            if (m is Map && m['id'] is String) m['id'] as String,
-      ]..sort();
-    }
-    final tags = _json(await _send(() => _http.get(_uri('/api/tags'), headers: _headers), _lookupTimeout));
-    final names = [
-      if (tags['models'] is List)
-        for (final m in tags['models'] as List)
-          if (m is Map && m['name'] is String) m['name'] as String,
-    ];
-    // `/api/tags` says nothing about tools; `/api/show` does, per model.
-    // Four at a time: fast on a LAN, gentle on a small box.
-    final result = <String>[];
-    var failures = 0;
-    for (var i = 0; i < names.length; i += 4) {
-      final batch = names.skip(i).take(4);
-      await Future.wait([
-        for (final name in batch)
-          () async {
-            try {
-              final show = _json(
-                await _send(
-                  () => _http.post(_uri('/api/show'), headers: _headers, body: jsonEncode({'model': name})),
-                  _lookupTimeout,
-                ),
-              );
-              final capabilities = show['capabilities'];
-              if (capabilities is List && capabilities.contains('tools')) result.add(name);
-            } on AssistantModelException catch (e) {
-              if (e.error == AssistantModelError.unauthorized) rethrow;
-              failures++;
-            }
-          }(),
-      ]);
-    }
-    // Every lookup failing is a broken connection, not "no tool models".
-    if (names.isNotEmpty && failures == names.length) {
-      throw const AssistantModelException(AssistantModelError.badResponse, 'model details unavailable');
-    }
-    return result..sort();
-  }
+  /// Ids of the models that can call tools, sorted; [models] has the details.
+  Future<List<String>> toolModels() async => [for (final m in await models()) m.id]..sort();
 
   Future<http.Response> _send(Future<http.Response> Function() request, Duration timeout) async {
-    final http.Response response;
+    final response = await _guard(request, timeout);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw const AssistantModelException(AssistantModelError.unauthorized);
+    }
+    return response;
+  }
+
+  /// Transport failures as [AssistantModelException]s, for plain and
+  /// streamed requests alike.
+  Future<T> _guard<T>(Future<T> Function() request, Duration timeout) async {
     try {
-      response = await request().timeout(timeout);
+      return await request().timeout(timeout);
     } on TimeoutException {
       throw const AssistantModelException(AssistantModelError.timeout);
     } on IOException {
@@ -321,10 +317,6 @@ class AssistantModelClient {
       // A malformed header or URL; its message may hold the value.
       throw const AssistantModelException(AssistantModelError.badResponse, 'invalid request');
     }
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      throw const AssistantModelException(AssistantModelError.unauthorized);
-    }
-    return response;
   }
 
   Map<String, dynamic> _json(http.Response response) {

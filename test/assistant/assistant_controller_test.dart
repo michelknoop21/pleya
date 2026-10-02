@@ -319,4 +319,138 @@ void main() {
     expect(model.calls, 1);
     expect(c.answer, 'een');
   });
+
+  group('model preload and a vanished model', () {
+    AssistantController direct({
+      required AssistantProviderConfig config,
+      required MockClient http,
+      DateTime Function()? now,
+      List<AssistantProviderConfig>? webAsked,
+    }) {
+      final c = AssistantController(
+        buildContext: (screen) => AssistantToolContext(
+          servers: servers,
+          screen: screen,
+          requests: AssistantRequestServices(client: () => seerr),
+        ),
+        entitlement: _Entitlement(),
+        loadConfig: () async => config,
+        modelFor: (config) => AssistantModelClient(config, httpClient: http),
+        webFor: (config) {
+          webAsked?.add(config);
+          return null;
+        },
+        languageName: () => 'Dutch',
+        tools: [_ping],
+        now: now,
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+    test('preloads an Ollama server at most once per window, without a prompt', () async {
+      final bodies = <Map<String, Object?>>[];
+      var clock = DateTime(2026, 10, 2, 12);
+      final c = direct(
+        config: _config,
+        now: () => clock,
+        http: MockClient((r) async {
+          expect(r.url.path, '/api/generate');
+          bodies.add((jsonDecode(r.body) as Map).cast<String, Object?>());
+          return _json({'model': 'm', 'done': true});
+        }),
+      );
+      c.beginListening();
+      await settle();
+      c.cancelListening();
+      clock = clock.add(const Duration(minutes: 4));
+      c.beginListening();
+      await settle();
+      expect(bodies, [
+        {'model': 'm', 'keep_alive': '10m'},
+      ]);
+      c.cancelListening();
+      clock = clock.add(const Duration(minutes: 2));
+      c.beginListening();
+      await settle();
+      expect(bodies.length, 2);
+    });
+
+    test('a failing preload is ignored and listening goes on', () async {
+      final c = direct(config: _config, http: MockClient((_) async => http.Response('boom', 500)));
+      c.beginListening();
+      await settle();
+      expect(c.state, AssistantSurfaceState.listening);
+    });
+
+    test('no preload for Ollama Cloud or OpenRouter', () async {
+      for (final kind in [AssistantProviderKind.ollamaCloud, AssistantProviderKind.openRouter]) {
+        var calls = 0;
+        final c = direct(
+          config: AssistantProviderConfig(kind: kind, baseUrl: 'https://x.test', model: 'm', apiKey: 'k'),
+          http: MockClient((_) async {
+            calls++;
+            return _json({});
+          }),
+        );
+        c.beginListening();
+        await settle();
+        expect(calls, 0, reason: kind.name);
+      }
+    });
+
+    test('a model the provider no longer knows ends as modelMissing', () async {
+      seerr = _seerr([]);
+      final c = direct(
+        config: _config,
+        http: MockClient(
+          (r) async => _json({
+            'error': {'message': 'model "m" not found, try pulling it first', 'type': 'api_error'},
+          }, status: 404),
+        ),
+      );
+      await c.submit('Hallo?');
+      expect(c.lastEnd, AssistantRunEnd.providerError);
+      expect(c.modelMissing, isTrue);
+      expect(c.resultIsError, isTrue);
+      c.reset();
+      expect(c.modelMissing, isFalse);
+    });
+
+    test('a plain provider error is not modelMissing', () async {
+      seerr = _seerr([]);
+      final c = direct(config: _config, http: MockClient((_) async => http.Response('nope', 500)));
+      await c.submit('Hallo?');
+      expect(c.lastEnd, AssistantRunEnd.providerError);
+      expect(c.modelMissing, isFalse);
+    });
+
+    test('web lookup is only asked for when the config allows it', () async {
+      seerr = _seerr([]);
+      final asked = <AssistantProviderConfig>[];
+      final answer = MockClient(
+        (_) async => _json({
+          'choices': [
+            {
+              'message': {'role': 'assistant', 'content': 'ok'},
+            },
+          ],
+        }),
+      );
+      const cloud = AssistantProviderConfig(
+        kind: AssistantProviderKind.openRouter,
+        baseUrl: 'https://x.test',
+        model: 'm',
+        apiKey: 'k',
+      );
+      // Local stays local until switched on; cloud allows it until switched off.
+      await direct(config: _config, http: answer, webAsked: asked).submit('a');
+      await direct(config: _config.copyWith(webSearch: true), http: answer, webAsked: asked).submit('b');
+      await direct(config: cloud, http: answer, webAsked: asked).submit('c');
+      await direct(config: cloud.copyWith(webSearch: false), http: answer, webAsked: asked).submit('d');
+      expect(asked.map((c) => c.kind), [AssistantProviderKind.ollamaServer, AssistantProviderKind.openRouter]);
+    });
+  });
 }

@@ -123,5 +123,8 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 String assistantHeadline(AssistantController c) {
   if (c.answer.trim().isNotEmpty) return c.answer.trim();
   if (!c.resultIsError) return '';
+  // The chosen model is gone from the server: say so, it is the one thing
+  // the user can fix (in Big P instellen).
+  if (c.modelMissing) return t.assistant.ends.modelMissing;
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
 }

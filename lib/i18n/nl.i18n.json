@@ -2399,7 +2399,8 @@
       "providerUnreachable": "De AI-provider is niet bereikbaar.",
       "providerTimeout": "De AI-provider antwoordde niet op tijd.",
       "providerBadResponse": "De AI-provider gaf een onverwacht antwoord.",
-      "nothingChanged": "Er is niets veranderd."
+      "nothingChanged": "Er is niets veranderd.",
+      "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen."
     },
     "summonHint": "Houd Play/Pauze ingedrukt om Big P op te roepen",
     "contextAction": "Vraag Big P",
@@ -2442,7 +2443,40 @@
       "errorUnreachable": "Server niet bereikbaar. Controleer het adres en, bij https, het certificaat.",
       "errorTimeout": "De server antwoordde niet op tijd.",
       "errorToolsUnsupported": "Dit model kan geen tools gebruiken.",
-      "errorBadResponse": "Onverwacht antwoord van de server. Controleer het adres."
+      "errorBadResponse": "Onverwacht antwoord van de server. Controleer het adres.",
+      "refreshModels": "Vernieuwen",
+      "showMore": "Meer tonen (${count})",
+      "updatedToday": "Vandaag bijgewerkt",
+      "updatedDays": {
+        "one": "Gisteren bijgewerkt",
+        "other": "${n} dagen geleden bijgewerkt"
+      },
+      "updatedMonths": {
+        "one": "Een maand geleden bijgewerkt",
+        "other": "${n} maanden geleden bijgewerkt"
+      },
+      "updatedYears": {
+        "one": "Een jaar geleden bijgewerkt",
+        "other": "${n} jaar geleden bijgewerkt"
+      },
+      "contextLength": "${size} context",
+      "priceFree": "Gratis",
+      "priceLow": "Goedkoop",
+      "priceMedium": "Gemiddelde prijs",
+      "priceHigh": "Duur",
+      "savedModelGone": "${model} wordt niet meer aangeboden. Kies hieronder een ander model.",
+      "updateModel": "Model bijwerken",
+      "updating": "Bijwerken: ${status}",
+      "updateDone": "${model} is bijgewerkt",
+      "pullErrorUnknown": "Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.",
+      "pullErrorDisk": "Te weinig schijfruimte op de server om het model bij te werken.",
+      "pullErrorFailed": "Model bijwerken mislukt: ${reason}",
+      "webSearch": "Zoeken op internet",
+      "ollamaWebKey": "ollama.com-sleutel voor zoeken op internet (optioneel)",
+      "ollamaWebKeyHelp": "Zonder deze sleutel zoekt Big P alleen op Wikipedia.",
+      "webSearchNoteServer": "Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.",
+      "webSearchNoteCloud": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.",
+      "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht."
     },
     "youAsked": "Je vroeg:",
     "option": {
