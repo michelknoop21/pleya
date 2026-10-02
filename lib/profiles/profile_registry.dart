@@ -7,7 +7,7 @@ import '../database/app_database.dart';
 import '../utils/app_logger.dart';
 import 'profile.dart';
 
-/// CRUD over the persisted [Profiles] table — local profiles only.
+/// CRUD over the persisted [Profiles] table — local and Pleya Server profiles.
 ///
 /// Plex Home users are NOT stored here; Plex owns those, and
 /// [PlexHomeService] fetches them live and caches them in
@@ -21,7 +21,7 @@ class ProfileRegistry {
 
   Stream<List<Profile>> watchProfiles() {
     return (_db.select(_db.profiles)
-          ..where((t) => t.kind.equals(ProfileKind.local.id))
+          ..where((t) => t.kind.isIn([ProfileKind.local.id, ProfileKind.pleyaServer.id]))
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
         .watch()
         .map((rows) => rows.map(_rowToProfile).whereType<Profile>().toList());
@@ -30,7 +30,7 @@ class ProfileRegistry {
   Future<List<Profile>> list() async {
     final rows =
         await (_db.select(_db.profiles)
-              ..where((t) => t.kind.equals(ProfileKind.local.id))
+              ..where((t) => t.kind.isIn([ProfileKind.local.id, ProfileKind.pleyaServer.id]))
               ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
             .get();
     return rows.map(_rowToProfile).whereType<Profile>().toList();

@@ -204,7 +204,7 @@ class _PleyaShareHostScreenState extends State<PleyaShareHostScreen> {
                           borderRadius: 12,
                           onSelect: hasFolders && !_busy ? () => _toggle(!running) : null,
                           child: SwitchListTile(
-                            contentPadding: kSettingRowPadding,
+                            contentPadding: settingRowPadding(),
                             secondary: const SettingsIconBadge(Symbols.share_rounded),
                             title: Text(t.pleyaShare.hostToggle),
                             value: running,

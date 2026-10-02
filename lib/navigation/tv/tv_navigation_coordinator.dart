@@ -184,6 +184,9 @@ class TvNavigationCoordinator extends ChangeNotifier {
   /// screen is on show.
   List<TvNestedRoute> nestedRoutesFor(TvDestinationId id) => List.unmodifiable(_nested[id] ?? const []);
 
+  /// Whether [id]'s own root screen is on show, i.e. nothing is open above it.
+  bool showsRootOf(TvDestinationId id) => _nested[id]?.isEmpty ?? true;
+
   /// What the active destination is currently showing above its root, or null.
   TvNestedRoute? get activeNestedRoute {
     final stack = _nested[_active];
@@ -225,6 +228,18 @@ class TvNavigationCoordinator extends ChangeNotifier {
     popped.completeResult(result ?? popped.pendingResult);
     notifyListeners();
     return popped;
+  }
+
+  /// Drops the nested stack of [id] only, completing its routes with `null`
+  /// like [clearNestedRoutes] does. OFF6: a section that disappears after a
+  /// rebind of the same profile goes; the other destinations keep theirs.
+  void clearNestedRoutesFor(TvDestinationId id) {
+    final stack = _nested.remove(id);
+    if (stack == null) return;
+    for (final route in stack) {
+      route.completeResult(null);
+    }
+    notifyListeners();
   }
 
   /// Drops every nested stack. Used on a profile switch for the same reason

@@ -19,6 +19,10 @@ enum ReconcileTrigger {
   /// The iCloud account changed underneath us.
   accountChanged,
 
+  /// The store finished its first download. Writes made before that moment
+  /// were discarded by the system (`InitialSyncChange`), so they go again.
+  initialSync,
+
   /// A different Pleya profile became active, so a different namespace applies.
   profileChanged,
 

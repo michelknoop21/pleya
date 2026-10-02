@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>LG-02 Film detail</title>
+<link rel="stylesheet" href="ios.css">
+<style>
+.hero { position: absolute; left: 0; right: 0; top: 0; height: 540px; overflow: hidden; }
+.hero img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.hero .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.45) 0%, rgba(20,20,20,0) 16%, rgba(20,20,20,0) 42%, rgba(20,20,20,.55) 70%, rgba(20,20,20,.7) 88%, #141414 100%); }
+.nb { position: absolute; top: 56px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 22px; }
+.ttl { position: absolute; left: var(--inset); right: var(--inset); top: 292px; }
+.ttl h1 { font-size: 32px; font-weight: 700; letter-spacing: -.01em; }
+.badges { display: flex; gap: 8px; margin-top: 10px; }
+.badges span { border: 1px solid rgba(255,255,255,.55); border-radius: 6px; padding: 3px 8px; font-size: 13px; font-weight: 700; background: rgba(20,20,20,.25); }
+.resume { left: var(--inset); right: var(--inset); top: 392px; height: 52px; border-radius: 999px; color: #141414; font-size: 16px; }
+.resume small { font-weight: 400; color: rgba(20,20,20,.62); font-size: 15px; }
+.dl { left: var(--inset); right: 76px; top: 456px; height: 52px; border-radius: 999px; font-size: 16px; }
+.wl { right: var(--inset); top: 456px; width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center; font-size: 24px; }
+.audio { position: absolute; left: var(--inset); right: var(--inset); top: 532px; height: 62px; border-radius: 14px; background: var(--surface); display: flex; align-items: center; gap: 16px; padding: 0 18px; }
+.audio b { display: block; font-size: 15px; }
+.audio span { font-size: 14px; color: var(--ink-2); }
+.syn { position: absolute; left: var(--inset); right: var(--inset); top: 612px; font-size: 15.5px; line-height: 1.5; }
+.syn em { font-style: normal; color: var(--ink-3); }
+.dir { position: absolute; left: var(--inset); top: 718px; font-size: 14.5px; color: var(--ink-2); }
+.dir b { color: #fff; }
+.acts { position: absolute; left: var(--inset); right: var(--inset); top: 758px; display: flex; justify-content: space-around; }
+.acts div { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; }
+.acts svg { font-size: 26px; }
+.acts .red { color: var(--accent); }
+.more { position: absolute; left: var(--inset); top: 822px; font-size: 20px; font-weight: 700; }
+</style></head><body>
+<div class="hero"><img src="../art/bbb-frame.jpg"><div class="scrim"></div></div>
+<div class="status"><span>9:41</span><div class="island"></div><div class="r">
+  <svg class="ic" viewBox="0 0 18 12" style="width:18px;height:12px" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+  <svg class="ic" viewBox="0 0 16 12" style="width:16px;height:12px" fill="#fff"><path d="M8 2.2c2.3 0 4.4.9 6 2.4l1.3-1.4A10.5 10.5 0 0 0 8 .3 10.5 10.5 0 0 0 .7 3.2L2 4.6a8.6 8.6 0 0 1 6-2.4zm0 3.7c1.3 0 2.5.5 3.4 1.3l1.3-1.4A6.9 6.9 0 0 0 8 4a6.9 6.9 0 0 0-4.7 1.8l1.3 1.4C5.5 6.4 6.7 5.9 8 5.9zM8 9.6l2-2.1a3 3 0 0 0-4 0z"/></svg>
+  <svg class="ic" viewBox="0 0 27 13" style="width:27px;height:13px"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="rgba(255,255,255,.4)"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#fff"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="rgba(255,255,255,.4)"/></svg>
+</div></div>
+<div class="nb glass on-glass" style="left:var(--inset)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg></div>
+<div class="nb glass on-glass" style="right:var(--inset)"><svg class="ic" viewBox="0 0 24 24" fill="#fff"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></div>
+<div class="ttl on-glass"><h1>Big Buck Bunny</h1><div class="badges"><span>2008</span><span>G</span><span>9min</span><span>1080p</span><span>AAC 5.1</span></div></div>
+<div class="resume glass prominent btn-cta" data-tint=".92" data-dim="1"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" style="font-size:18px"><path d="M7 4v16l13-8z"/></svg>Resume <small>· 7min left</small></div>
+<div class="dl glass on-glass btn-cta"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="font-size:20px"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg>Download</div>
+<div class="wl glass on-glass"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+<div class="audio"><svg class="ic" viewBox="0 0 24 24" fill="#fff" style="font-size:24px"><path d="M9 3v11.3A3.5 3.5 0 1 0 11 17V7h6V3z"/></svg><div><b>Audio</b><span>English</span></div></div>
+<div class="syn">Follow a day of the life of Big Buck Bunny when he meets three bullying rodents: Frank, Rinky, and Gamera. The rodents amuse themselves by harassing helpless creatures by throwing… <em>more</em></div>
+<div class="dir"><b>Director:</b> Sacha Goedegebure</div>
+<div class="acts">
+  <div><svg class="ic" viewBox="0 0 24 24" fill="#fff"><path d="M7 10v11H3V10zM7 10l4-7c1.5 0 2.5 1 2.5 2.5V9H20a2 2 0 0 1 2 2l-1.5 8a2 2 0 0 1-2 2H7z"/></svg>Rate</div>
+  <div class="red"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#E5140F"/><path d="m7.5 12 3 3 6-6.5" stroke="#141414" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Mark as unwatched</div>
+  <div><svg class="ic" viewBox="0 0 24 24" fill="#fff"><path d="M3 20.5 21 12 3 3.5 3 10l12 2-12 2z"/></svg>Share</div>
+</div>
+<div class="more">More Like This</div>
+<div class="homebar"></div>
+</body></html>

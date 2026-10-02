@@ -35,5 +35,6 @@ class TvSeriesLandingScreen extends StatelessWidget {
     railsOf: (landing) => landing.seriesRails,
     buildAllScreen: () => TvSeriesScreen(onManageServers: onManageServers),
     onManageServers: onManageServers,
+    automationSurface: 'series',
   );
 }

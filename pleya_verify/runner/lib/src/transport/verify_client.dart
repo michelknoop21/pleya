@@ -219,12 +219,14 @@ class VerifyClient {
   Future<Map<String, Object?>> connectionsSeed({
     required String baseUrl,
     required String serverId,
+    String? userId,
     required String serverName,
     required String userName,
     required String refreshToken,
   }) => _postJson('/v1/connections/seed', {
     'base_url': baseUrl,
     'server_id': serverId,
+    if (userId != null) 'user_id': userId,
     'server_name': serverName,
     'user_name': userName,
     'refresh_token': refreshToken,
@@ -235,6 +237,9 @@ class VerifyClient {
 
   Future<Map<String, Object?>> seedSeerr({required String baseUrl, required String apiKey}) =>
       _postJson('/v1/seerr/seed', {'base_url': baseUrl, 'api_key': apiKey});
+
+  Future<Map<String, Object?>> seedProfile({required String displayName}) =>
+      _postJson('/v1/profiles/seed', {'display_name': displayName});
 
   void close() => _http.close();
 
@@ -264,6 +269,7 @@ class VerifyClient {
     (method: 'POST', path: '/v1/signin'),
     (method: 'POST', path: '/v1/connections/seed'),
     (method: 'POST', path: '/v1/seerr/seed'),
+    (method: 'POST', path: '/v1/profiles/seed'),
     (method: 'POST', path: '/v1/open'),
   ];
 }

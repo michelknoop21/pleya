@@ -64,15 +64,22 @@ class ProfileConnectionRegistry {
   /// or this is the first row for [pc.profileId], the row becomes the
   /// default for that profile.
   ///
+  /// `borrowed` is sticky: an update never turns a borrowed row back into an
+  /// owned one, so a token refresh or a caller building a fresh
+  /// [ProfileConnection] cannot hand the lender's rights to the borrower.
+  /// Only [freshLogin] (the user signed in with their own credentials) writes
+  /// [pc.borrowed] as given.
+  ///
   /// Fast path: when no default-flip is requested, skips the transaction
   /// (one cheap SELECT to detect first-row, then a single insert).
-  Future<void> upsert(ProfileConnection pc, {bool makeDefault = false}) async {
+  Future<void> upsert(ProfileConnection pc, {bool makeDefault = false, bool freshLogin = false}) async {
     final wantsDefault = makeDefault || pc.isDefault;
+    final existing = await get(pc.profileId, pc.connectionId);
+    if (!freshLogin && existing != null && existing.borrowed) pc = pc.copyWith(borrowed: true);
     if (!wantsDefault) {
       // Preserve the row's existing `isDefault` on update so token/metadata
       // refreshes don't clobber the default flag. First-row inserts inherit
       // default automatically.
-      final existing = await get(pc.profileId, pc.connectionId);
       final bool isDefault;
       if (existing != null) {
         isDefault = existing.isDefault;
@@ -113,6 +120,7 @@ class ProfileConnectionRegistry {
       userToken: Value(protectedToken),
       userIdentifier: Value(pc.userIdentifier),
       isDefault: Value(isDefault ?? pc.isDefault),
+      borrowed: Value(pc.borrowed),
       tokenAcquiredAt: Value(pc.tokenAcquiredAt?.millisecondsSinceEpoch),
       lastUsedAt: Value(pc.lastUsedAt?.millisecondsSinceEpoch),
     );
@@ -136,6 +144,14 @@ class ProfileConnectionRegistry {
         tokenAcquiredAt: Value(DateTime.now().millisecondsSinceEpoch),
       ),
     );
+  }
+
+  /// Flag the row as borrowed (see [ProfileConnection.borrowed]). Used by the
+  /// one-time backfill for rows written before schema v20.
+  Future<void> markBorrowed(String profileId, String connectionId) async {
+    await (_db.update(_db.profileConnections)
+          ..where((t) => t.profileId.equals(profileId) & t.connectionId.equals(connectionId)))
+        .write(const ProfileConnectionsCompanion(borrowed: Value(true)));
   }
 
   /// Mark the row as recently used.
@@ -204,6 +220,7 @@ class ProfileConnectionRegistry {
       userToken: userToken,
       userIdentifier: row.userIdentifier,
       isDefault: row.isDefault,
+      borrowed: row.borrowed,
       tokenAcquiredAt: row.tokenAcquiredAt == null ? null : DateTime.fromMillisecondsSinceEpoch(row.tokenAcquiredAt!),
       lastUsedAt: row.lastUsedAt == null ? null : DateTime.fromMillisecondsSinceEpoch(row.lastUsedAt!),
     );

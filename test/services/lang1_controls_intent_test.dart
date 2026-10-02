@@ -1,6 +1,6 @@
-/// LANG1 / DEC-096, negatieve controles A, B, D, E en F.
+/// LANG1 / DEC-109, negatieve controles A, B, D, E en F.
 ///
-/// Deze controles beschrijven het bedoelde contract van DEC-096 en draaien
+/// Deze controles beschrijven het bedoelde contract van DEC-109 en draaien
 /// bewust rood op de code van vóór de bouwronde. Ze horen bij het onderscheid
 /// tussen *intentie* (de taal die de kijker wil) en *resolutie* (de concrete
 /// track die deze aflevering oplevert): een terugval is een resolutie en mag
@@ -83,7 +83,7 @@ void main() {
       expect(
         result.track.language,
         'eng',
-        reason: 'DEC-096 lid 1: een terugval is geen uitdrukkelijke keuze en mag de serievoorkeur niet verdringen',
+        reason: 'DEC-109 lid 1: een terugval is geen uitdrukkelijke keuze en mag de serievoorkeur niet verdringen',
       );
       expect(
         result.priority,
@@ -186,7 +186,7 @@ void main() {
         metadata: _episode('ep3'),
         sticky: sticky,
       ).selectSubtitleTrack([_sub('1', lang: 'eng'), _sub('2', lang: 'nld')], two.track, null);
-      expect(three.track.language, 'eng', reason: 'DEC-096 lid 1: elke aflevering resolveert de intentie opnieuw');
+      expect(three.track.language, 'eng', reason: 'DEC-109 lid 1: elke aflevering resolveert de intentie opnieuw');
     });
 
     // Het terugvalcontract zelf (gewenste taal → terugvaltaal → uit) hangt aan
@@ -217,7 +217,7 @@ void main() {
       expect(
         await TrackPreferenceStore.read(_episode('s1e2')),
         isNull,
-        reason: 'DEC-096 lid 3: staat onthouden uit, dan ontstaat er geen serie-override',
+        reason: 'DEC-109 lid 3: staat onthouden uit, dan ontstaat er geen serie-override',
       );
     });
   });

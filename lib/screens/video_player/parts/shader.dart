@@ -24,12 +24,22 @@ extension _VideoPlayerShaderMethods on VideoPlayerScreenState {
 
   /// Restore ambient lighting from persisted setting
   Future<void> _restoreAmbientLighting() async {
+    final manager = _videoFilterManager;
+    if (manager == null) return;
+    await manager.runAmbientRestore(_applyAmbientLighting);
+  }
+
+  Future<void> _applyAmbientLighting() async {
     if (!mounted) return;
 
     final shaderProvider = context.read<ShaderProvider>();
     final settings = await SettingsService.getInstance();
     if (!mounted) return;
     if (!settings.read(SettingsService.ambientLighting)) return;
+    // A deliberate title-specific crop/zoom takes precedence over the global
+    // ambient preference, which otherwise resets the restored settings.
+    final display = _videoDisplayPreferenceStore?.read();
+    if (display != null && (display.boxFitMode != 0 || display.zoomScale != 1.0)) return;
 
     final ambientLighting = _ambientLightingService;
     if (ambientLighting == null || !ambientLighting.isSupported) return;

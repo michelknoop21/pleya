@@ -22,7 +22,9 @@ payload="$(/usr/bin/find "$work/exp" -name Payload | head -1)"
 
 rm -rf "$dest"; mkdir -p "$dest"
 
-magic="$(head -c4 "$payload" 2>/dev/null || true)"
+# tr haalt nul-bytes weg: bash 5.2+ waarschuwt anders op stderr ("ignored null
+# byte"), en fastlane sh() leest stderr mee als deel van het app-pad.
+magic="$(head -c4 "$payload" 2>/dev/null | LC_ALL=C tr -d '\000' 2>/dev/null || true)"
 if [ "$magic" = "pbzx" ]; then
   # pbzx-container (moderne pkg): chunks van [8B decomp-len][8B comp-len][data];
   # data is een xz-stream tenzij opgeslagen. Decode via stdlib lzma → cpio.

@@ -11,7 +11,7 @@ import 'setting_tile.dart';
 ///
 /// [SettingSwitchTile] binds straight to a [Pref], which is exactly what these
 /// two rows must not do any more: "Onthoud keuzes per serie" and "Spiegel naar
-/// Plex" belong to the profile now (DEC-096 lid 5), so two Plex Home users on
+/// Plex" belong to the profile now (DEC-109 lid 5), so two Plex Home users on
 /// one Apple TV keep their own answer. The value still comes off a
 /// `SettingsService` listenable — the whole map is one pref — so a change made
 /// on another device through iCloud repaints this row without a reload.

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "job.not_cancellable",
+    "message": "job is already finished",
+    "retryable": false,
+    "details": { "reason": "finished" }
+  }
+}

@@ -234,6 +234,41 @@ void main() {
       expect(server.items, isEmpty);
     });
 
+    test('addMovie adds a playable film to its library and to the front of recently_added', () {
+      final server = PleyaFakeServer();
+      server.addLibrary(id: 'lib-movies', title: 'Movies', kind: 'movies', itemCount: 1);
+      server.addItem(id: 'old', kind: 'movie', title: 'Old', libraryId: 'lib-movies', durationMs: 1000);
+      server.hubs['recently_added']!.add('old');
+
+      final newId = server.addMovie(libraryId: 'lib-movies', title: 'Brand New');
+
+      expect(newId, isNotNull);
+      expect(server.items[newId]!['title'], 'Brand New');
+      expect(server.libraryItems['lib-movies'], contains(newId));
+      expect(server.hubs['recently_added'], [newId, 'old'], reason: 'a real server lists the newest first');
+      expect(server.libraries.single['item_count'], 2);
+      expect(server.versionBytes.containsKey('$newId-v1'), isTrue, reason: 'the new film must be playable too');
+    });
+
+    test('two addMovie calls on a frozen fixture clock add two films', () {
+      final server = PleyaFakeServer();
+      server.addLibrary(id: 'lib-movies', title: 'Movies', kind: 'movies');
+
+      final first = server.addMovie(libraryId: 'lib-movies', title: 'First');
+      final second = server.addMovie(libraryId: 'lib-movies', title: 'Second');
+
+      expect(second, isNot(first));
+      expect(server.hubs['recently_added'], [second, first]);
+      expect([server.items[first]!['title'], server.items[second]!['title']], ['First', 'Second']);
+    });
+
+    test('addMovie against an unknown library returns null and mutates nothing', () {
+      final server = PleyaFakeServer();
+      expect(server.addMovie(libraryId: 'does-not-exist'), isNull);
+      expect(server.items, isEmpty);
+      expect(server.hubs['recently_added'], isEmpty);
+    });
+
     test('markWatched sets watched with the item duration as position_ms', () {
       final server = _serverWithOneLibrary();
       server.markWatched('item-1');

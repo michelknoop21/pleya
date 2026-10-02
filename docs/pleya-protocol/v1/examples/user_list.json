@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "id": "0198f2c0-0001-7000-8000-000000000001", "username": "michel", "role": "owner" },
+    { "id": "0198f2c0-0001-7000-8000-000000000002", "username": "sanne", "role": "member" },
+    { "id": "0198f2c0-0001-7000-8000-000000000003", "username": "kids", "role": "restricted" }
+  ]
+}

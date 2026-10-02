@@ -32,13 +32,20 @@ scripts/tvos_press_trace.sh <log-id>          # curl https://ice.pleya.app/logs/
 scripts/tvos_press_trace.sh pad/naar/log.txt
 ```
 
-Drie vlaggen, exit 2 zodra er één is:
+De belangrijkste vlaggen, exit 2 zodra er één is (de volledige lijst staat bovenin het script):
 
 | Vlag | Betekent | Zijdeur |
 |------|----------|---------|
 | `EARLY-KEYUP` | keyup binnen 40 ms na de keydown terwijl de druk nog vastzit | 1: de engine liet de toets los |
 | `RE-TAP` | verse keydown binnen 400 ms na een early keyup | 2: `.ended` tikte opnieuw, dat is stap twee |
 | `ENABLE-HELD` | `menuPassthroughEnabled=true` verstuurd terwijl een toets ingedrukt is | 1: het bericht dat de release uitlokt |
+| `NATIVE-BOUNCE` | UIKit levert zelf binnen 40 ms na een ended een nieuwe began van dezelfde toets, en die druk duurt korter dan 40 ms, en station 3 heeft hem niet gefilterd | geen: station 1, remote of tvOS (DBL1, log `oc8pw`) |
+| `DROP-HALF` | het DBL1-filter liet een began vallen maar niet zijn ended, of andersom (een ongedane drop bij een gemengd event telt niet) | zijdeur 2 of 3: de engine kreeg een half paar |
+
+Vertrouw `uipress` niet als bewijs van één druk: UIKit hergebruikt één `UIPress`-object per
+druktype, dus de hash is gelijk voor elke druk in dezelfde richting. Of een keydown van UIKit of
+van de engine komt, lees je af aan zijn eigen `phase=0`-regel (`RE-TAP(uikit-began)` tegenover
+`RE-TAP(engine-synth)`).
 
 Een keyup twee tot drie milliseconden na een keydown is nooit UIKit. Dan heeft de app iets tegen
 de engine gezegd; zoek het kanaalbericht in datzelfde venster. `TvosSystemNavigationService` logt
@@ -71,9 +78,17 @@ dart run bin/verify.dart run ../scenarios/tvos.nav.held-press-lands-once.yaml --
 - Zegt de app iets tegen de engine op een moment dat de engine daar staat op wijzigt, dan hoort
   de fix bij de afzender van dat bericht (`TvosSystemNavigationService` parkeert een enable tot
   de toetsen los zijn; DEC-099).
-- Nooit fasen inslikken of doorgeven in `tvos/Runner/AppDelegate.swift`: inslikken laat de
-  herhaaltimer eeuwig lopen (build 257), doorgeven crasht UIKit op `_verifyTrackingPresses:`
+- Nooit losse fasen inslikken of doorgeven in `tvos/Runner/AppDelegate.swift`: inslikken laat
+  de herhaaltimer eeuwig lopen (build 257), doorgeven crasht UIKit op `_verifyTrackingPresses:`
   (build 256). Nooit tijd meten in Dart (build 254 at 65 echte drukken).
+- Eén toegestane uitzondering: het DBL1-filter (`filterArrowPress`, `pressFilterDrop`). Het
+  gebruikt UIKit's eigen HID-tijd (`UIPress.timestamp`), laat een pijl vallen die minder dan
+  30 ms na de ended van dezelfde richting begint, en claimt dan de hele levenscyclus zonder
+  `super`. Een gemengd event wordt nooit gefilterd. Bewijs: log `76ott`. Wie een drempel
+  verschuift, draait eerst `test/services/tvos_press_filter_replay_test.dart` en past Swift en
+  Dart samen aan. Een doorgelaten bounce is beter dan een opgegeten druk (build 254): een
+  nieuwe regel, zoals een klikloze op `gcA`, vraagt een log waarin hij als enige een drop
+  verklaart.
 - Is het contract van de engine zelf fout, dan is het een patch in de reeks plus een eigen
   engine-build; het pad staat in de pijplijn-doc onder "Waar een fix hoort".
 
@@ -91,5 +106,5 @@ log met de debug-pref aan, en draai stap 2 erop voordat je iets concludeert.
 
 - `scripts/tvos_engine_source.sh`, `scripts/tvos_press_trace.sh`, de pijplijn-doc en het
   held-press-scenario zijn van 5 september 2026 (DEC-099).
-- De trace kent alleen de drie vormen hierboven. Een nieuwe vorm hoort erbij in het script én
+- De trace kent alleen de vormen in de kop van het script. Een nieuwe vorm hoort erbij in het script én
   in de symptoomtabel, met het log-id waarin hij voor het eerst gezien is.

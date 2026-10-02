@@ -1,5 +1,5 @@
 /// The Pleya profile's own audio/subtitle preference — the global layer of
-/// DEC-096, and the owner of it.
+/// DEC-109, and the owner of it.
 ///
 /// Deliberately not the server profile. The requirement is that the preference
 /// holds for *all* content, across servers and across backends, and a Plex
@@ -9,7 +9,7 @@
 /// Intent, never a track. What is stored is "Dutch subtitles", "the original
 /// audio language", "subtitles only with foreign audio" — never a stream id or
 /// a track index, which belong to one episode on one source and mean nothing
-/// on the next one (DEC-096 lid 8).
+/// on the next one (DEC-109 lid 8).
 library;
 
 /// When subtitles should come on at all.
@@ -26,7 +26,7 @@ enum SubtitleDisplayPolicy {
 
 /// A profile-wide audio/subtitle preference. Every field is optional: an
 /// untouched profile means "no opinion", and resolution then falls through to
-/// the source and the file, which is the fourth layer of DEC-096.
+/// the source and the file, which is the fourth layer of DEC-109.
 class PleyaProfileLanguagePreferences {
   /// The wanted audio language, as an ISO code. Null when [useOriginalAudio]
   /// carries the intent instead, or when the viewer has no opinion.
@@ -43,7 +43,7 @@ class PleyaProfileLanguagePreferences {
   /// The language to try when [subtitleLanguage] is not in this episode.
   ///
   /// A real preference with a row of its own, not a hardcoded English
-  /// (DEC-096 lid 3). Seeded once from the ranked list on the server profile
+  /// (DEC-109 lid 3). Seeded once from the ranked list on the server profile
   /// where there is one, and independently editable after that. When this
   /// language is missing too, subtitles go off — never "the first available
   /// track".
@@ -60,7 +60,7 @@ class PleyaProfileLanguagePreferences {
   ///
   /// A mirror, and only where the backend has the capability. A failed write
   /// never invalidates the Pleya preference and never rolls anything back
-  /// (DEC-096 lid 6).
+  /// (DEC-109 lid 6).
   final bool mirrorToPlex;
 
   /// Epoch milliseconds of the last write. Lets a later sync reconcile two

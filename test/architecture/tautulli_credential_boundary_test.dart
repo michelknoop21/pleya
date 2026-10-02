@@ -52,11 +52,23 @@ void main() {
     // token, `TautulliSession` is the token in a call-ready shape and
     // `TautulliClient` is a session with a socket attached; the binding and the
     // importer are resolved in *every* profile's context, so neither may be able
-    // to mention any of them.
-    const consumers = [
-      'lib/services/recommendations/tautulli_import_binding.dart',
-      'lib/services/recommendations/tautulli_history_importer.dart',
-    ];
+    // to mention any of them. Every file of the recommendations layer is held
+    // to it, so a later import in one of the other importers fails here too.
+    final consumers = Directory(
+      'lib/services/recommendations',
+    ).listSync().whereType<File>().map((f) => f.path).where((path) => path.endsWith('.dart')).toList()..sort();
+
+    test('the recommendations layer, importers included, is covered', () {
+      expect(
+        consumers,
+        containsAll([
+          'lib/services/recommendations/tautulli_import_binding.dart',
+          'lib/services/recommendations/tautulli_history_importer.dart',
+          'lib/services/recommendations/history_importer.dart',
+          'lib/services/recommendations/jellyfin_history_importer.dart',
+        ]),
+      );
+    });
     const forbidden = [
       'tautulli_server_integration.dart',
       'tautulli_session.dart',
@@ -133,6 +145,7 @@ void main() {
       p.attachServerResolvers(
         serverIds: () => servers,
         isOwnerOrAdmin: (_) => isAdmin,
+        mayAdminister: (_) => isAdmin,
         selfAccountId: (profileId) => profileId == uuid ? accountId : null,
       );
       await p.onActiveProfileChanged(uuid);
@@ -202,6 +215,7 @@ void main() {
       p.attachServerResolvers(
         serverIds: () => const [_machine],
         isOwnerOrAdmin: (_) => true,
+        mayAdminister: (_) => true,
         selfAccountId: (_) => 999999,
       );
 
@@ -232,7 +246,11 @@ void main() {
     await TautulliIntegrationStore.instance.saveLegacySession('uuid-kid', session);
 
     final other = TautulliProvider();
-    other.attachServerResolvers(serverIds: () => const [_machine], isOwnerOrAdmin: (_) => true);
+    other.attachServerResolvers(
+      serverIds: () => const [_machine],
+      isOwnerOrAdmin: (_) => true,
+      mayAdminister: (_) => true,
+    );
     await other.onActiveProfileChanged('uuid-someone-else');
     addTearDown(other.dispose);
 

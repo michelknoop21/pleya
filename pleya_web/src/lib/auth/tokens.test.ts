@@ -38,6 +38,16 @@ describe('tokenopslag', () => {
     expect(afterReload.accessToken).toBe('A1');
   });
 
+  it('wist een oud refreshtoken wanneer de nieuwe tokenpair er geen bevat', () => {
+    const persistent = store({ 'pleya.refresh_token': 'R-oud' });
+    const tokens = new TokenStore(persistent, store());
+
+    tokens.set({ access_token: 'A-cookie', expires_in_ms: 900_000 });
+
+    expect(tokens.refreshToken).toBeNull();
+    expect(persistent.getItem('pleya.refresh_token')).toBeNull();
+  });
+
   it('geeft een verlopen accesstoken niet terug', () => {
     let now = 1_000_000;
     const tokens = new TokenStore(store(), store(), () => now);

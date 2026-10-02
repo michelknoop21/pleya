@@ -55,10 +55,15 @@ void main() {
       6,
       'the typed write helpers and the nullable-pref remove; every one of them ends in notifyMutation',
     ),
-    'lib/services/preferences/preference_sync_coordinator.dart': RawWriteRecord(
+    'lib/services/preferences/preference_remote_apply.dart': RawWriteRecord(
       WriteCategory.syncPreference,
-      4,
-      'applies remote entries and persists its own revision metadata; re-reporting those would echo',
+      2,
+      'applies remote entries and removes on a tombstone or an absent key; re-reporting those would echo',
+    ),
+    'lib/services/preferences/preference_revision_store.dart': RawWriteRecord(
+      WriteCategory.syncPreference,
+      5,
+      'persists the sync engine\'s own revision metadata, which never syncs itself',
     ),
     'lib/services/preferences/preference_device_id.dart': RawWriteRecord(
       WriteCategory.runtimeCache,
@@ -161,6 +166,12 @@ void main() {
       1,
       'LAN discovery result; another network makes it wrong, and it is in the legacy prefs store',
     ),
+    'lib/services/search_recency_store.dart': RawWriteRecord(
+      WriteCategory.runtimeCache,
+      3,
+      'per-profile search queries and opened titles: the profile-delete sweep of both keys and the drop '
+      'of the pre-split device-wide key; registered as profile runtime cache, so it never syncs',
+    ),
     'lib/services/download_manager_service.dart': RawWriteRecord(
       WriteCategory.runtimeCache,
       1,
@@ -235,8 +246,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 88, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 24, reason: 'files containing them');
+    expect(total, 94, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 26, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {

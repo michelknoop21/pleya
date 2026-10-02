@@ -12,11 +12,17 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/providers/libraries_provider.dart';
+import 'package:pleya/providers/personal_media_provider.dart';
+import 'package:pleya/media/media_library.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_sections.dart';
@@ -42,6 +48,8 @@ void main() {
       bool hasSeerr = true,
       bool showDownloads = true,
       bool showActivity = true,
+      bool showCollections = true,
+      bool showPlaylists = true,
       int? watchlistCount,
       int? downloadCount,
     }) => buildTvMyPleyaGroups(
@@ -49,6 +57,8 @@ void main() {
       hasSeerr: hasSeerr,
       showDownloads: showDownloads,
       showActivity: showActivity,
+      showCollections: showCollections,
+      showPlaylists: showPlaylists,
       watchlistCount: watchlistCount,
       downloadCount: downloadCount,
     );
@@ -90,8 +100,32 @@ void main() {
       expect(sectionsIn(groups(showActivity: false)), isNot(contains(TvMyPleyaSection.activity)));
     });
 
+    test('Collecties and Afspeellijsten are independent capability-gated entries', () {
+      expect(
+        sectionsIn(groups()),
+        containsAll(<TvMyPleyaSection>[TvMyPleyaSection.collections, TvMyPleyaSection.playlists]),
+      );
+      expect(sectionsIn(groups(showCollections: false)), isNot(contains(TvMyPleyaSection.collections)));
+      expect(sectionsIn(groups(showPlaylists: false)), isNot(contains(TvMyPleyaSection.playlists)));
+    });
+
+    test('personal media belongs with the collection, not server management', () {
+      final grouped = groups();
+      expect(
+        grouped.first.tiles.map((tile) => tile.section),
+        containsAll(<TvMyPleyaSection>[TvMyPleyaSection.collections, TvMyPleyaSection.playlists]),
+      );
+      expect(grouped[1].tiles.map((tile) => tile.section), isNot(contains(TvMyPleyaSection.collections)));
+    });
+
     test('a group whose every tile is conditional disappears rather than leaving a heading over nothing', () {
-      final bare = groups(hasWatchlist: false, hasSeerr: false, showDownloads: false);
+      final bare = groups(
+        hasWatchlist: false,
+        hasSeerr: false,
+        showDownloads: false,
+        showCollections: false,
+        showPlaylists: false,
+      );
       expect(bare.map((group) => group.label), isNot(contains(t.tvMyPleya.groupContent)));
       // Hoofdstuk 33.8: the conditional tiles "vallen weg zonder gat in de
       // groepsstructuur" — the groups that remain are still whole.
@@ -102,7 +136,14 @@ void main() {
       // Hoofdstuk 18.3: "Mijn Pleya zelf verdwijnt nooit". Settings, Servers and
       // sign out are only reachable here on TV, so a condition that could empty
       // this screen would be a condition that strands someone.
-      final bare = groups(hasWatchlist: false, hasSeerr: false, showDownloads: false, showActivity: false);
+      final bare = groups(
+        hasWatchlist: false,
+        hasSeerr: false,
+        showDownloads: false,
+        showActivity: false,
+        showCollections: false,
+        showPlaylists: false,
+      );
       expect(sectionsIn(bare), containsAll(<TvMyPleyaSection>[TvMyPleyaSection.settings, TvMyPleyaSection.servers]));
     });
 
@@ -151,8 +192,11 @@ void main() {
       WidgetTester tester, {
       bool full = false,
       bool nowWatchingAvailable = false,
+      bool personalMediaAvailable = false,
+      bool appleTv = true,
       Size size = const Size(1280, 720),
     }) async {
+      TvDetectionService.debugSetAppleTVOverride(appleTv);
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -176,12 +220,31 @@ void main() {
         nowWatching = AvailableNowWatchingDouble();
         addTearDown(nowWatching.dispose);
       }
+      LibrariesProvider? libraries;
+      PersonalMediaProvider? personalMedia;
+      if (personalMediaAvailable) {
+        manager.debugRegisterClientForTesting(OnlinePlexClientDouble('personal', 'Personal'));
+        libraries = LibrariesProvider()
+          ..debugSetLibraries(const [
+            MediaLibrary(
+              id: 'movies',
+              backend: MediaBackend.plex,
+              title: 'Movies',
+              kind: MediaKind.movie,
+              serverId: 'personal',
+            ),
+          ]);
+        personalMedia = PersonalMediaProvider(multiServer: servers, libraries: libraries);
+        addTearDown(personalMedia.dispose);
+        addTearDown(libraries.dispose);
+      }
 
       await tester.pumpWidget(
         TranslationProvider(
           child: MultiProvider(
             providers: [
               ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+              if (personalMedia != null) ChangeNotifierProvider<PersonalMediaProvider>.value(value: personalMedia),
               if (watchlist != null) ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
               if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
               if (nowWatching != null) ChangeNotifierProvider<NowWatchingProvider>.value(value: nowWatching),
@@ -411,6 +474,37 @@ void main() {
       expect(focusedLabel(), TvMyPleyaSection.logs.tileFocusKey);
     });
 
+    testWidgets('five content tiles wrap to two rows and remote focus follows those rows', (tester) async {
+      await pump(tester, full: true, personalMediaAvailable: true, appleTv: false);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(t.collections.title), findsOneWidget);
+      expect(find.text(t.playlists.title), findsOneWidget);
+
+      state(tester).focusKey(TvMyPleyaSection.watchlist.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.downloads.tileFocusKey);
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), TvMyPleyaSection.libraries.tileFocusKey);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('both personal media tiles activate their own section', (tester) async {
+      await pump(tester, personalMediaAvailable: true);
+
+      state(tester).focusKey(TvMyPleyaSection.collections.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+      expect(opened, [TvMyPleyaSection.collections]);
+
+      state(tester).focusKey(TvMyPleyaSection.playlists.tileFocusKey);
+      await tester.pump();
+      await press(tester, LogicalKeyboardKey.select);
+      expect(opened, [TvMyPleyaSection.collections, TvMyPleyaSection.playlists]);
+    });
+
     // Hoofdstuk 18.3 allows every conditional tile at once, and that page is
     // taller than the frame — `tv_shell_my_pleya_full.png` pictures it running
     // off the bottom. Every test above it runs the short hub, which fits, so
@@ -420,12 +514,42 @@ void main() {
     // the sidebar into Mijn Pleya has to stay reachable. A tile below the fold
     // that the remote cannot bring into view is exactly that function going
     // missing, and it would not show up in a picture of the first frame.
-    testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
-      // The tvOS logical canvas (DEC-028), which is what an Apple TV actually
-      // renders and what `tv_shell_my_pleya_full.png` is captured at. At this
-      // group's default 1280x720 the full hub still fits, so the scenario only
-      // exists at the real size.
+    // VIS-0925-G (DEC-139): at the tvOS logical canvas the full hub now fits.
+    // The tiles are about 100 pt instead of 151, which is the point of the
+    // targeted densification.
+    testWidgets('on the canonical canvas the full hub fits, last tile included', (tester) async {
       await pump(tester, full: true, size: kTvGoldenSurfaceSize);
+      final scroller = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      expect(scroller.position.maxScrollExtent, 0.0);
+      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
+    });
+
+    // VIS-0925 review FIX 1: no tile title or subtitle is cut off on the
+    // canonical canvas.
+    for (final locale in [AppLocale.en, AppLocale.nl]) {
+      testWidgets('on the canonical canvas no tile text is ellipsized (${locale.languageCode})', (tester) async {
+        await tester.runAsync(() => LocaleSettings.setLocale(locale));
+        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+        // Real Inter metrics: the test font draws every glyph a full em wide.
+        await tester.runAsync(loadAppFontsForGoldens);
+        await pump(tester, full: true, size: kTvGoldenSurfaceSize);
+        final paragraphs = tester.renderObjectList<RenderParagraph>(
+          find.descendant(of: find.byType(TvMyPleyaScreen), matching: find.byType(RichText)),
+        );
+        final cut = [
+          for (final p in paragraphs)
+            if (p.didExceedMaxLines) p.text.toPlainText(),
+        ];
+        expect(cut, isEmpty);
+      });
+    }
+
+    testWidgets('on the full hub the last tile is still reachable, and scrolls into view', (tester) async {
+      // A frame shorter than the tvOS canvas, so the full hub still overflows:
+      // since DEC-139 it fits at 1038x584, and the scroll path it proves has to
+      // keep working for a hub that grows.
+      const size = Size(1038, 400);
+      await pump(tester, full: true, size: size);
 
       ScrollableState scroller() => tester.state<ScrollableState>(find.byType(Scrollable).first);
 
@@ -447,7 +571,7 @@ void main() {
         reason: 'focusing a tile below the fold has to bring it into view',
       );
       // And it is genuinely on screen, not merely focused off-screen.
-      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(kTvGoldenSurfaceSize.height));
+      expect(tester.getRect(find.text(t.common.logout)).bottom, lessThanOrEqualTo(size.height));
     });
 
     testWidgets('a menu tile announces its title and what it is for', (tester) async {

@@ -85,7 +85,7 @@ void main() {
 
     expect(ring, isNotNull);
     expect(
-      _bare(ring!.shape as OutlinedBorder),
+      (ring!.shape as FocusRingBorder).shape,
       _bare(buttonShape),
       reason: 'the ring and the button it rings must be the exact same shape, or the ring will not fit',
     );
@@ -102,7 +102,7 @@ void main() {
     );
 
     final ring = ringDecorationOf(tester, find.byType(FocusableButton))!;
-    final side = (ring.shape as OutlinedBorder).side;
+    final side = (ring.shape as FocusRingBorder).ring;
     expect(side.color.a, greaterThan(0.5), reason: 'a focused CTA must carry a visible ring, not a transparent one');
   });
 
@@ -223,8 +223,8 @@ void main() {
     expect(secondaryRing, isNotNull);
 
     expect(
-      _bare(primaryRing!.shape as OutlinedBorder),
-      _bare(secondaryRing!.shape as OutlinedBorder),
+      (primaryRing!.shape as FocusRingBorder).shape,
+      (secondaryRing!.shape as FocusRingBorder).shape,
       reason: 'primary (FilledButton) and secondary (TextButton) must ring with the same contour',
     );
 
@@ -259,7 +259,7 @@ void main() {
 
     final ring = ringDecorationOf(tester, find.byType(FocusableButton));
     expect(ring, isNotNull);
-    expect(ring!.shape, isA<CircleBorder>());
+    expect((ring!.shape as FocusRingBorder).shape, isA<CircleBorder>());
   });
 
   testWidgets('FocusablePopupMenuButton keeps its circle', (tester) async {

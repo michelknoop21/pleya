@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "server.internal",
+    "message": "internal error",
+    "retryable": false,
+    "details": {
+      "request_id": "0198f3a2-1c40-7b6e-9d21-5a8c4f0e7b33"
+    }
+  }
+}

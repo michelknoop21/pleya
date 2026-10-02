@@ -33,6 +33,7 @@ import '../database/app_database.dart';
 import '../media/media_stream.dart';
 import '../media/playback_language_intent.dart';
 import '../services/pleya_profile_language_preference_store.dart';
+import '../services/video_display_preference_store.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../media/media_source_info.dart';
@@ -193,7 +194,7 @@ _PlaybackOpenTiming _playbackOpenTiming({
 /// server is Jellyfin) makes the call short-circuit.
 ///
 /// Only the current episode's part is touched here. The show-wide language
-/// default is written separately by [_plexSeriesLanguagePersister].
+/// default is written separately by [plexSeriesLanguagePersister].
 TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
   return ({required int partId, required String trackType, int? streamID}) async {
     if (streamID == null) return;
@@ -214,13 +215,21 @@ TrackPreferencePersister _plexTrackPersister(PlexClient? Function() resolve) {
 /// choice would never reach Android, Windows or the official Plex clients,
 /// because iCloud key-value sync is Apple-only.
 ///
-/// A mirror, never the authority (DEC-096 lid 6). A failed write is logged by
+/// Only on a server the active profile owns (the owner rule, see
+/// `MultiServerManager.canManageServerMetadata`); the prefs are the item's,
+/// shared by every user of the server.
+///
+/// A mirror, never the authority (DEC-109 lid 6). A failed write is logged by
 /// the caller and leaves the Pleya preference exactly as it was; nothing here
 /// rolls anything back, and nothing reads Plex's answer back as truth.
-SeriesLanguagePersister _plexSeriesLanguagePersister(PlexClient? Function() resolve) {
+@visibleForTesting
+SeriesLanguagePersister plexSeriesLanguagePersister(PlexClient? Function() resolve) {
   return ({required String seriesRatingKey, String? audioLanguage, String? subtitleLanguage, int? subtitleMode}) async {
     final client = resolve();
     if (client == null) return;
+    // Item prefs are canonical server data: only the owner mirrors them. For
+    // anyone else this is a silent skip, not a refused write in the log.
+    if (client.canManageServerMetadata?.call() != true) return;
 
     if (!(await PleyaProfileLanguagePreferenceStore.read()).mirrorToPlex) return;
 
@@ -513,6 +522,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   /// Rebuilt per tracked item alongside [_progressTracker].
   ObservedPlaybackAuthority? _playbackWriteAuthority;
   VideoFilterManager? _videoFilterManager;
+  VideoDisplayPreferenceStore? _videoDisplayPreferenceStore;
   VideoPIPManager? _videoPIPManager;
   ShaderService? _shaderService;
   AmbientLightingService? _ambientLightingService;
@@ -647,6 +657,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     // Ensures a single stable focus target across loading → initialized phases.
     _screenFocusNode = FocusNode(debugLabel: 'VideoPlayerScreen');
     _screenFocusNode.addListener(_onScreenFocusChanged);
+    _chromeController.addListener(() => _syncTvSubtitleLift());
 
     appLogger.d('VideoPlayerScreen initialized for: ${_currentMetadata.title}');
     if (_preferredAudioTrack != null) {

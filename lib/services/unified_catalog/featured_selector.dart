@@ -21,12 +21,11 @@ import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
 
 class FeaturedSelector {
-  /// [maxCount] caps the carousel at hoofdstuk 9.5's upper bound. The lower
-  /// bound of that band (five slides) is deliberately *not* enforced: a
-  /// library that only yields three eligible titles yields three, and
-  /// padding it out would mean inventing content semantics the catalogue
-  /// does not have.
-  const FeaturedSelector({this.maxCount = 8});
+  /// [maxCount] caps the carousel at the approved twelve-slide upper bound.
+  /// A lower bound is deliberately *not* enforced: a library that only yields
+  /// three eligible titles yields three, and padding it out would mean
+  /// inventing content semantics the catalogue does not have.
+  const FeaturedSelector({this.maxCount = 12});
 
   final int maxCount;
 

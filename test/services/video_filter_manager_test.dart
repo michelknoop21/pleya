@@ -1,10 +1,120 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/services/ambient_lighting_service.dart';
 import 'package:pleya/services/video_filter_manager.dart';
+import 'package:pleya/widgets/video_controls/player_chrome_controller.dart';
 
 void main() {
+  test('ambient restoration started during title restore cannot overwrite the incoming framing', () async {
+    final player = _RecordingPlayer();
+    final disableGate = Completer<void>();
+    final titleApplied = Completer<void>();
+    final ambient = _FakeAmbientLightingService(player)
+      ..fakeEnabled = true
+      ..disableGate = disableGate.future;
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    final titleRestore = manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.4);
+    final ambientRestore = manager.runAmbientRestore(() async {
+      await titleApplied.future;
+      manager.resetToContain();
+      ambient.fakeEnabled = true;
+    });
+    disableGate.complete();
+    await titleRestore;
+    titleApplied.complete();
+    await ambientRestore;
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.4);
+    expect(ambient.isEnabled, isFalse);
+    await manager.updateVideoFilter();
+  });
+
+  test('incoming title restoration waits for an in-flight PiP ambient restore', () async {
+    final player = _RecordingPlayer();
+    final ambient = _FakeAmbientLightingService(player);
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    final gate = Completer<void>();
+    final ambientRestore = manager.runAmbientRestore(() async {
+      await gate.future;
+      manager.resetToContain();
+      ambient.fakeEnabled = true;
+    });
+    final titleRestore = manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.4);
+    gate.complete();
+    await Future.wait([ambientRestore, titleRestore]);
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.4);
+    expect(ambient.isEnabled, isFalse);
+    await manager.updateVideoFilter();
+  });
+
+  test('restoring a cropped title disables ambient lighting on the reused player', () async {
+    final player = _RecordingPlayer();
+    final ambient = _FakeAmbientLightingService(player)..fakeEnabled = true;
+    final manager = VideoFilterManager(player: player)..ambientLightingService = ambient;
+    addTearDown(manager.dispose);
+    await manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.25);
+    await manager.updateVideoFilter();
+    expect(ambient.isEnabled, isFalse);
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.25);
+    expect(player.writes.where((write) => write.key == 'video-aspect-override'), isNotEmpty);
+  });
+
+  test('restoring another title in PiP waits until PiP exits', () async {
+    final player = _RecordingPlayer();
+    final manager = VideoFilterManager(player: player, initialBoxFitMode: 1, initialZoomScale: 1.2);
+    addTearDown(manager.dispose);
+    manager.enterPipMode();
+    manager.enterPipMode();
+    await manager.restoreDisplaySettings(boxFitMode: 2, zoomScale: 1.5);
+    expect(manager.boxFitMode, 0);
+    expect(manager.zoomScale, 1.0);
+    manager.exitPipMode();
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.5);
+    await manager.updateVideoFilter();
+  });
+
+  test('restores fit and zoom without persisting temporary changes', () async {
+    final player = _RecordingPlayer();
+    final changes = <({int boxFitMode, double zoomScale})>[];
+    final manager = VideoFilterManager(
+      player: player,
+      initialBoxFitMode: 2,
+      initialZoomScale: 1.37,
+      onDisplaySettingsChanged: (mode, zoom) => changes.add((boxFitMode: mode, zoomScale: zoom)),
+    );
+    addTearDown(manager.dispose);
+    await manager.updateVideoFilter();
+    expect(player.zoomCalls, [1.37]);
+    expect(changes, isEmpty);
+
+    manager.enterPipMode();
+    manager.exitPipMode();
+    expect(manager.boxFitMode, 2);
+    expect(manager.zoomScale, 1.37);
+    expect(changes, isEmpty);
+
+    manager.resetToContain();
+    await manager.restoreDisplaySettings(boxFitMode: 1, zoomScale: 1.23);
+    expect(changes, isEmpty);
+    manager.setZoomScale(1.345);
+    manager.setBoxFitMode(2);
+    manager.resetZoom();
+    expect(changes, [
+      (boxFitMode: 1, zoomScale: 1.35),
+      (boxFitMode: 2, zoomScale: 1.35),
+      (boxFitMode: 2, zoomScale: 1.0),
+    ]);
+    await manager.updateVideoFilter();
+  });
+
   test('zoom scale snaps to whole percentages', () {
     final player = _RecordingPlayer();
     final manager = VideoFilterManager(player: player);
@@ -278,6 +388,113 @@ void main() {
     expect(subPosWrites, isNotEmpty);
     expect(subPosWrites.last.value, '80');
   });
+
+  group('PLR-SUBS1: ondertitels wijken voor de TV-bediening', () {
+    List<String> subPos(_RecordingPlayer player) =>
+        player.writes.where((write) => write.key == 'sub-pos').map((write) => write.value).toList();
+
+    Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+    test('tonen tilt de ondertitel, verbergen zet de oude waarde exact terug', () async {
+      final player = _RecordingPlayer();
+      final chrome = PlayerChromeController(controlsVisible: false);
+      addTearDown(chrome.dispose);
+      final manager = VideoFilterManager(
+        player: player,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: true,
+      );
+      addTearDown(manager.dispose);
+      // The screen's wiring (`_syncTvSubtitleLift`).
+      chrome.addListener(() => manager.setSubtitleLift(chrome.subtitleLift));
+      await manager.updateVideoFilter();
+      player.clearRecords();
+
+      // Measured while hidden: nothing moves yet.
+      chrome.setBottomChromeFraction(0.183);
+      await settle();
+      expect(subPos(player), isEmpty);
+
+      chrome.show(restartAutoHide: false);
+      await settle();
+      expect(subPos(player), ['81']);
+
+      chrome.hide(ignoreHolds: true);
+      await settle();
+      expect(subPos(player), ['81', '100']);
+    });
+
+    test('rebuilds zonder zichtbaarheids- of hoogtewijziging schrijven niets', () async {
+      final player = _RecordingPlayer();
+      final manager = VideoFilterManager(
+        player: player,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: true,
+      );
+      addTearDown(manager.dispose);
+      manager.setSubtitleLift(0.183);
+      await settle();
+      player.clearRecords();
+
+      manager.setSubtitleLift(0.183);
+      manager.setSubtitleLift(0.1801); // same whole percent after rounding up
+      await settle();
+      expect(player.writes, isEmpty);
+    });
+
+    test('componeert met de crop-compensatie in cover mode (tvOS-laagpad)', () async {
+      final player = _RecordingPlayer();
+      final manager = VideoFilterManager(
+        player: player,
+        initialBoxFitMode: 1,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: true,
+      );
+      addTearDown(manager.dispose);
+      await manager.updateVideoFilter();
+      final cropped = VideoFilterManager.subtitlePositionForScale(100, 1.33);
+      expect(subPos(player), [cropped.toString()]);
+      player.clearRecords();
+
+      manager.setSubtitleLift(0.2);
+      await settle();
+      // The lift sets the on-screen target (80), then the crop maps it back.
+      expect(subPos(player), [VideoFilterManager.subtitlePositionForScale(80, 1.33).toString()]);
+      expect(int.parse(subPos(player).single), lessThan(cropped));
+
+      manager.setSubtitleLift(0);
+      await settle();
+      expect(subPos(player).last, cropped.toString());
+    });
+
+    test('componeert met zoom op het mpv-native pad', () async {
+      final player = _RecordingPlayer();
+      final manager = VideoFilterManager(
+        player: player,
+        subtitleBasePosition: () => 100,
+        useLayerScaleCompensation: false,
+      );
+      addTearDown(manager.dispose);
+      manager.setZoomScale(1.5);
+      await settle();
+      final zoomed = subPos(player).last;
+      expect(zoomed, VideoFilterManager.subtitlePositionForScale(100, 1.5).toString());
+
+      manager.setSubtitleLift(0.2);
+      await settle();
+      expect(subPos(player).last, VideoFilterManager.subtitlePositionForScale(80, 1.5).toString());
+
+      manager.setSubtitleLift(0);
+      await settle();
+      expect(subPos(player).last, zoomed);
+    });
+
+    test('een ondertitel die al hoger staat dan het blok blijft staan', () {
+      expect(VideoFilterManager.liftedSubtitlePosition(70, 20), 70);
+      expect(VideoFilterManager.liftedSubtitlePosition(95, 20), 80);
+      expect(VideoFilterManager.liftedSubtitlePosition(100, 0), 100);
+    });
+  });
 }
 
 class _RecordingPlayer implements Player {
@@ -337,7 +554,14 @@ class _FakeAmbientLightingService extends AmbientLightingService {
   _FakeAmbientLightingService(super.player);
 
   bool fakeEnabled = false;
+  Future<void>? disableGate;
 
   @override
   bool get isEnabled => fakeEnabled;
+
+  @override
+  Future<void> disable() async {
+    if (disableGate != null) await disableGate;
+    fakeEnabled = false;
+  }
 }

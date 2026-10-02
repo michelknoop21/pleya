@@ -10,6 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/screens/seerr/seerr_tv_search_row.dart';
+import 'package:pleya/navigation/tv/tv_nested_back_owner.dart';
+import 'package:pleya/focus/input_mode_tracker.dart';
+import 'package:pleya/focus/focus_theme.dart';
+import 'package:pleya/focus/focusable_button.dart';
 import 'package:pleya/models/seerr/seerr_media.dart';
 import 'package:pleya/screens/seerr/seerr_discover_filter_bar.dart';
 import 'package:pleya/screens/tv/tv_seerr_discover_view.dart';
@@ -415,6 +420,194 @@ void main() {
       expect(find.byType(TvCatalogCard), findsWidgets);
       await tester.drag(scrollViewFinder, const Offset(0, -600));
       await tester.pumpAndSettle();
+    });
+  });
+
+  // REQ-SEARCH-ROUTE: the field and the inbox button, wired the way
+  // `SeerrDiscoverScreen._buildSearchField` wires them on TV, with a stand-in
+  // for the top navigation above and the nested route's Back owner around.
+  group('REQ-SEARCH-ROUTE, the search field route', () {
+    late FocusNode topnav;
+    late FocusNode field;
+    late FocusNode inbox;
+    late TextEditingController controller;
+    late GlobalKey<TvSeerrDiscoverViewState> viewKey;
+    late int shellBacks;
+    late int requestsOpened;
+
+    setUp(() {
+      topnav = FocusNode(debugLabel: 'topnav');
+      field = FocusNode(debugLabel: 'field');
+      inbox = FocusNode(debugLabel: 'inbox');
+      controller = TextEditingController();
+      viewKey = GlobalKey<TvSeerrDiscoverViewState>();
+      shellBacks = 0;
+      requestsOpened = 0;
+    });
+    tearDown(() {
+      topnav.dispose();
+      field.dispose();
+      inbox.dispose();
+      controller.dispose();
+    });
+
+    Future<void> pumpRoute(WidgetTester tester, {bool dark = true}) async {
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            theme: monoTheme(dark: dark),
+            home: InputModeTracker(
+              // The shell: it owns Back inside a nested route.
+              child: Focus(
+                onKeyEvent: (_, event) {
+                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+                    shellBacks++;
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: TvNestedBackOwner(
+                  child: Scaffold(
+                    body: Column(
+                      children: [
+                        FocusableButton(
+                          focusNode: topnav,
+                          onPressed: () {},
+                          onNavigateDown: field.requestFocus,
+                          child: const Text('topnav'),
+                        ),
+                        Expanded(
+                          child: TvSeerrDiscoverView(
+                            key: viewKey,
+                            searchField: SeerrTvSearchRow(
+                              controller: controller,
+                              fieldFocusNode: field,
+                              inboxFocusNode: inbox,
+                              decoration: const InputDecoration(),
+                              onChanged: (_) {},
+                              onClear: controller.clear,
+                              onFocusContent: () => viewKey.currentState?.focusFirstContent() ?? false,
+                              onExitUp: topnav.requestFocus,
+                              onOpenRequests: () => requestsOpened++,
+                            ),
+                            shelves: [_shelf('films'), _shelf('series')],
+                            type: SeerrDiscoverType.all,
+                            onTypeSelected: (_) {},
+                            genres: const [],
+                            genreId: null,
+                            onGenreSelected: (_) {},
+                            isLoading: false,
+                            onReload: () {},
+                            onActivate: (_) {},
+                            onExitTop: field.requestFocus,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> press(WidgetTester tester, LogicalKeyboardKey key) async {
+      await tester.sendKeyEvent(key);
+      await tester.pumpAndSettle();
+    }
+
+    bool onFirstCard(WidgetTester tester) =>
+        tester.widget<TvCatalogCard>(find.byType(TvCatalogCard).first).focusNode!.hasFocus;
+
+    testWidgets('topnav, field, first card, and back up the same way', (tester) async {
+      await pumpRoute(tester);
+      topnav.requestFocus();
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(field.hasFocus, isTrue, reason: 'DOWN from the top navigation lands on the field');
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(onFirstCard(tester), isTrue, reason: 'DOWN from the field lands on the first card');
+
+      // The first shelf's heading carries "Alles tonen", one stop above its
+      // cards; UP from there leaves the content for the field.
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrShowAll(films)');
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(field.hasFocus, isTrue, reason: 'UP from the first shelf returns to the field, not the top navigation');
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(topnav.hasFocus, isTrue, reason: 'only UP from the field reaches the top navigation');
+    });
+
+    // Review FIX 3 and D2: the focused field shows the white ring, and the
+    // field starts on the page title's x.
+    for (final dark in [true, false])
+      testWidgets('the focused field carries the ring, and sits on the title x (dark: $dark)', (tester) async {
+        await pumpRoute(tester, dark: dark);
+        topnav.requestFocus();
+        await tester.pumpAndSettle();
+        Color ringColor() {
+          final box = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('seerrSearchField.ring')));
+          return ((box.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring.color;
+        }
+
+        expect(ringColor().a, 0, reason: 'no ring while the field does not hold the focus');
+        await press(tester, LogicalKeyboardKey.arrowDown);
+        expect(field.hasFocus, isTrue);
+        expect(ringColor(), Colors.white);
+
+        final title = tester.getRect(find.text(t.seerr.title));
+        final pill = tester.getRect(find.byKey(const ValueKey('seerrSearchField.ring')));
+        expect(pill.left, closeTo(title.left, 0.5));
+      });
+
+    testWidgets('RIGHT to the inbox button, which has the same UP and DOWN, and LEFT back', (tester) async {
+      await pumpRoute(tester);
+      field.requestFocus();
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.arrowRight);
+      expect(inbox.hasFocus, isTrue);
+
+      await press(tester, LogicalKeyboardKey.arrowLeft);
+      expect(field.hasFocus, isTrue);
+
+      inbox.requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(onFirstCard(tester), isTrue);
+
+      inbox.requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(topnav.hasFocus, isTrue);
+
+      inbox.requestFocus();
+      await tester.pumpAndSettle();
+      await press(tester, LogicalKeyboardKey.select);
+      expect(requestsOpened, 1);
+    });
+
+    testWidgets('Menu clears the text first, and on an empty field leaves Aanvragen', (tester) async {
+      await pumpRoute(tester);
+      field.requestFocus();
+      controller.text = 'dune';
+      await tester.pumpAndSettle();
+
+      await press(tester, LogicalKeyboardKey.escape);
+      expect(controller.text, isEmpty, reason: 'the first Menu clears the search');
+      expect(shellBacks, 0);
+      expect(field.hasFocus, isTrue);
+
+      await press(tester, LogicalKeyboardKey.escape);
+      expect(shellBacks, 1, reason: 'Menu on an empty field reaches the nested route, which closes Aanvragen');
+      expect(topnav.hasFocus, isFalse, reason: 'and does not jump to the top navigation instead');
     });
   });
 }

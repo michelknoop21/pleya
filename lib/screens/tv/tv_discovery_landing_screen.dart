@@ -37,6 +37,8 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_discovery_rail.dart';
 import '../../widgets/tv/tv_discovery_safe_area.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../widgets/tv/tv_panel_primitives.dart';
 import '../../widgets/tv/tv_rail_stack.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
@@ -53,9 +55,14 @@ class TvDiscoveryLandingScreen extends StatefulWidget {
     required this.buildAllScreen,
     this.onManageServers,
     this.onOpenAll,
+    required this.automationSurface,
   });
 
   final String title;
+
+  /// Names this landing in Pleya Verify's tree (`movies` / `series`), so the
+  /// empty state reads `tv.catalog.state[movies.landing_empty]`.
+  final String automationSurface;
 
   /// "Alle films" / "Alle series" — the View All row's left-hand label.
   final String allTitle;
@@ -92,6 +99,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
     implements FocusableTab {
   final _scrollController = ScrollController();
   final _viewAllFocus = FocusNode(debugLabel: 'TvDiscoveryViewAll');
+  final _messageActionFocus = FocusNode(debugLabel: 'TvDiscoveryLandingMessageAction');
 
   // Hoofdstuk 7.6/35 restoration: which tile a rail last showed, kept across
   // a re-projection (a fresh `List<UnifiedMediaHub>` on every
@@ -124,6 +132,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
   void dispose() {
     _scrollController.dispose();
     _viewAllFocus.dispose();
+    _messageActionFocus.dispose();
     super.dispose();
   }
 
@@ -285,7 +294,7 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
 
   /// UP out of the first rail, back to the header action.
   void _focusViewAll() {
-    if (_viewAllFocus.canRequestFocus) _viewAllFocus.requestFocus();
+    if (_viewAllFocus.context != null) _viewAllFocus.requestFocus();
   }
 
   /// UP out of the header, into the root navigation (hoofdstuk 7.4: "Up vanaf
@@ -304,8 +313,16 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
   @override
   void focusActiveTabIfReady() {
     if (!mounted) return;
-    if (_viewAllFocus.canRequestFocus) {
+    // `context != null`, not `canRequestFocus`: the empty and error states
+    // replace the header, and an unattached node still reports it can take
+    // focus, so the request would park until the node mounts and land nowhere
+    // now.
+    if (_viewAllFocus.context != null) {
       _viewAllFocus.requestFocus();
+      return;
+    }
+    if (_messageActionFocus.context != null) {
+      _messageActionFocus.requestFocus();
       return;
     }
     // No header yet (still loading, or an empty projection): the rails are the
@@ -336,6 +353,8 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
         body: t.unifiedCatalog.states.errorBody,
         actionLabel: t.common.retry,
         onAction: () => unawaited(_discover.load()),
+        automationInstance: '${widget.automationSurface}.landing_error',
+        actionFocusNode: _messageActionFocus,
       );
     }
     return _LandingMessage(
@@ -353,15 +372,26 @@ class _TvDiscoveryLandingScreenState extends State<TvDiscoveryLandingScreen>
       // (CAT12, CAT14), en op tvOS is dat een eindstation.
       actionLabel: widget.allTitle,
       onAction: _openAllScreen,
+      automationInstance: '${widget.automationSurface}.landing_empty',
+      actionFocusNode: _messageActionFocus,
     );
   }
 }
 
 class _LandingMessage extends StatelessWidget {
-  const _LandingMessage({required this.title, required this.body, this.actionLabel, this.onAction});
+  const _LandingMessage({
+    required this.title,
+    required this.body,
+    required this.automationInstance,
+    required this.actionFocusNode,
+    this.actionLabel,
+    this.onAction,
+  });
 
   final String title;
   final String body;
+  final String automationInstance;
+  final FocusNode actionFocusNode;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -369,35 +399,48 @@ class _LandingMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: TvSourcePickerLayout.titleFontSize * scale,
-                fontWeight: FontWeight.w600,
-                color: tk.text,
+    return AutomationNode(
+      id: AutomationIds.tvCatalogState,
+      instance: automationInstance,
+      role: 'region',
+      focusNode: actionFocusNode,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: TvSourcePickerLayout.titleFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  color: tk.text,
+                ),
               ),
-            ),
-            SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
-                color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+              SizedBox(height: TvCatalogLayout.cardFooterLineGap * scale * 2),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: TvSourcePickerLayout.subtitleFontSize * scale,
+                  color: tk.text.withValues(alpha: TvCatalogLayout.inkSecondary),
+                ),
               ),
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-              TvPanelButton(scale: scale, label: actionLabel!, onPressed: onAction!, primary: true, autofocus: true),
+              if (actionLabel != null && onAction != null) ...[
+                SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
+                TvPanelButton(
+                  scale: scale,
+                  label: actionLabel!,
+                  onPressed: onAction!,
+                  primary: true,
+                  autofocus: true,
+                  focusNode: actionFocusNode,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

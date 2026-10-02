@@ -888,7 +888,9 @@ class _LiveTvScreenState extends State<LiveTvScreen>
           ),
         ]),
       ),
-      body: _buildLiveTvBody(theme, useSideNav),
+      // Bottom only: keeps the lists clear of the floating Liquid Glass tab
+      // bar (the inset is 0 without it) and hands them a zero inset.
+      body: SafeArea(top: false, left: false, right: false, child: _buildLiveTvBody(theme, useSideNav)),
     );
   }
 

@@ -58,9 +58,12 @@ class WatchedByRow extends StatelessWidget {
     );
   }
 
-  String _nameFor(ItemWatcher w) => w.isSelf ? t.discover.watchedByYou : w.displayName;
+  static String _nameFor(ItemWatcher w) => w.isSelf ? t.discover.watchedByYou : w.displayName;
 
-  String _namesSentence() {
+  String _namesSentence() => namesSentence(watchers);
+
+  /// The names part of the sentence, shared with the iPhone activity card.
+  static String namesSentence(List<ItemWatcher> watchers) {
     // Self first, so "You" is never buried in the "and N others" overflow;
     // everyone else keeps recency order.
     final ordered = [...watchers.where((w) => w.isSelf), ...watchers.where((w) => !w.isSelf)];

@@ -39,13 +39,15 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pageSlivers = slivers ?? [_buildListSliver()];
-    return FocusedScrollScaffold(
-      title: title,
-      actions: actions,
-      pinned: pinned,
-      automaticallyImplyLeading: automaticallyImplyLeading,
-      onBackPressed: onBackPressed,
-      slivers: pageSlivers,
+    return TvSettingsDensity(
+      child: FocusedScrollScaffold(
+        title: title,
+        actions: actions,
+        pinned: pinned,
+        automaticallyImplyLeading: automaticallyImplyLeading,
+        onBackPressed: onBackPressed,
+        slivers: pageSlivers,
+      ),
     );
   }
 

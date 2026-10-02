@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:http/http.dart' as http;
 import 'package:pleya/automation/automation_node.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/watch_session.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/providers/now_watching_provider.dart';
@@ -13,6 +14,7 @@ import 'package:pleya/services/tautulli/tautulli_constants.dart';
 import 'package:pleya/services/tautulli/tautulli_session.dart';
 import 'package:pleya/widgets/now_watching/now_watching_button.dart';
 import 'package:pleya/widgets/now_watching/now_watching_panel.dart';
+import 'package:pleya/widgets/watcher_avatar.dart';
 import 'package:provider/provider.dart';
 
 /// The surfaces that show who is streaming. The rule they all obey: nothing
@@ -51,12 +53,17 @@ WatchSession _session({
   bandwidthKbps: 8000,
 );
 
-Future<NowWatchingProvider> _providerWith(NowWatching now) async {
+Future<NowWatchingProvider> _providerWith(NowWatching now, {String? monitored}) async {
   final client = TautulliClient(
     TautulliSession(baseUrl: 'https://tautulli.example.test', authMode: TautulliAuthMode.apiKey, token: 'T'),
     httpClient: MockClient((_) async => http.Response('{}', 200)),
   );
-  final provider = NowWatchingProvider(client: () => client, enabled: () => true, service: _FakeService(() => now));
+  final provider = NowWatchingProvider(
+    client: () => client,
+    enabled: () => true,
+    monitoredServerId: () => monitored == null ? null : ServerId(monitored),
+    service: _FakeService(() => now),
+  );
   await provider.refresh();
   return provider;
 }
@@ -180,10 +187,13 @@ void main() {
 
   group('the line on a detail page', () {
     testWidgets('names the viewer of this title', (tester) async {
-      final provider = await _providerWith(NowWatching(sessions: [_session(ratingKey: '57752')]));
+      final provider = await _providerWith(
+        NowWatching(sessions: [_session(ratingKey: '57752')]),
+        monitored: 'server-a',
+      );
       addTearDown(provider.dispose);
 
-      await _pump(tester, provider, const NowWatchingLine(ratingKey: '57752'));
+      await _pump(tester, provider, NowWatchingLine(ratingKey: '57752', serverId: ServerId('server-a')));
 
       expect(find.textContaining('user67'), findsOneWidget);
       expect(find.textContaining('42%'), findsOneWidget);
@@ -191,10 +201,13 @@ void main() {
 
     // A session on one episode is that episode's news, not the show's.
     testWidgets('stays silent for a different title', (tester) async {
-      final provider = await _providerWith(NowWatching(sessions: [_session(ratingKey: '57781')]));
+      final provider = await _providerWith(
+        NowWatching(sessions: [_session(ratingKey: '57781')]),
+        monitored: 'server-a',
+      );
       addTearDown(provider.dispose);
 
-      await _pump(tester, provider, const NowWatchingLine(ratingKey: '42716'));
+      await _pump(tester, provider, NowWatchingLine(ratingKey: '42716', serverId: ServerId('server-a')));
 
       expect(find.textContaining('user67'), findsNothing);
     });
@@ -202,11 +215,39 @@ void main() {
     testWidgets('stays silent without a provider at all', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(body: NowWatchingLine(ratingKey: '57752')),
+          home: Scaffold(body: NowWatchingLine(ratingKey: '57752', serverId: null)),
         ),
       );
 
       expect(find.textContaining('user67'), findsNothing);
+    });
+
+    testWidgets('a provider that cannot name the monitored server draws no line', (tester) async {
+      final provider = await _providerWith(NowWatching(sessions: [_session(ratingKey: '57752')]));
+      addTearDown(provider.dispose);
+      expect(provider.monitoredServerId, isNull);
+      await _pump(tester, provider, NowWatchingLine(ratingKey: '57752', serverId: ServerId('server-a')));
+      expect(find.byType(WatcherAvatar), findsNothing);
+    });
+
+    testWidgets('a title on a server Tautulli does not monitor gets no line', (tester) async {
+      final provider = await _providerWith(
+        NowWatching(sessions: [_session(ratingKey: '57752')]),
+        monitored: 'server-a',
+      );
+      addTearDown(provider.dispose);
+      await _pump(tester, provider, NowWatchingLine(ratingKey: '57752', serverId: ServerId('server-b')));
+      expect(find.byType(WatcherAvatar), findsNothing);
+    });
+
+    testWidgets('the same key on the monitored server does get the line', (tester) async {
+      final provider = await _providerWith(
+        NowWatching(sessions: [_session(ratingKey: '57752')]),
+        monitored: 'server-a',
+      );
+      addTearDown(provider.dispose);
+      await _pump(tester, provider, NowWatchingLine(ratingKey: '57752', serverId: ServerId('server-a')));
+      expect(find.byType(WatcherAvatar), findsOneWidget);
     });
   });
 }

@@ -397,7 +397,7 @@ class TvContentFeedState extends State<TvContentFeed>
   ///
   /// **Not "the projection recomputes on its own" — that is true of Continue
   /// Watching alone, and this menu opens on every row, not only that one.**
-  /// `DiscoverProvider._onWatchStateChanged` reacts to every
+  /// `ContinueWatchingRow.onWatchStateChanged` reacts to every
   /// [WatchStateEvent] and calls `refreshContinueWatching()`, whose own doc
   /// says it "never refetches hubs" — by design, it is a background poll of
   /// one row, not a general invalidation. A markeer bekeken/onbekeken done

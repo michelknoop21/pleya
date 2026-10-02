@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../connection/connection.dart';
 import '../media/media_backend.dart';
 import '../media/media_server_client.dart';
+import '../media/server_authority_guard.dart';
 import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
 import 'jellyfin_endpoint_discovery.dart';
@@ -222,9 +223,18 @@ class MultiServerManager {
 
   String? get _currentPlexLanguageCode => SettingsService.instanceOrNull?.read(SettingsService.appLocale).languageCode;
 
+  /// Wire the service-side owner check into [client]. The check is live: it
+  /// reads the predicate at call time, and a client that is no longer the
+  /// registered one for [serverId] (a replaced Jellyfin user, a removed
+  /// server) is refused.
+  void _wireServerAuthority(ServerAuthorityGuard client, ServerId serverId) {
+    client.canManageServerMetadata = () => identical(_clients[serverId], client) && canManageServerMetadata(serverId);
+  }
+
   @visibleForTesting
   void debugRegisterJellyfinClientForTesting(JellyfinClient client, {bool online = true}) {
     _wireJellyfinConnectionUpdates(client);
+    _wireServerAuthority(client, ServerId(client.connection.serverMachineId));
     final compoundId = client.connection.id;
     final machineId = client.connection.serverMachineId;
     _jellyfinByCompoundId[compoundId] = client;
@@ -236,6 +246,7 @@ class MultiServerManager {
 
   @visibleForTesting
   void debugRegisterClientForTesting(MediaServerClient client, {bool online = true}) {
+    if (client case final ServerAuthorityGuard guarded) _wireServerAuthority(guarded, client.serverId);
     _clients[client.serverId] = client;
     _serverStatus[client.serverId] = online;
   }
@@ -270,14 +281,22 @@ class MultiServerManager {
   String serverDisplayName(ServerId serverId) =>
       _clients[serverId]?.serverName ?? _plexServers[serverId]?.name ?? serverId;
 
-  /// Backend-neutral "is this user an owner/admin on [serverId]?" probe used
-  /// by UI gates that hide destructive admin entries (delete, edit metadata,
-  /// match/unmatch). Returns:
-  ///   - Plex: `PlexServer.owned` for the server (the matching profile-level
-  ///     `plexAdmin` check stays at the call site so it can fold in
-  ///     `ActiveProfileProvider`).
-  ///   - Jellyfin: `JellyfinConnection.isAdministrator` captured at sign-in.
+  /// Backend-neutral "is this user an owner/admin on [serverId]?" probe for
+  /// read-side admin surfaces (Tautulli, the "Watched by" row). Returns:
+  ///   - Plex: `PlexServer.owned` for the server.
+  ///   - Jellyfin: `JellyfinConnection.isAdministrator`.
   ///   - Unknown server: `false`.
+  ///
+  /// Not for canonical writes: those go through [canManageServerMetadata],
+  /// which also folds in the active profile's role and borrowed connections.
+  ///
+  /// Tautulli reads through this probe: whether this account administers a
+  /// Plex server whose monitoring data it may read. That exposes nothing a
+  /// borrowed token cannot already ask Plex itself (`/status/sessions`).
+  /// Administering the integration (pairing, unlinking, policy) is
+  /// device-wide and goes through [canManagePlexServer] instead, so a
+  /// borrowed connection never inherits it. Pinned by the "Tautulli keeps its
+  /// own admin probe" test.
   bool isOwnerOrAdmin(ServerId serverId) {
     final client = _clients[serverId];
     if (client is PlexClient) {
@@ -288,6 +307,70 @@ class MultiServerManager {
     }
     return false;
   }
+
+  /// Plex account `clientIdentifier`s and plain server ids the active profile
+  /// holds without owner rights: a borrowed connection, or a Plex Home member
+  /// who is not the Home admin. Replaced wholesale by [ActiveProfileBinder]
+  /// before it connects anything, so no client is ever reachable under a
+  /// stale grant.
+  Set<String> _restrictedPlexAccounts = const {};
+  Set<String> _restrictedServerIds = const {};
+
+  ///
+  /// [keepExisting] adds to the current set instead of replacing it. The
+  /// binder uses it while a profile switch is in flight, when clients of the
+  /// previous profile are still registered.
+  void setServerAuthorityRestrictions({
+    Set<String> plexAccountClientIds = const {},
+    Set<String> serverIds = const {},
+    bool keepExisting = false,
+  }) {
+    final plex = {if (keepExisting) ..._restrictedPlexAccounts, ...plexAccountClientIds};
+    final servers = {if (keepExisting) ..._restrictedServerIds, ...serverIds};
+    if (setEquals(plex, _restrictedPlexAccounts) && setEquals(servers, _restrictedServerIds)) return;
+    _restrictedPlexAccounts = Set.unmodifiable(plex);
+    _restrictedServerIds = Set.unmodifiable(servers);
+    // Rights changed: let owner-gated UI rebuild (MultiServerProvider
+    // notifies on every status event).
+    if (!_statusController.isClosed) _statusController.add(Map.from(_serverStatus));
+  }
+
+  /// The owner rule: may the active profile change or delete canonical
+  /// metadata on [serverId] (metadata and artwork, match, media and
+  /// collection deletes, collection membership, library maintenance)?
+  ///
+  ///   - Plex: the server is `owned` by the signed-in account and the active
+  ///     profile is not a restricted or non-admin Home member. Plex Home has
+  ///     one admin, the account itself, so that is the owner.
+  ///   - Jellyfin: `Policy.IsAdministrator`. Jellyfin has no owner concept in
+  ///     its API; administrator is the highest role it exposes and already
+  ///     holds metadata rights server-side, so every admin counts as owner
+  ///     (owner decision, 25 Sep 2026). A borrowed row never inherits it.
+  ///   - Pleya Server: `false` until PS-9 delivers roles. Only `role == owner`
+  ///     may ever return true there; `admin` is not owner and a library's
+  ///     `read_write` grant is about watch state, never about metadata.
+  ///   - A borrowed connection (any backend): `false`.
+  ///   - Unknown server: `false`.
+  bool canManageServerMetadata(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return false;
+    final client = _clients[serverId];
+    if (client is PlexClient) {
+      if (_restrictedPlexAccounts.contains(_clientIdByServer[serverId])) return false;
+      return _plexServers[serverId]?.owned == true;
+    }
+    if (client is JellyfinClient) {
+      return client.connection.isAdministrator;
+    }
+    return false;
+  }
+
+  /// [canManageServerMetadata] on a Plex server. Gates administering the
+  /// Tautulli integration and its settings tile: Tautulli watches Plex only,
+  /// so a Jellyfin administrator gets no say in it.
+  bool canManagePlexServer(ServerId serverId) => _clients[serverId] is PlexClient && canManageServerMetadata(serverId);
+
+  /// Whether the active profile may administer any registered Plex server.
+  bool get managesAPlexServer => serverIds.any((id) => canManagePlexServer(ServerId(id)));
 
   /// Get all online clients
   Map<String, MediaServerClient> get onlineClients {
@@ -396,6 +479,7 @@ class MultiServerManager {
       onAllEndpointsExhausted: () => _onServerEndpointsExhausted(ServerId(serverId)),
       seedTranscoderVideoSupport: observedTranscoderVideo,
     );
+    _wireServerAuthority(client, ServerId(serverId));
 
     // Save the initial endpoint
     await storage.saveServerEndpoint(ServerId(serverId), baseUrl);
@@ -684,6 +768,7 @@ class MultiServerManager {
       // Admin status can change server-side; re-broadcast and persist so
       // admin-gated UI survives app restarts without requiring re-auth.
       _wireJellyfinConnectionUpdates(client);
+      _wireServerAuthority(client, ServerId(resolvedConnection.serverMachineId));
       if (resolvedConnection.baseUrl != connection.baseUrl ||
           !listEquals(resolvedConnection.baseUrls, connection.baseUrls)) {
         await onJellyfinConnectionUpdated?.call(resolvedConnection);
@@ -743,6 +828,7 @@ class MultiServerManager {
         },
       );
       final serverId = connection.serverId;
+      _wireServerAuthority(client, ServerId(serverId));
       final oldClient = _clients[serverId];
       if (oldClient != null) _closeClient(oldClient);
       _clients[serverId] = client;
@@ -759,6 +845,30 @@ class MultiServerManager {
       appLogger.e('Failed to add Pleya Server ${connection.serverName}', error: e, stackTrace: stackTrace);
       return false;
     }
+  }
+
+  /// One real auth attempt for a Pleya Server whose session was rejected.
+  ///
+  /// The health sweep cannot do this: once a session is revoked,
+  /// `accessToken()` rejects in memory and no packet reaches `/auth/refresh`,
+  /// which is why four probes in log jv19q produced zero refresh attempts. A
+  /// cold start recovers because it builds a fresh session; this is the same
+  /// second chance without the restart. Driven only by the user's own
+  /// "sign in again" / "reconnect" action, never by a timer.
+  ///
+  /// Returns the resulting health, or null when no Pleya client carries this
+  /// id. Rethrows nothing: the caller reads the health to decide whether to
+  /// escalate to a full sign-in.
+  Future<HealthStatus?> retryPleyaServerAuth(ServerId serverId) async {
+    final client = _clients[serverId.value];
+    if (client is! PleyaServerClient) return null;
+    client.retrySessionAfterRejection();
+    final generation = generationFor(serverId);
+    final health = await client.checkHealth();
+    // A disconnect or re-add that raced the probe owns the state now.
+    if (!ownsGeneration(serverId, generation)) return health;
+    _applyHealth(serverId, health);
+    return health;
   }
 
   /// Tear down a Pleya Server source's runtime client.
@@ -1387,7 +1497,13 @@ class MultiServerManager {
                 appLogger.d('Reconnection timed out for $serverId');
               },
             )
-            .whenComplete(() => _activeOptimizations.remove(serverId));
+            .whenComplete(() {
+              // Block body on purpose: Map.remove returns the stored future,
+              // which is this same chain, and whenComplete awaits a returned
+              // future. The expression form therefore waited on itself and no
+              // reconnect sweep ever resolved.
+              _activeOptimizations.remove(serverId);
+            });
 
         _activeOptimizations[serverId] = future;
         return future;
@@ -1406,7 +1522,39 @@ class MultiServerManager {
                 appLogger.d('Jellyfin reconnection timed out for $serverId');
               },
             )
-            .whenComplete(() => _activeOptimizations.remove(serverId));
+            .whenComplete(() {
+              // Block body on purpose: Map.remove returns the stored future,
+              // which is this same chain, and whenComplete awaits a returned
+              // future. The expression form therefore waited on itself and no
+              // reconnect sweep ever resolved.
+              _activeOptimizations.remove(serverId);
+            });
+
+        _activeOptimizations[serverId] = future;
+        return future;
+      }
+
+      // Pleya Server: the probe alone cannot recover a revoked session, so a
+      // user-driven reconnect spends one real refresh attempt. Automatic
+      // sweeps never reach this line for an auth-errored server, because
+      // reconnectCandidateServerIds filters those out unless the user asked.
+      final pleyaClient = _clients[serverId];
+      if (pleyaClient is PleyaServerClient) {
+        final future = retryPleyaServerAuth(ServerId(serverId))
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                appLogger.d('Pleya Server reconnection timed out for $serverId');
+                return null;
+              },
+            )
+            .whenComplete(() {
+              // Block body on purpose: Map.remove returns the stored future,
+              // which is this same chain, and whenComplete awaits a returned
+              // future. The expression form therefore waited on itself and no
+              // reconnect sweep ever resolved.
+              _activeOptimizations.remove(serverId);
+            });
 
         _activeOptimizations[serverId] = future;
         return future;

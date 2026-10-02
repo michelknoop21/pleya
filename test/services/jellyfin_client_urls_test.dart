@@ -10,7 +10,9 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/models/transcode_quality_preset.dart';
+import 'package:pleya/services/device_capabilities_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
+import 'package:pleya/services/jellyfin_client/jellyfin_device_profile.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 
 JellyfinConnection _conn({String accessToken = 'tok-abc', String baseUrl = 'https://jf.example.com'}) =>
@@ -237,6 +239,72 @@ void main() {
 
       expect(capturedUri!.path, '/Items');
       expect(capturedUri!.queryParameters['Fields']!.split(','), contains('MediaSources'));
+    });
+
+    test('history import asks for its own user only, paged, with the taste fields', () async {
+      final requests = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[], 'TotalRecordCount': 0}), 200);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.fetchPlayedHistoryPage(startIndex: 400);
+      await scoped.fetchResumableItems();
+
+      final played = requests[0].queryParameters;
+      expect(requests[0].path, '/Items');
+      expect(played['userId'], 'user-1');
+      expect(played['Filters'], 'IsPlayed');
+      expect(played['SortBy'], 'DatePlayed');
+      expect(played['SortOrder'], 'Descending');
+      expect(played['IncludeItemTypes'], 'Movie,Episode');
+      expect(played['StartIndex'], '400');
+      expect(played['Limit'], '200');
+      expect(played['Fields']!.split(','), containsAll(['UserData', 'Genres', 'People', 'Studios']));
+
+      final resumable = requests[1].queryParameters;
+      expect(resumable['userId'], 'user-1');
+      expect(resumable['Filters'], 'IsResumable');
+      expect(resumable['Limit'], '100');
+    });
+
+    test('a failing history page or resumable list throws instead of reading as the last page', () async {
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async => http.Response('boom', 500)),
+      );
+      addTearDown(scoped.close);
+      await expectLater(scoped.fetchPlayedHistoryPage(startIndex: 200), throwsA(anything));
+      await expectLater(scoped.fetchResumableItems(), throwsA(anything));
+    });
+
+    test('the candidate pool and Similar calls ask for Genres and Studios, not People', () async {
+      final requests = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[], 'TotalRecordCount': 0}), 200);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.fetchRecentlyAdded(limit: 10);
+      await scoped.fetchRelatedHubs('m1');
+      await scoped.fetchLibraryContent('lib-1', const LibraryQuery(withTasteFields: true));
+      await scoped.fetchLibraryContent('lib-1', const LibraryQuery());
+
+      for (final request in requests.take(3)) {
+        final fields = request.queryParameters['Fields']!.split(',');
+        expect(fields, containsAll(['Genres', 'Studios']), reason: request.path);
+        expect(fields, isNot(contains('People')), reason: request.path);
+      }
+      final browse = requests[3].queryParameters['Fields']!.split(',');
+      expect(browse, isNot(contains('Genres')), reason: 'a library page for the grid stays light');
     });
 
     test('reportPlaybackProgress sends media source and stream indexes', () async {
@@ -1125,6 +1193,10 @@ void main() {
       expect(capturedUri.toString(), contains('/Items/folder%2Fitem%20%231%3Fx/PlaybackInfo'));
     });
 
+    // The shape of the profile is a table test on the builder in
+    // jellyfin_device_profile_test.dart. What this one proves is the seam: the
+    // request body carries what that builder produced, for the capabilities
+    // this device reports.
     test('getPlaybackInfo advertises external subtitle support', () async {
       Uri? capturedUri;
       String? capturedBody;
@@ -1170,6 +1242,16 @@ void main() {
         containsAll(['srt', 'ass', 'ssa', 'vtt', 'pgssub', 'dvdsub', 'dvbsub']),
       );
       expect(subtitleProfiles.every((profile) => (profile as Map<String, dynamic>)['Method'] == 'External'), isTrue);
+
+      expect(
+        profile,
+        jsonDecode(
+          jsonEncode(
+            buildJellyfinDeviceProfile(DeviceCapabilitiesService.currentSnapshot, maxStreamingBitrate: 5000000),
+          ),
+        ),
+        reason: 'the body has to be the builder output, not a second copy of it',
+      );
     });
 
     test('path-encodes reserved ids for browse and watch-state endpoints', () async {
@@ -3307,6 +3389,8 @@ void main() {
         }),
       );
       addTearDown(client.close);
+      // Metadata edits are owner-only; this test is about the wire format.
+      client.canManageServerMetadata = () => true;
 
       final success = await client.updateMetadataItem('item-1', {
         'Id': 'item-1',
@@ -3347,6 +3431,8 @@ void main() {
         }),
       );
       addTearDown(client.close);
+      // Metadata edits are owner-only; this test is about the wire format.
+      client.canManageServerMetadata = () => true;
 
       final result = await client.getRemoteImages(
         'item-1',
@@ -3385,6 +3471,8 @@ void main() {
         }),
       );
       addTearDown(client.close);
+      // Metadata edits are owner-only; this test is about the wire format.
+      client.canManageServerMetadata = () => true;
 
       final success = await client.uploadItemImage(
         'item-1',

@@ -56,6 +56,49 @@ void main() {
       expect(raw.userToken, isNot('tok'));
     });
 
+    test('borrowed flag round-trips and defaults to false', () async {
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userIdentifier: 'uid-1', borrowed: true),
+      );
+      await registry.upsert(const ProfileConnection(profileId: 'p2', connectionId: 'c1', userIdentifier: 'uid-1'));
+      expect((await registry.get('p1', 'c1'))!.borrowed, isTrue);
+      expect((await registry.get('p2', 'c1'))!.borrowed, isFalse);
+    });
+
+    test('borrowed survives a plain upsert (default path and makeDefault path)', () async {
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userIdentifier: 'uid-1', borrowed: true),
+      );
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userToken: 'new', userIdentifier: 'uid-1'),
+      );
+      expect((await registry.get('p1', 'c1'))!.borrowed, isTrue);
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userIdentifier: 'uid-1'),
+        makeDefault: true,
+      );
+      expect((await registry.get('p1', 'c1'))!.borrowed, isTrue);
+    });
+
+    test('a fresh own login clears borrowed', () async {
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userIdentifier: 'uid-1', borrowed: true),
+      );
+      await registry.upsert(
+        const ProfileConnection(profileId: 'p1', connectionId: 'c1', userToken: 'own', userIdentifier: 'uid-1'),
+        freshLogin: true,
+      );
+      expect((await registry.get('p1', 'c1'))!.borrowed, isFalse);
+    });
+
+    test('markBorrowed flags only the named row', () async {
+      await registry.upsert(const ProfileConnection(profileId: 'p1', connectionId: 'c1', userIdentifier: 'u'));
+      await registry.upsert(const ProfileConnection(profileId: 'p2', connectionId: 'c1', userIdentifier: 'u'));
+      await registry.markBorrowed('p2', 'c1');
+      expect((await registry.get('p1', 'c1'))!.borrowed, isFalse);
+      expect((await registry.get('p2', 'c1'))!.borrowed, isTrue);
+    });
+
     test('first row for a profile is auto-default', () async {
       await registry.upsert(
         const ProfileConnection(profileId: 'p1', connectionId: 'c1', userToken: 't', userIdentifier: 'u'),

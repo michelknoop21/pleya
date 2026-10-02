@@ -308,6 +308,8 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
       // its own rail below the hero.
       _heroGroups = _featuredSelector.select(latestMoviesProjected);
       _hasProjectedHero = true;
+      // The Top Shelf carousel leads with the same slides, same order.
+      _discover.setTopShelfHero([for (final group in _heroGroups) group.representativeSource.item]);
       // The activation-lookup pool, uncapped and covering everything
       // `DiscoverScreen` can put in the billboard that is *not* a hero slide
       // (see `featuredGroupFor`): rail focus, and the empty-hero fallback to

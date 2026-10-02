@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../media/download_resolution.dart';
+import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
@@ -22,6 +23,8 @@ import '../media/ids.dart';
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
+import 'device_capabilities_service.dart';
+import 'plex_client/plex_client_profile.dart';
 import '../utils/external_ids.dart';
 import 'bif_thumbnail_service.dart';
 import 'download_artwork_helpers.dart';
@@ -205,7 +208,7 @@ bool? _parsePlexTranscoderVideoCapability(Object? value) {
 typedef PlexWatcherRow = ({int accountId, String displayName, String? thumbUrl, int viewedAt});
 
 class PlexClient
-    with MediaServerCacheMixin, _PlexLiveTvClientMethods
+    with MediaServerCacheMixin, _PlexLiveTvClientMethods, ServerAuthorityGuard
     implements MediaServerClient, SeasonEpisodePagingClient, PersonSearchClient, GracefullyCloseable {
   @override
   PlexConfig config;
@@ -840,7 +843,11 @@ class PlexClient
   }
 
   /// Cancel a running background task by its UUID.
+  ///
+  /// Stopping a scan or analysis is server maintenance, so owner-only like
+  /// the task that started it.
   Future<void> cancelActivity(String uuid) async {
+    assertCanManageServerMetadata();
     await _http.delete('/activities/$uuid');
   }
 
@@ -998,6 +1005,7 @@ class PlexClient
               'includeOnDeck': 1,
               'checkFiles': 1,
               'includeStreams': 1,
+              'includeReviews': 1,
             },
           ),
           parseCache: (cachedData) {
@@ -1055,7 +1063,13 @@ class PlexClient
       cacheKey: cacheKey,
       networkCall: () => _http.get(
         '/library/metadata/$ratingKey',
-        queryParameters: {'includeChapters': 1, 'includeMarkers': 1, 'checkFiles': 1, 'includeStreams': 1},
+        queryParameters: {
+          'includeChapters': 1,
+          'includeMarkers': 1,
+          'checkFiles': 1,
+          'includeStreams': 1,
+          'includeReviews': 1,
+        },
       ),
       parseCache: (cachedData) => _parseMetadataWithImagesFromCachedResponse(cachedData),
       parseResponse: (response) {
@@ -1263,6 +1277,10 @@ class PlexClient
 
   /// Download a subtitle from an external provider and add it to the media item.
   /// The server downloads the file asynchronously; the new stream appears after a short delay.
+  ///
+  /// The stream lands on the shared item for every user of the server, which
+  /// Plex itself treats as subtitle admin (`allowSubtitleAdmin`), so it is
+  /// owner-only. Picking an existing stream goes through [selectStreams].
   Future<bool> downloadSubtitle(
     String ratingKey, {
     required String key,
@@ -1272,6 +1290,7 @@ class PlexClient
     required bool forced,
     required String providerTitle,
   }) async {
+    assertCanManageServerMetadata();
     return _wrapBoolApiCall(
       () => _http.put(
         '/library/metadata/$ratingKey/subtitles',
@@ -1290,7 +1309,12 @@ class PlexClient
 
   /// Search across all libraries including individually shared items.
   /// Uses /library/search (same endpoint as Plex Web) which finds shared content.
-  /// Only returns movies and shows, filtering out other types.
+  /// Keeps the types the search screen has a section for (movies, shows,
+  /// episodes, collections) and drops the rest (seasons, music, photos).
+  ///
+  /// Built from the documented response shape, not from a capture: see
+  /// `test/fixtures/plex_search/README.md`. Whether `searchTypes=movies,tv`
+  /// actually yields episodes on a live server is still a live check.
   Future<List<PlexMetadataDto>> _search(String query, {int limit = 100}) async {
     final response = await _getWithFailover(
       '/library/search',
@@ -1322,8 +1346,8 @@ class PlexClient
         final metadata = result['Metadata'];
         if (metadata is! Map<String, dynamic>) continue;
 
-        final type = metadata['type'] as String?;
-        if (type != 'movie' && type != 'show') continue;
+        final type = metadata['type'];
+        if (type is! String || !_searchResultTypes.contains(type)) continue;
 
         results.add(_createTaggedMetadata(metadata));
       } catch (e) {
@@ -1333,6 +1357,8 @@ class PlexClient
 
     return results;
   }
+
+  static const Set<String> _searchResultTypes = {'movie', 'show', 'episode', 'collection'};
 
   /// Get recently added media (filtered to video content only)
   Future<List<PlexMetadataDto>> _getRecentlyAdded({int limit = 50}) async {
@@ -1666,7 +1692,8 @@ class PlexClient
   /// This permanently removes the item and its associated files from the server
   /// Returns true if deletion was successful, false otherwise
   @override
-  Future<bool> deleteMediaItem(MediaItem item) {
+  Future<bool> deleteMediaItem(MediaItem item) async {
+    assertCanManageServerMetadata();
     return _wrapBoolApiCall(() => _http.delete('/library/metadata/${item.id}'), 'Failed to delete media item');
   }
 
@@ -2230,6 +2257,7 @@ class PlexClient
     String? summary,
     Map<String, ({List<String> current, List<String> original})>? tagChanges,
   }) async {
+    assertCanManageServerMetadata();
     final queryParams = <String, dynamic>{'type': typeNumber, 'id': ratingKey};
 
     void addField(String name, String? value) {
@@ -2303,6 +2331,7 @@ class PlexClient
 
   /// Apply a chosen match to a media item.
   Future<bool> applyMatch(String ratingKey, {required String guid, String? name, String? year}) async {
+    assertCanManageServerMetadata();
     final queryParams = <String, dynamic>{'guid': guid};
     if (name != null && name.isNotEmpty) queryParams['name'] = name;
     if (year != null && year.isNotEmpty) queryParams['year'] = year;
@@ -2318,6 +2347,7 @@ class PlexClient
   }
 
   Future<bool> unmatchItem(String ratingKey) async {
+    assertCanManageServerMetadata();
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/metadata/$ratingKey/unmatch'),
       'Failed to unmatch item',
@@ -2345,6 +2375,7 @@ class PlexClient
 
   /// Set artwork from a URL (can be a Plex internal path or external URL)
   Future<bool> setArtworkFromUrl(String ratingKey, String element, String url) async {
+    assertCanManageServerMetadata();
     final setElement = element.endsWith('s') ? element.substring(0, element.length - 1) : element;
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/metadata/$ratingKey/$setElement', queryParameters: {'url': url}),
@@ -2358,6 +2389,7 @@ class PlexClient
 
   /// Upload artwork from binary data
   Future<bool> uploadArtwork(String ratingKey, String element, List<int> bytes) async {
+    assertCanManageServerMetadata();
     final setElement = element.endsWith('s') ? element.substring(0, element.length - 1) : element;
     final result = await _wrapBoolApiCall(
       () => _http.put(
@@ -2375,6 +2407,7 @@ class PlexClient
 
   /// Update per-media advanced preferences
   Future<bool> updateMetadataPrefs(String ratingKey, Map<String, String> prefs) async {
+    assertCanManageServerMetadata();
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/metadata/$ratingKey/prefs', queryParameters: prefs),
       'Failed to update metadata preferences',
@@ -2475,6 +2508,7 @@ class PlexClient
   }
 
   Future<bool> deleteCollectionById(String sectionId, String collectionId) async {
+    assertCanManageServerMetadata();
     appLogger.d('Deleting collection: sectionId=$sectionId, collectionId=$collectionId');
     final result = await _wrapBoolApiCall(
       () => _http.delete('/library/collections/$collectionId'),
@@ -2495,6 +2529,7 @@ class PlexClient
     required List<MediaItem> items,
     MediaKind? itemKind,
   }) async {
+    assertCanManageServerMetadata();
     final uri = items.isEmpty ? '' : await buildMetadataUri(items.map((i) => i.id).join(','));
     final type = switch (itemKind) {
       MediaKind.movie => 1,
@@ -2515,6 +2550,7 @@ class PlexClient
     required String uri,
     int? type,
   }) async {
+    assertCanManageServerMetadata();
     try {
       appLogger.d('Creating collection: sectionId=$sectionId, title=$title, type=$type');
       final response = await _http.post(
@@ -2546,6 +2582,7 @@ class PlexClient
   /// from [items] and delegates to [addItemsToCollectionByUri].
   @override
   Future<bool> addToCollection({required String collectionId, required List<MediaItem> items}) async {
+    assertCanManageServerMetadata();
     if (items.isEmpty) return true;
     final uri = await buildMetadataUri(items.map((i) => i.id).join(','));
     return addItemsToCollectionByUri(collectionId: collectionId, uri: uri);
@@ -2554,6 +2591,7 @@ class PlexClient
   /// Add items to an existing collection
   /// Adds one or more items (specified by URI) to an existing collection
   Future<bool> addItemsToCollectionByUri({required String collectionId, required String uri}) async {
+    assertCanManageServerMetadata();
     appLogger.d('Adding items to collection: collectionId=$collectionId');
     final result = await _wrapBoolApiCall(
       () => _http.put('/library/collections/$collectionId/items', queryParameters: {'uri': uri}),
@@ -2569,6 +2607,7 @@ class PlexClient
   /// Removes a single item from an existing collection
   @override
   Future<bool> removeFromCollection({required String collectionId, required MediaItem item}) async {
+    assertCanManageServerMetadata();
     appLogger.d('Removing item from collection: collectionId=$collectionId, itemId=${item.id}');
     final result = await _wrapBoolApiCall(
       () => _http.delete('/library/collections/$collectionId/items/${item.id}'),
@@ -2876,22 +2915,26 @@ class PlexClient
 
   /// Scan/refresh a library section to detect new files
   Future<void> scanLibrary(String sectionId) async {
+    assertCanManageServerMetadata();
     await _getWithFailover('/library/sections/$sectionId/refresh');
   }
 
   /// Refresh metadata for a library section
   @override
   Future<void> refreshLibraryMetadata(String sectionId) async {
+    assertCanManageServerMetadata();
     await _getWithFailover('/library/sections/$sectionId/refresh?force=1');
   }
 
   /// Empty trash for a library section
   Future<void> emptyLibraryTrash(String sectionId) async {
+    assertCanManageServerMetadata();
     await _http.put('/library/sections/$sectionId/emptyTrash');
   }
 
   /// Analyze library section
   Future<void> analyzeLibrary(String sectionId) async {
+    assertCanManageServerMetadata();
     await _getWithFailover('/library/sections/$sectionId/analyze');
   }
 
@@ -2990,7 +3033,9 @@ class PlexClient
     int? offsetMs,
   }) async {
     try {
-      final allParams = _buildTranscodeParams(
+      final allParams = buildPlexTranscodeParams(
+        config: config,
+        capabilities: DeviceCapabilitiesService.currentSnapshot,
         ratingKey: ratingKey,
         mediaIndex: mediaIndex,
         partIndex: partIndex,
@@ -3002,7 +3047,7 @@ class PlexClient
         offsetMs: offsetMs,
       );
 
-      final queryString = allParams.entries.map((e) => '${_plexEncode(e.key)}=${_plexEncode(e.value)}').join('&');
+      final queryString = allParams.entries.map((e) => '${plexEncode(e.key)}=${plexEncode(e.value)}').join('&');
 
       final decisionClient = MediaServerHttpClient(
         connectTimeout: MediaServerTimeouts.connect,
@@ -3041,164 +3086,13 @@ class PlexClient
 
   String _buildTranscodeStartPathFromParams(Map<String, String> params) {
     final startParams = Map<String, String>.from(params)..remove('X-Plex-Token');
-    final startQuery = startParams.entries.map((e) => '${_plexEncode(e.key)}=${_plexEncode(e.value)}').join('&');
+    final startQuery = startParams.entries.map((e) => '${plexEncode(e.key)}=${plexEncode(e.value)}').join('&');
     return '/video/:/transcode/universal/start?$startQuery';
   }
 
   @visibleForTesting
   String buildTranscodeStartPathFromParamsForTesting(Map<String, String> params) {
     return _buildTranscodeStartPathFromParams(params);
-  }
-
-  Map<String, String> _buildTranscodeParams({
-    required String ratingKey,
-    required int mediaIndex,
-    int partIndex = 0,
-    required TranscodeQualityPreset preset,
-    required String sessionIdentifier,
-    required String transcodeSessionId,
-    int? audioStreamId,
-    MediaSubtitleTrack? selectedSubtitleTrack,
-    int? offsetMs,
-  }) {
-    final isOriginal = preset.isOriginal;
-    final selectedEmbeddedSubtitle = _shouldEmbedSubtitleInHttpTranscode(selectedSubtitleTrack)
-        ? selectedSubtitleTrack
-        : null;
-    // Only text subtitles get `advancedSubtitles=text`; image subtitles
-    // (PGS/VOBSUB) are copied into the MKV as-is for the player to render.
-    final embedSubtitleAsText =
-        selectedEmbeddedSubtitle != null && _canTranscodeSubtitleAsText(selectedEmbeddedSubtitle);
-
-    // Build the client profile from scratch via X-Plex-Client-Profile-Extra.
-    // We use the `Generic` base platform (see [_transcodePlatformName]) which
-    // has no pre-installed transcode targets, so we must `add-transcode-target`
-    // rather than `append-transcode-target-codec` (which only edits existing
-    // targets — empty on Generic, hence Plex returned decision code 2000
-    // "neither direct play nor conversion is available").
-    //
-    // For non-original presets we also add a bitrate limitation that caps
-    // the video codec; with `replace=true` it overrides any default limit.
-    //
-    // See openapi.md §"Profile Augmentations" for the DSL reference.
-    final profileExtraClauses = <String>['add-settings(DirectPlayStreamSelection=true)'];
-    if (!isOriginal && preset.videoBitrateKbps != null) {
-      profileExtraClauses.add(
-        'add-limitation(scope=videoCodec&scopeName=*&type=upperBound'
-        '&name=video.bitrate&value=${preset.videoBitrateKbps}&replace=true)',
-      );
-    }
-    // Match Plex Desktop's stable HTTP/MKV transcode target. Codec-list commas
-    // are pre-encoded as `%2C` — see the profile-extra encoding note above.
-    profileExtraClauses.add(
-      'add-transcode-target(type=videoProfile&context=streaming'
-      '&protocol=http&container=mkv&videoCodec=h264%2Chevc%2C*'
-      '&audioCodec=opus%2Cvorbis%2Cflac%2C*&subtitleCodec=ass%2Cpgs%2Cvobsub%2C*)',
-    );
-    profileExtraClauses.add(
-      'add-transcode-target-settings(type=videoProfile&context=streaming'
-      '&protocol=http&CopyMatroskaAttachments=true)',
-    );
-    final clientProfileExtra = profileExtraClauses.join('+');
-
-    // HTTP/MKV matches Plex Desktop and lets MPV see embedded subtitle streams.
-    // HLS `subtitles=segmented` was accepted by Plex but produced manifests
-    // with only video/audio renditions for MPV.
-    return <String, String>{
-      'hasMDE': '1',
-      'path': '/library/metadata/$ratingKey',
-      'mediaIndex': mediaIndex.toString(),
-      'partIndex': partIndex.toString(),
-      'protocol': 'http',
-      'fastSeek': '1',
-      'directPlay': isOriginal ? '1' : '0',
-      'directStream': isOriginal ? '1' : '0',
-      'subtitleSize': '100',
-      'audioBoost': '100',
-      'location': 'lan',
-      if (!isOriginal && preset.videoBitrateKbps != null) 'maxVideoBitrate': preset.videoBitrateKbps.toString(),
-      'addDebugOverlay': '0',
-      'autoAdjustQuality': '0',
-      'directStreamAudio': '0',
-      'mediaBufferSize': '102400',
-      'session': transcodeSessionId,
-      // Embed the selected subtitle in the MKV stream: text codecs are
-      // converted to text, image codecs (PGS/VOBSUB) are copied as-is and
-      // rendered by the player — never burned into the video. Unselected tracks
-      // and keyed sidecars stay at `none`.
-      'subtitles': selectedEmbeddedSubtitle != null ? 'embedded' : 'none',
-      if (selectedEmbeddedSubtitle != null) 'subtitleStreamID': selectedEmbeddedSubtitle.id.toString(),
-      if (embedSubtitleAsText) 'advancedSubtitles': 'text',
-      // Preserve source timestamps for the HTTP/MKV stream so player seeks and
-      // sidecar subtitles stay aligned with Plex source time.
-      'copyts': '1',
-      if (audioStreamId != null) 'audioStreamID': audioStreamId.toString(),
-      'Accept-Language': 'en',
-      'X-Plex-Session-Identifier': sessionIdentifier,
-      'X-Plex-Client-Profile-Extra': clientProfileExtra,
-      'X-Plex-Chunked': '1',
-      'X-Plex-Features': 'external-media,indirect-media',
-      'X-Plex-Model': 'standalone',
-      'X-Plex-Language': 'en',
-      'X-Plex-Product': config.product,
-      'X-Plex-Version': config.version,
-      'X-Plex-Client-Identifier': config.clientIdentifier,
-      // Plex's server rejects unknown platform names with HTTP 400 and maps
-      // known names to codec/bitrate base profiles. Our usual "Flutter"
-      // platform, plus "MacOSX" / "Linux", are all rejected; swap to a
-      // Plex-recognized name just for transcode requests. See
-      // [_transcodePlatformName] for the mapping.
-      'X-Plex-Platform': _transcodePlatformName(),
-      if (config.device != null) 'X-Plex-Device': config.device!,
-      if (offsetMs != null) 'offset': (offsetMs ~/ 1000).toString(),
-      if (config.token != null) 'X-Plex-Token': config.token!,
-    };
-  }
-
-  @visibleForTesting
-  Map<String, String> buildTranscodeParamsForTesting({
-    required String ratingKey,
-    required int mediaIndex,
-    int partIndex = 0,
-    required TranscodeQualityPreset preset,
-    required String sessionIdentifier,
-    required String transcodeSessionId,
-    int? audioStreamId,
-    MediaSubtitleTrack? selectedSubtitleTrack,
-    int? offsetMs,
-  }) {
-    return _buildTranscodeParams(
-      ratingKey: ratingKey,
-      mediaIndex: mediaIndex,
-      partIndex: partIndex,
-      preset: preset,
-      sessionIdentifier: sessionIdentifier,
-      transcodeSessionId: transcodeSessionId,
-      audioStreamId: audioStreamId,
-      selectedSubtitleTrack: selectedSubtitleTrack,
-      offsetMs: offsetMs,
-    );
-  }
-
-  /// Platform name Plex Media Server accepts on the transcode decision
-  /// endpoint for arbitrary clients. Our default "Flutter" returns HTTP 400,
-  /// and the known-OS names (`MacOSX`, `Mac`, `Linux`) are also rejected.
-  /// `Generic` is accepted and comes with no preset transcode targets — we
-  /// build the profile ourselves via `X-Plex-Client-Profile-Extra` with
-  /// `add-transcode-target`.
-  static String _transcodePlatformName() => 'Generic';
-
-  /// Strict percent-encoder matching Plex Web's URL encoder — escapes the
-  /// extra characters `(`, `)`, `*`, `'`, `!` that Dart's [Uri.encodeComponent]
-  /// leaves literal. Required for `X-Plex-Client-Profile-Extra` whose parens
-  /// and asterisks must appear as `%28`, `%29`, `%2A` on the wire.
-  static String _plexEncode(String value) {
-    return Uri.encodeComponent(value)
-        .replaceAll('(', '%28')
-        .replaceAll(')', '%29')
-        .replaceAll('*', '%2A')
-        .replaceAll("'", '%27')
-        .replaceAll('!', '%21');
   }
 
   /// Parse decision response for outcome. Any decision code >= 2000 = error
@@ -3521,16 +3415,6 @@ class PlexClient
     if (token == null) return null;
     final ext = CodecUtils.getSubtitleExtension(track.codec);
     return '${config.baseUrl}${track.key}.$ext?encoding=utf-8&X-Plex-Token=$token';
-  }
-
-  bool _canTranscodeSubtitleAsText(MediaSubtitleTrack track) {
-    return CodecUtils.isTextSubtitleCodec(track.codec);
-  }
-
-  bool _shouldEmbedSubtitleInHttpTranscode(MediaSubtitleTrack? track) {
-    if (track == null) return false;
-    if (track.key != null && track.key!.isNotEmpty) return false;
-    return CodecUtils.isEmbeddableSubtitleCodec(track.codec);
   }
 
   SubtitleTrack _subtitleTrackFromMediaTrack(MediaSubtitleTrack track, String url) {

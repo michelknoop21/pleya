@@ -1,10 +1,10 @@
 # Netflix-redesign tranche 1 — implementatieplan
 
-> **Spec:** `docs/design-audits/2026-09-23-netflix/README.md`
+> **Spec:** `docs/superpowers/specs/2026-09-23-netflix-redesign-tranche-1.md`; actuele visuele bron: `docs/design-audits/2026-09-23-netflix/README.md`.
 >
 > **Goedkeuring:** Michel keurde op 23 september 2026 de vier getoonde richtingen goed met de expliciete kanttekening dat dit nog niet alle vensters zijn. Dit plan levert daarom tranche 1 en houdt pakketten B–F open.
 
-**Doel:** Home uitbreiden naar maximaal twaalf unieke recente films en de eerste ontbrekende persoonlijke ingangen voorbereiden zonder bestaande acties, backendgrenzen of TV-focusgedrag te verliezen.
+**Doel:** Home uitbreiden naar maximaal twaalf unieke recente films met zichtbare kijkstatus en zelfstandige persoonlijke ingangen voor Collecties en Afspeellijsten leveren zonder bestaande acties, backendgrenzen of TV-focusgedrag te verliezen.
 
 **Architectuur:** De hero blijft eigendom van `TvHomeProjectionProvider` en `FeaturedSelector`; alleen de bovengrens verandert. Collecties en Afspeellijsten worden geen alias naar een toevallige bibliotheek. Ze krijgen een TV-route die eerst de beschikbare bron/bibliotheek eerlijk toont en daarna bestaande collectie-/playlistdetails hergebruikt. De huidige `provider`/`ChangeNotifier`-structuur blijft staan.
 
@@ -14,7 +14,7 @@
 
 - Home-layout, recente-filmsemantiek, deduplicatie, releasefilter en telefoon/desktopgedrag blijven gelijk.
 - Een hero met minder dan twaalf geschikte unieke films wordt niet gevuld met series of Top Picks.
-- Collecties blijven bibliotheekgebonden. Playlists zijn servergebonden; dezelfde playlist mag niet per bibliotheek worden gedupliceerd.
+- Plex-collecties blijven bibliotheekgebonden. Jellyfin BoxSets en playlists zijn volgens de huidige clients servergebonden en worden eenmaal per server geladen.
 - Pleya Server en lokale mappen tonen geen ingangen die hun clientcontract niet ondersteunt.
 - Bestaande Mijn Pleya-tegels, voorwaardelijke zichtbaarheid, Back-keten en focusherstel blijven behouden.
 - Productcode wordt alleen in een geïsoleerde worktree aangepast; de huidige checkout bevat niet-gerelateerde lokale wijzigingen.
@@ -43,7 +43,8 @@
 
 **TV-bewijs**
 
-8. Voeg of actualiseer een Verify-scenario met twaalf heldere fixturetitels. Assert hero, loop naar slide twaalf, controleer slide-identiteit en maak compositorbeelden van slide één en twaalf.
+8. Toon per slide een vaste statuscapsule voor bekeken, bezig met percentage of niet bekeken; test ook uiteenlopende serverstatussen en een CTA die niet verspringt.
+9. De huidige Verify-`/v1`-fixture levert geen releasedata; DEC-097 filtert films zonder releasedatum terecht uit de hero. Dek twaalf slides daarom nu met de productiecarrousel-widgettest en houd de echte Plex/Jellyfin-compositorrun open totdat de fixture dat contract kan voeden.
 
 ## Taak 2 — Bronmodel voor persoonlijke Collecties en Afspeellijsten
 
@@ -73,14 +74,13 @@
 
 **Bestanden**
 
-- Nieuw: `lib/screens/tv/sections/tv_personal_collections_screen.dart`
-- Nieuw: `lib/screens/tv/sections/tv_personal_playlists_screen.dart`
+- Nieuw: `lib/screens/tv/sections/tv_personal_media_overview_screens.dart`
 - Wijzig: `lib/screens/tv/tv_my_pleya_sections.dart`
 - Wijzig: `lib/screens/tv/tv_my_pleya_navigator.dart`
 - Wijzig: `lib/screens/tv/tv_my_pleya_screen.dart`
 - Wijzig: relevante `lib/i18n/*.i18n.json`-bronbestanden; daarna `scripts/codegen.sh`
 - Test: `test/screens/tv/tv_my_pleya_screen_test.dart`
-- Nieuw: `test/screens/tv/tv_personal_media_screen_test.dart`
+- Nieuw: `test/screens/tv/tv_personal_media_overview_screens_test.dart`
 
 **RED**
 

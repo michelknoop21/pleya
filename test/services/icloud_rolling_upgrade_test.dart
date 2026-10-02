@@ -18,10 +18,14 @@ import 'preferences/fake_transport.dart';
 /// every key starting with `__`, in both the prune loop and the apply loop, and
 /// writes nothing there but its own version marker.
 ///
-/// These tests run the **real v1 code path**, not a hand-written model of it:
-/// `useV2CloudFormat: false` is the algorithm the released build runs, still
-/// present and still exercised. If a refactor ever stops honouring the reserved
-/// namespace, an old client starts eating new records and these go red.
+/// These tests run the v1 code path that is still in this build
+/// (`useV2CloudFormat: false`), not a hand-written model. Since DEC-134 that
+/// path is no longer the released v1 algorithm byte for byte: it stamps its
+/// records and compares before it writes. What it still shares with the
+/// released build is the part tested here, the reserved `__` namespace in the
+/// prune and the apply loop. If a refactor stops honouring that namespace,
+/// these go red. The released v2 build beside this one is covered in
+/// `preferences/reconcile_and_tombstones_test.dart`.
 String enc(String type, Object? value) => json.encode({'type': type, 'value': value});
 
 void main() {
@@ -30,7 +34,7 @@ void main() {
   late SettingsService settings;
   late FakeTransport transport;
 
-  /// A coordinator behaving exactly as the pre-cutover client does.
+  /// A coordinator on the v1 path, as the pre-cutover client ran it.
   Future<PreferenceSyncCoordinator> oldClient() async {
     settings = await SettingsService.getInstance();
     transport = FakeTransport();

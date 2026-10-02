@@ -25,6 +25,12 @@ func TestInspectWritableDir(t *testing.T) {
 	if info.ReadOnly {
 		t.Error("ReadOnly = true voor een beschrijfbare map")
 	}
+	if info.TotalBytes == 0 {
+		t.Error("TotalBytes = 0 voor een bestaand bestandssysteem")
+	}
+	if info.TotalBytes < info.FreeBytes {
+		t.Errorf("TotalBytes (%d) < FreeBytes (%d)", info.TotalBytes, info.FreeBytes)
+	}
 }
 
 // De schrijfcontrole mag niets achterlaten; anders vervuilt elke start de

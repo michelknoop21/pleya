@@ -702,6 +702,13 @@ class _LibrariesScreenState extends State<LibrariesScreen>
   }
 
   List<ContextMenuItem> _getLibraryMenuItems(MediaLibrary library) {
+    // Every entry here is library maintenance on the server, so it is only
+    // offered to the server's owner. Empty hides the options button.
+    final serverId = library.serverId;
+    if (serverId == null ||
+        !context.read<MultiServerProvider>().serverManager.canManageServerMetadata(ServerId(serverId))) {
+      return const [];
+    }
     // Refresh metadata is the only admin action both backends support — Plex
     // hits `/library/sections/{id}/refresh?force=1`, Jellyfin posts to
     // `/Items/{id}/Refresh` (the library view is itself an item).
@@ -1672,7 +1679,7 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
         setState(() => _focusedColumn--);
         return KeyEventResult.handled;
       }
-      if (key.isRightKey && _focusedColumn < 2) {
+      if (key.isRightKey && _focusedColumn < (_hasLibraryOptions(_tempLibraries[_focusedIndex]) ? 2 : 1)) {
         setState(() => _focusedColumn++);
         return KeyEventResult.handled;
       }
@@ -1713,6 +1720,8 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
     // Apply immediately
     widget.onReorder(_tempLibraries);
   }
+
+  bool _hasLibraryOptions(MediaLibrary library) => widget.getLibraryMenuItems(library).isNotEmpty;
 
   void _showLibraryMenuBottomSheet(BuildContext outerContext, MediaLibrary library) {
     final menuItems = widget.getLibraryMenuItems(library);
@@ -1945,14 +1954,15 @@ class _LibraryManagementSheetState extends State<_LibraryManagementSheet> {
                 onPressed: () => widget.onToggleVisibility(library),
               ),
             ),
-            Container(
-              decoration: FocusTheme.focusBackgroundDecoration(isFocused: isOptionsButtonFocused, borderRadius: 20),
-              child: IconButton(
-                icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
-                tooltip: t.libraries.libraryOptions,
-                onPressed: () => _showLibraryMenuBottomSheet(context, library),
+            if (_hasLibraryOptions(library))
+              Container(
+                decoration: FocusTheme.focusBackgroundDecoration(isFocused: isOptionsButtonFocused, borderRadius: 20),
+                child: IconButton(
+                  icon: const AppIcon(Symbols.more_vert_rounded, fill: 1),
+                  tooltip: t.libraries.libraryOptions,
+                  onPressed: () => _showLibraryMenuBottomSheet(context, library),
+                ),
               ),
-            ),
           ],
         ),
       ),

@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/diagnostics/select_trace_recorder.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_hub.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -108,6 +110,29 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump(const Duration(milliseconds: 400));
   }
+
+  // DEC-132: the desktop Home row header shows a seed row's reason; a long
+  // seed title is cut on one line instead of overflowing the header.
+  group('seed row title', () {
+    const longTitle =
+        'The Extraordinarily Long and Winding Chronicle of a Title That Never Seems to End Across Several Seasons';
+    for (final locale in [AppLocale.en, AppLocale.nl]) {
+      for (final seedTitle in ['Severance', longTitle]) {
+        testWidgets('${locale.languageCode}, ${seedTitle.length} chars', (tester) async {
+          await tester.runAsync(() => LocaleSettings.setLocale(locale));
+          addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+          final label = t.discover.becauseYouWatched(title: seedTitle);
+          await pumpHub(tester, hub(['a', 'b']).copyWith(identifier: 'home.becauseyouwatched', title: label));
+
+          expect(find.text(label), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          expect(tester.renderObject<RenderParagraph>(find.text(label)).didExceedMaxLines, seedTitle == longTitle);
+
+          await tester.pumpWidget(const SizedBox.shrink());
+        });
+      }
+    }
+  });
 
   testWidgets('a refreshed-away item opens nothing instead of its replacement', (tester) async {
     // The reported failure. The row keeps its length, so nothing that counts

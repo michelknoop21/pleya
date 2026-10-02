@@ -84,6 +84,8 @@ class MyPleyaScreen extends StatelessWidget {
       hasSeerr: hasSeerr && !isOffline,
       showDownloads: true,
       showActivity: servers?.hasOnlinePlexServers ?? false,
+      showCollections: false,
+      showPlaylists: false,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
     );
@@ -210,7 +212,9 @@ class MyPleyaScreen extends StatelessWidget {
                 onTap: () => unawaited(AccountUiActions.logout(context)),
               ),
             ),
-            const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+            // Clears the floating glass tab bar: with glass on the main Scaffold
+            // extends the body under it and reports its height as bottom padding.
+            SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
           ],
         ),
       ),

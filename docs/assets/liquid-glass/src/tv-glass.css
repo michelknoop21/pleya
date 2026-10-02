@@ -1,0 +1,28 @@
+/* Nepglas voor de tvOS-mockups (LG-04 tot en met LG-06). Geen breking: tvOS heeft geen
+   liquid_glass_renderer, dus alleen wat BackdropFilter kan: blur, verzadiging, demping,
+   een witte tint en een lichtrand. Maten op 1920x1080, blur is de sigma. */
+:root {
+  --tvg-blur: 30px;
+  --tvg-sat: 1.2;
+  --tvg-dim: .80;
+  --tvg-tint: .12;
+}
+.tvglass {
+  -webkit-backdrop-filter: blur(var(--tvg-blur)) saturate(var(--tvg-sat)) brightness(var(--tvg-dim));
+  backdrop-filter: blur(var(--tvg-blur)) saturate(var(--tvg-sat)) brightness(var(--tvg-dim));
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0) 50%), rgba(255,255,255,var(--tvg-tint));
+  box-shadow: inset 0 1.5px 0 rgba(255,255,255,.40), inset 0 0 0 1px rgba(255,255,255,.12), 0 12px 32px rgba(0,0,0,.30);
+}
+.on-glass { text-shadow: 0 0 1px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.40); }
+.on-glass .ic { filter: drop-shadow(0 0 1px rgba(0,0,0,.4)) drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+
+/* topnav als zwevende glascapsule; posities uit tv.css blijven gelden */
+.topnav .cluster.tvglass { padding: 0 8px; height: 64px; top: -6px; border-radius: 999px; }
+.topnav .cluster.tvglass .search { margin-left: 18px; display: inline-flex; color: var(--ink); }
+.topnav .cluster.tvglass .search .ic { width: 26px; height: 26px; }
+/* focus in de glascapsule: de witte pil licht op en tilt; een witte ring direct om een witte pil valt weg */
+.topnav .cluster.tvglass .item.focus { transform: scale(1.08); box-shadow: 0 8px 22px rgba(0,0,0,.40), 0 0 0 1px rgba(255,255,255,.6); }
+.topnav .cluster.tvglass .item { color: rgba(255,255,255,.88); }
+.topnav .cluster.tvglass .item.on { color: var(--bg); text-shadow: none; }
+.topnav .chip.tvglass { background: transparent; color: var(--ink); font-weight: 700; }
+.btn.tvglass { background: transparent; }

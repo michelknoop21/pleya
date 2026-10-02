@@ -66,3 +66,13 @@ steps:
   - wait_until: {id: "tv.catalog.grid[movies]", timeout: 15000}
   - settle: 1000
   - snapshot: 03-opened-in-catalog
+
+  # SYS-1d: the catalog opens through `tvContentRouteRegistry`, inside the
+  # shell, so the top navigation stays on screen above it and Menu pops back
+  # to the row that opened it. The old plain push covered the shell.
+  - assert: {id: nav.movies, insideViewport: true}
+  - assert: {id: "tv.catalog.grid[movies]", below: nav.movies}
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+  - settle: 800
+  - snapshot: 04-back-on-row

@@ -1,0 +1,25 @@
+<!-- widths: 1600 -->
+<style>
+.demo { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 34px 20px; }
+.demo .lbl { font-size: 12px; color: var(--ink-3); margin-top: 10px; text-align: center; line-height: 1.4; }
+.demo .card { width: 190px; margin: 0 auto; }
+</style>
+{{shell:home}}
+<main class="page">
+  <h1 class="page-title"><span>Kaartstaten</span><span class="sub">referentieblad, geen route</span></h1>
+  <div class="demo">
+    <div>{{card:dune2|Dune: Part Two|2024 · Sciencefiction}}<div class="lbl">rust</div></div>
+    <div>{{card:dune2|Dune: Part Two|2024 · Sciencefiction|hover,over}}<div class="lbl">muis erover: witte ring, lift, acties onderin<br>afspelen · mijn lijst · meer</div></div>
+    <div>{{card:dune2|Dune: Part Two|2024 · Sciencefiction|focus}}<div class="lbl">toetsenbordfocus: ring op een gap, geen lift</div></div>
+    <div>{{card:dune2|Dune: Part Two|nog 1u 12m|prog=40}}<div class="lbl">voortgang uit user_state</div></div>
+    <div>{{card:interstellar|Interstellar|2014 · Sciencefiction|seen}}<div class="lbl">gezien</div></div>
+    <div>{{card:anora|Anora|2024 · Drama|new}}<div class="lbl">nieuw sinds je laatste bezoek: amber punt (DEC-096 op main)</div></div>
+    <div>{{card:severance|Severance|S2 · A3 · nog 31 min|prog=42}}<div class="lbl">aflevering in Verder kijken: serie-poster, afleveringsregel</div></div>
+    <div>{{card:fallout-backdrop|Fallout|S1 · A7 · De rand|wide}}<div class="lbl">volgende aflevering: 16:9, breedte 1,78 × poster</div></div>
+    <div>{{bookcard:dune|48}}<div class="lbl">boek met leesvoortgang op de cover</div></div>
+    <div>{{bookcard:hailmary||new,hover}}<div class="lbl">boek, muis erover</div></div>
+    <div><div class="card"><div class="art" style="display:grid;place-items:center;background:var(--surface)"><div style="text-align:center;padding:14px"><div style="font-size:15px;font-weight:600;line-height:1.2">The Zone of Interest</div><div class="dim" style="font-size:12px;margin-top:6px">2023</div></div></div><div class="cap"><div class="t">The Zone of Interest</div><div class="s">2023 · Drama</div></div></div><div class="lbl">geen artwork: titel op het oppervlak, nooit een grijs blok zonder tekst</div></div>
+    <div><div class="card"><div class="art"><img src="{{art:oppenheimer-poster}}" alt=""><span class="badge-src">2 versies</span></div><div class="cap"><div class="t">Oppenheimer</div><div class="s">2023 · Drama</div></div></div><div class="lbl">meerdere versies (4K en 1080p) op één item</div></div>
+  </div>
+</main>
+<div class="note">NORTHSTAR · 16 Kaartstaten · hover, focus, voortgang, gezien, nieuw, versies, artwork-fallback</div>

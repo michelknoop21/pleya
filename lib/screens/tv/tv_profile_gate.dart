@@ -43,6 +43,7 @@ class TvProfileGate extends StatelessWidget {
   const TvProfileGate({
     super.key,
     required this.profiles,
+    this.activeId,
     required this.switching,
     required this.focusNodeFor,
     required this.onSelect,
@@ -50,6 +51,9 @@ class TvProfileGate extends StatelessWidget {
   });
 
   final List<Profile> profiles;
+
+  /// The profile in use, reported on its tile. Null at launch, when none is.
+  final String? activeId;
 
   /// A switch is already in flight elsewhere in `ProfileSwitchScreen`
   /// (`_switching`); mirrors the existing gate's own guard against a second
@@ -92,6 +96,7 @@ class TvProfileGate extends StatelessWidget {
                     _TvProfileGateTile(
                       index: i,
                       profile: profiles[i],
+                      active: profiles[i].id == activeId,
                       autofocus: i == 0,
                       focusNode: focusNodeFor(profiles[i]),
                       scale: scale,
@@ -121,6 +126,7 @@ class _TvProfileGateTile extends StatelessWidget {
   const _TvProfileGateTile({
     required this.index,
     required this.profile,
+    required this.active,
     required this.autofocus,
     required this.focusNode,
     required this.scale,
@@ -129,6 +135,7 @@ class _TvProfileGateTile extends StatelessWidget {
 
   final int index;
   final Profile profile;
+  final bool active;
   final bool autofocus;
   final FocusNode focusNode;
   final double scale;
@@ -151,7 +158,7 @@ class _TvProfileGateTile extends StatelessWidget {
           automationId: AutomationIds.profileTile,
           automationInstance: '$index',
           automationRole: 'grid.item',
-          automationState: () => {'name': profile.displayName},
+          automationState: () => {'name': profile.displayName, 'active': active},
           borderRadius: tileRadius + ringGap,
           semanticLabel: profile.displayName,
           child: Padding(

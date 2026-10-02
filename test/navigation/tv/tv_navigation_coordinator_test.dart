@@ -287,6 +287,23 @@ void main() {
       expect(coordinator.activeCanPop, isFalse);
     });
 
+    test('a detail left open over Home keeps Home covered across a destination switch', () {
+      // Review N2: the shell only shows Home (and refreshes it) when its root
+      // is on screen. Switching away and back does not close the detail.
+      final coordinator = TvNavigationCoordinator();
+      addTearDown(coordinator.dispose);
+      coordinator.activate(TvDestinationId.home);
+      expect(coordinator.showsRootOf(TvDestinationId.home), isTrue);
+
+      coordinator.pushNested(TvDestinationId.home, route('detail'));
+      coordinator.activate(TvDestinationId.series);
+      coordinator.activate(TvDestinationId.home);
+      expect(coordinator.showsRootOf(TvDestinationId.home), isFalse);
+
+      coordinator.popNested();
+      expect(coordinator.showsRootOf(TvDestinationId.home), isTrue);
+    });
+
     test('pushing the same route id twice does not stack it twice', () {
       final coordinator = TvNavigationCoordinator();
       addTearDown(coordinator.dispose);

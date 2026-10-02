@@ -44,6 +44,15 @@ op een eigen server belandt.
 2. **Public hostname** aan de tunnel hangen: `ice.pleya.app` → `HTTP` →
    `relay:8080`. Cloudflare zet het DNS-record zelf klaar; een handmatig
    A-record is niet nodig.
+
+   Dezelfde tunnel publiceert daarnaast `web.pleya.app` → `HTTP` →
+   `pleya-server:8080`, de Pleya Server uit `pleya_server/`. Die naam leeft in
+   een ander Docker-netwerk, dus `docker-compose.yml` hangt `cloudflared` naast
+   `default` ook aan het externe netwerk `pleya-server_default`. Draait die
+   stack niet op deze machine, dan stopt `docker compose up` met *network
+   pleya-server_default declared as external, but could not be found*. Haal in
+   dat geval het netwerk bij `cloudflared` en onderaan het bestand weg, of start
+   de Pleya Server-stack eerst.
 3. **Token op de NAS** zetten, buiten git:
    ```bash
    ssh synology 'mkdir -p /volume1/docker/pleya-relay && \

@@ -38,5 +38,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    # Xcode 27 rejects deployment targets below macOS 12 ("the range of supported deployment target versions
+    # is 12.0 to 27.0.x"), and several pods still declare 10.13 to 11.0. The app targets 14.0 (platform
+    # above), so no pod runs anywhere the app does not.
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '14.0'
+    end
   end
 end

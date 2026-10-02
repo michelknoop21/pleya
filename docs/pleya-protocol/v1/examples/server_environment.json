@@ -1,0 +1,9 @@
+{
+  "entries": [
+    { "key": "DATABASE_URL", "value": "postgres://db:5432/pleya", "redacted": true },
+    { "key": "PLEYA_SERVER_ACCESS_TOKEN_TTL", "value": "[REDACTED]", "redacted": true },
+    { "key": "PLEYA_SERVER_HTTP_ADDR", "value": ":8080", "redacted": false },
+    { "key": "PLEYA_SERVER_MEDIA_DIRS", "value": "/media/films,/media/series", "redacted": false },
+    { "key": "PLEYA_SERVER_PUBLIC_URL", "value": "https://web.pleya.app", "redacted": false }
+  ]
+}

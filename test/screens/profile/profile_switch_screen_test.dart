@@ -218,6 +218,54 @@ void main() {
       expect(find.text(t.screens.manageProfiles), findsOneWidget);
     });
 
+    // PROF1: the in-app switch on TV is the gate's composition with the
+    // management picker's contract.
+    testWidgets('the in-app gate on tvOS is TvProfileGate, and Back closes it', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      final harness = await _Harness.create(
+        profiles: [Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1))],
+      );
+      final navigatorKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(harness.buildPushed(navigatorKey: navigatorKey));
+      await tester.pumpAndSettle();
+      navigatorKey.currentState!.push(
+        MaterialPageRoute<void>(builder: (_) => const ProfileSwitchScreen(presentAsGate: true)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TvProfileGate), findsOneWidget);
+      expect(find.text('beneath'), findsNothing);
+
+      // Menu on the Siri Remote arrives as a key while the shell has the
+      // passthrough off, not as a system Back.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TvProfileGate), findsNothing);
+      expect(find.text('beneath'), findsOneWidget, reason: 'unlike the launch gate, Menu leaves the in-app gate');
+    });
+
+    testWidgets('Profielen beheren from the in-app gate opens the management list', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      final harness = await _Harness.create(
+        profiles: [Profile.local(id: 'local-owner', displayName: 'Owner', createdAt: DateTime(2026, 1, 1))],
+      );
+      final navigatorKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(harness.buildPushed(navigatorKey: navigatorKey));
+      await tester.pumpAndSettle();
+      navigatorKey.currentState!.push(
+        MaterialPageRoute<void>(builder: (_) => const ProfileSwitchScreen(presentAsGate: true)),
+      );
+      await tester.pumpAndSettle();
+
+      tester.widget<TvProfileGate>(find.byType(TvProfileGate)).onManageProfiles();
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.screens.switchProfile), findsOneWidget, reason: 'the management list, not a second gate');
+    });
+
     testWidgets('non-TV keeps the existing gate composition unchanged', (tester) async {
       TvDetectionService.debugSetAppleTVOverride(false);
       final harness = await _Harness.create(

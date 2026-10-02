@@ -23,6 +23,8 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../focus/focus_memory_tracker.dart';
+import '../../focus/focus_theme.dart';
+import '../../utils/tv_hig.dart';
 import '../../focus/focusable_wrapper.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_screen.dart';
@@ -35,6 +37,7 @@ import '../../profiles/profile_avatar.dart';
 import '../../providers/download_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/now_watching_provider.dart';
+import '../../providers/personal_media_provider.dart';
 import '../../providers/seerr_provider.dart';
 import '../../providers/watchlist_provider.dart';
 import '../../theme/mono_theme.dart';
@@ -87,8 +90,12 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
   required bool hasSeerr,
   required bool showDownloads,
   required bool showActivity,
+  required bool showCollections,
+  required bool showPlaylists,
   int? watchlistCount,
   int? downloadCount,
+  int? collectionCount,
+  int? playlistCount,
 }) {
   // A tile reading "0" is a tile that should not carry a count at all, so the
   // rule lives here rather than at the call site — one place, and the same
@@ -107,6 +114,22 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
             title: t.watchlist.title,
             subtitle: t.tvMyPleya.watchlistSubtitle,
             count: watchlist,
+          ),
+        if (showCollections)
+          TvMyPleyaTile(
+            section: TvMyPleyaSection.collections,
+            icon: Symbols.collections_bookmark_rounded,
+            title: t.collections.title,
+            subtitle: t.tvMyPleya.collectionsSubtitle,
+            count: shown(collectionCount),
+          ),
+        if (showPlaylists)
+          TvMyPleyaTile(
+            section: TvMyPleyaSection.playlists,
+            icon: Symbols.playlist_play_rounded,
+            title: t.playlists.title,
+            subtitle: t.tvMyPleya.playlistsSubtitle,
+            count: shown(playlistCount),
           ),
         if (hasSeerr)
           TvMyPleyaTile(
@@ -135,7 +158,7 @@ List<TvMyPleyaGroup> buildTvMyPleyaGroups({
           // differ — "Bibliotheken" against "Media" — and the audit of
           // 2 September 2026 counted that as one of three names on one place.
           title: t.libraries.title,
-          subtitle: t.tvMyPleya.librariesSubtitle,
+          subtitle: t.tvMyPleya.libraryManagementSubtitle,
         ),
         TvMyPleyaTile(
           section: TvMyPleyaSection.servers,
@@ -215,6 +238,11 @@ class TvMyPleyaScreen extends StatefulWidget {
 }
 
 class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTab {
+  /// The sections that have a tile as of the last build. OFF6: the shell
+  /// asks this after a rebind, to close a section that no longer exists.
+  Set<TvMyPleyaSection> get availableSections => _availableSections;
+  Set<TvMyPleyaSection> _availableSections = const {};
+
   /// Owned by the state, not rebuilt per frame: a watchlist count arriving or a
   /// server going offline must not dispose the node the remote is standing on.
   final FocusMemoryTracker nodes = FocusMemoryTracker(debugLabelPrefix: 'tvMyPleya');
@@ -268,6 +296,7 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
     final servers = context.watch<MultiServerProvider>();
     final watchlist = context.watch<WatchlistProvider?>();
     final downloads = context.watch<DownloadProvider?>();
+    final personalMedia = context.watch<PersonalMediaProvider?>();
 
     final groups = buildTvMyPleyaGroups(
       hasWatchlist: watchlist?.hasWatchlist ?? false,
@@ -281,9 +310,19 @@ class TvMyPleyaScreenState extends State<TvMyPleyaScreen> implements FocusableTa
       // supported source today; Watch Together and Pleya Remote are separate
       // product concepts and stay out (docs/tvos-redesign-implementatiecontract.md).
       showActivity: context.watch<NowWatchingProvider?>()?.isAvailable ?? false,
+      showCollections: personalMedia?.supportsCollections ?? false,
+      showPlaylists: personalMedia?.supportsPlaylists ?? false,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
+      collectionCount: personalMedia?.state == PersonalMediaLoadState.loaded ? personalMedia?.collections.length : null,
+      playlistCount: personalMedia?.state == PersonalMediaLoadState.loaded ? personalMedia?.playlists.length : null,
     );
+
+    _availableSections = {
+      for (final group in groups)
+        for (final tile in group.tiles)
+          if (tile.section case final section?) section,
+    };
 
     // A flat, ordered list of every focusable key on the page, so UP out of the
     // first row and the tile-to-tile walk are derived from one sequence rather
@@ -411,8 +450,8 @@ class _TileRow extends StatelessWidget {
   final FocusMemoryTracker nodes;
   final List<String> keys;
 
-  /// Every group on the page, in order. One group is one visual row, which is
-  /// what up/down has to move by — see [_verticalNeighbour].
+  /// Every group on the page, in order. A group can span more than one visual
+  /// row once it has over [TvMyPleyaLayout.tilesPerRow] tiles.
   final List<TvMyPleyaGroup> groups;
   final void Function(String? key) onFocusKey;
   final ValueChanged<TvMyPleyaTile> onOpen;
@@ -430,32 +469,37 @@ class _TileRow extends StatelessWidget {
         // rather than a fixed height, because the height that matters is the
         // tallest tile's, and that depends on the locale. Four children at
         // most, so the second pass costs nothing worth measuring.
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < tiles.length; i++) ...[
-                if (i > 0) SizedBox(width: gap),
-                SizedBox(
-                  width: trackWidth,
-                  child: _Tile(
-                    tile: tiles[i],
-                    scale: scale,
-                    node: nodes.get(tiles[i].focusKey, debugLabel: tiles[i].focusKey),
-                    onSelect: () => onOpen(tiles[i]),
-                    onNavigateLeft: () => onFocusKey(_neighbour(tiles[i].focusKey, -1)),
-                    onNavigateRight: () => onFocusKey(_neighbour(tiles[i].focusKey, 1)),
-                    onNavigateUp: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, -1)),
-                    onNavigateDown: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, 1)),
-                  ),
+        return Column(
+          children: [
+            for (var start = 0; start < tiles.length; start += TvMyPleyaLayout.tilesPerRow) ...[
+              if (start > 0) SizedBox(height: gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = start; i < (start + TvMyPleyaLayout.tilesPerRow).clamp(0, tiles.length); i++) ...[
+                      if (i > start) SizedBox(width: gap),
+                      SizedBox(
+                        width: trackWidth,
+                        child: _Tile(
+                          tile: tiles[i],
+                          scale: scale,
+                          node: nodes.get(tiles[i].focusKey, debugLabel: tiles[i].focusKey),
+                          onSelect: () => onOpen(tiles[i]),
+                          onNavigateLeft: () => onFocusKey(_neighbour(tiles[i].focusKey, -1)),
+                          onNavigateRight: () => onFocusKey(_neighbour(tiles[i].focusKey, 1)),
+                          onNavigateUp: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, -1)),
+                          onNavigateDown: () => onFocusKey(_verticalNeighbour(tiles[i].focusKey, 1)),
+                        ),
+                      ),
+                    ],
+                    if (tiles.length - start < TvMyPleyaLayout.tilesPerRow)
+                      SizedBox(width: (trackWidth + gap) * (TvMyPleyaLayout.tilesPerRow - (tiles.length - start))),
+                  ],
                 ),
-              ],
-              // The remaining tracks stay empty rather than letting three tiles
-              // stretch across four columns.
-              if (tiles.length < TvMyPleyaLayout.tilesPerRow)
-                SizedBox(width: (trackWidth + gap) * (TvMyPleyaLayout.tilesPerRow - tiles.length)),
+              ),
             ],
-          ),
+          ],
         );
       },
     );
@@ -480,20 +524,24 @@ class _TileRow extends StatelessWidget {
   /// reproducible on the simulator — DOWN from Servers, the second tile of a
   /// three-tile row, landed on Over, the *third* tile of the row below.
   ///
-  /// A row is a group, so the column is the tile's index within its own group
-  /// and the neighbour is the same column in the adjacent group, clamped to
-  /// that group's width. From the top row UP lands on the profile header,
+  /// A visual row is a four-tile slice of a group, so the column is the tile's
+  /// position in its slice. From the top row UP lands on the profile header,
   /// whose own handler continues up to the top navigation; from the bottom row
   /// DOWN stays put rather than snapping to the last tile of the page, which
   /// is what clamping to [keys.last] used to do from any column.
   String? _verticalNeighbour(String key, int direction) {
-    for (var g = 0; g < groups.length; g++) {
-      final column = groups[g].tiles.indexWhere((tile) => tile.focusKey == key);
+    final rows = <List<TvMyPleyaTile>>[
+      for (final group in groups)
+        for (var start = 0; start < group.tiles.length; start += TvMyPleyaLayout.tilesPerRow)
+          group.tiles.sublist(start, (start + TvMyPleyaLayout.tilesPerRow).clamp(0, group.tiles.length)),
+    ];
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      final column = rows[rowIndex].indexWhere((tile) => tile.focusKey == key);
       if (column < 0) continue;
-      final target = g + direction;
+      final target = rowIndex + direction;
       if (target < 0) return keys.first;
-      if (target >= groups.length) return null;
-      final row = groups[target].tiles;
+      if (target >= rows.length) return null;
+      final row = rows[target];
       if (row.isEmpty) return null;
       return row[column < row.length ? column : row.length - 1].focusKey;
     }
@@ -526,6 +574,7 @@ class _Tile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final radius = TvMyPleyaLayout.tileRadius * scale;
+    final pt = TvHig.of(context);
 
     return FocusableWrapper(
       focusNode: node,
@@ -534,7 +583,9 @@ class _Tile extends StatelessWidget {
       onNavigateRight: onNavigateRight,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
-      borderRadius: radius,
+      // VIS-0925-A: the ring surrounds the tile plus its ring gap, so its
+      // radius follows the tile, the gap and the ring width.
+      borderRadius: FocusTheme.ringRadiusAround(radius, gap: TvMyPleyaLayout.tileFocusRingGap * scale),
       // Suffixed by section name, not by index: the tile order follows what
       // the profile actually has (Aanvragen only with a Seerr server), so an
       // index would address a different section on a different fixture.
@@ -570,59 +621,68 @@ class _Tile extends StatelessWidget {
               return AnimatedContainer(
                 duration: TvTopNavLayout.focusDuration,
                 curve: Curves.easeOut,
-                constraints: BoxConstraints(minHeight: TvMyPleyaLayout.tileMinHeight * scale),
-                padding: EdgeInsets.all(TvMyPleyaLayout.tilePadding * scale),
+                // VIS-0925-G (DEC-139): HIG points, the `TvMenuGrid` tile. The
+                // glyph sits beside the text, title in Body (29 pt) and the
+                // subtitle in Caption 1 (25 pt): about 100 pt tall, where the
+                // stacked tile was 151 pt around 23.6/18.9 pt text.
+                padding: EdgeInsets.symmetric(horizontal: 24 * pt, vertical: 16 * pt),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(radius),
                   color: tk.text.withValues(
                     alpha: focused ? TvMyPleyaLayout.tileFocusedFillAlpha : TvMyPleyaLayout.tileFillAlpha,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          tile.icon,
-                          size: TvMyPleyaLayout.tileIconSize * scale,
-                          color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-                        ),
-                        const Spacer(),
-                        if (tile.count != null)
+                    Icon(
+                      tile.icon,
+                      size: TvHig.body * pt,
+                      color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                    ),
+                    SizedBox(width: 20 * pt),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            '${tile.count}',
+                            tile.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
-                              fontSize: TvMyPleyaLayout.tileCountFontSize * scale,
-                              fontWeight: FontWeight.w500,
+                              color: tk.text,
+                              fontSize: TvHig.body * pt,
+                              height: TvHig.bodyLeading / TvHig.body,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                      ],
-                    ),
-                    SizedBox(height: TvMyPleyaLayout.tileIconTitleGap * scale),
-                    Text(
-                      tile.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tk.text,
-                        fontSize: TvMyPleyaLayout.tileTitleFontSize * scale,
-                        fontWeight: FontWeight.w600,
+                          // Two lines, as in `TvMenuGrid`: at Caption 1 in a
+                          // four-column hub one line cut four of seven
+                          // subtitles off (VIS-0925 review, FIX 1).
+                          Text(
+                            tile.subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
+                              fontSize: TvHig.caption1 * pt,
+                              height: TvHig.caption1Leading / TvHig.caption1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: TvMyPleyaLayout.tileTitleSubtitleGap * scale),
-                    Text(
-                      tile.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: tk.text.withValues(alpha: TvMyPleyaLayout.inkTertiary),
-                        fontSize: TvMyPleyaLayout.tileSubtitleFontSize * scale,
+                    if (tile.count != null) ...[
+                      SizedBox(width: 12 * pt),
+                      Text(
+                        '${tile.count}',
+                        style: TextStyle(
+                          color: tk.text.withValues(alpha: TvMyPleyaLayout.inkSecondary),
+                          fontSize: TvHig.body * pt,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               );
@@ -665,12 +725,11 @@ class _ProfileHeader extends StatelessWidget {
     final total = servers.totalServerCount;
     final online = servers.onlineServerCount;
 
-    return Container(
-      padding: EdgeInsets.all(TvMyPleyaLayout.headerPadding * scale),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(TvMyPleyaLayout.headerRadius * scale),
-        color: tk.text.withValues(alpha: TvMyPleyaLayout.tileFillAlpha),
-      ),
+    // VIS-0925-C: no tinted box of its own. On the tv the header's fill read
+    // as a loose grey bar under the navigation; the avatar, name and action
+    // sit on the page like the title above them.
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: TvMyPleyaLayout.headerPadding / 2 * scale),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

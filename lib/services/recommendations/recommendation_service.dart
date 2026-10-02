@@ -11,6 +11,7 @@ import '../../utils/app_logger.dart';
 import '../settings_service.dart';
 import 'affinity_engine.dart';
 import 'candidate_pool.dart';
+import 'history_importer.dart';
 import 'personalized_rows_builder.dart';
 import 'tautulli_history_importer.dart';
 
@@ -29,12 +30,32 @@ const Duration kImportSourcesReadyTimeout = Duration(seconds: 20);
 /// already more than the feed ever needs.
 const int kMaxChainedSyncPasses = 3;
 
+/// How far back a title may lie to still headline a "Because you watched" row.
+const Duration kSeedWindow = Duration(days: 30);
+
+/// A partial view counts; a dismissal never does.
+const double kSeedMinWeight = 0.4;
+
+/// One title the feed may build a related row on.
+class RecommendationSeed {
+  /// The series key for an episode, the item's own global key otherwise.
+  final String globalKey;
+
+  /// False when the newest row for this title is a partial view. The feed
+  /// overrides this for a series with its own watched state, because an
+  /// episode finished to the end does not make the series finished.
+  final bool completed;
+  final int occurredAtMs;
+  const RecommendationSeed({required this.globalKey, required this.completed, required this.occurredAtMs});
+}
+
 /// Profile-scoped facade the discover feed uses to obtain personalized rows.
 /// Owns the affinity engine + candidate pool and gates on the user's
 /// `personalizedRecommendations` setting. Runs entirely off the counted
 /// aggregation paths, so it never affects the discover fetch-cost contract.
 class RecommendationService {
   final String profileId;
+  final AppDatabase _db;
   final AffinityEngine _affinity;
   final CandidatePool _candidates;
   final PersonalizedRowTitles _titles;
@@ -56,6 +77,15 @@ class RecommendationService {
   final Future<void> Function()? _importSourcesReady;
 
   final TautulliImporterFactory? _importerFactory;
+
+  /// Importers that read the profile's own history over its own connection
+  /// (Jellyfin), built fresh per sync so a server that just came online is
+  /// picked up. No policy set gates them: the token is the profile's own.
+  final Future<List<HistoryImporter>> Function()? _historyImporters;
+
+  /// Servers whose own watch history is not this profile's alone: a Jellyfin
+  /// connection that another profile also uses (DEC-062, DEC-132).
+  final Future<Set<String>> Function()? _sharedHistoryServerIds;
 
   /// The enabled set the last [buildRows] actually scored with, so a sync can
   /// tell whether the rows on screen were built before the answer was known.
@@ -81,7 +111,10 @@ class RecommendationService {
     Set<String> Function()? enabledImportServerIds,
     this._importSourcesReady,
     this._importerFactory,
-  }) : _affinity = AffinityEngine(database),
+    this._historyImporters,
+    this._sharedHistoryServerIds,
+  }) : _db = database,
+       _affinity = AffinityEngine(database),
        _candidates = candidatePool ?? CandidatePool(),
        _enabledImportServerIds = enabledImportServerIds ?? _noImports;
 
@@ -114,6 +147,39 @@ class RecommendationService {
       return const [];
     }
   }
+
+  /// Newest distinct titles with positive evidence, for the seed rows, only
+  /// on [serverIds] when given. Empty when personalization is off or nothing
+  /// qualifies; the caller then tops up from the servers' own lists.
+  Future<List<RecommendationSeed>> recentSeeds({int limit = 6, Set<String>? serverIds, int? nowMs}) async {
+    if (!_enabled) return const [];
+    try {
+      final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+      final rows = await _db.recentPositiveInteractions(
+        profileId,
+        sinceMs: now - kSeedWindow.inMilliseconds,
+        minWeight: kSeedMinWeight,
+        limit: limit,
+        enabledImportServerIds: _enabledImportServerIds(),
+        serverIds: serverIds,
+      );
+      return [
+        for (final row in rows)
+          RecommendationSeed(
+            globalKey: row.seriesKey ?? row.globalKey,
+            completed: row.eventWeight >= 1.0,
+            occurredAtMs: row.occurredAt,
+          ),
+      ];
+    } catch (e, s) {
+      appLogger.w('RecommendationService: recentSeeds failed (no seeds)', error: e, stackTrace: s);
+      return const [];
+    }
+  }
+
+  /// Servers the seed rows may not read the server-side history of. Throws
+  /// when the answer is unknown; the caller then leaves that path out.
+  Future<Set<String>> sharedHistoryServerIds() async => await _sharedHistoryServerIds?.call() ?? const {};
 
   /// Pulls in any new external history for this profile.
   ///
@@ -162,7 +228,7 @@ class RecommendationService {
   Future<bool> _syncImportedHistory() async {
     if (!_enabled) return false;
     final factory = _importerFactory;
-    if (factory == null) return false;
+    if (factory == null && _historyImporters == null) return false;
 
     await _awaitImportSources();
 
@@ -173,9 +239,9 @@ class RecommendationService {
     final scored = _scoredWith;
     var changed = scored != null && !setEquals(scored, enabled);
 
-    for (final serverId in enabled) {
+    for (final serverId in factory == null ? const <String>{} : enabled) {
       try {
-        final importer = factory(profileId, ServerId(serverId));
+        final importer = factory!(profileId, ServerId(serverId));
         if (importer == null) continue;
         final outcome = await importer.sync();
         changed = changed || (outcome?.changedAnything ?? false);
@@ -185,7 +251,27 @@ class RecommendationService {
         appLogger.w('RecommendationService: history sync failed', error: e, stackTrace: s);
       }
     }
+    final own = _historyImporters;
+    for (final importer in own == null ? const <HistoryImporter>[] : await _ownImporters(own)) {
+      try {
+        final outcome = await importer.sync();
+        changed = changed || (outcome?.changedAnything ?? false);
+      } catch (e, s) {
+        appLogger.w('RecommendationService: own-history sync failed', error: e, stackTrace: s);
+      }
+    }
     return changed;
+  }
+
+  /// Building the own-history importers reads the profile's connections; a
+  /// failure there costs this pass, never Discover.
+  Future<List<HistoryImporter>> _ownImporters(Future<List<HistoryImporter>> Function() build) async {
+    try {
+      return await build();
+    } catch (e, s) {
+      appLogger.w('RecommendationService: listing own-history importers failed', error: e, stackTrace: s);
+      return const [];
+    }
   }
 
   /// Waits for the integration store, bounded, and never fails because of it.

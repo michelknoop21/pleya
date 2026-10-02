@@ -2,7 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/item_watcher.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/providers/tautulli_provider.dart';
+import 'package:pleya/services/item_watchers_service.dart';
+import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/tautulli/tautulli_account_store.dart';
 import 'package:pleya/services/tautulli/tautulli_constants.dart';
 import 'package:pleya/services/tautulli/tautulli_integration_store.dart';
@@ -13,20 +19,41 @@ import '../test_helpers/prefs.dart';
 
 const _machine = 'pms-1';
 
+/// Plex history for one title, the fallback behind the "Watched by" row.
+class _PlexWithHistory implements PlexClient {
+  final asked = <String>[];
+
+  @override
+  Future<List<PlexWatcherRow>> fetchItemWatchers(String ratingKey, {String? authToken}) async {
+    asked.add(ratingKey);
+    return const [(accountId: 7, displayName: 'Robin', thumbUrl: null, viewedAt: 1700000000)];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 TautulliSession _session({String url = 'https://tautulli.example', String token = 'tok', String? id = _machine}) =>
     TautulliSession(baseUrl: url, authMode: TautulliAuthMode.device, token: token, machineIdentifier: id);
 
 void main() {
   setUp(resetSharedPreferencesForTest);
 
-  /// [isAdmin] is the only difference between the two kinds of profile.
+  /// [isAdmin] is the read-side probe; [mayAdminister] (owner rights on the
+  /// Plex server) defaults to it. They differ only for a borrowed connection,
+  /// which runs on the owner's token.
   Future<TautulliProvider> provider({
     bool isAdmin = true,
+    bool? mayAdminister,
     List<String> servers = const [_machine],
     String uuid = 'uuid-a',
   }) async {
     final p = TautulliProvider();
-    p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => isAdmin);
+    p.attachServerResolvers(
+      serverIds: () => servers,
+      isOwnerOrAdmin: (_) => isAdmin,
+      mayAdminister: (_) => mayAdminister ?? isAdmin,
+    );
     await p.onActiveProfileChanged(uuid);
     return p;
   }
@@ -44,6 +71,50 @@ void main() {
       );
 
   group('who sees what', () {
+    test('the admin client is only handed out for the server Tautulli monitors', () async {
+      await seedIntegration();
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      expect(p.client, isNotNull, reason: 'the admin surface still has its client');
+      expect(p.clientForServer(ServerId(_machine)), isNotNull);
+      expect(p.clientForServer(ServerId('pms-2')), isNull, reason: 'rating keys on pms-2 are a different id space');
+      expect(p.monitoredServerId, ServerId(_machine));
+    });
+
+    test('without a pairing there is no monitored server and no client for any server', () async {
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      expect(p.monitoredServerId, isNull);
+      expect(p.clientForServer(ServerId(_machine)), isNull);
+      expect(p.clientForServer(ServerId('pms-2')), isNull);
+    });
+
+    // The detail page on the second server, from provider to rendered roster:
+    // what _loadWatchers hands ItemWatchersService for an item on pms-2.
+    test('a title on the unmonitored server gets its watchers from Plex, not an empty row', () async {
+      await seedIntegration();
+      final p = await provider(servers: const [_machine, 'pms-2']);
+      addTearDown(p.dispose);
+      final plex = _PlexWithHistory();
+      final onB = MediaItem(id: '57752', backend: MediaBackend.plex, kind: MediaKind.movie, serverId: 'pms-2');
+
+      // Handing pms-1's client here was the bug: a successful empty Tautulli
+      // answer is final and suppresses the Plex fallback.
+      final tautulli = p.clientForServer(ServerId(onB.serverId!));
+      expect(tautulli, isNull);
+
+      final result = await const ItemWatchersService().resolve(
+        onB,
+        tautulli: tautulli,
+        plex: plex,
+        plexOwnerToken: 'owner',
+      );
+
+      expect(plex.asked, ['57752'], reason: 'Tautulli must not answer for pms-2, so Plex is asked');
+      expect(result.watchers.map((w) => w.displayName), ['Robin']);
+      expect(result.scope, ItemWatchersScope.watched);
+    });
+
     test('an admin profile gets the full admin surface', () async {
       await seedIntegration();
       final p = await provider();
@@ -79,7 +150,7 @@ void main() {
       await seedIntegration();
       var servers = <String>[];
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true, mayAdminister: (_) => true);
       await p.onActiveProfileChanged('uuid-a');
       expect(p.isConfigured, isFalse);
 
@@ -186,7 +257,7 @@ void main() {
       await seedIntegration();
       var servers = <String>[];
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(serverIds: () => servers, isOwnerOrAdmin: (_) => true, mayAdminister: (_) => true);
       await p.onActiveProfileChanged('uuid-a');
       expect(p.enabledImportServerIds(), isEmpty);
 
@@ -201,7 +272,11 @@ void main() {
     test('is not announced before the store has been read', () async {
       await seedIntegration();
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => const [_machine], isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(
+        serverIds: () => const [_machine],
+        isOwnerOrAdmin: (_) => true,
+        mayAdminister: (_) => true,
+      );
       expect(p.isHydrated, isFalse, reason: 'an empty map before the load is not an answer');
 
       var ready = false;
@@ -268,6 +343,36 @@ void main() {
       await p.commit(_session(token: 'stolen'));
       expect((await TautulliIntegrationStore.instance.loadAll())[_machine]!.token, 'tok');
       addTearDown(p.dispose);
+    });
+  });
+
+  group('a borrowed connection (reads as owned, no owner rights)', () {
+    test('cannot unlink the owner\'s Tautulli', () async {
+      await seedIntegration();
+      final p = await provider(mayAdminister: false);
+      addTearDown(p.dispose);
+      await p.disconnect();
+      final stored = (await TautulliIntegrationStore.instance.loadAll())[_machine]!;
+      expect(stored.connectionState, TautulliConnectionState.connected);
+      expect(stored.hasCredential, isTrue);
+    });
+
+    test('cannot re-pair or change the policy', () async {
+      await seedIntegration();
+      final p = await provider(mayAdminister: false);
+      addTearDown(p.dispose);
+      await p.commit(_session(token: 'borrowed'));
+      await p.setHistoryForRecommendations(false);
+      final stored = (await TautulliIntegrationStore.instance.loadAll())[_machine]!;
+      expect(stored.token, 'tok');
+      expect(stored.useHistoryForRecommendations, isNull);
+    });
+
+    test('still reads: the admin surface stays on the read-side probe', () async {
+      await seedIntegration();
+      final p = await provider(mayAdminister: false);
+      addTearDown(p.dispose);
+      expect(p.adminStatus, isNotNull);
     });
   });
 

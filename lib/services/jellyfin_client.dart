@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../connection/connection.dart';
 import '../media/episode_collection.dart';
+import '../media/server_authority_guard.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
 import '../media/library_query.dart';
@@ -27,6 +28,8 @@ import '../media/ids.dart';
 import '../media/media_server_client.dart';
 import '../media/playback_report_metadata.dart';
 import '../media/server_capabilities.dart';
+import 'device_capabilities_service.dart';
+import 'jellyfin_client/jellyfin_device_profile.dart';
 import '../models/jellyfin/jellyfin_user_profile.dart';
 import '../models/livetv_capture_buffer.dart';
 import '../models/livetv_channel.dart';
@@ -58,6 +61,8 @@ import 'jellyfin_playback_bundle.dart';
 import 'jellyfin_playback_urls.dart';
 import 'jellyfin_trickplay_service.dart';
 import 'playback_initialization_types.dart';
+import 'recommendations/jellyfin_history_importer.dart'
+    show JellyfinHistorySource, kJellyfinPageLength, kJellyfinResumeLimit;
 import 'scrub_preview_source.dart';
 import '../mpv/mpv.dart';
 
@@ -88,12 +93,14 @@ class JellyfinClient
         _JellyfinFileInfoMethods,
         _JellyfinLiveTvMethods,
         _JellyfinImageDownloadMethods,
-        _JellyfinMetadataEditMethods
+        _JellyfinMetadataEditMethods,
+        ServerAuthorityGuard
     implements
         MediaServerClient,
         SeasonEpisodePagingClient,
         ScopedMediaServerClient,
         PersonSearchClient,
+        JellyfinHistorySource,
         GracefullyCloseable {
   JellyfinClient._({required this._connection, required this._http, FavoriteChannelsRepository? favoritesRepository})
     : _favoritesRepository = favoritesRepository ?? const SharedPreferencesFavoriteChannelsRepository();

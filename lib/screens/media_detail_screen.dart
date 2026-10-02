@@ -47,7 +47,6 @@ import '../media/library_query.dart';
 import '../media/media_hub.dart';
 import '../media/media_file_info.dart';
 import '../media/media_source_info.dart';
-import '../media/track_language_choice.dart';
 import '../mpv/models.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/plex_season_display.dart';
@@ -87,6 +86,7 @@ import '../services/watch_actions.dart';
 import '../widgets/settings_builder.dart';
 import '../utils/grid_size_calculator.dart';
 import '../utils/layout_constants.dart';
+import '../utils/tv_hig.dart';
 import '../providers/download_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'media_detail/now_watching_line.dart';
@@ -127,12 +127,24 @@ import '../widgets/episode_card.dart';
 import '../widgets/fitting_title_text.dart';
 import 'actor_media_screen.dart';
 import 'media_detail/cast_section.dart';
+import 'media_detail/detail_track_preview.dart';
 import 'media_detail/extras_section.dart';
+import 'media_detail/mobile/detail_activity_card.dart';
+import 'media_detail/mobile/detail_ambient_background.dart';
+import 'media_detail/mobile/detail_primary_actions.dart';
+import 'media_detail/mobile/detail_reviews_section.dart';
+import 'media_detail/mobile/detail_score_row.dart';
+import 'media_detail/mobile/detail_seasons_rail.dart';
+import 'media_detail/mobile/detail_tech_table.dart';
+import 'media_detail/mobile/mobile_poster_hero.dart';
+import 'media_detail/mobile_detail_hero.dart';
+import '../theme/glass/glass_settings.dart';
 import '../widgets/focusable_tab_chip.dart';
 import '../widgets/hub_section.dart';
 import '../widgets/ios_status_bar_tap_scroll_to_top.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/mobile/mobile_audio_track_picker_sheet.dart';
+import '../widgets/mobile/mobile_subtitle_track_picker_sheet.dart';
 import '../widgets/tv/tv_media_source_picker.dart';
 import '../widgets/tv/tv_panel_primitives.dart';
 import '../widgets/tv/tv_unified_layout.dart';
@@ -144,8 +156,9 @@ import '../utils/error_message_utils.dart';
 
 part 'media_detail/action_buttons.dart';
 part 'media_detail/audio_selector.dart';
+part 'media_detail/mobile_detail_info.dart';
 part 'media_detail/mobile_detail_view.dart';
-part 'media_detail/mobile_episodes_tab.dart';
+part 'media_detail/mobile_episodes_section.dart';
 part 'media_detail/synopsis_panel.dart';
 part 'media_detail/tv_season_chips.dart';
 
@@ -154,7 +167,10 @@ const double _tvDetailTallPosterScale = TvBrowseRailLayout.compactTallPosterScal
 // pre-DEC-087 compact 0.8 scale: DEC-087's 615-wide card is the default
 // (`widePosterScale: 1.0`), and 37 C never shrinks it.
 const double _tvDetailEpisodeThumbnailScale = 1.0;
-const double _tvDetailActionSize = 46;
+
+/// Height of the TV action row in HIG points (DENS1): above tvOS's 56 pt
+/// minimum for a button, where the old `46 * scaleOf` came out at 72 pt.
+const double _tvDetailActionPt = 60;
 const double _tvDetailActionRailGap = 4;
 // DET6: tolerance for the exact-fit comparison in `_buildTvDetailForeground`'s
 // line-count loop, where `remainingForLogo` and `minLogoHeight` are the same
@@ -333,9 +349,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   bool _isLoadingMetadata = true;
   String? _detailAudioTargetId;
   MediaItem? _detailAudioTarget;
-  List<MediaAudioTrack> _detailAudioTracks = const [];
-  int? _selectedDetailAudioTrackId;
-  bool _detailAudioLoadInFlight = false;
+  MediaFileInfo? _detailFileInfo;
+  int? _selectedDetailAudioTrackId, _selectedDetailSubtitleTrackId, _detailAudioPickId, _detailSubtitlePickId;
+  bool _detailAudioLoadInFlight = false, _detailSubtitlePicked = false, _detailPickRemembered = true;
 
   void _updateDetailAudioState(VoidCallback update) => setState(update);
 
@@ -392,6 +408,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
   // Inline season tabs
   int _selectedSeasonIndex = 0;
+
+  /// Whether the season rail is the rail's active hub; the chip row on its
+  /// header line only shows while it is (VIS2).
+  bool _tvDetailSeasonHubActive = true;
   final _seasonEpisodePager = SeasonEpisodePager();
   List<FocusNode> _seasonTabFocusNodes = [];
   bool _flattenEpisodesRevalidationInFlight = false;
@@ -1128,7 +1148,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   /// Build all rating chips for the metadata.
   /// When both critic and audience ratings are from Rotten Tomatoes,
   /// they are combined into a single badge.
-  List<Widget> _buildRatingChips(MediaItem metadata) {
+  List<Widget> _buildRatingChips(MediaItem metadata, {bool includeUserRating = true}) {
     final chips = <Widget>[];
     // Plex-only fields (audienceRating / ratingImage / audienceRatingImage)
     // — Jellyfin lacks rating-source attribution. Pull them via a typed
@@ -1155,7 +1175,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
 
     // User rating chip (tappable)
-    if (!widget.isOffline) {
+    if (includeUserRating && !widget.isOffline) {
       chips.add(_buildUserRatingChip(metadata));
     }
 
@@ -2238,7 +2258,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
 
     final watchers = await const ItemWatchersService().resolve(
       _metadata,
-      tautulli: context.read<TautulliProvider?>()?.client,
+      tautulli: context.read<TautulliProvider?>()?.clientForServer(serverId),
       plex: plexClient,
       plexOwnerToken: ownerToken,
       selfPlexAccountId: _selfPlexAccountId(),
@@ -2251,7 +2271,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     // Tautulli-only, so this stays null (and the row absent) on servers without
     // it. Loaded after the watchers rather than alongside, because it is the
     // less interesting of the two and should not delay the avatars.
-    final tautulli = context.read<TautulliProvider?>()?.client;
+    final tautulli = context.read<TautulliProvider?>()?.clientForServer(serverId);
     if (tautulli == null) return;
     final stats = await const MediaWatchStatsService().resolve(_metadata, tautulli: tautulli);
     if (!mounted) return;
@@ -3575,13 +3595,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       );
       if (mounted) {
         appLogger.d('Playing first episode: ${episodeWithServerId.title}');
-        final playedId = episodeWithServerId.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: episodeWithServerId,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        // Carries the pick when the tech table describes this episode.
+        await _playWithDetailPick(episodeWithServerId);
       }
     } catch (e) {
       if (mounted) {
@@ -3865,7 +3880,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                               // it. All three are admin-only and all three
                               // arrive after the page, so each hides itself
                               // when empty.
-                              NowWatchingLine(ratingKey: _metadata.id),
+                              NowWatchingLine(ratingKey: _metadata.id, serverId: serverIdOrNull(_metadata.serverId)),
                               if (_watchers?.watchers.isNotEmpty ?? false)
                                 WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope),
                               if (_watchStats?.isNotEmpty ?? false) ...[
@@ -4020,10 +4035,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // DET7 (Michel, 13 September): detail always uses the full screen, so
         // unlike `TvPageSurface` it keeps no `TvCatalogLayout.bottomSafeInset`
         // (DEC-087) under the rail. The rail's own bottom padding hangs off the
-        // edge too, at the scale `TvBrowseRail` reads it with.
-        final railBottomPadding = TvBrowseRailLayout.railBottomPaddingForScale(
-          TvBrowseRailLayout.scaleForSize(MediaQuery.sizeOf(context)),
-        );
+        // edge too, at the scale `TvBrowseRail` reads it with (SYS-3e).
+        final railBottomPadding = TvBrowseRailLayout.railBottomPaddingForScale(detailScale);
         final initialForegroundBottom =
             (railHeight - railTopPadding - railBottomPadding) + (_tvDetailActionRailGap * detailScale);
         final initialRailHeight = railHeight;
@@ -4152,31 +4165,48 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                   mainAxisSize: .min,
                   crossAxisAlignment: .stretch,
                   children: [
-                    if (showSeasonChips) ...[
-                      _buildTvDetailSeasonChips(metadata, detailScale),
-                      SizedBox(height: _MediaDetailTvSeasonChips._tvSeasonChipRowBottomGap * detailScale),
-                    ],
-                    TvBrowseRail(
-                      key: _tvDetailRailKey,
-                      hubs: detailHubs,
-                      iconForHub: _getTvDetailHubIcon,
-                      onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
-                      onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
-                      onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
-                      onActiveHubChanged: _handleTvDetailHubChanged,
-                      onActivateItem: _handleTvDetailRailItemActivated,
-                      trailingForHub: _tvDetailTrailingState,
-                      onRetryHub: _retryTvDetailHub,
-                      onNavigateUp: () => _focusAboveTvDetailRail(metadata),
-                      onBack: _popMediaDetailIfBackNotSuppressed,
-                      tallPosterScale: railTallPosterScale,
-                      widePosterScaleForHub: (hub) =>
-                          _tvDetailWidePosterScaleForHub(hub) * railWidePosterScaleMultiplier,
-                      initialHubId: _tvDetailInitialHubId(metadata),
-                      initialItemId: _tvDetailInitialItemId(metadata),
-                      episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
-                      automationIdForHub: _tvDetailAutomationIdForHub,
-                      showNextHubPeek: showNextHubPeek,
+                    if (showSeasonChips) SizedBox(height: _tvDetailSeasonChipOverhang(detailScale)),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        TvBrowseRail(
+                          key: _tvDetailRailKey,
+                          hubs: detailHubs,
+                          iconForHub: _getTvDetailHubIcon,
+                          onFocusedHubItemChanged: _handleTvDetailFocusedRailItemChanged,
+                          onRefresh: (itemId) => unawaited(_refreshItemInPlace(itemId)),
+                          onPlaybackReturned: (item) => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+                          onActiveHubChanged: _handleTvDetailHubChanged,
+                          onActivateItem: _handleTvDetailRailItemActivated,
+                          trailingForHub: _tvDetailTrailingState,
+                          onRetryHub: _retryTvDetailHub,
+                          onNavigateUp: () => _focusAboveTvDetailRail(metadata),
+                          onBack: _popMediaDetailIfBackNotSuppressed,
+                          tallPosterScale: railTallPosterScale,
+                          widePosterScaleForHub: (hub) =>
+                              _tvDetailWidePosterScaleForHub(hub) * railWidePosterScaleMultiplier,
+                          initialHubId: _tvDetailInitialHubId(metadata),
+                          initialItemId: _tvDetailInitialItemId(metadata),
+                          episodePosterModeForHub: _tvDetailEpisodePosterModeForHub,
+                          automationIdForHub: _tvDetailAutomationIdForHub,
+                          showNextHubPeek: showNextHubPeek,
+                        ),
+                        // VIS2/37 C: the chips sit on the season rail's header
+                        // line. The rail scrolls its active hub to the top, so
+                        // once cast or extras is active that line belongs to
+                        // another hub and the row steps aside.
+                        if (showSeasonChips)
+                          Positioned(
+                            left: TvBrowseRailLayout.horizontalInsetForScale(detailScale),
+                            right: 0,
+                            top: _tvDetailSeasonChipRowTop(detailScale),
+                            child: Visibility(
+                              visible: _tvDetailSeasonHubActive,
+                              maintainState: true,
+                              child: _buildTvDetailSeasonChips(metadata, detailScale),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -4242,23 +4272,26 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   })
   _tvDetailForegroundBaseMetrics(BuildContext context, MediaItem metadata, double scale, double foregroundWidth) {
     final genres = metadata.genres ?? const <String>[];
+    final pt = TvHig.of(context);
     final genreGap = 6 * scale;
-    final genreLineHeight = 22 * scale;
+    final genreLineHeight = TvHig.caption1Leading * pt;
     final genreLineCount = _tvDetailGenreLineCount(context, genres, scale, foregroundWidth);
     return (
       minLogoHeight: 60 * scale,
       logoMetadataGap: 10 * scale,
-      metadataLineHeight: 22 * scale,
+      metadataLineHeight: TvHig.caption1Leading * pt,
       genreBlockHeight: genres.isEmpty ? 0.0 : genreGap + (genreLineHeight * genreLineCount),
       summaryGap: 6 * scale,
       actionGap: 12 * scale,
-      actionHeight: _tvDetailActionSize * scale,
+      actionHeight: _tvDetailActionPt * pt,
       sourceLineHeight: _unifiedSourceLineHeight(context),
     );
   }
 
-  TextStyle _tvDetailGenreTextStyle(double scale) =>
-      TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.w600, letterSpacing: 0.1);
+  // DENS1: HIG Caption 1 (25 pt), the size the old `16 * scaleOf` already
+  // landed on, now stated in points.
+  TextStyle _tvDetailGenreTextStyle(BuildContext context) =>
+      TextStyle(fontSize: TvHig.caption1 * TvHig.of(context), fontWeight: FontWeight.w600, letterSpacing: 0.1);
 
   /// How many lines the genre line needs at [foregroundWidth], capped at 2
   /// (the `Text` below carries the same cap via `maxLines`): a genre list
@@ -4271,7 +4304,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   int _tvDetailGenreLineCount(BuildContext context, List<String> genres, double scale, double foregroundWidth) {
     if (genres.isEmpty || foregroundWidth <= 0) return 1;
     final painter = TextPainter(
-      text: TextSpan(text: genres.join('  •  '), style: _tvDetailGenreTextStyle(scale)),
+      text: TextSpan(text: genres.join('  •  '), style: _tvDetailGenreTextStyle(context)),
       maxLines: 1,
       textDirection: Directionality.of(context),
     )..layout(maxWidth: foregroundWidth);
@@ -4384,8 +4417,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     required int lines,
   }) {
     final m = _tvDetailForegroundBaseMetrics(context, metadata, scale, foregroundWidth);
-    const largerSummaryFontSize = 18.0;
-    final summaryLineHeight = largerSummaryFontSize * scale * 1.35;
+    final summaryLineHeight = TvHig.body * TvHig.of(context) * 1.35;
     return _tvDetailMandatoryForegroundHeight(context, metadata, scale, foregroundWidth) +
         m.summaryGap +
         (summaryLineHeight * lines) +
@@ -4419,14 +4451,16 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         final metadataLineHeight = metrics.metadataLineHeight;
         final logoMetadataGap = metrics.logoMetadataGap;
         final summaryGap = metrics.summaryGap;
-        final summaryFontSize = availableHeight < 260 * scale ? 16.2 * scale : 18 * scale;
+        // DENS1: HIG Body (29 pt), Caption 1 (25 pt) on a cramped band.
+        final pt = TvHig.of(context);
+        final summaryFontSize = availableHeight < 260 * scale ? TvHig.caption1 * pt : TvHig.body * pt;
         final summaryLineHeight = summaryFontSize * 1.35;
         final descriptionStyle = (theme.textTheme.bodyLarge ?? const TextStyle()).copyWith(
           color: mutedForegroundColor,
           fontSize: summaryFontSize,
           height: 1.35,
         );
-        // `_buildActionButtons` draws the row at `_tvDetailActionSize * scale`
+        // `_buildActionButtons` draws the row at `_tvDetailActionPt` HIG points
         // (same `TvLayoutConstants.scaleOf` now that `scale` is that value, see
         // DEC-109), so this reserve agrees with what actually gets drawn.
         final actionHeight = metrics.actionHeight;
@@ -4437,7 +4471,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
         // stays stable as episode rows gain focus.
         final genres = metadata.genres ?? const <String>[];
         final genreGap = 6 * scale;
-        final genreLineHeight = 22 * scale;
+        final genreLineHeight = TvHig.caption1Leading * pt;
         final genreLineCount = _tvDetailGenreLineCount(context, genres, scale, constraints.maxWidth);
         final genreBlockHeight = metrics.genreBlockHeight;
         // DEC-109: `TvViewAllAction`'s real rendered height, reserved only for
@@ -4519,7 +4553,8 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                         titleBuilder: (context, title) => _buildDetailTitle(
                           context,
                           title,
-                          fontSize: 56 * scale,
+                          // DENS1: HIG Title 1 (76 pt); `56 * scaleOf` was 88.
+                          fontSize: TvHig.title1 * pt,
                           fontWeight: .w800,
                           shadowBlur: 12,
                           color: foregroundColor,
@@ -4542,7 +4577,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                             genres.join('  •  '),
                             maxLines: genreLineCount,
                             overflow: .ellipsis,
-                            style: _tvDetailGenreTextStyle(scale).copyWith(color: mutedForegroundColor),
+                            style: _tvDetailGenreTextStyle(context).copyWith(color: mutedForegroundColor),
                           ),
                         ),
                       ),
@@ -4578,7 +4613,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
                     _buildUnifiedSourceLine(),
                     // Live viewer, then the "Watched by …" row (Plex, owned
                     // servers only).
-                    NowWatchingLine(ratingKey: _metadata.id),
+                    NowWatchingLine(ratingKey: _metadata.id, serverId: serverIdOrNull(_metadata.serverId)),
                     if (_watchers?.watchers.isNotEmpty ?? false) ...[
                       const SizedBox(height: 20),
                       WatchedByRow(watchers: _watchers!.watchers, scope: _watchers!.scope, avatarSize: 36),
@@ -4670,8 +4705,9 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     final qualityLabels = buildMediaQualityLabels(lineMetadata);
     final textStyle = TextStyle(
       color: _tvDetailForegroundColor(context),
-      fontSize: 18 * scale,
-      fontWeight: .w700,
+      // DENS1: HIG Caption 1 (25 pt); `18 * scaleOf` bold was 28.
+      fontSize: TvHig.caption1 * TvHig.of(context),
+      fontWeight: .w600,
       letterSpacing: 0.1,
     );
     final children = <Widget>[];
@@ -4788,6 +4824,7 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
       tallPosterScale: tallPosterScale,
       includeNextHubPeek: includeNextHubPeek,
+      scale: TvLayoutConstants.scaleOf(context),
     );
   }
 
@@ -4808,15 +4845,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     );
     final railHeight = hubRailHeight > 0 ? hubRailHeight : _estimateTvDetailEmptyRailReserveHeight(size);
     if (!showSeasonChips) return railHeight;
-    // PB-4: the chip row sits above the rail and needs its own reserve, on
-    // the same box-derived scale `_estimateTvDetailEmptyRailReserveHeight`
-    // already uses for this band.
-    return railHeight + _tvDetailSeasonChipRowHeight(TvBrowseRailLayout.scaleForSize(size));
+    // PB-4/VIS2: the chip row sits on the rail's header strip and only needs
+    // what sticks out above it, at the panel scale the row renders at (SYS-3e).
+    return railHeight + _tvDetailSeasonChipOverhang(TvLayoutConstants.scaleOf(context));
   }
 
   double _estimateTvDetailEmptyRailReserveHeight(Size size) {
     final svc = SettingsService.instance;
-    final scale = TvBrowseRailLayout.scaleForSize(size);
+    final scale = TvLayoutConstants.scaleOf(context);
     final availableWidth = size.width - TvBrowseRailLayout.horizontalInsetForScale(scale);
     if (availableWidth <= 0) return 0;
 
@@ -4845,15 +4881,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     return hub.id.startsWith(_tvDetailSeasonHubIdPrefix) || hub.id == 'detail_episodes';
   }
 
-  /// Only the flattened `'detail_episodes'` hub gets the shared
-  /// [AutomationIds.mediaDetailEpisodeList] id — the desktop/mobile
-  /// `_buildEpisodesList()` counterpart addresses exactly one list too
-  /// (`(isShow && _showEpisodesDirectly) || isSeason`, one season at a
-  /// time). The per-season hubs from `_tvDetailHubs()`'s season-tabs branch
-  /// are all mounted simultaneously, so giving every one of them the same
-  /// id would register duplicates.
+  /// The episode rail gets the shared [AutomationIds.mediaDetailEpisodeList]
+  /// id, whether it is the flattened `'detail_episodes'` hub or the selected
+  /// season's hub. Since PB-4 `_tvDetailHubs()` mounts one season hub at a
+  /// time, so the id is never registered twice.
   String? _tvDetailAutomationIdForHub(MediaHub hub, int hubIndex) {
-    return hub.id == 'detail_episodes' ? AutomationIds.mediaDetailEpisodeList : null;
+    return _isTvDetailEpisodeHub(hub) ? AutomationIds.mediaDetailEpisodeList : null;
   }
 
   EpisodePosterMode _tvDetailEpisodePosterModeForHub(MediaHub hub) {
@@ -4888,12 +4921,12 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       final season = _seasons[i];
       final state = _seasonEpisodePager.stateFor(season.id);
       final total = state.totalCount > _episodes.length ? state.totalCount : (season.leafCount ?? _episodes.length);
-      // The season chips row already names the season; repeating that name as
-      // this rail's own header would be the same word twice one line apart.
+      // With chips the chip row is this rail's header line (VIS2/37 C): it
+      // draws "Afleveringen" itself, so the strip under it stays empty.
       // Without chips (single season) there is nothing else naming it, so the
       // rail keeps the season's own title exactly as it did before PB-4.
       final title = _tvDetailShowsSeasonChips(metadata)
-          ? t.libraries.groupings.episodes
+          ? ''
           : (season.title?.isNotEmpty == true ? season.title! : (season.displaySubtitle ?? season.displayTitle));
       hubs.add(
         MediaHub(id: '$_tvDetailSeasonHubIdPrefix$i', title: title, type: 'episode', items: _episodes, size: total),
@@ -5041,6 +5074,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
   }
 
   void _handleTvDetailHubChanged(MediaHub hub, int index) {
+    final seasonHubActive = hub.id.startsWith(_tvDetailSeasonHubIdPrefix);
+    if (seasonHubActive != _tvDetailSeasonHubActive) {
+      setStateIfMounted(() => _tvDetailSeasonHubActive = seasonHubActive);
+    }
     if (!_isTvDetailEpisodeHub(hub)) {
       _clearTvDetailFocusedEpisode();
       return;
@@ -5116,9 +5153,10 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
     }
   }
 
-  IconData _getTvDetailHubIcon(MediaHub hub, int index) {
+  IconData? _getTvDetailHubIcon(MediaHub hub, int index) {
     if (hub.id == _tvDetailSeasonsErrorHubId) return Symbols.error_outline_rounded;
-    if (hub.id.startsWith(_tvDetailSeasonHubIdPrefix)) return Symbols.tv_rounded;
+    // An empty title is the chip row's header line; an icon alone would float.
+    if (hub.id.startsWith(_tvDetailSeasonHubIdPrefix)) return hub.title.isEmpty ? null : Symbols.tv_rounded;
     if (hub.id == 'detail_episodes') return Symbols.tv_rounded;
     if (hub.id == _tvDetailExtrasHubId) return Symbols.theaters_rounded;
     if (hub.id == _tvDetailActorsHubId) return Symbols.group_rounded;

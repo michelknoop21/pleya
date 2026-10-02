@@ -371,7 +371,9 @@ probe/login/setup, of een nog niet gebootstrapte app (geen root-context).
 
 ### `POST /v1/connections/seed`
 
-Body: `{"base_url": "...", "server_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.
+Body: `{"base_url": "...", "server_id": "...", "user_id": "...", "server_name": "...", "user_name": "...", "refresh_token": "..."}`.
+`user_id` is optioneel voor oude single-userfixtures; nieuwe multi-userfixtures
+geven hem mee zodat twee accounts op dezelfde server aparte connection-ids krijgen.
 De snelle route voor een scenario dat alleen een werkende verbinding nodig
 heeft en niet elke run opnieuw de sign-in-UI wil bewijzen: slaat de
 probe/login-HTTP-omweg over en bouwt de `PleyaServerConnection` rechtstreeks
@@ -397,6 +399,19 @@ de profielsessie wordt aangemaakt; `/v1/signin` moet dus eerst zijn gelukt.
 200 `{"ok": true}`; 400 `{"ok": false, "error": "..."}` op ontbrekende
 velden, een niet-loopback-URL, een ontbrekende profielsessie of een falende
 test/commit.
+
+### `POST /v1/profiles/seed`
+
+Body: `{"display_name": "..."}`. Voegt een tweede lokaal profiel toe dat elke
+verbinding van het actieve profiel leent, en laat het actieve profiel actief.
+Dezelfde toestand als Profiel toevoegen plus Verbinding lenen, zonder een naam
+op het Apple TV-toetsenbord te typen. Voor scenario's die twee profielen op
+dezelfde server nodig hebben (zoekgeschiedenis per profiel).
+
+Gebruikt de context van `rootNavigatorKey`; `/v1/signin` moet eerst zijn gelukt.
+
+200 `{"ok": true, "profileId": "..."}`; 400 `{"ok": false, "error": "..."}` bij
+een lege naam, geen actief profiel of een actief profiel zonder verbinding.
 
 ### `POST /v1/open`
 

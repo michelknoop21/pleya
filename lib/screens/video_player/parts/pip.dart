@@ -24,6 +24,25 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
   Future<void> _initVideoFilterAndPip() async {
     final currentPlayer = player;
     if (!mounted || currentPlayer == null) return;
+    // The store keeps the outgoing item's key until the replacement file has
+    // opened. Reload failures must not redirect user changes to another title.
+    if (!widget.isLive &&
+        (_videoDisplayPreferenceStore == null || !_videoDisplayPreferenceStore!.matches(_currentMetadata))) {
+      final metadata = _currentMetadata;
+      final store = await VideoDisplayPreferenceStore.forItem(metadata);
+      if (!mounted || player != currentPlayer || _currentMetadata != metadata) return;
+      final saved = store.read();
+      if (_videoFilterManager != null && _videoFilterManager!.player == currentPlayer) {
+        final settings = await SettingsService.getInstance();
+        if (!mounted || player != currentPlayer || _currentMetadata != metadata) return;
+        await _videoFilterManager!.restoreDisplaySettings(
+          boxFitMode: saved?.boxFitMode ?? settings.read(SettingsService.defaultBoxFitMode),
+          zoomScale: saved?.zoomScale ?? 1.0,
+        );
+        if (!mounted || player != currentPlayer || _currentMetadata != metadata) return;
+      }
+      _videoDisplayPreferenceStore = store;
+    }
     if (_videoFilterManager != null && _videoFilterManager!.player != currentPlayer) {
       // A retry after an init error disposes the old player and creates a new
       // one in place without disposing this screen, so the manager's cached
@@ -45,19 +64,35 @@ extension _VideoPlayerPipMethods on VideoPlayerScreenState {
     final initialPlayerSize = _lastVideoLayoutPlayer == currentPlayer ? _lastVideoLayoutSize : null;
 
     if (needsVideoFilter && _videoFilterManager == null && settings != null) {
+      final saved = _videoDisplayPreferenceStore?.read();
       _videoFilterManager = VideoFilterManager(
         player: currentPlayer,
-        initialBoxFitMode: settings.read(SettingsService.defaultBoxFitMode),
+        initialBoxFitMode: saved?.boxFitMode ?? settings.read(SettingsService.defaultBoxFitMode),
+        initialZoomScale: saved?.zoomScale ?? 1.0,
         initialPlayerSize: initialPlayerSize,
-        onBoxFitModeChanged: (mode) => settings.write(SettingsService.defaultBoxFitMode, mode),
+        onBoxFitModeChanged: widget.isLive ? (mode) => settings.write(SettingsService.defaultBoxFitMode, mode) : null,
+        onDisplaySettingsChanged: (mode, zoom) {
+          unawaited(_videoDisplayPreferenceStore?.save(boxFitMode: mode, zoomScale: zoom));
+        },
         subtitleBasePosition: () => settings.read(SettingsService.subtitlePosition),
       );
       unawaited(_videoFilterManager!.updateVideoFilter());
+      _syncTvSubtitleLift();
     }
 
     _videoPIPManager ??= VideoPIPManager(player: currentPlayer, initialPlayerSize: initialPlayerSize);
     _videoPIPManager!.onBeforeEnterPip = _preparePipFiltersForEntry;
     _attachPipStateListener();
+  }
+
+  /// TV only: while the player chrome is up, lift subtitles above the bottom
+  /// control block; when it hides, drop the lift so the manager writes the
+  /// crop/zoom-compensated base position again (PLR-SUBS1). The manager ignores
+  /// an unchanged lift, so chrome notifications without a visibility or height
+  /// change write nothing.
+  void _syncTvSubtitleLift() {
+    if (!PlatformDetector.isTV()) return;
+    _videoFilterManager?.setSubtitleLift(_chromeController.subtitleLift);
   }
 
   Future<void> _togglePIPMode() async {

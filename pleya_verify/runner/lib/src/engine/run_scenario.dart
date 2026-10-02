@@ -154,6 +154,18 @@ Future<ScenarioRunResult> runScenario({
           if (seedResult['ok'] != true) {
             throw StateError('seed_seerr failed: ${seedResult['error']} (full response: $seedResult)');
           }
+        case 'seed_profile':
+          final args = step.args;
+          if (args is! Map<String, Object?> || args['name'] is! String) {
+            throw ArgumentError('seed_profile needs a name: $args');
+          }
+          final profileResult = await _requireClient(
+            driver,
+            'seed_profile',
+          ).seedProfile(displayName: args['name'] as String);
+          if (profileResult['ok'] != true) {
+            throw StateError('seed_profile failed: ${profileResult['error']} (full response: $profileResult)');
+          }
         case 'seed':
           if (step.args case final String fixtureName) {
             await fixture!.seed(fixtureName);
@@ -646,6 +658,13 @@ Future<({List<GeometryAssertionResult> geometry, List<NodeAssertionResult> node}
   VerificationDriver driver,
 ) async {
   final id = args['id'] as String;
+  // `present: false` is the one negative claim: the node must not be in the
+  // tree. It stands alone (the validator rejects it next to any predicate),
+  // because nothing can be measured on a node that is not there.
+  if (args['present'] == false) {
+    if (await _idReady(driver, id)) throw StateError('assert failed: "$id" is present, expected absent');
+    return (geometry: const <GeometryAssertionResult>[], node: const <NodeAssertionResult>[]);
+  }
   if (!await _idReady(driver, id)) {
     throw StateError('assert failed: "$id" is not ready/present');
   }

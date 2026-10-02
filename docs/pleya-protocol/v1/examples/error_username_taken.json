@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "auth.username_taken",
+    "message": "That username is already in use",
+    "retryable": false
+  }
+}

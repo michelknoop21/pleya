@@ -10,7 +10,7 @@ target: tvos-sim
 #   3. Menu with the controls up hides them (focus leaves play/pause) and does
 #      not leave the player; UP brings them back with play/pause focused.
 #
-# The fixture clip lasts two seconds, so pausing is the first thing the
+# The fixture clip lasts fifteen seconds, so pausing is the first thing the
 # scenario does. The bottom-row entry points into the panel are proven by
 # `tvos.player.panel`, the bron line under the title (`TvQualitySummaryLine`)
 # only by the screenshot: it carries no automation id.
@@ -35,9 +35,10 @@ steps:
 
   # Controls up, play/pause under the ring; Select pauses.
   # No wait for the ring first: an idb press takes one to two seconds to land,
-  # and the clip is two seconds long, so a press sent after polling for the
-  # focus arrives when mpv has already ended (run of 23 September). The press
-  # is queued now and lands on play/pause, which the next asserts check.
+  # and the clip was two seconds long, so a press sent after polling for the
+  # focus arrived when mpv had already ended (run of 23 September). The clip
+  # is fifteen seconds since VER7; the press still goes out first and lands on
+  # play/pause, which the next asserts check.
   - settle: 200
   - press: select
   - settle: 500

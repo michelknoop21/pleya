@@ -24,7 +24,7 @@ while [ $# -gt 0 ]; do
     --with-unused) WITH_UNUSED=1; shift ;;
     -h|--help)
       echo "gebruik: scripts/ci_checks.sh [--with-unused]"
-      echo "  --with-unused  draai ook check-unused-code en check-unused-files (CI doet dit altijd)"
+      echo "  --with-unused  draai ook de harde dart_code_linter-regels, check-unused-code en check-unused-files (CI doet dit altijd)"
       exit 0 ;;
     *) echo "ci_checks: onbekend argument: $1" >&2; exit 64 ;;
   esac
@@ -129,22 +129,63 @@ rm -f "$out"
 
 # 3. flutter analyze (mirrors ci.yml "Analyze code")
 section "flutter analyze"
+# Alleen de diagnostics van de analyzer zelf tellen mee. Regels van de
+# dart_code_linter-plugin (kebab-case, bv. `prefer-first`) komen bij een
+# eenmalige `flutter analyze` willekeurig binnen: de CLI stopt zodra de server
+# klaar is en wacht niet op de plugin, die bestand voor bestand in mapvolgorde
+# werkt. Lokaal kwam test/ binnen en lib/ niet, in CI andersom, en soms elke
+# melding dubbel. Een steekproef kan geen gate zijn; ci.yml filtert hetzelfde.
+# De pluginmeldingen blijven hieronder zichtbaar als advies, en in de IDE.
+# Het filter kijkt naar de regelcode, niet naar de ernst: ook een pluginregel
+# die in analysis_options.yaml op `severity: error` staat, telt hier niet mee.
+# Wat echt moet blokkeren, staat in scripts/dcl_hard_rules.sh (stap 4).
+# Zonder "No issues found!" of "issues found" is analyze zelf niet klaar
+# gekomen (crash, pub niet opgehaald); dat telt als fout, niet als groen.
 out="$(mktemp)"
 flutter analyze >"$out" 2>&1 || true
-if grep -q "error •" "$out"; then
-  fail "errors"
-  grep -E "error •|warning •" "$out" | sed 's/^/    /'
+plugin_rule='• [a-z0-9]+(-[a-z0-9]+)+[[:space:]]*$'
+core="$(grep -E "error •|warning •" "$out" | grep -vE "$plugin_rule" || true)"
+if ! grep -qE "No issues found!|issues? found" "$out"; then
+  fail "flutter analyze kwam niet tot een resultaat"
+  tail -n 20 "$out" | sed 's/^/    /'
   FAILED=1
-elif grep -q "warning •" "$out"; then
+elif printf '%s\n' "$core" | grep -q "error •"; then
+  fail "errors"
+  printf '%s\n' "$core" | sed 's/^/    /'
+  FAILED=1
+elif [ -n "$core" ]; then
   fail "warnings (treated as failure, matching CI)"
-  grep "warning •" "$out" | sed 's/^/    /'
+  printf '%s\n' "$core" | sed 's/^/    /'
   FAILED=1
 else
   ok "no errors or warnings"
 fi
+advice="$(grep -E "error •|warning •" "$out" | grep -E "$plugin_rule" | sort -u || true)"
+if [ -n "$advice" ]; then
+  printf "  %sadvies van dart_code_linter, telt niet mee:%s\n" "$DIM" "$RST"
+  printf '%s\n' "$advice" | sed 's/^/    /'
+fi
 rm -f "$out"
 
-# 4. Unused code (mirrors ci.yml "Check for unused code")
+# 4. Harde dart_code_linter-regels (mirrors ci.yml "Check hard dart_code_linter rules")
+section "dart_code_linter: harde regels"
+if [ "$WITH_UNUSED" -eq 0 ]; then
+  skip "boombrede scan, draait in CI — lokaal met --with-unused"
+elif ! have_dart_code_linter; then
+  skip "dart_code_linter unresolved — run 'flutter pub get'"
+else
+  out="$(mktemp)"
+  if scripts/dcl_hard_rules.sh >"$out" 2>&1; then
+    ok "$(tail -n 1 "$out")"
+  else
+    fail "harde regels"
+    sed 's/^/    /' "$out"
+    FAILED=1
+  fi
+  rm -f "$out"
+fi
+
+# 5. Unused code (mirrors ci.yml "Check for unused code")
 section "dart_code_linter: unused code"
 if [ "$WITH_UNUSED" -eq 0 ]; then
   skip "boombrede scan, draait in CI — lokaal met --with-unused"
@@ -163,7 +204,7 @@ else
   rm -f "$out"
 fi
 
-# 5. Unused files (mirrors ci.yml "Check for unused files")
+# 6. Unused files (mirrors ci.yml "Check for unused files")
 section "dart_code_linter: unused files"
 if [ "$WITH_UNUSED" -eq 0 ]; then
   skip "boombrede scan, draait in CI — lokaal met --with-unused"

@@ -6,7 +6,7 @@ target: tvos-sim
 # off, so the scenario first asserts the empty chain, then switches it on from
 # the player panel and asserts the realtime chain.
 #
-# The fixture clip lasts two seconds, so playback is paused first; the player
+# The fixture clip lasts fifteen seconds, so playback is paused first; the player
 # opens with play/pause focused.
 setup:
   - reset_app

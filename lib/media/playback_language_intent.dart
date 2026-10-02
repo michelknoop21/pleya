@@ -1,5 +1,5 @@
 /// What the viewer *wants* to hear and read, as opposed to which concrete
-/// track this episode ended up with (DEC-096 lid 1 and lid 8).
+/// track this episode ended up with (DEC-109 lid 1 and lid 8).
 ///
 /// The distinction is the whole point of LANG1. A resolved track belongs to one
 /// episode on one source: a stream id, an index, even "the Dutch track that was
@@ -16,7 +16,7 @@ library;
 import 'pleya_profile_language_preferences.dart';
 import 'track_language_choice.dart';
 
-/// Which layer of DEC-096 an intent came from. Carried so the resolver and the
+/// Which layer of DEC-109 an intent came from. Carried so the resolver and the
 /// toast can say *why* something plays, and so a fallback can be told apart
 /// from a choice.
 enum PlaybackIntentOrigin {
@@ -106,7 +106,7 @@ class PlaybackLanguageIntent {
     return intent.isEmpty ? null : intent;
   }
 
-  /// The layers of DEC-096 in order, most specific first, with the empty ones
+  /// The layers of DEC-109 in order, most specific first, with the empty ones
   /// left out. A field an earlier layer is silent about is answered by a later
   /// one, so a session intent that only names subtitles still lets the series
   /// preference decide the audio.

@@ -261,6 +261,9 @@ class TvDiscoveryRail extends StatefulWidget {
   State<TvDiscoveryRail> createState() => TvDiscoveryRailState();
 }
 
+/// Tags a rail slot's list key, kept apart from the tile's own group-id key.
+const _slot = #tvDiscoveryRailSlot;
+
 class TvDiscoveryRailState extends State<TvDiscoveryRail> {
   final _nodes = <String, FocusNode>{};
   final _scroll = ScrollController();
@@ -338,7 +341,31 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
     final current = _focused.value;
     if (current == null || !widget.groups.any((g) => g.groupId == current.groupId)) {
       _focused.value = _restoredOrFirst();
+      return;
     }
+    _keepFocusedTileInPlace(oldWidget.groups, current.groupId);
+  }
+
+  /// A silent Home reload can put a new title in front of the card the remote
+  /// stands on. The focus node follows the title (it is keyed on the group
+  /// id), but the band keeps its offset, so the card would slide sideways
+  /// under the ring. Moving the band by the same number of places keeps the
+  /// card where the viewer is looking. This frame's layout clamps the offset
+  /// to the new content extent, so no frame shows the card out of place.
+  ///
+  /// A rail that is not being looked at gets the same correction once it has
+  /// been walked (scrolled): that is the rail a detail page was opened from,
+  /// and the reload on the way back can land before the ring does. A rail at
+  /// its start keeps its offset, so a new title shows up in view.
+  void _keepFocusedTileInPlace(List<UnifiedMediaGroup> oldGroups, String groupId) {
+    if (!_scroll.hasClients) return;
+    if (!_holdsFocus.value && _scroll.position.pixels <= _scroll.position.minScrollExtent) return;
+    final oldIndex = oldGroups.indexWhere((g) => g.groupId == groupId);
+    final newIndex = widget.groups.indexWhere((g) => g.groupId == groupId);
+    if (oldIndex < 0 || oldIndex == newIndex) return;
+    final position = _scroll.position;
+    final target = position.pixels + (newIndex - oldIndex) * TvDiscoveryLayout.railPitch(_scale);
+    _scroll.jumpTo(target < position.minScrollExtent ? position.minScrollExtent : target);
   }
 
   UnifiedMediaGroup? _restoredOrFirst() {
@@ -655,6 +682,16 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
       // so a rail of forty groups costs the images of the six on screen
       // (hoofdstuk 42).
       itemCount: widget.groups.length + (widget.viewAll == null ? 0 : 1),
+      // Tiles are keyed on their group id; without this a title that moved to
+      // another index gets a fresh tile state, so a focused card loses its
+      // ring and wide artwork while its node still holds the focus.
+      findChildIndexCallback: (key) {
+        if (key case ValueKey<(Object, String)>(value: (_slot, final groupId))) {
+          final index = widget.groups.indexWhere((g) => g.groupId == groupId);
+          return index < 0 ? null : index;
+        }
+        return null;
+      },
       itemBuilder: (context, index) {
         // Hard stops at both ends of the row, on every branch below. Left as
         // `null` these fall through to Flutter's geometric traversal, and on a
@@ -701,6 +738,8 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
 
         final group = widget.groups[index];
         return Padding(
+          // The list child's own key, so `findChildIndexCallback` can move it.
+          key: ValueKey((_slot, group.groupId)),
           // Between tiles only, so the row's outer edges stay on the page inset.
           padding: EdgeInsets.only(right: index == _lastIndex ? 0 : TvDiscoveryLayout.itemGap * scale),
           child: TvExpandableMediaTile(

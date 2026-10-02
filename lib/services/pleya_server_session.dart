@@ -132,6 +132,23 @@ class PleyaServerSession {
     _accessTokenExpiry = null;
   }
 
+  /// Let a revoked session spend its stored refresh token one more time.
+  ///
+  /// A cold start already gets this for free: a fresh session object starts
+  /// with `_revoked == false` and the kept token, which is how a chain that
+  /// was never actually dead recovers after a restart. Within a running app
+  /// there was no equivalent, so "reconnect" probed health forever without a
+  /// single POST to `/auth/refresh` (log jv19q: four probes, zero attempts).
+  ///
+  /// Only ever called from an explicit user action. Wiring it to a timer or a
+  /// sweep would turn a genuinely dead chain into a refresh storm, and the
+  /// server answers each of those with the same rejection.
+  void retryAfterRejection() {
+    if (!_revoked) return;
+    _revoked = false;
+    invalidateAccessToken();
+  }
+
   Future<String> _refreshOnce() {
     final existing = _inFlight;
     if (existing != null) return existing;

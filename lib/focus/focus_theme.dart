@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/device_performance.dart';
 import '../theme/mono_tokens.dart';
+import 'focus_ring_border.dart';
+
+export 'focus_ring_border.dart';
 
 class FocusTheme {
   FocusTheme._();
@@ -19,7 +22,7 @@ class FocusTheme {
     return Colors.white;
   }
 
-  /// J10: whether this surface needs [contrastSeparatorShadows] alongside the
+  /// J10: whether this surface needs the [contrastSeparatorColor] line alongside the
   /// white ring.
   ///
   /// Hoofdstuk 8's binding rule is that white stays the one TV focus
@@ -32,19 +35,48 @@ class FocusTheme {
   static bool needsContrastSeparator(BuildContext context) =>
       Theme.of(context).extension<MonoTokens>()?.isLight ?? false;
 
-  /// The dark separator itself — a tight, low-blur shadow hugging the ring's
-  /// own edge, in [MonoTokens.text] (the theme's own ink color, already
-  /// near-black on the light palette; never a new brand color). Two shadows
-  /// at increasing radius read as one crisp dark line rather than a soft
-  /// halo, which is what actually separates a white ring from a white card —
-  /// a soft glow would just look like white bleeding into white.
-  static List<BoxShadow> contrastSeparatorShadows(BuildContext context) {
+  /// The dark separator line itself: [MonoTokens.text] (the theme's own ink,
+  /// near-black on the light palette; never a new brand color) at 55%, one
+  /// [contrastSeparatorWidth] wide, drawn directly outside the white ring.
+  ///
+  /// VIS-0925-A: this used to be a pair of [BoxShadow]s. A BoxShadow is not a
+  /// line: `BoxDecoration` paints it as a filled box under the whole
+  /// decoration, so on a tile with a 13% fill the 55% ink shone through the
+  /// fill and a focused tile in Light turned ~#555 with dark text on it
+  /// (hardware photos of build 303). A stroke only covers its own band.
+  static Color contrastSeparatorColor(BuildContext context) {
     final ink = Theme.of(context).extension<MonoTokens>()?.text ?? Colors.black;
-    return [
-      BoxShadow(color: ink.withValues(alpha: 0.55), blurRadius: 0, spreadRadius: 0.5),
-      BoxShadow(color: ink.withValues(alpha: 0.28), blurRadius: 1.5, spreadRadius: 0),
-    ];
+    return ink.withValues(alpha: 0.55);
   }
+
+  static const double contrastSeparatorWidth = 1;
+
+  /// [ring] on [shape] plus the separator line hugging its outer edge. The
+  /// separator is always present, transparent when not needed, so a focus
+  /// animation lerps between two borders of the same structure.
+  static FocusRingBorder _ringWithSeparator(
+    BuildContext context,
+    OutlinedBorder shape,
+    BorderSide ring,
+    bool separator, {
+    bool separatorInside = false,
+  }) {
+    return FocusRingBorder(
+      shape: shape.copyWith(side: BorderSide.none),
+      ring: ring,
+      separatorInside: separatorInside,
+      separator: BorderSide(
+        color: separator ? contrastSeparatorColor(context) : Colors.transparent,
+        width: contrastSeparatorWidth,
+      ),
+    );
+  }
+
+  /// Radius for a ring-mode [FocusableWrapper] around a child of
+  /// [innerRadius] that sits [gap] inside the ring. The inside-aligned ring
+  /// reserves its own width as padding, so the child is inset by both; a ring
+  /// with the child's own radius has corners that do not follow it.
+  static double ringRadiusAround(double innerRadius, {double gap = 0}) => innerRadius + gap + focusBorderWidth;
 
   static Duration getAnimationDuration(BuildContext context) {
     // Reduced tier: snap focus transitions (scale/border/glow) instead of
@@ -53,31 +85,35 @@ class FocusTheme {
     return Theme.of(context).extension<MonoTokens>()?.fast ?? const Duration(milliseconds: 150);
   }
 
-  static BoxDecoration focusDecoration(
+  /// The white focus ring for a box of [borderRadius] (or a circle), plus the
+  /// Light separator from [contrastSeparatorColor]. Pass the radius of the
+  /// shape the ring actually surrounds: a ring of 6 around a pill of 12 has
+  /// corners that do not follow the pill (VIS-0925-A).
+  static ShapeDecoration focusDecoration(
     BuildContext context, {
     required bool isFocused,
     double borderRadius = defaultBorderRadius,
     double borderStrokeAlign = BorderSide.strokeAlignInside,
     Color? color,
     BoxShape shape = BoxShape.rectangle,
+    bool separatorInside = false,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
-    final separator = isFocused && needsContrastSeparator(context);
-
-    return BoxDecoration(
-      shape: shape,
-      // Flutter asserts when a circle carries a borderRadius, so the radius is
-      // meaningful for rectangles only. Circular children (round icon buttons,
-      // avatars) would otherwise get a 6px-rounded *square* ring around them.
-      borderRadius: shape == BoxShape.circle ? null : BorderRadius.circular(borderRadius),
-      border: Border.all(
-        color: isFocused ? focusColor : Colors.transparent,
-        width: focusBorderWidth,
-        strokeAlign: borderStrokeAlign,
+    final OutlinedBorder outline = shape == BoxShape.circle
+        ? const CircleBorder()
+        : RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius));
+    return ShapeDecoration(
+      shape: _ringWithSeparator(
+        context,
+        outline,
+        BorderSide(
+          color: isFocused ? focusColor : Colors.transparent,
+          width: focusBorderWidth,
+          strokeAlign: borderStrokeAlign,
+        ),
+        isFocused && needsContrastSeparator(context),
+        separatorInside: separatorInside,
       ),
-      // J10: a dark separator alongside the white ring, only where the
-      // surface itself needs it — see [needsContrastSeparator].
-      boxShadow: separator ? contrastSeparatorShadows(context) : null,
     );
   }
 
@@ -124,19 +160,22 @@ class FocusTheme {
     required bool isFocused,
     required OutlinedBorder shape,
     Color? color,
+    double gap = 0,
   }) {
     final focusColor = color ?? getFocusBorderColor(context);
-    final separator = isFocused && needsContrastSeparator(context);
     return ShapeDecoration(
-      shape: shape.copyWith(
-        side: BorderSide(
+      shape: _ringWithSeparator(
+        context,
+        shape,
+        BorderSide(
           color: isFocused ? focusColor : Colors.transparent,
           width: focusBorderWidth,
-          strokeAlign: BorderSide.strokeAlignOutside,
+          // [gap] of clear space between the shape and the ring: a white ring
+          // directly on a white fill is no ring at all (VIS-0925 review D1).
+          strokeAlign: BorderSide.strokeAlignOutside + 2 * gap / focusBorderWidth,
         ),
+        isFocused && needsContrastSeparator(context),
       ),
-      // J10: see [focusDecoration]'s own note on the same shadows.
-      shadows: separator ? contrastSeparatorShadows(context) : null,
     );
   }
 

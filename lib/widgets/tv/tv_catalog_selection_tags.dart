@@ -18,8 +18,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../i18n/strings.g.dart';
 import '../../services/unified_catalog/unified_catalog_filters.dart';
+import '../../utils/home_custom_row_labels.dart';
 import '../../utils/language_codes.dart';
 import '../../theme/mono_tokens.dart';
 import 'tv_catalog_sort_panel.dart';
@@ -63,7 +63,8 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
   int? overflowAfter = TvCatalogLayout.tagOverflowThreshold,
 }) {
   final tags = <TvCatalogSelectionTag>[
-    if (filters.watchState != UnifiedWatchFilter.all) TvCatalogSelectionTag(t.unifiedCatalog.filters.unwatched),
+    if (filters.watchState != UnifiedWatchFilter.all)
+      TvCatalogSelectionTag(unifiedWatchFilterLabel(filters.watchState)),
     // Sorted, so the same selection always produces the same row: the sets
     // behind these are unordered, and an order that changed between builds
     // would make a golden and a screenshot disagree for no reason.
@@ -71,6 +72,7 @@ List<TvCatalogSelectionTag> tvCatalogSelectionTags({
     for (final language in filters.audioLanguages.toList()..sort())
       TvCatalogSelectionTag(languageDisplayName(language) ?? language),
     for (final year in filters.years.toList()..sort()) TvCatalogSelectionTag('$year'),
+    for (final rating in contentRatingLabels(filters.officialRatings)) TvCatalogSelectionTag(rating),
     if (sourcesLabel != null) TvCatalogSelectionTag(sourcesLabel),
   ];
 
@@ -114,9 +116,7 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
-    final ink = tk.text.withValues(
-      alpha: tag.muted ? TvCatalogLayout.inkSecondary * 0.8 : TvCatalogLayout.inkSecondary,
-    );
+    final ink = tk.text.withValues(alpha: tag.muted ? tvCatalogTagMutedInk : TvCatalogLayout.inkSecondary);
 
     return CustomPaint(
       painter: _TagOutlinePainter(
@@ -200,3 +200,9 @@ class _TagOutlinePainter extends CustomPainter {
   bool shouldRepaint(_TagOutlinePainter old) =>
       old.color != color || old.radius != radius || old.dashed != dashed || old.scale != scale;
 }
+
+/// Ink of a muted (resting) tag such as "Populair nu". It was the secondary
+/// ink at 80% (0.496), 3.49:1 on the Light page at 18 pt; the catalog tertiary
+/// ink keeps it quieter than a chosen tag and above 4.5:1 (VIS-0925 Light
+/// audit). The dashed outline already says it is not a narrowing.
+const double tvCatalogTagMutedInk = TvCatalogLayout.inkTertiary;

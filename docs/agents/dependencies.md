@@ -25,6 +25,16 @@ apart, anders is een veranderde `.g.dart` niet meer toe te wijzen.
 `test/database/drift_relations_test.dart` bewaakt dat; zie [DEC-026](../DECISIONS.md#dec-026) voor
 de voorwaarden waaronder de pin weer los mag.
 
+**dart_code_linter blokkeert via de CLI, niet via `flutter analyze`.** `flutter analyze` wacht niet op
+de plugin, dus welke bestanden die dekt is willekeurig; de analyzegate telt pluginregels (kebab-case)
+daarom niet mee, ook niet op `severity: error`. Wat moet blokkeren staat in `scripts/dcl_hard_rules.sh`:
+`dart run dart_code_linter:metrics analyze lib test --no-fatal-warnings`, gefilterd op
+`use-setstate-synchronously`, `avoid-collection-methods-with-unrelated-types` en
+`avoid-unrelated-type-assertions`. Die aanroep gebruikt geen analysis server en gaf twee keer
+byte voor byte dezelfde uitvoer (25 sep 2026, versie 4.0.2). CI draait hem altijd, lokaal draait hij
+met `scripts/ci_checks.sh --with-unused`. De overige regels blijven advies. Een regel erbij hard maken
+betekent: aan `rules` in het script toevoegen en de bestaande treffers eerst oplossen.
+
 ## Codegen
 
 Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any `@freezed` model or a `lib/i18n/*.i18n.json` file (the base locale is `lib/i18n/en.i18n.json`; `strings.g.dart` is the generated output), run `scripts/codegen.sh`. CI fails if a `.dart` source is newer than its generated `.g.dart`/`.freezed.dart`, and `flutter analyze` **warnings are treated as failures**.
@@ -39,8 +49,8 @@ Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any
 - Native formatting uses ktlint 1.5.0, swift-format / swift format and clang-format via `scripts/format_native.sh`; generated/plugin platform files are skipped.
 - `scripts/format_native.sh --fix` fixes native formatting; `scripts/setup_hooks.sh` installs hooks.
 
-- Many deps are pinned `edde746/*` git forks (see `pubspec.yaml`) — don't swap them for pub.dev versions.
+- Many deps are pinned `edde746/*` git forks (see `pubspec.yaml`); don't swap them for pub.dev versions.
   `background_downloader` is the one exception: it is pinned to a mirror under `michelknoop21/*` at the
   same commit, because the upstream fork rebased the revision out of reach (DEC-118).
 
-- **MPVKit is exact-gepind** (`XCRemoteSwiftPackageReference` in alle drie de `Runner.xcodeproj`'s + zes `Package.resolved`'s). Het is een fork met prebuilt XCFrameworks, dus een tag = een specifieke mpv/ffmpeg-binary; een floating range zou de speler tussen builds onder de app vandaan wisselen. Nieuwe tags komen er dus alleen in als je ze haalt: `scripts/check_mpvkit_update.sh` (rapporteert + toont de changelog), `--bump` schrijft de pin bij op alle negen plekken. Draait adviserend mee in `scripts/testflight_release.sh`. **Houd hem bij** — de audio-/videopaden (Dolby, spatial, inline-OSD) leven in die fork. Na een bump: packages resolven in Xcode en afspelen echt verifiëren; het risico is een A/V-regressie, geen compilefout.
+- **MPVKit is exact-gepind** (`XCRemoteSwiftPackageReference` in alle drie de `Runner.xcodeproj`'s + zes `Package.resolved`'s). Het is een fork met prebuilt XCFrameworks, dus een tag = een specifieke mpv/ffmpeg-binary; een floating range zou de speler tussen builds onder de app vandaan wisselen. Nieuwe tags komen er dus alleen in als je ze haalt: `scripts/check_mpvkit_update.sh` (rapporteert + toont de changelog), `--bump` schrijft de pin bij op alle negen plekken. Draait adviserend mee in `scripts/testflight_release.sh`. **Houd hem bij**: de audio-/videopaden (Dolby, spatial, inline-OSD) leven in die fork. Na een bump: packages resolven in Xcode en afspelen echt verifiëren; het risico is een A/V-regressie, geen compilefout.

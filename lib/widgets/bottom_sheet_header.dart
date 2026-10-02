@@ -3,6 +3,7 @@ import 'package:pleya/widgets/app_bar_back_button.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../theme/mono_tokens.dart';
 import 'overlay_sheet.dart';
 
 /// A reusable header widget for bottom sheets
@@ -10,6 +11,9 @@ import 'overlay_sheet.dart';
 class BottomSheetHeader extends StatelessWidget {
   /// The title text to display
   final String title;
+
+  /// Optional muted line under the title
+  final String? subtitle;
 
   /// Optional leading widget (e.g., icon or back button)
   /// Takes precedence over [icon] and [onBack]
@@ -52,6 +56,7 @@ class BottomSheetHeader extends StatelessWidget {
   const BottomSheetHeader({
     super.key,
     required this.title,
+    this.subtitle,
     this.leading,
     this.action,
     this.onClose,
@@ -106,7 +111,17 @@ class BottomSheetHeader extends StatelessWidget {
           Row(
             children: [
               if (resolvedLeading != null) ...[resolvedLeading, const SizedBox(width: 8)],
-              Expanded(child: Text(title, style: effectiveTitleStyle)),
+              Expanded(
+                child: subtitle == null
+                    ? Text(title, style: effectiveTitleStyle)
+                    : Column(
+                        crossAxisAlignment: .start,
+                        children: [
+                          Text(title, style: effectiveTitleStyle),
+                          Text(subtitle!, style: TextStyle(fontSize: 13, color: tokens(context).textMuted)),
+                        ],
+                      ),
+              ),
               ?action,
               ExcludeFocusTraversal(
                 child: IconButton(

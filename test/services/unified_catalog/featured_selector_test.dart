@@ -81,12 +81,12 @@ void main() {
       expect([for (final g in first) g.groupId], ['group:server-a:1', 'group:server-a:2', 'group:server-a:4']);
     });
 
-    test('caps the carousel at hoofdstuk 9.5\'s upper bound', () {
+    test('caps the carousel at the approved twelve-slide upper bound', () {
       final hubs = [
         _hub('topPicks', [for (var i = 0; i < 20; i++) _movie('$i', title: 'Film $i', year: 2000 + i)]),
       ];
 
-      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(8));
+      expect(const FeaturedSelector().select(hubs, now: _asOf), hasLength(12));
       expect(const FeaturedSelector(maxCount: 5).select(hubs, now: _asOf), hasLength(5));
     });
 

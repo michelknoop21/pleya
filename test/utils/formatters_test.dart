@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/utils/formatters.dart';
 
 void main() {
@@ -180,6 +181,18 @@ void main() {
       // DateFormat may fall back to raw input if intl date symbols aren't
       // initialised in the test runner — just verify no crash and string output.
       expect(formatFullDate('2024-01-15'), isA<String>());
+    });
+  });
+
+  group('formatDurationTextual', () {
+    tearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+
+    // PLR10: the sleep timer read "5minuten" and "1uur, 30minuten".
+    test('spells full units with a space and keeps abbreviations tight', () async {
+      await LocaleSettings.setLocale(AppLocale.nl);
+      expect(formatDurationTextual(5 * 60 * 1000, abbreviated: false), '5 minuten');
+      expect(formatDurationTextual(90 * 60 * 1000, abbreviated: false), '1 uur, 30 minuten');
+      expect(formatDurationTextual(90 * 60 * 1000), '1u 30min');
     });
   });
 }

@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../media/ids.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
 import '../media/watch_session.dart';
@@ -36,14 +37,22 @@ class NowWatchingProvider extends ChangeNotifier with DisposableChangeNotifierMi
     required bool Function() enabled,
     int? Function()? selfUserId,
     MediaServerClient? Function()? artworkClient,
+    ServerId? Function()? monitoredServerId,
     NowWatchingService service = const NowWatchingService(),
   }) : _client = client,
        _enabled = enabled,
        _selfUserId = selfUserId,
        _artworkClient = artworkClient,
+       _monitoredServerId = monitoredServerId,
        _service = service {
     _lifecycle = AppLifecycleListener(onStateChange: _onLifecycle);
   }
+
+  final ServerId? Function()? _monitoredServerId;
+
+  /// The server whose rating keys the sessions speak of. Null when unknown,
+  /// and then no surface may match a session to a title by key alone.
+  ServerId? get monitoredServerId => _monitoredServerId?.call();
 
   /// How often the presence control refreshes on its own. A minute late on
   /// "someone started watching" costs nothing; a request every few seconds for

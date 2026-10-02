@@ -632,6 +632,11 @@ class PleyaShareConnection extends Connection {
 /// would let the app claim a feature the server has since stopped offering.
 /// Until the first successful `/info`, the client runs on a conservative
 /// capability set.
+String pleyaServerConnectionId({required String serverId, String? userId}) {
+  final account = userId?.trim();
+  return account == null || account.isEmpty ? 'pleyaServer.$serverId' : 'pleyaServer.$serverId.$account';
+}
+
 class PleyaServerConnection extends Connection {
   @override
   final String id;

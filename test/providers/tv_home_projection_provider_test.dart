@@ -318,18 +318,18 @@ void main() {
     home.dispose();
   });
 
-  test('twelve recent films cap the hero at hoofdstuk 9.5s eight, and the rest stay activation-safe', () async {
+  test('twelve recent films all remain in the approved hero rotation', () async {
     // `latestMovies` can hold up to 12 (data_aggregation_service.dart's own
-    // cap); `FeaturedSelector.maxCount` is hoofdstuk 9.5's upper bound of 8.
-    // That is a cap on the *rotation*, not a filter on what may be shown: an
-    // item past it never becomes a hero slide, but rail focus can still put
-    // it in the billboard, so `featuredGroupFor` must still name its group.
+    // cap), and the approved rotation now accepts that complete bounded pool.
     aggregation.latestMoviesResult = () => [for (var i = 1; i <= 12; i++) _movie('m$i', title: 'Movie $i')];
     final home = makeHome();
     await discover.load();
     await _settle(home);
 
-    expect(home.heroGroups, hasLength(8), reason: 'the hero rotation stays at maxCount');
+    expect(home.heroGroups, hasLength(12), reason: 'the hero rotation keeps the complete bounded pool');
+    expect(home.heroGroups.map((group) => group.representativeSource.item.title), [
+      for (var i = 1; i <= 12; i++) 'Movie $i',
+    ]);
     expect(home.featuredGroupFor(_movie('m9', title: 'Movie 9')), isNotNull);
     expect(home.featuredGroupFor(_movie('m12', title: 'Movie 12')), isNotNull);
     home.dispose();

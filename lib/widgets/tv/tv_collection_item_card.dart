@@ -26,7 +26,7 @@ class TvCollectionItemCard extends StatelessWidget {
     required this.position,
     required this.width,
     required this.onSelect,
-    required this.onRemove,
+    this.onRemove,
     this.client,
     this.focusNode,
     this.autofocus = false,
@@ -46,8 +46,8 @@ class TvCollectionItemCard extends StatelessWidget {
   final VoidCallback onSelect;
 
   /// PB-13's "item uit de collectie verwijderen": the only per-item action
-  /// this surface offers.
-  final VoidCallback onRemove;
+  /// this surface offers. Null without owner rights on the server.
+  final VoidCallback? onRemove;
 
   final MediaServerClient? client;
   final FocusNode? focusNode;

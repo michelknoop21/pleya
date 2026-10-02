@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+
 import '../../profiles/profile.dart';
 
 /// Which population a preference belongs to.
@@ -59,18 +63,22 @@ class PreferenceSyncScope {
   /// Resolve the scope for [profileId], the id [StorageService] stores under
   /// `active_app_profile_id`.
   ///
-  /// A Plex Home profile resolves to its home-user UUID, which is what the
-  /// existing `user_{scope}_` prefixes already use, so no local key changes
-  /// shape. Anything else resolves to a non-portable scope carrying the full
-  /// profile id: still usable for local storage, never usable as a cloud
-  /// namespace.
+  /// The id is what the existing `user_{scope}_` prefixes already use, so no
+  /// local key changes shape: the home-user UUID when `parsePlexHomeProfileId`
+  /// recognises one, otherwise the full profile id. In production that is the
+  /// full id for every Plex Home profile, because Plex issues 16-hex home uuids
+  /// and the parser only knows 36-character ones (register row F1).
+  ///
+  /// Portable is the same predicate the language maps use,
+  /// [isPortableProfileScope]: the real Plex Home shape travels, the client-id
+  /// fallback, `local-<uuid>` and anything else stay on the device.
   static PreferenceSyncScope forProfile(String? profileId) {
     if (profileId == null || profileId.isEmpty) return none;
     final home = parsePlexHomeProfileId(profileId);
     if (home != null) {
       return PreferenceSyncScope._(PreferenceScopeKind.profile, home.homeUserUuid, true);
     }
-    return PreferenceSyncScope._(PreferenceScopeKind.profile, profileId, false);
+    return PreferenceSyncScope._(PreferenceScopeKind.profile, profileId, isPortableProfileScope(profileId));
   }
 
   /// The local prefs prefix for this scope. Matches what `StorageService`
@@ -97,14 +105,50 @@ class PreferenceSyncScope {
   /// feature may add more. Ownership is claimed for exactly this prefix.
   static const String cloudNamespacePrefix = '__pleya_pref_v2/';
 
+  /// A short, stable stand-in for an identifier inside a cloud key: the first
+  /// ten characters of base64url(SHA-256(UTF-8 id)), 60 bits.
+  ///
+  /// KVS takes keys of at most 64 bytes UTF-8 and does not store longer ones.
+  /// A Plex Home profile id is 48 characters and a per-library identity up to
+  /// 65, so neither fits in the key as it is (re-review N1). The alphabet has
+  /// no `/` and no `:`, so a short id never reads as a separator or as a
+  /// `serverId:libraryId`. Collisions need about a billion ids per namespace
+  /// to become likely; an account holds a handful of profiles and libraries.
+  static String shortId(String id) => base64Url.encode(sha256.convert(utf8.encode(id)).bytes).substring(0, 10);
+
+  /// The profile segment of this scope's cloud keys, or null without an id.
+  String? get cloudId => id == null ? null : shortId(id!);
+
   /// Whether [cloudKey] is a record this sync format owns.
   static bool ownsCloudKey(String cloudKey) => cloudKey.startsWith(cloudNamespacePrefix);
+
+  /// Whether a `{profileScope}` inside a map key names the same profile on
+  /// another device.
+  ///
+  /// The scope is `StorageService.activeUserScope()`. For a Plex Home profile
+  /// that is, in practice, the full profile id
+  /// `plex-home-plex.<accountUuid>-<homeUserUuid>`: Plex issues both uuids as
+  /// 16 hex characters (`test/fixtures/plex_detail/home_users.json`), and
+  /// `parsePlexHomeProfileId` only recognises a 36-character home uuid, so it
+  /// never strips the id down (a separate finding in the repair register).
+  /// That id is the same on every device of the account, unless the account
+  /// connection fell back to this device's client identifier (a v4 uuid with
+  /// hyphens; `connection_bootstrap.dart`, `auth_screen.dart`,
+  /// `add_plex_account_screen.dart`) because the Plex account uuid was
+  /// unknown. Every other profile kind is minted as `local-<uuid>` on the
+  /// device that created it (`add_jellyfin_screen.dart`,
+  /// `add_pleya_server_screen.dart`, `add_local_profile_screen.dart`), and
+  /// empty is signed out. So only the real Plex Home shape travels, and
+  /// anything else fails closed.
+  static bool isPortableProfileScope(String scope) => _plexHomeScope.hasMatch(scope);
+
+  static final RegExp _plexHomeScope = RegExp(r'^plex-home-plex\.[0-9a-fA-F]{16}-[0-9a-fA-F]{16}$');
 
   /// Inverse of [cloudKey]: the scope a v2 record belongs to and the base key
   /// inside it, or null when the key is not one of ours or is malformed.
   ///
-  /// The profile id comes back so the caller can check it against the active
-  /// profile. That check is the entire reason the namespace exists: under v1
+  /// The profile segment comes back so the caller can check it against the
+  /// active profile's [cloudId]. That check is the entire reason the namespace exists: under v1
   /// every profile shared one slot per base key, so there was nothing to
   /// compare and a record for profile B landed on profile A.
   static ({PreferenceScopeKind kind, String? id, String baseKey})? parseCloudKey(String cloudKey) {
@@ -136,7 +180,7 @@ class PreferenceSyncScope {
         id == null
             ? null
             : '$cloudNamespacePrefix'
-                  'profile/$id/$key',
+                  'profile/$cloudId/$key',
     };
   }
 

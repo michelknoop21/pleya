@@ -205,6 +205,12 @@ class ProfileConnections extends Table {
   TextColumn get userToken => text().withDefault(const Constant(''))();
   TextColumn get userIdentifier => text()();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
+
+  /// Attached through the borrow flow rather than signed in on this profile.
+  /// A borrowed connection never carries owner rights on the server, even
+  /// when the lender is its owner or admin (see
+  /// `MultiServerManager.canManageServerMetadata`).
+  BoolColumn get borrowed => boolean().withDefault(const Constant(false))();
   IntColumn get tokenAcquiredAt => integer().nullable()();
   IntColumn get lastUsedAt => integer().nullable()();
 

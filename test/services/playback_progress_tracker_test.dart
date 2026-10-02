@@ -964,6 +964,33 @@ void main() {
       expect(watched, hasLength(1));
       expect(progress, isEmpty);
     });
+
+    test('a resume after a stopped report re-arms the final notification', () async {
+      // Backgrounded at 20 percent, resumed, left for real at 70 percent: the
+      // second stop is the one the taste model needs to see as final.
+      final client = _FakePlexClient(thresholdPercent: 90);
+      final player = _FakePlayer(position: const Duration(seconds: 20), duration: const Duration(seconds: 100));
+      final tracker = PlaybackProgressTracker(
+        client: client,
+        metadata: _meta(ratingKey: 'resumed', serverId: ServerId('srv')),
+        player: player,
+        isOffline: false,
+      );
+      addTearDown(tracker.dispose);
+
+      final events = <WatchStateEvent>[];
+      final sub = WatchStateNotifier().forItem('resumed').listen(events.add);
+      addTearDown(sub.cancel);
+
+      await tracker.sendStoppedProgressOnce();
+      tracker.resumeAfterStoppedReport();
+      player.position = const Duration(seconds: 70);
+      await tracker.sendStoppedProgressOnce();
+      await Future<void>.delayed(Duration.zero);
+
+      final finals = events.where((e) => e.isFinal).toList();
+      expect(finals.map((e) => e.viewOffset), [20000, 70000]);
+    });
   });
 
   // ============================================================

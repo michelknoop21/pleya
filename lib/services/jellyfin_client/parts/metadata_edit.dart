@@ -3,6 +3,7 @@ part of '../../jellyfin_client.dart';
 mixin _JellyfinMetadataEditMethods on MediaServerCacheMixin {
   JellyfinConnection get connection;
   FailoverHttpClient get _http;
+  void assertCanManageServerMetadata();
 
   Future<Map<String, dynamic>?> fetchEditableMetadataItem(String itemId) async {
     if (isOfflineMode) return null;
@@ -14,6 +15,7 @@ mixin _JellyfinMetadataEditMethods on MediaServerCacheMixin {
   }
 
   Future<bool> updateMetadataItem(String itemId, Map<String, dynamic> item) async {
+    assertCanManageServerMetadata();
     final response = await _http.post('/Items/${_segment(itemId)}', body: item);
     throwIfHttpError(response);
     await _deleteMetadataEditCache(itemId);
@@ -51,6 +53,7 @@ mixin _JellyfinMetadataEditMethods on MediaServerCacheMixin {
   }
 
   Future<bool> downloadRemoteImage(String itemId, {required String imageType, required String imageUrl}) async {
+    assertCanManageServerMetadata();
     final response = await _http.post(
       '/Items/${_segment(itemId)}/RemoteImages/Download',
       queryParameters: {'type': imageType, 'imageUrl': imageUrl},
@@ -66,6 +69,7 @@ mixin _JellyfinMetadataEditMethods on MediaServerCacheMixin {
     required List<int> bytes,
     required String contentType,
   }) async {
+    assertCanManageServerMetadata();
     final response = await _http.post(
       '/Items/${_segment(itemId)}/Images/${_segment(imageType)}',
       body: bytes,

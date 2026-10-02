@@ -144,6 +144,27 @@ ids:
   - id: media-detail.season-chip
     role: chip
     instanceable: true
+  - id: media-detail.play
+    role: button
+    instanceable: false
+  - id: media-detail.play-from-start
+    role: button
+    instanceable: false
+  - id: media-detail.action
+    role: button
+    instanceable: true
+  - id: media-detail.season-poster
+    role: grid.item
+    instanceable: true
+  - id: tv.search.pill
+    role: field
+    instanceable: false
+  - id: seerr.search.field
+    role: field
+    instanceable: false
+  - id: seerr.search.inbox
+    role: button
+    instanceable: false
   - id: screen.my_pleya
     role: screen
     instanceable: false
@@ -158,6 +179,9 @@ ids:
     instanceable: true
   - id: my_pleya.section.tile
     role: grid.item
+    instanceable: true
+  - id: settings.appearance.category
+    role: button
     instanceable: true
   - id: my_pleya.chip
     role: button
@@ -217,7 +241,7 @@ ids:
     role: button
     instanceable: false
   - id: home.header.avatar
-    role: image
+    role: button
     instanceable: false
   - id: home.chips
     role: filter
@@ -247,7 +271,7 @@ ids:
     role: button
     instanceable: true
   - id: landing.header.avatar
-    role: image
+    role: button
     instanceable: true
   - id: landing.title
     role: region
@@ -267,6 +291,12 @@ ids:
   - id: search.results.item
     role: list.item
     instanceable: true
+  - id: search.history.chip
+    role: chip
+    instanceable: true
+  - id: search.clear
+    role: button
+    instanceable: false
   - id: sheet.source_picker
     role: sheet
     instanceable: false
@@ -279,6 +309,9 @@ ids:
   - id: sheet.context_menu.item
     role: list.item
     instanceable: true
+  - id: sheet.library_actions
+    role: sheet
+    instanceable: false
   - id: screen.catalog_movies
     role: screen
     instanceable: false

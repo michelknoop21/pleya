@@ -6,7 +6,7 @@
 /// The player screen turns it into the toast, because the wording is a product
 /// decision that belongs with the surface and not with the resolver.
 ///
-/// Two of them, and they are the two halves of DEC-096 the viewer can actually
+/// Two of them, and they are the two halves of DEC-109 the viewer can actually
 /// observe: a deliberate choice was remembered (31 C), or a wanted language was
 /// not in this episode and something else is playing for now (31 D). Nothing
 /// else is worth interrupting a picture for.
@@ -44,7 +44,7 @@ class LanguageChoiceRemembered extends PlaybackLanguageNotice {
   final bool subtitlesOff;
 
   /// Whether the choice became the series preference, or holds for this
-  /// playback alone because "Onthoud keuzes per serie" is off (DEC-096 lid 3).
+  /// playback alone because "Onthoud keuzes per serie" is off (DEC-109 lid 3).
   /// The toast says which, because those are different promises.
   final bool storedForSeries;
 

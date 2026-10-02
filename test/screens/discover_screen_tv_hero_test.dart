@@ -229,6 +229,27 @@ void main() {
     expect(walked, ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo']);
   });
 
+  testWidgets('twelve unique recent films are reachable in the TV hero without wrapping', (tester) async {
+    final harness = await _pumpTvHero(tester, {
+      'server_1': [
+        for (var i = 1; i <= 12; i++) _movie('movie-$i', title: 'Movie $i', guid: 'plex://movie/$i', year: 2025),
+      ],
+    });
+
+    expect(harness.heroTitles, [for (var i = 1; i <= 12; i++) 'Movie $i']);
+    expect(_spotlightTitle(tester), 'Movie 1');
+
+    final walked = <String?>[_spotlightTitle(tester)];
+    for (var i = 1; i < 12; i++) {
+      await _pressRight(tester);
+      walked.add(_spotlightTitle(tester));
+    }
+    expect(walked, [for (var i = 1; i <= 12; i++) 'Movie $i']);
+
+    await _pressRight(tester);
+    expect(_spotlightTitle(tester), 'Movie 12', reason: 'Right at the final slide must not wrap');
+  });
+
   testWidgets('one recent film plus Top Picks gives a hero of exactly that film', (tester) async {
     final harness = await _pumpTvHero(
       tester,

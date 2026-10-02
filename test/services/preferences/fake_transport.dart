@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:pleya/services/preferences/preference_transport.dart';
 
@@ -16,11 +17,18 @@ class FakeTransport implements PreferenceTransport {
   Object? throwOnRemove;
   int? valueCap = 100 * 1024;
 
+  /// KVS refuses keys over 64 UTF-8 bytes. The fake throws instead of
+  /// dropping, so an engine path that forgot its own check fails the test.
+  int? keyCap = 64;
+
   @override
   String get name => 'fake';
 
   @override
   int? get maxValueBytes => valueCap;
+
+  @override
+  int? get maxKeyBytes => keyCap;
 
   @override
   Future<bool> isAvailable() async => available;
@@ -34,6 +42,8 @@ class FakeTransport implements PreferenceTransport {
   @override
   Future<void> write(String key, String encoded) async {
     if (throwOnWrite != null) throw throwOnWrite!;
+    final cap = keyCap;
+    if (cap != null && utf8.encode(key).length > cap) throw ArgumentError('cloud key over $cap bytes: $key');
     writes.add(key);
     store[key] = encoded;
   }

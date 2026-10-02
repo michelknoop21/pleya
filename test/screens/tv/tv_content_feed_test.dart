@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
+import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
@@ -55,6 +56,7 @@ import 'package:pleya/services/unified_catalog/home_custom_row_view_all.dart';
 import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/tv/tv_content_feed.dart';
 import 'package:pleya/widgets/tv/tv_content_row.dart';
@@ -373,6 +375,40 @@ void main() {
     _film('dune-nas', title: 'Dune', releasedAt: '2024-03-01'),
     _film('arrival-nas', title: 'Arrival', releasedAt: '2024-02-01'),
   ];
+
+  // VIS-0925-E with Michel's D3: hero title, CTA fill and the rail heading
+  // on the page inset, the edge every nested page uses; a rail tile's artwork
+  // one ring gap further in (VER3). Build 303 drew title, CTA and tile on
+  // three x-positions; the first fix moved the title off the heading.
+  testWidgets('hero title, CTA fill and rail heading share the page inset, artwork one ring gap in', (tester) async {
+    await boot(
+      tester,
+      latestMovies: twoRecentFilms(),
+      onDeck: [_episode('e1', show: 'Harbourlight', season: 2, episode: 4)],
+    );
+    final scale = TvLayoutConstants.scaleOf(tester.element(find.byType(TvContentFeed)));
+    final page = TvDiscoveryLayout.pageInset * scale;
+    final hero = find.byType(TvHeroBillboardCard);
+    final title = tester.getRect(
+      find.descendant(of: hero, matching: find.text(heroGroup(tester).representativeSource.item.title!)).first,
+    );
+    final play = tester.getRect(find.byKey(const ValueKey('tvHeroCta.play.fill')));
+    final heading = tester.getRect(
+      find.descendant(of: find.byType(TvSectionHeader).first, matching: find.text(t.discover.continueWatching)),
+    );
+    final firstTile = find.byType(TvExpandableMediaTile).first;
+    final artwork = tester.getRect(find.descendant(of: firstTile, matching: find.byType(AnimatedContainer)).first);
+    expect(title.left, closeTo(page, 0.5));
+    expect(play.left, closeTo(page, 0.5));
+    expect(heading.left, closeTo(page, 0.5));
+    expect(artwork.left, closeTo(page + TvDiscoveryLayout.cardFocusRingGap * scale, 0.5));
+
+    // D1: the CTA ring stands a clear band off the fill, as on the category
+    // rail, so a white ring still shows around a white (focused) fill.
+    final fill = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('tvHeroCta.play.fill')));
+    final ring = ((fill.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring;
+    expect(ring.strokeOutset, greaterThan(FocusTheme.focusBorderWidth + 1));
+  });
 
   group('rowfocus is not hero state (hoofdstuk 7.3 / 31.9)', () {
     testWidgets('walking a content row leaves the featured slide exactly where it was', (tester) async {
@@ -1011,6 +1047,102 @@ void main() {
         'tvDiscoveryTile_${first.hub.groups.first.groupId}',
         reason: 'DOWN goes to the row the viewer can see at the top, whatever order the keys were made in',
       );
+    });
+
+    testWidgets('a silent reload that adds a title in front keeps the focus on the same title, in place', (
+      tester,
+    ) async {
+      // Home refreshes itself now (tab return, resume, every five minutes).
+      // New titles land at the front of Recently Added while the remote may be
+      // standing on the third card: the ring must stay on that title, not on
+      // whatever now sits at index 2, and the card must not slide sideways.
+      final films = [for (var i = 0; i < 8; i++) _film('tp$i', title: 'Film $i')];
+      await boot(tester, hubs: [_hub('recent', 'Recently Added', films)]);
+      final third = rows(tester).single.hub.groups[2].groupId;
+      Finder tile(String groupId) =>
+          find.byWidgetPredicate((w) => w is TvExpandableMediaTile && w.group.groupId == groupId);
+
+      tileNode(tester, third).requestFocus();
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$third');
+      final xBefore = tester.getTopLeft(tile(third)).dx;
+      final widthBefore = tester.getSize(tile(third)).width;
+
+      aggregation.hubs = [
+        _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
+      ];
+      await discover.refreshIfStale(maxAge: Duration.zero);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pump();
+      expect(tester.getTopLeft(tile(third)).dx, moreOrLessEquals(xBefore, epsilon: 0.5), reason: 'not even one frame');
+      await tester.pumpAndSettle();
+
+      final groups = rows(tester).single.hub.groups;
+      expect(groups.first.representativeSource.item.title, 'Brand New', reason: 'sanity: the new title is in front');
+      expect(groups.indexWhere((g) => g.groupId == third), 3, reason: 'sanity: the focused title moved one place');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$third');
+      expect(tester.getTopLeft(tile(third)).dx, moreOrLessEquals(xBefore, epsilon: 0.5));
+      // The card keeps its focused look, not only the focus node: on the
+      // simulator the ring and the wide artwork were gone while the node
+      // still held the focus, because the tile's state was rebuilt at its new
+      // index instead of moved there.
+      expect(tester.getSize(tile(third)).width, moreOrLessEquals(widthBefore, epsilon: 0.5));
+    });
+
+    testWidgets('a reload while the rail is left keeps the remembered card in place in a scrolled rail', (
+      tester,
+    ) async {
+      // Back from a detail page: the reload can land before the ring is back
+      // on the card. The rail does not hold the focus at that moment, but it
+      // was walked and scrolled, so its remembered card must not slide
+      // sideways (review M8; seen on the simulator as a one-place jump).
+      final films = [for (var i = 0; i < 12; i++) _film('tp$i', title: 'Film $i')];
+      await boot(tester, hubs: [_hub('recent', 'Recently Added', films)]);
+      final seventh = rows(tester).single.hub.groups[6].groupId;
+      Finder tile(String groupId) =>
+          find.byWidgetPredicate((w) => w is TvExpandableMediaTile && w.group.groupId == groupId);
+
+      tileNode(tester, seventh).requestFocus();
+      await tester.pumpAndSettle();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final xBefore = tester.getTopLeft(tile(seventh)).dx;
+
+      aggregation.hubs = [
+        _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
+      ];
+      await discover.refreshIfStale(maxAge: Duration.zero);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(tile(seventh)).dx, moreOrLessEquals(xBefore, epsilon: 0.5));
+      expect(tester.state<TvContentFeedState>(find.byType(TvContentFeed)).focusRestored(), isTrue);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvDiscoveryTile_$seventh');
+    });
+
+    testWidgets('an unscrolled rail that is not being looked at shows the new title', (tester) async {
+      final films = [for (var i = 0; i < 12; i++) _film('tp$i', title: 'Film $i')];
+      await boot(tester, hubs: [_hub('recent', 'Recently Added', films)]);
+      Finder tile(String groupId) =>
+          find.byWidgetPredicate((w) => w is TvExpandableMediaTile && w.group.groupId == groupId);
+      final firstX = tester.getTopLeft(tile(rows(tester).single.hub.groups.first.groupId)).dx;
+
+      aggregation.hubs = [
+        _hub('recent', 'Recently Added', [_film('brand-new', title: 'Brand New'), ...films]),
+      ];
+      await discover.refreshIfStale(maxAge: Duration.zero);
+      for (var i = 0; i < 80 && projection.isProjecting; i++) {
+        await Future<void>.value();
+      }
+      await tester.pumpAndSettle();
+
+      final newGroup = rows(tester).single.hub.groups.first.groupId;
+      expect(tester.getTopLeft(tile(newGroup)).dx, moreOrLessEquals(firstX, epsilon: 0.5), reason: 'first in view');
     });
 
     testWidgets('rows keep their own state identity across a re-projection', (tester) async {

@@ -50,6 +50,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsSearchEn search = TranslationsSearchEn.internal(_root);
 	late final TranslationsHotkeysEn hotkeys = TranslationsHotkeysEn.internal(_root);
 	late final TranslationsFileInfoEn fileInfo = TranslationsFileInfoEn.internal(_root);
+	late final TranslationsDetailActionsEn detailActions = TranslationsDetailActionsEn.internal(_root);
 	late final TranslationsMediaMenuEn mediaMenu = TranslationsMediaMenuEn.internal(_root);
 	late final TranslationsRateSheetEn rateSheet = TranslationsRateSheetEn.internal(_root);
 	late final TranslationsAccessibilityEn accessibility = TranslationsAccessibilityEn.internal(_root);
@@ -620,6 +621,12 @@ class TranslationsSettingsEn {
 	/// en: 'Show each season's poster above its tab'
 	String get showSeasonPostersOnTabsDescription => 'Show each season\'s poster above its tab';
 
+	/// en: 'Liquid Glass'
+	String get liquidGlass => 'Liquid Glass';
+
+	/// en: 'Glass surfaces on the tab bar, player and buttons.'
+	String get liquidGlassDescription => 'Glass surfaces on the tab bar, player and buttons.';
+
 	/// en: 'Full TV Cards'
 	String get tvFullCardLayout => 'Full TV Cards';
 
@@ -712,6 +719,18 @@ class TranslationsSettingsEn {
 
 	/// en: 'Used when starting playback. Lower values reduce bandwidth.'
 	String get defaultQualityDescription => 'Used when starting playback. Lower values reduce bandwidth.';
+
+	/// en: 'Maximum Resolution'
+	String get displayMaxResolutionTitle => 'Maximum Resolution';
+
+	/// en: 'Caps what this device asks a server for, even when the file is larger.'
+	String get displayMaxResolutionDescription => 'Caps what this device asks a server for, even when the file is larger.';
+
+	/// en: 'detected: ${resolution}'
+	String displayMaxResolutionNow({required Object resolution}) => 'detected: ${resolution}';
+
+	late final TranslationsSettingsDisplayMaxResolutionOptionsEn displayMaxResolutionOptions = TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(_root);
+	late final TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn displayMaxResolutionOptionDescriptions = TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(_root);
 
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
@@ -1400,6 +1419,33 @@ class TranslationsFileInfoEn {
 
 	/// en: '64-bit Offsets'
 	String get has64bitOffsets => '64-bit Offsets';
+}
+
+// Path: detailActions
+class TranslationsDetailActionsEn {
+	TranslationsDetailActionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Watchlist'
+	String get watchlist => 'Watchlist';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Rate'
+	String get rate => 'Rate';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'Download'
+	String get download => 'Download';
+
+	/// en: 'More'
+	String get more => 'More';
 }
 
 // Path: mediaMenu
@@ -2452,6 +2498,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Because you watched ${title}'
 	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
 
+	/// en: 'Because you're watching ${title}'
+	String becauseYouAreWatching({required Object title}) => 'Because you\'re watching ${title}';
+
 	/// en: 'Recently Added Shows'
 	String get latestShows => 'Recently Added Shows';
 
@@ -2466,6 +2515,12 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Because you like ${genre}'
 	String becauseYouLike({required Object genre}) => 'Because you like ${genre}';
+
+	/// en: 'More with ${name}'
+	String moreWithActor({required Object name}) => 'More with ${name}';
+
+	/// en: 'More from ${name}'
+	String moreFromDirector({required Object name}) => 'More from ${name}';
 
 	/// en: 'Hidden Gems'
 	String get hiddenGems => 'Hidden Gems';
@@ -2496,6 +2551,63 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+
+	/// en: 'Played ${count}×'
+	String activityPlays({required Object count}) => 'Played ${count}×';
+
+	/// en: '${count} viewers'
+	String activityViewers({required Object count}) => '${count} viewers';
+
+	/// en: 'You're at S${season} E${episode}'
+	String activityOwnProgress({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}';
+
+	/// en: 'Subtitles'
+	String get techSubtitles => 'Subtitles';
+
+	/// en: 'Next episode · S${season} E${episode}'
+	String techEpisode({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}';
+
+	/// en: '(one) {1 season} (other) {${n} seasons}'
+	String seasonsHeading({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 season',
+		other: '${n} seasons',
+	);
+
+	/// en: '(one) {1 episode} (other) {${n} episodes}'
+	String seasonEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 episode',
+		other: '${n} episodes',
+	);
+
+	/// en: '${count} left to watch'
+	String seasonEpisodesLeft({required Object count}) => '${count} left to watch';
+
+	/// en: '${title} · applies to this film'
+	String trackScopeMovie({required Object title}) => '${title} · applies to this film';
+
+	/// en: '${title} · for this series'
+	String trackScopeSeries({required Object title}) => '${title} · for this series';
+
+	/// en: 'Your choice is remembered and used when you press Resume or Play.'
+	String get trackChoiceNote => 'Your choice is remembered and used when you press Resume or Play.';
+
+	/// en: 'Not remembered. Applies when you play from this page; your profile language comes first.'
+	String get trackChoiceNoteOnce => 'Not remembered. Applies when you play from this page; your profile language comes first.';
+
+	/// en: 'Rotten Tomatoes critics'
+	String get scoreRtCritics => 'Rotten Tomatoes critics';
+
+	/// en: 'Rotten Tomatoes audience'
+	String get scoreRtAudience => 'Rotten Tomatoes audience';
+
+	/// en: 'Community score'
+	String get scoreCommunity => 'Community score';
+
+	/// en: 'Reviews'
+	String get reviews => 'Reviews';
+
+	/// en: 'Read at source'
+	String get reviewOpenSource => 'Read at source';
 }
 
 // Path: mobileDetail
@@ -5443,6 +5555,9 @@ class TranslationsSourcePickerEn {
 	/// en: 'Manage servers'
 	String get manageServers => 'Manage servers';
 
+	/// en: 'Source'
+	String get source => 'Source';
+
 	/// en: 'Source: ${source}'
 	String sourceLabel({required Object source}) => 'Source: ${source}';
 
@@ -5592,6 +5707,15 @@ class TranslationsTvMyPleyaEn {
 
 	/// en: 'Media, collections, playlists'
 	String get librariesSubtitle => 'Media, collections, playlists';
+
+	/// en: 'Manage media libraries'
+	String get libraryManagementSubtitle => 'Manage media libraries';
+
+	/// en: 'Browse collections across libraries'
+	String get collectionsSubtitle => 'Browse collections across libraries';
+
+	/// en: 'Playlists from connected servers'
+	String get playlistsSubtitle => 'Playlists from connected servers';
 
 	/// en: 'Connections and local sources'
 	String get serversSubtitle => 'Connections and local sources';
@@ -5828,6 +5952,42 @@ class TranslationsLanguageSettingsEn {
 
 	/// en: 'Subtitles'
 	String get kindSubtitles => 'Subtitles';
+}
+
+// Path: settings.displayMaxResolutionOptions
+class TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: '1080p'
+	String get hd1080 => '1080p';
+
+	/// en: '4K'
+	String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follow the display where the app can read it'
+	String get auto => 'Follow the display where the app can read it';
+
+	/// en: 'Never ask for more than 1920x1080'
+	String get hd1080 => 'Never ask for more than 1920x1080';
+
+	/// en: 'Never ask for more than 3840x2160'
+	String get uhd2160 => 'Never ask for more than 3840x2160';
 }
 
 // Path: search.filters
@@ -6747,6 +6907,9 @@ class TranslationsUnifiedCatalogFiltersEn {
 	/// en: 'Year'
 	String get year => 'Year';
 
+	/// en: 'Age rating'
+	String get contentRating => 'Age rating';
+
 	/// en: 'Servers'
 	String get servers => 'Servers';
 
@@ -6764,6 +6927,12 @@ class TranslationsUnifiedCatalogFiltersEn {
 
 	/// en: 'Unwatched'
 	String get unwatched => 'Unwatched';
+
+	/// en: 'In progress'
+	String get inProgress => 'In progress';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
 
 	/// en: 'Not available for the current sources'
 	String get unsupported => 'Not available for the current sources';
@@ -7218,6 +7387,8 @@ extension on Translations {
 			'settings.showEpisodeNumberOnCardsDescription' => 'Show season and episode number on episode cards',
 			'settings.showSeasonPostersOnTabs' => 'Show Season Posters on Tabs',
 			'settings.showSeasonPostersOnTabsDescription' => 'Show each season\'s poster above its tab',
+			'settings.liquidGlass' => 'Liquid Glass',
+			'settings.liquidGlassDescription' => 'Glass surfaces on the tab bar, player and buttons.',
 			'settings.tvFullCardLayout' => 'Full TV Cards',
 			'settings.tvFullCardLayoutDescription' => 'Use image-only TV cards with actor names overlaid',
 			'settings.focusGlow' => 'Focus Glow',
@@ -7249,6 +7420,15 @@ extension on Translations {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB memory available. A ${size}MB buffer may affect playback.',
 			'settings.defaultQualityTitle' => 'Default Quality',
 			'settings.defaultQualityDescription' => 'Used when starting playback. Lower values reduce bandwidth.',
+			'settings.displayMaxResolutionTitle' => 'Maximum Resolution',
+			'settings.displayMaxResolutionDescription' => 'Caps what this device asks a server for, even when the file is larger.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'detected: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Auto',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Follow the display where the app can read it',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Never ask for more than 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Never ask for more than 3840x2160',
 			'settings.subtitleStyling' => 'Subtitle Styling',
 			'settings.subtitleStylingDescription' => 'Customize subtitle appearance',
 			'settings.smallSkipDuration' => 'Small Skip Duration',
@@ -7499,6 +7679,12 @@ extension on Translations {
 			'fileInfo.duration' => 'Duration',
 			'fileInfo.optimizedForStreaming' => 'Optimized for Streaming',
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
+			'detailActions.watchlist' => 'Watchlist',
+			'detailActions.trailer' => 'Trailer',
+			'detailActions.rate' => 'Rate',
+			'detailActions.watched' => 'Watched',
+			'detailActions.download' => 'Download',
+			'detailActions.more' => 'More',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -7562,6 +7748,8 @@ extension on Translations {
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playNext' => 'Play Next',
 			'videoControls.nextEpisode' => 'Next Episode',
 			'videoControls.skipIntro' => 'Skip Intro',
@@ -7579,8 +7767,6 @@ extension on Translations {
 			'videoControls.settingsButton' => 'Playback Settings',
 			'videoControls.tracksButton' => 'Audio & Subtitles',
 			'videoControls.chaptersButton' => 'Chapters',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.versionsButton' => 'Video versions',
 			'videoControls.versionQualityButton' => 'Version & Quality',
 			'videoControls.versionColumnHeader' => 'Version',
@@ -7855,11 +8041,14 @@ extension on Translations {
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
 			'discover.topRated' => 'Top Rated',
 			'discover.somethingDifferent' => 'Something Different',
 			'discover.topPicksForYou' => 'Top Picks for You',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
+			'discover.moreWithActor' => ({required Object name}) => 'More with ${name}',
+			'discover.moreFromDirector' => ({required Object name}) => 'More from ${name}',
 			'discover.hiddenGems' => 'Hidden Gems',
 			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
 			'discover.watchedByYou' => 'You',
@@ -7870,6 +8059,23 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
+			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
+			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
+			'discover.techSubtitles' => 'Subtitles',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}',
+			'discover.seasonsHeading' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 season', other: '${n} seasons', ), 
+			'discover.seasonEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 episode', other: '${n} episodes', ), 
+			'discover.seasonEpisodesLeft' => ({required Object count}) => '${count} left to watch',
+			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
+			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
+			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
+			'discover.trackChoiceNoteOnce' => 'Not remembered. Applies when you play from this page; your profile language comes first.',
+			'discover.scoreRtCritics' => 'Rotten Tomatoes critics',
+			'discover.scoreRtAudience' => 'Rotten Tomatoes audience',
+			'discover.scoreCommunity' => 'Community score',
+			'discover.reviews' => 'Reviews',
+			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
 			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
@@ -8056,6 +8262,8 @@ extension on Translations {
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
 			'watchlist.sortTitle' => 'Title',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
 			'watchlist.coverageIncompleteList' => 'One of your servers could not be reached, so this list may be incomplete.',
@@ -8093,8 +8301,6 @@ extension on Translations {
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
 			'liveTv.joinSession' => 'Join Session in Progress',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
 			'liveTv.goToLive' => 'Go to Live',
@@ -8570,6 +8776,8 @@ extension on Translations {
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
 			'matchScreen.fixMatch' => 'Fix Match...',
+			_ => null,
+		} ?? switch (path) {
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
 			'matchScreen.unmatchSuccess' => 'Item unmatched',
@@ -8607,8 +8815,6 @@ extension on Translations {
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
 			'seerr.permissionAdmin' => 'Administrator',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',
 			'seerr.request' => 'Request',
@@ -8885,6 +9091,7 @@ extension on Translations {
 			'sourcePicker.noneReachableTitle' => 'No source is currently reachable.',
 			'sourcePicker.reauthRequiredTitle' => 'Sign in again to reach this title.',
 			'sourcePicker.manageServers' => 'Manage servers',
+			'sourcePicker.source' => 'Source',
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
 			'sourcePicker.change' => 'Change',
 			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
@@ -8922,12 +9129,15 @@ extension on Translations {
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',
+			'unifiedCatalog.filters.contentRating' => 'Age rating',
 			'unifiedCatalog.filters.servers' => 'Servers',
 			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
 			'unifiedCatalog.filters.all' => 'All',
 			'unifiedCatalog.filters.unwatched' => 'Unwatched',
+			'unifiedCatalog.filters.inProgress' => 'In progress',
+			'unifiedCatalog.filters.watched' => 'Watched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
@@ -9019,6 +9229,9 @@ extension on Translations {
 			'tvMyPleya.requestsSubtitle' => 'Requests and discovery',
 			'tvMyPleya.downloadsSubtitle' => 'Offline and sync rules',
 			'tvMyPleya.librariesSubtitle' => 'Media, collections, playlists',
+			'tvMyPleya.libraryManagementSubtitle' => 'Manage media libraries',
+			'tvMyPleya.collectionsSubtitle' => 'Browse collections across libraries',
+			'tvMyPleya.playlistsSubtitle' => 'Playlists from connected servers',
 			'tvMyPleya.serversSubtitle' => 'Connections and local sources',
 			'tvMyPleya.activitySubtitle' => 'Now watching',
 			'tvMyPleya.watchTogetherSubtitle' => 'Watch in sync with friends',
@@ -9077,6 +9290,8 @@ extension on Translations {
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
 			'languageSettings.sheetProfileValue' => ({required Object value}) => 'Pleya profile: ${value}',
 			'languageSettings.useGlobal' => 'Use global preference',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.useGlobalNote' => 'clears this series preference',
 			'languageSettings.sheetFooter' => 'You pick a different language while watching, in the info panel.',
 			'languageSettings.toastRemembered' => ({required Object kind, required Object language, required Object title}) => '${kind}: ${language} · remembered for ${title}',

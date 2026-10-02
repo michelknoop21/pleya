@@ -15,6 +15,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 DEST="../pleya_server/internal/web/dist"
 
+if [ ! -x node_modules/.bin/vite ]; then
+  echo "→ webafhankelijkheden installeren uit bun.lock"
+  bun install --frozen-lockfile
+fi
+
 echo "→ types controleren tegen het contract"
 ./scripts/check-api-types.sh
 

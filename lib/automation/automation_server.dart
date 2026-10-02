@@ -16,6 +16,7 @@ import 'automation_event_log.dart';
 import 'automation_ids.dart';
 import 'automation_input.dart';
 import 'automation_overlay.dart';
+import 'automation_profile_seed.dart';
 import 'automation_focus_log.dart';
 import 'automation_registry.dart';
 import 'automation_route_state.dart';
@@ -72,6 +73,7 @@ const Map<String, String> _kRouteMethods = {
   '/v1/signin': 'POST',
   '/v1/connections/seed': 'POST',
   '/v1/seerr/seed': 'POST',
+  '/v1/profiles/seed': 'POST',
   '/v1/open': 'POST',
 };
 
@@ -301,6 +303,9 @@ class AutomationServer {
       case '/v1/seerr/seed':
         final body = await _readJsonBody(request);
         await _respondAutomationResult(request, await handleAutomationSeedSeerr(body));
+      case '/v1/profiles/seed':
+        final body = await _readJsonBody(request);
+        await _respondAutomationResult(request, await handleAutomationSeedProfile(body));
       case '/v1/open':
         final body = await _readJsonBody(request);
         await _respondAutomationResult(request, await handleAutomationOpen(body));

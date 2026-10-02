@@ -6,10 +6,14 @@ regel in deze map wijzigt.
 
 De werkregels per fase staan in [de Pleya Server-werkregels](../docs/agents/server.md) en gelden
 onverkort: lees hoofdstuk 23 plus je eigen fase, blijf binnen de Phase ID, bouw niets uit een latere
-fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase is PS-4.**
+fase vooruit, en schrijf geen latere productvereiste weg. **De huidige fase, het lopende
+protocolvenster, de open commitgrens en welk werk er bewust naast de fase loopt staan in
+[../docs/PLEYA-SERVER-MASTERLIST.md](../docs/PLEYA-SERVER-MASTERLIST.md)** en het plan in
+[../docs/pleya-server-rebaseline/](../docs/pleya-server-rebaseline/). Werk buiten de lopende
+commitgrens is te vroeg, ook binnen dezelfde fase. Werk je hier, vink dan af in dezelfde commit.
 
-`internal/web/` hoort niet bij deze fase maar bij PS-3W, een aparte afwijking met een eigen voorstel in
-[../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
+`internal/web/` hoort niet bij de lopende fase maar bij PS-3W, een aparte afwijking met een eigen
+voorstel in [../docs/pleya-server-ps3w-proposal.md](../docs/pleya-server-ps3w-proposal.md).
 
 ## Er staat geen Go op deze machine, en dat is opzet
 
@@ -39,14 +43,12 @@ weer op, dus een test hoeft zelf niets te wissen. De schemateller staat achter g
 geen `t.Parallel()` bij. De scannertests maken hun eigen mediabestanden met ffmpeg: de analyse
 namaken bewijst niets over de analyse.
 
-## Geen enkele CI-poort dekt deze map
+## Wat CI wel en niet dekt
 
-Gecontroleerd: geen workflow in `.github/workflows/` noemt `pleya_server`, en `scripts/ci_checks.sh`
-(de pre-commit-gate) is Flutter en Dart. Go-wijzigingen komen dus ongetoetst door de hook heen. Wat
-er wel is, draai je zelf:
+`.github/workflows/ci.yml` heeft een job `pleya-server` (build, vet, `go test ./...` tegen een Postgres-service, en de antwoordvalidatie tegen `openapi.yaml`) een job `pleya-web` en een job `protocol` (`scripts/check_protocol.sh`). `scripts/ci_checks.sh` (de pre-commit-gate) is Flutter en Dart en raakt Go niet. De volledige lokale keten draai je zelf:
 
 ```sh
-scripts/verify-local.sh        # vijftien secties, 72 controles, van go vet tot een kijkstatusronde
+scripts/verify-local.sh        # vijftien secties, 79 controles, van go vet tot een gebruikersronde
 scripts/verify-protocol.sh     # antwoorden van een draaiende server tegen openapi.yaml
 ../scripts/check_protocol.sh   # het contract zelf, in een gepinde Python-container
 ```
@@ -62,10 +64,13 @@ internal/api/       HTTP-laag, wire-types, foutcodes, rate limiter, range en str
 internal/auth/      Argon2id, tokens, streamsessies, ondertekensleutel op schijf
 internal/catalog/   domeintypes, cursor, store gesplitst in lezen en schrijven
 internal/config/    alle PLEYA_SERVER_*-variabelen, bibliotheken, inodevertrouwen
+internal/diag/      de meetwaarden achter GET /server voor klasse admin
 internal/ffprobe/   aanroep en omzetting naar detectiemetadata
 internal/fileid/    de stat-tupel achter de zwakke validator, per platform
 internal/id/        eigen UUIDv7, monotoon binnen een milliseconde
 internal/jobs/      duurzame wachtrij in dezelfde database
+internal/logging/   JSON-logger, redactie (gedeelde vectoren met de app) en de ringbuffer
+                    achter GET /server/log
 internal/migrate/   voorwaartse migraties, sql/ als embed
 internal/scanner/   walk, judge, signature, sidecars, inode per platform
 internal/watch/     het conflictmodel uit DEC-049 als pure functie, plus zijn opslag
@@ -74,9 +79,12 @@ internal/testsupport/  wegwerpschema en mediabestanden voor tests
 
 ## Regels die je stil kunt breken
 
-**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren zolang PS-4
-loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor de drie poortbesluiten
-(DEC-049, DEC-050, DEC-051). Een probleem daarin is een protocolwijziging langs de zes
+**Het wire-contract ligt vast.** `../docs/pleya-protocol/v1/openapi.yaml` is bevroren tot een besluit
+het venster expliciet opent, en is niet aan een vast fasenummer gehangen: een anker op een specifiek
+nummer veroudert stilzwijgend zodra die fase een opengelaten voorganger heeft. Er is geen moment
+waarop het contract vanzelf open staat, ook niet tussen twee fasen in. Welk venster nu open staat en
+voor welke wijzigingen staat in
+[`../docs/PLEYA-SERVER-MASTERLIST.md`](../docs/PLEYA-SERVER-MASTERLIST.md). Een probleem in het contract is een protocolwijziging langs de zes
 compatibiliteitsregels uit hoofdstuk 3 van de specificatie, en niet een aanpassing in de YAML omdat
 het zo uitkomt.
 
@@ -84,11 +92,20 @@ het zo uitkomt.
 expliciete mapper ertussen (hoofdstuk 12.1). De foutcode is het contract; het bericht is voor logs en
 een client mag er nooit op matchen.
 
-**Endpoints die er niet horen te zijn, blijven weg.** Sinds PS-4 antwoorden `stream/{version_id}`,
-beide kijkstatus-endpoints en `POST /auth/stream-session`; `capabilities.watch_state`,
-`watch_state_ownership` en `stream_sessions` staan op `true`. Wat er níét is blijft 404:
-`playback/plan` (PS-6), sessies (PS-8), gebruikers (PS-9), verzamelingen (PS-9C), geschiedenis
-(PS-9P) en beheer (PS-11A). `verify-local.sh` en `TestScopeBoundaryAfterPS4` controleren dat.
+**Endpoints die er niet horen te zijn, blijven weg.** Welke routes en `capabilities`-vlaggen bij de
+huidige fase en het huidige commitgrens horen staat in `docs/PLEYA-SERVER-MASTERLIST.md`; `GET
+/server` groeit met de klasse van de aanvrager en niet met een parameter. `verify-local.sh` en
+`TestScopeBoundaryAfterPS4` controleren dat wat er níét hoort te zijn 404 blijft.
+
+**Intrekken is in het geheugen, en dat is een keuze met een grens.** `auth.Revocations`
+(`internal/auth/revocation.go`) is een set ingetrokken sessie-ids, gevuld bij het opstarten uit
+`sessions` en geraadpleegd door elk accesstoken, elk streamtoken, elke browserstreamsessie en elk
+blok van `copyRange`. Geen `LISTEN`/`NOTIFY`, geen pub/sub: er is nergens in deze deployment een
+aanname van meerdere instanties (DEC-120). Een tweede instantie zonder opvolger maakt intrekking
+onbetrouwbaar; dat is een geaccepteerde grens en geen gat. `copyRange` is daarom een lus met blokken
+van 64 KiB en geen `io.CopyN` over de hele range: de gemeten bovengrens van twee seconden hangt aan
+die blokgrootte, en `TestRevocationStopsRunningStreamWithinTwoSeconds` meet hem tegen een echte
+`httptest`-server in plaats van hem booleaans af te vinken.
 
 **Kijkstatus heeft een eigenaar.** De zes regels staan in
 [DEC-049](../docs/DECISIONS.md); de beslissing zelf staat als pure functie in
@@ -103,11 +120,22 @@ bestanden niet, en RFC 9110 §8.8.1 vraagt strict revision control of een hash o
 `If-Range` levert daarom altijd `200`. Schrijf nergens code die op een gelijke validator vertrouwt om
 bytes aan elkaar te plakken.
 
-**Tabellen uit latere fasen bestaan niet.** Geen `users`, `sessions`, `play_history`,
-`play_sessions`, `user_item_data`, `external_ids`, `metadata_candidates` of `transcode_sessions`.
-`watch_states` en `stream_sessions` staan er sinds PS-4 wél. De lijst in hoofdstuk 17.2 beschrijft
-het hele v1-product en niet deze fase; `verify-local.sh` en `internal/migrate/migrate_test.go`
-controleren allebei welke tabellen er staan.
+**Tabellen uit latere fasen bestaan niet.** Geen `play_history`, `play_sessions`, `user_item_data`,
+`external_ids`, `metadata_candidates` of `transcode_sessions`. `watch_states` en `stream_sessions`
+staan er sinds PS-4; `users`, `sessions` en `library_permissions` sinds migratie 0007 (PS-9, DEC-119
+en DEC-123). De lijst in hoofdstuk 17.2 (die van het protocol; het schema staat in hoofdstuk 16 en
+17 van [de specificatie](../docs/pleya-protocol-v1.md)) beschrijft het hele v1-product en niet deze
+fase; `verify-local.sh` en `internal/migrate/migrate_test.go` controleren allebei welke tabellen er
+staan.
+
+**`watch_states.subject` en `stream_sessions.subject` zijn sinds migratie 0007 `uuid` met een FK naar
+`users(id)`.** De vaste string `"owner"` (het vroegere `api.SubjectOwner`, sinds AC2 verwijderd) is
+daar niet meer geldig voor. `handlers_watch.go` en `authorize.go` lezen het subject nu overal via
+`s.subjectID(r)` (`claims.Subject`, gevalideerd met `id.Parse`) rechtstreeks uit de context van de
+aanvraag; `auth.Store.OwnerUserID(ctx)` blijft alleen bestaan voor setup, login en refresh, die geen
+aanvraag met claims hebben om uit te lezen. De owner krijgt sinds PS-9 een echte, per installatie
+verschillende `users.id` (vóór een migratie via `gen_random_uuid()`, bij een verse setup via
+`id.New()`).
 
 **Migraties gaan alleen vooruit.** Genummerd in `internal/migrate/sql/`, uitgevoerd bij het opstarten
 onder een advisory lock, met een checksum per toegepaste migratie. De binary weigert te starten op een

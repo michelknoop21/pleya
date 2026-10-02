@@ -117,7 +117,7 @@ void main() {
         r'Future<void> _openProfilesFromShell\(\) async \{[\s\S]*?\n  \}',
       ).firstMatch(source)?.group(0);
       expect(helper, isNotNull, reason: '_openProfilesFromShell must exist');
-      expect(helper, contains('AccountUiActions.openProfiles(context)'));
+      expect(helper, contains('AccountUiActions.openProfiles(context, asGate: true)'));
       expect(helper, contains('_setTvosMenuPassthrough(false)'));
       expect(helper, contains('_updateTvosMenuPassthrough()'));
     });

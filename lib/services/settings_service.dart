@@ -9,6 +9,7 @@ import 'image_cache_service.dart';
 import 'package:pleya/utils/app_logger.dart';
 import '../i18n/strings.g.dart';
 import '../models/mpv_config_models.dart';
+import '../media/device_display_capabilities.dart' show DisplayResolutionCap;
 import '../media/pleya_profile_language_preferences.dart';
 import '../media/track_language_choice.dart';
 import '../media/unified/remembered_source_choice.dart';
@@ -346,6 +347,10 @@ class SettingsService extends BaseSharedPreferencesService {
   static const enableHDR = BoolPref('enable_hdr', defaultValue: true);
 
   /// Recent search queries, most-recent first, capped at 15 by the search UI.
+  ///
+  /// The device-wide key from before search recency became per profile. Only
+  /// the base name now: `SearchRecencyStore` reads and writes it under the
+  /// active profile's prefix and deletes this device-wide copy.
   static const searchHistory = StringListPref('search_history');
 
   /// The titles opened from a search result, most-recent first, each entry a
@@ -353,6 +358,7 @@ class SettingsService extends BaseSharedPreferencesService {
   /// desktop and mobile keep showing [searchHistory]'s query chips. Capped by
   /// `searchRecentsLimit` in `services/search_recents.dart`, which owns the
   /// read and write.
+  /// Base name only, same story as [searchHistory].
   static const searchRecentItems = StringListPref('search_recent_items');
   static const viewMode = EnumPref<ViewMode>('view_mode', values: ViewMode.values, defaultValue: ViewMode.grid);
   static const seekTimeSmall = IntPref('seek_time_small', defaultValue: 10);
@@ -462,6 +468,9 @@ class SettingsService extends BaseSharedPreferencesService {
   // Mirror local-folder playback progress onto matched Plex/Jellyfin items.
   static const syncLocalWatchState = BoolPref('sync_local_watch_state', defaultValue: true);
   static const showNavBarLabels = BoolPref('show_nav_bar_labels', defaultValue: true);
+  // Liquid Glass surfaces (tab bar, player, film page, tvOS top bar/panel).
+  // See lib/theme/glass/ for the tier/token machinery this gates.
+  static const liquidGlass = BoolPref('liquid_glass', defaultValue: false);
   static const globalShaderPreset = StringPref('global_shader_preset', defaultValue: 'none');
   static const requireProfileSelectionOnOpen = BoolPref('require_profile_selection_on_open');
   static const useExternalPlayer = _UseExternalPlayerPref();
@@ -471,6 +480,17 @@ class SettingsService extends BaseSharedPreferencesService {
     values: VisualEffectsSetting.values,
     defaultValue: VisualEffectsSetting.auto,
   );
+
+  /// Ceiling on what this device asks a backend for. A hardware capability
+  /// override on the display layer of `DeviceCapabilities`, which is why it is
+  /// device-local: it describes this screen and has no business travelling to
+  /// another one over iCloud.
+  static const displayMaxResolution = EnumPref<DisplayResolutionCap>(
+    'display_max_resolution',
+    values: DisplayResolutionCap.values,
+    defaultValue: DisplayResolutionCap.auto,
+  );
+
   static const ambientLighting = BoolPref('ambient_lighting');
 
   /// Ambient lighting glow intensity: 'subtle' | 'balanced' | 'bright'.
@@ -551,6 +571,15 @@ class SettingsService extends BaseSharedPreferencesService {
     transform: (v) => v.clamp(0.5, 3.0),
   );
   static final defaultBoxFitMode = IntPref('default_box_fit_mode', transform: (v) => v.clamp(0, 2));
+
+  /// Device-local, profile/title-keyed fit and zoom. A display setting chosen
+  /// for one screen should not change how that title fills another device.
+  static final videoDisplayPreferences = JsonPref<Map<String, dynamic>>(
+    'video_display_preferences',
+    defaultValue: const {},
+    encode: json.encode,
+    decode: (raw) => Map<String, dynamic>.from(raw as Map),
+  );
   static final displaySwitchDelay = IntPref('display_switch_delay', transform: (v) => v.clamp(0, 10));
 
   // Dark-first: OLED (true black) is the default on every platform, not just TV.
@@ -615,7 +644,7 @@ class SettingsService extends BaseSharedPreferencesService {
   );
 
   /// The Pleya profile's own global audio/subtitle preference, keyed by
-  /// `{profileScope}` (DEC-096 lid 5).
+  /// `{profileScope}` (DEC-109 lid 5).
   ///
   /// The *owner* of the global layer. A Plex account or a Jellyfin user only
   /// speaks for its own server, while the requirement is that the preference
@@ -1017,6 +1046,7 @@ class SettingsService extends BaseSharedPreferencesService {
     dvConversionMode,
     defaultPlaybackSpeed,
     defaultBoxFitMode,
+    videoDisplayPreferences,
     autoPlayNextEpisode,
     useExoPlayer,
     startupSection,
@@ -1032,6 +1062,7 @@ class SettingsService extends BaseSharedPreferencesService {
     useExternalPlayer,
     forceTvMode,
     visualEffects,
+    displayMaxResolution,
     ambientLighting,
     ambientLightingIntensity,
     audioPassthrough,

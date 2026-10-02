@@ -14,6 +14,7 @@ import (
 	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/ffprobe"
 	"github.com/edde746/plezy/pleya_server/internal/id"
+	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/nameparse"
 )
 
@@ -103,21 +104,45 @@ type Stats struct {
 	InodesSeen      int64
 	InodesDistinct  int64
 	InodeMismatches int64
+
+	// RunID is de scan_runs-rij die deze ronde uiteindelijk heeft gebruikt. Bij
+	// een herstart na een shutdown wijkt hij af van de runID die is meegegeven:
+	// die rij was niet meer queued en is vervangen door een nieuwe (S2.4 M-2).
+	RunID id.ID
 }
 
 // ScanLibrary leest één bibliotheek volledig in.
 func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger string) (Stats, error) {
+	return s.ScanLibraryRun(ctx, lib, trigger, id.Nil)
+}
+
+// ScanLibraryRun scant een bibliotheek en schrijft de voortgang in de gegeven
+// scan_runs-rij (queued, aangemaakt door POST /libraries/{id}/scan) of in een
+// nieuwe rij als runID leeg is (startup en schedule).
+func (s *Scanner) ScanLibraryRun(ctx context.Context, lib catalog.Library, trigger string, runID id.ID) (Stats, error) {
 	roots, err := s.store.StorageLocations(ctx, lib.ID)
 	if err != nil {
+		s.cancelQueuedRunOnSetupFailure(ctx, runID)
 		return Stats{}, err
 	}
 
-	run, err := s.store.StartScanRun(ctx, lib.ID, trigger)
+	var run id.ID
+	if runID == id.Nil {
+		run, err = s.store.StartScanRun(ctx, lib.ID, trigger)
+	} else {
+		run, err = runID, s.store.BeginQueuedScanRun(ctx, runID)
+		if errors.Is(err, catalog.ErrNotFound) {
+			// De job draait opnieuw na een shutdown: de rij is niet meer queued.
+			run, err = s.store.StartScanRun(ctx, lib.ID, trigger)
+		}
+	}
 	if err != nil {
+		s.cancelQueuedRunOnSetupFailure(ctx, runID)
 		return Stats{}, err
 	}
 
 	var stats Stats
+	stats.RunID = run
 	tracker := newProgress(ctx, s.store, run, &stats, s.progressEvery)
 	defer tracker.stop()
 
@@ -157,13 +182,18 @@ func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger 
 
 	state := "succeeded"
 	if scanErr != nil {
-		state = "cancelled"
-		if !errors.Is(scanErr, context.Canceled) {
-			state = "failed"
+		// Alleen een beheerdersannulering is cancelled. Een shutdown of een echte
+		// fout is failed, want de runner zet die job terug in de wachtrij.
+		state = "failed"
+		if errors.Is(context.Cause(ctx), jobs.ErrCancelled) {
+			state = "cancelled"
+		} else if errors.Is(scanErr, context.Canceled) && stats.LastError == "" {
+			stats.LastError = "server afgesloten"
 		}
 	}
 	tracker.stop()
-	if err := s.store.FinishScanRun(ctx, run, state, stats.toCatalog()); err != nil {
+	// Na een annulering is ctx dood; de eindstand moet er toch in.
+	if err := s.store.FinishScanRun(context.WithoutCancel(ctx), run, state, stats.toCatalog()); err != nil {
 		log.Warn("scanronde afsluiten mislukt", slog.String("error", err.Error()))
 	}
 
@@ -185,6 +215,19 @@ func (s *Scanner) ScanLibrary(ctx context.Context, lib catalog.Library, trigger 
 		slog.Int64("inode_mismatches", stats.InodeMismatches),
 	)
 	return stats, scanErr
+}
+
+// cancelQueuedRunOnSetupFailure zet een queued scan_runs-rij op cancelled
+// wanneer de opzet vóór BeginQueuedScanRun mislukt door een annulering.
+// Zonder dit blijft de rij voor altijd queued: de scanner heeft hem dan nooit
+// geadopteerd en niemand anders raakt hem nog aan.
+func (s *Scanner) cancelQueuedRunOnSetupFailure(ctx context.Context, runID id.ID) {
+	if runID == id.Nil || !errors.Is(context.Cause(ctx), jobs.ErrCancelled) {
+		return
+	}
+	if _, err := s.store.CancelQueuedScanRun(context.WithoutCancel(ctx), runID); err != nil {
+		s.log.Warn("queued scanronde annuleren na afgebroken opzet mislukt", slog.String("error", err.Error()))
+	}
 }
 
 // action is wat er met een aangetroffen bestand moet gebeuren.
@@ -244,6 +287,9 @@ func (s *Scanner) scanRoot(ctx context.Context, lib catalog.Library, root catalo
 	var measure inodeMeasurement
 
 	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		seenPaths = append(seenPaths, e.RelPath)
 		measure.observe(e, index, inodes)
 
@@ -423,8 +469,32 @@ func (s *Scanner) judge(root catalog.StorageLocation, index *catalog.FileIndex, 
 		c.action = actionUnchanged
 		return c, nil
 	}
+	// Een bestand waarvan de probe faalde en dat zelf niet veranderde (zelfde
+	// grootte, mtime en inode) wacht zijn backoff af. Op laag 1 en niet op de
+	// signatuur: een nieuw bestand op een vertrouwde root krijgt zijn signatuur
+	// pas in laag 2, dus na de eerste mislukte poging staat die nog leeg. Het telt als ongewijzigd: het staat in
+	// seenPaths, dus het wordt niet als verdwenen aangemerkt.
+	if layerOneSame && !c.prev.IsAttached() &&
+		c.prev.LastProbeAt != nil && time.Now().Before(c.prev.LastProbeAt.Add(probeBackoff(c.prev.ProbeAttempts))) {
+		c.action = actionUnchanged
+		return c, nil
+	}
 	c.action = actionChanged
 	return c, nil
+}
+
+// probeBackoff is hoe lang een bestand na een mislukte probe met rust wordt
+// gelaten: één uur na de eerste, verdubbelend, hooguit een dag. Een bestand dat
+// zelf verandert (andere signatuur) wacht nooit.
+func probeBackoff(attempts int) time.Duration {
+	if attempts <= 0 {
+		return 0
+	}
+	hours := 1 << (attempts - 1)
+	if attempts > 5 || hours > 24 {
+		hours = 24
+	}
+	return time.Duration(hours) * time.Hour
 }
 
 func roleFor(kind nameparse.Kind) catalog.FileRole {
@@ -491,6 +561,9 @@ func (s *Scanner) processMedia(ctx context.Context, lib catalog.Library, root ca
 	touchedVersions := map[id.ID]bool{}
 
 	for i := range media {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		c := &media[i]
 		// Ook tijdens het analyseren, en niet alleen tijdens de wandeling. Op een
 		// bibliotheek van zesduizend afleveringen is dit veruit het langste stuk,

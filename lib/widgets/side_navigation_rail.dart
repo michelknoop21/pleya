@@ -5,7 +5,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:pleya/widgets/app_icon.dart';
-import 'package:pleya/widgets/pleya_logo.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -1020,19 +1020,17 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
           clipBehavior: Clip.hardEdge,
           child: SizedBox(
             width: expandedWidth - 24,
-            child: Row(
-              children: [
-                const PleyaLogo(size: logoSize),
-                const SizedBox(width: 12),
-                AnimatedOpacity(
-                  opacity: isCollapsed ? 0.0 : 1.0,
-                  duration: reduceMotion(context, t.fast),
-                  child: Text(
-                    'PLEYA',
-                    style: TextStyle(fontSize: 16, fontWeight: .w800, letterSpacing: 4.8, color: t.text),
-                  ),
-                ),
-              ],
+            // The same lockup as the iPhone header and the TV top bar; the
+            // lettering takes the theme ink and fades out when the rail
+            // collapses, the mark stays in the icon column.
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: isCollapsed ? 0.0 : 1.0),
+                duration: reduceMotion(context, t.fast),
+                builder: (context, opacity, _) =>
+                    PleyaWordmark(height: logoSize, letteringColor: t.text, letteringOpacity: opacity),
+              ),
             ),
           ),
         ),
@@ -1416,14 +1414,27 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
                       children: [
                         leading ?? AppIcon(icon, fill: 1, size: iconSize, color: t.textMuted),
                         const SizedBox(width: 11),
+                        // Same rule as the nav items: the collapsed rail shows
+                        // the icon only, so name and chevron fade out together
+                        // instead of bleeding through the clip as "Ple" or "Zo".
                         Expanded(
-                          child: Text(label, style: labelStyle, overflow: .ellipsis),
-                        ),
-                        AppIcon(
-                          isExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
-                          fill: 1,
-                          size: 16,
-                          color: t.textMuted,
+                          child: AnimatedOpacity(
+                            opacity: isCollapsed ? 0.0 : 1.0,
+                            duration: reduceMotion(context, t.fast),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(label, style: labelStyle, overflow: .ellipsis),
+                                ),
+                                AppIcon(
+                                  isExpanded ? Symbols.expand_less_rounded : Symbols.expand_more_rounded,
+                                  fill: 1,
+                                  size: 16,
+                                  color: t.textMuted,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),

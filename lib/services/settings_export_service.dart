@@ -11,7 +11,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
 import '../utils/platform_detector.dart';
+import 'base_shared_preferences_service.dart';
 import 'file_picker_service.dart';
+import 'preferences/preference_mutation.dart';
 import 'preferences/preference_sync_policy.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
@@ -193,6 +195,12 @@ class SettingsExportService {
       final ok = await writeTyped(prefs, targetKey, type, value);
       if (ok) {
         imported++;
+        // An import is a deliberate choice, so it is stamped like one. Without
+        // the stamp a newer record already in the store would win the next
+        // pull and quietly undo the import.
+        await BaseSharedPreferencesService.notifyMutation(
+          PreferenceMutation.set(targetKey, prefs.get(targetKey), source: PreferenceSource.import),
+        );
       } else {
         skipped++;
         appLogger.w('Skipped import of $targetKey (type=$type)');

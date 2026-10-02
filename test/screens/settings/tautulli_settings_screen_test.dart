@@ -65,7 +65,7 @@ void main() {
         ),
       );
       final p = TautulliProvider();
-      p.attachServerResolvers(serverIds: () => [_machine], isOwnerOrAdmin: (_) => true);
+      p.attachServerResolvers(serverIds: () => [_machine], isOwnerOrAdmin: (_) => true, mayAdminister: (_) => true);
       await p.onActiveProfileChanged('uuid-a');
       return p;
     });

@@ -1,0 +1,34 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Opslag|navAction=}}
+<div class="admin">
+  {{admin:storage|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Opslag</div>
+    <h1 class="page-title" style="margin-top:0"><span>Opslag</span><span class="status">3 roots gemount · 1 niet bereikbaar · 3,2 TB vrij</span></h1>
+
+    <div class="alert err" style="margin-bottom:16px">{{icon:alert}}<div><b><span class="mono">/volume1/media/Boeken</span> is niet gemount</b> sinds vandaag 07:12. De bibliotheek Boeken is nog zichtbaar met de laatst bekende inhoud. Er wordt niets als ontbrekend gemarkeerd zolang de root leeg lijkt: een losgekoppelde schijf mag geen halve bibliotheek opruimen.</div><a class="btn ghost sm a" href="#">{{icon:refresh}} Opnieuw controleren</a></div>
+
+    <section class="panel" style="padding:6px 8px">
+      <table class="table">
+        <tr><th>Root</th><th>Bestandssysteem</th><th>Inode</th><th style="width:220px">Ruimte</th><th>Bibliotheken</th><th class="r">Status</th></tr>
+        <tr><td><div class="t mono">/volume1/media/Films</div><div class="s">gezien 14:31</div></td><td>btrfs</td><td><span class="pill ok">betrouwbaar</span><div class="s">gemeten</div></td><td><div class="bar"><i style="width:82%"></i></div><div class="s">1,1 TB vrij van 6 TB</div></td><td>Films</td><td class="r"><span class="status"><span class="dot"></span>gemount</span></td></tr>
+        <tr><td><div class="t mono">/volume2/media/Films-4K</div><div class="s">gezien 14:31</div></td><td>btrfs</td><td><span class="pill ok">betrouwbaar</span><div class="s">gemeten</div></td><td><div class="bar"><i style="width:65%"></i></div><div class="s">2,1 TB vrij van 6 TB</div></td><td>Films</td><td class="r"><span class="status"><span class="dot"></span>gemount</span></td></tr>
+        <tr><td><div class="t mono">/volume1/media/Series</div><div class="s">gezien 14:31 · scan bezig</div></td><td>btrfs</td><td><span class="pill ok">betrouwbaar</span><div class="s">gemeten</div></td><td><div class="bar warn"><i style="width:94%"></i></div><div class="s amber">240 GB vrij van 4 TB</div></td><td>Series, Kids</td><td class="r"><span class="status"><span class="dot"></span>gemount</span></td></tr>
+        <tr><td><div class="t mono">/volume1/media/Boeken</div><div class="s">laatst gezien 07:12</div></td><td class="dim">onbekend</td><td><span class="pill">standaard</span><div class="s">niet gemeten</div></td><td><div class="bar err"><i style="width:0"></i></div><div class="s">onbekend</div></td><td>Boeken</td><td class="r"><span class="status"><span class="dot off"></span>niet gemount</span></td></tr>
+        <tr><td><div class="t mono">/mnt/usb-archief</div><div class="s">gezien 14:31 · niet in gebruik</div></td><td>fuseblk.ntfs</td><td><span class="pill warn">niet betrouwbaar</span><div class="s">soort-standaard · scanner gebruikt signatuur</div></td><td><div class="bar"><i style="width:40%"></i></div><div class="s">1,2 TB vrij van 2 TB</div></td><td class="dim">geen</td><td class="r"><span class="status"><span class="dot"></span>gemount</span></td></tr>
+      </table>
+    </section>
+
+    <div class="cols-2" style="margin-top:16px">
+      <section class="panel">
+        <h3>Wat de server hier beheert</h3>
+        <p class="help" style="margin:0">De roots komen uit de mounts van de container (<span class="mono">PLEYA_SERVER_MEDIA_DIRS</span>) en zijn hier alleen te kiezen, niet te typen. Mounts toevoegen gebeurt in Docker of op de host; Pleya schrijft nooit in een mediamap en verwacht de mounts <span class="mono">:ro</span>.</p>
+      </section>
+      <section class="panel">
+        <h3>Inodevertrouwen</h3>
+        <p class="help" style="margin:0">Per root gemeten bij elke scanronde. Op een root zonder betrouwbare inodes (ntfs, sommige netwerkmounts) herkent de scanner een hernoemd bestand via de signatuur. De meting wordt getoond en nooit stilzwijgend gepromoveerd; overrulen kan met <span class="mono">PLEYA_SERVER_INODE_TRUST</span>.</p>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 24 Opslag · storage_locations plus statfs; de foutstaat voor een verdwenen root</div>

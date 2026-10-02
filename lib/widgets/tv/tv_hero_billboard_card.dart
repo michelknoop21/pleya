@@ -33,6 +33,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../media/media_item.dart';
@@ -43,8 +44,34 @@ import '../../theme/mono_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/media_image_helper.dart' show ImageType;
+import '../app_icon.dart';
 import '../optimized_media_image.dart';
 import 'tv_unified_layout.dart';
+import 'tv_unified_media_card.dart' show resumeFractionFor;
+
+const Key tvHeroWatchStatusKey = ValueKey('tvHeroWatchStatus');
+
+String heroWatchStatusValueFor(UnifiedMediaGroup group) {
+  if (group.watchState.isWatched) return 'watched';
+  if (group.watchState.hasActiveProgress) return 'inProgress';
+  return 'unwatched';
+}
+
+int? heroWatchProgressPercentFor(UnifiedMediaGroup group) {
+  final fraction = resumeFractionFor(group);
+  return fraction == null ? null : (fraction * 100).round();
+}
+
+String heroWatchStatusLabelFor(UnifiedMediaGroup group) {
+  if (group.watchState.isWatched) return t.unifiedCatalog.semantics.watched;
+  if (group.watchState.hasActiveProgress) {
+    final percent = heroWatchProgressPercentFor(group);
+    return percent == null
+        ? t.unifiedCatalog.semantics.inProgress
+        : '${t.unifiedCatalog.semantics.inProgress} · $percent%';
+  }
+  return t.unifiedCatalog.filters.unwatched;
+}
 
 /// The hero's one metadata line: kind, genre, year, runtime, and — only when
 /// there is more than one — the source count.
@@ -160,18 +187,25 @@ class TvHeroBillboardCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           artwork,
-          // H20: the wash itself is [MonoTokens.artworkScrim] (`tk.bg`), but
-          // its *strength* forks on theme — `artworkScrimAlpha`'s own doc: a
-          // light-theme veil is white, so it brightens the artwork under the
-          // text instead of dimming it, and needs to wash harder before
-          // releasing the image.
-          _ReadingScrim(color: tk.artworkScrim, alphaFor: (a) => _themed(tk, a)),
+          // The wash is [MonoTokens.artworkScrim] (`tk.bg`). In Light that is
+          // white, so the scrim brightens the artwork; VIS-0925-E gives Light
+          // its own, smaller ramp (see [TvHomeLayout.heroScrimReadingStopsLight]).
+          _ReadingScrim(
+            color: tk.artworkScrim,
+            stops: tk.isLight ? TvHomeLayout.heroScrimReadingStopsLight : TvHomeLayout.heroScrimReadingStops,
+            alphas: tk.isLight ? TvHomeLayout.heroScrimReadingAlphasLight : TvHomeLayout.heroScrimReadingAlphas,
+          ),
           _VerticalScrim(
             color: tk.artworkScrim,
             stops: TvHomeLayout.heroScrimVerticalStops,
-            alphas: [for (final a in TvHomeLayout.heroScrimVerticalAlphas) _themed(tk, a)],
+            alphas: tk.isLight ? TvHomeLayout.heroScrimVerticalAlphasLight : TvHomeLayout.heroScrimVerticalAlphas,
           ),
           Positioned(
+            // Title, CTA fill and the rail heading share the page inset, the
+            // edge every nested page uses too; the CTA ring goes outward from
+            // there. Only a rail tile's artwork sits one ring gap further in,
+            // because the tile keeps its ring band inside the page edge (VER3).
+            // Decided by Michel after the VIS-0925 review (D3).
             left: TvDiscoveryLayout.pageInset * scale,
             // `right`, not `width`. The *text* column is capped at
             // [TvHomeLayout.heroTextMaxWidth] (see `_HeroText`), but the CTA
@@ -208,11 +242,6 @@ class TvHeroBillboardCard extends StatelessWidget {
   }
 }
 
-/// A dark-theme scrim strength, resolved for the active theme: light keeps
-/// the same shape and washes a little harder (H20), never past opaque.
-double _themed(MonoTokens tk, double dark) =>
-    tk.artworkScrimAlpha(dark: dark, light: (dark == 0 ? 0.0 : dark + 0.08).clamp(0.0, 1.0));
-
 /// The backdrop stepping back once a row holds the focus (mockup 30 B): a veil
 /// of [TvHomeLayout.heroDimAlpha] over the whole picture, and a vertical scrim
 /// that reaches the page ground at 40% so the focused band under it sits on
@@ -242,11 +271,13 @@ class TvHeroDimVeil extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: tk.artworkScrim.withValues(alpha: _themed(tk, TvHomeLayout.heroDimAlpha))),
+            // One strength in every theme: a Light hero is as clear as a Dark one,
+            // dimmed or not (VIS-0925 review, Michel).
+            ColoredBox(color: tk.artworkScrim.withValues(alpha: TvHomeLayout.heroDimAlpha)),
             _VerticalScrim(
               color: tk.artworkScrim,
               stops: TvHomeLayout.heroDimScrimStops,
-              alphas: [for (final a in TvHomeLayout.heroDimScrimAlphas) _themed(tk, a)],
+              alphas: TvHomeLayout.heroDimScrimAlphas,
             ),
           ],
         ),
@@ -266,14 +297,13 @@ class TvHeroDimVeil extends StatelessWidget {
 /// resolves the geometry against the ambient direction, so nothing else
 /// changes.
 class _ReadingScrim extends StatelessWidget {
-  const _ReadingScrim({required this.color, required this.alphaFor});
+  const _ReadingScrim({required this.color, required this.stops, required this.alphas});
 
   final Color color;
 
-  /// Theme-resolves one of [TvHomeLayout.heroScrimReadingAlphas] — this widget
-  /// never reads [MonoTokens] itself, so it cannot silently drift back to a
-  /// single hardcoded strength for both themes (H20).
-  final double Function(double dark) alphaFor;
+  /// Already theme-resolved by the caller, like [_VerticalScrim.alphas].
+  final List<double> stops;
+  final List<double> alphas;
 
   @override
   Widget build(BuildContext context) {
@@ -283,8 +313,8 @@ class _ReadingScrim extends StatelessWidget {
           gradient: LinearGradient(
             begin: AlignmentDirectional.centerStart,
             end: AlignmentDirectional.centerEnd,
-            colors: [for (final a in TvHomeLayout.heroScrimReadingAlphas) color.withValues(alpha: alphaFor(a))],
-            stops: TvHomeLayout.heroScrimReadingStops,
+            colors: [for (final a in alphas) color.withValues(alpha: a)],
+            stops: stops,
           ),
         ),
       ),
@@ -359,24 +389,7 @@ class _HeroText extends StatelessWidget {
         SizedBox(height: TvHomeLayout.heroTitleMetaGap * scale),
         // Pinned to one line's budget: a meta line that wrapped would push the
         // CTA row down by the height of a line, mid-carousel.
-        column(
-          SizedBox(
-            height: TvHomeLayout.heroMetaFontSize * TvHomeLayout.heroLineHeight * scale,
-            child: Text(
-              heroMetaLineFor(group),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                // H20: dimmed ink reads as secondary on dark artwork but washed
-                // out on light — `onArtworkInk`'s own doc — so light keeps more
-                // ink than dark rather than sharing one alpha.
-                color: tokens.onArtworkInk(dark: TvHomeLayout.inkSecondary, light: 0.92),
-                fontSize: TvHomeLayout.heroMetaFontSize * scale,
-                height: TvHomeLayout.heroLineHeight,
-              ),
-            ),
-          ),
-        ),
+        column(_metadataLine(context)),
         SizedBox(height: TvHomeLayout.heroMetaSynopsisGap * scale),
         column(
           SizedBox(
@@ -403,6 +416,66 @@ class _HeroText extends StatelessWidget {
         SizedBox(height: TvHomeLayout.heroSynopsisActionsGap * scale),
         actions,
       ],
+    );
+  }
+
+  Widget _metadataLine(BuildContext context) {
+    final lineHeight = TvHomeLayout.heroMetaFontSize * TvHomeLayout.heroLineHeight * scale;
+    final ink = tokens.onArtworkInk(dark: TvHomeLayout.inkSecondary, light: 0.92);
+    final status = heroWatchStatusValueFor(group);
+    final icon = switch (status) {
+      'watched' => Symbols.check_circle_rounded,
+      'inProgress' => Symbols.play_circle_rounded,
+      _ => Symbols.radio_button_unchecked_rounded,
+    };
+
+    return SizedBox(
+      height: lineHeight,
+      child: Row(
+        children: [
+          Semantics(
+            label: heroWatchStatusLabelFor(group),
+            child: Container(
+              key: tvHeroWatchStatusKey,
+              height: lineHeight,
+              padding: EdgeInsets.symmetric(horizontal: 8 * scale),
+              decoration: BoxDecoration(
+                color: tokens.artworkScrim.withValues(alpha: 0.54),
+                borderRadius: BorderRadius.circular(lineHeight / 2),
+                border: Border.all(color: ink.withValues(alpha: 0.24)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon(icon, fill: status == 'unwatched' ? 0 : 1, color: ink, size: 14 * scale),
+                  SizedBox(width: 5 * scale),
+                  Text(
+                    heroWatchStatusLabelFor(group),
+                    maxLines: 1,
+                    style: TextStyle(color: ink, fontSize: 13.5 * scale, height: 1, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: 9 * scale),
+          Expanded(
+            child: Text(
+              heroMetaLineFor(group),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                // H20: dimmed ink reads as secondary on dark artwork but washed
+                // out on light — `onArtworkInk`'s own doc — so light keeps more
+                // ink than dark rather than sharing one alpha.
+                color: ink,
+                fontSize: TvHomeLayout.heroMetaFontSize * scale,
+                height: TvHomeLayout.heroLineHeight,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

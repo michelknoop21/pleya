@@ -13,6 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const paths = [
     'lib/services/preferences/preference_sync_coordinator.dart',
+    'lib/services/preferences/preference_single_send.dart',
+    'lib/services/preferences/preference_reconciler.dart',
+    'lib/services/preferences/preference_remote_apply.dart',
     'lib/services/preferences/icloud_kvs_transport.dart',
     'lib/services/preferences/preference_reconcile_scheduler.dart',
     'lib/services/preferences/preference_quarantine.dart',

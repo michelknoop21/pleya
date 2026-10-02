@@ -160,6 +160,28 @@ void main() {
       );
     });
 
+    test('SYS-3d/SYS-3e: an explicit scale reserves what the rail draws, not what the box implies', () {
+      // A nested route's box (1038x900) floors to 0.85; the panel it sits in
+      // (1038x1080) is 1.0, and the rail renders at the panel scale. The
+      // estimate has to follow the caller's scale, or the screen reserves less
+      // than the rail takes.
+      final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
+      final hub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
+      const box = Size(1038, 900);
+      const panel = Size(1038, 1080);
+      double estimate(Size size, {double? scale}) => TvBrowseRailLayout.estimateHeight(
+        size: size,
+        hubs: [hub],
+        density: LibraryDensity.max,
+        episodePosterMode: EpisodePosterMode.seriesPoster,
+        scale: scale,
+      );
+
+      expect(TvBrowseRailLayout.scaleForSize(box), isNot(closeTo(TvBrowseRailLayout.scaleForSize(panel), 0.001)));
+      expect(estimate(box, scale: TvBrowseRailLayout.scaleForSize(panel)), closeTo(estimate(panel), 0.001));
+      expect(estimate(box, scale: TvBrowseRailLayout.scaleForSize(panel)), greaterThan(estimate(box)));
+    });
+
     test('compact tall poster scale reduces browse rail height', () {
       final movie = MediaItem(id: 'movie_1', backend: MediaBackend.plex, kind: MediaKind.movie, title: 'Movie');
       final hub = MediaHub(id: 'movies', title: 'Movies', type: 'movie', items: [movie], size: 1);
@@ -682,7 +704,7 @@ void main() {
         .descendant(of: find.byType(CompositedTransformTarget), matching: find.byType(AnimatedContainer))
         .first;
     final borderContainer = tester.widget<AnimatedContainer>(cardFinder);
-    final border = (borderContainer.foregroundDecoration as BoxDecoration).border as Border;
+    final ring = ((borderContainer.foregroundDecoration! as ShapeDecoration).shape as FocusRingBorder).ring;
     final cardSize = tester.getSize(cardFinder);
     // The focus scale wraps the glow overlay (CompositedTransformTarget);
     // MediaCard's own Pressable also mounts an (idle) AnimatedScale below it.
@@ -693,7 +715,7 @@ void main() {
     // The border stays in-card; the glow now renders in an overlay that follows
     // the focused card so it paints above siblings on all sides.
     expect(borderContainer.decoration, isNull);
-    expect(border.top.strokeAlign, BorderSide.strokeAlignOutside);
+    expect(ring.strokeAlign, BorderSide.strokeAlignOutside);
     expect(find.byType(ShaderMask), findsNothing);
     expect(find.byType(CompositedTransformTarget), findsOneWidget);
     expect(find.byType(CompositedTransformFollower), findsOneWidget);
@@ -847,8 +869,8 @@ void main() {
     final focusDecoration = find.descendant(
       of: find.ancestor(of: find.text('Visible Movie'), matching: find.byType(MediaCard)),
       matching: find.byWidgetPredicate((widget) {
-        if (widget is! AnimatedContainer || widget.foregroundDecoration is! BoxDecoration) return false;
-        return (widget.foregroundDecoration as BoxDecoration).border is Border;
+        if (widget is! AnimatedContainer || widget.foregroundDecoration is! ShapeDecoration) return false;
+        return (widget.foregroundDecoration! as ShapeDecoration).shape is FocusRingBorder;
       }),
     );
 

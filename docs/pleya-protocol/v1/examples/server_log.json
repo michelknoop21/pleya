@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "at": "2026-09-05T09:14:02Z",
+      "level": "warn",
+      "component": "scanner",
+      "message": "bestand overgeslagen last_probe_error=ffprobe gaf geen streams"
+    },
+    {
+      "at": "2026-09-05T09:13:58Z",
+      "level": "info",
+      "component": "http",
+      "message": "request request_id=0198f2d0-1a2b-7c3d-8e4f-5a6b7c8d9e0f method=GET path=/pleya/v1/libraries status=200"
+    },
+    {
+      "at": "2026-09-05T09:12:11Z",
+      "level": "error",
+      "component": "http",
+      "message": "interne fout error=upstream weigerde url=https://host/api?api_key=[REDACTED]"
+    }
+  ]
+}

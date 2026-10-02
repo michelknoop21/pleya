@@ -43,7 +43,7 @@ gegenereerde `connection.id`.
 ## 2. Gevonden rauwe schrijfacties
 
 `test/no_raw_preference_write_test.dart` inventariseert elke rechtstreekse prefs-schrijfactie in
-`lib/`: 85 stuks in 23 bestanden, elk met een categorie, een reden en een aantal. Het aantal per
+`lib/`: 94 stuks in 26 bestanden, elk met een categorie, een reden en een aantal. Het aantal per
 bestand is onderdeel van de test, dus een nieuwe rauwe schrijfactie maakt de suite rood totdat
 iemand zegt wat het is.
 

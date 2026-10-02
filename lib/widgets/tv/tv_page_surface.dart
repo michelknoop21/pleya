@@ -38,6 +38,8 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/tv_hig.dart';
+import '../settings_section.dart';
 import 'tv_unified_layout.dart';
 
 /// The canonical horizontal inset for a TV page, in logical pixels.
@@ -111,11 +113,10 @@ class TvPageSurface extends StatelessWidget {
       left: inset,
       right: inset,
       top: TvTopNavLayout.contentGap * scale,
-      // The overscan band at the bottom edge, the same reasoning
-      // [TvCatalogLayout.bottomSafeInset] documents: a page laid out to the
-      // nominal margin puts its last focus ring on the band rather than
-      // clear of it.
-      bottom: TvCatalogLayout.bottomSafeInset * scale,
+      // DENS1: tvOS's safe area, 60 pt from the bottom edge (HIG, Layout).
+      // `TvCatalogLayout.bottomSafeInset * scaleOf` came out at 127 pt and cut
+      // the last settings row in half for nothing.
+      bottom: 60 * TvHig.of(context),
     );
 
     final column = AutomationNode(
@@ -142,9 +143,16 @@ class TvPageSurface extends StatelessWidget {
       ),
     );
 
-    if (expanded != null) return Padding(padding: padding, child: column);
+    // DENS1: every settings row on a TV page takes the HIG sizes from here.
+    if (expanded != null) {
+      return TvSettingsDensity(
+        child: Padding(padding: padding, child: column),
+      );
+    }
 
-    return SingleChildScrollView(controller: controller, padding: padding, child: column);
+    return TvSettingsDensity(
+      child: SingleChildScrollView(controller: controller, padding: padding, child: column),
+    );
   }
 }
 

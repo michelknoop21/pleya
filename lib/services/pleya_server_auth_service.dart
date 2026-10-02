@@ -111,31 +111,53 @@ class PleyaServerAuthService {
     required String setupCode,
     required String username,
     required String password,
+    String? deviceId,
+    String? deviceName,
   }) => _authenticate(
     baseUrl: baseUrl,
     path: '/auth/setup',
     body: {'setup_code': setupCode, 'username': username, 'password': password},
     username: username,
+    deviceId: deviceId,
+    deviceName: deviceName,
   );
 
   /// Exchange a username and password for a token pair.
-  Future<PleyaAuthResult> login({required String baseUrl, required String username, required String password}) =>
-      _authenticate(
-        baseUrl: baseUrl,
-        path: '/auth/login',
-        body: {'username': username, 'password': password},
-        username: username,
-      );
+  Future<PleyaAuthResult> login({
+    required String baseUrl,
+    required String username,
+    required String password,
+    String? deviceId,
+    String? deviceName,
+  }) => _authenticate(
+    baseUrl: baseUrl,
+    path: '/auth/login',
+    body: {'username': username, 'password': password},
+    username: username,
+    deviceId: deviceId,
+    deviceName: deviceName,
+  );
 
   Future<PleyaAuthResult> _authenticate({
     required String baseUrl,
     required String path,
     required Map<String, Object?> body,
     required String username,
+    String? deviceId,
+    String? deviceName,
   }) async {
     final normalised = normaliseBaseUrl(baseUrl);
     final info = await probe(normalised);
     final client = _http(normalised);
+    // The device fields go on the wire only when the server says it knows
+    // them. `LoginRequest` and `SetupRequest` are closed schemas, so a server
+    // without `capabilities.sessions` refuses the whole request rather than
+    // ignoring two unknown fields — which is exactly why the probe above runs
+    // before the post rather than after a failure.
+    if (info.capabilities.sessions) {
+      if (deviceId != null && deviceId.isNotEmpty) body['device_id'] = deviceId;
+      if (deviceName != null && deviceName.isNotEmpty) body['device_name'] = deviceName;
+    }
     try {
       final response = await client.post(
         path,
@@ -145,11 +167,14 @@ class PleyaServerAuthService {
       if (response.statusCode != 200) throw _authFailure(response);
       final data = response.data;
       if (data is! Map<String, dynamic>) throw const MediaServerAuthException('Auth response was not JSON');
+      final tokens = PleyaTokenPair.fromJson(data);
+      final user = info.capabilities.users ? await _fetchCurrentUser(client, tokens.accessToken) : null;
       return PleyaAuthResult(
         baseUrl: normalised,
         info: info,
-        tokens: PleyaTokenPair.fromJson(data),
-        userName: username,
+        tokens: tokens,
+        userId: user?.id,
+        userName: user?.username ?? username,
       );
     } on PleyaWireFormatException catch (e) {
       throw MediaServerAuthException('Auth response did not match the contract: ${e.message}');
@@ -158,6 +183,25 @@ class PleyaServerAuthService {
     } finally {
       client.close();
     }
+  }
+
+  Future<PleyaUser> _fetchCurrentUser(MediaServerHttpClient client, String accessToken) async {
+    final response = await client.get(
+      '/users/me',
+      headers: {'Authorization': 'Bearer $accessToken'},
+      timeout: MediaServerTimeouts.interactive,
+    );
+    if (response.statusCode != 200) {
+      throw MediaServerAuthException(
+        'Signed in, but could not read the account identity',
+        statusCode: response.statusCode,
+      );
+    }
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const MediaServerAuthException('Account identity response was not JSON');
+    }
+    return PleyaUser.fromJson(data);
   }
 
   /// Exchange a refresh token for a new pair.
@@ -253,12 +297,19 @@ class PleyaServerAuthService {
 /// What a successful setup or login yields: where the server is, what it says
 /// it can do, and the token pair to say it with.
 class PleyaAuthResult {
-  const PleyaAuthResult({required this.baseUrl, required this.info, required this.tokens, required this.userName});
+  const PleyaAuthResult({
+    required this.baseUrl,
+    required this.info,
+    required this.tokens,
+    required this.userName,
+    this.userId,
+  });
 
   final String baseUrl;
   final PleyaInfo info;
   final PleyaTokenPair tokens;
   final String userName;
+  final String? userId;
 }
 
 /// A rejection Pleya itself spoke: a 401 or 403 carrying an `auth.*` code from

@@ -45,6 +45,10 @@ class OnlinePlexClientDouble implements PlexClient {
   @override
   Future<HealthStatus> checkHealth() async => HealthStatus.online;
 
+  /// Set by `MultiServerManager` when it registers the client.
+  @override
+  bool Function()? canManageServerMetadata;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

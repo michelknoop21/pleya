@@ -15,8 +15,8 @@ target: tvos-sim
 # The measured hops of the probe run
 # (`tvos-home-hero-return-after-playback-1788618271734`, focus-trace 11-14):
 # `play_button -> VideoPlayerScreen`, `VideoPlayerScreen -> PlayPause`,
-# `PlayPause -> play_button` (the clip is a couple of seconds long and mpv
-# returns on its own), then `play_button -> tvHeroPlay` on the Menu press.
+# `PlayPause -> play_button` (mpv reaches the end of the clip and returns on
+# its own), then `play_button -> tvHeroPlay` on the Menu press.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -51,12 +51,14 @@ steps:
   - wait_until: {id: player.surface, timeout: 25000}
   - snapshot: 03-player
 
-  # No press here. `sampleMediaMp4Bytes` is a real, very short clip whose
-  # `duration_ms` is a fixture fiction, so mpv reaches its own end and returns
-  # to the detail page exactly like a Menu press would — the same auto-return
-  # `media-detail.episode-refresh` documents. Waiting on the detail screen
-  # rather than pressing keeps the two from racing.
-  - wait_until: {id: screen.media_detail, timeout: 30000}
+  # No press here: the clip (fifteen seconds since VER7) plays to its end and
+  # mpv returns to the detail page on its own. A finished playback is the
+  # HERO4 state; a Menu press mid-clip does not re-project Home that way and
+  # the ring goes back to the rail tile (measured 24 Sep 2026: `play_button`,
+  # Menu, `tvDiscoveryTile_...`).
+  # Waiting on `screen.media_detail` alone does not work: the detail page stays
+  # mounted under the player, so the wait is on the ring on its play button.
+  - wait_until: {focused: media-detail.play, timeout: 40000}
   - settle: 2500
 
   # And this is the press. One Menu out of the detail page, back onto a Home

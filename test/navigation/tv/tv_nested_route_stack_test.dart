@@ -297,4 +297,20 @@ void main() {
 
     expect(await route.result, isNull, reason: 'pendingResult must not invent a result where there was none');
   });
+
+  // OFF6: closing one destination's section leaves the others alone.
+  test('clearNestedRoutesFor drops one stack and completes its routes with null', () async {
+    final coordinator = TvNavigationCoordinator()..updateConditions(const TvNavConditions(hasLiveTv: false));
+    addTearDown(coordinator.dispose);
+    final section = TvNestedRoute(id: 'tvMyPleya_requests', builder: (_) => const SizedBox());
+    final catalog = TvNestedRoute(id: 'tvCatalog_movies', builder: (_) => const SizedBox());
+    coordinator.pushNested(TvDestinationId.myPleya, section);
+    coordinator.pushNested(TvDestinationId.movies, catalog);
+
+    coordinator.clearNestedRoutesFor(TvDestinationId.myPleya);
+
+    expect(coordinator.nestedRoutesFor(TvDestinationId.myPleya), isEmpty);
+    expect(coordinator.nestedRoutesFor(TvDestinationId.movies).map((r) => r.id), ['tvCatalog_movies']);
+    expect(await section.result, isNull);
+  });
 }
