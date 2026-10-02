@@ -80,11 +80,13 @@ class _Seerr {
   _Seerr({this.permissions = SeerrPermission.request});
   final int permissions;
   String movieTitle = 'The Matrix';
+  String overview = 'A hacker learns that reality is a simulation. ${'Long plot detail. ' * 40}END';
   int? movieStatus;
   int? movieStatus4k;
   Map<int, int> seasonStatus = {};
 
   final posts = <Map<String, dynamic>>[];
+  final gets = <Uri>[];
 
   late final SeerrClient client = SeerrClient(
     SeerrSession(
@@ -99,12 +101,18 @@ class _Seerr {
         posts.add(jsonDecode(request.body) as Map<String, dynamic>);
         return _json(const {'id': 1}, status: 201);
       }
+      gets.add(request.url);
       Map<String, Object?> info(int? status, [int? status4k, List<Object?>? seasons]) => {
         'status': ?status,
         'status4k': ?status4k,
         'seasons': ?seasons,
       };
       return switch (path) {
+        '/search' when request.url.queryParameters['query'] == 'reloaded' => _json({
+          'results': [
+            {'id': 604, 'mediaType': 'movie', 'title': 'The Matrix Reloaded', 'releaseDate': '2003-05-15'},
+          ],
+        }),
         '/search' => _json({
           'page': 1,
           'totalPages': 1,
@@ -114,6 +122,8 @@ class _Seerr {
               'mediaType': 'movie',
               'title': movieTitle,
               'releaseDate': '1999-03-31',
+              'posterPath': '/matrix.jpg',
+              'overview': overview,
               'mediaInfo': info(movieStatus),
             },
             {'id': 604, 'mediaType': 'movie', 'title': 'The Matrix Reloaded', 'releaseDate': '2003-05-15'},
@@ -138,6 +148,17 @@ class _Seerr {
             for (final e in seasonStatus.entries) {'seasonNumber': e.key, 'status': e.value},
           ]),
         }),
+        '/genres/movie' => _json(const [
+          {'id': 878, 'name': 'Science Fiction'},
+          {'id': 28, 'name': 'Action'},
+        ]),
+        '/discover/movies' => _json({
+          'results': [
+            for (var i = 0; i < 12; i++) {'id': 700 + i, 'mediaType': 'movie', 'title': 'Film $i'},
+          ],
+        }),
+        '/movie/604' => _json(const {'id': 604, 'title': 'The Matrix Reloaded', 'releaseDate': '2003-05-15'}),
+        '/movie/700' => _json(const {'id': 700, 'title': 'Film 0', 'releaseDate': '1995-01-01'}),
         _ => _json(const {'message': 'not found'}, status: 404),
       };
     }),
@@ -198,7 +219,11 @@ class _Entitled extends AssistantEntitlement {
   Future<AssistantEntitlementState> check() async => AssistantEntitlementState.entitled;
 }
 
-Map<String, Object?> _find(String query) => _call('find_request_title', {'query': query});
+Map<String, Object?> _find(String query) => _call('find_request_title', {
+  'titles': [
+    {'title': query},
+  ],
+});
 
 Map<String, Object?> _request(Map<String, Object?> args) => _call('request_title', args, id: 'call_2');
 
@@ -228,7 +253,9 @@ void main() {
   }
 
   test('search returns compact candidates with their status', () async {
-    final seerr = _Seerr()..movieStatus = SeerrMediaStatus.processing.value;
+    final seerr = _Seerr()
+      ..movieStatus = SeerrMediaStatus.processing.value
+      ..overview = '';
     final (_, model) = await run([_find('matrix'), _say('x')], seerr: seerr);
     expect(model.toolResults.single, {
       'titles': [
@@ -263,7 +290,11 @@ void main() {
 
   test('kind and year narrow the candidates', () async {
     final (_, model) = await run([
-      _call('find_request_title', {'query': 'matrix', 'kind': 'movie', 'year': 2003}),
+      _call('find_request_title', {
+        'titles': [
+          {'title': 'matrix', 'kind': 'movie', 'year': 2003},
+        ],
+      }),
       _say('x'),
     ], seerr: _Seerr());
     expect((model.toolResults.single['titles'] as List).map((t) => (t as Map)['seerr_id']), ['movie:604']);
@@ -438,5 +469,146 @@ void main() {
     final (_, model) = await run([_find('matrix'), _say('x')]);
     expect(model.toolNamesOffered(0), isNot(anyOf(contains('find_request_title'), contains('request_title'))));
     expect(model.toolResults.single, {'error': 'unknown_tool'});
+  });
+
+  test('several guesses in one call are merged, de-duplicated and requestable', () async {
+    final seerr = _Seerr();
+    final (_, model) = await run([
+      _call('find_request_title', {
+        'titles': [
+          {'title': 'matrix', 'kind': 'movie'},
+          {'title': 'reloaded'},
+        ],
+      }),
+      _request({'seerr_id': 'movie:604'}),
+      _say('x'),
+    ], seerr: seerr);
+    final titles = model.toolResults.first['titles'] as List;
+    expect(titles.map((t) => (t as Map)['seerr_id']), ['movie:603', 'movie:604']);
+    expect(seerr.gets.where((u) => u.path.endsWith('/search')).map((u) => u.queryParameters['query']), [
+      'matrix',
+      'reloaded',
+    ]);
+    expect(cards.single.subject, 'The Matrix Reloaded (2003)');
+    expect(seerr.posts.single, {'mediaType': 'movie', 'mediaId': 604, 'is4k': false});
+  });
+
+  test('more than five guesses are refused', () async {
+    final (_, model) = await run([
+      _call('find_request_title', {
+        'titles': [
+          for (var i = 0; i < 6; i++) {'title': 'x$i'},
+        ],
+      }),
+      _say('x'),
+    ], seerr: _Seerr());
+    expect(model.toolResults.single, {'error': 'invalid_titles'});
+  });
+
+  test('discover maps genre and sort, reports what it could not apply', () async {
+    final seerr = _Seerr();
+    final (result, model) = await run([
+      _call('discover_request_titles', {
+        'kind': 'movie',
+        'genres': ['science fiction', 'Horror', 'Action'],
+        'year_from': 1990,
+        'keywords': ['robots'],
+        'sort': 'rating',
+      }),
+      _request({'seerr_id': 'movie:700'}),
+      _say('x'),
+    ], seerr: seerr);
+    final discover = seerr.gets.singleWhere((u) => u.path.endsWith('/discover/movies'));
+    expect(discover.queryParameters, containsPair('genre', '878'));
+    expect(discover.queryParameters, containsPair('sortBy', 'vote_average.desc'));
+    final out = model.toolResults.first;
+    expect(out['titles'] as List, hasLength(10));
+    expect(out['ignored_filters'], [
+      {'filter': 'year_from', 'reason': 'not_supported'},
+      {'filter': 'keywords', 'reason': 'not_supported'},
+      {'filter': 'genres', 'value': 'Horror', 'reason': 'unknown_genre'},
+      {'filter': 'genres', 'value': 'Action', 'reason': 'one_genre_only'},
+    ]);
+    expect(out['known_genres'], ['Science Fiction', 'Action']);
+    expect((result.displays.single as AssistantRequestOptions).options, hasLength(10));
+    // A discovered id is in the allow-list.
+    expect(cards.single.subject, 'Film 0 (1995)');
+  });
+
+  test('option cards carry poster and overview; the model gets a short clip only', () async {
+    final seerr = _Seerr();
+    final (result, model) = await run([_find('matrix'), _say('x')], seerr: seerr);
+    final display = result.displays.single as AssistantRequestOptions;
+    final matrix = display.options.first;
+    expect(matrix.seerrId, 'movie:603');
+    expect(matrix.title, 'The Matrix');
+    expect(matrix.year, 1999);
+    expect(matrix.kind, 'movie');
+    expect(matrix.status, 'not_requested');
+    expect(matrix.posterUrl, SeerrConstants.tmdbPosterUrl('/matrix.jpg'));
+    expect(matrix.overview, startsWith('A hacker learns'));
+    expect(matrix.overview.length, lessThanOrEqualTo(301));
+    expect(display.options[1].posterUrl, isEmpty);
+
+    final row = (model.toolResults.single['titles'] as List).first as Map;
+    expect((row['overview'] as String).length, lessThanOrEqualTo(121));
+    final sent = jsonEncode(model.requests);
+    expect(sent, isNot(contains('END')));
+    expect(sent, isNot(contains(matrix.overview)));
+  });
+
+  test('picking an option builds the same card as request_title, only for shown ids', () async {
+    final viaModel = _Seerr();
+    await run(
+      [
+        _find('thrones'),
+        _request({'seerr_id': 'tv:1399'}),
+        _say('x'),
+      ],
+      seerr: viaModel,
+      confirmed: false,
+    );
+    final modelCard = cards.single;
+
+    final seerr = _Seerr();
+    final (result, _) = await run([_find('thrones'), _say('x')], seerr: seerr);
+    final ctx = (result.displays.single as AssistantRequestOptions).context;
+
+    final unknown = await assistantRequestFromOption(ctx, 'movie:999');
+    expect((unknown as AssistantToolResult).data, {'error': 'unknown_seerr_id'});
+    // Another ask's context does not know the id either.
+    final otherCtx = AssistantToolContext(
+      servers: ctx.servers,
+      requests: AssistantRequestServices(client: () => seerr.client),
+    );
+    expect(((await assistantRequestFromOption(otherCtx, 'tv:1399')) as AssistantToolResult).data, {
+      'error': 'unknown_seerr_id',
+    });
+
+    final card = await assistantRequestFromOption(ctx, 'tv:1399') as AssistantPendingAction;
+    expect(card.kind, modelCard.kind);
+    expect(card.subject, modelCard.subject);
+    expect(card.serverName, modelCard.serverName);
+    expect(card.items, modelCard.items);
+    expect(seerr.posts, isEmpty);
+    await card.execute();
+    expect(seerr.posts.single, {
+      'mediaType': 'tv',
+      'mediaId': 1399,
+      'is4k': false,
+      'seasons': [1, 2, 3],
+    });
+
+    final fourK = await assistantRequestFromOption(ctx, 'tv:1399', fourK: true);
+    expect((fourK as AssistantToolResult).data, {'error': '4k_not_allowed'});
+  });
+
+  test('picking an already available option returns its status, no card', () async {
+    final seerr = _Seerr()..movieStatus = SeerrMediaStatus.available.value;
+    final (result, _) = await run([_find('matrix'), _say('x')], seerr: seerr);
+    final ctx = (result.displays.single as AssistantRequestOptions).context;
+    final outcome = await assistantRequestFromOption(ctx, 'movie:603');
+    expect((outcome as AssistantToolResult).data, {'status': 'already_available', 'title': 'The Matrix (1999)'});
+    expect(seerr.posts, isEmpty);
   });
 }
