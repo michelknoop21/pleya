@@ -153,10 +153,42 @@ void main() {
 
     test('createUser sends the password in the create call', () async {
       routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New', 'Policy': _policy()});
+      routes['GET /Users/u9'] = (_) => _json({'Id': 'u9', 'Policy': _policy()});
+      routes['POST /Users/u9/Policy'] = (_) => http.Response('', 204);
       final user = await client(emby: false).createUser(name: 'New', password: 'pw');
-      expect(jsonDecode(requests.single.body), {'Name': 'New', 'Password': 'pw'});
+      expect(jsonDecode(requests.first.body), {'Name': 'New', 'Password': 'pw'});
       expect(user.id, 'u9');
       expect(user.role, ServerUserRole.member);
+      expect(user.allLibraries, isFalse);
+    });
+
+    test('createUser closes the default access to every library', () async {
+      routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
+      routes['GET /Users/u9'] = (_) => _json({'Id': 'u9', 'Policy': _policy()});
+      routes['POST /Users/u9/Policy'] = (_) => http.Response('', 204);
+      await client(emby: false).createUser(name: 'New');
+      expect(calls(), ['POST /Users/New', 'GET /Users/u9', 'POST /Users/u9/Policy']);
+      final policy = jsonDecode(requests.last.body) as Map<String, dynamic>;
+      expect(policy['EnableAllFolders'], isFalse);
+      expect(policy['EnabledFolders'], isEmpty);
+    });
+
+    test('a failed lock-down deletes the new user', () async {
+      routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
+      routes['GET /Users/u9'] = (_) => http.Response('', 500);
+      routes['DELETE /Users/u9'] = (_) => http.Response('', 204);
+      await expectLater(client(emby: false).createUser(name: 'New'), throwsA(isA<MediaServerHttpException>()));
+      expect(calls(), ['POST /Users/New', 'GET /Users/u9', 'DELETE /Users/u9']);
+    });
+
+    test('a failed rollback reports the account that is left behind', () async {
+      routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
+      routes['GET /Users/u9'] = (_) => http.Response('', 500);
+      routes['DELETE /Users/u9'] = (_) => http.Response('', 500);
+      await expectLater(
+        client(emby: false).createUser(name: 'New'),
+        throwsA(isA<MediaServerHttpException>().having((e) => e.message, 'message', contains('could not be removed'))),
+      );
     });
 
     test('setUserLibraryAccess replaces the policy, keeping unknown fields', () async {
@@ -242,16 +274,20 @@ void main() {
     test('createUser sets the password in a second call', () async {
       routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
       routes['POST /Users/u9/Password'] = (_) => http.Response('', 204);
+      routes['GET /Users/u9'] = (_) => _json({'Id': 'u9', 'Policy': _policy()});
+      routes['POST /Users/u9/Policy'] = (_) => http.Response('', 204);
       await client(emby: true).createUser(name: 'New', password: 'pw');
-      expect(calls(), ['POST /Users/New', 'POST /Users/u9/Password']);
+      expect(calls(), ['POST /Users/New', 'POST /Users/u9/Password', 'GET /Users/u9', 'POST /Users/u9/Policy']);
       expect(jsonDecode(requests[0].body), {'Name': 'New'});
       expect(jsonDecode(requests[1].body), {'Id': 'u9', 'NewPw': 'pw', 'ResetPassword': false});
     });
 
-    test('createUser without a password makes one call', () async {
+    test('createUser without a password sets no password', () async {
       routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
+      routes['GET /Users/u9'] = (_) => _json({'Id': 'u9', 'Policy': _policy()});
+      routes['POST /Users/u9/Policy'] = (_) => http.Response('', 204);
       await client(emby: true).createUser(name: 'New');
-      expect(calls(), ['POST /Users/New']);
+      expect(calls(), ['POST /Users/New', 'GET /Users/u9', 'POST /Users/u9/Policy']);
     });
 
     test('a failed password call deletes the new user', () async {

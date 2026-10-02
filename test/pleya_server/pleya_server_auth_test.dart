@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -229,6 +230,35 @@ void main() {
       expect(refreshCalls, 1);
       expect(persisted.single.refreshToken, 'rt-rotated');
       expect(persisted.single.status, ConnectionStatus.online);
+    });
+
+    test('a slow role write cannot put a spent refresh token back on disk', () async {
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((_) async => json(tokenPair('at-1', 'rt-1'))),
+      );
+      final gate = Completer<void>();
+      var first = true;
+      PleyaServerConnection? disk;
+      final session = PleyaServerSession(
+        connection: connectionWith('rt-0'),
+        auth: service,
+        onTokensRotated: (c) async {
+          if (first) {
+            first = false;
+            await gate.future;
+          }
+          disk = c;
+        },
+      );
+      // The role write starts first and stalls; a rotation happens meanwhile.
+      final role = session.adoptRole('admin');
+      final token = session.accessToken();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      gate.complete();
+      await role;
+      expect(await token, 'at-1');
+      expect(disk!.refreshToken, 'rt-1', reason: 'the last write must carry the rotated token');
+      expect(disk!.role, 'admin');
     });
 
     test('a valid access token is reused instead of spending a rotation', () async {

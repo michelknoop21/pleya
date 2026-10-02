@@ -27,7 +27,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
   @override
   Future<void> scanLibrary(String libraryId) async {
     assertCanAdministerServer();
-    await _adminSend('POST', '/libraries/${Uri.encodeComponent(libraryId)}/scan');
+    await _adminSend('POST', '/libraries/${adminPathSegment(libraryId)}/scan');
   }
 
   /// The newest page of jobs.
@@ -42,13 +42,13 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
   @override
   Future<void> cancelJob(String jobId) async {
     assertCanAdministerServer();
-    await _adminSend('POST', '/jobs/${Uri.encodeComponent(jobId)}/cancel');
+    await _adminSend('POST', '/jobs/${adminPathSegment(jobId)}/cancel');
   }
 
   @override
   Future<void> retryJob(String jobId) async {
     assertCanAdministerServer();
-    await _adminSend('POST', '/jobs/${Uri.encodeComponent(jobId)}/retry');
+    await _adminSend('POST', '/jobs/${adminPathSegment(jobId)}/retry');
   }
 
   /// Every account on the server.
@@ -113,9 +113,10 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
               library.id,
           ]
         : libraryIds;
+    assertCanAdministerServer();
     await _adminSend(
       'PUT',
-      '/users/${Uri.encodeComponent(userId)}/permissions',
+      '/users/${adminPathSegment(userId)}/permissions',
       body: {
         'permissions': [
           for (final id in ids) {'library_id': id, 'permission': 'view'},
@@ -127,7 +128,7 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
   @override
   Future<void> deleteUser(String userId) async {
     assertCanAdministerServer();
-    await _adminSend('DELETE', '/users/${Uri.encodeComponent(userId)}');
+    await _adminSend('DELETE', '/users/${adminPathSegment(userId)}');
   }
 
   static ServerUserRole _role(String role) => switch (role) {

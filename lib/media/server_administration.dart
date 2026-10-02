@@ -13,6 +13,15 @@ library;
 
 import 'media_server_client.dart';
 
+/// One path segment built from an id the caller supplied. Encodes `/`, and
+/// refuses the empty, `.` and `..` ids that `Uri` would otherwise normalise
+/// into a different route (`/activities/../library/metadata/1` is a media
+/// delete). Every admin implementation builds its paths through this.
+String adminPathSegment(String id) {
+  if (id.isEmpty || id == '.' || id == '..') throw ArgumentError.value(id, 'id', 'not a valid id');
+  return Uri.encodeComponent(id);
+}
+
 /// Base of every interface below.
 abstract interface class ServerAdministrationClient {
   /// Whether this server exposes administration right now. Plex and
@@ -95,7 +104,9 @@ class ServerUser {
   /// and [libraryIds] then mean nothing and must not be shown as "no access".
   final bool libraryAccessKnown;
 
-  /// True when the user sees every library, including ones added later.
+  /// True when the user sees every library. On Jellyfin and Emby that
+  /// includes libraries added later; Pleya Server owners and admins see
+  /// everything by role.
   final bool allLibraries;
 
   /// The libraries the user may see when [allLibraries] is false.
@@ -113,6 +124,10 @@ abstract interface class ServerUserAdministration implements ServerAdministratio
   /// Creates a regular, non-admin user. Never a role above member.
   Future<ServerUser> createUser({required String name, String? password});
 
+  /// Replaces the user's whole library access with exactly this. An empty
+  /// [libraryIds] with [allLibraries] false means no libraries. Where a
+  /// backend has no lasting "all" for a member (Pleya Server), [allLibraries]
+  /// grants every library that exists now.
   Future<void> setUserLibraryAccess(String userId, {required bool allLibraries, List<String> libraryIds = const []});
 
   Future<void> deleteUser(String userId);
@@ -160,7 +175,9 @@ abstract interface class PlexSharingAdministration implements ServerAdministrati
   /// user id. The user sees nothing until [setShareLibraries].
   Future<String> createManagedHomeUser(String name);
 
-  /// Creates or replaces the share for [userId] on this server.
+  /// Creates or replaces the share for [userId] on this server. An empty
+  /// list without [allLibraries] removes the share. [allLibraries] shares
+  /// every library that exists now, not ones added later.
   Future<void> setShareLibraries(String userId, {required bool allLibraries, List<String> libraryIds = const []});
 
   Future<void> removeShare(String userId);

@@ -24,7 +24,7 @@ mixin _JellyfinAdminMethods {
   Future<void> scanLibrary(String libraryId) async {
     assertCanAdministerServer();
     final response = await _http.post(
-      '/Items/${_segment(libraryId)}/Refresh',
+      '/Items/${adminPathSegment(libraryId)}/Refresh',
       queryParameters: {
         if (connection.isEmby) 'Recursive': 'true',
         'metadataRefreshMode': 'Default',
@@ -40,7 +40,7 @@ mixin _JellyfinAdminMethods {
   Future<void> refreshItemMetadata(String itemId) async {
     assertCanAdministerServer();
     final response = await _http.post(
-      '/Items/${_segment(itemId)}/Refresh',
+      '/Items/${adminPathSegment(itemId)}/Refresh',
       queryParameters: {
         if (connection.isEmby) 'Recursive': 'true',
         'metadataRefreshMode': 'FullRefresh',
@@ -71,13 +71,13 @@ mixin _JellyfinAdminMethods {
 
   Future<void> cancelJob(String jobId) async {
     assertCanAdministerServer();
-    final response = await _http.delete('/ScheduledTasks/Running/${_segment(jobId)}');
+    final response = await _http.delete('/ScheduledTasks/Running/${adminPathSegment(jobId)}');
     throwIfHttpError(response);
   }
 
   Future<void> retryJob(String jobId) async {
     assertCanAdministerServer();
-    final response = await _http.post('/ScheduledTasks/Running/${_segment(jobId)}');
+    final response = await _http.post('/ScheduledTasks/Running/${adminPathSegment(jobId)}');
     throwIfHttpError(response);
   }
 
@@ -133,21 +133,33 @@ mixin _JellyfinAdminMethods {
     final dto = response.data;
     if (dto is! Map<String, dynamic> || dto['Id'] is! String) throw _adminError('Unexpected create-user response');
     final id = dto['Id'] as String;
-    if (connection.isEmby && hasPassword) {
-      // Emby's CreateUserByName has no password; a user left without the
-      // password the admin asked for would be open, so roll it back.
-      try {
+    try {
+      if (connection.isEmby && hasPassword) {
+        // Emby's CreateUserByName has no password field.
         final pw = await _http.post(
-          '/Users/${_segment(id)}/Password',
+          '/Users/${adminPathSegment(id)}/Password',
           body: {'Id': id, 'NewPw': password, 'ResetPassword': false},
         );
         throwIfHttpError(pw);
-      } catch (_) {
-        await _http.delete('/Users/${_segment(id)}');
-        rethrow;
       }
+      // Both servers give a new user every library. Close that before the
+      // account can be used; the caller grants what was asked for next.
+      await setUserLibraryAccess(id, allLibraries: false);
+    } catch (e, st) {
+      await _removeHalfCreatedUser(id, name, e);
+      Error.throwWithStackTrace(e, st);
     }
-    return _userFromDto(dto, null);
+    return ServerUser(id: id, name: dto['Name'] as String? ?? name, role: ServerUserRole.member, allLibraries: false);
+  }
+
+  /// Undo a create whose setup failed, so no open or passwordless account is
+  /// left behind. A failed undo is its own error: the account still exists.
+  Future<void> _removeHalfCreatedUser(String id, String name, Object cause) async {
+    try {
+      throwIfHttpError(await _http.delete('/Users/${adminPathSegment(id)}'));
+    } catch (_) {
+      throw _adminError('User "$name" was created, its setup failed ($cause) and it could not be removed');
+    }
   }
 
   /// `/Users/{id}/Policy` replaces the whole policy, so the current one is
@@ -159,7 +171,7 @@ mixin _JellyfinAdminMethods {
   }) async {
     assertCanAdministerServer();
     final folders = allLibraries ? const <String>[] : await _policyFolderIds(libraryIds);
-    final response = await _http.get('/Users/${_segment(userId)}');
+    final response = await _http.get('/Users/${adminPathSegment(userId)}');
     throwIfHttpError(response);
     final dto = response.data;
     final current = dto is Map<String, dynamic> ? dto['Policy'] : null;
@@ -169,13 +181,14 @@ mixin _JellyfinAdminMethods {
       ..['EnabledFolders'] = folders;
     // Jellyfin ignores EnabledFolders while BlockedMediaFolders is non-empty.
     if (!connection.isEmby) policy['BlockedMediaFolders'] = const <String>[];
-    final update = await _http.post('/Users/${_segment(userId)}/Policy', body: policy);
+    assertCanAdministerServer();
+    final update = await _http.post('/Users/${adminPathSegment(userId)}/Policy', body: policy);
     throwIfHttpError(update);
   }
 
   Future<void> deleteUser(String userId) async {
     assertCanAdministerServer();
-    final response = await _http.delete('/Users/${_segment(userId)}');
+    final response = await _http.delete('/Users/${adminPathSegment(userId)}');
     throwIfHttpError(response);
   }
 
@@ -196,6 +209,7 @@ mixin _JellyfinAdminMethods {
   /// App library ids to the ids a policy's `EnabledFolders` takes. Throws
   /// before any write when one of them is not a library on this server.
   Future<List<String>> _policyFolderIds(List<String> libraryIds) async {
+    if (libraryIds.isEmpty) return const [];
     final Map<String, String> byAppId;
     if (connection.isEmby) {
       byAppId = {for (final e in (await _embyGuidToLibraryId()).entries) _folderKey(e.value): e.key};

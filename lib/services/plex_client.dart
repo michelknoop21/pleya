@@ -880,7 +880,7 @@ class PlexClient
   @override
   Future<void> cancelJob(String jobId) async {
     assertCanAdministerServer();
-    throwIfHttpError(await _http.delete('/activities/$jobId'));
+    throwIfHttpError(await _http.delete('/activities/${adminPathSegment(jobId)}'));
   }
 
   /// Cancel a running background task by its UUID.
@@ -889,7 +889,7 @@ class PlexClient
   /// the task that started it.
   Future<void> cancelActivity(String uuid) async {
     assertCanManageServerMetadata();
-    await _http.delete('/activities/$uuid');
+    await _http.delete('/activities/${adminPathSegment(uuid)}');
   }
 
   /// Get library sections
@@ -2958,7 +2958,7 @@ class PlexClient
   @override
   Future<void> scanLibrary(String libraryId) async {
     assertCanManageServerMetadata();
-    await _getWithFailover('/library/sections/$libraryId/refresh');
+    await _getWithFailover('/library/sections/${adminPathSegment(libraryId)}/refresh');
   }
 
   /// Re-read one item's metadata from its agents
@@ -2966,7 +2966,7 @@ class PlexClient
   @override
   Future<void> refreshItemMetadata(String itemId) async {
     assertCanAdministerServer();
-    throwIfHttpError(await _http.put('/library/metadata/$itemId/refresh'));
+    throwIfHttpError(await _http.put('/library/metadata/${adminPathSegment(itemId)}/refresh'));
   }
 
   /// Refresh metadata for a library section

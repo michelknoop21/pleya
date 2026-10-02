@@ -122,15 +122,27 @@ class PlexSharingService implements PlexSharingAdministration {
     final plexTvIds = allLibraries
         ? sections.keyById.keys.toList()
         : [for (final key in libraryIds) sections.idFor(key)];
-    if (plexTvIds.isEmpty) {
-      throw ArgumentError('A share needs at least one library; use removeShare to revoke access');
-    }
-
     final existing = (await _sharedServers()).where((s) => s.userId == userId).firstOrNull;
+    // Re-check right before the write: the reads above can outlive a profile
+    // switch.
+    _assertAuthority();
+    // No libraries means no access, as on the other backends: Plex models
+    // that as having no share.
+    if (plexTvIds.isEmpty) {
+      if (existing != null) {
+        _ok(
+          await _http.delete(
+            '$_base/servers/${adminPathSegment(machineIdentifier)}/shared_servers/${adminPathSegment(existing.id)}',
+            headers: _headers,
+          ),
+        );
+      }
+      return;
+    }
     if (existing != null) {
       _ok(
         await _http.put(
-          '$_base/servers/$machineIdentifier/shared_servers/${existing.id}',
+          '$_base/servers/${adminPathSegment(machineIdentifier)}/shared_servers/${adminPathSegment(existing.id)}',
           headers: _headers,
           body: {
             'server_id': machineIdentifier,
@@ -141,7 +153,7 @@ class PlexSharingService implements PlexSharingAdministration {
     } else {
       _ok(
         await _http.post(
-          '$_base/servers/$machineIdentifier/shared_servers',
+          '$_base/servers/${adminPathSegment(machineIdentifier)}/shared_servers',
           headers: _headers,
           body: {
             'server_id': machineIdentifier,
@@ -159,7 +171,13 @@ class PlexSharingService implements PlexSharingAdministration {
     _userIdAsInt(userId);
     final existing = (await _sharedServers()).where((s) => s.userId == userId).firstOrNull;
     if (existing == null) throw StateError('User $userId has no share on this server');
-    _ok(await _http.delete('$_base/servers/$machineIdentifier/shared_servers/${existing.id}', headers: _headers));
+    _assertAuthority();
+    _ok(
+      await _http.delete(
+        '$_base/servers/${adminPathSegment(machineIdentifier)}/shared_servers/${adminPathSegment(existing.id)}',
+        headers: _headers,
+      ),
+    );
   }
 
   @override
@@ -169,7 +187,8 @@ class PlexSharingService implements PlexSharingAdministration {
     final user = (await _homeUsers()).where((u) => u.id == userId).firstOrNull;
     if (user == null) throw StateError('User $userId is not in this Plex Home');
     if (user.admin) throw StateError('The Home admin cannot be removed');
-    _ok(await _http.delete('$_base/home/users/$userId', headers: _headers));
+    _assertAuthority();
+    _ok(await _http.delete('$_base/home/users/${adminPathSegment(userId)}', headers: _headers));
   }
 
   // --- reads -----------------------------------------------------------------
@@ -178,7 +197,7 @@ class PlexSharingService implements PlexSharingAdministration {
   /// is plex.tv's section id and `key` the PMS section key (the app's
   /// `MediaLibrary.id`).
   Future<_SectionMap> _sections() async {
-    final root = _rootOf(await _http.get('$_base/servers/$machineIdentifier', headers: _headers));
+    final root = _rootOf(await _http.get('$_base/servers/${adminPathSegment(machineIdentifier)}', headers: _headers));
     final server = root.findElements('Server').firstOrNull;
     if (server == null) throw _shape('no Server element for $machineIdentifier');
     final keyById = <int, String>{};
@@ -193,7 +212,9 @@ class PlexSharingService implements PlexSharingAdministration {
 
   /// `GET /api/servers/{machineId}/shared_servers`.
   Future<List<_SharedServer>> _sharedServers() async {
-    final root = _rootOf(await _http.get('$_base/servers/$machineIdentifier/shared_servers', headers: _headers));
+    final root = _rootOf(
+      await _http.get('$_base/servers/${adminPathSegment(machineIdentifier)}/shared_servers', headers: _headers),
+    );
     return [
       for (final e in root.findElements('SharedServer'))
         _SharedServer(

@@ -140,6 +140,17 @@ void main() {
     expect(fake.mutations, hasLength(2));
   });
 
+  test('an empty library list removes the share, as no access does elsewhere', () async {
+    final fake = _Fake({
+      ..._reads(),
+      'DELETE /api/servers/$_machine/shared_servers/555': (_) => http.Response('', 200),
+    });
+    await fake.service.setShareLibraries('77', allLibraries: false);
+    expect(fake.mutations.map((r) => '${r.method} ${r.url.path}'), [
+      'DELETE /api/servers/$_machine/shared_servers/555',
+    ]);
+  });
+
   test('an unknown library key throws before any mutating call', () async {
     final fake = _Fake(_reads());
     await expectLater(

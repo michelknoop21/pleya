@@ -292,6 +292,8 @@ class PleyaServerClient
   Future<void> _refreshRole() async {
     try {
       final response = await _authorizedGet('/users/me', timeout: MediaServerTimeouts.jellyfinProbe);
+      // The account is gone: whatever role it had no longer applies.
+      if (response.statusCode == 404) return _session.adoptRole('');
       final data = response.data;
       if (response.statusCode != 200 || data is! Map<String, dynamic>) return;
       await _session.adoptRole(PleyaUser.fromJson(data).role);

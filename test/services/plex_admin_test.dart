@@ -82,6 +82,19 @@ void main() {
     expect(seen.single.url.path, '/activities/a-1');
   });
 
+  test('an id that would change the route is refused before the network', () async {
+    final seen = <http.Request>[];
+    final client = _client(seen, admin: true);
+    // `/activities/../library/metadata/1` normalises to a media delete.
+    for (final id in ['..', '.', '']) {
+      await expectLater(client.cancelJob(id), throwsArgumentError);
+      await expectLater(client.refreshItemMetadata(id), throwsArgumentError);
+    }
+    await client.cancelJob('../library/metadata/1').catchError((_) {});
+    expect(seen.map((r) => r.url.path), isNot(contains('/library/metadata/1')));
+    expect(seen.every((r) => r.url.path.startsWith('/activities/')), isTrue);
+  });
+
   test('without authority nothing is sent', () async {
     final seen = <http.Request>[];
     final client = _client(seen, admin: false);
