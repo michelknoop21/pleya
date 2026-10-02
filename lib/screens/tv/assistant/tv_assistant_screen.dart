@@ -348,27 +348,24 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: box.maxHeight - 110 * pt),
                 child: TvAssistantGlassPanel(
-                  child: SingleChildScrollView(
-                    reverse: true,
-                    child: TvAssistantConversation(
-                      controller: c,
-                      name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
-                      servers: _servers(),
-                      resultTime: time,
-                      askNode: _askNode,
-                      cancelNode: _cancelNode,
-                      firstOptionNode: _optionNode,
-                      onAsk: () => unawaited(_ask()),
-                      onDone: () {
-                        c.reset();
-                        _dismiss();
-                      },
-                      onCancelWork: c.reset,
-                      onExample: _askExample,
-                      onPickOption: (option) => unawaited(c.pickRequestOption(option)),
-                      // Opens over the surface; Menu comes back to these results.
-                      onOpenTitle: (target) => unawaited(navigateToMediaItemDetails(context, target.item)),
-                    ),
+                  child: TvAssistantConversation(
+                    controller: c,
+                    name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
+                    servers: _servers(),
+                    resultTime: time,
+                    askNode: _askNode,
+                    cancelNode: _cancelNode,
+                    firstOptionNode: _optionNode,
+                    onAsk: () => unawaited(_ask()),
+                    onDone: () {
+                      c.reset();
+                      _dismiss();
+                    },
+                    onCancelWork: c.reset,
+                    onExample: _askExample,
+                    onPickOption: (option) => unawaited(c.pickRequestOption(option)),
+                    // Opens over the surface; Menu comes back to these results.
+                    onOpenTitle: (target) => unawaited(navigateToMediaItemDetails(context, target.item)),
                   ),
                 ),
               ),

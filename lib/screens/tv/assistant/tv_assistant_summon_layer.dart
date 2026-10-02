@@ -62,7 +62,7 @@ class TvAssistantSummonLayer extends StatelessWidget {
                         width: 570 * pt,
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxHeight: box.maxHeight - (listening ? 470 : 140) * pt),
-                          child: TvAssistantGlassPanel(child: SingleChildScrollView(reverse: true, child: panel)),
+                          child: TvAssistantGlassPanel(child: panel),
                         ),
                       ),
                     RepaintBoundary(child: avatar),

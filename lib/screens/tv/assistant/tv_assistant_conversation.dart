@@ -110,10 +110,6 @@ class TvAssistantConversation extends StatelessWidget {
         Text(t.assistant.listening.body, style: headlineStyle),
       ],
       AssistantSurfaceState.working => <Widget>[
-        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
-        // Results that are in show at once; the model is still composing.
-        Text(c.stillChecking ? t.assistant.working.stillChecking : t.assistant.working.status, style: headlineStyle),
-        gap,
         if (c.stillChecking) ..._displays(pt, focusFirstOption: false),
         TvAssistantStepList(steps: c.steps),
         SizedBox(height: 16 * pt),
@@ -133,7 +129,23 @@ class TvAssistantConversation extends StatelessWidget {
       AssistantSurfaceState.result => _result(context, pt, headlineStyle, gap, ask),
     };
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: children);
+    // While working, the question and the status stay above the scrolling
+    // part: four streamed results plus Cancel do not fit the panel, and the
+    // status is the one line that says Big P is not done yet. Both are
+    // bounded (3 lines, a fixed string); the model's answer is not, so the
+    // result keeps it in the scrolling part.
+    final head = <Widget>[
+      if (c.state == AssistantSurfaceState.working) ...[
+        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
+        // Results that are in show at once; the model is still composing.
+        Text(c.stillChecking ? t.assistant.working.stillChecking : t.assistant.working.status, style: headlineStyle),
+        gap,
+      ],
+    ];
+    Widget column(List<Widget> items) =>
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
+    // Anchored at the bottom: the newest stays in view.
+    return column([...head, Flexible(child: SingleChildScrollView(reverse: true, child: column(children)))]);
   }
 
   /// The run's displays; [focusFirstOption] hands the first choice the

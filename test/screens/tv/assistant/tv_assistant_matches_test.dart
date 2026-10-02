@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -22,6 +23,7 @@ import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
@@ -118,6 +120,13 @@ final _extra = AssistantTitleMatch(
   ),
 );
 
+AssistantTitleMatches _fourMatches() => AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
+  _martian,
+  _redPlanet,
+  _episode,
+  _extra,
+]);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('test_assistant_matches_entry');
@@ -159,6 +168,17 @@ void main() {
   String? focusedMatch() =>
       FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<TvAssistantMatchCard>()?.match.matchId;
 
+  /// The glass panel minus its 40 pt padding: what the panel shows.
+  Rect panelContent(WidgetTester tester) => tester.getRect(find.byType(TvAssistantGlassPanel)).deflate(40);
+
+  Rect focusedRect() => FocusManager.instance.primaryFocus!.rect;
+
+  void expectInside(Rect inner, Rect outer, String what) => expect(
+    outer.inflate(1).contains(inner.topLeft) && outer.inflate(1).contains(inner.bottomRight),
+    isTrue,
+    reason: '$what $inner is not inside the panel $outer',
+  );
+
   Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) async {
     c
       ..prompt = 'Die film over Mars'
@@ -182,6 +202,48 @@ void main() {
       );
       await showMatches(tester, [_martian, _redPlanet, _episode]);
     }
+
+    // Viewport audit 2 Oct 2026: with four found titles the panel content is
+    // taller than the glass panel, and D-pad focus scrolled the reversed
+    // panel the wrong way.
+    testWidgets('still checking with four results keeps the question, the status and Cancel in the panel', (
+      tester,
+    ) async {
+      await pumpSurface(tester);
+      c
+        ..state = AssistantSurfaceState.working
+        ..answer = ''
+        ..steps = const [AssistantStep(index: 0, tool: 'find_title', phase: AssistantStepPhase.done)]
+        ..displays = [_fourMatches()]
+        ..stillChecking = true
+        ..emit();
+      await settle(tester);
+
+      final panel = panelContent(tester);
+      expectInside(tester.getRect(find.byType(TvAssistantQuestion)), panel, 'question');
+      expectInside(tester.getRect(find.text(t.assistant.working.stillChecking)), panel, 'still-checking status');
+      expect(focusedLabel(), 'assistant.cancel');
+      expectInside(focusedRect(), panel, 'Cancel');
+    });
+
+    testWidgets('D-pad through four results and on to the buttons keeps every focused control in the panel', (
+      tester,
+    ) async {
+      await pumpSurface(tester);
+      await showMatches(tester, [_martian, _redPlanet, _episode, _extra]);
+      final panel = panelContent(tester);
+      expect(focusedMatch(), 'm1');
+      expectInside(focusedRect(), panel, 'first card');
+      expectInside(tester.getRect(find.text('Ik vond deze titels.')), panel, 'answer with the first card focused');
+
+      await press(tester, LogicalKeyboardKey.arrowDown, 3);
+      expect(focusedMatch(), 'm4');
+      expectInside(focusedRect(), panel, 'last card');
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedMatch(), isNull);
+      expectInside(focusedRect(), panel, 'the button under the cards');
+    });
 
     testWidgets('the first card takes the focus; a library match opens its detail page', (tester) async {
       await pumpSurface(tester);
@@ -301,6 +363,35 @@ void main() {
       expect(routes, isEmpty);
     });
 
+    testWidgets('streamed results show in the window of three while Big P is still checking', (tester) async {
+      await summon(tester, const []);
+      c
+        ..state = AssistantSurfaceState.working
+        ..answer = ''
+        ..displays = [_fourMatches()]
+        ..stillChecking = true
+        ..emit();
+      await settle(tester);
+
+      expect(find.text(t.assistant.working.stillChecking), findsOneWidget);
+      expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
+      final window = tester.getRect(
+        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(ConstrainedBox)).first,
+      );
+      expect(window.height, lessThanOrEqualTo(3 * 134 + 1));
+      expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
+      expect(focusedLabel(), 'assistant.cancel', reason: 'a streamed card does not take the remote');
+
+      // Not a result yet: Big P does not leave on his own.
+      await tester.pump(const Duration(seconds: 10));
+      await settle(tester);
+      expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
+      expect(focusedLabel(), 'assistant.cancel');
+
+      await press(tester, LogicalKeyboardKey.escape);
+      expect(focusedLabel(), 'behind');
+    });
+
     testWidgets('a library match sends Big P away and opens the detail page', (tester) async {
       await summon(tester, [_martian, _redPlanet]);
       await press(tester, LogicalKeyboardKey.select);
@@ -316,6 +407,89 @@ void main() {
 
       expect(c.picked.single.seerrId, 'movie:10');
       expect(routes, isEmpty);
+    });
+  });
+
+  // One controller state machine for both: the summoned panel and the
+  // surface show the same results in the same order and stand.
+  group('surface and summoned panel from one controller state', () {
+    late StreamController<void> presses;
+    setUp(() => presses = StreamController<void>.broadcast());
+    tearDown(() => unawaited(presses.close()));
+    List<String> shown(WidgetTester tester) {
+      final cards = find.byType(TvAssistantMatchCard).evaluate().toList()
+        ..sort(
+          (a, b) =>
+              tester.getTopLeft(find.byWidget(a.widget)).dy.compareTo(tester.getTopLeft(find.byWidget(b.widget)).dy),
+        );
+      return [for (final e in cards) (e.widget as TvAssistantMatchCard).match.matchId];
+    }
+
+    void setStillChecking() => c
+      ..prompt = 'Die film over Mars'
+      ..state = AssistantSurfaceState.working
+      ..answer = ''
+      ..steps = const [AssistantStep(index: 0, tool: 'find_title', phase: AssistantStepPhase.done)]
+      ..displays = [_fourMatches()]
+      ..stillChecking = true;
+
+    void setResult() => c
+      ..state = AssistantSurfaceState.result
+      ..answer = 'Ik vond deze titels.'
+      ..stillChecking = false;
+
+    Future<(List<String>, String?, List<String>, String?)> run(
+      WidgetTester tester,
+      Widget host, {
+      bool summon = false,
+    }) async {
+      await pumpTvFrame(tester, c, host);
+      if (summon) {
+        presses.add(null);
+        await settle(tester);
+      }
+      setStillChecking();
+      c.emit();
+      await settle(tester);
+      final checking = (
+        shown(tester),
+        find.text(t.assistant.working.stillChecking).evaluate().isEmpty ? null : 'checking',
+      );
+      setResult();
+      c.emit();
+      await settle(tester);
+      return (
+        checking.$1,
+        checking.$2,
+        shown(tester),
+        find.text('Ik vond deze titels.').evaluate().isEmpty ? null : 'answer',
+      );
+    }
+
+    testWidgets('same results, same order, same stand', (tester) async {
+      final entry = AppleTvNativeTextEntry(channel: channel);
+      final surface = await run(
+        tester,
+        TvAssistantScreen(
+          speech: SpeechSearchService(textEntry: entry),
+          textEntry: entry,
+        ),
+      );
+      await tester.pumpWidget(const SizedBox());
+      final summoned = await run(
+        tester,
+        TvAssistantSummonHost(
+          longPresses: presses.stream,
+          speech: SpeechSearchService(textEntry: entry),
+          textEntry: entry,
+          child: const SizedBox(),
+        ),
+        summon: true,
+      );
+
+      // Records compare lists by identity; their printed form compares content.
+      expect('$surface', '([m1, m2, m3, m4], checking, [m1, m2, m3, m4], answer)');
+      expect('$summoned', '$surface');
     });
   });
 }

@@ -469,6 +469,10 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
       }
 
       if (!position.maxScrollExtent.isFinite) return;
+      // scrollDelta is in screen space (content moves up). A reversed
+      // scrollable (`reverse: true`, offset 0 at the bottom) grows its offset
+      // the other way.
+      if (axisDirectionIsReversed(position.axisDirection)) scrollDelta = -scrollDelta;
       final targetOffset = (currentOffset + scrollDelta).clamp(position.minScrollExtent, position.maxScrollExtent);
 
       position.animateTo(targetOffset, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
