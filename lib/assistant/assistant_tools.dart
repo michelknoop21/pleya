@@ -34,6 +34,7 @@ import 'assistant_tool_context.dart';
 part 'assistant_tools_general.dart';
 part 'assistant_tools_admin.dart';
 part 'assistant_tools_catalog.dart';
+part 'assistant_tools_catalog_query.dart';
 part 'assistant_tools_insights.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_media.dart';
