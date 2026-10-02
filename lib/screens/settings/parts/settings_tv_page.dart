@@ -200,6 +200,7 @@ extension _SettingsTvPage on _SettingsScreenState {
                       subtitle: tautulli.isConfigured ? null : t.tautulli.subtitle,
                       onSelect: () => open('tautulli', (_) => const TautulliSettingsScreen()),
                     ),
+                  ?assistantSettingsTvItem(onSelect: () => open('assistant', (_) => const AssistantSettingsScreen())),
                 ],
               ),
               TvMenuSection(

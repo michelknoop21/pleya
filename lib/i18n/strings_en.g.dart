@@ -104,6 +104,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsTvOfflineHomeEn tvOfflineHome = TranslationsTvOfflineHomeEn.internal(_root);
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
+	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
 }
 
 // Path: states
@@ -5969,6 +5970,44 @@ class TranslationsLanguageSettingsEn {
 	String get kindSubtitles => 'Subtitles';
 }
 
+// Path: assistant
+class TranslationsAssistantEn {
+	TranslationsAssistantEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Big P'
+	String get tileTitle => 'Big P';
+
+	/// en: 'Pleya Assistant'
+	String get tileSubtitle => 'Pleya Assistant';
+
+	/// en: 'AI provider'
+	String get providerLabel => 'AI provider';
+
+	late final TranslationsAssistantLockedEn locked = TranslationsAssistantLockedEn.internal(_root);
+	late final TranslationsAssistantSetupEn setup = TranslationsAssistantSetupEn.internal(_root);
+	late final TranslationsAssistantIdleEn idle = TranslationsAssistantIdleEn.internal(_root);
+	late final TranslationsAssistantListeningEn listening = TranslationsAssistantListeningEn.internal(_root);
+	late final TranslationsAssistantWorkingEn working = TranslationsAssistantWorkingEn.internal(_root);
+	late final TranslationsAssistantStepsEn steps = TranslationsAssistantStepsEn.internal(_root);
+	late final TranslationsAssistantResultEn result = TranslationsAssistantResultEn.internal(_root);
+	late final TranslationsAssistantActionsEn actions = TranslationsAssistantActionsEn.internal(_root);
+	late final TranslationsAssistantConfirmEn confirm = TranslationsAssistantConfirmEn.internal(_root);
+	late final TranslationsAssistantNotesEn notes = TranslationsAssistantNotesEn.internal(_root);
+	late final TranslationsAssistantEndsEn ends = TranslationsAssistantEndsEn.internal(_root);
+
+	/// en: 'Hold Play/Pause to call Big P'
+	String get summonHint => 'Hold Play/Pause to call Big P';
+
+	/// en: 'Ask Big P'
+	String get contextAction => 'Ask Big P';
+
+	late final TranslationsAssistantSettingsEn settings = TranslationsAssistantSettingsEn.internal(_root);
+}
+
 // Path: settings.displayMaxResolutionOptions
 class TranslationsSettingsDisplayMaxResolutionOptionsEn {
 	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
@@ -7222,6 +7261,491 @@ class TranslationsTvMyPleyaSemanticsEn {
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.locked
+class TranslationsAssistantLockedEn {
+	TranslationsAssistantLockedEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not available on this account'
+	String get badge => 'Not available on this account';
+
+	/// en: 'Big P is not turned on for this account yet'
+	String get title => 'Big P is not turned on for this account yet';
+
+	/// en: 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.'
+	String get body => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.';
+
+	/// en: 'You cannot turn it on or buy it here. Once your account has access, this tile opens the question screen.'
+	String get note => 'You cannot turn it on or buy it here. Once your account has access, this tile opens the question screen.';
+
+	/// en: 'Back to My Pleya'
+	String get back => 'Back to My Pleya';
+}
+
+// Path: assistant.setup
+class TranslationsAssistantSetupEn {
+	TranslationsAssistantSetupEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not set up yet'
+	String get badge => 'Not set up yet';
+
+	/// en: 'To use Big P, first set up an AI provider.'
+	String get title => 'To use Big P, first set up an AI provider.';
+
+	/// en: 'Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for confirmation on sensitive actions and carries them out itself.'
+	String get body => 'Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for confirmation on sensitive actions and carries them out itself.';
+
+	/// en: 'Set up Big P'
+	String get action => 'Set up Big P';
+
+	/// en: 'Back'
+	String get back => 'Back';
+}
+
+// Path: assistant.idle
+class TranslationsAssistantIdleEn {
+	TranslationsAssistantIdleEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hi ${name}, what needs doing?'
+	String greeting({required Object name}) => 'Hi ${name}, what needs doing?';
+
+	/// en: 'Ready for your question · ${servers}'
+	String status({required Object servers}) => 'Ready for your question · ${servers}';
+
+	/// en: 'Ask Big P'
+	String get ask => 'Ask Big P';
+
+	/// en: 'For example'
+	String get examplesHeader => 'For example';
+}
+
+// Path: assistant.listening
+class TranslationsAssistantListeningEn {
+	TranslationsAssistantListeningEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'I'm listening…'
+	String get title => 'I\'m listening…';
+
+	/// en: 'Speak your question.'
+	String get body => 'Speak your question.';
+}
+
+// Path: assistant.working
+class TranslationsAssistantWorkingEn {
+	TranslationsAssistantWorkingEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Let me check…'
+	String get status => 'Let me check…';
+
+	/// en: 'Working on your question…'
+	String get busy => 'Working on your question…';
+}
+
+// Path: assistant.steps
+class TranslationsAssistantStepsEn {
+	TranslationsAssistantStepsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${server} · ${step}'
+	String withServer({required Object server, required Object step}) => '${server} · ${step}';
+
+	/// en: 'Checking servers'
+	String get listServers => 'Checking servers';
+
+	/// en: 'Fetching libraries'
+	String get listLibraries => 'Fetching libraries';
+
+	/// en: 'Finding the title'
+	String get findMedia => 'Finding the title';
+
+	/// en: 'Fetching jobs'
+	String get listJobs => 'Fetching jobs';
+
+	/// en: 'Fetching users'
+	String get listUsers => 'Fetching users';
+
+	/// en: 'Scanning library'
+	String get scanLibrary => 'Scanning library';
+
+	/// en: 'Refreshing metadata'
+	String get refreshMetadata => 'Refreshing metadata';
+
+	/// en: 'Cancelling job'
+	String get cancelJob => 'Cancelling job';
+
+	/// en: 'Retrying job'
+	String get retryJob => 'Retrying job';
+
+	/// en: 'Creating user'
+	String get createUser => 'Creating user';
+
+	/// en: 'Setting library access'
+	String get setUserLibraryAccess => 'Setting library access';
+
+	/// en: 'Removing user'
+	String get removeUser => 'Removing user';
+
+	/// en: 'Searching the catalog'
+	String get searchCatalog => 'Searching the catalog';
+
+	/// en: 'Creating home row'
+	String get createHomeRow => 'Creating home row';
+
+	/// en: 'Creating collection'
+	String get createCollection => 'Creating collection';
+
+	/// en: 'Comparing servers'
+	String get compareServers => 'Comparing servers';
+
+	/// en: 'Fetching watch statistics'
+	String get watchStats => 'Fetching watch statistics';
+
+	/// en: 'Downloading next episodes'
+	String get downloadNext => 'Downloading next episodes';
+
+	/// en: 'Finding subtitles'
+	String get findSubtitles => 'Finding subtitles';
+
+	/// en: 'Downloading subtitle'
+	String get downloadSubtitle => 'Downloading subtitle';
+
+	/// en: 'Searching Seerr'
+	String get findRequestTitle => 'Searching Seerr';
+
+	/// en: 'Finding matching titles'
+	String get discoverRequestTitles => 'Finding matching titles';
+
+	/// en: 'Requesting title'
+	String get requestTitle => 'Requesting title';
+
+	/// en: 'Working'
+	String get fallback => 'Working';
+}
+
+// Path: assistant.result
+class TranslationsAssistantResultEn {
+	TranslationsAssistantResultEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Carried out by Pleya'
+	String get doneBy => 'Carried out by Pleya';
+
+	/// en: 'Not carried out by Pleya'
+	String get notDoneBy => 'Not carried out by Pleya';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'Cancel'
+	String get cancel => 'Cancel';
+}
+
+// Path: assistant.actions
+class TranslationsAssistantActionsEn {
+	TranslationsAssistantActionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scan started'
+	String get scanLibrary => 'Scan started';
+
+	/// en: 'Metadata refresh started'
+	String get refreshMetadata => 'Metadata refresh started';
+
+	/// en: 'Job cancelled'
+	String get cancelJob => 'Job cancelled';
+
+	/// en: 'Job restarted'
+	String get retryJob => 'Job restarted';
+
+	/// en: 'User created'
+	String get createUser => 'User created';
+
+	/// en: 'Access changed'
+	String get setLibraryAccess => 'Access changed';
+
+	/// en: 'User removed'
+	String get removeUser => 'User removed';
+
+	/// en: 'Home row created'
+	String get createHomeRow => 'Home row created';
+
+	/// en: 'Collection created'
+	String get createCollection => 'Collection created';
+
+	/// en: 'Request sent'
+	String get requestTitle => 'Request sent';
+
+	/// en: 'Download started'
+	String get downloadEpisodes => 'Download started';
+
+	/// en: 'Subtitle downloaded'
+	String get downloadSubtitle => 'Subtitle downloaded';
+}
+
+// Path: assistant.confirm
+class TranslationsAssistantConfirmEn {
+	TranslationsAssistantConfirmEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Pleya asks for confirmation'
+	String get header => 'Pleya asks for confirmation';
+
+	late final TranslationsAssistantConfirmTitlesEn titles = TranslationsAssistantConfirmTitlesEn.internal(_root);
+
+	/// en: 'User'
+	String get user => 'User';
+
+	/// en: 'Server'
+	String get server => 'Server';
+
+	/// en: 'Access'
+	String get access => 'Access';
+
+	/// en: 'All libraries'
+	String get allLibraries => 'All libraries';
+
+	/// en: 'Titles'
+	String get titlesLabel => 'Titles';
+
+	/// en: 'Admin'
+	String get admin => 'Admin';
+
+	/// en: 'Yes'
+	String get yes => 'Yes';
+
+	/// en: 'No'
+	String get no => 'No';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'Choose a password'
+	String get passwordPlaceholder => 'Choose a password';
+
+	/// en: 'This password does not go to Big P or to the AI provider.'
+	String get passwordNote => 'This password does not go to Big P or to the AI provider.';
+
+	/// en: 'Confirm'
+	String get approve => 'Confirm';
+
+	/// en: 'Create'
+	String get create => 'Create';
+}
+
+// Path: assistant.notes
+class TranslationsAssistantNotesEn {
+	TranslationsAssistantNotesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Managed Plex Home user, with a share on this server.'
+	String get plexManagedHomeUser => 'Managed Plex Home user, with a share on this server.';
+
+	/// en: 'A share on this Plex server.'
+	String get plexShare => 'A share on this Plex server.';
+
+	/// en: 'Member of your Plex Home. Only the share on this server changes.'
+	String get plexHomeMember => 'Member of your Plex Home. Only the share on this server changes.';
+
+	/// en: 'Replaces all existing access of this user on this server.'
+	String get replacesAllAccess => 'Replaces all existing access of this user on this server.';
+}
+
+// Path: assistant.ends
+class TranslationsAssistantEndsEn {
+	TranslationsAssistantEndsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'There is nothing Big P can do on your servers right now.'
+	String get noTools => 'There is nothing Big P can do on your servers right now.';
+
+	/// en: 'This model cannot use tools. Pick another model in the Big P settings.'
+	String get toolsUnsupported => 'This model cannot use tools. Pick another model in the Big P settings.';
+
+	/// en: 'That took too many steps. Try a shorter question.'
+	String get stepLimit => 'That took too many steps. Try a shorter question.';
+
+	/// en: 'Big P is not available on this account.'
+	String get notEntitled => 'Big P is not available on this account.';
+
+	/// en: 'The AI provider rejected the key. Check it in the Big P settings.'
+	String get providerUnauthorized => 'The AI provider rejected the key. Check it in the Big P settings.';
+
+	/// en: 'The AI provider cannot be reached.'
+	String get providerUnreachable => 'The AI provider cannot be reached.';
+
+	/// en: 'The AI provider did not answer in time.'
+	String get providerTimeout => 'The AI provider did not answer in time.';
+
+	/// en: 'The AI provider gave an unexpected answer.'
+	String get providerBadResponse => 'The AI provider gave an unexpected answer.';
+
+	/// en: 'Nothing was changed.'
+	String get nothingChanged => 'Nothing was changed.';
+}
+
+// Path: assistant.settings
+class TranslationsAssistantSettingsEn {
+	TranslationsAssistantSettingsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Set up Big P'
+	String get title => 'Set up Big P';
+
+	/// en: 'Choose where Big P gets its language model'
+	String get providerHeading => 'Choose where Big P gets its language model';
+
+	/// en: 'Ollama server'
+	String get ollamaServer => 'Ollama server';
+
+	/// en: 'Runs on your own network, for example on your NAS.'
+	String get ollamaServerDescription => 'Runs on your own network, for example on your NAS.';
+
+	/// en: 'Ollama Cloud'
+	String get ollamaCloud => 'Ollama Cloud';
+
+	/// en: 'Models that Ollama runs for you.'
+	String get ollamaCloudDescription => 'Models that Ollama runs for you.';
+
+	/// en: 'OpenRouter'
+	String get openRouter => 'OpenRouter';
+
+	/// en: 'One key for models from several vendors.'
+	String get openRouterDescription => 'One key for models from several vendors.';
+
+	/// en: 'Server address'
+	String get needsAddress => 'Server address';
+
+	/// en: 'API key'
+	String get needsKey => 'API key';
+
+	/// en: 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.'
+	String get dataNote => 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.';
+
+	/// en: 'Server address'
+	String get serverUrl => 'Server address';
+
+	/// en: 'http://192.168.1.10:11434'
+	String get serverUrlHint => 'http://192.168.1.10:11434';
+
+	/// en: 'Extra header name (optional)'
+	String get headerName => 'Extra header name (optional)';
+
+	/// en: 'Extra header value'
+	String get headerValue => 'Extra header value';
+
+	/// en: 'Only needed when the server sits behind a reverse proxy that asks for its own header.'
+	String get headerHelp => 'Only needed when the server sits behind a reverse proxy that asks for its own header.';
+
+	/// en: 'API key'
+	String get apiKey => 'API key';
+
+	/// en: 'Fetch models'
+	String get fetchModels => 'Fetch models';
+
+	/// en: 'Choose a model'
+	String get modelsHeading => 'Choose a model';
+
+	/// en: 'Only models that can use tools are listed.'
+	String get modelsHelp => 'Only models that can use tools are listed.';
+
+	/// en: 'No models here can use tools. Install or pick one that can.'
+	String get noToolModels => 'No models here can use tools. Install or pick one that can.';
+
+	/// en: 'Test connection'
+	String get test => 'Test connection';
+
+	/// en: 'Connection works with ${model}'
+	String testOk({required Object model}) => 'Connection works with ${model}';
+
+	/// en: 'The chosen model is no longer available.'
+	String get modelMissing => 'The chosen model is no longer available.';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Change'
+	String get change => 'Change';
+
+	/// en: 'Turn off Big P'
+	String get disable => 'Turn off Big P';
+
+	/// en: 'Turn off Big P?'
+	String get disableConfirm => 'Turn off Big P?';
+
+	/// en: 'The provider and key are removed from this device. You can set Big P up again at any time.'
+	String get disableBody => 'The provider and key are removed from this device. You can set Big P up again at any time.';
+
+	/// en: 'Model'
+	String get currentModel => 'Model';
+
+	/// en: 'Stored, hidden'
+	String get keyStored => 'Stored, hidden';
+
+	/// en: 'Enter an address that starts with http:// or https://.'
+	String get errorUrlInvalid => 'Enter an address that starts with http:// or https://.';
+
+	/// en: 'This header name or value is not valid.'
+	String get errorHeaderInvalid => 'This header name or value is not valid.';
+
+	/// en: 'Enter the API key.'
+	String get errorKeyRequired => 'Enter the API key.';
+
+	/// en: 'The key was rejected.'
+	String get errorUnauthorized => 'The key was rejected.';
+
+	/// en: 'Server not reachable. Check the address and, for https, the certificate.'
+	String get errorUnreachable => 'Server not reachable. Check the address and, for https, the certificate.';
+
+	/// en: 'The server did not answer in time.'
+	String get errorTimeout => 'The server did not answer in time.';
+
+	/// en: 'This model cannot use tools.'
+	String get errorToolsUnsupported => 'This model cannot use tools.';
+
+	/// en: 'Unexpected answer from the server. Check the address.'
+	String get errorBadResponse => 'Unexpected answer from the server. Check the address.';
+}
+
 // Path: unifiedCatalog.discovery.semantics
 class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 	TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(this._root);
@@ -7241,6 +7765,51 @@ class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 
 	/// en: 'View all series, opens the complete catalog'
 	String get viewAllSeries => 'View all series, opens the complete catalog';
+}
+
+// Path: assistant.confirm.titles
+class TranslationsAssistantConfirmTitlesEn {
+	TranslationsAssistantConfirmTitlesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scan library'
+	String get scanLibrary => 'Scan library';
+
+	/// en: 'Refresh metadata'
+	String get refreshMetadata => 'Refresh metadata';
+
+	/// en: 'Cancel job'
+	String get cancelJob => 'Cancel job';
+
+	/// en: 'Retry job'
+	String get retryJob => 'Retry job';
+
+	/// en: 'Create user'
+	String get createUser => 'Create user';
+
+	/// en: 'Change access'
+	String get setLibraryAccess => 'Change access';
+
+	/// en: 'Remove user'
+	String get removeUser => 'Remove user';
+
+	/// en: 'Create home row'
+	String get createHomeRow => 'Create home row';
+
+	/// en: 'Create collection'
+	String get createCollection => 'Create collection';
+
+	/// en: 'Request title'
+	String get requestTitle => 'Request title';
+
+	/// en: 'Download episodes'
+	String get downloadEpisodes => 'Download episodes';
+
+	/// en: 'Download subtitle'
+	String get downloadSubtitle => 'Download subtitle';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -9325,6 +9894,148 @@ extension on Translations {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
+			'assistant.tileTitle' => 'Big P',
+			'assistant.tileSubtitle' => 'Pleya Assistant',
+			'assistant.providerLabel' => 'AI provider',
+			'assistant.locked.badge' => 'Not available on this account',
+			'assistant.locked.title' => 'Big P is not turned on for this account yet',
+			'assistant.locked.body' => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.',
+			'assistant.locked.note' => 'You cannot turn it on or buy it here. Once your account has access, this tile opens the question screen.',
+			'assistant.locked.back' => 'Back to My Pleya',
+			'assistant.setup.badge' => 'Not set up yet',
+			'assistant.setup.title' => 'To use Big P, first set up an AI provider.',
+			'assistant.setup.body' => 'Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for confirmation on sensitive actions and carries them out itself.',
+			'assistant.setup.action' => 'Set up Big P',
+			'assistant.setup.back' => 'Back',
+			'assistant.idle.greeting' => ({required Object name}) => 'Hi ${name}, what needs doing?',
+			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
+			'assistant.idle.ask' => 'Ask Big P',
+			'assistant.idle.examplesHeader' => 'For example',
+			'assistant.listening.title' => 'I\'m listening…',
+			'assistant.listening.body' => 'Speak your question.',
+			'assistant.working.status' => 'Let me check…',
+			'assistant.working.busy' => 'Working on your question…',
+			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
+			'assistant.steps.listServers' => 'Checking servers',
+			'assistant.steps.listLibraries' => 'Fetching libraries',
+			'assistant.steps.findMedia' => 'Finding the title',
+			'assistant.steps.listJobs' => 'Fetching jobs',
+			'assistant.steps.listUsers' => 'Fetching users',
+			'assistant.steps.scanLibrary' => 'Scanning library',
+			'assistant.steps.refreshMetadata' => 'Refreshing metadata',
+			'assistant.steps.cancelJob' => 'Cancelling job',
+			'assistant.steps.retryJob' => 'Retrying job',
+			'assistant.steps.createUser' => 'Creating user',
+			'assistant.steps.setUserLibraryAccess' => 'Setting library access',
+			'assistant.steps.removeUser' => 'Removing user',
+			'assistant.steps.searchCatalog' => 'Searching the catalog',
+			'assistant.steps.createHomeRow' => 'Creating home row',
+			'assistant.steps.createCollection' => 'Creating collection',
+			'assistant.steps.compareServers' => 'Comparing servers',
+			'assistant.steps.watchStats' => 'Fetching watch statistics',
+			'assistant.steps.downloadNext' => 'Downloading next episodes',
+			'assistant.steps.findSubtitles' => 'Finding subtitles',
+			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',
+			'assistant.steps.findRequestTitle' => 'Searching Seerr',
+			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
+			'assistant.steps.requestTitle' => 'Requesting title',
+			'assistant.steps.fallback' => 'Working',
+			'assistant.result.doneBy' => 'Carried out by Pleya',
+			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
+			'assistant.result.done' => 'Done',
+			'assistant.result.cancel' => 'Cancel',
+			'assistant.actions.scanLibrary' => 'Scan started',
+			'assistant.actions.refreshMetadata' => 'Metadata refresh started',
+			'assistant.actions.cancelJob' => 'Job cancelled',
+			'assistant.actions.retryJob' => 'Job restarted',
+			'assistant.actions.createUser' => 'User created',
+			'assistant.actions.setLibraryAccess' => 'Access changed',
+			'assistant.actions.removeUser' => 'User removed',
+			'assistant.actions.createHomeRow' => 'Home row created',
+			'assistant.actions.createCollection' => 'Collection created',
+			'assistant.actions.requestTitle' => 'Request sent',
+			'assistant.actions.downloadEpisodes' => 'Download started',
+			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
+			'assistant.confirm.header' => 'Pleya asks for confirmation',
+			'assistant.confirm.titles.scanLibrary' => 'Scan library',
+			'assistant.confirm.titles.refreshMetadata' => 'Refresh metadata',
+			'assistant.confirm.titles.cancelJob' => 'Cancel job',
+			'assistant.confirm.titles.retryJob' => 'Retry job',
+			'assistant.confirm.titles.createUser' => 'Create user',
+			'assistant.confirm.titles.setLibraryAccess' => 'Change access',
+			'assistant.confirm.titles.removeUser' => 'Remove user',
+			'assistant.confirm.titles.createHomeRow' => 'Create home row',
+			'assistant.confirm.titles.createCollection' => 'Create collection',
+			'assistant.confirm.titles.requestTitle' => 'Request title',
+			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
+			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
+			'assistant.confirm.user' => 'User',
+			'assistant.confirm.server' => 'Server',
+			'assistant.confirm.access' => 'Access',
+			'assistant.confirm.allLibraries' => 'All libraries',
+			'assistant.confirm.titlesLabel' => 'Titles',
+			'assistant.confirm.admin' => 'Admin',
+			'assistant.confirm.yes' => 'Yes',
+			'assistant.confirm.no' => 'No',
+			'assistant.confirm.password' => 'Password',
+			'assistant.confirm.passwordPlaceholder' => 'Choose a password',
+			'assistant.confirm.passwordNote' => 'This password does not go to Big P or to the AI provider.',
+			'assistant.confirm.approve' => 'Confirm',
+			'assistant.confirm.create' => 'Create',
+			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
+			'assistant.notes.plexShare' => 'A share on this Plex server.',
+			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
+			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
+			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
+			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
+			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
+			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
+			'assistant.ends.providerUnauthorized' => 'The AI provider rejected the key. Check it in the Big P settings.',
+			'assistant.ends.providerUnreachable' => 'The AI provider cannot be reached.',
+			'assistant.ends.providerTimeout' => 'The AI provider did not answer in time.',
+			'assistant.ends.providerBadResponse' => 'The AI provider gave an unexpected answer.',
+			'assistant.ends.nothingChanged' => 'Nothing was changed.',
+			'assistant.summonHint' => 'Hold Play/Pause to call Big P',
+			'assistant.contextAction' => 'Ask Big P',
+			'assistant.settings.title' => 'Set up Big P',
+			'assistant.settings.providerHeading' => 'Choose where Big P gets its language model',
+			'assistant.settings.ollamaServer' => 'Ollama server',
+			'assistant.settings.ollamaServerDescription' => 'Runs on your own network, for example on your NAS.',
+			'assistant.settings.ollamaCloud' => 'Ollama Cloud',
+			'assistant.settings.ollamaCloudDescription' => 'Models that Ollama runs for you.',
+			'assistant.settings.openRouter' => 'OpenRouter',
+			'assistant.settings.openRouterDescription' => 'One key for models from several vendors.',
+			'assistant.settings.needsAddress' => 'Server address',
+			'assistant.settings.needsKey' => 'API key',
+			'assistant.settings.dataNote' => 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.',
+			'assistant.settings.serverUrl' => 'Server address',
+			'assistant.settings.serverUrlHint' => 'http://192.168.1.10:11434',
+			'assistant.settings.headerName' => 'Extra header name (optional)',
+			'assistant.settings.headerValue' => 'Extra header value',
+			'assistant.settings.headerHelp' => 'Only needed when the server sits behind a reverse proxy that asks for its own header.',
+			'assistant.settings.apiKey' => 'API key',
+			'assistant.settings.fetchModels' => 'Fetch models',
+			'assistant.settings.modelsHeading' => 'Choose a model',
+			'assistant.settings.modelsHelp' => 'Only models that can use tools are listed.',
+			'assistant.settings.noToolModels' => 'No models here can use tools. Install or pick one that can.',
+			'assistant.settings.test' => 'Test connection',
+			'assistant.settings.testOk' => ({required Object model}) => 'Connection works with ${model}',
+			'assistant.settings.modelMissing' => 'The chosen model is no longer available.',
+			'assistant.settings.save' => 'Save',
+			'assistant.settings.change' => 'Change',
+			'assistant.settings.disable' => 'Turn off Big P',
+			'assistant.settings.disableConfirm' => 'Turn off Big P?',
+			'assistant.settings.disableBody' => 'The provider and key are removed from this device. You can set Big P up again at any time.',
+			'assistant.settings.currentModel' => 'Model',
+			'assistant.settings.keyStored' => 'Stored, hidden',
+			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
+			'assistant.settings.errorHeaderInvalid' => 'This header name or value is not valid.',
+			'assistant.settings.errorKeyRequired' => 'Enter the API key.',
+			'assistant.settings.errorUnauthorized' => 'The key was rejected.',
+			'assistant.settings.errorUnreachable' => 'Server not reachable. Check the address and, for https, the certificate.',
+			'assistant.settings.errorTimeout' => 'The server did not answer in time.',
+			'assistant.settings.errorToolsUnsupported' => 'This model cannot use tools.',
+			'assistant.settings.errorBadResponse' => 'Unexpected answer from the server. Check the address.',
 			_ => null,
 		};
 	}

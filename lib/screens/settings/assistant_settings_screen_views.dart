@@ -1,0 +1,280 @@
+part of 'assistant_settings_screen.dart';
+
+/// The three steps and the summary of [AssistantSettingsScreen], as widgets.
+extension _AssistantSettingsViews on _AssistantSettingsScreenState {
+  Color _muted(ThemeData theme) => theme.colorScheme.onSurface.withValues(alpha: 0.7);
+
+  String _kindName(AssistantProviderKind kind) => switch (kind) {
+    AssistantProviderKind.ollamaServer => t.assistant.settings.ollamaServer,
+    AssistantProviderKind.ollamaCloud => t.assistant.settings.ollamaCloud,
+    AssistantProviderKind.openRouter => t.assistant.settings.openRouter,
+  };
+
+  Widget _button({
+    required String instance,
+    required String label,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    FocusNode? focusNode,
+    bool primary = true,
+  }) {
+    final enabled = busy ? null : onPressed;
+    return AutomationNode(
+      id: AutomationIds.settingsFormButton,
+      instance: 'assistant.$instance',
+      role: 'button',
+      focusNode: focusNode,
+      child: FocusableButton(
+        focusNode: focusNode,
+        onPressed: enabled,
+        child: primary
+            ? FilledButton.icon(onPressed: enabled, icon: AppIcon(icon, fill: 1), label: Text(label))
+            : OutlinedButton.icon(onPressed: enabled, icon: AppIcon(icon, fill: 1), label: Text(label)),
+      ),
+    );
+  }
+
+  List<Widget> _errorLine(ThemeData theme) => [
+    if (errorText != null) ...[
+      const SizedBox(height: 12),
+      Text(errorText!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+    ],
+  ];
+
+  List<Widget> _buildSummary(ThemeData theme, AssistantProviderConfig config) {
+    final s = t.assistant.settings;
+    final muted = _muted(theme);
+    return [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_kindName(config.kind), style: theme.textTheme.titleMedium),
+            if (config.kind == AssistantProviderKind.ollamaServer)
+              Text(config.baseUrl, style: theme.textTheme.bodyMedium?.copyWith(color: muted)),
+            const SizedBox(height: 8),
+            Text('${s.currentModel}: ${config.model}', style: theme.textTheme.bodyMedium),
+            // Masked by construction: the key itself is never read back here.
+            if (config.apiKey.isNotEmpty)
+              Text('${s.apiKey}: ${s.keyStored}', style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+      _button(
+        instance: 'change',
+        label: s.change,
+        icon: Symbols.edit_rounded,
+        focusNode: _summaryFocus,
+        onPressed: () => _startChange(config.kind),
+      ),
+      const SizedBox(height: 12),
+      _button(
+        instance: 'disable',
+        label: s.disable,
+        icon: Symbols.power_settings_new_rounded,
+        primary: false,
+        onPressed: _disable,
+      ),
+      ..._errorLine(theme),
+    ];
+  }
+
+  List<Widget> _buildProviderChoice(ThemeData theme) {
+    final s = t.assistant.settings;
+    final rows = <(AssistantProviderKind, IconData, String, String)>[
+      (AssistantProviderKind.ollamaServer, Symbols.dns_rounded, s.ollamaServerDescription, s.needsAddress),
+      (AssistantProviderKind.ollamaCloud, Symbols.cloud_rounded, s.ollamaCloudDescription, s.needsKey),
+      (AssistantProviderKind.openRouter, Symbols.swap_horiz_rounded, s.openRouterDescription, s.needsKey),
+    ];
+    return [
+      Text(s.providerHeading, style: theme.textTheme.titleMedium),
+      const SizedBox(height: 12),
+      for (final (kind, icon, description, needs) in rows)
+        AutomationNode(
+          id: AutomationIds.settingsFormButton,
+          instance: 'assistant.provider.${kind.name}',
+          role: 'button',
+          focusNode: _kindFocus[kind],
+          child: SettingNavigationTile(
+            focusNode: _kindFocus[kind],
+            icon: icon,
+            title: _kindName(kind),
+            subtitle: '$description · $needs',
+            onTap: () => _chooseKind(kind),
+          ),
+        ),
+      const SizedBox(height: 16),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIcon(Symbols.info_rounded, fill: 1, color: _muted(theme)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(s.dataNote, style: theme.textTheme.bodySmall?.copyWith(color: _muted(theme))),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  Widget _field({
+    required String instance,
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    FocusNode? focusNode,
+    String? hint,
+    bool obscure = false,
+    TextInputType? keyboardType,
+    FormFieldValidator<String>? validator,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: AutomationNode(
+      id: AutomationIds.settingsFormField,
+      instance: 'assistant.$instance',
+      role: 'field',
+      focusNode: focusNode,
+      child: FocusableTextFormField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: obscure,
+        keyboardType: keyboardType,
+        autocorrect: false,
+        enableSuggestions: false,
+        enabled: !busy,
+        onChanged: (_) => _draftChanged(),
+        decoration: InputDecoration(labelText: label, hintText: hint, prefixIcon: AppIcon(icon, fill: 1)),
+        validator: validator,
+      ),
+    ),
+  );
+
+  String? _validateUrl(String? value) {
+    final uri = Uri.tryParse(normaliseBaseUrl(value ?? ''));
+    final ok = uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+    return ok ? null : t.assistant.settings.errorUrlInvalid;
+  }
+
+  String? _validateHeader(String? _) {
+    final name = _headerNameController.text.trim();
+    final value = _headerValueController.text;
+    if (name.isEmpty && value.isEmpty) return null;
+    return isValidProxyHeader(name, value) ? null : t.assistant.settings.errorHeaderInvalid;
+  }
+
+  List<Widget> _buildDetails(ThemeData theme, AssistantProviderKind kind) {
+    final s = t.assistant.settings;
+    final muted = _muted(theme);
+    final models = _models;
+    return [
+      Text(_kindName(kind), style: theme.textTheme.titleMedium),
+      const SizedBox(height: 16),
+      if (kind == AssistantProviderKind.ollamaServer) ...[
+        _field(
+          instance: 'url',
+          controller: _urlController,
+          focusNode: _firstFieldFocus,
+          label: s.serverUrl,
+          hint: s.serverUrlHint,
+          icon: Symbols.link_rounded,
+          keyboardType: TextInputType.url,
+          validator: _validateUrl,
+        ),
+        _field(
+          instance: 'headerName',
+          controller: _headerNameController,
+          label: s.headerName,
+          icon: Symbols.tune_rounded,
+          validator: _validateHeader,
+        ),
+        _field(
+          instance: 'headerValue',
+          controller: _headerValueController,
+          label: s.headerValue,
+          icon: Symbols.key_rounded,
+          obscure: true,
+        ),
+        Text(s.headerHelp, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+        const SizedBox(height: 16),
+      ] else
+        _field(
+          instance: 'apiKey',
+          controller: _keyController,
+          focusNode: _firstFieldFocus,
+          label: s.apiKey,
+          icon: Symbols.key_rounded,
+          obscure: true,
+          validator: (v) => (v == null || v.trim().isEmpty) ? s.errorKeyRequired : null,
+        ),
+      _button(
+        instance: 'fetchModels',
+        label: s.fetchModels,
+        icon: Symbols.download_rounded,
+        primary: models == null,
+        onPressed: _fetchModels,
+      ),
+      if (busy)
+        const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Center(child: LoadingIndicatorBox()),
+        ),
+      if (models != null) ...[
+        const SizedBox(height: 20),
+        Text(s.modelsHeading, style: theme.textTheme.titleSmall),
+        Text(models.isEmpty ? s.noToolModels : s.modelsHelp, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
+        const SizedBox(height: 8),
+        for (final model in models)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AutomationNode(
+              id: AutomationIds.settingsFormButton,
+              instance: 'assistant.model.$model',
+              role: 'button',
+              state: () => {'selected': _model == model},
+              child: FocusableButton(
+                onPressed: busy ? null : () => _pickModel(model),
+                child: _model == model
+                    ? FilledButton(
+                        onPressed: busy ? null : () {},
+                        child: Align(alignment: Alignment.centerLeft, child: Text(model)),
+                      )
+                    : OutlinedButton(
+                        onPressed: busy ? null : () => _pickModel(model),
+                        child: Align(alignment: Alignment.centerLeft, child: Text(model)),
+                      ),
+              ),
+            ),
+          ),
+        if (_model != null) ...[
+          const SizedBox(height: 12),
+          _button(
+            instance: 'test',
+            label: s.test,
+            icon: Symbols.wifi_tethering_rounded,
+            primary: !_tested,
+            onPressed: _test,
+          ),
+        ],
+        if (_tested) ...[
+          const SizedBox(height: 12),
+          Text(s.testOk(model: _model!), style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          _button(
+            instance: 'save',
+            label: s.save,
+            icon: Symbols.check_rounded,
+            focusNode: _saveFocus,
+            onPressed: _save,
+          ),
+        ],
+      ],
+      ..._errorLine(theme),
+    ];
+  }
+}
