@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/screens/settings/assistant_settings_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 
@@ -327,5 +329,27 @@ void main() {
     expect(assistantSettingsTvItem(onSelect: () {}, rolloutEnabled: false), isNull);
     final item = assistantSettingsTvItem(onSelect: () {}, rolloutEnabled: true);
     expect(item?.title, t.assistant.tileTitle);
+  });
+
+  testWidgets('Back on the provider choice closes the TV nested route it was opened in', (tester) async {
+    var dismissed = 0;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: TvNestedRouteScope(
+            dismiss: ([_]) => dismissed++,
+            markResult: (_) {},
+            child: AssistantSettingsScreen(store: _FakeStore(), listModels: (_) async => const []),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(s.ollamaServer), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(dismissed, 1);
   });
 }

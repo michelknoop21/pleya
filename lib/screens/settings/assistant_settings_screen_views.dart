@@ -135,13 +135,23 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
 
   List<Widget> _buildProviderChoice(ThemeData theme) {
     final s = t.assistant.settings;
+    final tv = PlatformDetector.isTV();
     final rows = <(AssistantProviderKind, IconData, String, String)>[
       (AssistantProviderKind.ollamaServer, Symbols.dns_rounded, s.ollamaServerDescription, s.needsAddress),
-      (AssistantProviderKind.ollamaCloud, Symbols.cloud_rounded, s.ollamaCloudDescription, s.needsKey),
+      // 38 C2 draws Ollama Cloud with the wireless mark.
+      (
+        AssistantProviderKind.ollamaCloud,
+        tv ? Symbols.wifi_rounded : Symbols.cloud_rounded,
+        s.ollamaCloudDescription,
+        s.needsKey,
+      ),
       (AssistantProviderKind.openRouter, Symbols.swap_horiz_rounded, s.openRouterDescription, s.needsKey),
     ];
     return [
-      Text(s.providerHeading, style: theme.textTheme.titleMedium),
+      Text(
+        s.providerHeading,
+        style: tv ? theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700) : theme.textTheme.titleMedium,
+      ),
       const SizedBox(height: 12),
       for (final (kind, icon, description, needs) in rows)
         AutomationNode(
@@ -149,13 +159,17 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
           instance: 'assistant.provider.${kind.name}',
           role: 'button',
           focusNode: _kindFocus[kind],
-          child: SettingNavigationTile(
-            focusNode: _kindFocus[kind],
-            icon: icon,
-            title: _kindName(kind),
-            subtitle: '$description · $needs',
-            onTap: () => _chooseKind(kind),
-          ),
+          child: tv
+              // 38 C2: a filled row per provider, bold name, and what comes
+              // next right-aligned beside the chevron.
+              ? _tvProviderRow(kind, icon, description, needs)
+              : SettingNavigationTile(
+                  focusNode: _kindFocus[kind],
+                  icon: icon,
+                  title: _kindName(kind),
+                  subtitle: '$description · $needs',
+                  onTap: () => _chooseKind(kind),
+                ),
         ),
       const SizedBox(height: 16),
       Row(
@@ -170,6 +184,35 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
       ),
     ];
   }
+
+  Widget _tvProviderRow(AssistantProviderKind kind, IconData icon, String description, String needs) => Builder(
+    builder: (context) {
+      final pt = TvHig.of(context);
+      final listTile = ListTileTheme.of(context);
+      return Padding(
+        padding: EdgeInsets.only(bottom: 12 * pt),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: tokens(context).text.withValues(alpha: TvMyPleyaLayout.tileFillAlpha),
+            borderRadius: BorderRadius.circular(TvMyPleyaLayout.tileRadius * pt),
+          ),
+          child: ListTileTheme.merge(
+            titleTextStyle: listTile.titleTextStyle?.copyWith(fontWeight: FontWeight.w700),
+            subtitleTextStyle: listTile.subtitleTextStyle,
+            leadingAndTrailingTextStyle: listTile.leadingAndTrailingTextStyle,
+            child: SettingNavigationTile(
+              focusNode: _kindFocus[kind],
+              icon: icon,
+              title: _kindName(kind),
+              subtitle: description,
+              trailingLabel: needs,
+              onTap: () => _chooseKind(kind),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 
   Widget _field({
     required String instance,

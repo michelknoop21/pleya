@@ -133,6 +133,10 @@ class SettingNavigationTile extends StatelessWidget {
   final FocusNode? focusNode;
   final IconData trailingIcon;
 
+  /// What the destination asks for next ("API-sleutel"), right-aligned
+  /// before the chevron.
+  final String? trailingLabel;
+
   /// Amber dot next to the chevron, same convention and color
   /// (`kAccentAlt`) as `TvTopNavigation`'s expired-session marker: something
   /// the viewer can fix from here, not breakage, so it stays off the brand
@@ -148,6 +152,7 @@ class SettingNavigationTile extends StatelessWidget {
     this.onTap,
     this.focusNode,
     this.trailingIcon = Symbols.chevron_right_rounded,
+    this.trailingLabel,
     this.needsAttention = false,
   }) : assert(destinationBuilder != null || onTap != null);
 
@@ -174,6 +179,7 @@ class SettingNavigationTile extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (trailingLabel != null) ...[Text(trailingLabel!), const SizedBox(width: 16)],
               if (needsAttention) ...[
                 Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
                 const SizedBox(width: 8),

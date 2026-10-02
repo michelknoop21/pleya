@@ -137,6 +137,9 @@ import wakelock_plus
       return true
     }
     let filter = isRepeatDelivery ? nil : filterArrowPress(press)
+    if !isRepeatDelivery {
+      forwardPlayPauseHold(press)
+    }
     var diag: [String: Any] = [
       "press": Self.pressName(press),
       "phase": press.phase.rawValue,
@@ -171,6 +174,27 @@ import wakelock_plus
     }
     Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> yield to UIKit")
     return false
+  }
+
+  /// DEC-142: the hold that summons Big P is measured here, at station 3,
+  /// because this is the only place a Play/Pause `UIPress` provably reaches.
+  /// The engine's own `UILongPressGestureRecognizer` for Play/Pause
+  /// (`createRecognizerFor:UIPressTypePlayPause`, minimum duration 0, cancels
+  /// touches) takes the press inside UIKit's `sendEvent:`, so `pressesBegan`/
+  /// `pressesEnded` below never see type 6 (sim log, 2 Oct 2026: recognizer
+  /// state 0 -> 1 between `.began` and `.ended`, no `presses*` call for it).
+  /// Only the hold is sent: `play_pause_down` arms the timer in Dart and emits
+  /// no playback action, so the player cannot toggle twice.
+  private func forwardPlayPauseHold(_ press: UIPress) {
+    guard press.type == .playPause else { return }
+    switch press.phase {
+    case .began:
+      tvRemoteChannel.sendMessage(["type": "play_pause_down", "source": "presses", "detail": "tvosHandlePress"])
+    case .ended, .cancelled:
+      sendPlayPauseUpEvent(detail: "tvosHandlePress")
+    default:
+      break
+    }
   }
 
   private func rememberDelivery(_ press: UIPress, result: Bool, dropped: Bool) -> Bool {

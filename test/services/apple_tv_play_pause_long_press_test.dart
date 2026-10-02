@@ -1,6 +1,12 @@
-/// DEC-142: a Play/Pause held for 600 ms summons Big P. The down event keeps
-/// reaching the player unchanged; the long press fires while still held.
+/// DEC-142: a Play/Pause held for 600 ms summons Big P. The hold is measured
+/// from `play_pause_down`/`play_pause_up`, which station 3
+/// (`PleyaFlutterViewController.tvosHandlePress`) sends for every Play/Pause
+/// UIPress; the engine's Play/Pause recognizer keeps that press out of
+/// `pressesBegan`, so `play_pause` never arrives for it. The hold is no
+/// playback action: the player's stream stays silent.
 library;
+
+import 'dart:io';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,13 +29,18 @@ void main() {
     body(async);
   });
 
-  void down(FakeAsync async, {String source = 'presses'}) {
+  void down(FakeAsync async) {
+    service.handleMessage({'type': 'play_pause_down', 'source': 'presses', 'detail': 'tvosHandlePress'});
+    async.flushMicrotasks();
+  }
+
+  void playbackAction(FakeAsync async, {required String source}) {
     service.handleMessage({'type': 'play_pause', 'source': source, 'detail': 'playPause'});
     async.flushMicrotasks();
   }
 
   void up(FakeAsync async) {
-    service.handleMessage({'type': 'play_pause_up', 'source': 'presses', 'detail': 'pressesEnded'});
+    service.handleMessage({'type': 'play_pause_up', 'source': 'presses', 'detail': 'tvosHandlePress'});
     async.flushMicrotasks();
   }
 
@@ -45,18 +56,27 @@ void main() {
       async.elapse(const Duration(seconds: 2));
       up(async);
       expect(longPresses, 1);
-      expect(downs, hasLength(1), reason: 'the player still hears the down event, once');
+      expect(downs, isEmpty, reason: 'the hold is no play/pause for the player');
     });
   });
 
-  test('a short press is only the down event', () {
+  test('a short press does not summon', () {
     run((async) {
       down(async);
       async.elapse(const Duration(milliseconds: 200));
       up(async);
       async.elapse(const Duration(seconds: 2));
       expect(longPresses, 0);
-      expect(downs.single.source, 'presses');
+    });
+  });
+
+  test('a playback action alone never arms the hold, whatever its source', () {
+    run((async) {
+      playbackAction(async, source: 'presses');
+      playbackAction(async, source: 'remote_control');
+      async.elapse(const Duration(seconds: 2));
+      expect(longPresses, 0);
+      expect(downs.map((d) => d.source), ['presses', 'remote_control'], reason: 'the player hears both, unchanged');
     });
   });
 
@@ -67,15 +87,6 @@ void main() {
       up(async);
       async.elapse(const Duration(seconds: 1));
       expect(longPresses, 0);
-    });
-  });
-
-  test('a remote-control event has no release and never counts as held', () {
-    run((async) {
-      down(async, source: 'remote_control');
-      async.elapse(const Duration(seconds: 2));
-      expect(longPresses, 0);
-      expect(downs, hasLength(1));
     });
   });
 
@@ -97,7 +108,18 @@ void main() {
       NativeInputSession.end();
       async.elapse(const Duration(seconds: 1));
       expect(longPresses, 0);
-      expect(downs, hasLength(1), reason: 'the player still gets the press');
     });
+  });
+
+  test('station 3 sends the hold, once per delivery, for Play/Pause only', () {
+    final swift = File('tvos/Runner/PleyaFlutterViewController.swift').readAsStringSync();
+    for (final line in [
+      'if !isRepeatDelivery {\n      forwardPlayPauseHold(press)\n    }',
+      'guard press.type == .playPause else { return }',
+      'case .began:\n      tvRemoteChannel.sendMessage(["type": "play_pause_down", "source": "presses"',
+      'case .ended, .cancelled:\n      sendPlayPauseUpEvent(detail: "tvosHandlePress")',
+    ]) {
+      expect(swift, contains(line));
+    }
   });
 }

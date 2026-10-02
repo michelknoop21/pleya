@@ -49,66 +49,75 @@ class TvAssistantGate extends StatelessWidget {
             ),
             SizedBox(width: 60 * pt),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 40 * pt),
-                  Row(
+              // 38 C1's measure: at the app's type sizes, 1250 px gives the
+              // mockup's line breaks (heading after "AI-provider", body after
+              // "Pleya") instead of running to the right inset.
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 1250 * pt),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (locked)
-                        Icon(Symbols.lock_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6))
-                      else
-                        Container(
-                          width: 12 * pt,
-                          height: 12 * pt,
-                          decoration: const BoxDecoration(color: kAccentAlt, shape: BoxShape.circle),
-                        ),
-                      SizedBox(width: 12 * pt),
+                      SizedBox(height: 40 * pt),
+                      Row(
+                        children: [
+                          if (locked)
+                            Icon(Symbols.lock_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6))
+                          else
+                            Container(
+                              width: 12 * pt,
+                              height: 12 * pt,
+                              decoration: const BoxDecoration(color: kAccentAlt, shape: BoxShape.circle),
+                            ),
+                          SizedBox(width: 12 * pt),
+                          Text(
+                            locked ? l.badge : s.badge,
+                            style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 14 * pt),
                       Text(
-                        locked ? l.badge : s.badge,
-                        style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
+                        locked ? l.title : s.title,
+                        style: TextStyle(color: tk.text, fontSize: TvHig.title3 * pt, fontWeight: FontWeight.w700),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 14 * pt),
-                  Text(
-                    locked ? l.title : s.title,
-                    style: TextStyle(color: tk.text, fontSize: TvHig.title3 * pt, fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 18 * pt),
-                  Text(locked ? l.body : s.body, style: body),
-                  if (locked) ...[
-                    SizedBox(height: 18 * pt),
-                    Text(
-                      l.note,
-                      style: body.copyWith(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
-                    ),
-                  ],
-                  SizedBox(height: 32 * pt),
-                  Row(
-                    children: [
-                      TvAssistantButton(
-                        label: locked ? l.back : s.action,
-                        icon: locked ? Symbols.arrow_back_rounded : Symbols.settings_rounded,
-                        primary: true,
-                        focusNode: primaryNode,
-                        automationId: AutomationIds.assistantButton,
-                        automationInstance: locked ? 'back' : 'setup',
-                        onPressed: locked ? onBack : onSetup,
-                      ),
-                      if (!locked) ...[
-                        SizedBox(width: 12 * pt),
-                        TvAssistantButton(
-                          label: s.back,
-                          primary: false,
-                          automationId: AutomationIds.assistantButton,
-                          automationInstance: 'back',
-                          onPressed: onBack,
+                      SizedBox(height: 18 * pt),
+                      Text(locked ? l.body : s.body, style: body),
+                      if (locked) ...[
+                        SizedBox(height: 18 * pt),
+                        Text(
+                          l.note,
+                          style: body.copyWith(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
                         ),
                       ],
+                      SizedBox(height: 32 * pt),
+                      Row(
+                        children: [
+                          TvAssistantButton(
+                            label: locked ? l.back : s.action,
+                            icon: locked ? Symbols.arrow_back_rounded : Symbols.settings_rounded,
+                            primary: true,
+                            focusNode: primaryNode,
+                            automationId: AutomationIds.assistantButton,
+                            automationInstance: locked ? 'back' : 'setup',
+                            onPressed: locked ? onBack : onSetup,
+                          ),
+                          if (!locked) ...[
+                            SizedBox(width: 12 * pt),
+                            TvAssistantButton(
+                              label: s.back,
+                              primary: false,
+                              automationId: AutomationIds.assistantButton,
+                              automationInstance: 'back',
+                              onPressed: onBack,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           ],

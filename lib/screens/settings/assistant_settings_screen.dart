@@ -8,15 +8,22 @@ import '../../assistant/assistant_provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../focus/focusable_button.dart';
+import '../../focus/key_event_utils.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
+import '../../theme/mono_tokens.dart';
+import '../../navigation/tv/tv_nested_surface.dart';
 import '../../utils/formatters.dart';
+import '../../utils/platform_detector.dart';
+import '../../utils/tv_hig.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/setting_tile.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
+import '../../widgets/tv/tv_page_surface.dart';
+import '../../widgets/tv/tv_unified_layout.dart';
 import 'async_form_state_mixin.dart';
 
 part 'assistant_settings_screen_support.dart';
@@ -163,6 +170,10 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
     } else if (_editing) {
       setState(() => _editing = false);
       _focusLater(_summaryFocus);
+    } else if (TvNestedRouteScope.readOf(context) case final nested?) {
+      // Opened inside the TV shell (`openTvContentRoute`): there is no local
+      // route, so `maybePop` would do nothing and Menu would stay here.
+      nested.dismiss();
     } else {
       Navigator.maybePop(context);
     }
@@ -350,6 +361,27 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _buildDetails(theme, _kind!)),
         ),
       ];
+    }
+    if (PlatformDetector.isTV()) {
+      // 38 C2 on TV: the shared Mijn Pleya page frame (inset, heading, row
+      // density) with the content held to the mockup's 1180 of 1920 px.
+      return Focus(
+        canRequestFocus: false,
+        onKeyEvent: (_, event) => handleBackKeyAction(event, _back),
+        child: TvPageSurface(
+          title: t.assistant.settings.title,
+          automationInstance: 'assistant_settings',
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 1180 * TvHig.of(context)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+              ),
+            ),
+          ],
+        ),
+      );
     }
     return FocusedScrollScaffold(
       title: Text(t.assistant.settings.title),
