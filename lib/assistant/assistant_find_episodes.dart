@@ -41,7 +41,9 @@ Future<void> findEpisode(FindRun run) async {
     await Future.wait([
       for (final s in _wanted(seasons.where((s) => s.kind == MediaKind.season), (s) => s.index, q.season))
         run.attempt(() async {
-          for (final e in await client.fetchChildren(s.id)) {
+          final children = await client.fetchChildren(s.id);
+          if (run.settled) return;
+          for (final e in children) {
             final item = e.serverId == series.serverId ? e : e.copyWith(serverId: series.serverId);
             episodes.add((
               title: e.title ?? '',
@@ -77,6 +79,7 @@ Future<void> _seerrEpisodes(
     for (final n in _wanted(SeerrSeason.listFromDetail(detail).map((s) => s.seasonNumber), (n) => n, q.season))
       run.attempt(() async {
         final season = await seerr.getTvSeason(tmdb, n);
+        if (run.settled) return;
         for (final e in season['episodes'] is List ? season['episodes'] as List : const []) {
           if (e is! Map) continue;
           final number = e['episodeNumber'];
@@ -116,7 +119,9 @@ _Episode? _byWords(FindQuery q, List<_Episode> episodes, Set<String> words) {
 /// Episode names and numbers an outside source gives for the question:
 /// episode pages on English Wikipedia first, then the one web search.
 /// Resolved against [listed] (library copies first) back to numbers and the
-/// library episode; a web hit that names numbers stands on its own.
+/// library episode. Evidence that names no episode in [listed] (the library's
+/// or Seerr's own episode list) adds nothing: a snippet's SxxEyy alone is
+/// not an episode.
 Future<void> _byEvidence(FindRun run, FindMatch show, List<_Episode> listed) async {
   final phrase = run.q.variants.firstOrNull;
   if (run.ctx.web == null || phrase == null) return;
@@ -150,9 +155,7 @@ bool _resolve(
     final found =
         listed.where((e) => key.length > 2 && titleKey(e.title) == key).firstOrNull ??
         listed.where((e) => season != null && e.season == season && e.number == number).firstOrNull;
-    final episode =
-        found ?? (season == null ? null : (title: n.title, summary: '', season: season, number: number, item: null));
-    if (_add(run, show, episode, source)) return true;
+    if (_add(run, show, found, source)) return true;
   }
   return false;
 }

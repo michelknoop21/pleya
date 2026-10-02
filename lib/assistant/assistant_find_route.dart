@@ -39,8 +39,9 @@ class FindResult {
 
 /// Runs the route for [q] within [budget]. Never throws; what did not answer
 /// in time is left out and flagged as partial. Web calls still in flight when
-/// it returns are aborted; media-server and Seerr calls, whose clients take
-/// no abort, are left to finish unread. No new call starts.
+/// it returns, or when the run is cancelled, are aborted; media-server and
+/// Seerr calls, whose clients take no abort, are left to finish unread and
+/// their late answers are dropped. No new call starts.
 Future<FindResult> findTitles(
   AssistantToolContext ctx,
   FindQuery q, {
@@ -65,8 +66,8 @@ class FindRun {
   final AssistantWebCache webCache;
   final _clock = Stopwatch()..start();
 
-  /// Fires when the run ends or its deadline passes: every web call of the
-  /// run listens to it.
+  /// Fires when the run ends, its deadline passes or it is cancelled: every
+  /// web call of the run listens to it.
   final _abort = AbortController();
 
   /// External ids already fetched, per library copy, for the identity resolver.
@@ -74,20 +75,25 @@ class FindRun {
   final matches = <FindMatch>[];
   var partial = false;
   var _webSearched = false;
-  var _done = false;
 
   SeerrClient? get seerr => ctx.requests?.client();
   Duration get _left => budget - _clock.elapsed;
   bool get sufficient => matches.any((m) => m.rank == 2);
 
+  /// The route is over (returned, out of time or cancelled): no new call
+  /// starts and a late answer writes nothing into [matches].
+  bool get settled => _abort.isAborted || _left <= Duration.zero || ctx.cancelled;
+
   /// [call] bounded by what is left of the deadline; null on any failure.
   Future<T?> attempt<T>(Future<T> Function() call) async {
-    if (_done || _left <= Duration.zero) {
+    if (settled) {
       partial = true;
       return null;
     }
     try {
-      return await call().timeout(_left);
+      // A cancel or the end of the run releases the wait at once.
+      final result = await Future.any<T?>([call(), _abort.trigger.then<T?>((_) => null)]).timeout(_left);
+      return settled ? null : result;
     } on http.RequestAbortedException {
       // Cancelled on purpose: enough evidence already, or the run is over.
       return null;
@@ -123,6 +129,19 @@ class FindRun {
   }
 
   Future<FindResult> run(Duration headStart) async {
+    // ponytail: polled, the run's cancel is a flag without an event; 50 ms of slack.
+    final watch = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      if (ctx.cancelled) _abort.abort();
+    });
+    try {
+      return await _run(headStart);
+    } finally {
+      watch.cancel();
+      _abort.abort();
+    }
+  }
+
+  Future<FindResult> _run(Duration headStart) async {
     final series = q.series;
     final showKind = q.wantsEpisode ? MediaKind.show : q.kind;
     for (final c in q.candidates) {
@@ -151,7 +170,6 @@ class FindRun {
     if (!sufficient && !q.wantsEpisode) await _webFallback();
     if (q.wantsEpisode) await findEpisode(this);
 
-    _done = true;
     _abort.abort();
     matches.sort((a, b) {
       final byRank = b.rank.compareTo(a.rank);
@@ -165,7 +183,8 @@ class FindRun {
 
   Future<void> _local() async {
     if (libraries.isEmpty) return;
-    final index = await plots.indexFor(libraries);
+    final index = await plots.indexFor(libraries, stop: () => ctx.cancelled);
+    if (settled) return;
     final kind = q.wantsEpisode ? MediaKind.show : q.kind;
     final hits = index.search([...q.variants, for (final c in q.candidates) c.title], limit: 5, kind: kind);
     if (hits.isEmpty) return;
@@ -203,7 +222,7 @@ class FindRun {
   /// there is none, or when it failed.
   Future<List<WebSearchHit>?> searchWebOnce(String query) async {
     final search = ctx.web?.search;
-    if (search == null || _webSearched || query.isEmpty || _done || _left <= Duration.zero) return null;
+    if (search == null || _webSearched || query.isEmpty || settled) return null;
     _webSearched = true;
     return attempt(
       () => webCache.get(_profile, 'web', query, () => search.search(query, maxResults: 5, abort: _abort)),
@@ -217,7 +236,9 @@ class FindRun {
       for (final (i, lang) in web.languages.indexed)
         if (i < q.variants.length) wikipedia(q.variants[i], lang, abort),
     ];
-    for (final hits in await Future.wait(searches)) {
+    final found = await Future.wait(searches);
+    if (settled) return;
+    for (final hits in found) {
       for (final hit in hits.take(3)) {
         if (hit.kind == MediaKind.episode) continue;
         if (q.kind != null && !q.wantsEpisode && hit.kind != null && hit.kind != q.kind) continue;
@@ -240,7 +261,9 @@ class FindRun {
           attempt(() async {
             final item = m.library.first;
             final client = ctx.userClient(ServerId(item.serverId!));
-            if (client != null) m.ids = _knownIds[item.globalKey] = await client.fetchExternalIds(item.id);
+            if (client == null) return;
+            final ids = await client.fetchExternalIds(item.id);
+            if (!settled) m.ids = _knownIds[item.globalKey] = ids;
           }),
     ]);
     final client = seerr;
@@ -273,13 +296,14 @@ class FindRun {
     await groupLibraryMatches(matches, (serverId, targetId) async {
       if (_knownIds[buildGlobalKey(ServerId(serverId), targetId)] case final known?) return known;
       final client = ctx.userClient(ServerId(serverId));
-      if (client == null || _done || _left <= Duration.zero) throw StateError('no lookup');
+      if (client == null || settled) throw StateError('no lookup');
       return client.fetchExternalIds(targetId).timeout(_left);
     });
     attachLooseMatches(matches);
   }
 
   void _pickSeerr(FindMatch m, List<SeerrMedia> found) {
+    if (settled) return;
     bool fits(SeerrMedia s) =>
         (m.kind == null || (m.kind == MediaKind.movie) == s.isMovie) &&
         (m.year == null || s.year == null || (int.parse(s.year!) - m.year!).abs() <= 1);
@@ -317,6 +341,7 @@ class FindRun {
             identity: identity,
             maxConcurrent: 3,
             onBatch: (batch) {
+              if (settled) return true;
               for (final r in batch) {
                 m.addLibrary([
                   for (final item in filterHiddenLibraryItems([
@@ -333,7 +358,7 @@ class FindRun {
         attempt(() async {
           final movie = kind == MediaKind.movie;
           final detail = movie ? await client.getMovie(tmdb) : await client.getTv(tmdb);
-          if (detail.isNotEmpty) m.seerr = SeerrMedia.fromDetail(detail, mediaType: movie ? 'movie' : 'tv');
+          if (detail.isNotEmpty && !settled) m.seerr = SeerrMedia.fromDetail(detail, mediaType: movie ? 'movie' : 'tv');
         }),
     ]);
   }

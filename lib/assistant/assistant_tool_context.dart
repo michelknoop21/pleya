@@ -49,13 +49,19 @@ class AssistantToolContext {
     this.requests,
     this.media,
     this.web,
+    this.isCancelled,
   });
 
   final MultiServerManager servers;
   final AssistantScreenContext? screen;
 
+  /// The run's own cancel check (`AssistantRun.isCancelled`), so a long tool
+  /// such as find_title stops starting calls once the user left.
+  final bool Function()? isCancelled;
+  bool get cancelled => isCancelled?.call() ?? false;
+
   /// Same servers, screen and services, none of the per-run state.
-  AssistantToolContext fresh() => AssistantToolContext(
+  AssistantToolContext fresh({bool Function()? isCancelled}) => AssistantToolContext(
     servers: servers,
     screen: screen,
     catalog: catalog,
@@ -63,6 +69,7 @@ class AssistantToolContext {
     requests: requests,
     media: media,
     web: web,
+    isCancelled: isCancelled ?? this.isCancelled,
   );
 
   /// Domain services the UI layer hands in. A missing one keeps its tools

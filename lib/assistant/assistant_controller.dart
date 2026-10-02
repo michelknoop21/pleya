@@ -321,6 +321,9 @@ class AssistantController extends ChangeNotifier {
           if (await _entitlement.check() != AssistantEntitlementState.entitled) return;
           final tool = (_tools ?? assistantTools).where((t) => t.name == 'request_title').firstOrNull;
           if (tool == null || !tool.serves(ctx, action.serverId)) return;
+          // The entitlement check awaited: a reset or profile switch since
+          // the confirmation must not still create the request.
+          if (generation != _generation || _disposed) return;
           final result = await action.execute(password: answer.password);
           if (generation != _generation) return;
           failed = result.containsKey('error');

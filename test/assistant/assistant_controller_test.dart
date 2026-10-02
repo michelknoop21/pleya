@@ -24,8 +24,14 @@ const _config = AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer
 class _Entitlement extends AssistantEntitlement {
   _Entitlement([this.state = AssistantEntitlementState.entitled]);
   AssistantEntitlementState state;
+
+  /// Holds a check back until completed.
+  Completer<void>? gate;
   @override
-  Future<AssistantEntitlementState> check() async => state;
+  Future<AssistantEntitlementState> check() async {
+    await gate?.future;
+    return state;
+  }
 }
 
 /// A model that answers from a script; a reply may be held back by a gate.
@@ -287,6 +293,62 @@ void main() {
     expect(c.actions.single.kind, AssistantActionKind.requestTitle);
     expect(c.resultIsError, isFalse);
     expect(c.state, AssistantSurfaceState.result);
+  });
+
+  test('a reset while the entitlement is rechecked does not still create the request', () async {
+    final posts = <Map<String, dynamic>>[];
+    seerr = _seerr(posts);
+    final entitlement = _Entitlement();
+    final c = controller(
+      entitlement: entitlement,
+      model: _Model([
+        _call('find_request_title', {
+          'titles': [
+            {'title': 'matrix'},
+          ],
+        }),
+        _say('Gevonden.'),
+      ]),
+    );
+    await c.submit('Vraag The Matrix aan');
+    final option = (c.displays.single as AssistantRequestOptions).options.single;
+
+    final picked = c.pickRequestOption(option);
+    while (c.pending == null) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    entitlement.gate = Completer();
+    c.confirmPending();
+    await Future<void>.delayed(Duration.zero);
+    c.reset();
+    entitlement.gate!.complete();
+    await picked;
+
+    expect(posts, isEmpty);
+    expect(c.actions, isEmpty);
+    expect(c.state, AssistantSurfaceState.idle);
+  });
+
+  test('a tool sees the run cancel through its context', () async {
+    late AssistantController c;
+    final seen = <bool>[];
+    final probe = AssistantTool(
+      name: 'probe',
+      description: 'probe',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (ctx, _, _) async {
+        seen.add(ctx.cancelled);
+        c.reset();
+        seen.add(ctx.cancelled);
+        return const AssistantToolResult({});
+      },
+    );
+    c = controller(model: _Model([_call('probe'), _say('ok')]), tools: [probe]);
+    await c.submit('x');
+    expect(seen, [false, true]);
   });
 
   test('reset clears the conversation and cancels a waiting card', () async {

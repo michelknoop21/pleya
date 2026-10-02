@@ -98,7 +98,7 @@ void main() {
     expect(hits.single, (title: 'Primer (2004)', url: 'https://x', snippet: 'Time travel'));
   });
 
-  test('OpenRouter web search: the web plugin, citations read as hits', () async {
+  test('OpenRouter web search: only url_citation annotations are hits, never the answer prose', () async {
     late http.Request sent;
     final search = OpenRouterWebSearch(
       'or-key',
@@ -108,7 +108,7 @@ void main() {
           'choices': [
             {
               'message': {
-                'content': 'Primer (2004)',
+                'content': 'It is probably Primer (2004), a low-budget film.',
                 'annotations': [
                   {
                     'type': 'url_citation',
@@ -128,7 +128,7 @@ void main() {
     expect(body['plugins'], [
       {'id': 'web', 'max_results': 5},
     ]);
-    expect(hits.map((h) => h.title), ['Primer (2004)', 'Primer - IMDb']);
+    expect(hits, [(title: 'Primer - IMDb', url: 'https://imdb.example', snippet: 'Engineers')]);
   });
 
   test('keys pick the web search: ollama.com first, none leaves it out', () {

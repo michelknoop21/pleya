@@ -148,17 +148,27 @@ class AssistantPlotIndexCache {
   /// Shared by the whole app: one profile session, one index.
   static final shared = AssistantPlotIndexCache();
 
-  Future<AssistantPlotIndex> indexFor(List<AssistantPlotSource> sources) {
+  /// [stop] ends a build early, between two pages (the asking run was
+  /// cancelled). Such a build is not kept: the next ask builds anew.
+  Future<AssistantPlotIndex> indexFor(List<AssistantPlotSource> sources, {bool Function()? stop}) {
     final same = sources.length == _sources.length && sources.every(_sources.contains);
     final fresh = _builtAt != null && _now().difference(_builtAt!) < ttl;
     if (_index != null && same && fresh) return _index!;
     _sources = List.of(sources);
     _builtAt = _now();
+    var stopped = false;
+    bool halt() => stopped = stopped || (stop?.call() ?? false);
     // _build never throws: a library that fails is left out and flagged.
-    return _index = _build(sources);
+    final build = _index = _build(sources, halt);
+    unawaited(
+      build.then((_) {
+        if (stopped && identical(_index, build)) _index = null;
+      }),
+    );
+    return build;
   }
 
-  Future<AssistantPlotIndex> _build(List<AssistantPlotSource> sources) async {
+  Future<AssistantPlotIndex> _build(List<AssistantPlotSource> sources, bool Function() halt) async {
     final deadline = _now().add(budget);
     final docs = <AssistantPlotDoc>[];
     var partial = false;
@@ -172,7 +182,7 @@ class AssistantPlotIndexCache {
           var offset = 0;
           while (!full()) {
             final left = deadline.difference(_now());
-            if (left <= Duration.zero) {
+            if (left <= Duration.zero || halt()) {
               partial = true;
               return;
             }

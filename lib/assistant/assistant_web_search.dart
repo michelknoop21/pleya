@@ -47,7 +47,9 @@ class OllamaWebSearch implements WebSearchClient {
 
 /// OpenRouter's web plugin: a minimal chat completion with
 /// `plugins: [{"id": "web"}]`. The pages it read come back as `url_citation`
-/// annotations on the message; the short answer itself is one more hit.
+/// annotations on the message (`annotations[].url_citation{url, title,
+/// content}`), and only those are hits: the generated answer is model prose,
+/// not a search result.
 class OpenRouterWebSearch implements WebSearchClient {
   OpenRouterWebSearch(this.apiKey, {this.model = 'openrouter/auto', http.Client? client})
     : _client = client ?? http.Client();
@@ -82,8 +84,6 @@ class OpenRouterWebSearch implements WebSearchClient {
     if (message is! Map) return const [];
     final annotations = message['annotations'];
     return [
-      if (message['content'] case final String answer when answer.trim().isNotEmpty)
-        (title: answer.trim(), url: '', snippet: ''),
       if (annotations is List)
         for (final a in annotations)
           if (a is Map ? a['url_citation'] : null case final Map c when c['title'] is String)

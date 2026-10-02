@@ -81,6 +81,22 @@ void main() {
     expect(index.length, 1);
   });
 
+  test('a stopped build starts no further page and is not kept', () async {
+    final server = _Server({
+      'films': [for (var i = 0; i < 5; i++) _item('$i', 'Film $i')],
+    });
+    final cache = AssistantPlotIndexCache(pageSize: 1);
+    final sources = [(client: server as MediaServerClient, libraryId: 'films', kind: MediaKind.movie)];
+    final index = await cache.indexFor(sources, stop: () => server.asked.isNotEmpty);
+    expect(server.asked, ['films']);
+    expect(index.partial, isTrue);
+
+    await pumpEventQueue();
+    final next = await cache.indexFor(sources);
+    expect(identical(next, index), isFalse);
+    expect(next.length, 5);
+  });
+
   test('the cap stops the build and flags it', () async {
     final server = _Server({
       'films': [for (var i = 0; i < 5; i++) _item('$i', 'Film $i')],

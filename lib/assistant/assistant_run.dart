@@ -129,7 +129,7 @@ class AssistantRun {
     if (_busy) throw StateError('AssistantRun.ask is already running');
     _busy = true;
     try {
-      _ctx = context.fresh();
+      _ctx = context.fresh(isCancelled: isCancelled);
       return await _ask(prompt);
     } finally {
       _busy = false;
