@@ -64,14 +64,13 @@ Watch long enough without touching anything and Pleya asks **Still watching?**. 
 - **Swipe on the left edge** for brightness, **on the right edge** for volume
 - **Lock** blocks every control against accidental taps
 - **Picture in Picture** keeps playing in a small window while you use other apps, on
-  Android, iOS and macOS
+  iOS and macOS
 
 ## When playback struggles
 
 Two settings account for most of it. Lower **Default quality** if the picture is blocky or
 stutters, since the server may be transcoding harder than it can manage. Check that
-**Hardware decoding** is on. On older hardware, switching **Player backend** between
-ExoPlayer and mpv sometimes settles it.
+**Hardware decoding** is on.
 
 Pleya prefers direct play, which means the file is sent untouched and the server does no
 work. Transcoding only kicks in when the device or the connection cannot take the original.

@@ -15,7 +15,7 @@ keyword.
 
 ![Search results across two servers](/docs-media/search-results.png)
 
-On a computer, **Cmd+F** on macOS and **Ctrl+F** on Windows and Linux open it directly.
+On a Mac, **Cmd+F** opens it directly.
 
 ## Searching on Apple TV
 
@@ -28,11 +28,6 @@ into, so speaking a title works from the same place. Results update while you di
 
 If the system keyboard does not come up, Pleya falls back to its own on-screen keyboard
 that you drive with the D-pad. Nothing is lost, it is just slower.
-
-## Searching on Android TV
-
-There is a microphone button in the search field, and searches from the Assistant or the
-leanback search row open Pleya on the results, including from a fully closed app.
 
 ## Recent searches
 

@@ -21,3 +21,6 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Explainer video (20 MB): lives on the NAS deploy, not in git
+/static/video/

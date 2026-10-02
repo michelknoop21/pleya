@@ -39,7 +39,7 @@ It only appears when a connected server has a tuner or DVR.
 
 ## Can I cast to a Chromecast?
 
-No. Install Pleya on the television itself (Apple TV or Android TV), or use the
+No. Install Pleya on the television itself (Apple TV), or use the
 [Companion Remote](/docs/apple-tv-and-remotes) to drive the TV app from your phone.
 
 ## Do downloads work across my devices?

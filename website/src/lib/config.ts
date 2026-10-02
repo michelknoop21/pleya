@@ -5,17 +5,11 @@
 
 /**
  * Public TestFlight invite link (e.g. https://testflight.apple.com/join/XXXXXXXX).
- * When empty, the "Join the beta" CTA renders as a disabled "coming soon" state.
+ * When empty, the CTA falls back to the "Join the waitlist" mailto: link below.
  */
 export const PUBLIC_TESTFLIGHT_URL = '';
 
-/**
- * Webhook that receives waitlist sign-ups (a POST with { email } JSON body).
- * When empty, the waitlist form falls back to a pre-filled mailto: link.
- */
-export const WAITLIST_WEBHOOK_URL = '';
-
-/** Fallback inbox used when no waitlist webhook is configured. */
+/** Inbox for the "Join the waitlist" mailto: link. */
 export const WAITLIST_FALLBACK_EMAIL = 'info@michelknoop.nl';
 
 /** Upstream open-source project Pleya is based on (GPL-3.0 attribution). */
@@ -34,3 +28,15 @@ export const SOURCE_REPO_URL = FORK_SOURCE_URL.trim().length > 0 ? FORK_SOURCE_U
 
 /** Whether a real TestFlight link is available yet. */
 export const betaLinkReady = PUBLIC_TESTFLIGHT_URL.trim().length > 0;
+
+// Until a public TestFlight link exists the one action is the waitlist, a
+// pre-filled mail (there is no webhook). Filling PUBLIC_TESTFLIGHT_URL above
+// switches every CTA on the site to the beta.
+export const cta = betaLinkReady
+  ? { href: PUBLIC_TESTFLIGHT_URL, label: 'Join the TestFlight beta', note: 'Opens TestFlight for iPhone, Apple TV and Mac.' }
+  : {
+      href: `mailto:${WAITLIST_FALLBACK_EMAIL}?subject=${encodeURIComponent('Pleya waitlist')}&body=${encodeURIComponent('Please add me to the Pleya waitlist.')}`,
+      label: 'Join the waitlist',
+      note: 'Private TestFlight beta. The button opens your mail app with a pre-filled request.',
+    };
+export type Cta = typeof cta;
