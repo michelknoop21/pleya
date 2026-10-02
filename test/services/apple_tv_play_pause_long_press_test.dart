@@ -92,8 +92,8 @@ void main() {
 
   test('the release still cancels while the system keyboard is up', () {
     run((async) {
-      NativeInputSession.begin();
       down(async);
+      NativeInputSession.begin();
       async.elapse(const Duration(milliseconds: 100));
       up(async);
       async.elapse(const Duration(seconds: 1));
@@ -111,7 +111,22 @@ void main() {
     });
   });
 
-  test('station 3 sends the hold, once per delivery, for Play/Pause only', () {
+  // Inside a native input session station 3 returns before it records the
+  // delivery, so the second swizzle hop of one phase sends down/up again.
+  test('a down/up pair repeated during native text entry never arms, even held past the mark', () {
+    run((async) {
+      NativeInputSession.begin();
+      down(async);
+      down(async);
+      async.elapse(const Duration(seconds: 1));
+      up(async);
+      up(async);
+      async.elapse(const Duration(seconds: 1));
+      expect(longPresses, 0);
+    });
+  });
+
+  test('station 3 sends the hold once per delivery outside a native input session, for Play/Pause only', () {
     final swift = File('tvos/Runner/PleyaFlutterViewController.swift').readAsStringSync();
     for (final line in [
       'if !isRepeatDelivery {\n      forwardPlayPauseHold(press)\n    }',

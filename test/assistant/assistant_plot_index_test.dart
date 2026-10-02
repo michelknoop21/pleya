@@ -97,6 +97,21 @@ void main() {
     expect(next.length, 5);
   });
 
+  test('a cancelled ask does not halt the build a new ask joined', () async {
+    final server = _Server({
+      'films': [for (var i = 0; i < 5; i++) _item('$i', 'Film $i')],
+    });
+    final cache = AssistantPlotIndexCache(pageSize: 1);
+    final sources = [(client: server as MediaServerClient, libraryId: 'films', kind: MediaKind.movie)];
+    var cancelled = false;
+    final first = cache.indexFor(sources, stop: () => cancelled);
+    cancelled = true;
+    final next = await cache.indexFor(sources);
+    expect(next.length, 5);
+    expect(next.partial, isFalse);
+    expect(identical(await first, next), isTrue);
+  });
+
   test('the cap stops the build and flags it', () async {
     final server = _Server({
       'films': [for (var i = 0; i < 5; i++) _item('$i', 'Film $i')],

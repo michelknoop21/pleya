@@ -266,6 +266,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _linger?.cancel();
     final c = _c;
     c?.removeListener(_onChange);
+    c?.abort();
     setState(() => _shown = false);
     final back = _returnTo;
     _returnTo = null;
@@ -274,8 +275,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     } else {
       _scope.unfocus();
     }
-    // The panel keeps its last words while it slides out; then the
-    // conversation, a run in flight and a waiting card are let go.
+    // The run and a waiting card are let go above; the panel keeps its last
+    // words while it slides out, then the conversation is cleared.
     _remove = Timer(_motion(context), () {
       c?.reset();
       if (!mounted) return;

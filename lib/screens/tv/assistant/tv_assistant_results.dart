@@ -147,12 +147,13 @@ bool tvAssistantHasChoices(List<AssistantDisplay> displays) => displays.any((d) 
 /// A tool's display, drawn on the panel. Request options and found titles
 /// are the focusable kinds: an option goes to [onPickOption]; a found title
 /// opens its library copy through [onOpenTitle], or, not in a library, goes
-/// to [onPickOption] with its Seerr request.
+/// to [onPickOption] with its Seerr request. Without [onPickOption] (Big P
+/// still checking) a request card stays focusable but dimmed and inert.
 class TvAssistantDisplayView extends StatelessWidget {
   const TvAssistantDisplayView({
     super.key,
     required this.display,
-    required this.onPickOption,
+    this.onPickOption,
     this.onOpenTitle,
     this.firstOptionNode,
     this.optionOffset = 0,
@@ -160,7 +161,7 @@ class TvAssistantDisplayView extends StatelessWidget {
   });
 
   final AssistantDisplay display;
-  final ValueChanged<AssistantRequestOption> onPickOption;
+  final ValueChanged<AssistantRequestOption>? onPickOption;
   final ValueChanged<AssistantTitleTarget>? onOpenTitle;
 
   /// The summoned panel: found titles scroll in a window of three.
@@ -177,7 +178,7 @@ class TvAssistantDisplayView extends StatelessWidget {
     if (match.targets.firstOrNull case final target?) {
       onOpenTitle?.call(target);
     } else if (match.request case final request?) {
-      onPickOption(request);
+      onPickOption?.call(request);
     }
   }
 
@@ -192,7 +193,9 @@ class TvAssistantDisplayView extends StatelessWidget {
               index: optionOffset + i,
               compact: compact,
               focusNode: i == 0 ? firstOptionNode : null,
-              onSelect: () => _selectMatch(match),
+              onSelect: match.targets.isEmpty && match.request != null && onPickOption == null
+                  ? null
+                  : () => _selectMatch(match),
             ),
           ),
       ],
@@ -235,7 +238,10 @@ class TvAssistantDisplayView extends StatelessWidget {
                 option: options[i],
                 index: optionOffset + i,
                 focusNode: i == 0 ? firstOptionNode : null,
-                onSelect: () => onPickOption(options[i]),
+                onSelect: switch (onPickOption) {
+                  final pick? => () => pick(options[i]),
+                  null => null,
+                },
               ),
             ),
         ],

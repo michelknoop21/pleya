@@ -227,6 +227,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
 
   AssistantProviderConfig _draft() {
     final kind = _kind!;
+    final model = _model ?? '';
+    final saved = _saved;
     return AssistantProviderConfig(
       kind: kind,
       baseUrl: switch (kind) {
@@ -234,7 +236,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
         AssistantProviderKind.ollamaCloud => AssistantProviderConfig.ollamaCloudUrl,
         AssistantProviderKind.openRouter => AssistantProviderConfig.openRouterUrl,
       },
-      model: _model ?? '',
+      model: model,
       apiKey: kind == AssistantProviderKind.ollamaServer ? '' : _keyController.text.trim(),
       headerName: kind == AssistantProviderKind.ollamaServer ? _headerNameController.text.trim() : '',
       headerValue: kind == AssistantProviderKind.ollamaServer ? _headerValueController.text : '',
@@ -242,6 +244,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       ollamaWebKey: kind == AssistantProviderKind.ollamaServer && _webSearch == true
           ? _webKeyController.text.trim()
           : '',
+      // Set for one model (as in copyWith): the same model keeps it.
+      timeoutOverride: saved != null && saved.kind == kind && saved.model == model ? saved.timeoutOverride : null,
     );
   }
 
@@ -346,55 +350,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final List<Widget> children;
-    if (_loading) {
-      children = const [Center(child: LoadingIndicatorBox())];
-    } else if (_showSummary) {
-      children = _buildSummary(theme, _saved!);
-    } else if (_kind == null) {
-      children = _buildProviderChoice(theme);
-    } else {
-      children = [
-        Form(
-          key: _formKey,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _buildDetails(theme, _kind!)),
-        ),
-      ];
-    }
-    if (PlatformDetector.isTV()) {
-      // 38 C2 on TV: the shared Mijn Pleya page frame (inset, heading, row
-      // density) with the content held to the mockup's 1180 of 1920 px.
-      return Focus(
-        canRequestFocus: false,
-        onKeyEvent: (_, event) => handleBackKeyAction(event, _back),
-        child: TvPageSurface(
-          title: t.assistant.settings.title,
-          automationInstance: 'assistant_settings',
-          children: [
-            Align(
-              alignment: Alignment.topLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 1180 * TvHig.of(context)),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    return FocusedScrollScaffold(
-      title: Text(t.assistant.settings.title),
-      onBackPressed: _back,
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-          ),
-        ),
-      ],
-    );
+    final children = _buildBody(Theme.of(context));
+    return PlatformDetector.isTV() ? _buildTvFrame(context, children) : _buildPhoneFrame(children);
   }
 
   /// The web switch: a draft field while editing, saved at once in the

@@ -137,6 +137,10 @@ import wakelock_plus
       return true
     }
     let filter = isRepeatDelivery ? nil : filterArrowPress(press)
+    // Once per delivery outside a native input session. Inside one the session
+    // branch below returns before `rememberDelivery`, so the second swizzle hop
+    // of a phase is not seen as a repeat and the hold goes out twice; Dart never
+    // arms a hold during a session and `play_pause_up` is idempotent.
     if !isRepeatDelivery {
       forwardPlayPauseHold(press)
     }
@@ -184,7 +188,9 @@ import wakelock_plus
   /// `pressesEnded` below never see type 6 (sim log, 2 Oct 2026: recognizer
   /// state 0 -> 1 between `.began` and `.ended`, no `presses*` call for it).
   /// Only the hold is sent: `play_pause_down` arms the timer in Dart and emits
-  /// no playback action, so the player cannot toggle twice.
+  /// no playback action, so the player cannot toggle twice. Sent once per
+  /// delivery outside a native input session, possibly twice per phase inside
+  /// one (see `tvosHandlePress`), which Dart ignores.
   private func forwardPlayPauseHold(_ press: UIPress) {
     guard press.type == .playPause else { return }
     switch press.phase {

@@ -46,6 +46,7 @@ class FakeAssistantController extends AssistantController {
   var cancelledListening = 0;
   var cancelledPending = 0;
   var resets = 0;
+  var aborts = 0;
   var refreshes = 0;
 
   void emit() => notifyListeners();
@@ -83,6 +84,9 @@ class FakeAssistantController extends AssistantController {
 
   @override
   Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async => picked.add(option);
+
+  @override
+  void abort() => aborts++;
 
   @override
   void reset() => resets++;

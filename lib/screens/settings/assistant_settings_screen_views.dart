@@ -2,6 +2,53 @@ part of 'assistant_settings_screen.dart';
 
 /// The three steps and the summary of [AssistantSettingsScreen], as widgets.
 extension _AssistantSettingsViews on _AssistantSettingsScreenState {
+  /// The step on screen: loading, the summary, the provider choice or the
+  /// details form.
+  List<Widget> _buildBody(ThemeData theme) {
+    if (_loading) return const [Center(child: LoadingIndicatorBox())];
+    if (_showSummary) return _buildSummary(theme, _saved!);
+    if (_kind == null) return _buildProviderChoice(theme);
+    return [
+      Form(
+        key: _formKey,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _buildDetails(theme, _kind!)),
+      ),
+    ];
+  }
+
+  Widget _buildPhoneFrame(List<Widget> children) => FocusedScrollScaffold(
+    title: Text(t.assistant.settings.title),
+    onBackPressed: _back,
+    slivers: [
+      SliverPadding(
+        padding: const EdgeInsets.all(16),
+        sliver: SliverToBoxAdapter(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+        ),
+      ),
+    ],
+  );
+
+  /// 38 C2 on TV: the shared Mijn Pleya page frame (inset, heading, row
+  /// density) with the content held to the mockup's 1180 of 1920 px.
+  Widget _buildTvFrame(BuildContext context, List<Widget> children) => Focus(
+    canRequestFocus: false,
+    onKeyEvent: (_, event) => handleBackKeyAction(event, _back),
+    child: TvPageSurface(
+      title: t.assistant.settings.title,
+      automationInstance: 'assistant_settings',
+      children: [
+        Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 1180 * TvHig.of(context)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+          ),
+        ),
+      ],
+    ),
+  );
+
   Color _muted(ThemeData theme) => theme.colorScheme.onSurface.withValues(alpha: 0.7);
 
   String _kindName(AssistantProviderKind kind) => switch (kind) {

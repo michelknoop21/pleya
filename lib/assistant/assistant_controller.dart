@@ -352,12 +352,18 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
-  /// Back to rust; the conversation, a waiting card and a run in flight are
-  /// all let go.
-  void reset() {
+  /// A run in flight and a waiting card are let go; what is on screen stays
+  /// until [reset] (Big P sliding out). Does not notify.
+  void abort() {
     _generation++;
     _abortAsk();
     _answerPending(null);
+  }
+
+  /// Back to rust; the conversation, a waiting card and a run in flight are
+  /// all let go.
+  void reset() {
+    abort();
     _pending = null;
     _confirmer = null;
     _busy = false;

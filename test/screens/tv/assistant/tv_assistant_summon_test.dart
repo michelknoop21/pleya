@@ -170,6 +170,18 @@ void main() {
       expect(c.resets, 2, reason: 'one fresh start on summon, one on leaving');
     });
 
+    testWidgets('Menu lets the run go at once, not after the slide-out, so an unmount in between cannot keep it', (
+      tester,
+    ) async {
+      await summoned(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      expect(c.aborts, 1, reason: 'aborted by the dismissal itself');
+      expect(c.resets, 1, reason: 'the clear-out still waits for the slide-out');
+
+      await tester.pumpWidget(const SizedBox());
+      expect(c.aborts, 1);
+    });
+
     testWidgets('a good result leaves on its own after about 4 s', (tester) async {
       await summoned(tester);
       c

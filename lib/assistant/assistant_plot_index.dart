@@ -145,23 +145,38 @@ class AssistantPlotIndexCache {
   DateTime? _builtAt;
   Future<AssistantPlotIndex>? _index;
 
+  /// Adds one more waiting caller's stop to the current build; false when
+  /// that build already halted and cannot serve a caller that goes on.
+  bool Function(bool Function()? stop)? _join;
+
   /// Shared by the whole app: one profile session, one index.
   static final shared = AssistantPlotIndexCache();
 
   /// [stop] ends a build early, between two pages (the asking run was
-  /// cancelled). Such a build is not kept: the next ask builds anew.
+  /// cancelled). A build in flight halts only once every caller waiting on
+  /// it asks to stop, and a halted build is never handed out again: the
+  /// next ask builds anew.
   Future<AssistantPlotIndex> indexFor(List<AssistantPlotSource> sources, {bool Function()? stop}) {
     final same = sources.length == _sources.length && sources.every(_sources.contains);
     final fresh = _builtAt != null && _now().difference(_builtAt!) < ttl;
-    if (_index != null && same && fresh) return _index!;
+    if (_index != null && same && fresh && _join!(stop)) return _index!;
     _sources = List.of(sources);
     _builtAt = _now();
-    var stopped = false;
-    bool halt() => stopped = stopped || (stop?.call() ?? false);
+    var stopped = false, done = false;
+    var wanted = stop ?? () => false;
+    bool halt() => stopped = stopped || wanted();
+    _join = (next) {
+      if (stopped) return false;
+      if (done) return true;
+      final before = wanted;
+      wanted = () => before() && (next?.call() ?? false);
+      return true;
+    };
     // _build never throws: a library that fails is left out and flagged.
     final build = _index = _build(sources, halt);
     unawaited(
       build.then((_) {
+        done = true;
         if (stopped && identical(_index, build)) _index = null;
       }),
     );

@@ -30,7 +30,9 @@ class TvAssistantMatchCard extends StatelessWidget {
 
   final AssistantTitleMatch match;
   final int index;
-  final VoidCallback onSelect;
+
+  /// Null: focusable for reading, dimmed and inert (Big P still checking).
+  final VoidCallback? onSelect;
   final FocusNode? focusNode;
 
   /// The summoned panel: one line of plot instead of two.
@@ -96,65 +98,69 @@ class TvAssistantMatchCard extends StatelessWidget {
         'confidence': match.confidence,
         'inLibrary': match.targets.isNotEmpty,
         'requestStatus': match.request?.status,
+        'enabled': onSelect != null,
       },
       onSelect: () {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-        onSelect();
+        onSelect?.call();
       },
-      child: Container(
-        padding: EdgeInsets.all(12 * pt),
-        decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(18 * pt)),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8 * pt),
-              child: SizedBox(width: 68 * pt, height: 100 * pt, child: _poster(context)),
-            ),
-            SizedBox(width: 20 * pt),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: match.title,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        if (match.year != null)
+      child: Opacity(
+        opacity: onSelect == null ? 0.45 : 1,
+        child: Container(
+          padding: EdgeInsets.all(12 * pt),
+          decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(18 * pt)),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8 * pt),
+                child: SizedBox(width: 68 * pt, height: 100 * pt, child: _poster(context)),
+              ),
+              SizedBox(width: 20 * pt),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        children: [
                           TextSpan(
-                            text: ' (${match.year})',
-                            style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                            text: match.title,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                      ],
+                          if (match.year != null)
+                            TextSpan(
+                              text: ' (${match.year})',
+                              style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
-                  ),
-                  SizedBox(height: 4 * pt),
-                  Text(
-                    low ? '$_kind · ${t.assistant.match.maybe}' : _kind,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: muted,
-                  ),
-                  if (plot.isNotEmpty) ...[
                     SizedBox(height: 4 * pt),
-                    Text(plot, maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: muted),
+                    Text(
+                      low ? '$_kind · ${t.assistant.match.maybe}' : _kind,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: muted,
+                    ),
+                    if (plot.isNotEmpty) ...[
+                      SizedBox(height: 4 * pt),
+                      Text(plot, maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: muted),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            if (status != null) ...[
-              SizedBox(width: 16 * pt),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: (compact ? 180 : 280) * pt),
-                child: TvAssistantStatusPill(label: status, color: statusColor),
-              ),
+              if (status != null) ...[
+                SizedBox(width: 16 * pt),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: (compact ? 180 : 280) * pt),
+                  child: TvAssistantStatusPill(label: status, color: statusColor),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

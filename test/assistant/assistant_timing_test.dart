@@ -222,6 +222,7 @@ void main() {
       expectTimeoutAt(config, 5);
       expect(AssistantProviderConfig.fromJson(config.toJson())!.providerTimeout, const Duration(seconds: 5));
       expect(config.copyWith(apiKey: 'x').providerTimeout, const Duration(seconds: 5));
+      expect(config.copyWith(model: 'm').timeoutOverride, const Duration(seconds: 5));
       expect(config.copyWith(model: 'other').providerTimeout, const Duration(seconds: 90));
     });
   });

@@ -110,7 +110,7 @@ class TvAssistantConversation extends StatelessWidget {
         Text(t.assistant.listening.body, style: headlineStyle),
       ],
       AssistantSurfaceState.working => <Widget>[
-        if (c.stillChecking) ..._displays(pt, focusFirstOption: false),
+        if (c.stillChecking) ..._displays(pt, working: true),
         TvAssistantStepList(steps: c.steps),
         SizedBox(height: 16 * pt),
         Align(
@@ -148,11 +148,12 @@ class TvAssistantConversation extends StatelessWidget {
     return column([...head, Flexible(child: SingleChildScrollView(reverse: true, child: column(children)))]);
   }
 
-  /// The run's displays; [focusFirstOption] hands the first choice the
-  /// surface's option node, which only the result stand focuses.
-  List<Widget> _displays(double pt, {bool focusFirstOption = true}) {
+  /// The run's displays. Only the result stand hands the first choice the
+  /// surface's option node. While [working], a request card is shown but
+  /// inert: the controller takes no pick before the run ends.
+  List<Widget> _displays(double pt, {bool working = false}) {
     var optionOffset = 0;
-    var firstOptionTaken = !focusFirstOption;
+    var firstOptionTaken = working;
     final displays = <Widget>[];
     for (final display in controller.displays) {
       final choices = tvAssistantChoiceCount(display);
@@ -161,7 +162,7 @@ class TvAssistantConversation extends StatelessWidget {
           padding: EdgeInsets.only(bottom: 16 * pt),
           child: TvAssistantDisplayView(
             display: display,
-            onPickOption: onPickOption,
+            onPickOption: working ? null : onPickOption,
             onOpenTitle: onOpenTitle,
             compact: compact,
             optionOffset: optionOffset,

@@ -201,6 +201,34 @@ void main() {
     expect(find.text(s.savedModelGone(model: 'old:7b')), findsNothing);
   });
 
+  for (final (model, kept) in [('qwen3:32b', true), ('gpt-oss:120b', false)]) {
+    testWidgets(
+      'Change and save again with ${kept ? 'the same' : 'another'} model ${kept ? 'keeps' : 'drops'} the timeout',
+      (tester) async {
+        final store = _FakeStore(
+          const AssistantProviderConfig(
+            kind: AssistantProviderKind.ollamaCloud,
+            baseUrl: AssistantProviderConfig.ollamaCloudUrl,
+            apiKey: 'k',
+            model: 'qwen3:32b',
+            timeoutOverride: Duration(seconds: 5),
+          ),
+        );
+        await pump(tester, store, (_) async => _infos(['gpt-oss:120b', 'qwen3:32b']));
+        await tapText(tester, s.change);
+        await tapText(tester, s.ollamaCloud);
+        await tester.enterText(field(0), 'k2');
+        await settle(tester);
+        await tapText(tester, model);
+        await tapText(tester, s.test);
+        await tapText(tester, s.save);
+
+        expect(store.config!.model, model);
+        expect(store.config!.timeoutOverride, kept ? const Duration(seconds: 5) : null);
+      },
+    );
+  }
+
   testWidgets('summary: long OpenRouter lists are capped behind Meer tonen', (tester) async {
     final store = _FakeStore(
       const AssistantProviderConfig(

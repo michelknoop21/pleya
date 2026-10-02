@@ -56,7 +56,9 @@ class TvAssistantOptionCard extends StatelessWidget {
 
   final AssistantRequestOption option;
   final int index;
-  final VoidCallback onSelect;
+
+  /// Null: focusable for reading, dimmed and inert (Big P still checking).
+  final VoidCallback? onSelect;
   final FocusNode? focusNode;
 
   @override
@@ -72,60 +74,63 @@ class TvAssistantOptionCard extends StatelessWidget {
       automationId: AutomationIds.assistantOption,
       automationInstance: '$index',
       automationRole: 'list.item',
-      automationState: () => {'title': option.title, 'status': option.status},
+      automationState: () => {'title': option.title, 'status': option.status, 'enabled': onSelect != null},
       onSelect: () {
         SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-        onSelect();
+        onSelect?.call();
       },
-      child: Container(
-        padding: EdgeInsets.all(12 * pt),
-        decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(18 * pt)),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8 * pt),
-              child: SizedBox(
-                width: 68 * pt,
-                height: 100 * pt,
-                child: SeerrPosterImage(url: option.posterUrl),
+      child: Opacity(
+        opacity: onSelect == null ? 0.45 : 1,
+        child: Container(
+          padding: EdgeInsets.all(12 * pt),
+          decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(18 * pt)),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8 * pt),
+                child: SizedBox(
+                  width: 68 * pt,
+                  height: 100 * pt,
+                  child: SeerrPosterImage(url: option.posterUrl),
+                ),
               ),
-            ),
-            SizedBox(width: 20 * pt),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: option.title,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        if (option.year != null)
+              SizedBox(width: 20 * pt),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        children: [
                           TextSpan(
-                            text: ' (${option.year})',
-                            style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                            text: option.title,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                      ],
+                          if (option.year != null)
+                            TextSpan(
+                              text: ' (${option.year})',
+                              style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
-                  ),
-                  SizedBox(height: 4 * pt),
-                  Text(
-                    option.overview,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt),
-                  ),
-                ],
+                    SizedBox(height: 4 * pt),
+                    Text(
+                      option.overview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(width: 16 * pt),
-            TvAssistantStatusPill(label: status, color: statusColor),
-          ],
+              SizedBox(width: 16 * pt),
+              TvAssistantStatusPill(label: status, color: statusColor),
+            ],
+          ),
         ),
       ),
     );

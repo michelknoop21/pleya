@@ -179,6 +179,44 @@ void main() {
     reason: '$what $inner is not inside the panel $outer',
   );
 
+  /// Still checking, two streamed results: a library match and a request.
+  Future<void> stillCheckingWith(WidgetTester tester) async {
+    c
+      ..prompt = 'Die film over Mars'
+      ..state = AssistantSurfaceState.working
+      ..answer = ''
+      ..displays = [
+        AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [_martian, _redPlanet]),
+      ]
+      ..stillChecking = true
+      ..emit();
+    await settle(tester);
+  }
+
+  /// The request card is readable but dimmed and does nothing on Select;
+  /// the library card above it still opens its title.
+  Future<void> expectRequestInertWhileChecking(WidgetTester tester) async {
+    double opacityOf(String id) => tester
+        .widget<Opacity>(
+          find.descendant(
+            of: find.byWidgetPredicate((w) => w is TvAssistantMatchCard && w.match.matchId == id),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .opacity;
+    expect(opacityOf('m2'), lessThan(1));
+    expect(opacityOf('m1'), 1);
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(focusedMatch(), 'm2', reason: 'still focusable for reading');
+    await press(tester, LogicalKeyboardKey.select);
+    expect(c.picked, isEmpty);
+    expect(routes, isEmpty);
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(focusedMatch(), 'm1');
+    await press(tester, LogicalKeyboardKey.select);
+    expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
+  }
+
   Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) async {
     c
       ..prompt = 'Die film over Mars'
@@ -255,6 +293,13 @@ void main() {
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
       expect(c.picked, isEmpty);
+    });
+
+    testWidgets('while still checking a request candidate is dimmed and inert, a library match opens', (tester) async {
+      await pumpSurface(tester);
+      await stillCheckingWith(tester);
+      expect(focusedLabel(), 'assistant.cancel');
+      await expectRequestInertWhileChecking(tester);
     });
 
     testWidgets('a request candidate goes to pickRequestOption and the Pleya card', (tester) async {
@@ -398,6 +443,13 @@ void main() {
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
       expect(find.byType(TvAssistantMatchCard), findsNothing);
+    });
+
+    testWidgets('while still checking a request candidate is dimmed and inert here too', (tester) async {
+      await summon(tester, const []);
+      await stillCheckingWith(tester);
+      expect(focusedLabel(), 'assistant.cancel');
+      await expectRequestInertWhileChecking(tester);
     });
 
     testWidgets('a request candidate goes to pickRequestOption', (tester) async {
