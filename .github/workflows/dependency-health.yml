@@ -74,6 +74,9 @@ jobs:
     # macOS omdat ci_checks.sh ook swift-format en clang-format draait.
     runs-on: macos-latest
     timeout-minutes: 120
+    # Alleen vanaf main: vanaf een andere ref zou de batch-commit op die ref
+    # staan en de merge die commits meenemen.
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write
@@ -119,10 +122,20 @@ jobs:
       # Volledige check_updates.sh op de graph ná de batch, als deel van het
       # bewijs. Het issue toont deze stand pas als de merge echt gebeurd is.
       - name: Volledig rapport na de batch
+        id: post
         if: steps.lane.outputs.rc == '0' || steps.lane.outputs.rc == '4'
+        continue-on-error: true
         run: |
           scripts/check_updates.sh --json > "$RUNNER_TEMP/post.json" || true
           flutter pub outdated --json > "$RUNNER_TEMP/post-outdated.json" || true
+          # Gate: geen enkele ring-1-controle mag na de batch UNKNOWN zijn.
+          python3 - "$RUNNER_TEMP/post.json" <<'PY'
+          import json, sys
+          rows = json.load(open(sys.argv[1]))["components"]
+          bad = [r["component"] for r in rows if r["ring"] <= 1 and r["status"] == "UNKNOWN"]
+          print("ring-1 UNKNOWN: " + (", ".join(bad) or "geen"))
+          sys.exit(1 if bad else 0)
+          PY
 
       - name: Gate
         id: gate
@@ -140,12 +153,19 @@ jobs:
         env:
           LANE_RC: ${{ steps.lane.outputs.rc }}
           GATE_RC: ${{ steps.gate.outputs.rc }}
+          POST_OK: ${{ steps.post.outcome == 'success' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           git commit -qm "chore(deps): ring-1-update $(date +%G-W%V)" pubspec.lock
           sha="$(git rev-parse HEAD)"
+          # Opnieuw kijken vlak voor de push: tijdens de gates kan iemand een
+          # PR op deze branch geopend hebben.
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')" ]; then
+            printf 'Overgeslagen op %s: tijdens de run werd een PR op %s geopend; niet overschreven.' "$(date +%F)" "$BRANCH" > "$RUNNER_TEMP/lane.txt"
+            exit 1
+          fi
           git push -f origin "$BRANCH"
           summary="$(cat "$RUNNER_TEMP/summary.txt" 2>/dev/null)"
 
@@ -168,20 +188,29 @@ jobs:
           ci_ok=0
           [ -n "$ci_id" ] && gh run watch "$ci_id" --exit-status > /dev/null && ci_ok=1
 
-          git fetch -q origin main
-          fresh=0; git merge-base --is-ancestor origin/main "$sha" && fresh=1
-
           why=""
           [ "$LANE_RC" = 0 ] || why="$why lockfile-diff boven ring 1 of UNKNOWN ($summary);"
           [ "$GATE_RC" = 0 ] || why="$why ci_checks.sh rood;"
+          [ "$POST_OK" = true ] || why="$why check_updates.sh na de batch heeft ring-1 UNKNOWN;"
           [ "$ci_ok" = 1 ] || why="$why ci.yml op $sha niet groen;"
           [ -n "$pr" ] || why="$why geen PR (repo-instelling 'Allow GitHub Actions to create pull requests');"
-          [ "$fresh" = 1 ] || why="$why main is intussen verder;"
 
           if [ -z "$why" ]; then
-            gh pr merge "$pr" --merge --match-head-commit "$sha" --delete-branch || true
-            # merge kan ook alleen auto-merge of een queue inschakelen; tel alleen MERGED.
-            [ "$(gh pr view "$pr" --json state -q .state)" = MERGED ] || why=" merge niet voltooid;"
+            # Versheid direct voor de merge, zodat het venster seconden is. Een
+            # base die daarna nog beweegt is niet uit te sluiten: GitHub kent
+            # geen verwachte-base bij een merge.
+            git fetch -q origin main
+            git merge-base --is-ancestor origin/main "$sha" || why=" main is intussen verder;"
+          fi
+          if [ -z "$why" ]; then
+            # De REST-merge merget nu of faalt; hij zet nooit auto-merge of een
+            # queue aan, en sha pint de geteste commit.
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$pr/merge" -f sha="$sha" -f merge_method=merge > /dev/null || true
+            if [ "$(gh pr view "$pr" --json state -q .state)" = MERGED ]; then
+              git push -q origin --delete "$BRANCH" || true
+            else
+              why=" merge niet voltooid;"
+            fi
           fi
           if [ -z "$why" ]; then
             touch "$RUNNER_TEMP/merged"
