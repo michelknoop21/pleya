@@ -60,7 +60,7 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 
 | ID | Bevinding | Status | SHA | Notitie |
 |----|-----------|--------|-----|---------|
-| BIGP-USP1 | Multi-command: gedeelde taakstate, parallelle resultaten en veilige bevestigingen | ACCEPTANCE GAP | — | Implementatie, onafhankelijke review en codegate groen; native taak/focusbeelden ontbreken door simulatorinvoer. Op expliciet verzoek door naar fase 2. |
+| BIGP-USP1 | Multi-command: gedeelde taakstate, parallelle resultaten en veilige bevestigingen | ACCEPTANCE GAP | `78b8f790` | Implementatie, onafhankelijke review en codegate groen; native taak/focusbeelden ontbreken door simulatorinvoer. Op expliciet verzoek door naar fase 2. |
 | BIGP-USP2 | Samen kijken: aanbevelingen uit bevoegde profiel- en librarydata | IN PROGRESS | — | Kleine filters/evidence-laag; onbekende toegang of kijkstatus bewijst geen gezamenlijk ongeziene titel. |
 | LOG1 | Pijltjes op een lege logreader gooien een assertie | FIXED | `614fc08` |
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
