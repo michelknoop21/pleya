@@ -264,7 +264,8 @@ class FindRun {
     final about = [item.summary, ...?item.genres, for (final r in (item.roles ?? const []).take(5)) r.tag];
     final shared = plotTokens(about.join(' ')).toSet().intersection(words);
     bool rare(String word) => index.length >= 200 && index.docsWith(word) * 100 <= index.length;
-    return shared.length >= 2 || shared.any((w) => subject.contains(w) || rare(w));
+    // One subject word is enough to browse a topic, never to name one film.
+    return shared.length >= 2 || shared.any((w) => (_browse && subject.contains(w)) || rare(w));
   }
 
   /// An abort that also fires with the run's own.

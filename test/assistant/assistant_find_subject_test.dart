@@ -294,4 +294,28 @@ void main() {
     expect(titles, isNot(contains('Venom')));
     expect(titles.length, lessThanOrEqualTo(5));
   });
+
+  test('looking for one film, one shared plot word is no evidence', () async {
+    // Hardware round 317 via the Ollama cloud: Cast Away not in the library,
+    // and Gravity came up as "high" on "stranded" alone.
+    final server = FakeServer(
+      'zolder',
+      libraries: {
+        'films': [
+          fakeItem('1', 'Gravity', summary: 'Two astronauts are stranded in space after an accident.'),
+          fakeItem('2', 'Big', summary: 'A boy wakes up in the body of a grown man.'),
+        ],
+      },
+    );
+    final ctx = findCtx([server], libraries: [fakeLib('zolder', 'films')]);
+    final data = await runFind(ctx, {
+      'kind': 'movie',
+      'candidates': [
+        {'title': 'Cast Away', 'year': 2000},
+      ],
+      'variants': ['Tom Hanks stranded on a deserted island', 'Tom Hanks vast op een onbewoond eiland'],
+    });
+
+    expect([for (final m in matchesOf(data)) m['title']], isNot(contains('Gravity')));
+  });
 }

@@ -69,6 +69,7 @@ void main() {
       for (final m in matchesOf(
         await runFind(ctx, {
           'kind': 'movie',
+          'subject': true,
           // What qwen3:8b sent for "een film over de ruimte".
           'variants': ['space', 'ruimte'],
         }),
