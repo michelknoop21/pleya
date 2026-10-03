@@ -9,6 +9,7 @@ import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
+import '../../../widgets/pleya_wordmark.dart';
 import 'tv_assistant_widgets.dart';
 import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
@@ -105,9 +106,21 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'P   ${c.header}',
-                style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
+              Row(
+                children: [
+                  Image.asset(
+                    PleyaWordmark.markAsset,
+                    height: TvHig.caption1 * pt,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                  SizedBox(width: 12 * pt),
+                  Expanded(
+                    child: Text(
+                      c.header,
+                      style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 10 * pt),
               Text(

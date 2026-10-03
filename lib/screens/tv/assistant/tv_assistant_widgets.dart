@@ -157,7 +157,7 @@ class TvAssistantChip extends StatefulWidget {
   /// A leading glyph, e.g. the follow-up arrow; examples go without.
   final IconData? icon;
 
-  /// One line in a smaller pill, for a row of follow-ups.
+  /// A smaller pill, for a row of follow-ups.
   final bool dense;
   final FocusNode? focusNode;
   final String? automationId;
@@ -206,7 +206,7 @@ class _TvAssistantChipState extends State<TvAssistantChip> {
             Flexible(
               child: Text(
                 widget.label,
-                maxLines: widget.dense ? 1 : 2,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: _focused ? colors.onInverseSurface : tokens(context).text,
