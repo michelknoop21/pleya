@@ -187,7 +187,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S3.1 | Migratie `0012`, `publications`, `publication_files`, soort `books` | `[ ]` | | |
+| S3.1 | Migratie `0013`, `publications`, `publication_files`, soort `books` | `[ ]` | | |
 | S3.2 | EPUB-analyser met zip- en XML-grenzen | `[ ]` | | |
 | S3.3 | Scannerdispatch per bibliotheeksoort, bestaande scannertests ongewijzigd groen | `[ ]` | | |
 | S3.4 | `/ebooks`-resources, `item_count`, `library.wrong_kind` | `[ ]` | | |
@@ -200,7 +200,7 @@ niet de bouw.
 | --- | --- | --- | --- | --- |
 | S4.1 | `.nfo`-parser inclusief cast en regie | `[ ]` | | |
 | S4.2 | Dekkingsmeting met de 80%-poort per bibliotheek | `[ ]` | | |
-| S4.3 | Velden op `Item`, migratie `0013` | `[ ]` | | |
+| S4.3 | Velden op `Item`, migratie `0014` | `[ ]` | | |
 | S4.4 | Artworkladder met cache en single-flight | `[ ]` | | |
 | S4.5 | Boekcovers op dezelfde ladder | `[ ]` | | |
 | S4.6 | Beheerendpoints artworkcache, YAML-tekst rechtgezet | `[ ]` | | |
@@ -383,7 +383,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S22.1 | Providerabstractie en kandidatenlaag, migratie `0019` | `[ ]` | | |
+| S22.1 | Providerabstractie en kandidatenlaag, migratie `0020` | `[ ]` | | |
 | S22.2 | TMDB-implementatie met rate-limit-backoff | `[ ]` | | |
 | S22.3 | Automatisch matchen met driestapsregel en ambiguïteitslijst | `[ ]` | | |
 | S22.4 | Automatisch artwork ophalen naar de cache op de ladder | `[ ]` | | |
