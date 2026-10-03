@@ -342,6 +342,25 @@ void main() {
       expect(focusedMatch(), 'm1', reason: 'nothing to read above the first card');
     });
 
+    // Seerr not set up: the titles are shown but none can be opened or
+    // requested, so the cards cannot be walked through and do not replace
+    // the list in the answer.
+    testWidgets('title cards that cannot be chosen leave the answer its list', (tester) async {
+      await pumpSurface(tester);
+      const shown = [
+        AssistantTitleMatch(matchId: 'u1', title: 'Heat', year: 1995, kind: 'movie', confidence: 'high', targets: []),
+        AssistantTitleMatch(matchId: 'u2', title: 'Ronin', year: 1998, kind: 'movie', confidence: 'high', targets: []),
+      ];
+      await showMatches(tester, shown);
+      c
+        ..answer = 'Ik vond deze titels op het web:\n1. Heat (1995)\n2. Ronin (1998)'
+        ..emit();
+      await settle(tester);
+
+      expect(find.byKey(const ValueKey('assistant.answer.body')), findsOneWidget);
+      expect(find.textContaining('2. Ronin (1998)'), findsOneWidget);
+    });
+
     testWidgets('D-pad through four results and on to the buttons keeps every focused control in the panel', (
       tester,
     ) async {
