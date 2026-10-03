@@ -1,0 +1,28 @@
+{
+  "days": 7,
+  "truncated": false,
+  "items": [
+    {
+      "user_id": "0198f2d0-0002-7000-8000-000000000002",
+      "username": "sanne",
+      "item_id": "0198f2d0-0003-7000-8000-000000000009",
+      "item_title": "A3",
+      "item_kind": "episode",
+      "series_id": "0198f2d0-0003-7000-8000-000000000007",
+      "series_title": "Severance",
+      "watched": true,
+      "play_count": 2,
+      "updated_at": "2026-10-02T21:14:09Z"
+    },
+    {
+      "user_id": "0198f2d0-0002-7000-8000-000000000001",
+      "username": "michel",
+      "item_id": "0198f2d0-0003-7000-8000-000000000011",
+      "item_title": "Grease",
+      "item_kind": "movie",
+      "watched": true,
+      "play_count": 1,
+      "updated_at": "2026-09-30T19:02:44Z"
+    }
+  ]
+}

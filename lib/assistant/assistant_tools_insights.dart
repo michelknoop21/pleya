@@ -296,8 +296,7 @@ final List<AssistantTool> _insightTools = [
         'What is being watched on a server and by whom: scope "now" for current streams, "period" for the most '
         'watched titles and most active users over the last days (1-31). One server per call; to cover several '
         'servers, call once per server. On Jellyfin and Emby a period counts each title once per user, at its '
-        'last play (the server keeps no play log), and only finished titles; on Pleya Server only "now" is '
-        'available.',
+        'last play (the server keeps no play log), and only finished titles; Pleya Server counts the same way.',
     risk: AssistantToolRisk.read,
     properties: const {
       'scope': {
@@ -328,11 +327,13 @@ final List<AssistantTool> _insightTools = [
               : _jellyfinPeriod(ctx, id, jf, days);
         case final PleyaServerClient ps when scope == 'now':
           return _streamsNow(ctx, id, await ps.streamSessions());
+        case final PleyaServerClient ps:
+          if (await _pleyaPeriod(ctx, id, ps, days) case final result?) return result;
       }
       final name = ctx.serverName(id);
       return AssistantToolResult({
         'server': clipText(name),
-        // Plex without Tautulli, or Pleya Server history (it keeps none).
+        // Plex without Tautulli, or a Pleya Server from before GET /watch-history.
         scope == 'now' ? 'now_unavailable_for' : 'history_unavailable_for': [clipText(name)],
       }, display: AssistantWatchStats(serverName: name, days: scope == 'now' ? null : days, available: false));
     },

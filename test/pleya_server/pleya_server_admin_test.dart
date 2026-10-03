@@ -99,6 +99,7 @@ void main() {
         () => c.createUser(name: 'kim', password: 'secret123'),
         () => c.deleteUser('u-2'),
         () => c.streamSessions(),
+        () => c.watchHistory(7),
       ];
       for (final call in calls) {
         await expectLater(call(), throwsA(isA<MediaServerAuthException>()));
@@ -182,6 +183,70 @@ void main() {
         }, status: 404),
       );
       await expectLater(c.listJobs(), throwsA(isA<MediaServerHttpException>()));
+    });
+  });
+
+  group('watch history', () {
+    test('watchHistory reads GET /watch-history with days, episodes carry their series', () async {
+      final c = client(
+        (_) => json(const {
+          'days': 7,
+          'truncated': true,
+          'items': [
+            {
+              'user_id': 'u-1',
+              'username': 'kim',
+              'item_id': 'e-1',
+              'item_title': 'Half Loop',
+              'item_kind': 'episode',
+              'series_id': 's-1',
+              'series_title': 'Severance',
+              'watched': true,
+              'play_count': 1,
+              'updated_at': '2026-10-02T21:14:09Z',
+            },
+            {
+              'user_id': 'u-2',
+              'username': 'sam',
+              'item_id': 'm-1',
+              'item_title': 'Dune',
+              'item_kind': 'movie',
+              'watched': true,
+              'play_count': 2,
+              'updated_at': '2026-10-01T20:00:00Z',
+            },
+          ],
+        }),
+      );
+      final history = await c.watchHistory(7);
+      expect(sent.single.$1, 'GET /watch-history');
+      expect(history.truncated, isTrue);
+      expect(history.items.first, (
+        userId: 'u-1',
+        userName: 'kim',
+        itemId: 'e-1',
+        title: 'Half Loop',
+        seriesId: 's-1',
+        seriesTitle: 'Severance',
+        updatedAt: DateTime.utc(2026, 10, 2, 21, 14, 9),
+      ));
+      expect(history.items.last.seriesId, isNull);
+    });
+
+    test('an older server without the route throws its unknown-route 404', () async {
+      final c = client(
+        (_) => json(const {
+          'error': {'code': 'library.not_found', 'message': 'unknown endpoint', 'retryable': false},
+        }, status: 404),
+      );
+      await expectLater(
+        c.watchHistory(7),
+        throwsA(
+          isA<MediaServerHttpException>()
+              .having((e) => e.statusCode, 'statusCode', 404)
+              .having((e) => e.message, 'message', 'library.not_found'),
+        ),
+      );
     });
   });
 
