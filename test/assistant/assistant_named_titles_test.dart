@@ -123,18 +123,32 @@ void main() {
 
   test('a find_media grid that led to an action leaves no card; one that did not stays', () async {
     final dune = MediaItem(id: 'd1', backend: MediaBackend.jellyfin, kind: MediaKind.movie, title: 'Dune');
-    AssistantTool tool(String name, AssistantDisplay? Function(AssistantToolContext) display) => AssistantTool(
+    AssistantTool tool(
+      String name,
+      AssistantDisplay? Function(AssistantToolContext) display, {
+      AssistantActionRecord? record,
+    }) => AssistantTool(
       name: name,
       description: name,
       risk: AssistantToolRisk.read,
       properties: const {},
       needsServer: false,
       serves: (_, _) => true,
-      run: (ctx, _, _) async => AssistantToolResult(const {'ok': true}, display: display(ctx)),
+      run: (ctx, _, _) async => AssistantToolResult(const {'ok': true}, display: display(ctx), record: record),
     );
     final tools = [
       tool('find_media', (_) => AssistantMediaGrid([(item: dune, group: null)])),
-      tool('refresh_metadata', (_) => null),
+      tool(
+        'refresh_metadata',
+        (_) => null,
+        record: const AssistantActionRecord(
+          kind: AssistantActionKind.refreshMetadata,
+          serverName: 'W',
+          subject: 'Dune',
+        ),
+      ),
+      // A read that names the item is no action: the grid stays.
+      tool('find_subtitles', (_) => null),
     ];
     Future<AssistantRunResult> run(List<Map<String, Object?>> calls) {
       var turn = 0;
@@ -191,6 +205,10 @@ void main() {
       {
         'name': 'find_media',
         'args': {'query': 'Dune'},
+      },
+      {
+        'name': 'find_subtitles',
+        'args': {'item_id': 'd1'},
       },
     ]);
     expect(found.displays.single, isA<AssistantMediaGrid>());

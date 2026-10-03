@@ -164,7 +164,7 @@ const _watchTitles = 5;
 /// (still 7).
 int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
-  AssistantTitleMatches(:final matches) => matches.length,
+  AssistantTitleMatches(:final matches) => matches.where((m) => m.targets.isNotEmpty || m.request != null).length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
   AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
   AssistantWatchStats(:final titles) => titles.take(_watchTitles).where((t) => t.target != null).length,

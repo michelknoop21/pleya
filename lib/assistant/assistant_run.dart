@@ -374,8 +374,11 @@ class AssistantRun {
       final outcome = await tool.run(_ctx, serverId, args);
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
-          if (record != null) _actions.add(record);
-          _consumeLookups(args);
+          if (record != null) {
+            _actions.add(record);
+            // Only an action ends a lookup: a read with that item_id does not.
+            _consumeLookups(args);
+          }
           if (display != null) _displays.add(display);
           if (tool.name == 'find_media' && display is AssistantMediaGrid) {
             _lookups[display] = {for (final e in display.entries) e.item.id};

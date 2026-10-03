@@ -349,7 +349,11 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   final served = [for (final (_, r) in read) ?r];
   final plays = [for (final r in served) ...r.plays];
   final hours = served.isNotEmpty && served.every((r) => r.hours);
-  final partial = served.any((r) => r.extra['partial'] == true);
+  // A server that ran out of time, or whose history hit the cap, may miss
+  // plays: the card says so rather than ranking as if complete.
+  final partial = served.any(
+    (r) => r.extra['partial'] == true || r.extra.keys.any((k) => k.startsWith('capped_at_plays')),
+  );
 
   final titles = <String, ({String title, int plays, Set<String> viewers, Set<ServerId> servers, bool show})>{};
   final users = <String, ({String name, int plays, int seconds})>{};
