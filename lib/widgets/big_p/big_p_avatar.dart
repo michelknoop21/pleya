@@ -36,7 +36,8 @@ class BigPAvatar extends StatefulWidget {
   final int nodSignal;
 
   /// Working: the arm points toward this side. Alignment(1, 0) is straight
-  /// right, Alignment(1, 1) 45° down; x < 0 switches to the left-pointing pose.
+  /// right, Alignment(1, 1) 45° down; x < 0 (the target on his left) raises
+  /// a finger instead: the three-quarter left-pointing art is not used here.
   final Alignment? pointAt;
 
   /// Hop with squash and stretch on first build.
@@ -290,7 +291,7 @@ class BigPAvatarState extends State<BigPAvatar> with SingleTickerProviderStateMi
     // Pose: a gesture beats the state's pose. Swap without crossfade at the midpoint.
     if (_gesturePose != null && t > _gestureUntil) _gesturePose = null;
     var want = _gesturePose ?? s.pose;
-    if (want == 'point') want = (widget.pointAt?.x ?? 1) < 0 ? 'wijzen_links' : 'wijzen';
+    if (want == 'point') want = (widget.pointAt?.x ?? 1) < 0 ? 'vinger_presenteren' : 'wijzen';
     if (want != _poseTo) {
       _poseFrom = _poseT < kPoseSwitch / 2 ? _poseFrom : _poseTo;
       _poseTo = want;
