@@ -31,7 +31,7 @@ class TvAssistantWatchCard extends StatelessWidget {
     final users = [for (final u in s.users.take(_rows)) (label: u.name, plays: u.plays)];
     final columns = [if (users.isNotEmpty) _Ranking(heading: d.viewers, rows: users)];
     // No rows because no server could answer is not "nothing watched".
-    final empty = s.days != null && columns.isEmpty && s.titles.isEmpty && s.unavailable.isEmpty;
+    final empty = s.days != null && columns.isEmpty && s.titles.isEmpty && s.unavailable.isEmpty && !s.partial;
 
     return TvAssistantCard(
       child: Column(
@@ -102,16 +102,14 @@ class TvAssistantWatchCard extends StatelessWidget {
                 ],
               ],
             ),
-          for (final name in s.unavailable)
+          for (final note in [if (s.partial) d.partialData, for (final name in s.unavailable) d.noSource(server: name)])
             Padding(
               padding: EdgeInsets.only(top: 12 * pt),
               child: Row(
                 children: [
                   Icon(Symbols.info_rounded, color: tk.text.withValues(alpha: 0.6), size: 20 * pt),
                   SizedBox(width: 8 * pt),
-                  Expanded(
-                    child: Text(d.noSource(server: name), style: muted),
-                  ),
+                  Expanded(child: Text(note, style: muted)),
                 ],
               ),
             ),

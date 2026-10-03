@@ -13,11 +13,17 @@ String assistantTitleKey(String title) => title.toLowerCase().replaceAll(RegExp(
 List<({String title, int? year})> assistantNamedTitles(String answer) {
   final found = <({String title, int? year})>[];
   final seen = <String>{};
-  void add(String raw, String? year) {
+  void add(String raw, String? rawYear) {
     final title = raw.trim();
+    // A year find_title would refuse drops the year, not every title.
+    final year = switch (int.tryParse(rawYear ?? '')) {
+      final y? when y >= 1870 && y <= 2100 => y,
+      _ => null,
+    };
     final key = assistantTitleKey(title);
-    if (key.isEmpty || title.length > 80 || !seen.add(key)) return;
-    found.add((title: title, year: year == null ? null : int.tryParse(year)));
+    // Dune (1984) and Dune (2021) are two titles.
+    if (key.isEmpty || title.length > 80 || !seen.add('$key:${year ?? ''}')) return;
+    found.add((title: title, year: year));
   }
 
   for (final m in RegExp(r'«([^»\n]{1,80})»(?:\s*\((\d{4})\))?').allMatches(answer)) {
@@ -35,15 +41,22 @@ List<({String title, int? year})> assistantNamedTitles(String answer) {
   return found.take(5).toList();
 }
 
-/// The titles [displays] already show as cards or rows.
-Set<String> assistantShownTitleKeys(Iterable<AssistantDisplay> displays) => {
+/// The titles [displays] show as cards, as title key and year (null when
+/// the card has none). Only what is drawn counts: a title past a card's cap
+/// has no card, so a named title there still gets one.
+Set<({String key, int? year})> assistantShownTitles(Iterable<AssistantDisplay> displays) => {
   for (final d in displays)
     ...switch (d) {
-      AssistantTitleMatches(:final matches) => [for (final m in matches) m.title],
-      AssistantMediaGrid(:final entries) => [for (final e in entries) e.item.title ?? ''],
-      AssistantRequestOptions(:final options) => [for (final o in options) o.title],
-      AssistantWatchStats(:final titles) => [for (final t in titles) t.title],
-      AssistantServerComparison(:final missing) => [for (final i in missing) i.title ?? ''],
-      _ => const <String>[],
-    }.map(assistantTitleKey),
+      AssistantTitleMatches(:final matches) => [for (final m in matches) (m.title, m.year)],
+      AssistantMediaGrid(:final entries) => [for (final e in entries.take(12)) (e.item.title ?? '', e.item.year)],
+      AssistantRequestOptions(:final options) => [for (final o in options) (o.title, o.year)],
+      AssistantWatchStats(:final titles) => [for (final t in titles.take(5)) (t.title, t.target?.item.year)],
+      AssistantServerComparison(:final missing) => [for (final i in missing.take(12)) (i.title ?? '', i.year)],
+      _ => const <(String, int?)>[],
+    }.map((t) => (key: assistantTitleKey(t.$1), year: t.$2)),
 };
+
+/// Whether a card for [key] and [year] answers a title named with
+/// [namedYear]: the same title, and the same year when both are known.
+bool assistantSameTitle(({String key, int? year}) card, String key, int? namedYear) =>
+    card.key == key && (namedYear == null || card.year == null || card.year == namedYear);

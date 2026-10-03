@@ -167,7 +167,7 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantTitleMatches(:final matches) => matches.length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
   AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
-  AssistantWatchStats(:final titles) => min(titles.length, _watchTitles),
+  AssistantWatchStats(:final titles) => titles.take(_watchTitles).where((t) => t.target != null).length,
   _ => 0,
 };
 
@@ -220,6 +220,8 @@ class TvAssistantDisplayView extends StatelessWidget {
     }
   }
 
+  bool _selectable(AssistantTitleMatch m) => m.targets.isNotEmpty || m.request != null;
+
   Widget _matches(double pt, List<AssistantTitleMatch> matches) {
     final list = Column(
       children: [
@@ -230,10 +232,12 @@ class TvAssistantDisplayView extends StatelessWidget {
               match: match,
               index: optionOffset + i,
               compact: compact,
-              focusNode: i == 0 ? firstOptionNode : null,
-              onSelect: match.targets.isEmpty && match.request != null && onPickOption == null
-                  ? null
-                  : () => _selectMatch(match),
+              focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
+              // Nothing to open and nothing to request: shown, never a dead
+              // focus stop.
+              onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
+                  ? () => _selectMatch(match)
+                  : null,
             ),
           ),
       ],
@@ -361,7 +365,7 @@ class TvAssistantDisplayView extends StatelessWidget {
                   matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
                   title: x.title,
                   year: x.target?.item.year,
-                  kind: x.target?.item.kind.name ?? 'movie',
+                  kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
                   confidence: 'high',
                   targets: [?x.target],
                   snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),

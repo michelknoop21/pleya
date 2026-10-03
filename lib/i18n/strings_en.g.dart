@@ -7920,6 +7920,9 @@ class TranslationsAssistantDisplaysEn {
 
 	/// en: 'Nothing was watched in this period.'
 	String get nothingWatched => 'Nothing was watched in this period.';
+
+	/// en: 'Not every server could be read in time, so this may be incomplete.'
+	String get partialData => 'Not every server could be read in time, so this may be incomplete.';
 }
 
 // Path: assistant.followUp
@@ -7938,12 +7941,6 @@ class TranslationsAssistantFollowUpEn {
 
 	/// en: 'Who watched the most this week?'
 	String get watchWeek => 'Who watched the most this week?';
-
-	/// en: 'Which films on ${server} are missing on ${other}?'
-	String compareBackMovies({required Object server, required Object other}) => 'Which films on ${server} are missing on ${other}?';
-
-	/// en: 'Which series on ${server} are missing on ${other}?'
-	String compareBackShows({required Object server, required Object other}) => 'Which series on ${server} are missing on ${other}?';
 }
 
 // Path: assistant.match
@@ -10358,11 +10355,10 @@ extension on Translations {
 			'assistant.displays.mostWatched' => 'Most watched',
 			'assistant.displays.nobodyNow' => 'Nobody is watching right now.',
 			'assistant.displays.nothingWatched' => 'Nothing was watched in this period.',
+			'assistant.displays.partialData' => 'Not every server could be read in time, so this may be incomplete.',
 			'assistant.followUp.watchNow' => 'Who is watching right now?',
 			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
-			'assistant.followUp.compareBackMovies' => ({required Object server, required Object other}) => 'Which films on ${server} are missing on ${other}?',
-			'assistant.followUp.compareBackShows' => ({required Object server, required Object other}) => 'Which series on ${server} are missing on ${other}?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In your library · ${servers}',
 			'assistant.match.maybe' => 'possibly',
 			'assistant.match.movie' => 'Movie',

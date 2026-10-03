@@ -8,7 +8,6 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
-import '../../../media/media_kind.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -157,6 +156,8 @@ String assistantHeadline(AssistantController c) {
 /// At most two questions that follow from what the run showed, in the UI's
 /// language. Pleya builds them from the displays, never from model prose,
 /// and each one stands on its own: a new ask carries no memory of this one.
+/// They carry no server, user or title names: a follow-up is sent as the
+/// user's own words, and those names come from servers, not from the user.
 List<String> assistantFollowUps(List<AssistantDisplay> displays) {
   final f = t.assistant.followUp;
   for (final d in displays) {
@@ -169,12 +170,6 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays) {
         return [f.watchWeek, f.watchMonth];
       case AssistantWatchStats(:final days?):
         return [f.watchNow, if (days < 30) f.watchMonth else f.watchWeek];
-      case AssistantServerComparison(:final serverName, :final otherServerName, :final kind):
-        return [
-          kind == MediaKind.show
-              ? f.compareBackShows(server: otherServerName, other: serverName)
-              : f.compareBackMovies(server: otherServerName, other: serverName),
-        ];
       default:
         break;
     }

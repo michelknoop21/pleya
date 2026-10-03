@@ -3432,6 +3432,7 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 	@override String get mostWatched => 'Meest bekeken';
 	@override String get nobodyNow => 'Er kijkt nu niemand.';
 	@override String get nothingWatched => 'In deze periode is niets bekeken.';
+	@override String get partialData => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.';
 }
 
 // Path: assistant.followUp
@@ -3444,8 +3445,6 @@ class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
 	@override String get watchNow => 'Wie kijkt er nu?';
 	@override String get watchMonth => 'Wie keek het meest de afgelopen 30 dagen?';
 	@override String get watchWeek => 'Wie keek het meest deze week?';
-	@override String compareBackMovies({required Object server, required Object other}) => 'Welke films op ${server} ontbreken op ${other}?';
-	@override String compareBackShows({required Object server, required Object other}) => 'Welke series op ${server} ontbreken op ${other}?';
 }
 
 // Path: assistant.match
@@ -5800,11 +5799,10 @@ extension on TranslationsNl {
 			'assistant.displays.mostWatched' => 'Meest bekeken',
 			'assistant.displays.nobodyNow' => 'Er kijkt nu niemand.',
 			'assistant.displays.nothingWatched' => 'In deze periode is niets bekeken.',
+			'assistant.displays.partialData' => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.',
 			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
 			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
 			'assistant.followUp.watchWeek' => 'Wie keek het meest deze week?',
-			'assistant.followUp.compareBackMovies' => ({required Object server, required Object other}) => 'Welke films op ${server} ontbreken op ${other}?',
-			'assistant.followUp.compareBackShows' => ({required Object server, required Object other}) => 'Welke series op ${server} ontbreken op ${other}?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In je bibliotheek · ${servers}',
 			'assistant.match.maybe' => 'mogelijk',
 			'assistant.match.movie' => 'Film',

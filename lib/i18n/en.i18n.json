@@ -2511,14 +2511,13 @@
       "viewers": "Viewers",
       "mostWatched": "Most watched",
       "nobodyNow": "Nobody is watching right now.",
-      "nothingWatched": "Nothing was watched in this period."
+      "nothingWatched": "Nothing was watched in this period.",
+      "partialData": "Not every server could be read in time, so this may be incomplete."
     },
     "followUp": {
       "watchNow": "Who is watching right now?",
       "watchMonth": "Who watched the most in the last 30 days?",
-      "watchWeek": "Who watched the most this week?",
-      "compareBackMovies": "Which films on ${server} are missing on ${other}?",
-      "compareBackShows": "Which series on ${server} are missing on ${other}?"
+      "watchWeek": "Who watched the most this week?"
     },
     "match": {
       "inLibrary": "In your library · ${servers}",

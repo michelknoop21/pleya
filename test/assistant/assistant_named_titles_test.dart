@@ -9,6 +9,10 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 
 class _Entitled extends AssistantEntitlement {
@@ -17,8 +21,20 @@ class _Entitled extends AssistantEntitlement {
   Future<AssistantEntitlementState> check() async => AssistantEntitlementState.entitled;
 }
 
-AssistantTitleMatch _match(String title) =>
-    AssistantTitleMatch(matchId: title, title: title, kind: 'movie', confidence: 'high', targets: const []);
+AssistantTitleMatch _match(String title, {bool inLibrary = false}) => AssistantTitleMatch(
+  matchId: title,
+  title: title,
+  kind: 'movie',
+  confidence: 'high',
+  targets: [
+    if (inLibrary)
+      (
+        serverId: ServerId('w'),
+        serverName: 'W',
+        item: MediaItem(id: title, backend: MediaBackend.jellyfin, kind: MediaKind.movie, title: title),
+      ),
+  ],
+);
 
 /// Films and series Big P names get a card from Pleya, not from the model.
 void main() {
@@ -33,6 +49,13 @@ void main() {
     ]);
     expect(assistantNamedTitles('Ik heb de scan gestart.'), isEmpty);
     expect(assistantNamedTitles('«A» «B» «C» «D» «E» «F» «a»'), hasLength(5));
+    expect(assistantNamedTitles('«Dune» (1984) en «Dune» (2021)'), [
+      (title: 'Dune', year: 1984),
+      (title: 'Dune', year: 2021),
+    ], reason: 'a remake is its own title');
+    expect(assistantNamedTitles('«Gravity» (0000)'), [
+      (title: 'Gravity', year: null),
+    ], reason: 'a year find_title would refuse is dropped, not the title');
   });
 
   test('a named title without a card gets one, exact titles only, already shown ones skipped', () async {
@@ -48,7 +71,11 @@ void main() {
         asked.add(args);
         return AssistantToolResult(
           const {},
-          display: AssistantTitleMatches(ctx, [_match('Interstellar'), _match('Gravity')]),
+          display: AssistantTitleMatches(ctx, [
+            _match('Interstellar', inLibrary: true),
+            _match('Gravity', inLibrary: true),
+            _match('Interstellar'),
+          ]),
         );
       },
     );
@@ -85,7 +112,87 @@ void main() {
       {'title': 'Interstellar', 'year': 2014},
     ]);
     final cards = result.displays.single as AssistantTitleMatches;
-    expect([for (final m in cards.matches) m.title], ['Interstellar'], reason: 'Gravity was not named');
+    expect(
+      cards.matches,
+      hasLength(1),
+      reason: 'Gravity was not named; a card with nothing to open or request is dropped',
+    );
+    expect(cards.matches.single.targets, isNotEmpty);
     expect(steps.last.display, same(cards), reason: 'the panel shows it as it does any tool display');
+  });
+
+  test('a find_media grid that led to an action leaves no card; one that did not stays', () async {
+    final dune = MediaItem(id: 'd1', backend: MediaBackend.jellyfin, kind: MediaKind.movie, title: 'Dune');
+    AssistantTool tool(String name, AssistantDisplay? Function(AssistantToolContext) display) => AssistantTool(
+      name: name,
+      description: name,
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (ctx, _, _) async => AssistantToolResult(const {'ok': true}, display: display(ctx)),
+    );
+    final tools = [
+      tool('find_media', (_) => AssistantMediaGrid([(item: dune, group: null)])),
+      tool('refresh_metadata', (_) => null),
+    ];
+    Future<AssistantRunResult> run(List<Map<String, Object?>> calls) {
+      var turn = 0;
+      final model = AssistantModelClient(
+        AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan:11434', model: 'm'),
+        httpClient: MockClient((_) async {
+          final message = turn < calls.length
+              ? {
+                  'role': 'assistant',
+                  'content': '',
+                  'tool_calls': [
+                    {
+                      'id': 'c$turn',
+                      'type': 'function',
+                      'function': {'name': calls[turn]['name'], 'arguments': jsonEncode(calls[turn]['args'])},
+                    },
+                  ],
+                }
+              : {'role': 'assistant', 'content': 'Klaar.'};
+          turn++;
+          return http.Response(
+            jsonEncode({
+              'choices': [
+                {'message': message},
+              ],
+            }),
+            200,
+            headers: const {'content-type': 'application/json'},
+          );
+        }),
+      );
+      return AssistantRun(
+        model: model,
+        context: AssistantToolContext(servers: MultiServerManager()),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        tools: tools,
+      ).ask('x');
+    }
+
+    final acted = await run([
+      {
+        'name': 'find_media',
+        'args': {'query': 'Dune'},
+      },
+      {
+        'name': 'refresh_metadata',
+        'args': {'item_id': 'd1'},
+      },
+    ]);
+    expect(acted.displays, isEmpty, reason: 'the lookup led to the action');
+
+    final found = await run([
+      {
+        'name': 'find_media',
+        'args': {'query': 'Dune'},
+      },
+    ]);
+    expect(found.displays.single, isA<AssistantMediaGrid>());
   });
 }

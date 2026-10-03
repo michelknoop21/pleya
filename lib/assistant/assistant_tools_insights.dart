@@ -59,6 +59,7 @@ class AssistantWatchStats extends AssistantDisplay {
     this.titles = const [],
     this.users = const [],
     this.unavailable = const [],
+    this.partial = false,
   });
 
   /// The servers that answered, joined; the asked ones when none did.
@@ -67,7 +68,11 @@ class AssistantWatchStats extends AssistantDisplay {
   /// Null for "now".
   final int? days;
   final List<WatchSession> sessions;
-  final List<({String title, int plays, List<String> viewers, AssistantTitleTarget? target})> titles;
+  final List<({String title, int plays, List<String> viewers, bool show, AssistantTitleTarget? target})> titles;
+
+  /// A server answered only in part (its time ran out): no rows is then not
+  /// "nothing watched".
+  final bool partial;
   final List<({String name, int plays, int seconds})> users;
 
   /// Servers with no source for the asked scope, each named once.

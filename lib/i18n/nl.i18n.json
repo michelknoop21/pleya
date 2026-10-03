@@ -2511,14 +2511,13 @@
       "viewers": "Kijkers",
       "mostWatched": "Meest bekeken",
       "nobodyNow": "Er kijkt nu niemand.",
-      "nothingWatched": "In deze periode is niets bekeken."
+      "nothingWatched": "In deze periode is niets bekeken.",
+      "partialData": "Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn."
     },
     "followUp": {
       "watchNow": "Wie kijkt er nu?",
       "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",
-      "watchWeek": "Wie keek het meest deze week?",
-      "compareBackMovies": "Welke films op ${server} ontbreken op ${other}?",
-      "compareBackShows": "Welke series op ${server} ontbreken op ${other}?"
+      "watchWeek": "Wie keek het meest deze week?"
     },
     "match": {
       "inLibrary": "In je bibliotheek · ${servers}",

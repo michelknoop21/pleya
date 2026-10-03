@@ -258,32 +258,42 @@ class AssistantRun {
   int _stepIndex = 0;
 
   /// Titles the answer names without a card get one: Pleya looks them up
-  /// itself with find_title and keeps only the exact titles, so each can be
-  /// opened from a library or requested. Never left to the model alone.
+  /// itself with find_title and keeps the exact titles that can be opened
+  /// from a library or requested. Never left to the model alone. After an
+  /// action the action is the answer, and a named title is its subject.
   Future<void> _cardsForNamedTitles(String answer) async {
-    final shown = assistantShownTitleKeys(_displays);
+    if (_actions.isNotEmpty || _cancelled) return;
+    final shown = assistantShownTitles(_displays);
     final named = [
       for (final t in assistantNamedTitles(answer))
-        if (!shown.contains(assistantTitleKey(t.title))) t,
+        if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
     ];
-    if (named.isEmpty || _cancelled) return;
+    if (named.isEmpty) return;
     final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
     if (tool == null) return;
-    final wanted = {for (final t in named) assistantTitleKey(t.title)};
     final index = _stepIndex++;
     onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.started));
     AssistantDisplay? display;
     try {
+      final titles = {for (final t in named) t.title}.toList();
       final outcome = await tool.run(_ctx, null, {
         'candidates': [
           for (final t in named) {'title': t.title, 'year': ?t.year},
         ],
-        'variants': [for (final t in named) t.title, if (named.length == 1) named.single.title],
+        'variants': [...titles, if (titles.length == 1) titles.single.toLowerCase()],
       });
       if (outcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
         final exact = [
           for (final m in matches)
-            if (wanted.contains(assistantTitleKey(m.title))) m,
+            if ((m.targets.isNotEmpty || m.request != null) &&
+                named.any(
+                  (t) => assistantSameTitle(
+                    (key: assistantTitleKey(m.title), year: m.year),
+                    assistantTitleKey(t.title),
+                    t.year,
+                  ),
+                ))
+              m,
         ];
         if (exact.isNotEmpty) _displays.add(display = AssistantTitleMatches(context, exact));
       }
@@ -291,6 +301,20 @@ class AssistantRun {
       appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
     }
     onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.done, display: display));
+  }
+
+  /// find_media grids whose titles a later call acted on: a lookup on the way
+  /// to an action, so the action is the result, not the grid.
+  final Map<AssistantMediaGrid, Set<String>> _lookups = {};
+
+  void _consumeLookups(Map<String, Object?> args) {
+    final item = args['item_id'];
+    if (item is! String) return;
+    _lookups.removeWhere((grid, ids) {
+      if (!ids.contains(item)) return false;
+      _displays.remove(grid);
+      return true;
+    });
   }
 
   Future<Map<String, Object?>> _execute(AssistantToolCall call) async {
@@ -351,9 +375,14 @@ class AssistantRun {
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
           if (record != null) _actions.add(record);
+          _consumeLookups(args);
           if (display != null) _displays.add(display);
+          if (tool.name == 'find_media' && display is AssistantMediaGrid) {
+            _lookups[display] = {for (final e in display.entries) e.item.id};
+          }
           return data;
         case final AssistantPendingAction action:
+          _consumeLookups(args);
           return await _confirmAndRun(tool, action);
       }
     } on AssistantToolError catch (e) {

@@ -349,6 +349,7 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   final served = [for (final (_, r) in read) ?r];
   final plays = [for (final r in served) ...r.plays];
   final hours = served.isNotEmpty && served.every((r) => r.hours);
+  final partial = served.any((r) => r.extra['partial'] == true);
 
   final titles = <String, ({String title, int plays, Set<String> viewers, Set<ServerId> servers, bool show})>{};
   final users = <String, ({String name, int plays, int seconds})>{};
@@ -382,7 +383,13 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   ]);
   final topTitles = [
     for (final (i, t) in ranked.indexed)
-      (title: t.title, plays: t.plays, viewers: t.viewers.toList(), target: i < targets.length ? targets[i] : null),
+      (
+        title: t.title,
+        plays: t.plays,
+        viewers: t.viewers.toList(),
+        show: t.show,
+        target: i < targets.length ? targets[i] : null,
+      ),
   ];
   final topUsers = users.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
   return AssistantToolResult(
@@ -406,6 +413,7 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,
+        partial: partial,
         titles: topTitles,
         users: topUsers,
         unavailable: [for (final id in unavailable) ctx.serverName(id)],
@@ -417,10 +425,11 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
 const _watchTargets = 5;
 
 /// The library copy of a watched title on one of the [servers] it was played
-/// on: the same title key of the right kind, outside Home's hidden
+/// on: the one item with the same title key and kind, outside Home's hidden
 /// libraries, or null. A history row has no item id that every backend
-/// keeps, so the title is looked up; the servers are asked at once, each for
-/// at most five seconds.
+/// keeps, so the title is looked up; two copies with that title (Dune 1984
+/// and 2021) are ambiguous and open nothing rather than the wrong film. The
+/// servers are asked at once, each for at most five seconds in all.
 Future<AssistantTitleTarget?> _watchTarget(
   AssistantToolContext ctx,
   String title,
@@ -431,22 +440,23 @@ Future<AssistantTitleTarget?> _watchTarget(
   Future<AssistantTitleTarget?> on(ServerId id) async {
     final client = ctx.userClient(id);
     if (client == null || ctx.cancelled) return null;
-    try {
-      final found = await client.searchItems(clipText(title, 100), limit: 10).timeout(const Duration(seconds: 5));
-      if (ctx.cancelled) return null;
-      final items = filterHiddenLibraryItems(found, await _hiddenLibraryKeys(ctx, id));
-      for (final item in items) {
-        if (item.kind != (show ? MediaKind.show : MediaKind.movie)) continue;
-        if (_titleKey(show, item.title ?? '') != want) continue;
-        final scoped = (item.serverId?.isEmpty ?? true) ? item.copyWith(serverId: id.value) : item;
-        return (serverId: id, serverName: ctx.serverName(id), item: scoped);
-      }
-    } catch (_) {
-      // A slow or failing search leaves the title without a library copy.
-    }
-    return null;
+    final found = await client.searchItems(clipText(title, 100), limit: 10);
+    if (ctx.cancelled) return null;
+    final same = [
+      for (final item in filterHiddenLibraryItems(found, await _hiddenLibraryKeys(ctx, id)))
+        if (item.kind == (show ? MediaKind.show : MediaKind.movie) && _titleKey(show, item.title ?? '') == want) item,
+    ];
+    if (same.length != 1) return null;
+    final item = same.single;
+    final scoped = (item.serverId?.isEmpty ?? true) ? item.copyWith(serverId: id.value) : item;
+    return (serverId: id, serverName: ctx.serverName(id), item: scoped);
   }
 
-  final found = await Future.wait([for (final id in servers) on(id)]);
-  return found.nonNulls.firstOrNull;
+  Future<AssistantTitleTarget?> bounded(ServerId id) =>
+      on(id).timeout(const Duration(seconds: 5), onTimeout: () => null).catchError((Object _) => null);
+
+  final found = [
+    for (final t in await Future.wait([for (final id in servers) bounded(id)])) ?t,
+  ];
+  return found.firstOrNull;
 }

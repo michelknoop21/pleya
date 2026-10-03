@@ -30,7 +30,7 @@ void main() {
         days: 7,
         users: [(name: 'Gideuh', plays: 36, seconds: 0), (name: 'Jan', plays: 6, seconds: 0)],
         titles: [
-          (title: 'The Block', plays: 19, viewers: ['Gideuh', 'Jan'], target: null),
+          (title: 'The Block', plays: 19, viewers: ['Gideuh', 'Jan'], show: true, target: null),
         ],
         unavailable: ['Zolder'],
       ),
@@ -61,9 +61,10 @@ void main() {
               title: 'The Block',
               plays: 19,
               viewers: const ['Gideuh', 'Jan'],
+              show: true,
               target: (serverId: ServerId('w'), serverName: 'W', item: item),
             ),
-            (title: 'House', plays: 7, viewers: const ['Jan'], target: null),
+            (title: 'House', plays: 7, viewers: const ['Jan'], show: true, target: null),
           ],
         ),
         onOpenTitle: opened.add,
@@ -72,6 +73,11 @@ void main() {
     final cards = find.byType(TvAssistantMatchCard);
     expect(cards, findsNWidgets(2));
     expect(find.text('19× bekeken · Gideuh · Jan'), findsOneWidget);
+    expect(
+      tester.widget<TvAssistantMatchCard>(cards.last).onSelect,
+      isNull,
+      reason: 'no library copy: shown, not a dead stop',
+    );
     tester.widget<TvAssistantMatchCard>(cards.first).onSelect!();
     expect(opened.single.item.id, 's1');
   });
@@ -122,21 +128,6 @@ void main() {
     expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)]), [f.watchNow, f.watchMonth]);
     expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 30)]), [f.watchNow, f.watchWeek]);
     expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P')]), [f.watchWeek, f.watchMonth]);
-    expect(
-      assistantFollowUps([
-        AssistantServerComparison(
-          serverId: ServerId('z'),
-          serverName: 'Zolder',
-          otherServerId: ServerId('k'),
-          otherServerName: 'Kelder',
-          kind: MediaKind.movie,
-          missing: [],
-          missingTotal: 0,
-          capped: false,
-        ),
-      ]),
-      ['Welke films op Kelder ontbreken op Zolder?'],
-    );
     expect(assistantFollowUps(const []), isEmpty);
     expect(
       assistantFollowUps(const [
@@ -145,6 +136,12 @@ void main() {
       isEmpty,
       reason: 'no server answered: a follow-up would ask the same silent servers',
     );
+  });
+
+  testWidgets('a server that ran out of time is not "nothing watched"', (tester) async {
+    await pump(tester, const AssistantWatchStats(serverName: 'Pleya', days: 7, partial: true));
+    expect(find.text('In deze periode is niets bekeken.'), findsNothing);
+    expect(find.text('Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.'), findsOneWidget);
   });
 
   testWidgets('no server answered is not "nothing watched"', (tester) async {
