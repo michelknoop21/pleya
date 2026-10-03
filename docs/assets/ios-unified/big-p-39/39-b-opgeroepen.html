@@ -1,0 +1,9 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>39 B Opgeroepen</title>
+<link rel="stylesheet" href="bp39.css"><script src="bp39.js"></script></head><body><script>
+document.body.innerHTML = homeBg({out:true}) + tabbar() + `<div class="dim"></div>
+<div class="ball" style="left:12px;right:12px;top:96px">
+  <div class="greet">Hoi Michel, wat zoeken we?</div>
+  <div class="pills"><span class="pill">Wat kan ik vanavond kijken?</span><span class="pill">Welke films heb ik nog niet gezien?</span><span class="pill">Wie heeft deze week het meest gekeken?</span></div>
+</div>` + tail(318, 324) + bp('bigp-zwaaien', {left:214, top:314, width:190}) +
+`<div class="input" style="top:520px"><span class="txt ph"><span class="caret"></span> Vraag Big P</span><span class="send off">${I.up}</span></div>` + keyboard();
+</script></body></html>
