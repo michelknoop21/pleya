@@ -86,7 +86,7 @@ class TvAssistantConversation extends StatelessWidget {
           ),
           SizedBox(height: 14 * pt),
         ],
-        Text(t.assistant.idle.greeting(name: name), style: headlineStyle),
+        Text(assistantGreeting(name), style: headlineStyle),
         gap,
         Align(alignment: Alignment.centerLeft, child: ask()),
         gap,
@@ -148,7 +148,7 @@ class TvAssistantConversation extends StatelessWidget {
               (d is AssistantTitleMatches || d is AssistantMediaGrid || d is AssistantRequestOptions),
         );
     final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
-    final headline = cards ? assistantWithoutList(answer) : answer;
+    final headline = cards && answer.isNotEmpty ? assistantCardsLead(controller) : answer;
     final head = <Widget>[
       if (c.state == AssistantSurfaceState.result) ...[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],

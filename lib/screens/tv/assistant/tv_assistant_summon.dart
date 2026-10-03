@@ -18,6 +18,7 @@ import '../../../automation/automation_node.dart';
 import '../../../focus/key_event_utils.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
+import '../../../profiles/active_profile_provider.dart';
 import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../services/apple_tv_remote_touch_service.dart';
 import '../../../services/speech_search_service.dart';
@@ -328,7 +329,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
           ? null
           : TvAssistantConversation(
               controller: c,
-              name: '',
+              name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
               servers: '',
               compact: true,
               resultTime: MaterialLocalizations.of(context).formatTimeOfDay(

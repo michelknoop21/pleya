@@ -121,6 +121,7 @@ class TvAssistantOptionCard extends StatelessWidget {
       focusNode: focusNode,
       borderRadius: 18 * pt,
       disableScale: true,
+      scrollOnlyWhenHidden: true,
       semanticLabel: '${option.title}, $status',
       automationId: AutomationIds.assistantOption,
       automationInstance: '$index',
