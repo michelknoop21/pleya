@@ -241,13 +241,29 @@ void main() {
         'Gevonden\nDe Mission: Impossible-reeks, Top Gun en Jack Reacher. 2 * 3 = 6.',
       );
       // Not emphasis: a title, sums and a list bullet.
-      for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', '* Top Gun (1986)']) {
+      expect(
+        assistantPlainText('* Top Gun (1986)\n- Zie [de lijst](https://example.com/x) voor meer.'),
+        '• Top Gun (1986)\n• Zie de lijst voor meer.',
+      );
+      for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', 'Jaren 1986 - 2022']) {
         expect(assistantPlainText(plain), plain);
       }
       // Only marks is no answer.
       for (final marks in ['**', '***', '# ', '``']) {
         expect(assistantPlainText(marks), isEmpty);
       }
+    });
+
+    testWidgets('an abbreviation or a list number does not become the headline', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Mr. Robot staat op Plex en op Jellyfin. Het eerste seizoen is compleet.'
+        ..emit();
+      await settle(tester);
+
+      expect(find.text('Mr. Robot staat op Plex en op Jellyfin.'), findsOneWidget);
+      expect(find.text('Het eerste seizoen is compleet.'), findsOneWidget);
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not

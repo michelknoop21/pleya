@@ -392,7 +392,10 @@ class _AnswerBlockState extends State<_AnswerBlock> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
     // One sentence is a headline. More than that: the first sentence leads,
     // the rest reads as running text.
-    final end = _leadEnd.firstMatch(widget.text)?.end;
+    // ponytail: a sentence end is punctuation plus a space, at least 24
+    // characters in, so "Mr." or "1." never leads. An abbreviation further
+    // on can still split early; a sentence segmenter is the upgrade.
+    final end = _leadEnd.allMatches(widget.text).map((m) => m.end).where((end) => end >= 24).firstOrNull;
     final split = end != null && end <= 140 && end < widget.text.length;
     final rest = split ? widget.text.substring(end).trim() : '';
     final bodyStyle = rest.isEmpty
