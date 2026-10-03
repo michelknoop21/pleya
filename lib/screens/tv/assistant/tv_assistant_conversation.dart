@@ -136,7 +136,9 @@ class TvAssistantConversation extends StatelessWidget {
     // bounded (3 lines, a fixed string); the model's answer is not, so the
     // result gives it a block of its own that opens at its first line and
     // scrolls by itself, above the results.
-    final headline = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
+    final cards = c.displays.any((d) => tvAssistantChoiceCount(d) > 0);
+    final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
+    final headline = cards ? assistantWithoutList(answer) : answer;
     final head = <Widget>[
       if (c.state == AssistantSurfaceState.result) ...[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],

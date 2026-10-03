@@ -164,6 +164,15 @@ final _marksOnly = RegExp(r'^[\s*`#]+$');
 final _markdownLink = RegExp(r'!?\[([^\]\n]+)\]\((?:[^)\s]+)\)');
 final _markdownBullet = RegExp(r'^(\s*)[*-]\s+', multiLine: true);
 
+final _listItem = RegExp(r'^\s*(?:\d+[.)]|•)\s');
+
+/// The answer without its list items, for above cards that show the same
+/// titles: the cards are the list, and the lines they free go to the cards.
+// ponytail: drops every list line, also one that says more than its card.
+// Matching lines to cards by title is the upgrade.
+String assistantWithoutList(String answer) =>
+    answer.split('\n').where((line) => !_listItem.hasMatch(line)).join('\n').trim();
+
 /// The model's answer as the panel shows it. The panel draws plain text, so
 /// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
 /// are dropped and their text kept; a link shows its text and a list item

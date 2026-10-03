@@ -254,6 +254,13 @@ void main() {
         ),
         'Top Gun en Rain Man of Heat, snake_case_naam, poster',
       );
+      // Above cards the list lines go: the cards are the list.
+      expect(
+        assistantWithoutList(
+          'Gevonden op je server:\n1. Top Gun (1986)\n• Rain Man (1988)\nTwee staan alleen op Zolder.',
+        ),
+        'Gevonden op je server:\nTwee staan alleen op Zolder.',
+      );
       // Only marks is no answer.
       for (final marks in ['**', '***', '# ', '``']) {
         expect(assistantPlainText(marks), isEmpty);
