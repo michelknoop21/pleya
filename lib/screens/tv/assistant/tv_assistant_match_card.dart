@@ -152,7 +152,20 @@ class TvAssistantMatchCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (compact)
-                      tvAssistantCompactTitle(pt, tk, match.title, match.year)
+                      // The whole title, over two lines when it needs them: a
+                      // cut title does not say which part of a series it is.
+                      // The year stands with the kind, under it.
+                      Text(
+                        match.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: tk.text,
+                          fontSize: TvHig.body * pt,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
+                        ),
+                      )
                     else
                       Text.rich(
                         TextSpan(
@@ -176,7 +189,7 @@ class TvAssistantMatchCard extends StatelessWidget {
                     tvAssistantSecondLine(
                       pt,
                       Text(
-                        low ? '$_kind · ${t.assistant.match.maybe}' : _kind,
+                        [_kind, if (compact) ?match.year?.toString(), if (low) t.assistant.match.maybe].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: muted,
