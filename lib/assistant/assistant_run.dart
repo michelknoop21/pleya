@@ -382,8 +382,14 @@ class AssistantRun {
           }
           return data;
         case final AssistantPendingAction action:
-          _consumeLookups(args);
-          return await _confirmAndRun(tool, action);
+          final output = await _confirmAndRun(tool, action);
+          // A declined or failed action leaves the lookup as the result.
+          if (!output.containsKey('error') &&
+              output['status'] != 'cancelled_by_user' &&
+              output['status'] != 'not_confirmed') {
+            _consumeLookups(args);
+          }
+          return output;
       }
     } on AssistantToolError catch (e) {
       return {'error': e.code};

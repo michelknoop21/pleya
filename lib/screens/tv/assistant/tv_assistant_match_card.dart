@@ -96,6 +96,9 @@ class TvAssistantMatchCard extends StatelessWidget {
       // Scroll only near the panel's edge: centring the first card would push
       // the question and answer above it out of view.
       useComfortableZone: true,
+      // A request card while Big P is still checking stays a stop (dimmed,
+      // inert); a title with nothing to open or request is no stop at all.
+      canRequestFocus: onSelect != null || match.request != null,
       semanticLabel: [match.title, ?match.year?.toString(), _kind, ?status].join(', '),
       automationId: AutomationIds.assistantMatch,
       automationInstance: '$index',

@@ -131,7 +131,7 @@ void main() {
       f.watchToday,
     ]);
     expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P')]), [f.watchToday, f.watchWeek, f.watchMonth]);
-    expect(assistantFollowUps(const [], acted: true), [f.jobs, f.failedJobs, f.watchWeek]);
+    expect(assistantFollowUps(const [], jobs: true), [f.jobs, f.failedJobs, f.watchWeek]);
     expect(assistantFollowUps(const []), [f.watchWeek, f.tonight, f.recent]);
     expect(assistantFollowUps(const [], prompt: f.watchWeek), [
       f.tonight,

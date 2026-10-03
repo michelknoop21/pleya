@@ -245,7 +245,9 @@ class TvAssistantDisplayView extends StatelessWidget {
           ),
       ],
     );
-    if (!compact) return list;
+    // A ranking is at most five compact cards: no inner scroll, so the
+    // panel's own scroll follows the focus.
+    if (!compact || ranked) return list;
     // Four match cards (144 pt with a plot line) plus their gaps; focus
     // scrolls the rest in.
     return ConstrainedBox(

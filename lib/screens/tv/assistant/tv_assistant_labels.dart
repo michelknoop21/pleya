@@ -160,10 +160,12 @@ String assistantHeadline(AssistantController c) {
 /// carries no memory of this one. They carry no server, user or title names:
 /// a follow-up is sent as the user's own words, and those names come from
 /// servers, not from the user. The question just asked is never offered.
-List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool acted = false, String? prompt}) {
+List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = false, String? prompt}) {
   final f = t.assistant.followUp;
   final fitting = <String>[
-    if (acted) ...[f.jobs, f.failedJobs],
+    // Only after a job Pleya follows (a scan, a refresh): those are admin
+    // tools, and a request or download has no task to ask about.
+    if (jobs) ...[f.jobs, f.failedJobs],
     for (final d in displays)
       ...switch (d) {
         AssistantWatchStats(days: null) => [f.watchToday, f.watchWeek, f.watchMonth],
@@ -177,16 +179,17 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool acted = f
           f.unwatched,
         ],
         AssistantRequestOptions() => [f.popular, f.recent],
-        AssistantTitleMatches() || AssistantMediaGrid() => [f.tonight, f.unwatched, f.popular],
+        AssistantTitleMatches() || AssistantMediaGrid() => [f.tonight, f.unwatched, f.recent],
         _ => const <String>[],
       },
     // Always three: the general questions fill what the result left open.
     f.watchWeek, f.tonight, f.recent, f.unwatched,
   ];
-  final asked = prompt?.trim().toLowerCase();
+  String key(String q) => q.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
+  final asked = key(prompt ?? '');
   return [
     for (final q in {...fitting})
-      if (q.toLowerCase() != asked) q,
+      if (key(q) != asked) q,
   ].take(3).toList();
 }
 

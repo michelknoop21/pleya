@@ -203,14 +203,15 @@ class TvAssistantConversation extends StatelessWidget {
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         gap,
       ],
-      ...[
+      // Three follow-ups after an answer; an error or a gate is no answer.
+      if (!c.resultIsError) ...[
         Wrap(
           spacing: 10 * pt,
           runSpacing: 10 * pt,
           children: [
             for (final (i, question) in assistantFollowUps(
               c.displays,
-              acted: c.actions.isNotEmpty,
+              jobs: c.actions.any((a) => a.job != null),
               prompt: c.prompt,
             ).indexed)
               TvAssistantChip(

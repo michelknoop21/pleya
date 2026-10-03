@@ -50,7 +50,12 @@ Set<({String key, int? year})> assistantShownTitles(Iterable<AssistantDisplay> d
       AssistantTitleMatches(:final matches) => [for (final m in matches) (m.title, m.year)],
       AssistantMediaGrid(:final entries) => [for (final e in entries.take(12)) (e.item.title ?? '', e.item.year)],
       AssistantRequestOptions(:final options) => [for (final o in options) (o.title, o.year)],
-      AssistantWatchStats(:final titles) => [for (final t in titles.take(5)) (t.title, t.target?.item.year)],
+      // A watched title without a library copy is a dimmed card: the named
+      // title still gets one it can open or request.
+      AssistantWatchStats(:final titles) => [
+        for (final t in titles.take(5))
+          if (t.target case final target?) (t.title, target.item.year),
+      ],
       AssistantServerComparison(:final missing) => [for (final i in missing.take(12)) (i.title ?? '', i.year)],
       _ => const <(String, int?)>[],
     }.map((t) => (key: assistantTitleKey(t.$1), year: t.$2)),
