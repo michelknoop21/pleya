@@ -157,7 +157,13 @@ mixin _JellyfinAdminMethods {
     );
     throwIfHttpError(response);
     final dto = response.data;
-    if (dto is! Map<String, dynamic> || dto['Id'] is! String) throw _adminError('Unexpected create-user response');
+    if (dto is! Map<String, dynamic> || dto['Id'] is! String) {
+      // A 2xx means the user exists, with every library. Names are unique,
+      // so find it by name and take it away again.
+      final created = (await listUsers()).where((u) => u.name == name).firstOrNull;
+      if (created != null) await _removeHalfCreatedUser(created.id, name, 'unexpected create-user response');
+      throw _adminError('Unexpected create-user response');
+    }
     final id = dto['Id'] as String;
     try {
       if (connection.isEmby && hasPassword) {
