@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:http/http.dart' as http;
 
 import '../services/base_shared_preferences_service.dart';
@@ -137,6 +139,10 @@ class AssistantProviderStore {
 
   static const String key = 'assistant_provider';
 
+  /// Bumped by every [save] and [clear], wherever the settings screen was
+  /// opened from, so Big P's availability follows without a reopen.
+  static final ValueNotifier<int> changes = ValueNotifier(0);
+
   Future<AssistantProviderConfig?> load() async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     final raw = prefs.getString(key);
@@ -157,11 +163,13 @@ class AssistantProviderStore {
     _registerSecrets(config);
     final prefs = await BaseSharedPreferencesService.sharedCache();
     await prefs.setString(key, await CredentialVault.protect(jsonEncode(config.toJson())));
+    changes.value++;
   }
 
   Future<void> clear() async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     await prefs.remove(key);
+    changes.value++;
   }
 
   static void _registerSecrets(AssistantProviderConfig config) {

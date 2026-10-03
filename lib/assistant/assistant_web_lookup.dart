@@ -26,10 +26,12 @@ class AssistantWebServices {
   factory AssistantWebServices.forKeys({String ollamaWebKey = '', String openRouterKey = '', http.Client? client}) =>
       AssistantWebServices(
         client: client,
+        // Built per ask and never closed, so they borrow the shared client
+        // instead of opening one each.
         search: ollamaWebKey.isNotEmpty
-            ? OllamaWebSearch(ollamaWebKey, client: client)
+            ? OllamaWebSearch(ollamaWebKey, client: client ?? _defaultClient)
             : openRouterKey.isNotEmpty
-            ? OpenRouterWebSearch(openRouterKey, client: client)
+            ? OpenRouterWebSearch(openRouterKey, client: client ?? _defaultClient)
             : null,
       );
 

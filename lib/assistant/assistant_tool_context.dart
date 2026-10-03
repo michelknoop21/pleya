@@ -83,7 +83,8 @@ class AssistantToolContext {
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;
 
-  final Map<String, Set<String>> _jobs = {};
+  /// Shown job ids per server, with the title list_jobs gave them.
+  final Map<String, Map<String, String>> _jobs = {};
   final Map<String, Set<String>> _items = {};
   final Map<String, Map<String, AssistantKnownUser>> _users = {};
   final Map<String, List<MediaLibrary>> _libraries = {};
@@ -147,13 +148,13 @@ class AssistantToolContext {
     return match;
   }
 
-  void showJob(ServerId serverId, String id) => (_jobs[serverId.value] ??= {}).add(id);
+  void showJob(ServerId serverId, String id, String title) => (_jobs[serverId.value] ??= {})[id] = title;
   void showItem(ServerId serverId, String id) => (_items[serverId.value] ??= {}).add(id);
   void showUser(ServerId serverId, String id, AssistantKnownUser user) => (_users[serverId.value] ??= {})[id] = user;
 
-  void requireShownJob(ServerId serverId, String id) {
-    if (!(_jobs[serverId.value]?.contains(id) ?? false)) throw const AssistantToolError('unknown_job_id');
-  }
+  /// The job's title as list_jobs showed it.
+  String requireShownJob(ServerId serverId, String id) =>
+      _jobs[serverId.value]?[id] ?? (throw const AssistantToolError('unknown_job_id'));
 
   void requireShownItem(ServerId serverId, String id) {
     if (!(_items[serverId.value]?.contains(id) ?? false)) throw const AssistantToolError('unknown_item_id');

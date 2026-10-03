@@ -38,10 +38,19 @@ class AssistantController extends ChangeNotifier {
     this.preloadWindow = const Duration(minutes: 5),
     DateTime Function()? now,
     this._tools,
+    Listenable? configChanges,
   }) : _now = now ?? DateTime.now,
        _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
-       _languageName = languageName ?? assistantLanguageName;
+       _languageName = languageName ?? assistantLanguageName,
+       _configChanges = configChanges ?? AssistantProviderStore.changes {
+    _configChanges.addListener(_onConfigChanged);
+  }
+
+  /// A provider saved or cleared in Instellingen moves the tile and the
+  /// summon out of (or into) setup without reopening Mijn Pleya.
+  final Listenable _configChanges;
+  void _onConfigChanged() => unawaited(refreshAvailability());
 
   final AssistantToolContext Function(AssistantScreenContext? screen) _buildContext;
   final bool _rolloutEnabled;
@@ -120,9 +129,15 @@ class AssistantController extends ChangeNotifier {
   /// Reads entitlement, servers, Seerr and the provider config. Called by the
   /// UI when an entry point shows; nothing here runs at app start.
   Future<void> refreshAvailability() async {
-    _availability = await _computeAvailability();
+    // A slower, older refresh must not overwrite a newer answer.
+    final seq = ++_availabilitySeq;
+    final availability = await _computeAvailability();
+    if (seq != _availabilitySeq) return;
+    _availability = availability;
     _notify();
   }
+
+  int _availabilitySeq = 0;
 
   Future<AssistantAvailability> _computeAvailability() async {
     if (!_rolloutEnabled) return AssistantAvailability.hidden;
@@ -393,6 +408,7 @@ class AssistantController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _configChanges.removeListener(_onConfigChanged);
     _disposed = true;
     _generation++;
     _abortAsk();

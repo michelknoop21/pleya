@@ -196,6 +196,29 @@ void main() {
     expect(await availability(controller()), AssistantAvailability.ready);
   });
 
+  test('a provider saved elsewhere moves availability out of setup', () async {
+    seerr = _seerr([]);
+    AssistantProviderConfig? saved;
+    final c = AssistantController(
+      buildContext: (screen) => AssistantToolContext(
+        servers: servers,
+        screen: screen,
+        requests: AssistantRequestServices(client: () => seerr),
+      ),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => saved,
+    );
+    addTearDown(c.dispose);
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.needsSetup);
+
+    saved = _config;
+    AssistantProviderStore.changes.value++; // what save() does, from any screen
+    await pumpEventQueue();
+    expect(c.availability, AssistantAvailability.ready);
+  });
+
   test('submit goes idle, working, result and forwards steps', () async {
     seerr = _seerr([]);
     final model = _Model([_call('ping'), _say('Gedaan.')])..gate = Completer();

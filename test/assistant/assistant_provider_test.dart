@@ -6,10 +6,28 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 
+import '../test_helpers/prefs.dart';
+
 http.Response _json(Object body, {int status = 200}) =>
     http.Response(jsonEncode(body), status, headers: const {'content-type': 'application/json'});
 
 void main() {
+  test('the store signals every save and clear, so Big P re-reads it', () async {
+    resetSharedPreferencesForTest();
+    final store = AssistantProviderStore.instance;
+    final before = AssistantProviderStore.changes.value;
+    await store.save(
+      const AssistantProviderConfig(
+        kind: AssistantProviderKind.ollamaCloud,
+        baseUrl: 'https://ollama.com',
+        apiKey: 'k',
+        model: 'm',
+      ),
+    );
+    await store.clear();
+    expect(AssistantProviderStore.changes.value, before + 2);
+  });
+
   test('Ollama offers only models whose /api/show lists tools', () async {
     final seen = <String>[];
     final client = AssistantModelClient(

@@ -118,7 +118,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
               SizedBox(height: 24 * pt),
               divider,
               if (_userKind && a.subject.isNotEmpty) row(c.user, text(a.subject)),
-              row(c.server, text(a.serverName)),
+              if (a.serverName.isNotEmpty) row(c.server, text(a.serverName)),
               if (access.isNotEmpty) row(c.access, text(access)),
               if (a.kind == AssistantActionKind.createUser) row(c.admin, text(c.no)),
               if (a.items.isNotEmpty) row(c.titlesLabel, text(a.items.take(5).join(', '))),

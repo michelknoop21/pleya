@@ -590,6 +590,15 @@ void main() {
     expect(server.writes, isEmpty);
   });
 
+  test('a retried job is recorded by its title, not its id', () async {
+    final (result, _, _) = await run([
+      _call('list_jobs', {'server_id': 'srv-1'}),
+      _call('retry_job', {'server_id': 'srv-1', 'job_id': 'j1'}, id: 'c2'),
+      _say('x'),
+    ]);
+    expect(result.actions.single.subject, 'scan_library');
+  });
+
   test('a server user name cannot hide a different name on the card', () async {
     AssistantPendingAction? card;
     await run(
