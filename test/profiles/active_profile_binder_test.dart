@@ -351,6 +351,41 @@ void main() {
       expect(recording.connected.single.accessToken, 'token');
     });
 
+    test('borrowed Pleya Server row is restricted before its client connects', () async {
+      binder.dispose();
+      multiServerProvider.dispose();
+      final recording = _RecordingJellyfinManager();
+      manager = recording;
+      multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      binder = ActiveProfileBinder(
+        activeProfile: activeProfile,
+        connections: connections,
+        profileConnections: profileConnections,
+        serverManager: manager,
+        multiServerProvider: multiServerProvider,
+        pinPrompt: (_, {String? errorMessage}) async => null,
+        shouldDeferInitialBind: (_) async => false,
+      );
+      final profile = await createActiveLocalProfile('local-pleya');
+      final pleya = PleyaServerConnection(
+        id: 'pleyaServer.srv-9',
+        baseUrl: 'http://nas.lan:8832',
+        serverId: 'srv-9',
+        serverName: 'Zolder',
+        userName: 'owner',
+        refreshToken: 'rt',
+        role: 'owner',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await connections.upsert(pleya);
+      await profileConnections.upsert(
+        ProfileConnection(profileId: profile.id, connectionId: pleya.id, userIdentifier: 'u-borrower', borrowed: true),
+      );
+      await binder.rebindActive();
+      expect(recording.restrictedServerIdsAtConnect, {'srv-9'});
+      expect(recording.restrictedServerIds, {'srv-9'});
+    });
+
     test('own Jellyfin row keeps its server role', () async {
       final recording = await bindLocalJellyfin(borrowed: false);
       expect(recording.restrictedServerIdsAtConnect, isEmpty);
@@ -951,6 +986,13 @@ mixin _RecordsRestrictions on MultiServerManager {
 class _RecordingJellyfinManager extends MultiServerManager with _RecordsRestrictions {
   final connected = <JellyfinConnection>[];
   Set<String>? restrictedServerIdsAtConnect;
+
+  @override
+  Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
+    restrictedServerIdsAtConnect ??= restrictedServerIds;
+    updateServerStatus(ServerId(connection.serverId), true);
+    return true;
+  }
 
   @override
   Future<bool> addJellyfinConnection(JellyfinConnection connection) async {

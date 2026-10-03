@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_auth_service.dart';
@@ -632,7 +633,7 @@ void main() {
       expect(events, hasLength(1), reason: 'an unchanged set does not re-notify');
     });
 
-    test('Pleya Server has no owner role yet and may not (PS-9)', () {
+    MultiServerManager pleyaManager({required String role}) {
       final m = MultiServerManager();
       addTearDown(m.dispose);
       final client = PleyaServerClient.create(
@@ -643,19 +644,61 @@ void main() {
           serverName: 'Zolder',
           userName: 'michel',
           refreshToken: 'rt-1',
+          role: role,
           createdAt: DateTime.utc(2026, 8, 19),
         ),
         httpClientFactory: () => MockClient((_) async => http.Response('{}', 200)),
       );
       addTearDown(client.close);
       m.debugRegisterClientForTesting(client);
-      // Pinned to PS-9: even the bootstrap owner gets false until the server
-      // exposes roles. When PS-9 lands, only `role == owner` may flip this.
-      expect(
-        m.canManageServerMetadata(ServerId('srv-1')),
-        isFalse,
-        reason: 'PS-9 not delivered: Pleya Server has no owner role yet',
-      );
+      return m;
+    }
+
+    test('Pleya Server never manages metadata, whatever the role', () {
+      for (final role in ['owner', 'admin', 'member', 'restricted', '']) {
+        expect(pleyaManager(role: role).canManageServerMetadata(ServerId('srv-1')), isFalse, reason: role);
+      }
+    });
+
+    group('canAdministerServer', () {
+      test('Pleya Server owner and admin administer, member and restricted do not', () {
+        expect(pleyaManager(role: 'owner').canAdministerServer(ServerId('srv-1')), isTrue);
+        expect(pleyaManager(role: 'admin').canAdministerServer(ServerId('srv-1')), isTrue);
+        expect(pleyaManager(role: 'member').canAdministerServer(ServerId('srv-1')), isFalse);
+        expect(pleyaManager(role: 'restricted').canAdministerServer(ServerId('srv-1')), isFalse);
+        expect(pleyaManager(role: '').canAdministerServer(ServerId('srv-1')), isFalse, reason: 'unknown role');
+      });
+
+      test('borrowed Pleya Server connection never administers, even as the lender\'s owner', () {
+        final m = pleyaManager(role: 'owner');
+        m.setServerAuthorityRestrictions(serverIds: {'srv-1'});
+        expect(m.canAdministerServer(ServerId('srv-1')), isFalse);
+      });
+
+      test('Plex and Jellyfin follow the owner rule exactly', () async {
+        expect((await plexManager(owned: true)).canAdministerServer(ServerId('server-1')), isTrue);
+        expect((await plexManager(owned: false)).canAdministerServer(ServerId('server-1')), isFalse);
+        final home = await plexManager(owned: true);
+        home.setServerAuthorityRestrictions(plexAccountClientIds: {'account-client'});
+        expect(home.canAdministerServer(ServerId('server-1')), isFalse);
+        expect(jellyfinManager(admin: true).canAdministerServer(ServerId('jf-machine')), isTrue);
+        expect(jellyfinManager(admin: false).canAdministerServer(ServerId('jf-machine')), isFalse);
+        final borrowed = jellyfinManager(admin: true);
+        borrowed.setServerAuthorityRestrictions(serverIds: {'jf-machine'});
+        expect(borrowed.canAdministerServer(ServerId('jf-machine')), isFalse);
+      });
+
+      test('the wired guard refuses a non-admin at call time', () {
+        final m = pleyaManager(role: 'member');
+        final client = m.getClient(ServerId('srv-1'))! as PleyaServerClient;
+        expect(client.assertCanAdministerServer, throwsA(isA<MediaServerAuthException>()));
+      });
+
+      test('unknown server may not', () {
+        final m = MultiServerManager();
+        addTearDown(m.dispose);
+        expect(m.canAdministerServer(ServerId('nope')), isFalse);
+      });
     });
 
     test('unknown server may not', () {

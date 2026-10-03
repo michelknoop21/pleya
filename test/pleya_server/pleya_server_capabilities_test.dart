@@ -197,6 +197,78 @@ void main() {
       client.close();
     });
 
+    test('the health probe refreshes the role and hands it to the persist hook', () async {
+      var role = 'member';
+      final persisted = <String>[];
+      final client = PleyaServerClient.create(
+        connection(),
+        onConnectionUpdated: (c) async => persisted.add(c.role),
+        httpClientFactory: () => MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/info')) {
+            final body = infoBody();
+            (body['capabilities'] as Map<String, dynamic>)['users'] = true;
+            return json(body);
+          }
+          if (path.endsWith('/auth/refresh')) {
+            return json(const {
+              'access_token': 'at',
+              'refresh_token': 'rt-2',
+              'token_type': 'bearer',
+              'expires_in_ms': 900000,
+            });
+          }
+          if (path.endsWith('/users/me')) return json({'id': 'u1', 'username': 'michel', 'role': role});
+          return json(const {
+            'id': 'srv-1',
+            'name': 'Zolder',
+            'version': '0.2.0',
+            'started_at': '2026-08-18T19:25:33Z',
+          });
+        }),
+      );
+      expect(await client.checkHealth(), HealthStatus.online);
+      expect(client.connection.role, 'member');
+      role = 'admin';
+      expect(await client.checkHealth(), HealthStatus.online);
+      expect(client.connection.role, 'admin');
+      expect(client.connection.isServerAdministrator, isTrue);
+      expect(persisted.last, 'admin');
+      client.close();
+    });
+
+    test('a failed role read keeps the last known role and stays online', () async {
+      final client = PleyaServerClient.create(
+        connection().copyWith(role: 'admin'),
+        httpClientFactory: () => MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/info')) {
+            final body = infoBody();
+            (body['capabilities'] as Map<String, dynamic>)['users'] = true;
+            return json(body);
+          }
+          if (path.endsWith('/auth/refresh')) {
+            return json(const {
+              'access_token': 'at',
+              'refresh_token': 'rt-2',
+              'token_type': 'bearer',
+              'expires_in_ms': 900000,
+            });
+          }
+          if (path.endsWith('/users/me')) return json(const {'error': 'boom'}, status: 500);
+          return json(const {
+            'id': 'srv-1',
+            'name': 'Zolder',
+            'version': '0.2.0',
+            'started_at': '2026-08-18T19:25:33Z',
+          });
+        }),
+      );
+      expect(await client.checkHealth(), HealthStatus.online);
+      expect(client.connection.role, 'admin');
+      client.close();
+    });
+
     test('a reachable server with a dead token is authError, not offline', () async {
       final client = PleyaServerClient.create(
         connection(),

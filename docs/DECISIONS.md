@@ -4269,3 +4269,24 @@ alle zestien talen, afgeleid van de bestaande Jellyfin-vertaling. Live TV is nie
 in de Emby-specificatie. Twee Emby-eigenaardigheden zonder gevolg voor de app: een collectie
 aanmaken met de naam van een eerder verwijderde geeft een SQLite-500, en items korter dan de
 minimale hervatduur (standaard 5 minuten) bewaren geen positie, net als bij Jellyfin.
+
+## DEC-142: Pleya Assistant (Big P) als beheerassistent, en serverbeheer los van de owner-regel
+
+**Date:** 2026-10-02
+**Status:** accepted. Stelt de Pleya Server-regel in `docs/agents/architecture.md` ("only `role == owner`, after PS-9") bij voor serverbeheer; voor metadata blijft die regel staan.
+
+**Context:** Michel wil beheer in natuurlijke taal: "Scan mijn filmbibliotheek opnieuw", "Maak Sam aan en geef hem alleen toegang tot Kids", ingesproken met de Siri Remote. Een taalmodel kiest welke Pleya-functie nodig is. Discovery op `github/main` liet drie dingen zien. Gebruikersbeheer bestond client-side voor geen enkele backend, terwijl Pleya Server het server-side al had (`/users`, `/users/{id}/permissions`, `/jobs`, `/libraries/{id}/scan`). De client gooide de Pleya-rol uit `/users/me` weg, waardoor elk beheerpad voor Pleya dicht zat. Een geleende Pleya Server-rij kwam niet in de restrictieset; dat lekte nog niet omdat het predicaat voor Pleya altijd `false` gaf.
+
+**Decision:** Big P is het gezicht van de functie Pleya Assistant. Drie verantwoordelijkheden blijven gescheiden:
+
+- *Modelprovider* (Ollama op het eigen netwerk, Ollama Cloud, OpenRouter) doet alleen inferentie, achter één OpenAI-compatibele chatclient. Het model ziet nooit een servertoken en kiest alleen uit tools die Pleya aanbiedt.
+- *Serverautoriteit* bepaalt per server en per aanroep wat mag. Nieuw predicaat `canAdministerServer`: op Plex, Jellyfin en Emby gelijk aan `canManageServerMetadata`, op Pleya Server rol owner of admin, zoals de server zelf in `requireAdmin` doet. De rol staat op `PleyaServerConnection` en wordt bij elke health-probe ververst. Geleend is altijd `false`, ook voor Pleya Server.
+- *Entitlement* bepaalt of iemand de Assistant mag gebruiken. Een abonnement geeft toegang tot Big P, nooit rechten op een server. Een eigen model of eigen API-key omzeilt de entitlement niet.
+
+Beheer loopt via kleine optionele interfaces in `lib/media/server_administration.dart`, niet via `MediaServerClient`. Plex krijgt geen nep-`createUser`: een "gebruiker met alleen Kids" is daar een beheerde Home-gebruiker plus een server-share op plex.tv. Die plex.tv-API is niet officieel gedocumenteerd, draait alleen met het account-token van de Home-admin (nooit een `/switch`-token) en weigert elk antwoord dat niet herkend wordt.
+
+Gevoelige acties (gebruiker aanmaken of verwijderen, libraryrechten wijzigen) voert Pleya pas uit na een bevestigingskaart die Pleya zelf opbouwt uit gevalideerde gegevens. Het model kan die bevestiging niet geven. Wachtwoorden gaan nooit via het model of via dictatie.
+
+**Consequences:** Big P verschijnt alleen voor een profiel met minstens één zichtbare server waarop het beheerrechten heeft, in Mijn Pleya onder de groep Pleya, niet als zwevende knop of root-tab. Metadata-edit op Pleya Server blijft owner-only en heeft client-side nog steeds geen schrijfpad. Rol- en wachtwoordwijzigingen, vrienden uitnodigen per e-mail en media verwijderen zitten bewust niet in de eerste ronde. Plex-gebruikersbeheer geldt pas als ondersteund na een test tegen een echt Plex Home-account.
+
+Libraryrechten wijzigen van een bestaande Pleya Server-gebruiker weigert de client vóór het netwerk. De server heeft geen leesroute voor de grants van een member en `PUT /users/{id}/permissions` vervangt de hele lijst, dus elke wijziging zou een `download`-recht dat niemand noemde terugzetten naar `view`. Een leesroute toevoegen valt buiten protocolvenster 2 (DEC-138 dekt alleen de tien wijzigingen uit J.3) en vraagt een eigen besluit. Tot dan krijgt een Pleya Server-gebruiker zijn bibliotheken alleen bij het aanmaken, wanneer de lijst aantoonbaar leeg is.

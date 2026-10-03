@@ -340,8 +340,8 @@ class ActiveProfileBinder {
   /// The connections this profile holds without owner rights, applied to the
   /// manager before any client for them is connected. Plex rows in the join
   /// table are always borrowed (a Plex account only reaches a profile as its
-  /// Home parent or through the borrow flow); a Jellyfin row is borrowed when
-  /// the borrow flow marked it. A Plex Home member who is not the Home admin
+  /// Home parent or through the borrow flow); a Jellyfin or Pleya Server row
+  /// is borrowed when the borrow flow marked it. A Plex Home member who is not the Home admin
   /// gets no owner rights on the parent account either.
   Future<({Set<String> plexAccounts, Set<String> serverIds})> _serverAuthorityRestrictionsFor(Profile profile) async {
     final plexAccounts = <String>{};
@@ -361,6 +361,8 @@ class ActiveProfileBinder {
             plexAccounts.add(clientIdentifier);
           case JellyfinConnection(:final serverMachineId) when pc.borrowed:
             serverIds.add(serverMachineId);
+          case PleyaServerConnection(:final serverId) when pc.borrowed:
+            serverIds.add(serverId);
           default:
             break;
         }

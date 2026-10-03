@@ -175,6 +175,7 @@ class PleyaServerAuthService {
         tokens: tokens,
         userId: user?.id,
         userName: user?.username ?? username,
+        role: user?.role ?? '',
       );
     } on PleyaWireFormatException catch (e) {
       throw MediaServerAuthException('Auth response did not match the contract: ${e.message}');
@@ -303,6 +304,7 @@ class PleyaAuthResult {
     required this.tokens,
     required this.userName,
     this.userId,
+    this.role = '',
   });
 
   final String baseUrl;
@@ -310,6 +312,9 @@ class PleyaAuthResult {
   final PleyaTokenPair tokens;
   final String userName;
   final String? userId;
+
+  /// `/users/me` role at sign-in; empty when the server has no users.
+  final String role;
 }
 
 /// A rejection Pleya itself spoke: a 401 or 403 carrying an `auth.*` code from

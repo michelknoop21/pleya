@@ -211,6 +211,20 @@ class PleyaServerSession {
     );
   }
 
+  /// Record the role `/users/me` just reported. Persisted through the same
+  /// listener as a rotation, so an admin stays known across a cold start
+  /// with the server offline. A failed write is logged, not thrown: the
+  /// in-memory role is already current and the next probe writes again.
+  Future<void> adoptRole(String role) async {
+    if (role == _connection.role) return;
+    _connection = _connection.copyWith(role: role);
+    try {
+      await _persist();
+    } catch (_) {
+      // _persist already logged it.
+    }
+  }
+
   /// A failed write leaves the rotated token stranded in memory: disk still
   /// has the token this rotation just spent, and by the time anyone tries
   /// again the server has already moved past it. A cold start before the
@@ -220,16 +234,26 @@ class PleyaServerSession {
   /// it instead fails this call: [_accessToken] is never set, so the next
   /// [accessToken] retries the refresh — spending one more rotation against
   /// the token already sitting in [_connection], which tries the write again.
-  Future<void> _persist() async {
+  ///
+  /// Writes run one at a time and each writes [_connection] as it is when its
+  /// turn comes. A role write and a rotation can both be pending; without the
+  /// queue the role write could land last and put the spent token back.
+  Future<void> _persist() {
     final listener = onTokensRotated;
-    if (listener == null) return;
-    try {
-      await listener(_connection);
-    } catch (e, st) {
-      appLogger.e('PleyaServerSession: failed to persist rotated refresh token', error: e, stackTrace: st);
-      rethrow;
-    }
+    if (listener == null) return Future.value();
+    final write = _persistQueue.then((_) async {
+      try {
+        await listener(_connection);
+      } catch (e, st) {
+        appLogger.e('PleyaServerSession: failed to persist rotated refresh token', error: e, stackTrace: st);
+        rethrow;
+      }
+    });
+    _persistQueue = write.then<void>((_) {}, onError: (Object _) {});
+    return write;
   }
+
+  Future<void> _persistQueue = Future.value();
 
   /// Authorization header for a request, or an empty map when the session
   /// cannot produce a token. Callers that must fail loudly use [accessToken].

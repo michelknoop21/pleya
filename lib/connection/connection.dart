@@ -685,6 +685,12 @@ class PleyaServerConnection extends Connection {
   /// when persisted. Empty means "never authenticated" or "chain revoked".
   final String refreshToken;
 
+  /// The signed-in user's server role (`owner`, `admin`, `member`,
+  /// `restricted`) as `/users/me` last reported it. Empty means unknown.
+  /// Persisted so a known admin stays known while the server is offline;
+  /// the server re-checks the role on every request regardless.
+  final String role;
+
   PleyaServerConnection({
     required this.id,
     required this.baseUrl,
@@ -692,6 +698,7 @@ class PleyaServerConnection extends Connection {
     required this.serverName,
     required this.userName,
     required this.refreshToken,
+    this.role = '',
     this.status = ConnectionStatus.unknown,
     required this.createdAt,
     this.lastAuthenticatedAt,
@@ -699,6 +706,9 @@ class PleyaServerConnection extends Connection {
 
   @override
   ConnectionKind get kind => ConnectionKind.pleyaServer;
+
+  /// Owner and admin administer the server; the server treats them alike.
+  bool get isServerAdministrator => role == 'owner' || role == 'admin';
 
   @override
   String get displayName => '$userName · $serverName';
@@ -720,6 +730,7 @@ class PleyaServerConnection extends Connection {
     String? serverName,
     String? userName,
     String? refreshToken,
+    String? role,
     ConnectionStatus? status,
     DateTime? lastAuthenticatedAt,
   }) {
@@ -730,6 +741,7 @@ class PleyaServerConnection extends Connection {
       serverName: serverName ?? this.serverName,
       userName: userName ?? this.userName,
       refreshToken: refreshToken ?? this.refreshToken,
+      role: role ?? this.role,
       status: status ?? this.status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
@@ -744,6 +756,7 @@ class PleyaServerConnection extends Connection {
       'serverName': serverName,
       'userName': userName,
       'refreshToken': refreshToken,
+      'role': role,
     };
   }
 
@@ -761,6 +774,7 @@ class PleyaServerConnection extends Connection {
       serverName: json['serverName'] as String? ?? 'Pleya Server',
       userName: json['userName'] as String? ?? '',
       refreshToken: json['refreshToken'] as String? ?? '',
+      role: json['role'] as String? ?? '',
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,
