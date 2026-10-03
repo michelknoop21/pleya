@@ -1,8 +1,9 @@
 // Geometry, poses and timing for Big P, ported from the approved motion
 // prototype (docs/assets/tvos-unified/src/prototype/38-big-p-motion/bigp.js).
 // All coordinates are in the full source space of bigp-layers.json
-// (1122 x 1402); the PNGs in assets/branding/bigp/ are half size and are
-// stretched onto these boxes, exactly like the prototype does.
+// (1122 x 1402). The PNGs in assets/branding/bigp/ are that full size, not
+// half: on an Apple TV 4K Big P is drawn at ~1120 physical pixels high
+// (560 * TvHig 0.54 * DPR 3.7), so half-size layers were blown up 1.6x.
 import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
