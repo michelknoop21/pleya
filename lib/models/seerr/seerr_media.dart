@@ -16,6 +16,13 @@ class SeerrMedia {
   final String? overview;
   final SeerrMediaStatus status;
 
+  /// TMDB's `originalLanguage` (ISO 639-1), `originCountry` (ISO 3166-1; a
+  /// movie detail gives `productionCountries` instead) and `voteCount`. Null
+  /// when the payload does not carry them.
+  final String? originalLanguage;
+  final List<String>? originCountry;
+  final int? voteCount;
+
   const SeerrMedia({
     required this.tmdbId,
     required this.mediaType,
@@ -25,13 +32,50 @@ class SeerrMedia {
     this.backdropPath,
     this.overview,
     this.status = SeerrMediaStatus.unknown,
+    this.originalLanguage,
+    this.originCountry,
+    this.voteCount,
   });
+
+  /// TMDB votes a title needs to count as mainstream. American titles: 100
+  /// keeps every wide-release studio film and known series and drops
+  /// festival, short and direct-to-video titles, which mostly sit in the
+  /// tens. Dutch titles: 20, because the Dutch audience on TMDB is small and
+  /// even national box-office hits gather only tens to a few hundred votes.
+  /// ponytail: fixed counts, so a release of the last few days can miss them;
+  /// scale with release age if that shows up.
+  static const mainstreamMinVotesUs = 100;
+  static const mainstreamMinVotesNl = 20;
+
+  /// Popular in America or the Netherlands: the suggestions Big P makes
+  /// outside the library. A field the payload lacks does not count against
+  /// the title.
+  bool get mainstream {
+    bool from(String country, String language) =>
+        originalLanguage == language || (originCountry?.contains(country) ?? false);
+    final unknown = originalLanguage == null && originCountry == null;
+    final floor = from('US', 'en') || unknown
+        ? mainstreamMinVotesUs
+        : from('NL', 'nl')
+        ? mainstreamMinVotesNl
+        : null;
+    return floor != null && (voteCount == null || voteCount! >= floor);
+  }
 
   bool get isMovie => mediaType == 'movie';
   String get posterUrl => SeerrConstants.tmdbPosterUrl(posterPath);
   String get backdropUrl => SeerrConstants.tmdbBackdropUrl(backdropPath);
 
   static int? _asInt(Object? v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
+
+  static List<String>? _countries(Map<String, dynamic> json) {
+    final raw = json['originCountry'] ?? json['origin_country'] ?? json['productionCountries'];
+    if (raw is! List) return null;
+    return [
+      for (final c in raw)
+        if (c is String) c else if (c is Map && c['iso_3166_1'] is String) c['iso_3166_1'] as String,
+    ];
+  }
 
   static String? _yearFrom(Object? date) {
     final s = date?.toString();
@@ -59,6 +103,9 @@ class SeerrMedia {
       backdropPath: json['backdropPath']?.toString(),
       overview: json['overview']?.toString(),
       status: SeerrMediaStatus.fromValue(statusVal),
+      originalLanguage: (json['originalLanguage'] ?? json['original_language'])?.toString(),
+      originCountry: _countries(json),
+      voteCount: _asInt(json['voteCount'] ?? json['vote_count']),
     );
   }
 
@@ -76,6 +123,9 @@ class SeerrMedia {
       backdropPath: json['backdropPath']?.toString(),
       overview: json['overview']?.toString(),
       status: SeerrMediaStatus.fromValue(statusVal),
+      originalLanguage: (json['originalLanguage'] ?? json['original_language'])?.toString(),
+      originCountry: _countries(json),
+      voteCount: _asInt(json['voteCount'] ?? json['vote_count']),
     );
   }
 }

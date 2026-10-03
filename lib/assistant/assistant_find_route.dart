@@ -34,6 +34,10 @@ import 'assistant_web_search.dart';
 /// `AssistantProviderConfig.providerTimeout`.
 const fastSearchDeadline = Duration(seconds: 8);
 
+/// Library matches a subject question ("films about space") returns; the
+/// panel shows a few cards and scrolls.
+const browseLimit = 20;
+
 class FindResult {
   const FindResult(this.matches, {this.partial = false, this.webSearched = false});
   final List<FindMatch> matches;
@@ -81,6 +85,14 @@ class FindRun {
   final matches = <FindMatch>[];
   var partial = false;
   var _webSearched = false;
+
+  /// No plot hit leads the rest: a subject to browse ("films about space"),
+  /// not one title to identify. More library hits, no web guesswork.
+  var _browse = false;
+
+  /// Matches whose Seerr title is not popular American or Dutch
+  /// ([SeerrMedia.mainstream]): no card unless the library has them.
+  final _foreign = <FindMatch>{};
 
   SeerrClient? get seerr => ctx.requests?.client();
   Duration get _left => budget - _clock.elapsed;
@@ -170,18 +182,26 @@ class FindRun {
 
     // Wave 2: ids through the existing pipeline, then library and Seerr.
     await _resolve(matches.toList());
-    if (!sufficient && !q.wantsEpisode) await _webFallback();
+    if (!sufficient && !_browse && !q.wantsEpisode) await _webFallback();
     if (q.wantsEpisode) await findEpisode(this);
 
     _abort.abort();
+    // Outside the library only what can be requested: a web page that named
+    // nothing Seerr knows, or a title outside the mainstream, is no card.
+    matches.removeWhere(
+      (m) =>
+          m.library.isEmpty &&
+          (_foreign.contains(m) || (m.seerr == null && m.sources.every((s) => s == FindSource.web))),
+    );
     matches.sort((a, b) {
       final byRank = b.rank.compareTo(a.rank);
       if (byRank != 0) return byRank;
       final byEpisode = (b.kind == MediaKind.episode ? 1 : 0).compareTo(a.kind == MediaKind.episode ? 1 : 0);
       if (byEpisode != 0) return byEpisode;
-      return (b.library.isNotEmpty ? 1 : 0).compareTo(a.library.isNotEmpty ? 1 : 0);
+      final byLibrary = (b.library.isNotEmpty ? 1 : 0).compareTo(a.library.isNotEmpty ? 1 : 0);
+      return byLibrary != 0 ? byLibrary : b.plotScore.compareTo(a.plotScore);
     });
-    return FindResult(matches.take(8).toList(), partial: partial, webSearched: _webSearched);
+    return FindResult(matches.take(_browse ? browseLimit : 8).toList(), partial: partial, webSearched: _webSearched);
   }
 
   Future<void> _local() async {
@@ -189,15 +209,21 @@ class FindRun {
     final index = await plots.indexFor(libraries, stop: () => ctx.cancelled);
     if (settled) return;
     final kind = q.wantsEpisode ? MediaKind.show : q.kind;
+    // Filtered before the cut, so title-only hits cannot crowd out the rest.
     final hits = index
-        .search([...q.variants, for (final c in q.candidates) c.title], limit: 15, kind: kind)
-        .where((h) => _aboutIt(h.doc))
-        .take(5)
+        .search(q.variants, titles: [for (final c in q.candidates) c.title], limit: index.length, kind: kind)
+        .where((h) => _aboutIt(h.doc, index))
+        .take(browseLimit)
         .toList();
+    appLogger.d(
+      'Assistant: find_title ${q.variants.length} variants ${q.variants}, ${q.candidates.length} candidates, '
+      '${hits.length} plot hits',
+    );
     if (hits.isEmpty) return;
     final lead = hits.length == 1 || hits[0].score >= 2 * hits[1].score;
-    for (final (i, hit) in hits.indexed) {
-      if (hit.score < hits.first.score / 2) break;
+    // Precision comes from [_aboutIt]; one clear winner keeps the short list.
+    _browse = !lead;
+    for (final (i, hit) in hits.take(_browse ? browseLimit : 5).indexed) {
       final item = hit.doc.item;
       final m = FindMatch(item.title ?? '', year: item.year, kind: item.kind, sources: [FindSource.libraryPlot])
         ..titles.addAll([?item.originalTitle])
@@ -209,15 +235,25 @@ class FindRun {
   }
 
   /// A title word alone says nothing about what a film is about: "space"
-  /// must not bring up Space Jam or Safe Space. A hit counts when its plot,
-  /// genres or cast share a search word, or a candidate names it.
-  bool _aboutIt(AssistantPlotDoc doc) {
+  /// must not bring up Space Jam or Safe Space. A hit counts when a
+  /// candidate names it, or when its plot, genres or cast share two search
+  /// words, or one word of the first two variants: the subject itself, once
+  /// per language ("space", "ruimte"). One loose word from a later phrase is
+  /// not enough: "mission" from "space mission" is in every Mission:
+  /// Impossible plot. Unless that word is rare in a library of some size
+  /// ("spacecraft" in a handful of plots out of hundreds).
+  /// ponytail: a fixed 1% share, from 200 titles up; tune it per
+  /// library size if real libraries show it too loose or too strict.
+  bool _aboutIt(AssistantPlotDoc doc, AssistantPlotIndex index) {
     final item = doc.item;
     final named = {for (final c in q.candidates) titleKey(c.title)}..remove('');
     if (named.contains(titleKey(item.title)) || named.contains(titleKey(item.originalTitle))) return true;
     final words = {for (final v in q.variants) ...plotTokens(v)};
+    final subject = {for (final v in q.variants.take(2)) ...plotTokens(v)};
     final about = [item.summary, ...?item.genres, for (final r in (item.roles ?? const []).take(5)) r.tag];
-    return plotTokens(about.join(' ')).any(words.contains);
+    final shared = plotTokens(about.join(' ')).toSet().intersection(words);
+    bool rare(String word) => index.length >= 200 && index.docsWith(word) * 100 <= index.length;
+    return shared.length >= 2 || shared.any((w) => subject.contains(w) || rare(w));
   }
 
   /// An abort that also fires with the run's own.
@@ -331,8 +367,9 @@ class FindRun {
         found.where((s) => fits(s) && keys.contains(titleKey(s.title))).firstOrNull ??
         (m.year == null ? null : found.where((s) => fits(s) && s.year == '${m.year}').firstOrNull);
     if (pick == null) return;
+    // The ids still help find a library copy; the request card needs _keep.
+    if (_keep(m, pick)) m.seerr = pick;
     m
-      ..seerr = pick
       ..ids = ExternalIds(tmdb: pick.tmdbId, imdb: m.ids.imdb, tvdb: m.ids.tvdb)
       ..kind ??= pick.isMovie ? MediaKind.movie : MediaKind.show
       ..year ??= int.tryParse(pick.year ?? '')
@@ -373,11 +410,13 @@ class FindRun {
             },
           );
         }),
-      if (client != null && m.seerr == null && tmdb != null && kind != null)
+      if (client != null && m.seerr == null && !_foreign.contains(m) && tmdb != null && kind != null)
         attempt(() async {
           final movie = kind == MediaKind.movie;
           final detail = movie ? await client.getMovie(tmdb) : await client.getTv(tmdb);
-          if (detail.isNotEmpty && !settled) m.seerr = SeerrMedia.fromDetail(detail, mediaType: movie ? 'movie' : 'tv');
+          if (detail.isEmpty || settled) return;
+          final media = SeerrMedia.fromDetail(detail, mediaType: movie ? 'movie' : 'tv');
+          if (_keep(m, media)) m.seerr = media;
         }),
     ]);
   }
@@ -393,6 +432,9 @@ class FindRun {
       for (final m in matches) {
         if (m.titles.any((t) => titleKey(t).length > 2 && text.contains(foldText(t)))) m.sources.add(FindSource.web);
       }
+      // A news or company page ("Liftoff! NASA's SpaceX Crew-13 ...") names
+      // no film: only a film page, a title with its year or a film site.
+      if (!looksLikeFilmPage(hit)) continue;
       final parsed = webTitle(hit.title);
       if (parsed.title.isEmpty || parsed.title.length > 80 || fresh.length >= 3) continue;
       final m = FindMatch(parsed.title, year: parsed.year, kind: q.kind, sources: [FindSource.web])
@@ -400,6 +442,14 @@ class FindRun {
       if (!matches.any((e) => e.namesSameTitle(m))) fresh.add(addMatch(matches, m));
     }
     if (fresh.isNotEmpty) await _resolve(fresh);
+  }
+
+  /// Library titles are never filtered; outside it only popular American and
+  /// Dutch titles are suggested, and a match without one is marked for removal.
+  bool _keep(FindMatch m, SeerrMedia s) {
+    if (m.library.isNotEmpty || s.mainstream) return true;
+    _foreign.add(m);
+    return false;
   }
 
   MediaItem _stamp(MediaItem item, String serverId) =>

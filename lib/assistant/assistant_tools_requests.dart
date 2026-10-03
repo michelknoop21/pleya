@@ -239,7 +239,9 @@ final List<AssistantTool> _requestTools = [
             ? client.discoverMovies(genre: genre, sortBy: sortBy, keywords: [?keyword])
             : client.discoverTv(genre: genre, sortBy: sortBy, keywords: [?keyword]),
       );
-      final result = _requestOptions(ctx, client, page.items.take(10));
+      // Popular American and Dutch titles only, unless a language was asked.
+      final picks = page.items.where((m) => language != null || m.mainstream).take(10);
+      final result = _requestOptions(ctx, client, picks);
       return AssistantToolResult({
         ...result.data,
         if (ignored.isNotEmpty) 'ignored_filters': ignored,

@@ -268,7 +268,7 @@ void main() {
       (title: 'Primer (2004) - IMDb', url: 'https://imdb.example', snippet: 'Engineers build a time machine.'),
       (title: 'Primer (film) - Wikipedia', url: 'https://wiki.example', snippet: 'Primer is a 2004 film.'),
     ];
-    final ctx = findCtx(const [], web: web);
+    final ctx = findCtx(const [], web: web, seerr: primerSeerr());
     final data = await runFind(ctx, {
       'variants': ['garage engineers accidental time machine', 'tijdmachine'],
     });

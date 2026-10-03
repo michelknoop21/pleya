@@ -101,11 +101,11 @@ final List<AssistantTool> _findTools = [
     description:
         'Find a film, series or episode the user describes but cannot name, or titles about a subject or theme '
         '("a film about space"). Interpret the question once: up to 5 candidate titles you suspect (title, year, '
-        'kind; never ids), the kind, and 2-8 short search phrases with words a plot summary would contain, '
-        'English first, then Dutch (for space: "astronauts in outer space", "spacecraft orbit planet", '
-        '"astronauten in de ruimte"). For an episode give the series and any season or episode number. Searches '
-        'the plot summaries of this profile\'s libraries, Wikipedia and Seerr, and the web only when that is not '
-        'enough. Returns up to 8 matches with a confidence, where they can be played (item_id, server_id) and a '
+        'kind; never ids), the kind, and 2-8 search phrases: first the subject itself in English, then in Dutch '
+        '(for space: "space", "ruimte"), then short phrases a plot summary would contain ("astronauts in a '
+        'spacecraft", "astronauten in een ruimteschip"). For an episode give the series and any season or episode '
+        'number. Searches the plot summaries of this profile\'s libraries, Wikipedia and Seerr, and the web only '
+        'when that is not enough. Returns up to 8 matches, up to 20 library titles for a subject, with a confidence, where they can be played (item_id, server_id) and a '
         'seerr_id for request_title. Say so when confidence is low or partial is set.',
     risk: AssistantToolRisk.read,
     needsServer: false,
