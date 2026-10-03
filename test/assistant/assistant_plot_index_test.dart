@@ -112,6 +112,21 @@ void main() {
     expect(identical(await first, next), isTrue);
   });
 
+  test('a build that halted is never handed to the next ask, even before it completes', () async {
+    final server = _Server({
+      'films': [for (var i = 0; i < 5; i++) _item('$i', 'Film $i')],
+    });
+    final cache = AssistantPlotIndexCache(pageSize: 1);
+    final sources = [(client: server as MediaServerClient, libraryId: 'films', kind: MediaKind.movie)];
+    // Halts at its first page check, synchronously; the build is still in flight.
+    final halted = cache.indexFor(sources, stop: () => true);
+    final next = cache.indexFor(sources);
+
+    expect(identical(next, halted), isFalse);
+    expect((await next).length, 5);
+    expect((await next).partial, isFalse);
+  });
+
   test('the cap stops the build and flags it', () async {
     final server = _Server({
       'films': [for (var i = 0; i < 5; i++) _item('$i', 'Film $i')],
