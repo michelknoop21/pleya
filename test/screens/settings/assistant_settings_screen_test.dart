@@ -280,6 +280,43 @@ void main() {
     }
   });
 
+  testWidgets('Change to the same server with another URL or header does not send the saved header value', (
+    tester,
+  ) async {
+    final seen = <AssistantProviderConfig>[];
+    await pump(
+      tester,
+      _FakeStore(
+        const AssistantProviderConfig(
+          kind: AssistantProviderKind.ollamaServer,
+          baseUrl: 'http://o.lan:11434',
+          headerName: 'X-Auth',
+          headerValue: 'secret',
+          model: 'qwen3:32b',
+        ),
+      ),
+      (config) async {
+        seen.add(config);
+        return _infos(['qwen3:32b']);
+      },
+    );
+    await tapText(tester, s.change);
+    await tapText(tester, s.ollamaServer);
+    await settle(tester);
+    expect(seen.last.headerValue, 'secret', reason: 'same host and header keep it');
+
+    await tester.enterText(field(0), 'http://other.lan:11434');
+    await settle(tester);
+    expect(seen.last.baseUrl, 'http://other.lan:11434');
+    expect(seen.last.headerValue, isEmpty);
+
+    await tester.enterText(field(0), 'http://o.lan:11434');
+    await tester.enterText(field(1), 'X-Other');
+    await settle(tester);
+    expect(seen.last.headerName, 'X-Other');
+    expect(seen.last.headerValue, isEmpty);
+  });
+
   testWidgets('summary: long OpenRouter lists are capped behind Meer tonen', (tester) async {
     final store = _FakeStore(
       const AssistantProviderConfig(

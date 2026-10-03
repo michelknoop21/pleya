@@ -266,8 +266,19 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       model: model,
       apiKey: kind == AssistantProviderKind.ollamaServer ? '' : _secret(_keyController, (c) => c.apiKey),
       headerName: kind == AssistantProviderKind.ollamaServer ? _headerNameController.text.trim() : '',
+      // The saved header value only goes back to the host and header it was
+      // saved for: an edited URL or header name needs it typed again.
       headerValue: kind == AssistantProviderKind.ollamaServer
-          ? (_headerNameController.text.trim().isEmpty ? '' : _secret(_headerValueController, (c) => c.headerValue))
+          ? (_headerNameController.text.trim().isEmpty
+                ? ''
+                : _secret(
+                    _headerValueController,
+                    (c) =>
+                        c.baseUrl == normaliseBaseUrl(_urlController.text) &&
+                            c.headerName == _headerNameController.text.trim()
+                        ? c.headerValue
+                        : '',
+                  ))
           : '',
       webSearchChoice: _webSearch,
       ollamaWebKey: kind == AssistantProviderKind.ollamaServer && _webSearch == true

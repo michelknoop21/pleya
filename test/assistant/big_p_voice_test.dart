@@ -95,6 +95,37 @@ void main() {
     expect(played, ['assets/audio/bigp/en_result_1.m4a', 'assets/audio/bigp/en_error_1.m4a']);
   });
 
+  test('backing out of a follow-up question does not say the old answer again', () async {
+    voice();
+    c.go(AssistantSurfaceState.working);
+    c.go(AssistantSurfaceState.result);
+    await pumpEventQueue();
+    c.go(AssistantSurfaceState.listening);
+    c.go(AssistantSurfaceState.result);
+    await pumpEventQueue();
+    expect(played, ['assets/audio/bigp/en_result_1.m4a']);
+  });
+
+  test('dictation that starts while the clip loads stops it again', () async {
+    BigPVoice(
+      c,
+      enabled: () => on,
+      dictating: () => dictating,
+      language: () => lang,
+      clips: () async => _clips,
+      play: (asset) async {
+        played.add(asset);
+        dictating = true;
+      },
+      stop: () async => stops++,
+    );
+    c.go(AssistantSurfaceState.working);
+    c.go(AssistantSurfaceState.result);
+    await pumpEventQueue();
+    expect(played, hasLength(1));
+    expect(stops, 1);
+  });
+
   test('a long run gets one "still looking"', () {
     fakeAsync((async) {
       voice();

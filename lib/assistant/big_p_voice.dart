@@ -89,7 +89,11 @@ class BigPVoice {
           if (!c.disposed && c.state == AssistantSurfaceState.working) unawaited(say(BigPMoment.working));
         });
       case AssistantSurfaceState.result:
-        unawaited(say(c.resultIsError ? BigPMoment.error : BigPMoment.result));
+        // Only a finished run: backing out of a follow-up question restores
+        // the old answer, which was already said.
+        if (previous == AssistantSurfaceState.working) {
+          unawaited(say(c.resultIsError ? BigPMoment.error : BigPMoment.result));
+        }
       case AssistantSurfaceState.idle:
         break;
     }
@@ -111,6 +115,7 @@ class BigPVoice {
     try {
       all = await (_available ??= _clips());
     } catch (e) {
+      _available = null;
       appLogger.d('Big P voice: no clip list', error: e.runtimeType);
       return null;
     }
@@ -122,6 +127,8 @@ class BigPVoice {
     _last[moment] = asset;
     try {
       await _play(asset);
+      // Dictation that began while the clip loaded sent its stop first.
+      if (!_mayTalk) await _stopQuietly();
     } catch (e) {
       // No player on this platform, or the clip could not be decoded.
       appLogger.d('Big P voice: clip not played', error: e.runtimeType);
