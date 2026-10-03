@@ -188,7 +188,7 @@ void main() {
   });
 
   group('resultaat', () {
-    testWidgets('success: Big P cheers, then says the answer; Pleya lists what it did', (tester) async {
+    testWidgets('success: Big P cheers; Pleya lists what it did', (tester) async {
       await pumpSurface(tester);
       c
         ..prompt = 'Scan Films'
@@ -204,8 +204,9 @@ void main() {
       expect(find.text('${t.assistant.actions.scanLibrary} · Films · Zolder'), findsOneWidget);
       expect(focusedLabel(), 'assistant.ask');
 
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(avatar(tester).talkingText, 'Ik heb de scan gestart.');
+      // No voice on this controller: the mouth stays shut, the text is on screen.
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(avatar(tester).talkingText, isNull);
     });
 
     testWidgets('a search that found nothing draws no empty cards', (tester) async {

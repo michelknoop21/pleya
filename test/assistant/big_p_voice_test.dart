@@ -28,7 +28,7 @@ class _Controller extends AssistantController {
   }
 }
 
-const _clips = [
+const _clipList = [
   'assets/audio/bigp/en_greet_1.m4a',
   'assets/audio/bigp/en_greet_2.m4a',
   'assets/audio/bigp/en_greet_3.m4a',
@@ -38,6 +38,7 @@ const _clips = [
   'assets/audio/bigp/nl_greet_1.m4a',
   'assets/audio/bigp/nl_result_1.m4a',
 ];
+final _clips = {for (final a in _clipList) a: 'Line for ${a.split('/').last}.'};
 
 void main() {
   late _Controller c;
@@ -45,14 +46,17 @@ void main() {
   late int stops;
   var on = true, dictating = false, watching = false, lang = 'en';
 
-  BigPVoice voice({List<String> clips = _clips}) => BigPVoice(
+  BigPVoice voice({Map<String, String>? clips}) => BigPVoice(
     c,
     enabled: () => on,
     dictating: () => dictating,
     playbackActive: () => watching,
     language: () => lang,
-    clips: () async => clips,
-    play: (asset) async => played.add(asset),
+    clips: () async => clips ?? _clips,
+    play: (asset) async {
+      played.add(asset);
+      return 0.05;
+    },
     stop: () async => stops++,
     random: Random(1),
   );
@@ -116,6 +120,7 @@ void main() {
       play: (asset) async {
         played.add(asset);
         dictating = true;
+        return 1;
       },
       stop: () async => stops++,
     );
@@ -124,6 +129,43 @@ void main() {
     await pumpEventQueue();
     expect(played, hasLength(1));
     expect(stops, 1);
+  });
+
+  test('the mouth says the clip line for as long as the clip plays', () {
+    fakeAsync((async) {
+      final v = BigPVoice(
+        c,
+        enabled: () => on,
+        dictating: () => dictating,
+        language: () => lang,
+        clips: () async => _clips,
+        play: (asset) async => 1.5,
+        stop: () async => stops++,
+      );
+      c.go(AssistantSurfaceState.working);
+      c.go(AssistantSurfaceState.result);
+      async.flushMicrotasks();
+      expect(v.speaking.value, 'Line for en_result_1.m4a.');
+      async.elapse(const Duration(milliseconds: 1400));
+      expect(v.speaking.value, isNotNull);
+      async.elapse(const Duration(milliseconds: 200));
+      expect(v.speaking.value, isNull, reason: 'the clip ended, so the mouth closes');
+    });
+  });
+
+  test('listening stops the mouth with the clip', () async {
+    final v = voice();
+    await v.say(BigPMoment.greet);
+    expect(v.speaking.value, isNotNull);
+    c.go(AssistantSurfaceState.listening);
+    expect(v.speaking.value, isNull);
+  });
+
+  test('a dropped clip never moves the mouth', () async {
+    final v = voice();
+    on = false;
+    await v.say(BigPMoment.greet);
+    expect(v.speaking.value, isNull);
   });
 
   test('a long run gets one "still looking"', () {
@@ -167,7 +209,7 @@ void main() {
   });
 
   test('missing clips mean silence', () async {
-    final v = voice(clips: const []);
+    final v = voice(clips: const {});
     expect(await v.say(BigPMoment.greet), isNull);
     expect(played, isEmpty);
   });

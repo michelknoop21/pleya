@@ -117,13 +117,14 @@ import Foundation
     /// `configure` set up, so it never changes category or mode.
     private static var clip: AVAudioPlayer?
 
-    private static func playClip(_ data: Data) -> FlutterError? {
+    /// Answers the clip's length in seconds, so Big P's mouth stops with it.
+    private static func playClip(_ data: Data) -> Any? {
       clip?.stop()
       do {
         let player = try AVAudioPlayer(data: data)
         clip = player
         player.play()
-        return nil
+        return player.duration
       } catch {
         clip = nil
         return FlutterError(code: "CLIP_FAILED", message: error.localizedDescription, details: nil)

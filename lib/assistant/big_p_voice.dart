@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../i18n/strings.g.dart';
 import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/native_input_session.dart';
+import '../widgets/big_p/big_p_rig.dart';
 import 'assistant_controller.dart';
 
 /// The moments Big P says something; each has a few clips per language,
@@ -27,8 +30,8 @@ class BigPVoice {
     bool Function()? playbackActive,
     bool Function()? dictating,
     String Function()? language,
-    Future<List<String>> Function()? clips,
-    Future<void> Function(String asset)? play,
+    Future<Map<String, String>> Function()? clips,
+    Future<double?> Function(String asset)? play,
     Future<void> Function()? stop,
     Random? random,
     this.workingAfter = const Duration(seconds: 6),
@@ -58,8 +61,8 @@ class BigPVoice {
   final bool Function() _playbackActive;
   final bool Function() _dictating;
   final String Function() _language;
-  final Future<List<String>> Function() _clips;
-  final Future<void> Function(String asset) _play;
+  final Future<Map<String, String>> Function() _clips;
+  final Future<double?> Function(String asset) _play;
   final Future<void> Function() _stop;
   final Random _random;
 
@@ -69,7 +72,11 @@ class BigPVoice {
   late AssistantSurfaceState _state;
   bool _hadPending = false;
   Timer? _workingTimer;
-  Future<List<String>>? _available;
+  Future<Map<String, String>>? _available;
+  Timer? _speakingTimer;
+
+  /// The line Big P is saying right now, for his mouth; null when silent.
+  final ValueNotifier<String?> speaking = ValueNotifier(null);
   final Map<BigPMoment, String> _last = {};
 
   void _onChange() {
@@ -111,7 +118,7 @@ class BigPVoice {
   Future<String?> say(BigPMoment moment) async {
     if (!_mayTalk) return null;
     final start = '$_prefix${_language()}_${moment.name}_';
-    final List<String> all;
+    final Map<String, String> all;
     try {
       all = await (_available ??= _clips());
     } catch (e) {
@@ -119,16 +126,20 @@ class BigPVoice {
       appLogger.d('Big P voice: no clip list', error: e.runtimeType);
       return null;
     }
-    var options = all.where((a) => a.startsWith(start)).toList();
+    final options = all.keys.where((a) => a.startsWith(start)).toList();
     if (options.length > 1) options.remove(_last[moment]);
     // The list load awaited: the user may have started dictating meanwhile.
     if (options.isEmpty || !_mayTalk) return null;
     final asset = options[_random.nextInt(options.length)];
     _last[moment] = asset;
     try {
-      await _play(asset);
+      final seconds = await _play(asset);
       // Dictation that began while the clip loaded sent its stop first.
-      if (!_mayTalk) await _stopQuietly();
+      if (!_mayTalk) {
+        await _stopQuietly();
+        return null;
+      }
+      _speak(all[asset]!, seconds);
     } catch (e) {
       // No player on this platform, or the clip could not be decoded.
       appLogger.d('Big P voice: clip not played', error: e.runtimeType);
@@ -137,7 +148,17 @@ class BigPVoice {
     return asset;
   }
 
+  /// The mouth moves for as long as the clip plays.
+  void _speak(String line, double? seconds) {
+    _speakingTimer?.cancel();
+    speaking.value = line;
+    final ms = ((seconds ?? BigPTalkPlan.build(line).end) * 1000).round();
+    _speakingTimer = Timer(Duration(milliseconds: ms), () => speaking.value = null);
+  }
+
   Future<void> _stopQuietly() async {
+    _speakingTimer?.cancel();
+    speaking.value = null;
     try {
       await _stop();
     } catch (_) {
@@ -145,15 +166,17 @@ class BigPVoice {
     }
   }
 
-  static Future<List<String>> _bundledClips() async {
-    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
-    return manifest.listAssets().where((a) => a.startsWith(_prefix) && a.endsWith('.m4a')).toList();
+  /// Asset path to its spoken line, from the generator's `lines.json`.
+  static Future<Map<String, String>> _bundledClips() async {
+    final lines = jsonDecode(await rootBundle.loadString('${_prefix}lines.json')) as Map<String, dynamic>;
+    return {for (final e in lines.entries) '$_prefix${e.key}.m4a': e.value as String};
   }
 
   /// The clip goes over as bytes, so the native side needs no asset lookup.
-  static Future<void> _playAsset(String asset) async {
+  /// Answers the clip's length in seconds.
+  static Future<double?> _playAsset(String asset) async {
     final data = await rootBundle.load(asset);
-    await _channel.invokeMethod<void>('playClip', data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    return _channel.invokeMethod<double>('playClip', data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
   }
 
   static Future<void> _stopClip() => _channel.invokeMethod<void>('stopClip');
