@@ -49,6 +49,7 @@ class AssistantToolContext {
     this.insights,
     this.requests,
     this.media,
+    this.personal,
     this.web,
     this.cancel,
   });
@@ -69,6 +70,7 @@ class AssistantToolContext {
     insights: insights,
     requests: requests,
     media: media,
+    personal: personal,
     web: web ?? this.web,
     cancel: cancel ?? this.cancel,
   );
@@ -79,6 +81,10 @@ class AssistantToolContext {
   final AssistantInsightServices? insights;
   final AssistantRequestServices? requests;
   final AssistantMediaServices? media;
+
+  /// Who is asking and what this profile watched; null keeps my_watching out
+  /// and the system prompt without a name.
+  final AssistantPersonalServices? personal;
 
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;

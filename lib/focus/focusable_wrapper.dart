@@ -99,6 +99,10 @@ class FocusableWrapper extends StatefulWidget {
   /// If false, always scrolls to [scrollAlignment].
   final bool useComfortableZone;
 
+  /// Leave the scroll where it is while the item, focus decoration included,
+  /// is fully in view; scroll only for an item at least partly outside.
+  final bool scrollOnlyWhenHidden;
+
   /// Optional semantic label for accessibility.
   final String? semanticLabel;
 
@@ -183,6 +187,7 @@ class FocusableWrapper extends StatefulWidget {
     this.autoScroll = true,
     this.scrollAlignment = 0.5,
     this.useComfortableZone = false,
+    this.scrollOnlyWhenHidden = false,
     this.semanticLabel,
     this.canRequestFocus = true,
     this.onKeyEvent,
@@ -429,6 +434,8 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
       // Account for focus decoration when checking item visibility
       final itemTop = itemPosition.dy - _focusDecorationPadding;
       final itemBottom = itemPosition.dy + itemHeight + _focusDecorationPadding;
+
+      if (widget.scrollOnlyWhenHidden && itemTop >= 0 && itemBottom <= viewportHeight) return;
 
       if (widget.useComfortableZone) {
         // Define comfortable zone - if item (including focus decoration) is within middle 60% of viewport, don't scroll

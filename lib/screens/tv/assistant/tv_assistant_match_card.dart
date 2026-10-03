@@ -101,6 +101,10 @@ class TvAssistantMatchCard extends StatelessWidget {
       // Scroll only near the panel's edge: centring the first card would push
       // the question and answer above it out of view.
       useComfortableZone: true,
+      // A card already in view stays put: the first card takes the focus as
+      // the result opens, and scrolling it to the middle would push the head
+      // of a card above it (the watch stats' title and total) out of view.
+      scrollOnlyWhenHidden: true,
       // A request card while Big P is still checking stays a stop (dimmed,
       // inert); a title with nothing to open or request is no stop at all.
       canRequestFocus: onSelect != null || match.request != null,
@@ -194,7 +198,7 @@ class TvAssistantMatchCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: muted,
                       ),
-                      compact ? pill : null,
+                      pill,
                     ),
                     if (plot.isNotEmpty && !dense) ...[
                       SizedBox(height: 4 * pt),
@@ -203,13 +207,6 @@ class TvAssistantMatchCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!compact && pill != null) ...[
-                SizedBox(width: 16 * pt),
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 280 * pt),
-                  child: pill,
-                ),
-              ],
             ],
           ),
         ),

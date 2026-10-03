@@ -214,6 +214,25 @@ final _listItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
 String assistantWithoutList(String answer) =>
     answer.split('\n').where((line) => !_listItem.hasMatch(line)).join('\n').trim();
 
+// ": «A», «B» en «C»." in any language: a colon, then marked titles joined
+// by commas or one short word ("en", "and", "und", "et").
+final _inlineList = RegExp(r':\s*«[^»\n]*»(?:[\s,;]+(?:[^\s«»]{1,4}\s+)?«[^»\n]*»)*\s*[.!]?');
+
+/// "Hoi Michel, ..." or, without a profile name, "Hoi, ...": the space
+/// the name leaves before the punctuation goes too, in every language.
+String assistantGreeting(String name) => t.assistant.idle
+    .greeting(name: name.trim())
+    .replaceAll(RegExp(r' +(?=[,.!?])'), '')
+    .replaceAll(RegExp(' {2,}'), ' ');
+
+/// The lead above title cards: [assistantHeadline] without the titles the
+/// cards show, as a list on their own lines or as "kandidaten: «A», «B»".
+/// Cut to two lines, the inline list read "Interstellar en ...".
+String assistantCardsLead(AssistantController c) {
+  final stripped = c.answer.replaceAll(_inlineList, '.');
+  return assistantWithoutList(stripped == c.answer ? assistantHeadline(c) : assistantPlainAnswer(stripped));
+}
+
 /// The model's answer as the panel shows it. The panel draws plain text, so
 /// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
 /// are dropped and their text kept; a link shows its text and a list item

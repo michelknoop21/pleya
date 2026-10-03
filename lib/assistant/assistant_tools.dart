@@ -28,6 +28,9 @@ import '../media/media_server_client.dart';
 import '../models/download_models.dart';
 import '../models/plex/plex_subtitle_search_result.dart';
 import '../services/plex_client.dart';
+import '../services/recommendations/recommendation_service.dart' show RecommendationSeed;
+import '../services/recommendations/taste_profile.dart' show AffinityVector;
+import '../media/media_hub.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/server_administration.dart';
@@ -48,6 +51,7 @@ part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_media.dart';
+part 'assistant_tools_personal.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
 
@@ -297,4 +301,5 @@ final List<AssistantTool> assistantTools = [
   ..._requestTools,
   ..._findTools,
   ..._mediaTools,
+  ..._personalTools,
 ];

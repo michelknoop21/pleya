@@ -123,7 +123,20 @@ class AssistantRun {
       'out is enough.\n'
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
-      '«Interstellar» (2014). Pleya turns each into a card to open or request.';
+      '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
+      '$_who';
+
+  /// Who "I" is. Without this the model read "my history" as the household's
+  /// and searched watch_stats for a server account with the user's name.
+  String get _who {
+    // The profile name is the user's own text: one line, clipped, so it
+    // cannot open a rule of its own.
+    final name = clipText((context.personal?.userName ?? '').replaceAll(RegExp(r'\s+'), ' ').trim(), 40);
+    final person = name.isEmpty ? 'the person using this Pleya profile' : '$name, the person using this Pleya profile';
+    return '- You talk with $person. I, me and my mean them. For their own watching, history or a tip for them '
+        'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
+        'match theirs.';
+  }
 
   /// Calls carried out per model reply and per run. A reply with a hundred
   /// scans, or a planted instruction that asks for them, stops here.

@@ -10,6 +10,7 @@ import '../../media/media_server_client.dart';
 import '../../utils/app_logger.dart';
 import '../settings_service.dart';
 import 'affinity_engine.dart';
+import 'taste_profile.dart';
 import 'candidate_pool.dart';
 import 'history_importer.dart';
 import 'personalized_rows_builder.dart';
@@ -145,6 +146,18 @@ class RecommendationService {
     } catch (e, s) {
       appLogger.w('RecommendationService: buildRows failed (leaving rows out)', error: e, stackTrace: s);
       return const [];
+    }
+  }
+
+  /// This profile's taste as the personalized rows score it; empty when the
+  /// feature is off or nothing was watched. For Big P's my_watching.
+  Future<AffinityVector> taste({int? nowMs}) async {
+    if (!_enabled) return AffinityVector.empty;
+    try {
+      return await _affinity.vectorFor(profileId, enabledImportServerIds: _enabledImportServerIds(), nowMs: nowMs);
+    } catch (e, s) {
+      appLogger.w('RecommendationService: taste failed (no taste)', error: e, stackTrace: s);
+      return AffinityVector.empty;
     }
   }
 
