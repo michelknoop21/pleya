@@ -518,7 +518,25 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final effective = (query.kind == null && libraryKind != null && libraryKind != MediaKind.unknown)
         ? query.copyWith(kind: libraryKind)
         : query;
-    return fetchLibraryContent(libraryId, effective, abort: abort);
+    final page = await fetchLibraryContent(libraryId, effective, abort: abort);
+    // A typed catalog page was queried recursively under this top-level
+    // library. ParentId on individual DTOs may be a nested folder, or absent.
+    // Preserve an explicit ParentLibraryId: conflicting scope must remain
+    // visible to callers' hidden-library checks rather than being overwritten.
+    if ((libraryKind == MediaKind.movie || libraryKind == MediaKind.show) && effective.kind == libraryKind) {
+      return LibraryPage<MediaItem>(
+        items: [
+          for (final item in page.items)
+            if (item.raw?['ParentLibraryId'] case final String topId when topId.isNotEmpty)
+              item
+            else
+              item.copyWith(libraryId: libraryId),
+        ],
+        totalCount: page.totalCount,
+        offset: page.offset,
+      );
+    }
+    return page;
   }
 
   /// Synthesised 27-letter alphabet — Jellyfin has no equivalent of Plex's

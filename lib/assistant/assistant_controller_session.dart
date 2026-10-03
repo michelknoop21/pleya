@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../profiles/active_profile_provider.dart';
+import '../profiles/profile_connection_registry.dart';
 import '../providers/download_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_layout_provider.dart';
@@ -57,6 +58,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   final seerr = context.read<SeerrProvider?>();
   final tautulli = context.read<TautulliProvider?>();
   final downloads = context.read<DownloadProvider?>();
+  final profileConnections = context.read<ProfileConnectionRegistry?>();
   final profileId = layout?.profileId ?? activeProfile.activeId;
   return AssistantToolContext(
     servers: manager,
@@ -72,6 +74,9 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
               clientFor: manager.getClient,
             ),
             saveRow: layout?.saveCustomRow,
+            participantProfiles: profileConnections == null
+                ? null
+                : (id) => profileConnections.listJellyfinProfileIdentities(id.value),
             profileId: profileId,
             activeProfileId: () => activeProfile.activeId ?? '',
           ),

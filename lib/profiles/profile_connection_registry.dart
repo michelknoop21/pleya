@@ -6,6 +6,7 @@ import '../database/app_database.dart';
 import '../services/credential_vault.dart';
 import '../utils/app_logger.dart';
 import 'profile_connection.dart';
+import 'profile_server_identity.dart';
 
 /// CRUD over the [ProfileConnections] join table.
 ///
@@ -16,6 +17,49 @@ class ProfileConnectionRegistry {
   ProfileConnectionRegistry(this._db);
 
   final AppDatabase _db;
+
+  /// Resolve local labels without selecting configJson or userToken into
+  /// Dart, decrypting the vault, or activating another profile. This is
+  /// identity metadata only: callers must validate users with live authority.
+  Future<List<ProfileServerIdentity>> listJellyfinProfileIdentities(String serverMachineId) async {
+    final rows = await _db
+        .customSelect(
+          r'''
+      SELECT p.id AS profile_id, p.display_name AS profile_name,
+        CASE WHEN c.kind = 'jellyfin' AND json_valid(c.config_json)
+          THEN CASE WHEN json_extract(c.config_json, '$.serverMachineId') = ?
+            AND json_extract(c.config_json, '$.userId') = pc.user_identifier
+            AND coalesce(json_extract(c.config_json, '$.isEmby'), 0) = 0
+          THEN pc.user_identifier END
+        END AS user_id
+      FROM profiles p
+      LEFT JOIN profile_connections pc ON pc.profile_id = p.id
+      LEFT JOIN connections c ON c.id = pc.connection_id
+      WHERE p.kind = 'local'
+      ORDER BY p.id, pc.connection_id
+      ''',
+          variables: [Variable.withString(serverMachineId)],
+          readsFrom: {_db.profiles, _db.profileConnections, _db.connections},
+        )
+        .get();
+    final names = <String, String>{};
+    final userIds = <String, Set<String>>{};
+    for (final row in rows) {
+      final id = row.read<String>('profile_id');
+      names[id] = row.read<String>('profile_name');
+      final userId = row.readNullable<String>('user_id');
+      final ids = userIds[id] ??= {};
+      if (userId != null && userId.isNotEmpty) ids.add(userId);
+    }
+    return [
+      for (final entry in names.entries)
+        ProfileServerIdentity(
+          profileId: entry.key,
+          displayName: entry.value,
+          userIds: Set.unmodifiable(userIds[entry.key]!),
+        ),
+    ];
+  }
 
   Stream<List<ProfileConnection>> watchAll() {
     return _db.select(_db.profileConnections).watch().asyncMap((rows) async => Future.wait(rows.map(_rowToModel)));

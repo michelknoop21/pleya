@@ -23,6 +23,7 @@ import '../media/media_backend.dart';
 import '../media/media_file_info.dart';
 import '../media/media_hub.dart';
 import '../media/media_item.dart';
+import '../media/participant_evidence.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_playlist.dart';
