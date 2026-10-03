@@ -287,8 +287,8 @@ class AutomationIds {
   static const String assistantConfirmButton = 'assistant.confirm.button';
 
   /// Big P summoned with a long Play/Pause press, over any TV screen. State
-  /// carries `shown`, `state`, `error`, `pending` and `lingering` (a good
-  /// result counting down to leaving on its own).
+  /// carries `shown`, `state`, `error` and `pending`. He stays until Menu or
+  /// Klaar.
   static const String assistantSummon = 'assistant.summon';
 
   /// A text field on a connect-a-service settings screen, suffixed with the

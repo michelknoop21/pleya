@@ -32,7 +32,6 @@ import '../../../widgets/overlay_sheet.dart';
 import 'big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
-import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
@@ -60,15 +59,6 @@ class TvAssistantSummonHost extends StatefulWidget {
   final SpeechSearchService? speech;
   final AppleTvNativeTextEntry? textEntry;
 
-  /// How long a good result stays before Big P leaves, restarted by any key.
-  static const linger = Duration(seconds: 4);
-
-  /// Added to [linger] per character of the answer: time to read it.
-  static const lingerPerCharacter = Duration(milliseconds: 60);
-
-  /// However long the answer, Big P leaves this long after the last key.
-  static const lingerMax = Duration(seconds: 60);
-
   @override
   State<TvAssistantSummonHost> createState() => _TvAssistantSummonHostState();
 }
@@ -81,7 +71,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   bool _leaving = false;
   DateTime _resultAt = DateTime.now();
   FocusNode? _returnTo;
-  Timer? _linger;
   Timer? _remove;
   AssistantSurfaceState? _lastState;
   AssistantPendingAction? _shownPending;
@@ -110,7 +99,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   @override
   void dispose() {
     unawaited(_sub?.cancel());
-    _linger?.cancel();
     _remove?.cancel();
     _c?.removeListener(_onChange);
     for (final node in [_panelNode, _askNode, _cancelNode, _optionNode, _confirmCancelNode, _scope]) {
@@ -223,7 +211,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       final sheet = _sheetContext;
       if (sheet != null && sheet.mounted) OverlaySheetController.closeAdaptive(sheet);
     }
-    _armLinger();
     setState(() {});
   }
 
@@ -239,17 +226,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     );
     _shownPending = null;
     if (confirmed && mounted) setState(() => _nod++);
-  }
-
-  /// A good result with nothing left to choose: Big P leaves after [linger].
-  void _armLinger() {
-    _linger?.cancel();
-    final c = _c;
-    if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
-    if (tvAssistantHasChoices(c.displays)) return;
-    final reading =
-        TvAssistantSummonHost.linger + TvAssistantSummonHost.lingerPerCharacter * assistantHeadline(c).length;
-    _linger = Timer(reading < TvAssistantSummonHost.lingerMax ? reading : TvAssistantSummonHost.lingerMax, _dismiss);
   }
 
   void _focusDefault() {
@@ -270,12 +246,11 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
-  /// Menu, Klaar or the linger: Big P slides out, a run in flight or a
+  /// Menu or Klaar: Big P slides out, a run in flight or a
   /// waiting card is let go, and the remote is back where it was.
   void _dismiss() {
     if (!_open || _leaving) return;
     _leaving = true;
-    _linger?.cancel();
     final c = _c;
     c?.removeListener(_onChange);
     c?.abort();
@@ -304,7 +279,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       MediaQuery.maybeDisableAnimationsOf(context) ?? false ? Duration.zero : const Duration(milliseconds: 380);
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    if (_linger?.isActive ?? false) _armLinger(); // still reading
     return handleBackKeyAction(event, _dismiss);
   }
 
@@ -334,7 +308,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
                     'state': c?.state.name,
                     'error': c?.resultIsError ?? false,
                     'pending': c?.pending != null,
-                    'lingering': _linger?.isActive ?? false,
                   },
                   child: _overlay(context, c),
                 ),
@@ -371,9 +344,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               onExample: (_) {},
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
               onOpenTitle: _openTitle,
-              onArrow: () {
-                if (_linger?.isActive ?? false) _armLinger(); // still reading
-              },
             ),
       avatar: BigPVoiceMouth(
         controller: c,

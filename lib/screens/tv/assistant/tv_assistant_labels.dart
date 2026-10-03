@@ -145,7 +145,7 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 /// The headline under the question: the model's answer when there is one,
 /// else Pleya's reason the run ended.
 String assistantHeadline(AssistantController c) {
-  if (c.answer.trim().isNotEmpty) return assistantPlainText(c.answer);
+  if (assistantPlainText(c.answer) case final answer when answer.isNotEmpty) return answer;
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
@@ -153,11 +153,16 @@ String assistantHeadline(AssistantController c) {
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
 }
 
-final _markdownMarks = RegExp(r'\*\*(\S(?:.*?\S)?)\*\*|\*(\S(?:.*?\S)?)\*|`([^`]+)`');
+// ponytail: one pass over paired marks on one line; nested emphasis keeps
+// its inner marks. A Markdown renderer is the upgrade if answers need more.
+final _markdownMarks = RegExp(
+  r'(?<![\w*])\*\*(\S(?:[^\n]*?\S)?)\*\*(?![\w*])|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)`([^`\n]+)`(?!\w)',
+);
 final _markdownHeading = RegExp(r'^#{1,6}\s+', multiLine: true);
 
 /// The model's answer as the panel shows it. The panel draws plain text, so
 /// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
-/// are dropped and their text kept. A lone asterisk, as in `2 * 3`, stays.
+/// are dropped and their text kept. An asterisk inside a word or a sum, as
+/// in `M*A*S*H` or `2 * 3`, stays.
 String assistantPlainText(String answer) =>
     answer.replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3]!).replaceAll(_markdownHeading, '').trim();

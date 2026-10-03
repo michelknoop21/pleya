@@ -34,7 +34,6 @@ class TvAssistantConversation extends StatelessWidget {
     required this.onExample,
     required this.onPickOption,
     required this.onOpenTitle,
-    this.onArrow,
     this.compact = false,
   });
 
@@ -53,9 +52,6 @@ class TvAssistantConversation extends StatelessWidget {
   final ValueChanged<String> onExample;
   final ValueChanged<AssistantRequestOption> onPickOption;
   final ValueChanged<AssistantTitleTarget> onOpenTitle;
-
-  /// Up or Down was pressed inside the panel, whatever it did.
-  final VoidCallback? onArrow;
 
   /// The summoned panel (760 pt) rather than the surface.
   final bool compact;
@@ -133,15 +129,33 @@ class TvAssistantConversation extends StatelessWidget {
           ),
         ),
       ],
-      AssistantSurfaceState.result => _result(context, pt, headlineStyle, gap),
+      AssistantSurfaceState.result => _result(context, pt),
     };
 
     // While working, the question and the status stay above the scrolling
     // part: four streamed results plus Cancel do not fit the panel, and the
     // status is the one line that says Big P is not done yet. Both are
     // bounded (3 lines, a fixed string); the model's answer is not, so the
-    // result keeps it in the scrolling part.
+    // result gives it a block of its own that opens at its first line and
+    // scrolls by itself, above the results.
+    final headline = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
     final head = <Widget>[
+      if (c.state == AssistantSurfaceState.result) ...[
+        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
+        if (headline.isNotEmpty) ...[
+          if (children.isEmpty)
+            Flexible(
+              child: _AnswerBlock(text: headline, style: headlineStyle),
+            )
+          else
+            ConstrainedBox(
+              // Five lines; the rest scrolls inside the block.
+              constraints: BoxConstraints(maxHeight: 5 * headlineStyle.fontSize! * headlineStyle.height!),
+              child: _AnswerBlock(text: headline, style: headlineStyle),
+            ),
+          gap,
+        ],
+      ],
       if (c.state == AssistantSurfaceState.working) ...[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         // Results that are in show at once; the model is still composing.
@@ -154,35 +168,23 @@ class TvAssistantConversation extends StatelessWidget {
     // Anchored at the bottom: the newest stays in view.
     return column([
       ...head,
-      Flexible(
-        // A new result is a new scroll state, anchored at the answer's
-        // first line; the other stands keep the newest line in view.
-        child: _ReadableScroll(
-          key: ValueKey(c.state == AssistantSurfaceState.result),
-          fromStart: c.state == AssistantSurfaceState.result,
-          onArrow: onArrow,
-          // Under the scrolling part, so the buttons stay in view and
-          // their focus does not pull a long answer to its end.
-          footer: [
-            if (c.state == AssistantSurfaceState.result)
-              Wrap(
-                spacing: 12 * pt,
-                runSpacing: 12 * pt,
-                children: [
-                  ask(),
-                  TvAssistantButton(
-                    label: t.assistant.result.done,
-                    primary: false,
-                    automationId: AutomationIds.assistantButton,
-                    automationInstance: 'done',
-                    onPressed: onDone,
-                  ),
-                ],
-              ),
+      Flexible(child: SingleChildScrollView(reverse: true, child: column(children))),
+      // Under the scrolling part: always in view, whatever the results do.
+      if (c.state == AssistantSurfaceState.result)
+        Wrap(
+          spacing: 12 * pt,
+          runSpacing: 12 * pt,
+          children: [
+            ask(),
+            TvAssistantButton(
+              label: t.assistant.result.done,
+              primary: false,
+              automationId: AutomationIds.assistantButton,
+              automationInstance: 'done',
+              onPressed: onDone,
+            ),
           ],
-          child: column(children),
         ),
-      ),
     ]);
   }
 
@@ -216,54 +218,58 @@ class TvAssistantConversation extends StatelessWidget {
     return displays;
   }
 
-  List<Widget> _result(BuildContext context, double pt, TextStyle headlineStyle, Widget gap) {
+  /// What scrolls under the answer: the run's displays and its result card.
+  List<Widget> _result(BuildContext context, double pt) {
     final c = controller;
-    final headline = assistantHeadline(c);
     return [
-      if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
-      if (headline.isNotEmpty) ...[Text(headline, style: headlineStyle), gap],
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
-        gap,
+        SizedBox(height: 24 * pt),
       ],
     ];
   }
 }
 
-/// The panel's scrolling part. Up and Down move the focus between cards and
-/// buttons as before; where there is nothing left to focus they scroll, so
-/// an answer longer than the panel can be read.
-class _ReadableScroll extends StatefulWidget {
-  const _ReadableScroll({
-    super.key,
-    required this.child,
-    required this.fromStart,
-    this.footer = const [],
-    this.onArrow,
-  });
+/// The model's answer. Opens at its first line. When it is longer than its
+/// box it takes the focus on Up, shows a scroll thumb, and Up and Down
+/// scroll it; at either end the key moves the focus on as usual.
+class _AnswerBlock extends StatefulWidget {
+  const _AnswerBlock({required this.text, required this.style});
 
-  final Widget child;
-
-  /// Stays under the scrolling part; its keys scroll too.
-  final List<Widget> footer;
-
-  /// Anchored at the top (a result to read) rather than at the newest line.
-  final bool fromStart;
-  final VoidCallback? onArrow;
+  final String text;
+  final TextStyle style;
 
   @override
-  State<_ReadableScroll> createState() => _ReadableScrollState();
+  State<_AnswerBlock> createState() => _AnswerBlockState();
 }
 
-class _ReadableScrollState extends State<_ReadableScroll> {
+class _AnswerBlockState extends State<_AnswerBlock> {
   final _scroll = ScrollController();
-  final _viewport = GlobalKey();
+  final _node = FocusNode(debugLabel: 'assistant.answer');
+  bool _overflows = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _node.addListener(_changed);
+  }
 
   @override
   void dispose() {
+    _node
+      ..removeListener(_changed)
+      ..dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _changed() => setState(() {});
+
+  void _measure() {
+    if (!mounted || !_scroll.hasClients) return;
+    final overflows = _scroll.position.maxScrollExtent > 0;
+    if (overflows != _overflows) setState(() => _overflows = overflows);
   }
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
@@ -271,48 +277,40 @@ class _ReadableScrollState extends State<_ReadableScroll> {
     if (event is KeyUpEvent || (!up && event.logicalKey != LogicalKeyboardKey.arrowDown)) {
       return KeyEventResult.ignored;
     }
-    widget.onArrow?.call();
-    final direction = up ? TraversalDirection.up : TraversalDirection.down;
-    if (FocusManager.instance.primaryFocus?.focusInDirection(direction) ?? false) return KeyEventResult.handled;
     final position = _scroll.position;
-    var step = position.viewportDimension * 0.6;
-    // A focused card inside the scrolling part stays in view: the content
-    // moves no further than the card's distance to the edge it moves to.
-    final focus = FocusManager.instance.primaryFocus;
-    final viewport = _viewport.currentContext?.findRenderObject();
-    if (focus?.context != null && viewport is RenderBox && Scrollable.maybeOf(focus!.context!)?.position == position) {
-      final view = viewport.localToGlobal(Offset.zero) & viewport.size;
-      final room = up ? view.bottom - focus.rect.bottom : focus.rect.top - view.top;
-      step = step.clamp(0.0, room < 0 ? 0.0 : room);
-    }
-    // Up shows earlier lines: a smaller offset from the top, a larger one
-    // when anchored at the bottom.
-    final earlier = widget.fromStart ? -step : step;
-    final target = (position.pixels + (up ? earlier : -earlier)).clamp(0.0, position.maxScrollExtent);
+    final step = position.viewportDimension * 0.6;
+    final target = (position.pixels + (up ? -step : step)).clamp(0.0, position.maxScrollExtent);
     if (target == position.pixels) return KeyEventResult.ignored;
     unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
     return KeyEventResult.handled;
   }
 
   @override
-  Widget build(BuildContext context) => Focus(
-    canRequestFocus: false,
-    skipTraversal: true,
-    onKeyEvent: _onKey,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    final tk = tokens(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    return Focus(
+      focusNode: _node,
+      canRequestFocus: _overflows,
+      onKeyEvent: _onKey,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _node.hasFocus ? tk.text.withValues(alpha: 0.08) : null,
+          borderRadius: BorderRadius.circular(12 * pt),
+        ),
+        child: RawScrollbar(
+          controller: _scroll,
+          thumbVisibility: _overflows,
+          thumbColor: tk.text.withValues(alpha: _node.hasFocus ? 0.8 : 0.35),
+          thickness: 4 * pt,
+          radius: Radius.circular(2 * pt),
           child: SingleChildScrollView(
-            key: _viewport,
             controller: _scroll,
-            reverse: !widget.fromStart,
-            child: widget.child,
+            child: Text(widget.text, style: widget.style),
           ),
         ),
-        ...widget.footer,
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }

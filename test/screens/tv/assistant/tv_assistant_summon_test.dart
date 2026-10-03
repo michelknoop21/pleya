@@ -217,19 +217,18 @@ void main() {
       expect(c.aborts, 1);
     });
 
-    // 4 s plus 60 ms per character: 24 characters is 5.44 s.
-    testWidgets('a good result leaves on its own after about 4 s plus the time to read it', (tester) async {
+    // Hardware, build 318: Big P left by himself while the answer was read.
+    testWidgets('a good result stays until Menu', (tester) async {
       await summoned(tester);
       c
         ..state = AssistantSurfaceState.result
         ..answer = 'De scan van Films loopt.'
         ..emit();
-      await tester.pump(const Duration(milliseconds: 5300));
+      await tester.pump(const Duration(minutes: 5));
+      await settle(tester);
       expect(bigP(), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 300));
-      await settle(tester);
-
+      await press(tester, LogicalKeyboardKey.escape);
       expect(bigP(), findsNothing);
       expect(focusedLabel(), 'behind');
     });
@@ -241,11 +240,15 @@ void main() {
         assistantPlainText('## Gevonden\nDe *Mission: Impossible*-reeks, **Top Gun** en `Jack Reacher`. 2 * 3 = 6.'),
         'Gevonden\nDe Mission: Impossible-reeks, Top Gun en Jack Reacher. 2 * 3 = 6.',
       );
+      // Not emphasis: a title, sums and a list bullet.
+      for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', '* Top Gun (1986)']) {
+        expect(assistantPlainText(plain), plain);
+      }
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not
     // be scrolled and left after 4 s.
-    testWidgets('a long answer opens at its first line, scrolls on Down and stays while it is read', (tester) async {
+    testWidgets('a long answer opens at its first line and scrolls on Up and Down', (tester) async {
       await summoned(tester);
       final answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
       c
@@ -257,22 +260,34 @@ void main() {
       final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
       final top = tester.getRect(find.text(answer)).top;
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
+      expect(focusedLabel(), 'assistant.ask');
 
-      await tester.pump(const Duration(seconds: 15));
-      expect(bigP(), findsOneWidget, reason: 'still reading');
-
+      // Up takes the answer; Down and Up scroll it.
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'assistant.answer');
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(tester.getRect(find.text(answer)).top, lessThan(top), reason: 'Down scrolls the answer');
       await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'assistant.ask', reason: 'the focus stays on the button');
       expect(tester.getRect(find.text(answer)).top, top, reason: 'Up scrolls back');
+      expect(focusedLabel(), 'assistant.answer');
 
-      // Capped at a minute after the last key, however long the answer.
-      await tester.pump(const Duration(seconds: 59));
-      expect(bigP(), findsOneWidget);
-      await tester.pump(const Duration(seconds: 2));
+      // At its last line Down gives the remote back to the buttons.
+      for (var i = 0; i < 60 && focusedLabel() == 'assistant.answer'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedLabel(), 'assistant.ask');
+    });
+
+    testWidgets('a short answer takes no focus: Up from the button stays on the button', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Dat lukte niet.'
+        ..emit();
       await settle(tester);
-      expect(bigP(), findsNothing);
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'assistant.ask');
     });
 
     testWidgets('an error stays until Menu', (tester) async {

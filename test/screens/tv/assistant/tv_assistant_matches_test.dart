@@ -315,7 +315,7 @@ void main() {
       expectInside(focusedRect(), panel, 'Cancel');
     });
 
-    testWidgets('Up on the first card under a long answer scrolls the answer and keeps the card in the panel', (
+    testWidgets('a long answer above the cards opens at its first line; Up reads it, Down returns to the card', (
       tester,
     ) async {
       await pumpSurface(tester);
@@ -333,13 +333,19 @@ void main() {
       final panel = panelContent(tester);
       expect(focusedMatch(), 'm1');
       expectInside(focusedRect(), panel, 'first card');
-      final before = tester.getRect(find.text(answer)).top;
+      final top = tester.getRect(find.text(answer)).top;
+      expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
 
-      await press(tester, LogicalKeyboardKey.arrowUp, 4);
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'assistant.answer');
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(tester.getRect(find.text(answer)).top, lessThan(top), reason: 'Down scrolls the answer');
 
-      expect(focusedMatch(), 'm1');
-      expectInside(focusedRect(), panel, 'first card after Up');
-      expect(tester.getRect(find.text(answer)).top, greaterThan(before), reason: 'the answer scrolled');
+      for (var i = 0; i < 60 && focusedLabel() == 'assistant.answer'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedMatch(), 'm1', reason: 'past its last line the focus is on the first card again');
+      expectInside(focusedRect(), panel, 'the card after reading');
     });
 
     testWidgets('D-pad through four results and on to the buttons keeps every focused control in the panel', (
@@ -540,6 +546,28 @@ void main() {
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
       expect(find.byType(TvAssistantMatchCard), findsNothing);
+    });
+
+    testWidgets('twelve cards under a long answer: the focused card and the first line are both in the panel', (
+      tester,
+    ) async {
+      await summon(tester, const []);
+      final answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      c
+        ..state = AssistantSurfaceState.working
+        ..emit();
+      await settle(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = answer
+        ..displays = [_grid]
+        ..emit();
+      await settle(tester);
+
+      final panel = panelContent(tester);
+      expect(focusedMatch(), _grid.entries.first.item.globalKey);
+      expectInside(focusedRect(), panel, 'first card');
+      expect(tester.getRect(find.text(answer)).top, inInclusiveRange(panel.top, panel.bottom));
     });
 
     testWidgets('a media grid keeps Big P here and its first card opens the detail page', (tester) async {
