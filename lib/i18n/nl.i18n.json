@@ -2336,6 +2336,20 @@
       "findTitle": "Titel op beschrijving zoeken",
       "fallback": "Bezig"
     },
+    "jobs": {
+      "scanLibrary": {
+        "running": "Scan loopt",
+        "done": "Scan klaar",
+        "failed": "Scan mislukt",
+        "background": "Scan loopt nog op de achtergrond"
+      },
+      "retryJob": {
+        "running": "Taak loopt",
+        "done": "Taak klaar",
+        "failed": "Taak mislukt",
+        "background": "Taak loopt nog op de achtergrond"
+      }
+    },
     "result": {
       "doneBy": "Uitgevoerd door Pleya",
       "notDoneBy": "Niet uitgevoerd door Pleya",

@@ -2484,6 +2484,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override late final _TranslationsAssistantListeningNl listening = _TranslationsAssistantListeningNl._(_root);
 	@override late final _TranslationsAssistantWorkingNl working = _TranslationsAssistantWorkingNl._(_root);
 	@override late final _TranslationsAssistantStepsNl steps = _TranslationsAssistantStepsNl._(_root);
+	@override late final _TranslationsAssistantJobsNl jobs = _TranslationsAssistantJobsNl._(_root);
 	@override late final _TranslationsAssistantResultNl result = _TranslationsAssistantResultNl._(_root);
 	@override late final _TranslationsAssistantActionsNl actions = _TranslationsAssistantActionsNl._(_root);
 	@override late final _TranslationsAssistantConfirmNl confirm = _TranslationsAssistantConfirmNl._(_root);
@@ -3218,6 +3219,17 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get fallback => 'Bezig';
 }
 
+// Path: assistant.jobs
+class _TranslationsAssistantJobsNl extends TranslationsAssistantJobsEn {
+	_TranslationsAssistantJobsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override late final _TranslationsAssistantJobsScanLibraryNl scanLibrary = _TranslationsAssistantJobsScanLibraryNl._(_root);
+	@override late final _TranslationsAssistantJobsRetryJobNl retryJob = _TranslationsAssistantJobsRetryJobNl._(_root);
+}
+
 // Path: assistant.result
 class _TranslationsAssistantResultNl extends TranslationsAssistantResultEn {
 	_TranslationsAssistantResultNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3438,6 +3450,32 @@ class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifie
 	@override String position({required Object position, required Object count}) => '${position} van ${count}';
 	@override String get viewAllMovies => 'Alle films bekijken, opent de volledige catalogus';
 	@override String get viewAllSeries => 'Alle series bekijken, opent de volledige catalogus';
+}
+
+// Path: assistant.jobs.scanLibrary
+class _TranslationsAssistantJobsScanLibraryNl extends TranslationsAssistantJobsScanLibraryEn {
+	_TranslationsAssistantJobsScanLibraryNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get running => 'Scan loopt';
+	@override String get done => 'Scan klaar';
+	@override String get failed => 'Scan mislukt';
+	@override String get background => 'Scan loopt nog op de achtergrond';
+}
+
+// Path: assistant.jobs.retryJob
+class _TranslationsAssistantJobsRetryJobNl extends TranslationsAssistantJobsRetryJobEn {
+	_TranslationsAssistantJobsRetryJobNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get running => 'Taak loopt';
+	@override String get done => 'Taak klaar';
+	@override String get failed => 'Taak mislukt';
+	@override String get background => 'Taak loopt nog op de achtergrond';
 }
 
 // Path: assistant.confirm.titles
@@ -5594,6 +5632,14 @@ extension on TranslationsNl {
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.fallback' => 'Bezig',
+			'assistant.jobs.scanLibrary.running' => 'Scan loopt',
+			'assistant.jobs.scanLibrary.done' => 'Scan klaar',
+			'assistant.jobs.scanLibrary.failed' => 'Scan mislukt',
+			'assistant.jobs.scanLibrary.background' => 'Scan loopt nog op de achtergrond',
+			'assistant.jobs.retryJob.running' => 'Taak loopt',
+			'assistant.jobs.retryJob.done' => 'Taak klaar',
+			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
+			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',

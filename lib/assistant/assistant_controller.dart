@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../i18n/strings.g.dart';
+import '../media/ids.dart';
+import '../media/server_administration.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
@@ -12,6 +14,7 @@ import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
+part 'assistant_controller_jobs.dart';
 part 'assistant_controller_language.dart';
 
 enum AssistantAvailability { hidden, locked, needsSetup, ready }
@@ -39,6 +42,9 @@ class AssistantController extends ChangeNotifier {
     DateTime Function()? now,
     this._tools,
     Listenable? configChanges,
+    this.jobPollInterval = const Duration(seconds: 2),
+    this.jobWatchLimit = const Duration(minutes: 2),
+    this._jobsFor,
   }) : _now = now ?? DateTime.now,
        _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
@@ -72,6 +78,16 @@ class AssistantController extends ChangeNotifier {
 
   /// How long a confirmation card waits; then the run hears `not_confirmed`.
   final Duration confirmTimeout;
+
+  /// How often a started scan or job is looked up, and for how long.
+  final Duration jobPollInterval;
+  final Duration jobWatchLimit;
+
+  /// Tests only: job lists without a registered server.
+  final Future<List<ServerJob>?> Function(ServerId serverId)? _jobsFor;
+
+  /// Bumped by a new ask, [abort] and [dispose]: stops the job watch.
+  int _jobsSeq = 0;
 
   AssistantAvailability _availability = AssistantAvailability.hidden;
   AssistantSurfaceState _state = AssistantSurfaceState.idle;
@@ -194,6 +210,7 @@ class AssistantController extends ChangeNotifier {
     if (_busy || text.isEmpty) return;
     _busy = true;
     _asking = true;
+    _jobsSeq++;
     final generation = _generation;
     final cancel = _cancel = AbortController();
     _prompt = text;
@@ -249,6 +266,7 @@ class AssistantController extends ChangeNotifier {
       _resultIsError = result.end != AssistantRunEnd.answered;
       _answer = result.text;
       _actions.addAll(result.actions);
+      if (_actions.any((a) => a.job != null)) unawaited(_watchJobs());
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
       _state = AssistantSurfaceState.result;
     } catch (e, st) {
@@ -371,6 +389,7 @@ class AssistantController extends ChangeNotifier {
   /// until [reset] (Big P sliding out). Does not notify.
   void abort() {
     _generation++;
+    _jobsSeq++;
     _abortAsk();
     _answerPending(null);
   }
@@ -411,6 +430,7 @@ class AssistantController extends ChangeNotifier {
     _configChanges.removeListener(_onConfigChanged);
     _disposed = true;
     _generation++;
+    _jobsSeq++;
     _abortAsk();
     _answerPending(null);
     super.dispose();

@@ -5993,6 +5993,7 @@ class TranslationsAssistantEn {
 	late final TranslationsAssistantListeningEn listening = TranslationsAssistantListeningEn.internal(_root);
 	late final TranslationsAssistantWorkingEn working = TranslationsAssistantWorkingEn.internal(_root);
 	late final TranslationsAssistantStepsEn steps = TranslationsAssistantStepsEn.internal(_root);
+	late final TranslationsAssistantJobsEn jobs = TranslationsAssistantJobsEn.internal(_root);
 	late final TranslationsAssistantResultEn result = TranslationsAssistantResultEn.internal(_root);
 	late final TranslationsAssistantActionsEn actions = TranslationsAssistantActionsEn.internal(_root);
 	late final TranslationsAssistantConfirmEn confirm = TranslationsAssistantConfirmEn.internal(_root);
@@ -7463,6 +7464,17 @@ class TranslationsAssistantStepsEn {
 	String get fallback => 'Working';
 }
 
+// Path: assistant.jobs
+class TranslationsAssistantJobsEn {
+	TranslationsAssistantJobsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final TranslationsAssistantJobsScanLibraryEn scanLibrary = TranslationsAssistantJobsScanLibraryEn.internal(_root);
+	late final TranslationsAssistantJobsRetryJobEn retryJob = TranslationsAssistantJobsRetryJobEn.internal(_root);
+}
+
 // Path: assistant.result
 class TranslationsAssistantResultEn {
 	TranslationsAssistantResultEn.internal(this._root);
@@ -7928,6 +7940,48 @@ class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 
 	/// en: 'View all series, opens the complete catalog'
 	String get viewAllSeries => 'View all series, opens the complete catalog';
+}
+
+// Path: assistant.jobs.scanLibrary
+class TranslationsAssistantJobsScanLibraryEn {
+	TranslationsAssistantJobsScanLibraryEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scan running'
+	String get running => 'Scan running';
+
+	/// en: 'Scan finished'
+	String get done => 'Scan finished';
+
+	/// en: 'Scan failed'
+	String get failed => 'Scan failed';
+
+	/// en: 'Scan still running in the background'
+	String get background => 'Scan still running in the background';
+}
+
+// Path: assistant.jobs.retryJob
+class TranslationsAssistantJobsRetryJobEn {
+	TranslationsAssistantJobsRetryJobEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Job running'
+	String get running => 'Job running';
+
+	/// en: 'Job finished'
+	String get done => 'Job finished';
+
+	/// en: 'Job failed'
+	String get failed => 'Job failed';
+
+	/// en: 'Job still running in the background'
+	String get background => 'Job still running in the background';
 }
 
 // Path: assistant.confirm.titles
@@ -10108,6 +10162,14 @@ extension on Translations {
 			'assistant.steps.requestTitle' => 'Requesting title',
 			'assistant.steps.findTitle' => 'Finding the title',
 			'assistant.steps.fallback' => 'Working',
+			'assistant.jobs.scanLibrary.running' => 'Scan running',
+			'assistant.jobs.scanLibrary.done' => 'Scan finished',
+			'assistant.jobs.scanLibrary.failed' => 'Scan failed',
+			'assistant.jobs.scanLibrary.background' => 'Scan still running in the background',
+			'assistant.jobs.retryJob.running' => 'Job running',
+			'assistant.jobs.retryJob.done' => 'Job finished',
+			'assistant.jobs.retryJob.failed' => 'Job failed',
+			'assistant.jobs.retryJob.background' => 'Job still running in the background',
 			'assistant.result.doneBy' => 'Carried out by Pleya',
 			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
 			'assistant.result.done' => 'Done',

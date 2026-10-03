@@ -95,10 +95,52 @@ enum AssistantPasswordMode { none, optional, required }
 
 /// What Pleya shows after an action: built from validated data only.
 class AssistantActionRecord {
-  const AssistantActionRecord({required this.kind, required this.serverName, required this.subject});
+  const AssistantActionRecord({
+    required this.kind,
+    required this.serverName,
+    required this.subject,
+    this.job,
+    this.progress,
+  });
   final AssistantActionKind kind;
   final String serverName;
   final String subject;
+
+  /// The server job this action started, when Pleya can look for it.
+  final AssistantJobWatch? job;
+
+  /// Live state of [job]; null before the first look and for actions
+  /// without a job.
+  final AssistantJobProgress? progress;
+
+  AssistantActionRecord withProgress(AssistantJobProgress progress) =>
+      AssistantActionRecord(kind: kind, serverName: serverName, subject: subject, job: job, progress: progress);
+}
+
+/// How to find a started job in `ServerJobsClient.listJobs`: by its own id
+/// (a retry), or as the newest job on a library (a scan). An action without
+/// either is only ever "started".
+class AssistantJobWatch {
+  const AssistantJobWatch({required this.serverId, required this.startedAt, this.jobId, this.libraryId})
+    : assert(jobId != null || libraryId != null);
+  final ServerId serverId;
+  final DateTime startedAt;
+  final String? jobId;
+  final String? libraryId;
+}
+
+/// [started]: accepted, but no job to follow (or not found). [background]:
+/// still running when Pleya stopped looking.
+enum AssistantJobPhase { started, running, done, failed, background }
+
+class AssistantJobProgress {
+  const AssistantJobProgress(this.phase, {this.percent});
+  final AssistantJobPhase phase;
+
+  /// 0 to 100 while [AssistantJobPhase.running], when the server says.
+  final int? percent;
+
+  bool get settled => phase != AssistantJobPhase.running;
 }
 
 /// A sensitive action waiting for the user. The UI renders it as a Pleya
