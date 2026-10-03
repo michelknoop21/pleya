@@ -54,7 +54,7 @@ void main() {
     c.dispose();
   });
 
-  Future<void> pumpHost(WidgetTester tester) async {
+  Future<void> pumpHost(WidgetTester tester, {Widget? beside}) async {
     final entry = AppleTvNativeTextEntry(channel: channel);
     await pumpTvFrame(
       tester,
@@ -64,9 +64,14 @@ void main() {
         speech: SpeechSearchService(textEntry: entry),
         textEntry: entry,
         screenContext: () => screen,
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: Focus(focusNode: behind, child: const SizedBox(width: 200, height: 200)),
+        child: Stack(
+          children: [
+            if (beside != null) beside,
+            Align(
+              alignment: Alignment.topLeft,
+              child: Focus(focusNode: behind, child: const SizedBox(width: 200, height: 200)),
+            ),
+          ],
         ),
       ),
     );
@@ -118,6 +123,34 @@ void main() {
 
       expect(edits, isEmpty);
       expect(c.listenContexts, isEmpty);
+    });
+
+    testWidgets('never over his own full surface, which would reset its conversation', (tester) async {
+      await pumpHost(
+        tester,
+        beside: TvAssistantScreen(textEntry: AppleTvNativeTextEntry(channel: channel)),
+      );
+
+      await longPress(tester);
+
+      expect(edits, isEmpty);
+      expect(c.listenContexts, isEmpty);
+    });
+
+    testWidgets('a surface left behind offstage does not keep him away', (tester) async {
+      await pumpHost(
+        tester,
+        beside: TickerMode(
+          enabled: false,
+          child: Offstage(
+            child: TvAssistantScreen(textEntry: AppleTvNativeTextEntry(channel: channel)),
+          ),
+        ),
+      );
+
+      await longPress(tester);
+
+      expect(c.listenContexts.single, same(screen));
     });
 
     testWidgets('never while the system keyboard is up', (tester) async {

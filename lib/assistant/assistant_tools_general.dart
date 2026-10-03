@@ -53,7 +53,12 @@ final List<AssistantTool> _generalTools = [
     serves: (ctx, id) => ctx.userClient(id) != null,
     run: (ctx, id, args) async {
       final query = _string(args, 'query');
-      final items = await ctx.userClient(id!)!.searchItems(clipText(query, 100), limit: 10);
+      final client = ctx.userClient(id!)!;
+      // Home's hidden libraries stay out, as in the app's own search.
+      final items = filterHiddenLibraryItems([
+        for (final i in await client.searchItems(clipText(query, 100), limit: 10))
+          (i.serverId?.isEmpty ?? true) ? i.copyWith(serverId: id.value) : i,
+      ], await _hiddenLibraryKeys(ctx, id));
       const kinds = {
         MediaKind.movie,
         MediaKind.show,

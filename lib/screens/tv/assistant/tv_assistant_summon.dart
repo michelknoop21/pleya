@@ -113,10 +113,13 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   }
 
   /// Play/Pause belongs to the player while one is up; any route above the
-  /// shell (the player is one) makes this one not current.
+  /// shell (the player is one) makes this one not current. Big P's own
+  /// surface is a nested shell route, not a Navigator one, so it is asked
+  /// itself: a summon there would reset the conversation it shows.
   bool get _remoteIsFree =>
       mounted &&
       !_open &&
+      !TvAssistantScreenState.isShowing &&
       PlatformDetector.isAppleTV() &&
       !NativeInputSession.isActive &&
       (ModalRoute.of(context)?.isCurrent ?? true) &&

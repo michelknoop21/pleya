@@ -69,6 +69,12 @@ class TvAssistantScreen extends StatefulWidget {
 }
 
 class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab {
+  static final _mounted = <TvAssistantScreenState>{};
+
+  /// Whether Big P's own surface is on screen. A destination left for
+  /// another tab stays mounted offstage, with its tickers muted.
+  static bool get isShowing => _mounted.any((s) => TickerMode.getNotifier(s.context).value);
+
   AssistantController? _c;
   final _askNode = FocusNode(debugLabel: 'assistant.ask');
   final _cancelNode = FocusNode(debugLabel: 'assistant.cancel');
@@ -93,6 +99,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   @override
   void initState() {
     super.initState();
+    _mounted.add(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = _c;
       if (!mounted || c == null) return;
@@ -120,6 +127,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
 
   @override
   void dispose() {
+    _mounted.remove(this);
     _c?.removeListener(_onChange);
     // Leaving Big P stops the ask, as the summoned panel's dismissal does.
     // abort() does not notify, so this is safe while the tree unmounts.

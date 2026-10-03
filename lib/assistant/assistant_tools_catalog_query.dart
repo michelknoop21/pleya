@@ -183,17 +183,6 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   final found = <MediaItem>[];
   final genreChecked = <String>{};
   var partial = false;
-  // The libraries Home shows this profile (`librariesFor`: visible server,
-  // library not hidden), as find_title reads them. A server's other movie
-  // and series libraries are hidden here; its hits there are dropped with
-  // the app's own predicate, which keeps a hit that names no library.
-  final visible = switch (ctx.catalog?.rowLoader) {
-    final CatalogHomeCustomRowLoader loader => {
-      for (final kind in const [MediaKind.movie, MediaKind.show])
-        for (final l in loader.librariesFor(kind)) buildGlobalKey(l.serverId, l.libraryId),
-    },
-    _ => null,
-  };
   for (final id in ctx.userServers) {
     final client = ctx.userClient(id);
     if (client == null || (person != null && client is! PersonSearchClient)) {
@@ -201,13 +190,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       continue;
     }
     try {
-      final hidden = visible == null
-          ? const <String>{}
-          : {
-              for (final l in await ctx.libraries(id))
-                if ((l.kind == MediaKind.movie || l.kind == MediaKind.show) && !visible.contains(l.globalKey))
-                  l.globalKey,
-            };
+      final hidden = await _hiddenLibraryKeys(ctx, id);
       final List<MediaItem> hits;
       if (person != null) {
         final people = await (client as PersonSearchClient).searchPeople(person, limit: 1);
@@ -259,6 +242,24 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
 
 /// The same title on several servers becomes one entry: the unified
 /// catalog's identity pipeline, which keeps the first hit's position.
+/// The movie and series libraries of [id] that Home does not show this
+/// profile (`librariesFor`: visible server, library not hidden), as
+/// find_title reads them. Hits there are dropped with the app's own
+/// predicate, which keeps a hit that names no library. Empty without a
+/// catalog.
+Future<Set<String>> _hiddenLibraryKeys(AssistantToolContext ctx, ServerId id) async {
+  final loader = ctx.catalog?.rowLoader;
+  if (loader is! CatalogHomeCustomRowLoader) return const {};
+  final visible = {
+    for (final kind in const [MediaKind.movie, MediaKind.show])
+      for (final l in loader.librariesFor(kind)) buildGlobalKey(l.serverId, l.libraryId),
+  };
+  return {
+    for (final l in await ctx.libraries(id))
+      if ((l.kind == MediaKind.movie || l.kind == MediaKind.show) && !visible.contains(l.globalKey)) l.globalKey,
+  };
+}
+
 Future<List<UnifiedMediaGroup>> _merge(AssistantToolContext ctx, List<MediaItem> items) async {
   final resolver = UnifiedIdentityResolver(
     fetchExternalIds: (serverId, targetId) =>

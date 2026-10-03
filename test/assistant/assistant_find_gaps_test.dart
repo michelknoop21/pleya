@@ -9,6 +9,7 @@ import 'package:pleya/assistant/assistant_web_lookup.dart';
 import 'package:pleya/media/media_identity.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/utils/external_ids.dart';
 
 import '../test_helpers/prefs.dart';
@@ -241,6 +242,21 @@ void main() {
     final data = ((await tool.run(ctx, null, {'text': 'alien'})) as AssistantToolResult).data;
 
     expect([for (final r in (data['results'] as List).cast<Map>()) r['item_id']], ['1']);
+  });
+  test('find_media leaves hidden libraries out too', () async {
+    final a = FakeServer(
+      'zolder',
+      libraries: {
+        'films': [fakeItem('1', 'Alien', year: 1979)],
+        'kids': [fakeItem('2', 'Alien Babies', year: 2020)],
+      },
+    );
+    final kids = fakeLib('zolder', 'kids');
+    final ctx = findCtx([a], libraries: [fakeLib('zolder', 'films'), kids], hidden: {kids.globalKey});
+    final tool = assistantTools.firstWhere((t) => t.name == 'find_media');
+    final data = ((await tool.run(ctx, ServerId('zolder'), {'query': 'alien'})) as AssistantToolResult).data;
+
+    expect([for (final r in (data['items'] as List).cast<Map>()) r['item_id']], ['1']);
   });
   test('a copy whose library id names a sub-folder is kept, as normal search keeps it', () async {
     final a = FakeServer(
