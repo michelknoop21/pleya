@@ -193,13 +193,38 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = fa
   ].take(3).toList();
 }
 
-/// The model's answer as the panel shows it: Markdown a model adds anyway
-/// (bold, headings, code ticks, list dashes) becomes plain text with
-/// bullets, and runs of blank lines become one.
+// ponytail: one pass over paired marks on one line; nested emphasis keeps
+// its inner marks. A Markdown renderer is the upgrade if answers need more.
+final _markdownMarks = RegExp(
+  r'(?<![\w*])\*{2,3}(\S(?:[^\n]*?\S)?)\*{2,3}(?![\w*])|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)`([^`\n]+)`(?!\w)'
+  r'|(?<![\w_])_{1,2}(\S(?:[^_\n]*?\S)?)_{1,2}(?![\w_])',
+);
+final _markdownHeading = RegExp(r'^#{1,6}\s+', multiLine: true);
+final _marksOnly = RegExp(r'^[\s*`#]+$');
+final _markdownLink = RegExp(r'!?\[([^\]\n]+)\]\((?:[^)\s]+)\)');
+final _markdownBullet = RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true);
+
+// One or two digits: "1917. Oorlogsfilm." is a title, not item 1917.
+final _listItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
+
+/// The answer without its list items, for above cards that show the same
+/// titles: the cards are the list, and the lines they free go to the cards.
+// ponytail: drops every list line, also one that says more than its card.
+// Matching lines to cards by title is the upgrade.
+String assistantWithoutList(String answer) =>
+    answer.split('\n').where((line) => !_listItem.hasMatch(line)).join('\n').trim();
+
+/// The model's answer as the panel shows it. The panel draws plain text, so
+/// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
+/// are dropped and their text kept; a link shows its text and a list item
+/// a bullet; runs of blank lines become one. An asterisk inside a word or a
+/// sum, as in `M*A*S*H` or `2 * 3`, stays.
 String assistantPlainAnswer(String answer) => answer
-    .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*|__(\S.*?)__'), (m) => m[1] ?? m[2]!)
-    .replaceAll(RegExp('[`«»]'), '')
-    .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
-    .replaceAll(RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true), '• ')
+    .replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3] ?? m[4]!)
+    .replaceAll(_markdownHeading, '')
+    .replaceAllMapped(_markdownLink, (m) => m[1]!)
+    .replaceAll(_markdownBullet, '• ')
+    .replaceAll(RegExp('[«»]'), '')
     .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+    .replaceFirst(_marksOnly, '')
     .trim();

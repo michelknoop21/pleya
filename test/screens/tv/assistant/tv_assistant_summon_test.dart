@@ -13,15 +13,15 @@ import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_labels.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/utils/native_input_session.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
-
-import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -217,17 +217,245 @@ void main() {
       expect(c.aborts, 1);
     });
 
-    testWidgets('a good result stays with its three follow-ups until the user leaves', (tester) async {
+    // Hardware, build 318: Big P left by himself while the answer was read.
+    testWidgets('a good result stays with its three follow-ups until Menu', (tester) async {
       await summoned(tester);
       c
         ..state = AssistantSurfaceState.result
         ..answer = 'De scan van Films loopt.'
         ..emit();
-      await tester.pump(const Duration(seconds: 10));
+      await tester.pump(const Duration(minutes: 5));
       await settle(tester);
-
       expect(bigP(), findsOneWidget);
       expect(find.byType(TvAssistantChip), findsNWidgets(3));
+
+      await press(tester, LogicalKeyboardKey.escape);
+      expect(bigP(), findsNothing);
+      expect(focusedLabel(), 'behind');
+    });
+
+    // Hardware, build 318: the panel showed *Mission: Impossible* with its
+    // asterisks.
+    test('an answer is shown without its Markdown marks', () {
+      expect(
+        assistantPlainAnswer('## Gevonden\nDe *Mission: Impossible*-reeks, **Top Gun** en `Jack Reacher`. 2 * 3 = 6.'),
+        'Gevonden\nDe Mission: Impossible-reeks, Top Gun en Jack Reacher. 2 * 3 = 6.',
+      );
+      // Not emphasis: a title, sums and a list bullet.
+      expect(
+        assistantPlainAnswer('* Top Gun (1986)\n- Zie [de lijst](https://example.com/x) voor meer.'),
+        '• Top Gun (1986)\n• Zie de lijst voor meer.',
+      );
+      for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', 'Jaren 1986 - 2022']) {
+        expect(assistantPlainAnswer(plain), plain);
+      }
+      expect(
+        assistantPlainAnswer(
+          '***Top Gun*** en _Rain Man_ of __Heat__, snake_case_naam, ![poster](https://example.com/p.png)',
+        ),
+        'Top Gun en Rain Man of Heat, snake_case_naam, poster',
+      );
+      // Above cards the list lines go: the cards are the list.
+      expect(
+        assistantWithoutList(
+          'Gevonden op je server:\n1. Top Gun (1986)\n• Rain Man (1988)\nTwee staan alleen op Zolder.',
+        ),
+        'Gevonden op je server:\nTwee staan alleen op Zolder.',
+      );
+      expect(assistantWithoutList('1917. Oorlogsfilm.'), '1917. Oorlogsfilm.');
+      // Only marks is no answer.
+      for (final marks in ['**', '***', '# ', '``']) {
+        expect(assistantPlainAnswer(marks), isEmpty);
+      }
+    });
+
+    testWidgets('an abbreviation or a list number does not become the headline', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Mr. Robot staat op Plex en op Jellyfin. Het eerste seizoen is compleet.'
+        ..emit();
+      await settle(tester);
+
+      expect(find.text('Mr. Robot staat op Plex en op Jellyfin.'), findsOneWidget);
+      expect(find.text('Het eerste seizoen is compleet.'), findsOneWidget);
+    });
+
+    testWidgets('a list under an intro line leaves its number in the list', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Ik heb deze films gevonden:\n1. Top Gun (1986)\n2. Rain Man (1988)'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Ik heb deze films gevonden:'), findsOneWidget);
+      expect(find.text('1. Top Gun (1986)\n2. Rain Man (1988)'), findsOneWidget);
+
+      // A short intro line is still the whole lead.
+      c
+        ..answer = 'Hier zijn ze:\n1. Top Gun (1986)\n2. Rain Man (1988)'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Hier zijn ze:'), findsOneWidget);
+      expect(find.text('1. Top Gun (1986)\n2. Rain Man (1988)'), findsOneWidget);
+
+      // A bare list has no lead.
+      c
+        ..answer = '• Heat (1995)\n• Ronin (1998)'
+        ..emit();
+      await settle(tester);
+      expect(find.text('• Heat (1995)\n• Ronin (1998)'), findsOneWidget);
+
+      // A sentence may end in a year.
+      c
+        ..answer = 'Top Gun kwam uit in 1986. Het vervolg kwam pas in 2022.'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Top Gun kwam uit in 1986.'), findsOneWidget);
+
+      c
+        ..answer = 'Ik vond films van o.a. Tom Cruise en Brad Pitt. Meer staat op Plex.'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Ik vond films van o.a. Tom Cruise en Brad Pitt.'), findsOneWidget);
+    });
+
+    testWidgets('one long sentence is running text, not a headline', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Dat lukte niet.'
+        ..emit();
+      await settle(tester);
+      final headline = tester.widget<Text>(find.byKey(const ValueKey('assistant.answer.body'))).style!.fontSize!;
+
+      c
+        ..answer = List.filled(12, 'alle films van de reeks staan op je server').join(', ')
+        ..emit();
+      await settle(tester);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('assistant.answer.body'))).style!.fontSize,
+        lessThan(headline),
+      );
+    });
+
+    // A ranking shows a few of its titles and none of them can be chosen
+    // here: the answer keeps its list, the follow-ups stand in view above
+    // the buttons, and the list scrolls on Up and Down by itself.
+    testWidgets('a result without choices keeps the answer list, shows the follow-ups and can be scrolled', (
+      tester,
+    ) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Meest bekeken deze week:\n1. The Block\n2. House\n3. Heat'
+        ..displays = [
+          AssistantWatchStats(
+            serverName: 'Pleya',
+            days: 7,
+            users: const [(name: 'Gideuh', plays: 36, seconds: 0), (name: 'Jan', plays: 6, seconds: 0)],
+            titles: [
+              for (final title in ['The Block', 'House', 'Heat', 'Ronin', 'Sintel'])
+                (title: title, plays: 9, viewers: const ['Jan'], show: false, target: null),
+            ],
+          ),
+        ]
+        ..emit();
+      await settle(tester);
+
+      expect(find.textContaining('1. The Block'), findsOneWidget, reason: 'the cards do not replace this list');
+      final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
+      for (final chip in tester.widgetList(find.byType(TvAssistantChip))) {
+        final rect = tester.getRect(find.byWidget(chip));
+        expect(rect.bottom, lessThanOrEqualTo(panel.bottom), reason: 'follow-up in view');
+        expect(rect.top, greaterThanOrEqualTo(panel.top));
+      }
+
+      // Up from Ask: the follow-ups, then the list itself, which scrolls.
+      for (var i = 0; i < 6 && focusedLabel() != 'assistant.results'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+      }
+      expect(focusedLabel(), 'assistant.results');
+      final top = tester.getRect(find.text('The Block')).top;
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(tester.getRect(find.text('The Block')).top, lessThan(top), reason: 'Down scrolls the list');
+      for (var i = 0; i < 20 && focusedLabel() == 'assistant.results'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedLabel(), isNot('assistant.results'), reason: 'at its end the key moves the focus on');
+    });
+
+    testWidgets('a short answer keeps the panel short', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'De scan van Films loopt.'
+        ..emit();
+      await settle(tester);
+      final short = tester.getRect(find.byType(TvAssistantGlassPanel)).height;
+
+      c
+        ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
+        ..emit();
+      await settle(tester);
+      // The three follow-ups stand under both.
+      expect(short, lessThan(tester.getRect(find.byType(TvAssistantGlassPanel)).height * 0.7));
+    });
+
+    // Hardware, build 318: a long answer opened at its last lines, could not
+    // be scrolled and left after 4 s.
+    testWidgets('a long answer opens at its first line and scrolls on Up and Down', (tester) async {
+      await summoned(tester);
+      final answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = answer
+        ..emit();
+      await settle(tester);
+
+      final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
+      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top;
+      expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
+      expect(focusedLabel(), 'assistant.ask');
+
+      // Up, past the follow-ups, takes the answer; Down and Up scroll it.
+      for (var i = 0; i < 4 && focusedLabel() != 'assistant.answer'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+      }
+      expect(focusedLabel(), 'assistant.answer');
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top,
+        lessThan(top),
+        reason: 'Down scrolls the answer',
+      );
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top, top, reason: 'Up scrolls back');
+      expect(focusedLabel(), 'assistant.answer');
+
+      // At its last line Down gives the remote back to what stands under it.
+      for (var i = 0; i < 60 && focusedLabel() == 'assistant.answer'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedLabel(), isNot('assistant.answer'));
+      for (var i = 0; i < 4 && focusedLabel() != 'assistant.ask'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedLabel(), 'assistant.ask');
+    });
+
+    testWidgets('a short answer takes no focus: Up stops at the follow-ups', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Dat lukte niet.'
+        ..emit();
+      await settle(tester);
+
+      for (var i = 0; i < 4; i++) {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), isNot('assistant.answer'));
+      }
     });
 
     testWidgets('an error stays until Menu', (tester) async {

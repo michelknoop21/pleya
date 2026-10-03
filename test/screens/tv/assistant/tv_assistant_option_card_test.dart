@@ -101,6 +101,7 @@ void main() {
     }
 
     expect(await height(option), await height(null));
-    expect(find.text(' (2024)'), findsOneWidget);
+    // The year stands with the kind, so the title has the whole line.
+    expect(find.textContaining('· 2024'), findsOneWidget);
   });
 }

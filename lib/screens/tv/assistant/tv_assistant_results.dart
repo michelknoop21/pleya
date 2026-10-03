@@ -202,7 +202,7 @@ class TvAssistantDisplayView extends StatelessWidget {
   final ValueChanged<AssistantRequestOption>? onPickOption;
   final ValueChanged<AssistantTitleTarget>? onOpenTitle;
 
-  /// The summoned panel: found titles scroll in a window of four.
+  /// The summoned panel: the cards take their compact form.
   final bool compact;
 
   /// Gets the first option card, for the surface's default focus (still 7).
@@ -222,9 +222,11 @@ class TvAssistantDisplayView extends StatelessWidget {
 
   bool _selectable(AssistantTitleMatch m) => m.targets.isNotEmpty || m.request != null;
 
-  /// [ranked] badges each poster with its place (most watched).
+  /// The cards scroll in the panel's own results list; the panel's height
+  /// is what bounds how many show at once. [ranked] badges each poster with
+  /// its place (most watched).
   Widget _matches(double pt, List<AssistantTitleMatch> matches, {bool ranked = false}) {
-    final list = Column(
+    return Column(
       children: [
         for (final (i, match) in matches.indexed)
           Padding(
@@ -234,6 +236,9 @@ class TvAssistantDisplayView extends StatelessWidget {
               index: optionOffset + i,
               // A ranking is a list to scan: one line of detail per title.
               compact: compact || ranked,
+              // More than three in the summoned panel: the list form, so
+              // five show where three did.
+              dense: compact && !ranked && matches.length > 3,
               rank: ranked ? i + 1 : null,
               focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
               // Nothing to open and nothing to request: shown, never a dead
@@ -244,15 +249,6 @@ class TvAssistantDisplayView extends StatelessWidget {
             ),
           ),
       ],
-    );
-    // A ranking is at most five compact cards: no inner scroll, so the
-    // panel's own scroll follows the focus.
-    if (!compact || ranked) return list;
-    // Four match cards (144 pt with a plot line) plus their gaps; focus
-    // scrolls the rest in.
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: 4 * 154 * pt),
-      child: SingleChildScrollView(child: list),
     );
   }
 

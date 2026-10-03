@@ -8,6 +8,7 @@ import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
+import 'tv_assistant_answer.dart';
 import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
 import 'tv_assistant_widgets.dart';
@@ -126,15 +127,44 @@ class TvAssistantConversation extends StatelessWidget {
           ),
         ),
       ],
-      AssistantSurfaceState.result => _result(context, pt, headlineStyle, gap, ask),
+      AssistantSurfaceState.result => _result(context, pt),
     };
 
     // While working, the question and the status stay above the scrolling
     // part: four streamed results plus Cancel do not fit the panel, and the
     // status is the one line that says Big P is not done yet. Both are
     // bounded (3 lines, a fixed string); the model's answer is not, so the
-    // result keeps it in the scrolling part.
+    // result gives it a block of its own that opens at its first line and
+    // scrolls by itself, above the results.
+    // Title cards repeat what the answer lists. A ranking or a comparison
+    // shows a few of its titles only, and cards that cannot be chosen cannot
+    // be walked through, so there the text stays whole.
+    final hasChoices = tvAssistantHasChoices(c.displays);
+    final cards =
+        hasChoices &&
+        c.displays.any(
+          (d) =>
+              !tvAssistantDisplayIsEmpty(d) &&
+              (d is AssistantTitleMatches || d is AssistantMediaGrid || d is AssistantRequestOptions),
+        );
+    final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
+    final headline = cards ? assistantWithoutList(answer) : answer;
     final head = <Widget>[
+      if (c.state == AssistantSurfaceState.result) ...[
+        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
+        if (headline.isNotEmpty) ...[
+          // Above cards the lead alone: the cards are the answer. Above a
+          // result card it shows three lines of what follows; alone, it reads
+          // down the panel.
+          if (children.isEmpty)
+            Flexible(
+              child: TvAssistantAnswer(text: headline, style: headlineStyle),
+            )
+          else
+            TvAssistantAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3),
+          gap,
+        ],
+      ],
       if (c.state == AssistantSurfaceState.working) ...[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         // Results that are in show at once; the model is still composing.
@@ -144,15 +174,50 @@ class TvAssistantConversation extends StatelessWidget {
     ];
     Widget column(List<Widget> items) =>
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
-    // Anchored at the bottom, so the newest stays in view; a result with
-    // cards to choose from opens at its question and answer instead, with the
-    // first card (which takes the focus) right under them.
-    final fromTop = c.state == AssistantSurfaceState.result && tvAssistantHasChoices(c.displays);
+    // While working, anchored at the bottom: the newest stays in view. A
+    // result opens at its first card.
+    final result = c.state == AssistantSurfaceState.result;
     return column([
       ...head,
-      Flexible(
-        child: SingleChildScrollView(reverse: !fromTop, child: column(children)),
-      ),
+      // Nothing under the answer: the answer keeps the whole height.
+      if (children.isNotEmpty || c.state != AssistantSurfaceState.result)
+        Flexible(
+          // Nothing in it to focus: the list scrolls on Up and Down itself.
+          child: result && !hasChoices
+              ? TvAssistantReadableList(child: column(children))
+              : TvAssistantEdgeFade(
+                  // A new list per stand: the working list's offset does not carry.
+                  key: ValueKey(result),
+                  builder: (controller) =>
+                      SingleChildScrollView(controller: controller, reverse: !result, child: column(children)),
+                ),
+        ),
+      // Under the scrolling part: always in view, whatever the results do.
+      if (c.state == AssistantSurfaceState.result) ...[
+        // No cards to walk through: the follow-ups stand above the buttons,
+        // in view, and the list above them needs no focus to be read.
+        if (!hasChoices)
+          if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
+        // A button keeps 6 pt around its fill for the focus ring; pulled
+        // back so the fill, not the ring, lines up with the text and cards.
+        Transform.translate(
+          offset: Offset(-6 * pt, 0),
+          child: Wrap(
+            spacing: 12 * pt,
+            runSpacing: 12 * pt,
+            children: [
+              ask(),
+              TvAssistantButton(
+                label: t.assistant.result.done,
+                primary: false,
+                automationId: AutomationIds.assistantButton,
+                automationInstance: 'done',
+                onPressed: onDone,
+              ),
+            ],
+          ),
+        ),
+      ],
     ]);
   }
 
@@ -186,60 +251,46 @@ class TvAssistantConversation extends StatelessWidget {
     return displays;
   }
 
-  List<Widget> _result(
-    BuildContext context,
-    double pt,
-    TextStyle headlineStyle,
-    Widget gap,
-    Widget Function({bool primary}) ask,
-  ) {
+  /// What scrolls under the answer: the run's displays and its result card.
+  List<Widget> _result(BuildContext context, double pt) {
     final c = controller;
-    final headline = assistantHeadline(c);
-    return [
-      if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
-      if (headline.isNotEmpty) ...[Text(headline, style: headlineStyle), gap],
+    final results = [
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
-        gap,
+        SizedBox(height: 24 * pt),
       ],
-      // Three follow-ups after an answer; an error or a gate is no answer.
-      if (!c.resultIsError) ...[
-        Wrap(
-          spacing: 10 * pt,
-          runSpacing: 10 * pt,
-          children: [
-            for (final (i, question) in assistantFollowUps(
-              c.displays,
-              jobs: c.actions.any((a) => a.job != null),
-              prompt: c.prompt,
-            ).indexed)
-              TvAssistantChip(
-                label: question,
-                icon: Symbols.subdirectory_arrow_right_rounded,
-                dense: true,
-                automationId: AutomationIds.assistantFollowUp,
-                automationInstance: '$i',
-                onSelect: () => onExample(question),
-              ),
-          ],
-        ),
-        SizedBox(height: 16 * pt),
-      ],
-      Wrap(
-        spacing: 12 * pt,
-        runSpacing: 12 * pt,
-        children: [
-          ask(),
-          TvAssistantButton(
-            label: t.assistant.result.done,
-            primary: false,
-            automationId: AutomationIds.assistantButton,
-            automationInstance: 'done',
-            onPressed: onDone,
-          ),
-        ],
-      ),
     ];
+    // After the cards, in the same list: the cards keep the height.
+    return [
+      ...results,
+      if (tvAssistantHasChoices(c.displays))
+        if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
+    ];
+  }
+
+  /// Three follow-ups after an answer; an error or a gate is no answer.
+  Widget? _followUps(double pt) {
+    final c = controller;
+    if (c.resultIsError) return null;
+    return Wrap(
+      spacing: 10 * pt,
+      runSpacing: 10 * pt,
+      children: [
+        for (final (i, question) in assistantFollowUps(
+          c.displays,
+          jobs: c.actions.any((a) => a.job != null),
+          prompt: c.prompt,
+        ).indexed)
+          TvAssistantChip(
+            label: question,
+            icon: Symbols.subdirectory_arrow_right_rounded,
+            dense: true,
+            automationId: AutomationIds.assistantFollowUp,
+            automationInstance: '$i',
+            onSelect: () => onExample(question),
+          ),
+      ],
+    );
   }
 }

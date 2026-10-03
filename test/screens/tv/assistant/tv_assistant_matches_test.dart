@@ -315,6 +315,52 @@ void main() {
       expectInside(focusedRect(), panel, 'Cancel');
     });
 
+    // Hardware, 3 oct 2026: the answer took the room of the results and its
+    // last line faded out. Above cards the lead stands alone.
+    testWidgets('a long answer above the cards shows its lead in two lines at most and takes no focus', (tester) async {
+      await pumpSurface(tester);
+      final answer = List.filled(14, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      // A new result, as a run delivers it: working first, then the answer.
+      c
+        ..state = AssistantSurfaceState.working
+        ..emit();
+      await settle(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = answer
+        ..emit();
+      await settle(tester);
+      final panel = panelContent(tester);
+      expect(focusedMatch(), 'm1');
+      expectInside(focusedRect(), panel, 'first card');
+      final lead = tester.widget<Text>(find.byKey(const ValueKey('assistant.answer')));
+      expect(lead.data, 'Ik heb veel films met Tom Cruise gevonden.');
+      expect(lead.maxLines, 2);
+      expect(find.byKey(const ValueKey('assistant.answer.body')), findsNothing);
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedMatch(), 'm1', reason: 'nothing to read above the first card');
+    });
+
+    // Seerr not set up: the titles are shown but none can be opened or
+    // requested, so the cards cannot be walked through and do not replace
+    // the list in the answer.
+    testWidgets('title cards that cannot be chosen leave the answer its list', (tester) async {
+      await pumpSurface(tester);
+      const shown = [
+        AssistantTitleMatch(matchId: 'u1', title: 'Heat', year: 1995, kind: 'movie', confidence: 'high', targets: []),
+        AssistantTitleMatch(matchId: 'u2', title: 'Ronin', year: 1998, kind: 'movie', confidence: 'high', targets: []),
+      ];
+      await showMatches(tester, shown);
+      c
+        ..answer = 'Ik vond deze titels op het web:\n1. Heat (1995)\n2. Ronin (1998)'
+        ..emit();
+      await settle(tester);
+
+      expect(find.byKey(const ValueKey('assistant.answer.body')), findsOneWidget);
+      expect(find.textContaining('2. Ronin (1998)'), findsOneWidget);
+    });
+
     testWidgets('D-pad through four results and on to the buttons keeps every focused control in the panel', (
       tester,
     ) async {
@@ -457,9 +503,9 @@ void main() {
       expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
       expect(focusedMatch(), 'm1');
       final window = tester.getRect(
-        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(ConstrainedBox)).first,
+        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
       );
-      expect(window.height, lessThanOrEqualTo(4 * 154 + 1));
+      expect(window.bottom, lessThanOrEqualTo(panelContent(tester).bottom + 1), reason: 'the list stays in the panel');
       // G (hardware round, 3 Oct): the summoned panel is wider and shows four cards at once.
       expect(tester.getRect(find.byType(TvAssistantMatchCard).last).bottom, lessThanOrEqualTo(window.bottom + 1));
       expect(tester.getSize(find.byType(TvAssistantMatchCard).first).width, greaterThan(600));
@@ -491,9 +537,9 @@ void main() {
       expect(find.text(t.assistant.working.stillChecking), findsOneWidget);
       expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
       final window = tester.getRect(
-        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(ConstrainedBox)).first,
+        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
       );
-      expect(window.height, lessThanOrEqualTo(4 * 154 + 1));
+      expect(window.bottom, lessThanOrEqualTo(panelContent(tester).bottom + 1), reason: 'the list stays in the panel');
       expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
       expect(focusedLabel(), 'assistant.cancel', reason: 'a streamed card does not take the remote');
 
@@ -513,6 +559,36 @@ void main() {
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
       expect(find.byType(TvAssistantMatchCard), findsNothing);
+    });
+
+    testWidgets('twelve cards under a long answer: the focused card and the first line are both in the panel', (
+      tester,
+    ) async {
+      await summon(tester, const []);
+      final answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      c
+        ..state = AssistantSurfaceState.working
+        ..emit();
+      await settle(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = answer
+        ..displays = [_grid]
+        ..emit();
+      await settle(tester);
+
+      final panel = panelContent(tester);
+      expect(focusedMatch(), _grid.entries.first.item.globalKey);
+      // Against the list's own viewport: inside the panel is not enough, a
+      // card can sit behind the answer.
+      final list = tester.getRect(
+        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+      );
+      expectInside(focusedRect(), list, 'first card');
+      expect(
+        tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top,
+        inInclusiveRange(panel.top, panel.bottom),
+      );
     });
 
     testWidgets('a media grid keeps Big P here and its first card opens the detail page', (tester) async {
