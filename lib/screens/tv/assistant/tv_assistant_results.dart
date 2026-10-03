@@ -115,7 +115,15 @@ class TvAssistantResultCard extends StatelessWidget {
     return AutomationNode(
       id: AutomationIds.assistantResult,
       role: 'region',
-      state: () => {'error': error, 'actions': actions.length},
+      state: () => {
+        'error': error,
+        'actions': actions.length,
+        // Per followed job: phase and percent, for Pleya Verify.
+        'jobs': [
+          for (final a in actions)
+            if (a.progress case final p?) {'phase': p.phase.name, 'percent': ?p.percent},
+        ],
+      },
       child: TvAssistantCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,7 +133,14 @@ class TvAssistantResultCard extends StatelessWidget {
               style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption2 * pt),
             ),
             for (final action in actions)
-              line(_statusIcon(context, AssistantStepPhase.done), assistantActionLabel(action)),
+              line(
+                _statusIcon(context, switch (action.progress?.phase) {
+                  AssistantJobPhase.running || AssistantJobPhase.background => AssistantStepPhase.started,
+                  AssistantJobPhase.failed => AssistantStepPhase.failed,
+                  _ => AssistantStepPhase.done,
+                }),
+                assistantActionLabel(action),
+              ),
             if (!done) line(_statusIcon(context, AssistantStepPhase.failed), t.assistant.ends.nothingChanged),
           ],
         ),
@@ -140,6 +155,15 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
   AssistantTitleMatches(:final matches) => matches.length,
   _ => 0,
+};
+
+/// A display with nothing in it, e.g. a search that found nothing: the
+/// answer says so, an empty card would only be a grey bar.
+bool tvAssistantDisplayIsEmpty(AssistantDisplay display) => switch (display) {
+  AssistantRequestOptions(:final options) => options.isEmpty,
+  AssistantTitleMatches(:final matches) => matches.isEmpty,
+  AssistantMediaGrid(:final entries) => entries.isEmpty,
+  _ => false,
 };
 
 bool tvAssistantHasChoices(List<AssistantDisplay> displays) => displays.any((d) => tvAssistantChoiceCount(d) > 0);
@@ -164,7 +188,7 @@ class TvAssistantDisplayView extends StatelessWidget {
   final ValueChanged<AssistantRequestOption>? onPickOption;
   final ValueChanged<AssistantTitleTarget>? onOpenTitle;
 
-  /// The summoned panel: found titles scroll in a window of three.
+  /// The summoned panel: found titles scroll in a window of four.
   final bool compact;
 
   /// Gets the first option card, for the surface's default focus (still 7).
@@ -201,9 +225,10 @@ class TvAssistantDisplayView extends StatelessWidget {
       ],
     );
     if (!compact) return list;
-    // Three cards of 124 pt plus their gaps; focus scrolls the rest in.
+    // Four match cards (144 pt with a plot line) plus their gaps; focus
+    // scrolls the rest in.
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: 3 * 134 * pt),
+      constraints: BoxConstraints(maxHeight: 4 * 154 * pt),
       child: SingleChildScrollView(child: list),
     );
   }

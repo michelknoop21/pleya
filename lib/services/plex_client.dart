@@ -871,7 +871,9 @@ class PlexClient
           id: a.uuid,
           title: a.subtitle == null || a.subtitle!.isEmpty ? a.title : '${a.title}: ${a.subtitle}',
           state: ServerJobState.running,
-          progress: (a.progress.clamp(0, 100)) / 100,
+          // -1 is Plex's "indeterminate".
+          progress: a.progress < 0 ? null : (a.progress.clamp(0, 100)) / 100,
+          libraryId: a.librarySectionId,
           cancellable: a.cancellable,
         ),
     ];

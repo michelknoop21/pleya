@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
+import '../../../assistant/big_p_voice.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../utils/app_logger.dart';
@@ -53,6 +56,7 @@ Future<bool> showTvAssistantConfirm(
     return false;
   }
   controller.confirmPending(password: result.password);
+  unawaited(BigPVoice.of(controller)?.say(BigPMoment.nod));
   return true;
 }
 

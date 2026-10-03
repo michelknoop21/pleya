@@ -65,12 +65,35 @@ String assistantActionKindLabel(AssistantActionKind kind) {
   };
 }
 
-/// "Scan gestart · Films · Zolder" (mockup 38 G).
+/// "Scan gestart · Films · Zolder" (mockup 38 G), or while Pleya follows
+/// the job: "Scan loopt · 40% · Films · Zolder", "Scan klaar · Films · Zolder".
 String assistantActionLabel(AssistantActionRecord record) => [
-  assistantActionKindLabel(record.kind),
+  _jobPhaseLabel(record) ?? assistantActionKindLabel(record.kind),
+  if (record.progress case AssistantJobProgress(phase: AssistantJobPhase.running, :final percent?)) '$percent%',
   record.subject,
   record.serverName,
 ].where((part) => part.isNotEmpty).join(' · ');
+
+String? _jobPhaseLabel(AssistantActionRecord record) {
+  final j = t.assistant.jobs;
+  final (running, done, failed, background) = switch (record.kind) {
+    AssistantActionKind.scanLibrary => (
+      j.scanLibrary.running,
+      j.scanLibrary.done,
+      j.scanLibrary.failed,
+      j.scanLibrary.background,
+    ),
+    _ => (j.retryJob.running, j.retryJob.done, j.retryJob.failed, j.retryJob.background),
+  };
+  return switch (record.progress?.phase) {
+    AssistantJobPhase.running => running,
+    AssistantJobPhase.done => done,
+    AssistantJobPhase.failed => failed,
+    AssistantJobPhase.background => background,
+    // Not followed: the action's own "gestart".
+    AssistantJobPhase.started || null => null,
+  };
+}
 
 String assistantConfirmTitle(AssistantActionKind kind) {
   final c = t.assistant.confirm.titles;

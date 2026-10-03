@@ -96,8 +96,37 @@ import Foundation
         result(Self.snapshot())
       case "measure":
         result(Self.measure())
+      case "playClip":
+        guard let bytes = call.arguments as? FlutterStandardTypedData else {
+          result(FlutterError(code: "BAD_ARGS", message: "playClip needs the clip bytes", details: nil))
+          return
+        }
+        result(Self.playClip(bytes.data))
+      case "stopClip":
+        Self.clip?.stop()
+        Self.clip = nil
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
+      }
+    }
+
+    // MARK: - Big P's voice clips
+
+    /// The clip playing now; a newer one replaces it. Plays inside the session
+    /// `configure` set up, so it never changes category or mode.
+    private static var clip: AVAudioPlayer?
+
+    private static func playClip(_ data: Data) -> FlutterError? {
+      clip?.stop()
+      do {
+        let player = try AVAudioPlayer(data: data)
+        clip = player
+        player.play()
+        return nil
+      } catch {
+        clip = nil
+        return FlutterError(code: "CLIP_FAILED", message: error.localizedDescription, details: nil)
       }
     }
 

@@ -136,6 +136,18 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
         ),
       ],
       ..._webSection(theme, config.kind, config.webSearch),
+      const SizedBox(height: 16),
+      AutomationNode(
+        id: AutomationIds.settingsFormButton,
+        instance: 'assistant.voice',
+        role: 'button',
+        child: SettingSwitchTile(
+          pref: SettingsService.bigPVoice,
+          icon: Symbols.record_voice_over_rounded,
+          title: s.voice,
+          subtitle: s.voiceNote,
+        ),
+      ),
       ..._modelSection(theme),
       ..._errorLine(theme),
     ];

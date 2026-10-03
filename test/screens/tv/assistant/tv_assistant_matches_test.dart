@@ -392,7 +392,10 @@ void main() {
       final window = tester.getRect(
         find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(ConstrainedBox)).first,
       );
-      expect(window.height, lessThanOrEqualTo(3 * 134 + 1));
+      expect(window.height, lessThanOrEqualTo(4 * 154 + 1));
+      // G (hardware round, 3 Oct): the summoned panel is wider and shows four cards at once.
+      expect(tester.getRect(find.byType(TvAssistantMatchCard).last).bottom, lessThanOrEqualTo(window.bottom + 1));
+      expect(tester.getSize(find.byType(TvAssistantMatchCard).first).width, greaterThan(600));
 
       await press(tester, LogicalKeyboardKey.arrowDown, 3);
       expect(focusedMatch(), 'm4');
@@ -423,7 +426,7 @@ void main() {
       final window = tester.getRect(
         find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(ConstrainedBox)).first,
       );
-      expect(window.height, lessThanOrEqualTo(3 * 134 + 1));
+      expect(window.height, lessThanOrEqualTo(4 * 154 + 1));
       expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
       expect(focusedLabel(), 'assistant.cancel', reason: 'a streamed card does not take the remote');
 

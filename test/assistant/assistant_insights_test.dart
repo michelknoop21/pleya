@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -146,12 +147,16 @@ class _Jf implements JellyfinClient {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-/// A Pleya Server the profile administers, with [streams] running.
+/// A Pleya Server the profile administers, with [streams] running and
+/// [history] finished. A null [history] is a server from before
+/// `GET /watch-history`, which answers the unknown-route 404.
 class _Ps implements PleyaServerClient {
-  _Ps(this.machine, this.name, {this.streams = const []});
+  _Ps(this.machine, this.name, {this.streams = const [], this.history = const []});
   final String machine;
   final String name;
   final List<PleyaActiveStream> streams;
+  final List<PleyaWatchedTitle>? history;
+  final historyReads = <int>[];
 
   @override
   PleyaServerConnection get connection => PleyaServerConnection(
@@ -175,11 +180,35 @@ class _Ps implements PleyaServerClient {
   @override
   Future<List<PleyaActiveStream>> streamSessions() async => streams;
   @override
+  Future<({List<PleyaWatchedTitle> items, bool truncated})> watchHistory(int days) async {
+    historyReads.add(days);
+    final h = history;
+    if (h == null) {
+      throw MediaServerHttpException(
+        type: MediaServerHttpErrorType.unknown,
+        statusCode: 404,
+        message: 'library.not_found',
+      );
+    }
+    return (items: h, truncated: false);
+  }
+
+  @override
   Future<void> closeGracefully({Duration drainTimeout = Duration.zero}) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
+
+PleyaWatchedTitle _watched(String user, String name, String item, String title, DateTime at, {String? series}) => (
+  userId: user,
+  userName: name,
+  itemId: item,
+  title: title,
+  seriesId: series == null ? null : 'S-$series',
+  seriesTitle: series,
+  updatedAt: at,
+);
 
 JellyfinPlayedItem _played(String id, String title, DateTime at, {String? series}) =>
     (id: id, title: title, seriesId: series == null ? null : 'S-$series', seriesName: series, lastPlayed: at);
@@ -642,7 +671,51 @@ void main() {
       });
     });
 
-    test('Pleya Server: streams now, no history', () async {
+    test('Pleya Server period: finished titles per user, series by name, ranked', () async {
+      final now = DateTime.now();
+      final inside = now.subtract(const Duration(days: 1));
+      final outside = now.subtract(const Duration(days: 9));
+      final ps = _Ps(
+        'zolder',
+        'Zolder',
+        history: [
+          _watched('u1', 'Kim', 'e1', 'Half Loop', inside, series: 'Severance'),
+          _watched('u1', 'Kim', 'e2', 'Good News', inside, series: 'Severance'),
+          _watched('u2', 'Sam', 'e1', 'Half Loop', inside, series: 'Severance'),
+          _watched('u2', 'Sam', 'm1', 'Dune', inside),
+          _watched('u1', 'Kim', 'm2', 'Up', outside),
+        ],
+      );
+      final result =
+          await _tool(
+                'watch_stats',
+              ).run(_ctx(const [], pleya: [ps]), ServerId('zolder'), {'scope': 'period', 'days': 7})
+              as AssistantToolResult;
+      expect(ps.historyReads, [7]);
+      expect(result.data['plays'], 4, reason: 'Up was last touched before the period');
+      final top = (result.data['top_titles']! as List).cast<Map<String, Object?>>();
+      expect(top.first, {
+        'title': 'Severance',
+        'plays': 3,
+        'viewers': ['Kim', 'Sam'],
+      });
+      expect(top.last['title'], 'Dune');
+      final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
+      expect(
+        users,
+        unorderedEquals([
+          {'user': 'Kim', 'plays': 2},
+          {'user': 'Sam', 'plays': 2},
+        ]),
+        reason: 'no hours: the server reports no durations',
+      );
+      final display = result.display! as AssistantWatchStats;
+      expect(display.available, isTrue);
+      expect(display.days, 7);
+      expect(result.data, isNot(contains('history_unavailable_for')));
+    });
+
+    test('Pleya Server: streams now; a server without the history route has no period', () async {
       final ps = _Ps(
         'zolder',
         'Zolder',
@@ -657,6 +730,7 @@ void main() {
             device: 'iPad',
           ),
         ],
+        history: null,
       );
       final ctx = _ctx(const [], pleya: [ps]);
       final tool = _tool('watch_stats');

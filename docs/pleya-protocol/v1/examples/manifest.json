@@ -357,6 +357,11 @@
       "file": "error_job_not_cancellable.json",
       "schema": "ErrorEnvelope",
       "note": "S2.4: job.not_cancellable met details.reason finished"
+    },
+    {
+      "file": "watch_history.json",
+      "schema": "WatchHistory",
+      "note": "DEC-143: een film en een aflevering, de aflevering met haar serie"
     }
   ]
 }

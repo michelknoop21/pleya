@@ -2336,6 +2336,20 @@
       "findTitle": "Titel op beschrijving zoeken",
       "fallback": "Bezig"
     },
+    "jobs": {
+      "scanLibrary": {
+        "running": "Scan loopt",
+        "done": "Scan klaar",
+        "failed": "Scan mislukt",
+        "background": "Scan loopt nog op de achtergrond"
+      },
+      "retryJob": {
+        "running": "Taak loopt",
+        "done": "Taak klaar",
+        "failed": "Taak mislukt",
+        "background": "Taak loopt nog op de achtergrond"
+      }
+    },
     "result": {
       "doneBy": "Uitgevoerd door Pleya",
       "notDoneBy": "Niet uitgevoerd door Pleya",
@@ -2478,7 +2492,9 @@
       "ollamaWebKeyHelp": "Zonder deze sleutel zoekt Big P alleen op Wikipedia.",
       "webSearchNoteServer": "Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.",
       "webSearchNoteCloud": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.",
-      "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht."
+      "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.",
+      "voice": "Stem van Big P",
+      "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken."
     },
     "youAsked": "Je vroeg:",
     "option": {

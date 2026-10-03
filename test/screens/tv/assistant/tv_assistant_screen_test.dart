@@ -15,6 +15,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
@@ -205,6 +206,22 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 600));
       expect(avatar(tester).talkingText, 'Ik heb de scan gestart.');
+    });
+
+    testWidgets('a search that found nothing draws no empty cards', (tester) async {
+      await pumpSurface(tester);
+      c
+        ..prompt = 'Zoek een film over de ruimte'
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Geen resultaten gevonden.'
+        ..displays = [
+          const AssistantMediaGrid([]),
+          AssistantRequestOptions(AssistantToolContext(servers: MultiServerManager()), const []),
+        ]
+        ..emit();
+      await settle(tester);
+
+      expect(find.byType(TvAssistantCard), findsNothing);
     });
 
     testWidgets('error: worried Big P and a Pleya card that says nothing changed', (tester) async {

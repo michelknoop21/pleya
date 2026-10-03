@@ -70,9 +70,12 @@ class TvAssistantCard extends StatelessWidget {
 
 /// "Je vroeg: …", right-aligned above Big P's answer.
 class TvAssistantQuestion extends StatelessWidget {
-  const TvAssistantQuestion({super.key, required this.prompt});
+  const TvAssistantQuestion({super.key, required this.prompt, this.maxLines = 3});
 
   final String prompt;
+
+  /// One line in the summoned panel, so the results keep the room.
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +97,7 @@ class TvAssistantQuestion extends StatelessWidget {
               TextSpan(text: prompt),
             ],
           ),
-          maxLines: 3,
+          maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt, height: 1.25),
         ),
