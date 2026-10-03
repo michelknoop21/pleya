@@ -560,6 +560,7 @@ void main() {
       'voteCount': votes,
     };
     final page = [film(1, 'ja', 900), film(2, 'ko', 30), film(3, 'en', 5000), film(4, 'ja', 4)];
+    late Map<String, Object?> lastOut;
 
     Future<List<String>> titles(Map<String, Object?> args, List<Map<String, Object?>> results) async {
       final seerr = _Seerr()..discover = results;
@@ -567,13 +568,15 @@ void main() {
         _call('discover_request_titles', {'kind': 'movie', ...args}),
         _say('x'),
       ], seerr: seerr);
-      final out = model.toolResults.first;
-      expect(out, isNot(contains('ignored_filters')));
+      final out = lastOut = model.toolResults.first;
       return [for (final t in out['titles'] as List) (t as Map)['title'] as String];
     }
 
-    test('an asked original_language is applied to the page', () async {
+    test('an asked original_language is applied to the page, and the model hears it was one page', () async {
       expect(await titles({'original_language': 'ja'}, page), ['Film 1', 'Film 4']);
+      expect(lastOut['ignored_filters'], [
+        {'filter': 'original_language', 'value': 'ja', 'reason': 'first_page_only'},
+      ]);
     });
 
     test('a request with nothing mainstream (anime) still returns the page', () async {

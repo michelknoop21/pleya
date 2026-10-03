@@ -128,11 +128,12 @@ Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx) async {
         serverName: _servedLabel(ctx, answered, unavailable),
         unavailable: [for (final id in unavailable) ctx.serverName(id)],
         sessions: [
-          for (final (i, (server: _, :s)) in shown.indexed)
+          for (final (i, (:server, :s)) in shown.indexed)
             WatchSession(
               id: '$i',
               userName: s.userName,
-              title: s.title,
+              // Several servers in one card: say where each stream runs.
+              title: answered.length > 1 ? '${s.title} · $server' : s.title,
               subtitle: s.episode,
               progressPercent: s.progressPercent,
               isPaused: s.paused ?? false,
