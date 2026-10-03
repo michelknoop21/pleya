@@ -460,6 +460,26 @@ void main() {
     expect(result.failureMessage, contains('timed out'));
   });
 
+  test('wait_until with state waits for that state, not only for the node (VERIFY-WAIT1)', () async {
+    Future<ScenarioRunResult> waitFor(bool collapsed) {
+      final source =
+          'name: fixture.wait_state\ntarget: macos\nsteps:\n'
+          '  - wait_until: {id: sidebar.rail, state: {collapsed: $collapsed}, timeout: 300}\n';
+      return runScenario(
+        scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+        scenarioSource: source,
+        driver: FakeDriver(stateForSidebar: const {'collapsed': false}),
+        repoRoot: repoRoot,
+      );
+    }
+
+    expect((await waitFor(false)).passed, isTrue);
+    final wrong = await waitFor(true);
+    expect(wrong.passed, isFalse);
+    expect(wrong.failureMessage, contains('timed out'));
+    expect(wrong.failureMessage, contains('collapsed is false, expected true'));
+  });
+
   test('a verb the engine genuinely has no case for fails cleanly instead of silently no-opping', () async {
     // Every verb the validator's vocabulary advertises (`model.dart`'s
     // setupVerbs/stepVerbs) has a real case in run_scenario.dart's switch —
