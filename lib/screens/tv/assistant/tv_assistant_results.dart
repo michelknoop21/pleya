@@ -222,7 +222,8 @@ class TvAssistantDisplayView extends StatelessWidget {
 
   bool _selectable(AssistantTitleMatch m) => m.targets.isNotEmpty || m.request != null;
 
-  Widget _matches(double pt, List<AssistantTitleMatch> matches) {
+  /// [ranked] badges each poster with its place (most watched).
+  Widget _matches(double pt, List<AssistantTitleMatch> matches, {bool ranked = false}) {
     final list = Column(
       children: [
         for (final (i, match) in matches.indexed)
@@ -231,7 +232,9 @@ class TvAssistantDisplayView extends StatelessWidget {
             child: TvAssistantMatchCard(
               match: match,
               index: optionOffset + i,
-              compact: compact,
+              // A ranking is a list to scan: one line of detail per title.
+              compact: compact || ranked,
+              rank: ranked ? i + 1 : null,
               focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
               // Nothing to open and nothing to request: shown, never a dead
               // focus stop.
@@ -359,7 +362,7 @@ class TvAssistantDisplayView extends StatelessWidget {
           TvAssistantWatchCard(stats: s),
           if (s.titles.isNotEmpty) ...[
             SizedBox(height: 10 * pt),
-            _matches(pt, [
+            _matches(ranked: true, pt, [
               for (final x in s.titles.take(_watchTitles))
                 AssistantTitleMatch(
                   matchId: x.target?.item.globalKey ?? 'watched:${x.title}',

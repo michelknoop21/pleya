@@ -204,7 +204,7 @@ void main() {
 
     expect(find.text(t.assistant.working.stillChecking), findsOneWidget);
     expect(find.text(t.assistant.working.status), findsNothing);
-    expect(find.text(t.assistant.displays.watchStats(server: 'Zolder')), findsOneWidget);
+    expect(find.text(t.assistant.displays.watchTitle), findsOneWidget);
     expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
     expect(focusedLabel(), 'assistant.cancel');
   });

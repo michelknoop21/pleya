@@ -2502,22 +2502,30 @@
     },
     "displays": {
       "missing": "${count} titles on ${server} are missing on ${other}",
-      "watchStats": "Watch stats · ${server}",
       "plays": "${count}× watched",
       "noSource": "No watch data available for ${server}.",
       "playsShort": "${count}×",
       "watchNow": "Right now",
       "watchDays": "Last ${n} days",
-      "viewers": "Viewers",
-      "mostWatched": "Most watched",
       "nobodyNow": "Nobody is watching right now.",
       "nothingWatched": "Nothing was watched in this period.",
-      "partialData": "Not every server could be read in time, so this may be incomplete."
+      "partialData": "Not every server could be read in time, so this may be incomplete.",
+      "watchTitle": "Watch stats",
+      "playsTotal": "plays"
     },
     "followUp": {
       "watchNow": "Who is watching right now?",
       "watchMonth": "Who watched the most in the last 30 days?",
-      "watchWeek": "Who watched the most this week?"
+      "watchWeek": "Who watched the most this week?",
+      "watchToday": "Who watched today?",
+      "tonight": "Give me a film tip for tonight.",
+      "recent": "What was added to my library lately?",
+      "unwatched": "Which films in my library have I not seen yet?",
+      "popular": "Which popular films do I not have yet?",
+      "missingMovies": "Which films are missing between my servers?",
+      "missingShows": "Which series are missing between my servers?",
+      "jobs": "Which tasks are running on my servers now?",
+      "failedJobs": "Did any task fail today?"
     },
     "match": {
       "inLibrary": "In your library · ${servers}",

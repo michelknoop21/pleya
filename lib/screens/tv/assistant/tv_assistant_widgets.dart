@@ -144,6 +144,8 @@ class TvAssistantChip extends StatefulWidget {
     super.key,
     required this.label,
     required this.onSelect,
+    this.icon,
+    this.dense = false,
     this.focusNode,
     this.automationId,
     this.automationInstance,
@@ -151,6 +153,12 @@ class TvAssistantChip extends StatefulWidget {
 
   final String label;
   final VoidCallback onSelect;
+
+  /// A leading glyph, e.g. the follow-up arrow; examples go without.
+  final IconData? icon;
+
+  /// One line in a smaller pill, for a row of follow-ups.
+  final bool dense;
   final FocusNode? focusNode;
   final String? automationId;
   final String? automationInstance;
@@ -181,20 +189,33 @@ class _TvAssistantChipState extends State<TvAssistantChip> {
       },
       child: AnimatedContainer(
         duration: tokens(context).fast,
-        padding: EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
+        padding: widget.dense
+            ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 10 * pt)
+            : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
         decoration: BoxDecoration(
           color: _focused ? colors.inverseSurface : const Color(0x1FFFFFFF),
           borderRadius: BorderRadius.circular(40 * pt),
         ),
-        child: Text(
-          widget.label,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _focused ? colors.onInverseSurface : tokens(context).text,
-            fontSize: TvHig.caption1 * pt,
-            height: 1.25,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.icon case final icon?) ...[
+              Icon(icon, size: 24 * pt, color: _focused ? colors.onInverseSurface : tokens(context).accent),
+              SizedBox(width: 10 * pt),
+            ],
+            Flexible(
+              child: Text(
+                widget.label,
+                maxLines: widget.dense ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _focused ? colors.onInverseSurface : tokens(context).text,
+                  fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

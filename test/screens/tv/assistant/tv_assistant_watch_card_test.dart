@@ -22,7 +22,7 @@ void main() {
   Future<void> pump(WidgetTester tester, AssistantWatchStats stats) =>
       pumpTvFrame(tester, FakeAssistantController(), TvAssistantWatchCard(stats: stats));
 
-  testWidgets('a period: viewers ranked with a bar', (tester) async {
+  testWidgets('a period: headline with the total, viewers as portraits', (tester) async {
     await pump(
       tester,
       const AssistantWatchStats(
@@ -36,9 +36,9 @@ void main() {
       ),
     );
 
-    expect(find.text('Kijkcijfers · Pleya'), findsOneWidget);
-    expect(find.text('Afgelopen 7 dagen'), findsOneWidget);
-    expect(find.text('KIJKERS'), findsOneWidget);
+    expect(find.text('Kijkcijfers'), findsOneWidget);
+    expect(find.text('Pleya · Afgelopen 7 dagen'), findsOneWidget);
+    expect(find.text('42'), findsOneWidget, reason: 'the period total');
     expect(find.text('36×'), findsOneWidget);
     expect(find.text('6×'), findsOneWidget);
     expect(find.text('In deze periode is niets bekeken.'), findsNothing);
@@ -115,7 +115,7 @@ void main() {
         sessions: [WatchSession(id: '1', userName: 'Omar', title: 'House')],
       ),
     );
-    expect(find.text('Op dit moment'), findsOneWidget);
+    expect(find.text('Pleya · Op dit moment'), findsOneWidget);
     expect(find.text('Omar'), findsOneWidget);
     expect(find.text('House'), findsOneWidget);
 
@@ -123,18 +123,26 @@ void main() {
     expect(find.text('Er kijkt nu niemand.'), findsOneWidget);
   });
 
-  test('follow-ups follow the result', () {
+  test('always three follow-ups that fit the result, never the question just asked', () {
     final f = t.assistant.followUp;
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)]), [f.watchNow, f.watchMonth]);
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 30)]), [f.watchNow, f.watchWeek]);
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P')]), [f.watchWeek, f.watchMonth]);
-    expect(assistantFollowUps(const []), isEmpty);
+    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)]), [
+      f.watchNow,
+      f.watchMonth,
+      f.watchToday,
+    ]);
+    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P')]), [f.watchToday, f.watchWeek, f.watchMonth]);
+    expect(assistantFollowUps(const [], acted: true), [f.jobs, f.failedJobs, f.watchWeek]);
+    expect(assistantFollowUps(const []), [f.watchWeek, f.tonight, f.recent]);
+    expect(assistantFollowUps(const [], prompt: f.watchWeek), [
+      f.tonight,
+      f.recent,
+      f.unwatched,
+    ], reason: 'the question just asked is not offered again');
     expect(
       assistantFollowUps(const [
         AssistantWatchStats(serverName: 'P', days: 7, unavailable: ['P']),
       ]),
-      isEmpty,
-      reason: 'no server answered: a follow-up would ask the same silent servers',
+      hasLength(3),
     );
   });
 

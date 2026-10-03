@@ -8,6 +8,7 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/media_kind.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -153,28 +154,40 @@ String assistantHeadline(AssistantController c) {
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
 }
 
-/// At most two questions that follow from what the run showed, in the UI's
-/// language. Pleya builds them from the displays, never from model prose,
-/// and each one stands on its own: a new ask carries no memory of this one.
-/// They carry no server, user or title names: a follow-up is sent as the
-/// user's own words, and those names come from servers, not from the user.
-List<String> assistantFollowUps(List<AssistantDisplay> displays) {
+/// Three questions that follow from what the run showed, in the UI's
+/// language, after every answer. Pleya builds them from the displays and the
+/// actions, never from model prose, and each one stands on its own: a new ask
+/// carries no memory of this one. They carry no server, user or title names:
+/// a follow-up is sent as the user's own words, and those names come from
+/// servers, not from the user. The question just asked is never offered.
+List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool acted = false, String? prompt}) {
   final f = t.assistant.followUp;
-  for (final d in displays) {
-    switch (d) {
-      // Nothing came back: a follow-up would ask the same silent servers.
-      case AssistantWatchStats(:final users, :final titles, :final sessions, :final unavailable)
-          when unavailable.isNotEmpty && users.isEmpty && titles.isEmpty && sessions.isEmpty:
-        return const [];
-      case AssistantWatchStats(days: null):
-        return [f.watchWeek, f.watchMonth];
-      case AssistantWatchStats(:final days?):
-        return [f.watchNow, if (days < 30) f.watchMonth else f.watchWeek];
-      default:
-        break;
-    }
-  }
-  return const [];
+  final fitting = <String>[
+    if (acted) ...[f.jobs, f.failedJobs],
+    for (final d in displays)
+      ...switch (d) {
+        AssistantWatchStats(days: null) => [f.watchToday, f.watchWeek, f.watchMonth],
+        AssistantWatchStats(:final days?) => [
+          f.watchNow,
+          if (days < 30) f.watchMonth else f.watchWeek,
+          if (days > 1) f.watchToday else f.watchWeek,
+        ],
+        AssistantServerComparison(:final kind) => [
+          kind == MediaKind.show ? f.missingMovies : f.missingShows,
+          f.unwatched,
+        ],
+        AssistantRequestOptions() => [f.popular, f.recent],
+        AssistantTitleMatches() || AssistantMediaGrid() => [f.tonight, f.unwatched, f.popular],
+        _ => const <String>[],
+      },
+    // Always three: the general questions fill what the result left open.
+    f.watchWeek, f.tonight, f.recent, f.unwatched,
+  ];
+  final asked = prompt?.trim().toLowerCase();
+  return [
+    for (final q in {...fitting})
+      if (q.toLowerCase() != asked) q,
+  ].take(3).toList();
 }
 
 /// The model's answer as the panel shows it: Markdown a model adds anyway
