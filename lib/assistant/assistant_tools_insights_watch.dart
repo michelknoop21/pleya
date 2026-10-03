@@ -417,8 +417,10 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
 const _watchTargets = 5;
 
 /// The library copy of a watched title on one of the [servers] it was played
-/// on: the same title key of the right kind, or null. A history row has
-/// no item id that every backend keeps, so the title is looked up.
+/// on: the same title key of the right kind, outside Home's hidden
+/// libraries, or null. A history row has no item id that every backend
+/// keeps, so the title is looked up; the servers are asked at once, each for
+/// at most five seconds.
 Future<AssistantTitleTarget?> _watchTarget(
   AssistantToolContext ctx,
   String title,
@@ -426,11 +428,13 @@ Future<AssistantTitleTarget?> _watchTarget(
   Set<ServerId> servers,
 ) async {
   final want = _titleKey(show, title);
-  for (final id in servers) {
+  Future<AssistantTitleTarget?> on(ServerId id) async {
     final client = ctx.userClient(id);
-    if (client == null) continue;
+    if (client == null || ctx.cancelled) return null;
     try {
-      final items = await client.searchItems(clipText(title, 100), limit: 5).timeout(const Duration(seconds: 5));
+      final found = await client.searchItems(clipText(title, 100), limit: 10).timeout(const Duration(seconds: 5));
+      if (ctx.cancelled) return null;
+      final items = filterHiddenLibraryItems(found, await _hiddenLibraryKeys(ctx, id));
       for (final item in items) {
         if (item.kind != (show ? MediaKind.show : MediaKind.movie)) continue;
         if (_titleKey(show, item.title ?? '') != want) continue;
@@ -438,8 +442,11 @@ Future<AssistantTitleTarget?> _watchTarget(
         return (serverId: id, serverName: ctx.serverName(id), item: scoped);
       }
     } catch (_) {
-      // A slow or failing search leaves the row as text.
+      // A slow or failing search leaves the title without a library copy.
     }
+    return null;
   }
-  return null;
+
+  final found = await Future.wait([for (final id in servers) on(id)]);
+  return found.nonNulls.firstOrNull;
 }

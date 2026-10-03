@@ -4,27 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../assistant/assistant_tools.dart';
-import '../../../focus/dpad_navigator.dart';
-import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import 'tv_assistant_widgets.dart';
 
-// Five rows a side: the card, two follow-ups and the buttons fit the panel
-// without scrolling the question away.
+// Five viewers: the card, the title cards, two follow-ups and the buttons
+// stay one scroll.
 const _rows = 5;
 
-/// watch_stats as one card: who watched and what was watched side by side,
-/// ranked, with a bar against the leader; streams of "now" as their own
+/// watch_stats as one card: who watched, ranked, with a bar against the
+/// leader (the watched titles follow as title cards, see the results view); streams of "now" as their own
 /// list; servers without a source as a footnote.
 class TvAssistantWatchCard extends StatelessWidget {
-  const TvAssistantWatchCard({super.key, required this.stats, this.onOpenTitle});
+  const TvAssistantWatchCard({super.key, required this.stats});
 
   final AssistantWatchStats stats;
-
-  /// Opens a watched title found in a library; null leaves the rows as text.
-  final ValueChanged<AssistantTitleTarget>? onOpenTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -33,14 +28,10 @@ class TvAssistantWatchCard extends StatelessWidget {
     final s = stats;
     final d = t.assistant.displays;
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption2 * pt);
-    final users = [for (final u in s.users.take(_rows)) (label: u.name, plays: u.plays, target: null)];
-    final titles = [for (final x in s.titles.take(_rows)) (label: x.title, plays: x.plays, target: x.target)];
-    final columns = [
-      if (users.isNotEmpty) _Ranking(heading: d.viewers, rows: users),
-      if (titles.isNotEmpty) _Ranking(heading: d.mostWatched, rows: titles, onOpen: onOpenTitle),
-    ];
+    final users = [for (final u in s.users.take(_rows)) (label: u.name, plays: u.plays)];
+    final columns = [if (users.isNotEmpty) _Ranking(heading: d.viewers, rows: users)];
     // No rows because no server could answer is not "nothing watched".
-    final empty = s.days != null && columns.isEmpty && s.unavailable.isEmpty;
+    final empty = s.days != null && columns.isEmpty && s.titles.isEmpty && s.unavailable.isEmpty;
 
     return TvAssistantCard(
       child: Column(
@@ -131,11 +122,10 @@ class TvAssistantWatchCard extends StatelessWidget {
 }
 
 class _Ranking extends StatelessWidget {
-  const _Ranking({required this.heading, required this.rows, this.onOpen});
+  const _Ranking({required this.heading, required this.rows});
 
   final String heading;
-  final List<({String label, int plays, AssistantTitleTarget? target})> rows;
-  final ValueChanged<AssistantTitleTarget>? onOpen;
+  final List<({String label, int plays})> rows;
 
   @override
   Widget build(BuildContext context) {
@@ -149,9 +139,9 @@ class _Ranking extends StatelessWidget {
         Text(heading.toUpperCase(), style: small.copyWith(fontWeight: FontWeight.w700, letterSpacing: 1.2)),
         SizedBox(height: 10 * pt),
         for (var i = 0; i < rows.length; i++)
-          _openable(
-            rows[i].target,
-            Row(
+          Padding(
+            padding: EdgeInsets.only(bottom: 12 * pt),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
@@ -204,57 +194,6 @@ class _Ranking extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-
-  /// A row with a library copy is a focusable card that opens it; every
-  /// other row has the same insets but takes no focus, so the columns align.
-  Widget _openable(AssistantTitleTarget? target, Widget row) {
-    final open = onOpen;
-    return _OpenableRow(onSelect: target == null || open == null ? null : () => open(target), child: row);
-  }
-}
-
-class _OpenableRow extends StatefulWidget {
-  const _OpenableRow({required this.onSelect, required this.child});
-
-  final VoidCallback? onSelect;
-  final Widget child;
-
-  @override
-  State<_OpenableRow> createState() => _OpenableRowState();
-}
-
-class _OpenableRowState extends State<_OpenableRow> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
-    return Padding(
-      padding: EdgeInsets.only(bottom: 4 * pt),
-      child: FocusableWrapper(
-        borderRadius: 12 * pt,
-        disableScale: true,
-        canRequestFocus: widget.onSelect != null,
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        onSelect: switch (widget.onSelect) {
-          final select? => () {
-            SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-            select();
-          },
-          null => null,
-        },
-        child: AnimatedContainer(
-          duration: tokens(context).fast,
-          padding: EdgeInsets.fromLTRB(6 * pt, 4 * pt, 6 * pt, 8 * pt),
-          decoration: BoxDecoration(
-            color: _focused ? const Color(0x2EFFFFFF) : const Color(0x00000000),
-            borderRadius: BorderRadius.circular(12 * pt),
-          ),
-          child: widget.child,
-        ),
-      ),
     );
   }
 }

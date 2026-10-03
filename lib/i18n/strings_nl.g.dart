@@ -3423,6 +3423,7 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 	// Translations
 	@override String missing({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}';
 	@override String watchStats({required Object server}) => 'Kijkcijfers · ${server}';
+	@override String plays({required Object count}) => '${count}× bekeken';
 	@override String noSource({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.';
 	@override String playsShort({required Object count}) => '${count}×';
 	@override String get watchNow => 'Op dit moment';
@@ -5790,6 +5791,7 @@ extension on TranslationsNl {
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',
 			'assistant.displays.watchStats' => ({required Object server}) => 'Kijkcijfers · ${server}',
+			'assistant.displays.plays' => ({required Object count}) => '${count}× bekeken',
 			'assistant.displays.noSource' => ({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.',
 			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
 			'assistant.displays.watchNow' => 'Op dit moment',

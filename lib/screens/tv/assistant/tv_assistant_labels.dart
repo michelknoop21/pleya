@@ -187,7 +187,7 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays) {
 /// bullets, and runs of blank lines become one.
 String assistantPlainAnswer(String answer) => answer
     .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*|__(\S.*?)__'), (m) => m[1] ?? m[2]!)
-    .replaceAll('`', '')
+    .replaceAll(RegExp('[`«»]'), '')
     .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
     .replaceAll(RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true), '• ')
     .replaceAll(RegExp(r'\n{3,}'), '\n\n')

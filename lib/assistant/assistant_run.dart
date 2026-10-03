@@ -6,6 +6,7 @@ import '../media/ids.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
+import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
@@ -120,7 +121,9 @@ class AssistantRun {
       '- Reply briefly, in $languageName, without technical details such as ids or tool names.\n'
       '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
       'out is enough.\n'
-      '- Plain text only: no Markdown, no asterisks, headings or tables.';
+      '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
+      '- Write every film or series title you name between « and », with the year when you know it: '
+      '«Interstellar» (2014). Pleya turns each into a card to open or request.';
 
   /// Calls carried out per model reply and per run. A reply with a hundred
   /// scans, or a planted instruction that asks for them, stops here.
@@ -193,7 +196,10 @@ class AssistantRun {
         return _end(AssistantRunEnd.providerError, error: AssistantModelError.badResponse);
       }
       messages.add(reply.message);
-      if (reply.toolCalls.isEmpty) return _end(AssistantRunEnd.answered, text: reply.content);
+      if (reply.toolCalls.isEmpty) {
+        await _cardsForNamedTitles(reply.content);
+        return _end(AssistantRunEnd.answered, text: reply.content);
+      }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
         // Every call gets an answer, so the history stays valid.
@@ -250,6 +256,42 @@ class AssistantRun {
   }
 
   int _stepIndex = 0;
+
+  /// Titles the answer names without a card get one: Pleya looks them up
+  /// itself with find_title and keeps only the exact titles, so each can be
+  /// opened from a library or requested. Never left to the model alone.
+  Future<void> _cardsForNamedTitles(String answer) async {
+    final shown = assistantShownTitleKeys(_displays);
+    final named = [
+      for (final t in assistantNamedTitles(answer))
+        if (!shown.contains(assistantTitleKey(t.title))) t,
+    ];
+    if (named.isEmpty || _cancelled) return;
+    final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
+    if (tool == null) return;
+    final wanted = {for (final t in named) assistantTitleKey(t.title)};
+    final index = _stepIndex++;
+    onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.started));
+    AssistantDisplay? display;
+    try {
+      final outcome = await tool.run(_ctx, null, {
+        'candidates': [
+          for (final t in named) {'title': t.title, 'year': ?t.year},
+        ],
+        'variants': [for (final t in named) t.title, if (named.length == 1) named.single.title],
+      });
+      if (outcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
+        final exact = [
+          for (final m in matches)
+            if (wanted.contains(assistantTitleKey(m.title))) m,
+        ];
+        if (exact.isNotEmpty) _displays.add(display = AssistantTitleMatches(context, exact));
+      }
+    } catch (e) {
+      appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
+    }
+    onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.done, display: display));
+  }
 
   Future<Map<String, Object?>> _execute(AssistantToolCall call) async {
     if (_cancelled) return {'error': 'cancelled'};

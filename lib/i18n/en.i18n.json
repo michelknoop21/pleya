@@ -2503,6 +2503,7 @@
     "displays": {
       "missing": "${count} titles on ${server} are missing on ${other}",
       "watchStats": "Watch stats · ${server}",
+      "plays": "${count}× watched",
       "noSource": "No watch data available for ${server}.",
       "playsShort": "${count}×",
       "watchNow": "Right now",

@@ -2503,6 +2503,7 @@
     "displays": {
       "missing": "${count} titels op ${server} ontbreken op ${other}",
       "watchStats": "Kijkcijfers · ${server}",
+      "plays": "${count}× bekeken",
       "noSource": "Geen kijkgegevens beschikbaar voor ${server}.",
       "playsShort": "${count}×",
       "watchNow": "Op dit moment",

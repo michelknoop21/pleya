@@ -274,6 +274,15 @@ class AssistantController extends ChangeNotifier {
       _resultIsError = result.end != AssistantRunEnd.answered;
       _answer = result.text;
       _actions.addAll(result.actions);
+      // find_media before an action was a lookup: the action is the result,
+      // not a grid of the titles it searched through.
+      if (_actions.isNotEmpty) {
+        final lookups = [
+          for (final s in _steps)
+            if (s.tool == 'find_media') ?s.display,
+        ];
+        _displays.removeWhere((d) => lookups.any((l) => identical(l, d)));
+      }
       if (_actions.any((a) => a.job != null)) unawaited(_watchJobs());
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
       _state = AssistantSurfaceState.result;

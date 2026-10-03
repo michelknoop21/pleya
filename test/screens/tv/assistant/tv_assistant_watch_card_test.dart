@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -23,7 +22,7 @@ void main() {
   Future<void> pump(WidgetTester tester, AssistantWatchStats stats) =>
       pumpTvFrame(tester, FakeAssistantController(), TvAssistantWatchCard(stats: stats));
 
-  testWidgets('a period: viewers and titles ranked side by side', (tester) async {
+  testWidgets('a period: viewers ranked with a bar', (tester) async {
     await pump(
       tester,
       const AssistantWatchStats(
@@ -40,28 +39,28 @@ void main() {
     expect(find.text('Kijkcijfers · Pleya'), findsOneWidget);
     expect(find.text('Afgelopen 7 dagen'), findsOneWidget);
     expect(find.text('KIJKERS'), findsOneWidget);
-    expect(find.text('MEEST BEKEKEN'), findsOneWidget);
     expect(find.text('36×'), findsOneWidget);
-    expect(find.text('19×'), findsOneWidget);
+    expect(find.text('6×'), findsOneWidget);
     expect(find.text('In deze periode is niets bekeken.'), findsNothing);
     expect(find.text('Geen kijkgegevens beschikbaar voor Zolder.'), findsOneWidget);
   });
 
-  testWidgets('a watched title in a library opens it; one without stays text', (tester) async {
+  testWidgets('watched titles are title cards: plays and viewers, a library copy opens', (tester) async {
     final item = MediaItem(id: 's1', backend: MediaBackend.jellyfin, kind: MediaKind.show, title: 'The Block');
     final opened = <AssistantTitleTarget>[];
     await pumpTvFrame(
       tester,
       FakeAssistantController(),
-      TvAssistantWatchCard(
-        stats: AssistantWatchStats(
+      TvAssistantDisplayView(
+        display: AssistantWatchStats(
           serverName: 'Pleya',
           days: 7,
+          users: const [(name: 'Jan', plays: 26, seconds: 0)],
           titles: [
             (
               title: 'The Block',
               plays: 19,
-              viewers: const ['Jan'],
+              viewers: const ['Gideuh', 'Jan'],
               target: (serverId: ServerId('w'), serverName: 'W', item: item),
             ),
             (title: 'House', plays: 7, viewers: const ['Jan'], target: null),
@@ -70,9 +69,10 @@ void main() {
         onOpenTitle: opened.add,
       ),
     );
-    final rows = find.byWidgetPredicate((w) => w is FocusableWrapper && w.canRequestFocus);
-    expect(rows, findsOneWidget, reason: 'only the title with a library copy is focusable');
-    tester.widget<FocusableWrapper>(rows).onSelect!();
+    final cards = find.byType(TvAssistantMatchCard);
+    expect(cards, findsNWidgets(2));
+    expect(find.text('19× bekeken · Gideuh · Jan'), findsOneWidget);
+    tester.widget<TvAssistantMatchCard>(cards.first).onSelect!();
     expect(opened.single.item.id, 's1');
   });
 

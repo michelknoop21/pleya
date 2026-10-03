@@ -156,6 +156,9 @@ class TvAssistantResultCard extends StatelessWidget {
 /// A media grid draws at most this many titles.
 const _gridCap = 12;
 
+/// The watched titles shown as cards: the ones watch_stats resolved.
+const _watchTitles = 5;
+
 /// How many focusable cards [display] draws: request options, found titles
 /// and a grid's titles. The first of them takes the focus after a result
 /// (still 7).
@@ -164,6 +167,7 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantTitleMatches(:final matches) => matches.length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
   AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
+  AssistantWatchStats(:final titles) => min(titles.length, _watchTitles),
   _ => 0,
 };
 
@@ -343,7 +347,29 @@ class TvAssistantDisplayView extends StatelessWidget {
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
-      final AssistantWatchStats s => TvAssistantWatchCard(stats: s, onOpenTitle: onOpenTitle),
+      // The watched titles are title cards, as a found title is: poster,
+      // plays and viewers, and they open their library copy.
+      final AssistantWatchStats s => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TvAssistantWatchCard(stats: s),
+          if (s.titles.isNotEmpty) ...[
+            SizedBox(height: 10 * pt),
+            _matches(pt, [
+              for (final x in s.titles.take(_watchTitles))
+                AssistantTitleMatch(
+                  matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
+                  title: x.title,
+                  year: x.target?.item.year,
+                  kind: x.target?.item.kind.name ?? 'movie',
+                  confidence: 'high',
+                  targets: [?x.target],
+                  snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
+                ),
+            ]),
+          ],
+        ],
+      ),
       _ => const SizedBox.shrink(),
     };
   }
