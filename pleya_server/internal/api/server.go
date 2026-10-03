@@ -333,6 +333,10 @@ func (s *Server) routeTable() []route {
 		// en dat is geen antwoord voor een huisgenoot.
 		{"GET " + p + "/stream-sessions", s.authenticated(s.handleStreamSessions)},
 
+		// Kijkgeschiedenis van alle gebruikers (DEC-143). Klasse admin, om
+		// dezelfde reden als de lopende streams hierboven.
+		{"GET " + p + "/watch-history", s.authenticated(s.handleWatchHistory)},
+
 		// API-tokens (S1.5, J.2 rij 12 en 13). Klasse authenticated en niet admin:
 		// RB-20 zegt "een gebruiker (zelf, of een beheerder namens iemand)", dus de
 		// eigen tokens zijn zelfbediening en `user_id` is de beheerdersvorm. De

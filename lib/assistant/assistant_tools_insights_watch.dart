@@ -169,6 +169,38 @@ Future<AssistantToolResult> _jellyfinPeriod(
   );
 }
 
+/// Pleya Server keeps, like Jellyfin, one watch state per user per item, so a
+/// period is the same reading: each finished title once per user, at its last
+/// touch. Null when the server predates `GET /watch-history` (DEC-143).
+Future<AssistantToolResult?> _pleyaPeriod(AssistantToolContext ctx, ServerId id, PleyaServerClient ps, int days) async {
+  final now = DateTime.now();
+  final from = DateTime(now.year, now.month, now.day - (days - 1));
+  final ({List<PleyaWatchedTitle> items, bool truncated}) history;
+  try {
+    history = await ps.watchHistory(days);
+  } on MediaServerHttpException catch (e) {
+    if (e.statusCode == 404 && e.message == 'library.not_found') return null;
+    rethrow;
+  }
+  return _periodResult(
+    ctx.serverName(id),
+    days,
+    [
+      for (final w in history.items)
+        if (!w.updatedAt.isBefore(from))
+          (
+            titleKey: w.seriesId != null ? 's${w.seriesId}' : 'i${w.itemId}',
+            title: clipText(w.seriesTitle ?? w.title),
+            userKey: w.userId,
+            user: clipText(w.userName, 40),
+            seconds: 0,
+          ),
+    ],
+    hours: false,
+    extra: {if (history.truncated) 'capped_at_plays': 1000},
+  );
+}
+
 /// Top titles (a series counts once, under its name) and top users.
 AssistantToolResult _periodResult(
   String name,

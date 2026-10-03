@@ -1176,6 +1176,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 36 | `GET /jobs` | wat de server op de achtergrond doet | klasse `admin`, `404` voor de rest (S2.4) |
 | 37 | `POST /jobs/{id}/cancel` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 | 38 | `POST /jobs/{id}/retry` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
+| 39 | `GET /watch-history` | wat huisgenoten de laatste dagen hebben afgekeken | klasse `admin`, `404` voor de rest; `GET /watch-state` blijft de eigen lijst van iedere gebruiker (DEC-143) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1461,6 +1462,30 @@ streamsessie leeft uitsluitend in de cookie `pleya_ss_<id>`, en de id zelf is ni
 Wat er niet in staat is de stamboom van een aflevering. Wie "serie S2 · A3" wil tonen haalt dat met
 `item_id` uit `GET /pleya/v1/items/{item_id}`; een tweede, denormaliseerde kopie hier zou een tweede
 bron maken voor dezelfde vraag.
+
+### 17b.7 Kijkgeschiedenis van het huishouden
+
+`GET /pleya/v1/watch-history?days=7` geeft per gebruiker de films en afleveringen die hij heeft
+afgekeken (`watched`, of `play_count` boven nul) en waarvan de kijkstatus in de laatste `days` dagen
+is bijgewerkt. Klasse `admin`, toegevoegd door DEC-143 buiten venster 2.
+
+```json
+{ "days": 7, "truncated": false, "items": [
+  { "user_id": "0198f2d0-...", "username": "sanne",
+    "item_id": "0198f2d0-...", "item_title": "A3", "item_kind": "episode",
+    "series_id": "0198f2d0-...", "series_title": "Severance",
+    "watched": true, "play_count": 2, "updated_at": "2026-10-02T21:14:09Z" }
+] }
+```
+
+Er is geen afspeellog. Een regel is de laatste aanraking van één gebruiker op één item, dezelfde lezing
+als Jellyfin en Emby met hun "laatst afgespeeld", dus wie een film drie keer keek staat er één keer
+in. `days` loopt van 1 tot en met 31 en wordt geklemd, niet geweigerd; zonder parameter is het 7.
+Nieuwste eerst en ten hoogste 1000 regels; `truncated` is waar als er meer waren.
+
+Anders dan bij 17b.6 staat de serie van een aflevering er wel bij. De vraag die dit endpoint
+beantwoordt is "wat is er het meest gekeken", en die telt per serie; een client die daarvoor elke
+aflevering apart moet opzoeken doet honderden aanvragen voor één antwoord.
 
 ---
 
@@ -1850,15 +1875,17 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `POST /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `user_id` | nee |
 | `GET /pleya/v1/auth/api-tokens` | `authenticated` op zichzelf, `admin` via `?user_id=` | nee |
 | `GET /pleya/v1/audit` | `admin` | ja |
+| `GET /pleya/v1/watch-history` | `admin` | nee |
 
-Achtenveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Negenenveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
 17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), de drie daarna de
 bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /storage/roots/recheck`
 van S2.3 (samen J.3, venster 2, rijen 7 en 8), en de zes van S2.4: starten van een scan, de
-scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f).
+scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). De laatste
+is `GET /watch-history` (17b.7), buiten venster 2 toegevoegd door DEC-143.
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.
