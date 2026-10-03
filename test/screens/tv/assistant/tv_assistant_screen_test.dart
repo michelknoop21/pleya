@@ -12,8 +12,12 @@ import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
@@ -340,6 +344,36 @@ void main() {
       final card = find.byType(TvAssistantConfirmCard);
       expect(find.descendant(of: card, matching: find.text('Sci-fi avond')), findsOneWidget);
       expect(find.descendant(of: card, matching: find.text(t.assistant.confirm.server)), findsNothing);
+    });
+
+    testWidgets('a home row preview stays text: nothing to focus between the card and its buttons', (tester) async {
+      await raise(
+        tester,
+        AssistantPendingAction(
+          kind: AssistantActionKind.createHomeRow,
+          serverId: ServerId('zolder'),
+          serverName: '',
+          subject: 'Sci-fi avond',
+          preview: AssistantMediaGrid([
+            (
+              item: MediaItem(
+                id: '1',
+                backend: MediaBackend.plex,
+                kind: MediaKind.movie,
+                title: 'Arrival',
+                year: 2016,
+                serverId: 'zolder',
+              ),
+              group: null,
+            ),
+          ]),
+          execute: ({password}) async => const {},
+        ),
+      );
+
+      final card = find.byType(TvAssistantConfirmCard);
+      expect(find.descendant(of: card, matching: find.text('Arrival (2016)')), findsOneWidget);
+      expect(find.byType(TvAssistantMatchCard), findsNothing);
     });
 
     testWidgets('a required password gates Aanmaken; the password goes to confirmPending only', (tester) async {

@@ -17,6 +17,10 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
@@ -120,6 +124,50 @@ final _extra = AssistantTitleMatch(
   ),
 );
 
+MediaItem _mission(String id, String server) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: 'Mission: Impossible',
+  year: 1996,
+  serverId: server,
+  serverName: server,
+);
+
+/// One film on two servers, as the unified catalog merges it: the
+/// representative copy (nas) is not the first source.
+final UnifiedMediaGroup _merged = () {
+  final sources = [
+    UnifiedMediaSource.fromItem(_mission('mi0', _zolder)),
+    UnifiedMediaSource.fromItem(_mission('mi0', 'nas')),
+  ];
+  return UnifiedMediaGroup(
+    groupId: 'mi0',
+    identity: CanonicalMediaIdentity.movie(title: 'Mission: Impossible', year: 1996),
+    sources: sources,
+    representativeSourceKey: sources.last.sourceKey,
+    watchState: UnifiedWatchState(representativeSourceKey: sources.last.sourceKey, isWatched: false),
+  );
+}();
+
+/// What search_catalog hands over: fourteen films, two more than a grid
+/// draws; the first one merged across servers.
+final _grid = AssistantMediaGrid([
+  (item: _merged.representativeSource.item, group: _merged),
+  for (var i = 1; i <= 13; i++)
+    (
+      item: MediaItem(
+        id: 'mi$i',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Mission: Impossible $i',
+        serverId: _zolder,
+        serverName: 'Zolder',
+      ),
+      group: null,
+    ),
+]);
+
 AssistantTitleMatches _fourMatches() => AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
   _martian,
   _redPlanet,
@@ -217,15 +265,18 @@ void main() {
     expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
   }
 
-  Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) async {
+  Future<void> showDisplay(WidgetTester tester, AssistantDisplay display) async {
     c
       ..prompt = 'Die film over Mars'
       ..state = AssistantSurfaceState.result
       ..answer = 'Ik vond deze titels.'
-      ..displays = [AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), matches)]
+      ..displays = [display]
       ..emit();
     await settle(tester);
   }
+
+  Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) =>
+      showDisplay(tester, AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), matches));
 
   group('on the surface', () {
     Future<void> pumpSurface(WidgetTester tester) async {
@@ -295,6 +346,22 @@ void main() {
       expect(c.picked, isEmpty);
     });
 
+    // Build 318: a search_catalog result was a card of text lines, nothing
+    // to focus or open.
+    testWidgets('a media grid draws its titles as cards: the first takes the focus and opens', (tester) async {
+      await pumpSurface(tester);
+      await showDisplay(tester, _grid);
+
+      expect(find.byType(TvAssistantMatchCard), findsNWidgets(12));
+      expect(focusedMatch(), _grid.entries.first.item.globalKey);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedMatch(), _grid.entries[1].item.globalKey, reason: 'the order of the grid');
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(routes.single.id, 'tvDetail_nas:mi0', reason: 'the representative copy, not the first source');
+    });
+
     testWidgets('while still checking a request candidate is dimmed and inert, a library match opens', (tester) async {
       await pumpSurface(tester);
       await stillCheckingWith(tester);
@@ -362,7 +429,7 @@ void main() {
       behind.dispose();
     });
 
-    Future<void> summon(WidgetTester tester, List<AssistantTitleMatch> matches) async {
+    Future<void> summon(WidgetTester tester, List<AssistantTitleMatch> matches, {AssistantDisplay? display}) async {
       final entry = AppleTvNativeTextEntry(channel: channel);
       await pumpTvFrame(
         tester,
@@ -381,7 +448,7 @@ void main() {
       await settle(tester);
       presses.add(null);
       await settle(tester);
-      await showMatches(tester, matches);
+      await (display == null ? showMatches(tester, matches) : showDisplay(tester, display));
     }
 
     testWidgets('shows the matches in a window of three, stays, and Menu gives the remote back', (tester) async {
@@ -445,6 +512,18 @@ void main() {
       await press(tester, LogicalKeyboardKey.select);
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
+      expect(find.byType(TvAssistantMatchCard), findsNothing);
+    });
+
+    testWidgets('a media grid keeps Big P here and its first card opens the detail page', (tester) async {
+      await summon(tester, const [], display: _grid);
+      await tester.pump(const Duration(seconds: 10));
+      await settle(tester);
+
+      expect(focusedMatch(), _grid.entries.first.item.globalKey);
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(routes.single.id, 'tvDetail_${_grid.entries.first.item.globalKey}');
       expect(find.byType(TvAssistantMatchCard), findsNothing);
     });
 

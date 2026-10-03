@@ -2,6 +2,8 @@
 /// result card (38 G, 38 J) and the displays a tool handed over.
 library;
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -10,6 +12,7 @@ import '../../../assistant/assistant_tools.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/ids.dart';
 import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
@@ -149,11 +152,16 @@ class TvAssistantResultCard extends StatelessWidget {
   }
 }
 
-/// How many focusable cards [display] draws: request options and found
-/// titles. The first of them takes the focus after a result (still 7).
+/// A media grid draws at most this many titles.
+const _gridCap = 12;
+
+/// How many focusable cards [display] draws: request options, found titles
+/// and a grid's titles. The first of them takes the focus after a result
+/// (still 7).
 int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
   AssistantTitleMatches(:final matches) => matches.length,
+  AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
   _ => 0,
 };
 
@@ -273,8 +281,31 @@ class TvAssistantDisplayView extends StatelessWidget {
         ],
       ),
       AssistantTitleMatches(:final matches) => _matches(pt, matches),
-      AssistantMediaGrid(:final entries) => card(null, [
-        for (final e in entries.take(12)) titled(e.item.displayTitle, e.item.year),
+      // A preview on the confirm card has nothing to open: text, as before.
+      AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [
+        for (final e in entries.take(_gridCap)) titled(e.item.displayTitle, e.item.year),
+      ]),
+      AssistantMediaGrid(:final entries) => _matches(pt, [
+        for (final e in entries.take(_gridCap))
+          AssistantTitleMatch(
+            matchId: e.item.globalKey,
+            title: e.item.displayTitle,
+            year: e.item.year,
+            kind: e.item.kind.name,
+            confidence: 'high',
+            targets: [
+              // The representative first: the copy the card names is the
+              // copy it opens.
+              if (e.group case final group?)
+                for (final s in [
+                  group.representativeSource,
+                  ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
+                ])
+                  (serverId: s.serverId, serverName: s.serverName, item: s.item)
+              else if (e.item.serverId case final id?)
+                (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
+            ],
+          ),
       ]),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
