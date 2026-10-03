@@ -136,21 +136,28 @@ class TvAssistantConversation extends StatelessWidget {
     // bounded (3 lines, a fixed string); the model's answer is not, so the
     // result gives it a block of its own that opens at its first line and
     // scrolls by itself, above the results.
-    final cards = tvAssistantHasChoices(c.displays);
+    // Title cards repeat what the answer lists. A ranking or a comparison
+    // shows a few of its titles only, so there the text stays whole.
+    final cards = c.displays.any(
+      (d) =>
+          !tvAssistantDisplayIsEmpty(d) &&
+          (d is AssistantTitleMatches || d is AssistantMediaGrid || d is AssistantRequestOptions),
+    );
     final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
     final headline = cards ? assistantWithoutList(answer) : answer;
     final head = <Widget>[
       if (c.state == AssistantSurfaceState.result) ...[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         if (headline.isNotEmpty) ...[
-          // With results under it the answer shows its lead and three lines
-          // of what follows; alone, it reads down the panel.
+          // Above cards the lead alone: the cards are the answer. Above a
+          // result card it shows three lines of what follows; alone, it reads
+          // down the panel.
           if (children.isEmpty)
             Flexible(
               child: TvAssistantAnswer(text: headline, style: headlineStyle),
             )
           else
-            TvAssistantAnswer(text: headline, style: headlineStyle, bodyLines: 3),
+            TvAssistantAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3),
           gap,
         ],
       ],
@@ -180,8 +187,9 @@ class TvAssistantConversation extends StatelessWidget {
         ),
       // Under the scrolling part: always in view, whatever the results do.
       if (c.state == AssistantSurfaceState.result) ...[
-        // No results to scroll: the follow-ups stand above the buttons.
-        if (children.isEmpty)
+        // No cards to walk through: the follow-ups stand above the buttons,
+        // in view, and the list above them needs no focus to be read.
+        if (!tvAssistantHasChoices(c.displays))
           if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
         // A button keeps 6 pt around its fill for the focus ring; pulled
         // back so the fill, not the ring, lines up with the text and cards.
@@ -246,10 +254,10 @@ class TvAssistantConversation extends StatelessWidget {
         SizedBox(height: 24 * pt),
       ],
     ];
-    // After the results, in the same list: the cards keep the height.
+    // After the cards, in the same list: the cards keep the height.
     return [
       ...results,
-      if (results.isNotEmpty)
+      if (tvAssistantHasChoices(c.displays))
         if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
     ];
   }

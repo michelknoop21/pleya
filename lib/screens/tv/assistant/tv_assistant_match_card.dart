@@ -26,6 +26,7 @@ class TvAssistantMatchCard extends StatelessWidget {
     required this.onSelect,
     this.focusNode,
     this.compact = false,
+    this.dense = false,
     this.rank,
   });
 
@@ -38,6 +39,10 @@ class TvAssistantMatchCard extends StatelessWidget {
 
   /// The summoned panel: one line of plot instead of two.
   final bool compact;
+
+  /// A long list in the summoned panel: a small poster and no plot line, so
+  /// more titles show at once.
+  final bool dense;
 
   /// A place in a ranking (most watched), drawn as a badge on the poster.
   final int? rank;
@@ -118,7 +123,7 @@ class TvAssistantMatchCard extends StatelessWidget {
       child: Opacity(
         opacity: onSelect == null ? 0.45 : 1,
         child: Container(
-          padding: EdgeInsets.all(12 * pt),
+          padding: EdgeInsets.all((dense ? 8 : 12) * pt),
           decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(18 * pt)),
           child: Row(
             children: [
@@ -127,7 +132,11 @@ class TvAssistantMatchCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8 * pt),
-                    child: SizedBox(width: 68 * pt, height: 100 * pt, child: _poster(context)),
+                    child: SizedBox(
+                      width: (dense ? 48 : 68) * pt,
+                      height: (dense ? 72 : 100) * pt,
+                      child: _poster(context),
+                    ),
                   ),
                   if (rank case final rank?)
                     Positioned(
@@ -174,7 +183,7 @@ class TvAssistantMatchCard extends StatelessWidget {
                       ),
                       compact ? pill : null,
                     ),
-                    if (plot.isNotEmpty) ...[
+                    if (plot.isNotEmpty && !dense) ...[
                       SizedBox(height: 4 * pt),
                       Text(plot, maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: muted),
                     ],

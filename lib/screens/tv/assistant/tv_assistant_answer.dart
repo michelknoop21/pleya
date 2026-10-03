@@ -96,12 +96,16 @@ class TvAssistantAnswer extends StatefulWidget {
   final TextStyle style;
 
   /// How many lines of running text show at once; null takes the height
-  /// the parent leaves.
+  /// the parent leaves. Zero shows the lead alone, in two lines at most:
+  /// above cards, which are the answer and need the height.
   final int? bodyLines;
 
   @override
   State<TvAssistantAnswer> createState() => _TvAssistantAnswerState();
 }
+
+// A bare list has no lead: its first item is not a headline.
+final _startsWithItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
 
 // A sentence end, or the end of the first line. Not the dot of a list
 // number ("1.") or of a one-letter abbreviation ("o.a.").
@@ -168,12 +172,13 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
     final end = _leadEnd
         .allMatches(widget.text)
         // A line end always ends the lead, however short the line.
-        .where((m) => m.end > 0 && (m.end >= 24 || m.end == m.start))
+        .where((m) => m.end > 0 && (m.end >= 24 || (m.end == m.start && !_startsWithItem.hasMatch(widget.text))))
         .map((m) => m.end)
         .firstOrNull;
     final split = end != null && end <= 140 && end < widget.text.length;
     final rest = split ? widget.text.substring(end).trim() : '';
-    final bodyStyle = rest.isEmpty
+    // One long sentence is no headline: it reads as running text.
+    final bodyStyle = rest.isEmpty && widget.text.length <= 140
         ? widget.style
         : TextStyle(
             color: tk.text.withValues(alpha: 0.86),
@@ -199,7 +204,8 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
             child: Align(
               alignment: Alignment.centerRight,
               child: AnimatedOpacity(
-                opacity: _overflows && _node.hasFocus ? 1 : 0,
+                // Dim while resting: the sign that the text goes on.
+                opacity: !_overflows ? 0 : (_node.hasFocus ? 1 : 0.45),
                 duration: const Duration(milliseconds: 160),
                 child: _ReadingThumb(controller: _scroll),
               ),
@@ -207,7 +213,8 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
           ),
           TvAssistantEdgeFade(
             controller: _scroll,
-            extent: _line * 0.9,
+            // A hint at the edge; the last line stays readable.
+            extent: _line * 0.25,
             builder: (controller) => SingleChildScrollView(
               controller: controller,
               child: Text(
@@ -220,6 +227,16 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
         ],
       ),
     );
+
+    if (widget.bodyLines == 0) {
+      return Text(
+        split ? widget.text.substring(0, end) : widget.text,
+        key: const ValueKey('assistant.answer'),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: widget.style,
+      );
+    }
 
     return Focus(
       focusNode: _node,

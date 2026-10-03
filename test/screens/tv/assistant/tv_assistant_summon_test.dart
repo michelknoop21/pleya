@@ -299,6 +299,13 @@ void main() {
       expect(find.text('Hier zijn ze:'), findsOneWidget);
       expect(find.text('1. Top Gun (1986)\n2. Rain Man (1988)'), findsOneWidget);
 
+      // A bare list has no lead.
+      c
+        ..answer = '• Heat (1995)\n• Ronin (1998)'
+        ..emit();
+      await settle(tester);
+      expect(find.text('• Heat (1995)\n• Ronin (1998)'), findsOneWidget);
+
       // A sentence may end in a year.
       c
         ..answer = 'Top Gun kwam uit in 1986. Het vervolg kwam pas in 2022.'
@@ -311,6 +318,25 @@ void main() {
         ..emit();
       await settle(tester);
       expect(find.text('Ik vond films van o.a. Tom Cruise en Brad Pitt.'), findsOneWidget);
+    });
+
+    testWidgets('one long sentence is running text, not a headline', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Dat lukte niet.'
+        ..emit();
+      await settle(tester);
+      final headline = tester.widget<Text>(find.byKey(const ValueKey('assistant.answer.body'))).style!.fontSize!;
+
+      c
+        ..answer = List.filled(12, 'alle films van de reeks staan op je server').join(', ')
+        ..emit();
+      await settle(tester);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('assistant.answer.body'))).style!.fontSize,
+        lessThan(headline),
+      );
     });
 
     testWidgets('a short answer keeps the panel short', (tester) async {

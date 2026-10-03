@@ -315,9 +315,9 @@ void main() {
       expectInside(focusedRect(), panel, 'Cancel');
     });
 
-    testWidgets('a long answer above the cards opens at its first line; Up reads it, Down returns to the card', (
-      tester,
-    ) async {
+    // Hardware, 3 oct 2026: the answer took the room of the results and its
+    // last line faded out. Above cards the lead stands alone.
+    testWidgets('a long answer above the cards shows its lead in two lines at most and takes no focus', (tester) async {
       await pumpSurface(tester);
       final answer = List.filled(14, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
       // A new result, as a run delivers it: working first, then the answer.
@@ -333,23 +333,13 @@ void main() {
       final panel = panelContent(tester);
       expect(focusedMatch(), 'm1');
       expectInside(focusedRect(), panel, 'first card');
-      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top;
-      expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
+      final lead = tester.widget<Text>(find.byKey(const ValueKey('assistant.answer')));
+      expect(lead.data, 'Ik heb veel films met Tom Cruise gevonden.');
+      expect(lead.maxLines, 2);
+      expect(find.byKey(const ValueKey('assistant.answer.body')), findsNothing);
 
       await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'assistant.answer');
-      await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(
-        tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top,
-        lessThan(top),
-        reason: 'Down scrolls the answer',
-      );
-
-      for (var i = 0; i < 60 && focusedLabel() == 'assistant.answer'; i++) {
-        await press(tester, LogicalKeyboardKey.arrowDown);
-      }
-      expect(focusedMatch(), 'm1', reason: 'past its last line the focus is on the first card again');
-      expectInside(focusedRect(), panel, 'the card after reading');
+      expect(focusedMatch(), 'm1', reason: 'nothing to read above the first card');
     });
 
     testWidgets('D-pad through four results and on to the buttons keeps every focused control in the panel', (

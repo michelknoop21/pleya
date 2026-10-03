@@ -236,6 +236,9 @@ class TvAssistantDisplayView extends StatelessWidget {
               index: optionOffset + i,
               // A ranking is a list to scan: one line of detail per title.
               compact: compact || ranked,
+              // More than three in the summoned panel: the list form, so
+              // five show where three did.
+              dense: compact && !ranked && matches.length > 3,
               rank: ranked ? i + 1 : null,
               focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
               // Nothing to open and nothing to request: shown, never a dead
