@@ -137,7 +137,8 @@ func parseName(filename string) (int, string, error) {
 var earlierChecksums = map[int][]string{
 	// replaced_by zonder ON DELETE SET NULL (vóór 3734e399); 0012 zet hem erbij.
 	6: {"c5fdb87d0952cfe0331cdbb58df3fa27ec28762e42dc130255af6746e3ebf329"},
-	// Alleen commentaar: de DEC-hernummering (4e78b160) en 3734e399.
+	// Alleen commentaar en tekst (COMMENT ON, de RAISE-melding): de
+	// DEC-hernummering (4e78b160) en 3734e399. Geen schemaverschil.
 	7: {
 		"10ba55ada813febfd493f9995b757dc797718c7b700fc8c538e814e9af1e8c2b",
 		"73e5e7061e050fa0401e8be3f1728035b34961d758668b4e7539397a48af8aa4",

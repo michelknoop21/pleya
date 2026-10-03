@@ -209,7 +209,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S5.1 | Migratie `0014`, `pg_trgm` en indexen | `[ ]` | | |
+| S5.1 | Migratie `0015`, `pg_trgm` en indexen | `[ ]` | | |
 | S5.2 | Filterparameters en extra sorteringen | `[ ]` | | |
 | S5.3 | Facetten-endpoint met tellingen | `[ ]` | | |
 | S5.4 | Boekenzoekweg en auteurs | `[ ]` | | |
@@ -220,7 +220,7 @@ niet de bouw.
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S6.1 | DEC Readium Locator plus publicatie-digest, manifest en resources (RB-12 bijgesteld) | `[ ]` | | |
-| S6.2 | Migratie `0015`, `reading_states`, pure functie | `[ ]` | | |
+| S6.2 | Migratie `0016`, `reading_states`, pure functie | `[ ]` | | |
 | S6.3 | `POST`/`GET /reading-state`, hydratie op `Publication` | `[ ]` | | |
 | S6.4 | Toestelnaam bij laatst gekeken | `[ ]` | | |
 | S6.5 | Capability `reading_state`, venster 4 deel 2 | `[ ]` | | |
@@ -342,7 +342,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S18.1 | Migratie `0016`, sessiemodel | `[ ]` | | |
+| S18.1 | Migratie `0017`, sessiemodel | `[ ]` | | |
 | S18.2 | ffmpeg-supervisie met vaste argumenten en time-out | `[ ]` | | |
 | S18.3 | fMP4 en HLS, browserspeler met hls.js | `[ ]` | | |
 | S18.4 | Hardwareversnelling gedetecteerd en zichtbaar | `[ ]` | | |
@@ -353,7 +353,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S19.1 | Migratie `0017`, tabellen en zichtbaarheid | `[ ]` | | |
+| S19.1 | Migratie `0018`, tabellen en zichtbaarheid | `[ ]` | | |
 | S19.2 | Endpoints inclusief herordenen | `[ ]` | | |
 | S19.3 | Web: schermen 17 en 18, "Toevoegen aan" op de kaart | `[ ]` | | |
 | S19.4 | App: bestaande members geïmplementeerd | `[ ]` | | |
@@ -363,7 +363,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S20.1 | Migratie `0018`, geschiedenis uit watch-state-events | `[ ]` | | |
+| S20.1 | Migratie `0019`, geschiedenis uit watch-state-events | `[ ]` | | |
 | S20.2 | Favorieten en waarderingen | `[ ]` | | |
 | S20.3 | Spoorvoorkeuren over toestellen | `[ ]` | | |
 | S20.4 | Web scherm 19 en "Bekeken door" op detail | `[ ]` | | |
@@ -397,7 +397,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S23.1 | Migratie `0020`, `POST /downloads` met recht `download` | `[ ]` | | |
+| S23.1 | Migratie `0021`, `POST /downloads` met recht `download` | `[ ]` | | |
 | S23.2 | Levering met digest, hervatten alleen bij gelijke digest | `[ ]` | | |
 | S23.3 | App: bestaande wachtrij op de nieuwe bron, sync-back | `[ ]` | | |
 | S23.4 | Web toont downloads op Mijn Pleya (scherm 11b) | `[ ]` | | |
@@ -417,7 +417,7 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S25.1 | Migratie `0021`, back-up gepland en handmatig | `[ ]` | | |
+| S25.1 | Migratie `0022`, back-up gepland en handmatig | `[ ]` | | |
 | S25.2 | Wekelijkse hersteltest met natellen | `[ ]` | | |
 | S25.3 | Restore met onderhoudsmodus en bevestiging | `[ ]` | | |
 | S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[ ]` | | |
