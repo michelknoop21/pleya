@@ -25,6 +25,7 @@ import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/services/unified_catalog/unified_catalog_filters.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
 import '../test_helpers/prefs.dart';
@@ -62,13 +63,17 @@ Map<String, Object?> _dto(String id, {Object? played = false}) => {
 class _Loader implements HomeCustomRowLoader {
   _Loader(this.ids);
   final List<String> ids;
+  final rows = <HomeCustomRow>[];
   bool exact = true;
   MediaKind kind = MediaKind.movie;
   @override
-  Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async => HomeCustomRowContent(
-    isExact: exact,
-    groups: [for (final id in ids.take(limit)) _group(id, kind: kind)],
-  );
+  Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async {
+    rows.add(row);
+    return HomeCustomRowContent(
+      isExact: exact,
+      groups: [for (final id in ids.take(limit)) _group(id, kind: kind)],
+    );
+  }
 }
 
 UnifiedMediaGroup _group(String id, {MediaKind kind = MediaKind.movie}) {
@@ -104,6 +109,7 @@ class _Fixture {
     {'Id': 'b', 'Name': 'Bob', 'Policy': _policy()},
   ];
   bool admin = true;
+  String meId = 'admin';
   String profile = 'p';
   Future<void> Function(http.Request)? beforeReply;
   late MultiServerManager manager;
@@ -138,7 +144,7 @@ class _Fixture {
           });
         if (r.url.path == '/Users/Me')
           return _json({
-            'Id': 'admin',
+            'Id': meId,
             'Policy': {..._policy(), 'IsAdministrator': admin},
           });
         if (r.url.path == '/Users') return _json(users);
@@ -520,6 +526,51 @@ void main() {
       throwsA(isA<AssistantToolError>()),
     );
     expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+  });
+  test('review: a choice offered in this run is the users, the model cannot pick it itself', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    f.aliases = [
+      const ProfileServerIdentity(profileId: 'one', displayName: 'Nikki', userIds: {'a'}),
+      const ProfileServerIdentity(profileId: 'two', displayName: 'Nikki', userIds: {'b'}),
+    ];
+    await _recommend(ctx, {
+      'participants': ['Nikki'],
+    });
+    // By id, and by the server name the choice list just handed over.
+    for (final pick in [
+      {
+        'participants': <String>[],
+        'user_ids': ['b'],
+      },
+      {
+        'participants': ['Bob'],
+      },
+    ]) {
+      final again = await _recommend(ctx, pick);
+      expect(again.data['status'], 'participant_clarification');
+      expect(again.data['ask_the_user_which'], ['Bob']);
+    }
+    expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+    // The next run carries the user's answer.
+    final answered = await _recommend(ctx.fresh(), {
+      'participants': [],
+      'user_ids': ['b'],
+    });
+    expect((answered.data['participants'] as List).map((e) => (e as Map)['user_id']), ['admin', 'b']);
+  });
+  test('review: one GUID written with dashes or capitals is still the same administrator', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    f.meId = 'AD-MIN';
+    expect((await _recommend(ctx)).data['status'], 'strict_cohort_results');
+  });
+  test('review: candidates are this servers titles the requester has not watched', () async {
+    final f = _Fixture();
+    await _recommend(f.context(['1']));
+    final filters = f.loader.rows.single.preferences.filters;
+    expect(filters.watchState, UnifiedWatchFilter.unwatched);
+    expect(filters.serverIds, {'jf'});
   });
   test('current requester is included even when model only names companion', () async {
     final f = _Fixture();
