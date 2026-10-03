@@ -102,8 +102,9 @@ class AssistantToolContext {
   MediaServerClient? userClient(ServerId serverId) =>
       servers.isServerVisible(serverId) && servers.isServerOnline(serverId) ? servers.getClient(serverId) : null;
 
-  /// Visible servers the active profile may administer, online or not. This
-  /// is what Big P's visibility rests on; [adminClient] adds "online now".
+  /// Visible servers the active profile may administer, online or not. Every
+  /// administration tool rests on this (Big P's visibility does not, see
+  /// DEC-142); [adminClient] adds "online now".
   List<ServerId> get administeredServers => [
     for (final id in servers.serverIds)
       if (servers.isServerVisible(ServerId(id)) && servers.canAdministerServer(ServerId(id))) ServerId(id),
