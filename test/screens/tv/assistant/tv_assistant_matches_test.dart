@@ -120,6 +120,22 @@ final _extra = AssistantTitleMatch(
   ),
 );
 
+/// What search_catalog hands over: thirteen films, one more than a grid draws.
+final _grid = AssistantMediaGrid([
+  for (var i = 1; i <= 13; i++)
+    (
+      item: MediaItem(
+        id: 'mi$i',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Mission: Impossible $i',
+        serverId: _zolder,
+        serverName: 'Zolder',
+      ),
+      group: null,
+    ),
+]);
+
 AssistantTitleMatches _fourMatches() => AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
   _martian,
   _redPlanet,
@@ -217,15 +233,18 @@ void main() {
     expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
   }
 
-  Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) async {
+  Future<void> showDisplay(WidgetTester tester, AssistantDisplay display) async {
     c
       ..prompt = 'Die film over Mars'
       ..state = AssistantSurfaceState.result
       ..answer = 'Ik vond deze titels.'
-      ..displays = [AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), matches)]
+      ..displays = [display]
       ..emit();
     await settle(tester);
   }
+
+  Future<void> showMatches(WidgetTester tester, List<AssistantTitleMatch> matches) =>
+      showDisplay(tester, AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), matches));
 
   group('on the surface', () {
     Future<void> pumpSurface(WidgetTester tester) async {
@@ -295,6 +314,21 @@ void main() {
       expect(c.picked, isEmpty);
     });
 
+    // Build 318: a search_catalog result was a card of text lines, nothing
+    // to focus or open.
+    testWidgets('a media grid draws its titles as cards: the first takes the focus and opens', (tester) async {
+      await pumpSurface(tester);
+      await showDisplay(tester, _grid);
+
+      expect(find.byType(TvAssistantMatchCard), findsNWidgets(12));
+      expect(focusedMatch(), _grid.entries.first.item.globalKey);
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(focusedMatch(), _grid.entries[1].item.globalKey, reason: 'the order of the grid');
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(routes.single.id, 'tvDetail_${_grid.entries[1].item.globalKey}');
+    });
+
     testWidgets('while still checking a request candidate is dimmed and inert, a library match opens', (tester) async {
       await pumpSurface(tester);
       await stillCheckingWith(tester);
@@ -362,7 +396,7 @@ void main() {
       behind.dispose();
     });
 
-    Future<void> summon(WidgetTester tester, List<AssistantTitleMatch> matches) async {
+    Future<void> summon(WidgetTester tester, List<AssistantTitleMatch> matches, {AssistantDisplay? display}) async {
       final entry = AppleTvNativeTextEntry(channel: channel);
       await pumpTvFrame(
         tester,
@@ -381,7 +415,7 @@ void main() {
       await settle(tester);
       presses.add(null);
       await settle(tester);
-      await showMatches(tester, matches);
+      await (display == null ? showMatches(tester, matches) : showDisplay(tester, display));
     }
 
     testWidgets('shows the matches in a window of three, stays, and Menu gives the remote back', (tester) async {
@@ -445,6 +479,18 @@ void main() {
       await press(tester, LogicalKeyboardKey.select);
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
+      expect(find.byType(TvAssistantMatchCard), findsNothing);
+    });
+
+    testWidgets('a media grid keeps Big P here and its first card opens the detail page', (tester) async {
+      await summon(tester, const [], display: _grid);
+      await tester.pump(const Duration(seconds: 10));
+      await settle(tester);
+
+      expect(focusedMatch(), _grid.entries.first.item.globalKey);
+      await press(tester, LogicalKeyboardKey.select);
+
+      expect(routes.single.id, 'tvDetail_${_grid.entries.first.item.globalKey}');
       expect(find.byType(TvAssistantMatchCard), findsNothing);
     });
 
