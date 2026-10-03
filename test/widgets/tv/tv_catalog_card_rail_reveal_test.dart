@@ -39,10 +39,17 @@ void main() {
             itemBuilder: (context, cell) => Focus(
               focusNode: cell.focusNode,
               onFocusChange: cell.onFocusChange,
+              // and a key without a callback falls through, as
+              // `FocusableWrapper` lets it.
               onKeyEvent: (_, event) {
                 if (event is KeyUpEvent) return KeyEventResult.ignored;
-                if (event.logicalKey == LogicalKeyboardKey.arrowRight) cell.onNavigateRight?.call();
-                if (event.logicalKey == LogicalKeyboardKey.arrowLeft) cell.onNavigateLeft?.call();
+                final callback = switch (event.logicalKey) {
+                  LogicalKeyboardKey.arrowRight => cell.onNavigateRight,
+                  LogicalKeyboardKey.arrowLeft => cell.onNavigateLeft,
+                  _ => null,
+                };
+                if (callback == null) return KeyEventResult.ignored;
+                callback();
                 return KeyEventResult.handled;
               },
               child: SizedBox(key: ValueKey('card${cell.index}'), width: cell.width, child: Text('item${cell.index}')),
@@ -71,7 +78,23 @@ void main() {
     }
     expect(controller.position.pixels, greaterThan(0));
 
-    for (var i = 19; i >= 0; i--) {
+    // To the end of the row, and one more: the last card keeps the key,
+    // so it cannot fall through to a card in another row.
+    for (var i = 21; i <= 29; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expectFocusedInView(i);
+    }
+    expect(controller.position.pixels, controller.position.maxScrollExtent);
+    expect(
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight),
+      isTrue,
+      reason: 'RIGHT on the last card is consumed',
+    );
+    await tester.pumpAndSettle();
+    expectFocusedInView(29);
+
+    for (var i = 28; i >= 0; i--) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pumpAndSettle();
       expectFocusedInView(i);
