@@ -20,17 +20,21 @@ import '../../../widgets/seerr_poster_card.dart';
 
 /// The rounded status label at the right of a card (38-motion-7).
 class TvAssistantStatusPill extends StatelessWidget {
-  const TvAssistantStatusPill({super.key, required this.label, this.color});
+  const TvAssistantStatusPill({super.key, required this.label, this.color, this.dense = false});
 
   final String label;
   final Color? color;
+
+  /// No vertical padding: on a card's second line (BIGP-UI1) the label is
+  /// as tall as the text beside it, so the card keeps its height.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final pt = TvHig.of(context);
     final c = color ?? tokens(context).text;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14 * pt, vertical: 6 * pt),
+      padding: EdgeInsets.symmetric(horizontal: 14 * pt, vertical: dense ? 0 : 6 * pt),
       decoration: BoxDecoration(color: c.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20 * pt)),
       child: Text(
         label,
@@ -42,6 +46,47 @@ class TvAssistantStatusPill extends StatelessWidget {
   }
 }
 
+/// A card's second line, with the status label after it in the summoned
+/// panel (BIGP-UI1); [pill] null keeps the line alone. The label wins over
+/// the line, up to three quarters of the width.
+Widget tvAssistantSecondLine(double pt, Widget line, Widget? pill) => pill == null
+    ? line
+    : LayoutBuilder(
+        builder: (context, box) => Row(
+          children: [
+            Expanded(child: line),
+            SizedBox(width: 12 * pt),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.75),
+              child: pill,
+            ),
+          ],
+        ),
+      );
+
+/// Title and year in the summoned panel (BIGP-UI1): only the title shortens,
+/// the year stays readable to tell results apart.
+Widget tvAssistantCompactTitle(double pt, MonoTokens tk, String title, int? year) => Row(
+  children: [
+    Flexible(
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        // As wide as what is drawn, so the year follows the ellipsis directly.
+        textWidthBasis: TextWidthBasis.longestLine,
+        style: TextStyle(color: tk.text, fontSize: TvHig.body * pt, fontWeight: FontWeight.w700),
+      ),
+    ),
+    if (year != null)
+      Text(
+        ' ($year)',
+        maxLines: 1,
+        style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.body * pt),
+      ),
+  ],
+);
+
 /// One title Big P found for a description (motion still 7): poster, title,
 /// year, one line of overview and the Seerr status. Built from Seerr data;
 /// selecting it hands the option to Pleya, never to the model.
@@ -52,9 +97,14 @@ class TvAssistantOptionCard extends StatelessWidget {
     required this.index,
     required this.onSelect,
     this.focusNode,
+    this.compact = false,
   });
 
   final AssistantRequestOption option;
+
+  /// The summoned panel (BIGP-UI1): the status moves under the title, next
+  /// to the overview, so title and year keep the full width.
+  final bool compact;
   final int index;
 
   /// Null: focusable for reading, dimmed and inert (Big P still checking).
@@ -66,6 +116,7 @@ class TvAssistantOptionCard extends StatelessWidget {
     final pt = TvHig.of(context);
     final tk = tokens(context);
     final (status, statusColor) = tvAssistantRequestStatus(option.status);
+    final pill = TvAssistantStatusPill(label: status, color: statusColor, dense: compact);
     return FocusableWrapper(
       focusNode: focusNode,
       borderRadius: 18 * pt,
@@ -99,36 +150,42 @@ class TvAssistantOptionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: option.title,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          if (option.year != null)
+                    if (compact)
+                      tvAssistantCompactTitle(pt, tk, option.title, option.year)
+                    else
+                      Text.rich(
+                        TextSpan(
+                          children: [
                             TextSpan(
-                              text: ' (${option.year})',
-                              style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                              text: option.title,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
-                        ],
+                            if (option.year != null)
+                              TextSpan(
+                                text: ' (${option.year})',
+                                style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                              ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
-                    ),
                     SizedBox(height: 4 * pt),
-                    Text(
-                      option.overview,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt),
+                    tvAssistantSecondLine(
+                      pt,
+                      Text(
+                        option.overview,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt),
+                      ),
+                      compact ? pill : null,
                     ),
                   ],
                 ),
               ),
-              SizedBox(width: 16 * pt),
-              TvAssistantStatusPill(label: status, color: statusColor),
+              if (!compact) ...[SizedBox(width: 16 * pt), pill],
             ],
           ),
         ),

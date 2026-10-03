@@ -238,6 +238,7 @@ class TvAssistantDisplayView extends StatelessWidget {
                 option: options[i],
                 index: optionOffset + i,
                 focusNode: i == 0 ? firstOptionNode : null,
+                compact: compact,
                 onSelect: switch (onPickOption) {
                   final pick? => () => pick(options[i]),
                   null => null,
