@@ -7847,6 +7847,12 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: 'The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.'
 	String get webSearchNoteOpenRouter => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.';
+
+	/// en: 'Big P's voice'
+	String get voice => 'Big P\'s voice';
+
+	/// en: 'Short spoken reactions. Never while you dictate or watch something.'
+	String get voiceNote => 'Short spoken reactions. Never while you dictate or watch something.';
 }
 
 // Path: assistant.option
@@ -10229,6 +10235,8 @@ extension on Translations {
 			'assistant.settings.webSearchNoteServer' => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.',
 			'assistant.settings.webSearchNoteCloud' => 'The description of a title you look for goes to Wikipedia and Ollama\'s web search.',
 			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
+			'assistant.settings.voice' => 'Big P\'s voice',
+			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',

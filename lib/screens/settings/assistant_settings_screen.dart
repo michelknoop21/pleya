@@ -14,6 +14,7 @@ import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
+import '../../services/settings_service.dart';
 import '../../utils/formatters.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/tv_hig.dart';

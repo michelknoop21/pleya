@@ -102,6 +102,9 @@ class AssistantController extends ChangeNotifier {
   bool _disposed = false;
 
   AssistantAvailability get availability => _availability;
+
+  /// Lets a listener with its own timers (Big P's voice) stand down.
+  bool get disposed => _disposed;
   AssistantSurfaceState get state => _state;
   bool get resultIsError => _resultIsError;
   AssistantRunEnd? get lastEnd => _lastEnd;

@@ -17,6 +17,7 @@ import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tool_context.dart';
 import '../../../assistant/assistant_tools.dart';
+import '../../../assistant/big_p_voice.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../automation/automation_screen.dart';
@@ -110,6 +111,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
         unawaited(_ask());
       } else {
         focusActiveTabIfReady();
+        if (c.availability == AssistantAvailability.ready) unawaited(BigPVoice.of(c)?.say(BigPMoment.greet));
       }
     });
   }
