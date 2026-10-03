@@ -123,7 +123,12 @@ import Foundation
       do {
         let player = try AVAudioPlayer(data: data)
         clip = player
-        player.play()
+        // An interruption or a dead route refuses the clip: say so, or Big P's
+        // mouth moves without sound.
+        guard player.play() else {
+          clip = nil
+          return FlutterError(code: "CLIP_FAILED", message: "the player refused to start", details: nil)
+        }
         return player.duration
       } catch {
         clip = nil

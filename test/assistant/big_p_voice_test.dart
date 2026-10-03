@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:fake_async/fake_async.dart';
@@ -166,6 +167,37 @@ void main() {
     on = false;
     await v.say(BigPMoment.greet);
     expect(v.speaking.value, isNull);
+  });
+
+  test('an older clip that answers late does not take over the mouth', () async {
+    final pending = <String, Completer<double?>>{};
+    final v = BigPVoice(
+      c,
+      enabled: () => on,
+      dictating: () => dictating,
+      language: () => lang,
+      clips: () async => _clips,
+      play: (asset) => (pending[asset] = Completer<double?>()).future,
+      stop: () async => stops++,
+    );
+    final first = v.say(BigPMoment.greet);
+    await pumpEventQueue();
+    final second = v.say(BigPMoment.result);
+    await pumpEventQueue();
+    pending['assets/audio/bigp/en_result_1.m4a']!.complete(1);
+    await second;
+    pending.values.first.complete(1);
+    await first;
+    expect(v.speaking.value, 'Line for en_result_1.m4a.');
+  });
+
+  test('disposing the controller stops the clip and closes the mouth', () async {
+    final v = voice();
+    await v.say(BigPMoment.greet);
+    expect(v.speaking.value, isNotNull);
+    c.dispose();
+    expect(v.speaking.value, isNull);
+    expect(stops, 1);
   });
 
   test('a long run gets one "still looking"', () {

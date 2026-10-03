@@ -45,6 +45,7 @@ class BigPVoice {
        _random = random ?? Random() {
     _state = _controller.state;
     _controller.addListener(_onChange);
+    _controller.onDispose(_dispose);
     _byController[_controller] = this;
   }
 
@@ -74,6 +75,10 @@ class BigPVoice {
   Timer? _workingTimer;
   Future<Map<String, String>>? _available;
   Timer? _speakingTimer;
+
+  /// Bumped by every play and stop: an older clip that answers late must not
+  /// take over the mouth.
+  int _seq = 0;
 
   /// The line Big P is saying right now, for his mouth; null when silent.
   final ValueNotifier<String?> speaking = ValueNotifier(null);
@@ -132,8 +137,10 @@ class BigPVoice {
     if (options.isEmpty || !_mayTalk) return null;
     final asset = options[_random.nextInt(options.length)];
     _last[moment] = asset;
+    final seq = ++_seq;
     try {
       final seconds = await _play(asset);
+      if (seq != _seq) return asset;
       // Dictation that began while the clip loaded sent its stop first.
       if (!_mayTalk) {
         await _stopQuietly();
@@ -156,7 +163,13 @@ class BigPVoice {
     _speakingTimer = Timer(Duration(milliseconds: ms), () => speaking.value = null);
   }
 
+  void _dispose() {
+    _workingTimer?.cancel();
+    unawaited(_stopQuietly());
+  }
+
   Future<void> _stopQuietly() async {
+    _seq++;
     _speakingTimer?.cancel();
     speaking.value = null;
     try {
@@ -173,10 +186,15 @@ class BigPVoice {
   }
 
   /// The clip goes over as bytes, so the native side needs no asset lookup.
-  /// Answers the clip's length in seconds.
+  /// Answers how long the clip still plays once the channel call returns.
   static Future<double?> _playAsset(String asset) async {
     final data = await rootBundle.load(asset);
-    return _channel.invokeMethod<double>('playClip', data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    final sent = Stopwatch()..start();
+    final seconds = await _channel.invokeMethod<double>(
+      'playClip',
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+    );
+    return seconds == null ? null : max(0, seconds - sent.elapsedMilliseconds / 1000);
   }
 
   static Future<void> _stopClip() => _channel.invokeMethod<void>('stopClip');

@@ -121,6 +121,11 @@ class AssistantController extends ChangeNotifier {
 
   /// Lets a listener with its own timers (Big P's voice) stand down.
   bool get disposed => _disposed;
+
+  final List<VoidCallback> _onDispose = [];
+
+  /// Runs [cleanup] when this controller is disposed, e.g. to silence Big P.
+  void onDispose(VoidCallback cleanup) => _onDispose.add(cleanup);
   AssistantSurfaceState get state => _state;
   bool get resultIsError => _resultIsError;
   AssistantRunEnd? get lastEnd => _lastEnd;
@@ -436,6 +441,9 @@ class AssistantController extends ChangeNotifier {
     _jobsSeq++;
     _abortAsk();
     _answerPending(null);
+    for (final cleanup in _onDispose) {
+      cleanup();
+    }
     super.dispose();
   }
 }
