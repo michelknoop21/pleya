@@ -17,6 +17,10 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/unified/canonical_media_identity.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/media/unified/unified_media_source.dart';
+import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
@@ -120,8 +124,36 @@ final _extra = AssistantTitleMatch(
   ),
 );
 
-/// What search_catalog hands over: thirteen films, one more than a grid draws.
+MediaItem _mission(String id, String server) => MediaItem(
+  id: id,
+  backend: MediaBackend.plex,
+  kind: MediaKind.movie,
+  title: 'Mission: Impossible',
+  year: 1996,
+  serverId: server,
+  serverName: server,
+);
+
+/// One film on two servers, as the unified catalog merges it: the
+/// representative copy (nas) is not the first source.
+final UnifiedMediaGroup _merged = () {
+  final sources = [
+    UnifiedMediaSource.fromItem(_mission('mi0', _zolder)),
+    UnifiedMediaSource.fromItem(_mission('mi0', 'nas')),
+  ];
+  return UnifiedMediaGroup(
+    groupId: 'mi0',
+    identity: CanonicalMediaIdentity.movie(title: 'Mission: Impossible', year: 1996),
+    sources: sources,
+    representativeSourceKey: sources.last.sourceKey,
+    watchState: UnifiedWatchState(representativeSourceKey: sources.last.sourceKey, isWatched: false),
+  );
+}();
+
+/// What search_catalog hands over: fourteen films, two more than a grid
+/// draws; the first one merged across servers.
 final _grid = AssistantMediaGrid([
+  (item: _merged.representativeSource.item, group: _merged),
   for (var i = 1; i <= 13; i++)
     (
       item: MediaItem(
@@ -324,9 +356,10 @@ void main() {
       expect(focusedMatch(), _grid.entries.first.item.globalKey);
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(focusedMatch(), _grid.entries[1].item.globalKey, reason: 'the order of the grid');
+      await press(tester, LogicalKeyboardKey.arrowUp);
       await press(tester, LogicalKeyboardKey.select);
 
-      expect(routes.single.id, 'tvDetail_${_grid.entries[1].item.globalKey}');
+      expect(routes.single.id, 'tvDetail_nas:mi0', reason: 'the representative copy, not the first source');
     });
 
     testWidgets('while still checking a request candidate is dimmed and inert, a library match opens', (tester) async {

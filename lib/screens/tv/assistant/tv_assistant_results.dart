@@ -281,6 +281,10 @@ class TvAssistantDisplayView extends StatelessWidget {
         ],
       ),
       AssistantTitleMatches(:final matches) => _matches(pt, matches),
+      // A preview on the confirm card has nothing to open: text, as before.
+      AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [
+        for (final e in entries.take(_gridCap)) titled(e.item.displayTitle, e.item.year),
+      ]),
       AssistantMediaGrid(:final entries) => _matches(pt, [
         for (final e in entries.take(_gridCap))
           AssistantTitleMatch(
@@ -290,8 +294,14 @@ class TvAssistantDisplayView extends StatelessWidget {
             kind: e.item.kind.name,
             confidence: 'high',
             targets: [
+              // The representative first: the copy the card names is the
+              // copy it opens.
               if (e.group case final group?)
-                for (final s in group.sources) (serverId: s.serverId, serverName: s.serverName, item: s.item)
+                for (final s in [
+                  group.representativeSource,
+                  ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
+                ])
+                  (serverId: s.serverId, serverName: s.serverName, item: s.item)
               else if (e.item.serverId case final id?)
                 (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
             ],
