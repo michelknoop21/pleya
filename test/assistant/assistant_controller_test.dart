@@ -543,15 +543,4 @@ void main() {
       expect(asked.map((c) => c.kind), [AssistantProviderKind.ollamaServer, AssistantProviderKind.openRouter]);
     });
   });
-
-  test('a second "no watch data" card for the same server is not shown', () {
-    const none = AssistantWatchStats(serverName: 'Pleya', available: false);
-    expect(assistantRepeatsNoData(const [], none), isFalse);
-    expect(assistantRepeatsNoData(const [none], none), isTrue);
-    expect(
-      assistantRepeatsNoData(const [none], const AssistantWatchStats(serverName: 'Zolder', available: false)),
-      isFalse,
-    );
-    expect(assistantRepeatsNoData(const [none], const AssistantWatchStats(serverName: 'Pleya')), isFalse);
-  });
 }

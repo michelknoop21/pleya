@@ -263,7 +263,7 @@ class AssistantController extends ChangeNotifier {
           at < 0 ? _steps.add(step) : _steps[at] = step;
           // Shown now, not after the model's last turn; the run's own list
           // repeats these and is not added again.
-          if (step.display case final display? when !assistantRepeatsNoData(_displays, display)) _displays.add(display);
+          if (step.display case final display?) _displays.add(display);
           _notify();
         },
       ).ask(text);
@@ -447,9 +447,3 @@ class AssistantController extends ChangeNotifier {
     super.dispose();
   }
 }
-
-/// A model that asks twice gets "no watch data for this server" once.
-bool assistantRepeatsNoData(List<AssistantDisplay> shown, AssistantDisplay display) =>
-    display is AssistantWatchStats &&
-    !display.available &&
-    shown.any((d) => d is AssistantWatchStats && !d.available && d.serverName == display.serverName);
