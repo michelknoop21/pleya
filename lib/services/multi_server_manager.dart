@@ -277,6 +277,7 @@ class MultiServerManager {
     for (final server in connection.servers) {
       final id = server.clientIdentifier;
       _clientIdByServer[id] = connection.clientIdentifier;
+      _plexAccountByServer[id] = connection;
       _plexServers[id] = server;
       _serverStatus[id] = false;
       _authErrorServers.add(id);

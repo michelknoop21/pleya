@@ -207,6 +207,17 @@ void main() {
       expect(calls(), ['POST /Users/New', 'GET /Users/u9', 'DELETE /Users/u9']);
     });
 
+    test('an unreadable create response still removes the new user', () async {
+      routes['POST /Users/New'] = (_) => http.Response('ok', 200);
+      routes['GET /Users'] = (_) => _json([
+        {'Id': 'u1', 'Name': 'Other'},
+        {'Id': 'u9', 'Name': 'New'},
+      ]);
+      routes['DELETE /Users/u9'] = (_) => http.Response('', 204);
+      await expectLater(client(emby: false).createUser(name: 'New'), throwsA(isA<MediaServerHttpException>()));
+      expect(calls(), ['POST /Users/New', 'GET /Users', 'DELETE /Users/u9']);
+    });
+
     test('a failed rollback reports the account that is left behind', () async {
       routes['POST /Users/New'] = (_) => _json({'Id': 'u9', 'Name': 'New'});
       routes['GET /Users/u9'] = (_) => http.Response('', 500);
