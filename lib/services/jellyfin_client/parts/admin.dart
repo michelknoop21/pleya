@@ -384,7 +384,8 @@ extension JellyfinParticipantEvidence on JellyfinClient {
     final dto = response.data;
     final policy = dto is Map<String, dynamic> ? dto['Policy'] : null;
     if (dto is! Map<String, dynamic> ||
-        dto['Id'] != connection.userId ||
+        dto['Id'] is! String ||
+        !sameUserId(dto['Id'] as String, connection.userId) ||
         policy is! Map<String, dynamic> ||
         policy['IsAdministrator'] != true ||
         policy['IsDisabled'] != false) {
@@ -406,7 +407,8 @@ extension JellyfinParticipantEvidence on JellyfinClient {
     final dto = response.data;
     final p = dto is Map<String, dynamic> ? dto['Policy'] : null;
     if (dto is! Map<String, dynamic> ||
-        dto['Id'] != userId ||
+        dto['Id'] is! String ||
+        !sameUserId(dto['Id'] as String, userId) ||
         p is! Map<String, dynamic> ||
         p['IsDisabled'] is! bool ||
         p['EnableAllFolders'] is! bool ||
@@ -500,5 +502,6 @@ extension JellyfinParticipantEvidence on JellyfinClient {
     return evidence;
   }
 
-  String _folderKey(String id) => id.replaceAll('-', '').toLowerCase();
+  /// Jellyfin writes one GUID with or without dashes, in either case.
+  bool sameUserId(String a, String b) => _folderKey(a) == _folderKey(b);
 }

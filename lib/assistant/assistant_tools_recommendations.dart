@@ -3,13 +3,18 @@ part of 'assistant_tools.dart';
 const _cohortCandidateCap = 40;
 const _cohortParticipantCap = 8;
 
+/// User ids this run offered as an ambiguous choice. The choice is the
+/// user's: the model cannot answer its own question, so these are refused
+/// as user_ids until a new run (a new context) carries the user's answer.
+final _offeredParticipants = Expando<Set<String>>('offeredParticipants');
+
 final List<AssistantTool> _recommendationTools = [
   AssistantTool(
     name: 'recommend_together',
     description:
         'Find titles from this profile\'s visible catalog that every named participant can access and has explicitly not watched. '
         'Strict cohort evidence is supported only for the current authorized Jellyfin administrator. '
-        'Names resolve local Pleya profile labels to verified server identities, otherwise uniquely match server users; ambiguity returns authorized choices for conversational clarification. '
+        'Names resolve local Pleya profile labels to verified server identities, otherwise uniquely match server users; ambiguity returns authorized choices for conversational clarification: ask the user, a choice offered in this turn is refused as user_ids until they answer. '
         'The current server user is always included; me names that same identity. Explicit user_ids must be verified against the fresh authorized user list. '
         'Unknown access, watch state or requested metadata excludes a title. Series completion aggregates cannot prove zero child progress, so strict unseen series are unavailable. Results are a bounded sample, ordered by rating then stable identity. '
         'Explain coverage and facts as returned; never invent tastes, history overlap or unwatched status from absent history.',
@@ -78,7 +83,7 @@ Future<AssistantToolOutcome> _recommendTogether(
   await client.assertRecommendationAdministrator(abort: ctx.cancel, checkCurrent: checkCurrent);
   final users = await client.listUsers();
   checkCurrent();
-  final requester = users.where((u) => u.id == client.connection.userId).firstOrNull;
+  final requester = users.where((u) => client.sameUserId(u.id, client.connection.userId)).firstOrNull;
   if (requester == null) throw const AssistantToolError('current_user_unknown');
   final profiles = await catalog.participantProfiles?.call(id) ?? const <ProfileServerIdentity>[];
   checkCurrent();
@@ -94,7 +99,7 @@ Future<AssistantToolOutcome> _recommendTogether(
     final matches = users
         .where(
           (u) => name.trim().toLowerCase() == 'me'
-              ? u.id == client.connection.userId
+              ? client.sameUserId(u.id, client.connection.userId)
               : matchingProfiles.isNotEmpty
               ? aliasIds.contains(u.id)
               : u.name.trim().toLowerCase() == name.trim().toLowerCase(),
@@ -106,6 +111,7 @@ Future<AssistantToolOutcome> _recommendTogether(
     } else if (matches.isEmpty) {
       missing.add(clipText(name, 64));
     } else {
+      (_offeredParticipants[ctx] ??= {}).addAll(matches.map((u) => u.id));
       ambiguous.add({
         'name': clipText(name, 64),
         'choices': [
@@ -115,8 +121,10 @@ Future<AssistantToolOutcome> _recommendTogether(
     }
   }
   for (final userId in explicitIds) {
-    final match = users.where((u) => u.id == userId).firstOrNull;
+    final match = users.where((u) => client.sameUserId(u.id, userId)).firstOrNull;
     if (match == null) throw const AssistantToolError('unknown_user_id');
+    if (_offeredParticipants[ctx]?.contains(match.id) ?? false)
+      throw const AssistantToolError('participant_choice_needs_user');
     selected[match.id] = match;
   }
   if (selected.length > _cohortParticipantCap) throw const AssistantToolError('invalid_participants');
@@ -128,12 +136,20 @@ Future<AssistantToolOutcome> _recommendTogether(
       'not_found': missing,
       'results': <Object>[],
     });
-  final candidates = <String, ({MediaItem item, UnifiedMediaGroup group, String libraryId})>{};
+  final candidates = <String, ({MediaItem item, String libraryId})>{};
   var partial = false;
   var sampled = false;
   for (final kind in filters.kind == null ? [MediaKind.movie, MediaKind.show] : [filters.kind!]) {
     final content = await catalog.rowLoader.load(
-      HomeCustomRow(id: '', kind: kind, preferences: const UnifiedCatalogPreferences()),
+      // The 40 slots go to this server's titles the requester has not
+      // watched; the exact reads below still prove it per participant.
+      HomeCustomRow(
+        id: '',
+        kind: kind,
+        preferences: UnifiedCatalogPreferences(
+          filters: UnifiedCatalogFilterSelection(watchState: UnifiedWatchFilter.unwatched, serverIds: {id.value}),
+        ),
+      ),
       limit: _cohortCandidateCap,
     );
     checkCurrent();
@@ -153,7 +169,7 @@ Future<AssistantToolOutcome> _recommendTogether(
           continue;
         }
         candidateLibraries[source.libraryId!] = kind;
-        candidates[source.item.id] = (item: source.item, group: group, libraryId: source.libraryId!);
+        candidates[source.item.id] = (item: source.item, libraryId: source.libraryId!);
       }
     }
   }
@@ -201,7 +217,7 @@ Future<AssistantToolOutcome> _recommendTogether(
     );
     checkCurrent();
   }
-  final matches = <({MediaItem item, UnifiedMediaGroup group})>[];
+  final matches = <MediaItem>[];
   for (final entry in candidates.entries) {
     final observations = [
       for (final user in selected.values) evidence[user.id]?[entry.key] ?? const ParticipantItemEvidence(),
@@ -223,11 +239,11 @@ Future<AssistantToolOutcome> _recommendTogether(
       filtered++;
       continue;
     }
-    matches.add((item: item, group: entry.value.group));
+    matches.add(item);
   }
   matches.sort((a, b) {
-    final rating = (b.item.rating ?? -1).compareTo(a.item.rating ?? -1);
-    return rating != 0 ? rating : a.item.globalKey.compareTo(b.item.globalKey);
+    final rating = (b.rating ?? -1).compareTo(a.rating ?? -1);
+    return rating != 0 ? rating : a.globalKey.compareTo(b.globalKey);
   });
   await client.assertRecommendationAdministrator(abort: ctx.cancel, checkCurrent: checkCurrent);
   checkCurrent();
@@ -236,12 +252,12 @@ Future<AssistantToolOutcome> _recommendTogether(
   if (catalog.rowLoader case final CatalogHomeCustomRowLoader loader) {
     matches.removeWhere(
       (match) => !loader
-          .librariesFor(match.item.kind)
-          .any((library) => library.serverId == id && library.libraryId == match.item.libraryId),
+          .librariesFor(match.kind)
+          .any((library) => library.serverId == id && library.libraryId == match.libraryId),
     );
   }
   final shown = matches.take(limit).toList();
-  for (final match in shown) ctx.showItem(id, match.item.id);
+  for (final match in shown) ctx.showItem(id, match.id);
   return AssistantToolResult({
     'status': 'strict_cohort_results',
     'server_id': id.value,
@@ -265,16 +281,16 @@ Future<AssistantToolOutcome> _recommendTogether(
     'results': [
       for (final match in shown)
         {
-          'item_id': match.item.id,
+          'item_id': match.id,
           'server_id': id.value,
-          'title': clipText(match.item.title),
-          'year': match.item.year,
+          'title': clipText(match.title),
+          'year': match.year,
           'reasons': {
             'access_proved_for': selected.keys.toList(),
             'unwatched_proved_for': selected.keys.toList(),
-            ...filters.facts(match.item),
+            ...filters.facts(match),
           },
         },
     ],
-  }, display: AssistantMediaGrid([for (final match in shown) (item: match.item, group: null)]));
+  }, display: AssistantMediaGrid([for (final match in shown) (item: match, group: null)]));
 }
