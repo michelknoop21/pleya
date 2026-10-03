@@ -14,6 +14,7 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/utils/native_input_session.dart';
@@ -215,13 +216,14 @@ void main() {
       expect(c.aborts, 1);
     });
 
-    testWidgets('a good result leaves on its own after about 4 s', (tester) async {
+    // 4 s plus 60 ms per character: 24 characters is 5.44 s.
+    testWidgets('a good result leaves on its own after about 4 s plus the time to read it', (tester) async {
       await summoned(tester);
       c
         ..state = AssistantSurfaceState.result
         ..answer = 'De scan van Films loopt.'
         ..emit();
-      await tester.pump(const Duration(milliseconds: 3800));
+      await tester.pump(const Duration(milliseconds: 5300));
       expect(bigP(), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 300));
@@ -229,6 +231,31 @@ void main() {
 
       expect(bigP(), findsNothing);
       expect(focusedLabel(), 'behind');
+    });
+
+    // Hardware, build 318: a long answer opened at its last lines, could not
+    // be scrolled and left after 4 s.
+    testWidgets('a long answer opens at its first line, scrolls on Down and stays while it is read', (tester) async {
+      await summoned(tester);
+      final answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = answer
+        ..emit();
+      await settle(tester);
+
+      final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
+      final top = tester.getRect(find.text(answer)).top;
+      expect(top, greaterThanOrEqualTo(panel.top), reason: 'the first line is in the panel');
+
+      await tester.pump(const Duration(seconds: 15));
+      expect(bigP(), findsOneWidget, reason: 'still reading');
+
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(tester.getRect(find.text(answer)).top, lessThan(top), reason: 'Down scrolls the answer');
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'assistant.ask', reason: 'the focus stays on the button');
+      expect(tester.getRect(find.text(answer)).top, top, reason: 'Up scrolls back');
     });
 
     testWidgets('an error stays until Menu', (tester) async {

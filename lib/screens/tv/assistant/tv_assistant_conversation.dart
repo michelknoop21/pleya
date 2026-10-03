@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../assistant/assistant_controller.dart';
@@ -31,6 +34,7 @@ class TvAssistantConversation extends StatelessWidget {
     required this.onExample,
     required this.onPickOption,
     required this.onOpenTitle,
+    this.onArrow,
     this.compact = false,
   });
 
@@ -49,6 +53,9 @@ class TvAssistantConversation extends StatelessWidget {
   final ValueChanged<String> onExample;
   final ValueChanged<AssistantRequestOption> onPickOption;
   final ValueChanged<AssistantTitleTarget> onOpenTitle;
+
+  /// Up or Down was pressed inside the panel, whatever it did.
+  final VoidCallback? onArrow;
 
   /// The summoned panel (760 pt) rather than the surface.
   final bool compact;
@@ -126,7 +133,7 @@ class TvAssistantConversation extends StatelessWidget {
           ),
         ),
       ],
-      AssistantSurfaceState.result => _result(context, pt, headlineStyle, gap, ask),
+      AssistantSurfaceState.result => _result(context, pt, headlineStyle, gap),
     };
 
     // While working, the question and the status stay above the scrolling
@@ -145,7 +152,40 @@ class TvAssistantConversation extends StatelessWidget {
     Widget column(List<Widget> items) =>
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
     // Anchored at the bottom: the newest stays in view.
-    return column([...head, Flexible(child: SingleChildScrollView(reverse: true, child: column(children)))]);
+    return column([
+      ...head,
+      Flexible(
+        // A new result is a new scroll state: it opens at the answer's
+        // first line, not at its end.
+        child: _ReadableScroll(
+          key: ValueKey(c.state == AssistantSurfaceState.result),
+          fromStart: c.state == AssistantSurfaceState.result,
+          onArrow: onArrow,
+          // Under the scrolling part, so the buttons stay in view and
+          // their focus does not pull a long answer to its end.
+          footer: [
+            if (c.state == AssistantSurfaceState.result) ...[
+              gap,
+              Wrap(
+                spacing: 12 * pt,
+                runSpacing: 12 * pt,
+                children: [
+                  ask(),
+                  TvAssistantButton(
+                    label: t.assistant.result.done,
+                    primary: false,
+                    automationId: AutomationIds.assistantButton,
+                    automationInstance: 'done',
+                    onPressed: onDone,
+                  ),
+                ],
+              ),
+            ],
+          ],
+          child: column(children),
+        ),
+      ),
+    ]);
   }
 
   /// The run's displays. Only the result stand hands the first choice the
@@ -178,13 +218,7 @@ class TvAssistantConversation extends StatelessWidget {
     return displays;
   }
 
-  List<Widget> _result(
-    BuildContext context,
-    double pt,
-    TextStyle headlineStyle,
-    Widget gap,
-    Widget Function({bool primary}) ask,
-  ) {
+  List<Widget> _result(BuildContext context, double pt, TextStyle headlineStyle, Widget gap) {
     final c = controller;
     final headline = assistantHeadline(c);
     return [
@@ -193,22 +227,85 @@ class TvAssistantConversation extends StatelessWidget {
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
-        gap,
       ],
-      Wrap(
-        spacing: 12 * pt,
-        runSpacing: 12 * pt,
-        children: [
-          ask(),
-          TvAssistantButton(
-            label: t.assistant.result.done,
-            primary: false,
-            automationId: AutomationIds.assistantButton,
-            automationInstance: 'done',
-            onPressed: onDone,
-          ),
-        ],
-      ),
     ];
   }
+}
+
+/// The panel's scrolling part. Up and Down move the focus between cards and
+/// buttons as before; where there is nothing left to focus they scroll, so
+/// an answer longer than the panel can be read.
+class _ReadableScroll extends StatefulWidget {
+  const _ReadableScroll({
+    super.key,
+    required this.child,
+    required this.fromStart,
+    this.footer = const [],
+    this.onArrow,
+  });
+
+  final Widget child;
+
+  /// Stays under the scrolling part; its keys scroll too.
+  final List<Widget> footer;
+
+  /// Open at the top (a result to read) rather than at the newest line.
+  final bool fromStart;
+  final VoidCallback? onArrow;
+
+  @override
+  State<_ReadableScroll> createState() => _ReadableScrollState();
+}
+
+class _ReadableScrollState extends State<_ReadableScroll> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.fromStart) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode _, KeyEvent event) {
+    final up = event.logicalKey == LogicalKeyboardKey.arrowUp;
+    if (event is KeyUpEvent || (!up && event.logicalKey != LogicalKeyboardKey.arrowDown)) {
+      return KeyEventResult.ignored;
+    }
+    widget.onArrow?.call();
+    final direction = up ? TraversalDirection.up : TraversalDirection.down;
+    if (FocusManager.instance.primaryFocus?.focusInDirection(direction) ?? false) return KeyEventResult.handled;
+    // Anchored at the bottom: up is a larger offset.
+    final position = _scroll.position;
+    final step = position.viewportDimension * 0.6;
+    final target = (position.pixels + (up ? step : -step)).clamp(0.0, position.maxScrollExtent);
+    if (target == position.pixels) return KeyEventResult.ignored;
+    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    skipTraversal: true,
+    onKeyEvent: _onKey,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: SingleChildScrollView(controller: _scroll, reverse: true, child: widget.child),
+        ),
+        ...widget.footer,
+      ],
+    ),
+  );
 }

@@ -32,6 +32,7 @@ import '../../../widgets/overlay_sheet.dart';
 import 'big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
+import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
@@ -61,6 +62,9 @@ class TvAssistantSummonHost extends StatefulWidget {
 
   /// How long a good result stays before Big P leaves, restarted by any key.
   static const linger = Duration(seconds: 4);
+
+  /// Added to [linger] per character of the answer: time to read it.
+  static const lingerPerCharacter = Duration(milliseconds: 60);
 
   @override
   State<TvAssistantSummonHost> createState() => _TvAssistantSummonHostState();
@@ -240,7 +244,10 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = _c;
     if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
     if (tvAssistantHasChoices(c.displays)) return;
-    _linger = Timer(TvAssistantSummonHost.linger, _dismiss);
+    _linger = Timer(
+      TvAssistantSummonHost.linger + TvAssistantSummonHost.lingerPerCharacter * assistantHeadline(c).length,
+      _dismiss,
+    );
   }
 
   void _focusDefault() {
@@ -313,6 +320,9 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               node: _scope,
               child: Focus(
                 focusNode: _panelNode,
+                // Holds the focus when nothing else can; Up or Down must
+                // not land on it and strand the remote.
+                skipTraversal: true,
                 onKeyEvent: _onKey,
                 child: AutomationNode(
                   id: AutomationIds.assistantSummon,
@@ -359,6 +369,9 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               onExample: (_) {},
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
               onOpenTitle: _openTitle,
+              onArrow: () {
+                if (_linger?.isActive ?? false) _armLinger(); // still reading
+              },
             ),
       avatar: BigPVoiceMouth(
         controller: c,
