@@ -73,6 +73,7 @@ import 'plex_playback_mapper.dart';
 import 'playback_initialization_types.dart';
 
 part 'plex_client/parts/live_tv.dart';
+part 'plex_client/parts/server_activity.dart';
 
 /// Result of a paginated library content fetch
 class _LibraryContentResult {
