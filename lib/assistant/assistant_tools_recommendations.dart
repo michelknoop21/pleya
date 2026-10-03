@@ -4,8 +4,9 @@ const _cohortCandidateCap = 40;
 const _cohortParticipantCap = 8;
 
 /// User ids this run offered as an ambiguous choice. The choice is the
-/// user's: the model cannot answer its own question, so these are refused
-/// as user_ids until a new run (a new context) carries the user's answer.
+/// user's: the model cannot answer its own question, so a later call in the
+/// same run that resolves to one of them, by id, name or alias, gets the
+/// clarification again. A new run (a new context) starts clean.
 final _offeredParticipants = Expando<Set<String>>('offeredParticipants');
 
 final List<AssistantTool> _recommendationTools = [
@@ -14,7 +15,7 @@ final List<AssistantTool> _recommendationTools = [
     description:
         'Find titles from this profile\'s visible catalog that every named participant can access and has explicitly not watched. '
         'Strict cohort evidence is supported only for the current authorized Jellyfin administrator. '
-        'Names resolve local Pleya profile labels to verified server identities, otherwise uniquely match server users; ambiguity returns authorized choices for conversational clarification: ask the user, a choice offered in this turn is refused as user_ids until they answer. '
+        'Names resolve local Pleya profile labels to verified server identities, otherwise uniquely match server users; ambiguity returns authorized choices for conversational clarification: ask the user, a choice offered in this turn stays unresolved until they answer. '
         'The current server user is always included; me names that same identity. Explicit user_ids must be verified against the fresh authorized user list. '
         'Unknown access, watch state or requested metadata excludes a title. Series completion aggregates cannot prove zero child progress, so strict unseen series are unavailable. Results are a bounded sample, ordered by rating then stable identity. '
         'Explain coverage and facts as returned; never invent tastes, history overlap or unwatched status from absent history.',
@@ -88,6 +89,7 @@ Future<AssistantToolOutcome> _recommendTogether(
   final profiles = await catalog.participantProfiles?.call(id) ?? const <ProfileServerIdentity>[];
   checkCurrent();
   final selected = <String, ServerUser>{requester.id: requester};
+  final offeredBefore = {...?_offeredParticipants[ctx]};
   final aliases = <String, String>{};
   final ambiguous = <Map<String, Object?>>[];
   final missing = <String>[];
@@ -101,7 +103,7 @@ Future<AssistantToolOutcome> _recommendTogether(
           (u) => name.trim().toLowerCase() == 'me'
               ? client.sameUserId(u.id, client.connection.userId)
               : matchingProfiles.isNotEmpty
-              ? aliasIds.contains(u.id)
+              ? aliasIds.any((alias) => client.sameUserId(alias, u.id))
               : u.name.trim().toLowerCase() == name.trim().toLowerCase(),
         )
         .toList();
@@ -123,17 +125,20 @@ Future<AssistantToolOutcome> _recommendTogether(
   for (final userId in explicitIds) {
     final match = users.where((u) => client.sameUserId(u.id, userId)).firstOrNull;
     if (match == null) throw const AssistantToolError('unknown_user_id');
-    if (_offeredParticipants[ctx]?.contains(match.id) ?? false)
-      throw const AssistantToolError('participant_choice_needs_user');
     selected[match.id] = match;
   }
   if (selected.length > _cohortParticipantCap) throw const AssistantToolError('invalid_participants');
   await client.assertRecommendationAdministrator(abort: ctx.cancel, checkCurrent: checkCurrent);
-  if (ambiguous.isNotEmpty || missing.isNotEmpty)
+  final unanswered = [
+    for (final u in selected.values)
+      if (u.id != requester.id && offeredBefore.contains(u.id)) clipText(u.name, 64),
+  ];
+  if (ambiguous.isNotEmpty || missing.isNotEmpty || unanswered.isNotEmpty)
     return AssistantToolResult({
       'status': 'participant_clarification',
       'ambiguous': ambiguous,
       'not_found': missing,
+      if (unanswered.isNotEmpty) 'ask_the_user_which': unanswered,
       'results': <Object>[],
     });
   final candidates = <String, ({MediaItem item, String libraryId})>{};
@@ -276,7 +281,7 @@ Future<AssistantToolOutcome> _recommendTogether(
       'excluded_no_access': denied,
       'excluded_watched': watched,
       'excluded_metadata': filtered,
-      'scope': 'current_profile_visible_catalog_on_selected_server',
+      'scope': 'requester_unwatched_titles_in_current_profile_visible_catalog_on_selected_server',
     },
     'results': [
       for (final match in shown)

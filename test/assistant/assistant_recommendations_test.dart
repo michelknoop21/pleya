@@ -537,13 +537,20 @@ void main() {
     await _recommend(ctx, {
       'participants': ['Nikki'],
     });
-    await expectLater(
-      _recommend(ctx, {
-        'participants': [],
+    // By id, and by the server name the choice list just handed over.
+    for (final pick in [
+      {
+        'participants': <String>[],
         'user_ids': ['b'],
-      }),
-      throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'participant_choice_needs_user')),
-    );
+      },
+      {
+        'participants': ['Bob'],
+      },
+    ]) {
+      final again = await _recommend(ctx, pick);
+      expect(again.data['status'], 'participant_clarification');
+      expect(again.data['ask_the_user_which'], ['Bob']);
+    }
     expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
     // The next run carries the user's answer.
     final answered = await _recommend(ctx.fresh(), {
