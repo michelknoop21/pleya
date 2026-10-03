@@ -81,6 +81,7 @@ class TvAssistantMatchCard extends StatelessWidget {
     final pt = TvHig.of(context);
     final tk = tokens(context);
     final (status, statusColor) = _status;
+    final pill = status == null ? null : TvAssistantStatusPill(label: status, color: statusColor, dense: compact);
     final low = match.confidence == 'low';
     final plot = _plot;
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
@@ -120,30 +121,37 @@ class TvAssistantMatchCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: match.title,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          if (match.year != null)
+                    if (compact)
+                      tvAssistantCompactTitle(pt, tk, match.title, match.year)
+                    else
+                      Text.rich(
+                        TextSpan(
+                          children: [
                             TextSpan(
-                              text: ' (${match.year})',
-                              style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                              text: match.title,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
-                        ],
+                            if (match.year != null)
+                              TextSpan(
+                                text: ' (${match.year})',
+                                style: TextStyle(color: tk.text.withValues(alpha: 0.6)),
+                              ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
-                    ),
                     SizedBox(height: 4 * pt),
-                    Text(
-                      low ? '$_kind · ${t.assistant.match.maybe}' : _kind,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: muted,
+                    tvAssistantSecondLine(
+                      pt,
+                      Text(
+                        low ? '$_kind · ${t.assistant.match.maybe}' : _kind,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: muted,
+                      ),
+                      compact ? pill : null,
                     ),
                     if (plot.isNotEmpty) ...[
                       SizedBox(height: 4 * pt),
@@ -152,11 +160,11 @@ class TvAssistantMatchCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (status != null) ...[
+              if (!compact && pill != null) ...[
                 SizedBox(width: 16 * pt),
                 ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: (compact ? 180 : 280) * pt),
-                  child: TvAssistantStatusPill(label: status, color: statusColor),
+                  constraints: BoxConstraints(maxWidth: 280 * pt),
+                  child: pill,
                 ),
               ],
             ],
