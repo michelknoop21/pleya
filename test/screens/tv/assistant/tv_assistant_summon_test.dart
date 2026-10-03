@@ -248,6 +248,12 @@ void main() {
       for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', 'Jaren 1986 - 2022']) {
         expect(assistantPlainText(plain), plain);
       }
+      expect(
+        assistantPlainText(
+          '***Top Gun*** en _Rain Man_ of __Heat__, snake_case_naam, ![poster](https://example.com/p.png)',
+        ),
+        'Top Gun en Rain Man of Heat, snake_case_naam, poster',
+      );
       // Only marks is no answer.
       for (final marks in ['**', '***', '# ', '``']) {
         expect(assistantPlainText(marks), isEmpty);
@@ -264,6 +270,39 @@ void main() {
 
       expect(find.text('Mr. Robot staat op Plex en op Jellyfin.'), findsOneWidget);
       expect(find.text('Het eerste seizoen is compleet.'), findsOneWidget);
+    });
+
+    testWidgets('a list under an intro line leaves its number in the list', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Ik heb deze films gevonden:\n1. Top Gun (1986)\n2. Rain Man (1988)'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Ik heb deze films gevonden:'), findsOneWidget);
+      expect(find.text('1. Top Gun (1986)\n2. Rain Man (1988)'), findsOneWidget);
+
+      c
+        ..answer = 'Ik vond films van o.a. Tom Cruise en Brad Pitt. Meer staat op Plex.'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Ik vond films van o.a. Tom Cruise en Brad Pitt.'), findsOneWidget);
+    });
+
+    testWidgets('a short answer keeps the panel short', (tester) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'De scan van Films loopt.'
+        ..emit();
+      await settle(tester);
+      final short = tester.getRect(find.byType(TvAssistantGlassPanel)).height;
+
+      c
+        ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
+        ..emit();
+      await settle(tester);
+      expect(short, lessThan(tester.getRect(find.byType(TvAssistantGlassPanel)).height / 2));
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not

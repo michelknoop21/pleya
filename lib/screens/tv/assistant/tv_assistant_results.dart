@@ -196,7 +196,7 @@ class TvAssistantDisplayView extends StatelessWidget {
   final ValueChanged<AssistantRequestOption>? onPickOption;
   final ValueChanged<AssistantTitleTarget>? onOpenTitle;
 
-  /// The summoned panel: found titles scroll in a window of four.
+  /// The summoned panel: the cards take their compact form.
   final bool compact;
 
   /// Gets the first option card, for the surface's default focus (still 7).

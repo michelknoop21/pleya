@@ -156,11 +156,12 @@ String assistantHeadline(AssistantController c) {
 // ponytail: one pass over paired marks on one line; nested emphasis keeps
 // its inner marks. A Markdown renderer is the upgrade if answers need more.
 final _markdownMarks = RegExp(
-  r'(?<![\w*])\*\*(\S(?:[^\n]*?\S)?)\*\*(?![\w*])|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)`([^`\n]+)`(?!\w)',
+  r'(?<![\w*])\*{2,3}(\S(?:[^\n]*?\S)?)\*{2,3}(?![\w*])|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)`([^`\n]+)`(?!\w)'
+  r'|(?<![\w_])_{1,2}(\S(?:[^_\n]*?\S)?)_{1,2}(?![\w_])',
 );
 final _markdownHeading = RegExp(r'^#{1,6}\s+', multiLine: true);
 final _marksOnly = RegExp(r'^[\s*`#]+$');
-final _markdownLink = RegExp(r'\[([^\]\n]+)\]\((?:[^)\s]+)\)');
+final _markdownLink = RegExp(r'!?\[([^\]\n]+)\]\((?:[^)\s]+)\)');
 final _markdownBullet = RegExp(r'^(\s*)[*-]\s+', multiLine: true);
 
 /// The model's answer as the panel shows it. The panel draws plain text, so
@@ -169,7 +170,7 @@ final _markdownBullet = RegExp(r'^(\s*)[*-]\s+', multiLine: true);
 /// a bullet. An asterisk inside a word or a sum, as
 /// in `M*A*S*H` or `2 * 3`, stays.
 String assistantPlainText(String answer) => answer
-    .replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3]!)
+    .replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3] ?? m[4]!)
     .replaceAll(_markdownHeading, '')
     .replaceAllMapped(_markdownLink, (m) => m[1]!)
     .replaceAllMapped(_markdownBullet, (m) => '${m[1]}• ')
