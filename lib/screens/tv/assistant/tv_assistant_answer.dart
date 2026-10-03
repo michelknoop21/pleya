@@ -178,7 +178,7 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
     final split = end != null && end <= 140 && end < widget.text.length;
     final rest = split ? widget.text.substring(end).trim() : '';
     // One long sentence is no headline: it reads as running text.
-    final bodyStyle = rest.isEmpty && widget.text.length <= 140
+    final bodyStyle = rest.isEmpty && widget.text.length <= 140 && !_startsWithItem.hasMatch(widget.text)
         ? widget.style
         : TextStyle(
             color: tk.text.withValues(alpha: 0.86),
@@ -255,6 +255,92 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
             )
           else
             Flexible(child: LayoutBuilder(builder: (context, box) => body(box.maxHeight))),
+        ],
+      ),
+    );
+  }
+}
+
+/// A results list with nothing in it to focus (a ranking whose titles are
+/// in no library, a comparison): when it runs past its box it takes the
+/// focus itself, and Up and Down scroll it; at either end the key moves the
+/// focus on. A list with cards needs none of this: the focus scrolls it.
+class TvAssistantReadableList extends StatefulWidget {
+  const TvAssistantReadableList({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<TvAssistantReadableList> createState() => _TvAssistantReadableListState();
+}
+
+class _TvAssistantReadableListState extends State<TvAssistantReadableList> {
+  final _scroll = ScrollController();
+  final _node = FocusNode(debugLabel: 'assistant.results');
+  bool _overflows = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _node.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    _node
+      ..removeListener(_changed)
+      ..dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _changed() => setState(() {});
+
+  void _measure() {
+    if (!mounted || !_scroll.hasClients) return;
+    final overflows = _scroll.position.maxScrollExtent > 0.5;
+    if (overflows != _overflows) setState(() => _overflows = overflows);
+  }
+
+  KeyEventResult _onKey(FocusNode _, KeyEvent event) {
+    final up = event.logicalKey == LogicalKeyboardKey.arrowUp;
+    if (event is KeyUpEvent || (!up && event.logicalKey != LogicalKeyboardKey.arrowDown)) {
+      return KeyEventResult.ignored;
+    }
+    final position = _scroll.position;
+    final step = position.viewportDimension * 0.6;
+    final target = (position.pixels + (up ? -step : step)).clamp(0.0, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 0.5) return KeyEventResult.ignored;
+    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic));
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    return Focus(
+      focusNode: _node,
+      canRequestFocus: _overflows,
+      onKeyEvent: _onKey,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            right: -20 * pt,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: AnimatedOpacity(
+                opacity: !_overflows ? 0 : (_node.hasFocus ? 1 : 0.45),
+                duration: const Duration(milliseconds: 160),
+                child: _ReadingThumb(controller: _scroll),
+              ),
+            ),
+          ),
+          TvAssistantEdgeFade(
+            controller: _scroll,
+            builder: (controller) => SingleChildScrollView(controller: controller, child: widget.child),
+          ),
         ],
       ),
     );

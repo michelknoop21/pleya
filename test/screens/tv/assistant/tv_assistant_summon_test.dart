@@ -339,6 +339,52 @@ void main() {
       );
     });
 
+    // A ranking shows a few of its titles and none of them can be chosen
+    // here: the answer keeps its list, the follow-ups stand in view above
+    // the buttons, and the list scrolls on Up and Down by itself.
+    testWidgets('a result without choices keeps the answer list, shows the follow-ups and can be scrolled', (
+      tester,
+    ) async {
+      await summoned(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Meest bekeken deze week:\n1. The Block\n2. House\n3. Heat'
+        ..displays = [
+          AssistantWatchStats(
+            serverName: 'Pleya',
+            days: 7,
+            users: const [(name: 'Gideuh', plays: 36, seconds: 0), (name: 'Jan', plays: 6, seconds: 0)],
+            titles: [
+              for (final title in ['The Block', 'House', 'Heat', 'Ronin', 'Sintel'])
+                (title: title, plays: 9, viewers: const ['Jan'], show: false, target: null),
+            ],
+          ),
+        ]
+        ..emit();
+      await settle(tester);
+
+      expect(find.textContaining('1. The Block'), findsOneWidget, reason: 'the cards do not replace this list');
+      final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
+      for (final chip in tester.widgetList(find.byType(TvAssistantChip))) {
+        final rect = tester.getRect(find.byWidget(chip));
+        expect(rect.bottom, lessThanOrEqualTo(panel.bottom), reason: 'follow-up in view');
+        expect(rect.top, greaterThanOrEqualTo(panel.top));
+      }
+
+      // Up from Ask: the follow-ups, then the list itself, which scrolls.
+      for (var i = 0; i < 6 && focusedLabel() != 'assistant.results'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+      }
+      expect(focusedLabel(), 'assistant.results');
+      final top = tester.getRect(find.text('The Block')).top;
+      await press(tester, LogicalKeyboardKey.arrowDown);
+      expect(tester.getRect(find.text('The Block')).top, lessThan(top), reason: 'Down scrolls the list');
+      for (var i = 0; i < 20 && focusedLabel() == 'assistant.results'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedLabel(), isNot('assistant.results'), reason: 'at its end the key moves the focus on');
+    });
+
     testWidgets('a short answer keeps the panel short', (tester) async {
       await summoned(tester);
       c

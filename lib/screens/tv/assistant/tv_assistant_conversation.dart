@@ -137,12 +137,16 @@ class TvAssistantConversation extends StatelessWidget {
     // result gives it a block of its own that opens at its first line and
     // scrolls by itself, above the results.
     // Title cards repeat what the answer lists. A ranking or a comparison
-    // shows a few of its titles only, so there the text stays whole.
-    final cards = c.displays.any(
-      (d) =>
-          !tvAssistantDisplayIsEmpty(d) &&
-          (d is AssistantTitleMatches || d is AssistantMediaGrid || d is AssistantRequestOptions),
-    );
+    // shows a few of its titles only, and cards that cannot be chosen cannot
+    // be walked through, so there the text stays whole.
+    final hasChoices = tvAssistantHasChoices(c.displays);
+    final cards =
+        hasChoices &&
+        c.displays.any(
+          (d) =>
+              !tvAssistantDisplayIsEmpty(d) &&
+              (d is AssistantTitleMatches || d is AssistantMediaGrid || d is AssistantRequestOptions),
+        );
     final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
     final headline = cards ? assistantWithoutList(answer) : answer;
     final head = <Widget>[
@@ -178,18 +182,21 @@ class TvAssistantConversation extends StatelessWidget {
       // Nothing under the answer: the answer keeps the whole height.
       if (children.isNotEmpty || c.state != AssistantSurfaceState.result)
         Flexible(
-          child: TvAssistantEdgeFade(
-            // A new list per stand: the working list's offset does not carry.
-            key: ValueKey(result),
-            builder: (controller) =>
-                SingleChildScrollView(controller: controller, reverse: !result, child: column(children)),
-          ),
+          // Nothing in it to focus: the list scrolls on Up and Down itself.
+          child: result && !hasChoices
+              ? TvAssistantReadableList(child: column(children))
+              : TvAssistantEdgeFade(
+                  // A new list per stand: the working list's offset does not carry.
+                  key: ValueKey(result),
+                  builder: (controller) =>
+                      SingleChildScrollView(controller: controller, reverse: !result, child: column(children)),
+                ),
         ),
       // Under the scrolling part: always in view, whatever the results do.
       if (c.state == AssistantSurfaceState.result) ...[
         // No cards to walk through: the follow-ups stand above the buttons,
         // in view, and the list above them needs no focus to be read.
-        if (!tvAssistantHasChoices(c.displays))
+        if (!hasChoices)
           if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
         // A button keeps 6 pt around its fill for the focus ring; pulled
         // back so the fill, not the ring, lines up with the text and cards.
