@@ -144,7 +144,8 @@ final List<AssistantTool> _requestTools = [
     name: 'discover_request_titles',
     description:
         'Browse the request service (Seerr) when the user describes a kind of film or series but no title '
-        'comes to mind. Genres are TMDB genre names. Filters the service cannot apply come back in '
+        'comes to mind. Genres are TMDB genre names; keywords are TMDB keywords for the subject, in English '
+        '("space", "time travel"), the first one TMDB knows is applied. Filters the service cannot apply come back in '
         'ignored_filters; say so instead of pretending they were used. Returns at most 10 titles with a '
         'seerr_id for request_title.',
     risk: AssistantToolRisk.read,
@@ -188,14 +189,31 @@ final List<AssistantTool> _requestTools = [
       final yearFrom = _yearArg(args, 'year_from');
       final yearTo = _yearArg(args, 'year_to');
 
-      // The API documents date ranges, keywords and original language on
-      // /discover; SeerrClient only passes genre and sortBy through yet.
+      // The API documents date ranges and original language on /discover;
+      // SeerrClient only passes genre, keywords and sortBy through yet.
       final ignored = <Map<String, Object?>>[
         if (yearFrom != null) {'filter': 'year_from', 'reason': 'not_supported'},
         if (yearTo != null) {'filter': 'year_to', 'reason': 'not_supported'},
-        if (keywords.isNotEmpty) {'filter': 'keywords', 'reason': 'not_supported'},
         if (language != null) {'filter': 'original_language', 'reason': 'not_supported'},
       ];
+
+      // The subject ("space") as a TMDB keyword id; without it discover is
+      // only the popular titles of a genre. One keyword: several AND together.
+      int? keyword;
+      for (final name in keywords) {
+        final value = clipText(name, 40);
+        if (keyword != null) {
+          ignored.add({'filter': 'keywords', 'value': value, 'reason': 'one_keyword_only'});
+          continue;
+        }
+        final found = await _seerrCall(() => client.searchKeyword(name));
+        final match = found.where((k) => k.name.toLowerCase() == name.toLowerCase()).firstOrNull ?? found.firstOrNull;
+        if (match == null) {
+          ignored.add({'filter': 'keywords', 'value': value, 'reason': 'unknown_keyword'});
+        } else {
+          keyword = match.id;
+        }
+      }
 
       int? genre;
       List<String>? knownGenres;
@@ -218,8 +236,8 @@ final List<AssistantTool> _requestTools = [
       final sortBy = sort == 'rating' ? 'vote_average.desc' : 'popularity.desc';
       final page = await _seerrCall(
         () => movies
-            ? client.discoverMovies(genre: genre, sortBy: sortBy)
-            : client.discoverTv(genre: genre, sortBy: sortBy),
+            ? client.discoverMovies(genre: genre, sortBy: sortBy, keywords: [?keyword])
+            : client.discoverTv(genre: genre, sortBy: sortBy, keywords: [?keyword]),
       );
       final result = _requestOptions(ctx, client, page.items.take(10));
       return AssistantToolResult({
