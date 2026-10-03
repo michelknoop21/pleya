@@ -6013,6 +6013,7 @@ class TranslationsAssistantEn {
 
 	late final TranslationsAssistantOptionEn option = TranslationsAssistantOptionEn.internal(_root);
 	late final TranslationsAssistantDisplaysEn displays = TranslationsAssistantDisplaysEn.internal(_root);
+	late final TranslationsAssistantFollowUpEn followUp = TranslationsAssistantFollowUpEn.internal(_root);
 	late final TranslationsAssistantMatchEn match = TranslationsAssistantMatchEn.internal(_root);
 }
 
@@ -7898,6 +7899,48 @@ class TranslationsAssistantDisplaysEn {
 
 	/// en: 'No watch data available for ${server}.'
 	String noSource({required Object server}) => 'No watch data available for ${server}.';
+
+	/// en: '${count}×'
+	String playsShort({required Object count}) => '${count}×';
+
+	/// en: 'Right now'
+	String get watchNow => 'Right now';
+
+	/// en: 'Last ${n} days'
+	String watchDays({required Object n}) => 'Last ${n} days';
+
+	/// en: 'Viewers'
+	String get viewers => 'Viewers';
+
+	/// en: 'Most watched'
+	String get mostWatched => 'Most watched';
+
+	/// en: 'Nobody is watching right now.'
+	String get nobodyNow => 'Nobody is watching right now.';
+
+	/// en: 'Nothing was watched in this period.'
+	String get nothingWatched => 'Nothing was watched in this period.';
+}
+
+// Path: assistant.followUp
+class TranslationsAssistantFollowUpEn {
+	TranslationsAssistantFollowUpEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Who is watching right now?'
+	String get watchNow => 'Who is watching right now?';
+
+	/// en: 'Who watched the most in the last 30 days?'
+	String get watchMonth => 'Who watched the most in the last 30 days?';
+
+	/// en: 'Who watched the most this week?'
+	String get watchWeek => 'Who watched the most this week?';
+
+	/// en: 'Which titles on ${server} are missing on ${other}?'
+	String compareBack({required Object server, required Object other}) => 'Which titles on ${server} are missing on ${other}?';
 }
 
 // Path: assistant.match
@@ -10305,6 +10348,17 @@ extension on Translations {
 			'assistant.displays.watchStats' => ({required Object server}) => 'Watch stats · ${server}',
 			'assistant.displays.plays' => ({required Object count}) => '${count}× watched',
 			'assistant.displays.noSource' => ({required Object server}) => 'No watch data available for ${server}.',
+			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
+			'assistant.displays.watchNow' => 'Right now',
+			'assistant.displays.watchDays' => ({required Object n}) => 'Last ${n} days',
+			'assistant.displays.viewers' => 'Viewers',
+			'assistant.displays.mostWatched' => 'Most watched',
+			'assistant.displays.nobodyNow' => 'Nobody is watching right now.',
+			'assistant.displays.nothingWatched' => 'Nothing was watched in this period.',
+			'assistant.followUp.watchNow' => 'Who is watching right now?',
+			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
+			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
+			'assistant.followUp.compareBack' => ({required Object server, required Object other}) => 'Which titles on ${server} are missing on ${other}?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In your library · ${servers}',
 			'assistant.match.maybe' => 'possibly',
 			'assistant.match.movie' => 'Movie',

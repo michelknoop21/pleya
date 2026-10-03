@@ -2504,7 +2504,20 @@
       "missing": "${count} titels op ${server} ontbreken op ${other}",
       "watchStats": "Kijkcijfers · ${server}",
       "plays": "${count}× bekeken",
-      "noSource": "Geen kijkgegevens beschikbaar voor ${server}."
+      "noSource": "Geen kijkgegevens beschikbaar voor ${server}.",
+      "playsShort": "${count}×",
+      "watchNow": "Op dit moment",
+      "watchDays": "Afgelopen ${n} dagen",
+      "viewers": "Kijkers",
+      "mostWatched": "Meest bekeken",
+      "nobodyNow": "Er kijkt nu niemand.",
+      "nothingWatched": "In deze periode is niets bekeken."
+    },
+    "followUp": {
+      "watchNow": "Wie kijkt er nu?",
+      "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",
+      "watchWeek": "Wie keek het meest deze week?",
+      "compareBack": "Welke titels op ${server} ontbreken op ${other}?"
     },
     "match": {
       "inLibrary": "In je bibliotheek · ${servers}",

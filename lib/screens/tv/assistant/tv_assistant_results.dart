@@ -19,6 +19,7 @@ import '../../../utils/tv_hig.dart';
 import 'tv_assistant_labels.dart';
 import 'tv_assistant_match_card.dart';
 import 'tv_assistant_option_card.dart';
+import 'tv_assistant_watch_card.dart';
 import 'tv_assistant_widgets.dart';
 
 Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
@@ -247,15 +248,26 @@ class TvAssistantDisplayView extends StatelessWidget {
     final tk = tokens(context);
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
     final row = TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt);
+    final heading = TextStyle(color: tk.text, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700);
     Widget card(String? header, List<String> lines) => TvAssistantCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (header != null) ...[Text(header, style: muted), SizedBox(height: 10 * pt)],
-          for (final l in lines)
+          if (header != null) ...[Text(header, style: heading), SizedBox(height: 12 * pt)],
+          for (final (i, l) in lines.indexed)
             Padding(
-              padding: EdgeInsets.only(top: 6 * pt),
-              child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: row),
+              padding: EdgeInsets.only(top: 8 * pt),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 40 * pt,
+                    child: Text('${i + 1}', style: muted),
+                  ),
+                  Expanded(
+                    child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: row),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -311,12 +323,7 @@ class TvAssistantDisplayView extends StatelessWidget {
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
-      final AssistantWatchStats s => card(t.assistant.displays.watchStats(server: s.serverName), [
-        for (final name in s.unavailable) t.assistant.displays.noSource(server: name),
-        for (final session in s.sessions.take(8)) '${session.userName} · ${session.title}',
-        for (final u in s.users.take(8)) '${u.name} · ${t.assistant.displays.plays(count: u.plays)}',
-        for (final title in s.titles.take(8)) '${title.title} · ${t.assistant.displays.plays(count: title.plays)}',
-      ]),
+      final AssistantWatchStats s => TvAssistantWatchCard(stats: s),
       _ => const SizedBox.shrink(),
     };
   }

@@ -145,10 +145,40 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 /// The headline under the question: the model's answer when there is one,
 /// else Pleya's reason the run ended.
 String assistantHeadline(AssistantController c) {
-  if (c.answer.trim().isNotEmpty) return c.answer.trim();
+  if (assistantPlainAnswer(c.answer) case final answer when answer.isNotEmpty) return answer;
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
   if (c.modelMissing) return t.assistant.ends.modelMissing;
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
 }
+
+/// At most two questions that follow from what the run showed, in the UI's
+/// language. Pleya builds them from the displays, never from model prose,
+/// and each one stands on its own: a new ask carries no memory of this one.
+List<String> assistantFollowUps(List<AssistantDisplay> displays) {
+  final f = t.assistant.followUp;
+  for (final d in displays) {
+    switch (d) {
+      case AssistantWatchStats(days: null):
+        return [f.watchWeek, f.watchMonth];
+      case AssistantWatchStats(:final days?):
+        return [f.watchNow, if (days < 30) f.watchMonth else f.watchWeek];
+      case AssistantServerComparison(:final serverName, :final otherServerName):
+        return [f.compareBack(server: otherServerName, other: serverName)];
+      default:
+        break;
+    }
+  }
+  return const [];
+}
+
+/// The model's answer as the panel shows it: Markdown a model adds anyway
+/// (bold, headings, code ticks, list dashes) becomes plain text with
+/// bullets, and runs of blank lines become one.
+String assistantPlainAnswer(String answer) => answer
+    .replaceAll(RegExp(r'\*\*|__|`'), '')
+    .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
+    .replaceAll(RegExp(r'^\s*[-*+]\s+', multiLine: true), '• ')
+    .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+    .trim();

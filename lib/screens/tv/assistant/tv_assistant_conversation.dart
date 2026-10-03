@@ -195,6 +195,17 @@ class TvAssistantConversation extends StatelessWidget {
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         gap,
       ],
+      if (!c.resultIsError) ...[
+        for (final (i, question) in assistantFollowUps(c.displays).indexed) ...[
+          TvAssistantChip(
+            label: question,
+            automationId: AutomationIds.assistantFollowUp,
+            automationInstance: '$i',
+            onSelect: () => onExample(question),
+          ),
+          SizedBox(height: 12 * pt),
+        ],
+      ],
       Wrap(
         spacing: 12 * pt,
         runSpacing: 12 * pt,

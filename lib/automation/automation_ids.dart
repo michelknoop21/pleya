@@ -266,6 +266,9 @@ class AutomationIds {
   /// One example question in rust (`assistant.example[0]`).
   static const String assistantExample = 'assistant.example';
 
+  /// One follow-up question under a result (`assistant.followUp[0]`).
+  static const String assistantFollowUp = 'assistant.followUp';
+
   /// The live step list while Big P works; state carries the step count.
   static const String assistantSteps = 'assistant.steps';
 
@@ -562,6 +565,7 @@ class AutomationIds {
     myPleyaLogRow,
     assistantButton,
     assistantExample,
+    assistantFollowUp,
     assistantOption,
     assistantMatch,
     assistantConfirmButton,

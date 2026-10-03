@@ -117,7 +117,10 @@ class AssistantRun {
       '- If several servers, libraries or users could match, ask one short question instead of acting.\n'
       '- Sensitive actions are confirmed by the user in Pleya. You cannot confirm them and must not ask '
       'for passwords.\n'
-      '- Reply briefly, in $languageName, without technical details such as ids or tool names.';
+      '- Reply briefly, in $languageName, without technical details such as ids or tool names.\n'
+      '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
+      'out is enough.\n'
+      '- Plain text only: no Markdown, no asterisks, headings or tables.';
 
   /// Calls carried out per model reply and per run. A reply with a hundred
   /// scans, or a planted instruction that asks for them, stops here.

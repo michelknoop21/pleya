@@ -356,7 +356,10 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               onAsk: () => unawaited(_ask()),
               onDone: _dismiss,
               onCancelWork: _dismiss,
-              onExample: (_) {},
+              onExample: (question) {
+                c.beginListening();
+                unawaited(c.submit(question));
+              },
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
               onOpenTitle: _openTitle,
             ),
