@@ -103,6 +103,11 @@ class AppleTvRemoteTouchService {
   final SelectTraceRecorder _traceRecorder;
   final StreamController<AppleTvRemotePlayPauseAction> _playPauseController =
       StreamController<AppleTvRemotePlayPauseAction>.broadcast();
+  final StreamController<void> _playPauseLongPressController = StreamController<void>.broadcast();
+  Timer? _playPauseHold;
+
+  /// DEC-142: how long Play/Pause must be held to summon Big P.
+  static const Duration playPauseLongPressThreshold = Duration(milliseconds: 600);
   final double swipeThreshold;
   final double axisSwitchDominanceRatio;
   final Duration swipeRepeatInterval;
@@ -189,6 +194,12 @@ class AppleTvRemoteTouchService {
            duplicateInputGuard ?? GamepadDuplicateInputGuard(now: now, suppressionWindow: duplicateSuppressionWindow);
 
   Stream<AppleTvRemotePlayPauseAction> get playPauseActions => _playPauseController.stream;
+
+  /// Fires once when a Play/Pause press has been held for
+  /// [playPauseLongPressThreshold], while it is still down. The down event on
+  /// [playPauseActions] is sent regardless; listeners decide (Big P never
+  /// listens during playback).
+  Stream<void> get playPauseLongPresses => _playPauseLongPressController.stream;
 
   /// Whether a Siri-remote touch gesture is currently in progress (finger down).
   /// Cleared when the touch ends or cancels. tvOS-only; `false` elsewhere.
@@ -383,7 +394,7 @@ class AppleTvRemoteTouchService {
 
     // play_pause still gets through: it is a direct playback action, not
     // navigation, and the native side forwards it during a session too.
-    if (NativeInputSession.isActive && type != 'play_pause') {
+    if (NativeInputSession.isActive && type != 'play_pause' && type != 'play_pause_down' && type != 'play_pause_up') {
       _log('ignore message reason=native-input-session type=$type');
       _releaseSelectOwnershipForNativeSession();
       _resetTouch();
@@ -420,6 +431,20 @@ class AppleTvRemoteTouchService {
         final detail = arguments['detail'] is String ? arguments['detail'] as String : null;
         _log('emit action=play_pause source=$source${detail == null ? '' : ' detail=$detail'}');
         _playPauseController.add(AppleTvRemotePlayPauseAction(source: source, detail: detail));
+      case 'play_pause_down':
+        // DEC-142: the hold, sent by station 3 (`tvosHandlePress`) for every
+        // Play/Pause UIPress. It arms the long press and is no playback
+        // action: the engine's Play/Pause recognizer keeps the press from
+        // `pressesBegan`, so `play_pause` above cannot be the trigger.
+        _playPauseHold?.cancel();
+        // Never armed during native text entry: the keyboard could close
+        // before the timer fires and Big P would appear uninvited.
+        _playPauseHold = NativeInputSession.isActive
+            ? null
+            : Timer(playPauseLongPressThreshold, () => _playPauseLongPressController.add(null));
+      case 'play_pause_up':
+        _playPauseHold?.cancel();
+        _playPauseHold = null;
       case 'loc':
         break;
       default:

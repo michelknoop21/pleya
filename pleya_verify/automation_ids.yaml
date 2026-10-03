@@ -189,6 +189,36 @@ ids:
   - id: my_pleya.log_row
     role: list.item
     instanceable: true
+  - id: screen.assistant
+    role: screen
+    instanceable: false
+  - id: assistant.button
+    role: button
+    instanceable: true
+  - id: assistant.example
+    role: button
+    instanceable: true
+  - id: assistant.steps
+    role: list
+    instanceable: false
+  - id: assistant.result
+    role: region
+    instanceable: false
+  - id: assistant.option
+    role: list.item
+    instanceable: true
+  - id: assistant.match
+    role: list.item
+    instanceable: true
+  - id: assistant.confirm
+    role: sheet
+    instanceable: false
+  - id: assistant.confirm.button
+    role: button
+    instanceable: true
+  - id: assistant.summon
+    role: region
+    instanceable: false
   - id: settings.form.field
     role: field
     instanceable: true

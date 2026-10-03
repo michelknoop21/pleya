@@ -53,6 +53,7 @@ import 'about_screen.dart';
 import 'add_connection_screen.dart';
 import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
+import 'assistant_settings_screen.dart';
 import 'downloads_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';

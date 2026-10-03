@@ -253,6 +253,44 @@ class AutomationIds {
   /// is a state assertion instead of a screenshot.
   static const String myPleyaLogRow = 'my_pleya.log_row';
 
+  /// Big P's surface (mockup 38, DEC-142), the Mijn Pleya section and the
+  /// contextual route alike. Its state carries `availability`, `state`,
+  /// `mood`, `error` and `pending`, so a scenario asserts what the controller
+  /// says instead of reading the panel.
+  static const String screenAssistant = 'screen.assistant';
+
+  /// A button on the surface, suffixed by role: `assistant.button[ask]` (the
+  /// primary "Vraag Big P"), `[done]`, `[cancel]`, `[setup]`, `[back]`.
+  static const String assistantButton = 'assistant.button';
+
+  /// One example question in rust (`assistant.example[0]`).
+  static const String assistantExample = 'assistant.example';
+
+  /// The live step list while Big P works; state carries the step count.
+  static const String assistantSteps = 'assistant.steps';
+
+  /// The Pleya result card; state carries `error` and the action count.
+  static const String assistantResult = 'assistant.result';
+
+  /// One request option card (`assistant.option[0]`).
+  static const String assistantOption = 'assistant.option';
+
+  /// One title find_title found (`assistant.match[0]`); state carries the
+  /// title, kind, confidence and whether it is in a library.
+  static const String assistantMatch = 'assistant.match';
+
+  /// The confirmation card Pleya builds from the pending action.
+  static const String assistantConfirm = 'assistant.confirm';
+
+  /// A control on that card: `[cancel]`, `[approve]`, `[password]`. The
+  /// approve button reports `enabled`.
+  static const String assistantConfirmButton = 'assistant.confirm.button';
+
+  /// Big P summoned with a long Play/Pause press, over any TV screen. State
+  /// carries `shown`, `state`, `error`, `pending` and `lingering` (a good
+  /// result counting down to leaving on its own).
+  static const String assistantSummon = 'assistant.summon';
+
   /// A text field on a connect-a-service settings screen, suffixed with the
   /// service and the field (`settings.form.field[seerr.url]`,
   /// `settings.form.field[tautulli.apiKey]`). One shared id rather than a
@@ -522,6 +560,11 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    assistantButton,
+    assistantExample,
+    assistantOption,
+    assistantMatch,
+    assistantConfirmButton,
     playerPanelTab,
     playerPanelRow,
     requestsMineItem,
@@ -617,6 +660,16 @@ class AutomationIds {
     {'id': settingsAppearanceCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
+    {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
+    {'id': assistantButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantExample, 'role': 'button', 'instanceable': true},
+    {'id': assistantSteps, 'role': 'list', 'instanceable': false},
+    {'id': assistantResult, 'role': 'region', 'instanceable': false},
+    {'id': assistantOption, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantMatch, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
+    {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantSummon, 'role': 'region', 'instanceable': false},
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},

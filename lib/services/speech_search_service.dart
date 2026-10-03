@@ -95,9 +95,13 @@ class SpeechSearchService {
   /// [onPartial] while the session is up, so a caller can run its live search
   /// during dictation. [SpeechCaptureResult.submitted] distinguishes an
   /// explicit Done/Search from cancelling out with text still in the field.
+  ///
+  /// [action] is the Apple TV return key: `search` for search, `send` for a
+  /// question to Big P. Other platforms ignore it.
   Future<SpeechCaptureResult?> capture({
     String? prompt,
     String initialText = '',
+    String action = 'search',
     ValueChanged<String>? onPartial,
   }) async {
     if (!await isSupported()) return null;
@@ -107,7 +111,7 @@ class SpeechSearchService {
         final result = await _nativeEntry.edit(
           text: initialText,
           hint: prompt,
-          action: 'search',
+          action: action,
           onTextChanged: onPartial,
         );
         final text = result.text.trim();

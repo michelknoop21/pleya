@@ -1,5 +1,19 @@
 part of '../../pleya_server_client.dart';
 
+/// One running stream from `GET /stream-sessions`, in the same record shape
+/// as `JellyfinActiveSession` so a reader can treat both alike. The wire has
+/// no pause, transcode or episode fields; those stay null. The session id is
+/// left out on purpose.
+typedef PleyaActiveStream = ({
+  String userName,
+  String title,
+  String? episode,
+  int progressPercent,
+  bool? paused,
+  bool? transcoding,
+  String? device,
+});
+
 /// Server administration: scans, jobs, users and library access.
 ///
 /// Unlike the read paths elsewhere, nothing here answers null or empty on a
@@ -74,6 +88,30 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
           // route, so their access is unknown rather than empty.
           libraryAccessKnown: user.role == 'owner' || user.role == 'admin',
         ),
+    ];
+  }
+
+  /// Who is streaming right now (`GET /stream-sessions`, admin class). The
+  /// list is unpaged by design: the server caps sessions per user.
+  Future<List<PleyaActiveStream>> streamSessions() async {
+    assertCanAdministerServer();
+    final json = await _adminSend('GET', '/stream-sessions');
+    final items = json?['items'];
+    return [
+      if (items is List)
+        for (final s in items.whereType<Map<String, dynamic>>())
+          (
+            userName: s['username'] as String? ?? '',
+            title: s['item_title'] as String? ?? '',
+            episode: null,
+            progressPercent: switch ((s['position_ms'], s['duration_ms'])) {
+              (final num p, final num d) when d > 0 => (p * 100 / d).round().clamp(0, 100).toInt(),
+              _ => 0,
+            },
+            paused: null,
+            transcoding: null,
+            device: s['device_name'] as String?,
+          ),
     ];
   }
 

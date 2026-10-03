@@ -137,6 +137,13 @@ import wakelock_plus
       return true
     }
     let filter = isRepeatDelivery ? nil : filterArrowPress(press)
+    // Once per delivery outside a native input session. Inside one the session
+    // branch below returns before `rememberDelivery`, so the second swizzle hop
+    // of a phase is not seen as a repeat and the hold goes out twice; Dart never
+    // arms a hold during a session and `play_pause_up` is idempotent.
+    if !isRepeatDelivery {
+      forwardPlayPauseHold(press)
+    }
     var diag: [String: Any] = [
       "press": Self.pressName(press),
       "phase": press.phase.rawValue,
@@ -171,6 +178,29 @@ import wakelock_plus
     }
     Self.pressLog.debug("\(Self.pressName(press), privacy: .public) -> yield to UIKit")
     return false
+  }
+
+  /// DEC-142: the hold that summons Big P is measured here, at station 3,
+  /// because this is the only place a Play/Pause `UIPress` provably reaches.
+  /// The engine's own `UILongPressGestureRecognizer` for Play/Pause
+  /// (`createRecognizerFor:UIPressTypePlayPause`, minimum duration 0, cancels
+  /// touches) takes the press inside UIKit's `sendEvent:`, so `pressesBegan`/
+  /// `pressesEnded` below never see type 6 (sim log, 2 Oct 2026: recognizer
+  /// state 0 -> 1 between `.began` and `.ended`, no `presses*` call for it).
+  /// Only the hold is sent: `play_pause_down` arms the timer in Dart and emits
+  /// no playback action, so the player cannot toggle twice. Sent once per
+  /// delivery outside a native input session, possibly twice per phase inside
+  /// one (see `tvosHandlePress`), which Dart ignores.
+  private func forwardPlayPauseHold(_ press: UIPress) {
+    guard press.type == .playPause else { return }
+    switch press.phase {
+    case .began:
+      tvRemoteChannel.sendMessage(["type": "play_pause_down", "source": "presses", "detail": "tvosHandlePress"])
+    case .ended, .cancelled:
+      sendPlayPauseUpEvent(detail: "tvosHandlePress")
+    default:
+      break
+    }
   }
 
   private func rememberDelivery(_ press: UIPress, result: Bool, dropped: Bool) -> Bool {
@@ -415,6 +445,7 @@ import wakelock_plus
 
   override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      sendPlayPauseUpEvent(detail: "pressesEnded")
       return
     }
     if yieldPressToNativeSession(
@@ -431,6 +462,7 @@ import wakelock_plus
 
   override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if containsPlayPausePress(presses) {
+      sendPlayPauseUpEvent(detail: "pressesCancelled")
       return
     }
     if yieldPressToNativeSession(
@@ -477,6 +509,12 @@ import wakelock_plus
   private func sendPlayPauseEvent(source: String, detail: String) {
     print("PleyaTvRemote: intercepted play/pause source=\(source) detail=\(detail)")
     tvRemoteChannel.sendMessage(["type": "play_pause", "source": source, "detail": detail])
+  }
+
+  // DEC-142: the release, so Dart can tell a long press (Big P) from a tap.
+  // The down event above stays the one playback acts on.
+  private func sendPlayPauseUpEvent(detail: String) {
+    tvRemoteChannel.sendMessage(["type": "play_pause_up", "source": "presses", "detail": detail])
   }
 
   private func remoteControlSubtypeName(_ subtype: UIEvent.EventSubtype) -> String {

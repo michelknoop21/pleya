@@ -37,6 +37,7 @@ import '../providers/trackers_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
+import '../assistant/assistant_controller_session.dart';
 import '../i18n/strings.g.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
@@ -508,6 +509,9 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ChangeNotifierProvider(create: (context) => PlaybackStateProvider()),
               ChangeNotifierProvider(create: (context) => WatchTogetherProvider()),
               ChangeNotifierProvider(create: (context) => CompanionRemoteProvider()),
+              // Big P: per profile, so a conversation or an open confirmation
+              // never carries into another profile. Lazy: no work until opened.
+              ChangeNotifierProvider(create: assistantControllerForSession),
             ],
             child: _ProfileSessionNavigator(
               isOfflineMode: widget.isOfflineMode,

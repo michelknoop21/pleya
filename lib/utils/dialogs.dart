@@ -278,6 +278,7 @@ Future<String?> showTextInputDialog(
   List<TextInputFormatter>? inputFormatters,
   String? Function(String)? validator,
   bool allowEmpty = false,
+  bool obscureText = false,
 }) {
   return showScopedDialog<String>(
     context: context,
@@ -291,6 +292,7 @@ Future<String?> showTextInputDialog(
       inputFormatters: inputFormatters,
       validator: validator,
       allowEmpty: allowEmpty,
+      obscureText: obscureText,
     ),
   );
 }
@@ -398,6 +400,9 @@ class _TextInputDialog extends StatefulWidget {
   final String? Function(String)? validator;
   final bool allowEmpty;
 
+  /// A password: masked, never shown on screen.
+  final bool obscureText;
+
   const _TextInputDialog({
     required this.title,
     required this.labelText,
@@ -408,6 +413,7 @@ class _TextInputDialog extends StatefulWidget {
     this.inputFormatters,
     this.validator,
     this.allowEmpty = false,
+    this.obscureText = false,
   });
 
   @override
@@ -437,6 +443,9 @@ class _TextInputDialogState extends State<_TextInputDialog>
         decoration: InputDecoration(labelText: widget.labelText, hintText: widget.hintText),
         keyboardType: widget.keyboardType,
         inputFormatters: widget.inputFormatters,
+        obscureText: widget.obscureText,
+        autocorrect: !widget.obscureText,
+        enableSuggestions: !widget.obscureText,
         textInputAction: TextInputAction.done,
         onNavigateDown: _saveFocusNode.requestFocus,
         onSubmitted: (_) => _saveFocusNode.requestFocus(),
