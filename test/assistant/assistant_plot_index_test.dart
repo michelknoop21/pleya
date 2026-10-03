@@ -40,7 +40,8 @@ void main() {
       AssistantPlotDoc('s', _item('3', 'Up', summary: 'An old man ties balloons to his house.', kind: MediaKind.show)),
     ]);
     expect(index.search(['de verlegen serveerster']).first.doc.item.title, 'Amélie');
-    expect(index.search(['amelie']).single.doc.item.id, '1');
+    expect(index.search(const [], titles: ['amelie']).single.doc.item.id, '1');
+    expect(index.search(['amelie']), isEmpty, reason: 'a subject word in a title says nothing about the story');
     expect(index.search(['the of and']), isEmpty);
     expect(index.search(['balloons house'], kind: MediaKind.movie), isEmpty);
     expect(plotTokens('Het is een film'), isEmpty);

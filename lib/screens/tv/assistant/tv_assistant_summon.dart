@@ -29,9 +29,9 @@ import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
 import '../../../widgets/overlay_sheet.dart';
+import 'big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
-import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
@@ -335,8 +335,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
 
   Widget _overlay(BuildContext context, AssistantController? c) {
     final pt = TvHig.of(context);
-    final result = c?.state == AssistantSurfaceState.result;
-    final headline = c == null ? '' : assistantHeadline(c);
     return TvAssistantSummonLayer(
       shown: _shown,
       listening: c?.state == AssistantSurfaceState.listening,
@@ -362,15 +360,18 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
               onOpenTitle: _openTitle,
             ),
-      avatar: BigPAvatar(
-        mood: c == null ? BigPMood.idle : tvAssistantMood(c),
-        size: 340 * pt,
-        nodSignal: _nod,
-        talkingText: result && headline.isNotEmpty ? headline : null,
-        // He stands right of the panel: point left, down the list.
-        pointAt: c?.state == AssistantSurfaceState.working
-            ? Alignment(-1, (0.15 * c!.steps.length).clamp(0.0, 1.0))
-            : null,
+      avatar: BigPVoiceMouth(
+        controller: c,
+        builder: (line) => BigPAvatar(
+          mood: c == null ? BigPMood.idle : tvAssistantMood(c),
+          size: 340 * pt,
+          nodSignal: _nod,
+          talkingText: line,
+          // He stands right of the panel: point left, down the list.
+          pointAt: c?.state == AssistantSurfaceState.working
+              ? Alignment(-1, (0.15 * c!.steps.length).clamp(0.0, 1.0))
+              : null,
+        ),
       ),
     );
   }

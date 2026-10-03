@@ -190,11 +190,11 @@ final List<AssistantTool> _requestTools = [
       final yearTo = _yearArg(args, 'year_to');
 
       // The API documents date ranges and original language on /discover;
-      // SeerrClient only passes genre, keywords and sortBy through yet.
+      // SeerrClient only passes genre, keywords and sortBy through yet. The
+      // language is filtered here, on the page Seerr returns.
       final ignored = <Map<String, Object?>>[
         if (yearFrom != null) {'filter': 'year_from', 'reason': 'not_supported'},
         if (yearTo != null) {'filter': 'year_to', 'reason': 'not_supported'},
-        if (language != null) {'filter': 'original_language', 'reason': 'not_supported'},
       ];
 
       // The subject ("space") as a TMDB keyword id; without it discover is
@@ -239,7 +239,21 @@ final List<AssistantTool> _requestTools = [
             ? client.discoverMovies(genre: genre, sortBy: sortBy, keywords: [?keyword])
             : client.discoverTv(genre: genre, sortBy: sortBy, keywords: [?keyword]),
       );
-      final result = _requestOptions(ctx, client, page.items.take(10));
+      // The asked language; otherwise popular American and Dutch titles, unless
+      // that leaves nothing (anime, K-drama): then the page as Seerr ranks it.
+      final mainstream = page.items.where((m) => m.mainstream);
+      final picks =
+          (language != null
+                  ? page.items.where((m) => m.originalLanguage == language)
+                  : mainstream.isEmpty
+                  ? page.items
+                  : mainstream)
+              .take(10);
+      // Seerr's discover takes no original language, so only this page was
+      // filtered: say so, the model must not claim the full catalog.
+      if (language != null)
+        ignored.add({'filter': 'original_language', 'value': language, 'reason': 'first_page_only'});
+      final result = _requestOptions(ctx, client, picks);
       return AssistantToolResult({
         ...result.data,
         if (ignored.isNotEmpty) 'ignored_filters': ignored,

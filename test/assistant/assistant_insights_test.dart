@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/database/app_database.dart';
 import 'package:pleya/exceptions/media_server_exceptions.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/library_query.dart';
@@ -16,13 +18,19 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/media/server_administration.dart';
+import 'package:pleya/models/plex/plex_config.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/plex_api_cache.dart';
+import 'package:pleya/services/plex_auth_service.dart';
+import 'package:pleya/services/plex_client.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/tautulli/tautulli_client.dart';
 import 'package:pleya/services/tautulli/tautulli_constants.dart';
 import 'package:pleya/services/tautulli/tautulli_session.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/utils/media_server_http_client.dart';
+
+import '../test_helpers/prefs.dart';
 
 /// A Jellyfin server with one film library, paged like the real client.
 ///
@@ -238,6 +246,89 @@ AssistantToolContext _ctx(
   );
 }
 
+/// An owned Plex server named "Pleya" behind fake HTTP, with [history] rows
+/// for `/status/sessions/history/all` and [sessions] for `/status/sessions`,
+/// next to [others] and [pleya]. [tautulli] is paired with the Plex server.
+Future<AssistantToolContext> _plexCtx({
+  List<Map<String, Object?>> history = const [],
+  List<Map<String, Object?>> sessions = const [],
+  List<_Jf> others = const [],
+  List<_Ps> pleya = const [],
+  TautulliClient? tautulli,
+  List<String>? paths,
+}) async {
+  final db = AppDatabase.forTesting(NativeDatabase.memory());
+  PlexApiCache.initialize(db);
+  addTearDown(db.close);
+  final m = MultiServerManager();
+  addTearDown(m.dispose);
+  for (final s in others) {
+    m.debugRegisterJellyfinClientForTesting(s);
+  }
+  for (final p in pleya) {
+    m.debugRegisterClientForTesting(p);
+  }
+  final client = PlexClient.forTesting(
+    config: PlexConfig(
+      baseUrl: 'https://plex.example',
+      token: 'token',
+      clientIdentifier: 'client-id',
+      product: 'Pleya',
+      version: 'test',
+    ),
+    serverId: ServerId('plex-1'),
+    serverName: 'Pleya',
+    httpClient: MockClient((request) async {
+      paths?.add(request.url.path);
+      // A runaway pager fails here instead of hanging the test.
+      if ((paths?.where((p) => p == '/status/sessions/history/all').length ?? 0) > 100) {
+        throw StateError('history paged without end');
+      }
+      final body = switch (request.url.path) {
+        '/status/sessions/history/all' => {'Metadata': history},
+        '/status/sessions' => {'Metadata': sessions},
+        '/accounts' => {
+          'Account': [
+            {'id': 1, 'name': 'Michel'},
+            {'id': 7, 'name': 'Sam'},
+          ],
+        },
+        _ => <String, Object?>{},
+      };
+      return http.Response(
+        jsonEncode({'MediaContainer': body}),
+        200,
+        headers: const {'content-type': 'application/json'},
+      );
+    }),
+  );
+  m.debugRegisterClientForTesting(client);
+  await m.refreshTokensForProfile(
+    PlexAccountConnection(
+      id: 'account-1',
+      accountToken: 'account-token',
+      clientIdentifier: 'account-client',
+      accountLabel: 'Account',
+      servers: [
+        PlexServer(name: 'Pleya', clientIdentifier: 'plex-1', accessToken: 'token', connections: const [], owned: true),
+      ],
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    ),
+  );
+  return AssistantToolContext(
+    servers: m,
+    insights: AssistantInsightServices(tautulliFor: (id) => id.value == 'plex-1' ? tautulli : null),
+  );
+}
+
+Map<String, Object?> _plexPlay(int account, String type, String title, DateTime at, {String? show}) => {
+  'accountID': account,
+  'type': type,
+  'title': title,
+  'grandparentTitle': ?show,
+  'viewedAt': at.millisecondsSinceEpoch ~/ 1000,
+};
+
 http.Response _tautulliData(Object? data) => http.Response(
   jsonEncode({
     'response': {'result': 'success', 'message': null, 'data': data},
@@ -424,11 +515,10 @@ void main() {
       expect(tool.serves(borrowed, ServerId('woon')), isFalse);
     });
 
-    test('without insight services neither tool is offered', () {
+    test('both tools are offered without Tautulli: neither needs it', () {
       final ctx = _ctx([_Jf('gplex', 'G'), _Jf('woon', 'W')], insights: false);
-      for (final name in ['compare_servers', 'watch_stats']) {
-        expect(_tool(name).serves(ctx, ServerId('gplex')), isFalse, reason: name);
-      }
+      expect(_tool('compare_servers').serves(ctx, ServerId('gplex')), isTrue);
+      expect(_tool('watch_stats').serves(ctx, ServerId('gplex')), isTrue, reason: 'Jellyfin answers itself');
     });
   });
 
@@ -710,9 +800,9 @@ void main() {
         reason: 'no hours: the server reports no durations',
       );
       final display = result.display! as AssistantWatchStats;
-      expect(display.available, isTrue);
+      expect(display.unavailable, isEmpty);
       expect(display.days, 7);
-      expect(result.data, isNot(contains('history_unavailable_for')));
+      expect(result.data, isNot(contains('unavailable')));
     });
 
     test('Pleya Server: streams now; a server without the history route has no period', () async {
@@ -737,14 +827,17 @@ void main() {
       expect(tool.serves(ctx, ServerId('zolder')), isTrue);
       final now = await tool.run(ctx, ServerId('zolder'), {'scope': 'now'}) as AssistantToolResult;
       expect((now.data['sessions']! as List).single, {
+        'server': 'Zolder',
         'user': 'kim',
         'title': 'Dune',
         'progress_percent': 25,
         'player': 'iPad',
       });
       final period = await tool.run(ctx, ServerId('zolder'), {'scope': 'period'}) as AssistantToolResult;
-      expect(period.data['history_unavailable_for'], ['Zolder']);
-      expect((period.display! as AssistantWatchStats).available, isFalse);
+      expect(period.data['unavailable'], [
+        {'server': 'Zolder', 'backend': 'pleyaServer'},
+      ]);
+      expect((period.display! as AssistantWatchStats).unavailable, ['Zolder']);
     });
 
     test('days outside 1-31 are refused', () async {
@@ -758,6 +851,186 @@ void main() {
     test('a member gets no watch stats', () {
       final ctx = _ctx([_Jf('woon', 'W', admin: false)]);
       expect(_tool('watch_stats').serves(ctx, ServerId('woon')), isFalse);
+    });
+  });
+
+  group('watch_stats across servers', () {
+    setUp(resetSharedPreferencesForTest);
+
+    test('Plex without Tautulli: period from Plex history, names from /accounts', () async {
+      final now = DateTime.now();
+      final paths = <String>[];
+      final ctx = await _plexCtx(
+        paths: paths,
+        history: [
+          _plexPlay(7, 'episode', 'Half Loop', now.subtract(const Duration(hours: 2)), show: 'Severance'),
+          _plexPlay(7, 'episode', 'Good News', now.subtract(const Duration(days: 1)), show: 'Severance'),
+          _plexPlay(1, 'movie', 'Dune', now.subtract(const Duration(days: 2))),
+          _plexPlay(9, 'track', 'Some Song', now.subtract(const Duration(days: 2))),
+          _plexPlay(1, 'movie', 'Arrival', now.subtract(const Duration(days: 20))),
+        ],
+      );
+      final tool = _tool('watch_stats');
+      expect(tool.serves(ctx, ServerId('plex-1')), isTrue);
+      final result = await tool.run(ctx, null, {'scope': 'period', 'days': 7}) as AssistantToolResult;
+      expect(paths, contains('/status/sessions/history/all'));
+      expect(result.data['servers'], ['Pleya']);
+      expect(result.data['plays'], 3, reason: 'music and plays before the period are left out');
+      expect((result.data['top_titles']! as List).first, {
+        'title': 'Severance',
+        'plays': 2,
+        'viewers': ['Sam'],
+      });
+      expect(result.data['top_users'], [
+        {'user': 'Sam', 'plays': 2},
+        {'user': 'Michel', 'plays': 1},
+      ]);
+      expect(result.data, isNot(contains('unavailable')));
+      expect((result.display! as AssistantWatchStats).unavailable, isEmpty);
+    });
+
+    test('Plex history of endless skipped rows stops paging', () async {
+      final paths = <String>[];
+      final now = DateTime.now();
+      final ctx = await _plexCtx(
+        paths: paths,
+        history: [for (var i = 0; i < 500; i++) _plexPlay(7, 'track', 'Song $i', now)],
+      );
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['servers'], ['Pleya']);
+      expect(result.data['plays'], 0);
+      expect(result.data['capped_at_plays'], 5000);
+      expect(paths.where((p) => p == '/status/sessions/history/all'), hasLength(40));
+    });
+
+    test('a Plex row without viewedAt is skipped, not the end of the period', () async {
+      final ctx = await _plexCtx(
+        history: [
+          {'accountID': 7, 'type': 'movie', 'title': 'Undated'},
+          _plexPlay(7, 'movie', 'Dune', DateTime.now()),
+        ],
+      );
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['plays'], 1);
+      expect((result.data['top_titles']! as List).single, containsPair('title', 'Dune'));
+    });
+
+    test('an unnamed Plex account is not merged with a same-named user on another server', () async {
+      final now = DateTime.now();
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        users: const [ServerUser(id: 'j9', name: 'User 9', role: ServerUserRole.member, allLibraries: true)],
+        played: {
+          'j9': [_played('x1', 'Dune', now)],
+        },
+      );
+      // Account 9 is not in /accounts: Plex labels it "User 9".
+      final ctx = await _plexCtx(others: [jf], history: [_plexPlay(9, 'movie', 'Dune', now)]);
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
+      expect(users, [
+        {'user': 'User 9', 'plays': 1},
+        {'user': 'User 9', 'plays': 1},
+      ]);
+    });
+
+    test('Plex without Tautulli: now from /status/sessions', () async {
+      final ctx = await _plexCtx(
+        sessions: [
+          {
+            'type': 'episode',
+            'title': 'Half Loop',
+            'grandparentTitle': 'Severance',
+            'parentIndex': 1,
+            'index': 2,
+            'viewOffset': 600000,
+            'duration': 2400000,
+            'User': {'title': 'Sam'},
+            'Player': {'title': 'Woonkamer', 'product': 'Pleya', 'state': 'paused'},
+            'TranscodeSession': {'videoDecision': 'transcode'},
+          },
+        ],
+      );
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'now'}) as AssistantToolResult;
+      expect(result.data['sessions'], [
+        {
+          'server': 'Pleya',
+          'user': 'Sam',
+          'title': 'Severance',
+          'episode': 'S1 · E2 Half Loop',
+          'progress_percent': 25,
+          'paused': true,
+          'transcoding': true,
+          'player': 'Woonkamer · Pleya',
+        },
+      ]);
+      expect((result.display! as AssistantWatchStats).sessions.single.title, 'Severance');
+    });
+
+    test('a working Tautulli answers; Plex history is not read', () async {
+      final paths = <String>[];
+      final tautulli = _tautulli([], (_) => {'data': const <Object>[]});
+      final ctx = await _plexCtx(paths: paths, tautulli: tautulli);
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['servers'], ['Pleya']);
+      expect(paths, isNot(contains('/status/sessions/history/all')));
+    });
+
+    test('a failing Tautulli falls back to Plex history', () async {
+      final tautulli = TautulliClient(
+        const TautulliSession(baseUrl: 'https://tautulli.test', authMode: TautulliAuthMode.apiKey, token: 'T'),
+        httpClient: MockClient((_) async => http.Response('<html>login</html>', 200)),
+      );
+      final ctx = await _plexCtx(tautulli: tautulli, history: [_plexPlay(7, 'movie', 'Dune', DateTime.now())]);
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['plays'], 1);
+      expect(result.data, isNot(contains('unavailable')));
+    });
+
+    test('the same title and person on Plex and Jellyfin are one entry, plays summed', () async {
+      final now = DateTime.now();
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        users: const [ServerUser(id: 'j7', name: 'sam', role: ServerUserRole.member, allLibraries: true)],
+        played: {
+          'j7': [_played('x1', 'Dune', now), _played('x2', 'Half Loop', now, series: 'Severance')],
+        },
+      );
+      final ctx = await _plexCtx(
+        others: [jf],
+        history: [
+          _plexPlay(7, 'movie', 'Dune', now),
+          _plexPlay(7, 'episode', 'Half Loop', now, show: 'Severance'),
+        ],
+      );
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['servers'], unorderedEquals(['Pleya', 'Woonkamer']));
+      final titles = (result.data['top_titles']! as List).cast<Map<String, Object?>>();
+      expect(titles.map((t) => (t['title'], t['plays'])), unorderedEquals([('Dune', 2), ('Severance', 2)]));
+      final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
+      expect(users.single['plays'], 4, reason: 'Sam on Plex and sam on Jellyfin are one person');
+      final display = result.display! as AssistantWatchStats;
+      expect(display.titles, hasLength(2));
+      expect(display.users, hasLength(1));
+    });
+
+    test('a server without data is listed once, and a repeat call adds no second card', () async {
+      final ps = _Ps('zolder', 'Zolder', history: null);
+      final ctx = await _plexCtx(pleya: [ps], history: [_plexPlay(7, 'movie', 'Dune', DateTime.now())]);
+      final tool = _tool('watch_stats');
+      final first = await tool.run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(first.data['servers'], ['Pleya']);
+      expect(first.data['unavailable'], [
+        {'server': 'Zolder', 'backend': 'pleyaServer'},
+      ]);
+      final display = first.display! as AssistantWatchStats;
+      expect(display.serverName, 'Pleya');
+      expect(display.unavailable, ['Zolder']);
+      final again = await tool.run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(again.data['plays'], 1);
+      expect(again.display, isNull);
     });
   });
 }

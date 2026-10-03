@@ -69,6 +69,7 @@ void main() {
       for (final m in matchesOf(
         await runFind(ctx, {
           'kind': 'movie',
+          'subject': true,
           // What qwen3:8b sent for "een film over de ruimte".
           'variants': ['space', 'ruimte'],
         }),
@@ -275,7 +276,21 @@ void main() {
 
     expect(web.search.queries, ['garage engineers accidental time machine']);
     expect(data['web_searched'], isTrue);
+    expect(matchesOf(data).first['title'], 'Primer', reason: 'without Seerr the web page is still shown');
+  });
+
+  test('with Seerr the film from the web becomes a requestable card', () async {
+    final web = FakeWeb();
+    web.search.hits = [
+      (title: 'Primer (2004) - IMDb', url: 'https://imdb.example', snippet: 'Engineers build a time machine.'),
+    ];
+    final ctx = findCtx(const [], web: web, seerr: primerSeerr());
+    final data = await runFind(ctx, {
+      'variants': ['garage engineers accidental time machine', 'tijdmachine'],
+    });
+
     expect(matchesOf(data).first['title'], 'Primer');
+    expect(matchesOf(data).first['seerr_id'], 'movie:14337');
   });
 
   test('ids from the model are never used', () async {

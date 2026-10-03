@@ -281,7 +281,7 @@ class TvAssistantDisplayView extends StatelessWidget {
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
       final AssistantWatchStats s => card(t.assistant.displays.watchStats(server: s.serverName), [
-        if (!s.available) t.assistant.displays.noSource(server: s.serverName),
+        for (final name in s.unavailable) t.assistant.displays.noSource(server: name),
         for (final session in s.sessions.take(8)) '${session.userName} · ${session.title}',
         for (final u in s.users.take(8)) '${u.name} · ${t.assistant.displays.plays(count: u.plays)}',
         for (final title in s.titles.take(8)) '${title.title} · ${t.assistant.displays.plays(count: title.plays)}',

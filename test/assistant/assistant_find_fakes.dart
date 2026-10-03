@@ -188,6 +188,19 @@ class FakeSeerr {
   );
 }
 
+/// A Seerr that knows Primer, a mainstream English-language film.
+FakeSeerr primerSeerr() => FakeSeerr()
+  ..search['Primer'] = [
+    {
+      'id': 14337,
+      'mediaType': 'movie',
+      'title': 'Primer',
+      'releaseDate': '2004-10-08',
+      'originalLanguage': 'en',
+      'voteCount': 1500,
+    },
+  ];
+
 AssistantToolContext findCtx(
   List<FakeServer> servers, {
   List<MediaLibrary> libraries = const [],

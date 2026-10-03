@@ -18,6 +18,7 @@ import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tool_context.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../assistant/big_p_voice.dart';
+import 'big_p_voice_mouth.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../automation/automation_screen.dart';
@@ -40,7 +41,6 @@ import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
-import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
 import 'tv_assistant_widgets.dart';
 
@@ -86,8 +86,6 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   int _nod = 0;
   DateTime _lastPhraseNod = DateTime.fromMillisecondsSinceEpoch(0);
   int _doneSteps = 0;
-  String? _talking;
-  Timer? _talkTimer;
   AssistantSurfaceState? _lastState;
   AssistantAvailability? _lastAvailability;
   DateTime _resultAt = DateTime.now();
@@ -134,7 +132,6 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     // Leaving Big P stops the ask, as the summoned panel's dismissal does.
     // abort() does not notify, so this is safe while the tree unmounts.
     _c?.abort();
-    _talkTimer?.cancel();
     for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode]) {
       node.dispose();
     }
@@ -146,18 +143,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (c == null || !mounted) return;
     if (c.state != _lastState) {
       _lastState = c.state;
-      _talkTimer?.cancel();
-      _talking = null;
       if (c.state == AssistantSurfaceState.working) _doneSteps = 0;
-      if (c.state == AssistantSurfaceState.result) {
-        _resultAt = DateTime.now();
-        // Motion: Big P cheers first, then says the answer.
-        _talkTimer = Timer(const Duration(milliseconds: 1200), () {
-          if (!mounted) return;
-          final text = assistantHeadline(c);
-          setState(() => _talking = text.isEmpty ? null : text);
-        });
-      }
+      if (c.state == AssistantSurfaceState.result) _resultAt = DateTime.now();
       _focusDefaultSoon();
     }
     if (c.availability != _lastAvailability) {
@@ -344,13 +331,16 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
                 padding: EdgeInsets.only(bottom: 100 * pt),
                 child: Center(
                   child: RepaintBoundary(
-                    child: BigPAvatar(
-                      mood: mood,
-                      size: (560 * pt).clamp(0.0, box.maxHeight * 0.75),
-                      nodSignal: _nod,
-                      talkingText: c.state == AssistantSurfaceState.result ? _talking : null,
-                      // Working: the arm follows the newest step down the list.
-                      pointAt: working ? Alignment(1, (0.15 * c.steps.length).clamp(0.0, 1.0)) : null,
+                    child: BigPVoiceMouth(
+                      controller: c,
+                      builder: (line) => BigPAvatar(
+                        mood: mood,
+                        size: (560 * pt).clamp(0.0, box.maxHeight * 0.75),
+                        nodSignal: _nod,
+                        talkingText: line,
+                        // Working: the arm follows the newest step down the list.
+                        pointAt: working ? Alignment(1, (0.15 * c.steps.length).clamp(0.0, 1.0)) : null,
+                      ),
                     ),
                   ),
                 ),
