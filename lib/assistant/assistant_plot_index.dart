@@ -26,39 +26,63 @@ class AssistantPlotIndex {
         tf[token] = (tf[token] ?? 0) + 1;
       }
       _tf.add(tf);
+      final about = <String, int>{};
+      for (final token in doc.tokens.skip(doc.titleLength)) {
+        about[token] = (about[token] ?? 0) + 1;
+      }
+      _aboutTf.add(about);
       for (final token in tf.keys) {
         (_postings[token] ??= []).add(i);
       }
       _length += doc.tokens.length;
+      _aboutLength += doc.tokens.length - doc.titleLength;
     }
   }
 
   final List<AssistantPlotDoc> _docs;
   final List<Map<String, int>> _tf = [];
+
+  /// [_tf] without the title tokens.
+  final List<Map<String, int>> _aboutTf = [];
   final Map<String, List<int>> _postings = {};
-  var _length = 0;
+  var _length = 0, _aboutLength = 0;
 
   /// A library did not answer, the time budget ran out or the cap was hit.
   final bool partial;
 
   int get length => _docs.length;
 
+  /// How many documents carry [token] in any field.
+  int docsWith(String token) => _postings[token]?.length ?? 0;
+
   /// The best [limit] documents for [phrases], highest BM25 first. A phrase
   /// counts once per token; a doc that matches nothing is left out.
-  List<({AssistantPlotDoc doc, double score})> search(Iterable<String> phrases, {int limit = 15, MediaKind? kind}) {
-    final query = {for (final p in phrases) ...plotTokens(p)};
+  /// [phrases] are read against plot, genres and cast only: a subject word
+  /// in a title ("Mission: Impossible" for "space mission") says nothing
+  /// about the story. [titles] (named titles) are read against every field.
+  List<({AssistantPlotDoc doc, double score})> search(
+    Iterable<String> phrases, {
+    Iterable<String> titles = const [],
+    int limit = 15,
+    MediaKind? kind,
+  }) {
+    final named = {for (final t in titles) ...plotTokens(t)};
+    final query = {for (final p in phrases) ...plotTokens(p), ...named};
     if (query.isEmpty || _docs.isEmpty) return const [];
     const k1 = 1.2, b = 0.75;
-    final avg = _length / _docs.length;
     final scores = <int, double>{};
     for (final token in query) {
       final docs = _postings[token];
       if (docs == null) continue;
+      final full = named.contains(token);
+      final avg = (full ? _length : _aboutLength) / _docs.length;
       final idf = log(1 + (_docs.length - docs.length + 0.5) / (docs.length + 0.5));
       for (final i in docs) {
         if (kind != null && _docs[i].item.kind != kind) continue;
-        final tf = _tf[i][token]!;
-        final norm = tf + k1 * (1 - b + b * _docs[i].tokens.length / avg);
+        final tf = (full ? _tf : _aboutTf)[i][token];
+        if (tf == null) continue;
+        final doc = _docs[i];
+        final norm = tf + k1 * (1 - b + b * (full ? doc.tokens.length : doc.tokens.length - doc.titleLength) / avg);
         scores[i] = (scores[i] ?? 0) + idf * tf * (k1 + 1) / norm;
       }
     }
@@ -69,15 +93,22 @@ class AssistantPlotIndex {
 
 /// One indexed title and the server it came from.
 class AssistantPlotDoc {
-  AssistantPlotDoc(this.serverId, this.item) : tokens = _docTokens(item);
+  AssistantPlotDoc(this.serverId, this.item)
+    : tokens = _docTokens(item),
+      titleLength = 3 * plotTokens(_title(item)).length;
   final String serverId;
   final MediaItem item;
   final List<String> tokens;
 
+  /// The title tokens that lead [tokens].
+  final int titleLength;
+
+  static String _title(MediaItem i) => '${i.title ?? ''} ${i.originalTitle ?? ''}';
+
   // Field weight by repetition (a cheap BM25F): a word in the title or the
   // cast says more about the title than the same word deep in a summary.
   static List<String> _docTokens(MediaItem i) => [
-    for (var n = 0; n < 3; n++) ...plotTokens('${i.title ?? ''} ${i.originalTitle ?? ''}'),
+    for (var n = 0; n < 3; n++) ...plotTokens(_title(i)),
     for (var n = 0; n < 2; n++)
       ...plotTokens([...?i.genres, for (final r in (i.roles ?? const []).take(5)) r.tag].join(' ')),
     ...plotTokens(i.summary),
@@ -101,7 +132,24 @@ String titleKey(String? title) => foldText(title).replaceAll(RegExp(r'[^\p{L}\p{
 
 const _stopwords = {
   // English
-  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'from', 'has', 'he', 'her', 'his', 'in', 'into',
+  'a',
+  'about',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'but',
+  'by',
+  'for',
+  'from',
+  'has',
+  'he',
+  'her',
+  'his',
+  'in',
+  'into',
   'is', 'it', 'its', 'of', 'on', 'or', 'she', 'that', 'the', 'their', 'they', 'this', 'to', 'was', 'who', 'with',
   'film', 'movie', 'series', 'show',
   // Dutch
@@ -110,10 +158,13 @@ const _stopwords = {
   'haar', 'ook', 'nog', 'niet', 'maar', 'dan', 'serie',
 };
 
-/// Folded word tokens, stopwords and single letters out.
+/// Folded word tokens, stopwords and single letters out, an English plural
+/// "s" cut off so "astronauts" meets "astronaut".
+/// ponytail: no real stemming; "-es" and Dutch "-en" plurals stay apart.
 List<String> plotTokens(String? text) => [
   for (final t in foldText(text).split(RegExp(r'[^\p{L}\p{N}]+', unicode: true)))
-    if (t.length > 1 && !_stopwords.contains(t)) t,
+    if (t.length > 1 && !_stopwords.contains(t))
+      t.length > 4 && t.endsWith('s') && !t.endsWith('ss') ? t.substring(0, t.length - 1) : t,
 ];
 
 /// One library the index reads: already through the same visibility rules

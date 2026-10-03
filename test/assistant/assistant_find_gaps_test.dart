@@ -186,7 +186,7 @@ void main() {
       web.search.hits = [(title: 'Primer (2004) - IMDb', url: '', snippet: 'Engineers build a time machine.')];
       final cache = AssistantWebCache();
       const q = FindQuery(variants: ['garage engineers accidental time machine', 'tijdmachine']);
-      final ctx = findCtx(const [], web: web);
+      final ctx = findCtx(const [], web: web, seerr: primerSeerr());
       final first = await findTitles(ctx, q, plots: AssistantPlotIndexCache(), webCache: cache);
       final calls = web.hosts.length;
       final second = await findTitles(ctx, q, plots: AssistantPlotIndexCache(), webCache: cache);
