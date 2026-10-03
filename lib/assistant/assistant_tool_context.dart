@@ -6,6 +6,7 @@ import '../services/multi_server_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
+import 'assistant_playback.dart';
 
 /// Where the user opened the Assistant from. Pleya data, never authority:
 /// every id here is checked again like any id the model sends.
@@ -49,6 +50,7 @@ class AssistantToolContext {
     this.insights,
     this.requests,
     this.media,
+    this.playback,
     this.web,
     this.cancel,
   });
@@ -69,6 +71,7 @@ class AssistantToolContext {
     insights: insights,
     requests: requests,
     media: media,
+    playback: playback,
     web: web ?? this.web,
     cancel: cancel ?? this.cancel,
   );
@@ -79,6 +82,11 @@ class AssistantToolContext {
   final AssistantInsightServices? insights;
   final AssistantRequestServices? requests;
   final AssistantMediaServices? media;
+  final AssistantPlaybackServices? playback;
+  AssistantPlaybackSnapshot? _playbackEvidence;
+
+  void bindPlaybackEvidence(AssistantPlaybackSnapshot snapshot) => _playbackEvidence = snapshot;
+  bool get playbackEvidenceCurrent => _playbackEvidence == null || (playback?.isCurrent(_playbackEvidence!) ?? false);
 
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;

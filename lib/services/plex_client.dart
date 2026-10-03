@@ -71,6 +71,7 @@ import 'plex_api_cache.dart';
 import 'plex_mappers.dart';
 import 'plex_playback_mapper.dart';
 import 'playback_initialization_types.dart';
+import 'playback_stream_evidence.dart';
 
 part 'plex_client/parts/live_tv.dart';
 
@@ -3071,7 +3072,8 @@ class PlexClient
   /// [transcodeSessionId] and [sessionIdentifier] should be reused across
   /// seeks + quality/version/audio switches within one playback so the
   /// server-side transcode session is preserved.
-  Future<({String? startPath, TranscodeDecisionOutcome outcome})> buildTranscodeStartPath({
+  Future<({String? startPath, TranscodeDecisionOutcome outcome, PlaybackStreamEvidence evidence})>
+  buildTranscodeStartPath({
     required String ratingKey,
     required int mediaIndex,
     int partIndex = 0,
@@ -3116,21 +3118,25 @@ class PlexClient
 
         if (decisionResponse.statusCode != 200) {
           appLogger.w('Transcode decision returned ${decisionResponse.statusCode}');
-          return (startPath: null, outcome: TranscodeDecisionOutcome.failed);
+          return (startPath: null, outcome: TranscodeDecisionOutcome.failed, evidence: const PlaybackStreamEvidence());
         }
 
         final outcome = _parseTranscodeDecisionOutcome(decisionResponse.data, isOriginal: preset.isOriginal);
         if (outcome == TranscodeDecisionOutcome.failed) {
-          return (startPath: null, outcome: outcome);
+          return (startPath: null, outcome: outcome, evidence: const PlaybackStreamEvidence());
         }
 
-        return (startPath: _buildTranscodeStartPathFromParams(allParams), outcome: outcome);
+        return (
+          startPath: _buildTranscodeStartPathFromParams(allParams),
+          outcome: outcome,
+          evidence: PlaybackStreamEvidence.plex(decisionResponse.data),
+        );
       } finally {
         decisionClient.close();
       }
     } catch (e, st) {
       appLogger.e('Failed to build transcode start path', error: e, stackTrace: st);
-      return (startPath: null, outcome: TranscodeDecisionOutcome.failed);
+      return (startPath: null, outcome: TranscodeDecisionOutcome.failed, evidence: const PlaybackStreamEvidence());
     }
   }
 
@@ -3378,6 +3384,7 @@ class PlexClient
             externalSubtitles: sidecarSubs,
             isOffline: false,
             isTranscoding: true,
+            streamEvidence: result.evidence,
             activeAudioStreamId: resolvedAudioId,
             playMethod: 'Transcode',
             playSessionId: options.sessionIdentifier,

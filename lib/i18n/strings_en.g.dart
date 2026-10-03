@@ -7528,6 +7528,9 @@ class TranslationsAssistantActionsEn {
 
 	/// en: 'Subtitle downloaded'
 	String get downloadSubtitle => 'Subtitle downloaded';
+
+	/// en: 'Playback changed'
+	String get changePlayback => 'Playback changed';
 }
 
 // Path: assistant.confirm
@@ -8025,6 +8028,9 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Download subtitle'
 	String get downloadSubtitle => 'Download subtitle';
+
+	/// en: 'Change playback'
+	String get changePlayback => 'Change playback';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -10176,6 +10182,7 @@ extension on Translations {
 			'assistant.actions.requestTitle' => 'Request sent',
 			'assistant.actions.downloadEpisodes' => 'Download started',
 			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
+			'assistant.actions.changePlayback' => 'Playback changed',
 			'assistant.confirm.header' => 'Pleya asks for confirmation',
 			'assistant.confirm.titles.scanLibrary' => 'Scan library',
 			'assistant.confirm.titles.refreshMetadata' => 'Refresh metadata',
@@ -10189,6 +10196,7 @@ extension on Translations {
 			'assistant.confirm.titles.requestTitle' => 'Request title',
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
+			'assistant.confirm.titles.changePlayback' => 'Change playback',
 			'assistant.confirm.user' => 'User',
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Access',

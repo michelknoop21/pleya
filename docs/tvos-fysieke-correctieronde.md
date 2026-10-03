@@ -61,7 +61,8 @@ code-parity-audit die daaronder ligt. De voortgang per heringericht oppervlak st
 | ID | Bevinding | Status | SHA | Notitie |
 |----|-----------|--------|-----|---------|
 | BIGP-USP1 | Multi-command: gedeelde taakstate, parallelle resultaten en veilige bevestigingen | ACCEPTANCE GAP | `78b8f790` | Implementatie, onafhankelijke review en codegate groen; native taak/focusbeelden ontbreken door simulatorinvoer. Op expliciet verzoek door naar fase 2. |
-| BIGP-USP2 | Samen kijken: aanbevelingen uit bevoegde profiel- en librarydata | FIXED | `7b7b3015` | Onafhankelijke review/fixes, 325 relevante tests en volledige codegate groen; bevoegde Jellyfin-filmdata. Series/overige backends beperkt. PR/CI en integratie volgen. |
+| BIGP-USP3 | Playback Doctor: diagnose uit echte sessie- en playerdata | FIXED | — | Onafhankelijke review en fixreview goedgekeurd; 518 post-gate tests en volledige codegate groen. Bestaand mutatiebeleid; onbekende oorzaken blijven onbekend. Hardware-playback niet gevalideerd; PR/CI-integratie volgt. |
+| BIGP-USP2 | Samen kijken: aanbevelingen uit bevoegde profiel- en librarydata | FIXED | `7b7b3015` | Onafhankelijke review/fixes, 325 relevante tests en volledige codegate groen; bevoegde Jellyfin-filmdata. Series/overige backends beperkt. PR #141 met groene CI gemerged in featurebranch; main wacht op BIGP-USP1-bewijs. |
 | LOG1 | Pijltjes op een lege logreader gooien een assertie | FIXED | `614fc08` |
 | WT1 | Focus strandt na het vergeten van een kamer in Samen Kijken | FIXED | `614fc08` |
 | VER1 | Een assert met een verkeerd YAML-type eindigt groen | FIXED | `9d36bb5` |

@@ -50,6 +50,7 @@ class AssistantRunResult {
     this.providerError,
     this.error,
     this.splitTasks = const [],
+    this.playbackEvidenceCurrent,
   });
   final AssistantRunEnd end;
 
@@ -64,6 +65,7 @@ class AssistantRunResult {
   final AssistantModelError? providerError;
   final String? error;
   final List<AssistantTaskPlan> splitTasks;
+  final bool Function()? playbackEvidenceCurrent;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -324,18 +326,24 @@ class AssistantRun {
     return _end(AssistantRunEnd.stepLimit);
   }
 
-  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) =>
-      AssistantRunResult(
-        end: end,
-        text: text,
-        actions: List.unmodifiable(_actions),
-        displays: List.unmodifiable(_displays),
-        providerError: error,
-        error:
-            failure ??
-            _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??
-            _errors.values.firstOrNull,
-      );
+  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
+    final evidenceContext = _ctx;
+    if (!_ctx.playbackEvidenceCurrent) {
+      return AssistantRunResult(end: end, actions: List.unmodifiable(_actions), error: 'playback_session_changed');
+    }
+    return AssistantRunResult(
+      end: end,
+      text: text,
+      playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,
+      actions: List.unmodifiable(_actions),
+      displays: List.unmodifiable(_displays),
+      providerError: error,
+      error:
+          failure ??
+          _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??
+          _errors.values.firstOrNull,
+    );
+  }
 
   String _operationKey(AssistantToolCall call) {
     Object? sorted(Object? value) => switch (value) {

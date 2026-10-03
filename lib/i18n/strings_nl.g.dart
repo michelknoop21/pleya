@@ -3251,6 +3251,7 @@ class _TranslationsAssistantActionsNl extends TranslationsAssistantActionsEn {
 	@override String get requestTitle => 'Aanvraag verstuurd';
 	@override String get downloadEpisodes => 'Download gestart';
 	@override String get downloadSubtitle => 'Ondertitel gedownload';
+	@override String get changePlayback => 'Afspelen aangepast';
 }
 
 // Path: assistant.confirm
@@ -3485,6 +3486,7 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get downloadEpisodes => 'Afleveringen downloaden';
 	@override String get downloadSubtitle => 'Ondertitel downloaden';
+	@override String get changePlayback => 'Afspelen aanpassen';
 }
 
 /// The flat map containing all translations for locale <nl>.
@@ -5636,6 +5638,7 @@ extension on TranslationsNl {
 			'assistant.actions.requestTitle' => 'Aanvraag verstuurd',
 			'assistant.actions.downloadEpisodes' => 'Download gestart',
 			'assistant.actions.downloadSubtitle' => 'Ondertitel gedownload',
+			'assistant.actions.changePlayback' => 'Afspelen aangepast',
 			'assistant.confirm.header' => 'Pleya vraagt bevestiging',
 			'assistant.confirm.titles.scanLibrary' => 'Bibliotheek scannen',
 			'assistant.confirm.titles.refreshMetadata' => 'Metadata vernieuwen',
@@ -5649,6 +5652,7 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
+			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
 			'assistant.confirm.user' => 'Gebruiker',
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Toegang',

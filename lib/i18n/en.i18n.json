@@ -2354,7 +2354,8 @@
       "createCollection": "Collection created",
       "requestTitle": "Request sent",
       "downloadEpisodes": "Download started",
-      "downloadSubtitle": "Subtitle downloaded"
+      "downloadSubtitle": "Subtitle downloaded",
+      "changePlayback": "Playback changed"
     },
     "confirm": {
       "header": "Pleya asks for confirmation",
@@ -2370,7 +2371,8 @@
         "createCollection": "Create collection",
         "requestTitle": "Request title",
         "downloadEpisodes": "Download episodes",
-        "downloadSubtitle": "Download subtitle"
+        "downloadSubtitle": "Download subtitle",
+        "changePlayback": "Change playback"
       },
       "user": "User",
       "server": "Server",

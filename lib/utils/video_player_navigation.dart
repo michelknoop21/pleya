@@ -105,8 +105,9 @@ Future<int?> savedMediaVersionIndexFor(MediaItem metadata) async {
 }
 
 /// Persist [index] as the preferred media version for [metadata]'s series/movie.
-Future<void> saveMediaVersionIndexFor(MediaItem metadata, int index) async {
+Future<void> saveMediaVersionIndexFor(MediaItem metadata, int index, {bool Function()? isCurrent}) async {
   final settingsService = await SettingsService.getInstance();
+  if (!(isCurrent?.call() ?? true)) return;
   await settingsService.write(SettingsService.mediaVersionPreferences, {
     ...settingsService.read(SettingsService.mediaVersionPreferences),
     _mediaVersionPreferenceKey(metadata): index,

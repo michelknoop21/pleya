@@ -65,6 +65,7 @@ import 'jellyfin_playback_bundle.dart';
 import 'jellyfin_playback_urls.dart';
 import 'jellyfin_trickplay_service.dart';
 import 'playback_initialization_types.dart';
+import 'playback_stream_evidence.dart';
 import 'recommendations/jellyfin_history_importer.dart'
     show JellyfinHistorySource, kJellyfinPageLength, kJellyfinResumeLimit;
 import 'scrub_preview_source.dart';
