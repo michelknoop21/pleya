@@ -44,7 +44,8 @@ final List<AssistantTool> _catalogTools = [
     name: 'search_catalog',
     description:
         'Search films and series on all servers of this profile by text, kind, genres, years, minimum rating '
-        '(0-10), watch state or an actor (person). Returns a query_id for create_home_row and create_collection. '
+        '(0-10), watch state or an actor (person). text matches titles, not what a title is about: for a '
+        'subject, theme or plot use find_title. Returns a query_id for create_home_row and create_collection. '
         'Flags to pass on to the user: partial (a server did not answer), sampled (rating/random order or '
         'min_rating judged on the first 100 titles only), servers_left_out (servers that cannot run the '
         'filters, so their titles are not in the list), genre_unverified (titles kept without genre data).',

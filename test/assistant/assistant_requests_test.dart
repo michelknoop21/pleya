@@ -148,6 +148,14 @@ class _Seerr {
             for (final e in seasonStatus.entries) {'seasonNumber': e.key, 'status': e.value},
           ]),
         }),
+        '/search/keyword' => _json({
+          'results': [
+            if (request.url.queryParameters['query'] == 'robots') ...[
+              {'id': 311, 'name': 'robot'},
+              {'id': 310, 'name': 'Robots'},
+            ],
+          ],
+        }),
         '/genres/movie' => _json(const [
           {'id': 878, 'name': 'Science Fiction'},
           {'id': 28, 'name': 'Action'},
@@ -505,14 +513,14 @@ void main() {
     expect(model.toolResults.single, {'error': 'invalid_titles'});
   });
 
-  test('discover maps genre and sort, reports what it could not apply', () async {
+  test('discover maps genre, keyword and sort, reports what it could not apply', () async {
     final seerr = _Seerr();
     final (result, model) = await run([
       _call('discover_request_titles', {
         'kind': 'movie',
         'genres': ['science fiction', 'Horror', 'Action'],
         'year_from': 1990,
-        'keywords': ['robots'],
+        'keywords': ['zzz', 'robots', 'space'],
         'sort': 'rating',
       }),
       _request({'seerr_id': 'movie:700'}),
@@ -521,11 +529,14 @@ void main() {
     final discover = seerr.gets.singleWhere((u) => u.path.endsWith('/discover/movies'));
     expect(discover.queryParameters, containsPair('genre', '878'));
     expect(discover.queryParameters, containsPair('sortBy', 'vote_average.desc'));
+    // The subject reaches discover as its TMDB keyword id, the exact name first.
+    expect(discover.queryParameters, containsPair('keywords', '310'));
     final out = model.toolResults.first;
     expect(out['titles'] as List, hasLength(10));
     expect(out['ignored_filters'], [
       {'filter': 'year_from', 'reason': 'not_supported'},
-      {'filter': 'keywords', 'reason': 'not_supported'},
+      {'filter': 'keywords', 'value': 'zzz', 'reason': 'unknown_keyword'},
+      {'filter': 'keywords', 'value': 'space', 'reason': 'one_keyword_only'},
       {'filter': 'genres', 'value': 'Horror', 'reason': 'unknown_genre'},
       {'filter': 'genres', 'value': 'Action', 'reason': 'one_genre_only'},
     ]);

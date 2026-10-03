@@ -189,7 +189,11 @@ class FindRun {
     final index = await plots.indexFor(libraries, stop: () => ctx.cancelled);
     if (settled) return;
     final kind = q.wantsEpisode ? MediaKind.show : q.kind;
-    final hits = index.search([...q.variants, for (final c in q.candidates) c.title], limit: 5, kind: kind);
+    final hits = index
+        .search([...q.variants, for (final c in q.candidates) c.title], limit: 15, kind: kind)
+        .where((h) => _aboutIt(h.doc))
+        .take(5)
+        .toList();
     if (hits.isEmpty) return;
     final lead = hits.length == 1 || hits[0].score >= 2 * hits[1].score;
     for (final (i, hit) in hits.indexed) {
@@ -202,6 +206,18 @@ class FindRun {
         ..plotLead = i == 0 && lead;
       addMatch(matches, m..addLibrary([_stamp(item, hit.doc.serverId)]));
     }
+  }
+
+  /// A title word alone says nothing about what a film is about: "space"
+  /// must not bring up Space Jam or Safe Space. A hit counts when its plot,
+  /// genres or cast share a search word, or a candidate names it.
+  bool _aboutIt(AssistantPlotDoc doc) {
+    final item = doc.item;
+    final named = {for (final c in q.candidates) titleKey(c.title)}..remove('');
+    if (named.contains(titleKey(item.title)) || named.contains(titleKey(item.originalTitle))) return true;
+    final words = {for (final v in q.variants) ...plotTokens(v)};
+    final about = [item.summary, ...?item.genres, for (final r in (item.roles ?? const []).take(5)) r.tag];
+    return plotTokens(about.join(' ')).any(words.contains);
   }
 
   /// An abort that also fires with the run's own.
