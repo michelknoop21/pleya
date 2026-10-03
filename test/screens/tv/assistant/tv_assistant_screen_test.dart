@@ -127,6 +127,24 @@ void main() {
       expect(c.submitted, ['scan films']);
     });
 
+    testWidgets('a follow-up under a result asks it at once', (tester) async {
+      await pumpSurface(tester);
+      c
+        ..prompt = 'wie keek het meest'
+        ..state = AssistantSurfaceState.result
+        ..displays = [const AssistantWatchStats(serverName: 'Zolder', days: 7)]
+        ..emit();
+      await settle(tester);
+
+      final question = t.assistant.followUp.watchNow;
+      expect(find.text(question), findsOneWidget);
+      expect(find.text(t.assistant.followUp.watchMonth), findsOneWidget);
+      tester.widget<TvAssistantChip>(find.widgetWithText(TvAssistantChip, question)).onSelect();
+      await settle(tester);
+
+      expect(c.submitted, [question]);
+    });
+
     testWidgets('backing out of the keyboard asks nothing', (tester) async {
       keyboardAnswers('half a question', submitted: false);
       await pumpSurface(tester);
@@ -186,7 +204,7 @@ void main() {
 
     expect(find.text(t.assistant.working.stillChecking), findsOneWidget);
     expect(find.text(t.assistant.working.status), findsNothing);
-    expect(find.text(t.assistant.displays.watchStats(server: 'Zolder')), findsOneWidget);
+    expect(find.text(t.assistant.displays.watchTitle), findsOneWidget);
     expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
     expect(focusedLabel(), 'assistant.cancel');
   });

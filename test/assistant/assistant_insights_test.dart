@@ -51,7 +51,12 @@ class _Jf implements JellyfinClient {
     this.users = const [],
     this.played = const {},
     this.playedDelay = Duration.zero,
+    this.searchable = const [],
   });
+  final List<MediaItem> searchable;
+
+  @override
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => searchable;
   final String machine;
   final String name;
   final bool admin;
@@ -703,10 +708,17 @@ void main() {
           ],
           'u2': [_played('e1', 'Half Loop', inside, series: 'Severance')],
         },
+        searchable: [
+          MediaItem(id: 'e9', backend: MediaBackend.jellyfin, kind: MediaKind.episode, title: 'Severance'),
+          MediaItem(id: 's1', backend: MediaBackend.jellyfin, kind: MediaKind.show, title: 'Severance'),
+        ],
       );
       final result =
           await _tool('watch_stats').run(_ctx([jf]), ServerId('woon'), {'scope': 'period', 'days': 7})
               as AssistantToolResult;
+      final target = (result.display! as AssistantWatchStats).titles.single.target;
+      expect(target?.item.id, 's1', reason: 'a watched series opens its show, not an episode with that name');
+      expect(target?.serverId, ServerId('woon'));
       expect(jf.playedReads, [('u1', 200), ('u2', 200)]);
       expect(result.data['plays'], 3, reason: 'Dune was last played before the period');
       final top = (result.data['top_titles']! as List).cast<Map<String, Object?>>();

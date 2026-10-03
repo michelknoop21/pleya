@@ -26,6 +26,7 @@ class TvAssistantMatchCard extends StatelessWidget {
     required this.onSelect,
     this.focusNode,
     this.compact = false,
+    this.rank,
   });
 
   final AssistantTitleMatch match;
@@ -37,6 +38,9 @@ class TvAssistantMatchCard extends StatelessWidget {
 
   /// The summoned panel: one line of plot instead of two.
   final bool compact;
+
+  /// A place in a ranking (most watched), drawn as a badge on the poster.
+  final int? rank;
 
   String get _kind {
     final m = t.assistant.match;
@@ -89,6 +93,12 @@ class TvAssistantMatchCard extends StatelessWidget {
       focusNode: focusNode,
       borderRadius: 18 * pt,
       disableScale: true,
+      // Scroll only near the panel's edge: centring the first card would push
+      // the question and answer above it out of view.
+      useComfortableZone: true,
+      // A request card while Big P is still checking stays a stop (dimmed,
+      // inert); a title with nothing to open or request is no stop at all.
+      canRequestFocus: onSelect != null || match.request != null,
       semanticLabel: [match.title, ?match.year?.toString(), _kind, ?status].join(', '),
       automationId: AutomationIds.assistantMatch,
       automationInstance: '$index',
@@ -112,9 +122,20 @@ class TvAssistantMatchCard extends StatelessWidget {
           decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(18 * pt)),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8 * pt),
-                child: SizedBox(width: 68 * pt, height: 100 * pt, child: _poster(context)),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8 * pt),
+                    child: SizedBox(width: 68 * pt, height: 100 * pt, child: _poster(context)),
+                  ),
+                  if (rank case final rank?)
+                    Positioned(
+                      left: -10 * pt,
+                      top: -10 * pt,
+                      child: _RankBadge(rank: rank),
+                    ),
+                ],
               ),
               SizedBox(width: 20 * pt),
               Expanded(
@@ -170,6 +191,33 @@ class TvAssistantMatchCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The rank on a poster: the brand gradient with the number in the display
+/// face, ringed in the card colour so it lifts off the artwork.
+class _RankBadge extends StatelessWidget {
+  const _RankBadge({required this.rank});
+
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    return Container(
+      width: 38 * pt,
+      height: 38 * pt,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: tokens(context).accentGradient,
+        border: Border.all(color: const Color(0xFF161616), width: 3 * pt),
+      ),
+      child: Text(
+        '$rank',
+        style: TextStyle(color: Colors.white, fontFamily: 'ArchivoBlack', fontSize: TvHig.caption1 * pt, height: 1),
       ),
     );
   }

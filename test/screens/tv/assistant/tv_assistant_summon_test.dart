@@ -21,6 +21,8 @@ import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 
+import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
+
 import 'tv_assistant_test_support.dart';
 
 void main() {
@@ -215,20 +217,17 @@ void main() {
       expect(c.aborts, 1);
     });
 
-    testWidgets('a good result leaves on its own after about 4 s', (tester) async {
+    testWidgets('a good result stays with its three follow-ups until the user leaves', (tester) async {
       await summoned(tester);
       c
         ..state = AssistantSurfaceState.result
         ..answer = 'De scan van Films loopt.'
         ..emit();
-      await tester.pump(const Duration(milliseconds: 3800));
-      expect(bigP(), findsOneWidget);
-
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 10));
       await settle(tester);
 
-      expect(bigP(), findsNothing);
-      expect(focusedLabel(), 'behind');
+      expect(bigP(), findsOneWidget);
+      expect(find.byType(TvAssistantChip), findsNWidgets(3));
     });
 
     testWidgets('an error stays until Menu', (tester) async {

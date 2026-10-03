@@ -144,8 +144,16 @@ class TvAssistantConversation extends StatelessWidget {
     ];
     Widget column(List<Widget> items) =>
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
-    // Anchored at the bottom: the newest stays in view.
-    return column([...head, Flexible(child: SingleChildScrollView(reverse: true, child: column(children)))]);
+    // Anchored at the bottom, so the newest stays in view; a result with
+    // cards to choose from opens at its question and answer instead, with the
+    // first card (which takes the focus) right under them.
+    final fromTop = c.state == AssistantSurfaceState.result && tvAssistantHasChoices(c.displays);
+    return column([
+      ...head,
+      Flexible(
+        child: SingleChildScrollView(reverse: !fromTop, child: column(children)),
+      ),
+    ]);
   }
 
   /// The run's displays. Only the result stand hands the first choice the
@@ -194,6 +202,29 @@ class TvAssistantConversation extends StatelessWidget {
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         gap,
+      ],
+      // Three follow-ups after an answer; an error or a gate is no answer.
+      if (!c.resultIsError) ...[
+        Wrap(
+          spacing: 10 * pt,
+          runSpacing: 10 * pt,
+          children: [
+            for (final (i, question) in assistantFollowUps(
+              c.displays,
+              jobs: c.actions.any((a) => a.job != null),
+              prompt: c.prompt,
+            ).indexed)
+              TvAssistantChip(
+                label: question,
+                icon: Symbols.subdirectory_arrow_right_rounded,
+                dense: true,
+                automationId: AutomationIds.assistantFollowUp,
+                automationInstance: '$i',
+                onSelect: () => onExample(question),
+              ),
+          ],
+        ),
+        SizedBox(height: 16 * pt),
       ],
       Wrap(
         spacing: 12 * pt,

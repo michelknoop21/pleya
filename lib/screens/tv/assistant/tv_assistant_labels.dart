@@ -8,6 +8,7 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/media_kind.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -145,10 +146,60 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 /// The headline under the question: the model's answer when there is one,
 /// else Pleya's reason the run ended.
 String assistantHeadline(AssistantController c) {
-  if (c.answer.trim().isNotEmpty) return c.answer.trim();
+  if (assistantPlainAnswer(c.answer) case final answer when answer.isNotEmpty) return answer;
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
   if (c.modelMissing) return t.assistant.ends.modelMissing;
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
 }
+
+/// Three questions that follow from what the run showed, in the UI's
+/// language, after every answer. Pleya builds them from the displays and the
+/// actions, never from model prose, and each one stands on its own: a new ask
+/// carries no memory of this one. They carry no server, user or title names:
+/// a follow-up is sent as the user's own words, and those names come from
+/// servers, not from the user. The question just asked is never offered.
+List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = false, String? prompt}) {
+  final f = t.assistant.followUp;
+  final fitting = <String>[
+    // Only after a job Pleya follows (a scan, a refresh): those are admin
+    // tools, and a request or download has no task to ask about.
+    if (jobs) ...[f.jobs, f.failedJobs],
+    for (final d in displays)
+      ...switch (d) {
+        AssistantWatchStats(days: null) => [f.watchToday, f.watchWeek, f.watchMonth],
+        AssistantWatchStats(:final days?) => [
+          f.watchNow,
+          if (days < 30) f.watchMonth else f.watchWeek,
+          if (days > 1) f.watchToday else f.watchWeek,
+        ],
+        AssistantServerComparison(:final kind) => [
+          kind == MediaKind.show ? f.missingMovies : f.missingShows,
+          f.unwatched,
+        ],
+        AssistantRequestOptions() => [f.popular, f.recent],
+        AssistantTitleMatches() || AssistantMediaGrid() => [f.tonight, f.unwatched, f.recent],
+        _ => const <String>[],
+      },
+    // Always three: the general questions fill what the result left open.
+    f.watchWeek, f.tonight, f.recent, f.unwatched,
+  ];
+  String key(String q) => q.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
+  final asked = key(prompt ?? '');
+  return [
+    for (final q in {...fitting})
+      if (key(q) != asked) q,
+  ].take(3).toList();
+}
+
+/// The model's answer as the panel shows it: Markdown a model adds anyway
+/// (bold, headings, code ticks, list dashes) becomes plain text with
+/// bullets, and runs of blank lines become one.
+String assistantPlainAnswer(String answer) => answer
+    .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*|__(\S.*?)__'), (m) => m[1] ?? m[2]!)
+    .replaceAll(RegExp('[`«»]'), '')
+    .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
+    .replaceAll(RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true), '• ')
+    .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+    .trim();

@@ -349,8 +349,13 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   final served = [for (final (_, r) in read) ?r];
   final plays = [for (final r in served) ...r.plays];
   final hours = served.isNotEmpty && served.every((r) => r.hours);
+  // A server that ran out of time, or whose history hit the cap, may miss
+  // plays: the card says so rather than ranking as if complete.
+  final partial = served.any(
+    (r) => r.extra['partial'] == true || r.extra.keys.any((k) => k.startsWith('capped_at_plays')),
+  );
 
-  final titles = <String, ({String title, int plays, Set<String> viewers})>{};
+  final titles = <String, ({String title, int plays, Set<String> viewers, Set<ServerId> servers, bool show})>{};
   final users = <String, ({String name, int plays, int seconds})>{};
   final personOf = <String, String>{};
   final serversOfPerson = <String, Set<String>>{};
@@ -364,14 +369,31 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   }();
   for (final p in plays) {
     final t = titles[p.titleKey];
-    titles[p.titleKey] = (title: t?.title ?? p.title, plays: (t?.plays ?? 0) + 1, viewers: {...?t?.viewers, p.user});
+    titles[p.titleKey] = (
+      title: t?.title ?? p.title,
+      plays: (t?.plays ?? 0) + 1,
+      viewers: {...?t?.viewers, p.user},
+      servers: {...?t?.servers, ServerId(p.server)},
+      show: p.titleKey.startsWith('show:'),
+    );
     final key = person(p);
     final u = users[key];
     users[key] = (name: u?.name ?? p.user, plays: (u?.plays ?? 0) + 1, seconds: (u?.seconds ?? 0) + p.seconds);
   }
+  final ranked = titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
+  // The titles the card shows open their library copy, as a found title does.
+  final targets = await Future.wait([
+    for (final t in ranked.take(_watchTargets)) _watchTarget(ctx, t.title, t.show, t.servers),
+  ]);
   final topTitles = [
-    for (final t in titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays)))
-      (title: t.title, plays: t.plays, viewers: t.viewers.toList()),
+    for (final (i, t) in ranked.indexed)
+      (
+        title: t.title,
+        plays: t.plays,
+        viewers: t.viewers.toList(),
+        show: t.show,
+        target: i < targets.length ? targets[i] : null,
+      ),
   ];
   final topUsers = users.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
   return AssistantToolResult(
@@ -395,10 +417,50 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,
+        partial: partial,
         titles: topTitles,
         users: topUsers,
         unavailable: [for (final id in unavailable) ctx.serverName(id)],
       ),
     ),
   );
+}
+
+const _watchTargets = 5;
+
+/// The library copy of a watched title on one of the [servers] it was played
+/// on: the one item with the same title key and kind, outside Home's hidden
+/// libraries, or null. A history row has no item id that every backend
+/// keeps, so the title is looked up; two copies with that title (Dune 1984
+/// and 2021) are ambiguous and open nothing rather than the wrong film. The
+/// servers are asked at once, each for at most five seconds in all.
+Future<AssistantTitleTarget?> _watchTarget(
+  AssistantToolContext ctx,
+  String title,
+  bool show,
+  Set<ServerId> servers,
+) async {
+  final want = _titleKey(show, title);
+  Future<AssistantTitleTarget?> on(ServerId id) async {
+    final client = ctx.userClient(id);
+    if (client == null || ctx.cancelled) return null;
+    final found = await client.searchItems(clipText(title, 100), limit: 10);
+    if (ctx.cancelled) return null;
+    final same = [
+      for (final item in filterHiddenLibraryItems(found, await _hiddenLibraryKeys(ctx, id)))
+        if (item.kind == (show ? MediaKind.show : MediaKind.movie) && _titleKey(show, item.title ?? '') == want) item,
+    ];
+    if (same.length != 1) return null;
+    final item = same.single;
+    final scoped = (item.serverId?.isEmpty ?? true) ? item.copyWith(serverId: id.value) : item;
+    return (serverId: id, serverName: ctx.serverName(id), item: scoped);
+  }
+
+  Future<AssistantTitleTarget?> bounded(ServerId id) =>
+      on(id).timeout(const Duration(seconds: 5), onTimeout: () => null).catchError((Object _) => null);
+
+  final found = [
+    for (final t in await Future.wait([for (final id in servers) bounded(id)])) ?t,
+  ];
+  return found.firstOrNull;
 }

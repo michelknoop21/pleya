@@ -198,6 +198,9 @@ ids:
   - id: assistant.example
     role: button
     instanceable: true
+  - id: assistant.followUp
+    role: button
+    instanceable: true
   - id: assistant.steps
     role: list
     instanceable: false
