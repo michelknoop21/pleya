@@ -159,10 +159,14 @@ final _markdownMarks = RegExp(
   r'(?<![\w*])\*\*(\S(?:[^\n]*?\S)?)\*\*(?![\w*])|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)`([^`\n]+)`(?!\w)',
 );
 final _markdownHeading = RegExp(r'^#{1,6}\s+', multiLine: true);
+final _marksOnly = RegExp(r'^[\s*`#]+$');
 
 /// The model's answer as the panel shows it. The panel draws plain text, so
 /// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
 /// are dropped and their text kept. An asterisk inside a word or a sum, as
 /// in `M*A*S*H` or `2 * 3`, stays.
-String assistantPlainText(String answer) =>
-    answer.replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3]!).replaceAll(_markdownHeading, '').trim();
+String assistantPlainText(String answer) => answer
+    .replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3]!)
+    .replaceAll(_markdownHeading, '')
+    .replaceFirst(_marksOnly, '')
+    .trim();

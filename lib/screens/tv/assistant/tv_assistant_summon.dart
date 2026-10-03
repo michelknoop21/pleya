@@ -1,8 +1,7 @@
 /// Big P summoned from any TV screen (mockup 38, "Oproepen vanaf elk
 /// scherm"): a long press on Play/Pause brings him in bottom right with a
 /// 760 pt glass panel, the screen behind dims but stays the context, and the
-/// system keyboard opens right away. After a good result he leaves on his
-/// own; an error or a choice stays until Menu.
+/// system keyboard opens right away. He stays until Menu or Klaar.
 library;
 
 import 'dart:async';

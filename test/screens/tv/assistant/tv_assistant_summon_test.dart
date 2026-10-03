@@ -244,6 +244,10 @@ void main() {
       for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', '* Top Gun (1986)']) {
         expect(assistantPlainText(plain), plain);
       }
+      // Only marks is no answer.
+      for (final marks in ['**', '***', '# ', '``']) {
+        expect(assistantPlainText(marks), isEmpty);
+      }
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not
@@ -258,7 +262,7 @@ void main() {
       await settle(tester);
 
       final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
-      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top;
+      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top;
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
       expect(focusedLabel(), 'assistant.ask');
 
@@ -267,12 +271,12 @@ void main() {
       expect(focusedLabel(), 'assistant.answer');
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(
-        tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top,
+        tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top,
         lessThan(top),
         reason: 'Down scrolls the answer',
       );
       await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top, top, reason: 'Up scrolls back');
+      expect(tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top, top, reason: 'Up scrolls back');
       expect(focusedLabel(), 'assistant.answer');
 
       // At its last line Down gives the remote back to the buttons.

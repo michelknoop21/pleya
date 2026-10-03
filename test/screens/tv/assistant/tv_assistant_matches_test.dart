@@ -319,7 +319,7 @@ void main() {
       tester,
     ) async {
       await pumpSurface(tester);
-      final answer = List.filled(60, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      final answer = List.filled(14, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
       // A new result, as a run delivers it: working first, then the answer.
       c
         ..state = AssistantSurfaceState.working
@@ -333,14 +333,14 @@ void main() {
       final panel = panelContent(tester);
       expect(focusedMatch(), 'm1');
       expectInside(focusedRect(), panel, 'first card');
-      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top;
+      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top;
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
 
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(focusedLabel(), 'assistant.answer');
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(
-        tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top,
+        tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top,
         lessThan(top),
         reason: 'Down scrolls the answer',
       );
@@ -570,7 +570,12 @@ void main() {
 
       final panel = panelContent(tester);
       expect(focusedMatch(), _grid.entries.first.item.globalKey);
-      expectInside(focusedRect(), panel, 'first card');
+      // Against the list's own viewport: inside the panel is not enough, a
+      // card can sit behind the answer.
+      final list = tester.getRect(
+        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+      );
+      expectInside(focusedRect(), list, 'first card');
       expect(
         tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top,
         inInclusiveRange(panel.top, panel.bottom),

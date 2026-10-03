@@ -143,17 +143,14 @@ class TvAssistantConversation extends StatelessWidget {
       if (c.state == AssistantSurfaceState.result) ...[
         if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         if (headline.isNotEmpty) ...[
+          // With results under it the answer shows its lead and three lines
+          // of what follows; alone, it reads down the panel.
           if (children.isEmpty)
             Flexible(
               child: _AnswerBlock(text: headline, style: headlineStyle),
             )
           else
-            ConstrainedBox(
-              // Room for the lead and a few lines; the rest scrolls inside
-              // the block, so the results keep most of the panel.
-              constraints: BoxConstraints(maxHeight: 240 * pt),
-              child: _AnswerBlock(text: headline, style: headlineStyle),
-            ),
+            _AnswerBlock(text: headline, style: headlineStyle, bodyLines: 3),
           gap,
         ],
       ],
@@ -169,14 +166,16 @@ class TvAssistantConversation extends StatelessWidget {
     // Anchored at the bottom: the newest stays in view.
     return column([
       ...head,
-      Flexible(
-        child: _EdgeFade(
-          builder: (controller) =>
-              SingleChildScrollView(controller: controller, reverse: true, child: column(children)),
+      // Nothing under the answer: the answer keeps the whole height.
+      if (children.isNotEmpty || c.state != AssistantSurfaceState.result)
+        Flexible(
+          child: _EdgeFade(
+            builder: (controller) =>
+                SingleChildScrollView(controller: controller, reverse: true, child: column(children)),
+          ),
         ),
-      ),
       // Under the scrolling part: always in view, whatever the results do.
-      if (c.state == AssistantSurfaceState.result)
+      if (c.state == AssistantSurfaceState.result) ...[
         // A button keeps 6 pt around its fill for the focus ring; pulled
         // back so the fill, not the ring, lines up with the text and cards.
         Transform.translate(
@@ -196,6 +195,7 @@ class TvAssistantConversation extends StatelessWidget {
             ],
           ),
         ),
+      ],
     ]);
   }
 
@@ -246,13 +246,16 @@ class TvAssistantConversation extends StatelessWidget {
 /// the fade is the sign that there is more, and it goes when the end is
 /// reached.
 class _EdgeFade extends StatefulWidget {
-  const _EdgeFade({required this.builder, this.controller});
+  const _EdgeFade({required this.builder, this.controller, this.extent});
 
   /// Builds the scroll view around the controller it is given.
   final Widget Function(ScrollController controller) builder;
 
   /// The owner's controller, when it scrolls the content itself.
   final ScrollController? controller;
+
+  /// How far the fade reaches in from an edge; 44 pt when null.
+  final double? extent;
 
   @override
   State<_EdgeFade> createState() => _EdgeFadeState();
@@ -298,7 +301,7 @@ class _EdgeFadeState extends State<_EdgeFade> {
     return ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (rect) {
-        final fade = (44 * pt / rect.height).clamp(0.0, 0.5);
+        final fade = ((widget.extent ?? 44 * pt) / rect.height).clamp(0.0, 0.5);
         return LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -317,15 +320,20 @@ class _EdgeFadeState extends State<_EdgeFade> {
 }
 
 /// The model's answer, set as mockup 38 G sets it: the first sentence as
-/// the headline, what follows in a lighter voice. Opens at its first line.
-/// When it is longer than its box the lower edge fades, Up gives it the
-/// focus (a thumb at its side shows where you are), and Up and Down scroll
-/// it; at either end the key moves the focus on as usual.
+/// the headline, what follows as running text under it. The headline stays
+/// put. Running text longer than its box scrolls by whole lines: its lower
+/// edge fades, Up gives it the focus (a thumb in the margin shows where you
+/// are), and Up and Down move through it; at either end the key moves the
+/// focus on as usual.
 class _AnswerBlock extends StatefulWidget {
-  const _AnswerBlock({required this.text, required this.style});
+  const _AnswerBlock({required this.text, required this.style, this.bodyLines});
 
   final String text;
   final TextStyle style;
+
+  /// How many lines of running text show at once; null takes the height
+  /// the parent leaves.
+  final int? bodyLines;
 
   @override
   State<_AnswerBlock> createState() => _AnswerBlockState();
@@ -337,6 +345,7 @@ class _AnswerBlockState extends State<_AnswerBlock> {
   final _scroll = ScrollController();
   final _node = FocusNode(debugLabel: 'assistant.answer');
   bool _overflows = false;
+  double _line = 1;
 
   @override
   void initState() {
@@ -357,7 +366,7 @@ class _AnswerBlockState extends State<_AnswerBlock> {
 
   void _measure() {
     if (!mounted || !_scroll.hasClients) return;
-    final overflows = _scroll.position.maxScrollExtent > 0;
+    final overflows = _scroll.position.maxScrollExtent > 0.5;
     if (overflows != _overflows) setState(() => _overflows = overflows);
   }
 
@@ -367,10 +376,12 @@ class _AnswerBlockState extends State<_AnswerBlock> {
       return KeyEventResult.ignored;
     }
     final position = _scroll.position;
-    final step = position.viewportDimension * 0.6;
+    // Whole lines, one short of a page, so the eye keeps its place.
+    final lines = (position.viewportDimension / _line).floor() - 1;
+    final step = _line * (lines < 1 ? 1 : lines);
     final target = (position.pixels + (up ? -step : step)).clamp(0.0, position.maxScrollExtent);
     if (target == position.pixels) return KeyEventResult.ignored;
-    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic));
+    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic));
     return KeyEventResult.handled;
   }
 
@@ -383,17 +394,25 @@ class _AnswerBlockState extends State<_AnswerBlock> {
     // the rest reads as running text.
     final end = _leadEnd.firstMatch(widget.text)?.end;
     final split = end != null && end <= 140 && end < widget.text.length;
-    final lead = split ? widget.text.substring(0, end) : widget.text;
     final rest = split ? widget.text.substring(end).trim() : '';
-    return Focus(
-      focusNode: _node,
-      canRequestFocus: _overflows,
-      onKeyEvent: _onKey,
-      // The thumb hangs in the panel's margin, so the text keeps the full
-      // measure and its right edge stays on the cards' edge.
+    final bodyStyle = rest.isEmpty
+        ? widget.style
+        : TextStyle(
+            color: tk.text.withValues(alpha: 0.86),
+            fontSize: TvHig.callout * pt,
+            fontWeight: FontWeight.w400,
+            height: 1.36,
+          );
+    _line = bodyStyle.fontSize! * bodyStyle.height!;
+
+    // The box holds whole lines only, so no line is ever cut in half.
+    Widget body(double maxHeight) => SizedBox(
+      height: maxHeight.isFinite ? (maxHeight / _line).floor() * _line : null,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // In the panel's margin, so the text keeps the full measure and
+          // its right edge stays on the cards' edge.
           Positioned.fill(
             right: -20 * pt,
             child: Align(
@@ -407,29 +426,37 @@ class _AnswerBlockState extends State<_AnswerBlock> {
           ),
           _EdgeFade(
             controller: _scroll,
+            extent: _line * 0.9,
             builder: (controller) => SingleChildScrollView(
               controller: controller,
-              child: Column(
-                key: const ValueKey('assistant.answer'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(lead, style: widget.style),
-                  if (rest.isNotEmpty) ...[
-                    SizedBox(height: 12 * pt),
-                    Text(
-                      rest,
-                      style: TextStyle(
-                        color: tk.text.withValues(alpha: 0.78),
-                        fontSize: TvHig.callout * pt,
-                        fontWeight: FontWeight.w500,
-                        height: 1.32,
-                      ),
-                    ),
-                  ],
-                ],
+              child: Text(
+                rest.isEmpty ? widget.text : rest,
+                key: const ValueKey('assistant.answer.body'),
+                style: bodyStyle,
               ),
             ),
           ),
+        ],
+      ),
+    );
+
+    return Focus(
+      focusNode: _node,
+      canRequestFocus: _overflows,
+      onKeyEvent: _onKey,
+      child: Column(
+        key: const ValueKey('assistant.answer'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (rest.isNotEmpty) ...[Text(widget.text.substring(0, end), style: widget.style), SizedBox(height: 12 * pt)],
+          if (widget.bodyLines case final lines?)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: lines * _line),
+              child: body(double.infinity),
+            )
+          else
+            Flexible(child: LayoutBuilder(builder: (context, box) => body(box.maxHeight))),
         ],
       ),
     );
