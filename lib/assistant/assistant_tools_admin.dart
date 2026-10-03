@@ -14,7 +14,7 @@ final List<AssistantTool> _adminTools = [
         'jobs': [
           for (final job in jobs.take(30))
             () {
-              ctx.showJob(id, job.id);
+              ctx.showJob(id, job.id, job.title);
               return {
                 'job_id': job.id,
                 'title': clipText(job.title),
@@ -178,14 +178,14 @@ final List<AssistantTool> _adminTools = [
     serves: (ctx, id) => ctx.admin<RetryableJobsClient>(id) != null,
     run: (ctx, id, args) async {
       final jobId = _string(args, 'job_id');
-      ctx.requireShownJob(id!, jobId);
+      final title = ctx.requireShownJob(id!, jobId);
       await ctx.admin<RetryableJobsClient>(id)!.retryJob(jobId);
       return AssistantToolResult(
         {'status': 'retry_started'},
         record: AssistantActionRecord(
           kind: AssistantActionKind.retryJob,
           serverName: ctx.serverName(id),
-          subject: jobId,
+          subject: clipText(title),
         ),
       );
     },

@@ -307,6 +307,23 @@ void main() {
       expect(avatar(tester).mood, BigPMood.attentive);
     });
 
+    testWidgets('a home row card has no empty Server line (BIGP-UI2)', (tester) async {
+      await raise(
+        tester,
+        AssistantPendingAction(
+          kind: AssistantActionKind.createHomeRow,
+          serverId: ServerId('zolder'),
+          serverName: '',
+          subject: 'Sci-fi avond',
+          execute: ({password}) async => const {},
+        ),
+      );
+
+      final card = find.byType(TvAssistantConfirmCard);
+      expect(find.descendant(of: card, matching: find.text('Sci-fi avond')), findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text(t.assistant.confirm.server)), findsNothing);
+    });
+
     testWidgets('a required password gates Aanmaken; the password goes to confirmPending only', (tester) async {
       await raise(tester, createSam());
 
