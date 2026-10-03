@@ -6006,6 +6006,7 @@ class TranslationsAssistantEn {
 	String get contextAction => 'Ask Big P';
 
 	late final TranslationsAssistantSettingsEn settings = TranslationsAssistantSettingsEn.internal(_root);
+	late final TranslationsAssistantTasksEn tasks = TranslationsAssistantTasksEn.internal(_root);
 
 	/// en: 'You asked:'
 	String get youAsked => 'You asked:';
@@ -7847,6 +7848,57 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: 'The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.'
 	String get webSearchNoteOpenRouter => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.';
+}
+
+// Path: assistant.tasks
+class TranslationsAssistantTasksEn {
+	TranslationsAssistantTasksEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Working on ${count} tasks · ${done} done'
+	String working({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done';
+
+	/// en: '${count} tasks are done.'
+	String allDone({required Object count}) => '${count} tasks are done.';
+
+	/// en: '${done} of ${count} tasks done.'
+	String someDone({required Object done, required Object count}) => '${done} of ${count} tasks done.';
+
+	/// en: 'Queued'
+	String get queued => 'Queued';
+
+	/// en: 'Working'
+	String get running => 'Working';
+
+	/// en: 'Waiting for confirmation'
+	String get waiting => 'Waiting for confirmation';
+
+	/// en: 'Done'
+	String get completed => 'Done';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+
+	/// en: 'Cancelled'
+	String get cancelled => 'Cancelled';
+
+	/// en: '(one) {1 title found} (other) {${n} titles found}'
+	String found({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 title found',
+		other: '${n} titles found',
+	);
+
+	/// en: 'Choose what to request'
+	String get choose => 'Choose what to request';
+
+	/// en: 'Cancel all'
+	String get cancelAll => 'Cancel all';
+
+	/// en: 'Cancel: ${title}'
+	String cancelTask({required Object title}) => 'Cancel: ${title}';
 }
 
 // Path: assistant.option
@@ -10229,6 +10281,19 @@ extension on Translations {
 			'assistant.settings.webSearchNoteServer' => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.',
 			'assistant.settings.webSearchNoteCloud' => 'The description of a title you look for goes to Wikipedia and Ollama\'s web search.',
 			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
+			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
+			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
+			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',
+			'assistant.tasks.queued' => 'Queued',
+			'assistant.tasks.running' => 'Working',
+			'assistant.tasks.waiting' => 'Waiting for confirmation',
+			'assistant.tasks.completed' => 'Done',
+			'assistant.tasks.failed' => 'Failed',
+			'assistant.tasks.cancelled' => 'Cancelled',
+			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 title found', other: '${n} titles found', ), 
+			'assistant.tasks.choose' => 'Choose what to request',
+			'assistant.tasks.cancelAll' => 'Cancel all',
+			'assistant.tasks.cancelTask' => ({required Object title}) => 'Cancel: ${title}',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',

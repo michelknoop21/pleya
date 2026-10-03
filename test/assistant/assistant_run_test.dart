@@ -507,6 +507,7 @@ void main() {
       confirm: (_) async => const AssistantConfirmation(password: 'geheim123'),
     );
     expect(model.toolResults.last, {'status': 'created', 'name': 'Sam', 'library_access': 'failed'});
+    expect(result.error, 'library_access_failed');
     expect(result.actions.single.kind, AssistantActionKind.createUser);
   });
 
@@ -631,6 +632,28 @@ void main() {
       cancel: cancel,
     ).ask('Scan');
     expect(server.writes, isEmpty);
+  });
+
+  test('cancellation after a card answer records no unexecuted action', () async {
+    final server = _Server();
+    final manager = await server.manager();
+    final cancel = AbortController();
+    final model = _Model(AssistantProviderKind.ollamaServer, [
+      _call('create_user', {'server_id': 'srv-1', 'name': 'Sam'}),
+      _say('done'),
+    ]);
+    final result = await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: manager),
+      cancel: cancel,
+      entitlement: const _Entitled(),
+      confirm: (_) async {
+        cancel.abort();
+        return const AssistantConfirmation(password: 'test');
+      },
+    ).ask('create Sam');
+    expect(server.writes, isEmpty);
+    expect(result.actions, isEmpty);
   });
 
   test('the step limit ends a model that keeps calling tools', () async {

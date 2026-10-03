@@ -33,6 +33,7 @@ import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
+import 'tv_assistant_tasks.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
 
@@ -77,17 +78,20 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   Timer? _linger;
   Timer? _remove;
   AssistantSurfaceState? _lastState;
-  AssistantPendingAction? _shownPending;
-  BuildContext? _sheetContext;
   int _nod = 0;
   int _doneSteps = 0;
 
   final _scope = FocusScopeNode(debugLabel: 'assistant.summon');
-  final _panelNode = FocusNode(debugLabel: 'assistant.summon.panel');
+  // Holds the remote while nothing in the panel can; never a stop the D-pad
+  // lands on, or Up from the bottom button would leave the remote on it.
+  final _panelNode = FocusNode(debugLabel: 'assistant.summon.panel', skipTraversal: true);
   final _askNode = FocusNode(debugLabel: 'assistant.ask');
   final _cancelNode = FocusNode(debugLabel: 'assistant.cancel');
   final _optionNode = FocusNode(debugLabel: 'assistant.option');
   final _confirmCancelNode = FocusNode(debugLabel: 'assistant.confirm.cancel');
+  final _tasksNode = FocusNode(debugLabel: 'assistant.tasks');
+  final _taskOptionNodes = TvAssistantTaskOptionNodes();
+  late final _confirm = TvAssistantConfirmPresenter(cancelNode: _confirmCancelNode);
 
   SpeechSearchService get _speech => widget.speech ?? SpeechSearchService.instance;
   AppleTvNativeTextEntry get _entry => widget.textEntry ?? AppleTvNativeTextEntry.instance;
@@ -106,9 +110,10 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _linger?.cancel();
     _remove?.cancel();
     _c?.removeListener(_onChange);
-    for (final node in [_panelNode, _askNode, _cancelNode, _optionNode, _confirmCancelNode, _scope]) {
+    for (final node in [_panelNode, _askNode, _cancelNode, _optionNode, _confirmCancelNode, _tasksNode, _scope]) {
       node.dispose();
     }
+    _taskOptionNodes.dispose();
     super.dispose();
   }
 
@@ -203,52 +208,54 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       _lastState = c.state;
       if (c.state == AssistantSurfaceState.working) _doneSteps = 0;
       if (c.state == AssistantSurfaceState.result) _resultAt = DateTime.now();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _focusDefault());
+      // Several tasks: a change behind the viewer leaves the remote on the
+      // capsule or result it is on.
+      if (c.tasks.length <= 1 || !_tasksNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _focusDefault());
+      }
     }
     final done = c.steps.where((s) => s.phase == AssistantStepPhase.done).length;
     if (done > _doneSteps) _nod++;
     _doneSteps = done;
 
-    final pending = c.pending;
-    if (pending != null && !identical(pending, _shownPending)) {
-      unawaited(_showConfirm(c, pending));
-    } else if (pending == null && _shownPending != null) {
-      final sheet = _sheetContext;
-      if (sheet != null && sheet.mounted) OverlaySheetController.closeAdaptive(sheet);
-    }
+    _confirm.sync(context, c, _entry, _onConfirmClosed);
     _armLinger();
     setState(() {});
   }
 
-  Future<void> _showConfirm(AssistantController c, AssistantPendingAction pending) async {
-    _shownPending = pending;
-    final confirmed = await showTvAssistantConfirm(
-      context,
-      controller: c,
-      pending: pending,
-      cancelNode: _confirmCancelNode,
-      entry: _entry,
-      onSheet: (sheet) => _sheetContext = sheet,
-    );
-    _shownPending = null;
-    if (confirmed && mounted) setState(() => _nod++);
+  void _onConfirmClosed(bool confirmed) {
+    if (confirmed) setState(() => _nod++);
+    if ((_c?.tasks.length ?? 0) <= 1) return;
+    // The capsule the card was raised from may be gone by now.
+    tvAssistantAfterFocusSettles(() {
+      final focus = FocusManager.instance.primaryFocus;
+      if (focus == null || focus == _panelNode || focus == _scope) _focusDefault();
+    });
   }
 
   /// A good result with nothing left to choose: Big P leaves after [linger].
+  /// Of several tasks, every one must have ended well.
   void _armLinger() {
     _linger?.cancel();
     final c = _c;
     if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
     if (tvAssistantHasChoices(c.displays)) return;
+    if (c.tasks.length > 1 && c.tasks.any((task) => task.status != AssistantTaskStatus.completed)) return;
     _linger = Timer(TvAssistantSummonHost.linger, _dismiss);
   }
 
   void _focusDefault() {
     final c = _c;
-    if (!mounted || c == null || _sheetContext != null) return;
+    if (!mounted || c == null || _confirm.isOpen) return;
     final node = switch (c.state) {
       AssistantSurfaceState.working => _cancelNode,
-      AssistantSurfaceState.result => tvAssistantHasChoices(c.displays) ? _optionNode : _askNode,
+      AssistantSurfaceState.result =>
+        (c.tasks.length > 1
+                ? _taskOptionNodes.first(c.tasks)
+                : tvAssistantHasChoices(c.displays)
+                ? _optionNode
+                : null) ??
+            _askNode,
       _ => _panelNode,
     };
     (node.context != null && node.canRequestFocus ? node : _panelNode).requestFocus();
@@ -355,6 +362,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               askNode: _askNode,
               cancelNode: _cancelNode,
               firstOptionNode: _optionNode,
+              taskOptionNodes: _taskOptionNodes,
+              tasksNode: _tasksNode,
               onAsk: () => unawaited(_ask()),
               onDone: _dismiss,
               onCancelWork: _dismiss,

@@ -120,12 +120,65 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 }
 
 /// The headline under the question: the model's answer when there is one,
-/// else Pleya's reason the run ended.
+/// else Pleya's reason the run ended. Several tasks get Pleya's own count.
 String assistantHeadline(AssistantController c) {
+  if (c.tasks.length > 1) return assistantTasksHeadline(c.tasks);
   if (c.answer.trim().isNotEmpty) return c.answer.trim();
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
   if (c.modelMissing) return t.assistant.ends.modelMissing;
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
+}
+
+bool assistantTaskCancellable(AssistantTask task) => switch (task.status) {
+  AssistantTaskStatus.pending || AssistantTaskStatus.running || AssistantTaskStatus.waitingForConfirmation => true,
+  AssistantTaskStatus.completed || AssistantTaskStatus.failed || AssistantTaskStatus.cancelled => false,
+};
+
+/// "Bezig met 3 taken · 1 klaar" while any task can still be stopped, then
+/// how many of them ended well. Counted by Pleya, not said by the model.
+String assistantTasksHeadline(List<AssistantTask> tasks) {
+  final done = tasks.where((task) => task.status == AssistantTaskStatus.completed).length;
+  if (tasks.any(assistantTaskCancellable)) return t.assistant.tasks.working(count: tasks.length, done: done);
+  return done == tasks.length
+      ? t.assistant.tasks.allDone(count: done)
+      : t.assistant.tasks.someDone(count: tasks.length, done: done);
+}
+
+/// A task card's second line: where the task stands, and what Pleya knows
+/// about it (the step it is on, what it did, why the run ended). A cancelled
+/// task says only that: a call already sent is not taken back by cancelling.
+({String status, String? detail}) assistantTaskStatusLabel(AssistantTask task) {
+  final s = t.assistant.tasks;
+  return switch (task.status) {
+    AssistantTaskStatus.pending => (status: s.queued, detail: null),
+    AssistantTaskStatus.running => (
+      status: s.running,
+      detail: switch (task.steps.lastOrNull) {
+        final step? => assistantStepLabel(step),
+        null => null,
+      },
+    ),
+    AssistantTaskStatus.waitingForConfirmation => (status: s.waiting, detail: null),
+    AssistantTaskStatus.completed => (
+      status: switch (task.actions.lastOrNull) {
+        final action? => assistantActionKindLabel(action.kind),
+        null => switch (task.displays.whereType<AssistantTitleMatches>().fold(0, (n, d) => n + d.matches.length)) {
+          0 => task.displays.any((d) => d is AssistantRequestOptions) ? s.choose : s.completed,
+          final found => s.found(n: found),
+        },
+      },
+      detail: null,
+    ),
+    AssistantTaskStatus.failed => (
+      status: s.failed,
+      detail: task.modelMissing
+          ? t.assistant.ends.modelMissing
+          : task.lastEnd == null
+          ? null
+          : assistantEndLabel(task.lastEnd, task.providerError),
+    ),
+    AssistantTaskStatus.cancelled => (status: s.cancelled, detail: null),
+  };
 }

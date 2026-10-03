@@ -210,6 +210,12 @@ ids:
   - id: assistant.match
     role: list.item
     instanceable: true
+  - id: assistant.task
+    role: list.item
+    instanceable: true
+  - id: assistant.task.cancel
+    role: button
+    instanceable: true
   - id: assistant.confirm
     role: sheet
     instanceable: false

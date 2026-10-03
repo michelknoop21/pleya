@@ -2480,6 +2480,24 @@
       "webSearchNoteCloud": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.",
       "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht."
     },
+    "tasks": {
+      "working": "Bezig met ${count} taken · ${done} klaar",
+      "allDone": "${count} taken zijn klaar.",
+      "someDone": "${done} van ${count} taken klaar.",
+      "queued": "In de wachtrij",
+      "running": "Bezig",
+      "waiting": "Wacht op bevestiging",
+      "completed": "Klaar",
+      "failed": "Mislukt",
+      "cancelled": "Geannuleerd",
+      "found": {
+        "one": "1 titel gevonden",
+        "other": "${n} titels gevonden"
+      },
+      "choose": "Kies wat je wilt aanvragen",
+      "cancelAll": "Alles annuleren",
+      "cancelTask": "Annuleren: ${title}"
+    },
     "youAsked": "Je vroeg:",
     "option": {
       "notRequested": "Aan te vragen"

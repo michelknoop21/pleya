@@ -6,6 +6,10 @@ import '../i18n/strings.g.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
+import 'assistant_execution.dart';
+import 'assistant_task.dart';
+
+export 'assistant_task.dart';
 import 'assistant_provider.dart';
 import 'assistant_run.dart';
 import 'assistant_tool_context.dart';
@@ -85,16 +89,20 @@ class AssistantController extends ChangeNotifier {
   final List<AssistantActionRecord> _actions = [];
   final List<AssistantDisplay> _displays = [];
   AssistantPendingAction? _pending;
-  Completer<AssistantConfirmation?>? _confirmer;
+  final List<_AssistantTaskState> _tasks = [];
+  final List<_QueuedConfirmation> _confirmations = [];
+  final AssistantOperationPool _operations = AssistantOperationPool(3);
+  final AssistantOperationPool _mutations = AssistantOperationPool(1);
+  int _nextTask = 0;
+  int _nextConfirmation = 0;
+
+  List<AssistantTask> get tasks => List.unmodifiable(_tasks.map((task) => task.view));
+  AssistantTaskConfirmation? get pendingConfirmation => _confirmations.firstOrNull?.view;
   AssistantScreenContext? _screenContext;
 
   /// Bumped by [reset]: a run that outlives its conversation (Annuleren
   /// while werken) can no longer write state or raise a card.
   int _generation = 0;
-
-  /// The ask in flight's cancel signal: [reset] and [dispose] fire it, which
-  /// aborts the model call on the wire and every find_title source.
-  AbortController? _cancel;
 
   /// True while a [submit] run is still going, displays streamed or not.
   bool _asking = false;
@@ -188,200 +196,319 @@ class AssistantController extends ChangeNotifier {
     _notify();
   }
 
-  /// One ask. A second call while one runs is ignored.
+  /// A new question supersedes every task and card from the previous one.
   Future<void> submit(String prompt) async {
     final text = prompt.trim();
-    if (_busy || text.isEmpty) return;
-    _busy = true;
-    _asking = true;
+    if (_disposed || text.isEmpty) return;
+    final screen = _screenContext;
+    reset();
+    _screenContext = screen;
     final generation = _generation;
-    final cancel = _cancel = AbortController();
     _prompt = text;
-    _answer = '';
-    _steps.clear();
-    _actions.clear();
-    _displays.clear();
-    _resultIsError = false;
-    _lastEnd = null;
-    _lastProviderError = null;
-    _modelMissing = false;
-    _state = AssistantSurfaceState.working;
-    _notify();
-
-    AssistantModelClient? model;
+    final budget = AssistantQuestionBudget();
+    final root = _newTask(title: text, intent: 'command', prompt: text, generation: generation, budget: budget);
+    _tasks.add(root);
+    _update();
     try {
       final config = await _loadConfig();
+      if (!_alive(root)) return;
       if (config == null || !config.isComplete) {
-        if (generation != _generation) return;
         _availability = AssistantAvailability.needsSetup;
-        _prompt = null;
-        _state = AssistantSurfaceState.idle;
+        reset();
         return;
       }
+      // One health refresh per question. Child contexts still check live
+      // authority on every tool and after acquiring the mutation lock.
+      final context = _buildContext(_screenContext);
+      Future<void>? health;
+      Future<void> refresh() => health ??= context.servers.checkServerHealth();
+      await _runTask(root, config, refresh, allowSplit: true);
+    } catch (e, st) {
+      appLogger.w('Assistant ask failed', error: e.runtimeType, stackTrace: st);
+      if (_alive(root)) {
+        root.error = 'failed';
+        root.status = AssistantTaskStatus.failed;
+        _update();
+      }
+    }
+  }
+
+  _AssistantTaskState _newTask({
+    required String title,
+    required String intent,
+    required String prompt,
+    required int generation,
+    required AssistantQuestionBudget budget,
+  }) => _AssistantTaskState(
+    id: 'task-${++_nextTask}',
+    title: title,
+    intent: intent,
+    prompt: prompt,
+    generation: generation,
+    budget: budget,
+  );
+
+  bool _alive(_AssistantTaskState task) =>
+      !_disposed && task.generation == _generation && !task.cancel.isAborted && _tasks.contains(task);
+
+  Future<void> _runTask(
+    _AssistantTaskState task,
+    AssistantProviderConfig config,
+    Future<void> Function() refreshHealth, {
+    bool allowSplit = false,
+  }) async {
+    AssistantModelClient? model;
+    try {
+      if (!_alive(task)) return;
+      task.status = AssistantTaskStatus.running;
+      _update();
       model = _modelFor(config);
       final result = await AssistantRun(
         model: model,
-        // The session builds contexts without the provider config, which
-        // decides the web lookup.
         context: _buildContext(_screenContext).fresh(web: config.webSearch ? _webFor?.call(config) : null),
-        confirm: (action) => _confirm(action, generation),
+        confirm: (action) => _confirm(action, task),
         entitlement: _entitlement,
         tools: _tools,
         languageName: _languageName(),
         confirmTimeout: confirmTimeout,
-        // Cancel, reset or a profile switch (dispose) aborts the model call
-        // and the tools in flight; nothing new starts after that.
-        cancel: cancel,
+        controllerOwnsConfirmTimeout: true,
+        cancel: task.cancel,
+        allowSplit: allowSplit,
+        budget: task.budget,
+        operations: _operations,
+        mutations: _mutations,
+        refreshHealth: refreshHealth,
         onStep: (step) {
-          if (generation != _generation) return;
-          final at = _steps.indexWhere((s) => s.index == step.index);
-          at < 0 ? _steps.add(step) : _steps[at] = step;
-          // Shown now, not after the model's last turn; the run's own list
-          // repeats these and is not added again.
-          if (step.display case final display?) _displays.add(display);
-          _notify();
+          if (!_alive(task)) return;
+          final at = task.steps.indexWhere((s) => s.index == step.index);
+          at < 0 ? task.steps.add(step) : task.steps[at] = step;
+          if (step.display case final display?) task.displays.add(display);
+          _update();
         },
-      ).ask(text);
-      if (generation != _generation) return;
-      _lastEnd = result.end;
-      _lastProviderError = result.providerError;
-      _modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
-      _resultIsError = result.end != AssistantRunEnd.answered;
-      _answer = result.text;
-      _actions.addAll(result.actions);
+      ).ask(task.prompt);
+      if (!_alive(task)) return;
+      if (result.splitTasks.isNotEmpty) {
+        final children = [
+          for (final plan in result.splitTasks)
+            _newTask(
+              title: plan.title,
+              intent: plan.intent,
+              prompt: plan.prompt,
+              generation: task.generation,
+              budget: task.budget,
+            ),
+        ];
+        _tasks
+          ..remove(task)
+          ..addAll(children);
+        _update();
+        await Future.wait([for (final child in children) _runTask(child, config, refreshHealth)]);
+        return;
+      }
+      task.lastEnd = result.end;
+      task.providerError = result.providerError;
+      task.modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
+      task.error = result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name);
+      task.answer = result.text;
+      task.actions.addAll(result.actions);
+      task.status = _outcomeStatus(task.error);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
-      _state = AssistantSurfaceState.result;
     } catch (e, st) {
-      appLogger.w('Assistant ask failed', error: e.runtimeType, stackTrace: st);
-      if (generation == _generation) {
-        _resultIsError = true;
-        _state = AssistantSurfaceState.result;
+      appLogger.w('Assistant task failed', error: e.runtimeType, stackTrace: st);
+      if (_alive(task)) {
+        task.error = 'failed';
+        task.status = AssistantTaskStatus.failed;
       }
     } finally {
       model?.close();
-      if (generation == _generation) {
-        _busy = false;
-        _asking = false;
-        _cancel = null;
-      }
-      _notify();
+      if (task.generation == _generation && !_disposed) _update();
     }
   }
 
-  /// The run's confirm callback: shows [action] through [pending] until the
-  /// user answers, [reset] runs, or [confirmTimeout] passes.
-  Future<AssistantConfirmation?> _confirm(AssistantPendingAction action, int generation) async {
-    if (generation != _generation || _disposed) return null;
-    final completer = Completer<AssistantConfirmation?>();
-    _pending = action;
-    _confirmer = completer;
-    _notify();
-    try {
-      // A TimeoutException reaches the run, which reports `not_confirmed`.
-      return await completer.future.timeout(confirmTimeout);
-    } finally {
-      if (identical(_confirmer, completer)) {
-        _pending = null;
-        _confirmer = null;
-        _notify();
-      }
+  Future<AssistantConfirmation?> _confirm(AssistantPendingAction action, _AssistantTaskState task) {
+    if (!_alive(task)) return Future.value(null);
+    final entry = _QueuedConfirmation(id: 'confirmation-${++_nextConfirmation}', task: task, action: action);
+    _confirmations.add(entry);
+    task.pending = action;
+    task.status = AssistantTaskStatus.waitingForConfirmation;
+    _showNextConfirmation();
+    _update();
+    return entry.completer.future;
+  }
+
+  void _showNextConfirmation() {
+    final entry = _confirmations.firstOrNull;
+    _pending = entry?.action;
+    if (entry == null || entry.timer != null) return;
+    entry.timer = Timer(confirmTimeout, () => _finishConfirmation(entry, null, timedOut: true));
+  }
+
+  void _finishConfirmation(_QueuedConfirmation entry, AssistantConfirmation? answer, {bool timedOut = false}) {
+    if (!_confirmations.remove(entry)) return;
+    entry.timer?.cancel();
+    if (_alive(entry.task)) {
+      entry.task.pending = null;
+      entry.task.status = AssistantTaskStatus.running;
     }
+    if (!entry.completer.isCompleted) {
+      timedOut
+          ? entry.completer.completeError(TimeoutException('Confirmation expired'))
+          : entry.completer.complete(answer);
+    }
+    _showNextConfirmation();
+    _update();
   }
 
-  /// [password] comes from Pleya's secure field, never from the model.
-  void confirmPending({String? password}) => _answerPending(AssistantConfirmation(password: password));
-
-  void cancelPending() => _answerPending(null);
-
-  void _answerPending(AssistantConfirmation? answer) {
-    final completer = _confirmer;
-    if (completer == null || completer.isCompleted) return;
-    completer.complete(answer);
+  /// Confirm exactly the visible task/action. Old sheet responses do nothing.
+  void confirmTask(String taskId, String confirmationId, {String? password}) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || entry.task.id != taskId || entry.id != confirmationId || !_alive(entry.task)) return;
+    _finishConfirmation(entry, AssistantConfirmation(password: password));
   }
 
-  /// The user picked an option card. No model involved: the card is built
-  /// by [assistantRequestFromOption] from the ask that showed [option], and
-  /// goes through the same confirmation, entitlement and authority checks
-  /// as a card the model asked for.
+  void cancelTaskConfirmation(String taskId, String confirmationId) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || entry.task.id != taskId || entry.id != confirmationId) return;
+    _finishConfirmation(entry, null);
+  }
+
+  /// Legacy single-card projection. Pass the captured action for stale-sheet
+  /// protection; task-aware surfaces use [confirmTask].
+  void confirmPending({String? password, AssistantPendingAction? action}) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || (action != null && !identical(action, entry.action))) return;
+    confirmTask(entry.task.id, entry.id, password: password);
+  }
+
+  void cancelPending({AssistantPendingAction? action}) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || (action != null && !identical(action, entry.action))) return;
+    cancelTaskConfirmation(entry.task.id, entry.id);
+  }
+
+  AssistantToolContext? _optionContext(_AssistantTaskState task, AssistantRequestOption option) => task.displays
+      .map(
+        (display) => switch (display) {
+          AssistantRequestOptions(:final context, :final options) when options.any((o) => identical(o, option)) =>
+            context,
+          AssistantTitleMatches(:final context, :final matches) when matches.any((m) => identical(m.request, option)) =>
+            context,
+          _ => null,
+        },
+      )
+      .nonNulls
+      .firstOrNull;
+
   Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async {
-    if (_busy) return;
-    // Option cards and found titles both carry a Seerr request.
-    final ctx = _displays
-        .map(
-          (d) => switch (d) {
-            AssistantRequestOptions(:final context, :final options)
-                when options.any((o) => o.seerrId == option.seerrId) =>
-              context,
-            AssistantTitleMatches(:final context, :final matches)
-                when matches.any((m) => m.request?.seerrId == option.seerrId) =>
-              context,
-            _ => null,
-          },
-        )
-        .nonNulls
-        .firstOrNull;
+    final task = _tasks.where((task) => _optionContext(task, option) != null).firstOrNull;
+    if (task != null) await pickTaskRequestOption(task.id, option, fourK: fourK);
+  }
+
+  Future<void> pickTaskRequestOption(String taskId, AssistantRequestOption option, {bool fourK = false}) async {
+    final task = _tasks.where((task) => task.id == taskId).firstOrNull;
+    if (task == null ||
+        !_alive(task) ||
+        (task.status != AssistantTaskStatus.completed && task.status != AssistantTaskStatus.failed)) {
+      return;
+    }
+    final ctx = _optionContext(task, option);
     if (ctx == null) return;
-    _busy = true;
-    final generation = _generation;
-    _state = AssistantSurfaceState.working;
-    _notify();
-    var failed = true;
+    task.status = AssistantTaskStatus.running;
+    _update();
+    String? failure;
     try {
-      final outcome = await assistantRequestFromOption(ctx, option.seerrId, fourK: fourK);
-      if (generation != _generation) return;
+      if (!task.budget.reserveTool()) throw const AssistantToolError('budget_exhausted');
+      final outcome = await _operations.run(() async {
+        if (!_alive(task)) throw const AssistantToolError('cancelled');
+        return assistantRequestFromOption(ctx, option.seerrId, fourK: fourK);
+      });
+      if (!_alive(task)) return;
       switch (outcome) {
         case AssistantToolResult(:final data):
-          failed = data.containsKey('error');
+          failure = data['error'] as String?;
         case final AssistantPendingAction action:
           final AssistantConfirmation? answer;
           try {
-            answer = await _confirm(action, generation);
+            answer = await _confirm(action, task);
           } on TimeoutException {
-            return;
+            failure = 'not_confirmed';
+            break;
           }
-          if (answer == null || generation != _generation) {
-            failed = false;
-            return;
+          if (answer == null) {
+            failure = 'cancelled_by_user';
+            break;
           }
-          if (await _entitlement.check() != AssistantEntitlementState.entitled) return;
-          final tool = (_tools ?? assistantTools).where((t) => t.name == 'request_title').firstOrNull;
-          if (tool == null || !tool.serves(ctx, action.serverId)) return;
-          // The entitlement check awaited: a reset or profile switch since
-          // the confirmation must not still create the request.
-          if (generation != _generation || _disposed) return;
-          final result = await action.execute(password: answer.password);
-          if (generation != _generation) return;
-          failed = result.containsKey('error');
-          if (!failed && result['done'] != false) _actions.add(action.record);
+          final result = await _mutations.run(
+            () => _operations.run(() async {
+              if (!_alive(task)) return <String, Object?>{'error': 'cancelled'};
+              if (await _entitlement.check() != AssistantEntitlementState.entitled) {
+                return <String, Object?>{'error': 'not_entitled'};
+              }
+              if (!_alive(task)) return <String, Object?>{'error': 'cancelled'};
+              final tool = (_tools ?? assistantTools).where((t) => t.name == 'request_title').firstOrNull;
+              if (tool == null || !tool.serves(ctx, action.serverId)) return <String, Object?>{'error': 'not_allowed'};
+              return action.execute(password: answer?.password);
+            }),
+          );
+          if (!_alive(task)) return;
+          failure = result['error'] as String?;
+          if (failure == null && result['done'] != false) task.actions.add(action.record);
       }
+    } on AssistantToolError catch (e) {
+      failure = e.code;
     } catch (e, st) {
-      // Seerr refused, or the client changed under the card.
       appLogger.w('Assistant request option failed', error: e.runtimeType, stackTrace: st);
+      failure = 'failed';
     } finally {
-      if (generation == _generation) {
-        _busy = false;
-        _resultIsError = failed;
-        _state = AssistantSurfaceState.result;
+      if (_alive(task)) {
+        task.error = failure;
+        task.status = _outcomeStatus(failure);
+        _update();
       }
-      _notify();
     }
   }
 
-  /// A run in flight and a waiting card are let go; what is on screen stays
-  /// until [reset] (Big P sliding out). Does not notify.
-  void abort() {
-    _generation++;
-    _abortAsk();
-    _answerPending(null);
+  // Declining a confirmation declines that action; the model still receives
+  // its tool response and can continue. Only the final task label changes.
+  AssistantTaskStatus _outcomeStatus(String? error) => switch (error) {
+    null => AssistantTaskStatus.completed,
+    'cancelled_by_user' => AssistantTaskStatus.cancelled,
+    _ => AssistantTaskStatus.failed,
+  };
+
+  void cancelTask(String taskId) {
+    final task = _tasks.where((task) => task.id == taskId).firstOrNull;
+    if (task == null || task.status == AssistantTaskStatus.cancelled) return;
+    task.cancel.abort();
+    task.status = AssistantTaskStatus.cancelled;
+    for (final entry in _confirmations.where((entry) => identical(entry.task, task)).toList()) {
+      _finishConfirmation(entry, null);
+    }
+    _update();
   }
 
-  /// Back to rust; the conversation, a waiting card and a run in flight are
-  /// all let go.
+  void cancelAll() {
+    for (final task in _tasks.toList()) {
+      if (task.status == AssistantTaskStatus.pending ||
+          task.status == AssistantTaskStatus.running ||
+          task.status == AssistantTaskStatus.waitingForConfirmation) {
+        cancelTask(task.id);
+      }
+    }
+  }
+
+  /// Drop lifecycle authority while keeping the last visible results.
+  void abort() {
+    cancelAll();
+    _generation++;
+  }
+
   void reset() {
     abort();
+    _tasks.clear();
     _pending = null;
-    _confirmer = null;
     _busy = false;
+    _asking = false;
     _state = AssistantSurfaceState.idle;
     _resultIsError = false;
     _lastEnd = null;
@@ -396,10 +523,34 @@ class AssistantController extends ChangeNotifier {
     _notify();
   }
 
-  void _abortAsk() {
-    _cancel?.abort();
-    _cancel = null;
-    _asking = false;
+  void _update() {
+    _busy = _tasks.any(
+      (task) =>
+          task.status == AssistantTaskStatus.pending ||
+          task.status == AssistantTaskStatus.running ||
+          task.status == AssistantTaskStatus.waitingForConfirmation,
+    );
+    _asking = _busy;
+    _state = _busy
+        ? AssistantSurfaceState.working
+        : _tasks.isEmpty
+        ? AssistantSurfaceState.idle
+        : AssistantSurfaceState.result;
+    _resultIsError = _tasks.any((task) => task.status == AssistantTaskStatus.failed);
+    _answer = _tasks.map((task) => task.answer).where((answer) => answer.isNotEmpty).join('\n');
+    _steps
+      ..clear()
+      ..addAll(_tasks.expand((task) => task.steps));
+    _actions
+      ..clear()
+      ..addAll(_tasks.expand((task) => task.actions));
+    _displays
+      ..clear()
+      ..addAll(_tasks.expand((task) => task.displays));
+    _lastEnd = _tasks.map((task) => task.lastEnd).nonNulls.lastOrNull;
+    _lastProviderError = _tasks.map((task) => task.providerError).nonNulls.firstOrNull;
+    _modelMissing = _tasks.any((task) => task.modelMissing);
+    _notify();
   }
 
   void _notify() {
@@ -410,9 +561,57 @@ class AssistantController extends ChangeNotifier {
   void dispose() {
     _configChanges.removeListener(_onConfigChanged);
     _disposed = true;
-    _generation++;
-    _abortAsk();
-    _answerPending(null);
+    abort();
     super.dispose();
   }
+}
+
+class _AssistantTaskState {
+  _AssistantTaskState({
+    required this.id,
+    required this.title,
+    required this.intent,
+    required this.prompt,
+    required this.generation,
+    required this.budget,
+  });
+  final String id, title, intent, prompt;
+  final int generation;
+  final AssistantQuestionBudget budget;
+  final AbortController cancel = AbortController();
+  AssistantTaskStatus status = AssistantTaskStatus.pending;
+  String answer = '';
+  String? error;
+  AssistantRunEnd? lastEnd;
+  AssistantModelError? providerError;
+  bool modelMissing = false;
+  AssistantPendingAction? pending;
+  final List<AssistantStep> steps = [];
+  final List<AssistantActionRecord> actions = [];
+  final List<AssistantDisplay> displays = [];
+  AssistantTask get view => AssistantTask(
+    id: id,
+    title: title,
+    intent: intent,
+    status: status,
+    answer: answer,
+    error: error,
+    lastEnd: lastEnd,
+    providerError: providerError,
+    modelMissing: modelMissing,
+    pending: pending,
+    steps: List.unmodifiable(steps),
+    actions: List.unmodifiable(actions),
+    displays: List.unmodifiable(displays),
+  );
+}
+
+class _QueuedConfirmation {
+  _QueuedConfirmation({required this.id, required this.task, required this.action});
+  final String id;
+  final _AssistantTaskState task;
+  final AssistantPendingAction action;
+  final Completer<AssistantConfirmation?> completer = Completer();
+  Timer? timer;
+  AssistantTaskConfirmation get view => AssistantTaskConfirmation(id: id, taskId: task.id, action: action);
 }

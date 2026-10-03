@@ -51,19 +51,19 @@ class TvAssistantGlassPanel extends StatelessWidget {
 
 /// The dark ground cards keep on the glass, for contrast (Paneel).
 class TvAssistantCard extends StatelessWidget {
-  const TvAssistantCard({super.key, required this.child});
+  const TvAssistantCard({super.key, required this.child, this.padding});
 
   final Widget child;
+
+  /// In points; the result card's own padding when null.
+  final EdgeInsets? padding;
 
   @override
   Widget build(BuildContext context) {
     final pt = TvHig.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(20 * pt)),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 28 * pt, vertical: 22 * pt),
-        child: child,
-      ),
+      child: Padding(padding: (padding ?? const EdgeInsets.symmetric(horizontal: 28, vertical: 22)) * pt, child: child),
     );
   }
 }
@@ -135,7 +135,9 @@ class TvAssistantStatusLine extends StatelessWidget {
 }
 
 /// A full-width focusable capsule: an example question, or anything else
-/// that reads as a sentence rather than a button label.
+/// that reads as a sentence rather than a button label. [dense] is the small
+/// one-line capsule on a task card, where [semanticLabel] says in full what
+/// the short label acts on.
 class TvAssistantChip extends StatefulWidget {
   const TvAssistantChip({
     super.key,
@@ -144,9 +146,13 @@ class TvAssistantChip extends StatefulWidget {
     this.focusNode,
     this.automationId,
     this.automationInstance,
+    this.semanticLabel,
+    this.dense = false,
   });
 
   final String label;
+  final String? semanticLabel;
+  final bool dense;
   final VoidCallback onSelect;
   final FocusNode? focusNode;
   final String? automationId;
@@ -167,7 +173,7 @@ class _TvAssistantChipState extends State<TvAssistantChip> {
       focusNode: widget.focusNode,
       borderRadius: 40 * pt,
       disableScale: true,
-      semanticLabel: widget.label,
+      semanticLabel: widget.semanticLabel ?? widget.label,
       automationId: widget.automationId,
       automationInstance: widget.automationInstance,
       automationRole: 'button',
@@ -178,19 +184,26 @@ class _TvAssistantChipState extends State<TvAssistantChip> {
       },
       child: AnimatedContainer(
         duration: tokens(context).fast,
-        padding: EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
+        padding: widget.dense
+            ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 8 * pt)
+            : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
         decoration: BoxDecoration(
-          color: _focused ? colors.inverseSurface : const Color(0x1FFFFFFF),
+          color: _focused ? colors.inverseSurface : Color(widget.dense ? 0x26FFFFFF : 0x1FFFFFFF),
           borderRadius: BorderRadius.circular(40 * pt),
         ),
-        child: Text(
-          widget.label,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _focused ? colors.onInverseSurface : tokens(context).text,
-            fontSize: TvHig.caption1 * pt,
-            height: 1.25,
+        // A fuller label speaks for the capsule; the short one is not read twice.
+        child: ExcludeSemantics(
+          excluding: widget.semanticLabel != null,
+          child: Text(
+            widget.label,
+            maxLines: widget.dense ? 1 : 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _focused ? colors.onInverseSurface : tokens(context).text,
+              fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
+              fontWeight: widget.dense ? FontWeight.w700 : null,
+              height: 1.25,
+            ),
           ),
         ),
       ),

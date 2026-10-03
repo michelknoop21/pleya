@@ -10,6 +10,7 @@ import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
+import 'tv_assistant_tasks.dart';
 import 'tv_assistant_widgets.dart';
 
 /// What the glass panel holds in each stand (rust, luisteren, werken,
@@ -25,12 +26,14 @@ class TvAssistantConversation extends StatelessWidget {
     required this.askNode,
     required this.cancelNode,
     required this.firstOptionNode,
+    required this.taskOptionNodes,
     required this.onAsk,
     required this.onDone,
     required this.onCancelWork,
     required this.onExample,
     required this.onPickOption,
     required this.onOpenTitle,
+    this.tasksNode,
     this.compact = false,
   });
 
@@ -43,12 +46,18 @@ class TvAssistantConversation extends StatelessWidget {
   final FocusNode askNode;
   final FocusNode cancelNode;
   final FocusNode firstOptionNode;
+
+  /// Several tasks: each task's first choice has its own node.
+  final TvAssistantTaskOptionNodes taskOptionNodes;
   final VoidCallback onAsk;
   final VoidCallback onDone;
   final VoidCallback onCancelWork;
   final ValueChanged<String> onExample;
   final ValueChanged<AssistantRequestOption> onPickOption;
   final ValueChanged<AssistantTitleTarget> onOpenTitle;
+
+  /// Has the focus while the remote is on a task's capsule or result.
+  final FocusNode? tasksNode;
 
   /// The summoned panel (570 pt) rather than the surface.
   final bool compact;
@@ -75,6 +84,64 @@ class TvAssistantConversation extends StatelessWidget {
       automationInstance: 'ask',
       onPressed: onAsk,
     );
+
+    Widget column(List<Widget> items) =>
+        Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
+
+    // Several commands in one question: a card per task instead of one step
+    // list and one result card. One command keeps the stands below.
+    final working = c.state == AssistantSurfaceState.working;
+    if (c.tasks.length > 1 && (working || c.state == AssistantSurfaceState.result)) {
+      // Pleya's own count, bounded like the question: both stay above the
+      // scrolling part while working and scroll along in the result.
+      final top = <Widget>[
+        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
+        Text(assistantTasksHeadline(c.tasks), style: headlineStyle),
+        gap,
+      ];
+      final mixed = c.tasks.any((task) => task.status != AssistantTaskStatus.completed);
+      return column([
+        if (working) ...top,
+        Flexible(
+          child: SingleChildScrollView(
+            reverse: true,
+            child: column([
+              if (!working) ...top,
+              if (!working && mixed && c.actions.isNotEmpty) ...[
+                Text(
+                  '${t.assistant.result.doneBy} · $resultTime',
+                  style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption2 * pt),
+                ),
+                SizedBox(height: 12 * pt),
+              ],
+              TvAssistantTaskList(
+                key: const ValueKey('assistant.tasks'),
+                controller: c,
+                compact: compact,
+                groupNode: tasksNode,
+                optionNodes: taskOptionNodes,
+                onOpenTitle: onOpenTitle,
+                footerNodes: [cancelNode, askNode],
+                footer: working
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: TvAssistantButton(
+                          label: t.assistant.tasks.cancelAll,
+                          icon: Symbols.close_rounded,
+                          primary: false,
+                          focusNode: cancelNode,
+                          automationId: AutomationIds.assistantButton,
+                          automationInstance: 'cancel',
+                          onPressed: c.cancelAll,
+                        ),
+                      )
+                    : _resultButtons(pt, ask),
+              ),
+            ]),
+          ),
+        ),
+      ]);
+    }
 
     final children = switch (c.state) {
       AssistantSurfaceState.idle => <Widget>[
@@ -142,8 +209,6 @@ class TvAssistantConversation extends StatelessWidget {
         gap,
       ],
     ];
-    Widget column(List<Widget> items) =>
-        Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
     // Anchored at the bottom: the newest stays in view.
     return column([...head, Flexible(child: SingleChildScrollView(reverse: true, child: column(children)))]);
   }
@@ -195,20 +260,22 @@ class TvAssistantConversation extends StatelessWidget {
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         gap,
       ],
-      Wrap(
-        spacing: 12 * pt,
-        runSpacing: 12 * pt,
-        children: [
-          ask(),
-          TvAssistantButton(
-            label: t.assistant.result.done,
-            primary: false,
-            automationId: AutomationIds.assistantButton,
-            automationInstance: 'done',
-            onPressed: onDone,
-          ),
-        ],
-      ),
+      _resultButtons(pt, ask),
     ];
   }
+
+  Widget _resultButtons(double pt, Widget Function({bool primary}) ask) => Wrap(
+    spacing: 12 * pt,
+    runSpacing: 12 * pt,
+    children: [
+      ask(),
+      TvAssistantButton(
+        label: t.assistant.result.done,
+        primary: false,
+        automationId: AutomationIds.assistantButton,
+        automationInstance: 'done',
+        onPressed: onDone,
+      ),
+    ],
+  );
 }

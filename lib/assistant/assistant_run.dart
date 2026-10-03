@@ -6,6 +6,7 @@ import '../media/ids.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
+import 'assistant_execution.dart';
 import 'assistant_provider.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
@@ -47,6 +48,8 @@ class AssistantRunResult {
     this.actions = const [],
     this.displays = const [],
     this.providerError,
+    this.error,
+    this.splitTasks = const [],
   });
   final AssistantRunEnd end;
 
@@ -59,7 +62,50 @@ class AssistantRunResult {
   /// What tools handed the UI to show (a grid of titles, a comparison).
   final List<AssistantDisplay> displays;
   final AssistantModelError? providerError;
+  final String? error;
+  final List<AssistantTaskPlan> splitTasks;
 }
+
+/// Model-proposed independent command, validated before any execution.
+class AssistantTaskPlan {
+  const AssistantTaskPlan({required this.title, required this.intent, required this.prompt});
+  final String title;
+  final String intent;
+  final String prompt;
+}
+
+const _splitSpec = <String, Object?>{
+  'type': 'function',
+  'function': {
+    'name': 'split_tasks',
+    'description':
+        'For a prompt with independent commands, return all commands as 2 to 10 tasks. '
+        'Use this call alone. Keep dependent steps (find then request) in one task. '
+        'Tasks cannot refer to other tasks. Do not split a single command.',
+    'parameters': {
+      'type': 'object',
+      'additionalProperties': false,
+      'properties': {
+        'tasks': {
+          'type': 'array',
+          'minItems': 2,
+          'maxItems': 10,
+          'items': {
+            'type': 'object',
+            'additionalProperties': false,
+            'properties': {
+              'title': {'type': 'string'},
+              'intent': {'type': 'string'},
+              'prompt': {'type': 'string'},
+            },
+            'required': ['title', 'intent', 'prompt'],
+          },
+        },
+      },
+      'required': ['tasks'],
+    },
+  },
+};
 
 /// One prompt, answered: model call, validated tool calls, authority,
 /// confirmation where needed, execution, and back to the model, at most
@@ -81,6 +127,12 @@ class AssistantRun {
     this.healthRefresh = const Duration(seconds: 10),
     this.onStep,
     this.cancel,
+    this.allowSplit = false,
+    this.budget,
+    this.operations,
+    this.mutations,
+    this.controllerOwnsConfirmTimeout = false,
+    this.refreshHealth,
   });
 
   /// Fires once the user cancelled or left (reset, profile switch): the
@@ -103,6 +155,15 @@ class AssistantRun {
   final String languageName;
   final Duration confirmTimeout;
   final Duration healthRefresh;
+  final bool allowSplit;
+  final AssistantQuestionBudget? budget;
+  final AssistantOperationPool? operations;
+  final AssistantOperationPool? mutations;
+  final bool controllerOwnsConfirmTimeout;
+  final Future<void> Function()? refreshHealth;
+  final Map<String, String> _errors = {};
+
+  Future<T> _operation<T>(Future<T> Function() operation) => operations?.run(operation) ?? operation();
 
   final List<AssistantActionRecord> _actions = [];
   final List<AssistantDisplay> _displays = [];
@@ -143,6 +204,7 @@ class AssistantRun {
   }
 
   Future<AssistantRunResult> _ask(String prompt) async {
+    _errors.clear();
     _actions.clear();
     _displays.clear();
     _stepIndex = 0;
@@ -153,7 +215,7 @@ class AssistantRun {
     // Fresh roles before the first decision: the health probe re-reads the
     // Jellyfin admin flag and the Pleya Server role.
     try {
-      await _ctx.servers.checkServerHealth().timeout(healthRefresh);
+      await (refreshHealth?.call() ?? _ctx.servers.checkServerHealth()).timeout(healthRefresh);
     } on TimeoutException {
       // Offline servers simply drop out of the tool list.
     }
@@ -169,12 +231,21 @@ class AssistantRun {
       // Nothing to act on (no server and no serverless service such as
       // Seerr): do not spend a model call.
       if (_ctx.userServers.isEmpty && available.keys.every((t) => t.name == 'list_servers')) {
-        return _end(AssistantRunEnd.noTools);
+        return _end(callsThisRun > 0 && _errors.isEmpty ? AssistantRunEnd.answered : AssistantRunEnd.noTools);
       }
       final AssistantReply reply;
       try {
         if (_cancelled) return _end(AssistantRunEnd.stepLimit);
-        reply = await model.chat(messages, [for (final e in available.entries) e.key.spec(e.value)], abort: cancel);
+        if (budget != null && !budget!.reserveModel()) {
+          return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
+        }
+        reply = await _operation(() async {
+          if (_cancelled) throw const AssistantToolError('cancelled');
+          return model.chat(messages, [
+            for (final e in available.entries) e.key.spec(e.value),
+            if (allowSplit && step == 0) _splitSpec,
+          ], abort: cancel);
+        });
       } on AssistantModelException catch (e) {
         if (_cancelled) return _end(AssistantRunEnd.stepLimit);
         return _end(
@@ -190,13 +261,62 @@ class AssistantRun {
         return _end(AssistantRunEnd.providerError, error: AssistantModelError.badResponse);
       }
       messages.add(reply.message);
+      if (reply.toolCalls.any((call) => call.name == 'split_tasks')) {
+        if (!allowSplit || step != 0) return _end(AssistantRunEnd.stepLimit, failure: 'invalid_split');
+        var plans = _splitPlans(reply);
+        if (plans == null) {
+          // One repair turn, with only the read-only routing spec. Neither the
+          // malformed reply nor its repair may execute ordinary tools.
+          for (final call in reply.toolCalls) {
+            messages.add({
+              'role': 'tool',
+              'tool_call_id': call.id,
+              'content': jsonEncode({'error': 'invalid_split'}),
+            });
+          }
+          messages.add({
+            'role': 'user',
+            'content':
+                'Return one exclusive valid split_tasks call containing every independent command. No other tools.',
+          });
+          if (budget != null && !budget!.reserveModel()) {
+            return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
+          }
+          try {
+            final repair = await _operation(() async {
+              if (_cancelled) throw const AssistantToolError('cancelled');
+              return model.chat(messages, [_splitSpec], abort: cancel);
+            });
+            plans = _splitPlans(repair);
+          } catch (_) {
+            return _end(AssistantRunEnd.stepLimit, failure: 'invalid_split');
+          }
+        }
+        if (plans == null || _cancelled) return _end(AssistantRunEnd.stepLimit, failure: 'invalid_split');
+        if (budget != null && !budget!.reserveTool()) {
+          return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
+        }
+        return AssistantRunResult(end: AssistantRunEnd.answered, splitTasks: List.unmodifiable(plans));
+      }
       if (reply.toolCalls.isEmpty) return _end(AssistantRunEnd.answered, text: reply.content);
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
         // Every call gets an answer, so the history stays valid.
         final output = index >= maxCallsPerReply || callsThisRun >= maxCallsPerRun
-            ? const {'error': 'too_many_calls'}
+            ? const <String, Object?>{'error': 'too_many_calls'}
+            : budget != null && !budget!.reserveTool()
+            ? const <String, Object?>{'error': 'budget_exhausted'}
             : await _execute(call);
+        final operationKey = _operationKey(call);
+        if (output['error'] case final String code) {
+          _errors[operationKey] = code;
+        } else if (output['library_access'] == 'failed') {
+          _errors[operationKey] = 'library_access_failed';
+        } else if (output['status'] == 'not_confirmed' || output['status'] == 'cancelled_by_user') {
+          _errors[operationKey] = output['status'] as String;
+        } else {
+          _errors.remove(operationKey);
+        }
         callsThisRun++;
         messages.add({'role': 'tool', 'tool_call_id': call.id, 'content': jsonEncode(output)});
       }
@@ -204,13 +324,60 @@ class AssistantRun {
     return _end(AssistantRunEnd.stepLimit);
   }
 
-  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error}) => AssistantRunResult(
-    end: end,
-    text: text,
-    actions: List.unmodifiable(_actions),
-    displays: List.unmodifiable(_displays),
-    providerError: error,
-  );
+  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) =>
+      AssistantRunResult(
+        end: end,
+        text: text,
+        actions: List.unmodifiable(_actions),
+        displays: List.unmodifiable(_displays),
+        providerError: error,
+        error:
+            failure ??
+            _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??
+            _errors.values.firstOrNull,
+      );
+
+  String _operationKey(AssistantToolCall call) {
+    Object? sorted(Object? value) => switch (value) {
+      final Map<String, Object?> map => {for (final key in map.keys.toList()..sort()) key: sorted(map[key])},
+      final List list => list.map(sorted).toList(),
+      _ => value,
+    };
+    try {
+      return '${call.name}:${jsonEncode(sorted(jsonDecode(call.arguments.isEmpty ? '{}' : call.arguments)))}';
+    } on FormatException {
+      return '${call.name}:${call.arguments}';
+    }
+  }
+
+  List<AssistantTaskPlan>? _splitPlans(AssistantReply reply) {
+    if (reply.toolCalls.length != 1 || reply.toolCalls.single.name != 'split_tasks') return null;
+    try {
+      final decoded = jsonDecode(reply.toolCalls.single.arguments);
+      if (decoded is! Map || decoded.length != 1 || decoded['tasks'] is! List) return null;
+      final tasks = decoded['tasks'] as List;
+      if (tasks.length < 2 || tasks.length > 10) return null;
+      final result = <AssistantTaskPlan>[];
+      for (final task in tasks) {
+        if (task is! Map || task.length != 3) return null;
+        for (final key in ['title', 'intent', 'prompt']) {
+          if (task[key] is! String || (task[key] as String).trim().isEmpty || (task[key] as String).length > 4000) {
+            return null;
+          }
+        }
+        result.add(
+          AssistantTaskPlan(
+            title: clipText(task['title'] as String, 120),
+            intent: clipText(task['intent'] as String, 80),
+            prompt: (task['prompt'] as String).trim(),
+          ),
+        );
+      }
+      return result;
+    } on FormatException {
+      return null;
+    }
+  }
 
   /// Stand-in id for asking a serverless tool whether it serves at all, so a
   /// profile with Seerr but no media server still gets its request tools.
@@ -269,7 +436,10 @@ class AssistantRun {
     final output = await _executeCall(call);
     final display = _displays.length > shown ? _displays.last : null;
     final failed =
-        output.containsKey('error') || output['status'] == 'cancelled_by_user' || output['status'] == 'not_confirmed';
+        output.containsKey('error') ||
+        output['library_access'] == 'failed' ||
+        output['status'] == 'cancelled_by_user' ||
+        output['status'] == 'not_confirmed';
     onStep?.call(
       AssistantStep(
         index: index,
@@ -302,10 +472,25 @@ class AssistantRun {
     }
 
     try {
-      final outcome = await tool.run(_ctx, serverId, args);
+      Future<AssistantToolOutcome> prepare() => _operation(() async {
+        if (_cancelled) throw const AssistantToolError('cancelled');
+        if (tool.risk != AssistantToolRisk.read) {
+          if (await entitlement.check() != AssistantEntitlementState.entitled) {
+            throw const AssistantToolError('not_entitled');
+          }
+          if (_cancelled) throw const AssistantToolError('cancelled');
+          if (!tool.serves(_ctx, serverId ?? _noServer)) throw const AssistantToolError('not_allowed');
+        }
+        return tool.run(_ctx, serverId, args);
+      });
+      // Immediate mutation tools execute inside their run callback. Sensitive
+      // tools only prepare the card here; their execute callback locks later.
+      final outcome = tool.risk == AssistantToolRisk.mutation && mutations != null
+          ? await mutations!.run(prepare)
+          : await prepare();
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
-          if (record != null) _actions.add(record);
+          if (record != null && !data.containsKey('error') && data['done'] != false) _actions.add(record);
           if (display != null) _displays.add(display);
           return data;
         case final AssistantPendingAction action:
@@ -326,20 +511,28 @@ class AssistantRun {
   Future<Map<String, Object?>> _confirmAndRun(AssistantTool tool, AssistantPendingAction action) async {
     final AssistantConfirmation? answer;
     try {
-      answer = await confirm(action).timeout(confirmTimeout);
+      final pending = confirm(action);
+      answer = await (controllerOwnsConfirmTimeout ? pending : pending.timeout(confirmTimeout));
     } on TimeoutException {
       return {'status': 'not_confirmed'};
     }
     if (answer == null) return {'status': 'cancelled_by_user'};
-    // The card may have been open for a while: entitlement and authority are
-    // checked again, against the state of this moment.
-    if (await entitlement.check() != AssistantEntitlementState.entitled) return {'error': 'not_entitled'};
-    if (!tool.serves(_ctx, action.serverId)) return {'error': 'not_allowed'};
-    if (_cancelled) return {'status': 'cancelled_by_user'};
-    final result = await action.execute(password: answer.password);
+    Future<Map<String, Object?>> execute() => _operation(() async {
+      if (_cancelled) return {'status': 'cancelled_by_user'};
+      if (await entitlement.check() != AssistantEntitlementState.entitled) return {'error': 'not_entitled'};
+      if (_cancelled) return {'status': 'cancelled_by_user'};
+      if (!tool.serves(_ctx, action.serverId)) return {'error': 'not_allowed'};
+      return action.execute(password: answer?.password);
+    });
+    final result = mutations == null ? await execute() : await mutations!.run(execute);
     // A confirmed action that changed nothing (`done: false`) is not shown
     // as done.
-    if (result['done'] != false && !result.containsKey('error')) _actions.add(action.record);
+    if (result['done'] != false &&
+        !result.containsKey('error') &&
+        result['status'] != 'cancelled_by_user' &&
+        result['status'] != 'not_confirmed') {
+      _actions.add(action.record);
+    }
     return result;
   }
 }
