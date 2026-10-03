@@ -86,8 +86,9 @@ const _playsPerUser = 200;
 
 /// One play for the period aggregate, already clipped. [userKey] is the
 /// account on [server], so two people who clip to one display name on one
-/// server stay two users.
-typedef _Play = ({String server, String titleKey, String title, String userKey, String user, int seconds});
+/// server stay two users. [named] is false for a fallback label ("User 7"),
+/// which is never matched across servers.
+typedef _Play = ({String server, String titleKey, String title, String userKey, String user, int seconds, bool named});
 
 /// The wall-clock budget of one tool call. [race] answers null once it is
 /// spent, so a slow server ends the reading instead of the whole tool.

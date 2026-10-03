@@ -85,6 +85,9 @@ class _Seerr {
   int? movieStatus4k;
   Map<int, int> seasonStatus = {};
 
+  /// The /discover/movies page; twelve plain films when null.
+  List<Map<String, Object?>>? discover;
+
   final posts = <Map<String, dynamic>>[];
   final gets = <Uri>[];
 
@@ -161,9 +164,11 @@ class _Seerr {
           {'id': 28, 'name': 'Action'},
         ]),
         '/discover/movies' => _json({
-          'results': [
-            for (var i = 0; i < 12; i++) {'id': 700 + i, 'mediaType': 'movie', 'title': 'Film $i'},
-          ],
+          'results':
+              discover ??
+              [
+                for (var i = 0; i < 12; i++) {'id': 700 + i, 'mediaType': 'movie', 'title': 'Film $i'},
+              ],
         }),
         '/movie/604' => _json(const {'id': 604, 'title': 'The Matrix Reloaded', 'releaseDate': '2003-05-15'}),
         '/movie/700' => _json(const {'id': 700, 'title': 'Film 0', 'releaseDate': '1995-01-01'}),
@@ -544,6 +549,38 @@ void main() {
     expect((result.displays.single as AssistantRequestOptions).options, hasLength(10));
     // A discovered id is in the allow-list.
     expect(cards.single.subject, 'Film 0 (1995)');
+  });
+
+  group('discover keeps what the user asked for', () {
+    Map<String, Object?> film(int id, String language, int votes) => {
+      'id': id,
+      'mediaType': 'movie',
+      'title': 'Film $id',
+      'originalLanguage': language,
+      'voteCount': votes,
+    };
+    final page = [film(1, 'ja', 900), film(2, 'ko', 30), film(3, 'en', 5000), film(4, 'ja', 4)];
+
+    Future<List<String>> titles(Map<String, Object?> args, List<Map<String, Object?>> results) async {
+      final seerr = _Seerr()..discover = results;
+      final (_, model) = await run([
+        _call('discover_request_titles', {'kind': 'movie', ...args}),
+        _say('x'),
+      ], seerr: seerr);
+      final out = model.toolResults.first;
+      expect(out, isNot(contains('ignored_filters')));
+      return [for (final t in out['titles'] as List) (t as Map)['title'] as String];
+    }
+
+    test('an asked original_language is applied to the page', () async {
+      expect(await titles({'original_language': 'ja'}, page), ['Film 1', 'Film 4']);
+    });
+
+    test('a request with nothing mainstream (anime) still returns the page', () async {
+      final anime = [film(1, 'ja', 900), film(2, 'ko', 30), film(4, 'ja', 4)];
+      expect(await titles({}, anime), ['Film 1', 'Film 2', 'Film 4']);
+      expect(await titles({}, page), ['Film 3'], reason: 'with mainstream titles on the page only those');
+    });
   });
 
   test('option cards carry poster and overview; the model gets a short clip only', () async {

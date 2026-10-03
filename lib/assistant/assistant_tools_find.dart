@@ -83,6 +83,7 @@ FindQuery _findQuery(Map<String, Object?> args) {
     series: series == null || _idLike.hasMatch(series) ? null : series,
     season: _int(args, 'season', 0, 200),
     episode: _int(args, 'episode', 1, 2000),
+    subject: _bool(args, 'subject'),
   );
 }
 
@@ -105,7 +106,7 @@ final List<AssistantTool> _findTools = [
         '(for space: "space", "ruimte"), then short phrases a plot summary would contain ("astronauts in a '
         'spacecraft", "astronauten in een ruimteschip"). For an episode give the series and any season or episode '
         'number. Searches the plot summaries of this profile\'s libraries, Wikipedia and Seerr, and the web only '
-        'when that is not enough. Returns up to 8 matches, up to 20 library titles for a subject, with a confidence, where they can be played (item_id, server_id) and a '
+        'when that is not enough. Returns up to 8 matches, up to 20 library titles when subject is true, with a confidence, where they can be played (item_id, server_id) and a '
         'seerr_id for request_title. Say so when confidence is low or partial is set.',
     risk: AssistantToolRisk.read,
     needsServer: false,
@@ -140,6 +141,12 @@ final List<AssistantTool> _findTools = [
       'series': {'type': 'string'},
       'season': {'type': 'integer'},
       'episode': {'type': 'integer'},
+      'subject': {
+        'type': 'boolean',
+        'description':
+            'true when the user wants films about a topic (a list), false or absent when looking for one '
+            'specific title',
+      },
     },
     required: const ['variants'],
     // A visible server that is online now, or Seerr.

@@ -223,6 +223,7 @@ Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int da
             userKey: e.userId != null ? 'id${e.userId}' : 'name${e.user ?? e.displayName}',
             user: clipText(e.displayName, 40),
             seconds: e.playSeconds ?? 0,
+            named: true,
           ),
     ],
     hours: true,
@@ -232,8 +233,12 @@ Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int da
 
 /// Plex's own play log, for a server without a working Tautulli. One row per
 /// completed view; no durations.
-Future<_ServerPlays> _plexPlays(ServerId id, PlexClient plex, String token, int days) async {
-  final history = await plex.fetchServerHistory(since: _periodStart(days), authToken: token, cap: _historyCap);
+/// Null when the server does not answer within [_compareDeadline].
+Future<_ServerPlays?> _plexPlays(ServerId id, PlexClient plex, String token, int days) async {
+  final history = await _Budget(
+    _compareDeadline,
+  ).race(plex.fetchServerHistory(since: _periodStart(days), authToken: token, cap: _historyCap));
+  if (history == null) return null;
   return (
     plays: [
       for (final p in history.plays)
@@ -242,8 +247,10 @@ Future<_ServerPlays> _plexPlays(ServerId id, PlexClient plex, String token, int 
           titleKey: _titleKey(p.showTitle != null, p.showTitle ?? p.title),
           title: clipText(p.showTitle ?? p.title),
           userKey: 'id${p.accountId}',
-          user: clipText(p.userName, 40),
+          // Same fallback label as fetchItemWatchers when /accounts is silent.
+          user: clipText(p.userName ?? 'User ${p.accountId}', 40),
           seconds: 0,
+          named: p.userName != null,
         ),
     ],
     hours: false,
@@ -278,6 +285,7 @@ Future<_ServerPlays> _jellyfinPlays(ServerId id, JellyfinClient client, int days
         userKey: user.id,
         user: clipText(user.name, 40),
         seconds: 0,
+        named: true,
       ));
     }
   }
@@ -316,6 +324,7 @@ Future<_ServerPlays?> _pleyaPlays(ServerId id, PleyaServerClient ps, int days) a
             userKey: w.userId,
             user: clipText(w.userName, 40),
             seconds: 0,
+            named: true,
           ),
     ],
     hours: false,
@@ -345,6 +354,8 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   final personOf = <String, String>{};
   final serversOfPerson = <String, Set<String>>{};
   String person(_Play p) => personOf['${p.server}|${p.userKey}'] ??= () {
+    // An unnamed account ("User 7") is that server's own: never merged by label.
+    if (!p.named) return '${p.server}|${p.userKey}';
     for (var i = 0; ; i++) {
       final key = '${p.user.toLowerCase()}#$i';
       if ((serversOfPerson[key] ??= {}).add(p.server)) return key;

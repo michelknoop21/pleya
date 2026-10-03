@@ -280,6 +280,10 @@ Future<AssistantToolContext> _plexCtx({
     serverName: 'Pleya',
     httpClient: MockClient((request) async {
       paths?.add(request.url.path);
+      // A runaway pager fails here instead of hanging the test.
+      if ((paths?.where((p) => p == '/status/sessions/history/all').length ?? 0) > 100) {
+        throw StateError('history paged without end');
+      }
       final body = switch (request.url.path) {
         '/status/sessions/history/all' => {'Metadata': history},
         '/status/sessions' => {'Metadata': sessions},
@@ -883,6 +887,52 @@ void main() {
       ]);
       expect(result.data, isNot(contains('unavailable')));
       expect((result.display! as AssistantWatchStats).unavailable, isEmpty);
+    });
+
+    test('Plex history of endless skipped rows stops paging', () async {
+      final paths = <String>[];
+      final now = DateTime.now();
+      final ctx = await _plexCtx(
+        paths: paths,
+        history: [for (var i = 0; i < 500; i++) _plexPlay(7, 'track', 'Song $i', now)],
+      );
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['servers'], ['Pleya']);
+      expect(result.data['plays'], 0);
+      expect(result.data['capped_at_plays'], 5000);
+      expect(paths.where((p) => p == '/status/sessions/history/all'), hasLength(40));
+    });
+
+    test('a Plex row without viewedAt is skipped, not the end of the period', () async {
+      final ctx = await _plexCtx(
+        history: [
+          {'accountID': 7, 'type': 'movie', 'title': 'Undated'},
+          _plexPlay(7, 'movie', 'Dune', DateTime.now()),
+        ],
+      );
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      expect(result.data['plays'], 1);
+      expect((result.data['top_titles']! as List).single, containsPair('title', 'Dune'));
+    });
+
+    test('an unnamed Plex account is not merged with a same-named user on another server', () async {
+      final now = DateTime.now();
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        users: const [ServerUser(id: 'j9', name: 'User 9', role: ServerUserRole.member, allLibraries: true)],
+        played: {
+          'j9': [_played('x1', 'Dune', now)],
+        },
+      );
+      // Account 9 is not in /accounts: Plex labels it "User 9".
+      final ctx = await _plexCtx(others: [jf], history: [_plexPlay(9, 'movie', 'Dune', now)]);
+      final result = await _tool('watch_stats').run(ctx, null, {'scope': 'period'}) as AssistantToolResult;
+      final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
+      expect(users, [
+        {'user': 'User 9', 'plays': 1},
+        {'user': 'User 9', 'plays': 1},
+      ]);
     });
 
     test('Plex without Tautulli: now from /status/sessions', () async {

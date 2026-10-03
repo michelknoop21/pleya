@@ -268,14 +268,28 @@ void main() {
       (title: 'Primer (2004) - IMDb', url: 'https://imdb.example', snippet: 'Engineers build a time machine.'),
       (title: 'Primer (film) - Wikipedia', url: 'https://wiki.example', snippet: 'Primer is a 2004 film.'),
     ];
-    final ctx = findCtx(const [], web: web, seerr: primerSeerr());
+    final ctx = findCtx(const [], web: web);
     final data = await runFind(ctx, {
       'variants': ['garage engineers accidental time machine', 'tijdmachine'],
     });
 
     expect(web.search.queries, ['garage engineers accidental time machine']);
     expect(data['web_searched'], isTrue);
+    expect(matchesOf(data).first['title'], 'Primer', reason: 'without Seerr the web page is still shown');
+  });
+
+  test('with Seerr the film from the web becomes a requestable card', () async {
+    final web = FakeWeb();
+    web.search.hits = [
+      (title: 'Primer (2004) - IMDb', url: 'https://imdb.example', snippet: 'Engineers build a time machine.'),
+    ];
+    final ctx = findCtx(const [], web: web, seerr: primerSeerr());
+    final data = await runFind(ctx, {
+      'variants': ['garage engineers accidental time machine', 'tijdmachine'],
+    });
+
     expect(matchesOf(data).first['title'], 'Primer');
+    expect(matchesOf(data).first['seerr_id'], 'movie:14337');
   });
 
   test('ids from the model are never used', () async {

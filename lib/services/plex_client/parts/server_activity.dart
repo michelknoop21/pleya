@@ -1,10 +1,11 @@
 part of '../../plex_client.dart';
 
 /// One completed view from the server-wide history. [showTitle] is set for an
-/// episode only. [viewedAt] is in epoch seconds.
+/// episode only. [viewedAt] is in epoch seconds. [userName] is null when
+/// `/accounts` does not name the account.
 typedef PlexHistoryPlay = ({
   int accountId,
-  String userName,
+  String? userName,
   String type,
   String title,
   String? showTitle,
@@ -33,6 +34,8 @@ extension PlexServerActivity on PlexClient {
   /// Plex is asked to filter (`viewedAt>`, as python-plexapi's
   /// `PlexServer.history(mindate=)` does); rows are filtered here too, and
   /// paging stops at the first older row, in case the server ignores it.
+  /// At most four times [cap] rows are read, kept or not (music), so a
+  /// history of skipped rows ends too.
   Future<({List<PlexHistoryPlay> plays, bool capped})> fetchServerHistory({
     required DateTime since,
     String? authToken,
@@ -46,6 +49,10 @@ extension PlexServerActivity on PlexClient {
     var capped = false;
     page:
     while (true) {
+      if (start >= cap * 4) {
+        capped = true;
+        break;
+      }
       final response = await _getWithFailover(
         '/status/sessions/history/all',
         queryParameters: {
@@ -58,7 +65,9 @@ extension PlexServerActivity on PlexClient {
       );
       final page = (_getMediaContainer(response)?['Metadata'] as List?) ?? const [];
       for (final raw in page.whereType<Map<String, dynamic>>()) {
-        final viewedAt = flexibleInt(raw['viewedAt']) ?? 0;
+        final viewedAt = flexibleInt(raw['viewedAt']);
+        // A row without a date says nothing about the period; the next may.
+        if (viewedAt == null) continue;
         if (viewedAt < from) break page;
         final type = raw['type'] as String? ?? '';
         final accountId = flexibleInt(raw['accountID']);
@@ -85,10 +94,7 @@ extension PlexServerActivity on PlexClient {
         for (final r in rows)
           (
             accountId: r.accountId,
-            // Same fallback label as fetchItemWatchers when /accounts is silent.
-            userName: accounts[r.accountId]?.name.isNotEmpty == true
-                ? accounts[r.accountId]!.name
-                : 'User ${r.accountId}',
+            userName: accounts[r.accountId]?.name.isNotEmpty == true ? accounts[r.accountId]!.name : null,
             type: r.type,
             title: r.title,
             showTitle: r.showTitle,

@@ -86,13 +86,18 @@ class FindRun {
   var partial = false;
   var _webSearched = false;
 
-  /// No plot hit leads the rest: a subject to browse ("films about space"),
-  /// not one title to identify. More library hits, no web guesswork.
-  var _browse = false;
+  /// The model asked for a subject to browse ("films about space"), not one
+  /// title to identify. More library hits, no web guesswork, and only
+  /// mainstream suggestions outside the library.
+  late final _browse = q.subject;
 
   /// Matches whose Seerr title is not popular American or Dutch
-  /// ([SeerrMedia.mainstream]): no card unless the library has them.
+  /// ([SeerrMedia.mainstream]) in a subject question: no card unless the
+  /// library has them.
   final _foreign = <FindMatch>{};
+
+  /// Matches Seerr was searched for and did not know.
+  final _seerrUnknown = <FindMatch>{};
 
   SeerrClient? get seerr => ctx.requests?.client();
   Duration get _left => budget - _clock.elapsed;
@@ -187,11 +192,13 @@ class FindRun {
 
     _abort.abort();
     // Outside the library only what can be requested: a web page that named
-    // nothing Seerr knows, or a title outside the mainstream, is no card.
+    // nothing Seerr knows, or a subject suggestion outside the mainstream, is
+    // no card. Without an answer from Seerr the web page stays.
     matches.removeWhere(
       (m) =>
           m.library.isEmpty &&
-          (_foreign.contains(m) || (m.seerr == null && m.sources.every((s) => s == FindSource.web))),
+          (_foreign.contains(m) ||
+              (m.seerr == null && _seerrUnknown.contains(m) && m.sources.every((s) => s == FindSource.web))),
     );
     matches.sort((a, b) {
       final byRank = b.rank.compareTo(a.rank);
@@ -221,9 +228,13 @@ class FindRun {
     );
     if (hits.isEmpty) return;
     final lead = hits.length == 1 || hits[0].score >= 2 * hits[1].score;
-    // Precision comes from [_aboutIt]; one clear winner keeps the short list.
-    _browse = !lead;
+    // Precision comes from [_aboutIt]; a subject keeps a long list down to an
+    // eighth of the best score, one title to identify the top five down to half.
+    // ponytail: fixed ratios; a short plot about the subject ("Life") scores
+    // about a fifth of the best one, so a quarter already lost real hits.
+    final floor = hits.first.score / (_browse ? 8 : 2);
     for (final (i, hit) in hits.take(_browse ? browseLimit : 5).indexed) {
+      if (hit.score < floor) break;
       final item = hit.doc.item;
       final m = FindMatch(item.title ?? '', year: item.year, kind: item.kind, sources: [FindSource.libraryPlot])
         ..titles.addAll([?item.originalTitle])
@@ -366,7 +377,10 @@ class FindRun {
     final pick =
         found.where((s) => fits(s) && keys.contains(titleKey(s.title))).firstOrNull ??
         (m.year == null ? null : found.where((s) => fits(s) && s.year == '${m.year}').firstOrNull);
-    if (pick == null) return;
+    if (pick == null) {
+      _seerrUnknown.add(m);
+      return;
+    }
     // The ids still help find a library copy; the request card needs _keep.
     if (_keep(m, pick)) m.seerr = pick;
     m
@@ -444,10 +458,11 @@ class FindRun {
     if (fresh.isNotEmpty) await _resolve(fresh);
   }
 
-  /// Library titles are never filtered; outside it only popular American and
-  /// Dutch titles are suggested, and a match without one is marked for removal.
+  /// Library titles and a title the user identifies are never filtered; for a
+  /// subject, outside the library only popular American and Dutch titles are
+  /// suggested, and a match without one is marked for removal.
   bool _keep(FindMatch m, SeerrMedia s) {
-    if (m.library.isNotEmpty || s.mainstream) return true;
+    if (!_browse || m.library.isNotEmpty || s.mainstream) return true;
     _foreign.add(m);
     return false;
   }

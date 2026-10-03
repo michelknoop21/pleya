@@ -22,6 +22,7 @@ class FindQuery {
     this.series,
     this.season,
     this.episode,
+    this.subject = false,
   });
   final List<FindCandidate> candidates;
 
@@ -33,6 +34,10 @@ class FindQuery {
   final String? series;
   final int? season;
   final int? episode;
+
+  /// The model says the user wants titles about a topic (a list), not one
+  /// specific title.
+  final bool subject;
 
   bool get wantsEpisode => kind == MediaKind.episode || season != null || episode != null;
 }

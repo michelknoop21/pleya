@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_web_lookup.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_role.dart';
 import 'package:pleya/utils/external_ids.dart';
 
 import '../test_helpers/prefs.dart';
@@ -80,7 +82,7 @@ Future<List<String>> _titles(Map<String, String> plots, List<String> variants) a
     },
   );
   final ctx = findCtx([server], libraries: [fakeLib('zolder', 'films')]);
-  final data = await runFind(ctx, {'kind': 'movie', 'variants': variants});
+  final data = await runFind(ctx, {'kind': 'movie', 'variants': variants, 'subject': true});
   return [for (final m in matchesOf(data)) m['title'] as String];
 }
 
@@ -234,10 +236,62 @@ void main() {
         for (final t in ['Interstellar', 'Tiny Orbit', 'Le Voyage', 'Ruimteschip Holland', 'Amélie']) {'title': t},
       ],
       'variants': ['space', 'ruimte'],
+      'subject': true,
     });
 
     final titles = [for (final m in matchesOf(data)) m['title']];
     expect(titles, unorderedEquals(['Interstellar', 'Ruimteschip Holland', 'Amélie']));
     expect(matchesOf(data).singleWhere((m) => m['title'] == 'Amélie')['in_library'], isTrue);
+  });
+
+  test('one foreign film the user identifies keeps its Seerr card, whatever its language or votes', () async {
+    final seerr = FakeSeerr()
+      ..search = {
+        'Parasite': [_seerrMovie(496243, 'Parasite', '2019', language: 'ko', votes: 18000)],
+        'Le Voyage': [_seerrMovie(900002, 'Le Voyage', '2018', language: 'fr', votes: 4)],
+      };
+    final ctx = findCtx(const [], seerr: seerr);
+    for (final title in ['Parasite', 'Le Voyage']) {
+      final data = await runFind(ctx, {
+        'candidates': [
+          {'title': title},
+        ],
+        'variants': ['poor family infiltrates rich household', 'arm gezin in rijk huis'],
+      });
+      final row = matchesOf(data).single;
+      expect(row['title'], title);
+      expect(row['seerr_id'], isNotNull);
+    }
+  });
+
+  test('a person and a setting identify one film, not every film with that first name', () async {
+    var n = 0;
+    MediaItem film(String title, String actor, String plot) =>
+        fakeItem('${++n}', title, summary: plot).copyWith(roles: [MediaRole(tag: actor)]);
+    final server = FakeServer(
+      'zolder',
+      libraries: {
+        'films': [
+          film('Cast Away', 'Tom Hanks', 'A FedEx engineer is stranded on a deserted island after his plane crashes.'),
+          film('Big', 'Tom Hanks', 'A boy wakes up in the body of a grown man.'),
+          film('Forrest Gump', 'Tom Hanks', 'A slow-witted man witnesses decades of American history.'),
+          film('Top Gun: Maverick', 'Tom Cruise', 'A veteran pilot trains a squad for a dangerous mission.'),
+          film('Mad Max: Fury Road', 'Tom Hardy', 'A drifter joins a rebel fleeing a desert tyrant.'),
+          film('Venom', 'Tom Hardy', 'A journalist bonds with an alien symbiote.'),
+          film('Inception', 'Tom Hardy', 'A thief steals secrets through dream-sharing technology.'),
+          film('Tenet', 'Tom Hardy', 'An agent manipulates the flow of time.'),
+        ],
+      },
+    );
+    final ctx = findCtx([server], libraries: [fakeLib('zolder', 'films')]);
+    final data = await runFind(ctx, {
+      'kind': 'movie',
+      'variants': ['tom hanks island', 'tom hanks eiland', 'man stranded on a deserted island'],
+    });
+
+    final titles = [for (final m in matchesOf(data)) m['title']];
+    expect(titles.first, 'Cast Away');
+    expect(titles, isNot(contains('Venom')));
+    expect(titles.length, lessThanOrEqualTo(5));
   });
 }
