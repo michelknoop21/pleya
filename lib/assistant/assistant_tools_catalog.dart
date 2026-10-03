@@ -10,12 +10,17 @@ class AssistantCatalogServices {
     required this.profileId,
     required this.activeProfileId,
     this.saveRow,
+    this.participantProfiles,
   });
 
   /// The loader Home's own rows use: a `CatalogHomeCustomRowLoader` built the
   /// way `HomeCustomRowsProvider` builds it. A search without free text or a
   /// person runs through it, so what Big P shows is what the row will show.
   final HomeCustomRowLoader rowLoader;
+
+  /// Token-free local profile labels and their identities on this server.
+  /// Aliases grant no rights; recommendation reads validate the exact users.
+  final Future<List<ProfileServerIdentity>> Function(ServerId)? participantProfiles;
 
   /// `HomeLayoutProvider.saveCustomRow` of the profile [profileId]. Null keeps
   /// `create_home_row` out of the run.

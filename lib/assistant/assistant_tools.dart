@@ -23,6 +23,9 @@ import '../services/pleya_server_client.dart';
 import '../media/ids.dart';
 import '../media/episode_collection.dart';
 import '../media/media_item.dart';
+import '../media/participant_evidence.dart';
+import 'assistant_strict_filters.dart';
+import '../profiles/profile_server_identity.dart';
 import '../media/media_server_client.dart';
 import '../models/download_models.dart';
 import '../models/plex/plex_subtitle_search_result.dart';
@@ -47,6 +50,7 @@ part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_media.dart';
+part 'assistant_tools_recommendations.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
 
@@ -250,6 +254,7 @@ final List<AssistantTool> assistantTools = [
   ..._generalTools,
   ..._adminTools,
   ..._catalogTools,
+  ..._recommendationTools,
   ..._insightTools,
   ..._requestTools,
   ..._findTools,

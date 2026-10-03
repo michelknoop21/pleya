@@ -363,3 +363,142 @@ mixin _JellyfinAdminMethods {
     ];
   }
 }
+
+/// Strict cohort reads use the current credential only. Jellyfin's exact
+/// GetItem route delegates to IsVisibleStandalone (parents, parental policy,
+/// tags and collection-folder access), unlike the batch IDs query shortcut.
+/// Verified against v10.11.0 UserLibraryController.GetItem,
+/// LibraryManager.ItemIsVisible and BaseItem.IsVisibleStandaloneInternal.
+extension JellyfinParticipantEvidence on JellyfinClient {
+  Future<void> assertRecommendationAdministrator({
+    AbortController? abort,
+    required void Function() checkCurrent,
+  }) async {
+    checkCurrent();
+    assertCanAdministerServer();
+    if (connection.isEmby) throw _adminError('Strict cohort evidence is unavailable on Emby');
+    final response = await _http.get('/Users/Me', abort: abort);
+    checkCurrent();
+    assertCanAdministerServer();
+    throwIfHttpError(response);
+    final dto = response.data;
+    final policy = dto is Map<String, dynamic> ? dto['Policy'] : null;
+    if (dto is! Map<String, dynamic> ||
+        dto['Id'] != connection.userId ||
+        policy is! Map<String, dynamic> ||
+        policy['IsAdministrator'] != true ||
+        policy['IsDisabled'] != false) {
+      throw _adminError('Live administrator evidence unavailable');
+    }
+  }
+
+  Future<Map<String, ParticipantItemEvidence>> readParticipantEvidence(
+    String userId,
+    Map<String, String> itemLibraries, {
+    AbortController? abort,
+    required void Function() checkCurrent,
+  }) async {
+    await assertRecommendationAdministrator(abort: abort, checkCurrent: checkCurrent);
+    final response = await _http.get('/Users/${adminPathSegment(userId)}', abort: abort);
+    checkCurrent();
+    assertCanAdministerServer();
+    throwIfHttpError(response);
+    final dto = response.data;
+    final p = dto is Map<String, dynamic> ? dto['Policy'] : null;
+    if (dto is! Map<String, dynamic> ||
+        dto['Id'] != userId ||
+        p is! Map<String, dynamic> ||
+        p['IsDisabled'] is! bool ||
+        p['EnableAllFolders'] is! bool ||
+        p['EnabledFolders'] is! List ||
+        (p['EnabledFolders'] as List).any((v) => v is! String)) {
+      return {for (final id in itemLibraries.keys) id: const ParticipantItemEvidence()};
+    }
+    final enabled = (p['EnabledFolders'] as List).cast<String>().map(_folderKey).toSet();
+    final evidence = <String, ParticipantItemEvidence>{};
+    Future<void> readItem(MapEntry<String, String> entry) async {
+      checkCurrent();
+      assertCanAdministerServer();
+      if (p['IsDisabled'] == true || (p['EnableAllFolders'] == false && !enabled.contains(_folderKey(entry.value)))) {
+        evidence[entry.key] = const ParticipantItemEvidence(access: ParticipantAccess.denied);
+        return;
+      }
+      final result = await _http.get(
+        '/Items/${adminPathSegment(entry.key)}',
+        queryParameters: {'userId': userId},
+        abort: abort,
+      );
+      checkCurrent();
+      assertCanAdministerServer();
+      if (result.statusCode == 404) {
+        // Denied or removed: neither is eligible. Do not turn an error into
+        // an unwatched claim.
+        evidence[entry.key] = const ParticipantItemEvidence(access: ParticipantAccess.denied);
+        return;
+      }
+      throwIfHttpError(result);
+      final data = result.data;
+      if (data is! Map<String, dynamic> ||
+          _folderKey(data['Id'] is String ? data['Id'] as String : '') != _folderKey(entry.key)) {
+        evidence[entry.key] = const ParticipantItemEvidence();
+        return;
+      }
+      final exactTopLibrary = data['ParentLibraryId'];
+      // Only an absent top-library identity may inherit the catalog's
+      // proved recursive query scope. ParentId can be an intermediate folder
+      // and is not evidence of the top library. Explicit conflicts or malformed
+      // top identities invalidate the source before any companion reads.
+      if (exactTopLibrary != null &&
+          (exactTopLibrary is! String ||
+              exactTopLibrary.isEmpty ||
+              _folderKey(exactTopLibrary) != _folderKey(entry.value))) {
+        evidence[entry.key] = const ParticipantItemEvidence();
+        return;
+      }
+      final userData = data['UserData'];
+      final played = userData is Map<String, dynamic> ? userData['Played'] : null;
+      final progress = userData is Map<String, dynamic> ? userData['PlaybackPositionTicks'] : null;
+      final playCount = userData is Map<String, dynamic> ? userData['PlayCount'] : null;
+      final started = (progress is num && progress > 0) || (playCount is num && playCount > 0);
+      final malformedProgress = progress != null && (progress is! num || !progress.isFinite || progress < 0);
+      final malformedCount =
+          playCount != null &&
+          (playCount is! num || !playCount.isFinite || playCount < 0 || playCount != playCount.roundToDouble());
+      var watch = played is! bool || malformedProgress || malformedCount
+          ? ParticipantWatchState.unknown
+          : (played || started ? ParticipantWatchState.watched : ParticipantWatchState.unwatched);
+      if (data['Type'] == 'Series' && watch != ParticipantWatchState.watched) {
+        // Folder.FillUserDataDtoValues (Jellyfin v10.11.0, 1600-1635)
+        // aggregates completed children, not started child progress. Even
+        // percentage zero/all children unplayed cannot prove genuinely unseen.
+        // A positive valid percentage proves some completed children; zero,
+        // absent or malformed aggregate evidence cannot prove unseen series.
+        final percentage = userData is Map<String, dynamic> ? userData['PlayedPercentage'] : null;
+        watch = percentage is num && percentage.isFinite && percentage > 0 && percentage <= 100
+            ? ParticipantWatchState.watched
+            : ParticipantWatchState.unknown;
+      }
+      final item = JellyfinMappers.mediaItem(data, serverId: serverId, serverName: serverName, absolutizer: null);
+      evidence[entry.key] = ParticipantItemEvidence(
+        access: ParticipantAccess.allowed,
+        watch: watch,
+        item: item?.copyWith(libraryId: exactTopLibrary as String? ?? entry.value),
+      );
+    }
+
+    final entries = itemLibraries.entries.toList();
+    // Three exact reads at most, no persistent queue or executor. HTTP gets
+    // the ask's abort signal; every completion checks the live context.
+    for (var start = 0; start < entries.length; start += 3) {
+      checkCurrent();
+      await Future.wait(entries.skip(start).take(3).map(readItem));
+      checkCurrent();
+    }
+    // A role change while a request was outstanding invalidates the whole
+    // read. No participant data leaves the caller after revocation.
+    await assertRecommendationAdministrator(abort: abort, checkCurrent: checkCurrent);
+    return evidence;
+  }
+
+  String _folderKey(String id) => id.replaceAll('-', '').toLowerCase();
+}
