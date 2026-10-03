@@ -50,7 +50,7 @@ class TvAssistantConversation extends StatelessWidget {
   final ValueChanged<AssistantRequestOption> onPickOption;
   final ValueChanged<AssistantTitleTarget> onOpenTitle;
 
-  /// The summoned panel (570 pt) rather than the surface.
+  /// The summoned panel (760 pt) rather than the surface.
   final bool compact;
 
   @override
@@ -136,7 +136,7 @@ class TvAssistantConversation extends StatelessWidget {
     // result keeps it in the scrolling part.
     final head = <Widget>[
       if (c.state == AssistantSurfaceState.working) ...[
-        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
+        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         // Results that are in show at once; the model is still composing.
         Text(c.stillChecking ? t.assistant.working.stillChecking : t.assistant.working.status, style: headlineStyle),
         gap,
@@ -155,7 +155,7 @@ class TvAssistantConversation extends StatelessWidget {
     var optionOffset = 0;
     var firstOptionTaken = working;
     final displays = <Widget>[];
-    for (final display in controller.displays) {
+    for (final display in controller.displays.where((d) => !tvAssistantDisplayIsEmpty(d))) {
       final choices = tvAssistantChoiceCount(display);
       displays.add(
         Padding(
@@ -188,7 +188,7 @@ class TvAssistantConversation extends StatelessWidget {
     final c = controller;
     final headline = assistantHeadline(c);
     return [
-      if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt), gap],
+      if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
       if (headline.isNotEmpty) ...[Text(headline, style: headlineStyle), gap],
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[

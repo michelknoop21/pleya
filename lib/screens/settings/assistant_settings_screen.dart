@@ -141,7 +141,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   /// "submit" key that would make one obvious.
   bool get _draftLooksComplete => switch (_kind) {
     AssistantProviderKind.ollamaServer => _validateUrl(_urlController.text) == null && _validateHeader(null) == null,
-    AssistantProviderKind.ollamaCloud || AssistantProviderKind.openRouter => _keyController.text.trim().isNotEmpty,
+    AssistantProviderKind.ollamaCloud ||
+    AssistantProviderKind.openRouter => _secret(_keyController, (c) => c.apiKey).isNotEmpty,
     null => false,
   };
 
@@ -203,8 +204,33 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   }
 
   void _chooseKind(AssistantProviderKind kind) {
-    setState(() => _kind = kind);
+    final kept = _kept(kind);
+    setState(() {
+      _kind = kind;
+      // Change to the same provider, e.g. for another model: the plain fields
+      // come back, the secrets stay out of the fields (see [_draft]).
+      if (kept != null) {
+        _urlController.text = kind == AssistantProviderKind.ollamaServer ? kept.baseUrl : '';
+        _headerNameController.text = kept.headerName;
+        _webSearch = kept.webSearchChoice;
+        _model = kept.model;
+      }
+    });
     _focusLater(_firstFieldFocus);
+    if (kept != null && _draftLooksComplete) unawaited(_loadModels(_draft()));
+  }
+
+  /// The saved config while changing to its own provider kind.
+  AssistantProviderConfig? _kept(AssistantProviderKind? kind) => switch (_saved) {
+    final saved? when _editing && saved.kind == kind => saved,
+    _ => null,
+  };
+
+  /// A field left empty keeps the saved secret of the same provider.
+  String _secret(TextEditingController field, String Function(AssistantProviderConfig) saved) {
+    final typed = field.text.trim();
+    final kept = _kept(_kind);
+    return typed.isEmpty && kept != null ? saved(kept) : typed;
   }
 
   /// Any edit to a field invalidates the model list it produced.
@@ -237,12 +263,14 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
         AssistantProviderKind.openRouter => AssistantProviderConfig.openRouterUrl,
       },
       model: model,
-      apiKey: kind == AssistantProviderKind.ollamaServer ? '' : _keyController.text.trim(),
+      apiKey: kind == AssistantProviderKind.ollamaServer ? '' : _secret(_keyController, (c) => c.apiKey),
       headerName: kind == AssistantProviderKind.ollamaServer ? _headerNameController.text.trim() : '',
-      headerValue: kind == AssistantProviderKind.ollamaServer ? _headerValueController.text : '',
+      headerValue: kind == AssistantProviderKind.ollamaServer
+          ? (_headerNameController.text.trim().isEmpty ? '' : _secret(_headerValueController, (c) => c.headerValue))
+          : '',
       webSearchChoice: _webSearch,
       ollamaWebKey: kind == AssistantProviderKind.ollamaServer && _webSearch == true
-          ? _webKeyController.text.trim()
+          ? _secret(_webKeyController, (c) => c.ollamaWebKey)
           : '',
       // Set for one model (as in copyWith): the same model keeps it.
       timeoutOverride: saved != null && saved.kind == kind && saved.model == model ? saved.timeoutOverride : null,
