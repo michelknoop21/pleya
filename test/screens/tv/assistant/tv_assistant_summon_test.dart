@@ -218,7 +218,7 @@ void main() {
     });
 
     // Hardware, build 318: Big P left by himself while the answer was read.
-    testWidgets('a good result stays until Menu', (tester) async {
+    testWidgets('a good result stays with its three follow-ups until Menu', (tester) async {
       await summoned(tester);
       c
         ..state = AssistantSurfaceState.result
@@ -227,6 +227,7 @@ void main() {
       await tester.pump(const Duration(minutes: 5));
       await settle(tester);
       expect(bigP(), findsOneWidget);
+      expect(find.byType(TvAssistantChip), findsNWidgets(3));
 
       await press(tester, LogicalKeyboardKey.escape);
       expect(bigP(), findsNothing);
@@ -237,19 +238,19 @@ void main() {
     // asterisks.
     test('an answer is shown without its Markdown marks', () {
       expect(
-        assistantPlainText('## Gevonden\nDe *Mission: Impossible*-reeks, **Top Gun** en `Jack Reacher`. 2 * 3 = 6.'),
+        assistantPlainAnswer('## Gevonden\nDe *Mission: Impossible*-reeks, **Top Gun** en `Jack Reacher`. 2 * 3 = 6.'),
         'Gevonden\nDe Mission: Impossible-reeks, Top Gun en Jack Reacher. 2 * 3 = 6.',
       );
       // Not emphasis: a title, sums and a list bullet.
       expect(
-        assistantPlainText('* Top Gun (1986)\n- Zie [de lijst](https://example.com/x) voor meer.'),
+        assistantPlainAnswer('* Top Gun (1986)\n- Zie [de lijst](https://example.com/x) voor meer.'),
         '• Top Gun (1986)\n• Zie de lijst voor meer.',
       );
       for (final plain in ['Ik vond M*A*S*H (1970).', '2*3*4 = 24', 'Jaren 1986 - 2022']) {
-        expect(assistantPlainText(plain), plain);
+        expect(assistantPlainAnswer(plain), plain);
       }
       expect(
-        assistantPlainText(
+        assistantPlainAnswer(
           '***Top Gun*** en _Rain Man_ of __Heat__, snake_case_naam, ![poster](https://example.com/p.png)',
         ),
         'Top Gun en Rain Man of Heat, snake_case_naam, poster',
@@ -261,9 +262,10 @@ void main() {
         ),
         'Gevonden op je server:\nTwee staan alleen op Zolder.',
       );
+      expect(assistantWithoutList('1917. Oorlogsfilm.'), '1917. Oorlogsfilm.');
       // Only marks is no answer.
       for (final marks in ['**', '***', '# ', '``']) {
-        expect(assistantPlainText(marks), isEmpty);
+        expect(assistantPlainAnswer(marks), isEmpty);
       }
     });
 
@@ -289,6 +291,21 @@ void main() {
       expect(find.text('Ik heb deze films gevonden:'), findsOneWidget);
       expect(find.text('1. Top Gun (1986)\n2. Rain Man (1988)'), findsOneWidget);
 
+      // A short intro line is still the whole lead.
+      c
+        ..answer = 'Hier zijn ze:\n1. Top Gun (1986)\n2. Rain Man (1988)'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Hier zijn ze:'), findsOneWidget);
+      expect(find.text('1. Top Gun (1986)\n2. Rain Man (1988)'), findsOneWidget);
+
+      // A sentence may end in a year.
+      c
+        ..answer = 'Top Gun kwam uit in 1986. Het vervolg kwam pas in 2022.'
+        ..emit();
+      await settle(tester);
+      expect(find.text('Top Gun kwam uit in 1986.'), findsOneWidget);
+
       c
         ..answer = 'Ik vond films van o.a. Tom Cruise en Brad Pitt. Meer staat op Plex.'
         ..emit();
@@ -309,7 +326,8 @@ void main() {
         ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
         ..emit();
       await settle(tester);
-      expect(short, lessThan(tester.getRect(find.byType(TvAssistantGlassPanel)).height / 2));
+      // The three follow-ups stand under both.
+      expect(short, lessThan(tester.getRect(find.byType(TvAssistantGlassPanel)).height * 0.7));
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not
@@ -328,8 +346,10 @@ void main() {
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
       expect(focusedLabel(), 'assistant.ask');
 
-      // Up takes the answer; Down and Up scroll it.
-      await press(tester, LogicalKeyboardKey.arrowUp);
+      // Up, past the follow-ups, takes the answer; Down and Up scroll it.
+      for (var i = 0; i < 4 && focusedLabel() != 'assistant.answer'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+      }
       expect(focusedLabel(), 'assistant.answer');
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(
@@ -341,14 +361,18 @@ void main() {
       expect(tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top, top, reason: 'Up scrolls back');
       expect(focusedLabel(), 'assistant.answer');
 
-      // At its last line Down gives the remote back to the buttons.
+      // At its last line Down gives the remote back to what stands under it.
       for (var i = 0; i < 60 && focusedLabel() == 'assistant.answer'; i++) {
+        await press(tester, LogicalKeyboardKey.arrowDown);
+      }
+      expect(focusedLabel(), isNot('assistant.answer'));
+      for (var i = 0; i < 4 && focusedLabel() != 'assistant.ask'; i++) {
         await press(tester, LogicalKeyboardKey.arrowDown);
       }
       expect(focusedLabel(), 'assistant.ask');
     });
 
-    testWidgets('a short answer takes no focus: Up from the button stays on the button', (tester) async {
+    testWidgets('a short answer takes no focus: Up stops at the follow-ups', (tester) async {
       await summoned(tester);
       c
         ..state = AssistantSurfaceState.result
@@ -356,8 +380,10 @@ void main() {
         ..emit();
       await settle(tester);
 
-      await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'assistant.ask');
+      for (var i = 0; i < 4; i++) {
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), isNot('assistant.answer'));
+      }
     });
 
     testWidgets('an error stays until Menu', (tester) async {

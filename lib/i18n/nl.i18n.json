@@ -2502,9 +2502,30 @@
     },
     "displays": {
       "missing": "${count} titels op ${server} ontbreken op ${other}",
-      "watchStats": "Kijkcijfers · ${server}",
       "plays": "${count}× bekeken",
-      "noSource": "Geen kijkgegevens beschikbaar voor ${server}."
+      "noSource": "Geen kijkgegevens beschikbaar voor ${server}.",
+      "playsShort": "${count}×",
+      "watchNow": "Op dit moment",
+      "watchDays": "Afgelopen ${n} dagen",
+      "nobodyNow": "Er kijkt nu niemand.",
+      "nothingWatched": "In deze periode is niets bekeken.",
+      "partialData": "Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.",
+      "watchTitle": "Kijkcijfers",
+      "playsTotal": "keer gekeken"
+    },
+    "followUp": {
+      "watchNow": "Wie kijkt er nu?",
+      "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",
+      "watchWeek": "Wie keek het meest deze week?",
+      "watchToday": "Wie keek er vandaag?",
+      "tonight": "Geef me een filmtip voor vanavond.",
+      "recent": "Wat is er onlangs aan mijn bibliotheek toegevoegd?",
+      "unwatched": "Welke films in mijn bibliotheek heb ik nog niet gezien?",
+      "popular": "Welke populaire films heb ik nog niet?",
+      "missingMovies": "Welke films ontbreken tussen mijn servers?",
+      "missingShows": "Welke series ontbreken tussen mijn servers?",
+      "jobs": "Welke taken lopen er nu op mijn servers?",
+      "failedJobs": "Zijn er vandaag taken mislukt?"
     },
     "match": {
       "inLibrary": "In je bibliotheek · ${servers}",

@@ -19,6 +19,7 @@ import '../../../utils/tv_hig.dart';
 import 'tv_assistant_labels.dart';
 import 'tv_assistant_match_card.dart';
 import 'tv_assistant_option_card.dart';
+import 'tv_assistant_watch_card.dart';
 import 'tv_assistant_widgets.dart';
 
 Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
@@ -155,13 +156,18 @@ class TvAssistantResultCard extends StatelessWidget {
 /// A media grid draws at most this many titles.
 const _gridCap = 12;
 
+/// The watched titles shown as cards: the ones watch_stats resolved.
+const _watchTitles = 5;
+
 /// How many focusable cards [display] draws: request options, found titles
 /// and a grid's titles. The first of them takes the focus after a result
 /// (still 7).
 int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
-  AssistantTitleMatches(:final matches) => matches.length,
+  AssistantTitleMatches(:final matches) => matches.where((m) => m.targets.isNotEmpty || m.request != null).length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
+  AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
+  AssistantWatchStats(:final titles) => titles.take(_watchTitles).where((t) => t.target != null).length,
   _ => 0,
 };
 
@@ -214,9 +220,12 @@ class TvAssistantDisplayView extends StatelessWidget {
     }
   }
 
+  bool _selectable(AssistantTitleMatch m) => m.targets.isNotEmpty || m.request != null;
+
   /// The cards scroll in the panel's own results list; the panel's height
-  /// is what bounds how many show at once.
-  Widget _matches(double pt, List<AssistantTitleMatch> matches) {
+  /// is what bounds how many show at once. [ranked] badges each poster with
+  /// its place (most watched).
+  Widget _matches(double pt, List<AssistantTitleMatch> matches, {bool ranked = false}) {
     return Column(
       children: [
         for (final (i, match) in matches.indexed)
@@ -225,11 +234,15 @@ class TvAssistantDisplayView extends StatelessWidget {
             child: TvAssistantMatchCard(
               match: match,
               index: optionOffset + i,
-              compact: compact,
-              focusNode: i == 0 ? firstOptionNode : null,
-              onSelect: match.targets.isEmpty && match.request != null && onPickOption == null
-                  ? null
-                  : () => _selectMatch(match),
+              // A ranking is a list to scan: one line of detail per title.
+              compact: compact || ranked,
+              rank: ranked ? i + 1 : null,
+              focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
+              // Nothing to open and nothing to request: shown, never a dead
+              // focus stop.
+              onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
+                  ? () => _selectMatch(match)
+                  : null,
             ),
           ),
       ],
@@ -242,15 +255,26 @@ class TvAssistantDisplayView extends StatelessWidget {
     final tk = tokens(context);
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
     final row = TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt);
+    final heading = TextStyle(color: tk.text, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700);
     Widget card(String? header, List<String> lines) => TvAssistantCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (header != null) ...[Text(header, style: muted), SizedBox(height: 10 * pt)],
-          for (final l in lines)
+          if (header != null) ...[Text(header, style: heading), SizedBox(height: 12 * pt)],
+          for (final (i, l) in lines.indexed)
             Padding(
-              padding: EdgeInsets.only(top: 6 * pt),
-              child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: row),
+              padding: EdgeInsets.only(top: 8 * pt),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 40 * pt,
+                    child: Text('${i + 1}', style: muted),
+                  ),
+                  Expanded(
+                    child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: row),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -302,16 +326,52 @@ class TvAssistantDisplayView extends StatelessWidget {
             ],
           ),
       ]),
+      // The missing titles are on [serverName]: cards that open that copy.
+      final AssistantServerComparison c when onOpenTitle != null && c.missing.isNotEmpty => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          card(t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName), []),
+          SizedBox(height: 10 * pt),
+          _matches(pt, [
+            for (final item in c.missing.take(_gridCap))
+              AssistantTitleMatch(
+                matchId: item.globalKey,
+                title: item.displayTitle,
+                year: item.year,
+                kind: item.kind.name,
+                confidence: 'high',
+                targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
+              ),
+          ]),
+        ],
+      ),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
-      final AssistantWatchStats s => card(t.assistant.displays.watchStats(server: s.serverName), [
-        for (final name in s.unavailable) t.assistant.displays.noSource(server: name),
-        for (final session in s.sessions.take(8)) '${session.userName} · ${session.title}',
-        for (final u in s.users.take(8)) '${u.name} · ${t.assistant.displays.plays(count: u.plays)}',
-        for (final title in s.titles.take(8)) '${title.title} · ${t.assistant.displays.plays(count: title.plays)}',
-      ]),
+      // The watched titles are title cards, as a found title is: poster,
+      // plays and viewers, and they open their library copy.
+      final AssistantWatchStats s => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TvAssistantWatchCard(stats: s),
+          if (s.titles.isNotEmpty) ...[
+            SizedBox(height: 10 * pt),
+            _matches(ranked: true, pt, [
+              for (final x in s.titles.take(_watchTitles))
+                AssistantTitleMatch(
+                  matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
+                  title: x.title,
+                  year: x.target?.item.year,
+                  kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
+                  confidence: 'high',
+                  targets: [?x.target],
+                  snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
+                ),
+            ]),
+          ],
+        ],
+      ),
       _ => const SizedBox.shrink(),
     };
   }

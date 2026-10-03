@@ -274,6 +274,11 @@ class AssistantController extends ChangeNotifier {
       _resultIsError = result.end != AssistantRunEnd.answered;
       _answer = result.text;
       _actions.addAll(result.actions);
+      // The run's list is the final word: it drops a lookup that led to an
+      // action and adds the cards for titles the answer named.
+      _displays
+        ..clear()
+        ..addAll(result.displays);
       if (_actions.any((a) => a.job != null)) unawaited(_watchJobs());
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
       _state = AssistantSurfaceState.result;

@@ -8,6 +8,7 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/media_kind.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -145,12 +146,51 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 /// The headline under the question: the model's answer when there is one,
 /// else Pleya's reason the run ended.
 String assistantHeadline(AssistantController c) {
-  if (assistantPlainText(c.answer) case final answer when answer.isNotEmpty) return answer;
+  if (assistantPlainAnswer(c.answer) case final answer when answer.isNotEmpty) return answer;
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
   if (c.modelMissing) return t.assistant.ends.modelMissing;
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
+}
+
+/// Three questions that follow from what the run showed, in the UI's
+/// language, after every answer. Pleya builds them from the displays and the
+/// actions, never from model prose, and each one stands on its own: a new ask
+/// carries no memory of this one. They carry no server, user or title names:
+/// a follow-up is sent as the user's own words, and those names come from
+/// servers, not from the user. The question just asked is never offered.
+List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = false, String? prompt}) {
+  final f = t.assistant.followUp;
+  final fitting = <String>[
+    // Only after a job Pleya follows (a scan, a refresh): those are admin
+    // tools, and a request or download has no task to ask about.
+    if (jobs) ...[f.jobs, f.failedJobs],
+    for (final d in displays)
+      ...switch (d) {
+        AssistantWatchStats(days: null) => [f.watchToday, f.watchWeek, f.watchMonth],
+        AssistantWatchStats(:final days?) => [
+          f.watchNow,
+          if (days < 30) f.watchMonth else f.watchWeek,
+          if (days > 1) f.watchToday else f.watchWeek,
+        ],
+        AssistantServerComparison(:final kind) => [
+          kind == MediaKind.show ? f.missingMovies : f.missingShows,
+          f.unwatched,
+        ],
+        AssistantRequestOptions() => [f.popular, f.recent],
+        AssistantTitleMatches() || AssistantMediaGrid() => [f.tonight, f.unwatched, f.recent],
+        _ => const <String>[],
+      },
+    // Always three: the general questions fill what the result left open.
+    f.watchWeek, f.tonight, f.recent, f.unwatched,
+  ];
+  String key(String q) => q.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
+  final asked = key(prompt ?? '');
+  return [
+    for (final q in {...fitting})
+      if (key(q) != asked) q,
+  ].take(3).toList();
 }
 
 // ponytail: one pass over paired marks on one line; nested emphasis keeps
@@ -162,9 +202,10 @@ final _markdownMarks = RegExp(
 final _markdownHeading = RegExp(r'^#{1,6}\s+', multiLine: true);
 final _marksOnly = RegExp(r'^[\s*`#]+$');
 final _markdownLink = RegExp(r'!?\[([^\]\n]+)\]\((?:[^)\s]+)\)');
-final _markdownBullet = RegExp(r'^(\s*)[*-]\s+', multiLine: true);
+final _markdownBullet = RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true);
 
-final _listItem = RegExp(r'^\s*(?:\d+[.)]|•)\s');
+// One or two digits: "1917. Oorlogsfilm." is a title, not item 1917.
+final _listItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
 
 /// The answer without its list items, for above cards that show the same
 /// titles: the cards are the list, and the lines they free go to the cards.
@@ -176,12 +217,14 @@ String assistantWithoutList(String answer) =>
 /// The model's answer as the panel shows it. The panel draws plain text, so
 /// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
 /// are dropped and their text kept; a link shows its text and a list item
-/// a bullet. An asterisk inside a word or a sum, as
-/// in `M*A*S*H` or `2 * 3`, stays.
-String assistantPlainText(String answer) => answer
+/// a bullet; runs of blank lines become one. An asterisk inside a word or a
+/// sum, as in `M*A*S*H` or `2 * 3`, stays.
+String assistantPlainAnswer(String answer) => answer
     .replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3] ?? m[4]!)
     .replaceAll(_markdownHeading, '')
     .replaceAllMapped(_markdownLink, (m) => m[1]!)
-    .replaceAllMapped(_markdownBullet, (m) => '${m[1]}• ')
+    .replaceAll(_markdownBullet, '• ')
+    .replaceAll(RegExp('[«»]'), '')
+    .replaceAll(RegExp(r'\n{3,}'), '\n\n')
     .replaceFirst(_marksOnly, '')
     .trim();

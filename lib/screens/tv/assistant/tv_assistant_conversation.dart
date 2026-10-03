@@ -136,7 +136,7 @@ class TvAssistantConversation extends StatelessWidget {
     // bounded (3 lines, a fixed string); the model's answer is not, so the
     // result gives it a block of its own that opens at its first line and
     // scrolls by itself, above the results.
-    final cards = c.displays.any((d) => tvAssistantChoiceCount(d) > 0);
+    final cards = tvAssistantHasChoices(c.displays);
     final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
     final headline = cards ? assistantWithoutList(answer) : answer;
     final head = <Widget>[
@@ -172,12 +172,17 @@ class TvAssistantConversation extends StatelessWidget {
       if (children.isNotEmpty || c.state != AssistantSurfaceState.result)
         Flexible(
           child: TvAssistantEdgeFade(
+            // A new list per stand: the working list's offset does not carry.
+            key: ValueKey(result),
             builder: (controller) =>
                 SingleChildScrollView(controller: controller, reverse: !result, child: column(children)),
           ),
         ),
       // Under the scrolling part: always in view, whatever the results do.
       if (c.state == AssistantSurfaceState.result) ...[
+        // No results to scroll: the follow-ups stand above the buttons.
+        if (children.isEmpty)
+          if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
         // A button keeps 6 pt around its fill for the focus ring; pulled
         // back so the fill, not the ring, lines up with the text and cards.
         Transform.translate(
@@ -234,12 +239,43 @@ class TvAssistantConversation extends StatelessWidget {
   /// What scrolls under the answer: the run's displays and its result card.
   List<Widget> _result(BuildContext context, double pt) {
     final c = controller;
-    return [
+    final results = [
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         SizedBox(height: 24 * pt),
       ],
     ];
+    // After the results, in the same list: the cards keep the height.
+    return [
+      ...results,
+      if (results.isNotEmpty)
+        if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
+    ];
+  }
+
+  /// Three follow-ups after an answer; an error or a gate is no answer.
+  Widget? _followUps(double pt) {
+    final c = controller;
+    if (c.resultIsError) return null;
+    return Wrap(
+      spacing: 10 * pt,
+      runSpacing: 10 * pt,
+      children: [
+        for (final (i, question) in assistantFollowUps(
+          c.displays,
+          jobs: c.actions.any((a) => a.job != null),
+          prompt: c.prompt,
+        ).indexed)
+          TvAssistantChip(
+            label: question,
+            icon: Symbols.subdirectory_arrow_right_rounded,
+            dense: true,
+            automationId: AutomationIds.assistantFollowUp,
+            automationInstance: '$i',
+            onSelect: () => onExample(question),
+          ),
+      ],
+    );
   }
 }

@@ -2496,6 +2496,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get youAsked => 'Je vroeg:';
 	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
 	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
+	@override late final _TranslationsAssistantFollowUpNl followUp = _TranslationsAssistantFollowUpNl._(_root);
 	@override late final _TranslationsAssistantMatchNl match = _TranslationsAssistantMatchNl._(_root);
 }
 
@@ -3421,9 +3422,37 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 
 	// Translations
 	@override String missing({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}';
-	@override String watchStats({required Object server}) => 'Kijkcijfers · ${server}';
 	@override String plays({required Object count}) => '${count}× bekeken';
 	@override String noSource({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.';
+	@override String playsShort({required Object count}) => '${count}×';
+	@override String get watchNow => 'Op dit moment';
+	@override String watchDays({required Object n}) => 'Afgelopen ${n} dagen';
+	@override String get nobodyNow => 'Er kijkt nu niemand.';
+	@override String get nothingWatched => 'In deze periode is niets bekeken.';
+	@override String get partialData => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.';
+	@override String get watchTitle => 'Kijkcijfers';
+	@override String get playsTotal => 'keer gekeken';
+}
+
+// Path: assistant.followUp
+class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
+	_TranslationsAssistantFollowUpNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watchNow => 'Wie kijkt er nu?';
+	@override String get watchMonth => 'Wie keek het meest de afgelopen 30 dagen?';
+	@override String get watchWeek => 'Wie keek het meest deze week?';
+	@override String get watchToday => 'Wie keek er vandaag?';
+	@override String get tonight => 'Geef me een filmtip voor vanavond.';
+	@override String get recent => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?';
+	@override String get unwatched => 'Welke films in mijn bibliotheek heb ik nog niet gezien?';
+	@override String get popular => 'Welke populaire films heb ik nog niet?';
+	@override String get missingMovies => 'Welke films ontbreken tussen mijn servers?';
+	@override String get missingShows => 'Welke series ontbreken tussen mijn servers?';
+	@override String get jobs => 'Welke taken lopen er nu op mijn servers?';
+	@override String get failedJobs => 'Zijn er vandaag taken mislukt?';
 }
 
 // Path: assistant.match
@@ -5768,9 +5797,28 @@ extension on TranslationsNl {
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',
-			'assistant.displays.watchStats' => ({required Object server}) => 'Kijkcijfers · ${server}',
 			'assistant.displays.plays' => ({required Object count}) => '${count}× bekeken',
 			'assistant.displays.noSource' => ({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.',
+			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
+			'assistant.displays.watchNow' => 'Op dit moment',
+			'assistant.displays.watchDays' => ({required Object n}) => 'Afgelopen ${n} dagen',
+			'assistant.displays.nobodyNow' => 'Er kijkt nu niemand.',
+			'assistant.displays.nothingWatched' => 'In deze periode is niets bekeken.',
+			'assistant.displays.partialData' => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.',
+			'assistant.displays.watchTitle' => 'Kijkcijfers',
+			'assistant.displays.playsTotal' => 'keer gekeken',
+			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
+			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
+			'assistant.followUp.watchWeek' => 'Wie keek het meest deze week?',
+			'assistant.followUp.watchToday' => 'Wie keek er vandaag?',
+			'assistant.followUp.tonight' => 'Geef me een filmtip voor vanavond.',
+			'assistant.followUp.recent' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+			'assistant.followUp.unwatched' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
+			'assistant.followUp.popular' => 'Welke populaire films heb ik nog niet?',
+			'assistant.followUp.missingMovies' => 'Welke films ontbreken tussen mijn servers?',
+			'assistant.followUp.missingShows' => 'Welke series ontbreken tussen mijn servers?',
+			'assistant.followUp.jobs' => 'Welke taken lopen er nu op mijn servers?',
+			'assistant.followUp.failedJobs' => 'Zijn er vandaag taken mislukt?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In je bibliotheek · ${servers}',
 			'assistant.match.maybe' => 'mogelijk',
 			'assistant.match.movie' => 'Film',

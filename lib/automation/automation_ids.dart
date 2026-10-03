@@ -266,6 +266,9 @@ class AutomationIds {
   /// One example question in rust (`assistant.example[0]`).
   static const String assistantExample = 'assistant.example';
 
+  /// One follow-up question under a result (`assistant.followUp[0]`).
+  static const String assistantFollowUp = 'assistant.followUp';
+
   /// The live step list while Big P works; state carries the step count.
   static const String assistantSteps = 'assistant.steps';
 
@@ -287,8 +290,8 @@ class AutomationIds {
   static const String assistantConfirmButton = 'assistant.confirm.button';
 
   /// Big P summoned with a long Play/Pause press, over any TV screen. State
-  /// carries `shown`, `state`, `error` and `pending`. He stays until Menu or
-  /// Klaar.
+  /// carries `shown`, `state`, `error` and `pending`. A result stays until
+  /// Menu or Klaar: it always offers follow-ups.
   static const String assistantSummon = 'assistant.summon';
 
   /// A text field on a connect-a-service settings screen, suffixed with the
@@ -562,6 +565,7 @@ class AutomationIds {
     myPleyaLogRow,
     assistantButton,
     assistantExample,
+    assistantFollowUp,
     assistantOption,
     assistantMatch,
     assistantConfirmButton,
@@ -663,6 +667,7 @@ class AutomationIds {
     {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
     {'id': assistantButton, 'role': 'button', 'instanceable': true},
     {'id': assistantExample, 'role': 'button', 'instanceable': true},
+    {'id': assistantFollowUp, 'role': 'button', 'instanceable': true},
     {'id': assistantSteps, 'role': 'list', 'instanceable': false},
     {'id': assistantResult, 'role': 'region', 'instanceable': false},
     {'id': assistantOption, 'role': 'list.item', 'instanceable': true},

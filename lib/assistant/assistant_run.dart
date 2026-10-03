@@ -6,6 +6,7 @@ import '../media/ids.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
+import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
@@ -117,7 +118,12 @@ class AssistantRun {
       '- If several servers, libraries or users could match, ask one short question instead of acting.\n'
       '- Sensitive actions are confirmed by the user in Pleya. You cannot confirm them and must not ask '
       'for passwords.\n'
-      '- Reply briefly, in $languageName, without technical details such as ids or tool names.';
+      '- Reply briefly, in $languageName, without technical details such as ids or tool names.\n'
+      '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
+      'out is enough.\n'
+      '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
+      '- Write every film or series title you name between « and », with the year when you know it: '
+      '«Interstellar» (2014). Pleya turns each into a card to open or request.';
 
   /// Calls carried out per model reply and per run. A reply with a hundred
   /// scans, or a planted instruction that asks for them, stops here.
@@ -190,7 +196,10 @@ class AssistantRun {
         return _end(AssistantRunEnd.providerError, error: AssistantModelError.badResponse);
       }
       messages.add(reply.message);
-      if (reply.toolCalls.isEmpty) return _end(AssistantRunEnd.answered, text: reply.content);
+      if (reply.toolCalls.isEmpty) {
+        await _cardsForNamedTitles(reply.content);
+        return _end(AssistantRunEnd.answered, text: reply.content);
+      }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
         // Every call gets an answer, so the history stays valid.
@@ -247,6 +256,66 @@ class AssistantRun {
   }
 
   int _stepIndex = 0;
+
+  /// Titles the answer names without a card get one: Pleya looks them up
+  /// itself with find_title and keeps the exact titles that can be opened
+  /// from a library or requested. Never left to the model alone. After an
+  /// action the action is the answer, and a named title is its subject.
+  Future<void> _cardsForNamedTitles(String answer) async {
+    if (_actions.isNotEmpty || _cancelled) return;
+    final shown = assistantShownTitles(_displays);
+    final named = [
+      for (final t in assistantNamedTitles(answer))
+        if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
+    ];
+    if (named.isEmpty) return;
+    final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
+    if (tool == null) return;
+    final index = _stepIndex++;
+    onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.started));
+    AssistantDisplay? display;
+    try {
+      final titles = {for (final t in named) t.title}.toList();
+      final outcome = await tool.run(_ctx, null, {
+        'candidates': [
+          for (final t in named) {'title': t.title, 'year': ?t.year},
+        ],
+        'variants': [...titles, if (titles.length == 1) titles.single.toLowerCase()],
+      });
+      if (outcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
+        final exact = [
+          for (final m in matches)
+            if ((m.targets.isNotEmpty || m.request != null) &&
+                named.any(
+                  (t) => assistantSameTitle(
+                    (key: assistantTitleKey(m.title), year: m.year),
+                    assistantTitleKey(t.title),
+                    t.year,
+                  ),
+                ))
+              m,
+        ];
+        if (exact.isNotEmpty) _displays.add(display = AssistantTitleMatches(context, exact));
+      }
+    } catch (e) {
+      appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
+    }
+    onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.done, display: display));
+  }
+
+  /// find_media grids whose titles a later call acted on: a lookup on the way
+  /// to an action, so the action is the result, not the grid.
+  final Map<AssistantMediaGrid, Set<String>> _lookups = {};
+
+  void _consumeLookups(Map<String, Object?> args) {
+    final item = args['item_id'];
+    if (item is! String) return;
+    _lookups.removeWhere((grid, ids) {
+      if (!ids.contains(item)) return false;
+      _displays.remove(grid);
+      return true;
+    });
+  }
 
   Future<Map<String, Object?>> _execute(AssistantToolCall call) async {
     if (_cancelled) return {'error': 'cancelled'};
@@ -305,11 +374,25 @@ class AssistantRun {
       final outcome = await tool.run(_ctx, serverId, args);
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
-          if (record != null) _actions.add(record);
+          if (record != null) {
+            _actions.add(record);
+            // Only an action ends a lookup: a read with that item_id does not.
+            _consumeLookups(args);
+          }
           if (display != null) _displays.add(display);
+          if (tool.name == 'find_media' && display is AssistantMediaGrid) {
+            _lookups[display] = {for (final e in display.entries) e.item.id};
+          }
           return data;
         case final AssistantPendingAction action:
-          return await _confirmAndRun(tool, action);
+          final output = await _confirmAndRun(tool, action);
+          // A declined or failed action leaves the lookup as the result.
+          if (!output.containsKey('error') &&
+              output['status'] != 'cancelled_by_user' &&
+              output['status'] != 'not_confirmed') {
+            _consumeLookups(args);
+          }
+          return output;
       }
     } on AssistantToolError catch (e) {
       return {'error': e.code};

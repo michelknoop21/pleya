@@ -105,7 +105,7 @@ class TvAssistantAnswer extends StatefulWidget {
 
 // A sentence end, or the end of the first line. Not the dot of a list
 // number ("1.") or of a one-letter abbreviation ("o.a.").
-final _leadEnd = RegExp(r'(?<!\d)(?<!\b[A-Za-z])[.!?…](?=\s)|(?=\n)');
+final _leadEnd = RegExp(r'(?<!(?:^|\n)\s*\d{1,2})(?<!\b[A-Za-z])[.!?…](?=\s)|(?=\n)');
 
 class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
   final _scroll = ScrollController();
@@ -165,7 +165,12 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
     // ponytail: a sentence end is punctuation plus a space, at least 24
     // characters in, so "Mr." or "1." never leads. An abbreviation further
     // on can still split early; a sentence segmenter is the upgrade.
-    final end = _leadEnd.allMatches(widget.text).map((m) => m.end).where((end) => end >= 24).firstOrNull;
+    final end = _leadEnd
+        .allMatches(widget.text)
+        // A line end always ends the lead, however short the line.
+        .where((m) => m.end > 0 && (m.end >= 24 || m.end == m.start))
+        .map((m) => m.end)
+        .firstOrNull;
     final split = end != null && end <= 140 && end < widget.text.length;
     final rest = split ? widget.text.substring(end).trim() : '';
     final bodyStyle = rest.isEmpty
@@ -259,6 +264,7 @@ class _ReadingThumb extends StatelessWidget {
           final position = controller.position;
           final total = position.maxScrollExtent + position.viewportDimension;
           final track = constraints.maxHeight;
+          if (total <= 0 || track < 24 * pt) return SizedBox(width: 4 * pt);
           final thumb = (track * position.viewportDimension / total).clamp(24 * pt, track);
           final offset = position.maxScrollExtent <= 0
               ? 0.0

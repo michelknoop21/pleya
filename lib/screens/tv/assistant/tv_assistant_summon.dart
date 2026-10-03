@@ -245,7 +245,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
-  /// Menu or Klaar: Big P slides out, a run in flight or a
+  /// Menu or Klaar: Big P slides out (every result offers follow-ups, so he
+  /// waits for the user), a run in flight or a
   /// waiting card is let go, and the remote is back where it was.
   void _dismiss() {
     if (!_open || _leaving) return;
@@ -340,7 +341,10 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               onAsk: () => unawaited(_ask()),
               onDone: _dismiss,
               onCancelWork: _dismiss,
-              onExample: (_) {},
+              onExample: (question) {
+                c.beginListening();
+                unawaited(c.submit(question));
+              },
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
               onOpenTitle: _openTitle,
             ),
