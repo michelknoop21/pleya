@@ -155,8 +155,8 @@ class TvAssistantConversation extends StatelessWidget {
     return column([
       ...head,
       Flexible(
-        // A new result is a new scroll state: it opens at the answer's
-        // first line, not at its end.
+        // A new result is a new scroll state, anchored at the answer's
+        // first line; the other stands keep the newest line in view.
         child: _ReadableScroll(
           key: ValueKey(c.state == AssistantSurfaceState.result),
           fromStart: c.state == AssistantSurfaceState.result,
@@ -164,8 +164,7 @@ class TvAssistantConversation extends StatelessWidget {
           // Under the scrolling part, so the buttons stay in view and
           // their focus does not pull a long answer to its end.
           footer: [
-            if (c.state == AssistantSurfaceState.result) ...[
-              gap,
+            if (c.state == AssistantSurfaceState.result)
               Wrap(
                 spacing: 12 * pt,
                 runSpacing: 12 * pt,
@@ -180,7 +179,6 @@ class TvAssistantConversation extends StatelessWidget {
                   ),
                 ],
               ),
-            ],
           ],
           child: column(children),
         ),
@@ -227,6 +225,7 @@ class TvAssistantConversation extends StatelessWidget {
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
+        gap,
       ],
     ];
   }
@@ -249,7 +248,7 @@ class _ReadableScroll extends StatefulWidget {
   /// Stays under the scrolling part; its keys scroll too.
   final List<Widget> footer;
 
-  /// Open at the top (a result to read) rather than at the newest line.
+  /// Anchored at the top (a result to read) rather than at the newest line.
   final bool fromStart;
   final VoidCallback? onArrow;
 
@@ -259,15 +258,7 @@ class _ReadableScroll extends StatefulWidget {
 
 class _ReadableScrollState extends State<_ReadableScroll> {
   final _scroll = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    if (!widget.fromStart) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-    });
-  }
+  final _viewport = GlobalKey();
 
   @override
   void dispose() {
@@ -283,10 +274,21 @@ class _ReadableScrollState extends State<_ReadableScroll> {
     widget.onArrow?.call();
     final direction = up ? TraversalDirection.up : TraversalDirection.down;
     if (FocusManager.instance.primaryFocus?.focusInDirection(direction) ?? false) return KeyEventResult.handled;
-    // Anchored at the bottom: up is a larger offset.
     final position = _scroll.position;
-    final step = position.viewportDimension * 0.6;
-    final target = (position.pixels + (up ? step : -step)).clamp(0.0, position.maxScrollExtent);
+    var step = position.viewportDimension * 0.6;
+    // A focused card inside the scrolling part stays in view: the content
+    // moves no further than the card's distance to the edge it moves to.
+    final focus = FocusManager.instance.primaryFocus;
+    final viewport = _viewport.currentContext?.findRenderObject();
+    if (focus?.context != null && viewport is RenderBox && Scrollable.maybeOf(focus!.context!)?.position == position) {
+      final view = viewport.localToGlobal(Offset.zero) & viewport.size;
+      final room = up ? view.bottom - focus.rect.bottom : focus.rect.top - view.top;
+      step = step.clamp(0.0, room < 0 ? 0.0 : room);
+    }
+    // Up shows earlier lines: a smaller offset from the top, a larger one
+    // when anchored at the bottom.
+    final earlier = widget.fromStart ? -step : step;
+    final target = (position.pixels + (up ? earlier : -earlier)).clamp(0.0, position.maxScrollExtent);
     if (target == position.pixels) return KeyEventResult.ignored;
     unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
     return KeyEventResult.handled;
@@ -302,7 +304,12 @@ class _ReadableScrollState extends State<_ReadableScroll> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
-          child: SingleChildScrollView(controller: _scroll, reverse: true, child: widget.child),
+          child: SingleChildScrollView(
+            key: _viewport,
+            controller: _scroll,
+            reverse: !widget.fromStart,
+            child: widget.child,
+          ),
         ),
         ...widget.footer,
       ],

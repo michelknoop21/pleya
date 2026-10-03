@@ -315,6 +315,33 @@ void main() {
       expectInside(focusedRect(), panel, 'Cancel');
     });
 
+    testWidgets('Up on the first card under a long answer scrolls the answer and keeps the card in the panel', (
+      tester,
+    ) async {
+      await pumpSurface(tester);
+      final answer = List.filled(60, 'Ik heb veel films met Tom Cruise gevonden.').join(' ');
+      // A new result, as a run delivers it: working first, then the answer.
+      c
+        ..state = AssistantSurfaceState.working
+        ..emit();
+      await settle(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..answer = answer
+        ..emit();
+      await settle(tester);
+      final panel = panelContent(tester);
+      expect(focusedMatch(), 'm1');
+      expectInside(focusedRect(), panel, 'first card');
+      final before = tester.getRect(find.text(answer)).top;
+
+      await press(tester, LogicalKeyboardKey.arrowUp, 4);
+
+      expect(focusedMatch(), 'm1');
+      expectInside(focusedRect(), panel, 'first card after Up');
+      expect(tester.getRect(find.text(answer)).top, greaterThan(before), reason: 'the answer scrolled');
+    });
+
     testWidgets('D-pad through four results and on to the buttons keeps every focused control in the panel', (
       tester,
     ) async {

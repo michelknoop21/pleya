@@ -66,6 +66,9 @@ class TvAssistantSummonHost extends StatefulWidget {
   /// Added to [linger] per character of the answer: time to read it.
   static const lingerPerCharacter = Duration(milliseconds: 60);
 
+  /// However long the answer, Big P leaves this long after the last key.
+  static const lingerMax = Duration(seconds: 60);
+
   @override
   State<TvAssistantSummonHost> createState() => _TvAssistantSummonHostState();
 }
@@ -244,10 +247,9 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = _c;
     if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
     if (tvAssistantHasChoices(c.displays)) return;
-    _linger = Timer(
-      TvAssistantSummonHost.linger + TvAssistantSummonHost.lingerPerCharacter * assistantHeadline(c).length,
-      _dismiss,
-    );
+    final reading =
+        TvAssistantSummonHost.linger + TvAssistantSummonHost.lingerPerCharacter * assistantHeadline(c).length;
+    _linger = Timer(reading < TvAssistantSummonHost.lingerMax ? reading : TvAssistantSummonHost.lingerMax, _dismiss);
   }
 
   void _focusDefault() {

@@ -13,6 +13,7 @@ import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
+import 'package:pleya/screens/tv/assistant/tv_assistant_labels.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
@@ -233,6 +234,15 @@ void main() {
       expect(focusedLabel(), 'behind');
     });
 
+    // Hardware, build 318: the panel showed *Mission: Impossible* with its
+    // asterisks.
+    test('an answer is shown without its Markdown marks', () {
+      expect(
+        assistantPlainText('## Gevonden\nDe *Mission: Impossible*-reeks, **Top Gun** en `Jack Reacher`. 2 * 3 = 6.'),
+        'Gevonden\nDe Mission: Impossible-reeks, Top Gun en Jack Reacher. 2 * 3 = 6.',
+      );
+    });
+
     // Hardware, build 318: a long answer opened at its last lines, could not
     // be scrolled and left after 4 s.
     testWidgets('a long answer opens at its first line, scrolls on Down and stays while it is read', (tester) async {
@@ -246,7 +256,7 @@ void main() {
 
       final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
       final top = tester.getRect(find.text(answer)).top;
-      expect(top, greaterThanOrEqualTo(panel.top), reason: 'the first line is in the panel');
+      expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
 
       await tester.pump(const Duration(seconds: 15));
       expect(bigP(), findsOneWidget, reason: 'still reading');
@@ -256,6 +266,13 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(focusedLabel(), 'assistant.ask', reason: 'the focus stays on the button');
       expect(tester.getRect(find.text(answer)).top, top, reason: 'Up scrolls back');
+
+      // Capped at a minute after the last key, however long the answer.
+      await tester.pump(const Duration(seconds: 59));
+      expect(bigP(), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      await settle(tester);
+      expect(bigP(), findsNothing);
     });
 
     testWidgets('an error stays until Menu', (tester) async {
