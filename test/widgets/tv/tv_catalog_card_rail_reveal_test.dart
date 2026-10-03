@@ -86,11 +86,7 @@ void main() {
       expectFocusedInView(i);
     }
     expect(controller.position.pixels, controller.position.maxScrollExtent);
-    expect(
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight),
-      isTrue,
-      reason: 'RIGHT on the last card is consumed',
-    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
     expectFocusedInView(29);
 
@@ -147,5 +143,48 @@ void main() {
     final rect = tester.getRect(find.byKey(const ValueKey('card15')));
     expect(rect.left, greaterThanOrEqualTo(0));
     expect(rect.right, lessThanOrEqualTo(1920));
+  });
+
+  testWidgets('RIGHT on the last card of a row stays there, it does not drop into the next row', (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    Widget rail(String name) => TvCatalogCardRail(
+      nodeDebugLabel: name,
+      itemIds: [for (var i = 0; i < 12; i++) 'item$i'],
+      cardHeight: (width) => 200,
+      hasMore: false,
+      isLoadingMore: false,
+      onLoadMore: () {},
+      itemBuilder: (context, cell) => Focus(
+        focusNode: cell.focusNode,
+        onFocusChange: cell.onFocusChange,
+        onKeyEvent: (_, event) {
+          if (event is KeyUpEvent) return KeyEventResult.ignored;
+          final callback = event.logicalKey == LogicalKeyboardKey.arrowRight ? cell.onNavigateRight : null;
+          if (callback == null) return KeyEventResult.ignored;
+          callback();
+          return KeyEventResult.handled;
+        },
+        child: SizedBox(key: ValueKey('$name${cell.index}'), width: cell.width, child: Text('$name ${cell.index}')),
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: monoTheme(dark: true),
+        home: Scaffold(body: Column(children: [rail('first'), rail('second')])),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Focus.of(tester.element(find.byKey(const ValueKey('first0')))).requestFocus();
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 14; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+    }
+
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'first(item11)');
   });
 }
