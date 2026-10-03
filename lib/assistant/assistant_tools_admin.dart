@@ -104,6 +104,7 @@ final List<AssistantTool> _adminTools = [
           kind: AssistantActionKind.scanLibrary,
           serverName: ctx.serverName(id),
           subject: library.title,
+          job: AssistantJobWatch(serverId: id, startedAt: DateTime.now(), libraryId: library.id),
         ),
       );
     },
@@ -186,6 +187,7 @@ final List<AssistantTool> _adminTools = [
           kind: AssistantActionKind.retryJob,
           serverName: ctx.serverName(id),
           subject: clipText(title),
+          job: AssistantJobWatch(serverId: id, startedAt: DateTime.now(), jobId: jobId),
         ),
       );
     },

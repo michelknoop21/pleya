@@ -115,7 +115,15 @@ class TvAssistantResultCard extends StatelessWidget {
     return AutomationNode(
       id: AutomationIds.assistantResult,
       role: 'region',
-      state: () => {'error': error, 'actions': actions.length},
+      state: () => {
+        'error': error,
+        'actions': actions.length,
+        // Per followed job: phase and percent, for Pleya Verify.
+        'jobs': [
+          for (final a in actions)
+            if (a.progress case final p?) {'phase': p.phase.name, 'percent': ?p.percent},
+        ],
+      },
       child: TvAssistantCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,7 +133,14 @@ class TvAssistantResultCard extends StatelessWidget {
               style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption2 * pt),
             ),
             for (final action in actions)
-              line(_statusIcon(context, AssistantStepPhase.done), assistantActionLabel(action)),
+              line(
+                _statusIcon(context, switch (action.progress?.phase) {
+                  AssistantJobPhase.running || AssistantJobPhase.background => AssistantStepPhase.started,
+                  AssistantJobPhase.failed => AssistantStepPhase.failed,
+                  _ => AssistantStepPhase.done,
+                }),
+                assistantActionLabel(action),
+              ),
             if (!done) line(_statusIcon(context, AssistantStepPhase.failed), t.assistant.ends.nothingChanged),
           ],
         ),

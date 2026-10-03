@@ -13,4 +13,5 @@ PlexActivity _$PlexActivityFromJson(Map<String, dynamic> json) => PlexActivity(
   subtitle: json['subtitle'] as String?,
   progress: (json['progress'] as num?)?.toInt() ?? 0,
   cancellable: json['cancellable'] as bool? ?? false,
+  librarySectionId: _readLibrarySectionId(json, 'librarySectionId') as String?,
 );

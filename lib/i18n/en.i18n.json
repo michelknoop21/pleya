@@ -2336,6 +2336,20 @@
       "findTitle": "Finding the title",
       "fallback": "Working"
     },
+    "jobs": {
+      "scanLibrary": {
+        "running": "Scan running",
+        "done": "Scan finished",
+        "failed": "Scan failed",
+        "background": "Scan still running in the background"
+      },
+      "retryJob": {
+        "running": "Job running",
+        "done": "Job finished",
+        "failed": "Job failed",
+        "background": "Job still running in the background"
+      }
+    },
     "result": {
       "doneBy": "Carried out by Pleya",
       "notDoneBy": "Not carried out by Pleya",
