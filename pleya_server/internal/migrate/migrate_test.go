@@ -220,6 +220,40 @@ func TestChangedMigrationIsRefused(t *testing.T) {
 	}
 }
 
+// De NAS draaide 0006 en 0007 vóór ze bewerkt werden (3 okt 2026 weigerde de
+// server daarop te starten). Die eerdere checksums horen geaccepteerd te worden,
+// en 0012 hoort de foreign key daarna gelijk te trekken.
+func TestInstallWithEarlier0006And0007MigratesToHead(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+
+	if _, err := migrate.RunTo(ctx, pool, nil, 7); err != nil {
+		t.Fatalf("migreren naar 7: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `
+		ALTER TABLE auth_refresh_tokens
+			DROP CONSTRAINT auth_refresh_tokens_replaced_by_fkey,
+			ADD CONSTRAINT auth_refresh_tokens_replaced_by_fkey
+				FOREIGN KEY (replaced_by) REFERENCES auth_refresh_tokens (token_hash);
+		UPDATE schema_migrations SET checksum = 'c5fdb87d0952cfe0331cdbb58df3fa27ec28762e42dc130255af6746e3ebf329' WHERE version = 6;
+		UPDATE schema_migrations SET checksum = '10ba55ada813febfd493f9995b757dc797718c7b700fc8c538e814e9af1e8c2b' WHERE version = 7;`); err != nil {
+		t.Fatalf("NAS-stand naspelen: %v", err)
+	}
+
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren vanaf de NAS-stand: %v", err)
+	}
+	var onDelete string
+	if err := pool.QueryRow(ctx, `
+		SELECT confdeltype::text FROM pg_constraint
+		WHERE conname = 'auth_refresh_tokens_replaced_by_fkey'`).Scan(&onDelete); err != nil {
+		t.Fatalf("foreign key lezen: %v", err)
+	}
+	if onDelete != "n" {
+		t.Fatalf("replaced_by ON DELETE = %q, verwacht SET NULL (n)", onDelete)
+	}
+}
+
 // TestMigration0007MigratesLegacySessions dekt DEC-125: elke actieve
 // refreshketen krijgt zijn eigen legacy-sessie, gebonden aan de overgezette
 // owner, met device_id NULL en een vaste plaatshouder als naam. Een verlopen
