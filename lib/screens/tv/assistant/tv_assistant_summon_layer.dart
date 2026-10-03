@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../utils/tv_hig.dart';
 import 'tv_assistant_widgets.dart';
 
-/// Where summoned Big P stands: the screen behind dimmed, the 570 pt panel
+/// Where summoned Big P stands: the screen behind dimmed, the 760 pt panel
 /// and Big P bottom right, sliding in from the right and above the system
 /// keyboard while listening (38-motion-0).
 class TvAssistantSummonLayer extends StatelessWidget {
@@ -59,7 +59,9 @@ class TvAssistantSummonLayer extends StatelessWidget {
                   children: [
                     if (panel != null)
                       SizedBox(
-                        width: 570 * pt,
+                        // 570 pt in mockup 38; widened on hardware feedback so
+                        // results stay readable (3 Oct 2026).
+                        width: 760 * pt,
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxHeight: box.maxHeight - (listening ? 470 : 140) * pt),
                           child: TvAssistantGlassPanel(child: panel),

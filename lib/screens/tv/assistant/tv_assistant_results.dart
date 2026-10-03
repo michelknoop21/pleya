@@ -173,7 +173,7 @@ class TvAssistantDisplayView extends StatelessWidget {
   final ValueChanged<AssistantRequestOption>? onPickOption;
   final ValueChanged<AssistantTitleTarget>? onOpenTitle;
 
-  /// The summoned panel: found titles scroll in a window of three.
+  /// The summoned panel: found titles scroll in a window of four.
   final bool compact;
 
   /// Gets the first option card, for the surface's default focus (still 7).
@@ -210,9 +210,10 @@ class TvAssistantDisplayView extends StatelessWidget {
       ],
     );
     if (!compact) return list;
-    // Three cards of 124 pt plus their gaps; focus scrolls the rest in.
+    // Four match cards (144 pt with a plot line) plus their gaps; focus
+    // scrolls the rest in.
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: 3 * 134 * pt),
+      constraints: BoxConstraints(maxHeight: 4 * 154 * pt),
       child: SingleChildScrollView(child: list),
     );
   }
