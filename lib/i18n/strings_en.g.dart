@@ -7894,9 +7894,6 @@ class TranslationsAssistantDisplaysEn {
 	/// en: 'Watch stats · ${server}'
 	String watchStats({required Object server}) => 'Watch stats · ${server}';
 
-	/// en: '${count}× watched'
-	String plays({required Object count}) => '${count}× watched';
-
 	/// en: 'No watch data available for ${server}.'
 	String noSource({required Object server}) => 'No watch data available for ${server}.';
 
@@ -7939,8 +7936,11 @@ class TranslationsAssistantFollowUpEn {
 	/// en: 'Who watched the most this week?'
 	String get watchWeek => 'Who watched the most this week?';
 
-	/// en: 'Which titles on ${server} are missing on ${other}?'
-	String compareBack({required Object server, required Object other}) => 'Which titles on ${server} are missing on ${other}?';
+	/// en: 'Which films on ${server} are missing on ${other}?'
+	String compareBackMovies({required Object server, required Object other}) => 'Which films on ${server} are missing on ${other}?';
+
+	/// en: 'Which series on ${server} are missing on ${other}?'
+	String compareBackShows({required Object server, required Object other}) => 'Which series on ${server} are missing on ${other}?';
 }
 
 // Path: assistant.match
@@ -10346,7 +10346,6 @@ extension on Translations {
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',
 			'assistant.displays.watchStats' => ({required Object server}) => 'Watch stats · ${server}',
-			'assistant.displays.plays' => ({required Object count}) => '${count}× watched',
 			'assistant.displays.noSource' => ({required Object server}) => 'No watch data available for ${server}.',
 			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
 			'assistant.displays.watchNow' => 'Right now',
@@ -10358,7 +10357,8 @@ extension on Translations {
 			'assistant.followUp.watchNow' => 'Who is watching right now?',
 			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
-			'assistant.followUp.compareBack' => ({required Object server, required Object other}) => 'Which titles on ${server} are missing on ${other}?',
+			'assistant.followUp.compareBackMovies' => ({required Object server, required Object other}) => 'Which films on ${server} are missing on ${other}?',
+			'assistant.followUp.compareBackShows' => ({required Object server, required Object other}) => 'Which series on ${server} are missing on ${other}?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In your library · ${servers}',
 			'assistant.match.maybe' => 'possibly',
 			'assistant.match.movie' => 'Movie',

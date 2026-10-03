@@ -667,6 +667,7 @@ class AutomationIds {
     {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
     {'id': assistantButton, 'role': 'button', 'instanceable': true},
     {'id': assistantExample, 'role': 'button', 'instanceable': true},
+    {'id': assistantFollowUp, 'role': 'button', 'instanceable': true},
     {'id': assistantSteps, 'role': 'list', 'instanceable': false},
     {'id': assistantResult, 'role': 'region', 'instanceable': false},
     {'id': assistantOption, 'role': 'list.item', 'instanceable': true},

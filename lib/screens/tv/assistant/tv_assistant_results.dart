@@ -163,6 +163,7 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
   AssistantTitleMatches(:final matches) => matches.length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
+  AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
   _ => 0,
 };
 
@@ -319,11 +320,30 @@ class TvAssistantDisplayView extends StatelessWidget {
             ],
           ),
       ]),
+      // The missing titles are on [serverName]: cards that open that copy.
+      final AssistantServerComparison c when onOpenTitle != null && c.missing.isNotEmpty => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          card(t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName), []),
+          SizedBox(height: 10 * pt),
+          _matches(pt, [
+            for (final item in c.missing.take(_gridCap))
+              AssistantTitleMatch(
+                matchId: item.globalKey,
+                title: item.displayTitle,
+                year: item.year,
+                kind: item.kind.name,
+                confidence: 'high',
+                targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
+              ),
+          ]),
+        ],
+      ),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
-      final AssistantWatchStats s => TvAssistantWatchCard(stats: s),
+      final AssistantWatchStats s => TvAssistantWatchCard(stats: s, onOpenTitle: onOpenTitle),
       _ => const SizedBox.shrink(),
     };
   }

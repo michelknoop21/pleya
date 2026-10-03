@@ -2503,7 +2503,6 @@
     "displays": {
       "missing": "${count} titels op ${server} ontbreken op ${other}",
       "watchStats": "Kijkcijfers · ${server}",
-      "plays": "${count}× bekeken",
       "noSource": "Geen kijkgegevens beschikbaar voor ${server}.",
       "playsShort": "${count}×",
       "watchNow": "Op dit moment",
@@ -2517,7 +2516,8 @@
       "watchNow": "Wie kijkt er nu?",
       "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",
       "watchWeek": "Wie keek het meest deze week?",
-      "compareBack": "Welke titels op ${server} ontbreken op ${other}?"
+      "compareBackMovies": "Welke films op ${server} ontbreken op ${other}?",
+      "compareBackShows": "Welke series op ${server} ontbreken op ${other}?"
     },
     "match": {
       "inLibrary": "In je bibliotheek · ${servers}",

@@ -8,6 +8,7 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/media_kind.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -160,12 +161,20 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays) {
   final f = t.assistant.followUp;
   for (final d in displays) {
     switch (d) {
+      // Nothing came back: a follow-up would ask the same silent servers.
+      case AssistantWatchStats(:final users, :final titles, :final sessions, :final unavailable)
+          when unavailable.isNotEmpty && users.isEmpty && titles.isEmpty && sessions.isEmpty:
+        return const [];
       case AssistantWatchStats(days: null):
         return [f.watchWeek, f.watchMonth];
       case AssistantWatchStats(:final days?):
         return [f.watchNow, if (days < 30) f.watchMonth else f.watchWeek];
-      case AssistantServerComparison(:final serverName, :final otherServerName):
-        return [f.compareBack(server: otherServerName, other: serverName)];
+      case AssistantServerComparison(:final serverName, :final otherServerName, :final kind):
+        return [
+          kind == MediaKind.show
+              ? f.compareBackShows(server: otherServerName, other: serverName)
+              : f.compareBackMovies(server: otherServerName, other: serverName),
+        ];
       default:
         break;
     }
@@ -177,8 +186,9 @@ List<String> assistantFollowUps(List<AssistantDisplay> displays) {
 /// (bold, headings, code ticks, list dashes) becomes plain text with
 /// bullets, and runs of blank lines become one.
 String assistantPlainAnswer(String answer) => answer
-    .replaceAll(RegExp(r'\*\*|__|`'), '')
+    .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*|__(\S.*?)__'), (m) => m[1] ?? m[2]!)
+    .replaceAll('`', '')
     .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
-    .replaceAll(RegExp(r'^\s*[-*+]\s+', multiLine: true), '• ')
+    .replaceAll(RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true), '• ')
     .replaceAll(RegExp(r'\n{3,}'), '\n\n')
     .trim();

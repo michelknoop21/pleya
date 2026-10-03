@@ -3423,7 +3423,6 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 	// Translations
 	@override String missing({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}';
 	@override String watchStats({required Object server}) => 'Kijkcijfers · ${server}';
-	@override String plays({required Object count}) => '${count}× bekeken';
 	@override String noSource({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.';
 	@override String playsShort({required Object count}) => '${count}×';
 	@override String get watchNow => 'Op dit moment';
@@ -3444,7 +3443,8 @@ class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
 	@override String get watchNow => 'Wie kijkt er nu?';
 	@override String get watchMonth => 'Wie keek het meest de afgelopen 30 dagen?';
 	@override String get watchWeek => 'Wie keek het meest deze week?';
-	@override String compareBack({required Object server, required Object other}) => 'Welke titels op ${server} ontbreken op ${other}?';
+	@override String compareBackMovies({required Object server, required Object other}) => 'Welke films op ${server} ontbreken op ${other}?';
+	@override String compareBackShows({required Object server, required Object other}) => 'Welke series op ${server} ontbreken op ${other}?';
 }
 
 // Path: assistant.match
@@ -5790,7 +5790,6 @@ extension on TranslationsNl {
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',
 			'assistant.displays.watchStats' => ({required Object server}) => 'Kijkcijfers · ${server}',
-			'assistant.displays.plays' => ({required Object count}) => '${count}× bekeken',
 			'assistant.displays.noSource' => ({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.',
 			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
 			'assistant.displays.watchNow' => 'Op dit moment',
@@ -5802,7 +5801,8 @@ extension on TranslationsNl {
 			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
 			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
 			'assistant.followUp.watchWeek' => 'Wie keek het meest deze week?',
-			'assistant.followUp.compareBack' => ({required Object server, required Object other}) => 'Welke titels op ${server} ontbreken op ${other}?',
+			'assistant.followUp.compareBackMovies' => ({required Object server, required Object other}) => 'Welke films op ${server} ontbreken op ${other}?',
+			'assistant.followUp.compareBackShows' => ({required Object server, required Object other}) => 'Welke series op ${server} ontbreken op ${other}?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In je bibliotheek · ${servers}',
 			'assistant.match.maybe' => 'mogelijk',
 			'assistant.match.movie' => 'Film',

@@ -32,6 +32,7 @@ import '../../../widgets/overlay_sheet.dart';
 import 'big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
+import 'tv_assistant_labels.dart';
 import 'tv_assistant_results.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
@@ -234,12 +235,13 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (confirmed && mounted) setState(() => _nod++);
   }
 
-  /// A good result with nothing left to choose: Big P leaves after [linger].
+  /// A good result with nothing left to choose or ask: Big P leaves after [linger].
   void _armLinger() {
     _linger?.cancel();
     final c = _c;
     if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
-    if (tvAssistantHasChoices(c.displays)) return;
+    // Choices or follow-ups wait for the user.
+    if (tvAssistantHasChoices(c.displays) || assistantFollowUps(c.displays).isNotEmpty) return;
     _linger = Timer(TvAssistantSummonHost.linger, _dismiss);
   }
 

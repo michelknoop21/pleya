@@ -2503,7 +2503,6 @@
     "displays": {
       "missing": "${count} titles on ${server} are missing on ${other}",
       "watchStats": "Watch stats · ${server}",
-      "plays": "${count}× watched",
       "noSource": "No watch data available for ${server}.",
       "playsShort": "${count}×",
       "watchNow": "Right now",
@@ -2517,7 +2516,8 @@
       "watchNow": "Who is watching right now?",
       "watchMonth": "Who watched the most in the last 30 days?",
       "watchWeek": "Who watched the most this week?",
-      "compareBack": "Which titles on ${server} are missing on ${other}?"
+      "compareBackMovies": "Which films on ${server} are missing on ${other}?",
+      "compareBackShows": "Which series on ${server} are missing on ${other}?"
     },
     "match": {
       "inLibrary": "In your library · ${servers}",

@@ -350,7 +350,7 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   final plays = [for (final r in served) ...r.plays];
   final hours = served.isNotEmpty && served.every((r) => r.hours);
 
-  final titles = <String, ({String title, int plays, Set<String> viewers})>{};
+  final titles = <String, ({String title, int plays, Set<String> viewers, Set<ServerId> servers, bool show})>{};
   final users = <String, ({String name, int plays, int seconds})>{};
   final personOf = <String, String>{};
   final serversOfPerson = <String, Set<String>>{};
@@ -364,14 +364,25 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
   }();
   for (final p in plays) {
     final t = titles[p.titleKey];
-    titles[p.titleKey] = (title: t?.title ?? p.title, plays: (t?.plays ?? 0) + 1, viewers: {...?t?.viewers, p.user});
+    titles[p.titleKey] = (
+      title: t?.title ?? p.title,
+      plays: (t?.plays ?? 0) + 1,
+      viewers: {...?t?.viewers, p.user},
+      servers: {...?t?.servers, ServerId(p.server)},
+      show: p.titleKey.startsWith('show:'),
+    );
     final key = person(p);
     final u = users[key];
     users[key] = (name: u?.name ?? p.user, plays: (u?.plays ?? 0) + 1, seconds: (u?.seconds ?? 0) + p.seconds);
   }
+  final ranked = titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
+  // The titles the card shows open their library copy, as a found title does.
+  final targets = await Future.wait([
+    for (final t in ranked.take(_watchTargets)) _watchTarget(ctx, t.title, t.show, t.servers),
+  ]);
   final topTitles = [
-    for (final t in titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays)))
-      (title: t.title, plays: t.plays, viewers: t.viewers.toList()),
+    for (final (i, t) in ranked.indexed)
+      (title: t.title, plays: t.plays, viewers: t.viewers.toList(), target: i < targets.length ? targets[i] : null),
   ];
   final topUsers = users.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
   return AssistantToolResult(
@@ -401,4 +412,34 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
       ),
     ),
   );
+}
+
+const _watchTargets = 5;
+
+/// The library copy of a watched title on one of the [servers] it was played
+/// on: the same title key of the right kind, or null. A history row has
+/// no item id that every backend keeps, so the title is looked up.
+Future<AssistantTitleTarget?> _watchTarget(
+  AssistantToolContext ctx,
+  String title,
+  bool show,
+  Set<ServerId> servers,
+) async {
+  final want = _titleKey(show, title);
+  for (final id in servers) {
+    final client = ctx.userClient(id);
+    if (client == null) continue;
+    try {
+      final items = await client.searchItems(clipText(title, 100), limit: 5).timeout(const Duration(seconds: 5));
+      for (final item in items) {
+        if (item.kind != (show ? MediaKind.show : MediaKind.movie)) continue;
+        if (_titleKey(show, item.title ?? '') != want) continue;
+        final scoped = (item.serverId?.isEmpty ?? true) ? item.copyWith(serverId: id.value) : item;
+        return (serverId: id, serverName: ctx.serverName(id), item: scoped);
+      }
+    } catch (_) {
+      // A slow or failing search leaves the row as text.
+    }
+  }
+  return null;
 }

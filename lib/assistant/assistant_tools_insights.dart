@@ -67,7 +67,7 @@ class AssistantWatchStats extends AssistantDisplay {
   /// Null for "now".
   final int? days;
   final List<WatchSession> sessions;
-  final List<({String title, int plays, List<String> viewers})> titles;
+  final List<({String title, int plays, List<String> viewers, AssistantTitleTarget? target})> titles;
   final List<({String name, int plays, int seconds})> users;
 
   /// Servers with no source for the asked scope, each named once.
