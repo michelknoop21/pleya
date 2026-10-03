@@ -379,6 +379,7 @@ class SettingsService extends BaseSharedPreferencesService {
   static const tvHeroClearLogo = BoolPref('tv_hero_clear_logo', defaultValue: true);
   static const tvHeroAutoAdvance = BoolPref('tv_hero_auto_advance', defaultValue: true);
   static const tvReduceMotion = BoolPref('tv_reduce_motion', defaultValue: false);
+  static const bigPVoice = BoolPref('big_p_voice', defaultValue: true);
   static const useGlobalHubs = BoolPref('use_global_hubs', defaultValue: true);
   static const showServerNameOnHubs = BoolPref('show_server_name_on_hubs');
   static const groupLibrariesByServer = BoolPref('group_libraries_by_server', defaultValue: true);

@@ -7,7 +7,10 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/screens/settings/assistant_settings_screen.dart';
+import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+
+import '../../test_helpers/prefs.dart';
 
 class _FakeStore implements AssistantProviderStore {
   _FakeStore([this.config]);
@@ -31,6 +34,12 @@ List<AssistantModelInfo> _infos(List<String> ids) => [for (final id in ids) Assi
 
 void main() {
   final s = t.assistant.settings;
+
+  // The summary carries Big P's voice switch, a SettingsService pref.
+  setUp(() async {
+    resetSharedPreferencesForTest();
+    await SettingsService.getInstance();
+  });
 
   Future<void> pump(
     WidgetTester tester,

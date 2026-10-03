@@ -172,6 +172,7 @@ flutter:
     - assets/shaders/anime4k/
     - assets/player_icons/
     - assets/rating_icons/
+    - assets/audio/bigp/
   fonts:
     - family: Inter
       fonts:

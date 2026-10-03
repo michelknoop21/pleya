@@ -9,6 +9,7 @@ import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
+import '../screens/video_player_screen.dart' show VideoPlayerScreenState;
 import '../services/download_manager_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_controller.dart';
@@ -16,6 +17,7 @@ import 'assistant_tool_context.dart';
 import 'assistant_provider.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
+import 'big_p_voice.dart';
 
 /// The controller for one profile session. Register it lazily inside the
 /// profile-scoped providers (`ProfileSessionScreen`), so a profile switch
@@ -30,10 +32,14 @@ import 'assistant_web_lookup.dart';
 /// [HomeLayoutProvider] is only built once Big P is asked something. A
 /// provider that is not in scope leaves its service null, which keeps those
 /// tools out of the run.
-AssistantController assistantControllerForSession(BuildContext context) => AssistantController(
-  buildContext: (screen) => _sessionToolContext(context, screen),
-  webFor: assistantWebServicesFor,
-);
+AssistantController assistantControllerForSession(BuildContext context) {
+  final controller = AssistantController(
+    buildContext: (screen) => _sessionToolContext(context, screen),
+    webFor: assistantWebServicesFor,
+  );
+  BigPVoice(controller, playbackActive: () => VideoPlayerScreenState.activeId != null);
+  return controller;
+}
 
 /// Web search for find_title, from the provider settings. Wikipedia needs
 /// no key; the one web search per question uses the Ollama key (the Cloud

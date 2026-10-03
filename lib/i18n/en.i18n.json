@@ -2478,7 +2478,9 @@
       "ollamaWebKeyHelp": "Without this key Big P searches Wikipedia only.",
       "webSearchNoteServer": "Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama's web search.",
       "webSearchNoteCloud": "The description of a title you look for goes to Wikipedia and Ollama's web search.",
-      "webSearchNoteOpenRouter": "The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search."
+      "webSearchNoteOpenRouter": "The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.",
+      "voice": "Big P's voice",
+      "voiceNote": "Short spoken reactions. Never while you dictate or watch something."
     },
     "youAsked": "You asked:",
     "option": {

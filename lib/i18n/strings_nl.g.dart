@@ -3387,6 +3387,8 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get webSearchNoteServer => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.';
 	@override String get webSearchNoteCloud => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.';
 	@override String get webSearchNoteOpenRouter => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.';
+	@override String get voice => 'Stem van Big P';
+	@override String get voiceNote => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.';
 }
 
 // Path: assistant.option
@@ -5715,6 +5717,8 @@ extension on TranslationsNl {
 			'assistant.settings.webSearchNoteServer' => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.',
 			'assistant.settings.webSearchNoteCloud' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.',
 			'assistant.settings.webSearchNoteOpenRouter' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.',
+			'assistant.settings.voice' => 'Stem van Big P',
+			'assistant.settings.voiceNote' => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',
