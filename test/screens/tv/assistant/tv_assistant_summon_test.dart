@@ -258,7 +258,7 @@ void main() {
       await settle(tester);
 
       final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
-      final top = tester.getRect(find.text(answer)).top;
+      final top = tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top;
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
       expect(focusedLabel(), 'assistant.ask');
 
@@ -266,9 +266,13 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowUp);
       expect(focusedLabel(), 'assistant.answer');
       await press(tester, LogicalKeyboardKey.arrowDown);
-      expect(tester.getRect(find.text(answer)).top, lessThan(top), reason: 'Down scrolls the answer');
+      expect(
+        tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top,
+        lessThan(top),
+        reason: 'Down scrolls the answer',
+      );
       await press(tester, LogicalKeyboardKey.arrowUp);
-      expect(tester.getRect(find.text(answer)).top, top, reason: 'Up scrolls back');
+      expect(tester.getRect(find.byKey(const ValueKey('assistant.answer'))).top, top, reason: 'Up scrolls back');
       expect(focusedLabel(), 'assistant.answer');
 
       // At its last line Down gives the remote back to the buttons.

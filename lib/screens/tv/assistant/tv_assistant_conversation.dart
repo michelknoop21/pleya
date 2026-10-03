@@ -149,8 +149,9 @@ class TvAssistantConversation extends StatelessWidget {
             )
           else
             ConstrainedBox(
-              // Five lines; the rest scrolls inside the block.
-              constraints: BoxConstraints(maxHeight: 5 * headlineStyle.fontSize! * headlineStyle.height!),
+              // Room for the lead and a few lines; the rest scrolls inside
+              // the block, so the results keep most of the panel.
+              constraints: BoxConstraints(maxHeight: 240 * pt),
               child: _AnswerBlock(text: headline, style: headlineStyle),
             ),
           gap,
@@ -168,22 +169,32 @@ class TvAssistantConversation extends StatelessWidget {
     // Anchored at the bottom: the newest stays in view.
     return column([
       ...head,
-      Flexible(child: SingleChildScrollView(reverse: true, child: column(children))),
+      Flexible(
+        child: _EdgeFade(
+          builder: (controller) =>
+              SingleChildScrollView(controller: controller, reverse: true, child: column(children)),
+        ),
+      ),
       // Under the scrolling part: always in view, whatever the results do.
       if (c.state == AssistantSurfaceState.result)
-        Wrap(
-          spacing: 12 * pt,
-          runSpacing: 12 * pt,
-          children: [
-            ask(),
-            TvAssistantButton(
-              label: t.assistant.result.done,
-              primary: false,
-              automationId: AutomationIds.assistantButton,
-              automationInstance: 'done',
-              onPressed: onDone,
-            ),
-          ],
+        // A button keeps 6 pt around its fill for the focus ring; pulled
+        // back so the fill, not the ring, lines up with the text and cards.
+        Transform.translate(
+          offset: Offset(-6 * pt, 0),
+          child: Wrap(
+            spacing: 12 * pt,
+            runSpacing: 12 * pt,
+            children: [
+              ask(),
+              TvAssistantButton(
+                label: t.assistant.result.done,
+                primary: false,
+                automationId: AutomationIds.assistantButton,
+                automationInstance: 'done',
+                onPressed: onDone,
+              ),
+            ],
+          ),
         ),
     ]);
   }
@@ -231,9 +242,85 @@ class TvAssistantConversation extends StatelessWidget {
   }
 }
 
-/// The model's answer. Opens at its first line. When it is longer than its
-/// box it takes the focus on Up, shows a scroll thumb, and Up and Down
-/// scroll it; at either end the key moves the focus on as usual.
+/// Content that runs past an edge fades out there instead of being cut:
+/// the fade is the sign that there is more, and it goes when the end is
+/// reached.
+class _EdgeFade extends StatefulWidget {
+  const _EdgeFade({required this.builder, this.controller});
+
+  /// Builds the scroll view around the controller it is given.
+  final Widget Function(ScrollController controller) builder;
+
+  /// The owner's controller, when it scrolls the content itself.
+  final ScrollController? controller;
+
+  @override
+  State<_EdgeFade> createState() => _EdgeFadeState();
+}
+
+class _EdgeFadeState extends State<_EdgeFade> {
+  ScrollController? _own;
+  ScrollController get _scroll => widget.controller ?? (_own ??= ScrollController());
+  bool _above = false;
+  bool _below = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_measure);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_measure);
+    _own?.dispose();
+    super.dispose();
+  }
+
+  void _measure() {
+    if (!mounted || !_scroll.hasClients) return;
+    final position = _scroll.position;
+    final up = position.axisDirection == AxisDirection.up;
+    final above = (up ? position.extentAfter : position.extentBefore) > 0.5;
+    final below = (up ? position.extentBefore : position.extentAfter) > 0.5;
+    if (above != _above || below != _below) {
+      setState(() {
+        _above = above;
+        _below = below;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) {
+        final fade = (44 * pt / rect.height).clamp(0.0, 0.5);
+        return LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            _above ? const Color(0x00000000) : const Color(0xFF000000),
+            const Color(0xFF000000),
+            const Color(0xFF000000),
+            _below ? const Color(0x00000000) : const Color(0xFF000000),
+          ],
+          stops: [0, fade, 1 - fade, 1],
+        ).createShader(rect);
+      },
+      child: widget.builder(_scroll),
+    );
+  }
+}
+
+/// The model's answer, set as mockup 38 G sets it: the first sentence as
+/// the headline, what follows in a lighter voice. Opens at its first line.
+/// When it is longer than its box the lower edge fades, Up gives it the
+/// focus (a thumb at its side shows where you are), and Up and Down scroll
+/// it; at either end the key moves the focus on as usual.
 class _AnswerBlock extends StatefulWidget {
   const _AnswerBlock({required this.text, required this.style});
 
@@ -243,6 +330,8 @@ class _AnswerBlock extends StatefulWidget {
   @override
   State<_AnswerBlock> createState() => _AnswerBlockState();
 }
+
+final _leadEnd = RegExp(r'[.!?…](?=\s)');
 
 class _AnswerBlockState extends State<_AnswerBlock> {
   final _scroll = ScrollController();
@@ -281,7 +370,7 @@ class _AnswerBlockState extends State<_AnswerBlock> {
     final step = position.viewportDimension * 0.6;
     final target = (position.pixels + (up ? -step : step)).clamp(0.0, position.maxScrollExtent);
     if (target == position.pixels) return KeyEventResult.ignored;
-    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 200), curve: Curves.easeOut));
+    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic));
     return KeyEventResult.handled;
   }
 
@@ -290,26 +379,106 @@ class _AnswerBlockState extends State<_AnswerBlock> {
     final pt = TvHig.of(context);
     final tk = tokens(context);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    // One sentence is a headline. More than that: the first sentence leads,
+    // the rest reads as running text.
+    final end = _leadEnd.firstMatch(widget.text)?.end;
+    final split = end != null && end <= 140 && end < widget.text.length;
+    final lead = split ? widget.text.substring(0, end) : widget.text;
+    final rest = split ? widget.text.substring(end).trim() : '';
     return Focus(
       focusNode: _node,
       canRequestFocus: _overflows,
       onKeyEvent: _onKey,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: _node.hasFocus ? tk.text.withValues(alpha: 0.08) : null,
-          borderRadius: BorderRadius.circular(12 * pt),
-        ),
-        child: RawScrollbar(
-          controller: _scroll,
-          thumbVisibility: _overflows,
-          thumbColor: tk.text.withValues(alpha: _node.hasFocus ? 0.8 : 0.35),
-          thickness: 4 * pt,
-          radius: Radius.circular(2 * pt),
-          child: SingleChildScrollView(
-            controller: _scroll,
-            child: Text(widget.text, style: widget.style),
+      // The thumb hangs in the panel's margin, so the text keeps the full
+      // measure and its right edge stays on the cards' edge.
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            right: -20 * pt,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: AnimatedOpacity(
+                opacity: _overflows && _node.hasFocus ? 1 : 0,
+                duration: const Duration(milliseconds: 160),
+                child: _ReadingThumb(controller: _scroll),
+              ),
+            ),
           ),
-        ),
+          _EdgeFade(
+            controller: _scroll,
+            builder: (controller) => SingleChildScrollView(
+              controller: controller,
+              child: Column(
+                key: const ValueKey('assistant.answer'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(lead, style: widget.style),
+                  if (rest.isNotEmpty) ...[
+                    SizedBox(height: 12 * pt),
+                    Text(
+                      rest,
+                      style: TextStyle(
+                        color: tk.text.withValues(alpha: 0.78),
+                        fontSize: TvHig.callout * pt,
+                        fontWeight: FontWeight.w500,
+                        height: 1.32,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A slim track with a thumb for the part of the answer in view.
+class _ReadingThumb extends StatelessWidget {
+  const _ReadingThumb({required this.controller});
+
+  final ScrollController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = TvHig.of(context);
+    final tk = tokens(context);
+    return LayoutBuilder(
+      builder: (context, constraints) => ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          if (!controller.hasClients || !controller.position.hasContentDimensions || !constraints.hasBoundedHeight) {
+            return SizedBox(width: 4 * pt);
+          }
+          final position = controller.position;
+          final total = position.maxScrollExtent + position.viewportDimension;
+          final track = constraints.maxHeight;
+          final thumb = (track * position.viewportDimension / total).clamp(24 * pt, track);
+          final offset = position.maxScrollExtent <= 0
+              ? 0.0
+              : (track - thumb) * position.pixels / position.maxScrollExtent;
+          return SizedBox(
+            width: 4 * pt,
+            height: track,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: tk.text.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(2 * pt),
+              ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  margin: EdgeInsets.only(top: offset.clamp(0.0, track - thumb)),
+                  height: thumb,
+                  decoration: BoxDecoration(color: tk.text, borderRadius: BorderRadius.circular(2 * pt)),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -240,7 +240,10 @@ void main() {
       await settle(tester);
 
       expect(avatar(tester).mood, BigPMood.error);
-      expect(find.text(t.assistant.ends.stepLimit), findsOneWidget);
+      // Set as a lead sentence and what follows (mockup 38 J).
+      for (final sentence in t.assistant.ends.stepLimit.split(RegExp(r'(?<=\.)\s'))) {
+        expect(find.text(sentence), findsOneWidget);
+      }
       expect(find.textContaining(t.assistant.result.notDoneBy), findsOneWidget);
       expect(find.text(t.assistant.ends.nothingChanged), findsOneWidget);
     });

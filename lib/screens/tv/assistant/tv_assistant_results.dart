@@ -214,8 +214,10 @@ class TvAssistantDisplayView extends StatelessWidget {
     }
   }
 
+  /// The cards scroll in the panel's own results list; the panel's height
+  /// is what bounds how many show at once.
   Widget _matches(double pt, List<AssistantTitleMatch> matches) {
-    final list = Column(
+    return Column(
       children: [
         for (final (i, match) in matches.indexed)
           Padding(
@@ -231,13 +233,6 @@ class TvAssistantDisplayView extends StatelessWidget {
             ),
           ),
       ],
-    );
-    if (!compact) return list;
-    // Four match cards (144 pt with a plot line) plus their gaps; focus
-    // scrolls the rest in.
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: 4 * 154 * pt),
-      child: SingleChildScrollView(child: list),
     );
   }
 
