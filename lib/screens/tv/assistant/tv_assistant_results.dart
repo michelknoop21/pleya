@@ -142,6 +142,15 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
   _ => 0,
 };
 
+/// A display with nothing in it, e.g. a search that found nothing: the
+/// answer says so, an empty card would only be a grey bar.
+bool tvAssistantDisplayIsEmpty(AssistantDisplay display) => switch (display) {
+  AssistantRequestOptions(:final options) => options.isEmpty,
+  AssistantTitleMatches(:final matches) => matches.isEmpty,
+  AssistantMediaGrid(:final entries) => entries.isEmpty,
+  _ => false,
+};
+
 bool tvAssistantHasChoices(List<AssistantDisplay> displays) => displays.any((d) => tvAssistantChoiceCount(d) > 0);
 
 /// A tool's display, drawn on the panel. Request options and found titles

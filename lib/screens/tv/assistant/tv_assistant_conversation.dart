@@ -155,7 +155,7 @@ class TvAssistantConversation extends StatelessWidget {
     var optionOffset = 0;
     var firstOptionTaken = working;
     final displays = <Widget>[];
-    for (final display in controller.displays) {
+    for (final display in controller.displays.where((d) => !tvAssistantDisplayIsEmpty(d))) {
       final choices = tvAssistantChoiceCount(display);
       displays.add(
         Padding(
