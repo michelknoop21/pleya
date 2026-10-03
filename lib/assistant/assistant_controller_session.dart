@@ -8,12 +8,14 @@ import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_layout_provider.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
+import '../providers/playback_state_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../services/download_manager_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_controller.dart';
 import 'assistant_tool_context.dart';
+import 'assistant_playback.dart';
 import 'assistant_provider.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
@@ -63,6 +65,8 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   return AssistantToolContext(
     servers: manager,
     screen: screen,
+    playback:
+        context.read<PlaybackStateProvider?>()?.assistantPlayback ?? const AssistantPlaybackServices.unavailable(),
     catalog: libraries == null || hidden == null || profileId == null
         ? null
         : AssistantCatalogServices(

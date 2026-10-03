@@ -39,6 +39,7 @@ import '../utils/global_key_utils.dart';
 import 'assistant_find_match.dart';
 import 'assistant_find_route.dart';
 import 'assistant_tool_context.dart';
+import 'assistant_playback.dart';
 
 part 'assistant_tools_general.dart';
 part 'assistant_tools_admin.dart';
@@ -51,6 +52,7 @@ part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_recommendations.dart';
+part 'assistant_tools_playback.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
 
@@ -90,6 +92,7 @@ enum AssistantActionKind {
   requestTitle,
   downloadEpisodes,
   downloadSubtitle,
+  changePlayback,
 }
 
 /// How the backend really models the action, for the card's fine print.
@@ -259,4 +262,5 @@ final List<AssistantTool> assistantTools = [
   ..._requestTools,
   ..._findTools,
   ..._mediaTools,
+  ..._playbackTools,
 ];
