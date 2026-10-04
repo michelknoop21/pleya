@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -33,6 +34,12 @@ class _Keychain {
   PlatformException? deleteError;
   bool writeResult = true;
 
+  /// Holds the write of [gatedValue] until completed, to make two
+  /// operations overlap.
+  Completer<void>? writeGate;
+  String? gatedValue;
+  final gateReached = Completer<void>();
+
   /// Replaces what a write stores, to fake an item that comes back different.
   String Function(String value)? writeTamper;
 
@@ -46,6 +53,10 @@ class _Keychain {
           if (readError != null) throw readError!;
           return items[key];
         case 'write':
+          if (args['value'] == gatedValue) {
+            gateReached.complete();
+            await writeGate?.future;
+          }
           if (writeError != null) throw writeError!;
           if (!writeResult) return false;
           final value = args['value'] as String;
@@ -234,6 +245,34 @@ void main() {
     });
   });
 
+  group('serial', () {
+    test('a save that overlaps a pending migration ends with the save', () async {
+      const openRouter = AssistantProviderConfig(
+        kind: AssistantProviderKind.openRouter,
+        baseUrl: AssistantProviderConfig.openRouterUrl,
+        apiKey: 'sk-or',
+        model: 'x/y',
+      );
+      keychain.items[_key] = _json(_server);
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_cloud); // pending blob
+      keychain.writeError = null;
+      final gate = keychain.writeGate = Completer<void>();
+      keychain.gatedValue = _json(_cloud);
+
+      final load = store.load(); // migrates the pending blob, held at its write
+      await keychain.gateReached.future;
+      final save = store.save(openRouter);
+      await pumpEventQueue();
+      gate.complete();
+      await Future.wait([load, save]);
+
+      expect(keychain.items[_key], _json(openRouter));
+      expect(await _prefsBlob(), isNull);
+      expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+    });
+  });
+
   group('clear', () {
     test('wipes the keychain item, the prefs blob and the marker and signals the change', () async {
       await _legacy(_server);
@@ -248,6 +287,18 @@ void main() {
       expect(await _pending(), isNull);
       expect(AssistantProviderStore.changes.value, before + 1);
       expect(await store.load(), isNull);
+    });
+
+    test('a failed keychain delete keeps a pending blob', () async {
+      keychain.items[_key] = _json(_server);
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      keychain.deleteError = _osStatus(-25308);
+
+      await expectLater(store.clear(), throwsA(isA<PlatformException>()));
+      expect(await _prefsBlob(), isNotNull);
+      expect(await _pending(), isTrue);
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
     });
 
     test('negative control: a failed keychain delete is reported, not hidden', () async {

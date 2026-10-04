@@ -27,6 +27,16 @@ class AssistantProviderStore {
 
   final PleyaKeychain? _injectedKeychain;
 
+  /// Every load, save and clear runs after the one before, so a migration on
+  /// the pending path can never interleave with a save.
+  Future<void> _tail = Future.value();
+
+  Future<T> _serial<T>(Future<T> Function() op) {
+    final result = _tail.then((_) => op());
+    _tail = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
   // Resolved per call: TV detection may finish after [instance] exists.
   PleyaKeychain? get _keychain => _injectedKeychain ?? (PleyaKeychain.supported ? const PleyaKeychain() : null);
 
@@ -38,7 +48,9 @@ class AssistantProviderStore {
   /// and leaves the prefs only once a readback matches. A keychain error
   /// never deletes the blob; with no blob to fall back to it throws
   /// [AssistantProviderStoreException] rather than reading as unset.
-  Future<AssistantProviderConfig?> load() async {
+  Future<AssistantProviderConfig?> load() => _serial(_load);
+
+  Future<AssistantProviderConfig?> _load() async {
     final keychain = _keychain;
     if (keychain == null) return (await _readLegacy())?.config;
     String? synced;
@@ -60,7 +72,10 @@ class AssistantProviderStore {
     final fromKeychain = synced == null ? null : _decode(synced);
     if (fromKeychain != null) {
       // ponytail: last writer wins, as iCloud itself does. Two Apple TVs with
-      // different configs end up with one.
+      // different configs end up with one. Likewise a stale pending blob (a
+      // write that failed here) overwrites a newer save from another device
+      // once the keychain works again; upgrade path: store the synced item's
+      // hash as the marker and let the blob win only while it still matches.
       await _removeLegacy();
       return fromKeychain;
     }
@@ -79,7 +94,9 @@ class AssistantProviderStore {
 
   /// The keychain when it takes the write; otherwise the prefs path keeps
   /// working on this device, marked pending so no older synced item wins.
-  Future<void> save(AssistantProviderConfig config) async {
+  Future<void> save(AssistantProviderConfig config) => _serial(() => _save(config));
+
+  Future<void> _save(AssistantProviderConfig config) async {
     _registerSecrets(config);
     final json = jsonEncode(config.toJson());
     var stored = false;
@@ -104,10 +121,14 @@ class AssistantProviderStore {
 
   /// Wipes both stores. A failed keychain delete throws: the synced config
   /// would otherwise come back on the next load.
-  Future<void> clear() async {
+  /// The keychain goes first: a delete that throws must not cost a pending
+  /// blob.
+  Future<void> clear() => _serial(_clear);
+
+  Future<void> _clear() async {
     try {
-      await _removeLegacy();
       await _keychain?.delete(key);
+      await _removeLegacy();
     } finally {
       changes.value++;
     }
