@@ -22,6 +22,9 @@ import Security
   final class PleyaKeychainPlugin: NSObject, FlutterPlugin {
     private static let channelName = "com.pleya/keychain"
     private static let service = "nl.michelknoop.pleya.assistant"
+    /// SecItem calls can block on securityd; serial so a write and its
+    /// readback never overtake each other.
+    private static let queue = DispatchQueue(label: "com.pleya.keychain", qos: .userInitiated)
 
     static func register(with registrar: FlutterPluginRegistrar) {
       let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
@@ -34,19 +37,25 @@ import Security
         result(FlutterError(code: "BAD_ARGS", message: "\(call.method) needs a key", details: nil))
         return
       }
+      let work: () -> Any?
       switch call.method {
       case "read":
-        result(Self.read(key))
+        work = { Self.read(key) }
       case "write":
         guard let value = args?["value"] as? String else {
           result(FlutterError(code: "BAD_ARGS", message: "write needs a value", details: nil))
           return
         }
-        result(Self.write(key, value))
+        work = { Self.write(key, value) }
       case "delete":
-        result(Self.delete(key))
+        work = { Self.delete(key) }
       default:
         result(FlutterMethodNotImplemented)
+        return
+      }
+      Self.queue.async {
+        let value = work()
+        DispatchQueue.main.async { result(value) }
       }
     }
 
@@ -77,7 +86,8 @@ import Security
       return value
     }
 
-    /// Update first; add only when the item does not exist yet.
+    /// Update first; add only when the item does not exist yet. An add that
+    /// races another writer (a sync landing in between) updates after all.
     private static func write(_ key: String, _ value: String) -> Any {
       let data = Data(value.utf8)
       let attributes: [String: Any] = [
@@ -88,6 +98,9 @@ import Security
       if status == errSecItemNotFound {
         let add = query(key).merging(attributes) { _, new in new }
         status = SecItemAdd(add as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+          status = SecItemUpdate(query(key) as CFDictionary, attributes as CFDictionary)
+        }
       }
       return status == errSecSuccess ? true : failure(status)
     }

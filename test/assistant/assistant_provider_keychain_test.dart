@@ -33,8 +33,8 @@ class _Keychain {
   PlatformException? deleteError;
   bool writeResult = true;
 
-  /// Replaces what a read returns, to fake a readback that differs.
-  String? Function(String? stored)? readTamper;
+  /// Replaces what a write stores, to fake an item that comes back different.
+  String Function(String value)? writeTamper;
 
   void install() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, (call) async {
@@ -44,12 +44,12 @@ class _Keychain {
       switch (call.method) {
         case 'read':
           if (readError != null) throw readError!;
-          final stored = items[key];
-          return readTamper == null ? stored : readTamper!(stored);
+          return items[key];
         case 'write':
           if (writeError != null) throw writeError!;
           if (!writeResult) return false;
-          items[key] = args['value'] as String;
+          final value = args['value'] as String;
+          items[key] = writeTamper == null ? value : writeTamper!(value);
           return true;
         case 'delete':
           if (deleteError != null) throw deleteError!;
@@ -64,6 +64,9 @@ class _Keychain {
 PlatformException _osStatus(int status) => PlatformException(code: 'keychain', message: 'OSStatus $status');
 
 Future<String?> _prefsBlob() async => (await BaseSharedPreferencesService.sharedCache()).getString(_key);
+
+Future<bool?> _pending() async =>
+    (await BaseSharedPreferencesService.sharedCache()).getBool(AssistantProviderStore.pendingKey);
 
 /// A blob written by the old prefs-only store, as tvOS has it today.
 Future<void> _legacy(AssistantProviderConfig config) => AssistantProviderStore().save(config);
@@ -101,7 +104,38 @@ void main() {
 
       expect(keychain.items, isEmpty);
       expect(await _prefsBlob(), isNotNull);
+      expect(await _pending(), isTrue);
       expect((await store.load())?.model, 'gpt-oss:120b');
+    });
+
+    test('a save the keychain refused beats an older synced item and goes up later', () async {
+      keychain.items[_key] = _json(_server);
+      keychain.writeError = _osStatus(-25308);
+
+      await store.save(_cloud);
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+      expect(await _prefsBlob(), isNotNull);
+      expect(keychain.items[_key], _json(_server));
+
+      keychain.writeError = null;
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+      expect(keychain.items[_key], _json(_cloud));
+      expect(await _prefsBlob(), isNull);
+      expect(await _pending(), isNull);
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+    });
+
+    test('a successful save clears an earlier pending marker', () async {
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_server);
+      keychain.writeError = null;
+
+      await store.save(_cloud);
+
+      expect(await _pending(), isNull);
+      expect(await _prefsBlob(), isNull);
+      expect(keychain.items[_key], _json(_cloud));
     });
   });
 
@@ -120,10 +154,15 @@ void main() {
       expect((await store.load())?.model, 'gpt-oss:120b');
     });
 
-    test('negative control: a readback that differs keeps the prefs blob', () async {
+    test('negative control: a readback that differs keeps the blob and drops the bad item', () async {
       await _legacy(_cloud);
-      var reads = 0;
-      keychain.readTamper = (stored) => ++reads == 1 ? stored : '{"kind":"openRouter"}';
+      // Decodes as a config, so a kept copy would win the next load.
+      keychain.writeTamper = (_) => '{"kind":"openRouter","baseUrl":"https://evil"}';
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+      expect(keychain.items, isEmpty);
+      expect(keychain.calls, ['read', 'write', 'read', 'delete']);
 
       expect((await store.load())?.apiKey, 'sk-cloud');
       expect(await _prefsBlob(), isNotNull);
@@ -178,6 +217,13 @@ void main() {
       expect(keychain.calls, isNot(contains('write')));
     });
 
+    test('an unreadable synced item without a legacy blob throws instead of reading as unset', () async {
+      keychain.items[_key] = '{"kind":"fromTheFuture"}';
+
+      await expectLater(store.load(), throwsA(isA<AssistantProviderStoreException>()));
+      expect(keychain.items[_key], '{"kind":"fromTheFuture"}');
+    });
+
     test('negative control: an unreadable synced item neither wins nor gets overwritten', () async {
       await _legacy(_server);
       keychain.items[_key] = '{"kind":"fromTheFuture"}';
@@ -189,8 +235,9 @@ void main() {
   });
 
   group('clear', () {
-    test('wipes the keychain item and the prefs blob and signals the change', () async {
+    test('wipes the keychain item, the prefs blob and the marker and signals the change', () async {
       await _legacy(_server);
+      await (await BaseSharedPreferencesService.sharedCache()).setBool(AssistantProviderStore.pendingKey, true);
       keychain.items[_key] = _json(_cloud);
       final before = AssistantProviderStore.changes.value;
 
@@ -198,6 +245,7 @@ void main() {
 
       expect(keychain.items, isEmpty);
       expect(await _prefsBlob(), isNull);
+      expect(await _pending(), isNull);
       expect(AssistantProviderStore.changes.value, before + 1);
       expect(await store.load(), isNull);
     });

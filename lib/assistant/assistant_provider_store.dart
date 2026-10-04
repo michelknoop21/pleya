@@ -30,6 +30,10 @@ class AssistantProviderStore {
   // Resolved per call: TV detection may finish after [instance] exists.
   PleyaKeychain? get _keychain => _injectedKeychain ?? (PleyaKeychain.supported ? const PleyaKeychain() : null);
 
+  /// Set while the prefs blob holds a save the keychain refused: that blob is
+  /// newer than any synced item and must not lose to it. Device-local.
+  static const String pendingKey = 'assistant_provider_pending';
+
   /// The keychain first, then the old prefs blob, which moves to the keychain
   /// and leaves the prefs only once a readback matches. A keychain error
   /// never deletes the blob; with no blob to fall back to it throws
@@ -45,27 +49,36 @@ class AssistantProviderStore {
       keychainError = e;
       appLogger.w('Assistant keychain read failed', error: e.runtimeType);
     }
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    final legacy = await _readLegacy();
+    if (legacy != null && prefs.getBool(pendingKey) == true) {
+      // A save the keychain refused earlier: it beats any synced item and
+      // goes up once the keychain takes it.
+      if (keychainError == null) await _migrate(keychain, legacy.json);
+      return legacy.config;
+    }
     final fromKeychain = synced == null ? null : _decode(synced);
     if (fromKeychain != null) {
       // ponytail: last writer wins, as iCloud itself does. Two Apple TVs with
-      // different configs end up with one; a save whose keychain write failed
-      // (so it fell back to the prefs) loses to an older synced item here.
+      // different configs end up with one.
       await _removeLegacy();
       return fromKeychain;
     }
-    final legacy = await _readLegacy();
     if (legacy == null) {
-      if (keychainError != null) throw AssistantProviderStoreException(keychainError);
+      // An item that does not decode (a newer app version on another device)
+      // is not "not configured" either: the setup form would overwrite it.
+      if (keychainError != null || synced != null) {
+        throw AssistantProviderStoreException(keychainError ?? 'undecodable keychain item');
+      }
       return null;
     }
-    // An item that exists but does not decode (a newer app version on another
-    // device) is never overwritten by this device's older blob.
+    // That undecodable item is never overwritten by this device's older blob.
     if (keychainError == null && synced == null) await _migrate(keychain, legacy.json);
     return legacy.config;
   }
 
   /// The keychain when it takes the write; otherwise the prefs path keeps
-  /// working on this device.
+  /// working on this device, marked pending so no older synced item wins.
   Future<void> save(AssistantProviderConfig config) async {
     _registerSecrets(config);
     final json = jsonEncode(config.toJson());
@@ -82,6 +95,8 @@ class AssistantProviderStore {
       await _removeLegacy();
     } else {
       final prefs = await BaseSharedPreferencesService.sharedCache();
+      // Marker first: a marker without a blob is harmless, the reverse is not.
+      if (keychain != null) await prefs.setBool(pendingKey, true);
       await prefs.setString(key, await CredentialVault.protect(json));
     }
     changes.value++;
@@ -98,9 +113,17 @@ class AssistantProviderStore {
     }
   }
 
+  /// Writes [json] and drops the prefs blob after an equal readback. A
+  /// readback that differs deletes the item, so a bad copy never wins the
+  /// next load; the blob stays and the next load tries again.
   Future<void> _migrate(PleyaKeychain keychain, String json) async {
     try {
-      if (await keychain.write(key, json) && await keychain.read(key) == json) await _removeLegacy();
+      if (!await keychain.write(key, json)) return;
+      if (await keychain.read(key) == json) {
+        await _removeLegacy();
+      } else {
+        await keychain.delete(key);
+      }
     } catch (e) {
       appLogger.w('Assistant keychain migration failed', error: e.runtimeType);
     }
@@ -123,6 +146,7 @@ class AssistantProviderStore {
   Future<void> _removeLegacy() async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
     if (prefs.getString(key) != null) await prefs.remove(key);
+    if (prefs.getBool(pendingKey) != null) await prefs.remove(pendingKey);
   }
 
   static AssistantProviderConfig? _decode(String json) {

@@ -16,6 +16,7 @@ class _FakeStore implements AssistantProviderStore {
   _FakeStore([this.config]);
   AssistantProviderConfig? config;
   int saves = 0;
+  Object? clearError;
 
   @override
   Future<AssistantProviderConfig?> load() async => config;
@@ -27,7 +28,10 @@ class _FakeStore implements AssistantProviderStore {
   }
 
   @override
-  Future<void> clear() async => config = null;
+  Future<void> clear() async {
+    if (clearError != null) throw clearError!;
+    config = null;
+  }
 }
 
 List<AssistantModelInfo> _infos(List<String> ids) => [for (final id in ids) AssistantModelInfo(id: id)];
@@ -180,6 +184,22 @@ void main() {
     await tapText(tester, s.disable); // dialog confirm
     expect(store.config, isNull);
     expect(find.text(s.providerHeading), findsOneWidget);
+  });
+
+  testWidgets('a disable the keychain refuses keeps the summary', (tester) async {
+    final store = _FakeStore(
+      const AssistantProviderConfig(
+        kind: AssistantProviderKind.ollamaServer,
+        baseUrl: 'http://nas.lan:11434',
+        model: 'llama3.1',
+      ),
+    )..clearError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+    await pump(tester, store, (_) async => []);
+    await tapText(tester, s.disable);
+    await tapText(tester, s.disable); // dialog confirm
+    expect(store.config, isNotNull);
+    expect(find.text(s.providerHeading), findsNothing);
+    expect(find.text(s.disable), findsOneWidget);
   });
 
   testWidgets('a single tool model is picked by itself', (tester) async {

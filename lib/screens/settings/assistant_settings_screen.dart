@@ -377,8 +377,13 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       ),
     );
     if (confirmed != true || !mounted) return;
-    await runAsync(_store.clear);
-    if (!mounted) return;
+    var ok = false;
+    await runAsync(() async {
+      await _store.clear();
+      ok = true;
+    });
+    // A failed clear leaves the synced config in place: keep showing it.
+    if (!ok || !mounted) return;
     setState(() {
       _saved = null;
       _resetDraft();
