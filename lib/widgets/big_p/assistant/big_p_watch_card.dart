@@ -5,7 +5,8 @@ import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
-import 'tv_assistant_widgets.dart';
+import '../big_p_scale.dart';
+import 'big_p_assistant_widgets.dart';
 
 // Five viewers side by side: the card stays one band, so the title cards,
 // two follow-ups and the buttons fit under it in the panel.
@@ -16,14 +17,14 @@ const _viewers = 5;
 /// the streams of "now" as their own list. The watched titles follow as
 /// ranked title cards (see the results view); servers without a source and
 /// a partial read are footnotes.
-class TvAssistantWatchCard extends StatelessWidget {
-  const TvAssistantWatchCard({super.key, required this.stats});
+class BigPWatchCard extends StatelessWidget {
+  const BigPWatchCard({super.key, required this.stats});
 
   final AssistantWatchStats stats;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final s = stats;
     final d = t.assistant.displays;
@@ -37,7 +38,7 @@ class TvAssistantWatchCard extends StatelessWidget {
       final days => d.watchDays(n: days),
     };
 
-    return TvAssistantCard(
+    return BigPCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -110,7 +111,7 @@ class _Total extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -148,7 +149,7 @@ class _Viewer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final size = 78 * pt;
     final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
@@ -214,7 +215,7 @@ class _Stream extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     return Padding(
       padding: EdgeInsets.only(bottom: 10 * pt),

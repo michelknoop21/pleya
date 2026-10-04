@@ -11,11 +11,11 @@ import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/utils/native_input_session.dart';
@@ -227,7 +227,7 @@ void main() {
       await tester.pump(const Duration(minutes: 5));
       await settle(tester);
       expect(bigP(), findsOneWidget);
-      expect(find.byType(TvAssistantChip), findsNWidgets(3));
+      expect(find.byType(BigPChip), findsNWidgets(3));
 
       await press(tester, LogicalKeyboardKey.escape);
       expect(bigP(), findsNothing);
@@ -364,8 +364,8 @@ void main() {
       await settle(tester);
 
       expect(find.textContaining('1. The Block'), findsOneWidget, reason: 'the cards do not replace this list');
-      final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
-      for (final chip in tester.widgetList(find.byType(TvAssistantChip))) {
+      final panel = tester.getRect(find.byType(BigPGlassPanel));
+      for (final chip in tester.widgetList(find.byType(BigPChip))) {
         final rect = tester.getRect(find.byWidget(chip));
         expect(rect.bottom, lessThanOrEqualTo(panel.bottom), reason: 'follow-up in view');
         expect(rect.top, greaterThanOrEqualTo(panel.top));
@@ -392,14 +392,14 @@ void main() {
         ..answer = 'De scan van Films loopt.'
         ..emit();
       await settle(tester);
-      final short = tester.getRect(find.byType(TvAssistantGlassPanel)).height;
+      final short = tester.getRect(find.byType(BigPGlassPanel)).height;
 
       c
         ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
         ..emit();
       await settle(tester);
       // The three follow-ups stand under both, each up to two lines.
-      expect(short, lessThan(tester.getRect(find.byType(TvAssistantGlassPanel)).height * 0.75));
+      expect(short, lessThan(tester.getRect(find.byType(BigPGlassPanel)).height * 0.75));
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not
@@ -413,7 +413,7 @@ void main() {
         ..emit();
       await settle(tester);
 
-      final panel = tester.getRect(find.byType(TvAssistantGlassPanel));
+      final panel = tester.getRect(find.byType(BigPGlassPanel));
       final top = tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top;
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
       expect(focusedLabel(), 'assistant.ask');
@@ -485,14 +485,14 @@ void main() {
         )
         ..emit();
       await settle(tester);
-      expect(find.byType(TvAssistantConfirmCard), findsOneWidget);
+      expect(find.byType(BigPConfirmCard), findsOneWidget);
       expect(focusedLabel(), 'assistant.confirm.cancel');
       expect(tester.widget<BigPAvatar>(bigP()).mood, BigPMood.attentive);
 
       await press(tester, LogicalKeyboardKey.escape);
 
       expect(c.cancelledPending, 1);
-      expect(find.byType(TvAssistantConfirmCard), findsNothing);
+      expect(find.byType(BigPConfirmCard), findsNothing);
       expect(bigP(), findsOneWidget);
     });
   });

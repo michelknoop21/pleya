@@ -28,11 +28,12 @@ import '../../../utils/native_input_session.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
+import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/overlay_sheet.dart';
-import 'big_p_voice_mouth.dart';
+import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
-import 'tv_assistant_results.dart';
+import '../../../widgets/big_p/assistant/big_p_results.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
 
@@ -233,7 +234,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (!mounted || c == null || _sheetContext != null) return;
     final node = switch (c.state) {
       AssistantSurfaceState.working => _cancelNode,
-      AssistantSurfaceState.result => tvAssistantHasChoices(c.displays) ? _optionNode : _askNode,
+      AssistantSurfaceState.result => bigPHasChoices(c.displays) ? _optionNode : _askNode,
       _ => _panelNode,
     };
     (node.context != null && node.canRequestFocus ? node : _panelNode).requestFocus();
@@ -352,7 +353,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       avatar: BigPVoiceMouth(
         controller: c,
         builder: (line) => BigPAvatar(
-          mood: c == null ? BigPMood.idle : tvAssistantMood(c),
+          mood: c == null ? BigPMood.idle : bigPMood(c),
           size: 340 * pt,
           nodSignal: _nod,
           talkingText: line,

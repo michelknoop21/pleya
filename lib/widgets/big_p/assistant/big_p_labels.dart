@@ -9,6 +9,7 @@ import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/media_kind.dart';
+import '../big_p_avatar.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -247,3 +248,14 @@ String assistantPlainAnswer(String answer) => answer
     .replaceAll(RegExp(r'\n{3,}'), '\n\n')
     .replaceFirst(_marksOnly, '')
     .trim();
+
+/// Big P's mood for the controller's stand; a waiting card wins.
+BigPMood bigPMood(AssistantController c) {
+  if (c.pending != null) return BigPMood.attentive;
+  return switch (c.state) {
+    AssistantSurfaceState.idle => BigPMood.idle,
+    AssistantSurfaceState.listening => BigPMood.listening,
+    AssistantSurfaceState.working => BigPMood.working,
+    AssistantSurfaceState.result => c.resultIsError ? BigPMood.error : BigPMood.success,
+  };
+}

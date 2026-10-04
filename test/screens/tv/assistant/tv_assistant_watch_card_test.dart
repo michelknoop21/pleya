@@ -6,10 +6,10 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watch_session.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_labels.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_results.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_watch_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_watch_card.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -20,7 +20,7 @@ void main() {
   tearDown(() => LocaleSettings.setLocale(AppLocale.en));
 
   Future<void> pump(WidgetTester tester, AssistantWatchStats stats) =>
-      pumpTvFrame(tester, FakeAssistantController(), TvAssistantWatchCard(stats: stats));
+      pumpTvFrame(tester, FakeAssistantController(), BigPWatchCard(stats: stats));
 
   testWidgets('a period: headline with the total, viewers as portraits', (tester) async {
     await pump(
@@ -51,7 +51,7 @@ void main() {
     await pumpTvFrame(
       tester,
       FakeAssistantController(),
-      TvAssistantDisplayView(
+      BigPDisplayView(
         display: AssistantWatchStats(
           serverName: 'Pleya',
           days: 7,
@@ -70,15 +70,15 @@ void main() {
         onOpenTitle: opened.add,
       ),
     );
-    final cards = find.byType(TvAssistantMatchCard);
+    final cards = find.byType(BigPMatchCard);
     expect(cards, findsNWidgets(2));
     expect(find.text('19× bekeken · Gideuh · Jan'), findsOneWidget);
     expect(
-      tester.widget<TvAssistantMatchCard>(cards.last).onSelect,
+      tester.widget<BigPMatchCard>(cards.last).onSelect,
       isNull,
       reason: 'no library copy: shown, not a dead stop',
     );
-    tester.widget<TvAssistantMatchCard>(cards.first).onSelect!();
+    tester.widget<BigPMatchCard>(cards.first).onSelect!();
     expect(opened.single.item.id, 's1');
   });
 
@@ -88,7 +88,7 @@ void main() {
     await pumpTvFrame(
       tester,
       FakeAssistantController(),
-      TvAssistantDisplayView(
+      BigPDisplayView(
         display: AssistantServerComparison(
           serverId: ServerId('z'),
           serverName: 'Zolder',
@@ -102,8 +102,8 @@ void main() {
         onOpenTitle: opened.add,
       ),
     );
-    expect(find.byType(TvAssistantMatchCard), findsOneWidget);
-    tester.widget<TvAssistantMatchCard>(find.byType(TvAssistantMatchCard)).onSelect!();
+    expect(find.byType(BigPMatchCard), findsOneWidget);
+    tester.widget<BigPMatchCard>(find.byType(BigPMatchCard)).onSelect!();
     expect(opened.single.serverName, 'Zolder');
   });
 

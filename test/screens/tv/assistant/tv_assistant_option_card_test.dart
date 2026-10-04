@@ -3,8 +3,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_option_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_option_card.dart';
 
 import '../../../test_helpers/golden.dart';
 import 'tv_assistant_test_support.dart';
@@ -45,7 +45,7 @@ void main() {
             children: [
               SizedBox(
                 width: width * scale,
-                child: TvAssistantOptionCard(option: option, index: 0, onSelect: () {}, compact: compact),
+                child: BigPOptionCard(option: option, index: 0, onSelect: () {}, compact: compact),
               ),
             ],
           ),
@@ -53,7 +53,7 @@ void main() {
       ),
     );
     final title = tester.renderObject<RenderParagraph>(find.textContaining('Aurora Drift', findRichText: true).first);
-    return (title.didExceedMaxLines, tester.getSize(find.byType(TvAssistantOptionCard)).height);
+    return (title.didExceedMaxLines, tester.getSize(find.byType(BigPOptionCard)).height);
   }
 
   for (final (label, scale) in const [('1080p', 1.0), ('2160p', 2.0)]) {
@@ -78,7 +78,7 @@ void main() {
           children: [
             SizedBox(
               width: 490,
-              child: TvAssistantMatchCard(
+              child: BigPMatchCard(
                 match: AssistantTitleMatch(
                   matchId: 'm',
                   title: 'Aurora Drift',
@@ -97,7 +97,7 @@ void main() {
           ],
         ),
       );
-      return tester.getSize(find.byType(TvAssistantMatchCard)).height;
+      return tester.getSize(find.byType(BigPMatchCard)).height;
     }
 
     expect(await height(option), await height(null));

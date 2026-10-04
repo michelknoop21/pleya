@@ -16,14 +16,15 @@ import '../../../media/ids.dart';
 import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_match_card.dart';
-import 'tv_assistant_option_card.dart';
-import 'tv_assistant_watch_card.dart';
-import 'tv_assistant_widgets.dart';
+import '../big_p_scale.dart';
+import 'big_p_labels.dart';
+import 'big_p_match_card.dart';
+import 'big_p_option_card.dart';
+import 'big_p_watch_card.dart';
+import 'big_p_assistant_widgets.dart';
 
 Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
-  final pt = TvHig.of(context);
+  final pt = BigPScale.of(context);
   final size = 30 * pt;
   return switch (phase) {
     AssistantStepPhase.done => Icon(Symbols.check_circle_rounded, fill: 1, color: kSuccess, size: size),
@@ -38,14 +39,14 @@ Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
 
 /// The live step list (motion still 3): one dark row per tool call, label
 /// from the tool name and Pleya's server name, icon from the phase.
-class TvAssistantStepList extends StatelessWidget {
-  const TvAssistantStepList({super.key, required this.steps});
+class BigPStepList extends StatelessWidget {
+  const BigPStepList({super.key, required this.steps});
 
   final List<AssistantStep> steps;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     return AutomationNode(
       id: AutomationIds.assistantSteps,
@@ -89,8 +90,8 @@ class TvAssistantStepList extends StatelessWidget {
 /// red "Niet uitgevoerd" card when the run failed without doing anything
 /// (38 J). A failure after some actions keeps the green lines: what Pleya
 /// already did is never hidden.
-class TvAssistantResultCard extends StatelessWidget {
-  const TvAssistantResultCard({super.key, required this.error, required this.actions, required this.time});
+class BigPResultCard extends StatelessWidget {
+  const BigPResultCard({super.key, required this.error, required this.actions, required this.time});
 
   final bool error;
   final List<AssistantActionRecord> actions;
@@ -98,7 +99,7 @@ class TvAssistantResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final done = actions.isNotEmpty;
     Widget line(Widget icon, String text) => Padding(
@@ -128,7 +129,7 @@ class TvAssistantResultCard extends StatelessWidget {
             if (a.progress case final p?) {'phase': p.phase.name, 'percent': ?p.percent},
         ],
       },
-      child: TvAssistantCard(
+      child: BigPCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -162,7 +163,7 @@ const _watchTitles = 5;
 /// How many focusable cards [display] draws: request options, found titles
 /// and a grid's titles. The first of them takes the focus after a result
 /// (still 7).
-int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
+int bigPChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
   AssistantTitleMatches(:final matches) => matches.where((m) => m.targets.isNotEmpty || m.request != null).length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
@@ -173,22 +174,22 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
 
 /// A display with nothing in it, e.g. a search that found nothing: the
 /// answer says so, an empty card would only be a grey bar.
-bool tvAssistantDisplayIsEmpty(AssistantDisplay display) => switch (display) {
+bool bigPDisplayIsEmpty(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.isEmpty,
   AssistantTitleMatches(:final matches) => matches.isEmpty,
   AssistantMediaGrid(:final entries) => entries.isEmpty,
   _ => false,
 };
 
-bool tvAssistantHasChoices(List<AssistantDisplay> displays) => displays.any((d) => tvAssistantChoiceCount(d) > 0);
+bool bigPHasChoices(List<AssistantDisplay> displays) => displays.any((d) => bigPChoiceCount(d) > 0);
 
 /// A tool's display, drawn on the panel. Request options and found titles
 /// are the focusable kinds: an option goes to [onPickOption]; a found title
 /// opens its library copy through [onOpenTitle], or, not in a library, goes
 /// to [onPickOption] with its Seerr request. Without [onPickOption] (Big P
 /// still checking) a request card stays focusable but dimmed and inert.
-class TvAssistantDisplayView extends StatelessWidget {
-  const TvAssistantDisplayView({
+class BigPDisplayView extends StatelessWidget {
+  const BigPDisplayView({
     super.key,
     required this.display,
     this.onPickOption,
@@ -231,7 +232,7 @@ class TvAssistantDisplayView extends StatelessWidget {
         for (final (i, match) in matches.indexed)
           Padding(
             padding: EdgeInsets.only(bottom: 10 * pt),
-            child: TvAssistantMatchCard(
+            child: BigPMatchCard(
               match: match,
               index: optionOffset + i,
               // A ranking is a list to scan: one line of detail per title.
@@ -254,12 +255,12 @@ class TvAssistantDisplayView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
     final row = TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt);
     final heading = TextStyle(color: tk.text, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700);
-    Widget card(String? header, List<String> lines) => TvAssistantCard(
+    Widget card(String? header, List<String> lines) => BigPCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -289,7 +290,7 @@ class TvAssistantDisplayView extends StatelessWidget {
           for (var i = 0; i < options.length; i++)
             Padding(
               padding: EdgeInsets.only(bottom: 10 * pt),
-              child: TvAssistantOptionCard(
+              child: BigPOptionCard(
                 option: options[i],
                 index: optionOffset + i,
                 focusNode: i == 0 ? firstOptionNode : null,
@@ -357,7 +358,7 @@ class TvAssistantDisplayView extends StatelessWidget {
       final AssistantWatchStats s => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TvAssistantWatchCard(stats: s),
+          BigPWatchCard(stats: s),
           if (s.titles.isNotEmpty) ...[
             SizedBox(height: 10 * pt),
             _matches(ranked: true, pt, [

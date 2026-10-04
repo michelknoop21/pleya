@@ -14,7 +14,7 @@ import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/overlay_sheet_geometry.dart';
-import 'tv_assistant_confirm_card.dart';
+import '../../../widgets/big_p/assistant/big_p_confirm_card.dart';
 
 /// Shows the Pleya confirmation card for [pending] in the shell's overlay
 /// host and hands the answer to [controller]: closing the card is
@@ -39,7 +39,7 @@ Future<bool> showTvAssistantConfirm(
     constraints: BoxConstraints(maxWidth: 880 * TvHig.of(context)),
     builder: (sheetContext) {
       onSheet(sheetContext);
-      return TvAssistantConfirmCard(
+      return BigPConfirmCard(
         action: pending,
         cancelNode: cancelNode,
         onCancel: () => OverlaySheetController.closeAdaptive(sheetContext),

@@ -5,12 +5,13 @@ import 'package:flutter/services.dart';
 
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
+import '../big_p_scale.dart';
 
 /// Content that runs past an edge fades out there instead of being cut:
 /// the fade is the sign that there is more, and it goes when the end is
 /// reached.
-class TvAssistantEdgeFade extends StatefulWidget {
-  const TvAssistantEdgeFade({super.key, required this.builder, this.controller, this.extent});
+class BigPEdgeFade extends StatefulWidget {
+  const BigPEdgeFade({super.key, required this.builder, this.controller, this.extent});
 
   /// Builds the scroll view around the controller it is given.
   final Widget Function(ScrollController controller) builder;
@@ -22,10 +23,10 @@ class TvAssistantEdgeFade extends StatefulWidget {
   final double? extent;
 
   @override
-  State<TvAssistantEdgeFade> createState() => _TvAssistantEdgeFadeState();
+  State<BigPEdgeFade> createState() => _BigPEdgeFadeState();
 }
 
-class _TvAssistantEdgeFadeState extends State<TvAssistantEdgeFade> {
+class _BigPEdgeFadeState extends State<BigPEdgeFade> {
   ScrollController? _own;
   ScrollController get _scroll => widget.controller ?? (_own ??= ScrollController());
   bool _above = false;
@@ -60,7 +61,7 @@ class _TvAssistantEdgeFadeState extends State<TvAssistantEdgeFade> {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
     return ShaderMask(
       blendMode: BlendMode.dstIn,
@@ -89,8 +90,8 @@ class _TvAssistantEdgeFadeState extends State<TvAssistantEdgeFade> {
 /// edge fades, Up gives it the focus (a thumb in the margin shows where you
 /// are), and Up and Down move through it; at either end the key moves the
 /// focus on as usual.
-class TvAssistantAnswer extends StatefulWidget {
-  const TvAssistantAnswer({super.key, required this.text, required this.style, this.bodyLines});
+class BigPAnswer extends StatefulWidget {
+  const BigPAnswer({super.key, required this.text, required this.style, this.bodyLines});
 
   final String text;
   final TextStyle style;
@@ -101,7 +102,7 @@ class TvAssistantAnswer extends StatefulWidget {
   final int? bodyLines;
 
   @override
-  State<TvAssistantAnswer> createState() => _TvAssistantAnswerState();
+  State<BigPAnswer> createState() => _BigPAnswerState();
 }
 
 // A bare list has no lead: its first item is not a headline.
@@ -111,7 +112,7 @@ final _startsWithItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
 // number ("1.") or of a one-letter abbreviation ("o.a.").
 final _leadEnd = RegExp(r'(?<!(?:^|\n)\s*\d{1,2})(?<!\b[A-Za-z])[.!?…](?=\s)|(?=\n)');
 
-class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
+class _BigPAnswerState extends State<BigPAnswer> {
   final _scroll = ScrollController();
   final _node = FocusNode(debugLabel: 'assistant.answer');
   bool _overflows = false;
@@ -161,7 +162,7 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
     // One sentence is a headline. More than that: the first sentence leads,
@@ -211,7 +212,7 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
               ),
             ),
           ),
-          TvAssistantEdgeFade(
+          BigPEdgeFade(
             controller: _scroll,
             // A hint at the edge; the last line stays readable.
             extent: _line * 0.25,
@@ -265,16 +266,16 @@ class _TvAssistantAnswerState extends State<TvAssistantAnswer> {
 /// in no library, a comparison): when it runs past its box it takes the
 /// focus itself, and Up and Down scroll it; at either end the key moves the
 /// focus on. A list with cards needs none of this: the focus scrolls it.
-class TvAssistantReadableList extends StatefulWidget {
-  const TvAssistantReadableList({super.key, required this.child});
+class BigPReadableList extends StatefulWidget {
+  const BigPReadableList({super.key, required this.child});
 
   final Widget child;
 
   @override
-  State<TvAssistantReadableList> createState() => _TvAssistantReadableListState();
+  State<BigPReadableList> createState() => _BigPReadableListState();
 }
 
-class _TvAssistantReadableListState extends State<TvAssistantReadableList> {
+class _BigPReadableListState extends State<BigPReadableList> {
   final _scroll = ScrollController();
   final _node = FocusNode(debugLabel: 'assistant.results');
   bool _overflows = false;
@@ -317,7 +318,7 @@ class _TvAssistantReadableListState extends State<TvAssistantReadableList> {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
     return Focus(
       focusNode: _node,
@@ -337,7 +338,7 @@ class _TvAssistantReadableListState extends State<TvAssistantReadableList> {
               ),
             ),
           ),
-          TvAssistantEdgeFade(
+          BigPEdgeFade(
             controller: _scroll,
             builder: (controller) => SingleChildScrollView(controller: controller, child: widget.child),
           ),
@@ -355,7 +356,7 @@ class _ReadingThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     return LayoutBuilder(
       builder: (context, constraints) => ListenableBuilder(

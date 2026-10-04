@@ -3,7 +3,7 @@ import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_results.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -20,11 +20,8 @@ void main() {
     progress: progress,
   );
 
-  Future<void> pump(WidgetTester tester, AssistantActionRecord record) => pumpTvFrame(
-    tester,
-    FakeAssistantController(),
-    TvAssistantResultCard(error: false, actions: [record], time: '21:14'),
-  );
+  Future<void> pump(WidgetTester tester, AssistantActionRecord record) =>
+      pumpTvFrame(tester, FakeAssistantController(), BigPResultCard(error: false, actions: [record], time: '21:14'));
 
   testWidgets('running, done, failed, background and not followed', (tester) async {
     await pump(tester, scan(const AssistantJobProgress(AssistantJobPhase.running, percent: 40)));

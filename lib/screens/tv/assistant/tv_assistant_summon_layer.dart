@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../utils/tv_hig.dart';
-import 'tv_assistant_widgets.dart';
+import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 
 /// Where summoned Big P stands: the screen behind dimmed, the 760 pt panel
 /// and Big P bottom right, sliding in from the right and above the system
@@ -64,7 +64,7 @@ class TvAssistantSummonLayer extends StatelessWidget {
                         width: 760 * pt,
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxHeight: box.maxHeight - (listening ? 470 : 140) * pt),
-                          child: TvAssistantGlassPanel(child: panel),
+                          child: BigPGlassPanel(child: panel),
                         ),
                       ),
                     RepaintBoundary(child: avatar),

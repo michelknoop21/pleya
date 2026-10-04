@@ -9,10 +9,11 @@ import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
+import '../big_p_scale.dart';
 import '../../../widgets/pleya_wordmark.dart';
-import 'tv_assistant_widgets.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_results.dart';
+import 'big_p_assistant_widgets.dart';
+import 'big_p_labels.dart';
+import 'big_p_results.dart';
 
 /// The Pleya confirmation card (38 H, 38 I): an opaque Pleya card, never a
 /// message from Big P. Every row comes from [action], which Pleya built
@@ -22,8 +23,8 @@ import 'tv_assistant_results.dart';
 /// the viewer's thumb, and a second press must not create an account. The
 /// primary stays disabled while a required password is missing. The
 /// password lives in this card and goes only to [onConfirm].
-class TvAssistantConfirmCard extends StatefulWidget {
-  const TvAssistantConfirmCard({
+class BigPConfirmCard extends StatefulWidget {
+  const BigPConfirmCard({
     super.key,
     required this.action,
     required this.cancelNode,
@@ -41,10 +42,10 @@ class TvAssistantConfirmCard extends StatefulWidget {
   final Future<String?> Function() readPassword;
 
   @override
-  State<TvAssistantConfirmCard> createState() => _TvAssistantConfirmCardState();
+  State<BigPConfirmCard> createState() => _BigPConfirmCardState();
 }
 
-class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
+class _BigPConfirmCardState extends State<BigPConfirmCard> {
   String _password = '';
 
   bool get _canConfirm => widget.action.password != AssistantPasswordMode.required || _password.isNotEmpty;
@@ -62,7 +63,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final a = widget.action;
     final c = t.assistant.confirm;
@@ -138,7 +139,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
               if (a.password != AssistantPasswordMode.none) row(c.password, _passwordField(pt, tk)),
               if (a.preview case final preview?) ...[
                 SizedBox(height: 16 * pt),
-                TvAssistantDisplayView(display: preview, onPickOption: (_) {}),
+                BigPDisplayView(display: preview, onPickOption: (_) {}),
               ],
               for (final line in smallPrint) ...[
                 SizedBox(height: 18 * pt),
@@ -160,7 +161,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TvAssistantButton(
+                  BigPButton(
                     label: t.assistant.result.cancel,
                     primary: false,
                     focusNode: widget.cancelNode,
@@ -169,7 +170,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
                     onPressed: widget.onCancel,
                   ),
                   SizedBox(width: 12 * pt),
-                  TvAssistantButton(
+                  BigPButton(
                     label: approveLabel,
                     primary: true,
                     enabled: _canConfirm,
