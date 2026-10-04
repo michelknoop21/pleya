@@ -105,6 +105,7 @@ import Foundation
       case "stopClip":
         Self.clip?.stop()
         Self.clip = nil
+        Self.restoreAfterClip()
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
@@ -113,8 +114,9 @@ import Foundation
 
     // MARK: - Big P's voice clips
 
-    /// The clip playing now; a newer one replaces it. Plays inside the session
-    /// `configure` set up, so it never changes category or mode.
+    /// The clip playing now; a newer one replaces it. On tvOS it plays inside
+    /// the session `configure` set up. On iOS it switches to `.ambient` first,
+    /// see `enterAmbientForClip`.
     private static var clip: AVAudioPlayer?
 
     /// Answers the clip's length in seconds, so Big P's mouth stops with it.
@@ -123,17 +125,89 @@ import Foundation
       do {
         let player = try AVAudioPlayer(data: data)
         clip = player
+        enterAmbientForClip()
+        player.delegate = clipDelegate
         // An interruption or a dead route refuses the clip: say so, or Big P's
         // mouth moves without sound.
         guard player.play() else {
           clip = nil
+          restoreAfterClip()
           return FlutterError(code: "CLIP_FAILED", message: "the player refused to start", details: nil)
         }
         return player.duration
       } catch {
         clip = nil
+        restoreAfterClip()
         return FlutterError(code: "CLIP_FAILED", message: error.localizedDescription, details: nil)
       }
+    }
+
+    /// AVAudioPlayer holds its delegate weakly, so this one lives here.
+    private static let clipDelegate = ClipDelegate()
+
+    private final class ClipDelegate: NSObject, AVAudioPlayerDelegate {
+      func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        DispatchQueue.main.async {
+          // A newer clip already took over; it restores when it ends.
+          guard player === AudioSessionPlugin.clip else { return }
+          AudioSessionPlugin.clip = nil
+          AudioSessionPlugin.restoreAfterClip()
+        }
+      }
+
+      func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        audioPlayerDidFinishPlaying(player, successfully: false)
+      }
+    }
+
+    #if os(iOS)
+      /// What `configure` last set, saved while a clip runs in `.ambient`.
+      /// Nil when nothing needs restoring.
+      private static var restoreState: (options: AVAudioSession.CategoryOptions, multichannel: Bool)?
+    #endif
+
+    /// On iOS a clip plays in `.ambient`: the Ring/Silent switch silences it
+    /// and it mixes with music from other apps, where `.playback` ignores the
+    /// switch and interrupts them. tvOS has no switch and keeps the session.
+    ///
+    /// A clip that starts while the previous one still runs finds the session
+    /// already ambient and leaves the saved state alone, so the restore goes
+    /// back to `configure`'s state and not to `.ambient`.
+    ///
+    /// While the Pleya Share keepalive runs (`.mixWithOthers`) the session
+    /// stays as it is. A category change under its running AVAudioEngine can
+    /// stop the engine, and the keepalive only restarts after interruptions,
+    /// so guests would lose the host. The clip still mixes in that state; only
+    /// the silent switch is not honoured.
+    ///
+    /// A failing `setCategory` is logged and the clip still plays in the old
+    /// session: that is the behaviour before this change, and better than a
+    /// mouth that moves without sound.
+    private static func enterAmbientForClip() {
+      #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        guard session.category != .ambient, !session.categoryOptions.contains(.mixWithOthers) else { return }
+        let saved = (options: session.categoryOptions, multichannel: session.supportsMultichannelContent)
+        do {
+          try session.setCategory(.ambient)
+          restoreState = saved
+        } catch {
+          NSLog("[AudioSession] clip: setCategory(.ambient) failed, playing in [\(profile(session))]: \(error)")
+        }
+      #endif
+    }
+
+    /// Puts back the session `enterAmbientForClip` replaced, through
+    /// `configure` so mode and multichannel opt-in come back too. Skipped when
+    /// something else (video start) already reconfigured the session: running
+    /// `configure` again mid-stream would reload the audio output.
+    private static func restoreAfterClip() {
+      #if os(iOS)
+        guard let saved = restoreState else { return }
+        restoreState = nil
+        guard AVAudioSession.sharedInstance().category == .ambient else { return }
+        configure(multichannel: saved.multichannel, options: saved.options)
+      #endif
     }
 
     // MARK: - Measurement
