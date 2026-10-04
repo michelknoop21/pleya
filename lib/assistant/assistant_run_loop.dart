@@ -55,6 +55,9 @@ extension _AssistantLoop on AssistantRun {
       try {
         if (_cancelled) return _end(AssistantRunEnd.stepLimit);
         if (budget != null && !budget!.reserveModel()) {
+          // Out of budget after Pleya acted and nothing failed: the closing
+          // sentence is what is lost, not the action. The run ends as done.
+          if (_actions.isNotEmpty && _errors.isEmpty) return _end(AssistantRunEnd.answered);
           return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
         }
         reply = await _operation(() async {

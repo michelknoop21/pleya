@@ -2,16 +2,24 @@ import 'dart:async';
 
 /// Reservations are synchronous: concurrent runs cannot overspend a question.
 class AssistantQuestionBudget {
+  static const modelCalls = 20;
+  static const toolCalls = 30;
+
+  /// The most tasks one question splits into. The routing call and its one
+  /// repair come off [modelCalls] first; a task then needs a call to pick
+  /// its tool and a call to say what it did.
+  static const splitTaskCap = (modelCalls - 2) ~/ 2;
+
   int _models = 0;
   int _tools = 0;
   bool reserveModel() {
-    if (_models >= 20) return false;
+    if (_models >= modelCalls) return false;
     _models++;
     return true;
   }
 
   bool reserveTool() {
-    if (_tools >= 30) return false;
+    if (_tools >= toolCalls) return false;
     _tools++;
     return true;
   }

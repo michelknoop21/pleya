@@ -121,7 +121,7 @@ const _splitSpec = <String, Object?>{
   'function': {
     'name': 'split_tasks',
     'description':
-        'For a prompt with independent commands, return all commands as 2 to 10 tasks. '
+        'For a prompt with independent commands, return all commands as 2 to ${AssistantQuestionBudget.splitTaskCap} tasks. '
         'Use this call alone. Keep dependent steps (find then request) in one task. '
         'Tasks cannot refer to other tasks. Do not split a single command.',
     'parameters': {
@@ -131,7 +131,7 @@ const _splitSpec = <String, Object?>{
         'tasks': {
           'type': 'array',
           'minItems': 2,
-          'maxItems': 10,
+          'maxItems': AssistantQuestionBudget.splitTaskCap,
           'items': {
             'type': 'object',
             'additionalProperties': false,

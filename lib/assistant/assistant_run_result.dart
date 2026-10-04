@@ -93,7 +93,7 @@ extension _AssistantResult on AssistantRun {
       final decoded = jsonDecode(reply.toolCalls.single.arguments);
       if (decoded is! Map || decoded.length != 1 || decoded['tasks'] is! List) return null;
       final tasks = decoded['tasks'] as List;
-      if (tasks.length < 2 || tasks.length > 10) return null;
+      if (tasks.length < 2 || tasks.length > AssistantQuestionBudget.splitTaskCap) return null;
       final result = <AssistantTaskPlan>[];
       for (final task in tasks) {
         if (task is! Map || task.length != 3) return null;
