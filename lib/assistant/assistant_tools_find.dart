@@ -160,76 +160,13 @@ final List<AssistantTool> _findTools = [
       final query = _findQuery(args);
       final age = await _kidsAge(ctx, args);
       final result = await findTitles(ctx, query);
-      final client = ctx.requests?.client();
-      final shown = _shownRequestTitles[ctx] ??= {};
-      final rows = <Map<String, Object?>>[];
-      final display = <AssistantTitleMatch>[];
-      final gated = await _gateTitles(ctx, result.matches, _matchRef, age);
-      for (final (i, (m, facts)) in gated.kept.indexed) {
-        final id = 'm${i + 1}';
-        final kind = (m.kind ?? MediaKind.movie).name;
-        final targets = <AssistantTitleTarget>[
-          for (final item in m.library)
-            (serverId: ServerId(item.serverId!), serverName: ctx.serverName(ServerId(item.serverId!)), item: item),
-        ];
-        for (final t in targets) {
-          ctx.showItem(t.serverId, t.item.id);
-        }
-        AssistantRequestOption? request;
-        if (m.seerr case final s? when client != null) {
-          final seerrId = '${s.mediaType}:${s.tmdbId}';
-          shown[seerrId] = s;
-          request = AssistantRequestOption(
-            seerrId: seerrId,
-            title: clipText(s.title),
-            year: int.tryParse(s.year ?? ''),
-            kind: s.isMovie ? 'movie' : 'series',
-            posterUrl: s.posterUrl,
-            overview: clipText(s.overview, 300),
-            status: _requestStatus(s.status),
-            facts: facts,
-          );
-        }
-        final first = targets.firstOrNull;
-        rows.add({
-          'match_id': id,
-          'title': clipText(m.title),
-          'year': ?m.year,
-          'kind': kind,
-          'in_library': targets.isNotEmpty,
-          'servers': {for (final t in targets) clipText(t.serverName, 40)}.toList(),
-          'seerr_status': ?request?.status,
-          'seerr_id': ?request?.seerrId,
-          'confidence': m.confidence,
-          'sources': [for (final s in m.sources) _sourceName(s)],
-          if (clipText(m.snippet, 160) case final s when s.isNotEmpty) 'snippet': s,
-          if (first != null) ...{'item_id': first.item.id, 'server_id': first.serverId.value},
-          if (m.series != null) ...{'series': clipText(m.series), 'season': ?m.season, 'episode': ?m.episode},
-          ..._factsField(facts, gated.region),
-        });
-        display.add(
-          AssistantTitleMatch(
-            matchId: id,
-            title: clipText(m.title),
-            year: m.year,
-            kind: kind,
-            confidence: m.confidence,
-            targets: targets,
-            request: request,
-            series: m.series == null ? null : clipText(m.series),
-            season: m.season,
-            episode: m.episode,
-            snippet: clipText(m.snippet, 160),
-            facts: facts,
-          ),
-        );
-      }
+      final cards = await _titleCards(ctx, result.matches, age);
       return AssistantToolResult({
-        'matches': rows,
-        ...gated.note,
+        'matches': cards.rows,
+        ...cards.note,
         if (result.partial) 'partial': true,
         if (result.webSearched) 'web_searched': true,
-      }, display: AssistantTitleMatches(ctx, display));
+      }, display: AssistantTitleMatches(ctx, cards.display));
     },
   ),
 ];
@@ -246,3 +183,84 @@ TitleRef _matchRef(FindMatch m) => TitleRef(
   item: m.library.firstOrNull,
   serverId: m.library.firstOrNull?.serverId,
 );
+
+/// Rows for the model and cards for the UI from [matches]: library copies
+/// registered as showable, request options registered for request_title,
+/// facts attached and, with [age], the age gate applied. A [listing]
+/// (trending, similar) has no confidence, sources or snippet to report.
+Future<({List<Map<String, Object?>> rows, List<AssistantTitleMatch> display, Map<String, Object?> note})> _titleCards(
+  AssistantToolContext ctx,
+  List<FindMatch> matches,
+  int? age, {
+  bool listing = false,
+}) async {
+  final client = ctx.requests?.client();
+  final shown = _shownRequestTitles[ctx] ??= {};
+  final rows = <Map<String, Object?>>[];
+  final display = <AssistantTitleMatch>[];
+  final gated = await _gateTitles(ctx, matches, _matchRef, age);
+  for (final (i, (m, facts)) in gated.kept.indexed) {
+    final id = 'm${i + 1}';
+    final kind = (m.kind ?? MediaKind.movie).name;
+    final confidence = listing ? 'high' : m.confidence;
+    final snippet = listing ? '' : clipText(m.snippet, 160);
+    final targets = <AssistantTitleTarget>[
+      for (final item in m.library)
+        (serverId: ServerId(item.serverId!), serverName: ctx.serverName(ServerId(item.serverId!)), item: item),
+    ];
+    for (final t in targets) {
+      ctx.showItem(t.serverId, t.item.id);
+    }
+    AssistantRequestOption? request;
+    if (m.seerr case final s? when client != null) {
+      final seerrId = '${s.mediaType}:${s.tmdbId}';
+      shown[seerrId] = s;
+      request = AssistantRequestOption(
+        seerrId: seerrId,
+        title: clipText(s.title),
+        year: int.tryParse(s.year ?? ''),
+        kind: s.isMovie ? 'movie' : 'series',
+        posterUrl: s.posterUrl,
+        overview: clipText(s.overview, 300),
+        status: _requestStatus(s.status),
+        facts: facts,
+      );
+    }
+    final first = targets.firstOrNull;
+    rows.add({
+      'match_id': id,
+      'title': clipText(m.title),
+      'year': ?m.year,
+      'kind': kind,
+      'in_library': targets.isNotEmpty,
+      'servers': {for (final t in targets) clipText(t.serverName, 40)}.toList(),
+      'seerr_status': ?request?.status,
+      'seerr_id': ?request?.seerrId,
+      if (!listing) ...{
+        'confidence': confidence,
+        'sources': [for (final s in m.sources) _sourceName(s)],
+      },
+      if (snippet.isNotEmpty) 'snippet': snippet,
+      if (first != null) ...{'item_id': first.item.id, 'server_id': first.serverId.value},
+      if (m.series != null) ...{'series': clipText(m.series), 'season': ?m.season, 'episode': ?m.episode},
+      ..._factsField(facts, gated.region),
+    });
+    display.add(
+      AssistantTitleMatch(
+        matchId: id,
+        title: clipText(m.title),
+        year: m.year,
+        kind: kind,
+        confidence: confidence,
+        targets: targets,
+        request: request,
+        series: m.series == null ? null : clipText(m.series),
+        season: m.season,
+        episode: m.episode,
+        snippet: snippet,
+        facts: facts,
+      ),
+    );
+  }
+  return (rows: rows, display: display, note: gated.note);
+}

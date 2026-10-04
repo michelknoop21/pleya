@@ -36,11 +36,13 @@ import '../media/media_library.dart';
 import '../media/server_administration.dart';
 import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems;
 import '../utils/app_logger.dart';
+import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
-import '../services/tmdb/tmdb_client.dart' show TmdbKind;
+import '../services/tmdb/tmdb_client.dart' show TmdbClient, TmdbException, TmdbKind;
 import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
 import 'assistant_find_route.dart';
+import 'assistant_plot_index.dart' show titleKey;
 import 'assistant_title_facts.dart';
 import 'assistant_tool_context.dart';
 
@@ -53,6 +55,7 @@ part 'assistant_tools_insights_watch.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
+part 'assistant_tools_discover.dart';
 part 'assistant_tools_kids.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_personal.dart';
@@ -304,6 +307,7 @@ final List<AssistantTool> assistantTools = [
   ..._insightTools,
   ..._requestTools,
   ..._findTools,
+  ..._discoverTools,
   ..._mediaTools,
   ..._personalTools,
 ];

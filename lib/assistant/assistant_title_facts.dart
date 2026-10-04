@@ -255,6 +255,13 @@ class TitleFactsService {
   final _inFlight = <String, Future<TitleFacts>>{};
   bool _tmdbRejected = false;
 
+  /// A TMDB client on the user's own key; null without a key, offline or
+  /// after the key was rejected.
+  TmdbClient? tmdb() {
+    final key = tmdbKey();
+    return online() && key != null && key.isNotEmpty && !_tmdbRejected ? TmdbClient(key, httpClient: _http) : null;
+  }
+
   /// Facts per ref, in order. Identical refs share one lookup.
   Future<List<TitleFacts>> factsFor(List<TitleRef> refs) async {
     final unique = <String, TitleRef>{for (final r in refs) r.dedupeKey: r};

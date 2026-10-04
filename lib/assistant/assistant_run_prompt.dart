@@ -19,6 +19,7 @@ extension _AssistantPrompt on AssistantRun {
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
       '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
+      '- For "what is popular or trending" use trending_titles; for "something like X" use similar_titles.\n'
       '$_who';
 
   /// Who "I" is. Without this the model read "my history" as the household's
