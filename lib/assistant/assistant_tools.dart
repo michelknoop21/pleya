@@ -54,6 +54,7 @@ part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
+part 'assistant_tools_spoiler.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_recommendations.dart';
 part 'assistant_tools_playback.dart';

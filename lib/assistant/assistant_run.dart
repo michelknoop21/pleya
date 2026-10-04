@@ -1,3 +1,4 @@
+import 'assistant_spoiler_context.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -28,7 +29,14 @@ enum AssistantStepPhase { started, done, failed }
 /// One tool call as the UI shows it in the live step list. Built from the
 /// tool name and Pleya's own server name, never from model text.
 class AssistantStep {
-  const AssistantStep({required this.index, required this.tool, required this.phase, this.serverName, this.display});
+  const AssistantStep({
+    required this.index,
+    required this.tool,
+    required this.phase,
+    this.serverName,
+    this.display,
+    this.evidenceCurrent,
+  });
   final int index;
   final String tool;
   final String? serverName;
@@ -37,6 +45,7 @@ class AssistantStep {
   /// What the finished call handed the UI, so it can show while the model
   /// still composes its reply. Also in [AssistantRunResult.displays].
   final AssistantDisplay? display;
+  final bool Function()? evidenceCurrent;
 }
 
 enum AssistantRunEnd { answered, stepLimit, notEntitled, noTools, toolsUnsupported, providerError }
@@ -51,6 +60,7 @@ class AssistantRunResult {
     this.error,
     this.splitTasks = const [],
     this.playbackEvidenceCurrent,
+    this.spoilerPrompt,
   });
   final AssistantRunEnd end;
 
@@ -66,6 +76,7 @@ class AssistantRunResult {
   final String? error;
   final List<AssistantTaskPlan> splitTasks;
   final bool Function()? playbackEvidenceCurrent;
+  final String? spoilerPrompt;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -135,6 +146,7 @@ class AssistantRun {
     this.mutations,
     this.controllerOwnsConfirmTimeout = false,
     this.refreshHealth,
+    this.originalSpoilerPrompt,
   });
 
   /// Fires once the user cancelled or left (reset, profile switch): the
@@ -158,6 +170,10 @@ class AssistantRun {
   final Duration confirmTimeout;
   final Duration healthRefresh;
   final bool allowSplit;
+
+  /// Carried from the original submit; split children cannot rewrite it.
+  final String? originalSpoilerPrompt;
+  String? _spoilerQuestion;
   final AssistantQuestionBudget? budget;
   final AssistantOperationPool? operations;
   final AssistantOperationPool? mutations;
@@ -199,6 +215,8 @@ class AssistantRun {
     _busy = true;
     try {
       _ctx = context.fresh(cancel: cancel);
+      _spoilerQuestion = originalSpoilerPrompt ?? (assistantNeedsSpoilerScope(prompt) ? prompt : null);
+      _ctx.spoilerQuestion = _spoilerQuestion;
       return await _ask(prompt);
     } finally {
       _busy = false;
@@ -262,6 +280,12 @@ class AssistantRun {
         appLogger.w('Assistant model call failed', error: e.runtimeType, stackTrace: st);
         return _end(AssistantRunEnd.providerError, error: AssistantModelError.badResponse);
       }
+      // Any request for the safe route tightens this run before executing
+      // siblings in the same reply. Model candidates/prose never become facts.
+      if (reply.toolCalls.any((call) => call.name == 'spoiler_context')) {
+        _spoilerQuestion ??= prompt;
+        _ctx.spoilerQuestion = _spoilerQuestion;
+      }
       messages.add(reply.message);
       if (reply.toolCalls.any((call) => call.name == 'split_tasks')) {
         if (!allowSplit || step != 0) return _end(AssistantRunEnd.stepLimit, failure: 'invalid_split');
@@ -287,7 +311,20 @@ class AssistantRun {
           try {
             final repair = await _operation(() async {
               if (_cancelled) throw const AssistantToolError('cancelled');
-              return model.chat(messages, [_splitSpec], abort: cancel);
+              // Repair a fenced route without echoing invented plot facts,
+              // child labels, prompts or arbitrary tool-call names to the model.
+              final repairMessages = _spoilerQuestion == null
+                  ? messages
+                  : <Map<String, Object?>>[
+                      {'role': 'system', 'content': _system},
+                      {'role': 'user', 'content': prompt},
+                      {
+                        'role': 'user',
+                        'content':
+                            'Return one exclusive valid split_tasks call containing every independent command. No other tools.',
+                      },
+                    ];
+              return model.chat(repairMessages, [_splitSpec], abort: cancel);
             });
             plans = _splitPlans(repair);
           } catch (_) {
@@ -298,7 +335,38 @@ class AssistantRun {
         if (budget != null && !budget!.reserveTool()) {
           return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
         }
-        return AssistantRunResult(end: AssistantRunEnd.answered, splitTasks: List.unmodifiable(plans));
+        if (plans.any((plan) => assistantNeedsSpoilerScope('${plan.intent} ${plan.prompt}'))) {
+          _spoilerQuestion ??= prompt;
+        }
+        return AssistantRunResult(
+          end: AssistantRunEnd.answered,
+          splitTasks: List.unmodifiable(plans),
+          spoilerPrompt: _spoilerQuestion,
+        );
+      }
+      if (_spoilerQuestion != null) {
+        // Enforce execution as well as advertised specs. Even an invented
+        // unrestricted call or a tool-free hallucination ends with source data.
+        for (final call in reply.toolCalls.take(maxCallsPerReply)) {
+          if (budget != null && !budget!.reserveTool()) {
+            return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
+          }
+          if (call.name == 'spoiler_context') {
+            await _execute(call);
+          } else {
+            // Rejection must not publish model-invented tool names as UI labels.
+            await _executeCall(call);
+          }
+        }
+        if (_cancelled) return _end(AssistantRunEnd.stepLimit);
+        if (_ctx.spoilerEvidence == null) {
+          if (budget != null && !budget!.reserveTool()) {
+            return _end(AssistantRunEnd.stepLimit, failure: 'budget_exhausted');
+          }
+          await _execute(AssistantToolCall(id: 'safe-context', name: 'spoiler_context', arguments: '{}'));
+        }
+        if (_cancelled) return _end(AssistantRunEnd.stepLimit);
+        return _end(AssistantRunEnd.answered, text: _ctx.spoilerEvidence!.answer(languageName));
       }
       if (reply.toolCalls.isEmpty) return _end(AssistantRunEnd.answered, text: reply.content);
       // Serial on purpose: a write must see the state the previous one left.
@@ -329,11 +397,18 @@ class AssistantRun {
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
     final evidenceContext = _ctx;
     if (!_ctx.playbackEvidenceCurrent) {
-      return AssistantRunResult(end: end, actions: List.unmodifiable(_actions), error: 'playback_session_changed');
+      return AssistantRunResult(
+        end: end,
+        actions: List.unmodifiable(_actions),
+        error: 'playback_session_changed',
+        playbackEvidenceCurrent: () => false,
+        spoilerPrompt: _spoilerQuestion,
+      );
     }
     return AssistantRunResult(
       end: end,
       text: text,
+      spoilerPrompt: _spoilerQuestion,
       playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,
       actions: List.unmodifiable(_actions),
       displays: List.unmodifiable(_displays),
@@ -396,7 +471,7 @@ class AssistantRun {
     // Each tool decides through `serves` whether it needs administration.
     final servers = _ctx.userServers;
     return {
-      for (final tool in tools ?? assistantTools)
+      for (final tool in _spoilerQuestion != null ? [assistantSpoilerTool] : tools ?? assistantTools)
         // A serverless tool still asks `serves`: a missing service (no Seerr)
         // keeps it out.
         if (!tool.needsServer && [...servers, _noServer].any((id) => tool.serves(_ctx, id)))
@@ -442,6 +517,11 @@ class AssistantRun {
     );
     final shown = _displays.length;
     final output = await _executeCall(call);
+    // Tool preparation and parent await each introduce a publication gap.
+    // Never emit a payload whose source lease closed during either gap.
+    if (_spoilerQuestion != null && (!_ctx.playbackEvidenceCurrent || _cancelled)) {
+      return {'error': 'playback_session_changed'};
+    }
     final display = _displays.length > shown ? _displays.last : null;
     final failed =
         output.containsKey('error') ||
@@ -455,6 +535,7 @@ class AssistantRun {
         serverName: serverName,
         phase: failed ? AssistantStepPhase.failed : AssistantStepPhase.done,
         display: display,
+        evidenceCurrent: _ctx.spoilerEvidence?.position == null ? null : _ctx.spoilerEvidence!.current,
       ),
     );
     return output;
@@ -498,6 +579,9 @@ class AssistantRun {
           : await prepare();
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
+          if (_spoilerQuestion != null && (!_ctx.playbackEvidenceCurrent || _cancelled)) {
+            return {'error': 'playback_session_changed'};
+          }
           if (record != null && !data.containsKey('error') && data['done'] != false) _actions.add(record);
           if (display != null) _displays.add(display);
           return data;

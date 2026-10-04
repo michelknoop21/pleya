@@ -63,6 +63,43 @@ extension _VideoPlayerAssistantPlayback on VideoPlayerScreenState {
           available() &&
           snapshot.sessionId == _assistantPlaybackSessionId &&
           snapshot.revision == _assistantPlaybackRevision(player!),
+      watchBoundary: () {
+        if (!available()) return null;
+        final metadata = _playbackSession!.metadata;
+        if (metadata.kind != MediaKind.episode ||
+            metadata.grandparentId == null ||
+            metadata.parentIndex == null ||
+            metadata.index == null ||
+            metadata.libraryId == null) {
+          return null;
+        }
+        return AssistantWatchBoundary(
+          profileId: profileId,
+          serverId: metadata.serverId!,
+          libraryId: metadata.libraryId!,
+          showId: metadata.grandparentId!,
+          episodeId: metadata.id,
+          season: metadata.parentIndex!,
+          episode: metadata.index!,
+          positionMs: player!.state.position.inMilliseconds,
+          durationMs: player!.state.duration.inMilliseconds,
+          sessionId: _assistantPlaybackSessionId,
+          revision: _assistantPlaybackRevision(player!),
+        );
+      },
+      boundaryCurrent: (boundary) =>
+          available() &&
+          boundary.profileId == profileId &&
+          boundary.sessionId == _assistantPlaybackSessionId &&
+          boundary.revision == _assistantPlaybackRevision(player!) &&
+          boundary.episodeId == _playbackSession!.metadata.id &&
+          boundary.serverId == _playbackSession!.metadata.serverId &&
+          boundary.libraryId == _playbackSession!.metadata.libraryId &&
+          boundary.showId == _playbackSession!.metadata.grandparentId &&
+          boundary.season == _playbackSession!.metadata.parentIndex &&
+          boundary.episode == _playbackSession!.metadata.index &&
+          // Advancing is safe; seeking backwards invalidates this evidence.
+          player!.state.position.inMilliseconds >= boundary.positionMs,
       sample: () async {
         if (!available()) return null;
         final currentPlayer = player!;

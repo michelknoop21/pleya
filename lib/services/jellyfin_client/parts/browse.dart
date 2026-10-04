@@ -1303,6 +1303,136 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     }
   }
 
+  /// Complete, uncached current-user resume evidence for spoiler context.
+  /// Unlike the Home row this never merges NextUp or collapses by series.
+  /// Null means unsupported/incomplete/malformed coverage, never "no progress".
+  Future<List<MediaItem>?> readCurrentUserResumePositions({
+    required List<MediaLibrary> visibleLibraries,
+    required void Function() checkCurrent,
+  }) async {
+    if (isOfflineMode || connection.isEmby || visibleLibraries.length > 12) return null;
+    checkCurrent();
+    final response = await _http.get(
+      connection.resumeItemsPath,
+      queryParameters: {
+        'userId': connection.userId,
+        'StartIndex': '0',
+        'Limit': '101',
+        'EnableUserData': 'true',
+        'EnableTotalRecordCount': 'true',
+        'ExcludeActiveSessions': 'false',
+        'MediaTypes': 'Video',
+        'Fields': 'UserData',
+      },
+    );
+    checkCurrent();
+    throwIfHttpError(response);
+    List<Map<String, dynamic>>? complete(Object? data) {
+      if (data is! Map<String, dynamic> || data['Items'] is! List || data['TotalRecordCount'] is! int) return null;
+      final raw = data['Items'] as List, total = data['TotalRecordCount'] as int;
+      if (total < 0 || total > 100 || total != raw.length || raw.any((item) => item is! Map<String, dynamic>)) {
+        return null;
+      }
+      final items = raw.cast<Map<String, dynamic>>();
+      if (items.any((item) => item['Id'] is! String || (item['Id'] as String).isEmpty) ||
+          items.map((item) => item['Id']).toSet().length != items.length) {
+        return null;
+      }
+      return items;
+    }
+
+    MediaItem? position(Map<String, dynamic> dto) {
+      final user = dto['UserData'];
+      if (user is! Map<String, dynamic> ||
+          user['Played'] is! bool ||
+          user['PlaybackPositionTicks'] is! int ||
+          (user['PlaybackPositionTicks'] as int) < 0) {
+        return null;
+      }
+      // Resume context needs no names, summaries, cast, images or raw payload.
+      return _mapItem({
+        for (final key in [
+          'Id',
+          'Type',
+          'SeasonId',
+          'ParentId',
+          'SeriesId',
+          'ParentIndexNumber',
+          'IndexNumber',
+          'RunTimeTicks',
+          'UserData',
+        ])
+          if (dto.containsKey(key)) key: dto[key],
+      });
+    }
+
+    final raw = complete(response.data);
+    if (raw == null) return null;
+    final positions = <String, MediaItem>{};
+    for (final dto in raw) {
+      final item = position(dto);
+      if (item == null) return null;
+      // Zero-progress NextUp-like records confer no boundary.
+      if ((dto['UserData']['PlaybackPositionTicks'] as int) == 0) continue;
+      if (item.viewOffsetMs == null ||
+          item.viewOffsetMs! <= 0 ||
+          item.durationMs == null ||
+          item.durationMs! <= item.viewOffsetMs!) {
+        return null;
+      }
+      positions[item.id] = item;
+    }
+    if (positions.isEmpty) return const [];
+    final scoped = <String, MediaItem>{};
+    for (final library in visibleLibraries) {
+      checkCurrent();
+      if (library.serverId != serverId.value || library.id.isEmpty) return null;
+      final exact = await _http.get(
+        '/Items',
+        queryParameters: {
+          'userId': connection.userId,
+          'ParentId': library.id,
+          'Recursive': 'true',
+          'Ids': positions.keys.join(','),
+          'StartIndex': '0',
+          'Limit': '101',
+          'EnableUserData': 'true',
+          'EnableTotalRecordCount': 'true',
+          'Fields': 'UserData',
+        },
+      );
+      checkCurrent();
+      throwIfHttpError(exact);
+      final rows = complete(exact.data);
+      if (rows == null) return null;
+      for (final dto in rows) {
+        final item = position(dto);
+        if (item == null) return null;
+        final expected = positions[item.id];
+        if (expected == null || scoped.containsKey(item.id)) return null;
+        final top = dto['ParentLibraryId'];
+        final resumeTop = raw.firstWhere((row) => row['Id'] == item.id)['ParentLibraryId'];
+        if ((dto.containsKey('ParentLibraryId') && (top is! String || top != library.id)) ||
+            (raw.firstWhere((row) => row['Id'] == item.id).containsKey('ParentLibraryId') &&
+                (resumeTop is! String || resumeTop != library.id))) {
+          return null;
+        }
+        if (item.kind != expected.kind ||
+            item.parentId != expected.parentId ||
+            item.grandparentId != expected.grandparentId ||
+            item.parentIndex != expected.parentIndex ||
+            item.index != expected.index ||
+            item.durationMs != expected.durationMs ||
+            item.viewOffsetMs != expected.viewOffsetMs) {
+          return null;
+        }
+        scoped[item.id] = item.copyWith(libraryId: library.id, raw: null);
+      }
+    }
+    checkCurrent();
+    return scoped.values.toList();
+  }
+
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final results = await Future.wait([

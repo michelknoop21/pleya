@@ -1,3 +1,4 @@
+import 'assistant_spoiler_context.dart';
 import 'dart:async';
 
 import '../mpv/mpv.dart';
@@ -143,14 +144,27 @@ List<AssistantPlaybackAction> assistantSourceSubtitleActions({
 /// The player owns these callbacks. Its scoped registration lease and live
 /// predicate close old/profile/hidden-source sessions without a new registry.
 class AssistantPlaybackServices {
-  const AssistantPlaybackServices({required this.available, required this.sample, required this.isCurrent});
-  const AssistantPlaybackServices.unavailable() : available = _unavailable, sample = _noSample, isCurrent = _notCurrent;
+  const AssistantPlaybackServices({
+    required this.available,
+    required this.sample,
+    required this.isCurrent,
+    this.watchBoundary,
+    this.boundaryCurrent,
+  });
+  const AssistantPlaybackServices.unavailable()
+    : available = _unavailable,
+      sample = _noSample,
+      isCurrent = _notCurrent,
+      watchBoundary = null,
+      boundaryCurrent = null;
   static bool _unavailable() => false;
   static Future<AssistantPlaybackSnapshot?> _noSample() async => null;
   static bool _notCurrent(AssistantPlaybackSnapshot _) => false;
   final bool Function() available;
   final Future<AssistantPlaybackSnapshot?> Function() sample;
   final bool Function(AssistantPlaybackSnapshot) isCurrent;
+  final AssistantWatchBoundary? Function()? watchBoundary;
+  final bool Function(AssistantWatchBoundary)? boundaryCurrent;
 }
 
 /// Allowlisted fields only: never holds a URL, header, raw response or server

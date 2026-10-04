@@ -1,3 +1,4 @@
+import '../media/media_kind.dart';
 import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io';
@@ -14,6 +15,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../mpv/mpv.dart';
 import '../assistant/assistant_playback.dart';
+import '../assistant/assistant_spoiler_context.dart';
 import '../profiles/active_profile_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../widgets/video_controls/widgets/performance_overlay/performance_stats_service.dart';
