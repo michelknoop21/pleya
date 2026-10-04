@@ -5987,6 +5987,7 @@ class TranslationsAssistantEn {
 	/// en: 'AI provider'
 	String get providerLabel => 'AI provider';
 
+	late final TranslationsAssistantMobileEn mobile = TranslationsAssistantMobileEn.internal(_root);
 	late final TranslationsAssistantLockedEn locked = TranslationsAssistantLockedEn.internal(_root);
 	late final TranslationsAssistantSetupEn setup = TranslationsAssistantSetupEn.internal(_root);
 	late final TranslationsAssistantIdleEn idle = TranslationsAssistantIdleEn.internal(_root);
@@ -7270,6 +7271,75 @@ class TranslationsTvMyPleyaSemanticsEn {
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.mobile
+class TranslationsAssistantMobileEn {
+	TranslationsAssistantMobileEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hi ${name}, what are we looking for?'
+	String greeting({required Object name}) => 'Hi ${name}, what are we looking for?';
+
+	List<List<String>> get examples => [
+		[
+			'What can I watch tonight?',
+			'Give me a comedy for tonight.',
+			'Find an exciting movie for tonight.',
+		],
+		[
+			'Which series can I start now?',
+		],
+		[
+			'Do I have something for the kids?',
+		],
+		[
+			'Which movies haven\'t I seen yet?',
+			'Which movies have sat unwatched in my library for a long time?',
+		],
+		[
+			'What was added this week?',
+		],
+		[
+			'Who watched the most this week?',
+		],
+	];
+
+	/// en: 'I don't have a brain yet.'
+	String get noModelTitle => 'I don\'t have a brain yet.';
+
+	/// en: 'Pick a language model and I'll find movies, request titles and run your servers.'
+	String get noModelBody => 'Pick a language model and I\'ll find movies, request titles and run your servers.';
+
+	/// en: 'Set up model'
+	String get setup => 'Set up model';
+
+	/// en: 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.'
+	String get icloudNote => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.';
+
+	/// en: 'Listening…'
+	String get listening => 'Listening…';
+
+	/// en: 'Say your question, or type it.'
+	String get listeningHint => 'Say your question, or type it.';
+
+	/// en: 'Ask more'
+	String get askFurther => 'Ask more';
+
+	/// en: '${n} more titles'
+	String moreTitles({required Object n}) => '${n} more titles';
+
+	/// en: 'Ask Big P'
+	String get searchAsk => 'Ask Big P';
+
+	/// en: 'Summon Big P'
+	String get faceButton => 'Summon Big P';
+
+	/// en: 'Choose first: confirm or cancel.'
+	String get notConfirmedYet => 'Choose first: confirm or cancel.';
+}
+
 // Path: assistant.locked
 class TranslationsAssistantLockedEn {
 	TranslationsAssistantLockedEn.internal(this._root);
@@ -7338,10 +7408,26 @@ class TranslationsAssistantIdleEn {
 	/// en: 'For example'
 	String get examplesHeader => 'For example';
 
-	List<String> get examples => [
-		'Which tasks failed on my servers today? Restart them.',
-		'Scan all movie libraries on all my servers.',
-		'Who watched the most this week?',
+	List<List<String>> get examples => [
+		[
+			'Which tasks failed on my servers today? Restart them.',
+		],
+		[
+			'Scan all movie libraries on all my servers.',
+		],
+		[
+			'Who watched the most this week?',
+			'Who is watching right now?',
+		],
+		[
+			'What can I watch tonight?',
+		],
+		[
+			'What was added this week?',
+		],
+		[
+			'Which popular new movies don\'t I have yet?',
+		],
 	];
 }
 
@@ -7750,6 +7836,15 @@ class TranslationsAssistantSettingsEn {
 	/// en: 'The provider and key are removed from this device. You can set Big P up again at any time.'
 	String get disableBody => 'The provider and key are removed from this device. You can set Big P up again at any time.';
 
+	/// en: 'Replace the Big P setup?'
+	String get unreadableTitle => 'Replace the Big P setup?';
+
+	/// en: 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.'
+	String get unreadableBody => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.';
+
+	/// en: 'Replace'
+	String get replace => 'Replace';
+
 	/// en: 'Model'
 	String get currentModel => 'Model';
 
@@ -7942,17 +8037,28 @@ class TranslationsAssistantFollowUpEn {
 	/// en: 'Who watched today?'
 	String get watchToday => 'Who watched today?';
 
-	/// en: 'Give me a film tip for tonight.'
-	String get tonight => 'Give me a film tip for tonight.';
+	/// en: 'Who watched yesterday?'
+	String get watchYesterday => 'Who watched yesterday?';
 
-	/// en: 'What was added to my library lately?'
-	String get recent => 'What was added to my library lately?';
-
-	/// en: 'Which films in my library have I not seen yet?'
-	String get unwatched => 'Which films in my library have I not seen yet?';
-
-	/// en: 'Which popular films do I not have yet?'
-	String get popular => 'Which popular films do I not have yet?';
+	List<String> get tonight => [
+		'Give me a comedy for tonight.',
+		'Find an exciting movie for tonight.',
+		'Do I have something for the kids?',
+		'Which series can I start now?',
+	];
+	List<String> get recent => [
+		'What was added to my library lately?',
+		'Which series were added recently?',
+		'What was added this week?',
+	];
+	List<String> get unwatched => [
+		'Which films in my library have I not seen yet?',
+		'Which movies have sat unwatched in my library for a long time?',
+	];
+	List<String> get popular => [
+		'Which popular films do I not have yet?',
+		'Which popular new movies don\'t I have yet?',
+	];
 
 	/// en: 'Which films are missing between my servers?'
 	String get missingMovies => 'Which films are missing between my servers?';
@@ -10187,6 +10293,27 @@ extension on Translations {
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
+			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
+			'assistant.mobile.examples.0.0' => 'What can I watch tonight?',
+			'assistant.mobile.examples.0.1' => 'Give me a comedy for tonight.',
+			'assistant.mobile.examples.0.2' => 'Find an exciting movie for tonight.',
+			'assistant.mobile.examples.1.0' => 'Which series can I start now?',
+			'assistant.mobile.examples.2.0' => 'Do I have something for the kids?',
+			'assistant.mobile.examples.3.0' => 'Which movies haven\'t I seen yet?',
+			'assistant.mobile.examples.3.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.mobile.examples.4.0' => 'What was added this week?',
+			'assistant.mobile.examples.5.0' => 'Who watched the most this week?',
+			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
+			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
+			'assistant.mobile.setup' => 'Set up model',
+			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
+			'assistant.mobile.listening' => 'Listening…',
+			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
+			'assistant.mobile.askFurther' => 'Ask more',
+			'assistant.mobile.moreTitles' => ({required Object n}) => '${n} more titles',
+			'assistant.mobile.searchAsk' => 'Ask Big P',
+			'assistant.mobile.faceButton' => 'Summon Big P',
+			'assistant.mobile.notConfirmedYet' => 'Choose first: confirm or cancel.',
 			'assistant.locked.badge' => 'Not available on this account',
 			'assistant.locked.title' => 'Big P is not turned on for this account yet',
 			'assistant.locked.body' => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.',
@@ -10201,9 +10328,13 @@ extension on Translations {
 			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
-			'assistant.idle.examples.0' => 'Which tasks failed on my servers today? Restart them.',
-			'assistant.idle.examples.1' => 'Scan all movie libraries on all my servers.',
-			'assistant.idle.examples.2' => 'Who watched the most this week?',
+			'assistant.idle.examples.0.0' => 'Which tasks failed on my servers today? Restart them.',
+			'assistant.idle.examples.1.0' => 'Scan all movie libraries on all my servers.',
+			'assistant.idle.examples.2.0' => 'Who watched the most this week?',
+			'assistant.idle.examples.2.1' => 'Who is watching right now?',
+			'assistant.idle.examples.3.0' => 'What can I watch tonight?',
+			'assistant.idle.examples.4.0' => 'What was added this week?',
+			'assistant.idle.examples.5.0' => 'Which popular new movies don\'t I have yet?',
 			'assistant.listening.title' => 'I\'m listening…',
 			'assistant.listening.body' => 'Speak your question.',
 			'assistant.working.status' => 'Let me check…',
@@ -10330,6 +10461,9 @@ extension on Translations {
 			'assistant.settings.disable' => 'Turn off Big P',
 			'assistant.settings.disableConfirm' => 'Turn off Big P?',
 			'assistant.settings.disableBody' => 'The provider and key are removed from this device. You can set Big P up again at any time.',
+			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
+			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
+			'assistant.settings.replace' => 'Replace',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',
 			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
@@ -10383,10 +10517,18 @@ extension on Translations {
 			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
 			'assistant.followUp.watchToday' => 'Who watched today?',
-			'assistant.followUp.tonight' => 'Give me a film tip for tonight.',
-			'assistant.followUp.recent' => 'What was added to my library lately?',
-			'assistant.followUp.unwatched' => 'Which films in my library have I not seen yet?',
-			'assistant.followUp.popular' => 'Which popular films do I not have yet?',
+			'assistant.followUp.watchYesterday' => 'Who watched yesterday?',
+			'assistant.followUp.tonight.0' => 'Give me a comedy for tonight.',
+			'assistant.followUp.tonight.1' => 'Find an exciting movie for tonight.',
+			'assistant.followUp.tonight.2' => 'Do I have something for the kids?',
+			'assistant.followUp.tonight.3' => 'Which series can I start now?',
+			'assistant.followUp.recent.0' => 'What was added to my library lately?',
+			'assistant.followUp.recent.1' => 'Which series were added recently?',
+			'assistant.followUp.recent.2' => 'What was added this week?',
+			'assistant.followUp.unwatched.0' => 'Which films in my library have I not seen yet?',
+			'assistant.followUp.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.followUp.popular.0' => 'Which popular films do I not have yet?',
+			'assistant.followUp.popular.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.followUp.missingMovies' => 'Which films are missing between my servers?',
 			'assistant.followUp.missingShows' => 'Which series are missing between my servers?',
 			'assistant.followUp.jobs' => 'Which tasks are running on my servers now?',

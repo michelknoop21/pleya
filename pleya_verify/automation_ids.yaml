@@ -222,6 +222,27 @@ ids:
   - id: assistant.summon
     role: region
     instanceable: false
+  - id: bigp.faceButton
+    role: button
+    instanceable: false
+  - id: bigp.balloon
+    role: region
+    instanceable: false
+  - id: bigp.input
+    role: field
+    instanceable: false
+  - id: bigp.followUp
+    role: button
+    instanceable: true
+  - id: bigp.peek
+    role: button
+    instanceable: false
+  - id: bigp.searchAsk
+    role: button
+    instanceable: false
+  - id: bigp.libraryAsk
+    role: button
+    instanceable: true
   - id: settings.form.field
     role: field
     instanceable: true

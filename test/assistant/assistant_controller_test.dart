@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -12,6 +13,8 @@ import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/seerr/seerr_client.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
@@ -73,6 +76,18 @@ AssistantReply _call(String name, [Map<String, Object?> args = const {}]) {
       ],
     },
   );
+}
+
+/// A server that only needs to exist.
+class _Server implements MediaServerClient {
+  @override
+  ServerId get serverId => ServerId('s');
+
+  @override
+  void close() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// A serverless read and a serverless action behind a card.
@@ -196,6 +211,58 @@ void main() {
     expect(await availability(controller()), AssistantAvailability.ready);
   });
 
+  test('servers that arrive after the first read lift hidden without a summon', () async {
+    final serverChanges = ValueNotifier(0);
+    AssistantProviderConfig? saved;
+    final c = AssistantController(
+      buildContext: (screen) => AssistantToolContext(servers: servers, screen: screen),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => saved,
+      serverChanges: serverChanges,
+    );
+    addTearDown(c.dispose);
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.hidden);
+
+    // A change with still no servers reads nothing again.
+    var notified = 0;
+    c.addListener(() => notified++);
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(notified, 0);
+
+    servers.debugRegisterClientForTesting(_Server());
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(c.availability, AssistantAvailability.needsSetup);
+
+    // Later changes with servers present do not read again.
+    saved = _config;
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(c.availability, AssistantAvailability.needsSetup);
+  });
+
+  test('with the rollout flag off a server change builds no tool context', () async {
+    final serverChanges = ValueNotifier(0);
+    var built = 0;
+    final c = AssistantController(
+      buildContext: (screen) {
+        built++;
+        return AssistantToolContext(servers: servers, screen: screen);
+      },
+      rolloutEnabled: false,
+      serverChanges: serverChanges,
+    );
+    addTearDown(c.dispose);
+    servers.debugRegisterClientForTesting(_Server());
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(built, 0);
+    expect(c.availability, AssistantAvailability.hidden);
+  });
+
   test('a provider saved elsewhere moves availability out of setup', () async {
     seerr = _seerr([]);
     AssistantProviderConfig? saved;
@@ -215,6 +282,55 @@ void main() {
 
     saved = _config;
     AssistantProviderStore.changes.value++; // what save() does, from any screen
+    await pumpEventQueue();
+    expect(c.availability, AssistantAvailability.ready);
+  });
+
+  test('an unreadable keychain keeps the last availability instead of asking for setup', () async {
+    seerr = _seerr([]);
+    Object? failure;
+    final c = AssistantController(
+      buildContext: (screen) => AssistantToolContext(
+        servers: servers,
+        screen: screen,
+        requests: AssistantRequestServices(client: () => seerr),
+      ),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => failure == null ? _config : throw failure,
+    );
+    addTearDown(c.dispose);
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.ready);
+
+    failure = const AssistantProviderStoreException('OSStatus -25308');
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.ready);
+  });
+
+  test('a keychain that fails on the first read offers setup, then follows the next good read', () async {
+    seerr = _seerr([]);
+    Object? failure = const AssistantProviderStoreException('OSStatus -34018');
+    final c = AssistantController(
+      buildContext: (screen) => AssistantToolContext(
+        servers: servers,
+        screen: screen,
+        requests: AssistantRequestServices(client: () => seerr),
+      ),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => failure == null ? _config : throw failure,
+    );
+    addTearDown(c.dispose);
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.needsSetup);
+
+    // The keychain recovers; the next summon reads again instead of keeping
+    // the set-up gate.
+    failure = null;
+    final session = BigPMobileSession(c);
+    addTearDown(session.dispose);
+    session.summon();
     await pumpEventQueue();
     expect(c.availability, AssistantAvailability.ready);
   });

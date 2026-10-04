@@ -18,7 +18,7 @@ import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tool_context.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../assistant/big_p_voice.dart';
-import 'big_p_voice_mouth.dart';
+import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../automation/automation_screen.dart';
@@ -36,24 +36,15 @@ import '../../../utils/dialogs.dart';
 import '../../../utils/media_navigation_helper.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
+import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
-import 'tv_assistant_results.dart';
-import 'tv_assistant_widgets.dart';
-
-/// Big P's mood for the controller's stand; a waiting card wins.
-BigPMood tvAssistantMood(AssistantController c) {
-  if (c.pending != null) return BigPMood.attentive;
-  return switch (c.state) {
-    AssistantSurfaceState.idle => BigPMood.idle,
-    AssistantSurfaceState.listening => BigPMood.listening,
-    AssistantSurfaceState.working => BigPMood.working,
-    AssistantSurfaceState.result => c.resultIsError ? BigPMood.error : BigPMood.success,
-  };
-}
+import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 
 class TvAssistantScreen extends StatefulWidget {
   const TvAssistantScreen({super.key, this.screenContext, this.speech, this.textEntry});
@@ -99,6 +90,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   void initState() {
     super.initState();
     _mounted.add(this);
+    // One visit, one set of examples: picked before the first frame.
+    if (context.read<AssistantController?>() case final c?) BigPSuggestions.of(c).summoned();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = _c;
       if (!mounted || c == null) return;
@@ -176,7 +169,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
         AssistantSurfaceState.idle => _askNode,
         AssistantSurfaceState.listening => null,
         AssistantSurfaceState.working => _cancelNode,
-        AssistantSurfaceState.result => tvAssistantHasChoices(c.displays) ? _optionNode : _askNode,
+        AssistantSurfaceState.result => bigPHasChoices(c.displays) ? _optionNode : _askNode,
       },
     };
   }
@@ -265,10 +258,13 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
 
   void _openSetup() {
     Widget builder(BuildContext _) => const AssistantSettingsScreen();
-    // The store's change signal refreshes availability on save.
-    if (openTvContentRoute(id: 'tvAssistantSetup', builder: builder) == null) {
-      unawaited(Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: builder)));
-    }
+    final c = context.read<AssistantController?>();
+    // A save refreshes through the store's change signal; the close reads
+    // again too, so a keychain that recovered meanwhile ends the set-up gate.
+    final closed =
+        openTvContentRoute(id: 'tvAssistantSetup', builder: builder) ??
+        Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: builder));
+    unawaited(closed.then((_) => c?.refreshAvailability()));
   }
 
   String _servers() {
@@ -285,7 +281,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   Widget build(BuildContext context) {
     final c = _c;
     if (c == null || c.availability == AssistantAvailability.hidden) return const SizedBox.shrink();
-    final mood = tvAssistantMood(c);
+    final mood = bigPMood(c);
     final Widget body = switch (c.availability) {
       AssistantAvailability.locked || AssistantAvailability.needsSetup => TvAssistantGate(
         locked: c.availability == AssistantAvailability.locked,
@@ -350,7 +346,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
               width: 800 * pt,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: box.maxHeight - 110 * pt),
-                child: TvAssistantGlassPanel(
+                child: BigPGlassPanel(
                   child: TvAssistantConversation(
                     controller: c,
                     name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',

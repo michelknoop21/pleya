@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/i18n/strings.g.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 
 import 'tv_assistant_test_support.dart';
 

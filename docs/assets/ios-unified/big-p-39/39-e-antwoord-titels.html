@@ -1,0 +1,16 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>39 E Antwoord met titels</title>
+<link rel="stylesheet" href="bp39.css"><script src="bp39.js"></script></head><body><script>
+document.body.innerHTML = homeBg({out:true}) + tabbar() + `<div class="dim"></div>
+<div class="ball" style="left:12px;right:12px;top:100px">
+  <div class="asked"><span>Je vroeg: </span>Welke animatiefilms heb ik nog niet gezien?</div>
+  <div class="answer">Drie nog niet. Spring staat niet op je server, die kan ik aanvragen.</div>
+  <div class="cards">
+    ${mc('tears-poster.jpg','Tears of Steel',2012,'Film · 12 min',['ok','In je bibliotheek · NAS'])}
+    ${mc('elephants-poster.jpg','Elephants Dream',2006,'Film · 11 min',['ok','In je bibliotheek · NAS'])}
+    ${mc('spring-poster.jpg','Spring',2019,'Film · 8 min',['ask','Aan te vragen'])}
+  </div>
+</div>` + tail(326, 614) + bp('bigp-vinger_presenteren', {left:196, top:586, width:196}) +
+`<div class="fu float" style="position:absolute;left:12px;top:626px;width:240px;flex-direction:column;z-index:29">
+  <span class="pill">${I.follow}Wat kan ik vanavond kijken?</span><span class="pill">${I.follow}Wat is er net toegevoegd?</span><span class="pill">${I.follow}Wat staat op mijn lijst?</span></div>` +
+`<div class="input" style="top:790px"><span class="txt ph">Vraag verder</span><span class="send off">${I.mic}</span></div><div class="homeind"></div>`;
+</script></body></html>

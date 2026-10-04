@@ -16,14 +16,15 @@ import '../../../media/ids.dart';
 import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_match_card.dart';
-import 'tv_assistant_option_card.dart';
-import 'tv_assistant_watch_card.dart';
-import 'tv_assistant_widgets.dart';
+import '../big_p_scale.dart';
+import 'big_p_labels.dart';
+import 'big_p_match_card.dart';
+import 'big_p_option_card.dart';
+import 'big_p_watch_card.dart';
+import 'big_p_assistant_widgets.dart';
 
 Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
-  final pt = TvHig.of(context);
+  final pt = BigPScale.of(context);
   final size = 30 * pt;
   return switch (phase) {
     AssistantStepPhase.done => Icon(Symbols.check_circle_rounded, fill: 1, color: kSuccess, size: size),
@@ -38,14 +39,14 @@ Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
 
 /// The live step list (motion still 3): one dark row per tool call, label
 /// from the tool name and Pleya's server name, icon from the phase.
-class TvAssistantStepList extends StatelessWidget {
-  const TvAssistantStepList({super.key, required this.steps});
+class BigPStepList extends StatelessWidget {
+  const BigPStepList({super.key, required this.steps});
 
   final List<AssistantStep> steps;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     return AutomationNode(
       id: AutomationIds.assistantSteps,
@@ -89,8 +90,8 @@ class TvAssistantStepList extends StatelessWidget {
 /// red "Niet uitgevoerd" card when the run failed without doing anything
 /// (38 J). A failure after some actions keeps the green lines: what Pleya
 /// already did is never hidden.
-class TvAssistantResultCard extends StatelessWidget {
-  const TvAssistantResultCard({super.key, required this.error, required this.actions, required this.time});
+class BigPResultCard extends StatelessWidget {
+  const BigPResultCard({super.key, required this.error, required this.actions, required this.time});
 
   final bool error;
   final List<AssistantActionRecord> actions;
@@ -98,7 +99,7 @@ class TvAssistantResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final done = actions.isNotEmpty;
     Widget line(Widget icon, String text) => Padding(
@@ -128,7 +129,7 @@ class TvAssistantResultCard extends StatelessWidget {
             if (a.progress case final p?) {'phase': p.phase.name, 'percent': ?p.percent},
         ],
       },
-      child: TvAssistantCard(
+      child: BigPCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -162,7 +163,7 @@ const _watchTitles = 5;
 /// How many focusable cards [display] draws: request options, found titles
 /// and a grid's titles. The first of them takes the focus after a result
 /// (still 7).
-int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
+int bigPChoiceCount(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.length,
   AssistantTitleMatches(:final matches) => matches.where((m) => m.targets.isNotEmpty || m.request != null).length,
   AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
@@ -173,22 +174,78 @@ int tvAssistantChoiceCount(AssistantDisplay display) => switch (display) {
 
 /// A display with nothing in it, e.g. a search that found nothing: the
 /// answer says so, an empty card would only be a grey bar.
-bool tvAssistantDisplayIsEmpty(AssistantDisplay display) => switch (display) {
+bool bigPDisplayIsEmpty(AssistantDisplay display) => switch (display) {
   AssistantRequestOptions(:final options) => options.isEmpty,
   AssistantTitleMatches(:final matches) => matches.isEmpty,
   AssistantMediaGrid(:final entries) => entries.isEmpty,
   _ => false,
 };
 
-bool tvAssistantHasChoices(List<AssistantDisplay> displays) => displays.any((d) => tvAssistantChoiceCount(d) > 0);
+bool bigPHasChoices(List<AssistantDisplay> displays) => displays.any((d) => bigPChoiceCount(d) > 0);
+
+/// The title cards [display] draws when titles can be opened; each card
+/// opens its first target. Big P on the phone counts these too, for the
+/// titles still left to open.
+List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (display) {
+  AssistantTitleMatches(:final matches) => matches,
+  AssistantMediaGrid(:final entries) => [
+    for (final e in entries.take(_gridCap))
+      AssistantTitleMatch(
+        matchId: e.item.globalKey,
+        title: e.item.displayTitle,
+        year: e.item.year,
+        kind: e.item.kind.name,
+        confidence: 'high',
+        targets: [
+          // The representative first: the copy the card names is the
+          // copy it opens.
+          if (e.group case final group?)
+            for (final s in [
+              group.representativeSource,
+              ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
+            ])
+              (serverId: s.serverId, serverName: s.serverName, item: s.item)
+          else if (e.item.serverId case final id?)
+            (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
+        ],
+      ),
+  ],
+  // The missing titles are on [serverName]: cards that open that copy.
+  final AssistantServerComparison c => [
+    for (final item in c.missing.take(_gridCap))
+      AssistantTitleMatch(
+        matchId: item.globalKey,
+        title: item.displayTitle,
+        year: item.year,
+        kind: item.kind.name,
+        confidence: 'high',
+        targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
+      ),
+  ],
+  // The watched titles are title cards, as a found title is: poster,
+  // plays and viewers, and they open their library copy.
+  AssistantWatchStats(:final titles) => [
+    for (final x in titles.take(_watchTitles))
+      AssistantTitleMatch(
+        matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
+        title: x.title,
+        year: x.target?.item.year,
+        kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
+        confidence: 'high',
+        targets: [?x.target],
+        snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
+      ),
+  ],
+  _ => const [],
+};
 
 /// A tool's display, drawn on the panel. Request options and found titles
 /// are the focusable kinds: an option goes to [onPickOption]; a found title
 /// opens its library copy through [onOpenTitle], or, not in a library, goes
 /// to [onPickOption] with its Seerr request. Without [onPickOption] (Big P
 /// still checking) a request card stays focusable but dimmed and inert.
-class TvAssistantDisplayView extends StatelessWidget {
-  const TvAssistantDisplayView({
+class BigPDisplayView extends StatelessWidget {
+  const BigPDisplayView({
     super.key,
     required this.display,
     this.onPickOption,
@@ -196,6 +253,7 @@ class TvAssistantDisplayView extends StatelessWidget {
     this.firstOptionNode,
     this.optionOffset = 0,
     this.compact = false,
+    this.columns = 1,
   });
 
   final AssistantDisplay display;
@@ -204,6 +262,9 @@ class TvAssistantDisplayView extends StatelessWidget {
 
   /// The summoned panel: the cards take their compact form.
   final bool compact;
+
+  /// Cards side by side: 2 in the iPad balloon (39 I), 1 elsewhere.
+  final int columns;
 
   /// Gets the first option card, for the surface's default focus (still 7).
   final FocusNode? firstOptionNode;
@@ -226,40 +287,56 @@ class TvAssistantDisplayView extends StatelessWidget {
   /// is what bounds how many show at once. [ranked] badges each poster with
   /// its place (most watched).
   Widget _matches(double pt, List<AssistantTitleMatch> matches, {bool ranked = false}) {
-    return Column(
-      children: [
-        for (final (i, match) in matches.indexed)
-          Padding(
-            padding: EdgeInsets.only(bottom: 10 * pt),
-            child: TvAssistantMatchCard(
-              match: match,
-              index: optionOffset + i,
-              // A ranking is a list to scan: one line of detail per title.
-              compact: compact || ranked,
-              // More than three in the summoned panel: the list form, so
-              // five show where three did.
-              dense: compact && !ranked && matches.length > 3,
-              rank: ranked ? i + 1 : null,
-              focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
-              // Nothing to open and nothing to request: shown, never a dead
-              // focus stop.
-              onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
-                  ? () => _selectMatch(match)
-                  : null,
-            ),
-          ),
-      ],
-    );
+    return _cards(pt, [
+      for (final (i, match) in matches.indexed)
+        BigPMatchCard(
+          match: match,
+          index: optionOffset + i,
+          // A ranking is a list to scan: one line of detail per title.
+          compact: compact || ranked,
+          // More than three in the summoned panel: the list form, so
+          // five show where three did.
+          dense: compact && !ranked && matches.length > 3,
+          rank: ranked ? i + 1 : null,
+          focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
+          // Nothing to open and nothing to request: shown, never a dead
+          // focus stop.
+          onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
+              ? () => _selectMatch(match)
+              : null,
+        ),
+    ]);
   }
+
+  /// One card per row, or [columns] side by side, in reading order.
+  Widget _cards(double pt, List<Widget> cards) => Column(
+    children: [
+      for (var i = 0; i < cards.length; i += columns)
+        Padding(
+          padding: EdgeInsets.only(bottom: 10 * pt),
+          child: columns == 1
+              ? cards[i]
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var j = i; j < i + columns; j++) ...[
+                      if (j > i) SizedBox(width: 10 * pt),
+                      Expanded(child: j < cards.length ? cards[j] : const SizedBox.shrink()),
+                    ],
+                  ],
+                ),
+        ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
     final row = TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt);
     final heading = TextStyle(color: tk.text, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700);
-    Widget card(String? header, List<String> lines) => TvAssistantCard(
+    Widget card(String? header, List<String> lines) => BigPCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -284,95 +361,42 @@ class TvAssistantDisplayView extends StatelessWidget {
     );
     String titled(String title, int? year) => year == null ? title : '$title ($year)';
     return switch (display) {
-      AssistantRequestOptions(:final options) => Column(
-        children: [
-          for (var i = 0; i < options.length; i++)
-            Padding(
-              padding: EdgeInsets.only(bottom: 10 * pt),
-              child: TvAssistantOptionCard(
-                option: options[i],
-                index: optionOffset + i,
-                focusNode: i == 0 ? firstOptionNode : null,
-                compact: compact,
-                onSelect: switch (onPickOption) {
-                  final pick? => () => pick(options[i]),
-                  null => null,
-                },
-              ),
-            ),
-        ],
-      ),
+      AssistantRequestOptions(:final options) => _cards(pt, [
+        for (var i = 0; i < options.length; i++)
+          BigPOptionCard(
+            option: options[i],
+            index: optionOffset + i,
+            focusNode: i == 0 ? firstOptionNode : null,
+            compact: compact,
+            onSelect: switch (onPickOption) {
+              final pick? => () => pick(options[i]),
+              null => null,
+            },
+          ),
+      ]),
       AssistantTitleMatches(:final matches) => _matches(pt, matches),
       // A preview on the confirm card has nothing to open: text, as before.
       AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [
         for (final e in entries.take(_gridCap)) titled(e.item.displayTitle, e.item.year),
       ]),
-      AssistantMediaGrid(:final entries) => _matches(pt, [
-        for (final e in entries.take(_gridCap))
-          AssistantTitleMatch(
-            matchId: e.item.globalKey,
-            title: e.item.displayTitle,
-            year: e.item.year,
-            kind: e.item.kind.name,
-            confidence: 'high',
-            targets: [
-              // The representative first: the copy the card names is the
-              // copy it opens.
-              if (e.group case final group?)
-                for (final s in [
-                  group.representativeSource,
-                  ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
-                ])
-                  (serverId: s.serverId, serverName: s.serverName, item: s.item)
-              else if (e.item.serverId case final id?)
-                (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
-            ],
-          ),
-      ]),
-      // The missing titles are on [serverName]: cards that open that copy.
+      AssistantMediaGrid() => _matches(pt, bigPTitleMatches(display)),
       final AssistantServerComparison c when onOpenTitle != null && c.missing.isNotEmpty => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           card(t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName), []),
           SizedBox(height: 10 * pt),
-          _matches(pt, [
-            for (final item in c.missing.take(_gridCap))
-              AssistantTitleMatch(
-                matchId: item.globalKey,
-                title: item.displayTitle,
-                year: item.year,
-                kind: item.kind.name,
-                confidence: 'high',
-                targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
-              ),
-          ]),
+          _matches(pt, bigPTitleMatches(c)),
         ],
       ),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
-      // The watched titles are title cards, as a found title is: poster,
-      // plays and viewers, and they open their library copy.
       final AssistantWatchStats s => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TvAssistantWatchCard(stats: s),
-          if (s.titles.isNotEmpty) ...[
-            SizedBox(height: 10 * pt),
-            _matches(ranked: true, pt, [
-              for (final x in s.titles.take(_watchTitles))
-                AssistantTitleMatch(
-                  matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
-                  title: x.title,
-                  year: x.target?.item.year,
-                  kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
-                  confidence: 'high',
-                  targets: [?x.target],
-                  snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
-                ),
-            ]),
-          ],
+          BigPWatchCard(stats: s),
+          if (s.titles.isNotEmpty) ...[SizedBox(height: 10 * pt), _matches(ranked: true, pt, bigPTitleMatches(s))],
         ],
       ),
       _ => const SizedBox.shrink(),

@@ -1,6 +1,6 @@
 /// Big P summoned from any TV screen (mockup 38, "Oproepen vanaf elk
 /// scherm"): a long press on Play/Pause brings him in bottom right with a
-/// 760 pt glass panel, the screen behind dims but stays the context, and the
+/// 760 pt speech balloon (39 J), the screen behind dims but stays the context, and the
 /// system keyboard opens right away. He stays until Menu or Klaar.
 library;
 
@@ -28,11 +28,13 @@ import '../../../utils/native_input_session.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
+import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/overlay_sheet.dart';
-import 'big_p_voice_mouth.dart';
+import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
-import 'tv_assistant_results.dart';
+import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
 
@@ -125,7 +127,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = context.read<AssistantController?>();
     if (c == null) return;
     // Nothing reads availability at app start; the press is the first ask.
-    if (c.availability == AssistantAvailability.hidden) await c.refreshAvailability();
+    // Short of ready it asks again: a keychain that failed may have recovered.
+    if (c.availability != AssistantAvailability.ready) await c.refreshAvailability();
     if (!_remoteIsFree) return;
     switch (c.availability) {
       case AssistantAvailability.hidden:
@@ -149,6 +152,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _remove?.cancel();
     _returnTo = FocusManager.instance.primaryFocus;
     c.reset();
+    BigPSuggestions.of(c).summoned();
     _c = c..addListener(_onChange);
     _lastState = c.state;
     setState(() {
@@ -233,7 +237,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (!mounted || c == null || _sheetContext != null) return;
     final node = switch (c.state) {
       AssistantSurfaceState.working => _cancelNode,
-      AssistantSurfaceState.result => tvAssistantHasChoices(c.displays) ? _optionNode : _askNode,
+      AssistantSurfaceState.result => bigPHasChoices(c.displays) ? _optionNode : _askNode,
       _ => _panelNode,
     };
     (node.context != null && node.canRequestFocus ? node : _panelNode).requestFocus();
@@ -319,12 +323,16 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     );
   }
 
+  /// About 416 pt wide at 1080p in 39 J, so he reads as the one speaking.
+  static const _avatarHeight = 520.0;
+
   Widget _overlay(BuildContext context, AssistantController? c) {
     final pt = TvHig.of(context);
     return TvAssistantSummonLayer(
       shown: _shown,
       listening: c?.state == AssistantSurfaceState.listening,
       motion: _motion(context),
+      avatarHeight: _avatarHeight,
       panel: c == null
           ? null
           : TvAssistantConversation(
@@ -352,8 +360,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       avatar: BigPVoiceMouth(
         controller: c,
         builder: (line) => BigPAvatar(
-          mood: c == null ? BigPMood.idle : tvAssistantMood(c),
-          size: 340 * pt,
+          mood: c == null ? BigPMood.idle : bigPMood(c),
+          size: _avatarHeight * pt,
           nodSignal: _nod,
           talkingText: line,
           // He stands right of the panel: point left, down the list.

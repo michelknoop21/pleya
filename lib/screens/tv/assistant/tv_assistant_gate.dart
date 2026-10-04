@@ -6,7 +6,7 @@ import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
-import 'tv_assistant_widgets.dart';
+import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 
@@ -94,7 +94,7 @@ class TvAssistantGate extends StatelessWidget {
                       SizedBox(height: 32 * pt),
                       Row(
                         children: [
-                          TvAssistantButton(
+                          BigPButton(
                             label: locked ? l.back : s.action,
                             icon: locked ? Symbols.arrow_back_rounded : Symbols.settings_rounded,
                             primary: true,
@@ -105,7 +105,7 @@ class TvAssistantGate extends StatelessWidget {
                           ),
                           if (!locked) ...[
                             SizedBox(width: 12 * pt),
-                            TvAssistantButton(
+                            BigPButton(
                               label: s.back,
                               primary: false,
                               automationId: AutomationIds.assistantButton,

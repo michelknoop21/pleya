@@ -42,6 +42,7 @@ class AssistantController extends ChangeNotifier {
     DateTime Function()? now,
     this._tools,
     Listenable? configChanges,
+    this._serverChanges,
     this.jobPollInterval = const Duration(seconds: 2),
     this.jobWatchLimit = const Duration(minutes: 2),
     this._jobsFor,
@@ -51,12 +52,28 @@ class AssistantController extends ChangeNotifier {
        _languageName = languageName ?? assistantLanguageName,
        _configChanges = configChanges ?? AssistantProviderStore.changes {
     _configChanges.addListener(_onConfigChanged);
+    _serverChanges?.addListener(_onServersChanged);
   }
 
   /// A provider saved or cleared in Instellingen moves the tile and the
   /// summon out of (or into) setup without reopening Mijn Pleya.
   final Listenable _configChanges;
   void _onConfigChanged() => unawaited(refreshAvailability());
+
+  /// Servers load after the session starts, so the first read can see none
+  /// and answer hidden. Their arrival (none to some) reads once more, so the
+  /// face button and the Discover slot show up without a visit to Mijn Pleya.
+  final Listenable? _serverChanges;
+  bool _hadServers = false;
+  void _onServersChanged() {
+    // Every MultiServerProvider notify lands here; with the flag off nothing
+    // can become visible, so no tool context gets built.
+    if (!_rolloutEnabled || _disposed) return;
+    final hasServers = _buildContext(null).userServers.isNotEmpty;
+    final arrived = hasServers && !_hadServers;
+    _hadServers = hasServers;
+    if (arrived && _availability == AssistantAvailability.hidden) unawaited(refreshAvailability());
+  }
 
   final AssistantToolContext Function(AssistantScreenContext? screen) _buildContext;
   final bool _rolloutEnabled;
@@ -92,6 +109,11 @@ class AssistantController extends ChangeNotifier {
   AssistantAvailability _availability = AssistantAvailability.hidden;
   AssistantSurfaceState _state = AssistantSurfaceState.idle;
   bool _resultIsError = false;
+
+  /// Bumped by every [submit]: tells one answer from the next, also when the
+  /// same question is asked again.
+  int get runs => _runs;
+  int _runs = 0;
   AssistantRunEnd? _lastEnd;
   AssistantModelError? _lastProviderError;
   bool _modelMissing = false;
@@ -168,10 +190,25 @@ class AssistantController extends ChangeNotifier {
     final ctx = _buildContext(null);
     if (ctx.userServers.isEmpty && ctx.requests?.client() == null) return AssistantAvailability.hidden;
     if (await _entitlement.check() != AssistantEntitlementState.entitled) return AssistantAvailability.locked;
-    final config = await _loadConfig();
+    final AssistantProviderConfig? config;
+    try {
+      config = await _loadConfig();
+    } on AssistantProviderStoreException {
+      // An unreadable keychain is not "not configured": keep the last answer.
+      // Without one (hidden is only the initial value past the checks above)
+      // setup stays reachable. A save there does not write over the item it
+      // could not read: it stays on this device and goes up later only into
+      // an empty keychain. Every refresh reads again.
+      return _availability == AssistantAvailability.hidden ? AssistantAvailability.needsSetup : _availability;
+    }
     if (config == null || !config.isComplete) return AssistantAvailability.needsSetup;
     return AssistantAvailability.ready;
   }
+
+  /// Forgets the screen Big P was last asked from. [beginListening] keeps it
+  /// across a null context (TV's follow-ups); a summon from somewhere
+  /// without one (iPhone and iPad) must not ask about the last library.
+  void clearScreenContext() => _screenContext = null;
 
   void beginListening({AssistantScreenContext? context}) {
     if (_busy || _pending != null) return;
@@ -218,6 +255,7 @@ class AssistantController extends ChangeNotifier {
     if (_busy || text.isEmpty) return;
     _busy = true;
     _asking = true;
+    _runs++;
     _jobsSeq++;
     final generation = _generation;
     final cancel = _cancel = AbortController();
@@ -441,6 +479,7 @@ class AssistantController extends ChangeNotifier {
   @override
   void dispose() {
     _configChanges.removeListener(_onConfigChanged);
+    _serverChanges?.removeListener(_onServersChanged);
     _disposed = true;
     _generation++;
     _jobsSeq++;

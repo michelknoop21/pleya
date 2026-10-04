@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_entitlement.dart';
 import '../../assistant/assistant_provider.dart';
@@ -25,6 +26,7 @@ import '../../widgets/setting_tile.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
+import '../big_p/big_p_mobile_session.dart';
 import 'async_form_state_mixin.dart';
 
 part 'assistant_settings_screen_support.dart';
@@ -100,7 +102,13 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   }
 
   Future<void> _load() async {
-    final saved = await _store.load();
+    AssistantProviderConfig? saved;
+    try {
+      saved = await _store.load();
+    } on AssistantProviderStoreException {
+      // The keychain is unreadable and nothing is stored locally: the form
+      // stays the way in, and a save falls back to this device's prefs.
+    }
     if (!mounted) return;
     setState(() {
       _saved = saved;
@@ -339,11 +347,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   Future<void> _save() async {
     final config = _draft();
     if (!_tested || !config.isComplete) return;
-    var ok = false;
-    await runAsync(() async {
-      await _store.save(config);
-      ok = true;
-    });
+    final ok = await _saveConfig(config);
     if (!ok || !mounted) return;
     setState(() {
       _saved = config;
@@ -355,6 +359,27 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       _model = config.model;
     });
     _focusLater(_summaryFocus);
+  }
+
+  /// Saves [config]; a setup in the keychain this version cannot read is
+  /// replaced only after the user chooses Vervangen. False when not saved.
+  Future<bool> _saveConfig(AssistantProviderConfig config) async {
+    var ok = false;
+    var unreadable = false;
+    await runAsync(() async {
+      try {
+        await _store.save(config);
+        ok = true;
+      } on AssistantProviderUnreadableException {
+        unreadable = true;
+      }
+    });
+    if (!unreadable || !mounted || !await _confirmReplaceUnreadable(context)) return ok;
+    await runAsync(() async {
+      await _store.save(config, replaceUnreadable: true);
+      ok = true;
+    });
+    return ok;
   }
 
   Future<void> _disable() async {
@@ -371,8 +396,13 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       ),
     );
     if (confirmed != true || !mounted) return;
-    await runAsync(_store.clear);
-    if (!mounted) return;
+    var ok = false;
+    await runAsync(() async {
+      await _store.clear();
+      ok = true;
+    });
+    // A failed clear leaves the synced config in place: keep showing it.
+    if (!ok || !mounted) return;
     setState(() {
       _saved = null;
       _resetDraft();
@@ -399,8 +429,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   Future<void> _setWebSearch(bool value) async {
     if (!_showSummary) return setState(() => _webSearch = value);
     final config = _saved!.copyWith(webSearch: value);
-    await runAsync(() => _store.save(config));
-    if (mounted && errorText == null) setState(() => _saved = config);
+    final ok = await _saveConfig(config);
+    if (ok && mounted) setState(() => _saved = config);
   }
 
   void _showMore() => setState(() => _shown += _pageSize);
@@ -417,11 +447,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       return;
     }
     final config = _saved!.copyWith(model: model);
-    var ok = false;
-    await runAsync(() async {
-      await _store.save(config);
-      ok = true;
-    });
+    final ok = await _saveConfig(config);
     if (!ok || !mounted) return;
     setState(() {
       _saved = config;

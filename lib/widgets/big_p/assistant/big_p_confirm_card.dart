@@ -9,10 +9,11 @@ import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
+import '../big_p_scale.dart';
 import '../../../widgets/pleya_wordmark.dart';
-import 'tv_assistant_widgets.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_results.dart';
+import 'big_p_assistant_widgets.dart';
+import 'big_p_labels.dart';
+import 'big_p_results.dart';
 
 /// The Pleya confirmation card (38 H, 38 I): an opaque Pleya card, never a
 /// message from Big P. Every row comes from [action], which Pleya built
@@ -22,14 +23,15 @@ import 'tv_assistant_results.dart';
 /// the viewer's thumb, and a second press must not create an account. The
 /// primary stays disabled while a required password is missing. The
 /// password lives in this card and goes only to [onConfirm].
-class TvAssistantConfirmCard extends StatefulWidget {
-  const TvAssistantConfirmCard({
+class BigPConfirmCard extends StatefulWidget {
+  const BigPConfirmCard({
     super.key,
     required this.action,
     required this.cancelNode,
     required this.onCancel,
     required this.onConfirm,
     required this.readPassword,
+    this.embedded = false,
   });
 
   final AssistantPendingAction action;
@@ -40,11 +42,15 @@ class TvAssistantConfirmCard extends StatefulWidget {
   /// Opens Pleya's secure entry; null when the viewer backed out.
   final Future<String?> Function() readPassword;
 
+  /// Inside Big P's balloon (39 G): no card of its own around the rows,
+  /// the balloon is the card.
+  final bool embedded;
+
   @override
-  State<TvAssistantConfirmCard> createState() => _TvAssistantConfirmCardState();
+  State<BigPConfirmCard> createState() => _BigPConfirmCardState();
 }
 
-class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
+class _BigPConfirmCardState extends State<BigPConfirmCard> {
   String _password = '';
 
   bool get _canConfirm => widget.action.password != AssistantPasswordMode.required || _password.isNotEmpty;
@@ -62,7 +68,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     final a = widget.action;
     final c = t.assistant.confirm;
@@ -99,8 +105,10 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
       role: 'sheet',
       state: () => {'kind': a.kind.name, 'password': a.password.name, 'canConfirm': _canConfirm},
       child: Container(
-        padding: EdgeInsets.all(48 * pt),
-        decoration: BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
+        padding: widget.embedded ? null : EdgeInsets.all(48 * pt),
+        decoration: widget.embedded
+            ? null
+            : BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -138,7 +146,7 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
               if (a.password != AssistantPasswordMode.none) row(c.password, _passwordField(pt, tk)),
               if (a.preview case final preview?) ...[
                 SizedBox(height: 16 * pt),
-                TvAssistantDisplayView(display: preview, onPickOption: (_) {}),
+                BigPDisplayView(display: preview, onPickOption: (_) {}),
               ],
               for (final line in smallPrint) ...[
                 SizedBox(height: 18 * pt),
@@ -157,32 +165,37 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
                 ),
               ],
               SizedBox(height: 32 * pt),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TvAssistantButton(
-                    label: t.assistant.result.cancel,
-                    primary: false,
-                    focusNode: widget.cancelNode,
-                    automationId: AutomationIds.assistantConfirmButton,
-                    automationInstance: 'cancel',
-                    onPressed: widget.onCancel,
-                  ),
-                  SizedBox(width: 12 * pt),
-                  TvAssistantButton(
-                    label: approveLabel,
-                    primary: true,
-                    enabled: _canConfirm,
-                    automationId: AutomationIds.assistantConfirmButton,
-                    automationInstance: 'approve',
-                    onPressed: () => widget.onConfirm(_password.isEmpty ? null : _password),
-                  ),
-                ],
-              ),
+              _buttons(pt, approveLabel),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Right-aligned on TV; in Big P's balloon two halves of the width (39 G).
+  Widget _buttons(double pt, String approveLabel) {
+    final cancel = BigPButton(
+      label: t.assistant.result.cancel,
+      primary: false,
+      focusNode: widget.cancelNode,
+      automationId: AutomationIds.assistantConfirmButton,
+      automationInstance: 'cancel',
+      onPressed: widget.onCancel,
+    );
+    final approve = BigPButton(
+      label: approveLabel,
+      primary: true,
+      enabled: _canConfirm,
+      automationId: AutomationIds.assistantConfirmButton,
+      automationInstance: 'approve',
+      onPressed: () => widget.onConfirm(_password.isEmpty ? null : _password),
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: widget.embedded
+          ? [Expanded(child: cancel), SizedBox(width: 12 * pt), Expanded(child: approve)]
+          : [cancel, SizedBox(width: 12 * pt), approve],
     );
   }
 
@@ -198,25 +211,30 @@ class _TvAssistantConfirmCardState extends State<TvAssistantConfirmCard> {
       SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
       _enterPassword();
     },
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 14 * pt),
-      decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14 * pt)),
-      child: Row(
-        children: [
-          Icon(Symbols.lock_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6)),
-          SizedBox(width: 14 * pt),
-          Expanded(
-            child: Text(
-              _password.isEmpty ? t.assistant.confirm.passwordPlaceholder : '•' * _password.length.clamp(6, 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tk.text.withValues(alpha: _password.isEmpty ? 0.6 : 1),
-                fontSize: TvHig.body * pt,
+    // FocusableWrapper answers keys only: a tap on a phone opens it too.
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _enterPassword,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 14 * pt),
+        decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14 * pt)),
+        child: Row(
+          children: [
+            Icon(Symbols.lock_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6)),
+            SizedBox(width: 14 * pt),
+            Expanded(
+              child: Text(
+                _password.isEmpty ? t.assistant.confirm.passwordPlaceholder : '•' * _password.length.clamp(6, 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: tk.text.withValues(alpha: _password.isEmpty ? 0.6 : 1),
+                  fontSize: TvHig.body * pt,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

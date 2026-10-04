@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -6,10 +8,11 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watch_session.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_labels.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_results.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_watch_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_watch_card.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -20,7 +23,7 @@ void main() {
   tearDown(() => LocaleSettings.setLocale(AppLocale.en));
 
   Future<void> pump(WidgetTester tester, AssistantWatchStats stats) =>
-      pumpTvFrame(tester, FakeAssistantController(), TvAssistantWatchCard(stats: stats));
+      pumpTvFrame(tester, FakeAssistantController(), BigPWatchCard(stats: stats));
 
   testWidgets('a period: headline with the total, viewers as portraits', (tester) async {
     await pump(
@@ -51,7 +54,7 @@ void main() {
     await pumpTvFrame(
       tester,
       FakeAssistantController(),
-      TvAssistantDisplayView(
+      BigPDisplayView(
         display: AssistantWatchStats(
           serverName: 'Pleya',
           days: 7,
@@ -70,15 +73,15 @@ void main() {
         onOpenTitle: opened.add,
       ),
     );
-    final cards = find.byType(TvAssistantMatchCard);
+    final cards = find.byType(BigPMatchCard);
     expect(cards, findsNWidgets(2));
     expect(find.text('19× bekeken · Gideuh · Jan'), findsOneWidget);
     expect(
-      tester.widget<TvAssistantMatchCard>(cards.last).onSelect,
+      tester.widget<BigPMatchCard>(cards.last).onSelect,
       isNull,
       reason: 'no library copy: shown, not a dead stop',
     );
-    tester.widget<TvAssistantMatchCard>(cards.first).onSelect!();
+    tester.widget<BigPMatchCard>(cards.first).onSelect!();
     expect(opened.single.item.id, 's1');
   });
 
@@ -88,7 +91,7 @@ void main() {
     await pumpTvFrame(
       tester,
       FakeAssistantController(),
-      TvAssistantDisplayView(
+      BigPDisplayView(
         display: AssistantServerComparison(
           serverId: ServerId('z'),
           serverName: 'Zolder',
@@ -102,8 +105,8 @@ void main() {
         onOpenTitle: opened.add,
       ),
     );
-    expect(find.byType(TvAssistantMatchCard), findsOneWidget);
-    tester.widget<TvAssistantMatchCard>(find.byType(TvAssistantMatchCard)).onSelect!();
+    expect(find.byType(BigPMatchCard), findsOneWidget);
+    tester.widget<BigPMatchCard>(find.byType(BigPMatchCard)).onSelect!();
     expect(opened.single.serverName, 'Zolder');
   });
 
@@ -125,25 +128,38 @@ void main() {
 
   test('always three follow-ups that fit the result, never the question just asked', () {
     final f = t.assistant.followUp;
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)]), [
+    final sinceYesterday = [f.watchToday, f.watchYesterday];
+    final general = {
       f.watchNow,
+      f.watchYesterday,
+      f.watchWeek,
       f.watchMonth,
-      f.watchToday,
-    ]);
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P')]), [f.watchToday, f.watchWeek, f.watchMonth]);
-    expect(assistantFollowUps(const [], jobs: true), [f.jobs, f.failedJobs, f.watchWeek]);
-    expect(assistantFollowUps(const []), [f.watchWeek, f.tonight, f.recent]);
-    expect(assistantFollowUps(const [], prompt: f.watchWeek), [
-      f.tonight,
-      f.recent,
-      f.unwatched,
-    ], reason: 'the question just asked is not offered again');
-    expect(
-      assistantFollowUps(const [
-        AssistantWatchStats(serverName: 'P', days: 7, unavailable: ['P']),
-      ]),
-      hasLength(3),
-    );
+      ...f.tonight,
+      ...f.recent,
+      ...f.unwatched,
+    };
+    for (var seed = 0; seed < 20; seed++) {
+      Random r() => Random(seed);
+      final week = assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)], random: r());
+      expect(week.take(2), [f.watchNow, f.watchMonth]);
+      expect(sinceYesterday, contains(week[2]));
+      final now = assistantFollowUps(const [AssistantWatchStats(serverName: 'P')], random: r());
+      expect(sinceYesterday, contains(now[0]));
+      expect(now.skip(1), [f.watchWeek, f.watchMonth]);
+      final jobs = assistantFollowUps(const [], jobs: true, random: r());
+      expect(jobs.take(2), [f.jobs, f.failedJobs]);
+      expect(general, contains(jobs[2]));
+      final plain = assistantFollowUps(const [], random: r());
+      expect(plain.toSet(), hasLength(3));
+      expect(general, containsAll(plain));
+      expect(assistantFollowUps(const [], prompt: f.watchWeek, random: r()), isNot(contains(f.watchWeek)));
+      expect(
+        assistantFollowUps(const [
+          AssistantWatchStats(serverName: 'P', days: 7, unavailable: ['P']),
+        ], random: r()),
+        hasLength(3),
+      );
+    }
   });
 
   testWidgets('a server that ran out of time is not "nothing watched"', (tester) async {

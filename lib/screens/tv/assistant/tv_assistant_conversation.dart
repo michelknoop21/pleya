@@ -8,13 +8,14 @@ import '../../../i18n/strings.g.dart';
 import '../../../theme/mono_theme.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
-import 'tv_assistant_answer.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_results.dart';
-import 'tv_assistant_widgets.dart';
+import '../../../widgets/big_p/assistant/big_p_answer.dart';
+import '../../../widgets/big_p/assistant/big_p_labels.dart';
+import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
+import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 
-/// What the glass panel holds in each stand (rust, luisteren, werken,
-/// resultaat), newest at the bottom. Reads [controller]; the surface owns
+/// What the full surface's glass panel or the summoned balloon holds in each
+/// stand (rust, luisteren, werken, resultaat), newest at the bottom. Reads [controller]; the surface owns
 /// the focus nodes and the actions.
 class TvAssistantConversation extends StatelessWidget {
   const TvAssistantConversation({
@@ -67,7 +68,7 @@ class TvAssistantConversation extends StatelessWidget {
     );
     final gap = SizedBox(height: 24 * pt);
 
-    Widget ask({bool primary = true}) => TvAssistantButton(
+    Widget ask({bool primary = true}) => BigPButton(
       label: t.assistant.idle.ask,
       icon: Symbols.mic_rounded,
       primary: primary,
@@ -80,7 +81,7 @@ class TvAssistantConversation extends StatelessWidget {
     final children = switch (c.state) {
       AssistantSurfaceState.idle => <Widget>[
         if (servers.isNotEmpty) ...[
-          TvAssistantStatusLine(
+          BigPStatusLine(
             text: t.assistant.idle.status(servers: servers),
             color: kSuccess,
           ),
@@ -95,8 +96,8 @@ class TvAssistantConversation extends StatelessWidget {
           style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
         ),
         SizedBox(height: 12 * pt),
-        for (final (i, example) in t.assistant.idle.examples.indexed) ...[
-          TvAssistantChip(
+        for (final (i, example) in BigPSuggestions.of(c).examples(t.assistant.idle.examples).indexed) ...[
+          BigPChip(
             label: example,
             automationId: AutomationIds.assistantExample,
             automationInstance: '$i',
@@ -106,17 +107,17 @@ class TvAssistantConversation extends StatelessWidget {
         ],
       ],
       AssistantSurfaceState.listening => <Widget>[
-        TvAssistantStatusLine(text: t.assistant.listening.title, color: kSuccess),
+        BigPStatusLine(text: t.assistant.listening.title, color: kSuccess),
         SizedBox(height: 14 * pt),
         Text(t.assistant.listening.body, style: headlineStyle),
       ],
       AssistantSurfaceState.working => <Widget>[
         if (c.stillChecking) ..._displays(pt, working: true),
-        TvAssistantStepList(steps: c.steps),
+        BigPStepList(steps: c.steps),
         SizedBox(height: 16 * pt),
         Align(
           alignment: Alignment.centerLeft,
-          child: TvAssistantButton(
+          child: BigPButton(
             label: t.assistant.result.cancel,
             icon: Symbols.close_rounded,
             primary: false,
@@ -139,34 +140,34 @@ class TvAssistantConversation extends StatelessWidget {
     // Title cards repeat what the answer lists. A ranking or a comparison
     // shows a few of its titles only, and cards that cannot be chosen cannot
     // be walked through, so there the text stays whole.
-    final hasChoices = tvAssistantHasChoices(c.displays);
+    final hasChoices = bigPHasChoices(c.displays);
     final cards =
         hasChoices &&
         c.displays.any(
           (d) =>
-              !tvAssistantDisplayIsEmpty(d) &&
+              !bigPDisplayIsEmpty(d) &&
               (d is AssistantTitleMatches || d is AssistantMediaGrid || d is AssistantRequestOptions),
         );
     final answer = c.state == AssistantSurfaceState.result ? assistantHeadline(c) : '';
     final headline = cards && answer.isNotEmpty ? assistantCardsLead(controller) : answer;
     final head = <Widget>[
       if (c.state == AssistantSurfaceState.result) ...[
-        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
+        if (c.prompt case final prompt?) ...[BigPQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         if (headline.isNotEmpty) ...[
           // Above cards the lead alone: the cards are the answer. Above a
           // result card it shows three lines of what follows; alone, it reads
           // down the panel.
           if (children.isEmpty)
             Flexible(
-              child: TvAssistantAnswer(text: headline, style: headlineStyle),
+              child: BigPAnswer(text: headline, style: headlineStyle),
             )
           else
-            TvAssistantAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3),
+            BigPAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3),
           gap,
         ],
       ],
       if (c.state == AssistantSurfaceState.working) ...[
-        if (c.prompt case final prompt?) ...[TvAssistantQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
+        if (c.prompt case final prompt?) ...[BigPQuestion(prompt: prompt, maxLines: compact ? 1 : 3), gap],
         // Results that are in show at once; the model is still composing.
         Text(c.stillChecking ? t.assistant.working.stillChecking : t.assistant.working.status, style: headlineStyle),
         gap,
@@ -184,8 +185,8 @@ class TvAssistantConversation extends StatelessWidget {
         Flexible(
           // Nothing in it to focus: the list scrolls on Up and Down itself.
           child: result && !hasChoices
-              ? TvAssistantReadableList(child: column(children))
-              : TvAssistantEdgeFade(
+              ? BigPReadableList(child: column(children))
+              : BigPEdgeFade(
                   // A new list per stand: the working list's offset does not carry.
                   key: ValueKey(result),
                   builder: (controller) =>
@@ -207,7 +208,7 @@ class TvAssistantConversation extends StatelessWidget {
             runSpacing: 12 * pt,
             children: [
               ask(),
-              TvAssistantButton(
+              BigPButton(
                 label: t.assistant.result.done,
                 primary: false,
                 automationId: AutomationIds.assistantButton,
@@ -228,12 +229,12 @@ class TvAssistantConversation extends StatelessWidget {
     var optionOffset = 0;
     var firstOptionTaken = working;
     final displays = <Widget>[];
-    for (final display in controller.displays.where((d) => !tvAssistantDisplayIsEmpty(d))) {
-      final choices = tvAssistantChoiceCount(display);
+    for (final display in controller.displays.where((d) => !bigPDisplayIsEmpty(d))) {
+      final choices = bigPChoiceCount(display);
       displays.add(
         Padding(
           padding: EdgeInsets.only(bottom: 16 * pt),
-          child: TvAssistantDisplayView(
+          child: BigPDisplayView(
             display: display,
             onPickOption: working ? null : onPickOption,
             onOpenTitle: onOpenTitle,
@@ -257,14 +258,14 @@ class TvAssistantConversation extends StatelessWidget {
     final results = [
       ..._displays(pt),
       if (c.resultIsError || c.actions.isNotEmpty) ...[
-        TvAssistantResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
+        BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
         SizedBox(height: 24 * pt),
       ],
     ];
     // After the cards, in the same list: the cards keep the height.
     return [
       ...results,
-      if (tvAssistantHasChoices(c.displays))
+      if (bigPHasChoices(c.displays))
         if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
     ];
   }
@@ -277,12 +278,8 @@ class TvAssistantConversation extends StatelessWidget {
       spacing: 10 * pt,
       runSpacing: 10 * pt,
       children: [
-        for (final (i, question) in assistantFollowUps(
-          c.displays,
-          jobs: c.actions.any((a) => a.job != null),
-          prompt: c.prompt,
-        ).indexed)
-          TvAssistantChip(
+        for (final (i, question) in BigPSuggestions.of(c).followUps(c).indexed)
+          BigPChip(
             label: question,
             icon: Symbols.subdirectory_arrow_right_rounded,
             dense: true,

@@ -2478,6 +2478,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get tileTitle => 'Big P';
 	@override String get tileSubtitle => 'Pleya Assistant';
 	@override String get providerLabel => 'AI-provider';
+	@override late final _TranslationsAssistantMobileNl mobile = _TranslationsAssistantMobileNl._(_root);
 	@override late final _TranslationsAssistantLockedNl locked = _TranslationsAssistantLockedNl._(_root);
 	@override late final _TranslationsAssistantSetupNl setup = _TranslationsAssistantSetupNl._(_root);
 	@override late final _TranslationsAssistantIdleNl idle = _TranslationsAssistantIdleNl._(_root);
@@ -3116,6 +3117,50 @@ class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn
 	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.mobile
+class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
+	_TranslationsAssistantMobileNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String greeting({required Object name}) => 'Hoi ${name}, wat zoeken we?';
+	@override List<List<String>> get examples => [
+		[
+			'Wat kan ik vanavond kijken?',
+			'Geef me een komedie voor vanavond.',
+			'Zoek een spannende film voor vanavond.',
+		],
+		[
+			'Welke serie kan ik nu beginnen?',
+		],
+		[
+			'Heb ik iets voor de kinderen?',
+		],
+		[
+			'Welke films heb ik nog niet gezien?',
+			'Welke films staan al lang ongezien in mijn bibliotheek?',
+		],
+		[
+			'Wat is er deze week toegevoegd?',
+		],
+		[
+			'Wie heeft deze week het meest gekeken?',
+		],
+	];
+	@override String get noModelTitle => 'Ik heb nog geen brein.';
+	@override String get noModelBody => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.';
+	@override String get setup => 'Model instellen';
+	@override String get icloudNote => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.';
+	@override String get listening => 'Ik luister…';
+	@override String get listeningHint => 'Spreek je vraag in, of typ hem.';
+	@override String get askFurther => 'Vraag verder';
+	@override String moreTitles({required Object n}) => 'Nog ${n} titels';
+	@override String get searchAsk => 'Vraag het Big P';
+	@override String get faceButton => 'Big P oproepen';
+	@override String get notConfirmedYet => 'Kies eerst: bevestigen of annuleren.';
+}
+
 // Path: assistant.locked
 class _TranslationsAssistantLockedNl extends TranslationsAssistantLockedEn {
 	_TranslationsAssistantLockedNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3155,10 +3200,26 @@ class _TranslationsAssistantIdleNl extends TranslationsAssistantIdleEn {
 	@override String status({required Object servers}) => 'Klaar voor je vraag · ${servers}';
 	@override String get ask => 'Vraag Big P';
 	@override String get examplesHeader => 'Bijvoorbeeld';
-	@override List<String> get examples => [
-		'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
-		'Scan alle filmbibliotheken op al mijn servers.',
-		'Wie heeft deze week het meest gekeken?',
+	@override List<List<String>> get examples => [
+		[
+			'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+		],
+		[
+			'Scan alle filmbibliotheken op al mijn servers.',
+		],
+		[
+			'Wie heeft deze week het meest gekeken?',
+			'Wie kijkt er nu?',
+		],
+		[
+			'Wat kan ik vanavond kijken?',
+		],
+		[
+			'Wat is er deze week toegevoegd?',
+		],
+		[
+			'Welke nieuwe films zijn populair die ik nog niet heb?',
+		],
 	];
 }
 
@@ -3357,6 +3418,9 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get disable => 'Big P uitschakelen';
 	@override String get disableConfirm => 'Big P uitschakelen?';
 	@override String get disableBody => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.';
+	@override String get unreadableTitle => 'Big P-instelling vervangen?';
+	@override String get unreadableBody => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.';
+	@override String get replace => 'Vervangen';
 	@override String get currentModel => 'Model';
 	@override String get keyStored => 'Opgeslagen, verborgen';
 	@override String get errorUrlInvalid => 'Vul een adres in dat begint met http:// of https://.';
@@ -3443,12 +3507,28 @@ class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
 	// Translations
 	@override String get watchNow => 'Wie kijkt er nu?';
 	@override String get watchMonth => 'Wie keek het meest de afgelopen 30 dagen?';
-	@override String get watchWeek => 'Wie keek het meest deze week?';
+	@override String get watchWeek => 'Wie heeft deze week het meest gekeken?';
 	@override String get watchToday => 'Wie keek er vandaag?';
-	@override String get tonight => 'Geef me een filmtip voor vanavond.';
-	@override String get recent => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?';
-	@override String get unwatched => 'Welke films in mijn bibliotheek heb ik nog niet gezien?';
-	@override String get popular => 'Welke populaire films heb ik nog niet?';
+	@override String get watchYesterday => 'Wie keek er gisteren?';
+	@override List<String> get tonight => [
+		'Geef me een komedie voor vanavond.',
+		'Zoek een spannende film voor vanavond.',
+		'Heb ik iets voor de kinderen?',
+		'Welke serie kan ik nu beginnen?',
+	];
+	@override List<String> get recent => [
+		'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+		'Welke series zijn onlangs toegevoegd?',
+		'Wat is er deze week toegevoegd?',
+	];
+	@override List<String> get unwatched => [
+		'Welke films heb ik nog niet gezien?',
+		'Welke films staan al lang ongezien in mijn bibliotheek?',
+	];
+	@override List<String> get popular => [
+		'Welke populaire films heb ik nog niet?',
+		'Welke nieuwe films zijn populair die ik nog niet heb?',
+	];
 	@override String get missingMovies => 'Welke films ontbreken tussen mijn servers?';
 	@override String get missingShows => 'Welke series ontbreken tussen mijn servers?';
 	@override String get jobs => 'Welke taken lopen er nu op mijn servers?';
@@ -5615,6 +5695,27 @@ extension on TranslationsNl {
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
+			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
+			'assistant.mobile.examples.0.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.mobile.examples.0.1' => 'Geef me een komedie voor vanavond.',
+			'assistant.mobile.examples.0.2' => 'Zoek een spannende film voor vanavond.',
+			'assistant.mobile.examples.1.0' => 'Welke serie kan ik nu beginnen?',
+			'assistant.mobile.examples.2.0' => 'Heb ik iets voor de kinderen?',
+			'assistant.mobile.examples.3.0' => 'Welke films heb ik nog niet gezien?',
+			'assistant.mobile.examples.3.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.mobile.examples.4.0' => 'Wat is er deze week toegevoegd?',
+			'assistant.mobile.examples.5.0' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
+			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
+			'assistant.mobile.setup' => 'Model instellen',
+			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
+			'assistant.mobile.listening' => 'Ik luister…',
+			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
+			'assistant.mobile.askFurther' => 'Vraag verder',
+			'assistant.mobile.moreTitles' => ({required Object n}) => 'Nog ${n} titels',
+			'assistant.mobile.searchAsk' => 'Vraag het Big P',
+			'assistant.mobile.faceButton' => 'Big P oproepen',
+			'assistant.mobile.notConfirmedYet' => 'Kies eerst: bevestigen of annuleren.',
 			'assistant.locked.badge' => 'Niet beschikbaar op dit account',
 			'assistant.locked.title' => 'Big P staat voor dit account nog niet aan',
 			'assistant.locked.body' => 'Met Big P vraag je Pleya om beheertaken uit te voeren, zoals een bibliotheek scannen of een gebruiker aanmaken. Het is een functie van Pleya die op dit account nog niet beschikbaar is.',
@@ -5629,9 +5730,13 @@ extension on TranslationsNl {
 			'assistant.idle.status' => ({required Object servers}) => 'Klaar voor je vraag · ${servers}',
 			'assistant.idle.ask' => 'Vraag Big P',
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
-			'assistant.idle.examples.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
-			'assistant.idle.examples.1' => 'Scan alle filmbibliotheken op al mijn servers.',
-			'assistant.idle.examples.2' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.0.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+			'assistant.idle.examples.1.0' => 'Scan alle filmbibliotheken op al mijn servers.',
+			'assistant.idle.examples.2.0' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.2.1' => 'Wie kijkt er nu?',
+			'assistant.idle.examples.3.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.idle.examples.4.0' => 'Wat is er deze week toegevoegd?',
+			'assistant.idle.examples.5.0' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.listening.title' => 'Ik luister…',
 			'assistant.listening.body' => 'Spreek je vraag in.',
 			'assistant.working.status' => 'Even kijken…',
@@ -5758,6 +5863,9 @@ extension on TranslationsNl {
 			'assistant.settings.disable' => 'Big P uitschakelen',
 			'assistant.settings.disableConfirm' => 'Big P uitschakelen?',
 			'assistant.settings.disableBody' => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.',
+			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
+			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
+			'assistant.settings.replace' => 'Vervangen',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
 			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',
@@ -5809,12 +5917,20 @@ extension on TranslationsNl {
 			'assistant.displays.playsTotal' => 'keer gekeken',
 			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
 			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
-			'assistant.followUp.watchWeek' => 'Wie keek het meest deze week?',
+			'assistant.followUp.watchWeek' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.followUp.watchToday' => 'Wie keek er vandaag?',
-			'assistant.followUp.tonight' => 'Geef me een filmtip voor vanavond.',
-			'assistant.followUp.recent' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
-			'assistant.followUp.unwatched' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
-			'assistant.followUp.popular' => 'Welke populaire films heb ik nog niet?',
+			'assistant.followUp.watchYesterday' => 'Wie keek er gisteren?',
+			'assistant.followUp.tonight.0' => 'Geef me een komedie voor vanavond.',
+			'assistant.followUp.tonight.1' => 'Zoek een spannende film voor vanavond.',
+			'assistant.followUp.tonight.2' => 'Heb ik iets voor de kinderen?',
+			'assistant.followUp.tonight.3' => 'Welke serie kan ik nu beginnen?',
+			'assistant.followUp.recent.0' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+			'assistant.followUp.recent.1' => 'Welke series zijn onlangs toegevoegd?',
+			'assistant.followUp.recent.2' => 'Wat is er deze week toegevoegd?',
+			'assistant.followUp.unwatched.0' => 'Welke films heb ik nog niet gezien?',
+			'assistant.followUp.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.followUp.popular.0' => 'Welke populaire films heb ik nog niet?',
+			'assistant.followUp.popular.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.followUp.missingMovies' => 'Welke films ontbreken tussen mijn servers?',
 			'assistant.followUp.missingShows' => 'Welke series ontbreken tussen mijn servers?',
 			'assistant.followUp.jobs' => 'Welke taken lopen er nu op mijn servers?',

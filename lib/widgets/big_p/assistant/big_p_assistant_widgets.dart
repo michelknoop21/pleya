@@ -13,17 +13,18 @@ import '../../../theme/glass/glass_settings.dart';
 import '../../../theme/glass/glass_surface.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
+import '../big_p_scale.dart';
 
 /// Mockup 38 Paneel: the glass panel of LG-04 to LG-06, 800 pt wide. Glass
 /// off renders the blurred dark card [TvPanelCard] uses.
-class TvAssistantGlassPanel extends StatelessWidget {
-  const TvAssistantGlassPanel({super.key, required this.child});
+class BigPGlassPanel extends StatelessWidget {
+  const BigPGlassPanel({super.key, required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final radius = BorderRadius.circular(40 * pt);
     final padding = EdgeInsets.all(40 * pt);
     final legacy = ClipRRect(
@@ -50,14 +51,14 @@ class TvAssistantGlassPanel extends StatelessWidget {
 }
 
 /// The dark ground cards keep on the glass, for contrast (Paneel).
-class TvAssistantCard extends StatelessWidget {
-  const TvAssistantCard({super.key, required this.child});
+class BigPCard extends StatelessWidget {
+  const BigPCard({super.key, required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(20 * pt)),
       child: Padding(
@@ -69,22 +70,26 @@ class TvAssistantCard extends StatelessWidget {
 }
 
 /// "Je vroeg: …", right-aligned above Big P's answer.
-class TvAssistantQuestion extends StatelessWidget {
-  const TvAssistantQuestion({super.key, required this.prompt, this.maxLines = 3});
+class BigPQuestion extends StatelessWidget {
+  const BigPQuestion({super.key, required this.prompt, this.maxLines = 3, this.fill = false});
 
   final String prompt;
+
+  /// Across the whole balloon, as on iPhone and iPad (39 E to I).
+  final bool fill;
 
   /// One line in the summoned panel, so the results keep the room.
   final int maxLines;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final tk = tokens(context);
     return Align(
       alignment: Alignment.centerRight,
       child: Container(
-        constraints: BoxConstraints(maxWidth: 640 * pt),
+        width: fill ? double.infinity : null,
+        constraints: fill ? null : BoxConstraints(maxWidth: 640 * pt),
         padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 12 * pt),
         decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(16 * pt)),
         child: Text.rich(
@@ -107,15 +112,15 @@ class TvAssistantQuestion extends StatelessWidget {
 }
 
 /// A status line with a coloured dot ("● Ik luister…").
-class TvAssistantStatusLine extends StatelessWidget {
-  const TvAssistantStatusLine({super.key, required this.text, required this.color});
+class BigPStatusLine extends StatelessWidget {
+  const BigPStatusLine({super.key, required this.text, required this.color});
 
   final String text;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     return Row(
       children: [
         Container(
@@ -139,13 +144,14 @@ class TvAssistantStatusLine extends StatelessWidget {
 
 /// A full-width focusable capsule: an example question, or anything else
 /// that reads as a sentence rather than a button label.
-class TvAssistantChip extends StatefulWidget {
-  const TvAssistantChip({
+class BigPChip extends StatefulWidget {
+  const BigPChip({
     super.key,
     required this.label,
     required this.onSelect,
     this.icon,
     this.dense = false,
+    this.fill,
     this.focusNode,
     this.automationId,
     this.automationInstance,
@@ -153,6 +159,9 @@ class TvAssistantChip extends StatefulWidget {
 
   final String label;
   final VoidCallback onSelect;
+
+  /// The resting fill; a pill floating over the page (39 E) is opaque.
+  final Color? fill;
 
   /// A leading glyph, e.g. the follow-up arrow; examples go without.
   final IconData? icon;
@@ -164,58 +173,63 @@ class TvAssistantChip extends StatefulWidget {
   final String? automationInstance;
 
   @override
-  State<TvAssistantChip> createState() => _TvAssistantChipState();
+  State<BigPChip> createState() => _BigPChipState();
 }
 
-class _TvAssistantChipState extends State<TvAssistantChip> {
+class _BigPChipState extends State<BigPChip> {
   bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final colors = Theme.of(context).colorScheme;
-    return FocusableWrapper(
-      focusNode: widget.focusNode,
-      borderRadius: 40 * pt,
-      disableScale: true,
-      semanticLabel: widget.label,
-      automationId: widget.automationId,
-      automationInstance: widget.automationInstance,
-      automationRole: 'button',
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      onSelect: () {
-        SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-        widget.onSelect();
-      },
-      child: AnimatedContainer(
-        duration: tokens(context).fast,
-        padding: widget.dense
-            ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 10 * pt)
-            : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
-        decoration: BoxDecoration(
-          color: _focused ? colors.inverseSurface : const Color(0x1FFFFFFF),
-          borderRadius: BorderRadius.circular(40 * pt),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (widget.icon case final icon?) ...[
-              Icon(icon, size: 24 * pt, color: _focused ? colors.onInverseSurface : tokens(context).accent),
-              SizedBox(width: 10 * pt),
-            ],
-            Flexible(
-              child: Text(
-                widget.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _focused ? colors.onInverseSurface : tokens(context).text,
-                  fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
-                  height: 1.25,
+    return GestureDetector(
+      // FocusableWrapper only answers keys; on a touch screen a tap is Select.
+      onTap: widget.onSelect,
+      behavior: HitTestBehavior.opaque,
+      child: FocusableWrapper(
+        focusNode: widget.focusNode,
+        borderRadius: 40 * pt,
+        disableScale: true,
+        semanticLabel: widget.label,
+        automationId: widget.automationId,
+        automationInstance: widget.automationInstance,
+        automationRole: 'button',
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onSelect: () {
+          SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+          widget.onSelect();
+        },
+        child: AnimatedContainer(
+          duration: tokens(context).fast,
+          padding: widget.dense
+              ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 10 * pt)
+              : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
+          decoration: BoxDecoration(
+            color: _focused ? colors.inverseSurface : widget.fill ?? const Color(0x1FFFFFFF),
+            borderRadius: BorderRadius.circular(40 * pt),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.icon case final icon?) ...[
+                Icon(icon, size: 24 * pt, color: _focused ? colors.onInverseSurface : tokens(context).accent),
+                SizedBox(width: 10 * pt),
+              ],
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _focused ? colors.onInverseSurface : tokens(context).text,
+                    fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
+                    height: 1.25,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -227,8 +241,8 @@ class _TvAssistantChipState extends State<TvAssistantChip> {
 /// held off the capsule, as in [TvPanelButton], so a focused white button
 /// still shows its ring. [enabled] false keeps it focusable but inert and
 /// dimmed (Aanmaken before the password, 38 H).
-class TvAssistantButton extends StatefulWidget {
-  const TvAssistantButton({
+class BigPButton extends StatefulWidget {
+  const BigPButton({
     super.key,
     required this.label,
     required this.onPressed,
@@ -250,55 +264,62 @@ class TvAssistantButton extends StatefulWidget {
   final String? automationInstance;
 
   @override
-  State<TvAssistantButton> createState() => _TvAssistantButtonState();
+  State<BigPButton> createState() => _BigPButtonState();
 }
 
-class _TvAssistantButtonState extends State<TvAssistantButton> {
+class _BigPButtonState extends State<BigPButton> {
   bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    final pt = TvHig.of(context);
+    final pt = BigPScale.of(context);
     final colors = Theme.of(context).colorScheme;
     final white = widget.enabled && (widget.primary || _focused);
     final ink = white ? colors.onInverseSurface : tokens(context).text;
-    return FocusableWrapper(
-      focusNode: widget.focusNode,
-      borderRadius: 40 * pt,
-      disableScale: true,
-      semanticLabel: widget.label,
-      automationId: widget.automationId,
-      automationInstance: widget.automationInstance,
-      automationRole: 'button',
-      automationState: () => {'enabled': widget.enabled},
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      onSelect: () {
-        SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-        if (widget.enabled) widget.onPressed();
-      },
-      child: Padding(
-        padding: EdgeInsets.all(6 * pt),
-        child: Opacity(
-          opacity: widget.enabled ? 1 : 0.45,
-          child: AnimatedContainer(
-            duration: tokens(context).fast,
-            padding: EdgeInsets.symmetric(horizontal: 30 * pt, vertical: 14 * pt),
-            decoration: BoxDecoration(
-              color: white ? colors.inverseSurface : const Color(0x26FFFFFF),
-              borderRadius: BorderRadius.circular(40 * pt),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(widget.icon, size: TvHig.caption1 * pt, color: ink),
-                  SizedBox(width: 12 * pt),
+    return GestureDetector(
+      // FocusableWrapper only answers keys; on a touch screen a tap is Select.
+      onTap: widget.enabled ? widget.onPressed : null,
+      behavior: HitTestBehavior.opaque,
+      child: FocusableWrapper(
+        focusNode: widget.focusNode,
+        borderRadius: 40 * pt,
+        disableScale: true,
+        semanticLabel: widget.label,
+        automationId: widget.automationId,
+        automationInstance: widget.automationInstance,
+        automationRole: 'button',
+        automationState: () => {'enabled': widget.enabled},
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onSelect: () {
+          SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+          if (widget.enabled) widget.onPressed();
+        },
+        child: Padding(
+          padding: EdgeInsets.all(6 * pt),
+          child: Opacity(
+            opacity: widget.enabled ? 1 : 0.45,
+            child: AnimatedContainer(
+              duration: tokens(context).fast,
+              padding: EdgeInsets.symmetric(horizontal: 30 * pt, vertical: 14 * pt),
+              decoration: BoxDecoration(
+                color: white ? colors.inverseSurface : const Color(0x26FFFFFF),
+                borderRadius: BorderRadius.circular(40 * pt),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                // Centred when the button is given a width (39 G).
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, size: TvHig.caption1 * pt, color: ink),
+                    SizedBox(width: 12 * pt),
+                  ],
+                  Text(
+                    widget.label,
+                    style: TextStyle(color: ink, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w700),
+                  ),
                 ],
-                Text(
-                  widget.label,
-                  style: TextStyle(color: ink, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w700),
-                ),
-              ],
+              ),
             ),
           ),
         ),

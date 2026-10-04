@@ -16,10 +16,12 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/screens/settings/assistant_settings_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
@@ -105,12 +107,35 @@ void main() {
     });
   });
 
+  group('set-up gate', () {
+    testWidgets('closing the setup reads availability again', (tester) async {
+      c.availability = AssistantAvailability.needsSetup;
+      await pumpSurface(tester);
+      final before = c.refreshes;
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(find.byType(AssistantSettingsScreen), findsOneWidget);
+      expect(c.refreshes, before);
+
+      c.refreshTo = AssistantAvailability.ready;
+      Navigator.of(tester.element(find.byType(AssistantSettingsScreen))).pop();
+      await settle(tester);
+
+      expect(find.byType(AssistantSettingsScreen), findsNothing);
+      expect(c.refreshes, before + 1);
+      expect(c.availability, AssistantAvailability.ready);
+    });
+  });
+
   group('rust and luisteren', () {
     testWidgets('opens on "Vraag Big P" with three example questions, and starts clean', (tester) async {
       await pumpSurface(tester);
 
       expect(focusedLabel(), 'assistant.ask');
-      for (final example in t.assistant.idle.examples) {
+      final shown = BigPSuggestions.of(c).examples(t.assistant.idle.examples);
+      expect(shown, hasLength(3));
+      expect(t.assistant.idle.examples.expand((kind) => kind), containsAll(shown));
+      for (final example in shown) {
         expect(find.text(example), findsOneWidget);
       }
       expect(c.resets, 1);
@@ -139,7 +164,7 @@ void main() {
       final question = t.assistant.followUp.watchNow;
       expect(find.text(question), findsOneWidget);
       expect(find.text(t.assistant.followUp.watchMonth), findsOneWidget);
-      tester.widget<TvAssistantChip>(find.widgetWithText(TvAssistantChip, question)).onSelect();
+      tester.widget<BigPChip>(find.widgetWithText(BigPChip, question)).onSelect();
       await settle(tester);
 
       expect(c.submitted, [question]);
@@ -162,7 +187,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowDown);
       await press(tester, LogicalKeyboardKey.select);
 
-      expect(c.submitted, [t.assistant.idle.examples.first]);
+      expect(c.submitted, [BigPSuggestions.of(c).examples(t.assistant.idle.examples).first]);
       expect(edits, isEmpty, reason: 'an example needs no keyboard');
     });
   });
@@ -244,7 +269,7 @@ void main() {
         ..emit();
       await settle(tester);
 
-      expect(find.byType(TvAssistantCard), findsNothing);
+      expect(find.byType(BigPCard), findsNothing);
     });
 
     testWidgets('error: worried Big P and a Pleya card that says nothing changed', (tester) async {
@@ -336,7 +361,7 @@ void main() {
     testWidgets('is built from the pending action only, opens on Annuleren, Big P attentive', (tester) async {
       await raise(tester, createSam());
 
-      final card = find.byType(TvAssistantConfirmCard);
+      final card = find.byType(BigPConfirmCard);
       expect(card, findsOneWidget);
       for (final text in ['Sam', 'Zolder', 'Kids', t.assistant.confirm.no, t.assistant.confirm.passwordPlaceholder]) {
         expect(
@@ -362,7 +387,7 @@ void main() {
         ),
       );
 
-      final card = find.byType(TvAssistantConfirmCard);
+      final card = find.byType(BigPConfirmCard);
       expect(find.descendant(of: card, matching: find.text('Sci-fi avond')), findsOneWidget);
       expect(find.descendant(of: card, matching: find.text(t.assistant.confirm.server)), findsNothing);
     });
@@ -392,9 +417,9 @@ void main() {
         ),
       );
 
-      final card = find.byType(TvAssistantConfirmCard);
+      final card = find.byType(BigPConfirmCard);
       expect(find.descendant(of: card, matching: find.text('Arrival (2016)')), findsOneWidget);
-      expect(find.byType(TvAssistantMatchCard), findsNothing);
+      expect(find.byType(BigPMatchCard), findsNothing);
     });
 
     testWidgets('a required password gates Aanmaken; the password goes to confirmPending only', (tester) async {
@@ -417,7 +442,7 @@ void main() {
 
       expect(c.confirmedPasswords, ['geheim']);
       expect(c.cancelledPending, 0);
-      expect(find.byType(TvAssistantConfirmCard), findsNothing);
+      expect(find.byType(BigPConfirmCard), findsNothing);
     });
 
     testWidgets('off Apple TV the password dialog is masked too', (tester) async {
@@ -457,7 +482,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.escape);
 
       expect(c.cancelledPending, 1);
-      expect(find.byType(TvAssistantConfirmCard), findsNothing);
+      expect(find.byType(BigPConfirmCard), findsNothing);
     });
 
     testWidgets('a card that timed out under the viewer goes away without an answer', (tester) async {
@@ -468,7 +493,7 @@ void main() {
         ..emit();
       await settle(tester);
 
-      expect(find.byType(TvAssistantConfirmCard), findsNothing);
+      expect(find.byType(BigPConfirmCard), findsNothing);
       expect(c.cancelledPending, 0);
       expect(c.confirmedPasswords, isEmpty);
     });

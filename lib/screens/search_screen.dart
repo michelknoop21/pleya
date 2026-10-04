@@ -24,6 +24,7 @@ import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/optimized_media_image.dart';
 import '../widgets/seerr_poster_card.dart';
+import 'big_p/big_p_ask_row.dart';
 import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
@@ -1352,6 +1353,18 @@ class _SearchScreenState extends State<SearchScreen>
   Widget build(BuildContext context) {
     if (PlatformDetector.isTV()) return _buildTv(context);
     final isPhone = PlatformDetector.isPhone(context);
+    // "Vraag het Big P" over what was searched, results or not (iPhone and
+    // iPad: only they have a session).
+    final bigP = summonableBigP(context);
+    final asked = _lastSearchedQuery.trim();
+    Widget? askBigP({double top = 0}) => bigP == null || asked.isEmpty
+        ? null
+        : SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, top, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: BigPAskRow(session: bigP, query: asked),
+            ),
+          );
 
     return Scaffold(
       body: SafeArea(
@@ -1445,7 +1458,8 @@ class _SearchScreenState extends State<SearchScreen>
             // no matching title at all, and `_searchResults` alone would
             // then read as empty even though `_buildMobileResults` has a
             // people section to draw.
-            else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty)
+            else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty) ...[
+              ?askBigP(top: 16),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) ...[
                 SliverToBoxAdapter(
                   child: Padding(
@@ -1465,13 +1479,15 @@ class _SearchScreenState extends State<SearchScreen>
                     message: t.search.tryDifferentTerm,
                     icon: Symbols.search_off_rounded,
                   ),
-                )
-            else if (isPhone) ...[
+                ),
+            ] else if (isPhone) ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
+              ?askBigP(),
               _buildMobileResults(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
             ] else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
+              ?askBigP(top: 16),
               _buildResultsList(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
             ],

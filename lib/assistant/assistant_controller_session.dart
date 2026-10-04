@@ -37,6 +37,7 @@ AssistantController assistantControllerForSession(BuildContext context) {
   final controller = AssistantController(
     buildContext: (screen) => _sessionToolContext(context, screen),
     webFor: assistantWebServicesFor,
+    serverChanges: context.read<MultiServerProvider>(),
   );
   BigPVoice(controller, playbackActive: () => VideoPlayerScreenState.activeId != null);
   return controller;

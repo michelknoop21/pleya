@@ -2274,6 +2274,43 @@
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI provider",
+    "mobile": {
+      "greeting": "Hi ${name}, what are we looking for?",
+      "examples": [
+        [
+          "What can I watch tonight?",
+          "Give me a comedy for tonight.",
+          "Find an exciting movie for tonight."
+        ],
+        [
+          "Which series can I start now?"
+        ],
+        [
+          "Do I have something for the kids?"
+        ],
+        [
+          "Which movies haven't I seen yet?",
+          "Which movies have sat unwatched in my library for a long time?"
+        ],
+        [
+          "What was added this week?"
+        ],
+        [
+          "Who watched the most this week?"
+        ]
+      ],
+      "noModelTitle": "I don't have a brain yet.",
+      "noModelBody": "Pick a language model and I'll find movies, request titles and run your servers.",
+      "setup": "Set up model",
+      "icloudNote": "Your setting follows you to your iPad and Apple TV through iCloud Keychain.",
+      "listening": "Listening…",
+      "listeningHint": "Say your question, or type it.",
+      "askFurther": "Ask more",
+      "moreTitles": "${n} more titles",
+      "searchAsk": "Ask Big P",
+      "faceButton": "Summon Big P",
+      "notConfirmedYet": "Choose first: confirm or cancel."
+    },
     "locked": {
       "badge": "Not available on this account",
       "title": "Big P is not turned on for this account yet",
@@ -2294,9 +2331,25 @@
       "ask": "Ask Big P",
       "examplesHeader": "For example",
       "examples": [
-        "Which tasks failed on my servers today? Restart them.",
-        "Scan all movie libraries on all my servers.",
-        "Who watched the most this week?"
+        [
+          "Which tasks failed on my servers today? Restart them."
+        ],
+        [
+          "Scan all movie libraries on all my servers."
+        ],
+        [
+          "Who watched the most this week?",
+          "Who is watching right now?"
+        ],
+        [
+          "What can I watch tonight?"
+        ],
+        [
+          "What was added this week?"
+        ],
+        [
+          "Which popular new movies don't I have yet?"
+        ]
       ]
     },
     "listening": {
@@ -2450,6 +2503,9 @@
       "disable": "Turn off Big P",
       "disableConfirm": "Turn off Big P?",
       "disableBody": "The provider and key are removed from this device. You can set Big P up again at any time.",
+      "unreadableTitle": "Replace the Big P setup?",
+      "unreadableBody": "Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.",
+      "replace": "Replace",
       "currentModel": "Model",
       "keyStored": "Stored, hidden",
       "errorUrlInvalid": "Enter an address that starts with http:// or https://.",
@@ -2518,10 +2574,26 @@
       "watchMonth": "Who watched the most in the last 30 days?",
       "watchWeek": "Who watched the most this week?",
       "watchToday": "Who watched today?",
-      "tonight": "Give me a film tip for tonight.",
-      "recent": "What was added to my library lately?",
-      "unwatched": "Which films in my library have I not seen yet?",
-      "popular": "Which popular films do I not have yet?",
+      "watchYesterday": "Who watched yesterday?",
+      "tonight": [
+        "Give me a comedy for tonight.",
+        "Find an exciting movie for tonight.",
+        "Do I have something for the kids?",
+        "Which series can I start now?"
+      ],
+      "recent": [
+        "What was added to my library lately?",
+        "Which series were added recently?",
+        "What was added this week?"
+      ],
+      "unwatched": [
+        "Which films in my library have I not seen yet?",
+        "Which movies have sat unwatched in my library for a long time?"
+      ],
+      "popular": [
+        "Which popular films do I not have yet?",
+        "Which popular new movies don't I have yet?"
+      ],
       "missingMovies": "Which films are missing between my servers?",
       "missingShows": "Which series are missing between my servers?",
       "jobs": "Which tasks are running on my servers now?",

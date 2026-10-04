@@ -8,7 +8,7 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
-import '../../../media/media_kind.dart';
+import '../big_p_avatar.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -154,45 +154,6 @@ String assistantHeadline(AssistantController c) {
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
 }
 
-/// Three questions that follow from what the run showed, in the UI's
-/// language, after every answer. Pleya builds them from the displays and the
-/// actions, never from model prose, and each one stands on its own: a new ask
-/// carries no memory of this one. They carry no server, user or title names:
-/// a follow-up is sent as the user's own words, and those names come from
-/// servers, not from the user. The question just asked is never offered.
-List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = false, String? prompt}) {
-  final f = t.assistant.followUp;
-  final fitting = <String>[
-    // Only after a job Pleya follows (a scan, a refresh): those are admin
-    // tools, and a request or download has no task to ask about.
-    if (jobs) ...[f.jobs, f.failedJobs],
-    for (final d in displays)
-      ...switch (d) {
-        AssistantWatchStats(days: null) => [f.watchToday, f.watchWeek, f.watchMonth],
-        AssistantWatchStats(:final days?) => [
-          f.watchNow,
-          if (days < 30) f.watchMonth else f.watchWeek,
-          if (days > 1) f.watchToday else f.watchWeek,
-        ],
-        AssistantServerComparison(:final kind) => [
-          kind == MediaKind.show ? f.missingMovies : f.missingShows,
-          f.unwatched,
-        ],
-        AssistantRequestOptions() => [f.popular, f.recent],
-        AssistantTitleMatches() || AssistantMediaGrid() => [f.tonight, f.unwatched, f.recent],
-        _ => const <String>[],
-      },
-    // Always three: the general questions fill what the result left open.
-    f.watchWeek, f.tonight, f.recent, f.unwatched,
-  ];
-  String key(String q) => q.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
-  final asked = key(prompt ?? '');
-  return [
-    for (final q in {...fitting})
-      if (key(q) != asked) q,
-  ].take(3).toList();
-}
-
 // ponytail: one pass over paired marks on one line; nested emphasis keeps
 // its inner marks. A Markdown renderer is the upgrade if answers need more.
 final _markdownMarks = RegExp(
@@ -220,10 +181,11 @@ final _inlineList = RegExp(r':\s*«[^»\n]*»(?:[\s,;]+(?:[^\s«»]{1,4}\s+)?«[
 
 /// "Hoi Michel, ..." or, without a profile name, "Hoi, ...": the space
 /// the name leaves before the punctuation goes too, in every language.
-String assistantGreeting(String name) => t.assistant.idle
-    .greeting(name: name.trim())
-    .replaceAll(RegExp(r' +(?=[,.!?])'), '')
-    .replaceAll(RegExp(' {2,}'), ' ');
+/// [greeting] picks the line (the iPhone balloon has its own).
+String assistantGreeting(String name, {String Function({required Object name})? greeting}) =>
+    (greeting ?? t.assistant.idle.greeting)(
+      name: name.trim(),
+    ).replaceAll(RegExp(r' +(?=[,.!?])'), '').replaceAll(RegExp(' {2,}'), ' ');
 
 /// The lead above title cards: [assistantHeadline] without the titles the
 /// cards show, as a list on their own lines or as "kandidaten: «A», «B»".
@@ -247,3 +209,14 @@ String assistantPlainAnswer(String answer) => answer
     .replaceAll(RegExp(r'\n{3,}'), '\n\n')
     .replaceFirst(_marksOnly, '')
     .trim();
+
+/// Big P's mood for the controller's stand; a waiting card wins.
+BigPMood bigPMood(AssistantController c) {
+  if (c.pending != null) return BigPMood.attentive;
+  return switch (c.state) {
+    AssistantSurfaceState.idle => BigPMood.idle,
+    AssistantSurfaceState.listening => BigPMood.listening,
+    AssistantSurfaceState.working => BigPMood.working,
+    AssistantSurfaceState.result => c.resultIsError ? BigPMood.error : BigPMood.success,
+  };
+}

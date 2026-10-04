@@ -23,17 +23,18 @@ import 'package:pleya/media/unified/unified_media_source.dart';
 import 'package:pleya/media/unified/unified_watch_state.dart';
 import 'package:pleya/navigation/tv/tv_content_route_registry.dart';
 import 'package:pleya/navigation/tv/tv_navigation_coordinator.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_match_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/utils/native_input_session.dart';
 import 'package:pleya/utils/global_key_utils.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/big_p/big_p_balloon.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -214,10 +215,15 @@ void main() {
   }
 
   String? focusedMatch() =>
-      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<TvAssistantMatchCard>()?.match.matchId;
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<BigPMatchCard>()?.match.matchId;
 
-  /// The glass panel minus its 40 pt padding: what the panel shows.
-  Rect panelContent(WidgetTester tester) => tester.getRect(find.byType(TvAssistantGlassPanel)).deflate(40);
+  /// What the panel shows: the surface's glass panel minus its 40 pt
+  /// padding, or the summoned balloon minus its own.
+  Rect panelContent(WidgetTester tester) {
+    final balloon = find.byType(BigPBalloon);
+    if (balloon.evaluate().isEmpty) return tester.getRect(find.byType(BigPGlassPanel)).deflate(40);
+    return tester.widget<BigPBalloon>(balloon).padding.deflateRect(tester.getRect(balloon));
+  }
 
   Rect focusedRect() => FocusManager.instance.primaryFocus!.rect;
 
@@ -247,7 +253,7 @@ void main() {
     double opacityOf(String id) => tester
         .widget<Opacity>(
           find.descendant(
-            of: find.byWidgetPredicate((w) => w is TvAssistantMatchCard && w.match.matchId == id),
+            of: find.byWidgetPredicate((w) => w is BigPMatchCard && w.match.matchId == id),
             matching: find.byType(Opacity),
           ),
         )
@@ -309,7 +315,7 @@ void main() {
       await settle(tester);
 
       final panel = panelContent(tester);
-      expectInside(tester.getRect(find.byType(TvAssistantQuestion)), panel, 'question');
+      expectInside(tester.getRect(find.byType(BigPQuestion)), panel, 'question');
       expectInside(tester.getRect(find.text(t.assistant.working.stillChecking)), panel, 'still-checking status');
       expect(focusedLabel(), 'assistant.cancel');
       expectInside(focusedRect(), panel, 'Cancel');
@@ -383,7 +389,7 @@ void main() {
     testWidgets('the first card takes the focus; a library match opens its detail page', (tester) async {
       await pumpSurface(tester);
 
-      expect(find.byType(TvAssistantMatchCard), findsNWidgets(3));
+      expect(find.byType(BigPMatchCard), findsNWidgets(3));
       expect(focusedMatch(), 'm1');
       expect(find.text(t.assistant.match.inLibrary(servers: 'Zolder')), findsNWidgets(2));
       await press(tester, LogicalKeyboardKey.select);
@@ -398,7 +404,7 @@ void main() {
       await pumpSurface(tester);
       await showDisplay(tester, _grid);
 
-      expect(find.byType(TvAssistantMatchCard), findsNWidgets(12));
+      expect(find.byType(BigPMatchCard), findsNWidgets(12));
       expect(focusedMatch(), _grid.entries.first.item.globalKey);
       await press(tester, LogicalKeyboardKey.arrowDown);
       expect(focusedMatch(), _grid.entries[1].item.globalKey, reason: 'the order of the grid');
@@ -434,7 +440,7 @@ void main() {
         )
         ..emit();
       await settle(tester);
-      expect(find.byType(TvAssistantConfirmCard), findsOneWidget);
+      expect(find.byType(BigPConfirmCard), findsOneWidget);
     });
 
     testWidgets('an episode opens its series scrolled to it', (tester) async {
@@ -500,19 +506,19 @@ void main() {
     testWidgets('shows the matches in a window of three, stays, and Menu gives the remote back', (tester) async {
       await summon(tester, [_martian, _redPlanet, _episode, _extra]);
 
-      expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
+      expect(find.byType(BigPMatchCard), findsNWidgets(4));
       expect(focusedMatch(), 'm1');
       final window = tester.getRect(
-        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+        find.ancestor(of: find.byType(BigPMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
       );
       expect(window.bottom, lessThanOrEqualTo(panelContent(tester).bottom + 1), reason: 'the list stays in the panel');
       // G (hardware round, 3 Oct): the summoned panel is wider and shows four cards at once.
-      expect(tester.getRect(find.byType(TvAssistantMatchCard).last).bottom, lessThanOrEqualTo(window.bottom + 1));
-      expect(tester.getSize(find.byType(TvAssistantMatchCard).first).width, greaterThan(600));
+      expect(tester.getRect(find.byType(BigPMatchCard).last).bottom, lessThanOrEqualTo(window.bottom + 1));
+      expect(tester.getSize(find.byType(BigPMatchCard).first).width, greaterThan(600));
 
       await press(tester, LogicalKeyboardKey.arrowDown, 3);
       expect(focusedMatch(), 'm4');
-      final last = tester.getRect(find.byType(TvAssistantMatchCard).last);
+      final last = tester.getRect(find.byType(BigPMatchCard).last);
       expect(last.bottom, lessThanOrEqualTo(window.bottom + 1), reason: 'focus scrolls the fourth card in');
 
       // A choice on screen: Big P does not leave on his own.
@@ -535,9 +541,9 @@ void main() {
       await settle(tester);
 
       expect(find.text(t.assistant.working.stillChecking), findsOneWidget);
-      expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
+      expect(find.byType(BigPMatchCard), findsNWidgets(4));
       final window = tester.getRect(
-        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+        find.ancestor(of: find.byType(BigPMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
       );
       expect(window.bottom, lessThanOrEqualTo(panelContent(tester).bottom + 1), reason: 'the list stays in the panel');
       expect(find.text(t.assistant.result.done), findsNothing, reason: 'not presented as finished');
@@ -546,7 +552,7 @@ void main() {
       // Not a result yet: Big P does not leave on his own.
       await tester.pump(const Duration(seconds: 10));
       await settle(tester);
-      expect(find.byType(TvAssistantMatchCard), findsNWidgets(4));
+      expect(find.byType(BigPMatchCard), findsNWidgets(4));
       expect(focusedLabel(), 'assistant.cancel');
 
       await press(tester, LogicalKeyboardKey.escape);
@@ -558,7 +564,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.select);
 
       expect(routes.single.id, 'tvDetail_${_martian.targets.single.item.globalKey}');
-      expect(find.byType(TvAssistantMatchCard), findsNothing);
+      expect(find.byType(BigPMatchCard), findsNothing);
     });
 
     testWidgets('twelve cards under a long answer: the focused card and the first line are both in the panel', (
@@ -582,7 +588,7 @@ void main() {
       // Against the list's own viewport: inside the panel is not enough, a
       // card can sit behind the answer.
       final list = tester.getRect(
-        find.ancestor(of: find.byType(TvAssistantMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
+        find.ancestor(of: find.byType(BigPMatchCard).first, matching: find.byType(SingleChildScrollView)).first,
       );
       expectInside(focusedRect(), list, 'first card');
       expect(
@@ -600,7 +606,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.select);
 
       expect(routes.single.id, 'tvDetail_${_grid.entries.first.item.globalKey}');
-      expect(find.byType(TvAssistantMatchCard), findsNothing);
+      expect(find.byType(BigPMatchCard), findsNothing);
     });
 
     testWidgets('while still checking a request candidate is dimmed and inert here too', (tester) async {
@@ -627,12 +633,12 @@ void main() {
     setUp(() => presses = StreamController<void>.broadcast());
     tearDown(() => unawaited(presses.close()));
     List<String> shown(WidgetTester tester) {
-      final cards = find.byType(TvAssistantMatchCard).evaluate().toList()
+      final cards = find.byType(BigPMatchCard).evaluate().toList()
         ..sort(
           (a, b) =>
               tester.getTopLeft(find.byWidget(a.widget)).dy.compareTo(tester.getTopLeft(find.byWidget(b.widget)).dy),
         );
-      return [for (final e in cards) (e.widget as TvAssistantMatchCard).match.matchId];
+      return [for (final e in cards) (e.widget as BigPMatchCard).match.matchId];
     }
 
     void setStillChecking() => c

@@ -11,7 +11,6 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/screens/tv/sections/tv_libraries_screen.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_navigator.dart';
 import 'package:pleya/screens/tv/tv_my_pleya_screen.dart';
@@ -20,6 +19,7 @@ import 'package:pleya/services/data_aggregation_service.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 import 'package:provider/provider.dart';
 
 import 'tv_assistant_test_support.dart';
@@ -127,10 +127,10 @@ void main() {
   testWidgets('the mood follows the stand, with the card winning', (tester) async {
     final c = FakeAssistantController();
     addTearDown(c.dispose);
-    expect(tvAssistantMood(c), BigPMood.idle);
+    expect(bigPMood(c), BigPMood.idle);
     c.state = AssistantSurfaceState.result;
-    expect(tvAssistantMood(c), BigPMood.success);
+    expect(bigPMood(c), BigPMood.success);
     c.resultIsError = true;
-    expect(tvAssistantMood(c), BigPMood.error);
+    expect(bigPMood(c), BigPMood.error);
   });
 }
