@@ -1049,7 +1049,12 @@
     "basedOnPlezy": "Gebaseerd op Plezy",
     "upstreamProject": "Upstream-project",
     "privacyPolicy": "Privacybeleid",
-    "licence": "Licentie"
+    "licence": "Licentie",
+    "sources": "Bronnen",
+    "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+    "wikidataSource": "Wikidata (CC0): oorspronkelijke taal, land en verwante titels voor Big P.",
+    "tvmazeSource": "TVmaze (CC BY-SA): uitzenddata en status van series voor Big P.",
+    "traktSource": "Trakt: waardering en populariteit van titels voor Big P."
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Kon met geen enkele server verbinden. Controleer je netwerk.",
@@ -2553,7 +2558,18 @@
       "webSearchNoteCloud": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.",
       "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.",
       "voice": "Stem van Big P",
-      "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken."
+      "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken.",
+      "factsOnline": "Online informatie aanvullen",
+      "factsOnlineNote": "Big P haalt dan jaar, waardering, waar je hem kunt kijken en leeftijdsadvies van een titel op bij TMDB, Trakt, TVmaze en Wikidata. Er gaat alleen de titel heen, geen account of kijkgeschiedenis. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.",
+      "tmdbKey": "Eigen TMDB-sleutel",
+      "tmdbKeyHelp": "Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de 'API Read Access Token'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.",
+      "tmdbKeyStored": "Sleutel opgeslagen",
+      "tmdbKeySave": "Sleutel opslaan",
+      "tmdbKeyClear": "Sleutel wissen",
+      "kidsAges": "Leeftijden kinderen (dit profiel)",
+      "kidsAgesNone": "Niet ingesteld",
+      "kidsAgesClear": "Leeftijden wissen",
+      "kidsAgesValue": "${ages} jaar"
     },
     "youAsked": "Je vroeg:",
     "option": {

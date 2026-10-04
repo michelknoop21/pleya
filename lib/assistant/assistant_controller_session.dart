@@ -92,8 +92,15 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
     insights: tautulli == null ? null : AssistantInsightServices(tautulliFor: tautulli.clientForServer),
     requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
     // One per ask, so the lookup budget starts fresh. The TMDB key and the
-    // online switch come from the provider settings once those carry them.
-    titleFacts: TitleFactsService(cache: cache, clientFor: manager.getClient, seerr: () => seerr?.client),
+    // online switch are read per lookup, so a change in the settings counts
+    // from the next question.
+    titleFacts: TitleFactsService(
+      cache: cache,
+      clientFor: manager.getClient,
+      seerr: () => seerr?.client,
+      tmdbKey: () => AssistantProviderStore.current?.tmdbKey,
+      online: () => AssistantProviderStore.current?.onlineFacts ?? true,
+    ),
     kidsAges: KidsAgesStore().read,
     personal: recommendations == null
         ? null

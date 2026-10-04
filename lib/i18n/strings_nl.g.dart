@@ -1230,6 +1230,11 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String get upstreamProject => 'Upstream-project';
 	@override String get privacyPolicy => 'Privacybeleid';
 	@override String get licence => 'Licentie';
+	@override String get sources => 'Bronnen';
+	@override String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
+	@override String get wikidataSource => 'Wikidata (CC0): oorspronkelijke taal, land en verwante titels voor Big P.';
+	@override String get tvmazeSource => 'TVmaze (CC BY-SA): uitzenddata en status van series voor Big P.';
+	@override String get traktSource => 'Trakt: waardering en populariteit van titels voor Big P.';
 }
 
 // Path: serverSelection
@@ -3477,6 +3482,17 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get webSearchNoteOpenRouter => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.';
 	@override String get voice => 'Stem van Big P';
 	@override String get voiceNote => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.';
+	@override String get factsOnline => 'Online informatie aanvullen';
+	@override String get factsOnlineNote => 'Big P haalt dan jaar, waardering, waar je hem kunt kijken en leeftijdsadvies van een titel op bij TMDB, Trakt, TVmaze en Wikidata. Er gaat alleen de titel heen, geen account of kijkgeschiedenis. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.';
+	@override String get tmdbKey => 'Eigen TMDB-sleutel';
+	@override String get tmdbKeyHelp => 'Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de \'API Read Access Token\'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.';
+	@override String get tmdbKeyStored => 'Sleutel opgeslagen';
+	@override String get tmdbKeySave => 'Sleutel opslaan';
+	@override String get tmdbKeyClear => 'Sleutel wissen';
+	@override String get kidsAges => 'Leeftijden kinderen (dit profiel)';
+	@override String get kidsAgesNone => 'Niet ingesteld';
+	@override String get kidsAgesClear => 'Leeftijden wissen';
+	@override String kidsAgesValue({required Object ages}) => '${ages} jaar';
 }
 
 // Path: assistant.option
@@ -4599,6 +4615,11 @@ extension on TranslationsNl {
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
 			'about.licence' => 'Licentie',
+			'about.sources' => 'Bronnen',
+			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+			'about.wikidataSource' => 'Wikidata (CC0): oorspronkelijke taal, land en verwante titels voor Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): uitzenddata en status van series voor Big P.',
+			'about.traktSource' => 'Trakt: waardering en populariteit van titels voor Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
@@ -4650,13 +4671,13 @@ extension on TranslationsNl {
 			'watchlist.addFailed' => 'Kon je kijklijst niet bijwerken',
 			'watchlist.partiallyFailed' => 'Alleen uit een deel van de lijsten verwijderd. Je kijklijst is opnieuw geladen.',
 			'watchlist.offlineRejected' => 'Je hebt verbinding nodig om je kijklijst te wijzigen',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.filterAll' => 'Alles',
 			'watchlist.filterMovies' => 'Films',
 			'watchlist.filterShows' => 'Series',
 			'watchlist.filterAvailable' => 'Beschikbaar',
 			'watchlist.sortRecentlyAdded' => 'Recent toegevoegd',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.sortTitle' => 'Titel',
 			'watchlist.sortYear' => 'Jaar',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Je kijklijst heeft ${count} titels, maar geen enkele die binnen dit filter valt.',
@@ -5164,13 +5185,13 @@ extension on TranslationsNl {
 			'metadataEdit.writer' => 'Schrijver',
 			'metadataEdit.producer' => 'Producent',
 			'metadataEdit.country' => 'Land',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.collection' => 'Collectie',
 			'metadataEdit.label' => 'Label',
 			'metadataEdit.style' => 'Stijl',
 			'metadataEdit.mood' => 'Stemming',
 			'matchScreen.match' => 'Koppelen...',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.fixMatch' => 'Koppeling herstellen...',
 			'matchScreen.unmatch' => 'Ontkoppelen',
 			'matchScreen.unmatchConfirm' => 'Deze match wissen? Plex behandelt dit als niet-gematcht tot het opnieuw gematcht is.',
@@ -5678,13 +5699,13 @@ extension on TranslationsNl {
 			'languageSettings.seriesCount' => ({required Object count}) => '${count} series · ontstaan vanzelf als je tijdens een serie een andere taal kiest',
 			'languageSettings.seriesEmpty' => 'Serievoorkeuren ontstaan vanzelf als je tijdens een serie een andere taal kiest.',
 			'languageSettings.seriesFootnote' => 'Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.rowLanguages' => ({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Ondertitels: ${subtitles}',
 			'languageSettings.rowOrigin' => ({required Object date, required Object episode, required Object device}) => 'Gekozen op ${date} bij ${episode} · ${device}',
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Gekozen op ${date} · ${device}',
 			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Gekozen op ${date}',
 			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Serievoorkeur, gekozen op ${date} bij ${episode} op ${device}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.sheetOrigin' => ({required Object date}) => 'Serievoorkeur, gekozen op ${date}.',
 			'languageSettings.sheetScopeLogical' => 'Geldt overal waar Pleya deze serie als dezelfde herkent.',
 			'languageSettings.sheetScopeServer' => 'Geldt op de bron waar je hem koos.',
@@ -5914,6 +5935,17 @@ extension on TranslationsNl {
 			'assistant.settings.webSearchNoteOpenRouter' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.',
 			'assistant.settings.voice' => 'Stem van Big P',
 			'assistant.settings.voiceNote' => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.',
+			'assistant.settings.factsOnline' => 'Online informatie aanvullen',
+			'assistant.settings.factsOnlineNote' => 'Big P haalt dan jaar, waardering, waar je hem kunt kijken en leeftijdsadvies van een titel op bij TMDB, Trakt, TVmaze en Wikidata. Er gaat alleen de titel heen, geen account of kijkgeschiedenis. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.',
+			'assistant.settings.tmdbKey' => 'Eigen TMDB-sleutel',
+			'assistant.settings.tmdbKeyHelp' => 'Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de \'API Read Access Token\'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.',
+			'assistant.settings.tmdbKeyStored' => 'Sleutel opgeslagen',
+			'assistant.settings.tmdbKeySave' => 'Sleutel opslaan',
+			'assistant.settings.tmdbKeyClear' => 'Sleutel wissen',
+			'assistant.settings.kidsAges' => 'Leeftijden kinderen (dit profiel)',
+			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
+			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
+			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',

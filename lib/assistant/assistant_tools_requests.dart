@@ -255,8 +255,9 @@ final List<AssistantTool> _requestTools = [
               .take(10);
       // Seerr's discover takes no original language, so only this page was
       // filtered: say so, the model must not claim the full catalog.
-      if (language != null)
+      if (language != null) {
         ignored.add({'filter': 'original_language', 'value': language, 'reason': 'first_page_only'});
+      }
       final result = await _requestOptions(ctx, client, picks, age);
       return AssistantToolResult({
         ...result.data,

@@ -37,6 +37,14 @@ class AboutScreen extends StatelessWidget {
       'licensed under the GNU General Public License v3.0. '
       'You may redistribute and modify it under those terms.';
 
+  /// The data sources of Big P's title facts, shared with `TvAboutScreen`.
+  static List<(IconData, String)> sourceLines() => [
+    (Symbols.movie_rounded, t.about.tmdbAttribution),
+    (Symbols.database_rounded, t.about.wikidataSource),
+    (Symbols.tv_rounded, t.about.tvmazeSource),
+    (Symbols.thumbs_up_down_rounded, t.about.traktSource),
+  ];
+
   Future<void> _open(String url) async {
     final uri = Uri.tryParse(url);
     if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -117,6 +125,17 @@ class AboutScreen extends StatelessWidget {
                         trailingIcon: Symbols.open_in_new_rounded,
                         onTap: () => _open(privacyUrl),
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Data sources Big P uses; the TMDB line is the attribution
+                  // TMDB requires, in English in every language.
+                  SettingsGroup(
+                    children: [
+                      for (final (icon, text) in sourceLines())
+                        ListTile(leading: SettingsIconBadge(icon), title: Text(text)),
                     ],
                   ),
 

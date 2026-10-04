@@ -32,6 +32,8 @@ class AssistantProviderConfig {
     this.headerValue = '',
     this.webSearchChoice,
     this.ollamaWebKey = '',
+    this.tmdbKey = '',
+    this.onlineFactsChoice,
     this.timeoutOverride,
   });
 
@@ -59,6 +61,18 @@ class AssistantProviderConfig {
   /// An ollama.com key for Ollama web search, for Ollama-server users only;
   /// Ollama Cloud reuses [apiKey].
   final String ollamaWebKey;
+
+  /// The user's own TMDB read-access token for title facts. A secret: never
+  /// shown back, never logged or exported.
+  final String tmdbKey;
+
+  /// The user's explicit "Online informatie aanvullen" switch; null until
+  /// they touch it.
+  final bool? onlineFactsChoice;
+
+  /// Title facts may come from outside the own server and Seerr (TMDB, Trakt,
+  /// TVmaze, Wikidata). On unless the user turned it off.
+  bool get onlineFacts => onlineFactsChoice ?? true;
 
   bool get isOllama => kind != AssistantProviderKind.openRouter;
 
@@ -88,6 +102,8 @@ class AssistantProviderConfig {
     String? headerValue,
     bool? webSearch,
     String? ollamaWebKey,
+    String? tmdbKey,
+    bool? onlineFacts,
   }) => AssistantProviderConfig(
     kind: kind,
     baseUrl: baseUrl ?? this.baseUrl,
@@ -97,6 +113,8 @@ class AssistantProviderConfig {
     headerValue: headerValue ?? this.headerValue,
     webSearchChoice: webSearch ?? webSearchChoice,
     ollamaWebKey: ollamaWebKey ?? this.ollamaWebKey,
+    tmdbKey: tmdbKey ?? this.tmdbKey,
+    onlineFactsChoice: onlineFacts ?? onlineFactsChoice,
     // Set for one model: another model starts from the default again.
     timeoutOverride: model == null || model == this.model ? timeoutOverride : null,
   );
@@ -110,6 +128,8 @@ class AssistantProviderConfig {
     'headerValue': headerValue,
     if (webSearchChoice != null) 'webSearch': webSearchChoice,
     'ollamaWebKey': ollamaWebKey,
+    'tmdbKey': tmdbKey,
+    if (onlineFactsChoice != null) 'onlineFacts': onlineFactsChoice,
     if (timeoutOverride case final timeout?) 'timeoutSeconds': timeout.inSeconds,
   };
 
@@ -127,6 +147,8 @@ class AssistantProviderConfig {
       // Absent until the user chooses: [webSearch] then follows the kind.
       webSearchChoice: json['webSearch'] is bool ? json['webSearch'] as bool : null,
       ollamaWebKey: read('ollamaWebKey'),
+      tmdbKey: read('tmdbKey'),
+      onlineFactsChoice: json['onlineFacts'] is bool ? json['onlineFacts'] as bool : null,
       timeoutOverride: switch (json['timeoutSeconds']) {
         final int seconds when seconds > 0 => Duration(seconds: seconds),
         _ => null,

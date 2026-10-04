@@ -2935,6 +2935,21 @@ class TranslationsAboutEn {
 
 	/// en: 'Licence'
 	String get licence => 'Licence';
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'This product uses the TMDB API but is not endorsed or certified by TMDB.'
+	String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
+
+	/// en: 'Wikidata (CC0): original language, country and related titles for Big P.'
+	String get wikidataSource => 'Wikidata (CC0): original language, country and related titles for Big P.';
+
+	/// en: 'TVmaze (CC BY-SA): air dates and show status for Big P.'
+	String get tvmazeSource => 'TVmaze (CC BY-SA): air dates and show status for Big P.';
+
+	/// en: 'Trakt: ratings and popularity of titles for Big P.'
+	String get traktSource => 'Trakt: ratings and popularity of titles for Big P.';
 }
 
 // Path: serverSelection
@@ -7974,6 +7989,39 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: 'Short spoken reactions. Never while you dictate or watch something.'
 	String get voiceNote => 'Short spoken reactions. Never while you dictate or watch something.';
+
+	/// en: 'Add online information'
+	String get factsOnline => 'Add online information';
+
+	/// en: 'Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.'
+	String get factsOnlineNote => 'Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.';
+
+	/// en: 'Your own TMDB key'
+	String get tmdbKey => 'Your own TMDB key';
+
+	/// en: 'Free to request at themoviedb.org (Settings > API). Paste the 'API Read Access Token'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.'
+	String get tmdbKeyHelp => 'Free to request at themoviedb.org (Settings > API). Paste the \'API Read Access Token\'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.';
+
+	/// en: 'Key saved'
+	String get tmdbKeyStored => 'Key saved';
+
+	/// en: 'Save key'
+	String get tmdbKeySave => 'Save key';
+
+	/// en: 'Clear key'
+	String get tmdbKeyClear => 'Clear key';
+
+	/// en: 'Children's ages (this profile)'
+	String get kidsAges => 'Children\'s ages (this profile)';
+
+	/// en: 'Not set'
+	String get kidsAgesNone => 'Not set';
+
+	/// en: 'Clear ages'
+	String get kidsAgesClear => 'Clear ages';
+
+	/// en: '${ages} years'
+	String kidsAgesValue({required Object ages}) => '${ages} years';
 }
 
 // Path: assistant.option
@@ -9199,6 +9247,11 @@ extension on Translations {
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
 			'about.licence' => 'Licence',
+			'about.sources' => 'Sources',
+			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+			'about.wikidataSource' => 'Wikidata (CC0): original language, country and related titles for Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): air dates and show status for Big P.',
+			'about.traktSource' => 'Trakt: ratings and popularity of titles for Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'No media servers found',
@@ -9250,13 +9303,13 @@ extension on Translations {
 			'watchlist.addFailed' => 'Could not update your watchlist',
 			'watchlist.partiallyFailed' => 'Removed from some lists only. Your watchlist has been refreshed.',
 			'watchlist.offlineRejected' => 'You need a connection to change your watchlist',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.filterAll' => 'All',
 			'watchlist.filterMovies' => 'Movies',
 			'watchlist.filterShows' => 'Shows',
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.sortTitle' => 'Title',
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
@@ -9764,13 +9817,13 @@ extension on Translations {
 			'metadataEdit.writer' => 'Writer',
 			'metadataEdit.producer' => 'Producer',
 			'metadataEdit.country' => 'Country',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.collection' => 'Collection',
 			'metadataEdit.label' => 'Label',
 			'metadataEdit.style' => 'Style',
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.fixMatch' => 'Fix Match...',
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
@@ -10278,13 +10331,13 @@ extension on Translations {
 			'languageSettings.seriesCount' => ({required Object count}) => '${count} series · they appear by themselves when you pick another language during a series',
 			'languageSettings.seriesEmpty' => 'Series preferences appear by themselves when you pick another language during a series.',
 			'languageSettings.seriesFootnote' => 'Select a series to see its preference or to put it back to the global one. An episode that is missing the language changes nothing here.',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.rowLanguages' => ({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Subtitles: ${subtitles}',
 			'languageSettings.rowOrigin' => ({required Object date, required Object episode, required Object device}) => 'Chosen on ${date} at ${episode} · ${device}',
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Chosen on ${date} · ${device}',
 			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Chosen on ${date}',
 			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Series preference, chosen on ${date} at ${episode} on ${device}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.sheetOrigin' => ({required Object date}) => 'Series preference, chosen on ${date}.',
 			'languageSettings.sheetScopeLogical' => 'Applies wherever Pleya recognises this series as the same one.',
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
@@ -10514,6 +10567,17 @@ extension on Translations {
 			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
 			'assistant.settings.voice' => 'Big P\'s voice',
 			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
+			'assistant.settings.factsOnline' => 'Add online information',
+			'assistant.settings.factsOnlineNote' => 'Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.',
+			'assistant.settings.tmdbKey' => 'Your own TMDB key',
+			'assistant.settings.tmdbKeyHelp' => 'Free to request at themoviedb.org (Settings > API). Paste the \'API Read Access Token\'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.',
+			'assistant.settings.tmdbKeyStored' => 'Key saved',
+			'assistant.settings.tmdbKeySave' => 'Save key',
+			'assistant.settings.tmdbKeyClear' => 'Clear key',
+			'assistant.settings.kidsAges' => 'Children\'s ages (this profile)',
+			'assistant.settings.kidsAgesNone' => 'Not set',
+			'assistant.settings.kidsAgesClear' => 'Clear ages',
+			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',

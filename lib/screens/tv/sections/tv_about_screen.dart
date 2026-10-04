@@ -132,6 +132,9 @@ class _TvAboutScreenState extends State<TvAboutScreen> {
         // Verbatim, and unfocusable: this is the attribution and
         // corresponding-source offer the GPL requires, not a control.
         TvPageBlock.text(AboutScreen.licenceNotice),
+        SizedBox(height: TvMyPleyaLayout.groupGap * scale),
+        TvPageGroupLabel(t.about.sources),
+        for (final (_, text) in AboutScreen.sourceLines()) TvPageBlock.text(text),
       ],
     );
   }
