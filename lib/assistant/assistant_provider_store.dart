@@ -205,8 +205,10 @@ class AssistantProviderStore {
 
   static const String _unknown = 'unknown';
 
-  Future<void> _remember(String? synced) async =>
-      (await BaseSharedPreferencesService.sharedCache()).setString(seenKey, _fingerprint(synced));
+  Future<void> _remember(String? synced) async {
+    final prefs = await BaseSharedPreferencesService.sharedCache();
+    await prefs.setString(seenKey, _fingerprint(synced));
+  }
 
   /// What the pending marker remembers of the synced item: its SHA-256, or
   /// `none` when there was none.
