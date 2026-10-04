@@ -68,31 +68,35 @@ class _Loader implements HomeCustomRowLoader {
   final rows = <HomeCustomRow>[];
   bool exact = true;
   MediaKind kind = MediaKind.movie;
+
+  /// Extra copies of a title on the same server, in "Films 4K".
+  final copies = <String, List<String>>{};
   @override
   Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async {
     rows.add(row);
     return HomeCustomRowContent(
       isExact: exact,
-      groups: [for (final id in ids.take(limit)) _group(id, kind: kind)],
+      groups: [for (final id in ids.take(limit)) _group(id, kind: kind, copies: copies[id] ?? const [])],
     );
   }
 }
 
-UnifiedMediaGroup _group(String id, {MediaKind kind = MediaKind.movie}) {
-  final source = UnifiedMediaSource.fromItem(
+UnifiedMediaGroup _group(String id, {MediaKind kind = MediaKind.movie, List<String> copies = const []}) {
+  UnifiedMediaSource copy(String itemId, String libraryId) => UnifiedMediaSource.fromItem(
     MediaItem(
-      id: id,
+      id: itemId,
       backend: MediaBackend.jellyfin,
       kind: kind,
       title: 'Film $id',
       serverId: 'jf',
-      libraryId: 'films',
+      libraryId: libraryId,
     ),
   );
+  final source = copy(id, 'films');
   return UnifiedMediaGroup(
     groupId: id,
     identity: CanonicalMediaIdentity.movie(title: 'Film $id', year: 2001),
-    sources: [source],
+    sources: [source, for (final extra in copies) copy(extra, 'films4k')],
     representativeSourceKey: source.sourceKey,
     watchState: UnifiedWatchState(representativeSourceKey: source.sourceKey, isWatched: false),
   );
@@ -252,6 +256,27 @@ void main() {
     expect(result.data['home_row_unavailable_reason'], isNotEmpty);
     expect(f.calls.any((r) => r.url.path == '/Items'), isFalse);
     expect(f.calls.every((r) => r.method == 'GET'), isTrue);
+  });
+  test('a title with two copies on the server is proven per title: a watched copy rules it out', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1', '2']);
+    f.loader.copies['1'] = ['1-4k'];
+    // Bob watched the 4K copy; the HD copy says Played:false for everyone.
+    f.played['b/1-4k'] = true;
+    final result = await _recommend(ctx);
+    expect((result.data['results'] as List).map((e) => (e as Map)['item_id']), ['2']);
+    final coverage = result.data['coverage'] as Map;
+    expect((coverage['candidates_checked'], coverage['excluded_watched']), (2, 1));
+  });
+  test('a title with two copies nobody watched is one result, not two', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1', '2']);
+    f.loader.copies['1'] = ['1-4k'];
+    final result = await _recommend(ctx);
+    expect((result.data['results'] as List).map((e) => (e as Map)['item_id']), ['1', '2']);
+    expect((result.display! as AssistantMediaGrid).entries.map((e) => e.item.id), ['1', '2']);
+    final coverage = result.data['coverage'] as Map;
+    expect((coverage['candidates_checked'], coverage['copies_read']), (2, 3));
   });
   test('missing or malformed Played is unknown, not absence from capped history', () async {
     final f = _Fixture();
