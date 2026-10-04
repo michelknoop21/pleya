@@ -296,6 +296,23 @@ void main() {
     expect(tester.getBottomLeft(find.byType(BigPInputBar)).dy, lessThanOrEqualTo(667 - 260));
   });
 
+  testWidgets('beside an answer Big P steps back to 150, the greeting keeps 237', (tester) async {
+    await pump(tester);
+    await summon(tester);
+    expect(tester.getSize(find.byType(BigPAvatar)).height, 237);
+    c
+      ..prompt = 'Wat is er nieuw?'
+      ..answer = 'Twee films. De rest is ouder.'
+      ..state = AssistantSurfaceState.result
+      ..emit();
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byType(BigPAvatar)).height, 150);
+    // Only the first sentence is the bold lead.
+    expect(find.text('Twee films.'), findsOneWidget);
+    expect(find.text('De rest is ouder.'), findsOneWidget);
+  });
+
   testWidgets('the face button says whether Big P is out and that a card waits', (tester) async {
     final handle = tester.ensureSemantics();
     await pump(tester);

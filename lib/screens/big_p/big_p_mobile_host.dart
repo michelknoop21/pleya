@@ -43,9 +43,10 @@ class BigPMobileHost extends StatefulWidget {
 
   /// Big P's height in [room]: 237 (190 pt wide, as in 39 B) when it fits.
   /// With the keyboard up he shrinks so the balloon keeps 220 pt, room for
-  /// the three examples, but never under 120 (an iPhone SE).
-  static double avatarSize(double room, {required bool withBar}) =>
-      (room - 220 - (withBar ? 50 : 0)).clamp(120.0, 237.0);
+  /// the three examples, but never under 120 (an iPhone SE). Beside an
+  /// answer he steps back to 150, so the follow-ups get the width.
+  static double avatarSize(double room, {required bool withBar, bool answer = false}) =>
+      (room - 220 - (withBar ? 50 : 0)).clamp(120.0, answer ? 150.0 : 237.0);
 
   @override
   State<BigPMobileHost> createState() => _BigPMobileHostState();
@@ -213,7 +214,11 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
   Widget _compact(BuildContext context, BigPMobileSession session, BoxConstraints box) {
     final c = session.controller;
     final asks = _asks(c);
-    final size = BigPMobileHost.avatarSize(box.maxHeight, withBar: asks);
+    final size = BigPMobileHost.avatarSize(
+      box.maxHeight,
+      withBar: asks,
+      answer: c.state == AssistantSurfaceState.result,
+    );
     // Laid out bottom up, so the balloon paints last: over the top of his
     // head, never his head over its buttons (39 G).
     return Column(
@@ -232,15 +237,17 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: ConstrainedBox(
-                  // As far as his arm, as in 39 E.
-                  constraints: BoxConstraints(maxWidth: box.maxWidth * 0.66),
+                  // As far as his arm, as in 39 E; beside a smaller Big P
+                  // a little over it, so the pills keep their words.
+                  constraints: BoxConstraints(maxWidth: max(box.maxWidth * 0.66, box.maxWidth - size * 0.6)),
                   child: BigPMobileFollowUps(controller: c, floating: true, onAsk: (q) => _ask(session, q)),
                 ),
               ),
             ),
           ],
         ),
-        Flexible(child: _balloon(context, session)),
+        // The tail over his head, a little right of his middle: 0.81 at 237.
+        Flexible(child: _balloon(context, session, tailAt: 1 - 0.3 * size / box.maxWidth)),
       ],
     );
   }
@@ -312,7 +319,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
-  Widget _balloon(BuildContext context, BigPMobileSession session, {bool regular = false}) {
+  Widget _balloon(BuildContext context, BigPMobileSession session, {bool regular = false, double tailAt = 0.81}) {
     final c = session.controller;
     final conversation = BigPScale(
       pt: 0.53,
@@ -357,8 +364,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
                 ],
               ),
             )
-          // Over Big P's head, a little right of his middle.
-          : BigPBalloon(tailAt: 0.81, child: conversation),
+          : BigPBalloon(tailAt: tailAt, child: conversation),
     );
   }
 }
