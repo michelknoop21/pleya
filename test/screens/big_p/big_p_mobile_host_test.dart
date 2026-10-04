@@ -291,15 +291,20 @@ void main() {
     expect(tester.takeException(), isNull);
     final balloon = tester.getSize(find.byType(BigPBalloon));
     expect(balloon.height, greaterThanOrEqualTo(150));
-    expect(tester.getSize(find.byType(BigPAvatar)).height, lessThan(237));
+    expect(tester.getSize(find.byType(BigPAvatar)).height, lessThanOrEqualTo(118));
     // Big P and the field stay above the keyboard.
     expect(tester.getBottomLeft(find.byType(BigPInputBar)).dy, lessThanOrEqualTo(667 - 260));
   });
 
-  testWidgets('beside an answer Big P steps back to 150, the greeting keeps 237', (tester) async {
+  testWidgets('beside an answer Big P steps back to 75, the greeting keeps 118', (tester) async {
     await pump(tester);
     await summon(tester);
-    expect(tester.getSize(find.byType(BigPAvatar)).height, 237);
+    expect(tester.getSize(find.byType(BigPAvatar)).height, 118);
+    // The balloon stops above his box, so it never hides his forehead.
+    expect(
+      tester.getBottomLeft(find.byType(BigPBalloon)).dy,
+      lessThanOrEqualTo(tester.getTopLeft(find.byType(BigPAvatar)).dy),
+    );
     c
       ..prompt = 'Wat is er nieuw?'
       ..answer = 'Twee films. De rest is ouder.'
@@ -307,7 +312,7 @@ void main() {
       ..emit();
     await settle(tester);
     expect(tester.takeException(), isNull);
-    expect(tester.getSize(find.byType(BigPAvatar)).height, 150);
+    expect(tester.getSize(find.byType(BigPAvatar)).height, 75);
     // Only the first sentence is the bold lead.
     expect(find.text('Twee films.'), findsOneWidget);
     expect(find.text('De rest is ouder.'), findsOneWidget);

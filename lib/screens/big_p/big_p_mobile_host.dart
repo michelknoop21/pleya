@@ -38,15 +38,15 @@ class BigPMobileHost extends StatefulWidget {
   /// From here on the iPad layout (39 I): balloon beside Big P.
   static const regularWidth = 700.0;
 
-  /// The share of Big P's box above his head (the rig's own margin).
-  static const headroom = 0.14;
-
-  /// Big P's height in [room]: 237 (190 pt wide, as in 39 B) when it fits.
-  /// With the keyboard up he shrinks so the balloon keeps 220 pt, room for
-  /// the three examples, but never under 120 (an iPhone SE). Beside an
-  /// answer he steps back to 150, so the follow-ups get the width.
+  /// Big P's height in [room]: 118 when it fits, half of 39 B after the
+  /// first device round. With the keyboard up he shrinks so the balloon
+  /// keeps 220 pt, room for the three examples, but never under 60. Beside
+  /// an answer he steps back to 75, so the follow-ups get the width.
   static double avatarSize(double room, {required bool withBar, bool answer = false}) =>
-      (room - 220 - (withBar ? 50 : 0)).clamp(120.0, answer ? 150.0 : 237.0);
+      (room - 220 - (withBar ? 50 : 0)).clamp(60.0, answer ? 75.0 : 118.0);
+
+  /// Big P beside the iPad balloon (39 I), halved like the iPhone one.
+  static const regularAvatar = 156.0;
 
   @override
   State<BigPMobileHost> createState() => _BigPMobileHostState();
@@ -239,8 +239,8 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
       withBar: asks,
       answer: c.state == AssistantSurfaceState.result,
     );
-    // Laid out bottom up, so the balloon paints last: over the top of his
-    // head, never his head over its buttons (39 G).
+    // Laid out bottom up, so the balloon paints last: never his head over
+    // its buttons (39 G).
     return Column(
       verticalDirection: VerticalDirection.up,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -251,7 +251,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
         Stack(
           alignment: Alignment.bottomLeft,
           children: [
-            Align(alignment: Alignment.bottomRight, child: _overlapped(c, size)),
+            Align(alignment: Alignment.bottomRight, child: _figure(c, size)),
             Align(
               alignment: Alignment.bottomLeft,
               child: Padding(
@@ -266,26 +266,22 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
             ),
           ],
         ),
-        // The tail over his head, a little right of his middle: 0.81 at 237.
+        // The tail over his head, a little right of his middle.
         Flexible(child: _balloon(context, session, tailAt: 1 - 0.3 * size / box.maxWidth)),
       ],
     );
   }
 
-  /// The top of Big P's box is mostly air above his head: the balloon may
-  /// hang into it, which gives a long answer (39 F) that room.
-  /// Outside the laid-out box, so it takes no taps from the balloon.
-  Widget _overlapped(AssistantController c, double size) => SizedBox(
-    width: size * 0.8,
-    height: size * (1 - BigPMobileHost.headroom),
-    child: OverflowBox(alignment: Alignment.bottomCenter, minHeight: size, maxHeight: size, child: _avatar(c, size)),
-  );
+  /// Big P's whole box, under the balloon: the rig bobs and leans past its
+  /// art, so a balloon hanging into the box hid his forehead on a device.
+  Widget _figure(AssistantController c, double size) =>
+      SizedBox(width: size * 0.8, height: size, child: _avatar(c, size));
 
-  /// iPad (39 I): a 620 pt balloon left of a 250 pt Big P, its tail to
+  /// iPad (39 I): a 620 pt balloon left of Big P, its tail to
   /// him; the follow-ups and the field inside it.
   Widget _regular(BuildContext context, BigPMobileSession session, BoxConstraints box) {
     final c = session.controller;
-    final size = min(312.0, box.maxHeight);
+    final size = min(BigPMobileHost.regularAvatar, box.maxHeight);
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -295,9 +291,9 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
         Flexible(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 620),
-            // Its tail at his head, not his feet.
+            // Its tail at his head, not his feet: 45 pt up at 312.
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 45),
+              padding: EdgeInsets.only(bottom: 45 * size / 312),
               child: _balloon(context, session, regular: true),
             ),
           ),

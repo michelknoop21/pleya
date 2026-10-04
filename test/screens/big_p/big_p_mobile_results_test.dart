@@ -16,6 +16,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 import 'package:pleya/widgets/big_p/big_p_scale.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -212,7 +213,7 @@ void main() {
     expect(find.byWidgetPredicate((w) => w is BigPChip && w.dense), findsNWidgets(3));
     // The field sits inside the balloon, left of Big P.
     final bar = tester.getRect(find.byType(BigPInputBar));
-    expect(bar.right, lessThan(1180 - 200));
+    expect(bar.right, lessThan(tester.getTopLeft(find.byType(BigPAvatar)).dx));
   });
 
   Finder followUps() => find.byWidgetPredicate((w) => w is BigPChip && w.dense);
