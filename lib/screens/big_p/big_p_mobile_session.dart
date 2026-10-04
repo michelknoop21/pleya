@@ -1,0 +1,119 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
+import '../../assistant/assistant_controller.dart';
+import '../../assistant/assistant_tool_context.dart';
+import '../../widgets/big_p/assistant/big_p_results.dart';
+
+/// Where Big P stands on iPhone and iPad (mockup 39): in the face button,
+/// out with his balloon, or peeking in from the side of a title he opened.
+enum BigPStage { parked, out, peek }
+
+/// Big P's place on a phone or tablet, one per profile next to its
+/// [AssistantController]. Only the user moves him: [summon] brings him out,
+/// [park] puts him back, [openedTitle] sends him to the peek. The answer
+/// stays across a park, until it is [keepAnswer] old at the next summon.
+class BigPMobileSession extends ChangeNotifier {
+  BigPMobileSession(this.controller, {DateTime Function()? now, this.keepAnswer = const Duration(minutes: 30)})
+    : _now = now ?? DateTime.now,
+      _lastState = controller.state {
+    controller.addListener(_onController);
+  }
+
+  final AssistantController controller;
+
+  /// How long an answer waits in the face button before a summon starts
+  /// over (39 H).
+  final Duration keepAnswer;
+  final DateTime Function() _now;
+
+  BigPStage _stage = BigPStage.parked;
+  AssistantScreenContext? _pendingContext;
+  String? _question;
+  DateTime? _resultAt;
+  AssistantSurfaceState _lastState;
+
+  /// Item keys of the titles opened from the current answer.
+  final Set<String> _opened = {};
+
+  BigPStage get stage => _stage;
+
+  /// The screen Big P was summoned from, for [AssistantController.beginListening].
+  AssistantScreenContext? get pendingContext => _pendingContext;
+
+  /// A question handed over by Zoeken; read once.
+  String? takeQuestion() {
+    final question = _question;
+    _question = null;
+    return question;
+  }
+
+  /// Titles in the answer that are in a library and not opened yet: what
+  /// the peek offers to go back to.
+  int get remainingTitles => {
+    for (final display in controller.displays)
+      for (final match in bigPTitleMatches(display))
+        if (match.targets.firstOrNull case final target?) target.item.globalKey,
+  }.difference(_opened).length;
+
+  /// Brings Big P out. Never called by Pleya on its own.
+  void summon({AssistantScreenContext? context, String? question}) {
+    final resultAt = _resultAt;
+    if (controller.state == AssistantSurfaceState.result &&
+        resultAt != null &&
+        _now().difference(resultAt) >= keepAnswer) {
+      controller.reset();
+    }
+    if (controller.availability == AssistantAvailability.hidden) unawaited(controller.refreshAvailability());
+    _pendingContext = context;
+    _question = question;
+    // Notifies even when already out: a new question or context is news.
+    _stage = BigPStage.out;
+    notifyListeners();
+  }
+
+  /// Back into the face button; the answer stays. A run in flight is let go
+  /// and the controller is back in rust, as TV's dismiss ends. A waiting
+  /// confirmation card keeps him out until the user picks (39 G).
+  void park() {
+    if (controller.pending != null) return;
+    if (controller.state == AssistantSurfaceState.working) {
+      controller.abort();
+      // abort() alone leaves the controller in working and busy: the next
+      // summon would show a run that never ends.
+      controller.reset();
+    }
+    _setStage(BigPStage.parked);
+  }
+
+  /// A title from the answer opened: Big P peeks from its detail page.
+  void openedTitle(String itemKey) {
+    _opened.add(itemKey);
+    _setStage(BigPStage.peek);
+  }
+
+  void _onController() {
+    final state = controller.state;
+    if (state == AssistantSurfaceState.result && _lastState != AssistantSurfaceState.result) _resultAt = _now();
+    // A new ask starts with no displays; a picked option keeps them.
+    if (state == AssistantSurfaceState.idle ||
+        (state == AssistantSurfaceState.working && controller.displays.isEmpty)) {
+      _opened.clear();
+      if (state == AssistantSurfaceState.idle) _resultAt = null;
+    }
+    _lastState = state;
+  }
+
+  void _setStage(BigPStage stage) {
+    if (_stage == stage) return;
+    _stage = stage;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_onController);
+    super.dispose();
+  }
+}

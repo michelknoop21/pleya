@@ -183,6 +183,62 @@ bool bigPDisplayIsEmpty(AssistantDisplay display) => switch (display) {
 
 bool bigPHasChoices(List<AssistantDisplay> displays) => displays.any((d) => bigPChoiceCount(d) > 0);
 
+/// The title cards [display] draws when titles can be opened; each card
+/// opens its first target. Big P on the phone counts these too, for the
+/// titles still left to open.
+List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (display) {
+  AssistantTitleMatches(:final matches) => matches,
+  AssistantMediaGrid(:final entries) => [
+    for (final e in entries.take(_gridCap))
+      AssistantTitleMatch(
+        matchId: e.item.globalKey,
+        title: e.item.displayTitle,
+        year: e.item.year,
+        kind: e.item.kind.name,
+        confidence: 'high',
+        targets: [
+          // The representative first: the copy the card names is the
+          // copy it opens.
+          if (e.group case final group?)
+            for (final s in [
+              group.representativeSource,
+              ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
+            ])
+              (serverId: s.serverId, serverName: s.serverName, item: s.item)
+          else if (e.item.serverId case final id?)
+            (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
+        ],
+      ),
+  ],
+  // The missing titles are on [serverName]: cards that open that copy.
+  final AssistantServerComparison c => [
+    for (final item in c.missing.take(_gridCap))
+      AssistantTitleMatch(
+        matchId: item.globalKey,
+        title: item.displayTitle,
+        year: item.year,
+        kind: item.kind.name,
+        confidence: 'high',
+        targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
+      ),
+  ],
+  // The watched titles are title cards, as a found title is: poster,
+  // plays and viewers, and they open their library copy.
+  AssistantWatchStats(:final titles) => [
+    for (final x in titles.take(_watchTitles))
+      AssistantTitleMatch(
+        matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
+        title: x.title,
+        year: x.target?.item.year,
+        kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
+        confidence: 'high',
+        targets: [?x.target],
+        snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
+      ),
+  ],
+  _ => const [],
+};
+
 /// A tool's display, drawn on the panel. Request options and found titles
 /// are the focusable kinds: an option goes to [onPickOption]; a found title
 /// opens its library copy through [onOpenTitle], or, not in a library, goes
@@ -308,72 +364,24 @@ class BigPDisplayView extends StatelessWidget {
       AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [
         for (final e in entries.take(_gridCap)) titled(e.item.displayTitle, e.item.year),
       ]),
-      AssistantMediaGrid(:final entries) => _matches(pt, [
-        for (final e in entries.take(_gridCap))
-          AssistantTitleMatch(
-            matchId: e.item.globalKey,
-            title: e.item.displayTitle,
-            year: e.item.year,
-            kind: e.item.kind.name,
-            confidence: 'high',
-            targets: [
-              // The representative first: the copy the card names is the
-              // copy it opens.
-              if (e.group case final group?)
-                for (final s in [
-                  group.representativeSource,
-                  ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
-                ])
-                  (serverId: s.serverId, serverName: s.serverName, item: s.item)
-              else if (e.item.serverId case final id?)
-                (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
-            ],
-          ),
-      ]),
-      // The missing titles are on [serverName]: cards that open that copy.
+      AssistantMediaGrid() => _matches(pt, bigPTitleMatches(display)),
       final AssistantServerComparison c when onOpenTitle != null && c.missing.isNotEmpty => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           card(t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName), []),
           SizedBox(height: 10 * pt),
-          _matches(pt, [
-            for (final item in c.missing.take(_gridCap))
-              AssistantTitleMatch(
-                matchId: item.globalKey,
-                title: item.displayTitle,
-                year: item.year,
-                kind: item.kind.name,
-                confidence: 'high',
-                targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
-              ),
-          ]),
+          _matches(pt, bigPTitleMatches(c)),
         ],
       ),
       final AssistantServerComparison c => card(
         t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
         [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
       ),
-      // The watched titles are title cards, as a found title is: poster,
-      // plays and viewers, and they open their library copy.
       final AssistantWatchStats s => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           BigPWatchCard(stats: s),
-          if (s.titles.isNotEmpty) ...[
-            SizedBox(height: 10 * pt),
-            _matches(ranked: true, pt, [
-              for (final x in s.titles.take(_watchTitles))
-                AssistantTitleMatch(
-                  matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
-                  title: x.title,
-                  year: x.target?.item.year,
-                  kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
-                  confidence: 'high',
-                  targets: [?x.target],
-                  snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
-                ),
-            ]),
-          ],
+          if (s.titles.isNotEmpty) ...[SizedBox(height: 10 * pt), _matches(ranked: true, pt, bigPTitleMatches(s))],
         ],
       ),
       _ => const SizedBox.shrink(),

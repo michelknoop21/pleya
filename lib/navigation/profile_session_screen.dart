@@ -6,6 +6,7 @@ import '../providers/watchlist_provider.dart';
 import '../media/media_backend.dart';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,8 +38,10 @@ import '../providers/trackers_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
+import '../assistant/assistant_controller.dart';
 import '../assistant/assistant_controller_session.dart';
 import '../i18n/strings.g.dart';
+import '../screens/big_p/big_p_mobile_session.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
 import '../services/recommendations/interaction_recorder.dart';
@@ -51,6 +54,7 @@ import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../services/tautulli/tautulli_server_binding.dart';
 import '../utils/app_logger.dart';
+import '../utils/platform_detector.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import 'profile_navigation_scope.dart';
 
@@ -512,6 +516,9 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // Big P: per profile, so a conversation or an open confirmation
               // never carries into another profile. Lazy: no work until opened.
               ChangeNotifierProvider(create: assistantControllerForSession),
+              // Big P's place on iPhone and iPad only (V4): no Android, desktop or TV.
+              if (defaultTargetPlatform == TargetPlatform.iOS && !PlatformDetector.isTV())
+                ChangeNotifierProvider(create: (c) => BigPMobileSession(c.read<AssistantController>())),
             ],
             child: _ProfileSessionNavigator(
               isOfflineMode: widget.isOfflineMode,
