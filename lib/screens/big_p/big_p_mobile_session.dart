@@ -18,6 +18,9 @@ class BigPMobileSession extends ChangeNotifier {
   BigPMobileSession(this.controller, {DateTime Function()? now, this.keepAnswer = const Duration(minutes: 30)})
     : _now = now ?? DateTime.now,
       _lastState = controller.state {
+    // Already answered when the session is first read: that answer's age
+    // starts now.
+    if (_lastState == AssistantSurfaceState.result) _resultAt = _now();
     controller.addListener(_onController);
   }
 
@@ -73,12 +76,16 @@ class BigPMobileSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Back into the face button; the answer stays. A run in flight is let go
-  /// and the controller is back in rust, as TV's dismiss ends. A waiting
+  /// Back into the face button; the answer stays. An ask in flight is let
+  /// go and the controller is back in rust, as TV's dismiss ends. A waiting
   /// confirmation card keeps him out until the user picks (39 G).
   void park() {
     if (controller.pending != null) return;
-    if (controller.state == AssistantSurfaceState.working) {
+    // A picked option works on the answer's displays (an ask streaming its
+    // own displays is stillChecking): it finishes in the background and its
+    // result shows at the next summon.
+    final picking = controller.displays.isNotEmpty && !controller.stillChecking;
+    if (controller.state == AssistantSurfaceState.working && !picking) {
       controller.abort();
       // abort() alone leaves the controller in working and busy: the next
       // summon would show a run that never ends.
@@ -95,7 +102,9 @@ class BigPMobileSession extends ChangeNotifier {
 
   void _onController() {
     final state = controller.state;
-    if (state == AssistantSurfaceState.result && _lastState != AssistantSurfaceState.result) _resultAt = _now();
+    // Only a finished run or pick: a cancelled mic (listening -> result)
+    // shows the same old answer and keeps its age.
+    if (state == AssistantSurfaceState.result && _lastState == AssistantSurfaceState.working) _resultAt = _now();
     // A new ask starts with no displays; a picked option keeps them.
     if (state == AssistantSurfaceState.idle ||
         (state == AssistantSurfaceState.working && controller.displays.isEmpty)) {

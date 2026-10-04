@@ -85,9 +85,12 @@ void main() {
     });
   });
 
+  /// An ask that finishes, through working, as the controller's would.
   void answer() {
     c
       ..prompt = 'Iets met ruimte?'
+      ..state = AssistantSurfaceState.working
+      ..emit()
       ..answer = 'Twee films.'
       ..state = AssistantSurfaceState.result
       ..emit();
@@ -145,6 +148,61 @@ void main() {
     now = now.add(const Duration(minutes: 20));
     session.summon();
     expect(c.resets, 0);
+  });
+
+  test('a cancelled mic keeps the age of the answer', () {
+    session.summon();
+    answer();
+    now = now.add(const Duration(minutes: 20));
+    c.beginListening();
+    c
+      ..state = AssistantSurfaceState.result
+      ..emit();
+    now = now.add(const Duration(minutes: 10));
+    session.summon();
+    expect(c.resets, 1);
+  });
+
+  test('an answer already there when the session starts is aged from then', () {
+    answer();
+    final late = BigPMobileSession(c, now: () => now);
+    addTearDown(late.dispose);
+    now = now.add(const Duration(minutes: 30));
+    late.summon();
+    expect(c.resets, 1);
+  });
+
+  test('park during an option pick keeps the answer and lets the pick finish', () {
+    final servers = MultiServerManager();
+    addTearDown(servers.dispose);
+    c.displays = [
+      AssistantTitleMatches(AssistantToolContext(servers: servers), [_match('seerr', inLibrary: false)]),
+    ];
+    session.summon();
+    answer();
+    c
+      ..state = AssistantSurfaceState.working
+      ..emit();
+    session.park();
+    expect(session.stage, BigPStage.parked);
+    expect(c.aborts, 0);
+    expect(c.resets, 0);
+  });
+
+  test('park while an ask streams its displays lets it go', () {
+    final servers = MultiServerManager();
+    addTearDown(servers.dispose);
+    session.summon();
+    c
+      ..displays = [
+        AssistantTitleMatches(AssistantToolContext(servers: servers), [_match('a')]),
+      ]
+      ..stillChecking = true
+      ..state = AssistantSurfaceState.working
+      ..emit();
+    session.park();
+    expect(c.aborts, 1);
+    expect(c.resets, 1);
   });
 
   test('park with a waiting confirmation card is ignored', () {

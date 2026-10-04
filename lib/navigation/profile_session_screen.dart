@@ -516,8 +516,11 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               // Big P: per profile, so a conversation or an open confirmation
               // never carries into another profile. Lazy: no work until opened.
               ChangeNotifierProvider(create: assistantControllerForSession),
-              // Big P's place on iPhone and iPad only (V4): no Android, desktop or TV.
-              if (defaultTargetPlatform == TargetPlatform.iOS && !PlatformDetector.isTV())
+              // Big P's place on iPhone and iPad only (V4): no Android,
+              // desktop, TV or the iOS app on a Mac.
+              if (defaultTargetPlatform == TargetPlatform.iOS &&
+                  !PlatformDetector.isTV() &&
+                  !TvDetectionService.isIOSAppOnMacSync())
                 ChangeNotifierProvider(create: (c) => BigPMobileSession(c.read<AssistantController>())),
             ],
             child: _ProfileSessionNavigator(
