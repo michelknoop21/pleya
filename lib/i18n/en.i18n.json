@@ -1072,10 +1072,11 @@
     "privacyPolicy": "Privacy policy",
     "licence": "Licence",
     "sources": "Sources",
+    "tmdbSource": "TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.",
     "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
-    "wikidataSource": "Wikidata (CC0): original language, country and related titles for Big P.",
-    "tvmazeSource": "TVmaze (CC BY-SA): air dates and show status for Big P.",
-    "traktSource": "Trakt: ratings and popularity of titles for Big P."
+    "wikidataSource": "Wikidata (CC0): age rating (MPA) of films for Big P.",
+    "tvmazeSource": "TVmaze (CC BY-SA): genres, runtime and score of series for Big P.",
+    "traktSource": "Trakt: age rating, genres, runtime and score for Big P."
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Couldn't connect to any servers. Check your network.",
@@ -2590,7 +2591,7 @@
       "voice": "Big P's voice",
       "voiceNote": "Short spoken reactions. Never while you dictate or watch something.",
       "factsOnline": "Add online information",
-      "factsOnlineNote": "Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.",
+      "factsOnlineNote": "Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title's ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.",
       "tmdbKey": "Your own TMDB key",
       "tmdbKeyHelp": "Free to request at themoviedb.org (Settings > API). Paste the 'API Read Access Token'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.",
       "tmdbKeyStored": "Key saved",

@@ -2983,17 +2983,20 @@ class TranslationsAboutEn {
 	/// en: 'Sources'
 	String get sources => 'Sources';
 
+	/// en: 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.'
+	String get tmdbSource => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.';
+
 	/// en: 'This product uses the TMDB API but is not endorsed or certified by TMDB.'
 	String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
 
-	/// en: 'Wikidata (CC0): original language, country and related titles for Big P.'
-	String get wikidataSource => 'Wikidata (CC0): original language, country and related titles for Big P.';
+	/// en: 'Wikidata (CC0): age rating (MPA) of films for Big P.'
+	String get wikidataSource => 'Wikidata (CC0): age rating (MPA) of films for Big P.';
 
-	/// en: 'TVmaze (CC BY-SA): air dates and show status for Big P.'
-	String get tvmazeSource => 'TVmaze (CC BY-SA): air dates and show status for Big P.';
+	/// en: 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.'
+	String get tvmazeSource => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.';
 
-	/// en: 'Trakt: ratings and popularity of titles for Big P.'
-	String get traktSource => 'Trakt: ratings and popularity of titles for Big P.';
+	/// en: 'Trakt: age rating, genres, runtime and score for Big P.'
+	String get traktSource => 'Trakt: age rating, genres, runtime and score for Big P.';
 }
 
 // Path: serverSelection
@@ -8086,8 +8089,8 @@ class TranslationsAssistantSettingsEn {
 	/// en: 'Add online information'
 	String get factsOnline => 'Add online information';
 
-	/// en: 'Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.'
-	String get factsOnlineNote => 'Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.';
+	/// en: 'Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title's ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.'
+	String get factsOnlineNote => 'Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title\'s ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.';
 
 	/// en: 'Your own TMDB key'
 	String get tmdbKey => 'Your own TMDB key';
@@ -9426,10 +9429,11 @@ extension on Translations {
 			'about.privacyPolicy' => 'Privacy policy',
 			'about.licence' => 'Licence',
 			'about.sources' => 'Sources',
+			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-			'about.wikidataSource' => 'Wikidata (CC0): original language, country and related titles for Big P.',
-			'about.tvmazeSource' => 'TVmaze (CC BY-SA): air dates and show status for Big P.',
-			'about.traktSource' => 'Trakt: ratings and popularity of titles for Big P.',
+			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
+			'about.traktSource' => 'Trakt: age rating, genres, runtime and score for Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'No media servers found',
@@ -9461,9 +9465,9 @@ extension on Translations {
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
 			'navigation.libraries' => 'Libraries',
 			'navigation.downloads' => 'Downloads',
-			'navigation.liveTv' => 'Live TV',
 			_ => null,
 		} ?? switch (path) {
+			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Watchlist',
 			'navigation.myPleya' => 'My Pleya',
 			'watchlist.title' => 'Watchlist',
@@ -9975,9 +9979,9 @@ extension on Translations {
 			'metadataEdit.onNextRefresh' => 'On next refresh',
 			'metadataEdit.seasons' => 'Seasons',
 			'metadataEdit.show' => 'Show',
-			'metadataEdit.hide' => 'Hide',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.hide' => 'Hide',
 			'metadataEdit.episodeOrdering' => 'Episode Ordering',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Aired)',
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Aired)',
@@ -10489,9 +10493,9 @@ extension on Translations {
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya profile ${name} · applies to everything without a series preference of its own',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya profile · applies to everything without a series preference of its own',
 			'languageSettings.audio' => 'Audio',
-			'languageSettings.audioFallbackNote' => 'Without that language, the file\'s own default track',
 			_ => null,
 		} ?? switch (path) {
+			'languageSettings.audioFallbackNote' => 'Without that language, the file\'s own default track',
 			'languageSettings.subtitles' => 'Subtitles',
 			'languageSettings.subtitlesNote' => 'Preferred language for everything',
 			'languageSettings.subtitleFallback' => 'Subtitle fallback language',
@@ -10755,7 +10759,7 @@ extension on Translations {
 			'assistant.settings.voice' => 'Big P\'s voice',
 			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
 			'assistant.settings.factsOnline' => 'Add online information',
-			'assistant.settings.factsOnlineNote' => 'Big P then looks up year, ratings, where to watch and age rating of a title at TMDB, Trakt, TVmaze and Wikidata. Only the title is sent, never an account or watch history. With the switch off, Big P uses only your server and Seerr.',
+			'assistant.settings.factsOnlineNote' => 'Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title\'s ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.',
 			'assistant.settings.tmdbKey' => 'Your own TMDB key',
 			'assistant.settings.tmdbKeyHelp' => 'Free to request at themoviedb.org (Settings > API). Paste the \'API Read Access Token\'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.',
 			'assistant.settings.tmdbKeyStored' => 'Key saved',

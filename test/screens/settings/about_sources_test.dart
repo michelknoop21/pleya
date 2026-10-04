@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -30,10 +31,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('This product uses the TMDB API but is not endorsed or certified by TMDB.'), findsOneWidget);
-      expect(find.textContaining('Wikidata (CC0)'), findsOneWidget);
-      expect(find.textContaining('TVmaze (CC BY-SA)'), findsOneWidget);
-      expect(find.textContaining('Trakt'), findsOneWidget);
+      expect(
+        find.textContaining('This product uses the TMDB API but is not endorsed or certified by TMDB.'),
+        findsOneWidget,
+      );
+      expect(find.byType(SvgPicture), findsOneWidget, reason: 'the TMDB logo next to its notice');
+      // What each source really gives Big P.
+      expect(find.textContaining(RegExp(r'^TMDB: .*(trending).*\n')), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^Wikidata \(CC0\): .*\(MPA\)')), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^TVmaze \(CC BY-SA\): .*score')), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^Trakt: .*score')), findsOneWidget);
+      // Titles or ids go out, never the account or profile.
+      expect(
+        t.assistant.settings.factsOnlineNote,
+        allOf(isNot(contains('kijkgeschiedenis')), isNot(contains('watch history')), contains('id')),
+      );
     });
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pleya/widgets/pleya_logo.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -37,9 +38,14 @@ class AboutScreen extends StatelessWidget {
       'licensed under the GNU General Public License v3.0. '
       'You may redistribute and modify it under those terms.';
 
+  /// TMDB's own logo, which its attribution rules ask for next to the notice.
+  static const tmdbLogo = 'assets/rating_icons/tmdb.svg';
+
   /// The data sources of Big P's title facts, shared with `TvAboutScreen`.
-  static List<(IconData, String)> sourceLines() => [
-    (Symbols.movie_rounded, t.about.tmdbAttribution),
+  /// No icon means the TMDB logo; its line ends in the notice TMDB requires,
+  /// in English in every language.
+  static List<(IconData?, String)> sourceLines() => [
+    (null, '${t.about.tmdbSource}\n${t.about.tmdbAttribution}'),
     (Symbols.database_rounded, t.about.wikidataSource),
     (Symbols.tv_rounded, t.about.tvmazeSource),
     (Symbols.thumbs_up_down_rounded, t.about.traktSource),
@@ -130,12 +136,16 @@ class AboutScreen extends StatelessWidget {
 
                   const SizedBox(height: 8),
 
-                  // Data sources Big P uses; the TMDB line is the attribution
-                  // TMDB requires, in English in every language.
+                  // Data sources Big P uses.
                   SettingsGroup(
                     children: [
                       for (final (icon, text) in sourceLines())
-                        ListTile(leading: SettingsIconBadge(icon), title: Text(text)),
+                        ListTile(
+                          leading: icon == null
+                              ? SvgPicture.asset(tmdbLogo, width: 36, semanticsLabel: 'TMDB')
+                              : SettingsIconBadge(icon),
+                          title: Text(text),
+                        ),
                     ],
                   ),
 

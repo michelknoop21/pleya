@@ -1246,10 +1246,11 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String get privacyPolicy => 'Privacybeleid';
 	@override String get licence => 'Licentie';
 	@override String get sources => 'Bronnen';
+	@override String get tmdbSource => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.';
 	@override String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
-	@override String get wikidataSource => 'Wikidata (CC0): oorspronkelijke taal, land en verwante titels voor Big P.';
-	@override String get tvmazeSource => 'TVmaze (CC BY-SA): uitzenddata en status van series voor Big P.';
-	@override String get traktSource => 'Trakt: waardering en populariteit van titels voor Big P.';
+	@override String get wikidataSource => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.';
+	@override String get tvmazeSource => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.';
+	@override String get traktSource => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.';
 }
 
 // Path: serverSelection
@@ -3521,7 +3522,7 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get voice => 'Stem van Big P';
 	@override String get voiceNote => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.';
 	@override String get factsOnline => 'Online informatie aanvullen';
-	@override String get factsOnlineNote => 'Big P haalt dan jaar, waardering, waar je hem kunt kijken en leeftijdsadvies van een titel op bij TMDB, Trakt, TVmaze en Wikidata. Er gaat alleen de titel heen, geen account of kijkgeschiedenis. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.';
+	@override String get factsOnlineNote => 'Big P vult dan leeftijdsclassificatie, genres, speelduur, cast, score en streamingdiensten van een titel aan via TMDB, Trakt, TVmaze en Wikidata. Daarvoor gaan alleen de titel of de id\'s van die titel naar die diensten, nooit je account of profiel. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.';
 	@override String get tmdbKey => 'Eigen TMDB-sleutel';
 	@override String get tmdbKeyHelp => 'Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de \'API Read Access Token\'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.';
 	@override String get tmdbKeyStored => 'Sleutel opgeslagen';
@@ -4703,10 +4704,11 @@ extension on TranslationsNl {
 			'about.privacyPolicy' => 'Privacybeleid',
 			'about.licence' => 'Licentie',
 			'about.sources' => 'Bronnen',
+			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.',
 			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-			'about.wikidataSource' => 'Wikidata (CC0): oorspronkelijke taal, land en verwante titels voor Big P.',
-			'about.tvmazeSource' => 'TVmaze (CC BY-SA): uitzenddata en status van series voor Big P.',
-			'about.traktSource' => 'Trakt: waardering en populariteit van titels voor Big P.',
+			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
+			'about.traktSource' => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
@@ -4738,9 +4740,9 @@ extension on TranslationsNl {
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
-			'navigation.liveTv' => 'Live TV',
 			_ => null,
 		} ?? switch (path) {
+			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Kijklijst',
 			'navigation.myPleya' => 'Mijn Pleya',
 			'watchlist.title' => 'Kijklijst',
@@ -5252,9 +5254,9 @@ extension on TranslationsNl {
 			'metadataEdit.onNextRefresh' => 'Bij volgende verversing',
 			'metadataEdit.seasons' => 'Seizoenen',
 			'metadataEdit.show' => 'Tonen',
-			'metadataEdit.hide' => 'Verbergen',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.hide' => 'Verbergen',
 			'metadataEdit.episodeOrdering' => 'Afleveringsvolgorde',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Uitgezonden)',
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Uitgezonden)',
@@ -5766,9 +5768,9 @@ extension on TranslationsNl {
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.audio' => 'Audio',
-			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
 			_ => null,
 		} ?? switch (path) {
+			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
 			'languageSettings.subtitles' => 'Ondertitels',
 			'languageSettings.subtitlesNote' => 'Voorkeurstaal voor alle content',
 			'languageSettings.subtitleFallback' => 'Terugvaltaal ondertitels',
@@ -6032,7 +6034,7 @@ extension on TranslationsNl {
 			'assistant.settings.voice' => 'Stem van Big P',
 			'assistant.settings.voiceNote' => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.',
 			'assistant.settings.factsOnline' => 'Online informatie aanvullen',
-			'assistant.settings.factsOnlineNote' => 'Big P haalt dan jaar, waardering, waar je hem kunt kijken en leeftijdsadvies van een titel op bij TMDB, Trakt, TVmaze en Wikidata. Er gaat alleen de titel heen, geen account of kijkgeschiedenis. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.',
+			'assistant.settings.factsOnlineNote' => 'Big P vult dan leeftijdsclassificatie, genres, speelduur, cast, score en streamingdiensten van een titel aan via TMDB, Trakt, TVmaze en Wikidata. Daarvoor gaan alleen de titel of de id\'s van die titel naar die diensten, nooit je account of profiel. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.',
 			'assistant.settings.tmdbKey' => 'Eigen TMDB-sleutel',
 			'assistant.settings.tmdbKeyHelp' => 'Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de \'API Read Access Token\'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.',
 			'assistant.settings.tmdbKeyStored' => 'Sleutel opgeslagen',
