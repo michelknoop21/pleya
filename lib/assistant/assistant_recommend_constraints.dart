@@ -16,7 +16,9 @@ final _dropKids = RegExp(
 );
 final _kidsWord = RegExp(r'kinder|\bkids?\b|children');
 final _sharedAccount = RegExp(r'\b(deel|share)\b.*\baccount');
-final _adviceWord = RegExp(r'\bvoorstel\b|\btips?\b|aanrader|recommend');
+final _adviceWord = RegExp(
+  r'\bvoorstel\b|(?:twee|drie|vier|vijf|zes|paar|\d+)\s+voorstellen|\btips?\b|aanrader|recommend',
+);
 // Watching something again is not asking for something new.
 final _again = RegExp(r'nog eens|opnieuw|herzien|\bagain\b|re-?watch');
 

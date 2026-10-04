@@ -96,6 +96,7 @@ void main() {
       );
       expect(AssistantRecommendConstraints.fromPrompt('Kun je je dat voorstellen?').excludeWatched, isFalse);
       expect(AssistantRecommendConstraints.fromPrompt('Doe een voorstel voor vanavond').excludeWatched, isTrue);
+      expect(AssistantRecommendConstraints.fromPrompt('Geef me drie voorstellen').excludeWatched, isTrue);
     });
 
     test('the asked number: explicit beats an article, serie and één count', () {
