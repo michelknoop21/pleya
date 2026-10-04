@@ -52,19 +52,19 @@ class BigPGlassPanel extends StatelessWidget {
 
 /// The dark ground cards keep on the glass, for contrast (Paneel).
 class BigPCard extends StatelessWidget {
-  const BigPCard({super.key, required this.child});
+  const BigPCard({super.key, required this.child, this.padding});
 
   final Widget child;
+
+  /// In points; the result card's own padding when null.
+  final EdgeInsets? padding;
 
   @override
   Widget build(BuildContext context) {
     final pt = BigPScale.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(color: const Color(0xE6161616), borderRadius: BorderRadius.circular(20 * pt)),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 28 * pt, vertical: 22 * pt),
-        child: child,
-      ),
+      child: Padding(padding: (padding ?? const EdgeInsets.symmetric(horizontal: 28, vertical: 22)) * pt, child: child),
     );
   }
 }
@@ -143,12 +143,14 @@ class BigPStatusLine extends StatelessWidget {
 }
 
 /// A full-width focusable capsule: an example question, or anything else
-/// that reads as a sentence rather than a button label.
+/// that reads as a sentence rather than a button label. On a task card the
+/// short label gets a [semanticLabel] that says in full what it acts on.
 class BigPChip extends StatefulWidget {
   const BigPChip({
     super.key,
     required this.label,
     required this.onSelect,
+    this.semanticLabel,
     this.icon,
     this.dense = false,
     this.fill,
@@ -158,6 +160,7 @@ class BigPChip extends StatefulWidget {
   });
 
   final String label;
+  final String? semanticLabel;
   final VoidCallback onSelect;
 
   /// The resting fill; a pill floating over the page (39 E) is opaque.
@@ -191,7 +194,7 @@ class _BigPChipState extends State<BigPChip> {
         focusNode: widget.focusNode,
         borderRadius: 40 * pt,
         disableScale: true,
-        semanticLabel: widget.label,
+        semanticLabel: widget.semanticLabel ?? widget.label,
         automationId: widget.automationId,
         automationInstance: widget.automationInstance,
         automationRole: 'button',
@@ -217,14 +220,18 @@ class _BigPChipState extends State<BigPChip> {
                 SizedBox(width: 10 * pt),
               ],
               Flexible(
-                child: Text(
-                  widget.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _focused ? colors.onInverseSurface : tokens(context).text,
-                    fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
-                    height: 1.25,
+                // A fuller label speaks for the capsule; the short one is not read twice.
+                child: ExcludeSemantics(
+                  excluding: widget.semanticLabel != null,
+                  child: Text(
+                    widget.label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _focused ? colors.onInverseSurface : tokens(context).text,
+                      fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
+                      height: 1.25,
+                    ),
                   ),
                 ),
               ),

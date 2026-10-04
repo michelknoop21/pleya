@@ -15,16 +15,24 @@ class SeerrException implements Exception {
   final bool isAuth;
   final bool isForbidden;
   final bool isNetwork;
+  final int? statusCode;
 
-  const SeerrException(this.message, {this.isAuth = false, this.isForbidden = false, this.isNetwork = false});
+  const SeerrException(
+    this.message, {
+    this.isAuth = false,
+    this.isForbidden = false,
+    this.isNetwork = false,
+    this.statusCode,
+  });
 
   factory SeerrException.auth() => const SeerrException('Not authenticated', isAuth: true);
   factory SeerrException.forbidden() => const SeerrException('Not permitted', isForbidden: true);
-  factory SeerrException.network(String m) => SeerrException(m, isNetwork: true);
+  factory SeerrException.network(String m, {int? statusCode}) =>
+      SeerrException(m, isNetwork: true, statusCode: statusCode);
   factory SeerrException.http(int code, Object? body) {
     // Overseerr/Jellyseerr return {"message": ...} on failure — surface it.
     final msg = body is Map ? body['message']?.toString() : null;
-    return SeerrException(msg != null && msg.isNotEmpty ? msg : 'HTTP $code');
+    return SeerrException(msg != null && msg.isNotEmpty ? msg : 'HTTP $code', statusCode: code);
   }
 
   @override
@@ -314,7 +322,7 @@ class SeerrClient {
 
   /// `POST /request`. [seasons] is only sent for TV; pass a list of season
   /// numbers. Advanced (admin) options are optional.
-  Future<void> createRequest({
+  Future<Map<String, dynamic>> createRequest({
     required String mediaType,
     required int tmdbId,
     List<int>? seasons,
@@ -332,8 +340,17 @@ class SeerrClient {
       'profileId': ?profileId,
       'rootFolder': ?rootFolder,
     };
-    final resp = await _send(() => _http.post('/request', body: body, headers: _authHeaders()));
+    final MediaServerResponse resp;
+    try {
+      resp = await _send(() => _http.post('/request', body: body, headers: _authHeaders()));
+    } on SeerrException catch (e) {
+      // A 2xx response can be accepted even when its JSON body is unreadable.
+      // Keep that evidence distinct from a response lost on the transport.
+      if (e.isNetwork && e.statusCode != null && e.statusCode! >= 200 && e.statusCode! < 300) return const {};
+      rethrow;
+    }
     _throwIfError(resp);
+    return resp.data is Map ? (resp.data as Map).cast<String, dynamic>() : const {};
   }
 
   /// `GET /request/count`. Feeds the counts next to the filter tabs. Returns
@@ -545,7 +562,7 @@ class SeerrClient {
     try {
       return await send();
     } on MediaServerHttpException catch (e) {
-      throw SeerrException.network(e.message);
+      throw SeerrException.network(e.message, statusCode: e.statusCode);
     }
   }
 

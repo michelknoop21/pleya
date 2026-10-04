@@ -3,6 +3,7 @@ import '../media/media_item.dart';
 import '../media/play_queue.dart';
 import '../models/plex/play_queue_response.dart';
 import '../mixins/disposable_change_notifier_mixin.dart';
+import '../assistant/assistant_playback.dart';
 
 /// Fetches a window of items from a server-side play queue. Provider calls
 /// this when the currently loaded window doesn't contain the next item it
@@ -23,6 +24,30 @@ class _IndexLookupResult {
 /// Manages playback state using Plex's play queue API.
 /// This provider is session-only and does not persist across app restarts.
 class PlaybackStateProvider with ChangeNotifier, DisposableChangeNotifierMixin {
+  AssistantPlaybackServices? _assistantPlayback;
+  AssistantPlaybackServices? get assistantPlayback => _assistantPlayback;
+
+  /// Silent registration: no widget state changes during player init/dispose.
+  VoidCallback registerAssistantPlayback(AssistantPlaybackServices service) {
+    final lease = Object();
+    _assistantPlaybackLease = lease;
+    _assistantPlayback = service;
+    return () {
+      if (_assistantPlaybackLease != lease) return;
+      _assistantPlaybackLease = null;
+      _assistantPlayback = null;
+    };
+  }
+
+  Object? _assistantPlaybackLease;
+
+  @override
+  void dispose() {
+    _assistantPlaybackLease = null;
+    _assistantPlayback = null;
+    super.dispose();
+  }
+
   // Play queue state
   int? _playQueueId;
   int _playQueueTotalCount = 0;

@@ -184,11 +184,14 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         .toList();
   }
 
+  /// Request evidence can require an explicit server count and lossless rows.
+  /// Normal browsing retains its existing fallback pagination by default.
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryContent(
     String libraryId,
     LibraryQuery query, {
     AbortController? abort,
+    bool requireTotalCount = false,
   }) async {
     final translator = JellyfinLibraryQueryTranslator(
       userId: connection.userId,
@@ -202,10 +205,19 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final data = response.data;
     final items = _itemsArray(data);
     final rawTotal = data is Map<String, dynamic> ? data['TotalRecordCount'] : null;
+    final mapped = _mapItems(items);
+    if (requireTotalCount &&
+        (rawTotal is! int ||
+            rawTotal < 0 ||
+            data is! Map ||
+            data['Items'] is! List ||
+            (data['Items'] as List).length != mapped.length)) {
+      throw StateError('Unverified library page');
+    }
     final total = rawTotal is int
         ? rawTotal
         : _fallbackPageTotal(offset: query.offset, itemCount: items.length, requestedSize: query.limit);
-    return LibraryPage<MediaItem>(items: _mapItems(items), totalCount: total, offset: query.offset);
+    return LibraryPage<MediaItem>(items: mapped, totalCount: total, offset: query.offset);
   }
 
   @override
@@ -512,13 +524,41 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     required LibraryQuery query,
     MediaKind? libraryKind,
     AbortController? abort,
+    bool requireTotalCount = false,
   }) async {
     // [libraryKind] is only a fallback for library-default browsing. Explicit
     // grouping types on [query] (seasons/episodes) must keep priority.
     final effective = (query.kind == null && libraryKind != null && libraryKind != MediaKind.unknown)
         ? query.copyWith(kind: libraryKind)
         : query;
-    return fetchLibraryContent(libraryId, effective, abort: abort);
+    final page = await fetchLibraryContent(libraryId, effective, abort: abort, requireTotalCount: requireTotalCount);
+    if (requireTotalCount &&
+        page.items.any((item) {
+          final raw = item.raw;
+          return raw != null &&
+              raw.containsKey('ParentLibraryId') &&
+              (raw['ParentLibraryId'] is! String || (raw['ParentLibraryId'] as String).isEmpty);
+        })) {
+      throw StateError('Unverified top-level library');
+    }
+    // A typed catalog page was queried recursively under this top-level
+    // library. ParentId on individual DTOs may be a nested folder, or absent.
+    // Preserve an explicit ParentLibraryId: conflicting scope must remain
+    // visible to callers' hidden-library checks rather than being overwritten.
+    if ((libraryKind == MediaKind.movie || libraryKind == MediaKind.show) && effective.kind == libraryKind) {
+      return LibraryPage<MediaItem>(
+        items: [
+          for (final item in page.items)
+            if (item.raw?['ParentLibraryId'] case final String topId when topId.isNotEmpty)
+              item
+            else
+              item.copyWith(libraryId: libraryId),
+        ],
+        totalCount: page.totalCount,
+        offset: page.offset,
+      );
+    }
+    return page;
   }
 
   /// Synthesised 27-letter alphabet — Jellyfin has no equivalent of Plex's
@@ -1261,6 +1301,136 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       appLogger.w('Jellyfin: recently added shows fetch failed (treating as empty)', error: e, stackTrace: st);
       return const [];
     }
+  }
+
+  /// Complete, uncached current-user resume evidence for spoiler context.
+  /// Unlike the Home row this never merges NextUp or collapses by series.
+  /// Null means unsupported/incomplete/malformed coverage, never "no progress".
+  Future<List<MediaItem>?> readCurrentUserResumePositions({
+    required List<MediaLibrary> visibleLibraries,
+    required void Function() checkCurrent,
+  }) async {
+    if (isOfflineMode || connection.isEmby || visibleLibraries.length > 12) return null;
+    checkCurrent();
+    final response = await _http.get(
+      connection.resumeItemsPath,
+      queryParameters: {
+        'userId': connection.userId,
+        'StartIndex': '0',
+        'Limit': '101',
+        'EnableUserData': 'true',
+        'EnableTotalRecordCount': 'true',
+        'ExcludeActiveSessions': 'false',
+        'MediaTypes': 'Video',
+        'Fields': 'UserData',
+      },
+    );
+    checkCurrent();
+    throwIfHttpError(response);
+    List<Map<String, dynamic>>? complete(Object? data) {
+      if (data is! Map<String, dynamic> || data['Items'] is! List || data['TotalRecordCount'] is! int) return null;
+      final raw = data['Items'] as List, total = data['TotalRecordCount'] as int;
+      if (total < 0 || total > 100 || total != raw.length || raw.any((item) => item is! Map<String, dynamic>)) {
+        return null;
+      }
+      final items = raw.cast<Map<String, dynamic>>();
+      if (items.any((item) => item['Id'] is! String || (item['Id'] as String).isEmpty) ||
+          items.map((item) => item['Id']).toSet().length != items.length) {
+        return null;
+      }
+      return items;
+    }
+
+    MediaItem? position(Map<String, dynamic> dto) {
+      final user = dto['UserData'];
+      if (user is! Map<String, dynamic> ||
+          user['Played'] is! bool ||
+          user['PlaybackPositionTicks'] is! int ||
+          (user['PlaybackPositionTicks'] as int) < 0) {
+        return null;
+      }
+      // Resume context needs no names, summaries, cast, images or raw payload.
+      return _mapItem({
+        for (final key in [
+          'Id',
+          'Type',
+          'SeasonId',
+          'ParentId',
+          'SeriesId',
+          'ParentIndexNumber',
+          'IndexNumber',
+          'RunTimeTicks',
+          'UserData',
+        ])
+          if (dto.containsKey(key)) key: dto[key],
+      });
+    }
+
+    final raw = complete(response.data);
+    if (raw == null) return null;
+    final positions = <String, MediaItem>{};
+    for (final dto in raw) {
+      final item = position(dto);
+      if (item == null) return null;
+      // Zero-progress NextUp-like records confer no boundary.
+      if ((dto['UserData']['PlaybackPositionTicks'] as int) == 0) continue;
+      if (item.viewOffsetMs == null ||
+          item.viewOffsetMs! <= 0 ||
+          item.durationMs == null ||
+          item.durationMs! <= item.viewOffsetMs!) {
+        return null;
+      }
+      positions[item.id] = item;
+    }
+    if (positions.isEmpty) return const [];
+    final scoped = <String, MediaItem>{};
+    for (final library in visibleLibraries) {
+      checkCurrent();
+      if (library.serverId != serverId.value || library.id.isEmpty) return null;
+      final exact = await _http.get(
+        '/Items',
+        queryParameters: {
+          'userId': connection.userId,
+          'ParentId': library.id,
+          'Recursive': 'true',
+          'Ids': positions.keys.join(','),
+          'StartIndex': '0',
+          'Limit': '101',
+          'EnableUserData': 'true',
+          'EnableTotalRecordCount': 'true',
+          'Fields': 'UserData',
+        },
+      );
+      checkCurrent();
+      throwIfHttpError(exact);
+      final rows = complete(exact.data);
+      if (rows == null) return null;
+      for (final dto in rows) {
+        final item = position(dto);
+        if (item == null) return null;
+        final expected = positions[item.id];
+        if (expected == null || scoped.containsKey(item.id)) return null;
+        final top = dto['ParentLibraryId'];
+        final resumeTop = raw.firstWhere((row) => row['Id'] == item.id)['ParentLibraryId'];
+        if ((dto.containsKey('ParentLibraryId') && (top is! String || top != library.id)) ||
+            (raw.firstWhere((row) => row['Id'] == item.id).containsKey('ParentLibraryId') &&
+                (resumeTop is! String || resumeTop != library.id))) {
+          return null;
+        }
+        if (item.kind != expected.kind ||
+            item.parentId != expected.parentId ||
+            item.grandparentId != expected.grandparentId ||
+            item.parentIndex != expected.parentIndex ||
+            item.index != expected.index ||
+            item.durationMs != expected.durationMs ||
+            item.viewOffsetMs != expected.viewOffsetMs) {
+          return null;
+        }
+        scoped[item.id] = item.copyWith(libraryId: library.id, raw: null);
+      }
+    }
+    checkCurrent();
+    return scoped.values.toList();
   }
 
   @override

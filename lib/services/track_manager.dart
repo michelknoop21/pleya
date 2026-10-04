@@ -98,6 +98,7 @@ class TrackManager {
   bool waitingForExternalSubsTrackSelection = false;
   bool _externalSubtitleAddsInFlight = false;
   bool _isApplyingTrackSelection = false;
+  bool Function()? _externalSubtitleSelectionScope;
   List<SubtitleTrack> _lastExternalSubtitles = const [];
   StreamSubscription<Tracks>? _trackLoadingSubscription;
   Timer? _subtitleFallbackTimer;
@@ -135,8 +136,14 @@ class TrackManager {
   /// MPV assigns subtitle track IDs in completion order, so parallel sub-adds
   /// make the track list nondeterministic. Keep this ordered for the fallback
   /// paths that cannot attach sidecars through loadfile.
-  Future<void> addExternalSubtitles(List<SubtitleTrack> externalSubtitles, {Future<void>? waitUntilReady}) async {
-    if (externalSubtitles.isEmpty) return;
+  Future<void> addExternalSubtitles(
+    List<SubtitleTrack> externalSubtitles, {
+    Future<void>? waitUntilReady,
+    bool Function()? isCurrent,
+  }) async {
+    bool live() => isActive() && (isCurrent?.call() ?? true);
+    if (waitingForExternalSubsTrackSelection) _externalSubtitleSelectionScope = isCurrent;
+    if (externalSubtitles.isEmpty || !live()) return;
 
     _externalSubtitleAddsInFlight = true;
     try {
@@ -146,12 +153,13 @@ class TrackManager {
         } catch (e) {
           appLogger.w('Continuing external subtitle load after readiness wait failed', error: e);
         }
-        if (!isActive()) return;
+        if (!live()) return;
       }
 
       appLogger.d('Adding ${externalSubtitles.length} external subtitle(s) to player');
 
       for (final subtitleTrack in externalSubtitles.where((s) => s.uri != null)) {
+        if (!live()) return;
         try {
           await player.addSubtitleTrack(
             uri: subtitleTrack.uri!,
@@ -159,6 +167,7 @@ class TrackManager {
             language: subtitleTrack.language,
             select: subtitleTrack.isDefault,
           );
+          if (!live()) return;
           appLogger.d('Added external subtitle: ${subtitleTrack.title ?? subtitleTrack.uri}');
         } catch (e) {
           appLogger.w('Failed to add external subtitle: ${subtitleTrack.title ?? subtitleTrack.uri}', error: e);
@@ -171,11 +180,14 @@ class TrackManager {
 
   /// Resume playback after external subtitles have been loaded (or failed).
   /// Sets up a 3-second fallback in case playbackRestart doesn't fire.
-  Future<void> resumeAfterSubtitleLoad() async {
-    if (!isActive()) return;
+  Future<void> resumeAfterSubtitleLoad({bool Function()? isCurrent}) async {
+    bool live() => isActive() && (isCurrent?.call() ?? true);
+    _externalSubtitleSelectionScope = isCurrent;
+    if (!live()) return;
 
     try {
       await player.play();
+      if (!live()) return;
       final pos = player.state.position;
       try {
         await player.seek(pos.inMilliseconds > 0 ? pos : Duration.zero);
@@ -186,16 +198,18 @@ class TrackManager {
       // play() failed — clear the flag immediately since playbackRestart won't fire
       appLogger.w('Resume after subtitle load failed, applying track selection directly', error: e);
       waitingForExternalSubsTrackSelection = false;
-      unawaited(applyTrackSelection());
+      if (!live()) return;
+      unawaited(applyTrackSelection(isCurrent: isCurrent));
       return;
     }
 
+    if (!live()) return;
     // Fallback if playbackRestart doesn't fire
     _subtitleFallbackTimer?.cancel();
     _subtitleFallbackTimer = Timer(const Duration(seconds: 3), () {
-      if (waitingForExternalSubsTrackSelection && isActive()) {
+      if (waitingForExternalSubsTrackSelection && live()) {
         waitingForExternalSubsTrackSelection = false;
-        applyTrackSelection();
+        applyTrackSelection(isCurrent: isCurrent);
       }
     });
   }
@@ -204,28 +218,30 @@ class TrackManager {
 
   /// Apply track selection once tracks are available.
   /// If tracks are not yet loaded, subscribes to the stream.
-  void applyTrackSelectionWhenReady() {
+  void applyTrackSelectionWhenReady({bool Function()? isCurrent}) {
+    bool live() => isActive() && (isCurrent?.call() ?? true);
+    if (!live()) return;
     final currentTracks = player.state.tracks;
     if (_tracksReadyForSelection(currentTracks)) {
-      applyTrackSelection();
+      applyTrackSelection(isCurrent: isCurrent);
     } else {
       _trackLoadingSubscription?.cancel();
       _trackLoadingSubscription = player.streams.tracks.listen((tracks) {
-        if (!_tracksReadyForSelection(tracks)) return;
+        if (!live() || !_tracksReadyForSelection(tracks)) return;
 
         _trackLoadingSubscription?.cancel();
         _trackLoadingSubscription = null;
         _trackSelectionFallbackTimer?.cancel();
         _trackSelectionFallbackTimer = null;
-        applyTrackSelection();
+        applyTrackSelection(isCurrent: isCurrent);
       });
 
       _trackSelectionFallbackTimer?.cancel();
       _trackSelectionFallbackTimer = Timer(const Duration(seconds: 5), () {
-        if (!isActive()) return;
+        if (!live()) return;
         _trackLoadingSubscription?.cancel();
         _trackLoadingSubscription = null;
-        applyTrackSelection();
+        applyTrackSelection(isCurrent: isCurrent);
       });
     }
   }
@@ -246,23 +262,24 @@ class TrackManager {
   }
 
   /// Core track selection: delegates to [TrackSelectionService].
-  Future<void> applyTrackSelection() async {
-    if (!isActive() || _isApplyingTrackSelection) return;
+  Future<void> applyTrackSelection({bool Function()? isCurrent}) async {
+    bool live() => isActive() && (isCurrent?.call() ?? true);
+    if (!live() || _isApplyingTrackSelection) return;
 
     _isApplyingTrackSelection = true;
     try {
       await waitForProfileSettings();
-      if (!isActive()) return;
+      if (!live()) return;
 
       final profileSettings = getProfileSettings();
       final settingsService = await SettingsService.getInstance();
-      if (!isActive()) return;
+      if (!live()) return;
 
       // Re-read per item: episode navigation swaps [metadata] underneath us,
       // and the choice may have arrived from another device via iCloud since
       // the last item started.
       final stickyChoice = await TrackPreferenceStore.read(metadata);
-      if (!isActive()) return;
+      if (!live()) return;
 
       // The global layer is the Pleya profile and applies to every backend
       // alike — Plex, Jellyfin, Pleya Server, offline (DEC-109 lid 5). Read
@@ -273,9 +290,9 @@ class TrackManager {
       // because those are the two doors into this preference and a viewer may
       // reach either first. It is guarded and idempotent.
       await PleyaProfileLanguagePreferenceStore.ensureInitialised(profileSettings);
-      if (!isActive()) return;
+      if (!live()) return;
       final globalPreferences = await PleyaProfileLanguagePreferenceStore.read();
-      if (!isActive()) return;
+      if (!live()) return;
 
       final trackService = TrackSelectionService(
         player: player,
@@ -292,9 +309,14 @@ class TrackManager {
         preferredSubtitleTrack: preferredSubtitleTrack,
         preferredSecondarySubtitleTrack: preferredSecondarySubtitleTrack,
         defaultPlaybackSpeed: settingsService.read(SettingsService.defaultPlaybackSpeed),
-        onAudioTrackChanged: onAudioTrackChanged,
-        onSubtitleTrackChanged: onSubtitleTrackChanged,
-        onLanguageNotice: onLanguageNotice,
+        isCurrent: isCurrent == null ? null : live,
+        onAudioTrackChanged: (track, {required userInitiated}) =>
+            onAudioTrackChanged(track, userInitiated: userInitiated, isCurrent: live),
+        onSubtitleTrackChanged: (track, {required userInitiated}) =>
+            onSubtitleTrackChanged(track, userInitiated: userInitiated, isCurrent: live),
+        onLanguageNotice: (notice) {
+          if (live()) onLanguageNotice?.call(notice);
+        },
       );
     } catch (e) {
       appLogger.w('Failed to apply track selection', error: e);
@@ -308,7 +330,9 @@ class TrackManager {
     if (waitingForExternalSubsTrackSelection) {
       if (_externalSubtitleAddsInFlight) return;
       waitingForExternalSubsTrackSelection = false;
-      applyTrackSelection();
+      final scope = _externalSubtitleSelectionScope;
+      _externalSubtitleSelectionScope = null;
+      applyTrackSelection(isCurrent: scope);
     }
   }
 
@@ -381,11 +405,14 @@ class TrackManager {
   /// "Onthoud keuzes per serie" on — the series preference. False means
   /// automatic resolution landed here, and then only the source is told which
   /// stream is playing: a resolution is never written back as a wish.
-  Future<void> onAudioTrackChanged(AudioTrack track, {bool userInitiated = true}) async {
-    if (userInitiated) await _rememberAudioLanguage(track);
+  Future<void> onAudioTrackChanged(AudioTrack track, {bool userInitiated = true, bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
+    if (userInitiated) await _rememberAudioLanguage(track, isCurrent: isCurrent);
+    if (!(isCurrent?.call() ?? true)) return;
 
     final info = mediaInfo;
     final partId = await _guardTrackChange(info);
+    if (!(isCurrent?.call() ?? true)) return;
     if (partId == null || info == null) return;
 
     int? streamID = _matchTrackByAttributes(
@@ -410,16 +437,24 @@ class TrackManager {
       }
     }
 
+    if (!(isCurrent?.call() ?? true)) return;
     await _saveTrackPreferences(partId: partId, trackType: 'audio', streamID: streamID);
   }
 
   /// Handle a subtitle track becoming active. See [onAudioTrackChanged] for
   /// what [userInitiated] decides.
-  Future<void> onSubtitleTrackChanged(SubtitleTrack track, {bool userInitiated = true}) async {
-    if (userInitiated) await _rememberSubtitleLanguage(track);
+  Future<void> onSubtitleTrackChanged(
+    SubtitleTrack track, {
+    bool userInitiated = true,
+    bool Function()? isCurrent,
+  }) async {
+    if (!(isCurrent?.call() ?? true)) return;
+    if (userInitiated) await _rememberSubtitleLanguage(track, isCurrent: isCurrent);
+    if (!(isCurrent?.call() ?? true)) return;
 
     final info = mediaInfo;
     final partId = await _guardTrackChange(info);
+    if (!(isCurrent?.call() ?? true)) return;
     if (partId == null) return;
 
     int? streamID;
@@ -455,6 +490,7 @@ class TrackManager {
       }
     }
 
+    if (!(isCurrent?.call() ?? true)) return;
     await _saveTrackPreferences(partId: partId, trackType: 'subtitle', streamID: streamID);
   }
 
@@ -473,7 +509,8 @@ class TrackManager {
   /// [_guardTrackChange] on purpose: that guard bails out for backends without
   /// a server-side stream write (Jellyfin), which would otherwise never
   /// remember anything at all.
-  Future<void> _rememberAudioLanguage(AudioTrack track) async {
+  Future<void> _rememberAudioLanguage(AudioTrack track, {bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
     final language = track.language;
     // A track without a language code says nothing about what to pick on the
     // next episode, so leave the previous choice alone rather than clear it.
@@ -484,15 +521,18 @@ class TrackManager {
     // not that it stops at this episode (DEC-109 lid 3).
     sessionIntent = _mergeSessionIntent(audioLanguage: language, audioTitle: track.title);
 
-    await TrackPreferenceStore.saveAudio(metadata, language: language, title: track.title);
+    await TrackPreferenceStore.saveAudio(metadata, language: language, title: track.title, isCurrent: isCurrent);
+    if (!(isCurrent?.call() ?? true)) return;
     await announceRememberedChoice(kind: LanguageTrackKind.audio, language: language);
-    await _mirrorSeriesLanguageToServer();
+    await _mirrorSeriesLanguageToServer(isCurrent: isCurrent);
   }
 
-  Future<void> _rememberSubtitleLanguage(SubtitleTrack track) async {
+  Future<void> _rememberSubtitleLanguage(SubtitleTrack track, {bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
     if (track.id == 'no') {
       sessionIntent = _mergeSessionIntent(subtitlesOff: true);
-      await TrackPreferenceStore.saveSubtitle(metadata, off: true);
+      await TrackPreferenceStore.saveSubtitle(metadata, off: true, isCurrent: isCurrent);
+      if (!(isCurrent?.call() ?? true)) return;
       await announceRememberedChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
     } else {
       final language = track.language;
@@ -502,10 +542,17 @@ class TrackManager {
         subtitleTitle: track.title,
         subtitleForced: track.isForced,
       );
-      await TrackPreferenceStore.saveSubtitle(metadata, language: language, title: track.title, forced: track.isForced);
+      await TrackPreferenceStore.saveSubtitle(
+        metadata,
+        language: language,
+        title: track.title,
+        forced: track.isForced,
+        isCurrent: isCurrent,
+      );
+      if (!(isCurrent?.call() ?? true)) return;
       await announceRememberedChoice(kind: LanguageTrackKind.subtitles, language: language);
     }
-    await _mirrorSeriesLanguageToServer();
+    await _mirrorSeriesLanguageToServer(isCurrent: isCurrent);
   }
 
   /// Tell the viewer what just happened to their choice — mockup 31 C.
@@ -571,13 +618,15 @@ class TrackManager {
 
   /// Push the remembered choice onto the show's own Plex preferences. Episodes
   /// only: movies have no per-item language override.
-  Future<void> _mirrorSeriesLanguageToServer() async {
+  Future<void> _mirrorSeriesLanguageToServer({bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
     final persist = persistSeriesLanguage;
     final seriesRatingKey = metadata.grandparentId;
     if (persist == null || seriesRatingKey == null || seriesRatingKey.isEmpty) return;
     if (!isActive()) return;
 
     final choice = await TrackPreferenceStore.read(metadata);
+    if (!(isCurrent?.call() ?? true)) return;
     if (choice == null || choice.isEmpty) return;
 
     try {
@@ -674,6 +723,7 @@ class TrackManager {
   /// Clean up subscriptions.
   void dispose() {
     _externalSubtitleAddsInFlight = false;
+    _externalSubtitleSelectionScope = null;
     _trackLoadingSubscription?.cancel();
     _trackLoadingSubscription = null;
     _subtitleFallbackTimer?.cancel();

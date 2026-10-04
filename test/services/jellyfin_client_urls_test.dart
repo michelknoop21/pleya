@@ -35,6 +35,53 @@ JellyfinConnection _conn({String accessToken = 'tok-abc', String baseUrl = 'http
 /// tests pin the contract so the next iteration of the player (Task 8 wiring)
 /// has something to point at.
 void main() {
+  for (final count in [null, 'broken', -1]) {
+    test('strict request title page rejects unverified Jellyfin total $count', () async {
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient(
+          (request) async => http.Response(
+            jsonEncode({'Items': <Object>[], 'TotalRecordCount': ?count}),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+      addTearDown(scoped.close);
+      const query = LibraryQuery(search: 'The Matrix', limit: 100);
+      await expectLater(scoped.fetchLibraryContent('lib', query, requireTotalCount: true), throwsStateError);
+      await scoped.fetchLibraryContent('lib', query);
+    });
+  }
+
+  test('strict request title page preserves Jellyfin matching count and rejects parse loss', () async {
+    var broken = false;
+    Uri? uri;
+    final scoped = JellyfinClient.forTesting(
+      connection: _conn(),
+      httpClient: MockClient((request) async {
+        uri = request.url;
+        return http.Response(
+          jsonEncode({
+            'Items': broken ? [null] : <Object>[],
+            'TotalRecordCount': broken ? 1 : 101,
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    addTearDown(scoped.close);
+    const query = LibraryQuery(search: 'The Matrix', limit: 100);
+    final page = await scoped.fetchLibraryContent('lib', query, requireTotalCount: true);
+    expect(page.totalCount, 101);
+    expect(uri!.queryParameters['SearchTerm'], 'The Matrix');
+    expect(uri!.queryParameters['ParentId'], 'lib');
+    expect(uri!.queryParameters['Limit'], '100');
+    broken = true;
+    await expectLater(scoped.fetchLibraryContent('lib', query, requireTotalCount: true), throwsStateError);
+  });
+
   group('JellyfinClient URL builders', () {
     late JellyfinClient client;
 

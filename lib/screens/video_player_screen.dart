@@ -1,3 +1,4 @@
+import '../media/media_kind.dart';
 import 'dart:async';
 import '../media/ids.dart';
 import 'dart:io';
@@ -13,6 +14,11 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../mpv/mpv.dart';
+import '../assistant/assistant_playback.dart';
+import '../assistant/assistant_spoiler_context.dart';
+import '../profiles/active_profile_provider.dart';
+import '../providers/hidden_libraries_provider.dart';
+import '../widgets/video_controls/widgets/performance_overlay/performance_stats_service.dart';
 import '../mpv/disc_source.dart';
 import '../mpv/player/platform/player_android.dart';
 
@@ -55,6 +61,7 @@ import '../services/media_controls_manager.dart';
 import '../services/playback_initialization_service.dart';
 import '../services/playback_context.dart';
 import '../services/playback_session.dart';
+import '../services/playback_stream_evidence.dart';
 import '../services/playback_progress_tracker.dart';
 import '../services/playback_lifecycle_report_decision.dart';
 import '../services/playback_resume_resolver.dart';
@@ -128,6 +135,7 @@ part 'video_player/parts/playback_start.dart';
 part 'video_player/parts/seeking.dart';
 part 'video_player/parts/build.dart';
 part 'video_player/parts/watch_together.dart';
+part 'video_player/parts/assistant_playback.dart';
 
 bool? _wakelockEnabled;
 
@@ -400,6 +408,11 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
   // through its own path). The getters below denormalize it for the many
   // existing read sites.
   PlaybackSession? _playbackSession;
+  VoidCallback? _releaseAssistantPlayback;
+  final String _assistantPlaybackSessionId = generateSessionIdentifier();
+  final AssistantPlaybackRevision _assistantPlaybackChanges = AssistantPlaybackRevision();
+  void Function()? _stopAssistantPlaybackRevision;
+  Player? _assistantRegisteredPlayer;
   int _playbackGeneration = 0;
   // Fired in parallel with MPV setup so the OS audio-focus negotiation
   // (~90ms on Android) doesn't sit on the critical path. Awaited before
@@ -584,6 +597,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     _requestedMediaSourceId = session.mediaSourceId;
     _selectedQualityPreset = session.qualityPreset;
     _selectedAudioStreamId = session.audioStreamId;
+    _registerAssistantPlayback();
   }
 
   ScrubFrame? _getThumbnailData(Duration time) => _scrubPreviewSource?.getFrame(time);
@@ -1292,6 +1306,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
 
   @override
   void dispose() {
+    _releaseAssistantPlayback?.call();
+    _releaseAssistantPlayback = null;
+    _stopAssistantPlaybackRevision?.call();
+    _assistantRegisteredPlayer = null;
     WidgetsBinding.instance.removeObserver(this);
 
     _cleanupCompanionRemoteCallbacks();
@@ -1567,12 +1585,17 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindin
     return null;
   }
 
-  Future<void> _onAudioTrackChanged(AudioTrack track) async {
+  Future<void> _onAudioTrackChanged(AudioTrack track, {bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
     await _audioOutput?.onAudioTrackChanged(track);
-    await _trackManager?.onAudioTrackChanged(track);
+    if (!(isCurrent?.call() ?? true)) return;
+    await _trackManager?.onAudioTrackChanged(track, isCurrent: isCurrent);
   }
 
-  Future<void> _onSubtitleTrackChanged(SubtitleTrack track) async => _trackManager?.onSubtitleTrackChanged(track);
+  Future<void> _onSubtitleTrackChanged(SubtitleTrack track, {bool Function()? isCurrent}) async {
+    if (!(isCurrent?.call() ?? true)) return;
+    await _trackManager?.onSubtitleTrackChanged(track, isCurrent: isCurrent);
+  }
 
   void _onSecondarySubtitleTrackChanged(SubtitleTrack track) => _trackManager?.onSecondarySubtitleTrackChanged(track);
 

@@ -59,7 +59,8 @@ class _BigPMobileConfirmState extends State<BigPMobileConfirm> {
   }
 
   /// A card the controller already dropped (a newer one, or none) is not
-  /// answered; nor is one twice.
+  /// answered; nor is one twice. The answer names this card's own action, so
+  /// the controller drops it too when its queue has moved on.
   bool _answer() {
     if (_answered || !identical(widget.controller.pending, widget.pending)) return false;
     _answered = true;
@@ -68,7 +69,7 @@ class _BigPMobileConfirmState extends State<BigPMobileConfirm> {
 
   void _confirm(String? password) {
     if (!_answer()) return;
-    widget.controller.confirmPending(password: password);
+    widget.controller.confirmPending(password: password, action: widget.pending);
     unawaited(BigPVoice.of(widget.controller)?.say(BigPMoment.nod));
   }
 
@@ -94,7 +95,7 @@ class _BigPMobileConfirmState extends State<BigPMobileConfirm> {
     action: widget.pending,
     cancelNode: _cancel,
     onCancel: () {
-      if (_answer()) widget.controller.cancelPending();
+      if (_answer()) widget.controller.cancelPending(action: widget.pending);
     },
     onConfirm: _confirm,
     readPassword: _readPassword,

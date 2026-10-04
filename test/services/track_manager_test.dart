@@ -13,6 +13,7 @@ import 'package:pleya/mpv/player/player_stream_controllers.dart';
 import 'package:pleya/services/pleya_profile_language_preference_store.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/track_manager.dart';
+import 'package:pleya/services/track_preference_store.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -152,7 +153,16 @@ Future<void> _noopPersister({required int partId, required String trackType, int
 void main() {
   // The constructor doesn't touch prefs, but [dispose] / [applyTrackSelection]
   // could leak across tests — reset to be safe.
-  setUp(resetSharedPreferencesForTest);
+  setUp(() {
+    resetSharedPreferencesForTest();
+    final previousDeviceName = TrackPreferenceStore.deviceNameProvider;
+    TrackPreferenceStore.resetForTesting();
+    TrackPreferenceStore.deviceNameProvider = () async => 'Fixture';
+    addTearDown(() {
+      TrackPreferenceStore.deviceNameProvider = previousDeviceName;
+      TrackPreferenceStore.resetForTesting();
+    });
+  });
 
   // ============================================================
   // Construction

@@ -282,6 +282,15 @@ class AutomationIds {
   /// title, kind, confidence and whether it is in a library.
   static const String assistantMatch = 'assistant.match';
 
+  /// One task card when a question holds several commands
+  /// (`assistant.task[0]`, in the order asked). State carries the task's
+  /// `id`, its `status` and whether it is still `cancellable`.
+  static const String assistantTask = 'assistant.task';
+
+  /// The Annuleren capsule on that card (`assistant.task.cancel[0]`); there
+  /// only while the task can still be stopped.
+  static const String assistantTaskCancel = 'assistant.task.cancel';
+
   /// The confirmation card Pleya builds from the pending action.
   static const String assistantConfirm = 'assistant.confirm';
 
@@ -590,6 +599,8 @@ class AutomationIds {
     assistantFollowUp,
     assistantOption,
     assistantMatch,
+    assistantTask,
+    assistantTaskCancel,
     assistantConfirmButton,
     bigpFollowUp,
     bigpLibraryAsk,
@@ -696,6 +707,8 @@ class AutomationIds {
     {'id': assistantResult, 'role': 'region', 'instanceable': false},
     {'id': assistantOption, 'role': 'list.item', 'instanceable': true},
     {'id': assistantMatch, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantTask, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantTaskCancel, 'role': 'button', 'instanceable': true},
     {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},

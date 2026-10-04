@@ -2509,6 +2509,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get summonHint => 'Houd Play/Pauze ingedrukt om Big P op te roepen';
 	@override String get contextAction => 'Vraag Big P';
 	@override late final _TranslationsAssistantSettingsNl settings = _TranslationsAssistantSettingsNl._(_root);
+	@override late final _TranslationsAssistantTasksNl tasks = _TranslationsAssistantTasksNl._(_root);
 	@override String get youAsked => 'Je vroeg:';
 	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
 	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
@@ -3353,6 +3354,7 @@ class _TranslationsAssistantActionsNl extends TranslationsAssistantActionsEn {
 	@override String get requestTitle => 'Aanvraag verstuurd';
 	@override String get downloadEpisodes => 'Download gestart';
 	@override String get downloadSubtitle => 'Ondertitel gedownload';
+	@override String get changePlayback => 'Afspelen aangepast';
 }
 
 // Path: assistant.confirm
@@ -3497,6 +3499,31 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get voiceNote => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.';
 }
 
+// Path: assistant.tasks
+class _TranslationsAssistantTasksNl extends TranslationsAssistantTasksEn {
+	_TranslationsAssistantTasksNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String working({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar';
+	@override String allDone({required Object count}) => '${count} taken zijn klaar.';
+	@override String someDone({required Object done, required Object count}) => '${done} van ${count} taken klaar.';
+	@override String get queued => 'In de wachtrij';
+	@override String get running => 'Bezig';
+	@override String get waiting => 'Wacht op bevestiging';
+	@override String get completed => 'Klaar';
+	@override String get failed => 'Mislukt';
+	@override String get cancelled => 'Geannuleerd';
+	@override String found({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 titel gevonden',
+		other: '${n} titels gevonden',
+	);
+	@override String get choose => 'Kies wat je wilt aanvragen';
+	@override String get cancelAll => 'Alles annuleren';
+	@override String cancelTask({required Object title}) => 'Annuleren: ${title}';
+}
+
 // Path: assistant.option
 class _TranslationsAssistantOptionNl extends TranslationsAssistantOptionEn {
 	_TranslationsAssistantOptionNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3637,6 +3664,7 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get downloadEpisodes => 'Afleveringen downloaden';
 	@override String get downloadSubtitle => 'Ondertitel downloaden';
+	@override String get changePlayback => 'Afspelen aanpassen';
 }
 
 /// The flat map containing all translations for locale <nl>.
@@ -5840,6 +5868,7 @@ extension on TranslationsNl {
 			'assistant.actions.requestTitle' => 'Aanvraag verstuurd',
 			'assistant.actions.downloadEpisodes' => 'Download gestart',
 			'assistant.actions.downloadSubtitle' => 'Ondertitel gedownload',
+			'assistant.actions.changePlayback' => 'Afspelen aangepast',
 			'assistant.confirm.header' => 'Pleya vraagt bevestiging',
 			'assistant.confirm.titles.scanLibrary' => 'Bibliotheek scannen',
 			'assistant.confirm.titles.refreshMetadata' => 'Metadata vernieuwen',
@@ -5853,6 +5882,7 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
+			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
 			'assistant.confirm.user' => 'Gebruiker',
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Toegang',
@@ -5950,6 +5980,19 @@ extension on TranslationsNl {
 			'assistant.settings.webSearchNoteOpenRouter' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.',
 			'assistant.settings.voice' => 'Stem van Big P',
 			'assistant.settings.voiceNote' => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.',
+			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar',
+			'assistant.tasks.allDone' => ({required Object count}) => '${count} taken zijn klaar.',
+			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} van ${count} taken klaar.',
+			'assistant.tasks.queued' => 'In de wachtrij',
+			'assistant.tasks.running' => 'Bezig',
+			'assistant.tasks.waiting' => 'Wacht op bevestiging',
+			'assistant.tasks.completed' => 'Klaar',
+			'assistant.tasks.failed' => 'Mislukt',
+			'assistant.tasks.cancelled' => 'Geannuleerd',
+			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 titel gevonden', other: '${n} titels gevonden', ), 
+			'assistant.tasks.choose' => 'Kies wat je wilt aanvragen',
+			'assistant.tasks.cancelAll' => 'Alles annuleren',
+			'assistant.tasks.cancelTask' => ({required Object title}) => 'Annuleren: ${title}',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',

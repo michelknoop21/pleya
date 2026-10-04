@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
@@ -20,6 +22,13 @@ void main() {
   // the scoping cases pass or fail depending on order. Clear both explicitly.
   setUp(() async {
     resetSharedPreferencesForTest();
+    TrackPreferenceStore.resetForTesting();
+    final previousDeviceName = TrackPreferenceStore.deviceNameProvider;
+    TrackPreferenceStore.deviceNameProvider = () async => 'Fixture';
+    addTearDown(() {
+      TrackPreferenceStore.deviceNameProvider = previousDeviceName;
+      TrackPreferenceStore.resetForTesting();
+    });
     await (await StorageService.getInstance()).clearActiveProfileId();
     await (await SettingsService.getInstance()).write(
       SettingsService.trackLanguagePreferences,
@@ -48,6 +57,39 @@ void main() {
   });
 
   group('profile scoping', () {
+    for (final subtitle in [false, true]) {
+      test(
+        'scoped ${subtitle ? 'subtitle' : 'audio'} write stops after profile changes during provenance await',
+        () async {
+          final storage = await StorageService.getInstance();
+          final settings = await SettingsService.getInstance();
+          await storage.setActiveProfileId('profile-a');
+          TrackPreferenceStore.resetForTesting();
+          final previousProvider = TrackPreferenceStore.deviceNameProvider;
+          final started = Completer<void>();
+          final deviceName = Completer<String>();
+          TrackPreferenceStore.deviceNameProvider = () {
+            started.complete();
+            return deviceName.future;
+          };
+          addTearDown(() {
+            TrackPreferenceStore.deviceNameProvider = previousProvider;
+            TrackPreferenceStore.resetForTesting();
+          });
+          var current = true;
+          final item = _episode('ep1', show: 'show7');
+          final pending = subtitle
+              ? TrackPreferenceStore.saveSubtitle(item, language: 'nld', isCurrent: () => current)
+              : TrackPreferenceStore.saveAudio(item, language: 'nld', isCurrent: () => current);
+          await started.future;
+          current = false;
+          await storage.setActiveProfileId('profile-b');
+          deviceName.complete('Fixture');
+          await pending;
+          expect(settings.read(SettingsService.trackLanguagePreferences), isEmpty);
+        },
+      );
+    }
     // Two Plex Home users on one device watch the same show. Neither should
     // start an episode in the other's language.
     test('a profile switch does not surface the previous profile choice', () async {

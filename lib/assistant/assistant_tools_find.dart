@@ -152,8 +152,16 @@ final List<AssistantTool> _findTools = [
     // A visible server that is online now, or Seerr.
     serves: (ctx, _) => ctx.userServers.any((id) => ctx.userClient(id) != null) || ctx.requests?.client() != null,
     run: (ctx, _, args) async {
-      final result = await findTitles(ctx, _findQuery(args));
+      _requestContextLive(ctx);
       final client = ctx.requests?.client();
+      final result = await findTitles(ctx, _findQuery(args));
+      _requestContextLive(ctx);
+      if (ctx.requests?.client() != client) throw const AssistantToolError('not_allowed');
+      if (client != null) {
+        _requestLive(ctx, client);
+        _shownRequestClients[ctx] ??= client;
+        if (client.session.userId case final user?) _shownRequestUsers[ctx] ??= user;
+      }
       final shown = _shownRequestTitles[ctx] ??= {};
       final rows = <Map<String, Object?>>[];
       final display = <AssistantTitleMatch>[];

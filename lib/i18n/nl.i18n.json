@@ -2442,7 +2442,8 @@
       "createCollection": "Collectie aangemaakt",
       "requestTitle": "Aanvraag verstuurd",
       "downloadEpisodes": "Download gestart",
-      "downloadSubtitle": "Ondertitel gedownload"
+      "downloadSubtitle": "Ondertitel gedownload",
+      "changePlayback": "Afspelen aangepast"
     },
     "confirm": {
       "header": "Pleya vraagt bevestiging",
@@ -2458,7 +2459,8 @@
         "createCollection": "Collectie maken",
         "requestTitle": "Titel aanvragen",
         "downloadEpisodes": "Afleveringen downloaden",
-        "downloadSubtitle": "Ondertitel downloaden"
+        "downloadSubtitle": "Ondertitel downloaden",
+        "changePlayback": "Afspelen aanpassen"
       },
       "user": "Gebruiker",
       "server": "Server",
@@ -2572,6 +2574,24 @@
       "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.",
       "voice": "Stem van Big P",
       "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken."
+    },
+    "tasks": {
+      "working": "Bezig met ${count} taken · ${done} klaar",
+      "allDone": "${count} taken zijn klaar.",
+      "someDone": "${done} van ${count} taken klaar.",
+      "queued": "In de wachtrij",
+      "running": "Bezig",
+      "waiting": "Wacht op bevestiging",
+      "completed": "Klaar",
+      "failed": "Mislukt",
+      "cancelled": "Geannuleerd",
+      "found": {
+        "one": "1 titel gevonden",
+        "other": "${n} titels gevonden"
+      },
+      "choose": "Kies wat je wilt aanvragen",
+      "cancelAll": "Alles annuleren",
+      "cancelTask": "Annuleren: ${title}"
     },
     "youAsked": "Je vroeg:",
     "option": {

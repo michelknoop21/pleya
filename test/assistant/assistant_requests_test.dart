@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +10,17 @@ import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/connection/connection.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_version.dart';
+import 'package:pleya/media/media_identity.dart';
+import 'package:pleya/media/library_query.dart';
+import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
+import 'assistant_find_fakes.dart' as find;
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/jellyfin_client.dart';
 import 'package:pleya/services/pleya_server_client.dart';
 import 'package:pleya/services/seerr/seerr_client.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
@@ -78,12 +89,20 @@ Future<MultiServerManager> _manager() async {
 /// Overseerr behind fake HTTP, so the tools run the real SeerrClient.
 class _Seerr {
   _Seerr({this.permissions = SeerrPermission.request});
-  final int permissions;
+  int permissions;
   String movieTitle = 'The Matrix';
   String overview = 'A hacker learns that reality is a simulation. ${'Long plot detail. ' * 40}END';
-  int? movieStatus;
-  int? movieStatus4k;
+  int? movieStatus = 1;
+  int? movieStatus4k = 1;
   Map<int, int> seasonStatus = {};
+  Map<int, int> seasonStatus4k = {};
+  Map<String, dynamic>? detailOverride;
+  Future<void> Function(String)? onGet;
+  int postCode = 201;
+  bool uncertainPost = false;
+  String? rawPostResponse;
+  int statusAfterPost = 2;
+  bool failStatusAfterPost = false;
 
   /// The /discover/movies page; twelve plain films when null.
   List<Map<String, Object?>>? discover;
@@ -102,15 +121,48 @@ class _Seerr {
       final path = request.url.path.replaceFirst('/api/v1', '');
       if (request.method == 'POST' && path == '/request') {
         posts.add(jsonDecode(request.body) as Map<String, dynamic>);
-        return _json(const {'id': 1}, status: 201);
+        if (postCode == 201 || uncertainPost) {
+          final payload = posts.last;
+          if (payload['mediaType'] == 'movie') {
+            if (payload['is4k'] == true) {
+              movieStatus4k = statusAfterPost;
+            } else {
+              movieStatus = statusAfterPost;
+            }
+          } else {
+            final statuses = payload['is4k'] == true ? seasonStatus4k : seasonStatus;
+            for (final n in payload['seasons'] as List) {
+              statuses[n as int] = statusAfterPost;
+            }
+          }
+        }
+        if (uncertainPost) throw http.ClientException('connection lost after acceptance');
+        if (rawPostResponse != null) {
+          return http.Response(rawPostResponse!, postCode, headers: {'content-type': 'application/json'});
+        }
+        return _json({
+          'id': 1,
+          'status': 1,
+          'type': posts.last['mediaType'],
+          'is4k': posts.last['is4k'],
+          'media': {'tmdbId': posts.last['mediaId']},
+        }, status: postCode);
       }
       gets.add(request.url);
+      await onGet?.call(path);
+      if ((path.startsWith('/movie/') || path.startsWith('/tv/')) && posts.isNotEmpty && failStatusAfterPost) {
+        return _json({'message': 'offline'}, status: 503);
+      }
+      if ((path.startsWith('/movie/') || path.startsWith('/tv/')) && detailOverride != null) {
+        return _json(detailOverride);
+      }
       Map<String, Object?> info(int? status, [int? status4k, List<Object?>? seasons]) => {
         'status': ?status,
         'status4k': ?status4k,
         'seasons': ?seasons,
       };
       return switch (path) {
+        '/auth/me' => _json({'id': 7, 'permissions': permissions}),
         '/search' when request.url.queryParameters['query'] == 'reloaded' => _json({
           'results': [
             {'id': 604, 'mediaType': 'movie', 'title': 'The Matrix Reloaded', 'releaseDate': '2003-05-15'},
@@ -147,8 +199,9 @@ class _Seerr {
           'seasons': [
             for (final n in [0, 1, 2, 3]) {'seasonNumber': n, 'episodeCount': 10},
           ],
-          'mediaInfo': info(null, null, [
-            for (final e in seasonStatus.entries) {'seasonNumber': e.key, 'status': e.value},
+          'mediaInfo': info(1, 1, [
+            for (final n in {...seasonStatus.keys, ...seasonStatus4k.keys})
+              {'seasonNumber': n, 'status': seasonStatus[n] ?? 1, 'status4k': seasonStatus4k[n] ?? 1},
           ]),
         }),
         '/search/keyword' => _json({
@@ -240,6 +293,77 @@ Map<String, Object?> _find(String query) => _call('find_request_title', {
 
 Map<String, Object?> _request(Map<String, Object?> args) => _call('request_title', args, id: 'call_2');
 
+class _LibraryServer extends find.FakeServer {
+  _LibraryServer(super.id, {required super.libraries, super.ids});
+  bool lookupFails = false;
+  Future<void> Function()? beforeLookup;
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
+    await beforeLookup?.call();
+    if (lookupFails) throw StateError('unreachable');
+    return super.findAllByIdentity(identity);
+  }
+
+  @override
+  Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
+    String libraryId, {
+    required LibraryQuery query,
+    MediaKind? libraryKind,
+    AbortController? abort,
+  }) async {
+    final items = [
+      for (final item in libraries[libraryId] ?? const <MediaItem>[])
+        if (item.kind == query.kind &&
+            (query.search == null || (item.title ?? '').toLowerCase().contains(query.search!.toLowerCase())))
+          item.copyWith(libraryId: libraryId),
+    ];
+    return LibraryPage(
+      items: items.skip(query.offset).take(query.limit).toList(),
+      totalCount: items.length,
+      offset: query.offset,
+    );
+  }
+
+  @override
+  Future<MediaItem?> fetchItem(String id) async =>
+      libraries.values.expand((items) => items).where((item) => item.id == id).firstOrNull;
+}
+
+/// Same capped-title/client-side matching contract as Plex and Jellyfin.
+class _CappedIdentityServer extends _LibraryServer {
+  _CappedIdentityServer(super.id, {required super.libraries, super.ids});
+  final queries = <LibraryQuery>[];
+  int? reportedTotal;
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async => identity.pickAllMatches([
+    for (final item in libraries.values.expand((items) => items).take(20))
+      MediaIdentity.candidate(item, ids[item.id] ?? const ExternalIds()),
+  ]);
+  @override
+  Future<LibraryPage<MediaItem>> fetchLibraryPagedContent(
+    String libraryId, {
+    required LibraryQuery query,
+    MediaKind? libraryKind,
+    AbortController? abort,
+  }) {
+    queries.add(query);
+    return super
+        .fetchLibraryPagedContent(libraryId, query: query, libraryKind: libraryKind, abort: abort)
+        .then((page) => reportedTotal == null ? page : page.copyWith(totalCount: reportedTotal!));
+  }
+}
+
+AssistantCatalogServices _emptyCatalog() => AssistantCatalogServices(
+  rowLoader: CatalogHomeCustomRowLoader(
+    libraries: () => [],
+    isServerVisible: (_) => true,
+    hiddenLibraryKeys: () => {},
+    clientFor: (_) => null,
+  ),
+  profileId: 'p',
+  activeProfileId: () => 'p',
+);
+
 void main() {
   late List<AssistantPendingAction> cards;
 
@@ -247,23 +371,907 @@ void main() {
     List<Map<String, Object?>> script, {
     _Seerr? seerr,
     bool confirmed = true,
+    Future<void> Function()? onConfirm,
+    AssistantToolContext? context,
+    AbortController? cancel,
   }) async {
     cards = [];
     final model = _Model(script);
     final result = await AssistantRun(
       model: model.client(),
-      context: AssistantToolContext(
-        servers: await _manager(),
-        requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
-      ),
+      context:
+          context ??
+          AssistantToolContext(
+            servers: await _manager(),
+            catalog: _emptyCatalog(),
+            requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
+          ),
       confirm: (action) async {
         cards.add(action);
+        await onConfirm?.call();
         return confirmed ? const AssistantConfirmation() : null;
       },
       entitlement: const _Entitled(),
+      cancel: cancel,
+      refreshHealth: () async {},
     ).ask('Vraag The Matrix aan.');
     return (result, model);
   }
+
+  test('confirmation rechecks duplicate status before any POST', () async {
+    final seerr = _Seerr();
+    final (result, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ],
+      seerr: seerr,
+      onConfirm: () async {
+        seerr.movieStatus = 2;
+      },
+    );
+    expect(seerr.posts, isEmpty);
+    expect(model.toolResults.last, containsPair('status', 'already_requested'));
+    expect(model.toolResults.last, containsPair('done', false));
+    expect(result.actions, isEmpty);
+  });
+
+  test('confirmation rechecks request rights before any POST', () async {
+    final seerr = _Seerr();
+    final (result, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ],
+      seerr: seerr,
+      onConfirm: () async {
+        seerr.permissions = 0;
+      },
+    );
+    expect(seerr.posts, isEmpty);
+    expect(model.toolResults.last, {'error': 'not_allowed'});
+    expect(result.actions, isEmpty);
+  });
+
+  test('changed season coverage never silently changes the confirmed payload', () async {
+    final seerr = _Seerr();
+    final (result, model) = await run(
+      [
+        _find('thrones'),
+        _request({'seerr_id': 'tv:1399'}),
+        _say('x'),
+      ],
+      seerr: seerr,
+      onConfirm: () async {
+        seerr.seasonStatus[2] = 2;
+      },
+    );
+    expect(cards.single.items, ['Season 1', 'Season 2', 'Season 3']);
+    expect(seerr.posts, isEmpty);
+    expect(model.toolResults.last, containsPair('error', 'request_coverage_changed'));
+    expect(result.actions, isEmpty);
+  });
+
+  test('malformed media status is unknown rather than requestable', () async {
+    final seerr = _Seerr()
+      ..detailOverride = {
+        'id': 603,
+        'title': 'The Matrix',
+        'mediaInfo': {'status': 99},
+      };
+    final (_, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, {'error': 'request_status_unknown'});
+    expect(cards, isEmpty);
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('accepted request reports observed availability and actual request status', () async {
+    final seerr = _Seerr()..statusAfterPost = 5;
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, containsPair('accepted', true));
+    expect(model.toolResults.last, containsPair('status', 'available'));
+    expect(model.toolResults.last, containsPair('request_status', 'pending'));
+    expect(seerr.posts, hasLength(1));
+    expect(result.actions, hasLength(1));
+  });
+
+  test('accepted write with failed status read remains distinct from failed write', () async {
+    final seerr = _Seerr()..failStatusAfterPost = true;
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, containsPair('accepted', true));
+    expect(model.toolResults.last, containsPair('status', 'unknown'));
+    expect(model.toolResults.last, containsPair('status_error', 'requests_not_available'));
+    expect(result.actions, hasLength(1));
+    expect(seerr.posts, hasLength(1));
+  });
+
+  test('uncertain POST is never retried and fresh duplicate read avoids another POST', () async {
+    final seerr = _Seerr()..uncertainPost = true;
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults[1], containsPair('error', 'request_outcome_unknown'));
+    expect(model.toolResults.last, containsPair('status', 'already_requested'));
+    expect(seerr.posts, hasLength(1));
+    expect(result.actions, isEmpty);
+  });
+
+  test('status refresh reads a shown title and never posts', () async {
+    final seerr = _Seerr()..movieStatus = 3;
+    final (_, model) = await run([
+      _find('matrix'),
+      _call('request_status', {'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, containsPair('status', 'processing'));
+    expect(model.toolResults.last, containsPair('four_k', false));
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('status refresh cannot read an ID not shown in the task', () async {
+    final seerr = _Seerr();
+    final (_, model) = await run([
+      _call('request_status', {'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.single, {'error': 'unknown_seerr_id'});
+    expect(seerr.gets.where((u) => u.path.contains('/movie/')), isEmpty);
+  });
+
+  test('a visible movie routes to the normal library result without a request', () async {
+    final seerr = _Seerr();
+    final server = find.FakeServer(
+      's',
+      libraries: {
+        'films': [find.fakeItem('m', 'The Matrix', year: 1999)],
+      },
+    );
+    final ctx = find.findCtx([server], libraries: [find.fakeLib('s', 'films')]);
+    final context = AssistantToolContext(
+      servers: ctx.servers,
+      catalog: ctx.catalog,
+      requests: AssistantRequestServices(client: () => seerr.client),
+    );
+    final (_, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ],
+      seerr: seerr,
+      context: context,
+    );
+    expect(cards, isEmpty);
+    expect(seerr.posts, isEmpty);
+    expect(model.toolResults.last, containsPair('status', 'already_available'));
+  });
+
+  test('legitimate absent mediaInfo on a valid detail remains requestable', () async {
+    final seerr = _Seerr()..detailOverride = {'id': 603, 'title': 'The Matrix'};
+    await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(cards, hasLength(1));
+    expect(seerr.posts, hasLength(1));
+  });
+
+  test('4K rights downgraded during confirmation send nothing', () async {
+    final seerr = _Seerr(permissions: SeerrPermission.request4kMovie);
+    final (_, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603', 'four_k': true}),
+        _say('x'),
+      ],
+      seerr: seerr,
+      onConfirm: () async {
+        seerr.permissions = SeerrPermission.request4kTv;
+      },
+    );
+    expect(model.toolResults.last, {'error': '4k_not_allowed'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('per-type standard movie request permission is accepted without series rights', () async {
+    final seerr = _Seerr(permissions: 262144);
+    await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(seerr.posts, hasLength(1));
+  });
+
+  test('status reads distinguish 4K and standard season state without requesting', () async {
+    final seerr = _Seerr()
+      ..seasonStatus = {1: 5, 2: 3}
+      ..seasonStatus4k = {1: 2, 3: 5};
+    final (_, model) = await run([
+      _find('thrones'),
+      _call('request_status', {'seerr_id': 'tv:1399'}),
+      _call('request_status', {'seerr_id': 'tv:1399', 'four_k': true}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults[1]['seasons'], [
+      {'season': 1, 'status': 'available'},
+      {'season': 2, 'status': 'processing'},
+      {'season': 3, 'status': 'not_requested'},
+    ]);
+    expect(model.toolResults[2]['seasons'], [
+      {'season': 1, 'status': 'pending'},
+      {'season': 2, 'status': 'not_requested'},
+      {'season': 3, 'status': 'available'},
+    ]);
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('unknown season status cannot authorize a request', () async {
+    final seerr = _Seerr()
+      ..detailOverride = {
+        'id': 1399,
+        'name': 'Game of Thrones',
+        'seasons': [
+          {'seasonNumber': 1},
+        ],
+        'mediaInfo': {
+          'status': 1,
+          'seasons': [
+            {'seasonNumber': 1},
+          ],
+        },
+      };
+    final (_, model) = await run([
+      _find('thrones'),
+      _request({'seerr_id': 'tv:1399'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, {'error': 'request_status_unknown'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('a duplicate HTTP response is not recorded as a completed mutation', () async {
+    final seerr = _Seerr()..postCode = 409;
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, containsPair('status', 'already_requested'));
+    expect(result.actions, isEmpty);
+    expect(seerr.posts, hasLength(1));
+  });
+
+  test('server permission failure stays local and records no request action', () async {
+    final seerr = _Seerr()..postCode = 403;
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, {'error': 'not_allowed'});
+    expect(result.actions, isEmpty);
+    expect(seerr.posts, hasLength(1));
+  });
+
+  test('a missing visibility service never proves a title is absent from libraries', () async {
+    final seerr = _Seerr();
+    final ctx = AssistantToolContext(
+      servers: await _manager(),
+      requests: AssistantRequestServices(client: () => seerr.client),
+    );
+    final (_, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ],
+      seerr: seerr,
+      context: ctx,
+    );
+    expect(model.toolResults.last, {'error': 'library_availability_unknown'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  Future<AssistantToolContext> shownContext(
+    _Seerr seerr, {
+    AbortController? cancel,
+    SeerrClient? Function()? live,
+    AssistantCatalogServices? catalog,
+  }) async {
+    final ctx = AssistantToolContext(
+      servers: await _manager(),
+      catalog: catalog ?? _emptyCatalog(),
+      requests: AssistantRequestServices(client: live ?? () => seerr.client),
+      cancel: cancel,
+    );
+    await assistantTools.firstWhere((t) => t.name == 'find_request_title').run(ctx, null, {
+      'titles': [
+        {'title': 'matrix'},
+      ],
+    });
+    return ctx;
+  }
+
+  test('cancellation during execution rights read releases the wait and sends no POST', () async {
+    final seerr = _Seerr();
+    final cancel = AbortController();
+    final ctx = await shownContext(seerr, cancel: cancel);
+    final card = await assistantRequestFromOption(ctx, 'movie:603') as AssistantPendingAction;
+    final started = Completer<void>(), release = Completer<void>();
+    seerr.onGet = (path) async {
+      if (path == '/auth/me') {
+        started.complete();
+        await release.future;
+      }
+    };
+    final sent = card.execute();
+    await started.future;
+    cancel.abort();
+    await expectLater(sent, throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'cancelled')));
+    expect(seerr.posts, isEmpty);
+    release.complete();
+    await pumpEventQueue();
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('a stale client after status read cannot publish or prepare a request', () async {
+    final seerr = _Seerr();
+    SeerrClient? live = seerr.client;
+    final ctx = await shownContext(seerr, live: () => live);
+    seerr.onGet = (path) async {
+      if (path == '/movie/603') live = null;
+    };
+    final picked = await assistantRequestFromOption(ctx, 'movie:603') as AssistantToolResult;
+    expect(picked.data, {'error': 'not_allowed'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('profile changes during confirmation invalidate the prepared request', () async {
+    final seerr = _Seerr();
+    var active = 'p';
+    final catalog = AssistantCatalogServices(
+      rowLoader: _emptyCatalog().rowLoader,
+      profileId: 'p',
+      activeProfileId: () => active,
+    );
+    final ctx = await shownContext(seerr, catalog: catalog);
+    final card = await assistantRequestFromOption(ctx, 'movie:603') as AssistantPendingAction;
+    active = 'other';
+    await expectLater(card.execute(), throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'not_allowed')));
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('shown IDs cannot be transferred to another client in the same context', () async {
+    final first = _Seerr(), second = _Seerr();
+    SeerrClient? live = first.client;
+    final ctx = await shownContext(first, live: () => live);
+    live = second.client;
+    final outcome = await assistantRequestFromOption(ctx, 'movie:603') as AssistantToolResult;
+    expect(outcome.data, {'error': 'not_allowed'});
+    expect(second.gets, isEmpty);
+  });
+
+  test('fresh status exposes failed request state independently of availability', () async {
+    final seerr = _Seerr()
+      ..detailOverride = {
+        'id': 603,
+        'title': 'The Matrix',
+        'mediaInfo': {
+          'status': 1,
+          'status4k': 1,
+          'requests': [
+            {'status': 4, 'is4k': false},
+          ],
+        },
+      };
+    final (_, model) = await run([
+      _find('matrix'),
+      _call('request_status', {'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], seerr: seerr);
+    expect(model.toolResults.last, containsPair('request_statuses', ['failed']));
+    expect(model.toolResults.last, containsPair('status', 'not_requested'));
+    expect(seerr.posts, isEmpty);
+  });
+
+  Future<AssistantToolContext> libraryContext(
+    _Seerr seerr,
+    _LibraryServer server, {
+    Set<String> hidden = const {},
+    MediaKind kind = MediaKind.movie,
+  }) async {
+    final context = find.findCtx(
+      [server],
+      libraries: [find.fakeLib('s', 'films', kind: kind)],
+      hidden: hidden,
+    );
+    return AssistantToolContext(
+      servers: context.servers,
+      catalog: context.catalog,
+      requests: AssistantRequestServices(client: () => seerr.client),
+    );
+  }
+
+  test('a library copy arriving during confirmation prevents the POST', () async {
+    final seerr = _Seerr();
+    final server = _LibraryServer('s', libraries: {'films': []});
+    final ctx = await libraryContext(seerr, server);
+    final (result, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ],
+      context: ctx,
+      onConfirm: () async {
+        server.libraries['films']!.add(find.fakeItem('m', 'The Matrix', year: 1999));
+      },
+    );
+    expect(model.toolResults.last, containsPair('status', 'already_available'));
+    expect(seerr.posts, isEmpty);
+    expect(result.actions, isEmpty);
+  });
+
+  test('hidden library copies do not leak or stop a permitted missing-title request', () async {
+    final seerr = _Seerr();
+    final server = _LibraryServer(
+      's',
+      libraries: {
+        'films': [find.fakeItem('m', 'The Matrix', year: 1999)],
+      },
+    );
+    final ctx = await libraryContext(seerr, server, hidden: {'s:films'});
+    final (result, _) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(seerr.posts, hasLength(1));
+    expect(result.displays.whereType<AssistantTitleMatches>(), isEmpty);
+  });
+
+  test('external available status stays distinct when no library target can be proven', () async {
+    final seerr = _Seerr()..movieStatus = 5;
+    final server = _LibraryServer('s', libraries: {'films': []})..lookupFails = true;
+    final ctx = await libraryContext(seerr, server);
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(model.toolResults.last, {
+      'status': 'already_available',
+      'title': 'The Matrix (1999)',
+      'library_availability': 'unknown',
+    });
+    expect(result.displays.whereType<AssistantTitleMatches>(), isEmpty);
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('failed visible-library lookup does not become proof of absence', () async {
+    final seerr = _Seerr();
+    final server = _LibraryServer('s', libraries: {'films': []})..lookupFails = true;
+    final ctx = await libraryContext(seerr, server);
+    final (_, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(model.toolResults.last, {'error': 'library_availability_unknown'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('a visible show does not claim the missing confirmed season is available', () async {
+    final seerr = _Seerr()..seasonStatus = {1: 5, 2: 5};
+    final server = _LibraryServer(
+      's',
+      libraries: {
+        'films': [find.fakeItem('show', 'Game of Thrones', year: 2011, kind: MediaKind.show)],
+      },
+    );
+    final ctx = await libraryContext(seerr, server, kind: MediaKind.show);
+    await run([
+      _find('thrones'),
+      _request({
+        'seerr_id': 'tv:1399',
+        'seasons': [3],
+      }),
+      _say('x'),
+    ], context: ctx);
+    expect(seerr.posts.single, {
+      'mediaType': 'tv',
+      'mediaId': 1399,
+      'is4k': false,
+      'seasons': [3],
+    });
+  });
+
+  for (final resolution in ['4k', '1080', 'unknown']) {
+    test('visible movie $resolution evidence keeps requested 4K availability separate', () async {
+      final seerr = _Seerr(permissions: SeerrPermission.request4kMovie);
+      final movie = find
+          .fakeItem('m', 'The Matrix', year: 1999)
+          .copyWith(
+            mediaVersions: [MediaVersion(id: 'v', videoResolution: resolution == 'unknown' ? null : resolution)],
+          );
+      final server = _LibraryServer(
+        's',
+        libraries: {
+          'films': [movie],
+        },
+      );
+      final ctx = await libraryContext(seerr, server);
+      final (_, model) = await run([
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603', 'four_k': true}),
+        _say('x'),
+      ], context: ctx);
+      if (resolution == '1080') {
+        expect(seerr.posts.single, {'mediaType': 'movie', 'mediaId': 603, 'is4k': true});
+      } else {
+        expect(seerr.posts, isEmpty);
+        expect(
+          model.toolResults.last,
+          containsPair(
+            resolution == '4k' ? 'status' : 'error',
+            resolution == '4k' ? 'already_available' : 'library_availability_unknown',
+          ),
+        );
+      }
+    });
+  }
+
+  for (final body in ['', '{broken json', '[]']) {
+    test('HTTP acceptance with unreadable response $body never becomes a rejected request', () async {
+      final seerr = _Seerr()..rawPostResponse = body;
+      final (result, model) = await run([
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ], seerr: seerr);
+      expect(model.toolResults.last, containsPair('accepted', true));
+      expect(model.toolResults.last, containsPair('request_status', 'unknown'));
+      expect(model.toolResults.last.containsKey('error'), isFalse);
+      expect(result.actions, hasLength(1));
+      expect(seerr.posts, hasLength(1));
+    });
+  }
+
+  test('rights revoked during fresh library lookup are checked immediately before POST', () async {
+    final seerr = _Seerr();
+    final server = _LibraryServer('s', libraries: {'films': []});
+    final ctx = await libraryContext(seerr, server);
+    final (_, model) = await run(
+      [
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ],
+      context: ctx,
+      onConfirm: () async {
+        server.beforeLookup = () async {
+          seerr.permissions = 0;
+        };
+      },
+    );
+    expect(model.toolResults.last, {'error': 'not_allowed'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('a library hidden during another source lookup cannot publish old title targets', () async {
+    final seerr = _Seerr();
+    final first = _LibraryServer(
+      's',
+      libraries: {
+        'films': [find.fakeItem('m', 'The Matrix', year: 1999)],
+      },
+    );
+    final second = _LibraryServer('t', libraries: {'films': []});
+    final hidden = <String>{};
+    second.beforeLookup = () async {
+      hidden.add('s:films');
+    };
+    final base = find.findCtx(
+      [first, second],
+      libraries: [find.fakeLib('s', 'films'), find.fakeLib('t', 'films')],
+      hidden: hidden,
+    );
+    final ctx = AssistantToolContext(
+      servers: base.servers,
+      catalog: base.catalog,
+      requests: AssistantRequestServices(client: () => seerr.client),
+    );
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(result.displays.whereType<AssistantTitleMatches>(), isEmpty);
+    expect(model.toolResults.last, {'error': 'not_allowed'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  for (final boundary in ['client replacement', 'new visible library']) {
+    test('library evidence changed during final rights read blocks POST: $boundary', () async {
+      final seerr = _Seerr();
+      final hidden = <String>{'s:spare'};
+      final server = _LibraryServer(
+        's',
+        libraries: {
+          'films': [],
+          'spare': [find.fakeItem('m', 'The Matrix', year: 1999)],
+        },
+      );
+      final base = find.findCtx(
+        [server],
+        libraries: [find.fakeLib('s', 'films'), find.fakeLib('s', 'spare')],
+        hidden: hidden,
+      );
+      final ctx = AssistantToolContext(
+        servers: base.servers,
+        catalog: base.catalog,
+        requests: AssistantRequestServices(client: () => seerr.client),
+      );
+      final (_, model) = await run(
+        [
+          _find('matrix'),
+          _request({'seerr_id': 'movie:603'}),
+          _say('x'),
+        ],
+        context: ctx,
+        onConfirm: () async {
+          seerr.onGet = (path) async {
+            if (path != '/auth/me') return;
+            if (boundary == 'client replacement') {
+              ctx.servers.debugRegisterClientForTesting(_LibraryServer('s', libraries: {'films': []}));
+            } else {
+              hidden.clear();
+            }
+          };
+        },
+      );
+      expect(model.toolResults.last, {'error': 'not_allowed'});
+      expect(seerr.posts, isEmpty);
+    });
+  }
+
+  test('capped identity candidates cannot hide a matching title beyond the first twenty', () async {
+    final seerr = _Seerr();
+    final server = _CappedIdentityServer(
+      's',
+      libraries: {
+        'films': [
+          for (var n = 0; n < 20; n++) find.fakeItem('other$n', 'The Matrix Extra $n', year: 1999),
+          find.fakeItem('m', 'The Matrix', year: 1999),
+        ],
+      },
+    );
+    final ctx = await libraryContext(seerr, server);
+    final (result, _) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(seerr.posts, isEmpty);
+    expect(result.displays.whereType<AssistantTitleMatches>().single.matches.single.targets.single.item.id, 'm');
+  });
+
+  test('ambiguous same title and year without identity never proves absence', () async {
+    final seerr = _Seerr();
+    final server = _CappedIdentityServer(
+      's',
+      libraries: {
+        'films': [find.fakeItem('a', 'The Matrix', year: 1999), find.fakeItem('b', 'The Matrix', year: 1999)],
+      },
+    );
+    final ctx = await libraryContext(seerr, server);
+    final (_, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(model.toolResults.last, {'error': 'library_availability_unknown'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('4K copy beyond capped identity rows is found with known external IDs', () async {
+    final seerr = _Seerr(permissions: SeerrPermission.request4kMovie);
+    MediaItem movie(String id, String resolution) => find
+        .fakeItem(id, 'The Matrix', year: 1999)
+        .copyWith(
+          mediaVersions: [MediaVersion(id: id, videoResolution: resolution)],
+        );
+    final server = _CappedIdentityServer(
+      's',
+      libraries: {
+        'films': [
+          movie('normal', '1080'),
+          for (var n = 0; n < 19; n++) find.fakeItem('other$n', 'The Matrix Extra $n', year: 1999),
+          movie('4k', '4k'),
+        ],
+      },
+      ids: {'normal': const ExternalIds(tmdb: 603), '4k': const ExternalIds(tmdb: 603)},
+    );
+    final ctx = await libraryContext(seerr, server);
+    final (result, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603', 'four_k': true}),
+      _say('x'),
+    ], context: ctx);
+    expect(seerr.posts, isEmpty);
+    expect(model.toolResults.last, containsPair('status', 'already_available'));
+    expect(result.displays.whereType<AssistantTitleMatches>().single.matches.single.targets.single.item.id, '4k');
+  });
+
+  for (final knownQuality in ['1080', '4k']) {
+    test('mixed known $knownQuality and unresolved same-title 4K keeps quality evidence separate', () async {
+      final seerr = _Seerr(permissions: SeerrPermission.request4kMovie);
+      MediaItem movie(String id, String quality) => find
+          .fakeItem(id, 'The Matrix', year: 1999)
+          .copyWith(
+            mediaVersions: [MediaVersion(id: id, videoResolution: quality)],
+          );
+      final server = _CappedIdentityServer(
+        's',
+        libraries: {
+          'films': [movie('normal', knownQuality), movie('unresolved', '4k')],
+        },
+        ids: {'normal': const ExternalIds(tmdb: 603)},
+      );
+      final ctx = await libraryContext(seerr, server);
+      final (result, model) = await run([
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603', 'four_k': true}),
+        _say('x'),
+      ], context: ctx);
+      if (knownQuality == '1080') {
+        expect(model.toolResults.last, {'error': 'library_availability_unknown'});
+        expect(result.displays.whereType<AssistantTitleMatches>(), isEmpty);
+      } else {
+        expect(model.toolResults.last, containsPair('status', 'already_available'));
+        expect(
+          result.displays.whereType<AssistantTitleMatches>().single.matches.single.targets.single.item.id,
+          'normal',
+        );
+      }
+      expect(seerr.posts, isEmpty);
+    });
+  }
+
+  for (final scope in ['nested visible', 'nested hidden during read', 'conflicting', 'malformed empty']) {
+    test('real Jellyfin title fallback retains top-level permission proof: $scope', () async {
+      final seerr = _Seerr();
+      final hidden = <String>{'s:secret'};
+      var metadataReads = 0;
+      Map<String, Object?> dto({bool detail = false}) => {
+        'Id': 'm',
+        'Type': 'Movie',
+        'Name': 'The Matrix',
+        'ProductionYear': 1999,
+        'ParentId': 'nested-folder',
+        if (scope == 'conflicting') 'ParentLibraryId': 'secret',
+        if (scope == 'malformed empty') 'ParentLibraryId': '',
+        if (detail) 'ProviderIds': {'Tmdb': '603'},
+      };
+      final server = JellyfinClient.forTesting(
+        connection: JellyfinConnection(
+          id: 's/u',
+          baseUrl: 'http://jf.test',
+          serverName: 'Home',
+          serverMachineId: 's',
+          userId: 'u',
+          userName: 'user',
+          accessToken: 'fake',
+          deviceId: 'test',
+          createdAt: DateTime.utc(2026),
+        ),
+        httpClient: MockClient((request) async {
+          if (request.url.path == '/Users/u/Views') {
+            return _json({
+              'Items': [
+                {'Id': 'films', 'Name': 'Films', 'CollectionType': 'movies'},
+                {'Id': 'secret', 'Name': 'Secret', 'CollectionType': 'movies'},
+              ],
+            });
+          }
+          if (request.url.path == '/Items') {
+            return _json({
+              'Items': request.url.queryParameters['ParentId'] == 'films' ? [dto()] : [],
+              'TotalRecordCount': request.url.queryParameters['ParentId'] == 'films' ? 1 : 0,
+            });
+          }
+          if (request.url.path == '/Users/u/Items/m') {
+            metadataReads++;
+            if (scope == 'nested hidden during read') hidden.add('s:films');
+            return _json(dto(detail: true));
+          }
+          return _json({}, status: 404);
+        }),
+      );
+      final manager = MultiServerManager()..debugRegisterClientForTesting(server);
+      addTearDown(manager.dispose);
+      final ctx = AssistantToolContext(
+        servers: manager,
+        requests: AssistantRequestServices(client: () => seerr.client),
+        catalog: AssistantCatalogServices(
+          rowLoader: CatalogHomeCustomRowLoader(
+            libraries: () => [find.fakeLib('s', 'films'), find.fakeLib('s', 'secret')],
+            isServerVisible: manager.isServerVisible,
+            hiddenLibraryKeys: () => hidden,
+            clientFor: manager.getClient,
+          ),
+          profileId: 'p',
+          activeProfileId: () => 'p',
+        ),
+      );
+      final (result, _) = await run([
+        _find('matrix'),
+        _request({'seerr_id': 'movie:603'}),
+        _say('x'),
+      ], context: ctx);
+      if (scope == 'nested visible') {
+        expect(
+          result.displays.whereType<AssistantTitleMatches>().single.matches.single.targets.single.item.libraryId,
+          'films',
+        );
+      } else {
+        expect(result.displays.whereType<AssistantTitleMatches>(), isEmpty);
+      }
+      expect(seerr.posts, isEmpty);
+      expect(metadataReads, scope.startsWith('nested') ? 1 : 0);
+    });
+  }
+
+  test('incomplete matching title count never proves missing content', () async {
+    final seerr = _Seerr();
+    final server = _CappedIdentityServer('s', libraries: {'films': []})..reportedTotal = 101;
+    final ctx = await libraryContext(seerr, server);
+    final (_, model) = await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(model.toolResults.last, {'error': 'library_availability_unknown'});
+    expect(seerr.posts, isEmpty);
+  });
+
+  test('large library with a small complete title query still permits a missing request', () async {
+    final seerr = _Seerr();
+    final server = _CappedIdentityServer(
+      's',
+      libraries: {
+        'films': [for (var n = 0; n < 150; n++) find.fakeItem('other$n', 'Other $n', year: 1999)],
+      },
+    );
+    final ctx = await libraryContext(seerr, server);
+    await run([
+      _find('matrix'),
+      _request({'seerr_id': 'movie:603'}),
+      _say('x'),
+    ], context: ctx);
+    expect(seerr.posts, hasLength(1));
+    expect(server.queries, isNotEmpty);
+    expect(server.queries.every((q) => q.search == 'The Matrix' && q.limit == 100), isTrue);
+  });
 
   test('search returns compact candidates with their status', () async {
     final seerr = _Seerr()
@@ -352,7 +1360,12 @@ void main() {
     expect(seerr.posts, [
       {'mediaType': 'movie', 'mediaId': 603, 'is4k': false},
     ]);
-    expect(model.toolResults.last, {'status': 'requested', 'title': 'The Matrix (1999)'});
+    expect(model.toolResults.last, {
+      'status': 'requested',
+      'title': 'The Matrix (1999)',
+      'accepted': true,
+      'request_status': 'pending',
+    });
     expect(result.actions.single.kind, AssistantActionKind.requestTitle);
   });
 
@@ -466,6 +1479,7 @@ void main() {
       model: model.client(),
       context: AssistantToolContext(
         servers: await _manager(),
+        catalog: _emptyCatalog(),
         requests: AssistantRequestServices(client: () => live),
       ),
       confirm: (_) async {

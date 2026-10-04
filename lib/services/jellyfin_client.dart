@@ -24,6 +24,7 @@ import '../media/media_backend.dart';
 import '../media/media_file_info.dart';
 import '../media/media_hub.dart';
 import '../media/media_item.dart';
+import '../media/participant_evidence.dart';
 import '../media/media_kind.dart';
 import '../media/media_library.dart';
 import '../media/media_playlist.dart';
@@ -65,6 +66,7 @@ import 'jellyfin_playback_bundle.dart';
 import 'jellyfin_playback_urls.dart';
 import 'jellyfin_trickplay_service.dart';
 import 'playback_initialization_types.dart';
+import 'playback_stream_evidence.dart';
 import 'recommendations/jellyfin_history_importer.dart'
     show JellyfinHistorySource, kJellyfinPageLength, kJellyfinResumeLimit;
 import 'scrub_preview_source.dart';

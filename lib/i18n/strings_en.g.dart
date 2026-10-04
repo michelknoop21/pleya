@@ -6052,6 +6052,7 @@ class TranslationsAssistantEn {
 	String get contextAction => 'Ask Big P';
 
 	late final TranslationsAssistantSettingsEn settings = TranslationsAssistantSettingsEn.internal(_root);
+	late final TranslationsAssistantTasksEn tasks = TranslationsAssistantTasksEn.internal(_root);
 
 	/// en: 'You asked:'
 	String get youAsked => 'You asked:';
@@ -7694,6 +7695,9 @@ class TranslationsAssistantActionsEn {
 
 	/// en: 'Subtitle downloaded'
 	String get downloadSubtitle => 'Subtitle downloaded';
+
+	/// en: 'Playback changed'
+	String get changePlayback => 'Playback changed';
 }
 
 // Path: assistant.confirm
@@ -8031,6 +8035,57 @@ class TranslationsAssistantSettingsEn {
 	String get voiceNote => 'Short spoken reactions. Never while you dictate or watch something.';
 }
 
+// Path: assistant.tasks
+class TranslationsAssistantTasksEn {
+	TranslationsAssistantTasksEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Working on ${count} tasks · ${done} done'
+	String working({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done';
+
+	/// en: '${count} tasks are done.'
+	String allDone({required Object count}) => '${count} tasks are done.';
+
+	/// en: '${done} of ${count} tasks done.'
+	String someDone({required Object done, required Object count}) => '${done} of ${count} tasks done.';
+
+	/// en: 'Queued'
+	String get queued => 'Queued';
+
+	/// en: 'Working'
+	String get running => 'Working';
+
+	/// en: 'Waiting for confirmation'
+	String get waiting => 'Waiting for confirmation';
+
+	/// en: 'Done'
+	String get completed => 'Done';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+
+	/// en: 'Cancelled'
+	String get cancelled => 'Cancelled';
+
+	/// en: '(one) {1 title found} (other) {${n} titles found}'
+	String found({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 title found',
+		other: '${n} titles found',
+	);
+
+	/// en: 'Choose what to request'
+	String get choose => 'Choose what to request';
+
+	/// en: 'Cancel all'
+	String get cancelAll => 'Cancel all';
+
+	/// en: 'Cancel: ${title}'
+	String cancelTask({required Object title}) => 'Cancel: ${title}';
+}
+
 // Path: assistant.option
 class TranslationsAssistantOptionEn {
 	TranslationsAssistantOptionEn.internal(this._root);
@@ -8274,6 +8329,9 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Download subtitle'
 	String get downloadSubtitle => 'Download subtitle';
+
+	/// en: 'Change playback'
+	String get changePlayback => 'Change playback';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -10477,6 +10535,7 @@ extension on Translations {
 			'assistant.actions.requestTitle' => 'Request sent',
 			'assistant.actions.downloadEpisodes' => 'Download started',
 			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
+			'assistant.actions.changePlayback' => 'Playback changed',
 			'assistant.confirm.header' => 'Pleya asks for confirmation',
 			'assistant.confirm.titles.scanLibrary' => 'Scan library',
 			'assistant.confirm.titles.refreshMetadata' => 'Refresh metadata',
@@ -10490,6 +10549,7 @@ extension on Translations {
 			'assistant.confirm.titles.requestTitle' => 'Request title',
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
+			'assistant.confirm.titles.changePlayback' => 'Change playback',
 			'assistant.confirm.user' => 'User',
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Access',
@@ -10587,6 +10647,19 @@ extension on Translations {
 			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
 			'assistant.settings.voice' => 'Big P\'s voice',
 			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
+			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
+			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
+			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',
+			'assistant.tasks.queued' => 'Queued',
+			'assistant.tasks.running' => 'Working',
+			'assistant.tasks.waiting' => 'Waiting for confirmation',
+			'assistant.tasks.completed' => 'Done',
+			'assistant.tasks.failed' => 'Failed',
+			'assistant.tasks.cancelled' => 'Cancelled',
+			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 title found', other: '${n} titles found', ), 
+			'assistant.tasks.choose' => 'Choose what to request',
+			'assistant.tasks.cancelAll' => 'Cancel all',
+			'assistant.tasks.cancelTask' => ({required Object title}) => 'Cancel: ${title}',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',
