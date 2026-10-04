@@ -125,6 +125,7 @@ import '../utils/deletion_notifier.dart';
 import '../utils/global_key_utils.dart';
 import '../widgets/episode_card.dart';
 import '../widgets/fitting_title_text.dart';
+import 'big_p/big_p_detail_peek.dart';
 import 'actor_media_screen.dart';
 import 'media_detail/cast_section.dart';
 import 'media_detail/detail_track_preview.dart';
@@ -312,7 +313,14 @@ PageRoute<bool> mediaDetailRoute({
     unifiedRouteContext: unifiedRouteContext,
     onChangeSource: onChangeSource,
   );
-  if (!PlatformDetector.isTV()) return MaterialPageRoute<bool>(builder: (_) => page);
+  // Big P peeks in over the page (39 H); without a Big P session (TV,
+  // desktop, Android, the iOS app on a Mac) the peek is nothing. TV detail
+  // opens nested in the shell through [mediaDetailPage] and never gets here.
+  if (!PlatformDetector.isTV()) {
+    return MaterialPageRoute<bool>(
+      builder: (_) => Stack(fit: StackFit.expand, children: [page, const BigPDetailPeek()]),
+    );
+  }
 
   return PageRouteBuilder<bool>(
     opaque: false,

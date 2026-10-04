@@ -1,7 +1,8 @@
-// Visual evidence: Big P on iPhone (39 A to G) at 402x874 and on iPad (39 I)
+// Visual evidence: Big P on iPhone (39 A to H) at 402x874 and on iPad (39 I)
 // at 1180x820, with the app's fonts, over the 39 A mockup as Home. The header is the real one; the iOS
 // keyboard is the mockup's, cut from 39 B. Skipped unless BIGP_SHOT_DIR is set:
 //   BIGP_SHOT_DIR=/tmp/bigp flutter test test/screens/big_p/big_p_mobile_shots_test.dart
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -11,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/screens/big_p/big_p_detail_peek.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/services/pleya_keychain.dart';
@@ -35,6 +37,7 @@ Future<ui.Image> _image(String path) async {
 void main() {
   late ui.Image home;
   late ui.Image keys;
+  late ui.Image detail;
 
   setUpAll(() async {
     if (_dir == null) return;
@@ -42,6 +45,7 @@ void main() {
     await LocaleSettings.setLocale(AppLocale.nl);
     home = await _image('$_mockups/39-a-gezichtsknop.png');
     keys = await _image('$_mockups/39-b-opgeroepen.png');
+    detail = await _image('docs/assets/ios-unified/detail-2026/D-01-film.png');
   });
 
   Future<void> shoot(
@@ -130,6 +134,7 @@ void main() {
         bigPAsset('brow-r'),
         bigPAsset('aim-arm'),
         bigPAsset('wave-arm'),
+        bigPAsset('still-zwaaien'),
         PleyaWordmark.markAsset,
       ]) {
         await precacheImage(AssetImage(a), ctx);
@@ -234,6 +239,37 @@ void main() {
         ..prompt = 'Maak Sam aan en geef hem alleen Kids.'
         ..state = AssistantSurfaceState.working
         ..pending = createSam(),
+    );
+  });
+
+  testWidgets('39-h back to Big P', skip: _dir == null, (tester) async {
+    final c = FakeAssistantController();
+    addTearDown(c.dispose);
+    await shoot(
+      tester,
+      '39-h-terug-naar-big-p',
+      c,
+      before: (s) async {
+        answerLibraryTitles(c);
+        c.emit();
+        // The host's _openTitle, over the D-01 mockup as the detail page.
+        s.openedTitle(nasTarget('s', 'Sintel', 2010).item.globalKey);
+        unawaited(
+          Navigator.of(tester.element(find.byType(BigPMobileHost))).push(
+            MaterialPageRoute<void>(
+              builder: (_) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRect(
+                    child: RawImage(image: detail, fit: BoxFit.fitWidth, alignment: Alignment.topCenter),
+                  ),
+                  const BigPDetailPeek(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   });
 

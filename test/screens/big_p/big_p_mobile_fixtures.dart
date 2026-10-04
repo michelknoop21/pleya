@@ -59,6 +59,19 @@ void answerTitles(FakeAssistantController c) => c
     ]),
   ];
 
+/// 39 H: three titles, all in the library.
+void answerLibraryTitles(FakeAssistantController c) => c
+  ..prompt = 'Welke animatiefilms heb ik nog niet gezien?'
+  ..answer = 'Drie nog niet.'
+  ..state = AssistantSurfaceState.result
+  ..displays = [
+    AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
+      libraryMatch('tos', 'Tears of Steel', 2012),
+      libraryMatch('ed', 'Elephants Dream', 2006),
+      libraryMatch('s', 'Sintel', 2010),
+    ]),
+  ];
+
 /// 39 F: who watched most this week.
 void answerWatchStats(FakeAssistantController c) => c
   ..prompt = 'Wie heeft deze week het meest gekeken?'

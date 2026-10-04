@@ -14,6 +14,7 @@ import '../../assistant/assistant_controller.dart';
 import '../../assistant/assistant_tools.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../navigation/profile_navigation_scope.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../utils/media_navigation_helper.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
@@ -50,13 +51,36 @@ class BigPMobileHost extends StatefulWidget {
   State<BigPMobileHost> createState() => _BigPMobileHostState();
 }
 
-class _BigPMobileHostState extends State<BigPMobileHost> {
+class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
   bool _open = false;
   bool _shown = false;
   Timer? _leave;
+  RouteObserver<PageRoute<dynamic>>? _observer;
+
+  /// The host sits in MainScreen, the profile navigator's first route (a
+  /// MaterialPageRoute that observer sees): a pop back onto it is the user
+  /// coming back from the detail page.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final observer = ProfileNavigationScope.maybeOf(context)?.routeObserver;
+    final route = ModalRoute.of(context);
+    _observer?.unsubscribe(this);
+    _observer = null;
+    if (observer != null && route is PageRoute<dynamic>) _observer = observer..subscribe(this, route);
+  }
+
+  /// Back on Home from the detail page (39 H): Big P into his button, the
+  /// answer kept.
+  @override
+  void didPopNext() {
+    final session = context.read<BigPMobileSession?>();
+    if (session?.stage == BigPStage.peek) session!.park();
+  }
 
   @override
   void dispose() {
+    _observer?.unsubscribe(this);
     _leave?.cancel();
     super.dispose();
   }

@@ -672,8 +672,9 @@ void main() {
 
       final pushed = observer.lastPushedRoute;
       expect(pushed, isA<MaterialPageRoute>());
+      // Off TV the page comes under Big P's peek (39 H).
       final widget = (pushed! as MaterialPageRoute).builder(key.currentState!.context);
-      expect(widget, isA<MediaDetailScreen>());
+      expect((widget as Stack).children.first, isA<MediaDetailScreen>());
     });
 
     testWidgets('a collection opens through the same source-concrete route every other list uses', (tester) async {
@@ -804,8 +805,9 @@ void main() {
 
       final pushed = observer.lastPushedRoute;
       expect(pushed, isA<MaterialPageRoute>());
+      // Off TV the page comes under Big P's peek (39 H).
       final widget = (pushed! as MaterialPageRoute).builder(key.currentState!.context);
-      expect(widget, isA<MediaDetailScreen>());
+      expect((widget as Stack).children.first, isA<MediaDetailScreen>());
     });
 
     testWidgets('a playlist opens PlaylistDetailScreen, not the generic media route', (tester) async {
