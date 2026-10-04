@@ -211,7 +211,9 @@ class AssistantRun {
       'out is enough.\n'
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
-      '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
+      '«Interstellar» (2014). Pleya turns each into a card to open or request. '
+      'Mark only titles you recommend or answer with: a title you mention as a reason ("because you watched ...") '
+      'or as one you leave out goes without the marks, and name only as many as were asked.\n'
       '- Only offer what your tools can do. You cannot create accounts, profiles or users.\n'
       '$_who';
 
@@ -261,6 +263,10 @@ class AssistantRun {
     _namedTitlesCurrent = null;
     _stepIndex = 0;
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
+    _pickGrids.clear();
+    _history.clear();
+    _personal = false;
+    _wanted = assistantAskedCount(prompt);
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
@@ -435,6 +441,9 @@ class AssistantRun {
   }
 
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
+    // A pick grid the answer never narrowed (cancelled, an action, a step
+    // limit) names nothing: its picks were never shown.
+    _displays.removeWhere(_pickGrids.contains);
     final evidenceContext = _ctx;
     final namedTitlesCurrent = _namedTitlesCurrent;
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
@@ -614,11 +623,22 @@ class AssistantRun {
               identical(evidenceContext.userClient(entry.key), entry.value),
         );
     if (!current()) return;
+    var all = assistantNamedTitles(answer);
+    var kept = 0;
+    if (_personal) {
+      // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
+      all = [
+        for (final t in all)
+          if (!_history.contains(assistantTitleKey(t.title))) t,
+      ];
+      kept = _narrowPicks(all);
+    }
     final shown = assistantShownTitles(_displays);
+    final room = _personal ? (_wanted ?? 5) - kept : 5;
     final named = [
-      for (final t in assistantNamedTitles(answer))
+      for (final t in all)
         if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
-    ];
+    ].take(room < 0 ? 0 : room).toList();
     if (named.isEmpty) return;
     final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
     if (tool == null || tool.risk != AssistantToolRisk.read) return;
@@ -675,6 +695,49 @@ class AssistantRun {
         evidenceCurrent: current,
       ),
     );
+  }
+
+  /// The my_watching pick grids of this run and the titles of the history it
+  /// returned. The picks are material for the model, not an answer: only what
+  /// the answer names stays a card, in the order the answer names it.
+  final Set<AssistantMediaGrid> _pickGrids = {};
+  final Set<String> _history = {};
+  int? _wanted;
+  bool _personal = false;
+
+  /// Narrows the pick grids to the named titles; returns how many cards stay.
+  /// A grid not narrowed by the end of the run is dropped in [_end].
+  int _narrowPicks(List<({String title, int? year})> named) {
+    final used = <String>{};
+    var total = 0;
+    for (final grid in _pickGrids.toList()) {
+      _pickGrids.remove(grid);
+      final at = _displays.indexOf(grid);
+      if (at < 0) continue;
+      final kept = <AssistantMediaGridEntry>[];
+      for (final t in named) {
+        for (final e in grid.entries) {
+          if (assistantSameTitle(
+            (key: assistantTitleKey(e.item.title ?? ''), year: e.item.year),
+            assistantTitleKey(t.title),
+            t.year,
+          )) {
+            // One card per title, also across grids and for a title named twice.
+            if (used.add(e.item.globalKey)) kept.add(e);
+            break;
+          }
+        }
+      }
+      final room = (_wanted ?? 5) - total;
+      kept.removeRange(kept.length.clamp(0, room < 0 ? 0 : room), kept.length);
+      total += kept.length;
+      if (kept.isEmpty) {
+        _displays.removeAt(at);
+      } else {
+        _displays[at] = AssistantMediaGrid(kept);
+      }
+    }
+    return total;
   }
 
   /// find_media grids whose titles a later call acted on: a lookup on the way
@@ -795,6 +858,13 @@ class AssistantRun {
           }
           final shown = display == null ? null : _ctx.recommend.admit(display);
           if (shown != null) _displays.add(shown);
+          if (tool.name == 'my_watching') {
+            _personal = true;
+            if (shown is AssistantMediaGrid) _pickGrids.add(shown);
+            for (final w in (data['watched_recently'] as List?) ?? const []) {
+              _history.add(assistantTitleKey((w as Map)['title'] as String));
+            }
+          }
           if (tool.name == 'find_media' && shown is AssistantMediaGrid) {
             _lookups[shown] = {for (final e in shown.entries) e.item.id};
           }
