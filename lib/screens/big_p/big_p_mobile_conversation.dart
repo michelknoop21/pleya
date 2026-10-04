@@ -18,6 +18,11 @@ import '../../widgets/big_p/big_p_scale.dart';
 import 'big_p_mobile_confirm.dart';
 import 'big_p_mobile_followups.dart';
 
+// ponytail: ". ", "! " or "? " ends the lead, so "Dr. Strange" splits too.
+// A sentence tokenizer is the upgrade if answers trip on it. Never past the
+// first line: "Top drie:" above a list is the lead on its own.
+final _firstSentence = RegExp(r'^[^\n]*?[.!?](?=[ \t]+\S)|^[^\n]+');
+
 /// What Big P's balloon says on iPhone and iPad (39 B to G, I): the
 /// greeting with example questions, the set-up and locked gates, listening,
 /// the steps while he works, the answer with its cards, and the Pleya card
@@ -162,7 +167,7 @@ class BigPMobileConversation extends StatelessWidget {
     }
     return [
       ..._asked(),
-      if (headline.isNotEmpty) Text(headline, style: _headline(context).copyWith(fontSize: 19, height: 1.28)),
+      if (headline.isNotEmpty) ..._answer(context, headline),
       for (final (i, display) in displays.indexed) ...[
         const SizedBox(height: 12),
         SizedBox(
@@ -184,6 +189,39 @@ class BigPMobileConversation extends StatelessWidget {
         BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
       ],
       if (regular) ...[const SizedBox(height: 12), BigPMobileFollowUps(controller: c, onAsk: onExample)],
+    ];
+  }
+
+  /// The answer's first sentence as the bold lead, the rest as body text: a
+  /// long answer no longer fills the balloon in bold. A lead longer than two
+  /// lines at the balloon's width is body text too.
+  List<Widget> _answer(BuildContext context, String answer) {
+    final lead = _firstSentence.firstMatch(answer)?[0] ?? answer;
+    final rest = answer.substring(lead.length).trim();
+    final bold = _headline(context).copyWith(fontSize: 19, height: 1.28);
+    final body = TextStyle(color: tokens(context).text.withValues(alpha: 0.85), fontSize: 16, height: 1.35);
+    return [
+      LayoutBuilder(
+        builder: (context, box) {
+          final painter = TextPainter(
+            // As Text draws it: merged with the theme's font.
+            text: TextSpan(text: lead, style: DefaultTextStyle.of(context).style.merge(bold)),
+            maxLines: 2,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: box.maxWidth);
+          final tooLong = painter.didExceedMaxLines;
+          painter.dispose();
+          if (tooLong) return Text(answer, style: body);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(lead, style: bold),
+              if (rest.isNotEmpty) ...[const SizedBox(height: 6), Text(rest, style: body)],
+            ],
+          );
+        },
+      ),
     ];
   }
 

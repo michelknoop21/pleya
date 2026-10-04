@@ -296,6 +296,60 @@ void main() {
     expect(tester.getBottomLeft(find.byType(BigPInputBar)).dy, lessThanOrEqualTo(667 - 260));
   });
 
+  testWidgets('beside an answer Big P steps back to 150, the greeting keeps 237', (tester) async {
+    await pump(tester);
+    await summon(tester);
+    expect(tester.getSize(find.byType(BigPAvatar)).height, 237);
+    c
+      ..prompt = 'Wat is er nieuw?'
+      ..answer = 'Twee films. De rest is ouder.'
+      ..state = AssistantSurfaceState.result
+      ..emit();
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byType(BigPAvatar)).height, 150);
+    // Only the first sentence is the bold lead.
+    expect(find.text('Twee films.'), findsOneWidget);
+    expect(find.text('De rest is ouder.'), findsOneWidget);
+  });
+
+  testWidgets('a first sentence longer than two lines is no bold lead', (tester) async {
+    const long =
+        'The latest additions are mostly 2026 releases, with Tears of Steel and Sintel joined alongside a '
+        'handful of older favourites from the Blender studio.';
+    await pump(tester);
+    await summon(tester);
+    c
+      ..prompt = 'Wat is er nieuw?'
+      ..answer = '$long De rest is ouder.'
+      ..state = AssistantSurfaceState.result
+      ..emit();
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.text(long), findsNothing);
+    final text = tester.widget<Text>(find.text('$long De rest is ouder.'));
+    expect(text.style!.fontWeight, isNot(FontWeight.w700));
+  });
+
+  for (final (answer, lead, rest) in [
+    ('Top drie:\n1. Inception\n2. Tenet', 'Top drie:', '1. Inception\n2. Tenet'),
+    ('Kijk dit\n• A. Goed', 'Kijk dit', '• A. Goed'),
+  ]) {
+    testWidgets('the lead stops at the first line: $lead', (tester) async {
+      await pump(tester);
+      await summon(tester);
+      c
+        ..prompt = 'Wat raad je aan?'
+        ..answer = answer
+        ..state = AssistantSurfaceState.result
+        ..emit();
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(tester.widget<Text>(find.text(lead)).style!.fontWeight, FontWeight.w700);
+      expect(find.text(rest), findsOneWidget);
+    });
+  }
+
   testWidgets('the face button says whether Big P is out and that a card waits', (tester) async {
     final handle = tester.ensureSemantics();
     await pump(tester);

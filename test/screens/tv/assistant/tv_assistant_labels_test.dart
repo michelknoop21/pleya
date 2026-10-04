@@ -36,5 +36,26 @@ void main() {
       expect(lead('«The Martian» staat op Zolder.'), 'The Martian staat op Zolder.');
       expect(lead('Gevonden:\n1. «Alien»\n2. «Aliens»'), 'Gevonden:');
     });
+
+    test('a list that runs on in the sentence keeps its titles and years', () {
+      expect(
+        lead(
+          'The latest additions are mostly 2026 releases: «Paw Patrol» (2022) and «Lanterns» (2026) joined alongside a few classics.',
+        ),
+        'The latest additions are mostly 2026 releases: Paw Patrol (2022) and Lanterns (2026) joined alongside a few classics.',
+      );
+      expect(
+        lead('Also recently added: «Bugonia» (2025), Team America: World Police (2004) and more.'),
+        'Also recently added: Bugonia (2025), Team America: World Police (2004) and more.',
+      );
+    });
+
+    test('a list with years that ends the sentence goes with its years', () {
+      expect(
+        lead('Nieuw binnen: «Paw Patrol» (2022) en «Lanterns» (2026). Veel kijkplezier.'),
+        'Nieuw binnen. Veel kijkplezier.',
+      );
+      expect(lead('Also recently added: «Bugonia» (2025), «Weapons» (2025)'), 'Also recently added.');
+    });
   });
 }

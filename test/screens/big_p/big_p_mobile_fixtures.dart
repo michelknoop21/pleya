@@ -75,6 +75,21 @@ void answerTitles(FakeAssistantController c) => c
     ]),
   ];
 
+/// Device feedback on build 323: a long answer over two title cards.
+void answerLongTitles(FakeAssistantController c) => c
+  ..prompt = 'What was added to my library lately?'
+  ..answer =
+      'The latest additions are mostly 2026 releases: «Tears of Steel» (2012) and «Sintel» (2010) joined alongside '
+      'a handful of older favourites. Also recently added: «Elephants Dream» (2006), Caminandes (2013) and a '
+      'few shorts from the Blender studio, so there is plenty to pick from tonight.'
+  ..state = AssistantSurfaceState.result
+  ..displays = [
+    AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
+      libraryMatch('tos', 'Tears of Steel', 2012),
+      libraryMatch('s', 'Sintel', 2010),
+    ]),
+  ];
+
 /// 39 H: three titles, all in the library.
 void answerLibraryTitles(FakeAssistantController c) => c
   ..prompt = 'Welke animatiefilms heb ik nog niet gezien?'
