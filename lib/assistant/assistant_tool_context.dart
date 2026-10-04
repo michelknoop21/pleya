@@ -4,6 +4,7 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
+import 'assistant_title_facts.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
@@ -51,6 +52,7 @@ class AssistantToolContext {
     this.media,
     this.personal,
     this.web,
+    this.titleFacts,
     this.cancel,
   });
 
@@ -72,6 +74,7 @@ class AssistantToolContext {
     media: media,
     personal: personal,
     web: web ?? this.web,
+    titleFacts: titleFacts,
     cancel: cancel ?? this.cancel,
   );
 
@@ -88,6 +91,9 @@ class AssistantToolContext {
 
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;
+
+  /// Age ratings, genres, score and services per title; null leaves them out.
+  final TitleFactsService? titleFacts;
 
   /// Shown job ids per server, with the title list_jobs gave them.
   final Map<String, Map<String, String>> _jobs = {};
