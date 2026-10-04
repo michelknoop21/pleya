@@ -37,6 +37,9 @@ class BigPMobileHost extends StatefulWidget {
   /// From here on the iPad layout (39 I): balloon beside Big P.
   static const regularWidth = 700.0;
 
+  /// The share of Big P's box above his head (the rig's own margin).
+  static const headroom = 0.14;
+
   /// Big P's height in [room]: 237 (190 pt wide, as in 39 B) when it fits.
   /// With the keyboard up he shrinks so the balloon keeps 220 pt, room for
   /// the three examples, but never under 120 (an iPhone SE).
@@ -178,33 +181,46 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
   Widget _compact(BuildContext context, BigPMobileSession session, BoxConstraints box) {
     final c = session.controller;
     final asks = _asks(c);
+    final size = BigPMobileHost.avatarSize(box.maxHeight, withBar: asks);
+    // Laid out bottom up, so the balloon paints last: over the top of his
+    // head, never his head over its buttons (39 G).
     return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
+      verticalDirection: VerticalDirection.up,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Flexible(child: _balloon(context, session)),
+        if (asks) ...[BigPInputBar(session: session), const SizedBox(height: 4)],
+        // Both in the flow, so the row is as tall as the taller of the two
+        // and every pill is hit-testable, also on an iPhone SE.
         Stack(
-          clipBehavior: Clip.none,
+          alignment: Alignment.bottomLeft,
           children: [
+            Align(alignment: Alignment.bottomRight, child: _overlapped(c, size)),
             Align(
-              alignment: Alignment.centerRight,
-              child: _avatar(c, BigPMobileHost.avatarSize(box.maxHeight, withBar: asks)),
-            ),
-            Positioned(
-              left: 0,
-              bottom: 8,
-              child: ConstrainedBox(
-                // As far as his arm, as in 39 E.
-                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.66),
-                child: BigPMobileFollowUps(controller: c, floating: true, onAsk: (q) => _ask(session, q)),
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ConstrainedBox(
+                  // As far as his arm, as in 39 E.
+                  constraints: BoxConstraints(maxWidth: box.maxWidth * 0.66),
+                  child: BigPMobileFollowUps(controller: c, floating: true, onAsk: (q) => _ask(session, q)),
+                ),
               ),
             ),
           ],
         ),
-        if (asks) ...[const SizedBox(height: 4), BigPInputBar(session: session)],
+        Flexible(child: _balloon(context, session)),
       ],
     );
   }
+
+  /// The top of Big P's box is mostly air above his head: the balloon may
+  /// hang into it, which gives a long answer (39 F) that room.
+  /// Outside the laid-out box, so it takes no taps from the balloon.
+  Widget _overlapped(AssistantController c, double size) => SizedBox(
+    width: size * 0.8,
+    height: size * (1 - BigPMobileHost.headroom),
+    child: OverflowBox(alignment: Alignment.bottomCenter, minHeight: size, maxHeight: size, child: _avatar(c, size)),
+  );
 
   /// iPad (39 I): a 620 pt balloon left of a 250 pt Big P, its tail to
   /// him; the follow-ups and the field inside it.
@@ -217,7 +233,8 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
       children: [
         ConstrainedBox(
           constraints: BoxConstraints(maxWidth: min(620, box.maxWidth - size * 0.8 - 8)),
-          child: _balloon(context, session, regular: true),
+          // Its tail at his head, not his feet.
+          child: Padding(padding: const EdgeInsets.only(bottom: 45), child: _balloon(context, session, regular: true)),
         ),
         const SizedBox(width: 8),
         _avatar(c, size),
@@ -248,6 +265,13 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
         onExample: (question) => _ask(session, question),
         onSetup: () => unawaited(_setup(session)),
         onOpenTitle: (target) => _openTitle(session, target),
+        resultTime: switch (session.resultAt) {
+          final at? => MaterialLocalizations.of(context).formatTimeOfDay(
+            TimeOfDay.fromDateTime(at),
+            alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+          ),
+          null => '',
+        },
       ),
     );
     return AutomationNode(

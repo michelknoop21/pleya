@@ -31,6 +31,7 @@ class BigPConfirmCard extends StatefulWidget {
     required this.onCancel,
     required this.onConfirm,
     required this.readPassword,
+    this.embedded = false,
   });
 
   final AssistantPendingAction action;
@@ -40,6 +41,10 @@ class BigPConfirmCard extends StatefulWidget {
 
   /// Opens Pleya's secure entry; null when the viewer backed out.
   final Future<String?> Function() readPassword;
+
+  /// Inside Big P's balloon (39 G): no card of its own around the rows,
+  /// the balloon is the card.
+  final bool embedded;
 
   @override
   State<BigPConfirmCard> createState() => _BigPConfirmCardState();
@@ -100,8 +105,10 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
       role: 'sheet',
       state: () => {'kind': a.kind.name, 'password': a.password.name, 'canConfirm': _canConfirm},
       child: Container(
-        padding: EdgeInsets.all(48 * pt),
-        decoration: BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
+        padding: widget.embedded ? null : EdgeInsets.all(48 * pt),
+        decoration: widget.embedded
+            ? null
+            : BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -158,34 +165,37 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
                 ),
               ],
               SizedBox(height: 32 * pt),
-              // Wraps on a phone, where the two do not fit side by side.
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 12 * pt,
-                runSpacing: 12 * pt,
-                children: [
-                  BigPButton(
-                    label: t.assistant.result.cancel,
-                    primary: false,
-                    focusNode: widget.cancelNode,
-                    automationId: AutomationIds.assistantConfirmButton,
-                    automationInstance: 'cancel',
-                    onPressed: widget.onCancel,
-                  ),
-                  BigPButton(
-                    label: approveLabel,
-                    primary: true,
-                    enabled: _canConfirm,
-                    automationId: AutomationIds.assistantConfirmButton,
-                    automationInstance: 'approve',
-                    onPressed: () => widget.onConfirm(_password.isEmpty ? null : _password),
-                  ),
-                ],
-              ),
+              _buttons(pt, approveLabel),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Right-aligned on TV; in Big P's balloon two halves of the width (39 G).
+  Widget _buttons(double pt, String approveLabel) {
+    final cancel = BigPButton(
+      label: t.assistant.result.cancel,
+      primary: false,
+      focusNode: widget.cancelNode,
+      automationId: AutomationIds.assistantConfirmButton,
+      automationInstance: 'cancel',
+      onPressed: widget.onCancel,
+    );
+    final approve = BigPButton(
+      label: approveLabel,
+      primary: true,
+      enabled: _canConfirm,
+      automationId: AutomationIds.assistantConfirmButton,
+      automationInstance: 'approve',
+      onPressed: () => widget.onConfirm(_password.isEmpty ? null : _password),
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: widget.embedded
+          ? [Expanded(child: cancel), SizedBox(width: 12 * pt), Expanded(child: approve)]
+          : [cancel, SizedBox(width: 12 * pt), approve],
     );
   }
 

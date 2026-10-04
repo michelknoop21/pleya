@@ -42,6 +42,9 @@ class BigPMobileSession extends ChangeNotifier {
 
   BigPStage get stage => _stage;
 
+  /// When the shown answer came in; null before any.
+  DateTime? get resultAt => _resultAt;
+
   /// A confirmation waits while Big P is not out (a pick ran on after a
   /// park): the face button shows a dot, Big P stays put.
   bool get waiting => _stage != BigPStage.out && controller.pending != null;

@@ -95,7 +95,10 @@ class _BigPInputBarState extends State<BigPInputBar> {
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
-                  hintText: t.assistant.idle.ask,
+                  // After an answer: ask on from it (39 E).
+                  hintText: _c.state == AssistantSurfaceState.result
+                      ? t.assistant.mobile.askFurther
+                      : t.assistant.idle.ask,
                   hintStyle: style.copyWith(color: tk.text.withValues(alpha: 0.45)),
                 ),
                 onSubmitted: (_) => _send(),

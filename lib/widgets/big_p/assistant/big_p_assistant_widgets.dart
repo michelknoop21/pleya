@@ -307,6 +307,8 @@ class _BigPButtonState extends State<BigPButton> {
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
+                // Centred when the button is given a width (39 G).
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (widget.icon != null) ...[
                     Icon(widget.icon, size: TvHig.caption1 * pt, color: ink),

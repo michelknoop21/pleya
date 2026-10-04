@@ -29,6 +29,7 @@ class BigPMobileConversation extends StatelessWidget {
     required this.onExample,
     required this.onSetup,
     required this.onOpenTitle,
+    this.resultTime = '',
     this.regular = false,
   });
 
@@ -37,6 +38,9 @@ class BigPMobileConversation extends StatelessWidget {
   final ValueChanged<String> onExample;
   final VoidCallback onSetup;
   final ValueChanged<AssistantTitleTarget> onOpenTitle;
+
+  /// When the answer came in, for the result card.
+  final String resultTime;
 
   /// The iPad balloon (39 I): cards in two columns, follow-ups inside.
   final bool regular;
@@ -176,13 +180,7 @@ class BigPMobileConversation extends StatelessWidget {
       ],
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         const SizedBox(height: 12),
-        BigPResultCard(
-          error: c.resultIsError,
-          actions: c.actions,
-          time: MaterialLocalizations.of(
-            context,
-          ).formatTimeOfDay(TimeOfDay.now(), alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context)),
-        ),
+        BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
       ],
       if (regular) ...[const SizedBox(height: 12), BigPMobileFollowUps(controller: c, onAsk: onExample)],
     ];

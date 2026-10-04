@@ -26,29 +26,66 @@ class BigPMobileConfirm extends StatefulWidget {
 class _BigPMobileConfirmState extends State<BigPMobileConfirm> {
   final _cancel = FocusNode(debugLabel: 'bigp.confirm.cancel');
 
+  /// This card was answered: a second tap neither answers nor nods again.
+  bool _answered = false;
+
+  /// The password dialog's navigator while it is open.
+  NavigatorState? _dialog;
+
+  @override
+  void didUpdateWidget(BigPMobileConfirm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.pending, widget.pending)) {
+      _answered = false;
+      _closeDialog();
+    }
+  }
+
   @override
   void dispose() {
+    // The card went (answered elsewhere, timed out): its dialog goes too.
+    _closeDialog();
     _cancel.dispose();
     super.dispose();
   }
 
+  void _closeDialog() {
+    final navigator = _dialog;
+    if (navigator == null) return;
+    // Not while the tree is being built or torn down.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (identical(_dialog, navigator) && navigator.mounted) navigator.pop();
+    });
+  }
+
   /// A card the controller already dropped (a newer one, or none) is not
-  /// answered twice.
-  bool get _current => identical(widget.controller.pending, widget.pending);
+  /// answered; nor is one twice.
+  bool _answer() {
+    if (_answered || !identical(widget.controller.pending, widget.pending)) return false;
+    _answered = true;
+    return true;
+  }
 
   void _confirm(String? password) {
-    if (!_current) return;
+    if (!_answer()) return;
     widget.controller.confirmPending(password: password);
     unawaited(BigPVoice.of(widget.controller)?.say(BigPMoment.nod));
   }
 
-  Future<String?> _readPassword() => showTextInputDialog(
-    context,
-    title: t.assistant.confirm.password,
-    labelText: t.assistant.confirm.password,
-    hintText: t.assistant.confirm.passwordPlaceholder,
-    obscureText: true,
-  );
+  Future<String?> _readPassword() async {
+    _dialog = Navigator.of(context);
+    try {
+      return await showTextInputDialog(
+        context,
+        title: t.assistant.confirm.password,
+        labelText: t.assistant.confirm.password,
+        hintText: t.assistant.confirm.passwordPlaceholder,
+        obscureText: true,
+      );
+    } finally {
+      _dialog = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) => BigPConfirmCard(
@@ -57,9 +94,10 @@ class _BigPMobileConfirmState extends State<BigPMobileConfirm> {
     action: widget.pending,
     cancelNode: _cancel,
     onCancel: () {
-      if (_current) widget.controller.cancelPending();
+      if (_answer()) widget.controller.cancelPending();
     },
     onConfirm: _confirm,
     readPassword: _readPassword,
+    embedded: true,
   );
 }
