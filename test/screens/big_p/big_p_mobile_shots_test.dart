@@ -47,10 +47,11 @@ void main() {
     WidgetTester tester,
     String name,
     FakeAssistantController c, {
+    _Phone phone = _iPhone17Pro,
     bool keyboard = false,
     Future<void> Function(BigPMobileSession session)? before,
   }) async {
-    tester.view.physicalSize = const Size(804, 1748);
+    tester.view.physicalSize = phone.size * 2;
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
     final session = BigPMobileSession(c);
@@ -69,19 +70,19 @@ void main() {
                 builder: (context) => MediaQuery(
                   data: MediaQuery.of(context).copyWith(
                     disableAnimations: true,
-                    viewPadding: const EdgeInsets.only(top: 54, bottom: 34),
-                    padding: const EdgeInsets.only(top: 54, bottom: 34),
-                    viewInsets: EdgeInsets.only(bottom: keyboard ? 300 : 0),
+                    viewPadding: phone.safe,
+                    padding: keyboard ? phone.safe.copyWith(bottom: 0) : phone.safe,
+                    viewInsets: EdgeInsets.only(bottom: keyboard ? phone.keyboard : 0),
                   ),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      RawImage(image: home, fit: BoxFit.fill),
+                      RawImage(image: home, fit: BoxFit.cover, alignment: Alignment.topCenter),
                       // The real header over the mockup's.
                       Positioned(
                         left: 0,
                         right: 0,
-                        top: 54,
+                        top: phone.safe.top,
                         height: 64,
                         child: ColoredBox(
                           color: Colors.black,
@@ -101,7 +102,7 @@ void main() {
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          height: 300,
+                          height: phone.keyboard,
                           child: ClipRect(
                             child: RawImage(image: keys, fit: BoxFit.fitWidth, alignment: Alignment.bottomCenter),
                           ),
@@ -199,4 +200,37 @@ void main() {
       },
     );
   });
+
+  for (final phone in _phones) {
+    for (final keyboard in [false, true]) {
+      final tag = '${phone.name}${keyboard ? '-kb' : ''}';
+      testWidgets('sweep greet $tag', skip: _dir == null, (tester) async {
+        final c = FakeAssistantController();
+        addTearDown(c.dispose);
+        await shoot(tester, 'sweep-$tag-greet', c, phone: phone, keyboard: keyboard, before: (s) async => s.summon());
+      });
+      testWidgets('sweep setup $tag', skip: _dir == null, (tester) async {
+        final c = FakeAssistantController()..availability = AssistantAvailability.needsSetup;
+        addTearDown(c.dispose);
+        PleyaKeychain.debugForceSupported = true;
+        addTearDown(() => PleyaKeychain.debugForceSupported = false);
+        await shoot(tester, 'sweep-$tag-setup', c, phone: phone, keyboard: keyboard, before: (s) async => s.summon());
+      });
+    }
+  }
 }
+
+typedef _Phone = ({String name, Size size, EdgeInsets safe, double keyboard});
+
+/// The 402 one (iPhone 17 Pro) is what the 39 mockups are drawn at.
+const _Phone _iPhone17Pro = (
+  name: '402',
+  size: Size(402, 874),
+  safe: EdgeInsets.only(top: 54, bottom: 34),
+  keyboard: 300,
+);
+const List<_Phone> _phones = [
+  _iPhone17Pro,
+  (name: 'se', size: Size(375, 667), safe: EdgeInsets.only(top: 20), keyboard: 260),
+  (name: '440', size: Size(440, 956), safe: EdgeInsets.only(top: 62, bottom: 34), keyboard: 346),
+];

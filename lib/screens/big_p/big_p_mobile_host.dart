@@ -17,6 +17,7 @@ import '../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import '../../widgets/big_p/big_p_avatar.dart';
 import '../../widgets/big_p/big_p_balloon.dart';
 import '../../widgets/big_p/big_p_scale.dart';
+import '../main/mobile_main_scaffold.dart';
 import '../settings/assistant_settings_screen.dart';
 import 'big_p_input_bar.dart';
 import 'big_p_mobile_conversation.dart';
@@ -28,8 +29,11 @@ import 'big_p_mobile_session.dart';
 class BigPMobileHost extends StatefulWidget {
   const BigPMobileHost({super.key});
 
-  /// The tab bar's height above the safe area (`mobile_tab_bar_theme.dart`).
-  static const tabBarHeight = 64.0;
+  /// Big P's height in [room]: 237 (190 pt wide, as in 39 B) when it fits.
+  /// With the keyboard up he shrinks so the balloon keeps 220 pt, room for
+  /// the three examples, but never under 120 (an iPhone SE).
+  static double avatarSize(double room, {required bool withBar}) =>
+      (room - 220 - (withBar ? 50 : 0)).clamp(120.0, 237.0);
 
   @override
   State<BigPMobileHost> createState() => _BigPMobileHostState();
@@ -95,7 +99,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
     final motion = _motion(context);
     final media = MediaQuery.of(context);
     final keyboard = media.viewInsets.bottom > 0;
-    final bottom = keyboard ? media.viewInsets.bottom + 8 : BigPMobileHost.tabBarHeight + media.viewPadding.bottom;
+    final bottom = keyboard ? media.viewInsets.bottom + 8 : mobileBottomBarExtent(context);
     return ListenableBuilder(
       listenable: session.controller,
       builder: (context, _) {
@@ -131,27 +135,28 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
                   child: AnimatedOpacity(
                     opacity: _shown ? 1 : 0,
                     duration: motion,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Flexible(child: _balloon(context, session)),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: RepaintBoundary(
-                            child: BigPVoiceMouth(
-                              controller: c,
-                              builder: (line) => BigPAvatar(
-                                mood: ready ? bigPMood(c) : BigPMood.attentive,
-                                // 190 pt wide, as in 39 B.
-                                size: 237,
-                                talkingText: line,
+                    child: LayoutBuilder(
+                      builder: (context, box) => Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Flexible(child: _balloon(context, session)),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: RepaintBoundary(
+                              child: BigPVoiceMouth(
+                                controller: c,
+                                builder: (line) => BigPAvatar(
+                                  mood: ready ? bigPMood(c) : BigPMood.attentive,
+                                  size: BigPMobileHost.avatarSize(box.maxHeight, withBar: ready),
+                                  talkingText: line,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        if (ready) ...[const SizedBox(height: 4), BigPInputBar(session: session)],
-                      ],
+                          if (ready) ...[const SizedBox(height: 4), BigPInputBar(session: session)],
+                        ],
+                      ),
                     ),
                   ),
                 ),

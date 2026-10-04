@@ -53,7 +53,8 @@ class _BigPInputBarState extends State<BigPInputBar> {
 
   void _send() {
     final question = _text.text.trim();
-    if (question.isEmpty) return;
+    // Still working on the last one: the text stays for when he is done.
+    if (question.isEmpty || _c.state == AssistantSurfaceState.working) return;
     _text.clear();
     unawaited(_c.submit(question));
     _focus.unfocus();

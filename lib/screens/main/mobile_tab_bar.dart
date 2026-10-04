@@ -19,6 +19,15 @@ const Color _kGlassActiveSlot = Color(0x80000000);
 /// and get its height back as `MediaQuery` bottom padding.
 bool mobileTabBarFloats(BuildContext context) => glassTierFor(context) != GlassTier.off;
 
+/// The floating bar's bottom margin (LG-01): on a home indicator iPhone the
+/// capsule sits lower, into the inset; without an inset it keeps 10.
+double mobileTabBarFloatMargin(BuildContext context) => math.max(10.0, MediaQuery.paddingOf(context).bottom - 12);
+
+/// How far the bar reaches up from the bottom edge: its 64 pt plus the
+/// floating margin, or the safe area under the solid bar.
+double mobileTabBarExtent(BuildContext context) =>
+    64 + (mobileTabBarFloats(context) ? mobileTabBarFloatMargin(context) : MediaQuery.paddingOf(context).bottom);
+
 /// The mobile bottom bar, extracted verbatim out of
 /// `_MainScreenState._buildBottomNavigationBar` (no behavior change). State
 /// stays in `_MainScreenState`: this widget only renders what it is given.
@@ -104,14 +113,13 @@ class MobileTabBar extends StatelessWidget {
     Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
 
     // Glass (LG-01): a floating capsule 16 from the sides, instead of the
-    // full-width frosted strip. Bottom margin max(10, inset - 12): on a home
-    // indicator iPhone the capsule sits lower, into the inset, and without an
-    // inset it keeps 10. The bar's own SafeArea is stripped, the Padding
-    // carries the margin; the Scaffold measures the result for the body.
+    // full-width frosted strip, [mobileTabBarFloatMargin] from the bottom.
+    // The bar's own SafeArea is stripped, the Padding carries the margin;
+    // the Scaffold measures the result for the body.
     Widget shell(Widget bar) {
       if (!glassOn) return frosted(bar);
       return Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, math.max(10.0, MediaQuery.paddingOf(context).bottom - 12)),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, mobileTabBarFloatMargin(context)),
         child: GlassLayer(
           child: GlassSurface(
             shape: const StadiumBorder(),

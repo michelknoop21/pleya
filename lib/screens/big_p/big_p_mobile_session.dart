@@ -85,6 +85,8 @@ class BigPMobileSession extends ChangeNotifier {
   /// confirmation card keeps him out until the user picks (39 G).
   void park() {
     if (controller.pending != null) return;
+    // The field unmounts with him and never blurs: let the mic go here.
+    if (controller.state == AssistantSurfaceState.listening) controller.cancelListening();
     // A picked option works on the answer's displays (an ask streaming its
     // own displays is stillChecking): it finishes in the background and its
     // result shows at the next summon.

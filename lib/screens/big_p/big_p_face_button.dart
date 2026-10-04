@@ -47,10 +47,17 @@ class _BigPFaceButtonState extends State<BigPFaceButton> {
           id: AutomationIds.bigpFaceButton,
           role: 'button',
           state: () => {'active': out, 'waiting': session.waiting},
-          child: IconButton(
-            tooltip: t.assistant.mobile.faceButton,
-            onPressed: out ? session.park : session.summon,
-            icon: _Face(out: out, waiting: session.waiting),
+          // Out reads as on; a waiting card is said, not only dotted.
+          child: MergeSemantics(
+            child: Semantics(
+              toggled: out,
+              value: session.waiting ? t.assistant.mobile.notConfirmedYet : null,
+              child: IconButton(
+                tooltip: t.assistant.mobile.faceButton,
+                onPressed: out ? session.park : session.summon,
+                icon: _Face(out: out, waiting: session.waiting),
+              ),
+            ),
           ),
         );
       },

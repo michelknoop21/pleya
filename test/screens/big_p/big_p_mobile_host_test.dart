@@ -1,22 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
+import 'dart:ui' as ui;
+
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/navigation/navigation_tabs.dart';
+import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/screens/big_p/big_p_face_button.dart';
+import 'package:pleya/screens/big_p/big_p_input_bar.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
+import 'package:pleya/screens/main/mobile_main_scaffold.dart';
+import 'package:pleya/screens/main/mobile_tab_bar.dart';
 import 'package:pleya/screens/settings/assistant_settings_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
+import 'package:pleya/widgets/big_p/big_p_balloon.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../test_helpers/glass_phone.dart';
+import '../../test_helpers/prefs.dart';
 import '../../widgets/big_p/fake_assistant_controller.dart';
 
 AssistantPendingAction _card() => AssistantPendingAction(
@@ -45,8 +55,13 @@ void main() {
 
   /// A header with the face button over a page, and the host above both, as
   /// MobileMainScaffold stacks them. Reduced motion: no slide to wait for.
-  Future<void> pump(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(402, 874);
+  Future<void> pump(
+    WidgetTester tester, {
+    Size size = const Size(402, 874),
+    EdgeInsets safe = const EdgeInsets.only(top: 54, bottom: 34),
+    double keyboard = 0,
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
@@ -57,9 +72,12 @@ void main() {
             theme: monoTheme(dark: true),
             home: Builder(
               builder: (context) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(disableAnimations: true, viewPadding: const EdgeInsets.only(top: 54, bottom: 34)),
+                data: MediaQuery.of(context).copyWith(
+                  disableAnimations: true,
+                  viewPadding: safe,
+                  padding: keyboard > 0 ? safe.copyWith(bottom: 0) : safe,
+                  viewInsets: EdgeInsets.only(bottom: keyboard),
+                ),
                 child: const Stack(
                   fit: StackFit.expand,
                   children: [
@@ -207,5 +225,106 @@ void main() {
 
     await summon(tester);
     expect(find.byKey(const ValueKey('bigp-face-waiting')), findsNothing);
+  });
+
+  testWidgets('parking while listening lets the mic go; the next summon greets', (tester) async {
+    await pump(tester);
+    await summon(tester);
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(c.state, AssistantSurfaceState.listening);
+    await tester.tapAt(const Offset(200, 60));
+    await settle(tester);
+    expect(c.cancelledListening, 1);
+    expect(c.state, AssistantSurfaceState.idle);
+    await summon(tester);
+    expect(find.text(t.assistant.mobile.examples.first), findsOneWidget);
+  });
+
+  testWidgets('send while he works keeps the text', (tester) async {
+    await pump(tester);
+    await summon(tester);
+    await tester.tap(find.byType(TextField));
+    c
+      ..state = AssistantSurfaceState.working
+      ..emit();
+    await tester.enterText(find.byType(TextField), 'En nog iets');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pump();
+    expect(c.submitted, isEmpty);
+    expect(find.text('En nog iets'), findsOneWidget);
+  });
+
+  testWidgets('an iPhone SE with the keyboard up keeps the balloon readable', (tester) async {
+    await pump(tester, size: const Size(375, 667), safe: const EdgeInsets.only(top: 20), keyboard: 260);
+    await summon(tester);
+    expect(tester.takeException(), isNull);
+    final balloon = tester.getSize(find.byType(BigPBalloon));
+    expect(balloon.height, greaterThanOrEqualTo(150));
+    expect(tester.getSize(find.byType(BigPAvatar)).height, lessThan(237));
+    // Big P and the field stay above the keyboard.
+    expect(tester.getBottomLeft(find.byType(BigPInputBar)).dy, lessThanOrEqualTo(667 - 260));
+  });
+
+  testWidgets('the face button says whether Big P is out and that a card waits', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pump(tester);
+    bool toggled() => tester.getSemantics(find.byType(IconButton)).flagsCollection.isToggled == ui.Tristate.isTrue;
+    expect(toggled(), isFalse);
+    await summon(tester);
+    expect(toggled(), isTrue);
+    await tester.tapAt(const Offset(200, 60));
+    await settle(tester);
+    c
+      ..state = AssistantSurfaceState.working
+      ..pending = _card()
+      ..emit();
+    await tester.pump();
+    expect(tester.getSemantics(find.byType(IconButton)).value, t.assistant.mobile.notConfirmedYet);
+    handle.dispose();
+  });
+
+  testWidgets('in the shell he stands on the floating bar and the reconnect strip', (tester) async {
+    resetSharedPreferencesForTest();
+    await glassPhone(tester, glass: true);
+    final strip = Container(key: const ValueKey('strip'), height: 40, color: Colors.blue);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: glassPhoneTheme(),
+          home: Provider<ActiveProfileProvider?>.value(
+            value: null,
+            child: ChangeNotifierProvider<BigPMobileSession>.value(
+              value: session,
+              child: Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                  child: MobileMainScaffold(
+                    body: const SizedBox.expand(),
+                    reconnectStrip: strip,
+                    overlay: const BigPMobileHost(),
+                    tabBar: MobileTabBar(
+                      tabs: glassPhoneTabs(),
+                      currentIndex: 0,
+                      onDestinationSelected: (_) {},
+                      hideLabels: false,
+                      presentation: TabBarPresentation.unified2026,
+                      onLibraryLongPress: (_) {},
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    session.summon();
+    await settle(tester);
+    final stripTop = tester.getTopLeft(find.byKey(const ValueKey('strip'))).dy;
+    final barBottom = tester.getBottomLeft(find.byType(BigPInputBar)).dy;
+    expect(barBottom, lessThanOrEqualTo(stripTop));
+    expect(stripTop - barBottom, lessThan(12));
   });
 }
