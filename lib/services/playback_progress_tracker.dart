@@ -303,6 +303,10 @@ class PlaybackProgressTracker {
     // again be answered by a stop that is still on the wire.
     _stopToDrain = _stoppedProgressFuture ?? _stopToDrain;
     _stoppedProgressFuture = null;
+    // The new session gets its own terminal notification. Without this a
+    // player backgrounded early and left for real later would never tell the
+    // app where the user actually stopped.
+    _stopProgressNotified = false;
     // The suppression cache describes what a *live* session was told, and a stop
     // ended that session. It matters because a report fired during the stopped
     // window is refused by the session but still remembered here: without this
@@ -469,6 +473,7 @@ class PlaybackProgressTracker {
       viewOffset: position.inMilliseconds,
       duration: duration.inMilliseconds,
       watchedThreshold: client?.watchedThreshold ?? 0.9,
+      isFinal: isFinal,
     );
   }
 

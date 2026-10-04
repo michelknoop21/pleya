@@ -46,6 +46,14 @@ class PreferenceMergeFamilies {
 
   /// Legacy `local_watched_*`: the same shape, merged by OR.
   static const String watchedMap = 'watchedMap';
+
+  /// A JSON map whose keys are `{profileScope}` or `{profileScope}|{rest}`:
+  /// the two language preferences (DEC-096, DEC-134).
+  static const String profileKeyedMap = 'profileKeyedMap';
+
+  /// [profileKeyedMap] for `track_language_preferences`, with the store's cap
+  /// run over every inbound union. Built and owned by `TrackPreferenceStore`.
+  static const String trackLanguageMap = 'trackLanguageMap';
 }
 
 /// What the sync layer is allowed to do with one preference.
@@ -231,24 +239,33 @@ class PreferenceSyncPolicyRegistry {
     icloudSyncable: false,
   );
 
-  /// The Pleya profile's language preference: which audio and subtitles the
-  /// viewer wants everywhere, plus the two switches that used to sit under
-  /// Afspelen (DEC-096 lid 5 and lid 9).
-  ///
-  /// Profile-scoped, and the scope lives inside the map's keys rather than in
-  /// the pref name — the same shape as the series preferences it sits next to.
-  ///
-  /// Syncable, and that is the point of the whole preference: "geldt voor alle
-  /// content" is not much of a promise if it stops at one device. Nothing in it
-  /// names a server, a library or a path, so unlike the catalog view state
-  /// above there is nothing here that could mean something different on the
-  /// receiving device: a language code is a language code on an Apple TV, a
-  /// Mac and an iPhone alike. Exportable for the same reason.
-  ///
-  /// Last-writer-wins is the right merge: the fields are independent scalars a
-  /// person sets deliberately, so the most recent deliberate answer is the one
-  /// to keep. There is no list here to union.
-  static const PreferencePolicy _profileLanguagePref = PreferencePolicy(scope: PreferenceScopeKind.profile);
+  /// The two language maps (DEC-096, DEC-134 (9)): one global preference each,
+  /// with the profile scope inside the map keys, exactly as
+  /// `PleyaProfileLanguagePreferenceStore` and `TrackPreferenceStore` write
+  /// them. Registering them as profile-scoped put the incoming value under a
+  /// `user_<uuid>_` key nothing reads. The family decides per profile which
+  /// entries travel and which stay.
+  static const PreferencePolicy _profileKeyedMapPref = PreferencePolicy(
+    scope: PreferenceScopeKind.global,
+    merge: PreferenceMergeStrategy.custom,
+    mergeFamily: PreferenceMergeFamilies.profileKeyedMap,
+  );
+
+  /// The series map is capped by its store; the union of two capped maps is
+  /// not, so its family runs the cap after the merge.
+  static const PreferencePolicy _trackLanguageMapPref = PreferencePolicy(
+    scope: PreferenceScopeKind.global,
+    merge: PreferenceMergeStrategy.custom,
+    mergeFamily: PreferenceMergeFamilies.trackLanguageMap,
+  );
+
+  /// Bound to this device's hardware or installation, so it does not sync,
+  /// but a file export is a deliberate act towards a device the user chose,
+  /// so it still exports (DEC-134 (10)).
+  static const PreferencePolicy _deviceBoundPref = PreferencePolicy(
+    scope: PreferenceScopeKind.deviceLocal,
+    icloudSyncable: false,
+  );
 
   static const PreferencePolicy _secret = PreferencePolicy(
     scope: PreferenceScopeKind.deviceLocal,
@@ -259,6 +276,17 @@ class PreferenceSyncPolicyRegistry {
 
   static const PreferencePolicy _runtimeCache = PreferencePolicy(
     scope: PreferenceScopeKind.deviceLocal,
+    sensitivity: PreferenceSensitivity.runtimeCache,
+    exportable: false,
+    icloudSyncable: false,
+  );
+
+  /// Runtime state that belongs to one profile: stored under the active
+  /// profile's `user_<scope>_` prefix, never synced, never exported. Search
+  /// recency is the case (Z8): a child profile must not see what the parent
+  /// searched for, and another device has no use for either list.
+  static const PreferencePolicy _profileRuntimeCache = PreferencePolicy(
+    scope: PreferenceScopeKind.profile,
     sensitivity: PreferenceSensitivity.runtimeCache,
     exportable: false,
     icloudSyncable: false,
@@ -313,16 +341,21 @@ class PreferenceSyncPolicyRegistry {
     'audio_normalization': _globalPref,
     'audio_normalization_mode': _globalPref,
     'audio_reduce_loud_sounds': _globalPref,
+    'big_p_voice': _globalPref,
     'audio_level_volume': _globalPref,
-    'global_shader_preset': _globalPref,
+    // GPU-bound: a shader the Mac runs can stall an Apple TV.
+    'global_shader_preset': _deviceBoundPref,
     'ambient_lighting': _globalPref,
     'ambient_lighting_intensity': _globalPref,
     'default_playback_speed': _globalPref,
-    'default_quality_preset': _globalPref,
+    // Follows the network this device sits on.
+    'default_quality_preset': _deviceBoundPref,
     'sub_ass_override': _globalPref,
-    'buffer_size': _globalPref,
-    'mpv_config_text': _globalPref,
-    'mpv_config_presets': _globalPref,
+    // Follows this device's memory.
+    'buffer_size': _deviceBoundPref,
+    // May carry `hwdec` and file paths that only hold on this device.
+    'mpv_config_text': _deviceBoundPref,
+    'mpv_config_presets': _deviceBoundPref,
 
     // -- Interface and browsing.
     'theme_mode': _globalPref,
@@ -352,21 +385,26 @@ class PreferenceSyncPolicyRegistry {
     'continue_watching_action': _globalPref,
     'episode_action': _globalPref,
     'startup_section': _globalPref,
+    // Whether Live TV opens on the favourites: a taste, nothing in it names this device.
+    'live_tv_default_favorites': _globalPref,
     'visual_effects': _globalPref,
-    'video_player_navigation_enabled': _globalPref,
+    // Desktop behaviour.
+    'video_player_navigation_enabled': _deviceBoundPref,
 
     // -- Downloads and integrations that are choices, not paths.
     'download_on_wifi_only': _globalPref,
     'download_include_specials': _globalPref,
     'auto_remove_watched_downloads': _globalPref,
     'sync_local_watch_state': _globalPref,
-    'enable_discord_rpc': _globalPref,
+    // Desktop behaviour.
+    'enable_discord_rpc': _deviceBoundPref,
     'enable_trakt_scrobble': _globalPref,
     'enable_trakt_watched_sync': _globalPref,
     'enable_mal_scrobble': _globalPref,
     'enable_anilist_scrobble': _globalPref,
     'enable_simkl_scrobble': _globalPref,
-    'auto_check_updates_on_startup': _globalPref,
+    // App Store versus sideload, decided per installation.
+    'auto_check_updates_on_startup': _deviceBoundPref,
 
     // -- Profile-scoped library and home layout. These were the keys v1
     //    stripped a profile prefix from, giving every profile one shared cloud
@@ -393,7 +431,7 @@ class PreferenceSyncPolicyRegistry {
     // measurement is green; the stored format already uses portable ids.
     'home_row_order': _homeLayoutPref,
     'hidden_home_rows': _homeLayoutPref,
-    // "Alleen op dit apparaat" is what the menu row promises (DEC-119 fase 3):
+    // "Alleen op dit apparaat" is what the menu row promises (DEC-144 fase 3):
     // a local hide for sources that cannot remove server-side never syncs.
     'hidden_continue_watching': _deviceLocalPref,
     // The rows the viewer defined themselves (ROW1, DEC-100). Same owner as
@@ -417,9 +455,12 @@ class PreferenceSyncPolicyRegistry {
     'audio_passthrough': _deviceLocalPref,
     'tunneled_playback': _deviceLocalPref,
     'use_exoplayer': _deviceLocalPref,
+    // Liquid Glass (DEC-122): glas hangt af van het toestel en zijn prestaties.
+    'liquid_glass': _deviceLocalPref,
     'match_refresh_rate': _deviceLocalPref,
     'match_content_frame_rate': _deviceLocalPref,
     'match_dynamic_range': _deviceLocalPref,
+    'display_max_resolution': _deviceLocalPref,
     'display_switch_delay': _deviceLocalPref,
     'start_in_fullscreen': _deviceLocalPref,
     'exit_fullscreen_on_player_close': _deviceLocalPref,
@@ -433,7 +474,6 @@ class PreferenceSyncPolicyRegistry {
     'auto_hide_performance_overlay': _deviceLocalPref,
     'enable_debug_logging': _deviceLocalPref,
     'crash_reporting': _deviceLocalPref,
-    'live_tv_default_favorites': _deviceLocalPref,
     // A LAN address. It syncs today, and on another network it points at
     // nothing or at somebody else's machine.
     'companion_remote_last_host_address': _deviceLocalPref,
@@ -455,13 +495,13 @@ class PreferenceSyncPolicyRegistry {
     'enable_companion_remote_server': _deviceLocalPref,
 
     // -- Runtime and view state.
-    'search_history': _runtimeCache,
+    'search_history': _profileRuntimeCache,
     // The other half of Zoeken's recency (mockup 36 A): the titles that were
     // opened from a result, drawn as the row at rest on TV. Same policy as the
     // query strings it sits beside — it is a convenience this device rebuilds
     // by being used, and a row of posters from someone else's television is not
     // a preference anyone set.
-    'search_recent_items': _runtimeCache,
+    'search_recent_items': _profileRuntimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,
@@ -497,8 +537,23 @@ class PreferenceSyncPolicyRegistry {
     // activation preference and lives elsewhere.
     'unified_catalog_preferences': _unifiedCatalogViewPref,
 
-    // -- The Pleya profile's global audio/subtitle preference (DEC-096).
-    'pleya_profile_language_preferences': _profileLanguagePref,
+    // -- The two language maps (DEC-096, DEC-134).
+    'pleya_profile_language_preferences': _profileKeyedMapPref,
+    'track_language_preferences': _trackLanguageMapPref,
+
+    // -- JsonPref maps the guard could not see until DEC-134 (10).
+    'keyboard_shortcuts': _globalPref,
+    'keyboard_hotkeys': _globalPref,
+    // The chosen version index depends on what the server offers this device.
+    'media_version_preferences': _deviceLocalPref,
+    'video_display_preferences': _deviceLocalPref,
+    // Both name a server id; a portable-server filter is a follow-up, not a fix
+    // (row F2 in docs/icloud-sync-repair-register.md).
+    'unified_source_preferences': _deviceLocalPref,
+    'preferred_unified_server': _deviceLocalPref,
+    // GPU-bound, like global_shader_preset.
+    'custom_shader_presets': _deviceLocalPref,
+    'tv_live_tv_capability': _runtimeCache,
 
     // -- Secrets.
     'token': _secret,
@@ -509,6 +564,9 @@ class PreferenceSyncPolicyRegistry {
     'credential_vault_key_v1': _secret,
     'seerr_session': _secret,
     'tautulli_session': _secret,
+    'assistant_provider': _secret,
+    'assistant_provider_pending': _secret,
+    'assistant_provider_seen': _runtimeCache,
     'pleya_share_tokens': _secret,
     'pleya_share_guests': _secret,
     'pleya_share_relay_host_id': _secret,

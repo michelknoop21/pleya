@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/utils/continue_watching_removal.dart';
 
-/// Mockup 38 E (DEC-119 fase 3): one row, and its wording follows what each
+/// Mockup 38 E (DEC-144 fase 3): one row, and its wording follows what each
 /// source can do. "On all sources" only when that is literally true.
 void main() {
   ContinueWatchingRemovalSource source(String? name, {required bool server, bool reachable = true}) =>

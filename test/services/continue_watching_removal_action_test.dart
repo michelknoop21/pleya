@@ -23,7 +23,7 @@ import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
 
-/// The one path every menu takes out of Verder kijken (DEC-119 fase 3). On a
+/// The one path every menu takes out of Verder kijken (DEC-144 fase 3). On a
 /// source that cannot remove server-side this used to throw `UnsupportedError`
 /// out of the tvOS menu; it now hides the title on this device.
 class _Client implements MediaServerClient {

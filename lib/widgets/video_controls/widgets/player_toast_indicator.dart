@@ -6,7 +6,7 @@ import 'package:pleya/widgets/app_icon.dart';
 /// VLC-style dark pill shown at top-center of the video player.
 /// Used for rate changes and other transient in-player notifications.
 ///
-/// The zone is the one the presentation contract of DEC-096 lid 10 points at
+/// The zone is the one the presentation contract of DEC-109 lid 10 points at
 /// and does not move: `video_controls.dart` puts it in a `Positioned.fill`
 /// under an `IgnorePointer`, so it never takes focus and never swallows a
 /// press, and subtitles live at the bottom under `sub-pos` where this cannot

@@ -80,4 +80,17 @@ void main() {
     ).map(TautulliHistoryEntry.fromJson).where((e) => e.isWatched && e.percentComplete < 85);
     expect(belowThreshold, isNotEmpty, reason: 'the OR rule in the importer exists for these rows');
   });
+  test('grandparentTitle is the show name on episode rows', () {
+    for (final row in _rows('history_show.json')) {
+      final e = TautulliHistoryEntry.fromJson(row);
+      expect(e.grandparentTitle, row['grandparent_title'], reason: 'row ${row['row_id']}');
+    }
+    final split = TautulliHistoryEntry.fromJson({
+      'watched_status': 1,
+      'media_type': 'episode',
+      'full_title': 'Star Wars - Andor - One Way Out',
+      'grandparent_title': 'Star Wars - Andor',
+    });
+    expect(split.grandparentTitle, 'Star Wars - Andor');
+  });
 }

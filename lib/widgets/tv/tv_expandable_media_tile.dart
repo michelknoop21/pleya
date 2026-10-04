@@ -154,6 +154,9 @@ class _TvExpandableMediaTileState extends State<TvExpandableMediaTile> {
       automationId: widget.automationId,
       automationInstance: widget.automationInstance,
       automationRole: 'grid.item',
+      // Which title the card shows, so a Verify scenario can prove a new title
+      // reached a rail and that the focus stayed on the same title.
+      automationState: () => {'title': widget.group.representativeSource.item.displayTitle},
       scrollAlignment: widget.scrollAlignment,
       onSelect: widget.onSelect,
       onLongPress: widget.onContextMenu,

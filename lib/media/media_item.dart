@@ -6,8 +6,10 @@ import 'ids.dart';
 import '../services/settings_service.dart' show EpisodePosterMode;
 import '../utils/global_key_utils.dart';
 import '../utils/json_utils.dart';
+import 'external_rating.dart';
 import 'media_backend.dart';
 import 'media_kind.dart';
+import 'media_review.dart';
 import 'media_role.dart';
 import 'media_version.dart';
 
@@ -50,7 +52,7 @@ sealed class MediaItem with _$MediaItem {
     /// [guid] is the episode's own and, per `identity_evidence.dart`, is never
     /// evidence about the show. Used by `TrackPreferenceStore` to key a
     /// language preference on the logical series instead of one server's
-    /// ratingKey (DEC-096 lid 7). Null is normal and simply means the
+    /// ratingKey (DEC-109 lid 7). Null is normal and simply means the
     /// preference falls back to the per-server key.
     String? grandparentGuid,
     String? grandparentTitle,
@@ -389,6 +391,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -462,6 +466,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -530,6 +536,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -596,6 +604,8 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: _mediaItemStringList) List<String>? styles,
     @JsonKey(fromJson: _mediaItemStringList) List<String>? moods,
     @JsonKey(fromJson: _mediaItemRolesFromJson) List<MediaRole>? roles,
+    @Default(<ExternalRating>[]) List<ExternalRating> externalRatings,
+    @Default(<MediaReview>[]) List<MediaReview> reviews,
     @JsonKey(fromJson: _mediaItemVersionsFromJson) List<MediaVersion>? mediaVersions,
     String? libraryId,
     String? libraryTitle,
@@ -909,7 +919,7 @@ sealed class MediaItem with _$MediaItem {
 const double billboardNarrowAspectRatioThreshold = 1.39;
 
 /// Which source [BillboardArt.path] came from, and thus how it must be rendered.
-/// Why a backend put this item in Continue Watching (DEC-119, fase 2).
+/// Why a backend put this item in Continue Watching (DEC-144, fase 2).
 ///
 /// [resume] is something begun, [nextUp] the next episode of a series whose
 /// previous one is finished. Null means the source did not say (local folders,

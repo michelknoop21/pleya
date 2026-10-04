@@ -281,8 +281,14 @@ class _DownloadsGridContentState extends State<_DownloadsGridContent> {
           return _buildEmptyState();
         }
 
-        // Extra top padding for focus decoration (scale + border extends beyond item bounds)
-        const effectivePadding = EdgeInsets.only(left: 8, right: 8, top: 8);
+        // Extra top padding for focus decoration (scale + border extends beyond item bounds);
+        // the bottom inset clears the floating Liquid Glass tab bar.
+        final effectivePadding = EdgeInsets.only(
+          left: 8,
+          right: 8,
+          top: 8,
+          bottom: MediaQuery.paddingOf(context).bottom,
+        );
 
         return SettingsBuilder(
           prefs: const [SettingsService.libraryDensity, SettingsService.tvFullCardLayout],

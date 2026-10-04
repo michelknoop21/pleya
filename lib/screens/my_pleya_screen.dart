@@ -24,11 +24,16 @@ import '../widgets/desktop_app_bar.dart';
 import '../widgets/media_card_grid_layout.dart';
 import '../widgets/settings_section.dart' show settingsOutlineColor;
 import '../widgets/watchlist_card.dart';
+import '../widgets/big_p/big_p_portrait.dart';
+import 'big_p/big_p_ask_row.dart' show summonableBigP;
+import 'big_p/big_p_mobile_session.dart';
 import 'now_watching_screen.dart';
 import 'servers_screen.dart';
 import 'settings/about_screen.dart';
 import 'tv/tv_my_pleya_screen.dart' show buildTvMyPleyaGroups, TvMyPleyaTile;
 import 'tv/tv_my_pleya_sections.dart' show TvMyPleyaSection;
+
+part 'my_pleya_cards.dart';
 
 /// The personal corner of the mobile app.
 ///
@@ -51,7 +56,7 @@ import 'tv/tv_my_pleya_sections.dart' show TvMyPleyaSection;
 /// about the *widget*, not the data behind it. Northstar 18 groups the same
 /// tiles differently than TV does (Samen kijken is a list row here, a card on
 /// TV), so this screen re-buckets them rather than rendering TV's groups.
-class MyPleyaScreen extends StatelessWidget {
+class MyPleyaScreen extends StatefulWidget {
   const MyPleyaScreen({super.key, required this.onOpenTab, this.onOpenLibraryPicker});
 
   /// Jumps to another destination. The same `_selectTab` the bottom bar uses,
@@ -71,6 +76,20 @@ class MyPleyaScreen extends StatelessWidget {
   final void Function(BuildContext context)? onOpenLibraryPicker;
 
   @override
+  State<MyPleyaScreen> createState() => _MyPleyaScreenState();
+}
+
+class _MyPleyaScreenState extends State<MyPleyaScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Big P's tile depends on entitlement, servers and the model config,
+    // which the controller works out only when asked: once as My Pleya
+    // shows, as TV's hub does.
+    unawaited(context.read<BigPMobileSession?>()?.controller.refreshAvailability());
+  }
+
+  @override
   Widget build(BuildContext context) {
     final profile = context.watch<ActiveProfileProvider?>()?.active;
     final isOffline = context.watch<OfflineModeProvider?>()?.isOffline ?? false;
@@ -78,6 +97,7 @@ class MyPleyaScreen extends StatelessWidget {
     final downloads = context.watch<DownloadProvider?>();
     final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
     final servers = context.watch<MultiServerProvider?>();
+    final bigP = summonableBigP(context);
 
     final groups = buildTvMyPleyaGroups(
       hasWatchlist: watchlist?.hasWatchlist ?? false,
@@ -86,6 +106,7 @@ class MyPleyaScreen extends StatelessWidget {
       showActivity: servers?.hasOnlinePlexServers ?? false,
       showCollections: false,
       showPlaylists: false,
+      showAssistant: bigP != null,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
     );
@@ -125,11 +146,14 @@ class MyPleyaScreen extends StatelessWidget {
                   icon: Symbols.bookmark_add_rounded,
                   label: t.watchlist.title,
                   trailing: t.watchlist.seeAll,
-                  onTap: () => onOpenTab(NavigationTabId.watchlist),
+                  onTap: () => widget.onOpenTab(NavigationTabId.watchlist),
                 ),
               ),
               SliverToBoxAdapter(
-                child: _WatchlistRail(provider: watchlist!, onOpenAll: () => onOpenTab(NavigationTabId.watchlist)),
+                child: _WatchlistRail(
+                  provider: watchlist!,
+                  onOpenAll: () => widget.onOpenTab(NavigationTabId.watchlist),
+                ),
               ),
             ],
             SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupContent)),
@@ -137,11 +161,11 @@ class MyPleyaScreen extends StatelessWidget {
               child: _MyPleyaCardRow(
                 cards: [
                   if (tileFor[TvMyPleyaSection.watchlist] case final tile?)
-                    _MyPleyaCard(tile: tile, onTap: () => onOpenTab(NavigationTabId.watchlist)),
+                    _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.watchlist)),
                   if (tileFor[TvMyPleyaSection.requests] case final tile?)
-                    _MyPleyaCard(tile: tile, onTap: () => onOpenTab(NavigationTabId.requests)),
+                    _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.requests)),
                   if (tileFor[TvMyPleyaSection.downloads] case final tile?)
-                    _MyPleyaCard(tile: tile, onTap: () => onOpenTab(NavigationTabId.downloads)),
+                    _MyPleyaCard(tile: tile, onTap: () => widget.onOpenTab(NavigationTabId.downloads)),
                 ],
               ),
             ),
@@ -152,8 +176,10 @@ class MyPleyaScreen extends StatelessWidget {
                   if (tileFor[TvMyPleyaSection.libraries] case final tile?)
                     _MyPleyaCard(
                       tile: tile,
-                      onTap: () => onOpenTab(NavigationTabId.libraries),
-                      onLongPress: onOpenLibraryPicker == null ? null : () => onOpenLibraryPicker!(context),
+                      onTap: () => widget.onOpenTab(NavigationTabId.libraries),
+                      onLongPress: widget.onOpenLibraryPicker == null
+                          ? null
+                          : () => widget.onOpenLibraryPicker!(context),
                     ),
                   if (tileFor[TvMyPleyaSection.servers] case final tile?)
                     _MyPleyaCard(
@@ -170,6 +196,22 @@ class MyPleyaScreen extends StatelessWidget {
               ),
             ),
             SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupPleya)),
+            // Mockup 38 A on the phone: Big P's portrait for an icon.
+            if ((tileFor[TvMyPleyaSection.assistant], bigP) case (final tile?, final session?))
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _MyPleyaCardRow(
+                    cards: [
+                      _MyPleyaCard(
+                        tile: tile,
+                        icon: const BigPPortrait(focused: false, size: 40),
+                        onTap: () => session.summon(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (tileFor[TvMyPleyaSection.watchTogether] case final tile?)
               SliverToBoxAdapter(
                 child: _SectionRow(
@@ -192,7 +234,7 @@ class MyPleyaScreen extends StatelessWidget {
                   child: _SectionRow(
                     icon: tile.icon,
                     label: tile.title,
-                    onTap: () => onOpenTab(NavigationTabId.settings),
+                    onTap: () => widget.onOpenTab(NavigationTabId.settings),
                   ),
                 ),
               ),
@@ -212,181 +254,10 @@ class MyPleyaScreen extends StatelessWidget {
                 onTap: () => unawaited(AccountUiActions.logout(context)),
               ),
             ),
-            const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+            // Clears the floating glass tab bar: with glass on the main Scaffold
+            // extends the body under it and reports its height as bottom padding.
+            SliverPadding(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 16)),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Avatar, name and the server-status line from northstar 18. Deliberately
-/// compact so the kijklijst rail lands in the first screenful instead of
-/// below the fold, and so the account actions at the bottom stay secondary to
-/// the content between them.
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.profile, required this.onSwitchProfile, required this.serversLine});
-
-  final Profile? profile;
-  final VoidCallback onSwitchProfile;
-  final String serversLine;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
-      child: Row(
-        children: [
-          // The avatar and the name read as an identity, not as a control, so
-          // what it does is said out loud for anyone who cannot see that
-          // tapping it leads to the profile picker.
-          Semantics(
-            button: true,
-            label: t.screens.switchProfile,
-            child: InkWell(
-              onTap: onSwitchProfile,
-              borderRadius: BorderRadius.circular(24),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    ProfileAvatar(profile: profile, size: 40),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(profile?.displayName ?? '', style: theme.textTheme.titleMedium),
-                        Text(serversLine, style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-}
-
-/// The small caps section heading above a card row or list group
-/// ("MIJN CONTENT", "BIBLIOTHEKEN EN BRONNEN", "PLEYA" in northstar 18).
-class _MyPleyaGroupLabel extends StatelessWidget {
-  const _MyPleyaGroupLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Text(
-        label.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: tokens(context).textMuted, letterSpacing: 0.5),
-      ),
-    );
-  }
-}
-
-/// Up to three [_MyPleyaCard]s side by side, evenly split. Fewer cards than
-/// three still fill the row rather than leaving a gap on the right, which
-/// only happens when a section (Aanvragen, Activiteit) is conditionally gone.
-class _MyPleyaCardRow extends StatelessWidget {
-  const _MyPleyaCardRow({required this.cards});
-
-  final List<Widget> cards;
-
-  @override
-  Widget build(BuildContext context) {
-    if (cards.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      // IntrinsicHeight, not a bare stretch Row: this row sits in a sliver,
-      // where the incoming height constraint is unbounded, and stretch alone
-      // asks every card to fill that infinity.
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(width: 10), Expanded(child: cards[i])],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One "Mijn content" / "Bibliotheken en bronnen" tile: icon, optional count
-/// top-right, title, subtitle. `surfaceElevated` plus an outline, never a
-/// Material container color — those collapse onto the page background in
-/// this theme (see [[mono-theme-material-collisions]] in the tvOS gotchas).
-class _MyPleyaCard extends StatelessWidget {
-  const _MyPleyaCard({required this.tile, required this.onTap, this.onLongPress});
-
-  final TvMyPleyaTile tile;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final semanticsLabel = tile.count == null
-        ? t.tvMyPleya.semantics.tile(title: tile.title, subtitle: tile.subtitle)
-        : t.tvMyPleya.semantics.tileWithCount(title: tile.title, subtitle: tile.subtitle, count: '${tile.count}');
-
-    // Same id/instance convention TV's tile uses (`myPleyaTile[<section
-    // name>]`, `logout` for the sign-out tile). This screen re-buckets TV's
-    // tiles into card rows, not a second taxonomy, so it reuses their ids too.
-    return AutomationNode(
-      id: AutomationIds.myPleyaTile,
-      instance: tile.section?.name ?? 'logout',
-      role: 'grid.item',
-      child: Semantics(
-        button: true,
-        label: semanticsLabel,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: tokens(context).surfaceElevated,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: settingsOutlineColor(context)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(tile.icon, size: 22),
-                    if (tile.count != null) Text('${tile.count}', style: theme.textTheme.titleMedium),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  tile.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: .bold),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  tile.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

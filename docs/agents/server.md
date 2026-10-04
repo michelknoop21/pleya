@@ -7,25 +7,34 @@ mediaserver in Go, met als einddoel dat Pleya zonder Plex kan draaien en Plex en
 adapters worden. Het is geen concept en geen verkenning: de hoofdrichting is beslist en wordt niet
 opnieuw geopend.
 
-**Vrijgave is per fase.** PS-0 (Docker Foundation), PS-1 (wire-contract), PS-2 (catalogus in Go),
-PS-3 (de vijfde `MediaServerClient`) en PS-3W (Pleya Web) zijn gesloten en bevroren; de
-PS-0-afwijking staat in `docs/pleya-server-ps0-proposal.md`, de PS-1-afwijking in
-`docs/pleya-server-ps1-scope-deviation.md` en de PS-3W-afwijking in
-`docs/pleya-server-ps3w-proposal.md`. Het masterplan dat er acht fasen bij zet is goedgekeurd op
-21 augustus 2026 en staat in `docs/pleya-server-masterplan-proposal.md`. **PS-4 is gesloten** op
-21 augustus 2026: direct play met HTTP-range, en kijkstatus met de server als eigenaar. Desktop,
-mobiel en TV zijn alle drie op echte hardware bewezen, inclusief een kijkpositie die van een Mac via
-een iPhone naar een Apple TV meereisde.
-**De eerstvolgende fase is PS-5** (`DeviceCapabilities` in de client). Werk dat verder gaat dan de
-PS-5-scope is per definitie te vroeg; transcoderen is PS-8, gebruikers zijn PS-9, en de browserspeler
-is PS-4W.
+**De huidige fase, het lopende protocolvenster en de open blokkerende poorten staan in
+[`docs/PLEYA-SERVER-MASTERLIST.md`](../PLEYA-SERVER-MASTERLIST.md).** Lees dat bestand voor de
+actuele stand voordat je begint; het is de enige bron voor status, niet dit bestand. Vrijgave- en
+scopebesluiten per fase staan in `docs/DECISIONS.md` en de losse voorstellen waarnaar dat document
+verwijst (`docs/pleya-server-*-proposal.md`, `docs/pleya-server-*-deviation.md`).
+
+**E-books zijn productscope maar hebben hun eigen vrijgave, los van de lopende fase**
+([DEC-128](../DECISIONS.md#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15)).
+Twee grenzen gelden nu al: de `media_*`-tabellen blijven audiovisueel, en de mobiele beperking is
+clientgedrag, dus er komt geen platform- of readerveld aan login of `sessions`. Deze regels staan in
+hoofdstuk 11 van `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md` en blokkeren de Plex-off gate niet.
 
 **Het protocol ligt vast.** `docs/pleya-protocol/v1/openapi.yaml` is contractueel leidend en bevroren
-zolang PS-5 loopt. Het venster stond één keer open, bij het sluiten van PS-3, voor precies de drie
-poortbesluiten die eronder staan; daarna is het weer dicht. Legt PS-5 een echt probleem bloot, dan is
-dat een protocolwijziging die eerst langs de zes compatibiliteitsregels uit hoofdstuk 3 van de
-specificatie getoetst wordt, niet een aanpassing in de YAML omdat het zo uitkomt.
-`scripts/check_protocol.sh` is de poortwachter.
+tot een besluit het venster expliciet opent; er is geen moment waarop het contract vanzelf open staat,
+ook niet tussen twee fasen in. Een probleem daarin is een protocolwijziging die eerst langs de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie getoetst wordt, niet een aanpassing in de
+YAML omdat het zo uitkomt. `scripts/check_protocol.sh` is de poortwachter; welk venster nu open staat
+en voor welke wijzigingen staat in `docs/PLEYA-SERVER-MASTERLIST.md`.
+
+**Re-baseline van 4 september 2026.** `docs/pleya-server-rebaseline/` (A tot O, plus `HANDOFF.md`
+met de besluiten van die avond) en de webnorthstar in `docs/assets/pleya-web-northstar/` (met
+`DESIGN.md` als bouwhandleiding) zijn het uitvoeringsplan voor het afmaken van Pleya Server als
+totaalplan; de slices in deel I zijn de uitvoeringseenheden en verwijzen naar de PS-fasen hier. Lees
+HANDOFF.md vóór de rest.
+
+**`docs/PLEYA-SERVER-MASTERLIST.md` is de afvinklijst en wordt bij elke afgeronde taak in
+dezelfde commit bijgewerkt**, met status en bewijs. Een taak op `gereed` zonder bewijs telt als
+open; werk dat er niet in staat is scope creep en vraagt eerst een regel.
 
 Bij ieder Pleya Server-werk:
 

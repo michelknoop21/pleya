@@ -23,8 +23,11 @@ steps:
   - wait_until: {focused: "my_pleya.section.tile[servers.servers_add]", timeout: 8000}
   - press: select
   - wait_until: {id: "my_pleya.section.content[add_connection]", timeout: 8000}
+  # TvNestedSurface places the entry focus a frame after the route mounts.
+  - wait_until: {focused: "my_pleya.section.tile[add_connection.plex]", timeout: 5000}
   - assert: {id: "my_pleya.section.tile[add_connection.plex]", focused: true, insideViewport: true}
   - assert: {id: "my_pleya.section.tile[add_connection.jellyfin]", insideViewport: true}
+  - assert: {id: "my_pleya.section.tile[add_connection.emby]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[add_connection.pleya_server]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[add_connection.local_folder]", insideViewport: true}
   - assert: {id: "my_pleya.section.tile[add_connection.pleya_share]", insideViewport: true}
@@ -36,6 +39,14 @@ steps:
   - snapshot: 01-jellyfin-form
   - press: menu
   - wait_until: {focused: "my_pleya.section.tile[add_connection.jellyfin]", timeout: 8000}
+  - press: left
+  - wait_until: {focused: "my_pleya.section.tile[add_connection.plex]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.section.tile[add_connection.emby]", timeout: 5000}
+  - press: select
+  - snapshot: 01b-emby-form
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[add_connection.emby]", timeout: 8000}
   - press: down
   - wait_until: {focused: "my_pleya.section.tile[add_connection.local_folder]", timeout: 5000}
   - press: down

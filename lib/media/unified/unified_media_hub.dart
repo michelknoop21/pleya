@@ -251,7 +251,7 @@ class UnifiedMediaHub {
        contributingRowIds = List.unmodifiable(contributingRowIds);
 
   /// The same row with [groups] swapped: how the Verder kijken row becomes the
-  /// first 20 of its own full projection (DEC-119 fase 2).
+  /// first 20 of its own full projection (DEC-144 fase 2).
   UnifiedMediaHub withGroups(List<UnifiedMediaGroup> groups) => UnifiedMediaHub(
     hubId: hubId,
     title: title,

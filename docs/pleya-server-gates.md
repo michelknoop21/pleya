@@ -22,8 +22,17 @@ sessieparameter zit op `GET /stream`.
 | 5 | De browser playback session | PS-4 | **dicht**, goedgekeurd 21 augustus 2026, [DEC-051](DECISIONS.md#dec-051-de-browser-krijgt-een-streamsessie-met-een-cookie-per-sessie-en-het-geheim-komt-nooit-in-een-url) |
 
 **Alle vijf staan dicht.** Poort 3, 4 en 5 zijn gesloten in het contractvenster dat bij het sluiten
-van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevroren, nu voor de duur
-van PS-4.
+van PS-3 openging. Daarna is `docs/pleya-protocol/v1/openapi.yaml` opnieuw bevroren. De vriezing hangt
+aan de lopende fase, niet aan een vast fasenummer, gelijk aan `CLAUDE.md`; bij het ontwerp van PS-9
+ging het venster een tweede keer open, zie sectie 6 hieronder en
+[DEC-122](DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
+Een derde keer voor S1 van PS-11A, zie sectie 7 en
+[DEC-135](DECISIONS.md#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein);
+dat venster is met S1.6 weer gesloten,
+[DEC-137](DECISIONS.md#dec-137-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+Een vierde keer voor S2, zie sectie 8 en
+[DEC-138](DECISIONS.md#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein);
+dat venster staat open tot S2.6.
 
 ---
 
@@ -250,3 +259,130 @@ het streamtoken in de querystring dat vandaag hetzelfde doet, en het is beter op
 op de pagina kan er niet bij, en het staat niet in browsergeschiedenis, logs of referrers. `HttpOnly`
 is geen versleuteling. Transportvertrouwelijkheid op het LAN hoort bij de fase die de server buiten
 het LAN bereikbaar maakt.
+
+---
+
+## 6. Het PS-9-contractvenster
+
+**Status: gesloten.** `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn bijgewerkt en
+`scripts/check_protocol.sh` slaagt op alle onderdelen. Het besluit staat in
+[DEC-122](DECISIONS.md#dec-122-het-protocolvenster-gaat-open-voor-ps-9-en-de-vriezingsformulering-ontkoppelt-van-ps-5).
+
+**De vraag.** Het protocol was bevroren zolang PS-5 liep, en PS-5 is met
+[DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) bewust
+opengelaten op alleen zijn hardwarecriterium, dus voor onbepaalde tijd. PS-9 heeft zeven
+protocoltoevoegingen nodig (rollen en rechten in `/info`, sessie- en gebruikersendpoints, optionele
+device-velden op login/setup). Zonder een expliciet venster staat "bevroren" en "PS-9 heeft
+wijzigingen nodig" tegenover elkaar.
+
+**Wat er opengaat, en niets anders.** Precies zeven wijzigingen, elk getoetst aan de zes
+compatibiliteitsregels uit hoofdstuk 3 van de specificatie:
+
+1. `capabilities.users`: `false` → `true` (waardewijziging, het veld bestaat al).
+2. `capabilities.sessions` toegevoegd aan `/info` (nieuw antwoordveld).
+3. `device_id`, `device_name` optioneel op `LoginRequest` en `SetupRequest` (nieuw optioneel
+   aanvraagveld, achter capability 2, precedent `watch_state_ownership` in `openapi.yaml:774-782`).
+4. `GET/POST /users`, `PATCH/DELETE /users/{id}`, `PUT /users/{id}/permissions` (nieuwe endpoints,
+   klasse `admin`).
+5. `GET /sessions`, `DELETE /sessions/{id}` (nieuwe endpoints, klasse `owner` op eigen sessies,
+   `admin` op die van anderen).
+6. `POST /auth/logout` (nieuw endpoint).
+7. Nieuwe foutcodes voor rolconflicten, additief aan het register.
+
+Geen van de zeven hernoemt, verwijdert of verandert de betekenis van een bestaand veld of endpoint.
+
+**Waarom dit geen precedent voor "protocol bijwerken wanneer het uitkomt" is.** Het venster is net zo
+scherp begrensd als het venster dat bij het sluiten van PS-3 openging: één opgeschreven lijst, één
+toetsing per item, en een sluitmoment dat aan een script hangt in plaats van aan een gevoel. Een
+volgende fase die het protocol wil uitbreiden doorloopt dezelfde procedure opnieuw en krijgt geen
+beroep op dit venster.
+
+**Sluiting.** `openapi.yaml`, `pleya-protocol-v1.md` en de fixtures zijn bijgewerkt en
+`scripts/check_protocol.sh` is groen; het contract is weer bevroren voor de rest van PS-9 en voor elke
+fase daarna, tot de volgende expliciete venstervraag.
+
+
+## 7. Het S1-contractvenster van PS-11A
+
+Op 5 september 2026 ging het venster een derde keer open, met
+[DEC-135](DECISIONS.md#dec-135-het-protocolvenster-gaat-open-voor-s1-en-server-wordt-het-zesde-foutdomein),
+en op dezelfde dag weer dicht met S1.6 en
+[DEC-137](DECISIONS.md#dec-137-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen).
+Alle zeventien rijen zijn geland: veertien in S1.1 tot en met S1.5 en S1.8, en de laatste drie
+(`capabilities.administration`, `SetupRequest.server_name` met `Info.server.setup_accepts_name`, en
+`capabilities.mcp` met `Server.mcp`) in S1.6. Van die drie is er één met gedrag erachter: setup
+schrijft de instelling `server_name` werkelijk weg, en toetst hem vóór het inwisselen van de
+eenmalige setupcode. De twee andere zijn onderhandelingsvlaggen, en `mcp` staat op `false` tot slice
+S16 de laag bouwt: het venster legt de vorm vast omdat het contract er daarna weer op slot gaat, niet
+de functie.
+
+**Waarom.** S0 is gesloten en PS-11A vrijgegeven. Zijn eerste slice is beheer-basis, en die kan geen
+regel opleveren zonder het contract aan te raken: beheerendpoints bestaan niet, de capability
+`administration` bestaat niet, en zelfs de eerste commitgrens loopt erop vast omdat een panic als
+`server.internal` hoort terug te komen en `server` vandaag geen geldig foutdomein is.
+
+**Wat erin zit.** Precies de zeventien wijzigingen uit `docs/pleya-server-rebaseline/J-api-schema-migratie.md`
+J.2. Zestien daarvan zijn nieuwe optionele antwoordvelden, nieuwe endpoints of nieuwe optionele
+aanvraagvelden achter een capability, en vallen onder regel 1, 4 en 5. Twee kregen een eigen
+redenering: `SetupRequest.server_name` botst met de gesloten aanvraagbody en wordt afgevangen met
+`setup_accepts_name` op `Info`, en het foutdomein verruimt een bestaand patroon.
+
+**Twee domeinen, niet één.** DEC-135 telde er één en dat bleek bij het uitvoeren te weinig: rij 2 van
+J.2 schrijft `settings.invalid_value` voor op `PATCH /settings`, en `settings` stond net zomin in het
+patroon als `server`. Beide zaten al in de zeventien, dus het venster dekt ze allebei; de tekst van
+DEC-135 telde ze niet allebei.
+[DEC-136](DECISIONS.md#dec-136-venster-1-voegt-twee-foutdomeinen-toe-niet-een-settings-komt-er-naast-server-bij)
+corrigeert dat en legt meteen de regel voor de volgende vensters vast: een venster dat een foutdomein
+toevoegt zegt dat met zoveel woorden, met de compatibiliteitstoets erbij. J.3 brengt `job` mee en J.5
+`reading`, dus die vraag komt terug.
+
+**Waarom die domeinen veilig zijn, en waarom dat bewezen moest worden.** Een verruiming van iets dat
+er al staat is niet hetzelfde als een toevoeging ernaast. Beide clients handelen een onbekende code
+generiek af: `PleyaError` draagt de code als `String` en takt er niet op, de enige domeintest in de app
+vraagt `startsWith('auth.')` en valt anders door, en `describeError` in `pleya_web` geeft een onbekende
+code terug als generieke melding. Datzelfde bestand draagt al `client.transport` en
+`client.malformed_response`, twee codes in een domein dat het contract niet kent; ze komen nooit over
+de lijn, maar ze tonen wel dat het foutpad een onbekend domein aankan.
+
+**Waarom dit geen precedent is.** Zelfde begrenzing als de twee eerdere vensters: één opgeschreven
+lijst, één toetsing per item, en een sluitmoment dat aan `scripts/check_protocol.sh` hangt. Venster 2
+(S2, bibliotheken en scans) staat al beschreven in J.3 en vraagt tóch een eigen besluit. In één keer
+openzetten voor J.2 tot en met J.7 is expliciet afgewezen: dat houdt het venster open tot het einde van
+het traject, en dan is het geen venster meer.
+
+**Meten gaat twee kanten op.** De negatieve controle in `scripts/check_protocol.py` keurt
+`plex.not_found` af, en dat blijft ze doen of het patroon nu vijf, zes of zeven domeinen kent. Ze zou
+dus niet opvallen wanneer een venster een domein toevoegt en het patroon vergeet. Er staat nu een
+tweede controle naast, `check_error_domains`, die van elk erkend domein eist dat het er ook doorheen komt, met de lijst met
+de hand geschreven zodat hij niet met het patroon meebeweegt. Aangetoond door het patroon terug te
+zetten op vijf domeinen: twee regels rood, `settings` en `server`.
+
+**Sluiting.** Gesloten met taak S1.6 van de masterlijst en
+[DEC-137](DECISIONS.md#dec-137-protocolvenster-1-gaat-dicht-de-laatste-drie-rijen-en-wat-ze-wel-en-niet-vastleggen):
+`openapi.yaml`, de fixtures en de gegenereerde webclient zijn bijgewerkt en `check_protocol.sh` was
+groen op alle zeventien rijen.
+
+## 8. Het S2-contractvenster van PS-11A
+
+Op 6 september 2026 ging het venster een vierde keer open, met
+[DEC-138](DECISIONS.md#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein).
+Anders dan bij S1 landt de implementatie hier over meerdere commits binnen dezelfde slice: S2.2 heeft
+er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library`-uitbreiding met
+`managed`, `scan_interval_seconds` en `scan_on_start`), S2.3 er twee bij (`GET /storage/roots` en
+`POST /storage/roots/recheck`), de rest volgt in S2.4 en S2.5.
+
+**Wat erin zit.** Precies de tien wijzigingen uit
+`docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3: de drie hierboven, `POST
+/libraries/{id}/scan`, `POST /libraries/{id}/adopt`, `GET /storage/roots`,
+`POST /storage/roots/recheck`, `GET /scans` met `GET /scans/{id}`, en `GET /jobs` met
+`POST /jobs/{id}/cancel` en `POST /jobs/{id}/retry`.
+
+**Eén nieuw foutdomein, en pas wanneer er ook echt een code in zit.** `job` komt erbij zodra
+`job.not_cancellable` landt (S2.4); met S2.4 staat het patroon op acht domeinen, dezelfde
+discipline als bij `settings` en `server` in venster 1 (DEC-136). De overige nieuwe codes vallen in
+bestaande domeinen: `library.slug_taken`, `library.not_empty`, `library.confirm_mismatch` en
+`library.not_config_managed` (dat laatste komt met S2.5, adopt) in `library`,
+`storage.root_not_offered` in `storage`.
+
+**Sluiting.** Nog niet gesloten. Het sluit bij taak S2.6 van de masterlijst, zodra alle tien rijen
+geland zijn en `check_protocol.sh` groen is.

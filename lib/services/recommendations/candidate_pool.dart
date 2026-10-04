@@ -213,6 +213,7 @@ class CandidatePool {
         query: const LibraryQuery(
           limit: kPerLibraryLimit,
           sort: LibrarySort(field: 'rating', direction: LibrarySortDirection.descending),
+          withTasteFields: true,
         ),
         libraryKind: library.kind,
       );
@@ -245,6 +246,7 @@ class CandidatePool {
           offset: offset,
           limit: kPerLibraryLimit,
           sort: const LibrarySort(field: 'addedAt', direction: LibrarySortDirection.ascending),
+          withTasteFields: true,
         ),
         libraryKind: library.kind,
       );

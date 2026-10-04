@@ -26,6 +26,8 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../../assistant/assistant_controller.dart';
+import '../../../assistant/assistant_tool_context.dart';
 import '../../../focus/focus_memory_tracker.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/library_query.dart';
@@ -36,6 +38,8 @@ import '../../../mixins/refreshable.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../providers/hidden_libraries_provider.dart';
 import '../../../providers/libraries_provider.dart';
+import '../../../media/ids.dart';
+import '../../../providers/multi_server_provider.dart';
 import '../../../providers/unified_catalogs.dart';
 import '../../../services/unified_catalog/unified_catalog_filters.dart';
 import '../../../theme/mono_tokens.dart';
@@ -50,28 +54,35 @@ import '../../../widgets/tv/tv_catalog_sort_panel.dart';
 import '../../../widgets/tv/tv_menu_grid.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 import '../../../widgets/tv/tv_panel_primitives.dart';
+import '../assistant/tv_assistant_screen.dart';
 import '../tv_unified_catalog_screen.dart';
 import 'tv_library_action_sheet.dart';
 
 /// One admin action a library row's action sheet may offer (mockup 27 B).
-enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, analyze, emptyTrash }
+enum TvLibraryAction { openInCatalog, refreshMetadata, scan, toggleVisibility, analyze, emptyTrash, askBigP }
 
 /// Which actions [library] offers, in the order mockup 27 B draws them.
 ///
-/// Scan/Analyze/Prullenbak hit Plex-only endpoints — the same gate
-/// `_getLibraryMenuItems` in the shared [LibrariesScreen] applies. Openen in
-/// catalogus only makes sense for a library the unified catalog actually
-/// browses; a music or photo library gets the admin actions and nothing else.
-List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library) {
+/// Library maintenance (metadata refresh, scan, analyze, empty trash) changes
+/// canonical server data, so it needs [canManage] (the owner rule, see
+/// `MultiServerManager.canManageServerMetadata`); without it only the profile
+/// actions remain. Scan/Analyze/Prullenbak also hit Plex-only endpoints, the
+/// same gate `_getLibraryMenuItems` in the shared [LibrariesScreen] applies.
+/// Openen in catalogus only makes sense for a library the unified catalog
+/// actually browses.
+List<TvLibraryAction> tvLibraryActionsFor(MediaLibrary library, {required bool canManage, bool canAskBigP = false}) {
   final isCatalogable = library.kind == MediaKind.movie || library.kind == MediaKind.show;
-  final isPlex = library.backend == MediaBackend.plex;
+  final isPlex = canManage && library.backend == MediaBackend.plex;
   return [
     if (isCatalogable) TvLibraryAction.openInCatalog,
-    TvLibraryAction.refreshMetadata,
+    if (canManage) TvLibraryAction.refreshMetadata,
     if (isPlex) TvLibraryAction.scan,
     TvLibraryAction.toggleVisibility,
     if (isPlex) TvLibraryAction.analyze,
     if (isPlex) TvLibraryAction.emptyTrash,
+    // DEC-142: Big P with this library as context, only where the
+    // AssistantController shows him at all.
+    if (canAskBigP && library.serverId != null) TvLibraryAction.askBigP,
   ];
 }
 
@@ -205,14 +216,37 @@ class TvLibrariesScreenState extends State<TvLibrariesScreen> implements Focusab
         context,
         library: library,
         isHidden: isHidden,
+        // No provider (a bare test harness) means no proof of ownership.
+        canManage: switch ((context.read<MultiServerProvider?>(), library.serverId)) {
+          (final multiServer?, final serverId?) => multiServer.serverManager.canManageServerMetadata(
+            ServerId(serverId),
+          ),
+          _ => false,
+        },
         onOpenInCatalog: () => _openInCatalog(library),
         onRefreshMetadata: () => _refreshMetadata(library),
         onScan: () => _scan(library),
         onToggleVisibility: () => _toggleVisibility(library, isHidden: isHidden),
         onAnalyze: () => _analyze(library),
         onEmptyTrash: () => _emptyTrash(library),
+        canAskBigP:
+            (context.read<AssistantController?>()?.availability ?? AssistantAvailability.hidden) !=
+            AssistantAvailability.hidden,
+        onAskBigP: () => _askBigP(library),
       ),
     );
+  }
+
+  /// "Vraag Big P" with this library as the screen context: the surface
+  /// opens with the keyboard up, so "scan deze bibliotheek" means this one.
+  void _askBigP(MediaLibrary library) {
+    final screenContext = AssistantScreenContext(serverId: library.serverId, libraryId: library.id);
+    final screenKey = GlobalKey(debugLabel: 'tvAssistant_context');
+    Widget builder(BuildContext _) => TvAssistantScreen(key: screenKey, screenContext: screenContext);
+    final nested = openTvContentRoute(id: 'tvAssistant_${library.globalKey}', builder: builder, screenKey: screenKey);
+    if (nested == null) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
+    }
   }
 
   void _openInCatalog(MediaLibrary library) {

@@ -2,12 +2,10 @@ import '../providers/watchlist_provider.dart';
 import 'watchlist_screen.dart';
 import 'my_pleya_screen.dart';
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import '../automation/automation_event_log.dart';
 import '../automation/automation_route_state.dart';
 import '../automation/automation_ids.dart';
 import '../automation/automation_navigation_hooks.dart';
-import '../automation/automation_node.dart';
 import '../automation/automation_screen.dart';
 import '../automation/pleya_verify.dart';
 import '../media/ids.dart';
@@ -27,7 +25,6 @@ import 'tv/tv_my_pleya_screen.dart';
 import 'tv/tv_my_pleya_sections.dart';
 import 'tv/tv_root_shell.dart';
 import '../navigation/sidebar_focus_coordinator.dart';
-import '../theme/mono_theme.dart' show kAccent;
 import 'dart:io' show Platform, exit;
 
 export '../navigation/main_screen_scope.dart'
@@ -46,6 +43,7 @@ import '../services/update_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/haptics.dart';
 import '../widgets/auth_error_banner.dart';
+import '../utils/media_navigation_helper.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/platform_detector.dart';
 import '../utils/snackbar_helper.dart';
@@ -55,6 +53,10 @@ import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
 import '../mixins/tab_visibility_aware.dart';
+import 'big_p/big_p_mobile_host.dart';
+import 'big_p/big_p_mobile_session.dart';
+import 'main/mobile_main_scaffold.dart';
+import 'main/mobile_tab_bar.dart';
 import '../navigation/navigation_tabs.dart';
 import '../navigation/profile_navigation_scope.dart';
 import '../profiles/active_profile_binder.dart';
@@ -231,23 +233,6 @@ NavigationTabId _ownSlotOr(NavigationTabId tab, List<NavigationTabId> barTabs, N
 /// `_normalizeTabForMode` has moved the selection. In those cases the first
 /// bar destination is the honest fallback, and it is the same thing the bar
 /// would have shown anyway, only now deliberately.
-/// The mobile bottom bar's own selected-slot colour: the active label turns
-/// [kAccent], matching the active glyph `_TabIcon` already draws. iOS Unified
-/// 2026 fase 1, `docs/ios-unified-2026-fase1-plan.md` stap 9.
-///
-/// Applied at the bar rather than in `monoTheme` on purpose: the theme's
-/// `navigationBarTheme` is inherited by every `NavigationBar` in the app, and
-/// this red is a decision about this one bar.
-NavigationBarThemeData mobileTabBarTheme(NavigationBarThemeData base) {
-  final baseLabel = base.labelTextStyle;
-  return base.copyWith(
-    labelTextStyle: WidgetStateProperty.resolveWith((states) {
-      final style = baseLabel?.resolve(states) ?? const TextStyle();
-      return states.contains(WidgetState.selected) ? style.copyWith(color: kAccent) : style;
-    }),
-  );
-}
-
 @visibleForTesting
 NavigationTabId mainScreenSelectedBarTab({
   required NavigationTabId currentTab,
@@ -976,7 +961,7 @@ class _MainScreenState extends State<MainScreen>
     // sidebar reflects the new server set without an app restart.
     if (action == ProfileInvalidationAction.invalidateNow) {
       _wasBindingPrev = isBindingNow;
-      unawaited(_invalidateAllScreens());
+      unawaited(_invalidateAllScreens(sameProfileRebind: true));
       return;
     }
     _wasBindingPrev = isBindingNow;
@@ -1085,25 +1070,27 @@ class _MainScreenState extends State<MainScreen>
     final systemShelf = SystemShelfService();
 
     // Listen for deep links when app is already running (warm start)
-    systemShelf.onShelfItemTap = (contentId) {
-      appLogger.d('System shelf tap: $contentId');
-      _handleShelfContentId(contentId);
+    systemShelf.onShelfItemTap = (link) {
+      appLogger.d('System shelf tap: ${link.contentId} (${link.action.name})');
+      _handleShelfLink(link);
     };
 
     // Check for pending deep link from cold start
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final contentId = await systemShelf.getInitialDeepLink();
-      if (contentId != null && mounted) {
-        appLogger.d('System shelf initial deep link: $contentId');
-        unawaited(_handleShelfContentId(contentId));
+      final link = await systemShelf.getInitialDeepLink();
+      if (link != null && mounted) {
+        appLogger.d('System shelf initial deep link: ${link.contentId} (${link.action.name})');
+        unawaited(_handleShelfLink(link));
       }
     });
   }
 
-  /// Handle a launcher shelf content ID by fetching metadata and starting playback.
-  Future<void> _handleShelfContentId(String contentId) async {
+  /// Handle a launcher shelf link: fetch the metadata, then resume playback or
+  /// open the detail page depending on the link's action.
+  Future<void> _handleShelfLink(ShelfDeepLink link) async {
     if (!mounted) return;
 
+    final contentId = link.contentId;
     final parsed = SystemShelfService.parseContentId(contentId);
     if (parsed == null) {
       appLogger.w('System shelf: invalid content ID: $contentId');
@@ -1125,7 +1112,11 @@ class _MainScreenState extends State<MainScreen>
 
       if (metadata == null || !mounted) return;
 
-      unawaited(navigateToVideoPlayer(context, metadata: metadata));
+      if (link.startsPlaybackFor(metadata.kind)) {
+        unawaited(navigateToVideoPlayer(context, metadata: metadata));
+      } else {
+        unawaited(navigateToMediaItemDetails(context, metadata));
+      }
     } catch (e) {
       appLogger.e('System shelf: failed to navigate to media', error: e);
     }
@@ -1888,7 +1879,8 @@ class _MainScreenState extends State<MainScreen>
   Future<void> _openProfilesFromShell() async {
     _isShowingProfileSelection = true;
     _setTvosMenuPassthrough(false);
-    await AccountUiActions.openProfiles(context);
+    // PROF1: on TV the switch is mockup 21's gate, not the management list.
+    await AccountUiActions.openProfiles(context, asGate: true);
     if (!mounted) return;
     _isShowingProfileSelection = false;
     _updateTvosMenuPassthrough();
@@ -2074,6 +2066,11 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  /// False only for Home on the TV shell with a nested route still open above
+  /// its root; every other tab and shell shows its root when selected.
+  bool _showsRootOf(NavigationTabId tab) =>
+      !_isTvShell || tab != NavigationTabId.discover || _tvNav.showsRootOf(TvDestinationId.home);
+
   void _onDiscoverBecameVisible() {
     appLogger.d('Navigated to home');
     // Refresh content when returning to discover page
@@ -2091,7 +2088,12 @@ class _MainScreenState extends State<MainScreen>
   /// The [ActiveProfileBinder] has already pushed fresh per-server tokens
   /// into [MultiServerManager], so this just clears UI caches and refreshes
   /// the visible screens.
-  Future<void> _invalidateAllScreens() async {
+  ///
+  /// [sameProfileRebind] is a rebind of the profile that was already active
+  /// (a reconnect, a borrowed or removed connection). The viewer stays where
+  /// they are then (OFF6): the nested routes and the focus memory belong to
+  /// this same profile, so the privacy rule below does not apply.
+  Future<void> _invalidateAllScreens({bool sameProfileRebind = false}) async {
     appLogger.d('Invalidating screen data after profile switch');
 
     // Hoofdstuk 7.6: "profielwissel → geheugen volledig wissen". A remembered
@@ -2100,9 +2102,12 @@ class _MainScreenState extends State<MainScreen>
     // odd jump. The Live TV capability is per profile in storage, so it is
     // re-read rather than carried over.
     if (_isTvShell) {
-      _tvNav.clearFocusMemory();
-      _tvNav.clearNestedRoutes();
-      _tvLiveTvRemembered = false;
+      if (!sameProfileRebind) {
+        _tvNav.clearFocusMemory();
+        _tvNav.clearNestedRoutes();
+        _tvLiveTvRemembered = false;
+      }
+      // A rebind can change the server set, and Live TV with it.
       unawaited(_loadTvLiveTvCapability());
     }
 
@@ -2150,6 +2155,27 @@ class _MainScreenState extends State<MainScreen>
     if (mounted) {
       unawaited(context.userProfile.refreshProfileSettings());
     }
+    if (sameProfileRebind && _isTvShell) _closeUnavailableTvMyPleyaSection();
+  }
+
+  /// OFF6: after a rebind of the same profile the open Mijn Pleya section
+  /// stays, unless its tile is gone from the hub (a Seerr or a Tautulli that
+  /// went with the connection). Then the hub comes back with the focus on it.
+  ///
+  /// ponytail: checked once, after the refresh above has settled. A provider
+  /// that only reports its capability later cannot close the section; the
+  /// section then shows its own empty or error state, as it does today.
+  void _closeUnavailableTvMyPleyaSection() {
+    final stack = _tvNav.nestedRoutesFor(TvDestinationId.myPleya);
+    if (stack.isEmpty) return;
+    const prefix = 'tvMyPleya_';
+    final id = stack.first.id;
+    if (!id.startsWith(prefix)) return;
+    final section = TvMyPleyaSection.values.asNameMap()[id.substring(prefix.length)];
+    final available = _tvMyPleyaKey.currentState?.availableSections;
+    if (section == null || available == null || available.contains(section)) return;
+    _tvNav.clearNestedRoutesFor(TvDestinationId.myPleya);
+    if (_tvNav.active == TvDestinationId.myPleya) _focusContent(restorePreviousFocus: false);
   }
 
   /// `false` when [tab] is not visible in the current mode: the tab is
@@ -2204,9 +2230,11 @@ class _MainScreenState extends State<MainScreen>
       if (_screenKeyFor(previousTab)?.currentState case final TabVisibilityAware aware) {
         aware.onTabHidden();
       }
-      // Notify and focus new screen
+      // Notify and focus new screen. Not Home while a detail is still open
+      // over it on TV (review N2): that detail is what is on screen, and
+      // `_popTvNestedRoute` shows and refreshes Home once it closes.
       final newState = _screenKeyFor(tab)?.currentState;
-      if (newState case final TabVisibilityAware aware) {
+      if (newState case final TabVisibilityAware aware when _showsRootOf(tab)) {
         aware.onTabShown();
       }
       // Not on the TV shell. There, moving the focus is the shell's decision
@@ -2225,7 +2253,7 @@ class _MainScreenState extends State<MainScreen>
     }
 
     // Discover: always refresh content (even on re-selection)
-    if (!_isOffline && tab == NavigationTabId.discover) {
+    if (!_isOffline && tab == NavigationTabId.discover && _showsRootOf(tab)) {
       _onDiscoverBecameVisible();
     }
 
@@ -2294,6 +2322,12 @@ class _MainScreenState extends State<MainScreen>
   /// opens where the remote already is, and the lit pill does not move under it.
   Future<Object?> _pushTvContentRoute(TvNestedRoute route) {
     final destination = _tvNav.active;
+    // A route over Home's root hides Home the way a push on the profile
+    // navigator does (`didPushNext`): the hero stops and the refresh timer
+    // pauses, so no reload reorders a rail nobody is looking at.
+    if (destination == TvDestinationId.home && _tvNav.activeNestedRoute == null) {
+      if (_discoverKey.currentState case final TabVisibilityAware aware) aware.onTabHidden();
+    }
     // Await the route that ends up on top: a re-push of the id already there is
     // discarded, and it is that one which will be popped.
     final live = _tvNav.pushNested(destination, route);
@@ -2370,6 +2404,14 @@ class _MainScreenState extends State<MainScreen>
   bool _popTvNestedRoute([Object? result]) {
     final popped = _tvNav.popNested(result);
     if (popped == null) return false;
+    // Back onto Home's root: the TV counterpart of `didPopNext`, so a return
+    // from a detail page refreshes like it does on the phone (review I2).
+    // Not a re-selection of Home, so hoofdstuk 7.2 does not apply.
+    final revealsHome = _tvNav.active == TvDestinationId.home && _tvNav.activeNestedRoute == null;
+    if (revealsHome && _currentTab == NavigationTabId.discover) {
+      if (_discoverKey.currentState case final TabVisibilityAware aware) aware.onTabShown();
+      _onDiscoverBecameVisible();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final key = popped.restoreFocusKey;
@@ -2566,125 +2608,6 @@ class _MainScreenState extends State<MainScreen>
       NavigationTabId.watchlist => _watchlistKey,
       NavigationTabId.myPleya => _isTvShell ? _tvMyPleyaKey : _myPleyaKey,
     };
-  }
-
-  Widget _buildBottomNavigationBar(BuildContext context, {required bool hideLabels}) {
-    final tabs = _getBottomNavigationTabs();
-    final projected = mainScreenSelectedBarTab(
-      currentTab: _currentTab,
-      isOffline: _isOffline,
-      barTabs: tabs.map((tab) => tab.id).toList(),
-      searchOrigin: _searchOpenedFromTab,
-    );
-    final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
-
-    // The one place the bar's presentation is decided, the same shape as the
-    // Home boundary in `discover_screen.dart`: one `PlatformDetector` call
-    // here, an explicit value passed down, and no platform check inside the
-    // destinations. Fase 1 was an iPhone phase and this bar is shared with the
-    // iPad, so the iPad keeps the presentation it had before fase 1 (DEC-103).
-    final presentation = PlatformDetector.isPhone(context)
-        ? TabBarPresentation.unified2026
-        : TabBarPresentation.classic;
-    final isUnified = presentation == TabBarPresentation.unified2026;
-
-    final bar = NavigationBar(
-      selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
-      onDestinationSelected: (i) {
-        if (i < 0 || i >= tabs.length) return;
-        // Part of the fase-1 presentation, so it stays on the phone side: the
-        // iPad's bar behaves exactly as it did before fase 1.
-        if (isUnified && tabs[i].id != _currentTab) Haptics.light();
-        _selectTab(tabs[i].id);
-      },
-      labelBehavior: hideLabels
-          ? NavigationDestinationLabelBehavior.alwaysHide
-          : NavigationDestinationLabelBehavior.alwaysShow,
-      destinations: tabs.map((tab) => _withNavTabAutomation(tab, presentation)).toList(),
-    );
-    final navigationBar = isUnified
-        ? NavigationBarTheme(data: mobileTabBarTheme(NavigationBarTheme.of(context)), child: bar)
-        : bar;
-
-    // Netflix mobile: frosted near-black bar. Blur the content scrolling
-    // behind it; the translucent color comes from navigationBarTheme.
-    Widget frosted(Widget bar) => ClipRect(
-      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: bar),
-    );
-
-    Widget withNavBarAutomation(Widget bar) => AutomationNode(id: AutomationIds.navBar, role: 'nav', child: bar);
-
-    final librariesIndex = tabs.indexWhere((tab) => tab.id == NavigationTabId.libraries);
-    if (tabs.isEmpty) return frosted(withNavBarAutomation(navigationBar));
-
-    return frosted(
-      withNavBarAutomation(
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (!constraints.hasBoundedWidth) return navigationBar;
-
-            final itemWidth = constraints.maxWidth / tabs.length;
-            final isRtl = Directionality.of(context) == TextDirection.rtl;
-
-            double itemLeft(int index) => isRtl ? constraints.maxWidth - (itemWidth * (index + 1)) : itemWidth * index;
-
-            return Stack(
-              children: [
-                navigationBar,
-                // The classic bar's solid red indicator above the active icon.
-                // The unified bar has none: there the active slot itself is
-                // red (fase 1 stap 9).
-                if (!isUnified && selectedIndex >= 0)
-                  Positioned(
-                    left: itemLeft(selectedIndex) + (itemWidth - 18) / 2,
-                    top: 0,
-                    width: 18,
-                    height: 3,
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(color: kAccent, borderRadius: BorderRadius.circular(2)),
-                      ),
-                    ),
-                  ),
-                if (librariesIndex >= 0)
-                  Positioned(
-                    left: itemLeft(librariesIndex),
-                    top: 0,
-                    bottom: 0,
-                    width: itemWidth,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      excludeFromSemantics: true,
-                      onLongPress: () {
-                        Feedback.forLongPress(context);
-                        _showLibraryQuickPicker(context);
-                      },
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Wraps one tab's icon/selectedIcon in [AutomationNode] so `nav.<id>`
-  /// resolves on both the mobile bar and the desktop/TV rail
-  /// ([SideNavigationRail] mounts the same id) — iOS Unified 2026 fase 1,
-  /// `docs/ios-unified-2026-fase1-plan.md` stap 3.
-  NavigationDestination _withNavTabAutomation(NavigationTab tab, TabBarPresentation presentation) {
-    final destination = tab.toDestination(presentation: presentation);
-    final id = AutomationIds.navTab(tab.id);
-    Widget wrap(Widget icon) => AutomationNode(id: id, role: 'nav.item', child: icon);
-    return NavigationDestination(
-      icon: wrap(destination.icon),
-      selectedIcon: destination.selectedIcon == null ? null : wrap(destination.selectedIcon!),
-      label: destination.label,
-      tooltip: destination.tooltip,
-      enabled: destination.enabled,
-    );
   }
 
   @override
@@ -2972,18 +2895,20 @@ class _MainScreenState extends State<MainScreen>
       canPop: false,
       onSystemBack: () {
         if (BackKeyCoordinator.consumeIfHandled()) return;
+        // Back while Big P is out parks him (ignored while a card waits).
+        final bigP = context.read<BigPMobileSession?>();
+        if (bigP?.stage == BigPStage.out) return bigP!.park();
         _handleMainBack();
       },
       child: ScaffoldMessenger(
         key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
-        child: Scaffold(
+        child: MobileMainScaffold(
           body: _buildTickerAwareStack(),
-          bottomNavigationBar: Column(
-            mainAxisSize: .min,
-            children: [
-              // Reconnect bar when offline
-              if (_isOffline)
-                Material(
+          // Hides itself without a Big P session (V4: iPhone and iPad only).
+          overlay: const BigPMobileHost(),
+          // Reconnect bar when offline
+          reconnectStrip: _isOffline
+              ? Material(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: InkWell(
                     onTap: _isReconnecting ? null : _triggerReconnect,
@@ -3016,18 +2941,50 @@ class _MainScreenState extends State<MainScreen>
                       ),
                     ),
                   ),
+                )
+              : null,
+          tabBar: SettingValueBuilder<bool>(
+            pref: SettingsService.showNavBarLabels,
+            builder: (context, showNavBarLabels, _) {
+              final hideLabels = !showNavBarLabels;
+              final tabs = _getBottomNavigationTabs();
+              final projected = mainScreenSelectedBarTab(
+                currentTab: _currentTab,
+                isOffline: _isOffline,
+                barTabs: tabs.map((tab) => tab.id).toList(),
+                searchOrigin: _searchOpenedFromTab,
+              );
+              final selectedIndex = tabs.indexWhere((tab) => tab.id == projected);
+
+              // The one place the bar's presentation is decided, the same shape as
+              // the Home boundary in `discover_screen.dart`: one `PlatformDetector`
+              // call here, an explicit value passed down, and no platform check
+              // inside the destinations. Fase 1 was an iPhone phase and this bar is
+              // shared with the iPad, so the iPad keeps the presentation it had
+              // before fase 1 (DEC-103).
+              final presentation = PlatformDetector.isPhone(context)
+                  ? TabBarPresentation.unified2026
+                  : TabBarPresentation.classic;
+              final isUnified = presentation == TabBarPresentation.unified2026;
+
+              return NavigationBarTheme(
+                data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
+                child: MobileTabBar(
+                  tabs: tabs,
+                  currentIndex: selectedIndex,
+                  onDestinationSelected: (i) {
+                    if (i < 0 || i >= tabs.length) return;
+                    // Part of the fase-1 presentation, so it stays on the phone
+                    // side: the iPad's bar behaves exactly as it did before fase 1.
+                    if (isUnified && tabs[i].id != _currentTab) Haptics.light();
+                    _selectTab(tabs[i].id);
+                  },
+                  hideLabels: hideLabels,
+                  presentation: presentation,
+                  onLibraryLongPress: _showLibraryQuickPicker,
                 ),
-              SettingValueBuilder<bool>(
-                pref: SettingsService.showNavBarLabels,
-                builder: (context, showNavBarLabels, _) {
-                  final hideLabels = !showNavBarLabels;
-                  return NavigationBarTheme(
-                    data: NavigationBarTheme.of(context).copyWith(height: hideLabels ? 56 : null),
-                    child: _buildBottomNavigationBar(context, hideLabels: hideLabels),
-                  );
-                },
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),

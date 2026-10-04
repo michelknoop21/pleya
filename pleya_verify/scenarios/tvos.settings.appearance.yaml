@@ -52,7 +52,11 @@ steps:
   - assert: {id: "my_pleya.section.tile[setting.tv_reduce_motion]", state: {value: false}}
 
   # Down the Weergave card onto "titels onder posters": theme, language,
-  # density, view mode, episode poster mode, full card, focus glow, titles.
+  # density, view mode, episode poster mode, Liquid Glass, full card, focus
+  # glow, titles. Eight downs since the Liquid Glass row (PR #95) landed
+  # between episode poster mode and full card; this walk still counted seven.
+  - press: down
+  - settle: 250
   - press: down
   - settle: 250
   - press: down
@@ -78,19 +82,26 @@ steps:
   - settle: 600
   - assert: {id: "my_pleya.section.tile[setting.tv_show_titles_under_posters]", state: {value: true}}
 
-  # On down the page to the Home-screen card: reduce motion, episode number,
-  # then the hero clearlogo and hero auto-rotate rows.
+  # The hero rows live in the Home category since the category redesign
+  # (`7e3af503`). APP1: LEFT from any row, here the low titles row, lands on
+  # the active category, and RIGHT from a category enters that category on its
+  # first row. Before APP1 both moves were spatial: LEFT needed a row level
+  # with a category card, RIGHT landed on the row beside the card.
+  - press: left
+  - wait_until: {focused: "settings.appearance.category[0]", timeout: 5000}
   - press: down
-  - wait_until: {focused: "my_pleya.section.tile[setting.tv_reduce_motion]", timeout: 5000}
-  - press: down
-  - settle: 250
-  - press: down
+  - wait_until: {focused: "settings.appearance.category[1]", timeout: 5000}
+  - press: right
   - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_clear_logo]", timeout: 5000}
+  - assert: {id: "settings.appearance.category[1]", state: {selected: true}}
   - assert: {id: "my_pleya.section.tile[setting.tv_hero_clear_logo]", insideViewport: true, state: {value: true}}
   - press: down
   - wait_until: {focused: "my_pleya.section.tile[setting.tv_hero_auto_advance]", timeout: 5000}
   - assert: {id: "my_pleya.section.tile[setting.tv_hero_auto_advance]", insideViewport: true, state: {value: true}}
   - snapshot: 02b-hero-rows
+  # LEFT from the second row goes back to the category it belongs to.
+  - press: left
+  - wait_until: {focused: "settings.appearance.category[1]", timeout: 5000}
 
   # Menu out: onto the tile it came from, then onto the hub's tile.
   - press: menu

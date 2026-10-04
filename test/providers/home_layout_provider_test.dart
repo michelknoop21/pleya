@@ -52,5 +52,40 @@ void main() {
       expect(_ids(reloaded.apply(hubs, homeRowId)), [':c', ':a']);
       reloaded.dispose();
     });
+
+    test('one hidden because-you-watched id hides every seed row of that server', () async {
+      final p = HomeLayoutProvider();
+      await p.ensureInitialized();
+      final seedA = MediaHub(
+        id: 'a',
+        identifier: 'home.becauseyouwatched',
+        title: 'Because you watched A',
+        type: 'mixed',
+        items: const [],
+        serverId: 's1',
+      );
+      final seedB = MediaHub(
+        id: 'b',
+        identifier: 'home.becauseyouwatched',
+        title: "Because you're watching B",
+        type: 'mixed',
+        items: const [],
+        serverId: 's1',
+      );
+      final other = MediaHub(
+        id: 'c',
+        identifier: 'home.toppicks',
+        title: 'Top Picks',
+        type: 'mixed',
+        items: const [],
+        serverId: 's1',
+      );
+      await p.setRowHidden(homeRowId(seedA), true);
+
+      final shown = p.apply([seedA, seedB, other], homeRowId);
+
+      expect(shown.map((h) => h.id), ['c']);
+      p.dispose();
+    });
   });
 }

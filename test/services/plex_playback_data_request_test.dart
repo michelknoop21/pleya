@@ -9,6 +9,7 @@ import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/device_capabilities.dart';
 import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/mpv/mpv.dart';
 import 'package:pleya/models/plex/plex_config.dart';
@@ -16,6 +17,7 @@ import 'package:pleya/models/transcode_quality_preset.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 import 'package:pleya/services/plex_api_cache.dart';
 import 'package:pleya/services/plex_client.dart';
+import 'package:pleya/services/plex_client/plex_client_profile.dart';
 
 void main() {
   late AppDatabase db;
@@ -40,6 +42,42 @@ void main() {
       ),
       serverId: ServerId('server-id'),
       httpClient: MockClient(handler),
+    );
+  }
+
+  /// The transcode request is a pure function now, so it no longer needs a
+  /// client to be reachable. The old `@visibleForTesting` seam existed only
+  /// because the builder sat on a 4397-line class.
+  Map<String, String> transcodeParams({
+    required String ratingKey,
+    required int mediaIndex,
+    int partIndex = 0,
+    required TranscodeQualityPreset preset,
+    required String sessionIdentifier,
+    required String transcodeSessionId,
+    int? audioStreamId,
+    MediaSubtitleTrack? selectedSubtitleTrack,
+    int? offsetMs,
+    DeviceCapabilities capabilities = DeviceCapabilities.unknown,
+  }) {
+    return buildPlexTranscodeParams(
+      config: PlexConfig(
+        baseUrl: 'https://plex.example.com',
+        token: 'token',
+        clientIdentifier: 'client-id',
+        product: 'Plezy',
+        version: '1',
+      ),
+      capabilities: capabilities,
+      ratingKey: ratingKey,
+      mediaIndex: mediaIndex,
+      partIndex: partIndex,
+      preset: preset,
+      sessionIdentifier: sessionIdentifier,
+      transcodeSessionId: transcodeSessionId,
+      audioStreamId: audioStreamId,
+      selectedSubtitleTrack: selectedSubtitleTrack,
+      offsetMs: offsetMs,
     );
   }
 
@@ -376,10 +414,7 @@ void main() {
   });
 
   test('selected internal text subtitles are embedded in HTTP MKV transcode', () {
-    final client = makeClient((_) async => http.Response('not used', 500));
-    addTearDown(client.close);
-
-    final params = client.buildTranscodeParamsForTesting(
+    final params = transcodeParams(
       ratingKey: '42',
       mediaIndex: 0,
       preset: TranscodeQualityPreset.p720_3mbps,
@@ -424,7 +459,7 @@ void main() {
     final client = makeClient((_) async => http.Response('not used', 500));
     addTearDown(client.close);
 
-    final params = client.buildTranscodeParamsForTesting(
+    final params = transcodeParams(
       ratingKey: '42',
       mediaIndex: 0,
       preset: TranscodeQualityPreset.p720_3mbps,
@@ -444,10 +479,7 @@ void main() {
   });
 
   test('transcode params preserve resolved media and part indices', () {
-    final client = makeClient((_) async => http.Response('not used', 500));
-    addTearDown(client.close);
-
-    final params = client.buildTranscodeParamsForTesting(
+    final params = transcodeParams(
       ratingKey: '42',
       mediaIndex: 1,
       partIndex: 2,
@@ -461,10 +493,7 @@ void main() {
   });
 
   test('selected image-based subtitles are embedded in HTTP MKV transcode without advancedSubtitles', () {
-    final client = makeClient((_) async => http.Response('not used', 500));
-    addTearDown(client.close);
-
-    final params = client.buildTranscodeParamsForTesting(
+    final params = transcodeParams(
       ratingKey: '42',
       mediaIndex: 0,
       preset: TranscodeQualityPreset.p720_3mbps,

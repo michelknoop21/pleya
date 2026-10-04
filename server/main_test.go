@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -1047,6 +1048,28 @@ func postLog(t *testing.T, baseURL, ip string, body []byte) *http.Response {
 	return resp
 }
 
+type gatedLogBody struct {
+	entered chan<- struct{}
+	release <-chan struct{}
+	data    []byte
+	once    sync.Once
+	sent    bool
+}
+
+func (b *gatedLogBody) Read(p []byte) (int, error) {
+	b.once.Do(func() {
+		b.entered <- struct{}{}
+		<-b.release
+	})
+	if b.sent {
+		return 0, io.EOF
+	}
+	b.sent = true
+	return copy(p, b.data), nil
+}
+
+func (b *gatedLogBody) Close() error { return nil }
+
 // postLogAndGetID uploads a log and returns the generated id, asserting the
 // POST succeeded.
 func postLogAndGetID(t *testing.T, baseURL, ip string, body []byte) string {
@@ -1132,17 +1155,111 @@ func TestLogsRoundTrip(t *testing.T) {
 	}
 }
 
-func TestLogsUploadRateLimitedPerIP(t *testing.T) {
+func TestLogsUploadBurstThenRateLimited(t *testing.T) {
 	h := newRelayHarness(t)
-	r1 := postLog(t, h.baseURL, "7.0.0.2", []byte("first"))
-	r1.Body.Close()
-	if r1.StatusCode != http.StatusOK {
-		t.Fatalf("first post status=%d", r1.StatusCode)
+	// Een diagnoseronde is drie tot vijf uploads binnen enkele seconden: log
+	// vóór de actie, na "Opnieuw verbinden", na het opnieuw aanmelden. Die
+	// horen allemaal te slagen zonder ergens een minuut uit te zitten.
+	for i := 0; i < logRateBurst; i++ {
+		r := postLog(t, h.baseURL, "7.0.0.2", []byte("diagnostic"))
+		r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			t.Fatalf("post %d status=%d, de burst hoort te slagen", i+1, r.StatusCode)
+		}
 	}
-	r2 := postLog(t, h.baseURL, "7.0.0.2", []byte("second"))
-	r2.Body.Close()
-	if r2.StatusCode != http.StatusTooManyRequests {
-		t.Fatalf("second post status=%d want 429", r2.StatusCode)
+	// Een echte flood daarboven blijft geweigerd, mét een Retry-After die de
+	// client kan parsen in plaats van de gok van zestig seconden.
+	flood := postLog(t, h.baseURL, "7.0.0.2", []byte("flood"))
+	flood.Body.Close()
+	if flood.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("flood status=%d want 429", flood.StatusCode)
+	}
+	retryAfter, err := strconv.Atoi(flood.Header.Get("Retry-After"))
+	if err != nil || retryAfter < 1 || retryAfter > int(logRateRefill/time.Second) {
+		t.Fatalf("Retry-After=%q, hoort 1..%d seconden te zijn", flood.Header.Get("Retry-After"), int(logRateRefill/time.Second))
+	}
+	// Per IP: een ander adres heeft zijn eigen burst.
+	other := postLog(t, h.baseURL, "7.0.0.9", []byte("elsewhere"))
+	other.Body.Close()
+	if other.StatusCode != http.StatusOK {
+		t.Fatalf("other ip status=%d", other.StatusCode)
+	}
+}
+
+func TestLogsConcurrentUploadsReserveTheirRateLimitTokenBeforeReading(t *testing.T) {
+	h := newRelayHarness(t)
+	const extra = 10
+	total := logRateBurst + extra
+	entered := make(chan struct{}, total)
+	release := make(chan struct{})
+	results := make(chan int, total)
+
+	for i := 0; i < total; i++ {
+		go func() {
+			req := httptest.NewRequest(http.MethodPost, "/logs", &gatedLogBody{
+				entered: entered,
+				release: release,
+				data:    []byte("diagnostic"),
+			})
+			req.Header.Set("X-Forwarded-For", "7.0.0.20")
+			recorder := httptest.NewRecorder()
+			h.srv.handlePostLogs(recorder, req)
+			results <- recorder.Code
+		}()
+	}
+
+	// Before any body may finish, every handler must either own one of the
+	// burst tokens and be reading, or already have returned 429. The old
+	// check-then-spend path let all handlers enter Read at once.
+	enteredCount := 0
+	statuses := make([]int, 0, total)
+	for enteredCount+len(statuses) < total {
+		select {
+		case <-entered:
+			enteredCount++
+		case status := <-results:
+			statuses = append(statuses, status)
+		case <-time.After(5 * time.Second):
+			t.Fatal("parallelle uploads bereikten noch body-read noch antwoord")
+		}
+	}
+	close(release)
+	for len(statuses) < total {
+		statuses = append(statuses, <-results)
+	}
+
+	accepted, limited := 0, 0
+	for _, status := range statuses {
+		switch status {
+		case http.StatusOK:
+			accepted++
+		case http.StatusTooManyRequests:
+			limited++
+		default:
+			t.Fatalf("onverwachte status %d", status)
+		}
+	}
+	if accepted != logRateBurst || limited != extra {
+		t.Fatalf("accepted=%d limited=%d, verwacht %d en %d", accepted, limited, logRateBurst, extra)
+	}
+}
+
+func TestLogsRejectedUploadDoesNotSpendTheBudget(t *testing.T) {
+	h := newRelayHarness(t)
+	// Het oude ontwerp stempelde vóór de validatie, dus een 413 verbrandde de
+	// hele minuut. Een afgekeurde upload hoort de eerstvolgende echte niet te
+	// belasten.
+	tooBig := postLog(t, h.baseURL, "7.0.0.4", make([]byte, maxLogSize+1))
+	tooBig.Body.Close()
+	if tooBig.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversize status=%d", tooBig.StatusCode)
+	}
+	for i := 0; i < logRateBurst; i++ {
+		r := postLog(t, h.baseURL, "7.0.0.4", []byte("still fine"))
+		r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			t.Fatalf("post %d na een 413 status=%d, de burst hoort intact te zijn", i+1, r.StatusCode)
+		}
 	}
 }
 

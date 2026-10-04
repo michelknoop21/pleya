@@ -203,7 +203,7 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
   static bool _usesContinueWatchingAction(MediaHub hub) => hub.usesContinueWatchingAction;
 
   /// A library's own Continue Watching row fetches straight from its server,
-  /// so a title hidden on this device (DEC-119 fase 3) is taken out here; the
+  /// so a title hidden on this device (DEC-144 fase 3) is taken out here; the
   /// Home row gets the same filter from `DiscoverProvider`.
   static MediaHub _withoutHidden(BuildContext context, MediaHub hub) {
     if (!hub.isContinueWatchingHub) return hub;
@@ -359,7 +359,7 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
     final size = MediaQuery.sizeOf(context);
     final theme = Theme.of(context);
     final svc = SettingsService.instance;
-    final scale = TvLayoutConstants.scaleForSize(size);
+    final scale = TvLayoutConstants.scaleOf(context);
     // Only layout-aspect (flip-stable) scope values may be read here: an
     // offset-aspect read at this level would rebuild the whole screen on
     // every sidebar focus flip. Offset values are read in small Builders
@@ -375,6 +375,7 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
             episodePosterMode: svc.read(SettingsService.episodePosterMode),
             fullCardLayout: svc.read(SettingsService.tvFullCardLayout),
             tallPosterScale: TvBrowseRailLayout.compactTallPosterScale,
+            scale: scale,
           );
     // The screen draws a page heading above a tab line on this tab too, and
     // that chrome is taller than the toolbar this offset was tuned against, so

@@ -1,6 +1,6 @@
-/// LANG1 / DEC-096, negatieve controles H en I.
+/// LANG1 / DEC-109, negatieve controles H en I.
 ///
-/// DEC-096 lid 7: de serievoorkeur hoort bij de logische serie zolang de
+/// DEC-109 lid 7: de serievoorkeur hoort bij de logische serie zolang de
 /// identiteit betrouwbaar is, en valt anders terug op de concrete
 /// server-en-serie-sleutel. Een onterechte samenvoeging is erger dan een
 /// gemiste, dus er komt geen samenvoeging op alleen titel en jaar bij.
@@ -74,7 +74,7 @@ void main() {
       expect(
         (await TrackPreferenceStore.read(onAttic))?.subtitleLanguage,
         'eng',
-        reason: 'DEC-096 lid 7: dezelfde show-GUID is dezelfde logische serie, ook op een andere server',
+        reason: 'DEC-109 lid 7: dezelfde show-GUID is dezelfde logische serie, ook op een andere server',
       );
     });
 

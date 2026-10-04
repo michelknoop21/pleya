@@ -1,6 +1,6 @@
 /// Merge a backend's two continue-watching sources, resume and Next Up, into
 /// one recency-ordered shelf. Lifted out of the Jellyfin client so Pleya
-/// Server (DEC-119 fase 2) merges its `continue_watching` and `next_up` hubs
+/// Server (DEC-144 fase 2) merges its `continue_watching` and `next_up` hubs
 /// by exactly the same rule.
 ///
 /// Resume items are deduped first so an in-progress episode wins over the

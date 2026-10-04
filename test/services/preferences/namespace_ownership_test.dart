@@ -107,7 +107,7 @@ void main() {
       expect(transport.removes, contains('theme_mode'));
     });
 
-    test('v2: only records inside the owned namespace are pruned', () async {
+    test('v2: nothing is pruned, whatever the namespace', () async {
       final coordinator = await build(v2: true, activeProfile: profile);
       transport.store['__pleya_pref_v2/global/theme_mode'] = enc('string', 'dark');
       transport.store['__pleya_pref_v3/global/theme_mode'] = enc('string', 'dark');
@@ -115,7 +115,7 @@ void main() {
 
       await coordinator.reconcile();
 
-      expect(transport.removes, ['__pleya_pref_v2/global/theme_mode']);
+      expect(transport.removes, isEmpty);
       expect(
         transport.store.containsKey('theme_mode'),
         isTrue,

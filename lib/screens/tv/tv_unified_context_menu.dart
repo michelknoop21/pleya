@@ -291,7 +291,7 @@ Future<void> runUnifiedGroupAction(
 }
 
 /// The label and scope of the Verder kijken removal row for [group], from
-/// what each of its sources can actually do (mockup 38 E, DEC-119 fase 3).
+/// what each of its sources can actually do (mockup 38 E, DEC-144 fase 3).
 ///
 /// A source with no bound client is judged by its backend
 /// ([backendRemovesFromContinueWatching]), so a cold start does not promise a
@@ -453,7 +453,7 @@ Future<void> _applyToSources(
 
   final total = sources.length + deferredSources.length + unreachableSources.length;
 
-  // DEC-119 fase 3. A membership that cannot remove server-side has nothing to
+  // DEC-144 fase 3. A membership that cannot remove server-side has nothing to
   // wait for: queueing it would only replay an unsupported call on reconnect.
   // It is hidden on this device instead, now, and counts as done. That holds
   // for one that is offline and for one whose server refused the sign-in

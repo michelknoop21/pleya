@@ -124,7 +124,7 @@ class TvContentRow extends StatelessWidget {
   final bool isContinueWatching;
 
   /// For the Verder kijken row only: the full count beside the title and the
-  /// "Alle N" tile that opens the sectioned overview (DEC-119 fase 2). The tile
+  /// "Alle N" tile that opens the sectioned overview (DEC-144 fase 2). The tile
   /// is there whenever the row is, not only past twenty titles: the overview
   /// is also where a hidden title is put back (fase 3).
   final int? continueWatchingCount;

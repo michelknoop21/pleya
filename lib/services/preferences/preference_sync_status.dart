@@ -2,8 +2,9 @@
 enum PreferenceSyncActivity { idle, syncing }
 
 /// Whether the engine can run at all. Changes only when the user or the system
-/// changes it: the toggle, or iCloud being signed out.
-enum PreferenceSyncAvailability { disabled, unavailable, ready }
+/// changes it: the toggle, or iCloud being signed out. [unknown] is start-up,
+/// before the transport has answered: not signed out, not ready either.
+enum PreferenceSyncAvailability { disabled, unknown, unavailable, ready }
 
 /// What the last pass left unresolved. Persists across activity.
 ///
@@ -62,8 +63,8 @@ class PreferenceSyncStatus {
   /// writes v1 nor merges it, so an older Apple device keeps working but stops
   /// exchanging settings with this one. That boundary is deliberate, and this
   /// flag is what makes it visible instead of silent. It is a fact about the
-  /// account, so it survives every success; it clears when the engine is torn
-  /// down, not when a write happens to go well.
+  /// account, so it survives every success; it clears when sync is switched
+  /// off or the app restarts, not when a write happens to go well.
   final bool legacyPeerDetected;
 
   final DateTime? lastAttempt;
@@ -83,6 +84,8 @@ class PreferenceSyncStatus {
     switch (availability) {
       case PreferenceSyncAvailability.disabled:
         return PreferenceSyncState.disabled;
+      case PreferenceSyncAvailability.unknown:
+        return PreferenceSyncState.idle; // nothing to say until the transport answers
       case PreferenceSyncAvailability.unavailable:
         return PreferenceSyncState.unavailable;
       case PreferenceSyncAvailability.ready:
@@ -132,34 +135,37 @@ class PreferenceSyncStatus {
     errorCategory: errorCategory ?? this.errorCategory,
   );
 
-  /// A pass started.
+  /// A pass started. `disabled` is promoted to `ready` because a pass only
+  /// starts while the toggle is on, so that value is stale; `unavailable` and
+  /// `unknown` are not, because a write to a signed-out store succeeds locally
+  /// and proves nothing.
   PreferenceSyncStatus starting(DateTime at) => copyWith(
     activity: PreferenceSyncActivity.syncing,
     lastAttempt: at,
-    availability: PreferenceSyncAvailability.ready,
+    availability: availability == PreferenceSyncAvailability.disabled ? PreferenceSyncAvailability.ready : availability,
   );
 
-  /// One value left the device. Says nothing about health: a single write
-  /// succeeding does not mean the quota stop or the failed reconcile before it
-  /// went away.
-  PreferenceSyncStatus writeSucceeded(DateTime at) => copyWith(
-    availability: PreferenceSyncAvailability.ready,
-    activity: PreferenceSyncActivity.idle,
-    lastSuccess: at,
-    pushed: pushed + 1,
-  );
+  /// One value left the device. Says nothing about health or availability: a
+  /// single write succeeding does not mean the quota stop or the failed
+  /// reconcile before it went away, and it does not mean anyone is signed in.
+  PreferenceSyncStatus writeSucceeded(DateTime at) =>
+      copyWith(activity: PreferenceSyncActivity.idle, lastSuccess: at, pushed: pushed + 1);
 
   /// A full pass finished. This is the only thing entitled to clear health: it
-  /// looked at everything, so what it did not find is genuinely gone.
+  /// looked at everything, so what it did not find is genuinely gone. Quota is
+  /// the exception: the store reports a violation and never reports that it
+  /// was lifted, so only a restart or the toggle clears it.
   PreferenceSyncStatus reconcileSucceeded(
     DateTime at, {
     required int pushedCount,
     required int skippedCount,
     required int oversizeCount,
   }) => PreferenceSyncStatus(
-    availability: PreferenceSyncAvailability.ready,
+    availability: availability,
     activity: PreferenceSyncActivity.idle,
-    health: oversizeCount > 0 ? PreferenceSyncHealth.warning : PreferenceSyncHealth.healthy,
+    health: oversizeCount > 0
+        ? PreferenceSyncHealth.warning
+        : (health == PreferenceSyncHealth.quota ? PreferenceSyncHealth.quota : PreferenceSyncHealth.healthy),
     legacyPeerDetected: legacyPeerDetected,
     lastAttempt: lastAttempt,
     lastSuccess: at,
@@ -188,6 +194,21 @@ class PreferenceSyncStatus {
   );
 
   PreferenceSyncStatus sawLegacyPeer() => copyWith(legacyPeerDetected: true);
+
+  /// The toggle is off. Every condition belonged to the session that just
+  /// ended: quota and the legacy peer are never reported as lifted, so this
+  /// and a restart are the only ways they go. Counters and times stay.
+  PreferenceSyncStatus switchedOff() => PreferenceSyncStatus(
+    availability: PreferenceSyncAvailability.disabled,
+    activity: activity,
+    lastAttempt: lastAttempt,
+    lastSuccess: lastSuccess,
+    lastRemoteChange: lastRemoteChange,
+    pushed: pushed,
+    applied: applied,
+    skipped: skipped,
+    oversize: oversize,
+  );
 
   /// The store spoke to us, so it is neither switched off nor signed out.
   PreferenceSyncStatus sawRemoteChange(DateTime at) =>

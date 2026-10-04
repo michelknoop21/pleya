@@ -2,6 +2,8 @@
 /// the corresponding local asset path and a display-formatted value.
 library;
 
+import '../media/external_rating.dart';
+
 class RatingInfo {
   final String assetPath;
   final String formattedValue;
@@ -41,3 +43,26 @@ RatingInfo? parseRatingImage(String? imageUri, double? value) {
 
 /// Whether the URI is a Rotten Tomatoes rating source.
 bool isRottenTomatoes(String? imageUri) => imageUri != null && imageUri.startsWith('rottentomatoes://');
+
+/// Map one Plex rating (a `Rating[]` entry, or a flat `ratingImage` /
+/// `audienceRatingImage` pair) to an [ExternalRating]. Plex sends every
+/// source on a 0 to 10 scale; RT and TMDB are converted to percentages.
+ExternalRating? externalRatingFromPlex(String? imageUri, Object? type, double? value) {
+  if (imageUri == null || value == null) return null;
+  if (imageUri.startsWith('imdb://')) {
+    return ExternalRating(source: ExternalRatingSource.imdb, value: value, imageUri: imageUri);
+  }
+  final percent = (value * 10).roundToDouble();
+  if (imageUri.startsWith('themoviedb://')) {
+    return ExternalRating(source: ExternalRatingSource.tmdb, value: percent, imageUri: imageUri);
+  }
+  if (isRottenTomatoes(imageUri)) {
+    final source = switch (type) {
+      'critic' => ExternalRatingSource.rottenTomatoesCritic,
+      'audience' => ExternalRatingSource.rottenTomatoesAudience,
+      _ => null,
+    };
+    return source == null ? null : ExternalRating(source: source, value: percent, imageUri: imageUri);
+  }
+  return null;
+}

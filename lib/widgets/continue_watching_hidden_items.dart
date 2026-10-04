@@ -1,4 +1,4 @@
-/// "Verborgen items" (mockup 38 D / 23, DEC-119 fase 3): the titles hidden from
+/// "Verborgen items" (mockup 38 D / 23, DEC-144 fase 3): the titles hidden from
 /// Verder kijken on this device, each one press away from being put back.
 ///
 /// One list on every platform. Choosing an entry restores it and closes the

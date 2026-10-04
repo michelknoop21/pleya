@@ -75,7 +75,7 @@ class _RecordingMediaClient implements MediaServerClient {
   @override
   final MediaBackend backend;
 
-  // The replay reads this before a Continue Watching removal (DEC-119 fase 3).
+  // The replay reads this before a Continue Watching removal (DEC-144 fase 3).
   @override
   ServerCapabilities get capabilities =>
       backend == MediaBackend.jellyfin ? ServerCapabilities.jellyfin : ServerCapabilities.plex;
@@ -539,7 +539,7 @@ void main() {
       expect(await svc.pendingContinueWatchingRemovalKeys(), {'srv:42'});
     });
 
-    // DEC-119 fase 3. Such a source is hidden on the device now and never gets
+    // DEC-144 fase 3. Such a source is hidden on the device now and never gets
     // a queue row; one left over from before would throw on every reconnect.
     test('a row for a backend without the endpoint is dropped, not retried forever', () async {
       final (svc: svc, db: db, mgr: mgr) = _makeService();

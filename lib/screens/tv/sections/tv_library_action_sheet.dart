@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/media_kind.dart';
 import '../../../media/media_library.dart';
@@ -32,6 +34,7 @@ String _labelFor(TvLibraryAction action, MediaLibrary library, {required bool is
   TvLibraryAction.toggleVisibility => isHidden ? t.libraries.showLibrary : t.libraries.hideLibrary,
   TvLibraryAction.analyze => t.libraries.analyze,
   TvLibraryAction.emptyTrash => t.libraries.emptyTrash,
+  TvLibraryAction.askBigP => t.assistant.contextAction,
 };
 
 String? _secondaryFor(TvLibraryAction action) => switch (action) {
@@ -46,14 +49,17 @@ Future<void> showTvLibraryActionSheet(
   BuildContext context, {
   required MediaLibrary library,
   required bool isHidden,
+  required bool canManage,
   required VoidCallback onOpenInCatalog,
   required VoidCallback onRefreshMetadata,
   required VoidCallback onScan,
   required VoidCallback onToggleVisibility,
   required VoidCallback onAnalyze,
   required VoidCallback onEmptyTrash,
+  bool canAskBigP = false,
+  VoidCallback? onAskBigP,
 }) async {
-  final actions = tvLibraryActionsFor(library);
+  final actions = tvLibraryActionsFor(library, canManage: canManage, canAskBigP: canAskBigP && onAskBigP != null);
   if (actions.isEmpty) return;
 
   final chosen = await OverlaySheetController.showAdaptive<TvLibraryAction>(
@@ -82,6 +88,8 @@ Future<void> showTvLibraryActionSheet(
       onAnalyze();
     case TvLibraryAction.emptyTrash:
       onEmptyTrash();
+    case TvLibraryAction.askBigP:
+      onAskBigP?.call();
     case null:
       break;
   }
@@ -110,59 +118,64 @@ class _TvLibraryActionPanel extends StatelessWidget {
 
     // The divider mockup 27 B draws before "Verbergen op dit profiel": every
     // action up to and including the visibility toggle sits above it, the
-    // Plex-only admin actions below.
+    // Plex-only owner actions below.
     final dividerIndex = actions.indexOf(TvLibraryAction.toggleVisibility) + 1;
 
-    return DecoratedBox(
-      decoration: tvPanelDecoration(mono, radius),
-      child: Padding(
-        padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              library.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: TvSourcePickerLayout.titleFontSize * scale,
-                fontWeight: FontWeight.w600,
-                color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
-              ),
-            ),
-            SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: actions.length,
-                separatorBuilder: (_, index) {
-                  if (index + 1 != dividerIndex || dividerIndex >= actions.length) {
-                    return SizedBox(height: TvSourcePickerLayout.rowGap * scale);
-                  }
-                  return Container(
-                    margin: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
-                    height: 1,
-                    color: mono.outline,
-                  );
-                },
-                itemBuilder: (context, index) => TvCatalogOptionRow(
-                  key: ValueKey(actions[index]),
-                  label: _labelFor(actions[index], library, isHidden: isHidden),
-                  secondary: _secondaryFor(actions[index]),
-                  isSelected: false,
-                  scale: scale,
-                  onPressed: () => onChoose(actions[index]),
+    return AutomationNode(
+      id: AutomationIds.sheetLibraryActions,
+      role: 'sheet',
+      state: () => {'actions': actions.map((a) => a.name).join(',')},
+      child: DecoratedBox(
+        decoration: tvPanelDecoration(mono, radius),
+        child: Padding(
+          padding: EdgeInsets.all(TvSourcePickerLayout.panelPadding * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                library.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: TvSourcePickerLayout.titleFontSize * scale,
+                  fontWeight: FontWeight.w600,
+                  color: mono.text.withValues(alpha: TvSourcePickerLayout.inkPrimary),
                 ),
               ),
-            ),
-            SizedBox(height: TvSourcePickerLayout.footerGap * scale),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false)],
-            ),
-          ],
+              SizedBox(height: TvSourcePickerLayout.sectionGap * scale),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: actions.length,
+                  separatorBuilder: (_, index) {
+                    if (index + 1 != dividerIndex || dividerIndex >= actions.length) {
+                      return SizedBox(height: TvSourcePickerLayout.rowGap * scale);
+                    }
+                    return Container(
+                      margin: EdgeInsets.symmetric(vertical: TvSourcePickerLayout.rowGap * scale),
+                      height: 1,
+                      color: mono.outline,
+                    );
+                  },
+                  itemBuilder: (context, index) => TvCatalogOptionRow(
+                    key: ValueKey(actions[index]),
+                    label: _labelFor(actions[index], library, isHidden: isHidden),
+                    secondary: _secondaryFor(actions[index]),
+                    isSelected: false,
+                    scale: scale,
+                    onPressed: () => onChoose(actions[index]),
+                  ),
+                ),
+              ),
+              SizedBox(height: TvSourcePickerLayout.footerGap * scale),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [TvPanelButton(scale: scale, label: t.common.close, onPressed: onClose, primary: false)],
+              ),
+            ],
+          ),
         ),
       ),
     );

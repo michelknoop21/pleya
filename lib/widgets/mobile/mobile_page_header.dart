@@ -14,7 +14,12 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/profile.dart';
+import '../../screens/big_p/big_p_face_button.dart';
 import '../../profiles/profile_avatar.dart';
+import '../../services/account_ui_actions.dart';
+import '../../theme/glass/glass_settings.dart';
+import '../../theme/glass/glass_surface.dart';
+import '../../theme/mono_tokens.dart';
 import '../app_icon.dart';
 import '../pleya_wordmark.dart';
 
@@ -66,24 +71,43 @@ class MobilePageHeader extends StatelessWidget {
         padding: EdgeInsets.only(left: 16, right: 16, top: topInset + 12, bottom: 12),
         child: Row(
           children: [
-            const PleyaWordmark(height: 28),
+            // The header sits on the page ground, so the lettering takes the
+            // theme ink; white lettering vanishes on the light palette (J18).
+            PleyaWordmark(height: 28, letteringColor: tokens(context).text),
             const Spacer(),
             ...actions,
             AutomationNode(
               id: searchAutomationId,
               instance: automationInstance,
               role: 'button',
-              child: IconButton(
-                onPressed: onSearchTap,
-                icon: const AppIcon(Symbols.search_rounded),
-                tooltip: t.common.search,
+              // LG-01: a glass circle with Liquid Glass on, the plain button
+              // otherwise (GlassSurface renders [child] as-is when off).
+              child: GlassLayer(
+                tokens: const GlassTokens.control(),
+                child: GlassSurface(
+                  shape: const CircleBorder(),
+                  tokens: const GlassTokens.control(),
+                  child: IconButton(
+                    onPressed: onSearchTap,
+                    icon: const AppIcon(Symbols.search_rounded),
+                    tooltip: t.common.search,
+                  ),
+                ),
               ),
             ),
+            const BigPFaceButton(),
+            // The avatar is the profile switcher, as in the northstar: it opens
+            // the same list Mijn Pleya's "Profiel wisselen" does. It used to be
+            // a bare image, so tapping it did nothing (Michel, 25 September).
             AutomationNode(
               id: avatarAutomationId,
               instance: automationInstance,
-              role: 'image',
-              child: ProfileAvatar(profile: activeProfile, size: 32),
+              role: 'button',
+              child: IconButton(
+                onPressed: () => AccountUiActions.openProfiles(context),
+                tooltip: t.screens.switchProfile,
+                icon: ProfileAvatar(profile: activeProfile, size: 32),
+              ),
             ),
           ],
         ),

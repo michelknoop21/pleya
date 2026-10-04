@@ -225,7 +225,7 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
   }
 
   /// `continue_watching` and `next_up` merged by the same rule Jellyfin uses
-  /// (DEC-119 fase 2); the home rows below still hand `next_up` over as its
+  /// (DEC-144 fase 2); the home rows below still hand `next_up` over as its
   /// own row, unchanged.
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     // Null means the whole list; a hub page is bounded, so ask for a page that

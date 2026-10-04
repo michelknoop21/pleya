@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.not_empty",
+    "message": "library is not empty",
+    "retryable": false
+  }
+}

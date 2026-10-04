@@ -36,8 +36,6 @@ import '../providers/offline_mode_provider.dart';
 import '../providers/watchlist_provider.dart';
 import '../providers/watchlist_store.dart';
 import '../services/watchlist_ui_actions.dart';
-import '../profiles/active_profile_provider.dart';
-import '../profiles/profile.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/app_logger.dart';
 import '../utils/library_refresh_notifier.dart';
@@ -78,16 +76,6 @@ class _MenuAction {
   _MenuAction({required this.value, required this.icon, required this.label, this.destructive = false, this.subtitle});
 }
 
-bool isAdminActionAllowedForMediaItem({
-  required bool isOwnerOrAdmin,
-  required MediaBackend? itemBackend,
-  required Profile? activeProfile,
-}) {
-  final blockedByPlexHomeRole =
-      itemBackend == MediaBackend.plex && activeProfile != null && activeProfile.isPlexHome && !activeProfile.plexAdmin;
-  return isOwnerOrAdmin && !blockedByPlexHomeRole;
-}
-
 String mediaDeletionFailureMessage(Object error, MediaBackend? backend) {
   if (backend == MediaBackend.plex && error is MediaServerHttpException && error.statusCode == 400) {
     return t.mediaMenu.plexDeletionDisabled;
@@ -113,6 +101,11 @@ class MediaContextMenu extends StatefulWidget {
   /// keeps the trailer reachable even when the detail row hides its trailer
   /// button to fit a small screen.
   final VoidCallback? onPlayTrailer;
+
+  /// Share and request (Seerr) entries. Only the phone detail page passes
+  /// these: its action row has no room for them (DEC-140).
+  final VoidCallback? onShare;
+  final VoidCallback? onRequest;
   final Widget child;
   final bool isInContinueWatching;
   final String? collectionId; // The collection ID if displaying within a collection
@@ -137,6 +130,8 @@ class MediaContextMenu extends StatefulWidget {
     this.onListRefresh,
     this.onTap,
     this.onPlayTrailer,
+    this.onShare,
+    this.onRequest,
     required this.child,
     this.isInContinueWatching = false,
     this.collectionId,
@@ -249,19 +244,13 @@ class MediaContextMenuState extends State<MediaContextMenu> {
 
     final useBottomSheet = Platform.isIOS || Platform.isAndroid;
 
-    // Check if user has admin privileges. Backend-neutral: Plex uses the
-    // server-owned flag (folded with the active Plex Home profile's admin
-    // bit, when applicable); Jellyfin uses `JellyfinConnection.isAdministrator`
-    // captured at sign-in.
+    // The owner rule: canonical server data (metadata, match, deletes,
+    // collections) is only offered to the server's owner. Everyone else does
+    // not see those entries at all. See
+    // `MultiServerManager.canManageServerMetadata` for the per-backend roles.
     final multiServerProvider = Provider.of<MultiServerProvider>(context, listen: false);
-    final activeProfile = context.read<ActiveProfileProvider>().active;
-    final isOwnerOrAdmin =
-        _itemServerId != null && multiServerProvider.serverManager.isOwnerOrAdmin(ServerId(_itemServerId!));
-    final isAdmin = isAdminActionAllowedForMediaItem(
-      isOwnerOrAdmin: isOwnerOrAdmin,
-      itemBackend: itemBackend,
-      activeProfile: activeProfile,
-    );
+    final isAdmin =
+        _itemServerId != null && multiServerProvider.serverManager.canManageServerMetadata(ServerId(_itemServerId!));
 
     // Backend capabilities gate menu items so we don't expose actions the
     // active server cannot perform.
@@ -303,9 +292,12 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         }
       }
 
-      menuActions.add(
-        _MenuAction(value: 'delete', icon: Symbols.delete_rounded, label: t.common.delete, destructive: true),
-      );
+      // A playlist is the user's own; a collection is canonical server data.
+      if (isPlaylist || isAdmin) {
+        menuActions.add(
+          _MenuAction(value: 'delete', icon: Symbols.delete_rounded, label: t.common.delete, destructive: true),
+        );
+      }
     } else {
       if (hasActiveProgress) {
         menuActions.add(
@@ -319,6 +311,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         menuActions.add(
           _MenuAction(value: 'play_trailer', icon: Symbols.theaters_rounded, label: t.tooltips.playTrailer),
         );
+      }
+
+      if (widget.onShare != null) {
+        menuActions.add(_MenuAction(value: 'share', icon: Symbols.ios_share_rounded, label: t.common.share));
+      }
+
+      if (widget.onRequest != null) {
+        menuActions.add(_MenuAction(value: 'request', icon: Symbols.playlist_add_rounded, label: t.seerr.request));
       }
 
       if (!mediaItem!.isWatched || isPartiallyWatched || hasActiveProgress) {
@@ -337,7 +337,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         );
       }
 
-      // DEC-119 fase 3: always offered. A source that cannot remove
+      // DEC-144 fase 3: always offered. A source that cannot remove
       // server-side hides the title on this device and the row says so.
       if (widget.isInContinueWatching && mediaClient != null) {
         final removal = continueWatchingRemovalPresentation([
@@ -409,7 +409,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       // Remove from Collection (only when viewing items within a collection).
       // Plex-only — uses `removeFromCollection` API; Jellyfin's collection
       // membership API isn't wired here yet.
-      if (isPlex && widget.collectionId != null) {
+      if (isPlex && isAdmin && widget.collectionId != null) {
         menuActions.add(
           _MenuAction(
             value: 'remove_from_collection',
@@ -591,18 +591,20 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       switch (selected) {
         case 'play_from_beginning':
           didNavigate = true;
-          if (context.mounted) {
-            await navigateToVideoPlayer(
-              context,
-              metadata: mediaItem!.copyWith(viewOffsetMs: 0),
-              resolveWatchState: false,
-            );
-          }
+          if (context.mounted) await playFromBeginning(context, mediaItem!);
           break;
 
         case 'play_trailer':
           didNavigate = true;
           widget.onPlayTrailer?.call();
+          break;
+
+        case 'share':
+          widget.onShare?.call();
+          break;
+
+        case 'request':
+          widget.onRequest?.call();
           break;
 
         case 'watch':
@@ -736,7 +738,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           break;
 
         case 'add_to':
-          await _showAddToSubmenu(context);
+          await _showAddToSubmenu(context, canManageCollections: isAdmin);
           break;
 
         case 'shuffle_play':
@@ -978,8 +980,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
     await launcher.launchShuffledShow(metadata: mediaItem, showLoadingIndicator: true);
   }
 
-  /// Show submenu for Add to... (Playlist or Collection)
-  Future<void> _showAddToSubmenu(BuildContext context) async {
+  /// Show submenu for Add to... (Playlist or Collection). Collections are
+  /// canonical server data, so without owner rights this goes straight to
+  /// the playlist picker.
+  Future<void> _showAddToSubmenu(BuildContext context, {required bool canManageCollections}) async {
+    if (!canManageCollections) {
+      await _showAddToPlaylistDialog(context);
+      return;
+    }
     final selected = await showOptionPickerDialog<String>(
       context,
       title: t.common.addTo,

@@ -52,7 +52,7 @@ class HiddenContinueWatchingEntry {
   }
 }
 
-/// The titles hidden from Verder kijken on this device, per profile (DEC-119
+/// The titles hidden from Verder kijken on this device, per profile (DEC-144
 /// fase 3).
 ///
 /// This is what "Verbergen uit Verder kijken · Alleen op dit apparaat" writes

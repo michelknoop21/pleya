@@ -92,6 +92,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'library.search_query_empty': 'Type something to search for.',
   'library.version_multifile': 'This version is split across several files.',
   'playback.version_unavailable': 'That file cannot be read right now.',
+  'job.not_cancellable': 'This job is already finished.',
   'storage.unavailable': 'The server cannot reach its storage right now.',
   'storage.full': 'The server has no room left to write.',
   'client.malformed_response': 'The server sent something this client cannot read.',

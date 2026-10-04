@@ -152,6 +152,8 @@ class PleyaCapabilities {
     this.users = false,
     this.watchStateOwnership = false,
     this.streamSessions = false,
+    this.sessions = false,
+    this.administration = false,
   });
 
   /// What a client may assume before the first successful `GET /info`.
@@ -188,6 +190,21 @@ class PleyaCapabilities {
   /// `/stream`. For browsers; this app authorises its player with a header.
   final bool streamSessions;
 
+  /// The server binds a session to a device (DEC-123): `device_id` and
+  /// `device_name` are accepted on login and setup, `GET`/`DELETE /sessions`
+  /// and `POST /auth/logout` exist, and revoking a session takes effect within
+  /// two seconds even for a stream already in flight.
+  ///
+  /// Sending the device fields to a server without this flag is refused whole:
+  /// `LoginRequest` and `SetupRequest` are closed schemas. That is the reason
+  /// this is negotiated rather than assumed.
+  final bool sessions;
+
+  /// The server has its admin surface (settings, diagnostics, audit). The
+  /// app reads it as "offer server administration at all"; the server still
+  /// refuses every admin route with a 404 for whoever is not an admin.
+  final bool administration;
+
   factory PleyaCapabilities.fromJson(Map<String, dynamic> json) => PleyaCapabilities(
     browse: boolean(json, 'browse'),
     search: boolean(json, 'search'),
@@ -201,6 +218,8 @@ class PleyaCapabilities {
     watchStateOwnership: booleanOr(json, 'watch_state_ownership', orElse: false),
     streamSessions: booleanOr(json, 'stream_sessions', orElse: false),
     users: booleanOr(json, 'users', orElse: false),
+    sessions: booleanOr(json, 'sessions', orElse: false),
+    administration: booleanOr(json, 'administration', orElse: false),
   );
 }
 
@@ -300,6 +319,64 @@ class PleyaTokenPair {
   );
 }
 
+/// `User`, as returned by `GET /users/me`.
+class PleyaUser {
+  const PleyaUser({required this.id, required this.username, required this.role});
+
+  final String id;
+  final String username;
+  final String role;
+
+  factory PleyaUser.fromJson(Map<String, dynamic> json) =>
+      PleyaUser(id: str(json, 'id'), username: str(json, 'username'), role: str(json, 'role'));
+}
+
+/// `UserList`, the answer of `GET /users`. An admin gets every account; a
+/// member gets only itself.
+List<PleyaUser> pleyaUsersFromJson(Map<String, dynamic> json) => [
+  for (final item in objectList(json['items'], 'items')) PleyaUser.fromJson(item),
+];
+
+/// `Job`, one row of `GET /jobs`. A scan is a job of kind `scan_library` and
+/// then carries [libraryId] and [scanId].
+class PleyaJob {
+  const PleyaJob({
+    required this.id,
+    required this.kind,
+    required this.state,
+    required this.createdAt,
+    this.lastError,
+    this.finishedAt,
+    this.libraryId,
+  });
+
+  final String id;
+  final String kind;
+
+  /// `pending`, `running`, `succeeded`, `failed` or `cancelled`. Kept as text:
+  /// the mapper decides what an unrecognised value means.
+  final String state;
+  final DateTime createdAt;
+  final String? lastError;
+  final DateTime? finishedAt;
+  final String? libraryId;
+
+  factory PleyaJob.fromJson(Map<String, dynamic> json) => PleyaJob(
+    id: str(json, 'id'),
+    kind: str(json, 'kind'),
+    state: str(json, 'state'),
+    createdAt: timestamp(json, 'created_at'),
+    lastError: strOrNull(json, 'last_error'),
+    finishedAt: json['finished_at'] == null ? null : timestamp(json, 'finished_at'),
+    libraryId: strOrNull(json, 'library_id'),
+  );
+
+  /// `JobPage.items`.
+  static List<PleyaJob> listFromJson(Map<String, dynamic> json) => [
+    for (final item in objectList(json['items'], 'items')) PleyaJob.fromJson(item),
+  ];
+}
+
 /// `StreamToken`. Short-lived, bound to one media resource, and explicitly not
 /// single-use: a player does a HEAD, an open range, one range per seek, plus
 /// retries.
@@ -326,7 +403,10 @@ class PleyaError {
   final bool retryable;
   final Map<String, dynamic>? details;
 
-  /// Domain half of [code], one of auth, library, playback, session, storage.
+  /// Domain half of [code]: auth, library, playback, session, settings,
+  /// storage, server or job. The list is not closed. It grows one protocol
+  /// window at a time, so treat an unfamiliar domain as an unfamiliar
+  /// code and fall back to the generic message instead of branching.
   String get domain => code.split('.').first;
 
   /// `details.retry_after_ms` on a rate-limit answer. Null when the server did

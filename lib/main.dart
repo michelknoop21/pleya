@@ -23,7 +23,7 @@ import 'navigation/profile_session_screen.dart';
 import 'profiles/active_profile_binder.dart';
 import 'profiles/active_profile_provider.dart';
 import 'profiles/profile.dart';
-import 'profiles/profile_connection_cleanup.dart';
+import 'profiles/startup_maintenance.dart';
 import 'profiles/profile_connection_registry.dart';
 import 'profiles/profile_registry.dart';
 import 'mixins/mounted_set_state_mixin.dart';
@@ -34,6 +34,8 @@ import 'widgets/pleya_wordmark.dart';
 import 'screens/profile/pin_entry_dialog.dart';
 import 'screens/profile/profile_switch_screen.dart';
 import 'services/storage_service.dart';
+import 'services/device_capabilities_service.dart';
+import 'services/device_capability_overrides.dart';
 import 'services/device_performance.dart';
 import 'services/macos_window_service.dart';
 import 'services/native_window_service.dart';
@@ -208,6 +210,13 @@ Future<void> _bootstrapApp() async {
   }
   // Visual-effects tier (auto-detects low-end Android; full elsewhere).
   futures.add(DevicePerformance.getInstance(override: settings.read(SettingsService.visualEffects)));
+  // What this device can actually play: decoder, display, audio route,
+  // connection. Read via DeviceCapabilitiesService.currentSnapshot at the
+  // moment a backend profile is built, never cached by a caller.
+  final deviceCapabilities = DeviceCapabilitiesService.configure(
+    useExoPlayer: settings.read(SettingsService.useExoPlayer),
+  );
+  futures.add(deviceCapabilities.refresh(overrides: DeviceCapabilityOverrides.fromSettings(settings)));
   if (Platform.isAndroid) {
     PipService();
   }
@@ -220,6 +229,9 @@ Future<void> _bootstrapApp() async {
 
   await Future.wait(futures);
   final storage = await storageFuture;
+  // Unplugging an AV receiver changes what this device can carry, so the
+  // snapshot follows the route instead of being taken once.
+  deviceCapabilities.watchAudioRoute();
 
   // Configure image cache — keep budget modest to leave headroom for Skia
   // decode buffers. Runs after the futures so the effects tier is resolved.
@@ -240,7 +252,8 @@ Future<void> _bootstrapApp() async {
   }
   appLogger.i(
     'Pleya v${packageInfo.version}+${packageInfo.buildNumber}$commitSuffix$renderer'
-    ' [effects: ${DevicePerformance.describeSync()}]',
+    ' [effects: ${DevicePerformance.describeSync()}]'
+    ' [device: ${DeviceCapabilitiesService.currentSnapshot.describe()}]',
   );
 
   await DownloadStorageService.instance.initialize(settings);
@@ -1020,8 +1033,10 @@ class _AppShell extends StatelessWidget {
                             _AppleTvScale(child: IntroGate(child: child ?? const SizedBox.shrink())),
                             // Global notice overlay — deliberately a Stack layer here,
                             // not a hand-inserted OverlayEntry. See NoticeHost's doc
-                            // comment for why that distinction matters.
-                            const NoticeHost(),
+                            // comment for why that distinction matters. Inside the
+                            // Apple TV scale like the app itself (VIS-0925-G, DEC-139):
+                            // outside it the TV layer rendered at 14 and 13 pt.
+                            const _AppleTvScale(child: NoticeHost()),
                           ],
                         ),
                       ),
@@ -1037,12 +1052,16 @@ class _AppShell extends StatelessWidget {
   }
 }
 
-/// On Apple TV the system hands Flutter a 1920×1080 surface at
-/// devicePixelRatio 1.0, the same logical pixel count as a phablet. That's
-/// too dense for a 10ft viewing distance, so everything ends up tiny. We
-/// shrink the effective logical size to half and scale the rendered output
-/// back up so fonts, icons, and paddings end up visually ~2× larger — roughly
-/// matching the UI feel of Android TV (which renders at lower logical DPI).
+/// tvOS reports a 1920x1080 point screen, and the engine takes the
+/// devicePixelRatio from `UIScreen.scale`: 2.0 on 4K output, so Flutter sees
+/// 1920x1080 logical pixels on a 3840x2160 physical surface. Measured on an
+/// Apple TV 4K (log ekeb2, build 305): UIScreen 1920x1080, nativeBounds
+/// 3840x2160, scale 2.0; FlutterView 3840x2160 at dpr 2.0. At 10 feet that
+/// canvas is too dense, so this wrapper divides the logical size by [_scale]
+/// (1038x584 logical, dpr 3.7) and scales the rendered output back up by the
+/// same factor (DEC-028, DEC-139). Everything inside grows 1.85x; tokens that
+/// also go through `TvLayoutConstants.scaleOf` land at 1.5725x their nominal
+/// size, `TvHig` values at exactly their HIG point size.
 class _AppleTvScale extends StatelessWidget {
   final Widget? child;
   const _AppleTvScale({required this.child});
@@ -1165,16 +1184,15 @@ class _SetupScreenState extends State<SetupScreen> with MountedSetStateMixin {
           serverRegistry: registry,
           profileRegistry: profileRegistry,
         );
-        await bootstrap.run();
-        final pruned = await pruneUnreferencedJellyfinConnections(
+        // Before the binder reads the rows (binder.start() below): the
+        // backfill takes admin rights away from pre-v20 borrowed rows.
+        await runStartupMaintenance(
+          bootstrap: bootstrap,
           profileConnections: profileConnections,
           connections: connRegistry,
           storage: storage,
           serverManager: serverManager,
         );
-        if (pruned > 0) {
-          appLogger.i('Setup: pruned $pruned unreferenced Jellyfin connection${pruned == 1 ? '' : 's'}');
-        }
         // Provider initialization starts before this screen runs the legacy
         // migration. Reload after bootstrap so copied Plex Home users and the
         // selected active profile are visible before setup decides binding is

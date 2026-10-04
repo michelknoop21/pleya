@@ -55,7 +55,7 @@ void main() {
     final coordinator = await build();
     BaseSharedPreferencesService.onMutation = coordinator.apply;
     await settings.prefs.setString('theme_mode', 'dark');
-    transport.throwOnRemove = StateError('iCloud is down');
+    transport.throwOnWrite = StateError('iCloud is down');
 
     await coordinator.apply(const PreferenceMutation.remove('theme_mode'));
     await settings.prefs.remove('theme_mode');

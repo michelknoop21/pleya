@@ -56,6 +56,10 @@ import MediaPlayer
       AudioSessionPlugin.register(with: registrar)
     }
 
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "PleyaKeychainPlugin") {
+      PleyaKeychainPlugin.register(with: registrar)
+    }
+
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SecureFolderPlugin") {
       SecureFolderPlugin.register(with: registrar)
     }

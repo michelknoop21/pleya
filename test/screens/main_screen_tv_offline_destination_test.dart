@@ -136,6 +136,28 @@ void main() {
     });
   }
 
+  // OFF6. A rebind of the profile that was already active (a reconnect, a
+  // borrowed or removed connection) used to run the profile-switch cleanup and
+  // drop the viewer on the bare hub. Same profile, same place.
+  testWidgets('OFF6 Apple TV: a rebind of the same profile keeps the open section', (tester) async {
+    appleTv();
+    final h = await _pumpShell(tester);
+    await h.enableWatchlist();
+
+    await chooseSection(h, TvMyPleyaSection.watchlist);
+    expectSectionShown(h, TvMyPleyaSection.watchlist, WatchlistScreen, 'before the rebind');
+
+    final binder = Provider.of<ActiveProfileBinder>(tester.element(find.byType(TvRootShell)), listen: false);
+    await tester.runAsync(binder.rebindActive);
+    await h.settle();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await h.settle();
+
+    expectSectionShown(h, TvMyPleyaSection.watchlist, WatchlistScreen, 'after the rebind');
+
+    await h.dispose(tester);
+  });
+
   // The auto path. Offline, Films leaves the bar and the shell lands on the
   // offline Home (MOC-23). Back online, Android TV restores Films: its offline
   // normalisation picked Downloads first, which arms `_autoSwitchedToDownloads`,

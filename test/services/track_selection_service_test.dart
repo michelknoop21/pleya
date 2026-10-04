@@ -694,7 +694,7 @@ void main() {
       expect(result.track.language, 'nld');
     });
 
-    // Reversed by DEC-096 lid 1 (LANG1). This used to assert that a track
+    // Reversed by DEC-109 lid 1 (LANG1). This used to assert that a track
     // carried in by navigation outranked the remembered language, which is the
     // very rule that made a one-episode fallback permanent: the previous
     // episode's *resolution* arrived as if it were the viewer's wish. A carried

@@ -21,12 +21,12 @@ after the beta.
 
 1. On the device holding the files, open **Settings**, then **Pleya Share**, then **Host**.
 2. Pick the folders to share.
-3. Leave the QR code on screen.
+3. Leave the QR code on screen. Next to it is a six-digit pairing code for typing by hand; it changes after each successful pairing.
 
 ![The host screen with its QR code](/docs-media/share-host.png)
 
-On Android the host runs as a foreground service. On iOS it keeps a silent audio loop alive,
-which is what lets an iPhone keep serving with the screen locked.
+On iOS it keeps a silent audio loop alive, which is what lets an iPhone keep serving with
+the screen locked.
 
 ## Joining from another device
 
@@ -42,7 +42,7 @@ Pleya tries in this order and uses the first one that works:
 | Situation | Route |
 |---|---|
 | Same Wi-Fi | Direct, over the local network |
-| iOS 26 or most Android phones | Wi-Fi Aware, a direct link with no router or hotspot |
+| iOS 26 | Wi-Fi Aware, a direct link with no router or hotspot |
 | Personal hotspot | The addresses in the QR code plus the gateway |
 | Cable, ethernet adapters or USB tethering | Link-local addressing |
 | Different networks, both online | An end-to-end encrypted relay |

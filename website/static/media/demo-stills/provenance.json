@@ -1,0 +1,47 @@
+{
+  "content": "Original generated artwork for fictional demo titles; no third-party film stills. Native app captures are recorded separately in capture-manifest.json.",
+  "assets": [
+    {
+      "id": "north-s1e1",
+      "prompt": "Use case: photorealistic-natural. Asset: original cinematic episode still for fictional Arctic mystery series NORTH, episode First Light. Generate one standalone widescreen 16:9 image, no text, logos or UI. A rugged Norwegian fjord at first pink-gold dawn, an isolated red timber expedition cabin on the snowy shoreline, a lone bundled researcher carrying a lantern toward it, towering blue snow mountains, quietly dramatic atmospheric cinema photography, crisp natural textures, excellent landscape composition, restrained teal shadows and amber highlights. Not a poster. No titles.",
+      "file": "/media/demo-stills/north-s1e1.webp",
+      "generationMethod": "built-in image_gen"
+    },
+    {
+      "id": "north-s1e2",
+      "prompt": "Use case: photorealistic-natural. Asset: original cinematic episode still for fictional Arctic mystery series NORTH, episode The Crossing. Generate one standalone widescreen 16:9 image, no text, logos or UI. An old small fishing boat crossing a cold Norwegian fjord under looming snowy mountain walls in misty blue daylight, two distant bundled explorers aboard, ripples and pale sunlight opening through storm clouds. Visually distinct maritime expedition still, natural cinematic realism, beautiful deep cyan and slate tones with a warm amber wheelhouse window. Not a poster. No titles.",
+      "file": "/media/demo-stills/north-s1e2.webp",
+      "generationMethod": "built-in image_gen"
+    },
+    {
+      "id": "north-s1e3",
+      "prompt": "Use case: photorealistic-natural. Asset: original cinematic episode still for fictional Arctic mystery series NORTH, episode New Horizons. Generate one standalone widescreen 16:9 image, no text, logos or UI. Two tiny expedition hikers with backpacks reaching a snowy ridge above immense Arctic mountains at sunset, expansive horizon and luminous peach-orange sunlight along the snow, deep blue valley, cinematic wide adventure photography with realistic textures and atmospheric depth. Distinct scene from a cabin or boat, no aurora. Not a poster. No titles.",
+      "file": "/media/demo-stills/north-s1e3.webp",
+      "generationMethod": "built-in image_gen"
+    },
+    {
+      "id": "after-hours",
+      "prompt": "Use case: photorealistic-natural. Asset: original film still for fictional drama AFTER HOURS. Generate one standalone widescreen 16:9 image, no text logos UI. An intimate empty piano bar after closing, original woman in black dress seen from behind beside a grand piano, warm tungsten pool of light on rich burgundy velvet and polished ebony, reflective floor, quietly mysterious sophisticated film photography. Beautiful cinematic depth and realistic textures, restrained amber and red with black shadows. Leave upper third softly detailed for a translucent player info panel. Not a poster, no title.",
+      "file": "/media/demo-stills/after-hours.webp",
+      "generationMethod": "built-in image_gen"
+    },
+    {
+      "id": "north-s2e1",
+      "file": "/media/demo-stills/north-s2e1.webp",
+      "visualBrief": "Researcher at a cabin desk with maps in the Arctic blue hour, warm window light.",
+      "generationMethod": "built-in image_gen"
+    },
+    {
+      "id": "north-s2e2",
+      "file": "/media/demo-stills/north-s2e2.webp",
+      "visualBrief": "Two explorers crossing a frozen lake under the aurora and snowy mountains.",
+      "generationMethod": "built-in image_gen"
+    },
+    {
+      "id": "north-s2e3",
+      "file": "/media/demo-stills/north-s2e3.webp",
+      "visualBrief": "Golden sunrise over a Norwegian fishing harbour with red timber cabins.",
+      "generationMethod": "built-in image_gen"
+    }
+  ]
+}

@@ -32,6 +32,25 @@ class VideoFilterManager {
 
   /// Store the zoom level before entering PiP so it can be restored
   double? _prePipZoomScale;
+  bool _isInPipMode = false;
+  int _displayRestoreGeneration = 0;
+  Future<void>? _pendingAmbientRestore;
+  Future<void>? _pendingDisplayRestore;
+
+  /// PiP/startup ambient restoration can be waiting on player properties when
+  /// another title opens. Keep it visible to the title restoration path.
+  Future<void> runAmbientRestore(Future<void> Function() restore) {
+    final displayRestore = _pendingDisplayRestore;
+    return _pendingAmbientRestore ??= (() async {
+      if (displayRestore != null) {
+        await displayRestore;
+        // Ambient restore started during a title switch: the incoming title
+        // now owns the geometry, so a saved crop/zoom must keep taking priority.
+        if (_boxFitMode != 0 || _zoomScale != 1.0) return;
+      }
+      await restore();
+    })().whenComplete(() => _pendingAmbientRestore = null);
+  }
 
   /// Store whether ambient lighting was active before entering PiP
   bool? _prePipAmbientLighting;
@@ -44,6 +63,10 @@ class VideoFilterManager {
 
   /// Current player viewport size
   Size? _playerSize;
+
+  /// Percent of the screen height the subtitles must clear at the bottom
+  /// (the TV player's control block while it is up); 0 when nothing covers it.
+  int _subtitleLiftPercent = 0;
 
   /// Debounced video filter update with leading edge execution
   late final Debounce _debouncedUpdateVideoFilter;
@@ -61,6 +84,10 @@ class VideoFilterManager {
   /// Callback invoked when boxFitMode changes, for external persistence
   final void Function(int mode)? onBoxFitModeChanged;
 
+  /// User changes only: restoring a title, PiP and ambient resets never write
+  /// over the remembered fit/zoom pair.
+  final void Function(int mode, double zoomScale)? onDisplaySettingsChanged;
+
   /// The user's configured `sub-pos`, read fresh on every apply. Used to keep
   /// subtitles inside the visible rect while cropped or zoomed.
   final int Function()? subtitleBasePosition;
@@ -73,11 +100,14 @@ class VideoFilterManager {
   VideoFilterManager({
     required this.player,
     int initialBoxFitMode = 0,
+    double initialZoomScale = 1.0,
     Size? initialPlayerSize,
     this.onBoxFitModeChanged,
+    this.onDisplaySettingsChanged,
     this.subtitleBasePosition,
     bool? useLayerScaleCompensation,
   }) : _boxFitMode = initialBoxFitMode,
+       _zoomScale = normalizeZoomScale(initialZoomScale),
        _playerSize = initialPlayerSize,
        useLayerScaleCompensation = useLayerScaleCompensation ?? Platform.isIOS {
     _debouncedUpdateVideoFilter = debounce(
@@ -143,10 +173,32 @@ class VideoFilterManager {
     return (compensated * 100).round().clamp(0, 100);
   }
 
+  /// On-screen `sub-pos` target that keeps the subtitle bottom above a block
+  /// covering the bottom [liftPercent] of the screen. libass moves the line up
+  /// by (100 - sub-pos)% of (screen height - sub-margin-y), and at sub-pos 100
+  /// it already sits one margin above the bottom, so lifting by the block's
+  /// full screen share over-clears by less than that margin. A user position
+  /// that is already higher stays where it is.
+  static int liftedSubtitlePosition(int basePosition, int liftPercent) {
+    if (liftPercent <= 0) return basePosition;
+    return math.min(basePosition, math.max(0, 100 - liftPercent));
+  }
+
+  /// Keep subtitles clear of the bottom [fraction] of the screen. Rounds up to
+  /// whole sub-pos percent and only re-applies when that value changes, so a
+  /// rebuild with the same block height writes nothing.
+  void setSubtitleLift(double fraction) {
+    final percent = (fraction.clamp(0.0, 1.0) * 100).ceil();
+    if (percent == _subtitleLiftPercent) return;
+    _subtitleLiftPercent = percent;
+    updateVideoFilter();
+  }
+
   double setZoomScale(double scale) {
     final next = normalizeZoomScale(scale);
     if (_zoomScale == next) return _zoomScale;
     _zoomScale = next;
+    onDisplaySettingsChanged?.call(_boxFitMode, _zoomScale);
     updateVideoFilter();
     return _zoomScale;
   }
@@ -162,6 +214,35 @@ class VideoFilterManager {
   void setBoxFitMode(int mode) {
     _boxFitMode = mode.clamp(0, 2);
     onBoxFitModeChanged?.call(_boxFitMode);
+    onDisplaySettingsChanged?.call(_boxFitMode, _zoomScale);
+    updateVideoFilter();
+  }
+
+  /// Restore a different title without treating it as a user selection.
+  Future<void> restoreDisplaySettings({required int boxFitMode, required double zoomScale}) {
+    final restoration = _restoreDisplaySettings(boxFitMode: boxFitMode, zoomScale: zoomScale);
+    _pendingDisplayRestore = restoration;
+    return restoration.whenComplete(() {
+      if (identical(_pendingDisplayRestore, restoration)) _pendingDisplayRestore = null;
+    });
+  }
+
+  Future<void> _restoreDisplaySettings({required int boxFitMode, required double zoomScale}) async {
+    final generation = ++_displayRestoreGeneration;
+    final ambientRestore = _pendingAmbientRestore;
+    if (ambientRestore != null) await ambientRestore;
+    if (generation != _displayRestoreGeneration) return;
+    if ((boxFitMode != 0 || zoomScale != 1.0) && ambientLightingService?.isEnabled == true) {
+      await ambientLightingService!.disable();
+      if (generation != _displayRestoreGeneration) return;
+    }
+    if (_isInPipMode) {
+      _prePipBoxFitMode = boxFitMode.clamp(0, 2);
+      _prePipZoomScale = normalizeZoomScale(zoomScale);
+      return;
+    }
+    _boxFitMode = boxFitMode.clamp(0, 2);
+    _zoomScale = normalizeZoomScale(zoomScale);
     updateVideoFilter();
   }
 
@@ -176,6 +257,8 @@ class VideoFilterManager {
 
   /// Force contain mode for PiP (no cropping/stretching)
   void enterPipMode() {
+    if (_isInPipMode) return;
+    _isInPipMode = true;
     // Disable ambient lighting for PiP — it wastes space on blurred borders
     if (ambientLightingService?.isEnabled == true) {
       _prePipAmbientLighting = true;
@@ -196,6 +279,7 @@ class VideoFilterManager {
 
   /// Restore previous mode when exiting PiP
   void exitPipMode() {
+    _isInPipMode = false;
     var shouldUpdate = false;
     if (_prePipBoxFitMode != null) {
       _boxFitMode = _prePipBoxFitMode!;
@@ -336,7 +420,10 @@ class VideoFilterManager {
           scale = normalizeZoomScale(zoomScale) * coverScale;
         }
         if (scale != null) {
-          await _applyProperty('sub-pos', subtitlePositionForScale(basePosition, scale).toString());
+          // The lift is an on-screen target, so it goes in before the
+          // crop/zoom compensation maps that target back through the scale.
+          final target = liftedSubtitlePosition(basePosition, _subtitleLiftPercent);
+          await _applyProperty('sub-pos', subtitlePositionForScale(target, scale).toString());
         }
       }
     } catch (e) {

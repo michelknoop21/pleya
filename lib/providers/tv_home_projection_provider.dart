@@ -171,7 +171,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   UnifiedMediaHub? get continueWatching => _continueWatching;
 
   /// The whole of Verder kijken, projected the same way as the row, for the
-  /// sectioned overview (DEC-119 fase 2). Null until projected or when empty.
+  /// sectioned overview (DEC-144 fase 2). Null until projected or when empty.
   UnifiedMediaHub? get continueWatchingAll => _continueWatchingAll;
 
   /// What the row title counts: groups after merging, deduplicating and
@@ -289,7 +289,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
 
       // One projection of the whole list; the row is its first 20 groups, so
       // the identity resolver runs once per item, not once for the prefix and
-      // again for the rest (DEC-119 fase 2).
+      // again for the rest (DEC-144 fase 2).
       final results = await Future.wait([
         _service.projectContinueWatching(allOnDeck, title: _continueWatchingTitle, failedServerIds: failedServerIds),
         _service.projectHubs([latestMoviesHub], failedServerIds: failedServerIds),
@@ -327,6 +327,8 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
       // its own rail below the hero.
       _heroGroups = _featuredSelector.select(latestMoviesProjected);
       _hasProjectedHero = true;
+      // The Top Shelf carousel leads with the same slides, same order.
+      _discover.setTopShelfHero([for (final group in _heroGroups) group.representativeSource.item]);
       // The activation-lookup pool, uncapped and covering everything
       // `DiscoverScreen` can put in the billboard that is *not* a hero slide
       // (see `featuredGroupFor`): rail focus, and the empty-hero fallback to

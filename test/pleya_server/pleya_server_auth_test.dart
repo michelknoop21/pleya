@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -90,16 +91,26 @@ void main() {
     test('returns the token pair and the probed info', () async {
       final service = PleyaServerAuthService(
         httpClientFactory: () => MockClient((request) async {
-          if (request.url.path.endsWith('/info')) return json(infoBody);
-          expect(request.url.path, '/pleya/v1/auth/login');
-          expect(jsonDecode(request.body), {'username': 'michel', 'password': 'hunter22'});
-          return json(tokenPair('at-1', 'rt-1'));
+          if (request.url.path.endsWith('/info')) {
+            return json({
+              ...infoBody,
+              'capabilities': {...infoBody['capabilities']!, 'users': true},
+            });
+          }
+          if (request.url.path.endsWith('/auth/login')) {
+            expect(jsonDecode(request.body), {'username': 'michel', 'password': 'hunter22'});
+            return json(tokenPair('at-1', 'rt-1'));
+          }
+          expect(request.url.path, '/pleya/v1/users/me');
+          expect(request.headers['authorization'], 'Bearer at-1');
+          return json(const {'id': 'user-1', 'username': 'michel', 'role': 'owner'});
         }),
       );
       final result = await service.login(baseUrl: 'http://nas.lan:8832', username: 'michel', password: 'hunter22');
       expect(result.tokens.accessToken, 'at-1');
       expect(result.tokens.refreshToken, 'rt-1');
       expect(result.userName, 'michel');
+      expect(result.userId, 'user-1');
       expect(result.baseUrl, 'http://nas.lan:8832');
       expect(result.info.serverId, 'srv-1');
     });
@@ -219,6 +230,35 @@ void main() {
       expect(refreshCalls, 1);
       expect(persisted.single.refreshToken, 'rt-rotated');
       expect(persisted.single.status, ConnectionStatus.online);
+    });
+
+    test('a slow role write cannot put a spent refresh token back on disk', () async {
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((_) async => json(tokenPair('at-1', 'rt-1'))),
+      );
+      final gate = Completer<void>();
+      var first = true;
+      PleyaServerConnection? disk;
+      final session = PleyaServerSession(
+        connection: connectionWith('rt-0'),
+        auth: service,
+        onTokensRotated: (c) async {
+          if (first) {
+            first = false;
+            await gate.future;
+          }
+          disk = c;
+        },
+      );
+      // The role write starts first and stalls; a rotation happens meanwhile.
+      final role = session.adoptRole('admin');
+      final token = session.accessToken();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      gate.complete();
+      await role;
+      expect(await token, 'at-1');
+      expect(disk!.refreshToken, 'rt-1', reason: 'the last write must carry the rotated token');
+      expect(disk!.role, 'admin');
     });
 
     test('a valid access token is reused instead of spending a rotation', () async {
@@ -362,6 +402,76 @@ void main() {
       // never spoke to. None of those is a reason to destroy a credential.
       expect(persisted, isEmpty);
       expect(session.connection.refreshToken, 'rt-old');
+    });
+
+    test('retryAfterRejection lets a rejected session spend the kept token again', () async {
+      var refreshCalls = 0;
+      var reject = true;
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((request) async {
+          refreshCalls++;
+          if (reject) {
+            return json(const {
+              'error': {'code': 'auth.invalid_token', 'message': 'no', 'retryable': false},
+            }, status: 401);
+          }
+          return json(tokenPair('at-second-chance', 'rt-rotated'));
+        }),
+      );
+      final session = PleyaServerSession(connection: connectionWith('rt-kept'), auth: service);
+
+      await expectLater(session.accessToken(), throwsA(isA<MediaServerAuthException>()));
+      expect(session.isRevoked, isTrue);
+      // Revoked means in-memory rejection: no packet leaves the device. This
+      // is the state log jv19q measured — four health probes, zero refresh
+      // attempts.
+      await expectLater(session.accessToken(), throwsA(isA<PleyaRefreshChainRevokedException>()));
+      expect(refreshCalls, 1);
+
+      // The user's own action gets the same second chance a cold start gets.
+      reject = false;
+      session.retryAfterRejection();
+      expect(session.isRevoked, isFalse);
+      expect(await session.accessToken(), 'at-second-chance');
+      expect(refreshCalls, 2);
+      expect(session.connection.refreshToken, 'rt-rotated');
+    });
+
+    test('retryAfterRejection on a healthy session changes nothing', () async {
+      var refreshCalls = 0;
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((_) async {
+          refreshCalls++;
+          return json(tokenPair('at-$refreshCalls', 'rt-$refreshCalls'));
+        }),
+      );
+      final session = PleyaServerSession(connection: connectionWith('rt-fine'), auth: service);
+      expect(await session.accessToken(), 'at-1');
+
+      // Not revoked, so this must not invalidate the perfectly good token.
+      session.retryAfterRejection();
+      expect(await session.accessToken(), 'at-1');
+      expect(refreshCalls, 1);
+    });
+
+    test('a chain that really is dead is dead again after the retry', () async {
+      var refreshCalls = 0;
+      final service = PleyaServerAuthService(
+        httpClientFactory: () => MockClient((_) async {
+          refreshCalls++;
+          return json(const {
+            'error': {'code': 'auth.refresh_token_reused', 'message': 'no', 'retryable': false},
+          }, status: 401);
+        }),
+      );
+      final session = PleyaServerSession(connection: connectionWith('rt-dead'), auth: service);
+
+      await expectLater(session.accessToken(), throwsA(isA<PleyaRefreshChainRevokedException>()));
+      session.retryAfterRejection();
+      await expectLater(session.accessToken(), throwsA(isA<PleyaRefreshChainRevokedException>()));
+      expect(session.isRevoked, isTrue);
+      // One real attempt per explicit user action — a retry is not a loop.
+      expect(refreshCalls, 2);
     });
 
     test('an unreachable server does not revoke anything', () async {

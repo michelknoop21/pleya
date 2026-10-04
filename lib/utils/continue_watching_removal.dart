@@ -1,5 +1,5 @@
 /// What the "take this out of Verder kijken" row says, and how far it reaches
-/// (mockup 38 E, DEC-119 fase 3).
+/// (mockup 38 E, DEC-144 fase 3).
 ///
 /// One row per title, and the wording follows what each source can actually
 /// do. A source that removes server-side (Plex, Pleya Server) is removed

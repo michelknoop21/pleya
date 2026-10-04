@@ -6,6 +6,7 @@ import '../providers/watchlist_provider.dart';
 import '../media/media_backend.dart';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,16 +33,21 @@ import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
 import '../profiles/plex_home_service.dart';
 import '../profiles/plex_self_account.dart';
+import '../profiles/profile_connection_registry.dart';
 import '../providers/now_watching_provider.dart';
 import '../providers/trakt_account_provider.dart';
 import '../providers/trackers_provider.dart';
 import '../providers/user_profile_provider.dart';
 import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
+import '../assistant/assistant_controller.dart';
+import '../assistant/assistant_controller_session.dart';
 import '../i18n/strings.g.dart';
+import '../screens/big_p/big_p_mobile_session.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
 import '../services/recommendations/interaction_recorder.dart';
+import '../services/recommendations/jellyfin_history_importer.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/recommendations/tautulli_history_importer.dart';
@@ -50,6 +56,7 @@ import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../services/tautulli/tautulli_server_binding.dart';
 import '../utils/app_logger.dart';
+import '../utils/platform_detector.dart';
 import '../watch_together/providers/watch_together_provider.dart';
 import 'profile_navigation_scope.dart';
 
@@ -63,6 +70,33 @@ import 'profile_navigation_scope.dart';
 /// Keep profile-owned routes, dialogs, sheets, and virtual keyboards on the
 /// nearest navigator from this subtree. Keep setup/auth/PIN/profile-picker flows
 /// on the root navigator so they survive this subtree being replaced.
+/// Wires the Tautulli provider to the multi-server authority. A Tautulli
+/// record belongs to a server, so the provider has to be able to ask which
+/// servers exist and which of them this profile reads and administers.
+/// Closures, because a server can still register after the profile has bound,
+/// and the listener so a late registration re-resolves instead of going
+/// unnoticed.
+@visibleForTesting
+void attachTautulliServerResolvers(
+  TautulliProvider provider, {
+  required MultiServerProvider multiServer,
+  required PlexHomeService? plexHome,
+}) {
+  provider.attachServerResolvers(
+    serverIds: () => multiServer.serverManager.serverIds,
+    isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
+    // Pairing and unlinking are device-wide: owner rights on the Plex server,
+    // never through a borrowed connection.
+    mayAdminister: multiServer.serverManager.canManagePlexServer,
+    // The credential is the admin's, so the provider resolves whose history it
+    // fetches instead of being told. Nullable read: without a Home service
+    // nothing resolves and the import refuses, which is the right answer
+    // either way.
+    selfAccountId: (profileId) => plexSelfAccountIdIn(profileId, plexHome?.current ?? const {}),
+    registryChanges: multiServer,
+  );
+}
+
 class ProfileSessionScreen extends StatefulWidget {
   const ProfileSessionScreen({super.key, this.isOfflineMode = false, this.initialPromptHandled = false})
     : profileShellBuilder = null;
@@ -158,22 +192,10 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ChangeNotifierProvider(
                 create: (context) {
                   final provider = TautulliProvider();
-                  // A Tautulli record belongs to a server, so the provider has
-                  // to be able to ask which servers exist and which of them this
-                  // profile administers. Closures, because a server can still
-                  // register after the profile has bound, and the listener so a
-                  // late registration re-resolves instead of going unnoticed.
-                  final multiServer = context.read<MultiServerProvider>();
-                  final plexHome = context.read<PlexHomeService?>();
-                  provider.attachServerResolvers(
-                    serverIds: () => multiServer.serverManager.serverIds,
-                    isOwnerOrAdmin: multiServer.serverManager.isOwnerOrAdmin,
-                    // The credential is the admin's, so the provider resolves
-                    // whose history it fetches instead of being told. Nullable
-                    // read: without a Home service nothing resolves and the
-                    // import refuses, which is the right answer either way.
-                    selfAccountId: (profileId) => plexSelfAccountIdIn(profileId, plexHome?.current ?? const {}),
-                    registryChanges: multiServer,
+                  attachTautulliServerResolvers(
+                    provider,
+                    multiServer: context.read<MultiServerProvider>(),
+                    plexHome: context.read<PlexHomeService?>(),
                   );
                   unawaited(
                     provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
@@ -216,6 +238,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   return NowWatchingProvider(
                     client: () => tautulli.client,
                     enabled: ownsAServer,
+                    monitoredServerId: monitoredServerId,
                     selfUserId: () => plexSelfAccountId(activeProfile.activeId, plexHome),
                     // Tautulli hands out Plex library paths for artwork, which
                     // only a Plex client can turn into a loadable URL.
@@ -236,7 +259,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     HomeLayoutProvider(storageService: context.read<StorageService>(), profileId: activeId),
                 lazy: true,
               ),
-              // Titles hidden from Verder kijken on this device (DEC-119 fase 3);
+              // Titles hidden from Verder kijken on this device (DEC-144 fase 3);
               // above `DiscoverProvider`, which filters on it.
               ChangeNotifierProvider(
                 create: (context) =>
@@ -308,6 +331,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   // resolve which Plex account this profile is, and the binding
                   // then refuses with `ambiguousUser` instead of guessing.
                   final plexHome = context.read<PlexHomeService?>();
+                  final profileConnections = context.read<ProfileConnectionRegistry>();
                   final profileId = activeId ?? '';
 
                   return RecommendationService(
@@ -317,6 +341,8 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                       topPicks: t.discover.topPicksForYou,
                       becauseYouLike: (genre) => t.discover.becauseYouLike(genre: genre),
                       hiddenGems: t.discover.hiddenGems,
+                      moreWithActor: (name) => t.discover.moreWithActor(name: name),
+                      moreFromDirector: (name) => t.discover.moreFromDirector(name: name),
                     ),
                     enabledImportServerIds: tautulli.enabledImportServerIds,
                     // The store load is asynchronous and Discover routinely
@@ -361,6 +387,34 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                         isCurrentProfile: () => activeProfile.activeId == importProfileId,
                       );
                     },
+                    // Only the profile's own Jellyfin logins, never a borrowed
+                    // one (DEC-062, DEC-132), and nothing while the binder is
+                    // still swapping the previous profile's servers out.
+                    historyImporters: () => ownJellyfinHistoryImporters(
+                      database: database,
+                      profileId: profileId,
+                      connectionsForProfile: profileConnections.listForProfile,
+                      profilesForConnection: profileConnections.listForConnection,
+                      onlineSource: (connectionId) {
+                        final manager = multiServer.serverManager;
+                        final client = manager.getJellyfinClientByCompoundId(connectionId);
+                        if (client == null) return null;
+                        return manager.isClientOnline(client.serverId, clientScopeId: connectionId) ? client : null;
+                      },
+                      isCurrentProfile: () => activeProfile.activeId == profileId && !activeProfile.isBinding,
+                      // A load during binding waits for it (bounded) rather
+                      // than skipping the import until the next load.
+                      whenBound: () => activeProfile.awaitBindingSettle(),
+                    ),
+                    // Same rule for the seed rows' server path: a shared
+                    // Jellyfin connection's history is not this profile's.
+                    sharedHistoryServerIds: () => sharedJellyfinServerIds(
+                      profileId: profileId,
+                      connectionsForProfile: profileConnections.listForProfile,
+                      profilesForConnection: profileConnections.listForConnection,
+                      jellyfinServerId: (connectionId) =>
+                          multiServer.serverManager.getJellyfinClientByCompoundId(connectionId)?.serverId,
+                    ),
                   );
                 },
               ),
@@ -370,6 +424,7 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   database: context.read<AppDatabase>(),
                   profileId: activeId ?? '',
                   clientResolver: context.read<MultiServerProvider>().getClientForServer,
+                  enabledImportServerIds: context.read<TautulliProvider>().enabledImportServerIds,
                 )..start(),
                 dispose: (_, recorder) => recorder.dispose(),
               ),
@@ -471,6 +526,15 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
               ChangeNotifierProvider(create: (context) => PlaybackStateProvider()),
               ChangeNotifierProvider(create: (context) => WatchTogetherProvider()),
               ChangeNotifierProvider(create: (context) => CompanionRemoteProvider()),
+              // Big P: per profile, so a conversation or an open confirmation
+              // never carries into another profile. Lazy: no work until opened.
+              ChangeNotifierProvider(create: assistantControllerForSession),
+              // Big P's place on iPhone and iPad only (V4): no Android,
+              // desktop, TV or the iOS app on a Mac.
+              if (defaultTargetPlatform == TargetPlatform.iOS &&
+                  !PlatformDetector.isTV() &&
+                  !TvDetectionService.isIOSAppOnMacSync())
+                ChangeNotifierProvider(create: (c) => BigPMobileSession(c.read<AssistantController>())),
             ],
             child: _ProfileSessionNavigator(
               isOfflineMode: widget.isOfflineMode,

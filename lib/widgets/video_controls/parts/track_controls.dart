@@ -151,24 +151,14 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
       ratingKey: widget.metadata.id,
       mediaTitle: widget.metadata.title,
       onSubtitleDownloaded: _onSubtitleDownloaded,
-      // Plex proxies OpenSubtitles via its server-side plugin; Jellyfin
-      // doesn't expose an equivalent so the Search Subtitles tile is hidden
-      // for Jellyfin items. The check uses the registered client type for
-      // this metadata's serverId.
-      subtitleSearchSupported: _isPlexBackedMetadata(),
+      subtitleSearchSupported: _canOfferSubtitleSearch(),
     );
   }
 
-  /// True when the active server supports external subtitle search (Plex
-  /// today). Requires a server id because the download callback needs the
-  /// Plex client/token for that server.
-  bool _isPlexBackedMetadata() {
+  /// See [canOfferSubtitleSearch].
+  bool _canOfferSubtitleSearch() {
     try {
-      final serverId = widget.metadata.serverId;
-      if (serverId == null) return false;
-      final manager = context.read<MultiServerProvider>().serverManager;
-      final c = manager.getClient(ServerId(serverId));
-      return c?.capabilities.externalSubtitleSearch ?? false;
+      return canOfferSubtitleSearch(context.read<MultiServerProvider>().serverManager, widget.metadata.serverId);
     } catch (_) {
       return false;
     }
@@ -191,4 +181,17 @@ extension _PlexVideoControlsTrackMethods on _PlexVideoControlsState {
       hideChaptersAndQueue: hideChaptersAndQueue,
     );
   }
+}
+
+/// Whether the player offers "Search subtitles" for an item on [serverId].
+///
+/// Plex proxies OpenSubtitles through its server; Jellyfin has no equivalent,
+/// so the backend has to advertise `externalSubtitleSearch`. A downloaded
+/// subtitle lands on the shared server item for every user, so the tile is
+/// also owner-only. Choosing an existing track stays open to everyone.
+bool canOfferSubtitleSearch(MultiServerManager manager, String? serverId) {
+  if (serverId == null) return false;
+  final id = ServerId(serverId);
+  final searchable = manager.getClient(id)?.capabilities.externalSubtitleSearch ?? false;
+  return searchable && manager.canManageServerMetadata(id);
 }

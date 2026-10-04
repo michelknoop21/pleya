@@ -50,6 +50,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsSearchEn search = TranslationsSearchEn.internal(_root);
 	late final TranslationsHotkeysEn hotkeys = TranslationsHotkeysEn.internal(_root);
 	late final TranslationsFileInfoEn fileInfo = TranslationsFileInfoEn.internal(_root);
+	late final TranslationsDetailActionsEn detailActions = TranslationsDetailActionsEn.internal(_root);
 	late final TranslationsMediaMenuEn mediaMenu = TranslationsMediaMenuEn.internal(_root);
 	late final TranslationsRateSheetEn rateSheet = TranslationsRateSheetEn.internal(_root);
 	late final TranslationsAccessibilityEn accessibility = TranslationsAccessibilityEn.internal(_root);
@@ -103,6 +104,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsTvOfflineHomeEn tvOfflineHome = TranslationsTvOfflineHomeEn.internal(_root);
 	late final TranslationsTvContextMenuEn tvContextMenu = TranslationsTvContextMenuEn.internal(_root);
 	late final TranslationsLanguageSettingsEn languageSettings = TranslationsLanguageSettingsEn.internal(_root);
+	late final TranslationsAssistantEn assistant = TranslationsAssistantEn.internal(_root);
 }
 
 // Path: states
@@ -620,6 +622,12 @@ class TranslationsSettingsEn {
 	/// en: 'Show each season's poster above its tab'
 	String get showSeasonPostersOnTabsDescription => 'Show each season\'s poster above its tab';
 
+	/// en: 'Liquid Glass'
+	String get liquidGlass => 'Liquid Glass';
+
+	/// en: 'Glass surfaces on the tab bar, player and buttons.'
+	String get liquidGlassDescription => 'Glass surfaces on the tab bar, player and buttons.';
+
 	/// en: 'Full TV Cards'
 	String get tvFullCardLayout => 'Full TV Cards';
 
@@ -712,6 +720,18 @@ class TranslationsSettingsEn {
 
 	/// en: 'Used when starting playback. Lower values reduce bandwidth.'
 	String get defaultQualityDescription => 'Used when starting playback. Lower values reduce bandwidth.';
+
+	/// en: 'Maximum Resolution'
+	String get displayMaxResolutionTitle => 'Maximum Resolution';
+
+	/// en: 'Caps what this device asks a server for, even when the file is larger.'
+	String get displayMaxResolutionDescription => 'Caps what this device asks a server for, even when the file is larger.';
+
+	/// en: 'detected: ${resolution}'
+	String displayMaxResolutionNow({required Object resolution}) => 'detected: ${resolution}';
+
+	late final TranslationsSettingsDisplayMaxResolutionOptionsEn displayMaxResolutionOptions = TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(_root);
+	late final TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn displayMaxResolutionOptionDescriptions = TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(_root);
 
 	/// en: 'Subtitle Styling'
 	String get subtitleStyling => 'Subtitle Styling';
@@ -1400,6 +1420,33 @@ class TranslationsFileInfoEn {
 
 	/// en: '64-bit Offsets'
 	String get has64bitOffsets => '64-bit Offsets';
+}
+
+// Path: detailActions
+class TranslationsDetailActionsEn {
+	TranslationsDetailActionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Watchlist'
+	String get watchlist => 'Watchlist';
+
+	/// en: 'Trailer'
+	String get trailer => 'Trailer';
+
+	/// en: 'Rate'
+	String get rate => 'Rate';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
+
+	/// en: 'Download'
+	String get download => 'Download';
+
+	/// en: 'More'
+	String get more => 'More';
 }
 
 // Path: mediaMenu
@@ -2356,6 +2403,9 @@ class TranslationsConnectionsEn {
 	/// en: 'Edit Jellyfin connection'
 	String get editJellyfinTitle => 'Edit Jellyfin connection';
 
+	/// en: 'Edit Emby connection'
+	String get editEmbyTitle => 'Edit Emby connection';
+
 	/// en: 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.'
 	String editJellyfinIntro({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.';
 
@@ -2496,6 +2546,9 @@ class TranslationsDiscoverEn {
 	/// en: 'Because you watched ${title}'
 	String becauseYouWatched({required Object title}) => 'Because you watched ${title}';
 
+	/// en: 'Because you're watching ${title}'
+	String becauseYouAreWatching({required Object title}) => 'Because you\'re watching ${title}';
+
 	/// en: 'Recently Added Shows'
 	String get latestShows => 'Recently Added Shows';
 
@@ -2510,6 +2563,12 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Because you like ${genre}'
 	String becauseYouLike({required Object genre}) => 'Because you like ${genre}';
+
+	/// en: 'More with ${name}'
+	String moreWithActor({required Object name}) => 'More with ${name}';
+
+	/// en: 'More from ${name}'
+	String moreFromDirector({required Object name}) => 'More from ${name}';
 
 	/// en: 'Hidden Gems'
 	String get hiddenGems => 'Hidden Gems';
@@ -2540,6 +2599,63 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Watching this show: ${names}'
 	String watchingSeriesBy({required Object names}) => 'Watching this show: ${names}';
+
+	/// en: 'Played ${count}×'
+	String activityPlays({required Object count}) => 'Played ${count}×';
+
+	/// en: '${count} viewers'
+	String activityViewers({required Object count}) => '${count} viewers';
+
+	/// en: 'You're at S${season} E${episode}'
+	String activityOwnProgress({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}';
+
+	/// en: 'Subtitles'
+	String get techSubtitles => 'Subtitles';
+
+	/// en: 'Next episode · S${season} E${episode}'
+	String techEpisode({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}';
+
+	/// en: '(one) {1 season} (other) {${n} seasons}'
+	String seasonsHeading({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 season',
+		other: '${n} seasons',
+	);
+
+	/// en: '(one) {1 episode} (other) {${n} episodes}'
+	String seasonEpisodes({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 episode',
+		other: '${n} episodes',
+	);
+
+	/// en: '${count} left to watch'
+	String seasonEpisodesLeft({required Object count}) => '${count} left to watch';
+
+	/// en: '${title} · applies to this film'
+	String trackScopeMovie({required Object title}) => '${title} · applies to this film';
+
+	/// en: '${title} · for this series'
+	String trackScopeSeries({required Object title}) => '${title} · for this series';
+
+	/// en: 'Your choice is remembered and used when you press Resume or Play.'
+	String get trackChoiceNote => 'Your choice is remembered and used when you press Resume or Play.';
+
+	/// en: 'Not remembered. Applies when you play from this page; your profile language comes first.'
+	String get trackChoiceNoteOnce => 'Not remembered. Applies when you play from this page; your profile language comes first.';
+
+	/// en: 'Rotten Tomatoes critics'
+	String get scoreRtCritics => 'Rotten Tomatoes critics';
+
+	/// en: 'Rotten Tomatoes audience'
+	String get scoreRtAudience => 'Rotten Tomatoes audience';
+
+	/// en: 'Community score'
+	String get scoreCommunity => 'Community score';
+
+	/// en: 'Reviews'
+	String get reviews => 'Reviews';
+
+	/// en: 'Read at source'
+	String get reviewOpenSource => 'Read at source';
 }
 
 // Path: mobileDetail
@@ -5139,11 +5255,11 @@ class TranslationsAddServerEn {
 	/// en: 'Find server'
 	String get findServer => 'Find server';
 
-	/// en: 'Looking for local Jellyfin servers...'
-	String get searchingLocalServers => 'Looking for local Jellyfin servers...';
+	/// en: 'Looking for servers on your network...'
+	String get searchingLocalServers => 'Looking for servers on your network...';
 
-	/// en: 'Local Jellyfin servers'
-	String get localServers => 'Local Jellyfin servers';
+	/// en: 'Servers on your network'
+	String get localServers => 'Servers on your network';
 
 	/// en: 'Username'
 	String get username => 'Username';
@@ -5184,6 +5300,9 @@ class TranslationsAddServerEn {
 	/// en: 'Enter your Jellyfin server URL'
 	String get enterJellyfinUrlError => 'Enter your Jellyfin server URL';
 
+	/// en: 'Enter your Emby server URL'
+	String get enterEmbyUrlError => 'Enter your Emby server URL';
+
 	/// en: 'Add connection'
 	String get addConnectionTitle => 'Add connection';
 
@@ -5207,6 +5326,15 @@ class TranslationsAddServerEn {
 
 	/// en: 'Sign in to a Jellyfin server. Binds to ${name}.'
 	String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Sign in to a Jellyfin server. Binds to ${name}.';
+
+	/// en: 'Add Emby server'
+	String get addEmbyTitle => 'Add Emby server';
+
+	/// en: 'Connect to Emby'
+	String get connectToEmbyCard => 'Connect to Emby';
+
+	/// en: 'Sign in to an Emby server. Binds to ${name}.'
+	String connectToEmbyCardSubtitleScoped({required Object name}) => 'Sign in to an Emby server. Binds to ${name}.';
 
 	/// en: 'Connect to Pleya Server'
 	String get connectToPleyaServerCard => 'Connect to Pleya Server';
@@ -5486,6 +5614,9 @@ class TranslationsSourcePickerEn {
 
 	/// en: 'Manage servers'
 	String get manageServers => 'Manage servers';
+
+	/// en: 'Source'
+	String get source => 'Source';
 
 	/// en: 'Source: ${source}'
 	String sourceLabel({required Object source}) => 'Source: ${source}';
@@ -5881,6 +6012,90 @@ class TranslationsLanguageSettingsEn {
 
 	/// en: 'Subtitles'
 	String get kindSubtitles => 'Subtitles';
+}
+
+// Path: assistant
+class TranslationsAssistantEn {
+	TranslationsAssistantEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Big P'
+	String get tileTitle => 'Big P';
+
+	/// en: 'Pleya Assistant'
+	String get tileSubtitle => 'Pleya Assistant';
+
+	/// en: 'AI provider'
+	String get providerLabel => 'AI provider';
+
+	late final TranslationsAssistantMobileEn mobile = TranslationsAssistantMobileEn.internal(_root);
+	late final TranslationsAssistantLockedEn locked = TranslationsAssistantLockedEn.internal(_root);
+	late final TranslationsAssistantSetupEn setup = TranslationsAssistantSetupEn.internal(_root);
+	late final TranslationsAssistantIdleEn idle = TranslationsAssistantIdleEn.internal(_root);
+	late final TranslationsAssistantListeningEn listening = TranslationsAssistantListeningEn.internal(_root);
+	late final TranslationsAssistantWorkingEn working = TranslationsAssistantWorkingEn.internal(_root);
+	late final TranslationsAssistantStepsEn steps = TranslationsAssistantStepsEn.internal(_root);
+	late final TranslationsAssistantJobsEn jobs = TranslationsAssistantJobsEn.internal(_root);
+	late final TranslationsAssistantResultEn result = TranslationsAssistantResultEn.internal(_root);
+	late final TranslationsAssistantActionsEn actions = TranslationsAssistantActionsEn.internal(_root);
+	late final TranslationsAssistantConfirmEn confirm = TranslationsAssistantConfirmEn.internal(_root);
+	late final TranslationsAssistantNotesEn notes = TranslationsAssistantNotesEn.internal(_root);
+	late final TranslationsAssistantEndsEn ends = TranslationsAssistantEndsEn.internal(_root);
+
+	/// en: 'Hold Play/Pause to call Big P'
+	String get summonHint => 'Hold Play/Pause to call Big P';
+
+	/// en: 'Ask Big P'
+	String get contextAction => 'Ask Big P';
+
+	late final TranslationsAssistantSettingsEn settings = TranslationsAssistantSettingsEn.internal(_root);
+
+	/// en: 'You asked:'
+	String get youAsked => 'You asked:';
+
+	late final TranslationsAssistantOptionEn option = TranslationsAssistantOptionEn.internal(_root);
+	late final TranslationsAssistantDisplaysEn displays = TranslationsAssistantDisplaysEn.internal(_root);
+	late final TranslationsAssistantFollowUpEn followUp = TranslationsAssistantFollowUpEn.internal(_root);
+	late final TranslationsAssistantMatchEn match = TranslationsAssistantMatchEn.internal(_root);
+}
+
+// Path: settings.displayMaxResolutionOptions
+class TranslationsSettingsDisplayMaxResolutionOptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Auto'
+	String get auto => 'Auto';
+
+	/// en: '1080p'
+	String get hd1080 => '1080p';
+
+	/// en: '4K'
+	String get uhd2160 => '4K';
+}
+
+// Path: settings.displayMaxResolutionOptionDescriptions
+class TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn {
+	TranslationsSettingsDisplayMaxResolutionOptionDescriptionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Follow the display where the app can read it'
+	String get auto => 'Follow the display where the app can read it';
+
+	/// en: 'Never ask for more than 1920x1080'
+	String get hd1080 => 'Never ask for more than 1920x1080';
+
+	/// en: 'Never ask for more than 3840x2160'
+	String get uhd2160 => 'Never ask for more than 3840x2160';
 }
 
 // Path: search.filters
@@ -6824,6 +7039,9 @@ class TranslationsUnifiedCatalogFiltersEn {
 	/// en: 'Year'
 	String get year => 'Year';
 
+	/// en: 'Age rating'
+	String get contentRating => 'Age rating';
+
 	/// en: 'Servers'
 	String get servers => 'Servers';
 
@@ -6841,6 +7059,12 @@ class TranslationsUnifiedCatalogFiltersEn {
 
 	/// en: 'Unwatched'
 	String get unwatched => 'Unwatched';
+
+	/// en: 'In progress'
+	String get inProgress => 'In progress';
+
+	/// en: 'Watched'
+	String get watched => 'Watched';
 
 	/// en: 'Not available for the current sources'
 	String get unsupported => 'Not available for the current sources';
@@ -7115,6 +7339,835 @@ class TranslationsTvMyPleyaSemanticsEn {
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.mobile
+class TranslationsAssistantMobileEn {
+	TranslationsAssistantMobileEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hi ${name}, what are we looking for?'
+	String greeting({required Object name}) => 'Hi ${name}, what are we looking for?';
+
+	List<List<String>> get examples => [
+		[
+			'What can I watch tonight?',
+			'Give me a comedy for tonight.',
+			'Find an exciting movie for tonight.',
+		],
+		[
+			'Which series can I start now?',
+		],
+		[
+			'Do I have something for the kids?',
+		],
+		[
+			'Which movies haven\'t I seen yet?',
+			'Which movies have sat unwatched in my library for a long time?',
+		],
+		[
+			'What was added this week?',
+		],
+		[
+			'Who watched the most this week?',
+		],
+	];
+
+	/// en: 'I don't have a brain yet.'
+	String get noModelTitle => 'I don\'t have a brain yet.';
+
+	/// en: 'Pick a language model and I'll find movies, request titles and run your servers.'
+	String get noModelBody => 'Pick a language model and I\'ll find movies, request titles and run your servers.';
+
+	/// en: 'Set up model'
+	String get setup => 'Set up model';
+
+	/// en: 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.'
+	String get icloudNote => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.';
+
+	/// en: 'Listening…'
+	String get listening => 'Listening…';
+
+	/// en: 'Say your question, or type it.'
+	String get listeningHint => 'Say your question, or type it.';
+
+	/// en: 'Ask more'
+	String get askFurther => 'Ask more';
+
+	/// en: '${n} more titles'
+	String moreTitles({required Object n}) => '${n} more titles';
+
+	/// en: 'Ask Big P'
+	String get searchAsk => 'Ask Big P';
+
+	/// en: 'Summon Big P'
+	String get faceButton => 'Summon Big P';
+
+	/// en: 'Choose first: confirm or cancel.'
+	String get notConfirmedYet => 'Choose first: confirm or cancel.';
+}
+
+// Path: assistant.locked
+class TranslationsAssistantLockedEn {
+	TranslationsAssistantLockedEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not available on this account'
+	String get badge => 'Not available on this account';
+
+	/// en: 'Big P is not turned on for this account yet'
+	String get title => 'Big P is not turned on for this account yet';
+
+	/// en: 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.'
+	String get body => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.';
+
+	/// en: 'You cannot turn it on or buy it here. Once your account has access, this tile opens the question screen.'
+	String get note => 'You cannot turn it on or buy it here. Once your account has access, this tile opens the question screen.';
+
+	/// en: 'Back to My Pleya'
+	String get back => 'Back to My Pleya';
+}
+
+// Path: assistant.setup
+class TranslationsAssistantSetupEn {
+	TranslationsAssistantSetupEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not set up yet'
+	String get badge => 'Not set up yet';
+
+	/// en: 'To use Big P, first set up an AI provider.'
+	String get title => 'To use Big P, first set up an AI provider.';
+
+	/// en: 'Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for confirmation on sensitive actions and carries them out itself.'
+	String get body => 'Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for confirmation on sensitive actions and carries them out itself.';
+
+	/// en: 'Set up Big P'
+	String get action => 'Set up Big P';
+
+	/// en: 'Back'
+	String get back => 'Back';
+}
+
+// Path: assistant.idle
+class TranslationsAssistantIdleEn {
+	TranslationsAssistantIdleEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hi ${name}, what needs doing?'
+	String greeting({required Object name}) => 'Hi ${name}, what needs doing?';
+
+	/// en: 'Ready for your question · ${servers}'
+	String status({required Object servers}) => 'Ready for your question · ${servers}';
+
+	/// en: 'Ask Big P'
+	String get ask => 'Ask Big P';
+
+	/// en: 'For example'
+	String get examplesHeader => 'For example';
+
+	List<List<String>> get examples => [
+		[
+			'Which tasks failed on my servers today? Restart them.',
+		],
+		[
+			'Scan all movie libraries on all my servers.',
+		],
+		[
+			'Who watched the most this week?',
+			'Who is watching right now?',
+		],
+		[
+			'What can I watch tonight?',
+		],
+		[
+			'What was added this week?',
+		],
+		[
+			'Which popular new movies don\'t I have yet?',
+		],
+	];
+}
+
+// Path: assistant.listening
+class TranslationsAssistantListeningEn {
+	TranslationsAssistantListeningEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'I'm listening…'
+	String get title => 'I\'m listening…';
+
+	/// en: 'Speak your question.'
+	String get body => 'Speak your question.';
+}
+
+// Path: assistant.working
+class TranslationsAssistantWorkingEn {
+	TranslationsAssistantWorkingEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Let me check…'
+	String get status => 'Let me check…';
+
+	/// en: 'Working on your question…'
+	String get busy => 'Working on your question…';
+
+	/// en: 'Found so far. Big P is still checking…'
+	String get stillChecking => 'Found so far. Big P is still checking…';
+}
+
+// Path: assistant.steps
+class TranslationsAssistantStepsEn {
+	TranslationsAssistantStepsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${server} · ${step}'
+	String withServer({required Object server, required Object step}) => '${server} · ${step}';
+
+	/// en: 'Checking servers'
+	String get listServers => 'Checking servers';
+
+	/// en: 'Fetching libraries'
+	String get listLibraries => 'Fetching libraries';
+
+	/// en: 'Finding the title'
+	String get findMedia => 'Finding the title';
+
+	/// en: 'Fetching jobs'
+	String get listJobs => 'Fetching jobs';
+
+	/// en: 'Fetching users'
+	String get listUsers => 'Fetching users';
+
+	/// en: 'Scanning library'
+	String get scanLibrary => 'Scanning library';
+
+	/// en: 'Refreshing metadata'
+	String get refreshMetadata => 'Refreshing metadata';
+
+	/// en: 'Cancelling job'
+	String get cancelJob => 'Cancelling job';
+
+	/// en: 'Retrying job'
+	String get retryJob => 'Retrying job';
+
+	/// en: 'Creating user'
+	String get createUser => 'Creating user';
+
+	/// en: 'Setting library access'
+	String get setUserLibraryAccess => 'Setting library access';
+
+	/// en: 'Removing user'
+	String get removeUser => 'Removing user';
+
+	/// en: 'Searching the catalog'
+	String get searchCatalog => 'Searching the catalog';
+
+	/// en: 'Creating home row'
+	String get createHomeRow => 'Creating home row';
+
+	/// en: 'Creating collection'
+	String get createCollection => 'Creating collection';
+
+	/// en: 'Comparing servers'
+	String get compareServers => 'Comparing servers';
+
+	/// en: 'Fetching watch statistics'
+	String get watchStats => 'Fetching watch statistics';
+
+	/// en: 'Downloading next episodes'
+	String get downloadNext => 'Downloading next episodes';
+
+	/// en: 'Finding subtitles'
+	String get findSubtitles => 'Finding subtitles';
+
+	/// en: 'Downloading subtitle'
+	String get downloadSubtitle => 'Downloading subtitle';
+
+	/// en: 'Searching Seerr'
+	String get findRequestTitle => 'Searching Seerr';
+
+	/// en: 'Finding matching titles'
+	String get discoverRequestTitles => 'Finding matching titles';
+
+	/// en: 'Requesting title'
+	String get requestTitle => 'Requesting title';
+
+	/// en: 'Finding the title'
+	String get findTitle => 'Finding the title';
+
+	/// en: 'Working'
+	String get fallback => 'Working';
+}
+
+// Path: assistant.jobs
+class TranslationsAssistantJobsEn {
+	TranslationsAssistantJobsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final TranslationsAssistantJobsScanLibraryEn scanLibrary = TranslationsAssistantJobsScanLibraryEn.internal(_root);
+	late final TranslationsAssistantJobsRetryJobEn retryJob = TranslationsAssistantJobsRetryJobEn.internal(_root);
+}
+
+// Path: assistant.result
+class TranslationsAssistantResultEn {
+	TranslationsAssistantResultEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Carried out by Pleya'
+	String get doneBy => 'Carried out by Pleya';
+
+	/// en: 'Not carried out by Pleya'
+	String get notDoneBy => 'Not carried out by Pleya';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'Cancel'
+	String get cancel => 'Cancel';
+}
+
+// Path: assistant.actions
+class TranslationsAssistantActionsEn {
+	TranslationsAssistantActionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scan started'
+	String get scanLibrary => 'Scan started';
+
+	/// en: 'Metadata refresh started'
+	String get refreshMetadata => 'Metadata refresh started';
+
+	/// en: 'Job cancelled'
+	String get cancelJob => 'Job cancelled';
+
+	/// en: 'Job restarted'
+	String get retryJob => 'Job restarted';
+
+	/// en: 'User created'
+	String get createUser => 'User created';
+
+	/// en: 'Access changed'
+	String get setLibraryAccess => 'Access changed';
+
+	/// en: 'User removed'
+	String get removeUser => 'User removed';
+
+	/// en: 'Home row created'
+	String get createHomeRow => 'Home row created';
+
+	/// en: 'Collection created'
+	String get createCollection => 'Collection created';
+
+	/// en: 'Request sent'
+	String get requestTitle => 'Request sent';
+
+	/// en: 'Download started'
+	String get downloadEpisodes => 'Download started';
+
+	/// en: 'Subtitle downloaded'
+	String get downloadSubtitle => 'Subtitle downloaded';
+}
+
+// Path: assistant.confirm
+class TranslationsAssistantConfirmEn {
+	TranslationsAssistantConfirmEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Pleya asks for confirmation'
+	String get header => 'Pleya asks for confirmation';
+
+	late final TranslationsAssistantConfirmTitlesEn titles = TranslationsAssistantConfirmTitlesEn.internal(_root);
+
+	/// en: 'User'
+	String get user => 'User';
+
+	/// en: 'Server'
+	String get server => 'Server';
+
+	/// en: 'Access'
+	String get access => 'Access';
+
+	/// en: 'All libraries'
+	String get allLibraries => 'All libraries';
+
+	/// en: 'Titles'
+	String get titlesLabel => 'Titles';
+
+	/// en: 'Admin'
+	String get admin => 'Admin';
+
+	/// en: 'Yes'
+	String get yes => 'Yes';
+
+	/// en: 'No'
+	String get no => 'No';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'Choose a password'
+	String get passwordPlaceholder => 'Choose a password';
+
+	/// en: 'This password does not go to Big P or to the AI provider.'
+	String get passwordNote => 'This password does not go to Big P or to the AI provider.';
+
+	/// en: 'Confirm'
+	String get approve => 'Confirm';
+
+	/// en: 'Create'
+	String get create => 'Create';
+}
+
+// Path: assistant.notes
+class TranslationsAssistantNotesEn {
+	TranslationsAssistantNotesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Managed Plex Home user, with a share on this server.'
+	String get plexManagedHomeUser => 'Managed Plex Home user, with a share on this server.';
+
+	/// en: 'A share on this Plex server.'
+	String get plexShare => 'A share on this Plex server.';
+
+	/// en: 'Member of your Plex Home. Only the share on this server changes.'
+	String get plexHomeMember => 'Member of your Plex Home. Only the share on this server changes.';
+
+	/// en: 'Replaces all existing access of this user on this server.'
+	String get replacesAllAccess => 'Replaces all existing access of this user on this server.';
+}
+
+// Path: assistant.ends
+class TranslationsAssistantEndsEn {
+	TranslationsAssistantEndsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'There is nothing Big P can do on your servers right now.'
+	String get noTools => 'There is nothing Big P can do on your servers right now.';
+
+	/// en: 'This model cannot use tools. Pick another model in the Big P settings.'
+	String get toolsUnsupported => 'This model cannot use tools. Pick another model in the Big P settings.';
+
+	/// en: 'That took too many steps. Try a shorter question.'
+	String get stepLimit => 'That took too many steps. Try a shorter question.';
+
+	/// en: 'Big P is not available on this account.'
+	String get notEntitled => 'Big P is not available on this account.';
+
+	/// en: 'The AI provider rejected the key. Check it in the Big P settings.'
+	String get providerUnauthorized => 'The AI provider rejected the key. Check it in the Big P settings.';
+
+	/// en: 'The AI provider cannot be reached.'
+	String get providerUnreachable => 'The AI provider cannot be reached.';
+
+	/// en: 'The AI provider did not answer in time.'
+	String get providerTimeout => 'The AI provider did not answer in time.';
+
+	/// en: 'The AI provider gave an unexpected answer.'
+	String get providerBadResponse => 'The AI provider gave an unexpected answer.';
+
+	/// en: 'Nothing was changed.'
+	String get nothingChanged => 'Nothing was changed.';
+
+	/// en: 'The chosen model is gone. Pick another one in the Big P settings.'
+	String get modelMissing => 'The chosen model is gone. Pick another one in the Big P settings.';
+}
+
+// Path: assistant.settings
+class TranslationsAssistantSettingsEn {
+	TranslationsAssistantSettingsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Set up Big P'
+	String get title => 'Set up Big P';
+
+	/// en: 'Choose where Big P gets its language model'
+	String get providerHeading => 'Choose where Big P gets its language model';
+
+	/// en: 'Ollama server'
+	String get ollamaServer => 'Ollama server';
+
+	/// en: 'Runs on your own network, for example on your NAS.'
+	String get ollamaServerDescription => 'Runs on your own network, for example on your NAS.';
+
+	/// en: 'Ollama Cloud'
+	String get ollamaCloud => 'Ollama Cloud';
+
+	/// en: 'Models that Ollama runs for you.'
+	String get ollamaCloudDescription => 'Models that Ollama runs for you.';
+
+	/// en: 'OpenRouter'
+	String get openRouter => 'OpenRouter';
+
+	/// en: 'One key for models from several vendors.'
+	String get openRouterDescription => 'One key for models from several vendors.';
+
+	/// en: 'Server address'
+	String get needsAddress => 'Server address';
+
+	/// en: 'API key'
+	String get needsKey => 'API key';
+
+	/// en: 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.'
+	String get dataNote => 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.';
+
+	/// en: 'Server address'
+	String get serverUrl => 'Server address';
+
+	/// en: 'http://192.168.1.10:11434'
+	String get serverUrlHint => 'http://192.168.1.10:11434';
+
+	/// en: 'Extra header name (optional)'
+	String get headerName => 'Extra header name (optional)';
+
+	/// en: 'Extra header value'
+	String get headerValue => 'Extra header value';
+
+	/// en: 'Only needed when the server sits behind a reverse proxy that asks for its own header.'
+	String get headerHelp => 'Only needed when the server sits behind a reverse proxy that asks for its own header.';
+
+	/// en: 'API key'
+	String get apiKey => 'API key';
+
+	/// en: 'Fetch models'
+	String get fetchModels => 'Fetch models';
+
+	/// en: 'Choose a model'
+	String get modelsHeading => 'Choose a model';
+
+	/// en: 'Only models that can use tools are listed.'
+	String get modelsHelp => 'Only models that can use tools are listed.';
+
+	/// en: 'No models here can use tools. Install or pick one that can.'
+	String get noToolModels => 'No models here can use tools. Install or pick one that can.';
+
+	/// en: 'Test connection'
+	String get test => 'Test connection';
+
+	/// en: 'Connection works with ${model}'
+	String testOk({required Object model}) => 'Connection works with ${model}';
+
+	/// en: 'The chosen model is no longer available.'
+	String get modelMissing => 'The chosen model is no longer available.';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Change'
+	String get change => 'Change';
+
+	/// en: 'Turn off Big P'
+	String get disable => 'Turn off Big P';
+
+	/// en: 'Turn off Big P?'
+	String get disableConfirm => 'Turn off Big P?';
+
+	/// en: 'The provider and key are removed from this device. You can set Big P up again at any time.'
+	String get disableBody => 'The provider and key are removed from this device. You can set Big P up again at any time.';
+
+	/// en: 'Replace the Big P setup?'
+	String get unreadableTitle => 'Replace the Big P setup?';
+
+	/// en: 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.'
+	String get unreadableBody => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.';
+
+	/// en: 'Replace'
+	String get replace => 'Replace';
+
+	/// en: 'Model'
+	String get currentModel => 'Model';
+
+	/// en: 'Stored, hidden'
+	String get keyStored => 'Stored, hidden';
+
+	/// en: 'Enter an address that starts with http:// or https://.'
+	String get errorUrlInvalid => 'Enter an address that starts with http:// or https://.';
+
+	/// en: 'This header name or value is not valid.'
+	String get errorHeaderInvalid => 'This header name or value is not valid.';
+
+	/// en: 'Enter the API key.'
+	String get errorKeyRequired => 'Enter the API key.';
+
+	/// en: 'The key was rejected.'
+	String get errorUnauthorized => 'The key was rejected.';
+
+	/// en: 'Server not reachable. Check the address and, for https, the certificate.'
+	String get errorUnreachable => 'Server not reachable. Check the address and, for https, the certificate.';
+
+	/// en: 'The server did not answer in time.'
+	String get errorTimeout => 'The server did not answer in time.';
+
+	/// en: 'This model cannot use tools.'
+	String get errorToolsUnsupported => 'This model cannot use tools.';
+
+	/// en: 'Unexpected answer from the server. Check the address.'
+	String get errorBadResponse => 'Unexpected answer from the server. Check the address.';
+
+	/// en: 'Refresh'
+	String get refreshModels => 'Refresh';
+
+	/// en: 'Show more (${count})'
+	String showMore({required Object count}) => 'Show more (${count})';
+
+	/// en: 'Updated today'
+	String get updatedToday => 'Updated today';
+
+	/// en: '(one) {Updated yesterday} (other) {Updated ${n} days ago}'
+	String updatedDays({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Updated yesterday',
+		other: 'Updated ${n} days ago',
+	);
+
+	/// en: '(one) {Updated a month ago} (other) {Updated ${n} months ago}'
+	String updatedMonths({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Updated a month ago',
+		other: 'Updated ${n} months ago',
+	);
+
+	/// en: '(one) {Updated a year ago} (other) {Updated ${n} years ago}'
+	String updatedYears({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: 'Updated a year ago',
+		other: 'Updated ${n} years ago',
+	);
+
+	/// en: '${size} context'
+	String contextLength({required Object size}) => '${size} context';
+
+	/// en: 'Free'
+	String get priceFree => 'Free';
+
+	/// en: 'Low cost'
+	String get priceLow => 'Low cost';
+
+	/// en: 'Mid-priced'
+	String get priceMedium => 'Mid-priced';
+
+	/// en: 'Expensive'
+	String get priceHigh => 'Expensive';
+
+	/// en: '${model} is no longer offered. Pick another model below.'
+	String savedModelGone({required Object model}) => '${model} is no longer offered. Pick another model below.';
+
+	/// en: 'Update model'
+	String get updateModel => 'Update model';
+
+	/// en: 'Updating: ${status}'
+	String updating({required Object status}) => 'Updating: ${status}';
+
+	/// en: '${model} is up to date'
+	String updateDone({required Object model}) => '${model} is up to date';
+
+	/// en: 'Ollama no longer has this model in its library. Pick another model.'
+	String get pullErrorUnknown => 'Ollama no longer has this model in its library. Pick another model.';
+
+	/// en: 'Not enough disk space on the server to update the model.'
+	String get pullErrorDisk => 'Not enough disk space on the server to update the model.';
+
+	/// en: 'Updating the model failed: ${reason}'
+	String pullErrorFailed({required Object reason}) => 'Updating the model failed: ${reason}';
+
+	/// en: 'Search the web'
+	String get webSearch => 'Search the web';
+
+	/// en: 'ollama.com key for web search (optional)'
+	String get ollamaWebKey => 'ollama.com key for web search (optional)';
+
+	/// en: 'Without this key Big P searches Wikipedia only.'
+	String get ollamaWebKeyHelp => 'Without this key Big P searches Wikipedia only.';
+
+	/// en: 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama's web search.'
+	String get webSearchNoteServer => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.';
+
+	/// en: 'The description of a title you look for goes to Wikipedia and Ollama's web search.'
+	String get webSearchNoteCloud => 'The description of a title you look for goes to Wikipedia and Ollama\'s web search.';
+
+	/// en: 'The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.'
+	String get webSearchNoteOpenRouter => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.';
+
+	/// en: 'Big P's voice'
+	String get voice => 'Big P\'s voice';
+
+	/// en: 'Short spoken reactions. Never while you dictate or watch something.'
+	String get voiceNote => 'Short spoken reactions. Never while you dictate or watch something.';
+}
+
+// Path: assistant.option
+class TranslationsAssistantOptionEn {
+	TranslationsAssistantOptionEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Requestable'
+	String get notRequested => 'Requestable';
+}
+
+// Path: assistant.displays
+class TranslationsAssistantDisplaysEn {
+	TranslationsAssistantDisplaysEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${count} titles on ${server} are missing on ${other}'
+	String missing({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}';
+
+	/// en: '${count}× watched'
+	String plays({required Object count}) => '${count}× watched';
+
+	/// en: 'No watch data available for ${server}.'
+	String noSource({required Object server}) => 'No watch data available for ${server}.';
+
+	/// en: '${count}×'
+	String playsShort({required Object count}) => '${count}×';
+
+	/// en: 'Right now'
+	String get watchNow => 'Right now';
+
+	/// en: 'Last ${n} days'
+	String watchDays({required Object n}) => 'Last ${n} days';
+
+	/// en: 'Nobody is watching right now.'
+	String get nobodyNow => 'Nobody is watching right now.';
+
+	/// en: 'Nothing was watched in this period.'
+	String get nothingWatched => 'Nothing was watched in this period.';
+
+	/// en: 'Not every server could be read in time, so this may be incomplete.'
+	String get partialData => 'Not every server could be read in time, so this may be incomplete.';
+
+	/// en: 'Watch stats'
+	String get watchTitle => 'Watch stats';
+
+	/// en: 'plays'
+	String get playsTotal => 'plays';
+}
+
+// Path: assistant.followUp
+class TranslationsAssistantFollowUpEn {
+	TranslationsAssistantFollowUpEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Who is watching right now?'
+	String get watchNow => 'Who is watching right now?';
+
+	/// en: 'Who watched the most in the last 30 days?'
+	String get watchMonth => 'Who watched the most in the last 30 days?';
+
+	/// en: 'Who watched the most this week?'
+	String get watchWeek => 'Who watched the most this week?';
+
+	/// en: 'Who watched today?'
+	String get watchToday => 'Who watched today?';
+
+	/// en: 'Who watched yesterday?'
+	String get watchYesterday => 'Who watched yesterday?';
+
+	List<String> get tonight => [
+		'Give me a comedy for tonight.',
+		'Find an exciting movie for tonight.',
+		'Do I have something for the kids?',
+		'Which series can I start now?',
+	];
+	List<String> get recent => [
+		'What was added to my library lately?',
+		'Which series were added recently?',
+		'What was added this week?',
+	];
+	List<String> get unwatched => [
+		'Which films in my library have I not seen yet?',
+		'Which movies have sat unwatched in my library for a long time?',
+	];
+	List<String> get popular => [
+		'Which popular films do I not have yet?',
+		'Which popular new movies don\'t I have yet?',
+	];
+
+	/// en: 'Which films are missing between my servers?'
+	String get missingMovies => 'Which films are missing between my servers?';
+
+	/// en: 'Which series are missing between my servers?'
+	String get missingShows => 'Which series are missing between my servers?';
+
+	/// en: 'Which tasks are running on my servers now?'
+	String get jobs => 'Which tasks are running on my servers now?';
+
+	/// en: 'Did any task fail today?'
+	String get failedJobs => 'Did any task fail today?';
+}
+
+// Path: assistant.match
+class TranslationsAssistantMatchEn {
+	TranslationsAssistantMatchEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'In your library · ${servers}'
+	String inLibrary({required Object servers}) => 'In your library · ${servers}';
+
+	/// en: 'possibly'
+	String get maybe => 'possibly';
+
+	/// en: 'Movie'
+	String get movie => 'Movie';
+
+	/// en: 'Series'
+	String get show => 'Series';
+
+	/// en: 'Episode'
+	String get episode => 'Episode';
+
+	/// en: 'S${season} E${episode}'
+	String episodeCode({required Object season, required Object episode}) => 'S${season} E${episode}';
+}
+
 // Path: unifiedCatalog.discovery.semantics
 class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 	TranslationsUnifiedCatalogDiscoverySemanticsEn.internal(this._root);
@@ -7134,6 +8187,93 @@ class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 
 	/// en: 'View all series, opens the complete catalog'
 	String get viewAllSeries => 'View all series, opens the complete catalog';
+}
+
+// Path: assistant.jobs.scanLibrary
+class TranslationsAssistantJobsScanLibraryEn {
+	TranslationsAssistantJobsScanLibraryEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scan running'
+	String get running => 'Scan running';
+
+	/// en: 'Scan finished'
+	String get done => 'Scan finished';
+
+	/// en: 'Scan failed'
+	String get failed => 'Scan failed';
+
+	/// en: 'Scan still running in the background'
+	String get background => 'Scan still running in the background';
+}
+
+// Path: assistant.jobs.retryJob
+class TranslationsAssistantJobsRetryJobEn {
+	TranslationsAssistantJobsRetryJobEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Job running'
+	String get running => 'Job running';
+
+	/// en: 'Job finished'
+	String get done => 'Job finished';
+
+	/// en: 'Job failed'
+	String get failed => 'Job failed';
+
+	/// en: 'Job still running in the background'
+	String get background => 'Job still running in the background';
+}
+
+// Path: assistant.confirm.titles
+class TranslationsAssistantConfirmTitlesEn {
+	TranslationsAssistantConfirmTitlesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scan library'
+	String get scanLibrary => 'Scan library';
+
+	/// en: 'Refresh metadata'
+	String get refreshMetadata => 'Refresh metadata';
+
+	/// en: 'Cancel job'
+	String get cancelJob => 'Cancel job';
+
+	/// en: 'Retry job'
+	String get retryJob => 'Retry job';
+
+	/// en: 'Create user'
+	String get createUser => 'Create user';
+
+	/// en: 'Change access'
+	String get setLibraryAccess => 'Change access';
+
+	/// en: 'Remove user'
+	String get removeUser => 'Remove user';
+
+	/// en: 'Create home row'
+	String get createHomeRow => 'Create home row';
+
+	/// en: 'Create collection'
+	String get createCollection => 'Create collection';
+
+	/// en: 'Request title'
+	String get requestTitle => 'Request title';
+
+	/// en: 'Download episodes'
+	String get downloadEpisodes => 'Download episodes';
+
+	/// en: 'Download subtitle'
+	String get downloadSubtitle => 'Download subtitle';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -7295,6 +8435,8 @@ extension on Translations {
 			'settings.showEpisodeNumberOnCardsDescription' => 'Show season and episode number on episode cards',
 			'settings.showSeasonPostersOnTabs' => 'Show Season Posters on Tabs',
 			'settings.showSeasonPostersOnTabsDescription' => 'Show each season\'s poster above its tab',
+			'settings.liquidGlass' => 'Liquid Glass',
+			'settings.liquidGlassDescription' => 'Glass surfaces on the tab bar, player and buttons.',
 			'settings.tvFullCardLayout' => 'Full TV Cards',
 			'settings.tvFullCardLayoutDescription' => 'Use image-only TV cards with actor names overlaid',
 			'settings.focusGlow' => 'Focus Glow',
@@ -7326,6 +8468,15 @@ extension on Translations {
 			'settings.bufferSizeWarning' => ({required Object heap, required Object size}) => '${heap}MB memory available. A ${size}MB buffer may affect playback.',
 			'settings.defaultQualityTitle' => 'Default Quality',
 			'settings.defaultQualityDescription' => 'Used when starting playback. Lower values reduce bandwidth.',
+			'settings.displayMaxResolutionTitle' => 'Maximum Resolution',
+			'settings.displayMaxResolutionDescription' => 'Caps what this device asks a server for, even when the file is larger.',
+			'settings.displayMaxResolutionNow' => ({required Object resolution}) => 'detected: ${resolution}',
+			'settings.displayMaxResolutionOptions.auto' => 'Auto',
+			'settings.displayMaxResolutionOptions.hd1080' => '1080p',
+			'settings.displayMaxResolutionOptions.uhd2160' => '4K',
+			'settings.displayMaxResolutionOptionDescriptions.auto' => 'Follow the display where the app can read it',
+			'settings.displayMaxResolutionOptionDescriptions.hd1080' => 'Never ask for more than 1920x1080',
+			'settings.displayMaxResolutionOptionDescriptions.uhd2160' => 'Never ask for more than 3840x2160',
 			'settings.subtitleStyling' => 'Subtitle Styling',
 			'settings.subtitleStylingDescription' => 'Customize subtitle appearance',
 			'settings.smallSkipDuration' => 'Small Skip Duration',
@@ -7576,6 +8727,12 @@ extension on Translations {
 			'fileInfo.duration' => 'Duration',
 			'fileInfo.optimizedForStreaming' => 'Optimized for Streaming',
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
+			'detailActions.watchlist' => 'Watchlist',
+			'detailActions.trailer' => 'Trailer',
+			'detailActions.rate' => 'Rate',
+			'detailActions.watched' => 'Watched',
+			'detailActions.download' => 'Download',
+			'detailActions.more' => 'More',
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
@@ -7639,6 +8796,8 @@ extension on Translations {
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
 			'videoControls.sleepTimerDurationHeader' => 'Timer',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playbackWillPauseAtEnd' => 'Playback will pause at the end of this video',
 			'videoControls.stillWatching' => 'Still watching?',
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
@@ -7656,8 +8815,6 @@ extension on Translations {
 			'videoControls.nextButton' => 'Next episode',
 			'videoControls.previousChapterButton' => 'Previous chapter',
 			'videoControls.nextChapterButton' => 'Next chapter',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.muteButton' => 'Mute',
 			'videoControls.unmuteButton' => 'Unmute',
 			'videoControls.settingsButton' => 'Playback Settings',
@@ -7903,6 +9060,7 @@ extension on Translations {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Session expired for ${count} servers',
 			'connections.signInAgain' => 'Sign in again',
 			'connections.editJellyfinTitle' => 'Edit Jellyfin connection',
+			'connections.editEmbyTitle' => 'Edit Emby connection',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Add or remove URLs for ${serverName}. Pleya will use the reachable URL with the lowest latency.',
 			'connections.localSources' => 'Sources on this device',
 			'connections.removeSource' => 'Remove source',
@@ -7951,11 +9109,14 @@ extension on Translations {
 			'discover.watchedAgo.months' => ({required Object count}) => '${count} months ago',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
+			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
 			'discover.topRated' => 'Top Rated',
 			'discover.somethingDifferent' => 'Something Different',
 			'discover.topPicksForYou' => 'Top Picks for You',
 			'discover.becauseYouLike' => ({required Object genre}) => 'Because you like ${genre}',
+			'discover.moreWithActor' => ({required Object name}) => 'More with ${name}',
+			'discover.moreFromDirector' => ({required Object name}) => 'More from ${name}',
 			'discover.hiddenGems' => 'Hidden Gems',
 			'discover.watchedBy' => ({required Object names}) => 'Watched by ${names}',
 			'discover.watchedByYou' => 'You',
@@ -7966,6 +9127,23 @@ extension on Translations {
 			'discover.statsWatchTime' => ({required Object duration}) => '${duration} watched',
 			'discover.statsRecent' => ({required Object count}) => '${count} in the last 30 days',
 			'discover.watchingSeriesBy' => ({required Object names}) => 'Watching this show: ${names}',
+			'discover.activityPlays' => ({required Object count}) => 'Played ${count}×',
+			'discover.activityViewers' => ({required Object count}) => '${count} viewers',
+			'discover.activityOwnProgress' => ({required Object season, required Object episode}) => 'You\'re at S${season} E${episode}',
+			'discover.techSubtitles' => 'Subtitles',
+			'discover.techEpisode' => ({required Object season, required Object episode}) => 'Next episode · S${season} E${episode}',
+			'discover.seasonsHeading' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 season', other: '${n} seasons', ), 
+			'discover.seasonEpisodes' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 episode', other: '${n} episodes', ), 
+			'discover.seasonEpisodesLeft' => ({required Object count}) => '${count} left to watch',
+			'discover.trackScopeMovie' => ({required Object title}) => '${title} · applies to this film',
+			'discover.trackScopeSeries' => ({required Object title}) => '${title} · for this series',
+			'discover.trackChoiceNote' => 'Your choice is remembered and used when you press Resume or Play.',
+			'discover.trackChoiceNoteOnce' => 'Not remembered. Applies when you play from this page; your profile language comes first.',
+			'discover.scoreRtCritics' => 'Rotten Tomatoes critics',
+			'discover.scoreRtAudience' => 'Rotten Tomatoes audience',
+			'discover.scoreCommunity' => 'Community score',
+			'discover.reviews' => 'Reviews',
+			'discover.reviewOpenSource' => 'Read at source',
 			'mobileDetail.similarTab' => 'Similar',
 			'mobileDetail.extrasTab' => 'Extras',
 			'errors.searchFailed' => 'Search failed',
@@ -8132,6 +9310,8 @@ extension on Translations {
 			'watchlist.title' => 'Watchlist',
 			'watchlist.seeAll' => 'See all',
 			'watchlist.empty' => 'Nothing on your watchlist yet',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.emptyBody' => 'Titles you add from Plex or mark as a Jellyfin favorite show up here.',
 			'watchlist.emptyFiltered' => 'No titles match this filter',
 			'watchlist.retry' => 'Try again',
@@ -8170,8 +9350,6 @@ extension on Translations {
 			'liveTv.unknownProgram' => 'Unknown Program',
 			'liveTv.unknownHub' => 'Unknown',
 			'liveTv.unknownError' => 'Unknown error',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.channelNumber' => ({required Object number}) => 'Channel ${number}',
 			'liveTv.unknownChannel' => 'Unknown channel',
 			'liveTv.live' => 'LIVE',
@@ -8646,6 +9824,8 @@ extension on Translations {
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Aired)',
 			'metadataEdit.tvdbAbsolute' => 'TheTVDB (Absolute)',
 			'metadataEdit.metadataLanguage' => 'Metadata Language',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.useOriginalTitle' => 'Use Original Title',
 			'metadataEdit.preferredAudioLanguage' => 'Preferred Audio Language',
 			'metadataEdit.preferredSubtitleLanguage' => 'Preferred Subtitle Language',
@@ -8684,8 +9864,6 @@ extension on Translations {
 			'seerr.notConfigured' => 'Not configured',
 			'seerr.serverUrl' => 'Server URL',
 			'seerr.serverUrlHint' => 'https://requests.example.com',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.authMode' => 'Sign-in method',
 			'seerr.authPlex' => 'Sign in with Plex',
 			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
@@ -8874,8 +10052,8 @@ extension on Translations {
 			'addServer.serverUrls' => 'Server URLs',
 			'addServer.serverUrlsHelper' => 'Multiple URLs allowed, separated by commas.',
 			'addServer.findServer' => 'Find server',
-			'addServer.searchingLocalServers' => 'Looking for local Jellyfin servers...',
-			'addServer.localServers' => 'Local Jellyfin servers',
+			'addServer.searchingLocalServers' => 'Looking for servers on your network...',
+			'addServer.localServers' => 'Servers on your network',
 			'addServer.username' => 'Username',
 			'addServer.password' => 'Password',
 			'addServer.signIn' => 'Sign in',
@@ -8889,6 +10067,7 @@ extension on Translations {
 			'addServer.duplicatePlexAccount' => 'Already signed in to Plex. Sign out to switch accounts.',
 			'addServer.failedToRegisterAccount' => 'Failed to register account',
 			'addServer.enterJellyfinUrlError' => 'Enter your Jellyfin server URL',
+			'addServer.enterEmbyUrlError' => 'Enter your Emby server URL',
 			'addServer.addConnectionTitle' => 'Add connection',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Add to ${name}',
 			'addServer.signInWithPlexCard' => 'Sign in with Plex',
@@ -8897,6 +10076,9 @@ extension on Translations {
 			'addServer.connectToJellyfinCard' => 'Connect to Jellyfin',
 			'addServer.connectToJellyfinCardSubtitle' => 'Enter your server URL, username, and password.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Sign in to a Jellyfin server. Binds to ${name}.',
+			'addServer.addEmbyTitle' => 'Add Emby server',
+			'addServer.connectToEmbyCard' => 'Connect to Emby',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Sign in to an Emby server. Binds to ${name}.',
 			'addServer.connectToPleyaServerCard' => 'Connect to Pleya Server',
 			'addServer.connectToPleyaServerCardSubtitle' => 'Your own server. Enter its address to continue.',
 			'addServer.connectToPleyaServerCardSubtitleScoped' => ({required Object name}) => 'Sign in to a Pleya Server. Binds to ${name}.',
@@ -8981,6 +10163,7 @@ extension on Translations {
 			'sourcePicker.noneReachableTitle' => 'No source is currently reachable.',
 			'sourcePicker.reauthRequiredTitle' => 'Sign in again to reach this title.',
 			'sourcePicker.manageServers' => 'Manage servers',
+			'sourcePicker.source' => 'Source',
 			'sourcePicker.sourceLabel' => ({required Object source}) => 'Source: ${source}',
 			'sourcePicker.change' => 'Change',
 			'sourcePicker.playbackFailedTitle' => 'This source could not be played.',
@@ -9018,12 +10201,15 @@ extension on Translations {
 			'unifiedCatalog.filters.status' => 'Status',
 			'unifiedCatalog.filters.genre' => 'Genre',
 			'unifiedCatalog.filters.year' => 'Year',
+			'unifiedCatalog.filters.contentRating' => 'Age rating',
 			'unifiedCatalog.filters.servers' => 'Servers',
 			'unifiedCatalog.filters.libraries' => 'Libraries',
 			'unifiedCatalog.filters.apply' => 'Apply',
 			'unifiedCatalog.filters.clearAll' => 'Clear all',
 			'unifiedCatalog.filters.all' => 'All',
 			'unifiedCatalog.filters.unwatched' => 'Unwatched',
+			'unifiedCatalog.filters.inProgress' => 'In progress',
+			'unifiedCatalog.filters.watched' => 'Watched',
 			'unifiedCatalog.filters.unsupported' => 'Not available for the current sources',
 			'unifiedCatalog.filters.someUnavailable' => 'Some filters are unavailable for the selected sources',
 			'unifiedCatalog.filters.noValues' => 'Nothing to choose from',
@@ -9152,6 +10338,8 @@ extension on Translations {
 			'languageSettings.subtitleFallback' => 'Subtitle fallback language',
 			'languageSettings.subtitleFallbackNote' => 'Used when your preferred language is missing. Missing as well, and subtitles go off',
 			'languageSettings.subtitleDisplay' => 'Show subtitles',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.subtitleDisplayNote' => 'When subtitles come on by themselves',
 			'languageSettings.subtitleDisplayForeign' => 'With foreign audio',
 			'languageSettings.subtitleDisplayAlways' => 'Always',
@@ -9189,6 +10377,255 @@ extension on Translations {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
+			'assistant.tileTitle' => 'Big P',
+			'assistant.tileSubtitle' => 'Pleya Assistant',
+			'assistant.providerLabel' => 'AI provider',
+			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
+			'assistant.mobile.examples.0.0' => 'What can I watch tonight?',
+			'assistant.mobile.examples.0.1' => 'Give me a comedy for tonight.',
+			'assistant.mobile.examples.0.2' => 'Find an exciting movie for tonight.',
+			'assistant.mobile.examples.1.0' => 'Which series can I start now?',
+			'assistant.mobile.examples.2.0' => 'Do I have something for the kids?',
+			'assistant.mobile.examples.3.0' => 'Which movies haven\'t I seen yet?',
+			'assistant.mobile.examples.3.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.mobile.examples.4.0' => 'What was added this week?',
+			'assistant.mobile.examples.5.0' => 'Who watched the most this week?',
+			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
+			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
+			'assistant.mobile.setup' => 'Set up model',
+			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
+			'assistant.mobile.listening' => 'Listening…',
+			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
+			'assistant.mobile.askFurther' => 'Ask more',
+			'assistant.mobile.moreTitles' => ({required Object n}) => '${n} more titles',
+			'assistant.mobile.searchAsk' => 'Ask Big P',
+			'assistant.mobile.faceButton' => 'Summon Big P',
+			'assistant.mobile.notConfirmedYet' => 'Choose first: confirm or cancel.',
+			'assistant.locked.badge' => 'Not available on this account',
+			'assistant.locked.title' => 'Big P is not turned on for this account yet',
+			'assistant.locked.body' => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.',
+			'assistant.locked.note' => 'You cannot turn it on or buy it here. Once your account has access, this tile opens the question screen.',
+			'assistant.locked.back' => 'Back to My Pleya',
+			'assistant.setup.badge' => 'Not set up yet',
+			'assistant.setup.title' => 'To use Big P, first set up an AI provider.',
+			'assistant.setup.body' => 'Big P sends your question to a language model to understand what you mean. Pleya checks your rights, asks for confirmation on sensitive actions and carries them out itself.',
+			'assistant.setup.action' => 'Set up Big P',
+			'assistant.setup.back' => 'Back',
+			'assistant.idle.greeting' => ({required Object name}) => 'Hi ${name}, what needs doing?',
+			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
+			'assistant.idle.ask' => 'Ask Big P',
+			'assistant.idle.examplesHeader' => 'For example',
+			'assistant.idle.examples.0.0' => 'Which tasks failed on my servers today? Restart them.',
+			'assistant.idle.examples.1.0' => 'Scan all movie libraries on all my servers.',
+			'assistant.idle.examples.2.0' => 'Who watched the most this week?',
+			'assistant.idle.examples.2.1' => 'Who is watching right now?',
+			'assistant.idle.examples.3.0' => 'What can I watch tonight?',
+			'assistant.idle.examples.4.0' => 'What was added this week?',
+			'assistant.idle.examples.5.0' => 'Which popular new movies don\'t I have yet?',
+			'assistant.listening.title' => 'I\'m listening…',
+			'assistant.listening.body' => 'Speak your question.',
+			'assistant.working.status' => 'Let me check…',
+			'assistant.working.busy' => 'Working on your question…',
+			'assistant.working.stillChecking' => 'Found so far. Big P is still checking…',
+			'assistant.steps.withServer' => ({required Object server, required Object step}) => '${server} · ${step}',
+			'assistant.steps.listServers' => 'Checking servers',
+			'assistant.steps.listLibraries' => 'Fetching libraries',
+			'assistant.steps.findMedia' => 'Finding the title',
+			'assistant.steps.listJobs' => 'Fetching jobs',
+			'assistant.steps.listUsers' => 'Fetching users',
+			'assistant.steps.scanLibrary' => 'Scanning library',
+			'assistant.steps.refreshMetadata' => 'Refreshing metadata',
+			'assistant.steps.cancelJob' => 'Cancelling job',
+			'assistant.steps.retryJob' => 'Retrying job',
+			'assistant.steps.createUser' => 'Creating user',
+			'assistant.steps.setUserLibraryAccess' => 'Setting library access',
+			'assistant.steps.removeUser' => 'Removing user',
+			'assistant.steps.searchCatalog' => 'Searching the catalog',
+			'assistant.steps.createHomeRow' => 'Creating home row',
+			'assistant.steps.createCollection' => 'Creating collection',
+			'assistant.steps.compareServers' => 'Comparing servers',
+			'assistant.steps.watchStats' => 'Fetching watch statistics',
+			'assistant.steps.downloadNext' => 'Downloading next episodes',
+			'assistant.steps.findSubtitles' => 'Finding subtitles',
+			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',
+			'assistant.steps.findRequestTitle' => 'Searching Seerr',
+			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
+			'assistant.steps.requestTitle' => 'Requesting title',
+			'assistant.steps.findTitle' => 'Finding the title',
+			'assistant.steps.fallback' => 'Working',
+			'assistant.jobs.scanLibrary.running' => 'Scan running',
+			'assistant.jobs.scanLibrary.done' => 'Scan finished',
+			'assistant.jobs.scanLibrary.failed' => 'Scan failed',
+			'assistant.jobs.scanLibrary.background' => 'Scan still running in the background',
+			'assistant.jobs.retryJob.running' => 'Job running',
+			'assistant.jobs.retryJob.done' => 'Job finished',
+			'assistant.jobs.retryJob.failed' => 'Job failed',
+			'assistant.jobs.retryJob.background' => 'Job still running in the background',
+			'assistant.result.doneBy' => 'Carried out by Pleya',
+			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
+			'assistant.result.done' => 'Done',
+			'assistant.result.cancel' => 'Cancel',
+			'assistant.actions.scanLibrary' => 'Scan started',
+			'assistant.actions.refreshMetadata' => 'Metadata refresh started',
+			'assistant.actions.cancelJob' => 'Job cancelled',
+			'assistant.actions.retryJob' => 'Job restarted',
+			'assistant.actions.createUser' => 'User created',
+			'assistant.actions.setLibraryAccess' => 'Access changed',
+			'assistant.actions.removeUser' => 'User removed',
+			'assistant.actions.createHomeRow' => 'Home row created',
+			'assistant.actions.createCollection' => 'Collection created',
+			'assistant.actions.requestTitle' => 'Request sent',
+			'assistant.actions.downloadEpisodes' => 'Download started',
+			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
+			'assistant.confirm.header' => 'Pleya asks for confirmation',
+			'assistant.confirm.titles.scanLibrary' => 'Scan library',
+			'assistant.confirm.titles.refreshMetadata' => 'Refresh metadata',
+			'assistant.confirm.titles.cancelJob' => 'Cancel job',
+			'assistant.confirm.titles.retryJob' => 'Retry job',
+			'assistant.confirm.titles.createUser' => 'Create user',
+			'assistant.confirm.titles.setLibraryAccess' => 'Change access',
+			'assistant.confirm.titles.removeUser' => 'Remove user',
+			'assistant.confirm.titles.createHomeRow' => 'Create home row',
+			'assistant.confirm.titles.createCollection' => 'Create collection',
+			'assistant.confirm.titles.requestTitle' => 'Request title',
+			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
+			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
+			'assistant.confirm.user' => 'User',
+			'assistant.confirm.server' => 'Server',
+			'assistant.confirm.access' => 'Access',
+			'assistant.confirm.allLibraries' => 'All libraries',
+			'assistant.confirm.titlesLabel' => 'Titles',
+			'assistant.confirm.admin' => 'Admin',
+			'assistant.confirm.yes' => 'Yes',
+			'assistant.confirm.no' => 'No',
+			'assistant.confirm.password' => 'Password',
+			'assistant.confirm.passwordPlaceholder' => 'Choose a password',
+			'assistant.confirm.passwordNote' => 'This password does not go to Big P or to the AI provider.',
+			'assistant.confirm.approve' => 'Confirm',
+			'assistant.confirm.create' => 'Create',
+			'assistant.notes.plexManagedHomeUser' => 'Managed Plex Home user, with a share on this server.',
+			'assistant.notes.plexShare' => 'A share on this Plex server.',
+			'assistant.notes.plexHomeMember' => 'Member of your Plex Home. Only the share on this server changes.',
+			'assistant.notes.replacesAllAccess' => 'Replaces all existing access of this user on this server.',
+			'assistant.ends.noTools' => 'There is nothing Big P can do on your servers right now.',
+			'assistant.ends.toolsUnsupported' => 'This model cannot use tools. Pick another model in the Big P settings.',
+			'assistant.ends.stepLimit' => 'That took too many steps. Try a shorter question.',
+			'assistant.ends.notEntitled' => 'Big P is not available on this account.',
+			'assistant.ends.providerUnauthorized' => 'The AI provider rejected the key. Check it in the Big P settings.',
+			'assistant.ends.providerUnreachable' => 'The AI provider cannot be reached.',
+			'assistant.ends.providerTimeout' => 'The AI provider did not answer in time.',
+			'assistant.ends.providerBadResponse' => 'The AI provider gave an unexpected answer.',
+			'assistant.ends.nothingChanged' => 'Nothing was changed.',
+			'assistant.ends.modelMissing' => 'The chosen model is gone. Pick another one in the Big P settings.',
+			'assistant.summonHint' => 'Hold Play/Pause to call Big P',
+			'assistant.contextAction' => 'Ask Big P',
+			'assistant.settings.title' => 'Set up Big P',
+			'assistant.settings.providerHeading' => 'Choose where Big P gets its language model',
+			'assistant.settings.ollamaServer' => 'Ollama server',
+			'assistant.settings.ollamaServerDescription' => 'Runs on your own network, for example on your NAS.',
+			'assistant.settings.ollamaCloud' => 'Ollama Cloud',
+			'assistant.settings.ollamaCloudDescription' => 'Models that Ollama runs for you.',
+			'assistant.settings.openRouter' => 'OpenRouter',
+			'assistant.settings.openRouterDescription' => 'One key for models from several vendors.',
+			'assistant.settings.needsAddress' => 'Server address',
+			'assistant.settings.needsKey' => 'API key',
+			'assistant.settings.dataNote' => 'Your question goes to the provider, with the names of libraries, servers and users needed to answer it. Passwords and tokens stay in Pleya.',
+			'assistant.settings.serverUrl' => 'Server address',
+			'assistant.settings.serverUrlHint' => 'http://192.168.1.10:11434',
+			'assistant.settings.headerName' => 'Extra header name (optional)',
+			'assistant.settings.headerValue' => 'Extra header value',
+			'assistant.settings.headerHelp' => 'Only needed when the server sits behind a reverse proxy that asks for its own header.',
+			'assistant.settings.apiKey' => 'API key',
+			'assistant.settings.fetchModels' => 'Fetch models',
+			'assistant.settings.modelsHeading' => 'Choose a model',
+			'assistant.settings.modelsHelp' => 'Only models that can use tools are listed.',
+			'assistant.settings.noToolModels' => 'No models here can use tools. Install or pick one that can.',
+			'assistant.settings.test' => 'Test connection',
+			'assistant.settings.testOk' => ({required Object model}) => 'Connection works with ${model}',
+			'assistant.settings.modelMissing' => 'The chosen model is no longer available.',
+			'assistant.settings.save' => 'Save',
+			'assistant.settings.change' => 'Change',
+			'assistant.settings.disable' => 'Turn off Big P',
+			'assistant.settings.disableConfirm' => 'Turn off Big P?',
+			'assistant.settings.disableBody' => 'The provider and key are removed from this device. You can set Big P up again at any time.',
+			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
+			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
+			'assistant.settings.replace' => 'Replace',
+			'assistant.settings.currentModel' => 'Model',
+			'assistant.settings.keyStored' => 'Stored, hidden',
+			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',
+			'assistant.settings.errorHeaderInvalid' => 'This header name or value is not valid.',
+			'assistant.settings.errorKeyRequired' => 'Enter the API key.',
+			'assistant.settings.errorUnauthorized' => 'The key was rejected.',
+			'assistant.settings.errorUnreachable' => 'Server not reachable. Check the address and, for https, the certificate.',
+			'assistant.settings.errorTimeout' => 'The server did not answer in time.',
+			'assistant.settings.errorToolsUnsupported' => 'This model cannot use tools.',
+			'assistant.settings.errorBadResponse' => 'Unexpected answer from the server. Check the address.',
+			'assistant.settings.refreshModels' => 'Refresh',
+			'assistant.settings.showMore' => ({required Object count}) => 'Show more (${count})',
+			'assistant.settings.updatedToday' => 'Updated today',
+			'assistant.settings.updatedDays' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Updated yesterday', other: 'Updated ${n} days ago', ), 
+			'assistant.settings.updatedMonths' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Updated a month ago', other: 'Updated ${n} months ago', ), 
+			'assistant.settings.updatedYears' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'Updated a year ago', other: 'Updated ${n} years ago', ), 
+			'assistant.settings.contextLength' => ({required Object size}) => '${size} context',
+			'assistant.settings.priceFree' => 'Free',
+			'assistant.settings.priceLow' => 'Low cost',
+			'assistant.settings.priceMedium' => 'Mid-priced',
+			'assistant.settings.priceHigh' => 'Expensive',
+			'assistant.settings.savedModelGone' => ({required Object model}) => '${model} is no longer offered. Pick another model below.',
+			'assistant.settings.updateModel' => 'Update model',
+			'assistant.settings.updating' => ({required Object status}) => 'Updating: ${status}',
+			'assistant.settings.updateDone' => ({required Object model}) => '${model} is up to date',
+			'assistant.settings.pullErrorUnknown' => 'Ollama no longer has this model in its library. Pick another model.',
+			'assistant.settings.pullErrorDisk' => 'Not enough disk space on the server to update the model.',
+			'assistant.settings.pullErrorFailed' => ({required Object reason}) => 'Updating the model failed: ${reason}',
+			'assistant.settings.webSearch' => 'Search the web',
+			'assistant.settings.ollamaWebKey' => 'ollama.com key for web search (optional)',
+			'assistant.settings.ollamaWebKeyHelp' => 'Without this key Big P searches Wikipedia only.',
+			'assistant.settings.webSearchNoteServer' => 'Off by default, so everything stays on your network. When on, the description of a title you look for goes to Wikipedia and, with an ollama.com key, to Ollama\'s web search.',
+			'assistant.settings.webSearchNoteCloud' => 'The description of a title you look for goes to Wikipedia and Ollama\'s web search.',
+			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
+			'assistant.settings.voice' => 'Big P\'s voice',
+			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
+			'assistant.youAsked' => 'You asked:',
+			'assistant.option.notRequested' => 'Requestable',
+			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',
+			'assistant.displays.plays' => ({required Object count}) => '${count}× watched',
+			'assistant.displays.noSource' => ({required Object server}) => 'No watch data available for ${server}.',
+			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
+			'assistant.displays.watchNow' => 'Right now',
+			'assistant.displays.watchDays' => ({required Object n}) => 'Last ${n} days',
+			'assistant.displays.nobodyNow' => 'Nobody is watching right now.',
+			'assistant.displays.nothingWatched' => 'Nothing was watched in this period.',
+			'assistant.displays.partialData' => 'Not every server could be read in time, so this may be incomplete.',
+			'assistant.displays.watchTitle' => 'Watch stats',
+			'assistant.displays.playsTotal' => 'plays',
+			'assistant.followUp.watchNow' => 'Who is watching right now?',
+			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
+			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
+			'assistant.followUp.watchToday' => 'Who watched today?',
+			'assistant.followUp.watchYesterday' => 'Who watched yesterday?',
+			'assistant.followUp.tonight.0' => 'Give me a comedy for tonight.',
+			'assistant.followUp.tonight.1' => 'Find an exciting movie for tonight.',
+			'assistant.followUp.tonight.2' => 'Do I have something for the kids?',
+			'assistant.followUp.tonight.3' => 'Which series can I start now?',
+			'assistant.followUp.recent.0' => 'What was added to my library lately?',
+			'assistant.followUp.recent.1' => 'Which series were added recently?',
+			'assistant.followUp.recent.2' => 'What was added this week?',
+			'assistant.followUp.unwatched.0' => 'Which films in my library have I not seen yet?',
+			'assistant.followUp.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.followUp.popular.0' => 'Which popular films do I not have yet?',
+			'assistant.followUp.popular.1' => 'Which popular new movies don\'t I have yet?',
+			'assistant.followUp.missingMovies' => 'Which films are missing between my servers?',
+			'assistant.followUp.missingShows' => 'Which series are missing between my servers?',
+			'assistant.followUp.jobs' => 'Which tasks are running on my servers now?',
+			'assistant.followUp.failedJobs' => 'Did any task fail today?',
+			'assistant.match.inLibrary' => ({required Object servers}) => 'In your library · ${servers}',
+			'assistant.match.maybe' => 'possibly',
+			'assistant.match.movie' => 'Movie',
+			'assistant.match.show' => 'Series',
+			'assistant.match.episode' => 'Episode',
+			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
 			_ => null,
 		};
 	}

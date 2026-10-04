@@ -32,10 +32,12 @@ AndroidTvFeatureDetection detectAndroidTvFromSystemFeatures(Iterable<String> fea
 class TvDetectionService {
   static TvDetectionService? _instance;
   static bool? _debugAppleTVOverride;
+  static bool? _debugTVOverride;
   bool _detected = false;
   bool _forceTv = false;
   bool _isTV = false;
   bool _isAppleTV = false;
+  bool _isIOSAppOnMac = false;
   bool _initialized = false;
   List<String> _detectionReasons = const [];
 
@@ -79,6 +81,7 @@ class TvDetectionService {
             iosInfo.utsname.machine.toLowerCase().contains('appletv');
         _detected = _isAppleTV;
         _detectionReasons = _isAppleTV ? const ['apple_tv'] : const [];
+        _isIOSAppOnMac = iosInfo.isiOSAppOnMac;
       }
     }
     _forceTv = forceTv;
@@ -140,14 +143,25 @@ class TvDetectionService {
   // Consulteert ook de compile-time TVOS_BUILD-define (net als isAppleTVSync):
   // de async _detect() kan later klaar zijn dan callers die dit bij opstart
   // lezen (bv. InputModeTracker's mode-initializer).
-  static bool isTVSync() => _debugAppleTVOverride ?? (_tvosBuild || _instance?._isTV == true);
+  static bool isTVSync() => _debugTVOverride ?? _debugAppleTVOverride ?? (_tvosBuild || _instance?._isTV == true);
 
   /// Synchronous Apple TV check (returns false if not initialized or not tvOS).
   static bool isAppleTVSync() => _debugAppleTVOverride ?? (_tvosBuild || _instance?._isAppleTV == true);
 
+  /// The iOS app running on a Mac ("Designed for iPad", the shipped macOS
+  /// build). False until detection ran.
+  static bool isIOSAppOnMacSync() => _instance?._isIOSAppOnMac == true;
+
   @visibleForTesting
   static void debugSetAppleTVOverride(bool? value) {
     _debugAppleTVOverride = value;
+  }
+
+  /// A TV that is not an Apple TV (Android TV) in widget tests: [isTVSync]
+  /// only, [isAppleTVSync] keeps its own answer.
+  @visibleForTesting
+  static void debugSetTVOverride(bool? value) {
+    _debugTVOverride = value;
   }
 
   static List<String> tvDetectionReasonsSync() => _instance?._effectiveDetectionReasons ?? const [];

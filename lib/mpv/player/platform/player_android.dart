@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 
 import '../../../media/loudness_evidence.dart';
+import '../../../services/audio_output_decision.dart';
 import '../../../services/device_performance.dart';
 import '../../../services/settings_service.dart';
 import '../../models.dart';
@@ -18,7 +19,10 @@ class PlayerAndroid extends PlayerBase {
   Map<String, Object?>? _loudnessPayload;
   bool _audioPassthroughEnabled = false;
 
-  static const String _passthroughCodecs = 'ac3,eac3,dts,dts-hd,truehd';
+  /// Android TV hands a bitstream to the receiver over HDMI, the same real
+  /// device passthrough desktop does, so it is the same set in mpv's spelling
+  /// rather than a list of its own.
+  static final String _passthroughCodecs = spdifCodecList(desktopBitstreamCodecs);
 
   /// The native plugin switched from ExoPlayer to its mpv fallback for this
   /// session. Sticky for the instance lifetime, mirroring the native flag

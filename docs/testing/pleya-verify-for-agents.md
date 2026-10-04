@@ -43,6 +43,11 @@ dart run bin/verify.dart run ../scenarios/<name>.yaml --json
 - `ERROR`: the scenario never ran (missing file, parse/validation error, no driver for that
   `target:`). Fix the scenario or the environment, not the assertion.
 
+Big P scenarios (`ios.assistant.*`) need `PLEYA_ASSISTANT_ENABLED=true` in the environment of `run`:
+the iOS simulator driver reads it and adds the matching `--dart-define` to its build
+(`pleya_verify/runner/lib/src/driver/ios_simulator_driver.dart:141`). Without it the rollout gate
+keeps Big P hidden and the scenario fails on a missing face button.
+
 The MCP layer (`pleya_verify/mcp/`) exposes `list_scenarios` and `run_scenario` as tools over
 stdio, for a session that wants structured results without spawning a subprocess directly. Both
 wrap the identical CLI subcommands above; `run_scenario`'s response includes a `reproduce` field
@@ -61,9 +66,11 @@ setup:
   - seed: <fixture catalog name>
   - launch
   - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_profile: {name: Kind}                            # optional: second profile on the same connection
 steps:
   - wait_until: {id: <automation id>, timeout: 30000}
   - assert: {id: <automation id>, insideViewport: true, state: {<field>: <value>}}
+  - assert: {id: <automation id>, present: false}         # the node is not in the tree; no predicate beside it
   - press: <up|down|left|right|select|menu|delete>       # tvOS only
   - snapshot: <name>                                      # writes screenshot + ui-tree
 ```
@@ -80,9 +87,17 @@ fall back to a label-based or geometry-only assertion to work around a missing i
 For a `state:` assertion, use the field the widget itself renders from (a `state:` callback
 mirroring a real `bool`/`enum`), never a proxy that merely correlates with it. `assert:
 {state: {collapsed: !isCollapsed}}` (asserting the boolean *without inverting the bug*) is exactly
-the kind of false-PASS Fase 12 exists to catch; see `pleya_verify/scenarios/tvos.sidebar.collapse.yaml`
-for a fully commented, worked example, including why that scenario asserts on `state.collapsed`
-specifically instead of geometry alone.
+the kind of false-PASS Fase 12 exists to catch; see
+`pleya_verify/scenarios/tvos.nav.focus-switches-destination.yaml` for a commented example that
+asserts `state.active` after every press instead of where the ring is. Since DEC-120 that scenario
+is the reference gate DEC-081 named; `tvos.sidebar.collapse` went with the sidebar.
+
+`present: false` is one snapshot of the tree: the runner looks once and does not wait
+(`_idReady` in `pleya_verify/runner/lib/src/engine/run_scenario.dart`). Before the screen has
+rendered, every id is absent, so the assert would pass on a blank frame. Put a positive anchor from
+the same render directly before it (a `wait_until` or `assert` on a node that must be there), as
+`pleya_verify/scenarios/tvos.search.profile-scope.yaml` does with `tv.search.pill` before asserting
+that the Recent gezocht row is gone.
 
 For geometry assertions (`insideViewport`, `notOverlapping`, `minimumTapTarget`, `below`/`above`/
 `leftOf`/`rightOf`, `sameRow`/`sameColumn`), see `pleya_verify/geometry/SPEC.md` for the full

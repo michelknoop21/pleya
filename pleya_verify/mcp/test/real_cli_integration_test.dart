@@ -22,7 +22,7 @@ void main() {
 
     expect(scenarios, isNotEmpty);
     expect(scenarios.map((s) => s.name), contains('macos.smoke.boot'));
-    expect(scenarios.map((s) => s.name), contains('tvos.sidebar.collapse'));
+    expect(scenarios.map((s) => s.name), contains('tvos.nav.focus-switches-destination'));
     // Every path came from the CLI itself and stays resolvable relative to
     // the runner package directory it was printed from.
     for (final s in scenarios) {

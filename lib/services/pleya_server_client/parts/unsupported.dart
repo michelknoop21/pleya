@@ -14,6 +14,13 @@ part of '../../pleya_server_client.dart';
 ///   * a write that cannot apply returns `false` or does nothing, because
 ///     "operation impossible" is explicitly not the same as "server error".
 ///
+/// The canonical writes below (library refresh, collections, media delete)
+/// are no-ops, so they skip [ServerAuthorityGuard]. The day one of them lifts
+/// out of here into a real part file, it asserts the guard before its first
+/// request, like the admin part does: `assertCanManageServerMetadata()` for
+/// metadata (owner only), `assertCanAdministerServer()` for administration,
+/// which a Pleya Server admin passes as well as the owner.
+///
 /// Nothing here is gated on a runtime check. `ServerCapabilities` already keeps
 /// the affordances off the screen ([PleyaServerCapabilityResolver]); these are
 /// the belt to that pair of braces, for the paths that call a member without
@@ -47,7 +54,9 @@ mixin _PleyaServerUnsupportedMethods {
     void Function(List<MediaItem> itemsSoFar)? onPage,
   }) async => const [];
 
-  /// Scanning is server-side and has no admin endpoint yet. G6.
+  /// The protocol has a library scan (`POST /libraries/{id}/scan`, used by
+  /// `scanLibrary` in the admin part) but no metadata-refresh route, so this
+  /// stays a no-op. G6.
   Future<void> refreshLibraryMetadata(String libraryId) async {}
 
   /// No extras, trailers or behind-the-scenes in the catalogue.

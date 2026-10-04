@@ -41,6 +41,8 @@ class UnifiedCatalogQuery {
   final String? search;
   final bool includeWatched;
   final bool favoritesOnly;
+  final bool inProgressOnly;
+  final bool watchedOnly;
   final String? nameStartsWith;
   final List<String>? genres;
   final List<String>? audioLanguages;
@@ -56,6 +58,8 @@ class UnifiedCatalogQuery {
     this.search,
     this.includeWatched = true,
     this.favoritesOnly = false,
+    this.inProgressOnly = false,
+    this.watchedOnly = false,
     this.nameStartsWith,
     this.genres,
     this.audioLanguages,
@@ -82,6 +86,8 @@ class UnifiedCatalogQuery {
     search: search,
     includeWatched: includeWatched,
     favoritesOnly: favoritesOnly,
+    inProgressOnly: inProgressOnly,
+    watchedOnly: watchedOnly,
     nameStartsWith: nameStartsWith,
     genres: genres,
     audioLanguages: audioLanguages,
@@ -101,6 +107,8 @@ class UnifiedCatalogQuery {
           other.search == search &&
           other.includeWatched == includeWatched &&
           other.favoritesOnly == favoritesOnly &&
+          other.inProgressOnly == inProgressOnly &&
+          other.watchedOnly == watchedOnly &&
           other.nameStartsWith == nameStartsWith &&
           _listEquals(other.genres, genres) &&
           _listEquals(other.audioLanguages, audioLanguages) &&
@@ -117,6 +125,8 @@ class UnifiedCatalogQuery {
     search,
     includeWatched,
     favoritesOnly,
+    inProgressOnly,
+    watchedOnly,
     nameStartsWith,
     genres == null ? null : Object.hashAll(genres!),
     audioLanguages == null ? null : Object.hashAll(audioLanguages!),

@@ -163,6 +163,8 @@
     "showEpisodeNumberOnCardsDescription": "Toon seizoen- en afleveringsnummer op afleveringskaarten",
     "showSeasonPostersOnTabs": "Toon seizoensposters op tabbladen",
     "showSeasonPostersOnTabsDescription": "Toon de poster van elk seizoen boven het tabblad",
+    "liquidGlass": "Liquid Glass",
+    "liquidGlassDescription": "Glazen oppervlakken op de tabbalk, de speler en knoppen.",
     "tvFullCardLayout": "Volledige tv-kaarten",
     "tvFullCardLayoutDescription": "Gebruik tv-kaarten met alleen afbeeldingen en namen van acteurs als overlay",
     "focusGlow": "Focusgloed",
@@ -194,6 +196,19 @@
     "bufferSizeWarning": "${heap}MB geheugen beschikbaar. Een buffer van ${size}MB kan afspelen beïnvloeden.",
     "defaultQualityTitle": "Standaardkwaliteit",
     "defaultQualityDescription": "Wordt gebruikt bij het starten van de weergave. Lagere waarden verminderen de bandbreedte.",
+    "displayMaxResolutionTitle": "Maximale resolutie",
+    "displayMaxResolutionDescription": "Begrenst wat dit apparaat aan een server vraagt, ook als het bestand groter is.",
+    "displayMaxResolutionNow": "gedetecteerd: ${resolution}",
+    "displayMaxResolutionOptions": {
+      "auto": "Automatisch",
+      "hd1080": "1080p",
+      "uhd2160": "4K"
+    },
+    "displayMaxResolutionOptionDescriptions": {
+      "auto": "Volg het scherm waar de app het kan uitlezen",
+      "hd1080": "Vraag nooit meer dan 1920x1080",
+      "uhd2160": "Vraag nooit meer dan 3840x2160"
+    },
     "subtitleStyling": "Ondertitel opmaak",
     "subtitleStylingDescription": "Pas ondertitel uiterlijk aan",
     "smallSkipDuration": "Korte skip duur",
@@ -454,6 +469,14 @@
     "duration": "Duur",
     "optimizedForStreaming": "Geoptimaliseerd voor streaming",
     "has64bitOffsets": "64-bit Offsets"
+  },
+  "detailActions": {
+    "watchlist": "Kijklijst",
+    "trailer": "Trailer",
+    "rate": "Beoordeel",
+    "watched": "Bekeken",
+    "download": "Downloaden",
+    "more": "Meer"
   },
   "mediaMenu": {
     "markAsWatched": "Markeer als gekeken",
@@ -807,6 +830,7 @@
     "sessionExpiredMany": "Sessie verlopen voor ${count} servers",
     "signInAgain": "Opnieuw aanmelden",
     "editJellyfinTitle": "Jellyfin-verbinding bewerken",
+    "editEmbyTitle": "Emby-verbinding bewerken",
     "editJellyfinIntro": "Voeg URL's voor ${serverName} toe of verwijder ze. Pleya gebruikt de bereikbare URL met de laagste latentie.",
     "localSources": "Bronnen op dit apparaat",
     "removeSource": "Bron verwijderen",
@@ -859,11 +883,14 @@
     },
     "moreLikeThis": "Meer zoals dit",
     "becauseYouWatched": "Omdat je ${title} gekeken hebt",
+    "becauseYouAreWatching": "Omdat je ${title} kijkt",
     "latestShows": "Recent toegevoegde series",
     "topRated": "Hoogst gewaardeerd",
     "somethingDifferent": "Eens iets anders",
     "topPicksForYou": "Aanbevolen voor jou",
     "becauseYouLike": "Omdat je van ${genre} houdt",
+    "moreWithActor": "Meer met ${name}",
+    "moreFromDirector": "Meer van ${name}",
     "hiddenGems": "Verborgen parels",
     "watchedBy": "Bekeken door ${names}",
     "watchedByYou": "Jij",
@@ -873,7 +900,30 @@
     "statsViewers": "door ${count} mensen",
     "statsWatchTime": "${duration} bekeken",
     "statsRecent": "${count} in de laatste 30 dagen",
-    "watchingSeriesBy": "Kijken deze serie: ${names}"
+    "watchingSeriesBy": "Kijken deze serie: ${names}",
+    "activityPlays": "${count}× afgespeeld",
+    "activityViewers": "${count} kijkers",
+    "activityOwnProgress": "Jij bent bij S${season} A${episode}",
+    "techSubtitles": "Ondertiteling",
+    "techEpisode": "Volgende aflevering · S${season} A${episode}",
+    "seasonsHeading": {
+      "one": "1 seizoen",
+      "other": "${n} seizoenen"
+    },
+    "seasonEpisodes": {
+      "one": "1 aflevering",
+      "other": "${n} afleveringen"
+    },
+    "seasonEpisodesLeft": "${count} nog te zien",
+    "trackScopeMovie": "${title} · geldt voor deze film",
+    "trackScopeSeries": "${title} · voor deze serie",
+    "trackChoiceNote": "Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt.",
+    "trackChoiceNoteOnce": "Wordt niet onthouden. Geldt als je vanaf deze pagina afspeelt; je profieltaal gaat voor.",
+    "scoreRtCritics": "Rotten Tomatoes, critici",
+    "scoreRtAudience": "Rotten Tomatoes, publiek",
+    "scoreCommunity": "Communityscore",
+    "reviews": "Recensies",
+    "reviewOpenSource": "Lees bij de bron"
   },
   "mobileDetail": {
     "similarTab": "Vergelijkbaar",
@@ -1726,8 +1776,8 @@
     "serverUrls": "Server-URL's",
     "serverUrlsHelper": "Meerdere URL's toegestaan, gescheiden door komma's.",
     "findServer": "Server zoeken",
-    "searchingLocalServers": "Lokale Jellyfin-servers zoeken...",
-    "localServers": "Lokale Jellyfin-servers",
+    "searchingLocalServers": "Servers in je netwerk zoeken...",
+    "localServers": "Servers in je netwerk",
     "username": "Gebruikersnaam",
     "password": "Wachtwoord",
     "signIn": "Inloggen",
@@ -1741,6 +1791,7 @@
     "duplicatePlexAccount": "Al aangemeld bij Plex. Meld je af om van account te wisselen.",
     "failedToRegisterAccount": "Account registreren mislukt",
     "enterJellyfinUrlError": "Voer de URL van je Jellyfin-server in",
+    "enterEmbyUrlError": "Voer de URL van je Emby-server in",
     "addConnectionTitle": "Verbinding toevoegen",
     "addConnectionTitleScoped": "Toevoegen aan ${name}",
     "signInWithPlexCard": "Inloggen met Plex",
@@ -1749,6 +1800,9 @@
     "connectToJellyfinCard": "Verbinden met Jellyfin",
     "connectToJellyfinCardSubtitle": "Voer je server-URL, gebruikersnaam en wachtwoord in.",
     "connectToJellyfinCardSubtitleScoped": "Log in op een Jellyfin-server. Wordt gekoppeld aan ${name}.",
+    "addEmbyTitle": "Emby-server toevoegen",
+    "connectToEmbyCard": "Verbinden met Emby",
+    "connectToEmbyCardSubtitleScoped": "Log in op een Emby-server. Wordt gekoppeld aan ${name}.",
     "connectToPleyaServerCard": "Verbinden met Pleya Server",
     "connectToPleyaServerCardSubtitle": "Je eigen server. Voer het adres in om door te gaan.",
     "connectToPleyaServerCardSubtitleScoped": "Log in op een Pleya Server. Wordt gekoppeld aan ${name}.",
@@ -1992,6 +2046,7 @@
     "noneReachableTitle": "Geen bron is momenteel bereikbaar.",
     "reauthRequiredTitle": "Meld je opnieuw aan om deze titel te bereiken.",
     "manageServers": "Servers beheren",
+    "source": "Bron",
     "sourceLabel": "Bron: ${source}",
     "change": "Wijzigen",
     "playbackFailedTitle": "Deze bron kon niet worden afgespeeld.",
@@ -2035,12 +2090,15 @@
       "status": "Status",
       "genre": "Genre",
       "year": "Jaar",
+      "contentRating": "Leeftijd",
       "servers": "Servers",
       "libraries": "Bibliotheken",
       "apply": "Toepassen",
       "clearAll": "Alles wissen",
       "all": "Alle",
       "unwatched": "Niet bekeken",
+      "inProgress": "Actief bezig",
+      "watched": "Bekeken",
       "unsupported": "Niet beschikbaar voor de huidige bronnen",
       "someUnavailable": "Sommige filters zijn niet beschikbaar voor de geselecteerde bronnen",
       "noValues": "Niets om uit te kiezen",
@@ -2232,5 +2290,343 @@
     "toastFallbackDetailGlobal": "Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.",
     "kindAudio": "Audio",
     "kindSubtitles": "Ondertitels"
+  },
+  "assistant": {
+    "tileTitle": "Big P",
+    "tileSubtitle": "Pleya Assistant",
+    "providerLabel": "AI-provider",
+    "mobile": {
+      "greeting": "Hoi ${name}, wat zoeken we?",
+      "examples": [
+        [
+          "Wat kan ik vanavond kijken?",
+          "Geef me een komedie voor vanavond.",
+          "Zoek een spannende film voor vanavond."
+        ],
+        [
+          "Welke serie kan ik nu beginnen?"
+        ],
+        [
+          "Heb ik iets voor de kinderen?"
+        ],
+        [
+          "Welke films heb ik nog niet gezien?",
+          "Welke films staan al lang ongezien in mijn bibliotheek?"
+        ],
+        [
+          "Wat is er deze week toegevoegd?"
+        ],
+        [
+          "Wie heeft deze week het meest gekeken?"
+        ]
+      ],
+      "noModelTitle": "Ik heb nog geen brein.",
+      "noModelBody": "Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.",
+      "setup": "Model instellen",
+      "icloudNote": "Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.",
+      "listening": "Ik luister…",
+      "listeningHint": "Spreek je vraag in, of typ hem.",
+      "askFurther": "Vraag verder",
+      "moreTitles": "Nog ${n} titels",
+      "searchAsk": "Vraag het Big P",
+      "faceButton": "Big P oproepen",
+      "notConfirmedYet": "Kies eerst: bevestigen of annuleren."
+    },
+    "locked": {
+      "badge": "Niet beschikbaar op dit account",
+      "title": "Big P staat voor dit account nog niet aan",
+      "body": "Met Big P vraag je Pleya om beheertaken uit te voeren, zoals een bibliotheek scannen of een gebruiker aanmaken. Het is een functie van Pleya die op dit account nog niet beschikbaar is.",
+      "note": "Je kunt hem hier niet aanzetten of kopen. Zodra je account toegang heeft, opent deze tegel het vraagscherm.",
+      "back": "Terug naar Mijn Pleya"
+    },
+    "setup": {
+      "badge": "Nog niet ingesteld",
+      "title": "Om Big P te gebruiken moet je eerst een AI-provider instellen.",
+      "body": "Big P stuurt je vraag naar een taalmodel om te begrijpen wat je bedoelt. Pleya controleert je rechten, vraagt bevestiging bij gevoelige acties en voert ze zelf uit.",
+      "action": "Big P instellen",
+      "back": "Terug"
+    },
+    "idle": {
+      "greeting": "Hoi ${name}, wat moet er gebeuren?",
+      "status": "Klaar voor je vraag · ${servers}",
+      "ask": "Vraag Big P",
+      "examplesHeader": "Bijvoorbeeld",
+      "examples": [
+        [
+          "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw."
+        ],
+        [
+          "Scan alle filmbibliotheken op al mijn servers."
+        ],
+        [
+          "Wie heeft deze week het meest gekeken?",
+          "Wie kijkt er nu?"
+        ],
+        [
+          "Wat kan ik vanavond kijken?"
+        ],
+        [
+          "Wat is er deze week toegevoegd?"
+        ],
+        [
+          "Welke nieuwe films zijn populair die ik nog niet heb?"
+        ]
+      ]
+    },
+    "listening": {
+      "title": "Ik luister…",
+      "body": "Spreek je vraag in."
+    },
+    "working": {
+      "status": "Even kijken…",
+      "busy": "Bezig met je vraag…",
+      "stillChecking": "Tot nu toe gevonden. Big P controleert nog…"
+    },
+    "steps": {
+      "withServer": "${server} · ${step}",
+      "listServers": "Servers controleren",
+      "listLibraries": "Bibliotheken ophalen",
+      "findMedia": "Titel zoeken",
+      "listJobs": "Taken ophalen",
+      "listUsers": "Gebruikers ophalen",
+      "scanLibrary": "Bibliotheek scannen",
+      "refreshMetadata": "Metadata vernieuwen",
+      "cancelJob": "Taak stoppen",
+      "retryJob": "Taak opnieuw starten",
+      "createUser": "Gebruiker aanmaken",
+      "setUserLibraryAccess": "Toegang instellen",
+      "removeUser": "Gebruiker verwijderen",
+      "searchCatalog": "Catalogus doorzoeken",
+      "createHomeRow": "Rij op het beginscherm maken",
+      "createCollection": "Collectie maken",
+      "compareServers": "Servers vergelijken",
+      "watchStats": "Kijkcijfers ophalen",
+      "downloadNext": "Volgende afleveringen downloaden",
+      "findSubtitles": "Ondertitels zoeken",
+      "downloadSubtitle": "Ondertitel downloaden",
+      "findRequestTitle": "Seerr doorzoeken",
+      "discoverRequestTitles": "Passende titels zoeken",
+      "requestTitle": "Titel aanvragen",
+      "findTitle": "Titel op beschrijving zoeken",
+      "fallback": "Bezig"
+    },
+    "jobs": {
+      "scanLibrary": {
+        "running": "Scan loopt",
+        "done": "Scan klaar",
+        "failed": "Scan mislukt",
+        "background": "Scan loopt nog op de achtergrond"
+      },
+      "retryJob": {
+        "running": "Taak loopt",
+        "done": "Taak klaar",
+        "failed": "Taak mislukt",
+        "background": "Taak loopt nog op de achtergrond"
+      }
+    },
+    "result": {
+      "doneBy": "Uitgevoerd door Pleya",
+      "notDoneBy": "Niet uitgevoerd door Pleya",
+      "done": "Klaar",
+      "cancel": "Annuleren"
+    },
+    "actions": {
+      "scanLibrary": "Scan gestart",
+      "refreshMetadata": "Metadata vernieuwen gestart",
+      "cancelJob": "Taak gestopt",
+      "retryJob": "Taak opnieuw gestart",
+      "createUser": "Gebruiker aangemaakt",
+      "setLibraryAccess": "Toegang aangepast",
+      "removeUser": "Gebruiker verwijderd",
+      "createHomeRow": "Rij aangemaakt",
+      "createCollection": "Collectie aangemaakt",
+      "requestTitle": "Aanvraag verstuurd",
+      "downloadEpisodes": "Download gestart",
+      "downloadSubtitle": "Ondertitel gedownload"
+    },
+    "confirm": {
+      "header": "Pleya vraagt bevestiging",
+      "titles": {
+        "scanLibrary": "Bibliotheek scannen",
+        "refreshMetadata": "Metadata vernieuwen",
+        "cancelJob": "Taak stoppen",
+        "retryJob": "Taak opnieuw starten",
+        "createUser": "Gebruiker aanmaken",
+        "setLibraryAccess": "Toegang aanpassen",
+        "removeUser": "Gebruiker verwijderen",
+        "createHomeRow": "Rij op het beginscherm maken",
+        "createCollection": "Collectie maken",
+        "requestTitle": "Titel aanvragen",
+        "downloadEpisodes": "Afleveringen downloaden",
+        "downloadSubtitle": "Ondertitel downloaden"
+      },
+      "user": "Gebruiker",
+      "server": "Server",
+      "access": "Toegang",
+      "allLibraries": "Alle bibliotheken",
+      "titlesLabel": "Titels",
+      "admin": "Beheerder",
+      "yes": "Ja",
+      "no": "Nee",
+      "password": "Wachtwoord",
+      "passwordPlaceholder": "Kies een wachtwoord",
+      "passwordNote": "Dit wachtwoord gaat niet naar Big P en niet naar de AI-provider.",
+      "approve": "Bevestigen",
+      "create": "Aanmaken"
+    },
+    "notes": {
+      "plexManagedHomeUser": "Beheerde Plex Home-gebruiker, met een share op deze server.",
+      "plexShare": "Een share op deze Plex-server.",
+      "plexHomeMember": "Lid van je Plex Home. Alleen de share op deze server verandert.",
+      "replacesAllAccess": "Vervangt alle bestaande toegang van deze gebruiker op deze server."
+    },
+    "ends": {
+      "noTools": "Big P kan nu niets doen op je servers.",
+      "toolsUnsupported": "Dit model kan geen tools gebruiken. Kies een ander model bij de instellingen van Big P.",
+      "stepLimit": "Dit kostte te veel stappen. Probeer een kortere vraag.",
+      "notEntitled": "Big P is niet beschikbaar op dit account.",
+      "providerUnauthorized": "De AI-provider weigert de sleutel. Controleer hem bij de instellingen van Big P.",
+      "providerUnreachable": "De AI-provider is niet bereikbaar.",
+      "providerTimeout": "De AI-provider antwoordde niet op tijd.",
+      "providerBadResponse": "De AI-provider gaf een onverwacht antwoord.",
+      "nothingChanged": "Er is niets veranderd.",
+      "modelMissing": "Het gekozen model is er niet meer, kies een ander in Big P instellen."
+    },
+    "summonHint": "Houd Play/Pauze ingedrukt om Big P op te roepen",
+    "contextAction": "Vraag Big P",
+    "settings": {
+      "title": "Big P instellen",
+      "providerHeading": "Kies waar Big P zijn taalmodel vandaan haalt",
+      "ollamaServer": "Ollama-server",
+      "ollamaServerDescription": "Draait in je eigen netwerk, bijvoorbeeld op je NAS.",
+      "ollamaCloud": "Ollama Cloud",
+      "ollamaCloudDescription": "Modellen die Ollama voor je draait.",
+      "openRouter": "OpenRouter",
+      "openRouterDescription": "Eén sleutel voor modellen van verschillende aanbieders.",
+      "needsAddress": "Adres van de server",
+      "needsKey": "API-sleutel",
+      "dataNote": "Naar de provider gaan je vraag en de namen van bibliotheken, servers en gebruikers die nodig zijn om hem te beantwoorden. Wachtwoorden en tokens blijven in Pleya.",
+      "serverUrl": "Adres van de server",
+      "serverUrlHint": "http://192.168.1.10:11434",
+      "headerName": "Naam extra header (optioneel)",
+      "headerValue": "Waarde extra header",
+      "headerHelp": "Alleen nodig als de server achter een reverse proxy staat die een eigen header vraagt.",
+      "apiKey": "API-sleutel",
+      "fetchModels": "Modellen ophalen",
+      "modelsHeading": "Kies een model",
+      "modelsHelp": "Je ziet alleen modellen die tools kunnen gebruiken.",
+      "noToolModels": "Geen enkel model hier kan tools gebruiken. Installeer of kies er een dat het wel kan.",
+      "test": "Test verbinding",
+      "testOk": "Verbinding werkt met ${model}",
+      "modelMissing": "Het gekozen model is niet meer beschikbaar.",
+      "save": "Opslaan",
+      "change": "Wijzigen",
+      "disable": "Big P uitschakelen",
+      "disableConfirm": "Big P uitschakelen?",
+      "disableBody": "De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.",
+      "unreadableTitle": "Big P-instelling vervangen?",
+      "unreadableBody": "Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.",
+      "replace": "Vervangen",
+      "currentModel": "Model",
+      "keyStored": "Opgeslagen, verborgen",
+      "errorUrlInvalid": "Vul een adres in dat begint met http:// of https://.",
+      "errorHeaderInvalid": "Deze headernaam of -waarde is niet geldig.",
+      "errorKeyRequired": "Vul de API-sleutel in.",
+      "errorUnauthorized": "De sleutel is geweigerd.",
+      "errorUnreachable": "Server niet bereikbaar. Controleer het adres en, bij https, het certificaat.",
+      "errorTimeout": "De server antwoordde niet op tijd.",
+      "errorToolsUnsupported": "Dit model kan geen tools gebruiken.",
+      "errorBadResponse": "Onverwacht antwoord van de server. Controleer het adres.",
+      "refreshModels": "Vernieuwen",
+      "showMore": "Meer tonen (${count})",
+      "updatedToday": "Vandaag bijgewerkt",
+      "updatedDays": {
+        "one": "Gisteren bijgewerkt",
+        "other": "${n} dagen geleden bijgewerkt"
+      },
+      "updatedMonths": {
+        "one": "Een maand geleden bijgewerkt",
+        "other": "${n} maanden geleden bijgewerkt"
+      },
+      "updatedYears": {
+        "one": "Een jaar geleden bijgewerkt",
+        "other": "${n} jaar geleden bijgewerkt"
+      },
+      "contextLength": "${size} context",
+      "priceFree": "Gratis",
+      "priceLow": "Goedkoop",
+      "priceMedium": "Gemiddelde prijs",
+      "priceHigh": "Duur",
+      "savedModelGone": "${model} wordt niet meer aangeboden. Kies hieronder een ander model.",
+      "updateModel": "Model bijwerken",
+      "updating": "Bijwerken: ${status}",
+      "updateDone": "${model} is bijgewerkt",
+      "pullErrorUnknown": "Ollama heeft dit model niet meer in de bibliotheek. Kies een ander model.",
+      "pullErrorDisk": "Te weinig schijfruimte op de server om het model bij te werken.",
+      "pullErrorFailed": "Model bijwerken mislukt: ${reason}",
+      "webSearch": "Zoeken op internet",
+      "ollamaWebKey": "ollama.com-sleutel voor zoeken op internet (optioneel)",
+      "ollamaWebKeyHelp": "Zonder deze sleutel zoekt Big P alleen op Wikipedia.",
+      "webSearchNoteServer": "Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.",
+      "webSearchNoteCloud": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.",
+      "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.",
+      "voice": "Stem van Big P",
+      "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken."
+    },
+    "youAsked": "Je vroeg:",
+    "option": {
+      "notRequested": "Aan te vragen"
+    },
+    "displays": {
+      "missing": "${count} titels op ${server} ontbreken op ${other}",
+      "plays": "${count}× bekeken",
+      "noSource": "Geen kijkgegevens beschikbaar voor ${server}.",
+      "playsShort": "${count}×",
+      "watchNow": "Op dit moment",
+      "watchDays": "Afgelopen ${n} dagen",
+      "nobodyNow": "Er kijkt nu niemand.",
+      "nothingWatched": "In deze periode is niets bekeken.",
+      "partialData": "Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.",
+      "watchTitle": "Kijkcijfers",
+      "playsTotal": "keer gekeken"
+    },
+    "followUp": {
+      "watchNow": "Wie kijkt er nu?",
+      "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",
+      "watchWeek": "Wie heeft deze week het meest gekeken?",
+      "watchToday": "Wie keek er vandaag?",
+      "watchYesterday": "Wie keek er gisteren?",
+      "tonight": [
+        "Geef me een komedie voor vanavond.",
+        "Zoek een spannende film voor vanavond.",
+        "Heb ik iets voor de kinderen?",
+        "Welke serie kan ik nu beginnen?"
+      ],
+      "recent": [
+        "Wat is er onlangs aan mijn bibliotheek toegevoegd?",
+        "Welke series zijn onlangs toegevoegd?",
+        "Wat is er deze week toegevoegd?"
+      ],
+      "unwatched": [
+        "Welke films heb ik nog niet gezien?",
+        "Welke films staan al lang ongezien in mijn bibliotheek?"
+      ],
+      "popular": [
+        "Welke populaire films heb ik nog niet?",
+        "Welke nieuwe films zijn populair die ik nog niet heb?"
+      ],
+      "missingMovies": "Welke films ontbreken tussen mijn servers?",
+      "missingShows": "Welke series ontbreken tussen mijn servers?",
+      "jobs": "Welke taken lopen er nu op mijn servers?",
+      "failedJobs": "Zijn er vandaag taken mislukt?"
+    },
+    "match": {
+      "inLibrary": "In je bibliotheek · ${servers}",
+      "maybe": "mogelijk",
+      "movie": "Film",
+      "show": "Serie",
+      "episode": "Aflevering",
+      "episodeCode": "S${season} A${episode}"
+    }
   }
 }

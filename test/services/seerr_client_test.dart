@@ -237,6 +237,55 @@ void main() {
       expect(seen[1].queryParameters['genre'], '18');
       expect(seen[1].queryParameters['sortBy'], 'first_air_date.desc');
     });
+
+    test('season detail is read from /tv/{id}/season/{n}', () async {
+      final seen = <Uri>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen.add(request.url);
+          return _json({
+            'seasonNumber': 3,
+            'episodes': [
+              {'episodeNumber': 10, 'name': 'Blink', 'overview': 'Statues move.'},
+            ],
+          }, 200);
+        }),
+      );
+
+      final season = await client.getTvSeason(57243, 3);
+
+      expect(seen.single.path, endsWith('/tv/57243/season/3'));
+      expect((season['episodes'] as List).single['name'], 'Blink');
+    });
+
+    test('keyword search resolves TMDB keyword ids, discover sends them comma-separated', () async {
+      final seen = <Uri>[];
+      final client = SeerrClient(
+        _session(),
+        httpClient: MockClient((request) async {
+          seen.add(request.url);
+          if (request.url.path.endsWith('/search/keyword')) {
+            return _json({
+              'page': 1,
+              'results': [
+                {'id': 9672, 'name': 'island'},
+                {'name': 'no id'},
+              ],
+            }, 200);
+          }
+          return _json({'page': 1, 'totalPages': 1, 'results': []}, 200);
+        }),
+      );
+
+      expect(await client.searchKeyword('island'), [(id: 9672, name: 'island')]);
+      await client.discoverMovies(keywords: [9672, 818]);
+      await client.discoverTv(keywords: const []);
+
+      expect(seen[0].queryParameters, {'query': 'island', 'page': '1'});
+      expect(seen[1].queryParameters['keywords'], '9672,818');
+      expect(seen[2].queryParameters.containsKey('keywords'), isFalse);
+    });
   });
 
   group('service server detail', () {

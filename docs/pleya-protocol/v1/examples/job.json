@@ -1,0 +1,14 @@
+{
+  "id": "0192b6c2-4f3a-7c1e-9d2b-0a1b2c3d4e61",
+  "kind": "scan_library",
+  "state": "failed",
+  "attempts": 3,
+  "max_attempts": 3,
+  "last_error": "ffprobe gaf na 60 s geen antwoord",
+  "run_at": "2026-09-24T10:15:00Z",
+  "created_at": "2026-09-24T10:14:58Z",
+  "finished_at": "2026-09-24T10:21:07Z",
+  "cancel_requested_at": null,
+  "library_id": "0192b6c2-4f3a-7c1e-9d2b-0a1b2c3d4e60",
+  "scan_id": "0192b6c2-4f3a-7c1e-9d2b-0a1b2c3d4e5f"
+}

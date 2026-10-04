@@ -1,0 +1,33 @@
+name: tvos.nav.reconnect-pill-focus
+target: tvos-sim
+# FOC1: when the focused top-bar pill disappears, the ring moves to the pill
+# the coordinator chose instead of staying on a node that is gone.
+#
+# The reconnect pill is the one a viewer can make disappear by using it:
+# offline, the bar carries it; the server comes back, Select on it, and the
+# bar redraws without it while the ring was standing on it. Offline is set up
+# the way tvos.offline.home does it: the fixture answers 502 and a second
+# launch cold-starts the app against it.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - fixture_mutate: {op: offline, enabled: true}
+  - launch
+steps:
+  - wait_until: {id: nav.reconnect, timeout: 30000}
+  - settle: 3500
+  - walk: {direction: left, expect: [nav.reconnect], timeout: 20000, settle: 800}
+  - assert: {id: nav.reconnect, focused: true}
+  - snapshot: 00-reconnect-focused
+
+  - fixture_mutate: {op: offline, enabled: false}
+  - press: select
+  - wait_until: {id: discover.hero, timeout: 30000}
+  # The pill is gone and the ring stands on a pill that exists: Home, the
+  # destination the reconnect restores.
+  - wait_until: {focused: nav.discover, timeout: 8000}
+  - assert: {id: nav.discover, state: {active: true}}
+  - settle: 1500
+  - snapshot: 01-online-ring-on-home

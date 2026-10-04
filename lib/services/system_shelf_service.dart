@@ -1,7 +1,9 @@
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, Platform;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 
+import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../media/media_item.dart';
 import '../media/media_item_types.dart';
@@ -10,6 +12,41 @@ import '../media/media_server_client.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_detector.dart';
 import 'settings_service.dart' show EpisodePosterMode;
+import 'top_shelf_images.dart';
+
+/// What a launcher shelf tap asks for. Top Shelf sends `play` for the remote's
+/// Play button and `open` for a click; Android Watch Next and links written by
+/// older builds carry no action and keep the original play-on-tap behaviour.
+enum ShelfLinkAction { legacy, play, open }
+
+class ShelfDeepLink {
+  const ShelfDeepLink(this.contentId, [this.action = ShelfLinkAction.legacy]);
+
+  final String contentId;
+  final ShelfLinkAction action;
+
+  /// Native sends either a bare content id or `{contentId, action?}`.
+  static ShelfDeepLink? fromNative(Object? raw) {
+    if (raw is String) return raw.isEmpty ? null : ShelfDeepLink(raw);
+    if (raw is! Map) return null;
+    final contentId = raw['contentId'];
+    if (contentId is! String || contentId.isEmpty) return null;
+    final action = switch (raw['action']) {
+      'play' => ShelfLinkAction.play,
+      'open' => ShelfLinkAction.open,
+      _ => ShelfLinkAction.legacy,
+    };
+    return ShelfDeepLink(contentId, action);
+  }
+
+  /// True when the tap starts the player; false opens the detail page. `play`
+  /// on something that cannot play by itself (a show, a season) opens detail.
+  bool startsPlaybackFor(MediaKind kind) => switch (action) {
+    ShelfLinkAction.legacy => true,
+    ShelfLinkAction.open => false,
+    ShelfLinkAction.play => kind == MediaKind.movie || kind == MediaKind.episode || kind == MediaKind.clip,
+  };
+}
 
 /// Syncs Continue Watching content to platform launcher surfaces.
 ///
@@ -27,10 +64,19 @@ class SystemShelfService {
     _tvosChannel.setMethodCallHandler(_handleMethodCall);
   }
 
+  /// Downloads carousel artwork into the app-group container (tvOS only).
+  TopShelfImages topShelfImages = TopShelfImages();
+
   /// Callback for warm-start launcher surface taps.
-  ValueChanged<String>? onShelfItemTap;
+  ValueChanged<ShelfDeepLink>? onShelfItemTap;
+
+  /// Makes the host test run take the tvOS channel, so the Top Shelf path
+  /// (carousel, hero, app-group images) can be tested end to end.
+  @visibleForTesting
+  static bool debugForceTopShelf = false;
 
   MethodChannel? get _channel {
+    if (debugForceTopShelf) return _tvosChannel;
     if (Platform.isAndroid) return _androidChannel;
     if (Platform.isIOS && (_tvosBuild || PlatformDetector.isAppleTV())) return _tvosChannel;
     return null;
@@ -39,19 +85,29 @@ class SystemShelfService {
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     if (call.method == 'onWatchNextTap' || call.method == 'onShelfItemTap') {
       final args = call.arguments;
-      final contentId = args is Map ? args['contentId'] as String? : null;
-      if (contentId != null) {
-        onShelfItemTap?.call(contentId);
+      final link = args is Map ? ShelfDeepLink.fromNative(args) : null;
+      final callback = onShelfItemTap;
+      if (link != null && callback != null) {
+        callback(link);
+        // Native also parks every tap as its pending cold-start link. This one
+        // was delivered, so drain it; otherwise a later getInitialDeepLink (a
+        // MainScreen rebuild) would replay it. Undelivered taps stay parked.
+        await _takePendingLink(call.method == 'onShelfItemTap' ? _tvosChannel : _androidChannel);
       }
     }
   }
 
+  /// Whether this platform's shelf is the tvOS Top Shelf, the only one that
+  /// reads the hero carousel.
+  bool get drivesTopShelfCarousel => identical(_channel, _tvosChannel);
+
   /// Get a pending deep link from cold start (consumed on first call).
-  Future<String?> getInitialDeepLink() async {
-    final channel = _channel;
+  Future<ShelfDeepLink?> getInitialDeepLink() => _takePendingLink(_channel);
+
+  Future<ShelfDeepLink?> _takePendingLink(MethodChannel? channel) async {
     if (channel == null) return null;
     try {
-      return await channel.invokeMethod<String>('getInitialDeepLink');
+      return ShelfDeepLink.fromNative(await channel.invokeMethod<Object?>('getInitialDeepLink'));
     } on MissingPluginException catch (e) {
       appLogger.w('System shelf initial deep link failed: native channel missing', error: e);
       return null;
@@ -80,10 +136,15 @@ class SystemShelfService {
   }
 
   /// Sync Continue Watching items to the current platform's launcher shelf.
+  ///
+  /// On tvOS the Top Shelf also gets a `carousel`: [hero] (the Home hero's
+  /// films) first, then Continue Watching, see [carouselItemsFor]. Android
+  /// Watch Next only reads `items`, so it stays Continue Watching only.
   Future<bool> syncFromContinueWatching(
     List<MediaItem> continueWatchingItems,
     MediaServerClient Function(ServerId serverId) getClientForServerId, {
     bool hideSpoilers = false,
+    List<MediaItem> hero = const [],
   }) async {
     final channel = _channel;
     if (channel == null) return false;
@@ -96,7 +157,29 @@ class SystemShelfService {
       final supported = await isSupported();
       if (!supported) return false;
 
-      return await channel.invokeMethod<bool>('sync', {'items': items}) ?? false;
+      final args = <String, dynamic>{'items': items};
+      Directory? imageDir;
+      var carousel = const <Map<String, dynamic>>[];
+      if (identical(channel, _tvosChannel)) {
+        args['sections'] = [
+          {'id': 'continue_watching', 'title': t.discover.continueWatching, 'items': items},
+        ];
+        imageDir = await _topShelfImageDirectory();
+        if (imageDir != null) {
+          carousel = await topShelfImages.localize(
+            carouselItemsFor(hero, continueWatchingItems, getClientForServerId, hideSpoilers: hideSpoilers),
+            imageDir,
+          );
+        }
+        // No carousel item with an image: the extension keeps the sectioned row.
+        if (carousel.isNotEmpty) args['carousel'] = carousel;
+      }
+
+      final synced = await channel.invokeMethod<bool>('sync', args) ?? false;
+      // Only now: until the new payload is written, the old one still points
+      // at the old files. An empty carousel empties the folder.
+      if (synced && imageDir != null) await topShelfImages.removeUnused(carousel, imageDir);
+      return synced;
     } on MissingPluginException catch (e) {
       appLogger.e('Failed to sync system shelf: native channel missing', error: e);
       return false;
@@ -107,6 +190,13 @@ class SystemShelfService {
       appLogger.e('Failed to sync system shelf', error: e);
       return false;
     }
+  }
+
+  /// The app-group folder the native side names for carousel artwork; null
+  /// when it is unavailable, which leaves the sectioned row.
+  Future<Directory?> _topShelfImageDirectory() async {
+    final path = await _tvosChannel.invokeMethod<String>('imageDirectory');
+    return path == null || path.isEmpty ? null : Directory(path);
   }
 
   /// Clear all launcher shelf entries owned by the app.
@@ -144,6 +234,128 @@ class SystemShelfService {
       appLogger.e('Failed to remove system shelf item', error: e);
       return false;
     }
+  }
+
+  /// The Top Shelf carousel (`TVTopShelfCarouselContent`, style `.details`):
+  /// [hero] first, then [continueWatching]. A film that is in both keeps only
+  /// its Continue Watching entry, because tvOS requires unique identifiers and
+  /// that entry carries the progress. Items without a usable 16:9 image are
+  /// dropped; an empty result means the caller keeps the sectioned row.
+  static List<Map<String, dynamic>> carouselItemsFor(
+    List<MediaItem> hero,
+    List<MediaItem> continueWatching,
+    MediaServerClient Function(ServerId serverId) getClientForServerId, {
+    bool hideSpoilers = false,
+  }) {
+    String idOf(MediaItem item) => _buildContentId(serverIdOrNull(item.serverId), item.id);
+    final continueIds = continueWatching.map(idOf).toSet();
+    final seen = <String>{};
+    final result = <Map<String, dynamic>>[];
+    void add(MediaItem item, String contextTitle) {
+      final contentId = idOf(item);
+      if (!seen.add(contentId)) return;
+      final imageUri = _carouselImageUri(item, getClientForServerId, hideSpoilers: hideSpoilers);
+      if (imageUri == null) return;
+      final isEpisode = item.kind == MediaKind.episode && item.grandparentTitle != null;
+      final spoilerSafe = hideSpoilers && item.shouldHideSpoiler;
+      final title = isEpisode ? item.grandparentTitle! : item.title ?? '';
+      result.add({
+        'contentId': contentId,
+        'title': title,
+        'contextTitle': contextTitle,
+        'summary': _carouselSummary(title, contextTitle, spoilerSafe ? null : item.summary),
+        'genre': item.genres?.firstOrNull,
+        'releaseDate': _releaseDate(item),
+        'duration': item.durationMs,
+        'imageUri': imageUri,
+        'namedAttributes': _namedAttributes(item),
+      });
+    }
+
+    for (final item in hero) {
+      if (continueIds.contains(idOf(item))) continue;
+      add(item, t.discover.recentlyReleased);
+    }
+    for (final item in continueWatching) {
+      add(item, _continueWatchingContext(item));
+    }
+    return result;
+  }
+
+  /// tvOS 26.5 does not draw `title` or `contextTitle` in the `.details`
+  /// style, so both lead the summary as its first line ("Dune · Verder kijken
+  /// · 42 min over"), followed by the real summary. Apple documents no length
+  /// limit for `summary`; tvOS truncates it on screen, which keeps the first
+  /// line visible. The fields stay set for a tvOS that does draw them.
+  static String? _carouselSummary(String title, String contextTitle, String? summary) {
+    final firstLine = [title, contextTitle].map((s) => s.trim()).where((s) => s.isNotEmpty).join(' · ');
+    final body = summary?.trim() ?? '';
+    if (firstLine.isEmpty) return body.isEmpty ? null : body;
+    if (body.isEmpty) return firstLine;
+    // Idempotent: never stack the line twice.
+    if (body.startsWith(firstLine)) return body;
+    return '$firstLine\n$body';
+  }
+
+  /// Director and cast for the details style; tvOS shows at most four.
+  static List<Map<String, dynamic>> _namedAttributes(MediaItem item) {
+    final directors = item.directors?.take(2).toList() ?? const <String>[];
+    final cast = item.roles?.map((r) => r.tag).where((tag) => tag.isNotEmpty).take(3).toList() ?? const <String>[];
+    return [
+      if (directors.isNotEmpty) {'name': t.metadataEdit.director, 'values': directors},
+      if (cast.isNotEmpty) {'name': t.discover.cast, 'values': cast},
+    ];
+  }
+
+  /// "Verder kijken · S2E5 · 42 min over"; a carousel item has no progress bar.
+  static String _continueWatchingContext(MediaItem item) {
+    final season = item.parentIndex;
+    final episode = item.index;
+    final offset = item.viewOffsetMs ?? 0;
+    final duration = item.durationMs ?? 0;
+    final minutesLeft = offset > 0 && duration > offset ? ((duration - offset) / 60000).round() : 0;
+    return [
+      t.discover.continueWatching,
+      if (item.kind == MediaKind.episode && season != null && episode != null)
+        t.discover.playEpisode(season: season, episode: episode),
+      if (minutesLeft > 0) t.discover.minutesLeft(minutes: minutesLeft),
+    ].join(' · ');
+  }
+
+  /// Full-screen 16:9 backdrop: the show's for an episode, else the item's own.
+  /// Without one, an episode or clip falls back to its 16:9 still (never for an
+  /// unwatched episode when spoilers are hidden). A film poster is portrait,
+  /// so a film without a backdrop gets null.
+  static String? _carouselImageUri(
+    MediaItem item,
+    MediaServerClient Function(ServerId serverId) getClientForServerId, {
+    required bool hideSpoilers,
+  }) {
+    final serverId = item.serverId;
+    if (serverId == null) return null;
+    final wideStill =
+        item.kind == MediaKind.clip || (item.kind == MediaKind.episode && !(hideSpoilers && item.shouldHideSpoiler));
+    final path = item.kind == MediaKind.episode ? item.grandparentArtPath ?? item.artPath : item.artPath;
+    final chosen = path ?? (wideStill ? item.thumbPath : null);
+    if (chosen == null) return null;
+    try {
+      // ponytail: tvOS draws the carousel full screen (1920x1080 pt); the SDK
+      // names no pixel size. One 1080p URL serves both scale traits, because
+      // Plex upscales on request and a 4K fetch would mostly be upscaled 1080p.
+      final url = getClientForServerId(ServerId(serverId)).thumbnailUrl(chosen, width: 1920, height: 1080);
+      return url.isEmpty ? null : url;
+    } catch (e) {
+      appLogger.w('Failed to get Top Shelf image URL for ${item.title}', error: e);
+      return null;
+    }
+  }
+
+  /// `yyyy-MM-dd` for `creationDate`: the release date, else January 1 of the year.
+  static String? _releaseDate(MediaItem item) {
+    final date = DateTime.tryParse(item.originallyAvailableAt ?? '');
+    if (date != null) return date.toIso8601String().substring(0, 10);
+    final year = item.year;
+    return year != null && year > 999 ? '$year-01-01' : null;
   }
 
   /// Build a content ID. Format: pleya_{serverId}_{ratingKey}

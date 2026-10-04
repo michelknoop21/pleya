@@ -373,7 +373,7 @@ class StorageService extends BaseSharedPreferencesService {
     return (_getStringList('${_homePrefix(profileId)}$_keyHiddenHomeRows') ?? const []).toSet();
   }
 
-  /// Titles hidden from Verder kijken on this device (DEC-119 fase 3), one JSON
+  /// Titles hidden from Verder kijken on this device (DEC-144 fase 3), one JSON
   /// object per entry so a corrupt line costs its own entry, not the set.
   Future<void> saveHiddenContinueWatching(String? profileId, List<String> encoded) async {
     await _setStringList('${_homePrefix(profileId)}$_keyHiddenContinueWatching', encoded);

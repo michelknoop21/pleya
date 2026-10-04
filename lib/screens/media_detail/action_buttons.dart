@@ -10,13 +10,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     if (metadata.isShow) {
       if (_onDeckEpisode != null) {
         appLogger.d('Playing on deck episode: ${_onDeckEpisode!.title}');
-        final playedId = _onDeckEpisode!.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: _onDeckEpisode!,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        await _playWithDetailPick(_onDeckEpisode!);
       } else {
         // No on deck episode, fetch first episode of first season
         await _playFirstEpisode();
@@ -24,36 +18,44 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     } else if (metadata.isSeason) {
       // For seasons, play the first episode
       if (_episodes.isNotEmpty) {
-        final playedId = _episodes.first.id;
-        await navigateToVideoPlayerWithRefresh(
-          context,
-          metadata: _episodes.first,
-          isOffline: widget.isOffline,
-          onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-        );
+        await _playWithDetailPick(_episodes.first);
       } else {
         await _playFirstEpisode();
       }
     } else {
       appLogger.d('Playing: ${metadata.title}');
       // For movies or episodes, play directly
-      final playedId = metadata.id;
-      await navigateToVideoPlayerWithRefresh(
-        context,
-        metadata: metadata,
-        isOffline: widget.isOffline,
-        onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: playedId)),
-      );
+      await _playWithDetailPick(metadata);
     }
+  }
+
+  /// Starts [item] with the tracks picked on this page (inert when the tech
+  /// table describes another item) and refreshes the page afterwards.
+  Future<void> _playWithDetailPick(MediaItem item) async {
+    final pick = _detailTrackPickFor(item);
+    await navigateToVideoPlayerWithRefresh(
+      context,
+      metadata: item,
+      preferredAudioTrack: pick.audio,
+      preferredSubtitleTrack: pick.subtitle,
+      isOffline: widget.isOffline,
+      onRefresh: () => unawaited(refreshAfterPlayback(playedItemId: item.id)),
+    );
   }
 
   Widget _buildActionButtons(MediaItem metadata) {
     final isTv = PlatformDetector.isTV();
-    final tvScale = TvLayoutConstants.scaleOf(context);
-    final actionSize = isTv ? _tvDetailActionSize * tvScale : 48.0;
+    // DENS1: on TV the row is sized in HIG points. A 60 pt button (tvOS asks
+    // for at least 56) carrying Body text (29 pt), where `scaleOf` made it a
+    // 72 pt button around a 27 pt label.
+    final pt = TvHig.of(context);
+    final actionSize = isTv ? _tvDetailActionPt * pt : 48.0;
     final playButtonLabel = _getPlayButtonLabel(metadata);
-    final playIconSize = isTv ? 22 * tvScale : 20.0;
-    final playTextStyle = TextStyle(fontSize: isTv ? 17 * tvScale : 16, fontWeight: .w700);
+    final playIconSize = isTv ? TvHig.body * pt : 20.0;
+    final playTextStyle = TextStyle(fontSize: isTv ? TvHig.body * pt : 16, fontWeight: .w700);
+    // The icon helpers below size their glyph as `21 * tvScale`; this scale
+    // puts that glyph at Body size too, level with the play icon.
+    final tvScale = TvHig.body * pt / 21;
     final playButtonIcon = AppIcon(_getPlayButtonIcon(metadata), fill: 1, size: playIconSize);
 
     Future<void> onPlayPressed() => _handlePlayPressed(metadata);
@@ -107,7 +109,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
         ? null
         : () => unawaited(navigateToVideoPlayer(context, metadata: primaryTrailer));
 
-    final gap = isTv ? 8.0 * tvScale : 12.0;
+    final gap = isTv ? 16 * pt : 12.0;
 
     // Pressable adds the press-down scale; the buttons below keep owning the
     // tap (they win the gesture arena as the deeper recognizer).
@@ -120,14 +122,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
             onPressed: onPlayPressed,
             style: actionButtonStyle(
               showFocus: state.showFocus,
-              padding: .symmetric(horizontal: isTv ? 17 * tvScale : 16, vertical: isTv ? 9 * tvScale : 0),
+              padding: .symmetric(horizontal: isTv ? 26 * pt : 16, vertical: 0),
             ),
             child: playButtonLabel.isNotEmpty
                 ? Row(
                     mainAxisSize: .min,
                     children: [
                       playButtonIcon,
-                      SizedBox(width: isTv ? 7 * tvScale : 8),
+                      SizedBox(width: isTv ? 10 * pt : 8),
                       Text(playButtonLabel, style: playTextStyle),
                     ],
                   )
@@ -150,7 +152,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
           onPressed: onPressed,
           icon: icon,
           tooltip: tooltip,
-          iconSize: isTv ? 21 * tvScale : 20,
+          iconSize: isTv ? TvHig.body * pt : 20,
           style: actionButtonStyle(foregroundColor: foregroundColor, showFocus: state.showFocus),
         ),
       );
@@ -161,7 +163,12 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       focusNode: _playButtonFocusNode,
       autofocus: isKeyboardMode,
       onPressed: onPlayPressed,
-      builder: (context, state) => playButton(state),
+      builder: (context, state) => AutomationNode(
+        id: AutomationIds.mediaDetailPlay,
+        role: 'button',
+        focusNode: _playButtonFocusNode,
+        child: playButton(state),
+      ),
     );
 
     final trailerAction = primaryTrailer == null
@@ -300,8 +307,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       )..layout();
       final textWidth = textPainter.width;
       textPainter.dispose();
-      final horizontalPadding = isTv ? 34.0 * tvScale : 32.0;
-      final iconGap = isTv ? 7.0 * tvScale : 8.0;
+      final horizontalPadding = isTv ? 52 * pt : 32.0;
+      final iconGap = isTv ? 10 * pt : 8.0;
       return (horizontalPadding + playIconSize + iconGap + textWidth).clamp(64.0, double.infinity).toDouble();
     }
 
@@ -365,9 +372,14 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
   /// actually has more than one source — a single-source title has nothing to
   /// change to, and a line saying so would be chrome. Returns a zero-size box
   /// otherwise, which is every entry point that is not a unified activation.
-  Widget _buildUnifiedSourceLine() {
+  ///
+  /// [card] is the iPhone look (`.src` in D-01, DEC-140): a full-width tile
+  /// with the whole tile as the change target. TV and the other layouts keep
+  /// the caption plus chip.
+  Widget _buildUnifiedSourceLine({bool card = false}) {
     final routeContext = widget.unifiedRouteContext;
     if (routeContext == null || !routeContext.hasAlternativeSources) return const SizedBox.shrink();
+    if (card) return _buildUnifiedSourceCard(routeContext);
 
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
@@ -377,7 +389,8 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
       if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
     ];
     final label = t.sourcePicker.sourceLabel(source: parts.join(' • '));
-    final fontSize = isTv ? 13.0 * tvScale : 13.0;
+    // DENS1: HIG Caption 2 (23 pt), the tvOS minimum; `13 * scaleOf` was 20.
+    final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
     final onChangeSource = widget.onChangeSource;
 
     return Padding(
@@ -423,6 +436,50 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     );
   }
 
+  Widget _buildUnifiedSourceCard(UnifiedMediaRouteContext routeContext) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final parts = [
+      _metadata.serverName ?? routeContext.sourceKey.split(':').first,
+      if ((_metadata.libraryTitle ?? '').trim().isNotEmpty) _metadata.libraryTitle!.trim(),
+    ];
+    final onChangeSource = widget.onChangeSource;
+    final tile = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(color: onSurface.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          Text(t.sourcePicker.source, style: TextStyle(color: onSurface.withValues(alpha: 0.70), fontSize: 15)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              parts.join(' · '),
+              maxLines: 1,
+              overflow: .ellipsis,
+              style: TextStyle(color: onSurface, fontSize: 15),
+            ),
+          ),
+          if (onChangeSource != null)
+            Text(
+              t.sourcePicker.change,
+              style: TextStyle(color: onSurface, fontSize: 15, fontWeight: .w700),
+            ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: onChangeSource == null
+          ? tile
+          : FocusableWrapper(
+              borderRadius: 12,
+              disableScale: true,
+              semanticLabel: t.sourcePicker.change,
+              onSelect: () => unawaited(onChangeSource(context)),
+              child: tile,
+            ),
+    );
+  }
+
   /// The height [_buildUnifiedSourceLine] actually renders, so the two hero
   /// layouts in media_detail_screen.dart can reserve room for it before
   /// laying out their Column.
@@ -444,7 +501,7 @@ extension _MediaDetailActionButtons on _MediaDetailScreenState {
     if (routeContext == null || !routeContext.hasAlternativeSources) return 0.0;
     final isTv = PlatformDetector.isTV();
     final tvScale = TvLayoutConstants.scaleOf(context);
-    final fontSize = isTv ? 13.0 * tvScale : 13.0;
+    final fontSize = isTv ? TvHig.caption2 * TvHig.of(context) : 13.0;
     final topPadding = isTv ? 10 * tvScale : 12.0;
     final chipVerticalPadding = isTv ? 6 * tvScale : 6.0;
     final baseStyle = DefaultTextStyle.of(context).style;

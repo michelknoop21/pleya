@@ -23,7 +23,19 @@ class BackendBadge extends StatelessWidget {
   final double size;
   final Color? color;
 
-  const BackendBadge({super.key, required this.backend, this.size = 16, this.color});
+  /// Emby rides [MediaBackend.jellyfin] (DEC-141). Set [isEmby] when the
+  /// caller holds the connection, or [serverId] to look it up.
+  final bool isEmby;
+  final String? serverId;
+
+  const BackendBadge({
+    super.key,
+    required this.backend,
+    this.size = 16,
+    this.color,
+    this.isEmby = false,
+    this.serverId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +50,14 @@ class BackendBadge extends StatelessWidget {
         width: size,
         height: size,
         theme: SvgTheme(currentColor: tint),
+      ),
+      // No Emby mark ships with the app; a neutral server glyph keeps it
+      // from passing as Jellyfin.
+      MediaBackend.jellyfin when isEmby || isEmbyServer(serverId) => Icon(
+        Symbols.dns_rounded,
+        size: size,
+        fill: 1,
+        color: tint,
       ),
       MediaBackend.jellyfin => SvgPicture.asset(
         'assets/jellyfin_icon.svg',

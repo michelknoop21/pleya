@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../connection/connection_registry.dart';
 import '../../focus/focusable_wrapper.dart';
+import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/media_backend.dart';
 import '../../mixins/mounted_set_state_mixin.dart';
@@ -49,7 +50,12 @@ import 'profile_detail_screen.dart';
 class ProfileSwitchScreen extends StatefulWidget {
   final bool requireSelection;
 
-  const ProfileSwitchScreen({super.key, this.requireSelection = false});
+  /// PROF1: the in-app switch on TV draws the launch gate's composition
+  /// (mockup 21) without its contract. Back closes this route; only
+  /// [requireSelection] turns Back into leaving the app.
+  final bool presentAsGate;
+
+  const ProfileSwitchScreen({super.key, this.requireSelection = false, this.presentAsGate = false});
 
   @override
   State<ProfileSwitchScreen> createState() => _ProfileSwitchScreenState();
@@ -215,7 +221,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
 
           // Launch gate: Netflix "Who's watching?" avatar grid. The in-app
           // manage flow keeps the detailed list (with per-profile menus).
-          if (widget.requireSelection && view.profiles.isNotEmpty) {
+          if ((widget.requireSelection || widget.presentAsGate) && view.profiles.isNotEmpty) {
             return _wrapWithOverlay(_buildSelectionGate(view, activeId));
           }
 
@@ -342,12 +348,22 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
   /// `FocusableActionDetector` below. Desktop and mobile are untouched.
   Widget _buildSelectionGate(ProfilesView view, String? activeId) {
     if (PlatformDetector.isTV()) {
-      return TvProfileGate(
+      final gate = TvProfileGate(
         profiles: view.profiles,
+        activeId: activeId,
         switching: _switching,
         focusNodeFor: _profileFocusNode,
         onSelect: _switchTo,
         onManageProfiles: _openManageProfiles,
+      );
+      if (widget.requireSelection) return gate;
+      // PROF1: in the app Menu reaches this screen as a key, not as a system
+      // Back, and the gate has no scaffold that pops on it the way the list's
+      // FocusedScrollScaffold does.
+      return Focus(
+        canRequestFocus: false,
+        onKeyEvent: (_, event) => handleBackKeyNavigation(context, event),
+        child: gate,
       );
     }
     final theme = Theme.of(context);
@@ -553,7 +569,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
       final parentId = profile.parentConnectionId;
       if (parentId != null) {
         final conn = view.connectionsById[parentId];
-        if (conn != null) chips.add(_ChipData(backend: conn.backend, label: conn.displayLabel));
+        if (conn != null) chips.add(_ChipData(backend: conn.backend, isEmby: conn.isEmby, label: conn.displayLabel));
       }
     }
     final pcs = visibleProfileConnections(
@@ -562,7 +578,7 @@ class _ProfileSwitchScreenState extends State<ProfileSwitchScreen> with MountedS
     );
     for (final pc in pcs) {
       final conn = view.connectionsById[pc.connectionId];
-      if (conn != null) chips.add(_ChipData(backend: conn.backend, label: conn.displayLabel));
+      if (conn != null) chips.add(_ChipData(backend: conn.backend, isEmby: conn.isEmby, label: conn.displayLabel));
     }
     return chips;
   }
@@ -843,7 +859,7 @@ class _ConnectionChips extends StatelessWidget {
             child: Row(
               mainAxisSize: .min,
               children: [
-                BackendBadge(backend: c.backend, size: 12),
+                BackendBadge(backend: c.backend, isEmby: c.isEmby, size: 12),
                 const SizedBox(width: 4),
                 Text(c.label, style: theme.textTheme.labelSmall),
               ],
@@ -856,6 +872,7 @@ class _ConnectionChips extends StatelessWidget {
 
 class _ChipData {
   final MediaBackend backend;
+  final bool isEmby;
   final String label;
-  const _ChipData({required this.backend, required this.label});
+  const _ChipData({required this.backend, this.isEmby = false, required this.label});
 }

@@ -23,6 +23,7 @@ import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/app_icon.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
+import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -407,6 +408,19 @@ void main() {
     expect(_hasOpaqueSurface(tester), isFalse);
   });
 
+  testWidgets('the rail header draws the Pleya lockup in the theme ink', (tester) async {
+    await _pumpBasicRail(tester, alwaysExpanded: true);
+    final expanded = tester.widget<PleyaWordmark>(find.byType(PleyaWordmark));
+    expect(expanded.letteringColor, _testTokens.text);
+    expect(expanded.letteringOpacity, 1);
+    expect(find.text('PLEYA'), findsNothing);
+  });
+
+  testWidgets('a collapsed rail keeps the mark and hides the lettering', (tester) async {
+    await _pumpBasicRail(tester);
+    expect(tester.widget<PleyaWordmark>(find.byType(PleyaWordmark)).letteringOpacity, 0);
+  });
+
   testWidgets('expanded rail keeps selected background outside sidebar keyboard focus', (tester) async {
     await _pumpBasicRail(tester, alwaysExpanded: true);
 
@@ -673,6 +687,57 @@ void main() {
       await _press(tester, LogicalKeyboardKey.arrowDown);
       await _press(tester, LogicalKeyboardKey.enter);
       expect(selectedLibraryKey, isNot(hiddenServerALibrary.globalKey));
+    }
+  });
+
+  testWidgets('a collapsed rail hides server header names and keeps only the icons', (tester) async {
+    await SettingsService.getInstance();
+
+    final librariesProvider = LibrariesProvider();
+    await librariesProvider.updateLibraryOrder([
+      _library(id: '1', title: 'Films A', serverId: ServerId('server-a'), serverName: 'Server A'),
+      _library(id: '1', title: 'Films B', serverId: ServerId('server-b'), serverName: 'Server B'),
+    ]);
+    addTearDown(librariesProvider.dispose);
+    final hiddenLibrariesProvider = HiddenLibrariesProvider();
+    await hiddenLibrariesProvider.ensureInitialized();
+    addTearDown(hiddenLibrariesProvider.dispose);
+    final manager = MultiServerManager();
+    final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(multiServerProvider.dispose);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<LibrariesProvider>.value(value: librariesProvider),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibrariesProvider),
+            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+          ],
+          child: MaterialApp(
+            theme: ThemeData(extensions: const [_testTokens]),
+            home: Scaffold(
+              body: SideNavigationRail(
+                selectedTab: NavigationTabId.discover,
+                isSidebarFocused: false,
+                alwaysExpanded: false,
+                onDestinationSelected: (_) {},
+                onLibrarySelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Library rows already fade their label out; the server header used to
+    // paint its name and chevron regardless, clipped to "Ser" in the 80px rail.
+    for (final name in ['Server A', 'Server B']) {
+      final label = find.text(name);
+      expect(label, findsOneWidget);
+      final fade = find.ancestor(of: label, matching: find.byType(AnimatedOpacity)).first;
+      expect(tester.widget<AnimatedOpacity>(fade).opacity, 0);
     }
   });
 

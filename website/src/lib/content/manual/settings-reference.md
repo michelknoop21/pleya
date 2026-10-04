@@ -5,7 +5,7 @@ order: 17
 group: Devices and settings
 icon: settings
 summary: Every settings group, what each option changes, and which ones matter most.
-updated: 2026-08-22
+updated: 2026-08-23
 ---
 
 # Settings reference
@@ -32,8 +32,9 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 
 | Setting | What it changes |
 |---|---|
-| **Player backend** | ExoPlayer (recommended) or mpv, on Android |
+| **Player backend** | mpv |
 | **Default quality** | The ceiling on stream quality; lower uses less bandwidth |
+| **Maximum Resolution** | Caps what the app asks a server for, even when the file is larger: Auto, 1080p or 4K |
 | **Hardware decoding** | Smoother playback; leave it on unless you are debugging |
 | **Auto skip intro / credits** | Skips them without asking. Intro skipping acts on episodes only. |
 | **Small / large skip duration** | How far the skip buttons jump |
@@ -62,15 +63,19 @@ Settings sit in the navigation on desktop and Apple TV, and inside
 Add and remove servers, add a Plex account, add a local folder, and set which libraries are
 visible. This is also where a server that is no longer reachable gets removed.
 
+A Pleya Server sits in its own block here rather than among the sources on this device, since it
+is an account on a server elsewhere. Its row shows who you are signed in as, and **Disconnect**
+removes it from this device even while the server is offline or its sign-in has expired.
+
 ## Integrations
 
 - **Trakt, MyAnimeList, AniList and Simkl** keep your watch history on those services
 - **Discord Rich Presence** shows what you are watching, on desktop
 - **Companion Remote** lets a phone drive this device
-- **Requests** connects Jellyseerr or Overseerr, see [Requests](/docs/requests)
+- **Requests** connects Seerr, Jellyseerr or Overseerr, see [Requests](/docs/requests)
 - **Pleya Share** hosts or joins a device share, see [Pleya Share](/docs/pleya-share)
 - **Tautulli** adds viewers, watch statistics and live activity to Pleya, see
-  [Movie and show details](/docs/movie-and-show-details). Its own screen carries **Use history
+  [Tautulli](/docs/tautulli). Its own screen carries **Use history
   for recommendations**, which lets the taste rows on Home learn from what that server recorded
   before you had Pleya. Each profile only ever gets its own history, and the processing happens
   in Pleya on this device

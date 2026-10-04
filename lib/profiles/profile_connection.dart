@@ -23,6 +23,10 @@ sealed class ProfileConnection with _$ProfileConnection {
     String? userToken,
     required String userIdentifier,
     @Default(false) bool isDefault,
+
+    /// Attached via the borrow flow. Borrowed connections never get owner
+    /// rights on the server; see `MultiServerManager.canManageServerMetadata`.
+    @Default(false) bool borrowed,
     DateTime? tokenAcquiredAt,
     DateTime? lastUsedAt,
   }) = _ProfileConnection;

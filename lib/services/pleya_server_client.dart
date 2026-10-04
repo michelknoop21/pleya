@@ -8,6 +8,8 @@ import '../connection/connection.dart';
 import '../utils/continue_watching_merge.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
+import '../media/server_administration.dart';
+import '../media/server_authority_guard.dart';
 import '../media/ids.dart';
 import '../media/library_filter_result.dart';
 import '../media/library_first_character.dart';
@@ -54,6 +56,7 @@ part 'pleya_server_client/parts/browse.dart';
 part 'pleya_server_client/parts/search.dart';
 part 'pleya_server_client/parts/playback.dart';
 part 'pleya_server_client/parts/unsupported.dart';
+part 'pleya_server_client/parts/admin.dart';
 
 /// [MediaServerClient] over a Pleya Server, speaking Pleya Protocol v1.
 ///
@@ -77,6 +80,7 @@ part 'pleya_server_client/parts/unsupported.dart';
 /// adds direct play and watch state, with the ownership model from DEC-049
 /// behind it. Downloads, playlists, collections, favourites, ratings and Live
 /// TV are later phases and answer through `_PleyaServerUnsupportedMethods`.
+/// Scans, jobs and user administration live in `_PleyaServerAdminMethods`.
 // The private fields below are assigned from named constructor parameters
 // rather than through initializing formals, because Dart has no private named
 // parameter. dart_code_linter flags the pattern; here it is unavoidable.
@@ -89,7 +93,9 @@ class PleyaServerClient
         _PleyaServerSearchMethods,
         _PleyaServerArtworkMethods,
         _PleyaServerPlaybackMethods,
-        _PleyaServerUnsupportedMethods
+        _PleyaServerUnsupportedMethods,
+        _PleyaServerAdminMethods,
+        ServerAuthorityGuard
     implements MediaServerClient, ScopedMediaServerClient, GracefullyCloseable {
   PleyaServerClient._({required PleyaServerSession session, required MediaServerHttpClient http})
     : _session = session,
@@ -126,6 +132,7 @@ class PleyaServerClient
 
   @override
   final PleyaServerSession _session;
+  @override
   final MediaServerHttpClient _http;
 
   @override
@@ -140,6 +147,12 @@ class PleyaServerClient
 
   @override
   PleyaServerConnection get connection => _session.connection;
+
+  /// Let a revoked session spend its stored refresh token one more time.
+  /// Only ever driven by an explicit user action; see
+  /// [PleyaServerSession.retryAfterRejection] for why a timer must not call
+  /// this.
+  void retrySessionAfterRejection() => _session.retryAfterRejection();
 
   /// Raw protocol capabilities as the server last reported them. The client's
   /// own calls gate on this; [capabilities] is the app-facing translation and
@@ -264,11 +277,29 @@ class PleyaServerClient
           appLogger.i('PleyaServerClient: server renamed to ${detail.name}');
         }
       }
+      if (_wireCapabilities.users) await _refreshRole();
       return HealthStatus.online;
     } on MediaServerAuthException catch (e) {
       return _provesSignedOut(e) ? HealthStatus.authError : HealthStatus.offline;
     } catch (_) {
       return HealthStatus.offline;
+    }
+  }
+
+  /// Re-read the signed-in user's role, so a promotion or demotion on the
+  /// server reaches the client's authority checks without a re-login. Best
+  /// effort: a failed read keeps the last known role, and the server checks
+  /// the role on every admin request anyway.
+  Future<void> _refreshRole() async {
+    try {
+      final response = await _authorizedGet('/users/me', timeout: MediaServerTimeouts.jellyfinProbe);
+      // The account is gone: whatever role it had no longer applies.
+      if (response.statusCode == 404) return _session.adoptRole('');
+      final data = response.data;
+      if (response.statusCode != 200 || data is! Map<String, dynamic>) return;
+      await _session.adoptRole(PleyaUser.fromJson(data).role);
+    } catch (e) {
+      appLogger.d('PleyaServerClient: /users/me unavailable', error: e);
     }
   }
 

@@ -99,6 +99,10 @@ class FocusableWrapper extends StatefulWidget {
   /// If false, always scrolls to [scrollAlignment].
   final bool useComfortableZone;
 
+  /// Leave the scroll where it is while the item, focus decoration included,
+  /// is fully in view; scroll only for an item at least partly outside.
+  final bool scrollOnlyWhenHidden;
+
   /// Optional semantic label for accessibility.
   final String? semanticLabel;
 
@@ -183,6 +187,7 @@ class FocusableWrapper extends StatefulWidget {
     this.autoScroll = true,
     this.scrollAlignment = 0.5,
     this.useComfortableZone = false,
+    this.scrollOnlyWhenHidden = false,
     this.semanticLabel,
     this.canRequestFocus = true,
     this.onKeyEvent,
@@ -430,6 +435,8 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
       final itemTop = itemPosition.dy - _focusDecorationPadding;
       final itemBottom = itemPosition.dy + itemHeight + _focusDecorationPadding;
 
+      if (widget.scrollOnlyWhenHidden && itemTop >= 0 && itemBottom <= viewportHeight) return;
+
       if (widget.useComfortableZone) {
         // Define comfortable zone - if item (including focus decoration) is within middle 60% of viewport, don't scroll
         final comfortZoneTop = viewportHeight * 0.2;
@@ -469,6 +476,10 @@ class _FocusableWrapperState extends State<FocusableWrapper> with SingleTickerPr
       }
 
       if (!position.maxScrollExtent.isFinite) return;
+      // scrollDelta is in screen space (content moves up). A reversed
+      // scrollable (`reverse: true`, offset 0 at the bottom) grows its offset
+      // the other way.
+      if (axisDirectionIsReversed(position.axisDirection)) scrollDelta = -scrollDelta;
       final targetOffset = (currentOffset + scrollDelta).clamp(position.minScrollExtent, position.maxScrollExtent);
 
       position.animateTo(targetOffset, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);

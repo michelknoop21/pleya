@@ -1,0 +1,22 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Bibliotheken|navAction=plus}}
+<div class="admin">
+  {{admin:libraries|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Bibliotheken</div>
+    <h1 class="page-title" style="margin-top:0"><span>Bibliotheken</span><a class="btn primary sm" href="#">{{icon:plus}} Bibliotheek toevoegen</a></h1>
+
+    <section class="panel" style="padding:6px 8px">
+      <table class="table">
+        <tr><th>Bibliotheek</th><th>Soort</th><th>Opslag</th><th>Inhoud</th><th>Laatste scan</th><th class="r"></th></tr>
+        <tr class="hover"><td><div class="t">Films</div><div class="s">slug <span class="mono">films</span></div></td><td>Films</td><td><div class="s" style="margin:0"><span class="mono">/volume1/media/Films</span></div><div class="s" style="margin:0"><span class="mono">/volume2/media/Films-4K</span></div></td><td>461 titels · 512 versies</td><td><span class="status"><span class="dot"></span>vandaag 08:12 · 3 nieuw</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:scan}} Scannen</a><a class="btn ghost icon" href="#" title="Bewerken">{{icon:edit}}</a></div></td></tr>
+        <tr><td><div class="t">Series</div><div class="s">slug <span class="mono">series</span></div></td><td>Series</td><td><span class="mono" style="font-size:12px">/volume1/media/Series</span></td><td>97 series · 4.870 afleveringen</td><td><span class="status"><span class="dot warn"></span>bezig · 62%</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:stop}} Afbreken</a><a class="btn ghost icon" href="#" title="Bewerken">{{icon:edit}}</a></div></td></tr>
+        <tr><td><div class="t">Kids</div><div class="s">slug <span class="mono">kids</span> · <span class="pill warn" style="height:20px">beheerd via .env</span></div></td><td>Series</td><td><span class="mono" style="font-size:12px">/volume1/media/Kids</span></td><td>5 series · 212 afleveringen</td><td><span class="status"><span class="dot"></span>vandaag 08:00</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Overnemen in beheer</a></div></td></tr>
+        <tr><td><div class="t">Boeken</div><div class="s">slug <span class="mono">boeken</span></div></td><td>Boeken</td><td><span class="mono" style="font-size:12px">/volume1/media/Boeken</span> <span class="pill err" style="height:20px">niet gemount</span></td><td>38 boeken</td><td><span class="status"><span class="dot off"></span>overgeslagen sinds 07:12</span></td><td class="r"><div class="act"><a class="btn ghost sm" href="#">{{icon:drive}} Opslag</a><a class="btn ghost icon" href="#" title="Bewerken">{{icon:edit}}</a></div></td></tr>
+      </table>
+    </section>
+
+    <div class="alert info" style="margin-top:16px">{{icon:info}}<div><b>Kids komt nog uit de omgevingsvariabele.</b> Overnemen zet de bibliotheek met dezelfde id en slug in de database. Daarna negeert de server de regel in <span class="mono">PLEYA_SERVER_LIBRARIES</span> en meldt dat bij het opstarten. Er ontstaat geen tweede bibliotheek.</div></div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 21 Bibliotheken beheren · CRUD en scan per bibliotheek; de .env-overname uit PS-11A criterium 7</div>

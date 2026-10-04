@@ -39,6 +39,18 @@ private struct TopShelfCachePayload: Decodable {
     let lastPlaybackPosition: Double?
     let seasonNumber: Int?
     let episodeNumber: Int?
+    // Carousel-only fields; absent on section items and in older payloads.
+    let contextTitle: String?
+    let summary: String?
+    let genre: String?
+    let releaseDate: String?
+    let imageUri: String?
+    let namedAttributes: [NamedAttribute]?
+
+    struct NamedAttribute: Decodable {
+      let name: String
+      let values: [String]
+    }
 
     private enum CodingKeys: String, CodingKey {
       case contentId
@@ -51,6 +63,12 @@ private struct TopShelfCachePayload: Decodable {
       case lastPlaybackPosition
       case seasonNumber
       case episodeNumber
+      case contextTitle
+      case summary
+      case genre
+      case releaseDate
+      case imageUri
+      case namedAttributes
     }
 
     init(from decoder: Decoder) throws {
@@ -65,10 +83,19 @@ private struct TopShelfCachePayload: Decodable {
       lastPlaybackPosition = container.decodeFlexibleDoubleIfPresent(.lastPlaybackPosition)
       seasonNumber = container.decodeFlexibleIntIfPresent(.seasonNumber)
       episodeNumber = container.decodeFlexibleIntIfPresent(.episodeNumber)
+      contextTitle = try? container.decodeIfPresent(String.self, forKey: .contextTitle)
+      summary = try? container.decodeIfPresent(String.self, forKey: .summary)
+      genre = try? container.decodeIfPresent(String.self, forKey: .genre)
+      releaseDate = try? container.decodeIfPresent(String.self, forKey: .releaseDate)
+      imageUri = try? container.decodeIfPresent(String.self, forKey: .imageUri)
+      namedAttributes = try? container.decodeIfPresent([NamedAttribute].self, forKey: .namedAttributes)
     }
   }
 
   let sections: [Section]
+  /// Hero films, then Continue Watching. Older app builds never write it; they
+  /// keep getting the sectioned row.
+  let carousel: [Item]?
 }
 
 private extension KeyedDecodingContainer {
@@ -108,6 +135,15 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       return nil
     }
 
+    let carouselItems = (payload.carousel ?? []).compactMap(makeCarouselItem)
+    if !carouselItems.isEmpty {
+      // `.details` shows summary, genre, duration, year and named attributes
+      // next to the buttons; `.actions` shows buttons only. tvOS 26.5 draws
+      // no title or context line here, so the app puts both as the first
+      // line of `summary` (SystemShelfService._carouselSummary).
+      return TVTopShelfCarouselContent(style: .details, items: carouselItems)
+    }
+
     let sections = payload.sections.compactMap { section -> TVTopShelfItemCollection<TVTopShelfSectionedItem>? in
       let items = section.items.compactMap(makeTopShelfItem)
       guard !items.isEmpty else { return nil }
@@ -137,10 +173,13 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       item.playbackProgress = min(max(position / duration, 0), 1)
     }
 
-    if let url = deepLinkURL(contentId: cacheItem.contentId) {
-      let action = TVTopShelfAction(url: url)
-      item.displayAction = action
-      item.playAction = action
+    // Play on the remote resumes; a click opens the detail page. The app
+    // treats a link without `action` (written by older builds) as play.
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "open") {
+      item.displayAction = TVTopShelfAction(url: url)
+    }
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "play") {
+      item.playAction = TVTopShelfAction(url: url)
     }
 
     if let posterUri = cacheItem.posterUri, let imageURL = URL(string: posterUri) {
@@ -148,6 +187,45 @@ final class TopShelfProvider: TVTopShelfContentProvider {
       item.setImageURL(imageURL, for: .screenScale2x)
     }
 
+    return item
+  }
+
+  private func makeCarouselItem(_ cacheItem: TopShelfCachePayload.Item) -> TVTopShelfCarouselItem? {
+    // The carousel is full-screen artwork; an item without it is left out.
+    guard !cacheItem.contentId.isEmpty,
+      let imageUri = cacheItem.imageUri, let imageURL = URL(string: imageUri)
+    else { return nil }
+
+    let item = TVTopShelfCarouselItem(identifier: cacheItem.contentId)
+    item.title = cacheItem.title
+    item.contextTitle = cacheItem.contextTitle
+    item.summary = cacheItem.summary
+    item.genre = cacheItem.genre
+    if let duration = cacheItem.duration, duration > 0 {
+      item.duration = duration / 1000  // payload is milliseconds
+    }
+    if let releaseDate = cacheItem.releaseDate {
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withFullDate]
+      item.creationDate = formatter.date(from: releaseDate)
+    }
+    // tvOS shows at most four.
+    item.namedAttributes = (cacheItem.namedAttributes ?? []).prefix(4)
+      .filter { !$0.name.isEmpty && !$0.values.isEmpty }
+      .map { TVTopShelfNamedAttribute(name: $0.name, values: $0.values) }
+    // A file:// URL in the app-group container (the app downloads the image,
+    // so servers that need an auth header work too); older payloads carry an
+    // http(s) URL.
+    item.setImageURL(imageURL, for: .screenScale1x)
+    item.setImageURL(imageURL, for: .screenScale2x)
+    // Carousel: playAction is the first button (Play resumes), displayAction
+    // the second (opens the detail page).
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "play") {
+      item.playAction = TVTopShelfAction(url: url)
+    }
+    if let url = deepLinkURL(contentId: cacheItem.contentId, action: "open") {
+      item.displayAction = TVTopShelfAction(url: url)
+    }
     return item
   }
 
@@ -172,11 +250,14 @@ final class TopShelfProvider: TVTopShelfContentProvider {
     return "\(item.title) - \(episodeTitle)"
   }
 
-  private func deepLinkURL(contentId: String) -> URL? {
+  private func deepLinkURL(contentId: String, action: String) -> URL? {
     var components = URLComponents()
     components.scheme = TopShelfShared.deepLinkScheme
     components.host = "play"
-    components.queryItems = [URLQueryItem(name: "content_id", value: contentId)]
+    components.queryItems = [
+      URLQueryItem(name: "content_id", value: contentId),
+      URLQueryItem(name: "action", value: action),
+    ]
     return components.url
   }
 }

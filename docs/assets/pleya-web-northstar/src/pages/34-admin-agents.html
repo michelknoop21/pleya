@@ -1,0 +1,62 @@
+<!-- widths: 1600, 393 -->
+{{shell:admin|nav=Agents en API-tokens|navAction=plus}}
+<div class="admin">
+  {{admin:security|badges=activity:1,storage:!}}
+  <div class="admin-main">
+    <div class="crumb">Serverbeheer ▸ Beveiliging ▸ Agents en API-tokens</div>
+    <h1 class="page-title" style="margin-top:0"><span>Agents en API-tokens</span><a class="btn primary sm" href="#">{{icon:plus}} Token aanmaken</a></h1>
+
+    <div class="cols-3" style="align-items:start">
+      <div>
+        <section class="panel" style="padding:6px 8px">
+          <h3 style="padding:10px 12px 4px">Tokens <span class="all">3 actief</span></h3>
+          <table class="table">
+            <tr><th>Naam</th><th>Namens</th><th>Bereik</th><th>Laatst gebruikt</th><th>Verloopt</th><th class="r"></th></tr>
+            <tr><td><div class="t">Claude Code op de Mac</div><div class="s mono">plt_7f3a…c91e</div></td><td>Michel · eigenaar</td><td><span class="pill">beheer</span></td><td>2 minuten geleden · 14 aanroepen vandaag</td><td>over 89 dagen</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr class="hover"><td><div class="t">Nachtelijke scanrobot</div><div class="s mono">plt_2b81…40aa</div></td><td>Michel · eigenaar</td><td><span class="pill">scans en bibliotheken</span></td><td>vannacht 03:00</td><td>over 12 dagen</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr><td><div class="t">Sannes leesassistent</div><div class="s mono">plt_9c02…e7d3</div></td><td>Sanne · lid</td><td><span class="pill">alleen lezen</span></td><td>gisteren 21:12</td><td>nooit</td><td class="r"><div class="act"><a class="btn ghost sm" href="#">Intrekken</a></div></td></tr>
+            <tr style="opacity:.5"><td><div class="t">Oude testtoken</div><div class="s mono">plt_1a5f…08b2</div></td><td>Michel</td><td><span class="pill">beheer</span></td><td>3 weken geleden</td><td class="dim">ingetrokken 1 sep</td><td class="r"></td></tr>
+          </table>
+          <p class="help" style="padding:8px 12px 10px">Een token is een sessie: hij staat bij Ingelogde toestellen, wordt met dezelfde knop ingetrokken en kan nooit meer dan de gebruiker zelf. Het geheim wordt één keer getoond bij het aanmaken.</p>
+        </section>
+
+        <section class="panel" style="margin-top:14px;padding:6px 8px">
+          <h3 style="padding:10px 12px 4px">Laatste beheeracties via agents <span class="all">auditlog · 24 uur</span></h3>
+          <table class="table">
+            <tr><td class="dim" style="width:110px">14:02</td><td><div class="t">scan gestart · Series</div><div class="s">Claude Code op de Mac · tool <span class="mono">library_scan</span></div></td><td class="r"><span class="pill ok">ok</span></td></tr>
+            <tr><td class="dim">13:58</td><td><div class="t">instelling gewijzigd · scaninterval 6u → 12u</div><div class="s">Claude Code op de Mac · tool <span class="mono">settings_update</span></div></td><td class="r"><span class="pill ok">ok</span></td></tr>
+            <tr><td class="dim">13:57</td><td><div class="t">bibliotheek verwijderen · Kids</div><div class="s">Claude Code op de Mac · tool <span class="mono">library_delete</span> zonder bevestiging</div></td><td class="r"><span class="pill err">geweigerd</span></td></tr>
+            <tr><td class="dim">03:00</td><td><div class="t">scan gestart · Films, Series, Boeken</div><div class="s">Nachtelijke scanrobot · tool <span class="mono">library_scan</span></div></td><td class="r"><span class="pill ok">ok</span></td></tr>
+          </table>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel">
+          <h3>MCP <span class="status"><span class="dot"></span>aan</span></h3>
+          <dl class="kv" style="grid-template-columns:120px 1fr">
+            <dt>Adres</dt><dd class="mono">https://web.pleya.app/mcp</dd>
+            <dt>Transport</dt><dd>Streamable HTTP · zelfde origin, zelfde tokens</dd>
+            <dt>Tools</dt><dd>31 · 19 lezen, 9 beheren, 3 destructief (vragen <span class="mono">confirm</span>)</dd>
+            <dt>Rechten</dt><dd>identiek aan de API: een token van een lid ziet alleen wat dat lid ziet</dd>
+          </dl>
+          <div class="btn-row" style="margin-top:14px"><a class="btn ghost sm" href="#">{{icon:copy}} Configuratie voor Claude Code kopiëren</a></div>
+          <p class="help">MCP uitschakelen kan hier; de HTTP-API blijft dan gewoon werken.</p>
+        </section>
+        <section class="panel" style="margin-top:14px">
+          <h3>Nieuw token</h3>
+          <label class="label" style="margin-top:0">Naam</label>
+          <div class="field focus">Claude Code op de Mac<span class="caret"></span></div>
+          <label class="label">Bereik</label>
+          <div class="choice on"><span class="radio"></span><div class="body"><div class="t">Beheer</div><div class="s">alles wat je zelf mag, inclusief instellingen en gebruikers</div></div></div>
+          <div class="choice"><span class="radio"></span><div class="body"><div class="t">Scans en bibliotheken</div><div class="s">scannen, metadata verversen, bibliotheken lezen</div></div></div>
+          <div class="choice"><span class="radio"></span><div class="body"><div class="t">Alleen lezen</div><div class="s">catalogus, status, eigen voortgang</div></div></div>
+          <label class="label">Verloopt</label>
+          <div class="field select">Over 90 dagen {{icon:chevd}}</div>
+          <a class="btn primary sm" href="#" style="margin-top:14px">Token aanmaken</a>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">NORTHSTAR · 34 Agents en API-tokens · MCP als dunne laag op dezelfde API; tokens zijn sessies; elke mutatie in de auditlog</div>

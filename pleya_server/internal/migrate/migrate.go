@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -129,12 +130,42 @@ func parseName(filename string) (int, string, error) {
 	return v, parts[1], nil
 }
 
+// earlierChecksums zijn eerdere bewoordingen van een migratie die al op een
+// installatie gedraaid had toen hij werd bewerkt. Elke regel is een
+// gepubliceerde versie waarvan een latere migratie het schema gelijktrekt; een
+// nieuwe bewerking hoort hier nooit bij, die wordt een nieuwe migratie.
+var earlierChecksums = map[int][]string{
+	// replaced_by zonder ON DELETE SET NULL (vóór 3734e399); 0012 zet hem erbij.
+	6: {"c5fdb87d0952cfe0331cdbb58df3fa27ec28762e42dc130255af6746e3ebf329"},
+	// Alleen commentaar en tekst (COMMENT ON, de RAISE-melding): de
+	// DEC-hernummering (4e78b160) en 3734e399. Geen schemaverschil.
+	7: {
+		"10ba55ada813febfd493f9995b757dc797718c7b700fc8c538e814e9af1e8c2b",
+		"73e5e7061e050fa0401e8be3f1728035b34961d758668b4e7539397a48af8aa4",
+	},
+}
+
 // Run brengt het schema naar de versie van deze binary.
 //
 // Elke migratie draait in zijn eigen transactie, samen met de regel die hem in
 // schema_migrations vastlegt. Faalt er een, dan is die migratie in het geheel
 // niet gebeurd en staan de eerdere er wel.
 func Run(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) (Result, error) {
+	return runTo(ctx, pool, log, -1)
+}
+
+// RunTo brengt het schema naar een specifieke versie, niet verder.
+//
+// Alleen voor tests die een bestaande, oudere database willen naspelen: eerst
+// hierheen migreren, dan handmatig rijen invoegen zoals een live installatie ze
+// zou hebben, en dan Run aanroepen voor de rest. Productiecode roept dit nooit
+// aan; die wil altijd de laatste versie.
+func RunTo(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, target int) (Result, error) {
+	return runTo(ctx, pool, log, target)
+}
+
+// cap kleiner dan 0 betekent geen grens: migreer naar de laatste versie.
+func runTo(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, cap int) (Result, error) {
 	all, err := Load()
 	if err != nil {
 		return Result{}, err
@@ -172,6 +203,9 @@ func Run(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) (Result, err
 	}
 
 	target := all[len(all)-1].Version
+	if cap >= 0 && cap < target {
+		target = cap
+	}
 	if current > target {
 		return Result{}, fmt.Errorf("%w: schema %d, binary %d", ErrDatabaseNewer, current, target)
 	}
@@ -179,8 +213,11 @@ func Run(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) (Result, err
 	result := Result{From: current, To: current}
 
 	for _, m := range all {
+		if m.Version > target {
+			break
+		}
 		if sum, done := applied[m.Version]; done {
-			if sum != "" && sum != m.Checksum {
+			if sum != "" && sum != m.Checksum && !slices.Contains(earlierChecksums[m.Version], sum) {
 				return result, fmt.Errorf(
 					"migratie %d (%s) is na het toepassen gewijzigd; een toegepaste migratie bewerken is geen migratie",
 					m.Version, m.Name)

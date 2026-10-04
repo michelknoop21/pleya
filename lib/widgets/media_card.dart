@@ -924,6 +924,7 @@ class _MediaCardList extends StatelessWidget {
                           children: [
                             BackendBadge(
                               backend: (item as MediaItem).backend,
+                              serverId: (item as MediaItem).serverId,
                               size: _metadataFontSize + 2,
                               color: tokens(context).textMuted.withValues(alpha: 0.6),
                             ),

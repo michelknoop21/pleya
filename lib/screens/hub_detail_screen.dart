@@ -645,7 +645,7 @@ class _HubDetailScreenState extends State<HubDetailScreen>
                         );
                       }
 
-                      // DEC-119 fase 2 (mockup 40): Verder kijken is grouped into
+                      // DEC-144 fase 2 (mockup 40): Verder kijken is grouped into
                       // four fixed sections; every other hub stays one grid.
                       // Indexes run on across sections, so focus memory and the
                       // first-row/first-column rules are untouched.

@@ -1,8 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:pleya/media/ids.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
@@ -24,6 +26,7 @@ import 'package:pleya/profiles/profile_connection_registry.dart';
 import 'package:pleya/profiles/profile_registry.dart';
 import 'package:pleya/providers/companion_remote_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
+import 'package:pleya/providers/discover_refresh_policy.dart';
 import 'package:pleya/providers/tv_home_projection_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
@@ -36,6 +39,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/watch_together/watch_together.dart';
 import 'package:pleya/widgets/side_navigation_rail.dart';
@@ -47,6 +51,15 @@ import '../test_helpers/prefs.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // The TV focus path traces every key through the debug logger; keep the
+  // test output to test results.
+  late Logger previousLogger;
+  setUpAll(() {
+    previousLogger = appLogger;
+    appLogger = Logger(level: Level.off);
+  });
+  tearDownAll(() => appLogger = previousLogger);
 
   setUp(() {
     resetSharedPreferencesForTest();
@@ -214,6 +227,105 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
   });
 
+  group('Home ververst zichzelf', () {
+    Future<(_RecordingDiscoverProvider, GlobalKey<State<DiscoverScreen>>)> pumpRecording(
+      WidgetTester tester, {
+      Size size = const Size(1280, 720),
+      double devicePixelRatio = 1.0,
+    }) async {
+      late _RecordingDiscoverProvider recording;
+      final key = GlobalKey<State<DiscoverScreen>>();
+      final harness = await _pumpTvDiscoverScreen(
+        tester,
+        size: size,
+        devicePixelRatio: devicePixelRatio,
+        screenKey: key,
+        createDiscover: (multiServer, hidden, libraries, isBinding) =>
+            recording = _RecordingDiscoverProvider(multiServer, hidden, libraries, isProfileBinding: isBinding),
+      );
+      addTearDown(harness.disposeAll);
+      await tester.pumpAndSettle();
+      recording.requests.clear();
+      return (recording, key);
+    }
+
+    Future<void> checkTimer(WidgetTester tester, _RecordingDiscoverProvider recording, State screen) async {
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'Home active and resumed: the timer fires');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump(kHomeRefreshInterval * 3);
+      expect(recording.requests, hasLength(1), reason: 'a paused app runs no timer');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'resumed again: the timer is back');
+
+      (screen as TabVisibilityAware).onTabHidden();
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval * 3);
+      expect(recording.requests, isEmpty, reason: 'leaving Home stops the timer');
+
+      (screen as TabVisibilityAware).onTabShown();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m']);
+
+      // A desktop window that loses focus goes `inactive` and stays visible;
+      // the timer keeps running there (M4). On iOS and tvOS `inactive` is a
+      // short step on the way to `hidden`/`paused`, which do stop it.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      recording.requests.clear();
+      await tester.pump(kHomeRefreshInterval);
+      expect(recording.requests, ['tick 2m'], reason: 'an unfocused but visible window still refreshes');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    }
+
+    testWidgets('TV: a silent refresh every interval while Home is active and the app resumed', (tester) async {
+      final (recording, key) = await pumpRecording(tester);
+      await checkTimer(tester, recording, key.currentState!);
+    });
+
+    testWidgets(
+      'phone: the same timer runs on a phone viewport',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        TvDetectionService.debugSetAppleTVOverride(false);
+        final (recording, key) = await pumpRecording(tester, size: const Size(390, 844), devicePixelRatio: 3);
+        expect(PlatformDetector.isPhone(key.currentContext!), isTrue, reason: 'sanity: phone layout');
+        await checkTimer(tester, recording, key.currentState!);
+      },
+    );
+
+    testWidgets('returning to Home asks for a refresh with the short threshold', (tester) async {
+      final (recording, key) = await pumpRecording(tester);
+
+      (key.currentState! as Refreshable).refresh();
+
+      expect(recording.requests, ['return 2m']);
+    });
+
+    testWidgets('resume on a mobile or TV platform asks for the return refresh', (tester) async {
+      // The host running the tests is not iOS; the gate is lifted explicitly.
+      DiscoverScreen.debugRefreshOnResume = true;
+      addTearDown(() => DiscoverScreen.debugRefreshOnResume = null);
+      final (recording, _) = await pumpRecording(tester);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
+      expect(recording.requests, ['return 2m']);
+    });
+  });
+
   // Fase-0 baseline for Pleya Unified TV 2026 (docs/tvos-unified-experience.md
   // hoofdstuk 27): this group locks in the existing Home-focus traversal that
   // fase 0 must not change before any unified-catalog work begins. It asserts
@@ -296,6 +408,79 @@ void main() {
       expect(FocusManager.instance.primaryFocus?.debugLabel, 'tvHeroPlay');
     });
   });
+
+  // DEC-132: a seed row explains itself through its rail label. Short, very
+  // long and non-Latin titles, in both locales that carry the strings; the
+  // long one must truncate inside the rail instead of overflowing.
+  group('seed row title (TV)', () {
+    MediaItem movie(String id, {String? title, int viewCount = 0}) => MediaItem(
+      id: id,
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: title ?? id,
+      serverId: 'server_1',
+      serverName: 'Server',
+      viewCount: viewCount,
+    );
+    final related = MediaHub(
+      id: 'rel',
+      title: 'Related',
+      type: 'movie',
+      items: [movie('a'), movie('b'), movie('c'), movie('d')],
+      size: 4,
+      serverId: 'server_1',
+    );
+    const longTitle =
+        'The Extraordinarily Long and Winding Chronicle of a Title That Never Seems to End Across Several Seasons';
+    const nonLatin = '千と千尋の神隠し';
+
+    for (final locale in [AppLocale.en, AppLocale.nl]) {
+      for (final seedTitle in ['Severance', longTitle, nonLatin]) {
+        testWidgets(
+          'a seed row shows its reason as the rail label (${locale.languageCode}, ${seedTitle.length} chars)',
+          (tester) async {
+            await tester.runAsync(() => LocaleSettings.setLocale(locale));
+            final harness = await _pumpTvDiscoverScreen(
+              tester,
+              recentlyWatched: [movie('seed', title: seedTitle, viewCount: 1)],
+              related: [related],
+            );
+            addTearDown(harness.disposeAll);
+            await tester.pumpAndSettle();
+
+            final label = t.discover.becauseYouWatched(title: seedTitle);
+            expect(find.text(label), findsOneWidget);
+            expect(find.text(seedTitle), findsNothing, reason: 'the seed itself is not in its own row');
+            expect(tester.takeException(), isNull, reason: 'no overflow from the label');
+            expect(
+              tester.renderObject<RenderParagraph>(find.text(label)).didExceedMaxLines,
+              seedTitle == longTitle,
+              reason: 'only the long title is cut, on one line with an ellipsis',
+            );
+          },
+        );
+      }
+    }
+  });
+}
+
+/// Records what Home asked for instead of fetching, so the tests below measure
+/// when a refresh is requested and with which threshold.
+class _RecordingDiscoverProvider extends DiscoverProvider {
+  _RecordingDiscoverProvider(
+    super.multiServer,
+    super.hiddenLibraries,
+    super.libraries, {
+    required super.isProfileBinding,
+  });
+
+  /// `tick` for the periodic refresh, `return` for the return/resume one
+  /// (which also rescans local folders), with the threshold in minutes.
+  final requests = <String>[];
+
+  @override
+  Future<void> refreshIfStale({Duration maxAge = kHomeRefreshInterval, bool rescanLocalFolders = false}) async =>
+      requests.add('${rescanLocalFolders ? 'return' : 'tick'} ${maxAge.inMinutes}m');
 }
 
 /// Bundle of everything a pumped [DiscoverScreen] test harness needs to keep
@@ -343,11 +528,20 @@ class _TvDiscoverHarness {
 /// title — which is exactly the shape these baselines were written against.
 /// Reused by the Home-focus baseline tests so they exercise the real focus
 /// wiring instead of a hand-rolled substitute.
-Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
+Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(
+  WidgetTester tester, {
+  DiscoverProvider Function(MultiServerProvider, HiddenLibrariesProvider, LibrariesProvider, bool Function())?
+  createDiscover,
+  GlobalKey<State<DiscoverScreen>>? screenKey,
+  Size size = const Size(1280, 720),
+  double devicePixelRatio = 1.0,
+  List<MediaItem> recentlyWatched = const [],
+  List<MediaHub> related = const [],
+}) async {
   final settings = await SettingsService.getInstance();
   await settings.write(SettingsService.libraryDensity, LibraryDensity.max);
-  tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = const Size(1280, 720);
+  tester.view.devicePixelRatio = devicePixelRatio;
+  tester.view.physicalSize = size * devicePixelRatio;
   addTearDown(() {
     tester.view.resetDevicePixelRatio();
     tester.view.resetPhysicalSize();
@@ -362,7 +556,7 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
     serverName: 'Server',
   );
   final hub = MediaHub(id: 'hub_1', title: 'Recommended', type: 'movie', items: [item], size: 1);
-  final client = _FakeMediaServerClient(hubs: [hub]);
+  final client = _FakeMediaServerClient(hubs: [hub], recentlyWatched: recentlyWatched, related: related);
   final manager = MultiServerManager()..debugRegisterClientForTesting(client);
   final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
   final hiddenLibrariesProvider = HiddenLibrariesProvider();
@@ -387,14 +581,22 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
     connections: connectionRegistry,
     storage: storage,
   );
-  final discoverProvider = DiscoverProvider(
-    multiServerProvider,
-    hiddenLibrariesProvider,
-    librariesProvider,
-    isProfileBinding: () => activeProfileProvider.isBinding,
-  );
-  final discoverKey = GlobalKey<State<DiscoverScreen>>();
-  const foregroundWidth = 1280 - SideNavigationRailState.tvCollapsedWidth;
+  final discoverProvider =
+      createDiscover?.call(
+        multiServerProvider,
+        hiddenLibrariesProvider,
+        librariesProvider,
+        () => activeProfileProvider.isBinding,
+      ) ??
+      DiscoverProvider(
+        multiServerProvider,
+        hiddenLibrariesProvider,
+        librariesProvider,
+        isProfileBinding: () => activeProfileProvider.isBinding,
+      );
+  final discoverKey = screenKey ?? GlobalKey<State<DiscoverScreen>>();
+  // A phone has no side rail to reserve room for.
+  final foregroundWidth = size.width < 600 ? size.width : size.width - SideNavigationRailState.tvCollapsedWidth;
 
   await tester.pumpWidget(
     TranslationProvider(
@@ -427,12 +629,12 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
             reservedSideNavigationWidth: SideNavigationRailState.tvCollapsedWidth,
             foregroundLeft: 120.0,
             foregroundWidth: foregroundWidth,
-            viewportWidth: 1280,
+            viewportWidth: size.width,
             child: Align(
               alignment: Alignment.centerLeft,
               child: SizedBox(
                 width: foregroundWidth,
-                height: 720,
+                height: size.height,
                 child: DiscoverScreen(key: discoverKey),
               ),
             ),
@@ -457,8 +659,10 @@ Future<_TvDiscoverHarness> _pumpTvDiscoverScreen(WidgetTester tester) async {
 
 class _FakeMediaServerClient implements MediaServerClient {
   final List<MediaHub> hubs;
+  final List<MediaItem> recentlyWatched;
+  final List<MediaHub> related;
 
-  _FakeMediaServerClient({required this.hubs});
+  _FakeMediaServerClient({required this.hubs, this.recentlyWatched = const [], this.related = const []});
 
   @override
   ServerId get serverId => ServerId('server_1');
@@ -483,7 +687,10 @@ class _FakeMediaServerClient implements MediaServerClient {
   Future<List<MediaItem>> fetchRecentlyAdded({int limit = 50}) async => const [];
 
   @override
-  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => const [];
+  Future<List<MediaItem>> fetchRecentlyWatched({int limit = 5}) async => recentlyWatched.take(limit).toList();
+
+  @override
+  Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async => related;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

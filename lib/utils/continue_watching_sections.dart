@@ -1,5 +1,5 @@
 /// The four sections of the full Verder kijken overview (mockups 38 D, 23, 40,
-/// DEC-119 fase 2). Every item lands in exactly one; empty sections disappear.
+/// DEC-144 fase 2). Every item lands in exactly one; empty sections disappear.
 ///
 /// * Series hervatten: episodes with progress.
 /// * Films hervatten: films with progress.

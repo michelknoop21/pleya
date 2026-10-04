@@ -24,6 +24,7 @@ import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/optimized_media_image.dart';
 import '../widgets/seerr_poster_card.dart';
+import 'big_p/big_p_ask_row.dart';
 import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
@@ -40,7 +41,6 @@ import '../utils/external_ids_fetcher.dart';
 import '../utils/provider_extensions.dart';
 
 import '../services/apple_tv_native_text_entry.dart';
-import '../services/settings_service.dart';
 import '../services/speech_search_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
@@ -57,10 +57,13 @@ import '../widgets/tv/tv_unified_layout.dart';
 import '../widgets/tv/tv_unified_media_card.dart';
 import '../widgets/tv_virtual_keyboard.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
+import '../utils/layout_constants.dart';
+import 'tv/tv_search_pill.dart';
 import 'tv/tv_search_view.dart';
 import 'seerr/seerr_discover_screen.dart';
 import '../media/media_server_client.dart';
 import '../navigation/tv/tv_content_route_registry.dart';
+import '../services/search_recency_store.dart';
 import '../services/search_recents.dart';
 import '../utils/media_navigation_helper.dart';
 import 'actor_media_screen.dart';
@@ -69,9 +72,11 @@ import '../utils/focus_utils.dart';
 import 'main_screen.dart';
 
 /// Client-side result type filter over whatever [searchAcrossServers] returns.
-/// There is no "people" row — search results carry no person items. Note that
-/// the episodes chip is effectively Jellyfin-only: the Plex client searches
-/// with `searchTypes: 'movies,tv'` and never yields episode items.
+/// There is no "people" row — search results carry no person items. The
+/// episodes chip only appears when a result is an episode. Jellyfin returns
+/// episodes; whether Plex does for this query is unverified: the client keeps
+/// them when the documented response shape carries them, but no live response
+/// has confirmed that yet (see `test/fixtures/plex_search/README.md`).
 enum _SearchFilter { all, movies, shows, episodes }
 
 /// Why the last search produced nothing — so the UI can tell "we couldn't
@@ -187,7 +192,7 @@ class _SearchScreenState extends State<SearchScreen>
     super.initState();
     _searchDebounce = debounce(_performSearch, const Duration(milliseconds: 500));
     _searchController.addListener(_onSearchChanged);
-    _history = SettingsService.instance.read(SettingsService.searchHistory);
+    _history = SearchRecencyStore.readHistory();
     _recentItems = readSearchRecents();
     FocusUtils.requestFocusAfterBuild(this, _searchFocusNode);
     _nativeEntryUnavailable = PlatformDetector.isAppleTV() && AppleTvNativeTextEntry.instance.isUnavailable;
@@ -281,14 +286,14 @@ class _SearchScreenState extends State<SearchScreen>
     final next = [trimmed, ..._history.where((q) => q.toLowerCase() != trimmed.toLowerCase())];
     if (next.length > _searchHistoryLimit) next.removeRange(_searchHistoryLimit, next.length);
     _history = next;
-    SettingsService.instance.write(SettingsService.searchHistory, next);
+    SearchRecencyStore.writeHistory(next);
   }
 
   void _clearHistory() {
     _history = const [];
     // Explicitly typed: an untyped `const []` infers List<dynamic> here, which
     // StringListPref rejects at runtime — the button silently did nothing.
-    SettingsService.instance.write(SettingsService.searchHistory, const <String>[]);
+    SearchRecencyStore.writeHistory(const <String>[]);
     setStateIfMounted(() {});
     // The chips and this button unmount with the row — without a new home,
     // primary focus dies with them and the D-pad goes dead.
@@ -683,6 +688,11 @@ class _SearchScreenState extends State<SearchScreen>
       _hasSearched = false;
       _searchError = null;
       _lastSearchedQuery = '';
+      // Both lists belong to the profile that was active when they were read.
+      // Keeping them would show the previous profile's recency and, on the
+      // next search, write it into the new profile's key.
+      _history = SearchRecencyStore.readHistory();
+      _recentItems = readSearchRecents();
     });
   }
 
@@ -716,6 +726,11 @@ class _SearchScreenState extends State<SearchScreen>
     // moving down would silently drop focus and strand the user. Keep focus on
     // the keyboard until there is something real to land on.
     if (_isSearching) return;
+    // Apple TV's pill has nothing under it but the results (no mic, and the
+    // inline keyboard only on fallback), and a directional search from a
+    // full-width pill lands on the card nearest its centre, the second or
+    // third, not the first. Reading order starts at the first result.
+    if (PlatformDetector.isAppleTV() && (_tvSearchKey.currentState?.focusFirstResult() ?? false)) return;
     if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) return;
     if (_searchResults.isNotEmpty) {
       _focusFirstResult();
@@ -950,51 +965,30 @@ class _SearchScreenState extends State<SearchScreen>
       isSearching: _isSearching,
       total: total,
     );
-    final pill = ListenableBuilder(
-      listenable: _searchController,
-      builder: (context, _) {
-        final text = _searchController.text;
-        return InputDecorator(
-          decoration: pillInputDecoration(
-            context,
-            hintText: t.search.hint,
-            prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
-            // 36 B puts "14 resultaten" inside the pill, at tertiary ink. It is
-            // a statement about the query, so it belongs to the field that
-            // holds the query rather than to a line above the first band.
-            suffixIcon: countLabel == null
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Text(
-                      countLabel,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: TvCatalogLayout.inkTertiary),
-                      ),
-                    ),
-                  ),
-          ),
-          isEmpty: text.isEmpty,
-          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-        );
-      },
-    );
+    // The pill starts on the content column the result bands start on (36 B).
+    final scale = TvLayoutConstants.scaleOf(context);
+    final grid = TvCatalogGrid.forWidth(MediaQuery.sizeOf(context).width, scale: scale);
+    final inset = grid.inset + TvCatalogLayout.cardContentInset(scale);
     return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+      padding: EdgeInsets.only(left: inset, right: inset, bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (nativePill)
-            FocusableButton(
-              focusNode: _searchFocusNode,
-              onPressed: _openNativeSearchEntry,
-              onNavigateLeft: _navigateToSidebar,
-              onNavigateDown: _handleTvKeyboardNavigateDown,
-              onBack: _handleTvKeyboardClose,
-              child: pill,
-            )
-          else
-            pill,
+          TvSearchPill(
+            controller: _searchController,
+            countLabel: countLabel,
+            focusNode: nativePill ? _searchFocusNode : null,
+            wrap: nativePill
+                ? (pill) => FocusableButton(
+                    focusNode: _searchFocusNode,
+                    onPressed: _openNativeSearchEntry,
+                    onNavigateLeft: _navigateToSidebar,
+                    onNavigateDown: _handleTvKeyboardNavigateDown,
+                    onBack: _handleTvKeyboardClose,
+                    child: pill,
+                  )
+                : null,
+          ),
           // Apple TV gets no mic button: the mic is on the remote and dictates
           // the moment the system keyboard is up, which selecting the pill
           // already does. Android TV needs one — there the mic opens
@@ -1335,11 +1329,17 @@ class _SearchScreenState extends State<SearchScreen>
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final query in _history)
-                  FocusableFilterChip(
-                    icon: Symbols.history_rounded,
-                    label: query,
-                    onPressed: () => _runHistoryQuery(query),
+                for (final (index, query) in _history.indexed)
+                  AutomationNode(
+                    id: AutomationIds.searchHistoryChip,
+                    instance: '$index',
+                    role: 'chip',
+                    state: () => {'query': query},
+                    child: FocusableFilterChip(
+                      icon: Symbols.history_rounded,
+                      label: query,
+                      onPressed: () => _runHistoryQuery(query),
+                    ),
                   ),
               ],
             ),
@@ -1353,6 +1353,18 @@ class _SearchScreenState extends State<SearchScreen>
   Widget build(BuildContext context) {
     if (PlatformDetector.isTV()) return _buildTv(context);
     final isPhone = PlatformDetector.isPhone(context);
+    // "Vraag het Big P" over what was searched, results or not (iPhone and
+    // iPad: only they have a session).
+    final bigP = summonableBigP(context);
+    final asked = _lastSearchedQuery.trim();
+    Widget? askBigP({double top = 0}) => bigP == null || asked.isEmpty
+        ? null
+        : SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, top, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: BigPAskRow(session: bigP, query: asked),
+            ),
+          );
 
     return Scaffold(
       body: SafeArea(
@@ -1395,11 +1407,15 @@ class _SearchScreenState extends State<SearchScreen>
                     hintText: t.search.hint,
                     prefixIcon: const AppIcon(Symbols.search_rounded, fill: 1),
                     suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const AppIcon(Symbols.clear_rounded, fill: 1),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
+                        ? AutomationNode(
+                            id: AutomationIds.searchClear,
+                            role: 'button',
+                            child: IconButton(
+                              icon: const AppIcon(Symbols.clear_rounded, fill: 1),
+                              onPressed: () {
+                                _searchController.clear();
+                              },
+                            ),
                           )
                         : null,
                   ),
@@ -1442,7 +1458,8 @@ class _SearchScreenState extends State<SearchScreen>
             // no matching title at all, and `_searchResults` alone would
             // then read as empty even though `_buildMobileResults` has a
             // people section to draw.
-            else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty)
+            else if (isPhone ? (_projection?.isEmpty ?? _searchResults.isEmpty) : _searchResults.isEmpty) ...[
+              ?askBigP(top: 16),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) ...[
                 SliverToBoxAdapter(
                   child: Padding(
@@ -1462,13 +1479,15 @@ class _SearchScreenState extends State<SearchScreen>
                     message: t.search.tryDifferentTerm,
                     icon: Symbols.search_off_rounded,
                   ),
-                )
-            else if (isPhone) ...[
+                ),
+            ] else if (isPhone) ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
+              ?askBigP(),
               _buildMobileResults(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
             ] else ...[
               SliverToBoxAdapter(child: _buildFilterChips(context)),
+              ?askBigP(top: 16),
               _buildResultsList(context),
               if (context.watch<SeerrProvider?>()?.isConfigured ?? false) _buildSeerrFallback(context),
             ],

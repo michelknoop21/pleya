@@ -4,7 +4,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/utils/continue_watching_merge.dart';
 
-/// The one merge rule Jellyfin and Pleya Server share (DEC-119 fase 2). The
+/// The one merge rule Jellyfin and Pleya Server share (DEC-144 fase 2). The
 /// Jellyfin client's own tests still prove the HTTP side; this proves the rule.
 void main() {
   MediaItem ep(String id, {required String series, int? lastViewedAt, int? viewOffsetMs}) => MediaItem(

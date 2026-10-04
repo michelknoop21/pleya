@@ -41,6 +41,7 @@
 library;
 
 import '../../media/ids.dart';
+import '../../media/media_kind.dart';
 import '../../media/media_library.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
@@ -104,18 +105,23 @@ class CatalogHomeCustomRowLoader implements HomeCustomRowLoader {
   /// purpose does not have to spend the real two seconds per case.
   final Duration _grace;
 
+  /// The libraries of [kind] this profile may see right now: visible
+  /// servers, hidden libraries left out. Big P's find route reads the same
+  /// set, so it never searches where Home would not look.
+  List<CatalogLibrary> librariesFor(MediaKind kind) => eligibleCatalogLibraries(
+    libraries: _libraries(),
+    kind: kind,
+    isServerVisible: _isServerVisible,
+    hiddenLibraryKeys: _hiddenLibraryKeys(),
+  );
+
   @override
   Future<HomeCustomRowContent> load(HomeCustomRow row, {required int limit}) async {
     // The source predicates run by leaving a cursor out of the merge, exactly
     // as the catalog executes them (`UnifiedCatalogFilterSelection.selects`).
     // Filtering after the merge would be both wasteful and wrong here: a row
     // asked for twelve cards would show three.
-    final participating = eligibleCatalogLibraries(
-      libraries: _libraries(),
-      kind: row.kind,
-      isServerVisible: _isServerVisible,
-      hiddenLibraryKeys: _hiddenLibraryKeys(),
-    ).where(row.filters.selects).toList();
+    final participating = librariesFor(row.kind).where(row.filters.selects).toList();
     if (participating.isEmpty) return HomeCustomRowContent.empty;
 
     // Capabilities follow the *participating* set, so a row restricted to the

@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProfileConnection {
 
- String get profileId; String get connectionId; String? get userToken; String get userIdentifier; bool get isDefault; DateTime? get tokenAcquiredAt; DateTime? get lastUsedAt;
+ String get profileId; String get connectionId; String? get userToken; String get userIdentifier; bool get isDefault;/// Attached via the borrow flow. Borrowed connections never get owner
+/// rights on the server; see `MultiServerManager.canManageServerMetadata`.
+ bool get borrowed; DateTime? get tokenAcquiredAt; DateTime? get lastUsedAt;
 /// Create a copy of ProfileConnection
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +27,16 @@ $ProfileConnectionCopyWith<ProfileConnection> get copyWith => _$ProfileConnectio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProfileConnection&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.connectionId, connectionId) || other.connectionId == connectionId)&&(identical(other.userToken, userToken) || other.userToken == userToken)&&(identical(other.userIdentifier, userIdentifier) || other.userIdentifier == userIdentifier)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.tokenAcquiredAt, tokenAcquiredAt) || other.tokenAcquiredAt == tokenAcquiredAt)&&(identical(other.lastUsedAt, lastUsedAt) || other.lastUsedAt == lastUsedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProfileConnection&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.connectionId, connectionId) || other.connectionId == connectionId)&&(identical(other.userToken, userToken) || other.userToken == userToken)&&(identical(other.userIdentifier, userIdentifier) || other.userIdentifier == userIdentifier)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.borrowed, borrowed) || other.borrowed == borrowed)&&(identical(other.tokenAcquiredAt, tokenAcquiredAt) || other.tokenAcquiredAt == tokenAcquiredAt)&&(identical(other.lastUsedAt, lastUsedAt) || other.lastUsedAt == lastUsedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,profileId,connectionId,userToken,userIdentifier,isDefault,tokenAcquiredAt,lastUsedAt);
+int get hashCode => Object.hash(runtimeType,profileId,connectionId,userToken,userIdentifier,isDefault,borrowed,tokenAcquiredAt,lastUsedAt);
 
 @override
 String toString() {
-  return 'ProfileConnection(profileId: $profileId, connectionId: $connectionId, userToken: $userToken, userIdentifier: $userIdentifier, isDefault: $isDefault, tokenAcquiredAt: $tokenAcquiredAt, lastUsedAt: $lastUsedAt)';
+  return 'ProfileConnection(profileId: $profileId, connectionId: $connectionId, userToken: $userToken, userIdentifier: $userIdentifier, isDefault: $isDefault, borrowed: $borrowed, tokenAcquiredAt: $tokenAcquiredAt, lastUsedAt: $lastUsedAt)';
 }
 
 
@@ -45,7 +47,7 @@ abstract mixin class $ProfileConnectionCopyWith<$Res>  {
   factory $ProfileConnectionCopyWith(ProfileConnection value, $Res Function(ProfileConnection) _then) = _$ProfileConnectionCopyWithImpl;
 @useResult
 $Res call({
- String profileId, String connectionId, String? userToken, String userIdentifier, bool isDefault, DateTime? tokenAcquiredAt, DateTime? lastUsedAt
+ String profileId, String connectionId, String? userToken, String userIdentifier, bool isDefault, bool borrowed, DateTime? tokenAcquiredAt, DateTime? lastUsedAt
 });
 
 
@@ -62,13 +64,14 @@ class _$ProfileConnectionCopyWithImpl<$Res>
 
 /// Create a copy of ProfileConnection
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? profileId = null,Object? connectionId = null,Object? userToken = freezed,Object? userIdentifier = null,Object? isDefault = null,Object? tokenAcquiredAt = freezed,Object? lastUsedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? profileId = null,Object? connectionId = null,Object? userToken = freezed,Object? userIdentifier = null,Object? isDefault = null,Object? borrowed = null,Object? tokenAcquiredAt = freezed,Object? lastUsedAt = freezed,}) {
   return _then(_self.copyWith(
 profileId: null == profileId ? _self.profileId : profileId // ignore: cast_nullable_to_non_nullable
 as String,connectionId: null == connectionId ? _self.connectionId : connectionId // ignore: cast_nullable_to_non_nullable
 as String,userToken: freezed == userToken ? _self.userToken : userToken // ignore: cast_nullable_to_non_nullable
 as String?,userIdentifier: null == userIdentifier ? _self.userIdentifier : userIdentifier // ignore: cast_nullable_to_non_nullable
 as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
+as bool,borrowed: null == borrowed ? _self.borrowed : borrowed // ignore: cast_nullable_to_non_nullable
 as bool,tokenAcquiredAt: freezed == tokenAcquiredAt ? _self.tokenAcquiredAt : tokenAcquiredAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,lastUsedAt: freezed == lastUsedAt ? _self.lastUsedAt : lastUsedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
@@ -153,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String profileId,  String connectionId,  String? userToken,  String userIdentifier,  bool isDefault,  DateTime? tokenAcquiredAt,  DateTime? lastUsedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String profileId,  String connectionId,  String? userToken,  String userIdentifier,  bool isDefault,  bool borrowed,  DateTime? tokenAcquiredAt,  DateTime? lastUsedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ProfileConnection() when $default != null:
-return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIdentifier,_that.isDefault,_that.tokenAcquiredAt,_that.lastUsedAt);case _:
+return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIdentifier,_that.isDefault,_that.borrowed,_that.tokenAcquiredAt,_that.lastUsedAt);case _:
   return orElse();
 
 }
@@ -174,10 +177,10 @@ return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIde
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String profileId,  String connectionId,  String? userToken,  String userIdentifier,  bool isDefault,  DateTime? tokenAcquiredAt,  DateTime? lastUsedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String profileId,  String connectionId,  String? userToken,  String userIdentifier,  bool isDefault,  bool borrowed,  DateTime? tokenAcquiredAt,  DateTime? lastUsedAt)  $default,) {final _that = this;
 switch (_that) {
 case _ProfileConnection():
-return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIdentifier,_that.isDefault,_that.tokenAcquiredAt,_that.lastUsedAt);}
+return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIdentifier,_that.isDefault,_that.borrowed,_that.tokenAcquiredAt,_that.lastUsedAt);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -191,10 +194,10 @@ return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIde
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String profileId,  String connectionId,  String? userToken,  String userIdentifier,  bool isDefault,  DateTime? tokenAcquiredAt,  DateTime? lastUsedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String profileId,  String connectionId,  String? userToken,  String userIdentifier,  bool isDefault,  bool borrowed,  DateTime? tokenAcquiredAt,  DateTime? lastUsedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _ProfileConnection() when $default != null:
-return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIdentifier,_that.isDefault,_that.tokenAcquiredAt,_that.lastUsedAt);case _:
+return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIdentifier,_that.isDefault,_that.borrowed,_that.tokenAcquiredAt,_that.lastUsedAt);case _:
   return null;
 
 }
@@ -206,7 +209,7 @@ return $default(_that.profileId,_that.connectionId,_that.userToken,_that.userIde
 
 
 class _ProfileConnection extends ProfileConnection {
-  const _ProfileConnection({required this.profileId, required this.connectionId, this.userToken, required this.userIdentifier, this.isDefault = false, this.tokenAcquiredAt, this.lastUsedAt}): super._();
+  const _ProfileConnection({required this.profileId, required this.connectionId, this.userToken, required this.userIdentifier, this.isDefault = false, this.borrowed = false, this.tokenAcquiredAt, this.lastUsedAt}): super._();
   
 
 @override final  String profileId;
@@ -214,6 +217,9 @@ class _ProfileConnection extends ProfileConnection {
 @override final  String? userToken;
 @override final  String userIdentifier;
 @override@JsonKey() final  bool isDefault;
+/// Attached via the borrow flow. Borrowed connections never get owner
+/// rights on the server; see `MultiServerManager.canManageServerMetadata`.
+@override@JsonKey() final  bool borrowed;
 @override final  DateTime? tokenAcquiredAt;
 @override final  DateTime? lastUsedAt;
 
@@ -227,16 +233,16 @@ _$ProfileConnectionCopyWith<_ProfileConnection> get copyWith => __$ProfileConnec
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProfileConnection&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.connectionId, connectionId) || other.connectionId == connectionId)&&(identical(other.userToken, userToken) || other.userToken == userToken)&&(identical(other.userIdentifier, userIdentifier) || other.userIdentifier == userIdentifier)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.tokenAcquiredAt, tokenAcquiredAt) || other.tokenAcquiredAt == tokenAcquiredAt)&&(identical(other.lastUsedAt, lastUsedAt) || other.lastUsedAt == lastUsedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProfileConnection&&(identical(other.profileId, profileId) || other.profileId == profileId)&&(identical(other.connectionId, connectionId) || other.connectionId == connectionId)&&(identical(other.userToken, userToken) || other.userToken == userToken)&&(identical(other.userIdentifier, userIdentifier) || other.userIdentifier == userIdentifier)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.borrowed, borrowed) || other.borrowed == borrowed)&&(identical(other.tokenAcquiredAt, tokenAcquiredAt) || other.tokenAcquiredAt == tokenAcquiredAt)&&(identical(other.lastUsedAt, lastUsedAt) || other.lastUsedAt == lastUsedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,profileId,connectionId,userToken,userIdentifier,isDefault,tokenAcquiredAt,lastUsedAt);
+int get hashCode => Object.hash(runtimeType,profileId,connectionId,userToken,userIdentifier,isDefault,borrowed,tokenAcquiredAt,lastUsedAt);
 
 @override
 String toString() {
-  return 'ProfileConnection(profileId: $profileId, connectionId: $connectionId, userToken: $userToken, userIdentifier: $userIdentifier, isDefault: $isDefault, tokenAcquiredAt: $tokenAcquiredAt, lastUsedAt: $lastUsedAt)';
+  return 'ProfileConnection(profileId: $profileId, connectionId: $connectionId, userToken: $userToken, userIdentifier: $userIdentifier, isDefault: $isDefault, borrowed: $borrowed, tokenAcquiredAt: $tokenAcquiredAt, lastUsedAt: $lastUsedAt)';
 }
 
 
@@ -247,7 +253,7 @@ abstract mixin class _$ProfileConnectionCopyWith<$Res> implements $ProfileConnec
   factory _$ProfileConnectionCopyWith(_ProfileConnection value, $Res Function(_ProfileConnection) _then) = __$ProfileConnectionCopyWithImpl;
 @override @useResult
 $Res call({
- String profileId, String connectionId, String? userToken, String userIdentifier, bool isDefault, DateTime? tokenAcquiredAt, DateTime? lastUsedAt
+ String profileId, String connectionId, String? userToken, String userIdentifier, bool isDefault, bool borrowed, DateTime? tokenAcquiredAt, DateTime? lastUsedAt
 });
 
 
@@ -264,13 +270,14 @@ class __$ProfileConnectionCopyWithImpl<$Res>
 
 /// Create a copy of ProfileConnection
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? profileId = null,Object? connectionId = null,Object? userToken = freezed,Object? userIdentifier = null,Object? isDefault = null,Object? tokenAcquiredAt = freezed,Object? lastUsedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? profileId = null,Object? connectionId = null,Object? userToken = freezed,Object? userIdentifier = null,Object? isDefault = null,Object? borrowed = null,Object? tokenAcquiredAt = freezed,Object? lastUsedAt = freezed,}) {
   return _then(_ProfileConnection(
 profileId: null == profileId ? _self.profileId : profileId // ignore: cast_nullable_to_non_nullable
 as String,connectionId: null == connectionId ? _self.connectionId : connectionId // ignore: cast_nullable_to_non_nullable
 as String,userToken: freezed == userToken ? _self.userToken : userToken // ignore: cast_nullable_to_non_nullable
 as String?,userIdentifier: null == userIdentifier ? _self.userIdentifier : userIdentifier // ignore: cast_nullable_to_non_nullable
 as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
+as bool,borrowed: null == borrowed ? _self.borrowed : borrowed // ignore: cast_nullable_to_non_nullable
 as bool,tokenAcquiredAt: freezed == tokenAcquiredAt ? _self.tokenAcquiredAt : tokenAcquiredAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,lastUsedAt: freezed == lastUsedAt ? _self.lastUsedAt : lastUsedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,

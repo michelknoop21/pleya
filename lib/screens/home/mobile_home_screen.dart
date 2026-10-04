@@ -225,7 +225,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
                   shape: MobileCardShape.wide,
                   isContinueWatching: true,
                   onCardTap: _openDetails,
-                  // Mockup 22 / DEC-119 fase 2: the real count beside the title
+                  // Mockup 22 / DEC-144 fase 2: the real count beside the title
                   // and the sectioned overview behind "Alles bekijken".
                   count: homeProjection.continueWatchingCount,
                   onViewAll: () => Navigator.of(

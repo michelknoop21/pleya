@@ -1,0 +1,24 @@
+<!-- widths: 1600 -->
+<style>
+.setup { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 60px 24px; }
+.setup .box { width: 100%; max-width: 620px; }
+.setup .box > img { height: 36px; margin-bottom: 26px; }
+.setup h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.setup .sub { color: var(--ink-2); margin-top: 6px; font-size: 15px; line-height: 1.45; }
+.setup .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+</style>
+<div class="setup"><div class="box">
+  <img src="../assets/pleya_wordmark.png" alt="Pleya">
+  <div class="steps"><div class="st done"><span class="n">{{icon:check}}</span><span>Eigenaar</span></div><div class="ln"></div><div class="st on"><span class="n">2</span><span>Opslag</span></div><div class="ln"></div><div class="st"><span class="n">3</span><span>Bibliotheek</span></div><div class="ln"></div><div class="st"><span class="n">4</span><span>Scannen</span></div></div>
+  <h1>Waar staan je bestanden?</h1>
+  <p class="sub">Dit zijn de mappen die de server kan lezen. Ze komen uit de mounts van de container; een pad intypen is bewust niet mogelijk. Mis je een map, koppel hem dan in Docker en herstart.</p>
+  <div style="margin-top:18px">
+    <div class="choice on"><span class="checkbox on">{{icon:check}}</span><div class="body"><div class="t mono">/volume1/media/Films</div><div class="s">btrfs · 1,1 TB vrij · 28.412 bestanden gezien</div></div><span class="pill ok">gemount</span></div>
+    <div class="choice"><span class="checkbox"></span><div class="body"><div class="t mono">/volume1/media/Series</div><div class="s">btrfs · 240 GB vrij</div></div><span class="pill ok">gemount</span></div>
+    <div class="choice"><span class="checkbox"></span><div class="body"><div class="t mono">/volume1/media/Boeken</div><div class="s">btrfs · 1,1 TB vrij</div></div><span class="pill ok">gemount</span></div>
+    <div class="choice dis"><span class="checkbox"></span><div class="body"><div class="t mono">/mnt/usb-archief</div><div class="s">fuseblk.ntfs · inodes niet betrouwbaar, hernoemen wordt via de signatuur herkend</div></div><span class="pill warn">ntfs</span></div>
+  </div>
+  <p class="help" style="margin-top:14px">De mounts horen alleen-lezen te zijn. Pleya schrijft nooit in een mediamap en gaat er ook niet van uit dat het kan.</p>
+  <div class="foot"><a class="btn ghost" href="#">{{icon:chevl}} Terug</a><a class="btn primary" href="#">Verder {{icon:chev}}</a></div>
+</div></div>
+<div class="note">NORTHSTAR · 41 Setup stap 2 · opsomming uit mounts, geen bestandsbrowser (masterplan 8.3)</div>

@@ -1,0 +1,106 @@
+name: tvos.assistant.entry
+target: tvos-sim
+# Big P (mockup 38, DEC-142): the hub tile and what the surface opens on.
+#
+# Needs a build with PLEYA_ASSISTANT_ENABLED=true in the environment of
+# `scripts/tvos_sim.sh build` (the rollout gate is a compile-time define;
+# without it the tile does not exist and the first tile assert fails).
+#
+# The fixture configures no AI provider, so the surface opens on the set-up
+# gate (38 C1, "Big P instellen"), not on rust (38 D, "Vraag Big P"). The
+# scenario asserts that state through the controller's own `availability`
+# field. 38 C2 (provider choice) is the set-up route behind that button.
+#
+# Summon (DEC-142): a Play/Pause hold of 900 ms on Mijn Pleya opens Big P;
+# with no provider that is the full surface on its set-up gate. A short press
+# must not. The hold is measured from `play_pause_down`/`play_pause_up`, sent
+# by `PleyaFlutterViewController.tvosHandlePress` (station 3): the engine's
+# own Play/Pause gesture recognizer keeps the press from `pressesBegan`.
+#
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  # IntroGate's cold-start splash paints over an already-ready screen.
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+
+  # 38 A: Big P opens the Pleya group, the row under the first group, ahead
+  # of Instellingen.
+  - assert: {id: "my_pleya.tile[assistant]", insideViewport: true, state: {title: Big P}}
+  - assert: {id: "my_pleya.tile[assistant]", below: "my_pleya.tile[libraries]"}
+  - assert: {id: "my_pleya.tile[assistant]", sameRow: "my_pleya.tile[settings]"}
+  - assert: {id: "my_pleya.tile[assistant]", leftOf: "my_pleya.tile[settings]"}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - settle: 800
+  - snapshot: 01-hub-big-p-focused
+
+  # Summon: a short Play/Pause press does nothing here ...
+  - press: play_pause
+  - settle: 1500
+  - assert: {id: "my_pleya.tile[assistant]", focused: true}
+  - assert: {id: screen.assistant, present: false}
+  # ... a 900 ms hold opens Big P.
+  - press: {key: play_pause, holdMs: 900}
+  - wait_until: {id: screen.assistant, timeout: 10000}
+  - assert: {id: screen.assistant, state: {availability: needsSetup}}
+  - wait_until: {focused: "assistant.button[setup]", timeout: 5000}
+  # The balloon (assistant.summon, 39 J) is the ready-state summon only; with
+  # no provider the hold opens the full surface instead. The balloon itself
+  # needs a model the fixture does not have, so its pixels come from
+  # test/screens/tv/assistant/tv_assistant_audit_shots_test.dart (summon-*).
+  - assert: {id: assistant.summon, present: false}
+  - settle: 800
+  - snapshot: 04-summon
+  # Mijn Pleya stays mounted under the nested route, so its id is no anchor
+  # for the dismissal; the focus coming back to the tile is.
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - assert: {id: screen.assistant, present: false}
+
+  # 38 C1: no provider in the fixture, so the set-up gate with its primary
+  # action focused.
+  - press: select
+  - wait_until: {id: screen.assistant, timeout: 15000}
+  - assert: {id: screen.assistant, state: {availability: needsSetup}}
+  - wait_until: {focused: "assistant.button[setup]", timeout: 5000}
+  - assert: {id: "assistant.button[back]", insideViewport: true}
+  - assert: {id: "assistant.button[ask]", present: false}
+  - settle: 800
+  - snapshot: 02-assistant-setup-gate
+
+  # Menu leaves the gate back to the tile it came from.
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  - assert: {id: screen.assistant, present: false}
+
+  # 38 C2: the provider choice, Ollama-server focused.
+  - press: select
+  - wait_until: {focused: "assistant.button[setup]", timeout: 8000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - assert: {id: "settings.form.button[assistant.provider.ollamaCloud]", insideViewport: true}
+  - assert: {id: "settings.form.button[assistant.provider.openRouter]", insideViewport: true}
+  - settle: 800
+  - snapshot: 03-provider-choice
+  - snapshot: 05-provider-choice-fixed
+
+  # Menu on 38 C2 returns to the set-up gate it came from.
+  - press: menu
+  - wait_until: {focused: "assistant.button[setup]", timeout: 8000}
+  - assert: {id: screen.assistant, state: {availability: needsSetup}}
+  - assert: {id: "settings.form.button[assistant.provider.ollamaServer]", present: false}
+  - settle: 800
+  - snapshot: 06-setup-gate-fixed

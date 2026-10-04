@@ -1,4 +1,4 @@
-/// The full Verder kijken overview on TV (mockup 38 D, DEC-119 fase 2): the
+/// The full Verder kijken overview on TV (mockup 38 D, DEC-144 fase 2): the
 /// page title with the real count, then the four fixed sections as stacked
 /// bands, each a `TvSectionHeader` with its count over a `TvCatalogCardRail`
 /// of unified cards. D-pad UP and DOWN move between bands keeping the column,

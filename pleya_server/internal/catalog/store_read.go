@@ -22,12 +22,17 @@ type Page struct {
 // Query beschrijft één leesopdracht op de itemtabel.
 type Query struct {
 	LibraryID *id.ID
-	ParentID  *id.ID
-	Kinds     []string
-	Search    string
-	Sort      Sort
-	Cursor    *Cursor
-	Limit     int
+	// LibraryIDs beperkt tot deze bibliotheken (AC2, PS-9): nil betekent geen
+	// beperking, een lege maar niet-nil slice levert altijd niets op. Los van
+	// LibraryID, dat één exacte bibliotheek selecteert; de aanroeper zet nooit
+	// allebei tegelijk.
+	LibraryIDs []id.ID
+	ParentID   *id.ID
+	Kinds      []string
+	Search     string
+	Sort       Sort
+	Cursor     *Cursor
+	Limit      int
 }
 
 // Items levert een pagina items met hun versies, sporen en artwork.
@@ -48,6 +53,9 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 
 	if q.LibraryID != nil {
 		add("i.library_id = $%d", *q.LibraryID)
+	}
+	if q.LibraryIDs != nil {
+		add("i.library_id = ANY($%d)", q.LibraryIDs)
 	}
 	if q.ParentID != nil {
 		add("i.parent_id = $%d", *q.ParentID)
@@ -85,41 +93,42 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 	args = append(args, limit+1)
 
 	sql := fmt.Sprintf(`
-		SELECT i.id, i.library_id, i.parent_id, i.kind, i.title,
-		       coalesce(i.sort_title, i.title), i.year, i.item_index, i.added_at,
-		       %s::text
+		SELECT %s, %s::text
 		FROM media_items i
 		WHERE %s
 		ORDER BY %s %s, i.id %s
 		LIMIT $%d`,
-		key, strings.Join(where, " AND "), key, direction, direction, len(args))
+		itemColumns, key, strings.Join(where, " AND "), key, direction, direction, len(args))
 
+	return s.itemPage(ctx, sql, args, q.Sort, limit, q.Cursor)
+}
+
+// itemColumns is de kolomlijst die scanItems verwacht, met i als alias voor
+// media_items.
+//
+// Eén plek, want Items en de twee kijkstatushubs lezen dezelfde rijvorm uit drie
+// verschillende queries. Een kolom die op één van de drie plekken verschuift is
+// een scanfout die pas op een specifieke bibliotheek opvalt.
+const itemColumns = `i.id, i.library_id, i.parent_id, i.kind, i.title,
+		       coalesce(i.sort_title, i.title), i.year, i.item_index, i.added_at`
+
+// itemPage voert een query uit die itemColumns plus een sorteersleutel levert,
+// knipt de pagina op limit, zet de volgende cursor en hydrateert.
+func (s *Store) itemPage(ctx context.Context, sql string, args []any, sort Sort, limit int, cursor *Cursor) (Page, error) {
 	rows, err := s.pool.Query(ctx, sql, args...)
 	if err != nil {
-		return Page{}, cursorOrWrap(q.Cursor, err, "items lezen")
+		return Page{}, cursorOrWrap(cursor, err, "items lezen")
 	}
 
-	var page Page
-	keys := []string{}
-	for rows.Next() {
-		var it Item
-		var sortKey string
-		if err := rows.Scan(&it.ID, &it.LibraryID, &it.ParentID, &it.Kind, &it.Title,
-			&it.SortTitle, &it.Year, &it.Index, &it.AddedAt, &sortKey); err != nil {
-			rows.Close()
-			return Page{}, err
-		}
-		page.Items = append(page.Items, it)
-		keys = append(keys, sortKey)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return Page{}, cursorOrWrap(q.Cursor, err, "items lezen")
+	items, keys, err := scanItems(rows)
+	if err != nil {
+		return Page{}, cursorOrWrap(cursor, err, "items lezen")
 	}
 
+	page := Page{Items: items}
 	if len(page.Items) > limit {
 		last := page.Items[limit-1]
-		page.NextCursor = Cursor{Sort: q.Sort, Key: keys[limit-1], ID: last.ID.String()}.Encode()
+		page.NextCursor = Cursor{Sort: sort, Key: keys[limit-1], ID: last.ID.String()}.Encode()
 		page.Items = page.Items[:limit]
 	}
 
@@ -127,6 +136,28 @@ func (s *Store) Items(ctx context.Context, q Query) (Page, error) {
 		return Page{}, err
 	}
 	return page, nil
+}
+
+// scanItems leest itemColumns plus de sorteersleutel en sluit rows zelf.
+func scanItems(rows pgx.Rows) ([]Item, []string, error) {
+	defer rows.Close()
+
+	var items []Item
+	keys := []string{}
+	for rows.Next() {
+		var it Item
+		var sortKey string
+		if err := rows.Scan(&it.ID, &it.LibraryID, &it.ParentID, &it.Kind, &it.Title,
+			&it.SortTitle, &it.Year, &it.Index, &it.AddedAt, &sortKey); err != nil {
+			return nil, nil, err
+		}
+		items = append(items, it)
+		keys = append(keys, sortKey)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return items, keys, nil
 }
 
 // Item geeft één item, volledig gevuld.
@@ -387,42 +418,49 @@ type FileOnDisk struct {
 	Language string
 }
 
-// ArtworkFile zoekt de afbeelding achter een artwork-id.
-func (s *Store) ArtworkFile(ctx context.Context, artworkID id.ID) (FileOnDisk, error) {
+// ArtworkFile zoekt de afbeelding achter een artwork-id, met de bibliotheek
+// waar hij toe hoort (AC2, PS-9): artwork hangt altijd aan een item
+// (0002_catalog.sql), nooit rechtstreeks aan een versie.
+func (s *Store) ArtworkFile(ctx context.Context, artworkID id.ID) (FileOnDisk, id.ID, error) {
 	var f FileOnDisk
+	var libraryID id.ID
 	err := s.pool.QueryRow(ctx, `
-		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation
+		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation, i.library_id
 		FROM media_files f
 		JOIN storage_locations l ON l.id = f.storage_location_id
+		JOIN media_items i ON i.id = f.item_id
 		WHERE f.id = $1 AND f.role = 'artwork' AND f.missing_since IS NULL`, artworkID).
-		Scan(&f.ID, &f.AbsPath, &f.Generation)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return f, ErrNotFound
-	}
-	f.Role = RoleArtwork
-	return f, err
-}
-
-// SubtitleFile zoekt het ondertitelbestand achter een spoor-id.
-//
-// Alleen externe sporen: een ingebed spoor heeft geen eigen bestand en wordt
-// tijdens het afspelen uit de container gehaald, wat PS-4 en verder is.
-func (s *Store) SubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, id.ID, error) {
-	var f FileOnDisk
-	var versionID id.ID
-	err := s.pool.QueryRow(ctx, `
-		SELECT st.file_id, l.root_path || '/' || fl.relative_path, fl.generation,
-		       coalesce(st.subtitle_format, ''), coalesce(st.language, ''), st.version_id
-		FROM media_streams st
-		JOIN media_files fl ON fl.id = st.file_id
-		JOIN storage_locations l ON l.id = fl.storage_location_id
-		WHERE st.id = $1 AND st.is_external AND fl.missing_since IS NULL`, streamID).
-		Scan(&f.ID, &f.AbsPath, &f.Generation, &f.Format, &f.Language, &versionID)
+		Scan(&f.ID, &f.AbsPath, &f.Generation, &libraryID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return f, id.Nil, ErrNotFound
 	}
+	f.Role = RoleArtwork
+	return f, libraryID, err
+}
+
+// SubtitleFile zoekt het ondertitelbestand achter een spoor-id, met de versie
+// en de bibliotheek waar hij toe hoort (AC2, PS-9).
+//
+// Alleen externe sporen: een ingebed spoor heeft geen eigen bestand en wordt
+// tijdens het afspelen uit de container gehaald, wat PS-4 en verder is.
+func (s *Store) SubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, id.ID, id.ID, error) {
+	var f FileOnDisk
+	var versionID, libraryID id.ID
+	err := s.pool.QueryRow(ctx, `
+		SELECT st.file_id, l.root_path || '/' || fl.relative_path, fl.generation,
+		       coalesce(st.subtitle_format, ''), coalesce(st.language, ''), st.version_id, i.library_id
+		FROM media_streams st
+		JOIN media_files fl ON fl.id = st.file_id
+		JOIN storage_locations l ON l.id = fl.storage_location_id
+		JOIN media_versions v ON v.id = st.version_id
+		JOIN media_items i ON i.id = v.item_id
+		WHERE st.id = $1 AND st.is_external AND fl.missing_since IS NULL`, streamID).
+		Scan(&f.ID, &f.AbsPath, &f.Generation, &f.Format, &f.Language, &versionID, &libraryID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return f, id.Nil, id.Nil, ErrNotFound
+	}
 	f.Role = RoleSubtitle
-	return f, versionID, err
+	return f, versionID, libraryID, err
 }
 
 // ErrVersionMultifile betekent dat de versie uit meer dan één bestand bestaat.
@@ -432,14 +470,15 @@ func (s *Store) SubtitleFile(ctx context.Context, streamID id.ID) (FileOnDisk, i
 // fase, en tot dan is dit een eigen foutcode en niet een 404.
 var ErrVersionMultifile = errors.New("versie bestaat uit meer dan een bestand")
 
-// StreamFile zoekt het mediabestand achter een versie-id.
+// StreamFile zoekt het mediabestand achter een versie-id, met de bibliotheek
+// waar de versie toe hoort (AC2, PS-9).
 //
 // Alleen `role = 'media'` en alleen deel nul: direct play accepteert in v1
 // uitsluitend `file_count == 1`. Een versie met meer delen levert
 // ErrVersionMultifile, en een versie waarvan het bestand als verdwenen
 // gemarkeerd staat levert ErrNotFound, want de catalogus kent hem wel maar er
 // zijn geen bytes.
-func (s *Store) StreamFile(ctx context.Context, versionID id.ID) (FileOnDisk, error) {
+func (s *Store) StreamFile(ctx context.Context, versionID id.ID) (FileOnDisk, id.ID, error) {
 	var f FileOnDisk
 	var parts int
 
@@ -447,38 +486,44 @@ func (s *Store) StreamFile(ctx context.Context, versionID id.ID) (FileOnDisk, er
 		SELECT count(*) FROM media_files
 		WHERE version_id = $1 AND role = 'media' AND missing_since IS NULL`, versionID).Scan(&parts)
 	if err != nil {
-		return f, err
+		return f, id.Nil, err
 	}
 	switch {
 	case parts == 0:
-		return f, ErrNotFound
+		return f, id.Nil, ErrNotFound
 	case parts > 1:
-		return f, ErrVersionMultifile
+		return f, id.Nil, ErrVersionMultifile
 	}
 
+	var libraryID id.ID
 	err = s.pool.QueryRow(ctx, `
-		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation
+		SELECT f.id, l.root_path || '/' || f.relative_path, f.generation, i.library_id
 		FROM media_files f
 		JOIN storage_locations l ON l.id = f.storage_location_id
+		JOIN media_versions v ON v.id = f.version_id
+		JOIN media_items i ON i.id = v.item_id
 		WHERE f.version_id = $1 AND f.role = 'media' AND f.missing_since IS NULL`, versionID).
-		Scan(&f.ID, &f.AbsPath, &f.Generation)
+		Scan(&f.ID, &f.AbsPath, &f.Generation, &libraryID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return f, ErrNotFound
+		return f, id.Nil, ErrNotFound
 	}
 	f.Role = RoleMedia
-	return f, err
+	return f, libraryID, err
 }
 
-// VersionExists zegt of een versie bestaat, voor het uitgeven van een
-// streamtoken. Het token is gebonden aan één mediaresource, dus die moet er zijn.
-func (s *Store) VersionExists(ctx context.Context, versionID id.ID) error {
-	var exists bool
-	err := s.pool.QueryRow(ctx,
-		`SELECT true FROM media_versions WHERE id = $1`, versionID).Scan(&exists)
+// VersionLibrary geeft de bibliotheek waar een versie toe hoort, voor
+// autorisatie vóór een streamtoken of -sessie wordt uitgegeven (AC2, PS-9).
+func (s *Store) VersionLibrary(ctx context.Context, versionID id.ID) (id.ID, error) {
+	var libraryID id.ID
+	err := s.pool.QueryRow(ctx, `
+		SELECT i.library_id
+		FROM media_versions v
+		JOIN media_items i ON i.id = v.item_id
+		WHERE v.id = $1`, versionID).Scan(&libraryID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrNotFound
+		return id.Nil, ErrNotFound
 	}
-	return err
+	return libraryID, err
 }
 
 // escapeLike maakt de wildcards van de gebruiker onschadelijk. Zonder dit is een

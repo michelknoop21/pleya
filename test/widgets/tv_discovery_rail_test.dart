@@ -150,7 +150,7 @@ void main() {
       final context = discoveryContextFor(episode);
       expect(context.title, 'Harbourlight', reason: 'a resumed episode is announced under its show');
       expect(context.context, contains('S2 E4'));
-      // DEC-119: the same remaining-time phrase as every Verder kijken card.
+      // DEC-144: the same remaining-time phrase as every Verder kijken card.
       expect(context.context, contains(formatRemainingTime(48 * 60 * 1000, 30 * 60 * 1000)!));
 
       final film = discoveryContextFor(tvDiscoveryFilmsRow().first);

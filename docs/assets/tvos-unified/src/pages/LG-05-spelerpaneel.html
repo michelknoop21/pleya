@@ -1,0 +1,48 @@
+<link rel="stylesheet" href="../../../liquid-glass/src/tv-glass.css">
+<style>
+/* mockup 33 I (spelerbalk, bediening zichtbaar); alleen de oppervlakken zijn glas */
+.video { position: absolute; inset: 0; }
+.video img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.osd-top { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.55) 0%, rgba(20,20,20,0) 24%, rgba(20,20,20,0) 66%, rgba(20,20,20,.30) 100%); }
+.tinfo { position: absolute; left: var(--inset); top: 56px; }
+.tinfo .t { font-size: 34px; font-weight: 700; }
+.tinfo .s { font-size: 21px; color: rgba(255,255,255,.85); margin-top: 6px; }
+.tinfo .s .tag { margin-left: 8px; color: var(--ink); border-color: rgba(255,255,255,.7); }
+.slab { position: absolute; left: calc(var(--inset) - 28px); right: calc(var(--inset) - 28px); top: 872px; height: 180px; border-radius: 36px; }
+.bar { position: absolute; left: var(--inset); right: var(--inset); top: 900px; }
+.bar .times { display: flex; justify-content: space-between; font-size: 22px; color: rgba(255,255,255,.88); font-variant-numeric: tabular-nums; margin-bottom: 14px; }
+.bar .times b { color: var(--ink); font-weight: 500; }
+.track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.30); position: relative; }
+.track .buf { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: rgba(255,255,255,.40); border-radius: 999px; }
+.track .pos { position: absolute; left: 0; top: 0; bottom: 0; width: 23%; background: var(--accent); border-radius: 999px; }
+.track .ch { position: absolute; top: -2px; width: 3px; height: 12px; background: rgba(255,255,255,.75); }
+.track .knob { position: absolute; left: 23%; top: 50%; width: 30px; height: 30px; border-radius: 999px; background: var(--ink); transform: translate(-50%,-50%); box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.acts { position: absolute; left: var(--inset); right: var(--inset); top: 972px; display: flex; gap: 14px; align-items: center; }
+.acts .btn { height: 56px; font-size: 21px; background: rgba(255,255,255,.14); flex: none; }
+.acts .btn.icon { width: 56px; }
+.acts .btn.icon .ic { width: 28px; height: 28px; }
+.acts .btn .ic { width: 24px; height: 24px; }
+.acts .sp { flex: 1; }
+.acts .hint { white-space: nowrap; font-size: 18px; color: rgba(255,255,255,.8); }
+.acts .hint kbd { background: rgba(255,255,255,.14); color: var(--ink); }
+</style>
+<div class="video"><img src="{{art:bbb-frame}}"></div>
+<div class="osd-top"></div>
+<div class="tinfo on-glass"><div class="t">Big Buck Bunny</div><div class="s">NAS · 1080p · AAC 5.1 · English <span class="tag">Direct play</span></div></div>
+<div class="slab tvglass"></div>
+<div class="bar on-glass">
+  <div class="times"><b>2:18</b><span>Chapter 2</span><span>–7:37 · ends at 5:54 PM</span></div>
+  <div class="track"><div class="buf"></div><div class="pos"></div>
+    <div class="ch" style="left:14%"></div><div class="ch" style="left:31%"></div><div class="ch" style="left:52%"></div><div class="ch" style="left:77%"></div>
+    <div class="knob"></div></div>
+</div>
+<div class="acts on-glass">
+  <div class="btn">{{icon:pause}} Pause</div>
+  <div class="btn icon">{{icon:rew}}</div>
+  <div class="btn icon">{{icon:fwd}}</div>
+  <div class="btn focus">{{icon:cc}} Audio &amp; Subtitles</div>
+  <div class="btn">{{icon:list}} Chapters</div>
+  <div class="btn">{{icon:gear}} Settings</div>
+  <div class="sp"></div>
+  <div class="hint"><kbd>Down</kbd> queue <span>·</span> <kbd>Menu</kbd> hide</div>
+</div>

@@ -6,7 +6,7 @@
 /// the two apart is what lets the resolver stay testable without a widget tree
 /// and the copy change without touching playback.
 ///
-/// The presentation contract of DEC-096 lid 10 is inherited rather than
+/// The presentation contract of DEC-109 lid 10 is inherited rather than
 /// re-implemented: `PlayerToastController` auto-hides, and `video_controls`
 /// draws the pill inside an `IgnorePointer` in the existing top zone, so the
 /// toast cannot take focus, cannot block a press and cannot land on the

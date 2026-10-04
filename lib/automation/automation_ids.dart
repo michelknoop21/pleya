@@ -173,6 +173,23 @@ class AutomationIds {
   /// One chip in [mediaDetailSeasonChips]. Instanceable: suffixed `[<index>]`.
   static const String mediaDetailSeasonChip = 'media-detail.season-chip';
 
+  /// The play button in the media-detail action row. On TV the page opens
+  /// with the ring here, and Menu from the detail rail comes back to it.
+  static const String mediaDetailPlay = 'media-detail.play';
+
+  /// The restart button beside [mediaDetailPlay] on the iPhone detail, only
+  /// while the item has progress (DEC-140).
+  static const String mediaDetailPlayFromStart = 'media-detail.play-from-start';
+
+  /// One round action under the play button on the iPhone detail (DEC-140).
+  /// Instanceable, suffixed with the action's name (`media-detail.action[watched]`),
+  /// because which actions show depends on the item and its source.
+  static const String mediaDetailAction = 'media-detail.action';
+
+  /// One poster in the iPhone seasons rail (DEC-140). Instanceable: suffixed
+  /// `[<index>]`.
+  static const String mediaDetailSeasonPoster = 'media-detail.season-poster';
+
   /// The Mijn Pleya hub as a screen. Its own `AutomationScreen`, because
   /// `screen.main` is mounted for the whole session and says nothing about
   /// which destination is on show.
@@ -235,6 +252,68 @@ class AutomationIds {
   /// filtered list. Carries its level, so "the error filter shows only errors"
   /// is a state assertion instead of a screenshot.
   static const String myPleyaLogRow = 'my_pleya.log_row';
+
+  /// Big P's surface (mockup 38, DEC-142), the Mijn Pleya section and the
+  /// contextual route alike. Its state carries `availability`, `state`,
+  /// `mood`, `error` and `pending`, so a scenario asserts what the controller
+  /// says instead of reading the panel.
+  static const String screenAssistant = 'screen.assistant';
+
+  /// A button on the surface, suffixed by role: `assistant.button[ask]` (the
+  /// primary "Vraag Big P"), `[done]`, `[cancel]`, `[setup]`, `[back]`.
+  static const String assistantButton = 'assistant.button';
+
+  /// One example question in rust (`assistant.example[0]`).
+  static const String assistantExample = 'assistant.example';
+
+  /// One follow-up question under a result (`assistant.followUp[0]`).
+  static const String assistantFollowUp = 'assistant.followUp';
+
+  /// The live step list while Big P works; state carries the step count.
+  static const String assistantSteps = 'assistant.steps';
+
+  /// The Pleya result card; state carries `error` and the action count.
+  static const String assistantResult = 'assistant.result';
+
+  /// One request option card (`assistant.option[0]`).
+  static const String assistantOption = 'assistant.option';
+
+  /// One title find_title found (`assistant.match[0]`); state carries the
+  /// title, kind, confidence and whether it is in a library.
+  static const String assistantMatch = 'assistant.match';
+
+  /// The confirmation card Pleya builds from the pending action.
+  static const String assistantConfirm = 'assistant.confirm';
+
+  /// A control on that card: `[cancel]`, `[approve]`, `[password]`. The
+  /// approve button reports `enabled`.
+  static const String assistantConfirmButton = 'assistant.confirm.button';
+
+  /// Big P summoned with a long Play/Pause press, over any TV screen. State
+  /// carries `shown`, `state`, `error` and `pending`. A result stays until
+  /// Menu or Klaar: it always offers follow-ups.
+  static const String assistantSummon = 'assistant.summon';
+
+  /// Big P's face button in the mobile page header; state carries `active` while he is out.
+  static const String bigpFaceButton = 'bigp.faceButton';
+
+  /// The speech balloon on iPhone and iPad; state carries `state`, `error` and `pending`.
+  static const String bigpBalloon = 'bigp.balloon';
+
+  /// The question field under the balloon.
+  static const String bigpInput = 'bigp.input';
+
+  /// One follow-up question beside Big P (`bigp.followUp[0]`).
+  static const String bigpFollowUp = 'bigp.followUp';
+
+  /// Big P peeking over the edge of a detail screen after a title tap; state carries the remaining title count.
+  static const String bigpPeek = 'bigp.peek';
+
+  /// The "Vraag het Big P" entry on the search screen.
+  static const String bigpSearchAsk = 'bigp.searchAsk';
+
+  /// Ask Big P about one library (`bigp.libraryAsk[<serverId>:<libraryId>]`).
+  static const String bigpLibraryAsk = 'bigp.libraryAsk';
 
   /// A text field on a connect-a-service settings screen, suffixed with the
   /// service and the field (`settings.form.field[seerr.url]`,
@@ -384,6 +463,24 @@ class AutomationIds {
   /// `<family>.<index>` shape [landingRailItem]/[discoverRailItem] use.
   static const String searchResultsItem = 'search.results.item';
 
+  /// One query chip under "Recent gezocht" on desktop and phone. Instanceable
+  /// by position (`search.history.chip[0]` is the newest); its state carries
+  /// the query, so a scenario can tell whose history it is looking at.
+  static const String searchHistoryChip = 'search.history.chip';
+
+  /// The clear button inside the search field, there while the field has text.
+  static const String searchClear = 'search.clear';
+
+  /// The TV search pill (36 B). Its state carries the result count the pill
+  /// shows, or null while there is nothing to count.
+  static const String tvSearchPill = 'tv.search.pill';
+
+  /// The search field above Aanvragen on TV (REQ-SEARCH-ROUTE).
+  static const String seerrSearchField = 'seerr.search.field';
+
+  /// The inbox button beside that field, which opens Alle aanvragen.
+  static const String seerrSearchInbox = 'seerr.search.inbox';
+
   /// The mobile source-picker sheet as a whole.
   static const String sheetSourcePicker = 'sheet.source_picker';
 
@@ -401,6 +498,11 @@ class AutomationIds {
   /// `UnifiedGroupAction`, because which actions are offered (and in which
   /// order) already varies with the group's own state.
   static const String sheetContextMenuItem = 'sheet.context_menu.item';
+
+  /// The TV library action sheet (LIB7, mockup 27 B). Its state lists the
+  /// offered actions in order, so a scenario can prove that a non-owner gets
+  /// only "Openen in catalogus" and "Verbergen" (the owner rule).
+  static const String sheetLibraryActions = 'sheet.library_actions';
 
   /// The Alle films/Alle series catalogue screens and the matching Aanvragen
   /// and Kijklijst phone controls (iOS Unified 2026 fase 3,
@@ -452,6 +554,7 @@ class AutomationIds {
   /// never have to share a counter.
   static const String tvCatalogGrid = 'tv.catalog.grid';
   static const String tvContinueWatchingAll = 'tv.continue_watching_all';
+
   static const String tvCatalogGridItem = 'tv.catalog.grid.item';
   static const String tvCatalogRail = 'tv.catalog.rail';
   static const String tvCatalogRailRow = 'tv.catalog.rail.row';
@@ -472,6 +575,8 @@ class AutomationIds {
     settingsAppearanceCategory,
     mediaDetailEpisodeListItem,
     mediaDetailSeasonChip,
+    mediaDetailAction,
+    mediaDetailSeasonPoster,
     discoverRail,
     discoverRailItem,
     myPleyaTile,
@@ -480,6 +585,14 @@ class AutomationIds {
     myPleyaSectionTile,
     myPleyaChip,
     myPleyaLogRow,
+    assistantButton,
+    assistantExample,
+    assistantFollowUp,
+    assistantOption,
+    assistantMatch,
+    assistantConfirmButton,
+    bigpFollowUp,
+    bigpLibraryAsk,
     playerPanelTab,
     playerPanelRow,
     requestsMineItem,
@@ -494,6 +607,7 @@ class AutomationIds {
     landingRailItem,
     searchResultsSection,
     searchResultsItem,
+    searchHistoryChip,
     sheetSourcePickerRow,
     sheetContextMenuItem,
     catalogHeader,
@@ -559,6 +673,13 @@ class AutomationIds {
     {'id': mediaDetailEpisodeListItem, 'role': 'list.item', 'instanceable': true},
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
+    {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
+    {'id': mediaDetailAction, 'role': 'button', 'instanceable': true},
+    {'id': mediaDetailSeasonPoster, 'role': 'grid.item', 'instanceable': true},
+    {'id': tvSearchPill, 'role': 'field', 'instanceable': false},
+    {'id': seerrSearchField, 'role': 'field', 'instanceable': false},
+    {'id': seerrSearchInbox, 'role': 'button', 'instanceable': false},
     {'id': screenMyPleya, 'role': 'screen', 'instanceable': false},
     {'id': myPleyaTile, 'role': 'grid.item', 'instanceable': true},
     {'id': myPleyaSection, 'role': 'region', 'instanceable': true},
@@ -567,6 +688,24 @@ class AutomationIds {
     {'id': settingsAppearanceCategory, 'role': 'button', 'instanceable': true},
     {'id': myPleyaChip, 'role': 'button', 'instanceable': true},
     {'id': myPleyaLogRow, 'role': 'list.item', 'instanceable': true},
+    {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
+    {'id': assistantButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantExample, 'role': 'button', 'instanceable': true},
+    {'id': assistantFollowUp, 'role': 'button', 'instanceable': true},
+    {'id': assistantSteps, 'role': 'list', 'instanceable': false},
+    {'id': assistantResult, 'role': 'region', 'instanceable': false},
+    {'id': assistantOption, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantMatch, 'role': 'list.item', 'instanceable': true},
+    {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
+    {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantSummon, 'role': 'region', 'instanceable': false},
+    {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
+    {'id': bigpBalloon, 'role': 'region', 'instanceable': false},
+    {'id': bigpInput, 'role': 'field', 'instanceable': false},
+    {'id': bigpFollowUp, 'role': 'button', 'instanceable': true},
+    {'id': bigpPeek, 'role': 'button', 'instanceable': false},
+    {'id': bigpSearchAsk, 'role': 'button', 'instanceable': false},
+    {'id': bigpLibraryAsk, 'role': 'button', 'instanceable': true},
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},
@@ -584,7 +723,7 @@ class AutomationIds {
     {'id': tvosNativeTextEntry, 'role': 'service', 'instanceable': false},
     {'id': homeHeader, 'role': 'region', 'instanceable': false},
     {'id': homeHeaderSearch, 'role': 'button', 'instanceable': false},
-    {'id': homeHeaderAvatar, 'role': 'image', 'instanceable': false},
+    {'id': homeHeaderAvatar, 'role': 'button', 'instanceable': false},
     {'id': homeChips, 'role': 'filter', 'instanceable': false},
     {'id': homeRail, 'role': 'rail', 'instanceable': true},
     {'id': homeRailItem, 'role': 'grid.item', 'instanceable': true},
@@ -594,17 +733,20 @@ class AutomationIds {
     {'id': requestsMineItem, 'role': 'list.item', 'instanceable': true},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
-    {'id': landingHeaderAvatar, 'role': 'image', 'instanceable': true},
+    {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},
     {'id': landingTitle, 'role': 'region', 'instanceable': true},
     {'id': landingViewAll, 'role': 'button', 'instanceable': true},
     {'id': landingRail, 'role': 'rail', 'instanceable': true},
     {'id': landingRailItem, 'role': 'grid.item', 'instanceable': true},
     {'id': searchResultsSection, 'role': 'region', 'instanceable': true},
     {'id': searchResultsItem, 'role': 'list.item', 'instanceable': true},
+    {'id': searchHistoryChip, 'role': 'chip', 'instanceable': true},
+    {'id': searchClear, 'role': 'button', 'instanceable': false},
     {'id': sheetSourcePicker, 'role': 'sheet', 'instanceable': false},
     {'id': sheetSourcePickerRow, 'role': 'list.item', 'instanceable': true},
     {'id': sheetContextMenu, 'role': 'sheet', 'instanceable': false},
     {'id': sheetContextMenuItem, 'role': 'list.item', 'instanceable': true},
+    {'id': sheetLibraryActions, 'role': 'sheet', 'instanceable': false},
     {'id': screenCatalogMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenCatalogSeries, 'role': 'screen', 'instanceable': false},
     {'id': catalogHeader, 'role': 'region', 'instanceable': true},

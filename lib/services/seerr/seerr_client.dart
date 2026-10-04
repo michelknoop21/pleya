@@ -182,9 +182,11 @@ class SeerrClient {
     int? watchProvider,
     String? watchRegion,
     String? sortBy,
+    List<int>? keywords,
   }) => _mediaPage('/discover/movies', {
     'page': page,
     'genre': ?genre,
+    if (keywords != null && keywords.isNotEmpty) 'keywords': keywords.join(','),
     'watchProviders': ?watchProvider?.toString(),
     'watchRegion': ?watchRegion,
     'sortBy': ?sortBy,
@@ -195,13 +197,30 @@ class SeerrClient {
     int? watchProvider,
     String? watchRegion,
     String? sortBy,
+    List<int>? keywords,
   }) => _mediaPage('/discover/tv', {
     'page': page,
     'genre': ?genre,
+    if (keywords != null && keywords.isNotEmpty) 'keywords': keywords.join(','),
     'watchProviders': ?watchProvider?.toString(),
     'watchRegion': ?watchRegion,
     'sortBy': ?sortBy,
   });
+
+  /// `GET /search/keyword`: TMDB keywords matching [query], for the
+  /// `keywords` filter of discover (comma-separated ids). Empty on a shape
+  /// without results.
+  Future<List<({int id, String name})>> searchKeyword(String query) async {
+    final resp = await _send(
+      () => _http.get('/search/keyword', queryParameters: {'query': query, 'page': 1}, headers: _authHeaders()),
+    );
+    final results = resp.data is Map ? (resp.data as Map)['results'] : null;
+    return [
+      if (results is List)
+        for (final r in results)
+          if (r is Map && _int(r['id']) != null && r['name'] != null) (id: _int(r['id'])!, name: r['name'].toString()),
+    ];
+  }
 
   /// `GET /watchproviders/{movies|tv}` — the streaming services this region has,
   /// ordered by TMDB display priority. Empty list on any hiccup: the row simply
@@ -253,6 +272,10 @@ class SeerrClient {
 
   Future<Map<String, dynamic>> getMovie(int tmdbId) => _detail('/movie/$tmdbId');
   Future<Map<String, dynamic>> getTv(int tmdbId) => _detail('/tv/$tmdbId');
+
+  /// `GET /tv/{tvId}/season/{seasonNumber}`: the season with its `episodes`
+  /// (name, overview, episodeNumber), as TMDB describes them.
+  Future<Map<String, dynamic>> getTvSeason(int tmdbId, int seasonNumber) => _detail('/tv/$tmdbId/season/$seasonNumber');
 
   /// Typed movie/tv detail for the media detail screen (hero, genres, cast, …).
   Future<SeerrMediaDetail> getMediaDetail({required int tmdbId, required bool isMovie}) async {

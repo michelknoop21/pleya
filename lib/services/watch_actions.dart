@@ -107,7 +107,7 @@ class WatchActions {
   }
 
   /// Takes [item] out of Continue Watching without touching watch state: the
-  /// one path every menu goes through (DEC-119 fase 3).
+  /// one path every menu goes through (DEC-144 fase 3).
   ///
   /// A source that can remove server-side is removed there. One that cannot
   /// (Jellyfin, Emby, local folders) is hidden on this device instead, through

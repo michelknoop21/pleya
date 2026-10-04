@@ -1,0 +1,52 @@
+<style>
+.prof { margin-top: 26px; background: var(--surface); border-radius: var(--r-tile); padding: 22px 32px; display: flex; align-items: center; gap: 28px; }
+.prof .av { width: 88px; height: 88px; border-radius: 999px; overflow: hidden; background: var(--elevated); }
+.prof .av img { width: 100%; height: 100%; object-fit: cover; }
+.prof .n { font-size: 34px; font-weight: 700; }
+.prof .s { font-size: 22px; color: var(--ink-3); margin-top: 4px; }
+.prof .btn { margin-left: 16px; }
+.prof .srv { margin-left: auto; text-align: right; font-size: 21px; color: var(--ink-2); line-height: 1.5; }
+.prof .srv b { font-weight: 500; color: var(--ink); margin-right: 10px; }
+.tiles { margin-top: 0; }
+.tile { min-height: 150px; }
+.group-label { margin: 26px 0 16px; }
+.tile.bigp { overflow: hidden; }
+.tile.bigp img { position: absolute; right: 14px; top: 10px; height: 124px; }
+.cut { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(180deg, rgba(20,20,20,0), var(--bg) 85%); }
+</style>
+{{nav:Mijn Pleya|live,avatar}}
+<div class="page">
+  <div class="page-title">Mijn Pleya</div>
+  <div class="prof">
+    <div class="av"><img src="../assets/avatar.jpg" alt=""></div>
+    <div><div class="n">Michel</div><div class="s">2 van 2 servers online</div></div>
+    <div class="btn">{{icon:person}} Profiel wisselen</div>
+    <div class="srv"><div><span class="dot"></span> <b>Zolder</b>Online</div><div><span class="dot"></span> <b>G-Plexflix</b>Online</div></div>
+  </div>
+  <div class="group-label">Mijn content</div>
+  <div class="tiles c4">
+    <div class="tile">{{icon:bookmark}}<span class="count">24</span><div class="t">Kijklijst</div><div class="s">Bewaarde films en series</div></div>
+    <div class="tile">{{icon:collection}}<span class="count">4</span><div class="t">Collecties</div><div class="s">Collecties uit je bibliotheken</div></div>
+    <div class="tile">{{icon:playlist}}<span class="count">2</span><div class="t">Afspeellijsten</div><div class="s">Afspeellijsten van verbonden servers</div></div>
+    <div class="tile">{{icon:requests}}<div class="t">Aanvragen</div><div class="s">Verzoeken en ontdekken</div></div>
+  </div>
+  <div class="group-label">Bibliotheken en bronnen</div>
+  <div class="tiles c4">
+    <div class="tile">{{icon:folder}}<div class="t">Bibliotheken</div><div class="s">Mediabibliotheken beheren</div></div>
+    <div class="tile">{{icon:server}}<div class="t">Servers</div><div class="s">Verbindingen en lokale bronnen</div></div>
+    <div class="tile">{{icon:activity}}<div class="t">Activiteit</div><div class="s">Nu aan het kijken</div></div>
+    <div class="tile">{{icon:people}}<div class="t">Samen Kijken</div><div class="s">Kijk gelijk met vrienden</div></div>
+  </div>
+  <div class="group-label">Pleya</div>
+  <div class="tiles c4">
+    <div class="tile bigp focus"><img src="../assets/bigp/bigp-blij.png" alt=""><div class="t">Big P</div><div class="s">Pleya Assistant</div></div>
+    <div class="tile">{{icon:gear}}<div class="t">Instellingen</div><div class="s">Weergave, speler, trackers</div></div>
+    <div class="tile">{{icon:list}}<div class="t">Logs en diagnose</div><div class="s">Logbestanden en crashrapportage</div></div>
+    <div class="tile">{{icon:info}}<div class="t">Over</div><div class="s">Versie en licenties</div></div>
+  </div>
+  <div class="tiles c4" style="margin-top:22px">
+    <div class="tile">{{icon:logout}}<div class="t">Uitloggen</div><div class="s">Afmelden op dit apparaat</div></div>
+  </div>
+</div>
+<div class="cut"></div>
+<div class="note">PROPOSED · MOCKUP 38 A · Big P vooraan in de groep Pleya, als gewone tegel met portret; alleen voor beheerders</div>

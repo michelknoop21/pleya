@@ -52,6 +52,16 @@ const _browseFields = 'RecursiveItemCount,ChildCount,UserData,PremiereDate,Origi
 /// queries because it is the heaviest item field Jellyfin returns.
 const _episodeRowFields = '$_browseFields,MediaSources';
 
+/// Candidate pool and Similar: genres and studio, so a Jellyfin candidate can
+/// fill a genre row and be scored on taste. `People` stays out for cost; person
+/// rows on a Jellyfin-only profile are deferred (recommendations register).
+const _poolFields = '$_browseFields,Genres,Studios';
+
+/// Watch-history import: the taste features (genres, cast, director, studio)
+/// come along on the page, so a film costs no separate item lookup. Only the
+/// background history sync asks for these, never a visible list.
+const _historyFields = '$_browseFields,Genres,People,Studios';
+
 /// Folder-tree field set for MEDIA children. The tree renders
 /// title/thumb/watch state plus default dto fields (year, runtime, ratings);
 /// it deliberately skips `RecursiveItemCount`/`ChildCount` — per-item COUNT
@@ -135,6 +145,8 @@ const _detailFields =
     'ProviderIds';
 
 mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
+  void assertCanManageServerMetadata();
+
   JellyfinConnection get connection;
   FailoverHttpClient get _http;
   MediaItem? _mapItem(Map<String, dynamic> json);
@@ -181,7 +193,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final translator = JellyfinLibraryQueryTranslator(
       userId: connection.userId,
       parentId: libraryId,
-      fields: _browseFields,
+      fields: query.withTasteFields ? _poolFields : _browseFields,
     );
     final params = translator.toQueryParameters(query);
 
@@ -345,6 +357,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
   Future<Map<String, dynamic>?> _safeFetchFilterPayload(String libraryId) async {
     try {
+      if (connection.isEmby) return await _fetchEmbyFilterPayload(libraryId);
       final response = await _http.get(
         '/Items/Filters',
         queryParameters: {'userId': connection.userId, 'ParentId': libraryId},
@@ -358,6 +371,38 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       appLogger.w('JellyfinClient: /Items/Filters timed out (filters disabled)', error: e, stackTrace: st);
       return null;
     }
+  }
+
+  /// Emby has no `/Items/Filters`; it lists each facet on its own endpoint.
+  /// Rebuilt into Jellyfin's payload shape so the parsing above is shared.
+  Future<Map<String, dynamic>> _fetchEmbyFilterPayload(String libraryId) async {
+    final query = {'UserId': connection.userId, 'ParentId': libraryId, 'Recursive': 'true'};
+    // One facet the server refuses (an older build, a restricted user) drops
+    // that facet only; the others still make it to the filter sheet.
+    Future<List<String>> names(String path) async {
+      try {
+        final response = await _http.get(path, queryParameters: query, timeout: _filtersTimeout);
+        throwIfHttpError(response);
+        return [for (final item in _itemsArray(response.data)) ?item['Name'] as String?];
+      } on MediaServerHttpException catch (e) {
+        if (e.isTransient) rethrow;
+        appLogger.w('JellyfinClient: Emby $path unavailable (facet skipped)', error: e);
+        return const [];
+      }
+    }
+
+    final [genres, ratings, tags, years] = await Future.wait([
+      names('/Genres'),
+      names('/OfficialRatings'),
+      names('/Tags'),
+      names('/Years'),
+    ]);
+    return {
+      'Genres': genres,
+      'OfficialRatings': ratings,
+      'Tags': tags,
+      'Years': [for (final y in years) ?int.tryParse(y)],
+    };
   }
 
   /// Jellyfin has no `/sorts` listing endpoint, so this returns a hardcoded
@@ -520,6 +565,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   /// preserves user edits — same UX as Plex's `refresh?force=1`.
   @override
   Future<void> refreshLibraryMetadata(String libraryId) async {
+    assertCanManageServerMetadata();
     final response = await _http.post(
       '/Items/${_segment(libraryId)}/Refresh',
       queryParameters: {
@@ -1178,7 +1224,8 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       '/Users/${_segment(connection.userId)}/Items/Latest',
       queryParameters: {
         'Limit': limit.toString(),
-        'Fields': _browseFields,
+        // The candidate pool reads this list; the home hero shares the call.
+        'Fields': _poolFields,
         'IncludeItemTypes': 'Movie,Series,Episode',
         ...jellyfinImageQueryParameters,
       },
@@ -1219,7 +1266,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
     final results = await Future.wait([
-      _fetchItemsArray('/UserItems/Resume', {
+      _fetchItemsArray(connection.resumeItemsPath, {
         'userId': connection.userId,
         'Limit': ?count?.toString(),
         'Fields': _browseFields,
@@ -1274,7 +1321,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
 
     final results = await Future.wait([
       latestFuture,
-      _safeFetchItemsArray('/UserItems/Resume', {
+      _safeFetchItemsArray(connection.resumeItemsPath, {
         'userId': connection.userId,
         'Limit': limit.toString(),
         'Fields': _browseFields,
@@ -1406,7 +1453,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final includeNextUp = libraryKind == null || libraryKind == MediaKind.show;
     final results = await Future.wait([
       latestFuture,
-      _safeFetchItemsArray('/UserItems/Resume', {
+      _safeFetchItemsArray(connection.resumeItemsPath, {
         'userId': connection.userId,
         'ParentId': libraryId,
         'Limit': limit.toString(),
@@ -1514,7 +1561,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         );
       case 'continue':
         return _safeFetchMediaPage(
-          '/UserItems/Resume',
+          connection.resumeItemsPath,
           {
             'userId': connection.userId,
             'StartIndex': offset.toString(),
@@ -1649,6 +1696,41 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     return _mapItems(items);
   }
 
+  /// [JellyfinHistorySource]: only this connection's own user, never another
+  /// account on the server (DEC-062).
+  ///
+  /// Both history reads throw on failure instead of reading as empty: an empty
+  /// page ends the importer's paging as if it were the last one, and the
+  /// watermark would then skip the plays it never read.
+  Future<List<MediaItem>> fetchPlayedHistoryPage({required int startIndex, int limit = kJellyfinPageLength}) async {
+    final items = await _fetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Episode',
+      'Filters': 'IsPlayed',
+      'SortBy': 'DatePlayed',
+      'SortOrder': 'Descending',
+      'StartIndex': startIndex.toString(),
+      'Limit': limit.toString(),
+      'Fields': _historyFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
+  Future<List<MediaItem>> fetchResumableItems({int limit = kJellyfinResumeLimit}) async {
+    final items = await _fetchItemsArray('/Items', {
+      'userId': connection.userId,
+      'Recursive': 'true',
+      'IncludeItemTypes': 'Movie,Episode',
+      'Filters': 'IsResumable',
+      'Limit': limit.toString(),
+      'Fields': _historyFields,
+      ...jellyfinImageQueryParameters,
+    });
+    return _mapItems(items);
+  }
+
   @override
   Future<List<MediaHub>> fetchRelatedHubs(String id, {int count = 10}) async {
     final response = await _http.get(
@@ -1656,7 +1738,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       queryParameters: {
         'userId': connection.userId,
         'Limit': count.toString(),
-        'Fields': _browseFields,
+        'Fields': _poolFields,
         ...jellyfinImageQueryParameters,
       },
     );
@@ -1682,11 +1764,11 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     if (isOfflineMode) return const [];
 
     final results = await Future.wait([
-      _safeFetchItemsArray('/Items/${_segment(id)}/LocalTrailers', {
+      _safeFetchItemsArray(connection.itemExtrasPath(id, 'LocalTrailers'), {
         'userId': connection.userId,
         ...jellyfinImageQueryParameters,
       }),
-      _safeFetchItemsArray('/Items/${_segment(id)}/SpecialFeatures', {
+      _safeFetchItemsArray(connection.itemExtrasPath(id, 'SpecialFeatures'), {
         'userId': connection.userId,
         ...jellyfinImageQueryParameters,
       }),

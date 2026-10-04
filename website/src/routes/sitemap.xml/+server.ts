@@ -13,6 +13,9 @@ const SITE = 'https://pleya.app';
 export const GET: RequestHandler = async () => {
   const urls = [
     { loc: '/', priority: '1.0' },
+    { loc: '/iphone', priority: '0.8' },
+    { loc: '/apple-tv', priority: '0.8' },
+    { loc: '/mac', priority: '0.8' },
     { loc: '/docs', priority: '0.8' },
     { loc: '/releases', priority: '0.6' },
     { loc: '/privacy', priority: '0.3' },

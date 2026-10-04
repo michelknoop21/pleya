@@ -59,6 +59,24 @@ void main() {
 
       expect(after.health, PreferenceSyncHealth.quota);
     });
+
+    test('a reconcile does not clear a quota stop: the store never reports that it was lifted', () {
+      const start = PreferenceSyncStatus(availability: PreferenceSyncAvailability.ready);
+
+      final after = start
+          .raise(PreferenceSyncHealth.quota)
+          .reconcileSucceeded(at, pushedCount: 3, skippedCount: 0, oversizeCount: 0);
+
+      expect(after.state, PreferenceSyncState.quota);
+    });
+
+    test('a single write cannot promote a signed-out store to ready', () {
+      const signedOut = PreferenceSyncStatus(availability: PreferenceSyncAvailability.unavailable);
+
+      final after = signedOut.starting(at).writeSucceeded(at);
+
+      expect(after.availability, PreferenceSyncAvailability.unavailable);
+    });
   });
 
   group('a full pass is what clears health', () {
@@ -99,6 +117,8 @@ void main() {
               switch (availability) {
                 case PreferenceSyncAvailability.disabled:
                   expect(state, PreferenceSyncState.disabled);
+                case PreferenceSyncAvailability.unknown:
+                  expect(state, PreferenceSyncState.idle);
                 case PreferenceSyncAvailability.unavailable:
                   expect(state, PreferenceSyncState.unavailable);
                 case PreferenceSyncAvailability.ready:
@@ -206,6 +226,44 @@ void main() {
 
       await coordinator.refreshAvailability();
 
+      expect(coordinator.status.value.state, PreferenceSyncState.unavailable);
+    });
+
+    test('a write while iCloud is signed out does not report a send', () async {
+      final coordinator = await build();
+      transport.available = false;
+      await coordinator.refreshAvailability();
+
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+
+      expect(coordinator.status.value.state, PreferenceSyncState.unavailable);
+      expect(coordinator.status.value.lastSuccess, isNull);
+      expect(transport.writes, isEmpty);
+    });
+
+    test('before availability answers the status is unknown, not signed out, and nothing is sent', () async {
+      final coordinator = await build();
+      coordinator.markAvailabilityUnknown();
+
+      expect(coordinator.status.value.availability, PreferenceSyncAvailability.unknown);
+      expect(coordinator.status.value.state, isNot(PreferenceSyncState.unavailable));
+
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      await coordinator.apply(const PreferenceMutation.set('subtitle_font_size', 44));
+
+      expect(transport.writes, isEmpty);
+      expect(coordinator.status.value.lastSuccess, isNull);
+      expect(coordinator.localRevision('subtitle_font_size'), isNotNull, reason: 'stamped all the same');
+    });
+
+    test('a reconcile while iCloud is signed out writes nothing and stays unavailable', () async {
+      final coordinator = await build();
+      await settings.prefs.setInt('subtitle_font_size', 44);
+      transport.available = false;
+
+      await coordinator.requestReconcile(ReconcileTrigger.foreground);
+
+      expect(transport.writes, isEmpty);
       expect(coordinator.status.value.state, PreferenceSyncState.unavailable);
     });
   });

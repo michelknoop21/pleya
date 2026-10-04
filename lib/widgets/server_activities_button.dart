@@ -326,7 +326,9 @@ class ServerActivitiesButtonState extends State<ServerActivitiesButton> {
               ],
             ),
           ),
-          if (activity.cancellable)
+          // Stopping a server task is owner-only (the client refuses too).
+          if (activity.cancellable &&
+              context.read<MultiServerProvider>().serverManager.canManageServerMetadata(serverId))
             IconButton(
               icon: AppIcon(Symbols.close_rounded, size: 16, color: theme.colorScheme.onSurface),
               onPressed: () => _cancelActivity(serverId, activity.uuid),

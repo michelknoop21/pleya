@@ -42,14 +42,11 @@ class _Pill extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: focused ? FocusTheme.contrastSeparatorShadows(context) : null,
-        border: focused
-            ? Border.all(color: FocusTheme.getFocusBorderColor(context), width: FocusTheme.focusBorderWidth)
-            : null,
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
+      // VIS-0925-A: the ring and its separator line, straight from FocusTheme.
+      foregroundDecoration: focused
+          ? FocusTheme.shapeFocusRing(context, isFocused: true, shape: const StadiumBorder())
+          : null,
       child: Text(
         label,
         style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),

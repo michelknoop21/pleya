@@ -1,0 +1,85 @@
+name: tvos.light.contrast-sweep
+target: tvos-sim
+# Light text-contrast sweep (VIS-0925 review): the theme switched to Light,
+# then the screens with text on light surfaces: Uiterlijk, the settings index,
+# the Mijn Pleya hub, Aanvragen with the search field focused, Series and a
+# search with results. Screenshots only; the ratios are asserted in
+# test/theme/tv_text_contrast_audit_test.dart.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requests.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "my_pleya.section.content[appearance]", timeout: 8000}
+  - press: right
+  - settle: 400
+  - press: select
+  - settle: 1000
+  - press: up
+  - press: up
+  - press: up
+  - press: down
+  - settle: 300
+  - press: select
+  - settle: 1500
+  - snapshot: 00-appearance-light
+  - press: left
+  - settle: 400
+  - press: down
+  - settle: 400
+  - snapshot: 01-appearance-light-category-focus
+  - press: menu
+  - wait_until: {focused: "my_pleya.section.tile[settings.appearance]", timeout: 8000}
+  - settle: 800
+  - snapshot: 02-settings-index-light
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[settings]", timeout: 8000}
+  - settle: 800
+  - snapshot: 03-hub-light
+  - press: up
+  - press: up
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - press: select
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2500
+  - press: down
+  - settle: 500
+  - press: up
+  - settle: 300
+  - press: up
+  - wait_until: {focused: seerr.search.field, timeout: 5000}
+  - settle: 800
+  - snapshot: 04-requests-light-field-focused
+  - press: down
+  - settle: 800
+  - snapshot: 05-requests-light-card-focused
+  - press: menu
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 8000}
+  - press: menu
+  - wait_until: {focused: nav.myPleya, timeout: 8000}
+  - walk: {direction: left, expect: [nav.movies, nav.series], timeout: 20000, settle: 800}
+  - settle: 2000
+  - snapshot: 06-series-light
+  - press: down
+  - settle: 1000
+  - snapshot: 07-series-light-card-focused

@@ -1,0 +1,83 @@
+name: tvos.authority.non-owner
+target: tvos-sim
+# The owner rule, non-owner side: only the owner of a server may change its
+# canonical data, and nobody else sees those actions. The fixture is a Pleya
+# Server, which has no owner role until PS-9, so `canManageServerMetadata` is
+# false for every library here: exactly the non-owner state.
+#
+# What this proves on a real render: the library action sheet offers only
+# "Openen in catalogus" and "Verbergen" (no refresh, scan, analyze or empty
+# trash), the remote walks the close button and those two rows without
+# landing on a hidden action, and Menu hands the ring back to the row.
+#
+# Not covered here, and why: the TV collection screen (no delete button, RIGHT
+# on Shuffle stays put) needs a collection, and Pleya Server serves none
+# (`fetchCollections` returns an empty list), so that screen cannot be reached
+# with this fixture. Its non-owner state is covered by
+# test/screens/tv/tv_collection_screen_test.dart and
+# test/screens/collection_detail_screen_authority_test.dart.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "my_pleya.section[libraries]", timeout: 15000}
+  - settle: 1000
+
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 8000}
+  - press: select
+  - wait_until: {id: sheet.library_actions, timeout: 8000}
+  - settle: 800
+  - snapshot: 00-sheet-non-owner
+
+  # The sheet renders from this exact list: two rows, no owner actions.
+  - assert: {id: sheet.library_actions, insideViewport: true, state: {actions: "openInCatalog,toggleVisibility"}}
+
+  # Walk the sheet. The ring opens on "Sluiten" (the last control), so DOWN
+  # stays put and UP climbs the rows: "Verberg bibliotheek", "Openen in Alle
+  # films", then nothing. A hidden owner action that still took focus would
+  # show up as an extra stop; focus-trace.json carries the label per press.
+  - press: down
+  - settle: 400
+  - snapshot: 01-down-stays-on-close
+  - press: up
+  - settle: 400
+  - snapshot: 02-up-hide-row
+  - press: up
+  - settle: 400
+  - snapshot: 03-up-open-row
+  - press: up
+  - settle: 400
+  - snapshot: 04-up-stays-on-first-row
+  - assert: {id: sheet.library_actions, state: {actions: "openInCatalog,toggleVisibility"}}
+
+  # Menu closes the sheet and returns to the row that opened it.
+  - press: menu
+  - settle: 500
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:2d95c7c96f4e9f4d]", timeout: 5000}
+  - snapshot: 05-back-on-row
+
+  # The Shows library gets the same two actions.
+  - press: down
+  - settle: 400
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]", timeout: 5000}
+  - press: select
+  - wait_until: {id: sheet.library_actions, timeout: 8000}
+  - settle: 800
+  - assert: {id: sheet.library_actions, state: {actions: "openInCatalog,toggleVisibility"}}
+  - snapshot: 06-sheet-shows
+  - press: menu
+  - settle: 500
+  - wait_until: {focused: "my_pleya.section.tile[libraries.srv-1:c6fe01777910c423]", timeout: 5000}

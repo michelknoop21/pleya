@@ -48,3 +48,12 @@ enum MediaBackend {
     return MediaBackend.plex;
   }
 }
+
+/// Server ids of Jellyfin-backend connections that are really Emby (DEC-141).
+/// Filled when a stored connection is loaded and when a `JellyfinClient` is
+/// built, so labels and badges can say "Emby" without
+/// every [MediaItem]-level type carrying the flag.
+// ponytail: process-wide set, never pruned; a removed Emby server's id lingers harmlessly until restart.
+final Set<String> embyServerIds = {};
+
+bool isEmbyServer(String? serverId) => serverId != null && embyServerIds.contains(serverId);

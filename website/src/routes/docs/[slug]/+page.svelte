@@ -1,8 +1,7 @@
 <script lang="ts">
   import '../docs.css';
-  import DocsBar from '$lib/components/DocsBar.svelte';
+  import TopNav from '$lib/components/TopNav.svelte';
   import Footer from '$lib/components/Footer.svelte';
-  import NoiseOverlay from '$lib/components/NoiseOverlay.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -64,8 +63,7 @@
 </svelte:head>
 
 <div class="docs">
-  <NoiseOverlay />
-  <DocsBar />
+  <TopNav sticky />
 
   <div class="read-progress" role="presentation">
     <span style="transform: scaleX({progress})"></span>

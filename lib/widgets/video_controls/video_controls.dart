@@ -45,6 +45,7 @@ import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../models/livetv_capture_buffer.dart';
 import '../../providers/multi_server_provider.dart';
+import '../../services/multi_server_manager.dart';
 import '../../media/media_source_info.dart';
 import '../../models/transcode_quality_preset.dart';
 import '../../media/media_version.dart';
@@ -84,6 +85,7 @@ import 'widgets/skip_marker_button.dart';
 import 'widgets/track_chapter_controls.dart';
 import 'widgets/performance_overlay/performance_overlay.dart';
 import 'mobile_video_controls.dart';
+import 'mobile_video_controls_glass.dart';
 import 'desktop_video_controls.dart';
 import 'tv_info_panel.dart';
 import 'package:provider/provider.dart';
@@ -886,22 +888,11 @@ class _PlexVideoControlsState extends State<PlexVideoControls>
                                   valueListenable: widget.hasFirstFrame ?? _fallbackHasFirstFrame,
                                   builder: (context, hasFrame, child) {
                                     return Container(
-                                      decoration: BoxDecoration(
-                                        // Use solid black when loading, gradient when loaded
-                                        color: hasFrame ? null : Colors.black,
-                                        gradient: hasFrame
-                                            ? LinearGradient(
-                                                begin: Alignment.topCenter,
-                                                end: Alignment.bottomCenter,
-                                                colors: [
-                                                  Colors.black.withValues(alpha: 0.7),
-                                                  Colors.transparent,
-                                                  Colors.transparent,
-                                                  Colors.black.withValues(alpha: 0.7),
-                                                ],
-                                                stops: const [0.0, 0.2, 0.8, 1.0],
-                                              )
-                                            : null,
+                                      // Solid black while loading, gradient once a frame is up.
+                                      decoration: playerOverlayScrim(
+                                        hasFrame: hasFrame,
+                                        glass: isMobile && playerGlassOn(context),
+                                        topFade: !PlatformDetector.isTV(),
                                       ),
                                       child: child,
                                     );

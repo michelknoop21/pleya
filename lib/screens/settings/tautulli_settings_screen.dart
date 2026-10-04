@@ -30,9 +30,10 @@ import 'async_form_state_mixin.dart';
 /// generated in Tautulli, or the permanent API key.
 ///
 /// The difference from seerr that shapes this screen: Tautulli has no per-user
-/// login. One key opens the whole admin API, so what is configured here only
-/// ever serves the person holding it, and the copy says so instead of implying
-/// the household gets it too.
+/// login. One key opens the whole admin API, so pairing is an admin act. What
+/// it feeds is per profile: every profile on this server gets its own history
+/// imported, bound to its own Plex account (DEC-062), and none of them sees
+/// the key.
 class TautulliSettingsScreen extends StatefulWidget {
   const TautulliSettingsScreen({super.key});
 
@@ -266,7 +267,7 @@ class _TautulliSettingsScreenState extends State<TautulliSettingsScreen>
         const SizedBox(height: 16),
         Text(t.tautulli.adminOnlyNote, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
         // Admin-only by construction: this whole screen is behind
-        // `SettingsScreen._ownsAPlexServer`, and the provider refuses the write
+        // `SettingsScreen._managesAPlexServer`, and the provider refuses the write
         // again for anyone who does not administer the server. Regular profiles
         // never see this switch, never opt in and never learn Tautulli exists;
         // they just get better recommendations from their own history.

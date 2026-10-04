@@ -50,7 +50,7 @@ class HubSection extends StatefulWidget {
   final Future<List<MediaItem>> Function()? loadMoreItems;
 
   /// Shown muted beside the title: the real size of the list behind the row
-  /// (DEC-119 fase 2), not of the row itself. Null leaves it off.
+  /// (DEC-144 fase 2), not of the row itself. Null leaves it off.
   final int? count;
 
   /// Reports the current focused media item. Used by TV spotlight layouts.
@@ -624,7 +624,11 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
       return;
     }
     recorder.link(traceId, SelectTraceLink.activatedTarget, item, note: 'strategy=${activation.strategy.name}');
-    recorder.link(traceId, SelectTraceLink.expectedNavigationTarget, mediaDetailNavigationTargetFor(item).metadata);
+    recorder.link(
+      traceId,
+      SelectTraceLink.expectedNavigationTarget,
+      mediaDetailNavigationTargetIn(context, item).metadata,
+    );
     _navigateToItem(item, traceId: traceId);
   }
 

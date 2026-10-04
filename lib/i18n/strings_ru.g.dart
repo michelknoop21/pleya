@@ -864,6 +864,7 @@ class _TranslationsConnectionsRu extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => 'Сессия истекла для ${count} серверов';
 	@override String get signInAgain => 'Войти снова';
 	@override String get editJellyfinTitle => 'Изменить подключение Jellyfin';
+	@override String get editEmbyTitle => 'Изменить подключение Emby';
 	@override String editJellyfinIntro({required Object serverName}) => 'Добавьте или удалите URL для ${serverName}. Pleya будет использовать доступный URL с минимальной задержкой.';
 	@override String get localSources => 'Источники на этом устройстве';
 	@override String get removeSource => 'Удалить источник';
@@ -1646,11 +1647,12 @@ class _TranslationsAddServerRu extends TranslationsAddServerEn {
 
 	// Translations
 	@override String get addJellyfinTitle => 'Добавить сервер Jellyfin';
+	@override String get addEmbyTitle => 'Добавить сервер Emby';
 	@override String get serverUrls => 'URL сервера';
 	@override String get serverUrlsHelper => 'Можно указать несколько URL через запятую.';
 	@override String get findServer => 'Найти сервер';
-	@override String get searchingLocalServers => 'Поиск локальных серверов Jellyfin...';
-	@override String get localServers => 'Локальные серверы Jellyfin';
+	@override String get searchingLocalServers => 'Поиск локальных серверов...';
+	@override String get localServers => 'Локальные серверы';
 	@override String get username => 'Имя пользователя';
 	@override String get password => 'Пароль';
 	@override String get signIn => 'Войти';
@@ -1664,14 +1666,17 @@ class _TranslationsAddServerRu extends TranslationsAddServerEn {
 	@override String get duplicatePlexAccount => 'В Plex уже выполнен вход. Выйдите, чтобы сменить аккаунт.';
 	@override String get failedToRegisterAccount => 'Не удалось зарегистрировать учётную запись';
 	@override String get enterJellyfinUrlError => 'Введите URL вашего сервера Jellyfin';
+	@override String get enterEmbyUrlError => 'Введите URL вашего сервера Emby';
 	@override String get addConnectionTitle => 'Добавить подключение';
 	@override String addConnectionTitleScoped({required Object name}) => 'Добавить в ${name}';
 	@override String get signInWithPlexCard => 'Войти через Plex';
 	@override String get signInWithPlexCardSubtitle => 'Авторизуйте это устройство. Общие серверы будут добавлены.';
 	@override String get signInWithPlexCardSubtitleScoped => 'Авторизуйте аккаунт Plex. Пользователи Home станут профилями.';
 	@override String get connectToJellyfinCard => 'Подключиться к Jellyfin';
+	@override String get connectToEmbyCard => 'Подключиться к Emby';
 	@override String get connectToJellyfinCardSubtitle => 'Введите URL сервера, имя пользователя и пароль.';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Войдите на сервер Jellyfin. Привязывается к ${name}.';
+	@override String connectToEmbyCardSubtitleScoped({required Object name}) => 'Войдите на сервер Emby. Привязывается к ${name}.';
 	@override String get borrowFromAnotherProfile => 'Одолжить из другого профиля';
 	@override String get borrowFromAnotherProfileSubtitle => 'Используйте подключение другого профиля. Для профилей с PIN нужен PIN.';
 }
@@ -2895,6 +2900,7 @@ extension on TranslationsRu {
 			'connections.sessionExpiredMany' => ({required Object count}) => 'Сессия истекла для ${count} серверов',
 			'connections.signInAgain' => 'Войти снова',
 			'connections.editJellyfinTitle' => 'Изменить подключение Jellyfin',
+			'connections.editEmbyTitle' => 'Изменить подключение Emby',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => 'Добавьте или удалите URL для ${serverName}. Pleya будет использовать доступный URL с минимальной задержкой.',
 			'connections.localSources' => 'Источники на этом устройстве',
 			'connections.removeSource' => 'Удалить источник',
@@ -3302,9 +3308,9 @@ extension on TranslationsRu {
 			'companionRemote.session.startServer' => 'Запустить сервер',
 			'companionRemote.session.stopServer' => 'Остановить сервер',
 			'companionRemote.session.minimize' => 'Свернуть',
-			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.discoveryDescription' => 'Устройства Pleya с тем же аккаунтом Plex появятся здесь',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => 'Подключение...',
 			'companionRemote.pairing.searchingForDevices' => 'Поиск устройств...',
@@ -3545,11 +3551,12 @@ extension on TranslationsRu {
 			'trackers.libraryFilter.libraries' => 'Библиотеки',
 			'trackers.libraryFilter.noLibraries' => 'Библиотеки недоступны',
 			'addServer.addJellyfinTitle' => 'Добавить сервер Jellyfin',
+			'addServer.addEmbyTitle' => 'Добавить сервер Emby',
 			'addServer.serverUrls' => 'URL сервера',
 			'addServer.serverUrlsHelper' => 'Можно указать несколько URL через запятую.',
 			'addServer.findServer' => 'Найти сервер',
-			'addServer.searchingLocalServers' => 'Поиск локальных серверов Jellyfin...',
-			'addServer.localServers' => 'Локальные серверы Jellyfin',
+			'addServer.searchingLocalServers' => 'Поиск локальных серверов...',
+			'addServer.localServers' => 'Локальные серверы',
 			'addServer.username' => 'Имя пользователя',
 			'addServer.password' => 'Пароль',
 			'addServer.signIn' => 'Войти',
@@ -3563,14 +3570,17 @@ extension on TranslationsRu {
 			'addServer.duplicatePlexAccount' => 'В Plex уже выполнен вход. Выйдите, чтобы сменить аккаунт.',
 			'addServer.failedToRegisterAccount' => 'Не удалось зарегистрировать учётную запись',
 			'addServer.enterJellyfinUrlError' => 'Введите URL вашего сервера Jellyfin',
+			'addServer.enterEmbyUrlError' => 'Введите URL вашего сервера Emby',
 			'addServer.addConnectionTitle' => 'Добавить подключение',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => 'Добавить в ${name}',
 			'addServer.signInWithPlexCard' => 'Войти через Plex',
 			'addServer.signInWithPlexCardSubtitle' => 'Авторизуйте это устройство. Общие серверы будут добавлены.',
 			'addServer.signInWithPlexCardSubtitleScoped' => 'Авторизуйте аккаунт Plex. Пользователи Home станут профилями.',
 			'addServer.connectToJellyfinCard' => 'Подключиться к Jellyfin',
+			'addServer.connectToEmbyCard' => 'Подключиться к Emby',
 			'addServer.connectToJellyfinCardSubtitle' => 'Введите URL сервера, имя пользователя и пароль.',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Войдите на сервер Jellyfin. Привязывается к ${name}.',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Войдите на сервер Emby. Привязывается к ${name}.',
 			'addServer.borrowFromAnotherProfile' => 'Одолжить из другого профиля',
 			'addServer.borrowFromAnotherProfileSubtitle' => 'Используйте подключение другого профиля. Для профилей с PIN нужен PIN.',
 			'addLocalFolder.cardTitle' => 'Local Folder',

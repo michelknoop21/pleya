@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../database/app_database.dart';
 import '../../media/media_item.dart';
@@ -10,7 +11,9 @@ import '../../media/media_server_client.dart';
 import '../../models/tautulli/tautulli_models.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
+import '../tautulli/tautulli_exception.dart';
 import '../tautulli/tautulli_import_access.dart';
+import 'history_importer.dart';
 import 'tautulli_import_binding.dart';
 
 /// Rows per API page. Tautulli serves these comfortably and it keeps the
@@ -44,6 +47,9 @@ const Duration kCrossSourceWindow = Duration(hours: 6);
 /// Percentages that decide the signal.
 const int kCompletedPercent = 85;
 const int kPartialPercent = 50;
+
+/// Weight of a partial view, local or imported.
+const double kPartialWeight = 0.4;
 
 /// Backfill resumes once retention has aged the profile back below this
 /// fraction of the cap. The gap keeps it from flapping on the boundary.
@@ -116,7 +122,7 @@ class TautulliImportOutcome {
 /// watermark only advances over records that were actually processed, and the
 /// backfill window's upper bound is frozen at the start so a calendar day
 /// larger than one pass cannot re-anchor the cursor and stall.
-class TautulliHistoryImporter {
+class TautulliHistoryImporter implements HistoryImporter {
   final AppDatabase _db;
   final TautulliImportAccess _access;
   final TautulliImportTarget _target;
@@ -226,6 +232,7 @@ class TautulliHistoryImporter {
   /// Runs a forward pass and, when there is still room and older history to
   /// get, one bounded backfill pass. Returns null when another sync for the
   /// same profile and server is already running.
+  @override
   Future<TautulliImportOutcome?> sync() async {
     if (!_inFlight.add(_lockKey)) {
       appLogger.d('TautulliHistoryImporter: sync already running for this profile and server');
@@ -255,7 +262,7 @@ class TautulliHistoryImporter {
       );
       return outcome;
     } catch (e, s) {
-      appLogger.w('TautulliHistoryImporter: sync failed (${_errorCategory(e)})', stackTrace: s);
+      appLogger.w('TautulliHistoryImporter: sync failed (${errorCategory(e)})', stackTrace: s);
       return const TautulliImportOutcome(partial: true);
     } finally {
       _inFlight.remove(_lockKey);
@@ -658,7 +665,7 @@ class TautulliHistoryImporter {
     }
     final windowMs = kCrossSourceWindow.inMilliseconds;
     final localPlays = candidates.isEmpty
-        ? const <String, List<int>>{}
+        ? const <String, List<({int at, double weight})>>{}
         : await _db.localPositiveInteractionsIn(
             _target.activeProfileId,
             candidates,
@@ -680,14 +687,16 @@ class TautulliHistoryImporter {
       final globalKey = _globalKeyFor(e);
       final atMs = e.date! * 1000;
       final matchKey = _localMatchKeyFor(e);
+      final signal = _signalFor(e)!;
       final nearbyLocal = matchKey == null ? null : localPlays[matchKey];
-      if (nearbyLocal != null && nearbyLocal.any((t) => (t - atMs).abs() <= windowMs)) {
-        // Pleya already recorded this same view. A rewatch days later falls
-        // outside the window and is kept.
+      if (nearbyLocal != null && nearbyLocal.any((l) => (l.at - atMs).abs() <= windowMs && l.weight >= signal.weight)) {
+        // Pleya already recorded this view with at least this much weight. A
+        // local partial is not proof of a completed view elsewhere, so it does
+        // not count here; a rewatch days later falls outside the window.
         deduplicated++;
         continue;
       }
-      rows.add(_companionFor(e, item, globalKey));
+      rows.add(_companionFor(e, item, globalKey, signal));
     }
 
     if (rows.isNotEmpty) {
@@ -703,8 +712,12 @@ class TautulliHistoryImporter {
     );
   }
 
-  MediaInteractionsCompanion _companionFor(TautulliHistoryEntry e, MediaItem item, String globalKey) {
-    final signal = _signalFor(e)!;
+  MediaInteractionsCompanion _companionFor(
+    TautulliHistoryEntry e,
+    MediaItem item,
+    String globalKey,
+    ({String type, double weight}) signal,
+  ) {
     final isEpisode = e.mediaType == 'episode';
     final seriesKey = isEpisode ? globalKey : null;
     return MediaInteractionsCompanion.insert(
@@ -778,7 +791,7 @@ class TautulliHistoryImporter {
     if (e.watchedStatus >= 1 || e.percentComplete >= kCompletedPercent) {
       return (type: 'completed', weight: 1.0);
     }
-    if (e.percentComplete >= kPartialPercent) return (type: 'partial', weight: 0.4);
+    if (e.percentComplete >= kPartialPercent) return (type: 'partial', weight: kPartialWeight);
     // An abandoned play is not a dislike. Imported history never turns
     // negative; only an explicit action in Pleya does.
     return null;
@@ -829,7 +842,7 @@ class TautulliHistoryImporter {
 
   /// Whether an error is worth retrying rather than recording a verdict on.
   ///
-  /// String matching, like [_errorCategory] next to it, because the clients
+  /// String matching, like [errorCategory] next to it, because the clients
   /// throw a mix of `SocketException`, `TimeoutException`, `http.ClientException`
   /// and their own exception types, and the alternative is importing four
   /// packages here to catch what one substring already tells us.
@@ -895,9 +908,13 @@ class TautulliHistoryImporter {
 
   static String _shortIdentifier(String value) => value.length <= 6 ? value : '${value.substring(0, 6)}…';
 
-  static String _errorCategory(Object e) {
+  /// The log label for a failed sync. Never the message itself, which may
+  /// carry a URL.
+  @visibleForTesting
+  static String errorCategory(Object e) {
+    if (e is TautulliException && e.isAuth) return 'isAuth';
     final text = e.toString().toLowerCase();
-    if (text.contains('apikey') || text.contains('unauthorized') || text.contains('forbidden')) return 'isAuth';
+    if (text.contains('unauthorized') || text.contains('forbidden')) return 'isAuth';
     if (text.contains('socket') || text.contains('timeout') || text.contains('connection')) return 'isNetwork';
     return 'isMalformed';
   }

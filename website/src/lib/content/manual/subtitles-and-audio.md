@@ -23,9 +23,9 @@ series rather than once per episode. On Apple devices that memory travels with y
 iCloud. **Remember track selections** in Settings turns it off.
 
 Underneath it sits **Also save the language to Plex**, which writes the language onto the
-show on the server. Turn it on and the official Plex apps, and Pleya on Android or Windows,
-open that series the same way. It replaces whatever language was set on the server by hand,
-so leave it off if someone else curates that.
+show on the server. Turn it on and the official Plex apps open that series the same way. It
+replaces whatever language was set on the server by hand, so leave it off if someone else
+curates that.
 
 That switch also decides how far the memory reaches while Plex is transcoding. If Plex burns
 the subtitles into the picture, the next episode has no track left for Pleya to select, so

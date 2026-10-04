@@ -7,6 +7,7 @@ import '../media/library_query.dart';
 import '../media/media_item.dart';
 import '../mixins/paginated_item_loader.dart';
 import '../providers/download_provider.dart';
+import '../providers/multi_server_provider.dart';
 import '../utils/app_logger.dart';
 import '../utils/dialogs.dart';
 import '../utils/download_utils.dart';
@@ -16,7 +17,7 @@ import '../utils/media_server_http_client.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/notice/notice_controller.dart';
-import '../widgets/tv/tv_source_row_descriptor.dart' show backendDisplayLabel;
+import '../media/unified/source_row_descriptor.dart' show backendDisplayLabel;
 import '../i18n/strings.g.dart';
 import 'base_media_list_detail_screen.dart';
 import 'focusable_detail_screen_mixin.dart';
@@ -153,12 +154,13 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
           tooltip: t.downloads.removeSyncRule,
           onPressed: _removeCollectionSyncRule,
         ),
-      FocusableAction(
-        icon: Symbols.delete_rounded,
-        tooltip: t.common.delete,
-        onPressed: _deleteCollection,
-        iconColor: Colors.red,
-      ),
+      if (_canManageCollection)
+        FocusableAction(
+          icon: Symbols.delete_rounded,
+          tooltip: t.common.delete,
+          onPressed: _deleteCollection,
+          iconColor: Colors.red,
+        ),
     ];
   }
 
@@ -212,6 +214,14 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       serverId: ServerId(serverId),
     );
   }
+
+  /// Collections are canonical server data: only the server's owner may
+  /// delete one or change its membership, and nobody else sees the actions.
+  /// Read during build and subscribed, so a role change (rebind or health
+  /// probe) shows or hides the actions without leaving the screen.
+  bool get _canManageCollection => context.select<MultiServerProvider, bool>(
+    (p) => p.serverManager.canManageServerMetadata(ServerId(widget.collection.serverId ?? mediaClient.serverId)),
+  );
 
   Future<void> _deleteCollection() async {
     final confirmed = await showDeleteConfirmation(
@@ -276,6 +286,7 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
     // from 0 and this is never sparse.
     final loadedList = [for (var i = 0; i < loadedItems.length; i++) loadedItems[i]!];
 
+    final canManage = _canManageCollection;
     return TvCollectionScreen(
       collection: widget.collection,
       items: loadedList,
@@ -284,14 +295,14 @@ class _CollectionDetailScreenState extends BaseMediaListDetailScreen<CollectionD
       isLoadingMore: _isLoadingMoreOnTv,
       errorMessage: errorMessage,
       client: mediaClient,
-      backendLabel: backendDisplayLabel(mediaClient.backend),
+      backendLabel: backendDisplayLabel(mediaClient.backend, serverId: mediaClient.serverId),
       onRetry: loadItems,
       onLoadMore: _loadMoreOnTv,
       onPlay: playItems,
       onShuffle: shufflePlayItems,
-      onDelete: _deleteCollection,
+      onDelete: canManage ? _deleteCollection : null,
       onSelectItem: (item) => navigateToMediaItem(context, item, onRefresh: updateItem),
-      onRemoveItem: _removeItemOnTv,
+      onRemoveItem: canManage ? _removeItemOnTv : null,
     );
   }
 

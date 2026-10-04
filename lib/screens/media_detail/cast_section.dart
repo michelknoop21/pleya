@@ -25,6 +25,10 @@ class CastSection extends StatelessWidget {
   final int focusedIndex;
   final void Function(MediaRole actor) onActorTap;
 
+  /// iPhone detail (D-01, DEC-140): a 96 px circle in a 104 px column, name
+  /// and role centred below. Other platforms keep the square card.
+  final bool round;
+
   const CastSection({
     super.key,
     required this.metadata,
@@ -35,18 +39,28 @@ class CastSection extends StatelessWidget {
     required this.scrollController,
     required this.focusedIndex,
     required this.onActorTap,
+    this.round = false,
   });
 
   @override
   Widget build(BuildContext context) {
     const innerPadding = 3.0;
-    final imageSize = cardWidth;
+    final imageSize = round ? 96.0 : cardWidth;
     // image + inner padding + text area + outer list padding + focus scale headroom
-    final containerHeight = imageSize + innerPadding * 2 + 58 + 10;
+    // Under the image: an 8 px gap, a name of up to two bodyMedium lines
+    // (about 40 px), 2 px and a bodySmall role line (about 17 px). 58 was
+    // short by 8 px for a two-line name and overflowed the card.
+    final containerHeight = imageSize + innerPadding * 2 + 68 + 10;
 
     final theme = Theme.of(context);
-    final actorNameStyle = theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600);
-    final actorRoleStyle = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final actorNameStyle = round
+        ? const TextStyle(fontSize: 13.5, fontWeight: .w500)
+        : theme.textTheme.bodyMedium?.copyWith(fontWeight: .w600);
+    final actorRoleStyle = round
+        ? TextStyle(fontSize: 12.5, color: theme.colorScheme.onSurface.withValues(alpha: 0.70))
+        : theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final radius = round ? imageSize / 2 : tokens(context).radiusSm;
+    final textAlign = round ? TextAlign.center : TextAlign.start;
 
     return Focus(
       focusNode: focusNode,
@@ -71,11 +85,11 @@ class CastSection extends StatelessWidget {
                   final isFocused = hasFocus && index == focusedIndex;
 
                   return Padding(
-                    padding: const EdgeInsets.only(right: 4),
+                    padding: EdgeInsets.only(right: round ? 6 : 4),
                     child: FocusBuilders.buildLockedFocusWrapper(
                       context: context,
                       isFocused: isFocused,
-                      borderRadius: tokens(context).radiusSm,
+                      borderRadius: radius,
                       onTap: () => onActorTap(actor),
                       delegateFocusBorder: true,
                       child: Padding(
@@ -83,12 +97,12 @@ class CastSection extends StatelessWidget {
                         child: SizedBox(
                           width: cardWidth,
                           child: Column(
-                            crossAxisAlignment: .start,
+                            crossAxisAlignment: round ? .center : .start,
                             children: [
                               CardFocusBorder(
-                                borderRadius: tokens(context).radiusSm,
+                                borderRadius: radius,
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(tokens(context).radiusSm),
+                                  borderRadius: BorderRadius.circular(radius),
                                   child: OptimizedMediaImage(
                                     client: client,
                                     imagePath: actor.thumbPath,
@@ -103,12 +117,24 @@ class CastSection extends StatelessWidget {
                               const SizedBox(height: 8),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: .start,
+                                  crossAxisAlignment: round ? .center : .start,
                                   children: [
-                                    Text(actor.tag, style: actorNameStyle, maxLines: 2, overflow: .ellipsis),
+                                    Text(
+                                      actor.tag,
+                                      style: actorNameStyle,
+                                      maxLines: 2,
+                                      overflow: .ellipsis,
+                                      textAlign: textAlign,
+                                    ),
                                     if (actor.role != null) ...[
                                       const SizedBox(height: 2),
-                                      Text(actor.role!, style: actorRoleStyle, maxLines: 1, overflow: .ellipsis),
+                                      Text(
+                                        actor.role!,
+                                        style: actorRoleStyle,
+                                        maxLines: 1,
+                                        overflow: .ellipsis,
+                                        textAlign: textAlign,
+                                      ),
                                     ],
                                   ],
                                 ),

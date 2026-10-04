@@ -40,6 +40,26 @@ type Config struct {
 	// inlichting voor wie het netwerk aftast.
 	ServerName string
 
+	// PublicURL is het adres waarop deze server van buiten bereikbaar hoort te
+	// zijn. De server gebruikt hem nergens om iets te bouwen; hij is er om
+	// POST /server/connectivity-check een doel te geven en om in GET /server te
+	// staan. De omgeving is hier de onderste laag: een beheerder kan hem via
+	// PATCH /settings overschrijven, en dan gelden de grenzen uit K rij 13.
+	PublicURL string
+
+	// WebOrigin is de canonieke origin van de webclient die bij deze server
+	// hoort; CORSOrigins zijn de origins die de API cross-origin mogen
+	// aanroepen (RB-29, S1.8). Allebei zijn ze de onderste laag van een
+	// instelling, net als PublicURL: een beheerder zet ze via PATCH /settings,
+	// en wat hier staat geldt zolang hij dat niet deed.
+	WebOrigin   string
+	CORSOrigins []string
+
+	// TrustedProxies zijn de adressen en bereiken waarvan de server
+	// forwarding-headers aanneemt. Bewust geen instelling (K rij 14): wie dit
+	// over de API kan zetten kan de server elke client laten geloven.
+	TrustedProxies []TrustedProxy
+
 	Libraries  []LibrarySpec
 	InodeTrust map[string]InodeTrust
 
@@ -50,11 +70,12 @@ type Config struct {
 	ScanInterval time.Duration
 	JobWorkers   int
 
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	StreamTokenTTL   time.Duration
-	SetupCodeTTL     time.Duration
-	StreamSessionTTL time.Duration
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	RefreshGraceWindow time.Duration
+	StreamTokenTTL     time.Duration
+	SetupCodeTTL       time.Duration
+	StreamSessionTTL   time.Duration
 
 	// WatchLease is het schrijfrecht op de kijkstatus (DEC-049 regel 4).
 	WatchLease time.Duration
@@ -91,6 +112,14 @@ const (
 
 	DefaultAccessTokenTTL  = 15 * time.Minute
 	DefaultRefreshTokenTTL = 30 * 24 * time.Hour
+
+	// Respijt op refreshtokenrotatie: binnen dit venster geldt de herhaling
+	// van een rotatie waarvan de opvolger nooit is gebruikt als een verloren
+	// antwoord, niet als hergebruik. Lang genoeg voor een timeout plus een
+	// netwerkwissel, kort genoeg dat een gestolen token geen bruikbaar
+	// venster overhoudt: de dief moet binnen twee minuten na de rotatie
+	// toeslaan én de echte client mag het antwoord dan net niet gehad hebben.
+	DefaultRefreshGraceWindow = 2 * time.Minute
 
 	// Specificatie 6.4: twee tot vijf minuten. Kortlevend en smal, maar niet
 	// eenmalig: een speler doet een HEAD, dan een open range, dan losse ranges
@@ -156,6 +185,32 @@ func Load(getenv Getenv) (*Config, error) {
 
 	cfg.ServerName = valueOr(getenv, "PLEYA_SERVER_NAME", DefaultServerName)
 
+	cfg.PublicURL = strings.TrimSpace(getenv("PLEYA_SERVER_PUBLIC_URL"))
+	if cfg.PublicURL != "" {
+		if err := ValidatePublicURL(cfg.PublicURL); err != nil {
+			return nil, fmt.Errorf("PLEYA_SERVER_PUBLIC_URL: %w", err)
+		}
+	}
+
+	if raw := strings.TrimSpace(getenv("PLEYA_SERVER_WEB_ORIGIN")); raw != "" {
+		origin, err := NormalizeOrigin(raw)
+		if err != nil {
+			return nil, fmt.Errorf("PLEYA_SERVER_WEB_ORIGIN: %w", err)
+		}
+		cfg.WebOrigin = origin
+	}
+
+	cfg.CORSOrigins, err = ParseCORSOrigins(getenv("PLEYA_SERVER_CORS_ORIGINS"))
+	if err != nil {
+		return nil, fmt.Errorf("PLEYA_SERVER_CORS_ORIGINS: %w", err)
+	}
+
+	proxies, err := ParseTrustedProxies(getenv("PLEYA_SERVER_TRUSTED_PROXIES"))
+	if err != nil {
+		return nil, fmt.Errorf("PLEYA_SERVER_TRUSTED_PROXIES: %w", err)
+	}
+	cfg.TrustedProxies = proxies
+
 	libraries, err := ParseLibraries(getenv("PLEYA_SERVER_LIBRARIES"))
 	if err != nil {
 		return nil, fmt.Errorf("PLEYA_SERVER_LIBRARIES: %w", err)
@@ -184,6 +239,7 @@ func Load(getenv Getenv) (*Config, error) {
 		{"PLEYA_SERVER_FFPROBE_TIMEOUT", DefaultFFprobeTimeout, &cfg.FFprobeTimeout},
 		{"PLEYA_SERVER_ACCESS_TOKEN_TTL", DefaultAccessTokenTTL, &cfg.AccessTokenTTL},
 		{"PLEYA_SERVER_REFRESH_TOKEN_TTL", DefaultRefreshTokenTTL, &cfg.RefreshTokenTTL},
+		{"PLEYA_SERVER_REFRESH_GRACE_WINDOW", DefaultRefreshGraceWindow, &cfg.RefreshGraceWindow},
 		{"PLEYA_SERVER_STREAM_TOKEN_TTL", DefaultStreamTokenTTL, &cfg.StreamTokenTTL},
 		{"PLEYA_SERVER_SETUP_CODE_TTL", DefaultSetupCodeTTL, &cfg.SetupCodeTTL},
 		{"PLEYA_SERVER_STREAM_SESSION_TTL", DefaultStreamSessionTTL, &cfg.StreamSessionTTL},

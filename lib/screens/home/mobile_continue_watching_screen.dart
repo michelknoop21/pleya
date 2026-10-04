@@ -1,4 +1,4 @@
-/// The full Verder kijken overview on the iPhone (mockup 23, DEC-119 fase 2):
+/// The full Verder kijken overview on the iPhone (mockup 23, DEC-144 fase 2):
 /// four fixed sections of list rows, each row a 16:9 still, the series or film
 /// title, the episode's own place and title, and the status line with when
 /// it was last watched. This is the one place that line carries the date;

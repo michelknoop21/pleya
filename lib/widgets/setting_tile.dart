@@ -55,7 +55,7 @@ class SettingSwitchTile extends StatelessWidget {
         child: ClickableCursor(
           enabled: enabled,
           child: SwitchListTile(
-            contentPadding: kSettingRowPadding,
+            contentPadding: settingRowPadding(),
             secondary: SettingsIconBadge(icon),
             title: Text(title),
             subtitle: subtitle != null ? Text(subtitle!) : null,
@@ -111,7 +111,7 @@ class SettingSwitchRow extends StatelessWidget {
       child: ClickableCursor(
         enabled: active,
         child: SwitchListTile(
-          contentPadding: kSettingRowPadding,
+          contentPadding: settingRowPadding(),
           secondary: SettingsIconBadge(icon),
           title: Text(title),
           subtitle: subtitle != null ? Text(subtitle!) : null,
@@ -133,6 +133,10 @@ class SettingNavigationTile extends StatelessWidget {
   final FocusNode? focusNode;
   final IconData trailingIcon;
 
+  /// What the destination asks for next ("API-sleutel"), right-aligned
+  /// before the chevron.
+  final String? trailingLabel;
+
   /// Amber dot next to the chevron, same convention and color
   /// (`kAccentAlt`) as `TvTopNavigation`'s expired-session marker: something
   /// the viewer can fix from here, not breakage, so it stays off the brand
@@ -148,6 +152,7 @@ class SettingNavigationTile extends StatelessWidget {
     this.onTap,
     this.focusNode,
     this.trailingIcon = Symbols.chevron_right_rounded,
+    this.trailingLabel,
     this.needsAttention = false,
   }) : assert(destinationBuilder != null || onTap != null);
 
@@ -167,13 +172,14 @@ class SettingNavigationTile extends StatelessWidget {
       onSelect: activate,
       child: ClickableCursor(
         child: ListTile(
-          contentPadding: kSettingRowPadding,
+          contentPadding: settingRowPadding(),
           leading: SettingsIconBadge(icon),
           title: Text(title),
           subtitle: subtitle != null ? Text(subtitle!) : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (trailingLabel != null) ...[Text(trailingLabel!), const SizedBox(width: 16)],
               if (needsAttention) ...[
                 Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
                 const SizedBox(width: 8),
@@ -239,7 +245,7 @@ class SettingNumberTile extends StatelessWidget {
           child: ClickableCursor(
             child: ListTile(
               leading: SettingsIconBadge(icon),
-              contentPadding: kSettingRowPadding,
+              contentPadding: settingRowPadding(),
               title: Text(title),
               subtitle: Text(subtitleBuilder(value)),
               trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
@@ -302,7 +308,7 @@ class SettingSelectionTile<T, S> extends StatelessWidget {
           child: ClickableCursor(
             child: ListTile(
               leading: SettingsIconBadge(icon),
-              contentPadding: kSettingRowPadding,
+              contentPadding: settingRowPadding(),
               title: Text(title),
               subtitle: Text(subtitleBuilder(value)),
               trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
@@ -357,7 +363,7 @@ class SettingRegexTile extends StatelessWidget {
           child: ClickableCursor(
             child: ListTile(
               leading: SettingsIconBadge(icon),
-              contentPadding: kSettingRowPadding,
+              contentPadding: settingRowPadding(),
               title: Text(title),
               subtitle: Text(subtitle),
               trailing: AppIcon(Symbols.chevron_right_rounded, fill: 1, size: 20, color: tokens(context).textMuted),
@@ -456,7 +462,7 @@ class SettingColorTile extends StatelessWidget {
           child: ClickableCursor(
             child: ListTile(
               leading: SettingsIconBadge(icon),
-              contentPadding: kSettingRowPadding,
+              contentPadding: settingRowPadding(),
               title: Text(title),
               subtitle: subtitle != null ? Text(subtitle!) : null,
               trailing: Container(

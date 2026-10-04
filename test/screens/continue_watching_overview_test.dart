@@ -1,4 +1,4 @@
-/// The full Verder kijken overview (DEC-119 fase 2, mockups 38 D / 23 / 40):
+/// The full Verder kijken overview (DEC-144 fase 2, mockups 38 D / 23 / 40):
 /// the same projected list, sectioned the same way, on iPhone, desktop and TV.
 library;
 

@@ -11,6 +11,7 @@ import '../services/tautulli/tautulli_constants.dart';
 import '../services/tautulli/tautulli_import_access.dart';
 import '../services/tautulli/tautulli_integration_status.dart';
 import '../services/tautulli/tautulli_integration_store.dart';
+import '../services/tautulli/tautulli_server_binding.dart';
 import '../services/tautulli/tautulli_server_integration.dart';
 import '../services/tautulli/tautulli_session.dart';
 
@@ -51,6 +52,12 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<String> Function() _serverIds = () => const [];
   bool Function(ServerId) _isOwnerOrAdmin = (_) => false;
 
+  /// Owner rights for administering the integration (pair, policy, unlink).
+  /// Stricter than [_isOwnerOrAdmin]: a borrowed connection runs on the
+  /// owner's token and so reads as owned, but the integration is device-wide
+  /// and a borrowed connection never inherits owner rights.
+  bool Function(ServerId) _mayAdministerServer = (_) => false;
+
   /// The plex.tv account id of a local profile, or null when it cannot be
   /// resolved exactly. Injected rather than passed per call, because whose
   /// history the admin's credential is aimed at is not the caller's decision to
@@ -79,9 +86,9 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// [registryChanges] is watched so a server that registers *after* the
   /// profile bound still re-resolves; the listener is dropped in [dispose].
   ///
-  /// **One-shot on purpose.** These three closures *are* the authority: which
-  /// servers exist, which of them this profile administers, and which Plex
-  /// account this profile is. A second call could replace all three, and then
+  /// **One-shot on purpose.** These closures *are* the authority: which
+  /// servers exist, which of them this profile reads and administers, and which Plex
+  /// account this profile is. A second call could replace them all, and then
   /// any code that can reach the provider could declare itself an admin of an
   /// arbitrary server and point the credential at an arbitrary account — which
   /// is precisely the boundary the rest of this class is built to hold. The
@@ -90,6 +97,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   void attachServerResolvers({
     required List<String> Function() serverIds,
     required bool Function(ServerId) isOwnerOrAdmin,
+    required bool Function(ServerId) mayAdminister,
     int? Function(String profileId)? selfAccountId,
     Listenable? registryChanges,
   }) {
@@ -100,6 +108,7 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     _resolversAttached = true;
     _serverIds = serverIds;
     _isOwnerOrAdmin = isOwnerOrAdmin;
+    _mayAdministerServer = mayAdminister;
     if (selfAccountId != null) _selfAccountId = selfAccountId;
     _registryChanges?.removeListener(refreshBinding);
     _registryChanges = registryChanges?..addListener(refreshBinding);
@@ -130,6 +139,30 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   TautulliSession? get session => _session;
   TautulliClient? get client => _client;
+
+  /// Which registered server the paired Tautulli watches, or null when that is
+  /// not decidable. Same rule as the artwork client in the profile session.
+  ServerId? get monitoredServerId {
+    final session = _session;
+    if (session == null) return null;
+    return tautulliMonitoredServer(
+      machineIdentifier: session.machineIdentifier,
+      serverIds: _serverIds(),
+      isOwnerOrAdmin: _isOwnerOrAdmin,
+    );
+  }
+
+  /// The admin client, but only for the server Tautulli actually monitors.
+  ///
+  /// Rating keys are per-server integers. Handing this client to a detail page
+  /// on a second owned server made it answer with the watchers of whatever
+  /// title carries the same key on the monitored one, and an empty answer then
+  /// suppressed the Plex fallback too.
+  TautulliClient? clientForServer(ServerId serverId) {
+    final client = _client;
+    if (client == null) return null;
+    return monitoredServerId == serverId ? client : null;
+  }
 
   bool get isConfigured => _session != null;
 
@@ -403,9 +436,10 @@ class TautulliProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     safeNotifyListeners();
   }
 
-  /// Configuring is admin-only. Consuming is not: see [TautulliImportAccess].
+  /// Configuring needs owner rights on the Plex server. Consuming does not:
+  /// see [TautulliImportAccess].
   bool _mayAdminister(String machineIdentifier) {
-    if (_isOwnerOrAdmin(ServerId(machineIdentifier))) return true;
+    if (_mayAdministerServer(ServerId(machineIdentifier))) return true;
     appLogger.w('TautulliProvider: refused a Tautulli change from a profile that does not administer the server');
     return false;
   }

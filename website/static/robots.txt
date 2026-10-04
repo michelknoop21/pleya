@@ -1,5 +1,8 @@
 # allow crawling everything by default
 User-agent: *
-Disallow:
+Disallow: /install
+Disallow: /downloads/
+Disallow: /get/
+Disallow: /download-counts.json
 
 Sitemap: https://pleya.app/sitemap.xml

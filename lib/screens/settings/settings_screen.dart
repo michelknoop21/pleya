@@ -53,6 +53,7 @@ import 'about_screen.dart';
 import 'add_connection_screen.dart';
 import 'pleya_share_host_screen.dart';
 import 'appearance_settings_screen.dart';
+import 'assistant_settings_screen.dart';
 import 'downloads_settings_screen.dart';
 import 'keyboard_shortcuts_screen.dart';
 import 'home_layout_screen.dart';
@@ -239,6 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         _buildTrackersTile(),
                         _buildRequestsTile(),
                         _buildTautulliTile(),
+                        ?assistantSettingsTile(context),
                         _buildProfilesTile(),
                       ],
                     ),
@@ -266,7 +268,9 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    // Plus the bottom inset: with Liquid Glass the tab bar floats
+                    // over this list and the main Scaffold reports its height here.
+                    SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
                     // Every card gets the same maximum width so the column stays
                     // centred on a wide window instead of stretching across it.
                   ].map((w) => SettingsWidthLimit(child: w)).toList(),
@@ -383,7 +387,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       ),
       // Same gate as the tile itself: searching for "tautulli" must not be a
       // back door into a screen the profile is not allowed to have.
-      if (_ownsAPlexServer(context.read<MultiServerProvider>()))
+      if (_managesAPlexServer(context.read<MultiServerProvider>()))
         _SettingsSearchEntry(
           icon: Symbols.insights_rounded,
           title: t.tautulli.title,
@@ -614,7 +618,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   }
 
   /// Taal en ondertitels — the single place a language preference is managed
-  /// (DEC-096 lid 9), next to Afspelen because a viewer who wonders why a
+  /// (DEC-109 lid 9), next to Afspelen because a viewer who wonders why a
   /// series starts in English looks under language rather than under playback.
   Widget _buildLanguageTile() {
     return AutomationNode(
@@ -713,20 +717,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
     );
   }
 
-  /// Whether this profile administers any Plex server here. Used by both the
-  /// tile and the search entry, so the two can never disagree about who is
-  /// allowed to reach the Tautulli screen.
-  static bool _ownsAPlexServer(MultiServerProvider multiServer) {
-    final manager = multiServer.serverManager;
-    return manager.serverIds.any((id) => manager.isOwnerOrAdmin(ServerId(id)));
-  }
+  /// Whether this profile may administer any Plex server here. Used by both
+  /// the tile and the search entry, so the two can never disagree about who is
+  /// allowed to reach the Tautulli screen. A borrowed connection or a
+  /// Jellyfin-only administrator does not count.
+  static bool _managesAPlexServer(MultiServerProvider multiServer) => multiServer.serverManager.managesAPlexServer;
 
   /// Tautulli reports on the whole Plex server, and its single API key opens
-  /// the entire admin surface, so the tile only appears for someone who owns a
-  /// Plex server here. Everyone else never learns the integration exists, which
+  /// the entire admin surface, so the tile only appears for someone with owner
+  /// rights on a Plex server here. Everyone else never learns the integration exists, which
   /// is the right outcome: they could not use it anyway.
   Widget _buildTautulliTile() {
-    if (!context.select<MultiServerProvider, bool>(_ownsAPlexServer)) return const SizedBox.shrink();
+    if (!context.select<MultiServerProvider, bool>(_managesAPlexServer)) return const SizedBox.shrink();
 
     return Consumer<TautulliProvider>(
       builder: (context, tautulli, _) {
@@ -1120,8 +1122,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
       // view state reload from the same signal a remote apply uses.
       PreferenceRefreshBus.instance.invalidateAll();
 
-      // Import wrote straight to prefs, bypassing write() and its KVS mirror —
-      // push the imported values so they reach the user's other devices.
+      // Import stamped every key it wrote; this reconcile makes sure each one
+      // reached the store, including a send the transport held back.
       unawaited(ICloudSyncService.instance?.pushAllIfEnabled() ?? Future.value());
 
       if (!mounted) return;

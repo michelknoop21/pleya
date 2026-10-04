@@ -13,6 +13,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../../automation/automation_ids.dart';
+import '../../../focus/focus_theme.dart';
 import '../../../focus/focusable_wrapper.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../media/ids.dart';
@@ -150,7 +151,7 @@ class SeriesLanguageRow extends StatelessWidget {
     return SettingRowFocus(
       onSelect: onSelect,
       child: ListTile(
-        contentPadding: kSettingRowPadding,
+        contentPadding: settingRowPadding(),
         leading: SeriesPoster(provenance: entry.choice.provenance, width: 40, height: 60),
         title: Text(seriesDisplayTitle(entry)),
         subtitle: Column(
@@ -199,7 +200,10 @@ class TvSeriesLanguageRow extends StatelessWidget {
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       onNavigateLeft: onNavigateLeft,
-      borderRadius: TvMyPleyaLayout.tileRadius * scale,
+      borderRadius: FocusTheme.ringRadiusAround(
+        TvMyPleyaLayout.tileRadius * scale,
+        gap: TvMyPleyaLayout.tileFocusRingGap * scale,
+      ),
       automationId: AutomationIds.myPleyaSectionTile,
       automationInstance: 'language.series.${entry.key}',
       automationRole: 'grid.item',
@@ -355,7 +359,7 @@ class TvLanguageValueRow extends StatelessWidget {
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
       onNavigateRight: onNavigateRight,
-      borderRadius: radius,
+      borderRadius: FocusTheme.ringRadiusAround(radius, gap: TvMyPleyaLayout.tileFocusRingGap * scale),
       automationId: AutomationIds.myPleyaSectionTile,
       automationInstance: 'language.$rowKey',
       automationRole: 'grid.item',

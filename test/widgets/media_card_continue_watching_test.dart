@@ -9,7 +9,7 @@ import 'package:pleya/widgets/media_card.dart';
 
 import '../test_helpers/prefs.dart';
 
-/// The desktop card in Verder kijken (DEC-119, mockup 38 A / 40): one status
+/// The desktop card in Verder kijken (DEC-144, mockup 38 A / 40): one status
 /// line, `S3 E4 · 18min left` or `S3 E5 · Next episode`, in the grid and in
 /// the list, and never a second `S3 E4` under it.
 void main() {

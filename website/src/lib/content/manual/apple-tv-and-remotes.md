@@ -66,12 +66,6 @@ keyboard, which you drive with the D-pad.
   there, back cancels
 - Swiping to seek accelerates the longer you keep going
 
-## Android TV
-
-The same focus model. The remote's microphone button opens voice search, and searching from
-the Assistant or the leanback row opens Pleya on the results, even from a fully closed app.
-Android TV also gets a Watch Next row on the system home screen.
-
 ## Companion Remote
 
 Your phone can drive the app on a TV or a computer over the same network. Open **Companion

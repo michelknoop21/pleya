@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "auth.user_not_found",
+    "message": "No such user, or not visible to this account",
+    "retryable": false
+  }
+}

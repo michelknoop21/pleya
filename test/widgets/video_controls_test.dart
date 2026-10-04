@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,12 +13,17 @@ import 'package:pleya/media/media_source_info.dart';
 import 'package:pleya/media/media_version.dart';
 import 'package:pleya/models/shader_preset.dart';
 import 'package:pleya/mpv/mpv.dart';
+import 'package:pleya/services/apple_tv_remote_touch_service.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/widgets/video_controls/video_controls.dart';
 import 'package:pleya/widgets/video_controls/desktop_video_controls.dart';
+import 'package:pleya/widgets/video_controls/helpers/apple_tv_scrub_pan.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_controls_header.dart';
+import 'package:pleya/widgets/video_controls/widgets/tv_quality_summary_line.dart';
+import 'package:pleya/widgets/video_controls/widgets/tv_title_scrim.dart';
+import 'package:pleya/widgets/video_controls/mobile_video_controls_glass.dart';
 import 'package:pleya/widgets/tv/tv_page_surface.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/video_controls/widgets/video_timeline_bar.dart';
@@ -48,6 +56,57 @@ const _testTokens = MonoTokens(
   splashFactory: NoSplash.splashFactory,
 );
 
+const _kTvSceneKey = Key('tvScene');
+
+/// Plays a 1080p HEVC stream, so the TV quality line has something to show.
+class _QualityLinePlayer extends FakeSyncPlayer {
+  _QualityLinePlayer({super.playing, super.position, super.duration});
+
+  @override
+  Future<String?> getProperty(String name) async => switch (name) {
+    'height' => '1080',
+    'video-codec' => 'hevc',
+    _ => null,
+  };
+}
+
+/// The brightest pixel of the TV scene inside [rect].
+Future<Color> _brightestPixel(WidgetTester tester, Rect rect) async {
+  final element = tester.element(find.byKey(_kTvSceneKey));
+  final result = await tester.runAsync<Color>(() async {
+    final image = await captureImage(element);
+    try {
+      final data = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+      final px = data.buffer.asUint8List();
+      var best = const Color(0xFF000000);
+      var bestLum = -1.0;
+      for (var y = rect.top.floor(); y < rect.bottom.ceil(); y++) {
+        for (var x = rect.left.floor(); x < rect.right.ceil(); x++) {
+          final i = (y * image.width + x) * 4;
+          final c = Color.fromARGB(255, px[i], px[i + 1], px[i + 2]);
+          final lum = c.computeLuminance();
+          if (lum > bestLum) {
+            bestLum = lum;
+            best = c;
+          }
+        }
+      }
+      return best;
+    } finally {
+      image.dispose();
+    }
+  });
+  return result!;
+}
+
+/// WCAG contrast of [ink] (blended over [background] when translucent)
+/// against [background].
+double _contrastOverBrightest(Color background, Color ink) {
+  final text = Color.alphaBlend(ink, background).computeLuminance();
+  final bg = background.computeLuminance();
+  return (math.max(text, bg) + 0.05) / (math.min(text, bg) + 0.05);
+}
+
 void main() {
   // ============================================================
   // PLR1: the overlay pays the title-safe inset on TV
@@ -67,14 +126,18 @@ void main() {
 
     /// The overlay on a 1920x1080 canvas, the way an Apple TV lays it out,
     /// with the controls shown and the video's chrome "visible".
-    Future<void> pumpTvOverlay(WidgetTester tester) async {
-      final player = FakeSyncPlayer(
+    Future<void> pumpTvOverlay(
+      WidgetTester tester, {
+      Size size = const Size(1920, 1080),
+      ValueChanged<double>? onBottomChromeFractionChanged,
+    }) async {
+      final player = _QualityLinePlayer(
         playing: true,
         position: const Duration(minutes: 3, seconds: 9),
         duration: const Duration(minutes: 7),
       );
       addTearDown(player.dispose);
-      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       final watchTogether = WatchTogetherProvider();
@@ -84,35 +147,44 @@ void main() {
           value: watchTogether,
           child: MaterialApp(
             theme: ThemeData(extensions: const [_testTokens]),
-            home: Scaffold(
-              body: SizedBox(
-                width: 1920,
-                height: 1080,
-                child: DesktopVideoControls(
-                  player: player,
-                  metadata: MediaItem(
-                    id: '1',
-                    backend: MediaBackend.plex,
-                    kind: MediaKind.episode,
-                    title: 'Curry Quest',
-                    grandparentTitle: 'Bluey',
-                    parentIndex: 3,
-                    index: 9,
+            home: RepaintBoundary(
+              key: _kTvSceneKey,
+              child: ColoredBox(
+                // A pure-white frame: the worst case for the title scrim.
+                color: Colors.white,
+                child: SizedBox(
+                  width: size.width,
+                  height: size.height,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: DesktopVideoControls(
+                      player: player,
+                      metadata: MediaItem(
+                        id: '1',
+                        backend: MediaBackend.plex,
+                        kind: MediaKind.episode,
+                        title: 'Curry Quest',
+                        grandparentTitle: 'Bluey',
+                        parentIndex: 3,
+                        index: 9,
+                      ),
+                      chapters: const [],
+                      chaptersLoaded: true,
+                      seekTimeSmall: 10,
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeekToPreviousChapter: () {},
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeekToNextChapter: () {},
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeek: (_) {},
+                      // ignore: no-empty-block - not exercised by these tests
+                      onSeekEnd: (_) {},
+                      getReplayIcon: (_) => Icons.replay_10,
+                      getForwardIcon: (_) => Icons.forward_10,
+                      useDpadNavigation: true,
+                      onBottomChromeFractionChanged: onBottomChromeFractionChanged,
+                    ),
                   ),
-                  chapters: const [],
-                  chaptersLoaded: true,
-                  seekTimeSmall: 10,
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeekToPreviousChapter: () {},
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeekToNextChapter: () {},
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeek: (_) {},
-                  // ignore: no-empty-block - not exercised by these tests
-                  onSeekEnd: (_) {},
-                  getReplayIcon: (_) => Icons.replay_10,
-                  getForwardIcon: (_) => Icons.forward_10,
-                  useDpadNavigation: true,
                 ),
               ),
             ),
@@ -136,6 +208,98 @@ void main() {
       expect(timeline.dx, greaterThanOrEqualTo(inset), reason: 'timeline starts at ${timeline.dx}');
       final timelineRight = tester.getBottomRight(find.byType(VideoTimelineBar)).dx;
       expect(1920 - timelineRight, greaterThanOrEqualTo(inset - 1), reason: 'timeline ends at $timelineRight');
+    });
+
+    // PLR-TITLE1: on the Apple TV panel (584 logical tall, 1080 pt) the title
+    // sat on scan line zero. Its top edge must clear Apple's 60 pt title-safe
+    // line; pt = logical x 1080 / 584.
+    testWidgets('de titel staat op TV onder de 60 pt title-safe lijn', (tester) async {
+      await pumpTvOverlay(tester, size: const Size(1038, 584));
+      final top = tester.getTopLeft(find.byType(VideoControlsHeader)).dy;
+      expect(top * 1080 / 584, greaterThanOrEqualTo(60), reason: 'title top at $top logical');
+    });
+
+    // PLR-SCRIM1: the title block keeps 4.5:1 over a pure-white frame. The
+    // scrim is horizontally uniform, so the background behind each line is
+    // read from a glyph-free strip at the right edge over the same rows; the
+    // brightest pixel there sets the bar.
+    for (final size in const [Size(1038, 584), Size(1920, 1080)]) {
+      testWidgets('titel, metaregel en kwaliteitsregel halen 4,5:1 over wit beeld (${size.width.toInt()})', (
+        tester,
+      ) async {
+        await pumpTvOverlay(tester, size: size);
+        await tester.pump();
+        // The macOS test host lays the header out on one line; tvOS stacks
+        // title and meta. The scrim is sized to the bar either way, so the
+        // whole header band is also read against the dimmer white70 ink.
+        final header = find.byType(VideoControlsHeader);
+        final title = find.descendant(of: header, matching: find.byType(Text)).first;
+        final quality = find.byType(TvQualitySummaryLine);
+        expect(tester.getSize(quality).height, greaterThan(10), reason: 'the quality line renders');
+        final ratios = <String, double>{};
+        for (final (name, finder, ink) in [
+          ('title', title, Colors.white),
+          ('header band', header, Colors.white70),
+          ('quality', quality, Colors.white70),
+        ]) {
+          final rows = tester.getRect(finder);
+          final strip = Rect.fromLTRB(size.width - 70, rows.top, size.width - 10, rows.bottom);
+          ratios[name] = _contrastOverBrightest(await _brightestPixel(tester, strip), ink);
+        }
+        // ignore: avoid_print - the ratios go into the register row
+        print('PLR-SCRIM1 ${size.width.toInt()}x${size.height.toInt()}: $ratios');
+        for (final entry in ratios.entries) {
+          expect(entry.value, greaterThanOrEqualTo(4.5), reason: '${entry.key} at ${entry.value}');
+        }
+      });
+    }
+
+    testWidgets('de titelscrim loopt onder de kwaliteitsregel uit en wordt geen donkere band', (tester) async {
+      await pumpTvOverlay(tester, size: const Size(1038, 584));
+      await tester.pump();
+      final qualityBottom = tester.getRect(find.byType(TvQualitySummaryLine)).bottom;
+      final timelineTop = tester.getRect(find.byType(VideoTimelineBar)).top;
+      final belowFade = Rect.fromLTRB(968, qualityBottom + 60, 1028, timelineTop - 20);
+      final pixel = await _brightestPixel(tester, belowFade);
+      expect(pixel, Colors.white, reason: 'the frame between title block and controls stays untouched');
+    });
+
+    // PLR-SUBS1: the TV controls report the share of the screen their bottom
+    // block covers; the player lifts sub-pos by it (rounded up) while they
+    // are visible. Lifting by that share must put the subtitle bottom above
+    // the timeline.
+    testWidgets('de onderste bedieningsband meldt zijn schermaandeel op TV', (tester) async {
+      final reports = <double>[];
+      await pumpTvOverlay(tester, size: const Size(1038, 584), onBottomChromeFractionChanged: reports.add);
+      await tester.pump();
+      expect(reports, isNotEmpty);
+      final fraction = reports.last;
+      final timelineTop = tester.getRect(find.byType(VideoTimelineBar)).top;
+      final liftPercent = (fraction * 100).ceil();
+      expect(fraction, inExclusiveRange(0.05, 0.5));
+      expect((100 - liftPercent) / 100 * 584, lessThanOrEqualTo(timelineTop), reason: 'fraction $fraction');
+      // Stable layout, no new report per rebuild value.
+      final count = reports.length;
+      await tester.pump();
+      expect(reports.sublist(count - 1).toSet(), {fraction});
+    });
+
+    testWidgets('buiten TV meldt de bediening geen schermaandeel en geen titelscrim', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      final reports = <double>[];
+      await pumpTvOverlay(tester, onBottomChromeFractionChanged: reports.add);
+      await tester.pump();
+      expect(reports, isEmpty);
+      expect(find.byType(TvTitleScrim), findsNothing);
+      expect(await _brightestPixel(tester, const Rect.fromLTRB(1850, 0, 1910, 40)), Colors.white);
+      final shared = playerOverlayScrim(hasFrame: true, glass: false).gradient! as LinearGradient;
+      expect(shared.colors.first, Colors.black.withValues(alpha: 0.7), reason: 'desktop/mobile top fade unchanged');
+    });
+
+    testWidgets('buiten TV krijgt de titelbalk geen bovenruimte', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      await pumpTvOverlay(tester);
+      expect(tester.getTopLeft(find.byType(VideoControlsHeader)).dy, 0);
     });
   });
 
@@ -1149,6 +1313,215 @@ void main() {
       final lastStep = seeks.last - const Duration(minutes: 5);
       expect(firstStep, const Duration(seconds: 10));
       expect(lastStep, greaterThan(const Duration(seconds: 10)));
+    });
+
+    // SCRUB1: Apple TV, vrij scrubben met de pan van het touchoppervlak. Een
+    // eigen service met een gestuurde klok, zodat de gain vastligt.
+    group('Apple TV pan', () {
+      late AppleTvRemoteTouchService touch;
+      late DateTime now;
+      const fullTravel = AppleTvRemoteTouchService.scrubPanFullTravel;
+      const tenMinutes = Duration(minutes: 10);
+
+      Duration mapped(double dx, double speed) =>
+          appleTvScrubPanDelta(dx: dx, speed: speed, fullTravel: fullTravel, duration: tenMinutes);
+
+      Future<void> send(String type, double x) => touch.handleMessage({'type': type, 'x': x, 'y': 540.0});
+
+      /// A pan with 100 ms between samples: every sample after the slop one
+      /// is alone in the speed window, so it arrives at speed 0 (gain 1).
+      Future<void> slowPan(WidgetTester tester, List<double> xs) async {
+        await send('started', 960);
+        for (final x in xs) {
+          now = now.add(const Duration(milliseconds: 100));
+          await send('move', x);
+        }
+        await send('ended', xs.last);
+        now = now.add(const Duration(milliseconds: 400));
+        await tester.pump();
+      }
+
+      setUp(() {
+        now = DateTime(2026, 9, 25, 12);
+        touch = AppleTvRemoteTouchService(
+          simulateKeyPress: (_) {},
+          simulateKeyDown: (_) {},
+          simulateKeyUp: (_) {},
+          scheduleFrame: () {},
+          now: () => now,
+        );
+        AppleTvRemoteTouchService.debugInstanceOverride = touch;
+        TvDetectionService.debugSetAppleTVOverride(true);
+      });
+      tearDown(() {
+        AppleTvRemoteTouchService.debugInstanceOverride = null;
+        TvDetectionService.debugSetAppleTVOverride(null);
+      });
+
+      Future<void> enterScrub(WidgetTester tester) async {
+        await pumpControls(tester, playing: true);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        expect(touch.isScrubPanActive, isTrue);
+      }
+
+      testWidgets('één veeg verplaatst de cursor evenredig, zonder seek', (tester) async {
+        await enterScrub(tester);
+
+        await slowPan(tester, [1000, 1200, 1360]);
+
+        final expected = const Duration(minutes: 5) + mapped(40, 0) + mapped(200, 0) + mapped(160, 0);
+        expect(sliderPosition(tester), expected);
+        expect(expected, greaterThan(const Duration(minutes: 5, seconds: 10)));
+        expect(seeks, isEmpty);
+        expect(seekEnds, isEmpty);
+      });
+
+      testWidgets('een snelle veeg gaat verder dan een langzame', (tester) async {
+        await enterScrub(tester);
+        await send('started', 960);
+        for (final x in [1000.0, 1100.0, 1200.0]) {
+          now = now.add(const Duration(milliseconds: 16));
+          await send('move', x);
+        }
+        await send('ended', 1200);
+        await tester.pump();
+
+        final fast = sliderPosition(tester) - const Duration(minutes: 5);
+        expect(fast, greaterThan(mapped(240, 0)));
+      });
+
+      testWidgets('de cursor klemt op 0 en op de duur', (tester) async {
+        await enterScrub(tester);
+
+        for (var i = 0; i < 12; i++) {
+          await slowPan(tester, [1400, 1900]);
+        }
+        expect(sliderPosition(tester), tenMinutes);
+
+        for (var i = 0; i < 24; i++) {
+          await slowPan(tester, [500, 0]);
+        }
+        expect(sliderPosition(tester), Duration.zero);
+      });
+
+      testWidgets('klik zet door naar de cursor en speelt verder', (tester) async {
+        await enterScrub(tester);
+        await slowPan(tester, [700, 400]);
+        final previewed = sliderPosition(tester);
+        expect(previewed, lessThan(const Duration(minutes: 5)));
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+
+        expect(seekEnds, [previewed]);
+        expect(player.commandLog.last, 'play');
+        expect(touch.isScrubPanActive, isFalse);
+      });
+
+      testWidgets('Menu annuleert naar de oorspronkelijke positie', (tester) async {
+        await enterScrub(tester);
+        await slowPan(tester, [1200, 1500]);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+
+        expect(seeks, isEmpty);
+        expect(seekEnds, isEmpty);
+        expect(sliderPosition(tester), const Duration(minutes: 5));
+        expect(touch.isScrubPanActive, isFalse);
+      });
+
+      testWidgets('een ringdruk stapt nog steeds één stap vanaf de cursor', (tester) async {
+        await enterScrub(tester);
+        await slowPan(tester, [1200]);
+        final afterPan = sliderPosition(tester);
+
+        await send('started', 960);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await send('ended', 962);
+        await tester.pump();
+
+        expect(sliderPosition(tester), afterPan + const Duration(seconds: 10));
+        expect(seeks, isEmpty);
+      });
+
+      testWidgets('een vroege systeempijl telt niet op bij de pan', (tester) async {
+        await enterScrub(tester);
+
+        await send('started', 960);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1000);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1300);
+        await send('ended', 1300);
+        await tester.pump();
+
+        expect(sliderPosition(tester), const Duration(minutes: 5) + mapped(40, 0) + mapped(300, 0));
+      });
+
+      // Probe E: klikken met de duim al op het oppervlak en in dezelfde
+      // aanraking doorvegen. Er volgt geen touch-down, dus de basis moet bij
+      // de klik vastliggen, vóór de vroege systeempijl.
+      testWidgets('klik met de vinger neer: een vroege systeempijl telt niet op bij de pan', (tester) async {
+        await pumpControls(tester, playing: true);
+        await send('started', 960);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        expect(touch.isScrubPanActive, isTrue);
+
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 970);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        now = now.add(const Duration(milliseconds: 100));
+        await send('move', 1300);
+        await send('ended', 1300);
+        await tester.pump();
+
+        expect(sliderPosition(tester), const Duration(minutes: 5) + mapped(340, 0));
+      });
+    });
+
+    testWidgets('buiten Apple TV neemt de scrub de pan niet over', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(false);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      await pumpControls(tester, playing: true);
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(AppleTvRemoteTouchService.instance.isScrubPanActive, isFalse);
+    });
+  });
+
+  group('appleTvScrubPanDelta', () {
+    const tenMinutes = Duration(minutes: 10);
+    Duration delta(double dx, {double speed = 0, double fullTravel = 1920, Duration duration = tenMinutes}) =>
+        appleTvScrubPanDelta(dx: dx, speed: speed, fullTravel: fullTravel, duration: duration);
+
+    test('is evenredig met de afgelegde afstand', () {
+      // Een vijfde van tien minuten per volle veeg.
+      expect(delta(960), const Duration(minutes: 1));
+      expect(delta(480), const Duration(seconds: 30));
+      expect(delta(-480), const Duration(seconds: -30));
+    });
+
+    test('een snelle veeg gaat verder dan een langzame, tot vier keer', () {
+      expect(delta(20, speed: 2), delta(20) * 2);
+      expect(delta(480, speed: 100), delta(480) * 4);
+    });
+
+    test('lange film: een volle veeg is hooguit tien minuten zonder versnelling', () {
+      expect(delta(1920, duration: const Duration(hours: 3)), const Duration(minutes: 10));
+    });
+
+    test('rekent in de eenheid van de service, niet in schermbreedte', () {
+      expect(AppleTvRemoteTouchService.scrubPanFullTravel, 1920);
+    });
+
+    test('geen bereik of duur geeft geen beweging', () {
+      expect(delta(100, fullTravel: 0), Duration.zero);
+      expect(delta(100, duration: Duration.zero), Duration.zero);
     });
   });
 

@@ -1,0 +1,51 @@
+/* Pleya iOS, Liquid Glass-mockups. Tokens uit docs/ios-unified-2026-audit.md §2
+   (mono_tokens.dart): bg #141414, surface #1F1F1F, elevated #2F2F2F, accent #E5140F,
+   tekst wit 70% voor meta, radius 8/12/14, CTA wit als StadiumBorder, Inter 400/500/700.
+   Schaal: 402x874 CSS-px, geschoten op deviceScaleFactor 3 (iPhone 17 Pro). */
+
+@font-face { font-family: Inter; src: url(../../../tvos-unified/src/assets/Inter-Regular.otf); font-weight: 400; }
+@font-face { font-family: Inter; src: url(../../../tvos-unified/src/assets/Inter-Medium.otf); font-weight: 500; }
+@font-face { font-family: Inter; src: url(../../../tvos-unified/src/assets/Inter-Bold.otf); font-weight: 700; }
+
+:root {
+  --bg: #141414; --surface: #1F1F1F; --elevated: #2F2F2F;
+  --accent: #E5140F; --ink: #fff; --ink-2: rgba(255,255,255,.70); --ink-3: rgba(255,255,255,.50);
+  --inset: 16px;
+  /* echt glas: de vier knoppen die de Flutter-vertaling ook krijgt */
+  --lg-blur: 12px;        /* sigma van de achtergrondblur */
+  --lg-tint: .14;         /* witte tint */
+  --lg-sat: 1.5;          /* verzadiging van wat erdoor schemert */
+  --lg-band: 10px;        /* breedte van de brekingsrand */
+  --lg-zoom: 1.10;        /* vergroting in de brekingsrand */
+  --lg-dim: .78;          /* donkere-modusdemping van wat erdoor schemert */
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 402px; height: 874px; overflow: hidden; position: relative;
+  background: var(--bg); color: var(--ink);
+  font-family: Inter, -apple-system, sans-serif; -webkit-font-smoothing: antialiased;
+  font-size: 15px; line-height: 1.3;
+}
+body.land { width: 874px; height: 402px; }
+svg.ic { width: 1em; height: 1em; display: block; flex: none; }
+
+/* statusbalk */
+.status { position: absolute; left: 0; right: 0; top: 0; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 30px 0 44px; z-index: 5; font-weight: 700; font-size: 17px; }
+.status .island { position: absolute; left: 50%; top: 11px; width: 124px; height: 36px; transform: translateX(-50%); background: #000; border-radius: 999px; }
+.status .r { display: flex; gap: 6px; align-items: center; }
+.homebar { position: absolute; left: 50%; bottom: 8px; width: 140px; height: 5px; margin-left: -70px; border-radius: 999px; background: #fff; z-index: 6; }
+
+/* glas: .glass is het vlak; shoot.mjs legt er de lagen onder (zie daar) */
+.glass {
+  position: absolute; overflow: hidden; isolation: isolate;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.18);
+}
+.glass .lg { position: absolute; pointer-events: none; }
+.glass > .lg { z-index: -1; }
+.bgpass .glass { visibility: hidden; }
+/* tekst op glas: wit met een contrastrand, leesbaar op licht en donker */
+.on-glass { text-shadow: 0 0 1px rgba(0,0,0,.45), 0 1px 8px rgba(0,0,0,.45); }
+.on-glass svg { filter: drop-shadow(0 0 1px rgba(0,0,0,.35)) drop-shadow(0 1px 4px rgba(0,0,0,.35)); }
+.glass.prominent { box-shadow: 0 8px 24px rgba(0,0,0,.30); }
+
+.btn-cta { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; }

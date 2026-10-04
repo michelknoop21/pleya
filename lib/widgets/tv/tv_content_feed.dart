@@ -352,7 +352,7 @@ class TvContentFeedState extends State<TvContentFeed>
   /// group, because it is a fact about *where the card is*: the same title can
   /// sit in Verder kijken and in a recommendation row on one screen, and
   /// "Verwijder uit Verder kijken" only means something on the first.
-  /// The sectioned overview behind Verder kijken (mockup 38 D, DEC-119 fase 2),
+  /// The sectioned overview behind Verder kijken (mockup 38 D, DEC-144 fase 2),
   /// as its own content route under the shell like a custom row's catalog.
   Future<void> _openContinueWatchingAll() {
     Widget builder(_) => TvContinueWatchingScreen(key: _continueWatchingAllKey);
@@ -412,7 +412,7 @@ class TvContentFeedState extends State<TvContentFeed>
   ///
   /// **Not "the projection recomputes on its own" — that is true of Continue
   /// Watching alone, and this menu opens on every row, not only that one.**
-  /// `DiscoverProvider._onWatchStateChanged` reacts to every
+  /// `ContinueWatchingRow.onWatchStateChanged` reacts to every
   /// [WatchStateEvent] and calls `refreshContinueWatching()`, whose own doc
   /// says it "never refetches hubs" — by design, it is a background poll of
   /// one row, not a general invalidation. A markeer bekeken/onbekeken done

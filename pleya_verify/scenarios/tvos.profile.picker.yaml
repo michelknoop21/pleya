@@ -32,6 +32,7 @@ steps:
   - wait_until: {focused: "profile.tile[0]", timeout: 10000}
   - settle: 600
   - assert: {id: "profile.tile[0]", insideViewport: true, state: {active: true}}
+  # PROF1: the switch is mockup 21's gate, with the active profile marked.
   - snapshot: 01-picker
 
   - press: menu

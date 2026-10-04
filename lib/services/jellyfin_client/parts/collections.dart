@@ -1,6 +1,8 @@
 part of '../../jellyfin_client.dart';
 
 mixin _JellyfinCollectionMethods on MediaServerCacheMixin {
+  void assertCanManageServerMetadata();
+
   JellyfinConnection get connection;
   FailoverHttpClient get _http;
   List<MediaItem> _mapItems(Iterable<Map<String, dynamic>> items);
@@ -114,6 +116,7 @@ mixin _JellyfinCollectionMethods on MediaServerCacheMixin {
     required List<MediaItem> items,
     MediaKind? itemKind,
   }) async {
+    assertCanManageServerMetadata();
     // ParentId is optional on Jellyfin's `/Collections` endpoint — when
     // omitted the server picks a default BoxSet root. We pass libraryId so
     // the new collection lives in the same library as the seeded items.
@@ -132,6 +135,7 @@ mixin _JellyfinCollectionMethods on MediaServerCacheMixin {
 
   @override
   Future<bool> addToCollection({required String collectionId, required List<MediaItem> items}) async {
+    assertCanManageServerMetadata();
     if (items.isEmpty) return true;
     final response = await _http.post(
       '/Collections/${_segment(collectionId)}/Items',
@@ -143,6 +147,7 @@ mixin _JellyfinCollectionMethods on MediaServerCacheMixin {
 
   @override
   Future<bool> removeFromCollection({required String collectionId, required MediaItem item}) async {
+    assertCanManageServerMetadata();
     final response = await _http.delete(
       '/Collections/${_segment(collectionId)}/Items',
       queryParameters: {'Ids': item.id},
@@ -153,6 +158,7 @@ mixin _JellyfinCollectionMethods on MediaServerCacheMixin {
 
   @override
   Future<bool> deleteCollection(MediaItem collection) async {
+    assertCanManageServerMetadata();
     final response = await _http.delete('/Items/${_segment(collection.id)}');
     throwIfHttpError(response);
     return true;
@@ -160,6 +166,7 @@ mixin _JellyfinCollectionMethods on MediaServerCacheMixin {
 
   @override
   Future<bool> deleteMediaItem(MediaItem item) async {
+    assertCanManageServerMetadata();
     final response = await _http.delete('/Items/${_segment(item.id)}');
     throwIfHttpError(response);
     return true;

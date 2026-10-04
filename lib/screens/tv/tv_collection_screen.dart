@@ -58,9 +58,9 @@ class TvCollectionScreen extends StatefulWidget {
     required this.onLoadMore,
     required this.onPlay,
     required this.onShuffle,
-    required this.onDelete,
     required this.onSelectItem,
-    required this.onRemoveItem,
+    this.onDelete,
+    this.onRemoveItem,
   });
 
   final MediaItem collection;
@@ -87,9 +87,12 @@ class TvCollectionScreen extends StatefulWidget {
   final VoidCallback onLoadMore;
   final VoidCallback onPlay;
   final VoidCallback onShuffle;
-  final VoidCallback onDelete;
   final ValueChanged<MediaItem> onSelectItem;
-  final ValueChanged<MediaItem> onRemoveItem;
+
+  /// Delete the collection and remove one item from it. Collections are
+  /// canonical server data: null (no owner rights) draws neither action.
+  final VoidCallback? onDelete;
+  final ValueChanged<MediaItem>? onRemoveItem;
 
   @override
   State<TvCollectionScreen> createState() => _TvCollectionScreenState();
@@ -202,7 +205,10 @@ class _TvCollectionScreenState extends State<TvCollectionScreen> {
           width: cell.width,
           client: widget.client,
           onSelect: () => widget.onSelectItem(item),
-          onRemove: () => widget.onRemoveItem(item),
+          onRemove: switch (widget.onRemoveItem) {
+            final remove? => () => remove(item),
+            null => null,
+          },
           focusNode: cell.focusNode,
           onFocusChange: cell.onFocusChange,
           onNavigateUp: cell.onNavigateUp,
@@ -230,8 +236,8 @@ class _CollectionHero extends StatelessWidget {
     required this.deleteFocusNode,
     required this.onPlay,
     required this.onShuffle,
-    required this.onDelete,
     required this.onNavigateUp,
+    this.onDelete,
     required this.onNavigateDown,
   });
 
@@ -246,7 +252,7 @@ class _CollectionHero extends StatelessWidget {
   final FocusNode deleteFocusNode;
   final VoidCallback onPlay;
   final VoidCallback onShuffle;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
   final VoidCallback onNavigateUp;
   final VoidCallback? onNavigateDown;
 
@@ -343,20 +349,21 @@ class _CollectionHero extends StatelessWidget {
                     onPressed: onShuffle,
                     onNavigateUp: onNavigateUp,
                     onNavigateLeft: () => playFocusNode.requestFocus(),
-                    onNavigateRight: () => deleteFocusNode.requestFocus(),
+                    onNavigateRight: onDelete == null ? null : () => deleteFocusNode.requestFocus(),
                     onNavigateDown: onNavigateDown,
                   ),
-                  TvPanelButton(
-                    scale: scale,
-                    label: t.common.delete,
-                    icon: Symbols.delete_rounded,
-                    primary: false,
-                    focusNode: deleteFocusNode,
-                    onPressed: onDelete,
-                    onNavigateUp: onNavigateUp,
-                    onNavigateLeft: () => shuffleFocusNode.requestFocus(),
-                    onNavigateDown: onNavigateDown,
-                  ),
+                  if (onDelete case final delete?)
+                    TvPanelButton(
+                      scale: scale,
+                      label: t.common.delete,
+                      icon: Symbols.delete_rounded,
+                      primary: false,
+                      focusNode: deleteFocusNode,
+                      onPressed: delete,
+                      onNavigateUp: onNavigateUp,
+                      onNavigateLeft: () => shuffleFocusNode.requestFocus(),
+                      onNavigateDown: onNavigateDown,
+                    ),
                 ],
               ),
             ],

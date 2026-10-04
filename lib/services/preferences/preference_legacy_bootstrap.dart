@@ -32,7 +32,9 @@ class PreferenceLegacyBootstrap {
 
   static Future<void> markComplete(SharedPreferencesWithCache prefs) => prefs.setBool(completedKey, true);
 
-  /// Clear the marker so the import runs again. Used by tests, and the
+  /// Clear the marker so the import runs again. The coordinator does this on
+  /// an iCloud account change, because the new account's store may still hold
+  /// v1 records this device never imported. Also used by tests, and the
   /// documented manual recovery if an upgrade is ever found to have imported
   /// nothing.
   static Future<void> reset(SharedPreferencesWithCache prefs) => prefs.remove(completedKey);

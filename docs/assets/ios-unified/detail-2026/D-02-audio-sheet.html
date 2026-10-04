@@ -1,0 +1,33 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>D-02 Audio kiezen</title>
+<style>
+@font-face { font-family: Inter; src: url(Inter-Regular.otf); font-weight: 400; }
+@font-face { font-family: Inter; src: url(Inter-Medium.otf); font-weight: 500; }
+@font-face { font-family: Inter; src: url(Inter-Bold.otf); font-weight: 700; }
+:root { --bg:#141414; --surface:#1F1F1F; --elevated:#2F2F2F; --accent:#E5140F; --ink-2:rgba(255,255,255,.70); --ink-3:rgba(255,255,255,.50); }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { width:402px; height:874px; overflow:hidden; position:relative; background:var(--bg); color:#fff; font-family:Inter,sans-serif; -webkit-font-smoothing:antialiased; }
+iframe { width:402px; height:874px; border:0; position:absolute; inset:0; }
+.dim { position:absolute; inset:0; background:rgba(0,0,0,.55); }
+.sheet { position:absolute; left:0; right:0; bottom:0; background:var(--surface); border-radius:22px 22px 0 0; padding:10px 0 34px; }
+.grab { width:40px; height:5px; border-radius:999px; background:rgba(255,255,255,.3); margin:0 auto 14px; }
+.hd { display:flex; align-items:center; gap:10px; padding:0 20px 8px; font-size:19px; font-weight:700; }
+.hd small { display:block; font-size:13px; font-weight:400; color:var(--ink-2); margin-top:2px; }
+.row { display:flex; align-items:center; gap:14px; padding:14px 20px; border-top:1px solid rgba(255,255,255,.06); }
+.row b { display:block; font-size:16px; font-weight:500; }
+.row span { font-size:13.5px; color:var(--ink-2); }
+.row .chk { margin-left:auto; color:var(--accent); font-size:22px; }
+.row.on b { color:var(--accent); }
+.note { padding:14px 20px 0; font-size:13px; color:var(--ink-3); line-height:1.45; }
+svg.ic { width:1em; height:1em; display:block; flex:none; }
+</style></head><body>
+<iframe src="D-01-film.html" scrolling="no" style="transform:translateY(-460px); height:1400px"></iframe>
+<div class="dim"></div>
+<div class="sheet">
+  <div class="grab"></div>
+  <div class="hd"><div>Audio<small>Sintel · geldt voor deze film</small></div></div>
+  <div class="row"><div><b>Engels</b><span>EAC3 5.1 · Atmos · standaard</span></div></div>
+  <div class="row on"><div><b>Nederlands</b><span>EAC3 5.1</span></div><svg class="ic chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg></div>
+  <div class="row"><div><b>Vlaams</b><span>AC3 5.1</span></div></div>
+  <p class="note">Je keuze wordt onthouden en gebruikt als je op Hervatten of Afspelen drukt. Kiezen start het afspelen niet meer.</p>
+</div>
+</body></html>

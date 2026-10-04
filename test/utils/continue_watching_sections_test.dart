@@ -4,7 +4,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/utils/continue_watching_sections.dart';
 
-/// Mockup 38 D / 23 (DEC-119 fase 2): four sections, every item in exactly
+/// Mockup 38 D / 23 (DEC-144 fase 2): four sections, every item in exactly
 /// one, empty sections gone, and "Eerder begonnen" only for something begun.
 void main() {
   const minute = 60 * 1000;

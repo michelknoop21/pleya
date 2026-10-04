@@ -67,8 +67,8 @@ Vóór elk workitem, en na elke merge opnieuw:
 ```bash
 git status --porcelain                      # leeg, op ongetrackte sessielogs na
 git fetch --prune origin && git fetch --prune github
-git rev-parse HEAD origin/main github/main  # drie gelijke SHA's
-git rev-list --left-right --count HEAD...origin/main   # 0 0 (origin is de canonical remote)
+git rev-parse HEAD github/main             # twee gelijke SHA's
+git rev-list --left-right --count HEAD...github/main   # 0 0 (GitHub is de canonical remote; Gitea/origin kan achterlopen)
 ```
 
 Dan een verse branch vanaf die `main`. Werk stapelt nooit op de baseline van een vorig workitem.
@@ -95,7 +95,8 @@ Voordat er code verandert, vier vragen, en de antwoorden gaan in het register:
 
 Preflight, bewijs dat het probleem er is, fix bij de gedeelde eigenaar, gerichte tests en de
 Verify-stap die het item vraagt, commit. Het register krijgt de SHA in een volgende commit en niet
-met een amend, want een amend verandert de hash die je er net in zette. Dan mergen.
+met een amend, want een amend verandert de hash die je er net in zette. Dan de review volgens
+AGENTS.md ("Review and release bundling"), en dan pas mergen.
 
 Voor tvOS-bevindingen uit de correctieronde gelden daarbovenop de zes stappen bovenaan dat
 document, inclusief de negatieve controle die aantoonbaar rood was.
@@ -130,6 +131,10 @@ eindronde.
 | 17 | I10 visual acceptance | 21 schermen en 5 comps, per scherm huidige screenshot, northstar, verschil, fix, Verify; iPhone SE-klasse en iPhone 15 Pro; iPad als regressiegrens | alleen visueel werk; een functionele fix betekent dat die Verify opnieuw draait |
 | 18 | Hardware-eindronde | zie paragraaf 7 | |
 | 19 | TestFlight | exact de goedgekeurde archive | |
+
+**Afwijking sinds 24 september 2026 (DEC-119).** tvOS gaat vóór iOS-stap 8 tot en met 17 door
+stap 18 en 19, volgens `docs/superpowers/plans/2026-09-24-tv9-tvos-release.md`. Voor die release
+geldt de tvOS-kolom van §6 plus de gedeelde regels. iOS volgt daarna met een eigen hardwareronde.
 
 Vóór stap 18 moeten implementatie, tests, Verify, de simulatorgates, visual acceptance en de
 iPad-regressie klaar zijn, en `main` groen en schoon.

@@ -6,10 +6,13 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/edde746/plezy/pleya_server/internal/id"
 	"github.com/edde746/plezy/pleya_server/internal/jobs"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
@@ -101,8 +104,10 @@ func TestDedupeKeepsOneInFlight(t *testing.T) {
 	}
 }
 
-// TestFailureRetriesThenGivesUp dekt retries met een dak erop.
-func TestFailureRetriesThenGivesUp(t *testing.T) {
+// TestFailureRecordsTheReason dekt de eerste mislukking: de job gaat terug naar
+// `pending` en de reden staat vast. Dit is bewust NIET het retry-gedrag; dat staat
+// hieronder in TestFailureRetriesThenGivesUp.
+func TestFailureRecordsTheReason(t *testing.T) {
 	runner, pool := newRunner(t)
 	ctx := context.Background()
 
@@ -124,14 +129,104 @@ func TestFailureRetriesThenGivesUp(t *testing.T) {
 	done := make(chan struct{})
 	go func() { runner.Run(runCtx); close(done) }()
 
+	// Wachten tot de uitkomst ook echt in de database staat, en pas dan annuleren.
+	// De handler is terug zodra `attempts` opgehoogd is, maar de runner schrijft het
+	// mislukken daarna pas weg. Annuleren we ertussenin, dan sneuvelt die schrijfactie
+	// op een gecancelde context en blijft `last_error` leeg. Lokaal wint de
+	// schrijfactie die race bijna altijd; op een belaste CI-runner niet.
 	waitFor(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return attempts >= 1
-	}, "de job draaide niet")
+		var state string
+		var lastError *string
+		if err := pool.QueryRow(ctx,
+			`SELECT state, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &lastError); err != nil {
+			return false
+		}
+		return state == "pending" && lastError != nil && *lastError != ""
+	}, "het mislukken is niet weggeschreven")
 
 	cancel()
 	<-done
+
+	// Eén mislukking van drie toegestane pogingen zet de job terug op `pending`,
+	// niet op `failed`. Dat onderscheid is de hele reden dat deze test bestaat:
+	// accepteert hij hier ook `failed`, dan slaagt hij net zo goed voor een runner
+	// die nooit opnieuw probeert.
+	var state string
+	var attemptsInDB int
+	var lastError *string
+	if err := pool.QueryRow(ctx,
+		`SELECT state, attempts, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &attemptsInDB, &lastError); err != nil {
+		t.Fatal(err)
+	}
+	if state != "pending" {
+		t.Fatalf("na één mislukking van drie staat de job op %q, verwacht pending", state)
+	}
+	if attemptsInDB != 1 {
+		t.Fatalf("attempts is %d na één ronde, verwacht 1", attemptsInDB)
+	}
+	if lastError == nil || *lastError == "" {
+		t.Fatal("de reden van mislukken is niet vastgelegd")
+	}
+}
+
+// TestFailureRetriesThenGivesUp dekt wat de naam zegt: de runner probeert het
+// opnieuw, en houdt op zodra max_attempts bereikt is.
+//
+// Twee dingen maken deze test anders dan de vorige. Hij zet `max_attempts` op 2,
+// zodat "opgeven" binnen een testronde valt in plaats van na drie. En hij duwt
+// `run_at` telkens naar nu, want de runner zet er exponentiële backoff op (2 s na
+// de eerste mislukking, `jobs.go`); zonder die duw wacht de test op een klok in
+// plaats van op gedrag.
+func TestFailureRetriesThenGivesUp(t *testing.T) {
+	runner, pool := newRunner(t)
+	ctx := context.Background()
+
+	var attempts int
+	var mu sync.Mutex
+	runner.Register("valt-om", func(ctx context.Context, job jobs.Job) error {
+		mu.Lock()
+		attempts++
+		mu.Unlock()
+		return errors.New("gaat mis")
+	})
+
+	jobID, _, err := runner.Enqueue(ctx, "valt-om", nil, "", time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`UPDATE jobs SET max_attempts = 2 WHERE id = $1`, jobID); err != nil {
+		t.Fatal(err)
+	}
+
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+
+	waitFor(t, func() bool {
+		// De backoff wegduwen zodat de tweede poging niet op de klok wacht.
+		_, _ = pool.Exec(ctx,
+			`UPDATE jobs SET run_at = now() WHERE id = $1 AND state = 'pending'`, jobID)
+
+		var state string
+		var attemptsInDB int
+		var finishedAt *time.Time
+		if err := pool.QueryRow(ctx,
+			`SELECT state, attempts, finished_at FROM jobs WHERE id = $1`, jobID).Scan(&state, &attemptsInDB, &finishedAt); err != nil {
+			return false
+		}
+		return state == "failed" && attemptsInDB >= 2 && finishedAt != nil
+	}, "de job gaf niet op na max_attempts")
+
+	cancel()
+	<-done
+
+	mu.Lock()
+	handlerCalls := attempts
+	mu.Unlock()
+	if handlerCalls < 2 {
+		t.Fatalf("de handler draaide %d keer, dus er is niet opnieuw geprobeerd", handlerCalls)
+	}
 
 	var state string
 	var lastError *string
@@ -139,8 +234,8 @@ func TestFailureRetriesThenGivesUp(t *testing.T) {
 		`SELECT state, last_error FROM jobs WHERE id = $1`, jobID).Scan(&state, &lastError); err != nil {
 		t.Fatal(err)
 	}
-	if state != "pending" && state != "failed" {
-		t.Fatalf("een mislukte job staat op %q", state)
+	if state != "failed" {
+		t.Fatalf("na max_attempts staat de job op %q, verwacht failed", state)
 	}
 	if lastError == nil || *lastError == "" {
 		t.Fatal("de reden van mislukken is niet vastgelegd")
@@ -188,4 +283,138 @@ func waitFor(t *testing.T, condition func() bool, message string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal(message)
+}
+
+func TestCancelRunningJobStopsTheHandler(t *testing.T) {
+	runner, _ := newRunner(t)
+	started := make(chan struct{})
+	causes := make(chan error, 1)
+	runner.Register("blok", func(ctx context.Context, job jobs.Job) error {
+		close(started)
+		<-ctx.Done()
+		causes <- context.Cause(ctx)
+		return ctx.Err()
+	})
+	jobID, _, _ := runner.Enqueue(context.Background(), "blok", nil, "", time.Time{})
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	<-started
+
+	if _, err := runner.Cancel(context.Background(), jobID); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "cancelled"
+	}, "job wordt cancelled")
+	if cause := <-causes; !errors.Is(cause, jobs.ErrCancelled) {
+		t.Fatalf("handler zag oorzaak %v, verwacht ErrCancelled", cause)
+	}
+	stop()
+	<-done
+}
+
+func TestCancelFinishedJobIsRefused(t *testing.T) {
+	runner, _ := newRunner(t)
+	runner.Register("klaar", func(context.Context, jobs.Job) error { return nil })
+	jobID, _, _ := runner.Enqueue(context.Background(), "klaar", nil, "", time.Time{})
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "succeeded"
+	}, "job slaagt")
+	stop()
+	<-done
+	if _, err := runner.Cancel(context.Background(), jobID); !errors.Is(err, jobs.ErrNotCancellable) {
+		t.Fatalf("Cancel op succeeded gaf %v, verwacht ErrNotCancellable", err)
+	}
+	if _, err := runner.Cancel(context.Background(), id.New()); !errors.Is(err, jobs.ErrNotFound) {
+		t.Fatalf("Cancel op onbekend id gaf %v, verwacht ErrNotFound", err)
+	}
+}
+
+func TestRetryFailedJobRunsAgainFromZero(t *testing.T) {
+	runner, pool := newRunner(t)
+	var calls atomic.Int32
+	runner.Register("wisselend", func(context.Context, jobs.Job) error {
+		if calls.Add(1) <= 3 {
+			return errors.New("nog niet")
+		}
+		return nil
+	})
+	jobID, _, _ := runner.Enqueue(context.Background(), "wisselend", nil, "", time.Time{})
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	waitFor(t, func() bool {
+		// De backoff (2 s, 4 s) haalt anders de wachttijd van waitFor niet.
+		_, _ = pool.Exec(context.Background(), `UPDATE jobs SET run_at = now() WHERE state = 'pending'`)
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "failed"
+	}, "job faalt na max_attempts")
+	rec, err := runner.Retry(context.Background(), jobID, map[string]string{"opnieuw": "ja"})
+	if err != nil {
+		t.Fatalf("Retry: %v", err)
+	}
+	if rec.State != "pending" || rec.Attempts != 0 || rec.LastError != "" || !strings.Contains(string(rec.Args), "opnieuw") {
+		t.Fatalf("na retry: %+v", rec)
+	}
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "succeeded"
+	}, "job slaagt na retry")
+	stop()
+	<-done
+}
+
+func TestRequeueCancelsAJobWithACancelRequest(t *testing.T) {
+	runner, pool := newRunner(t)
+	jobID := id.New()
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO jobs (id, kind, state, locked_at, locked_by, cancel_requested_at)
+		VALUES ($1, 'x', 'running', now(), 'dood#0', now())`, jobID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runner.Requeue(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	rec, _ := runner.Get(context.Background(), jobID)
+	if rec.State != "cancelled" {
+		t.Fatalf("Requeue liet een aangevraagde annulering op %q staan", rec.State)
+	}
+}
+
+// Een Cancel die landt tussen claim en registratie van de cancelfunctie mag niet
+// verloren gaan: het spoor in de rij is dan het enige wat de handler nog stopt.
+func TestCancelRequestedBeforeRegistrationStillStopsTheHandler(t *testing.T) {
+	runner, pool := newRunner(t)
+	causes := make(chan error, 1)
+	runner.Register("blok", func(ctx context.Context, job jobs.Job) error {
+		select {
+		case <-ctx.Done():
+		case <-time.After(3 * time.Second):
+		}
+		causes <- context.Cause(ctx)
+		return ctx.Err()
+	})
+	jobID, _, _ := runner.Enqueue(context.Background(), "blok", nil, "", time.Now().Add(time.Hour))
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE jobs SET cancel_requested_at = now(), run_at = now() WHERE id = $1`, jobID); err != nil {
+		t.Fatal(err)
+	}
+	runCtx, stop := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { runner.Run(runCtx); close(done) }()
+	waitFor(t, func() bool {
+		rec, _ := runner.Get(context.Background(), jobID)
+		return rec.State == "cancelled"
+	}, "job wordt cancelled")
+	if cause := <-causes; !errors.Is(cause, jobs.ErrCancelled) {
+		t.Fatalf("handler zag oorzaak %v, verwacht ErrCancelled", cause)
+	}
+	stop()
+	<-done
 }

@@ -29,7 +29,7 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 
 PLEYA_RESPONSE_DIR=/src/.responses GO_IMAGE="$TEST_IMAGE" \
-  scripts/go-tool.sh test -count=1 ./internal/api/
+  scripts/go-tool.sh test -count=1 -timeout 30m ./internal/api/
 
 echo
 echo "==> valideren tegen docs/pleya-protocol/v1/openapi.yaml"

@@ -107,6 +107,8 @@ void main() {
       expect(server.libraries, hasLength(1));
       final show = server.items.values.singleWhere((i) => i['kind'] == 'show');
       expect(show['title'], 'Testserie');
+      // VER8: Home's first rail is the TV way in to the show.
+      expect(server.hubs['recently_added'], [show['id']]);
       final season = server.items.values.singleWhere((i) => i['kind'] == 'season');
       expect(server.children[season['id']], hasLength(10));
       expect(season['child_count'], 10);
@@ -198,6 +200,26 @@ void main() {
       expect(applied, isTrue);
       expect(server.hubs['recently_added'], hasLength(12));
       expect(server.items.values.where((i) => i['kind'] == 'movie'), hasLength(12));
+    });
+  });
+
+  group('catalog.seasons.v1', () {
+    test('one show with four seasons of two to five episodes, on the first rail', () {
+      final server = PleyaFakeServer();
+      final applied = applyNamedFixture(server, 'catalog.seasons.v1');
+
+      expect(applied, isTrue);
+      final shows = server.items.entries.where((e) => e.value['kind'] == 'show').toList();
+      expect(shows, hasLength(1));
+      expect(server.hubs['recently_added'], [shows.single.key]);
+
+      final seasons = server.items.entries.where((e) => e.value['kind'] == 'season').toList()
+        ..sort((a, b) => (a.value['index'] as int).compareTo(b.value['index'] as int));
+      expect([for (final s in seasons) s.value['index']], [1, 2, 3, 4]);
+      expect(
+        [for (final s in seasons) server.items.values.where((i) => i['parent_id'] == s.key).length],
+        [2, 3, 4, 5],
+      );
     });
   });
 

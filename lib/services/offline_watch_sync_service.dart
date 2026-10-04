@@ -678,7 +678,7 @@ class OfflineWatchSyncService extends ChangeNotifier {
         // re-remove something already gone.
         //
         // A source that cannot remove server-side never gets one of these rows
-        // any more (it is hidden on the device instead, DEC-119 fase 3), but a
+        // any more (it is hidden on the device instead, DEC-144 fase 3), but a
         // row queued before that would throw `UnsupportedError` on every
         // reconnect. Drop it: there is nothing for the server to do.
         if (!client.capabilities.continueWatchingRemoval) {
