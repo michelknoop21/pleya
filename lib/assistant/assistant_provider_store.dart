@@ -79,7 +79,11 @@ class AssistantProviderStore {
       // A save the keychain refused earlier wins only while the synced item
       // is still the one it was saved over (or that could not be read then).
       if (keychainError != null || marker == _unknown || marker == _fingerprint(synced)) {
-        if (keychainError == null) await _migrate(keychain, legacy.json);
+        // ponytail: an 'unknown' marker still lets a stale blob win over a
+        // newer decodable save from another device; only an unreadable item
+        // is spared, since replacing that needs the Vervangen prompt.
+        final unreadable = marker == _unknown && synced != null && _decode(synced) == null;
+        if (keychainError == null && !unreadable) await _migrate(keychain, legacy.json);
         return legacy.config;
       }
       // Another device saved or cleared since: its state wins.
@@ -130,10 +134,14 @@ class AssistantProviderStore {
       if (current != null && !replaceUnreadable && _decode(current) == null) {
         throw const AssistantProviderUnreadableException();
       }
-      try {
-        stored = await keychain.write(key, json);
-      } catch (e) {
-        appLogger.w('Assistant keychain write failed', error: e.runtimeType);
+      // Unread, the item might be one this version cannot decode: no blind
+      // overwrite, the prefs take it with an 'unknown' marker.
+      if (!readFailed || replaceUnreadable) {
+        try {
+          stored = await keychain.write(key, json);
+        } catch (e) {
+          appLogger.w('Assistant keychain write failed', error: e.runtimeType);
+        }
       }
     }
     if (stored) {

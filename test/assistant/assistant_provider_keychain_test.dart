@@ -316,12 +316,38 @@ void main() {
       expect(keychain.items[_key], _json(_cloud));
     });
 
-    test('negative control: a read error is not unreadable and keeps the fallback', () async {
+    test('a save whose read fails does not write blind but takes the fallback', () async {
+      keychain.items[_key] = future;
       keychain.readError = _osStatus(-25308);
 
       await store.save(_cloud);
 
+      expect(keychain.calls, ['read']);
+      expect(keychain.items[_key], future);
+      expect(await _prefsBlob(), isNotNull);
+      expect(await _pending(), 'unknown');
+    });
+
+    test('negative control: with replaceUnreadable a failed read still writes', () async {
+      keychain.readError = _osStatus(-25308);
+
+      await store.save(_cloud, replaceUnreadable: true);
+
       expect(keychain.items[_key], _json(_cloud));
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('an unknown marker never overwrites an unreadable item on load', () async {
+      keychain.items[_key] = future;
+      keychain.readError = _osStatus(-25308);
+      await store.save(_cloud);
+      keychain.readError = null;
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+      expect(keychain.items[_key], future);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(await _pending(), 'unknown');
+      expect(await _prefsBlob(), isNotNull);
     });
   });
 
