@@ -8,6 +8,7 @@ import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/utils/formatters.dart';
 import 'package:pleya/widgets/tv/tv_discovery_rail.dart';
 import 'package:pleya/widgets/tv/tv_section_header.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
@@ -149,7 +150,8 @@ void main() {
       final context = discoveryContextFor(episode);
       expect(context.title, 'Harbourlight', reason: 'a resumed episode is announced under its show');
       expect(context.context, contains('S2 E4'));
-      expect(context.context, contains(t.discover.minutesLeft(minutes: 18)));
+      // DEC-119: the same remaining-time phrase as every Verder kijken card.
+      expect(context.context, contains(formatRemainingTime(48 * 60 * 1000, 30 * 60 * 1000)!));
 
       final film = discoveryContextFor(tvDiscoveryFilmsRow().first);
       expect(film.context, isNot(contains('S')), reason: 'a film has no season to be in');

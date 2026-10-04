@@ -837,6 +837,17 @@
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
     "nextEpisodeStatus": "Next episode",
+    "cwSectionResumeShows": "Resume series",
+    "cwSectionResumeMovies": "Resume films",
+    "cwSectionNextEpisodes": "Next episodes",
+    "cwSectionStale": "Started earlier",
+    "watchedAgo": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "days": "${count} days ago",
+      "weeks": "${count} weeks ago",
+      "months": "${count} months ago"
+    },
     "moreLikeThis": "More Like This",
     "becauseYouWatched": "Because you watched ${title}",
     "latestShows": "Recently Added Shows",

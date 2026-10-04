@@ -82,6 +82,10 @@ class MobileMediaRail extends StatelessWidget {
   final int railIndex;
   final MobileCardShape shape;
   final VoidCallback? onViewAll;
+
+  /// Beside the title (`Verder kijken · 23`): the real size of the list behind
+  /// the rail, after merging, deduplicating and hiding. Null leaves it off.
+  final int? count;
   final void Function(UnifiedMediaGroup group)? onCardTap;
 
   /// Continue Watching's rows offer "Remove from Continue Watching" in the
@@ -106,6 +110,7 @@ class MobileMediaRail extends StatelessWidget {
     required this.railIndex,
     this.shape = MobileCardShape.portrait,
     this.onViewAll,
+    this.count,
     this.onCardTap,
     this.isContinueWatching = false,
     this.automationId = AutomationIds.homeRail,
@@ -133,11 +138,39 @@ class MobileMediaRail extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(hub.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: mobileRailTitleStyle),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          hub.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: mobileRailTitleStyle,
+                        ),
+                      ),
+                      if (count != null)
+                        Text(
+                          ' · $count',
+                          style: mobileRailTitleStyle.copyWith(
+                            color: tokens(context).textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 if (onViewAll != null)
                   TextButton(
                     onPressed: onViewAll,
+                    // Compact: the title row is budgeted at one line of
+                    // [mobileRailTitleStyle] (`mobileRailHeight`), and a
+                    // default 48pt button would push the rail below the fold.
+                    style: TextButton.styleFrom(
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
                     child: Text(
                       t.common.viewAll,
                       style: TextStyle(color: tokens(context).textMuted, fontWeight: FontWeight.w600),

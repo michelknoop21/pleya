@@ -328,13 +328,27 @@ void main() {
     expect(provider.isRefreshing, isFalse);
   });
 
-  test('limits the preview row and probes for more', () async {
+  test('keeps the whole list, shows the first 20 and counts all of it', () async {
     aggregation.onDeckResult = () => [for (var i = 0; i < 30; i++) _item('item-$i')];
 
     await provider.load();
 
     expect(provider.onDeck, hasLength(DiscoverProvider.continueWatchingPreviewLimit));
     expect(provider.hasMoreContinueWatching, isTrue);
+    expect(provider.continueWatchingCount, 30);
+    expect(provider.allContinueWatching, hasLength(30));
+    expect(await provider.loadAllContinueWatching(), hasLength(30), reason: 'from memory, no second fetch');
+  });
+
+  test('a removal past the row still reaches the provider (DEC-119 fase 2)', () async {
+    aggregation.onDeckResult = () => [for (var i = 0; i < 25; i++) _item('item-$i')];
+    await provider.load();
+
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('item-23'));
+    await pumpEventQueue();
+
+    expect(provider.allContinueWatching.map((i) => i.id), isNot(contains('item-23')));
+    expect(provider.continueWatchingCount, 24);
   });
 
   test('filters playback-progress hubs that duplicate the continue watching row', () async {

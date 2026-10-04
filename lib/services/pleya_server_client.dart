@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../connection/connection.dart';
+import '../utils/continue_watching_merge.dart';
 import '../exceptions/media_server_exceptions.dart';
 import '../media/download_resolution.dart';
 import '../media/ids.dart';

@@ -21,20 +21,28 @@ import 'formatters.dart';
 
 enum ContinueWatchingState { inProgress, nextEpisode, unstarted }
 
-/// Derived from progress for now. Phase 2 (the sectioned overview) adds the
-/// explicit resume/next-up origin from each backend; until then an episode in
-/// the row without active progress is, by construction of every fetcher, the
-/// next episode of its series.
+/// The backend's own word where it gave one ([MediaItem.continueWatchingKind]);
+/// otherwise progress decides, and an episode in the row without progress is,
+/// by construction of every fetcher, the next episode of its series.
 ContinueWatchingState continueWatchingStateFor(MediaItem item) {
-  if (item.hasActiveProgress) return ContinueWatchingState.inProgress;
-  return item.isEpisode ? ContinueWatchingState.nextEpisode : ContinueWatchingState.unstarted;
+  switch (item.continueWatchingKind) {
+    case ContinueWatchingKind.nextUp:
+      return ContinueWatchingState.nextEpisode;
+    case ContinueWatchingKind.resume:
+      return ContinueWatchingState.inProgress;
+    case null:
+      if (item.hasActiveProgress) return ContinueWatchingState.inProgress;
+      return item.isEpisode ? ContinueWatchingState.nextEpisode : ContinueWatchingState.unstarted;
+  }
 }
 
 /// The status line itself. [showEpisodeNumber] follows the
 /// `showEpisodeNumberOnCards` setting: off, an episode keeps only its season.
-String continueWatchingStatusLine(MediaItem item, {bool showEpisodeNumber = true}) {
+/// [includePlace] false drops `S3 E4` altogether, for a row that already
+/// states the place on its own line (the iPhone overview).
+String continueWatchingStatusLine(MediaItem item, {bool showEpisodeNumber = true, bool includePlace = true}) {
   final parts = <String>[];
-  if (item.isEpisode && item.parentIndex != null) {
+  if (includePlace && item.isEpisode && item.parentIndex != null) {
     parts.add(
       showEpisodeNumber && item.index != null
           ? t.unifiedCatalog.discovery.episodeLabel(season: item.parentIndex!, episode: item.index!)

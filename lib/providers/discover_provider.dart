@@ -38,11 +38,10 @@ enum DiscoverLoadState { initial, loading, loaded, error }
 /// resets it by construction. The screen is a consumer: it renders this
 /// state and keeps only UI concerns (hero carousel, focus, spotlight).
 class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
-  /// Preview row caps at 20; one extra item is fetched as a probe so
-  /// [hasMoreContinueWatching] can show the "more" affordance without a
-  /// second request.
+  /// The row shows the first 20 of [allContinueWatching]; the whole list is
+  /// fetched so the title can count it and the overview reads it from memory
+  /// (DEC-119 fase 2).
   static const int continueWatchingPreviewLimit = 20;
-  static const int _continueWatchingProbeLimit = continueWatchingPreviewLimit + 1;
 
   DiscoverProvider(
     this._multiServer,
@@ -111,6 +110,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// Like [_seedHubs], held outside [_hubs] and recomputed only on full loads.
   List<MediaHub> _personalizedHubs = [];
   bool _hasMoreContinueWatching = false;
+  List<MediaItem> _allOnDeck = const [];
+
+  /// False while [_allOnDeck] came from a snapshot (which only ever held the
+  /// row), so the overview still fetches instead of trusting a 20-item "all".
+  bool _allOnDeckFromNetwork = false;
   DiscoverLoadState _onDeckState = DiscoverLoadState.initial;
   DiscoverLoadState _hubsState = DiscoverLoadState.initial;
   String? _errorMessage;
@@ -141,6 +145,12 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<MediaItem>? _pendingSystemShelfItems;
 
   List<MediaItem> get onDeck => _onDeck;
+
+  /// Everything Verder kijken holds after merging, deduplicating and hiding;
+  /// [onDeck] is its first [continueWatchingPreviewLimit]. The row title shows
+  /// [continueWatchingCount] and the overview reads this list (DEC-119 fase 2).
+  List<MediaItem> get allContinueWatching => _allOnDeck;
+  int get continueWatchingCount => _allOnDeck.length;
   List<MediaItem> get latestMovies => _latestMovies;
   List<MediaHub> get hubs => (_seedHubs.isEmpty && _personalizedHubs.isEmpty && _latestShowsHub == null)
       ? _hubs
@@ -273,10 +283,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
       // On-deck and hubs fetch in parallel; on-deck is published as soon as
       // it lands so the hero renders while hubs are still loading.
-      final onDeckFuture = aggregation.getOnDeckFromAllServers(
-        limit: _continueWatchingProbeLimit,
-        hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
-      );
+      // The whole list, not a probe: the row title carries the real count after
+      // merging, deduplicating and hiding (DEC-119 fase 2), and the overview
+      // opens from memory instead of refetching.
+      final onDeckFuture = aggregation.getOnDeckFromAllServers(hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys);
       final hubsFuture = aggregation.getHubsFromAllServers(
         hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
         useGlobalHubs: useGlobalHubs,
@@ -297,6 +307,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final fetchedOnDeck = await onDeckFuture;
       if (isDisposed) return;
       _applyOnDeck(fetchedOnDeck.items);
+      _allOnDeckFromNetwork = true;
       _onDeckState = DiscoverLoadState.loaded;
       _loadedOnDeckServerIds = fetchedOnDeck.succeededServerIds;
       _loadGeneration++;
@@ -358,6 +369,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     if (snapshot.onDeck.isEmpty && snapshot.hubs.isEmpty) return;
     appLogger.d('DiscoverProvider: showing snapshot (${snapshot.onDeck.length} on-deck, ${snapshot.hubs.length} hubs)');
     _applyOnDeck(snapshot.onDeck);
+    _allOnDeckFromNetwork = false;
     _hubs = snapshot.hubs;
     _latestMovies = snapshot.latestMovies;
     _onDeckState = DiscoverLoadState.loaded;
@@ -389,7 +401,6 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final Future<OnDeckAggregationResult?> onDeckFuture = onDeckIds.isEmpty
           ? Future<OnDeckAggregationResult?>.value()
           : aggregation.getOnDeckFromAllServers(
-              limit: _continueWatchingProbeLimit,
               hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
               serverIds: onDeckIds,
             );
@@ -407,17 +418,9 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       if (isDisposed) return;
 
       if (freshOnDeck != null) {
-        final hadMore = _hasMoreContinueWatching;
-        final mergedOnDeck = await aggregation.mergeContinueWatching(
-          _onDeck,
-          freshOnDeck.items,
-          limit: _continueWatchingProbeLimit,
-        );
+        final mergedOnDeck = await aggregation.mergeContinueWatching(_allOnDeck, freshOnDeck.items);
         if (isDisposed) return;
         _applyOnDeck(mergedOnDeck);
-        // The stored list is already trimmed, so the merge can't see old items
-        // past the cap — a previously-true "more" affordance stays true.
-        if (hadMore) _hasMoreContinueWatching = true;
         _loadedOnDeckServerIds = {..._loadedOnDeckServerIds, ...freshOnDeck.succeededServerIds};
         // No _loadGeneration bump: a delta behaves like the background Continue
         // Watching refresh (the hero clamps instead of resetting).
@@ -624,11 +627,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     try {
       if (!_multiServer.hasConnectedServers) return;
       final fetched = await _multiServer.aggregationService.getOnDeckFromAllServers(
-        limit: _continueWatchingProbeLimit,
         hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
       );
       if (isDisposed) return;
       _applyOnDeck(fetched.items);
+      _allOnDeckFromNetwork = true;
       _loadedOnDeckServerIds = fetched.succeededServerIds;
       safeNotifyListeners();
       unawaited(_syncSystemShelf(_onDeck));
@@ -639,6 +642,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
   /// The full unlimited Continue Watching list for the hub's load-more path.
   Future<List<MediaItem>> loadAllContinueWatching() async {
+    if (_onDeckState == DiscoverLoadState.loaded && _allOnDeckFromNetwork) return _allOnDeck;
     if (!_multiServer.hasConnectedServers) return const [];
     await _hiddenLibraries.ensureInitialized();
     if (isDisposed) return const [];
@@ -678,7 +682,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   String? _serverIdForItem(String itemId) {
-    for (final item in _onDeck) {
+    for (final item in _allOnDeck) {
       if (item.id == itemId) return item.serverId;
     }
     for (final hub in _hubs) {
@@ -692,9 +696,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   void _updateItemInLists(String itemId, MediaItem updatedItem, {String? globalKey}) {
     bool matches(MediaItem item) => globalKey == null ? item.id == itemId : item.globalKey == globalKey;
 
-    final onDeckIndex = _onDeck.indexWhere(matches);
+    final onDeckIndex = _allOnDeck.indexWhere(matches);
     if (onDeckIndex != -1) {
-      _onDeck = List.of(_onDeck)..[onDeckIndex] = updatedItem;
+      // The whole list, so the overview and the row agree after a player return.
+      _setOnDeck(List.of(_allOnDeck)..[onDeckIndex] = updatedItem);
     }
 
     for (var i = 0; i < _hubs.length; i++) {
@@ -719,8 +724,13 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         fetched = fetched.where((item) => !_suppressedOnDeckKeys.contains(item.globalKey)).toList();
       }
     }
-    final hasMore = fetched.length > continueWatchingPreviewLimit;
-    _onDeck = hasMore ? fetched.take(continueWatchingPreviewLimit).toList() : fetched;
+    _setOnDeck(fetched);
+  }
+
+  void _setOnDeck(List<MediaItem> all) {
+    _allOnDeck = all;
+    final hasMore = all.length > continueWatchingPreviewLimit;
+    _onDeck = hasMore ? all.take(continueWatchingPreviewLimit).toList() : all;
     _hasMoreContinueWatching = hasMore;
   }
 
@@ -730,7 +740,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// flip changes what Continue Watching should show for its series).
   Set<String>? get _watchedIds {
     final keys = <String>{};
-    for (final item in _onDeck) {
+    for (final item in _allOnDeck) {
       keys.add(item.id);
       if (item.parentId != null) keys.add(item.parentId!);
       if (item.grandparentId != null) keys.add(item.grandparentId!);
@@ -742,7 +752,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     // Suppressed movies are no longer in _onDeck but must keep receiving
     // events: a rewatch (unwatched/progress) has to lift the suppression.
     final keys = <String>{..._suppressedOnDeckKeys};
-    for (final item in _onDeck) {
+    for (final item in _allOnDeck) {
       final serverId = item.serverId;
       if (serverId == null) return null;
 
@@ -783,9 +793,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   void _removeFromOnDeck(String globalKey) {
-    final remaining = _onDeck.where((item) => item.globalKey != globalKey).toList();
-    if (remaining.length != _onDeck.length) {
-      _onDeck = remaining;
+    final remaining = _allOnDeck.where((item) => item.globalKey != globalKey).toList();
+    if (remaining.length != _allOnDeck.length) {
+      // Not through [_applyOnDeck]: its self-cleaning would drop the very
+      // suppression this removal just added.
+      _setOnDeck(remaining);
       safeNotifyListeners();
     }
   }

@@ -39,6 +39,10 @@ PlexMediaItem _$PlexMediaItemFromJson(Map<String, dynamic> json) =>
       viewOffsetMs: flexibleInt(json['viewOffsetMs']),
       viewCount: flexibleInt(json['viewCount']),
       lastViewedAt: flexibleInt(json['lastViewedAt']),
+      continueWatchingKind: $enumDecodeNullable(
+        _$ContinueWatchingKindEnumMap,
+        json['continueWatchingKind'],
+      ),
       leafCount: flexibleInt(json['leafCount']),
       viewedLeafCount: flexibleInt(json['viewedLeafCount']),
       childCount: flexibleInt(json['childCount']),
@@ -109,6 +113,8 @@ Map<String, dynamic> _$PlexMediaItemToJson(PlexMediaItem instance) =>
       'viewOffsetMs': ?instance.viewOffsetMs,
       'viewCount': ?instance.viewCount,
       'lastViewedAt': ?instance.lastViewedAt,
+      'continueWatchingKind':
+          ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
       'leafCount': ?instance.leafCount,
       'viewedLeafCount': ?instance.viewedLeafCount,
       'childCount': ?instance.childCount,
@@ -146,6 +152,11 @@ Map<String, dynamic> _$PlexMediaItemToJson(PlexMediaItem instance) =>
       'raw': ?instance.raw,
     };
 
+const _$ContinueWatchingKindEnumMap = {
+  ContinueWatchingKind.resume: 'resume',
+  ContinueWatchingKind.nextUp: 'nextUp',
+};
+
 JellyfinMediaItem _$JellyfinMediaItemFromJson(Map<String, dynamic> json) =>
     JellyfinMediaItem(
       id: readStringField(json, 'id') as String? ?? '',
@@ -178,6 +189,10 @@ JellyfinMediaItem _$JellyfinMediaItemFromJson(Map<String, dynamic> json) =>
       viewOffsetMs: flexibleInt(json['viewOffsetMs']),
       viewCount: flexibleInt(json['viewCount']),
       lastViewedAt: flexibleInt(json['lastViewedAt']),
+      continueWatchingKind: $enumDecodeNullable(
+        _$ContinueWatchingKindEnumMap,
+        json['continueWatchingKind'],
+      ),
       leafCount: flexibleInt(json['leafCount']),
       viewedLeafCount: flexibleInt(json['viewedLeafCount']),
       childCount: flexibleInt(json['childCount']),
@@ -238,6 +253,8 @@ Map<String, dynamic> _$JellyfinMediaItemToJson(JellyfinMediaItem instance) =>
       'viewOffsetMs': ?instance.viewOffsetMs,
       'viewCount': ?instance.viewCount,
       'lastViewedAt': ?instance.lastViewedAt,
+      'continueWatchingKind':
+          ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
       'leafCount': ?instance.leafCount,
       'viewedLeafCount': ?instance.viewedLeafCount,
       'childCount': ?instance.childCount,
@@ -298,6 +315,10 @@ LocalMediaItem _$LocalMediaItemFromJson(Map<String, dynamic> json) =>
       viewOffsetMs: flexibleInt(json['viewOffsetMs']),
       viewCount: flexibleInt(json['viewCount']),
       lastViewedAt: flexibleInt(json['lastViewedAt']),
+      continueWatchingKind: $enumDecodeNullable(
+        _$ContinueWatchingKindEnumMap,
+        json['continueWatchingKind'],
+      ),
       leafCount: flexibleInt(json['leafCount']),
       viewedLeafCount: flexibleInt(json['viewedLeafCount']),
       childCount: flexibleInt(json['childCount']),
@@ -357,6 +378,8 @@ Map<String, dynamic> _$LocalMediaItemToJson(LocalMediaItem instance) =>
       'viewOffsetMs': ?instance.viewOffsetMs,
       'viewCount': ?instance.viewCount,
       'lastViewedAt': ?instance.lastViewedAt,
+      'continueWatchingKind':
+          ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
       'leafCount': ?instance.leafCount,
       'viewedLeafCount': ?instance.viewedLeafCount,
       'childCount': ?instance.childCount,
@@ -417,6 +440,10 @@ PleyaServerMediaItem _$PleyaServerMediaItemFromJson(
   viewOffsetMs: flexibleInt(json['viewOffsetMs']),
   viewCount: flexibleInt(json['viewCount']),
   lastViewedAt: flexibleInt(json['lastViewedAt']),
+  continueWatchingKind: $enumDecodeNullable(
+    _$ContinueWatchingKindEnumMap,
+    json['continueWatchingKind'],
+  ),
   leafCount: flexibleInt(json['leafCount']),
   viewedLeafCount: flexibleInt(json['viewedLeafCount']),
   childCount: flexibleInt(json['childCount']),
@@ -477,6 +504,8 @@ Map<String, dynamic> _$PleyaServerMediaItemToJson(
   'viewOffsetMs': ?instance.viewOffsetMs,
   'viewCount': ?instance.viewCount,
   'lastViewedAt': ?instance.lastViewedAt,
+  'continueWatchingKind':
+      ?_$ContinueWatchingKindEnumMap[instance.continueWatchingKind],
   'leafCount': ?instance.leafCount,
   'viewedLeafCount': ?instance.viewedLeafCount,
   'childCount': ?instance.childCount,

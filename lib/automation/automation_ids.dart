@@ -451,6 +451,7 @@ class AutomationIds {
   /// a rail row it is `<surface>.<index>` / `<surface>.<row>`, so the surfaces
   /// never have to share a counter.
   static const String tvCatalogGrid = 'tv.catalog.grid';
+  static const String tvContinueWatchingAll = 'tv.continue_watching_all';
   static const String tvCatalogGridItem = 'tv.catalog.grid.item';
   static const String tvCatalogRail = 'tv.catalog.rail';
   static const String tvCatalogRailRow = 'tv.catalog.rail.row';

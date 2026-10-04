@@ -64,6 +64,7 @@ sealed class MediaItem with _$MediaItem {
     int? viewOffsetMs,
     int? viewCount,
     int? lastViewedAt,
+    ContinueWatchingKind? continueWatchingKind,
     int? leafCount,
     int? viewedLeafCount,
     int? childCount,
@@ -124,6 +125,7 @@ sealed class MediaItem with _$MediaItem {
         viewOffsetMs: viewOffsetMs,
         viewCount: viewCount,
         lastViewedAt: lastViewedAt,
+        continueWatchingKind: continueWatchingKind,
         leafCount: leafCount,
         viewedLeafCount: viewedLeafCount,
         childCount: childCount,
@@ -183,6 +185,7 @@ sealed class MediaItem with _$MediaItem {
         viewOffsetMs: viewOffsetMs,
         viewCount: viewCount,
         lastViewedAt: lastViewedAt,
+        continueWatchingKind: continueWatchingKind,
         leafCount: leafCount,
         viewedLeafCount: viewedLeafCount,
         childCount: childCount,
@@ -240,6 +243,7 @@ sealed class MediaItem with _$MediaItem {
         viewOffsetMs: viewOffsetMs,
         viewCount: viewCount,
         lastViewedAt: lastViewedAt,
+        continueWatchingKind: continueWatchingKind,
         leafCount: leafCount,
         viewedLeafCount: viewedLeafCount,
         childCount: childCount,
@@ -297,6 +301,7 @@ sealed class MediaItem with _$MediaItem {
         viewOffsetMs: viewOffsetMs,
         viewCount: viewCount,
         lastViewedAt: lastViewedAt,
+        continueWatchingKind: continueWatchingKind,
         leafCount: leafCount,
         viewedLeafCount: viewedLeafCount,
         childCount: childCount,
@@ -363,6 +368,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? viewOffsetMs,
     @JsonKey(fromJson: flexibleInt) int? viewCount,
     @JsonKey(fromJson: flexibleInt) int? lastViewedAt,
+    ContinueWatchingKind? continueWatchingKind,
     @JsonKey(fromJson: flexibleInt) int? leafCount,
     @JsonKey(fromJson: flexibleInt) int? viewedLeafCount,
     @JsonKey(fromJson: flexibleInt) int? childCount,
@@ -438,6 +444,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? viewOffsetMs,
     @JsonKey(fromJson: flexibleInt) int? viewCount,
     @JsonKey(fromJson: flexibleInt) int? lastViewedAt,
+    ContinueWatchingKind? continueWatchingKind,
     @JsonKey(fromJson: flexibleInt) int? leafCount,
     @JsonKey(fromJson: flexibleInt) int? viewedLeafCount,
     @JsonKey(fromJson: flexibleInt) int? childCount,
@@ -505,6 +512,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? viewOffsetMs,
     @JsonKey(fromJson: flexibleInt) int? viewCount,
     @JsonKey(fromJson: flexibleInt) int? lastViewedAt,
+    ContinueWatchingKind? continueWatchingKind,
     @JsonKey(fromJson: flexibleInt) int? leafCount,
     @JsonKey(fromJson: flexibleInt) int? viewedLeafCount,
     @JsonKey(fromJson: flexibleInt) int? childCount,
@@ -570,6 +578,7 @@ sealed class MediaItem with _$MediaItem {
     @JsonKey(fromJson: flexibleInt) int? viewOffsetMs,
     @JsonKey(fromJson: flexibleInt) int? viewCount,
     @JsonKey(fromJson: flexibleInt) int? lastViewedAt,
+    ContinueWatchingKind? continueWatchingKind,
     @JsonKey(fromJson: flexibleInt) int? leafCount,
     @JsonKey(fromJson: flexibleInt) int? viewedLeafCount,
     @JsonKey(fromJson: flexibleInt) int? childCount,
@@ -900,6 +909,13 @@ sealed class MediaItem with _$MediaItem {
 const double billboardNarrowAspectRatioThreshold = 1.39;
 
 /// Which source [BillboardArt.path] came from, and thus how it must be rendered.
+/// Why a backend put this item in Continue Watching (DEC-119, fase 2).
+///
+/// [resume] is something begun, [nextUp] the next episode of a series whose
+/// previous one is finished. Null means the source did not say (local folders,
+/// Pleya Share, older snapshots) and the card falls back to progress alone.
+enum ContinueWatchingKind { resume, nextUp }
+
 enum BillboardArtKind {
   /// A 16:9 backdrop, chosen because the container was wide enough for it.
   widescreen,

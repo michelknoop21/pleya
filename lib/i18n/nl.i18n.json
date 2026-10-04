@@ -837,6 +837,17 @@
     "tvShow": "TV Serie",
     "minutesLeft": "${minutes} min over",
     "nextEpisodeStatus": "Volgende aflevering",
+    "cwSectionResumeShows": "Series hervatten",
+    "cwSectionResumeMovies": "Films hervatten",
+    "cwSectionNextEpisodes": "Volgende afleveringen",
+    "cwSectionStale": "Eerder begonnen",
+    "watchedAgo": {
+      "today": "vandaag",
+      "yesterday": "gisteren",
+      "days": "${count} dagen geleden",
+      "weeks": "${count} weken geleden",
+      "months": "${count} maanden geleden"
+    },
     "moreLikeThis": "Meer zoals dit",
     "becauseYouWatched": "Omdat je ${title} gekeken hebt",
     "latestShows": "Recent toegevoegde series",

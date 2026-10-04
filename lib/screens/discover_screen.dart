@@ -1366,10 +1366,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         key: _continueWatchingHubKey,
                         hub: MediaHub(
                           id: 'continue_watching',
-                          title: t.discover.continueWatching,
+                          // The real count beside the title (DEC-119 fase 2);
+                          // the detail screen behind it is sectioned.
+                          title: _discover.continueWatchingCount > 0
+                              ? '${t.discover.continueWatching} · ${_discover.continueWatchingCount}'
+                              : t.discover.continueWatching,
                           type: 'mixed',
                           identifier: '_continue_watching_',
-                          size: _onDeck.length + (_hasMoreContinueWatching ? 1 : 0),
+                          size: _discover.continueWatchingCount,
                           more: _hasMoreContinueWatching,
                           items: _onDeck,
                         ),

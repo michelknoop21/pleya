@@ -177,9 +177,14 @@ class TvDiscoveryRail extends StatefulWidget {
     this.precache,
     this.viewAll,
     this.isContinueWatching = false,
+    this.count,
   });
 
   final String title;
+
+  /// Shown beside the title (`Verder kijken · 23`): the real size of the list
+  /// behind the row, not of the row itself.
+  final int? count;
 
   /// Verder kijken is the one rail whose episodes without progress are the
   /// next episode of their series; the focus line names that state.
@@ -574,6 +579,7 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
               padding: EdgeInsets.symmetric(horizontal: TvDiscoveryLayout.pageInset * scale),
               child: TvSectionHeader(
                 title: widget.title,
+                count: widget.count,
                 isPartial: widget.isPartial,
                 partialLabel: t.unifiedCatalog.discovery.partial,
               ),

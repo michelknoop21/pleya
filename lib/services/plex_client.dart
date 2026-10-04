@@ -3894,8 +3894,17 @@ class PlexClient
 
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
-    final items = await _getContinueWatching(count: count);
-    return items.map((m) => PlexMappers.mediaItem(m)).toList();
+    // Null means the whole list; without `count` Plex answers with its own
+    // small hub default, so ask explicitly for more than any row ever holds.
+    final items = await _getContinueWatching(count: count ?? 200);
+    // Plex's one hub mixes both: an entry with an offset is something begun,
+    // one without is the next episode the server picked (DEC-119).
+    return [
+      for (final item in items.map(PlexMappers.mediaItem))
+        item.copyWith(
+          continueWatchingKind: item.hasActiveProgress ? ContinueWatchingKind.resume : ContinueWatchingKind.nextUp,
+        ),
+    ];
   }
 
   /// `/library/all` sorted by `lastViewedAt` is user-scoped per token, so

@@ -2449,6 +2449,20 @@ class TranslationsDiscoverEn {
 	/// en: 'Next episode'
 	String get nextEpisodeStatus => 'Next episode';
 
+	/// en: 'Resume series'
+	String get cwSectionResumeShows => 'Resume series';
+
+	/// en: 'Resume films'
+	String get cwSectionResumeMovies => 'Resume films';
+
+	/// en: 'Next episodes'
+	String get cwSectionNextEpisodes => 'Next episodes';
+
+	/// en: 'Started earlier'
+	String get cwSectionStale => 'Started earlier';
+
+	late final TranslationsDiscoverWatchedAgoEn watchedAgo = TranslationsDiscoverWatchedAgoEn.internal(_root);
+
 	/// en: 'More Like This'
 	String get moreLikeThis => 'More Like This';
 
@@ -6103,6 +6117,30 @@ class TranslationsVideoControlsPipErrorsEn {
 	String get unknown => 'An error occurred';
 }
 
+// Path: discover.watchedAgo
+class TranslationsDiscoverWatchedAgoEn {
+	TranslationsDiscoverWatchedAgoEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'today'
+	String get today => 'today';
+
+	/// en: 'yesterday'
+	String get yesterday => 'yesterday';
+
+	/// en: '${count} days ago'
+	String days({required Object count}) => '${count} days ago';
+
+	/// en: '${count} weeks ago'
+	String weeks({required Object count}) => '${count} weeks ago';
+
+	/// en: '${count} months ago'
+	String months({required Object count}) => '${count} months ago';
+}
+
 // Path: libraries.tabs
 class TranslationsLibrariesTabsEn {
 	TranslationsLibrariesTabsEn.internal(this._root);
@@ -7866,6 +7904,15 @@ extension on Translations {
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
 			'discover.nextEpisodeStatus' => 'Next episode',
+			'discover.cwSectionResumeShows' => 'Resume series',
+			'discover.cwSectionResumeMovies' => 'Resume films',
+			'discover.cwSectionNextEpisodes' => 'Next episodes',
+			'discover.cwSectionStale' => 'Started earlier',
+			'discover.watchedAgo.today' => 'today',
+			'discover.watchedAgo.yesterday' => 'yesterday',
+			'discover.watchedAgo.days' => ({required Object count}) => '${count} days ago',
+			'discover.watchedAgo.weeks' => ({required Object count}) => '${count} weeks ago',
+			'discover.watchedAgo.months' => ({required Object count}) => '${count} months ago',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
 			'discover.latestShows' => 'Recently Added Shows',
@@ -8096,6 +8143,8 @@ extension on Translations {
 			'liveTv.tomorrow' => 'Tomorrow',
 			'liveTv.midnight' => 'Midnight',
 			'liveTv.overnight' => 'Overnight',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.morning' => 'Morning',
 			'liveTv.daytime' => 'Daytime',
 			'liveTv.evening' => 'Evening',
@@ -8105,8 +8154,6 @@ extension on Translations {
 			'liveTv.favorites' => 'Favorites',
 			'liveTv.reorderFavorites' => 'Reorder Favorites',
 			'liveTv.favoritesSaveFailed' => 'Could not save your favorite channels',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.joinSession' => 'Join Session in Progress',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Watch from start (${minutes} min ago)',
 			'liveTv.watchLive' => 'Watch Live',
@@ -8610,6 +8657,8 @@ extension on Translations {
 			'seerr.password' => 'Password',
 			'seerr.apiKey' => 'API key',
 			'seerr.apiKeyHint' => 'From Settings → General on your server',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',
 			'seerr.setupOnDesktopNote' => 'Tip: this is easier to set up on your phone or computer.',
 			'seerr.testConnection' => 'Test connection',
@@ -8619,8 +8668,6 @@ extension on Translations {
 			'seerr.disconnectConfirmBody' => 'Pleya will stop sending requests. You can reconnect any time.',
 			'seerr.connectedAs' => ({required Object name}) => 'Signed in as ${name}',
 			'seerr.serverVersion' => ({required Object version}) => 'Server version ${version}',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.permissionAdmin' => 'Administrator',
 			'seerr.permissionManage' => 'Can approve requests',
 			'seerr.permissionRequest' => 'Can request',

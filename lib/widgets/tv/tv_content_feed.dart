@@ -63,6 +63,7 @@ import '../../providers/tv_home_projection_provider.dart';
 import '../../providers/unified_catalogs.dart';
 import '../../screens/tv/tv_discovery_activation_mixin.dart';
 import '../../screens/tv/tv_root_shell.dart' show TvShellSurface;
+import '../../screens/tv/tv_continue_watching_screen.dart';
 import '../../screens/tv/tv_unified_catalog_screen.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
@@ -110,6 +111,7 @@ class TvContentFeedState extends State<TvContentFeed>
   /// re-projection that reorders rows must not hand a row's focus nodes and
   /// scroll position to a different row.
   final _rowStack = TvRailStack();
+  final _continueWatchingAllKey = GlobalKey<TvContinueWatchingScreenState>();
 
   /// Hoofdstuk 7.6/19 restoration, by **group id** rather than by index. A row
   /// that gained a source, lost one, or came back shorter still returns the
@@ -350,6 +352,19 @@ class TvContentFeedState extends State<TvContentFeed>
   /// group, because it is a fact about *where the card is*: the same title can
   /// sit in Verder kijken and in a recommendation row on one screen, and
   /// "Verwijder uit Verder kijken" only means something on the first.
+  /// The sectioned overview behind Verder kijken (mockup 38 D, DEC-119 fase 2),
+  /// as its own content route under the shell like a custom row's catalog.
+  Future<void> _openContinueWatchingAll() {
+    Widget builder(_) => TvContinueWatchingScreen(key: _continueWatchingAllKey);
+    final nested = openTvContentRoute(
+      id: 'tvContinueWatchingAll',
+      builder: builder,
+      screenKey: _continueWatchingAllKey,
+    );
+    if (nested != null) return nested.then((_) {});
+    return Navigator.of(context).push(MaterialPageRoute(builder: builder));
+  }
+
   Future<void> _openContextMenu(UnifiedMediaGroup group, {required bool isInContinueWatching}) =>
       openDiscoveryContextMenu(
         group,
@@ -617,6 +632,8 @@ class TvContentFeedState extends State<TvContentFeed>
                             child: TvContentRow(
                               hub: rows[i],
                               isContinueWatching: rows[i].hubId == continueWatchingHubId,
+                              continueWatchingCount: projection.continueWatchingCount,
+                              onViewAllContinueWatching: _openContinueWatchingAll,
                               railKey: _rowStack.keyFor(rows[i].hubId),
                               clientFor: _clientFor,
                               initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],

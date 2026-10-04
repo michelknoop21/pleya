@@ -1023,6 +1023,11 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
 	@override String get nextEpisodeStatus => 'Volgende aflevering';
+	@override String get cwSectionResumeShows => 'Series hervatten';
+	@override String get cwSectionResumeMovies => 'Films hervatten';
+	@override String get cwSectionNextEpisodes => 'Volgende afleveringen';
+	@override String get cwSectionStale => 'Eerder begonnen';
+	@override late final _TranslationsDiscoverWatchedAgoNl watchedAgo = _TranslationsDiscoverWatchedAgoNl._(_root);
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
 	@override String get latestShows => 'Recent toegevoegde series';
@@ -2524,6 +2529,20 @@ class _TranslationsVideoControlsPipErrorsNl extends TranslationsVideoControlsPip
 	@override String get unknown => 'Er is een fout opgetreden';
 }
 
+// Path: discover.watchedAgo
+class _TranslationsDiscoverWatchedAgoNl extends TranslationsDiscoverWatchedAgoEn {
+	_TranslationsDiscoverWatchedAgoNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get today => 'vandaag';
+	@override String get yesterday => 'gisteren';
+	@override String days({required Object count}) => '${count} dagen geleden';
+	@override String weeks({required Object count}) => '${count} weken geleden';
+	@override String months({required Object count}) => '${count} maanden geleden';
+}
+
 // Path: libraries.tabs
 class _TranslationsLibrariesTabsNl extends TranslationsLibrariesTabsEn {
 	_TranslationsLibrariesTabsNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3810,6 +3829,15 @@ extension on TranslationsNl {
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
 			'discover.nextEpisodeStatus' => 'Volgende aflevering',
+			'discover.cwSectionResumeShows' => 'Series hervatten',
+			'discover.cwSectionResumeMovies' => 'Films hervatten',
+			'discover.cwSectionNextEpisodes' => 'Volgende afleveringen',
+			'discover.cwSectionStale' => 'Eerder begonnen',
+			'discover.watchedAgo.today' => 'vandaag',
+			'discover.watchedAgo.yesterday' => 'gisteren',
+			'discover.watchedAgo.days' => ({required Object count}) => '${count} dagen geleden',
+			'discover.watchedAgo.weeks' => ({required Object count}) => '${count} weken geleden',
+			'discover.watchedAgo.months' => ({required Object count}) => '${count} maanden geleden',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
 			'discover.latestShows' => 'Recent toegevoegde series',
@@ -4040,6 +4068,8 @@ extension on TranslationsNl {
 			'liveTv.tomorrow' => 'Morgen',
 			'liveTv.midnight' => 'Middernacht',
 			'liveTv.overnight' => 'Nacht',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.morning' => 'Ochtend',
 			'liveTv.daytime' => 'Overdag',
 			'liveTv.evening' => 'Avond',
@@ -4049,8 +4079,6 @@ extension on TranslationsNl {
 			'liveTv.favorites' => 'Favorieten',
 			'liveTv.reorderFavorites' => 'Favorieten herordenen',
 			'liveTv.favoritesSaveFailed' => 'Kon je favoriete kanalen niet opslaan',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.joinSession' => 'Deelnemen aan lopende sessie',
 			'liveTv.watchFromStart' => ({required Object minutes}) => 'Kijk vanaf het begin (${minutes} min geleden)',
 			'liveTv.watchLive' => 'Live kijken',
@@ -4554,6 +4582,8 @@ extension on TranslationsNl {
 			'trackers.notConnected' => 'Niet verbonden',
 			'trackers.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trackers.scrobble' => 'Voortgang automatisch volgen',
+			_ => null,
+		} ?? switch (path) {
 			'trackers.scrobbleDescription' => 'Werk je lijst bij wanneer je een aflevering of film afrondt.',
 			'trackers.disconnectConfirm' => ({required Object service}) => '${service} loskoppelen?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.',
@@ -4563,8 +4593,6 @@ extension on TranslationsNl {
 			'trackers.services.simkl' => 'Simkl',
 			'trackers.deviceCode.title' => ({required Object service}) => 'Pleya activeren op ${service}',
 			'trackers.deviceCode.body' => ({required Object url}) => 'Ga naar ${url} en voer deze code in:',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.deviceCode.openToActivate' => ({required Object service}) => 'Open ${service} om te activeren',
 			'trackers.deviceCode.waitingForAuthorization' => 'Wachten op autorisatie…',
 			'trackers.deviceCode.codeCopied' => 'Code gekopieerd',

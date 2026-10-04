@@ -66,6 +66,8 @@ class TvContentRow extends StatelessWidget {
     this.viewAllTarget,
     this.onViewAll,
     this.isContinueWatching = false,
+    this.continueWatchingCount,
+    this.onViewAllContinueWatching,
   });
 
   /// A projected Home row: Continue Watching, or one of
@@ -121,6 +123,11 @@ class TvContentRow extends StatelessWidget {
   /// an episode without progress as the next one (mockup 38 C).
   final bool isContinueWatching;
 
+  /// For the Verder kijken row only: the full count beside the title and the
+  /// "Alle N" tile that opens the sectioned overview (DEC-119 fase 2).
+  final int? continueWatchingCount;
+  final VoidCallback? onViewAllContinueWatching;
+
   static String _destinationLabel(MediaKind kind) =>
       kind == MediaKind.movie ? t.unifiedCatalog.discovery.allMovies : t.unifiedCatalog.discovery.allSeries;
 
@@ -142,13 +149,22 @@ class TvContentRow extends StatelessWidget {
       onNavigateDown: onNavigateDown,
       automationRailIndex: automationRailIndex,
       tileScrollAlignment: tileScrollAlignment,
-      viewAll: target == null
-          ? null
-          : TvDiscoveryViewAllTile(
+      count: isContinueWatching ? continueWatchingCount : null,
+      viewAll: target != null
+          ? TvDiscoveryViewAllTile(
               count: target.count,
               destinationLabel: _destinationLabel(target.kind),
               onSelect: () => onViewAll?.call(target),
-            ),
+            )
+          : (isContinueWatching &&
+                onViewAllContinueWatching != null &&
+                (continueWatchingCount ?? 0) > hub.groups.length)
+          ? TvDiscoveryViewAllTile(
+              count: continueWatchingCount!,
+              destinationLabel: t.discover.continueWatching,
+              onSelect: onViewAllContinueWatching!,
+            )
+          : null,
     );
   }
 }

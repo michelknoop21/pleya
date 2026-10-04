@@ -2885,3 +2885,34 @@ desktopkaarten. De tvOS-goldens zelf zijn Linux-only en regenereren via `goldens
 falen ze op HEAD al identiek (6 van 30 groen), dus die 24 zijn geen regressie van deze wijziging.
 Welke goldens door dit besluit verschuiven: `tv_home_production_*` waar de eerste rij een
 aflevering focust, en `tv_discovery` "series landing, an episode-context item focused".
+
+**Fase 2, 4 oktober 2026: het overzicht en de Alles-route** (mockups 38 D, 23 en 40, goedgekeurd
+met de tekstfix "binnen elke sectie op laatst gekeken"). Verder kijken heeft nu een volledig
+overzicht in vier vaste secties: Series hervatten, Films hervatten, Volgende afleveringen en
+Eerder begonnen. Elk item staat in precies één sectie en een lege sectie verdwijnt
+(`lib/utils/continue_watching_sections.dart`). De indeling leest de herkomst uit de bron, niet
+alleen de voortgang: `MediaItem.continueWatchingKind` (resume of nextUp) wordt gezet door Plex
+(uit de offset), door Jellyfin en Emby, en door Pleya Server, waarvoor de `next_up`-hub nu ook in
+de rij gemerged wordt met dezelfde regel als Jellyfin (`lib/utils/continue_watching_merge.dart`,
+uit de Jellyfin-client gelicht). Eerder begonnen is iets dat begonnen is en langer dan drie maanden
+niet is aangeraakt; die grens is een productregel, geen instelling. Een volgende aflevering is
+nooit oud, ook niet als de serie zelf lang stil lag, en zonder datum is niets oud. Niets wordt
+automatisch verwijderd; de still dimt licht, de tekst niet.
+
+De rijtitel draagt de echte teller na mergen, ontdubbelen en verbergen (`Verder kijken · 23`):
+het aantal groepen van de volledige projectie, hetzelfde getal als het overzicht toont. Daarvoor
+laadt `DiscoverProvider` de hele lijst in plaats van een proef van 21 (Plex en Pleya Server
+krijgen daarvoor expliciet een paginagrootte van 200 mee, want zonder getal antwoorden ze met hun
+eigen kleine standaard), houdt de eerste 20 voor de rij en geeft het overzicht uit het geheugen.
+Een snapshot bevatte alleen de rij en telt dus tot de netwerkronde landt als onvolledig: het
+overzicht haalt dan alsnog op. De projectie draait één keer over de hele lijst en de rij is daar
+de eerste 20 groepen van. Kijkgebeurtenissen (verwijderen, gekeken, hervat) gelden voor de hele
+lijst, niet alleen voor de twintig in de rij; de onafhankelijke review van deze fase vond precies
+die twee gaten en ze zijn met een test afgedekt. De ingang naar het overzicht: op de iPhone
+"Alles weergeven" naast de titel (`MobileContinueWatchingScreen`, lijstrijen met still,
+afleveringstitel, resterende tijd en laatst gekeken), op desktop en iPad de bestaande titel- en
+hover-ingang van de rij naar een gesectioneerd `HubDetailScreen`, op TV de eindtegel "Alle N" naar
+`TvContinueWatchingScreen` met gestapelde banden zoals de zoekweergave, met focusherstel per band
+bij terugkeer. Nog open na deze fase: de focusbare Alles-ingang bij de rijtitel op TV (de
+eindtegel is nu de enige ingang daar) en de 16:9-rustvorm van de TV-kaarten uit 38 A; beide raken
+de focuschoreografie van Home en krijgen een eigen ronde. Verborgen items hoort bij fase 3.
