@@ -45,6 +45,10 @@ class _Keychain {
   /// Replaces what a write stores, to fake an item that comes back different.
   String Function(String value)? writeTamper;
 
+  /// Runs after a read or write took effect, to change the keychain behind
+  /// the store's back.
+  void Function(String method)? after;
+
   void install() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, (call) async {
       final args = (call.arguments as Map).cast<String, Object?>();
@@ -53,7 +57,9 @@ class _Keychain {
       switch (call.method) {
         case 'read':
           if (readError != null) throw readError!;
-          return items[key];
+          final item = items[key];
+          after?.call('read');
+          return item;
         case 'write':
           if (args['value'] == gatedValue) {
             gateReached.complete();
@@ -63,6 +69,7 @@ class _Keychain {
           if (!writeResult) return false;
           final value = args['value'] as String;
           items[key] = writeTamper == null ? value : writeTamper!(value);
+          after?.call('write');
           return true;
         case 'delete':
           if (deleteError != null) throw deleteError!;
@@ -126,7 +133,7 @@ void main() {
 
       expect(keychain.items, isEmpty);
       expect(await _prefsBlob(), isNotNull);
-      expect(await _pending(), 'none');
+      expect(await _pending(), startsWith('none|'));
       expect((await store.load())?.model, 'gpt-oss:120b');
     });
 
@@ -135,7 +142,7 @@ void main() {
       keychain.writeError = _osStatus(-25308);
 
       await store.save(_cloud);
-      expect(await _pending(), _sha(_json(_server)));
+      expect(await _pending(), startsWith('${_sha(_json(_server))}|'));
 
       expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
       expect(await _prefsBlob(), isNotNull);
@@ -178,7 +185,7 @@ void main() {
       keychain.readError = _osStatus(-25308);
       keychain.writeError = _osStatus(-25308);
       await store.save(_cloud);
-      expect(await _pending(), 'unknown');
+      expect(await _pending(), startsWith('unknown|'));
       keychain
         ..readError = null
         ..writeError = null
@@ -212,7 +219,7 @@ void main() {
         ..readError = _osStatus(-25308)
         ..writeError = _osStatus(-25308);
       await store.save(_cloud);
-      expect(await _pending(), _sha(_json(_server)));
+      expect(await _pending(), startsWith('${_sha(_json(_server))}|'));
       keychain
         ..readError = null
         ..writeError = null;
@@ -249,7 +256,7 @@ void main() {
         ..readError = _osStatus(-25308)
         ..writeError = _osStatus(-25308);
       await store.save(_cloud);
-      expect(await _pending(), 'unknown');
+      expect(await _pending(), startsWith('unknown|'));
       keychain
         ..readError = null
         ..writeError = null;
@@ -281,25 +288,21 @@ void main() {
 
       expect(loaded?.apiKey, 'sk-cloud');
       expect(keychain.items[_key], _json(_cloud));
-      expect(keychain.calls, ['read', 'write', 'read']);
+      expect(keychain.calls, ['read', 'read', 'write', 'read']);
       expect(await _prefsBlob(), isNull);
       // The next load reads the keychain alone.
       expect((await store.load())?.model, 'gpt-oss:120b');
     });
 
-    test('negative control: a readback that differs keeps the blob and deletes nothing', () async {
+    test('negative control: a readback that shows another item is overtaken, that item wins', () async {
       await _legacy(_cloud);
       // Another device's sync lands between the write and the readback.
       keychain.writeTamper = (_) => _json(_openRouter);
 
-      expect((await store.load())?.apiKey, 'sk-cloud');
-      expect(await _prefsBlob(), isNotNull);
-      expect(keychain.items[_key], _json(_openRouter));
-      expect(keychain.calls, ['read', 'write', 'read']);
-
-      // The next load resolves normally: the synced config wins.
       expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+      expect(keychain.items[_key], _json(_openRouter));
       expect(await _prefsBlob(), isNull);
+      expect(await _pending(), isNull);
     });
 
     test('negative control: a write the keychain declines keeps the prefs blob', () async {
@@ -308,6 +311,195 @@ void main() {
 
       expect((await store.load())?.apiKey, 'sk-cloud');
       expect(await _prefsBlob(), isNotNull);
+    });
+  });
+
+  group('interrupted and overtaken writes', () {
+    Future<void> mark(String marker) async =>
+        (await BaseSharedPreferencesService.sharedCache()).setString(AssistantProviderStore.pendingKey, marker);
+
+    test('a marker left next to an older blob gives that blob no right to go up', () async {
+      // A save of _openRouter over _server was cut off after its marker: the
+      // blob is still the older _cloud.
+      await _legacy(_cloud);
+      keychain.items[_key] = _json(_server);
+      await mark('${_sha(_json(_server))}|${_sha(_json(_openRouter))}');
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaServer);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(keychain.items[_key], _json(_server));
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('that older blob goes next to an empty keychain too, and while the keychain fails', () async {
+      await _legacy(_cloud);
+      await mark('none|${_sha(_json(_openRouter))}');
+
+      expect(await store.load(), isNull);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(await _prefsBlob(), isNull);
+      expect(await _pending(), isNull);
+
+      await _legacy(_cloud);
+      await mark('none|${_sha(_json(_openRouter))}');
+      keychain.readError = _osStatus(-25308);
+      await expectLater(store.load(), throwsA(isA<AssistantProviderStoreException>()));
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('a marker from before blobs were named gives its blob no right to go up', () async {
+      // The older store wrote the marker of a save over _server and was cut
+      // off: the blob is still the older _cloud.
+      await _legacy(_cloud);
+      keychain.items[_key] = _json(_server);
+      await mark(_sha(_json(_server)));
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaServer);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(keychain.items[_key], _json(_server));
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('negative control: such a marker keeps its blob while the keychain fails', () async {
+      await _legacy(_cloud);
+      await mark(_sha(_json(_server)));
+      keychain.readError = _osStatus(-25308);
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+    });
+
+    test('a pending save never goes up over an item this version cannot read, seen before or not', () async {
+      keychain.items[_key] = '{"kind":"from-a-newer-pleya"}';
+      // This device sees the item, then saves while the keychain read fails:
+      // the marker is that item's fingerprint.
+      await expectLater(store.load(), throwsA(isA<AssistantProviderStoreException>()));
+      keychain.readError = _osStatus(-25308);
+      await store.save(_cloud);
+      expect(await _pending(), startsWith('${_sha(keychain.items[_key]!)}|'));
+      keychain
+        ..readError = null
+        ..calls.clear();
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(keychain.calls, isNot(contains('write')));
+      expect(keychain.items[_key], '{"kind":"from-a-newer-pleya"}');
+      expect(await _prefsBlob(), isNotNull);
+    });
+
+    test('an item that lands after the load read is not overwritten and is what the load answers', () async {
+      await _legacy(_cloud);
+      var reads = 0;
+      keychain.after = (method) {
+        if (method == 'read' && ++reads == 1) keychain.items[_key] = _json(_openRouter);
+      };
+
+      // Not the blob the store just saw superseded.
+      expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(keychain.items[_key], _json(_openRouter));
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('a pending save overtaken by a clear on another device answers unset', () async {
+      keychain.items[_key] = _json(_server);
+      keychain.writeResult = false;
+      await store.save(_cloud);
+      keychain
+        ..writeResult = true
+        ..calls.clear();
+      var reads = 0;
+      keychain.after = (method) {
+        if (method == 'read' && ++reads == 1) keychain.items.clear();
+      };
+
+      expect(await store.load(), isNull);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('a keychain that keeps changing under the migration is a missed read, not unset', () async {
+      await _legacy(_cloud);
+      var reads = 0;
+      // Empty at every load read, an item at every migration read.
+      keychain.after = (method) {
+        if (method != 'read') return;
+        if ((++reads).isOdd) {
+          keychain.items[_key] = '{"kind":"from-a-newer-pleya"}';
+        } else {
+          keychain.items.clear();
+        }
+      };
+
+      await expectLater(store.load(), throwsA(isA<AssistantProviderStoreException>()));
+      expect(keychain.calls, isNot(contains('write')));
+      expect(await _prefsBlob(), isNotNull);
+    });
+
+    test('a retry that saw the item change does not hand back the old blob when the reread fails', () async {
+      await _legacy(_cloud);
+      var reads = 0;
+      keychain.after = (method) {
+        if (method != 'read') return;
+        reads++;
+        if (reads == 1) keychain.items[_key] = _json(_server);
+        if (reads == 2) keychain.readError = _osStatus(-25308);
+      };
+
+      await expectLater(store.load(), throwsA(isA<AssistantProviderStoreException>()));
+      expect(keychain.calls, isNot(contains('write')));
+    });
+
+    test('an old marker over a readable but undecodable item keeps the blob and writes nothing', () async {
+      await _legacy(_cloud);
+      keychain.items[_key] = '{"kind":"from-a-newer-pleya"}';
+      await mark(_sha('{"kind":"from-a-newer-pleya"}'));
+      keychain.calls.clear();
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(keychain.calls, ['read']);
+      expect(keychain.items[_key], '{"kind":"from-a-newer-pleya"}');
+      expect(await _prefsBlob(), isNotNull);
+    });
+
+    test('a migration whose readback fails does not bring back a config another device cleared', () async {
+      await _legacy(_cloud);
+      keychain.after = (method) {
+        if (method == 'write') keychain.readError = _osStatus(-25308);
+      };
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(keychain.items[_key], _json(_cloud));
+      expect(await _prefsBlob(), isNotNull);
+      expect(await _pending(), '${_sha(_json(_cloud))}|${_sha(_json(_cloud))}');
+
+      // Another device clears the synced config.
+      keychain
+        ..after = null
+        ..readError = null
+        ..items.clear()
+        ..calls.clear();
+
+      expect(await store.load(), isNull);
+      expect(keychain.calls, isNot(contains('write')));
+      expect(keychain.items, isEmpty);
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('negative control: with the item still there that migration finishes on the next load', () async {
+      await _legacy(_cloud);
+      keychain.after = (method) {
+        if (method == 'write') keychain.readError = _osStatus(-25308);
+      };
+      await store.load();
+      keychain
+        ..after = null
+        ..readError = null;
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(keychain.items[_key], _json(_cloud));
+      expect(await _prefsBlob(), isNull);
+      expect(await _pending(), isNull);
     });
   });
 
@@ -397,7 +589,7 @@ void main() {
       expect(keychain.calls, ['read']);
       expect(keychain.items[_key], future);
       expect(await _prefsBlob(), isNotNull);
-      expect(await _pending(), 'unknown');
+      expect(await _pending(), startsWith('unknown|'));
     });
 
     test('negative control: with replaceUnreadable a failed read still writes', () async {
@@ -418,7 +610,7 @@ void main() {
       expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
       expect(keychain.items[_key], future);
       expect(keychain.calls, isNot(contains('write')));
-      expect(await _pending(), 'unknown');
+      expect(await _pending(), startsWith('unknown|'));
       expect(await _prefsBlob(), isNotNull);
       // A save without Vervangen is refused, not written over it.
       await expectLater(store.save(_server), throwsA(isA<AssistantProviderUnreadableException>()));

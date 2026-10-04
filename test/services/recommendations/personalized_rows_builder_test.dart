@@ -352,4 +352,28 @@ void main() {
       expect(rows.any((r) => r.id.contains('.actor.')), isFalse);
     });
   });
+
+  test('another server\'s copy of a watched title (same title and year) is not offered', () {
+    MediaItem copy(String server, String id, {int viewCount = 0, int? year = 2021}) => MediaItem.plex(
+      id: id,
+      kind: MediaKind.movie,
+      serverId: server,
+      title: 'The Invite',
+      year: year,
+      viewCount: viewCount,
+    );
+    final pool = [
+      copy('s1', 'a', viewCount: 1),
+      copy('s2', 'b'),
+      copy('s3', 'c', year: 2013),
+      for (var i = 0; i < 4; i++) _movie(id: 'm$i'),
+    ];
+
+    final rows = buildPersonalizedRows(AffinityVector.empty, pool, titles: _titles, nowMs: _nowMs);
+    final ids = rows.expand((r) => r.items).map((i) => i.globalKey).toSet();
+
+    expect(ids, isNot(contains('s2:b')));
+    expect(ids, isNot(contains('s1:a')));
+    expect(ids, contains('s3:c'), reason: 'a different year is another film');
+  });
 }

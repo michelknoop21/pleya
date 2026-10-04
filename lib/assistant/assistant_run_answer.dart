@@ -163,11 +163,22 @@ extension _AssistantAnswer on AssistantRun {
               identical(evidenceContext.userClient(entry.key), entry.value),
         );
     if (!current()) return null;
+    var all = assistantNamedTitles(answer);
+    var kept = 0;
+    if (_personal) {
+      // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
+      all = [
+        for (final t in all)
+          if (!_history.contains(assistantTitleKey(t.title))) t,
+      ];
+      kept = _narrowPicks(all);
+    }
     final shown = assistantShownTitles(_displays);
+    final room = _personal ? (_wanted ?? 5) - kept : 5;
     final named = [
-      for (final t in assistantNamedTitles(answer))
+      for (final t in all)
         if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
-    ];
+    ].take(room < 0 ? 0 : room).toList();
     if (named.isEmpty) return null;
     final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
     if (tool == null || tool.risk != AssistantToolRisk.read) return null;
@@ -206,7 +217,7 @@ extension _AssistantAnswer on AssistantRun {
                 ))
               m,
         ];
-        if (exact.isNotEmpty) display = AssistantTitleMatches(context, exact);
+        if (exact.isNotEmpty) display = _ctx.recommend.admit(AssistantTitleMatches(context, exact));
       }
     } on AssistantToolError catch (e) {
       if (e.code == 'kids_ages_unknown') _askKidsAges();
@@ -215,5 +226,40 @@ extension _AssistantAnswer on AssistantRun {
     }
     if (!current()) return null;
     return (index: index, display: display, current: current);
+  }
+
+  /// Narrows the pick grids to the named titles; returns how many cards stay.
+  /// A grid not narrowed by the end of the run is dropped in [_end].
+  int _narrowPicks(List<({String title, int? year})> named) {
+    final used = <String>{};
+    var total = 0;
+    for (final grid in _pickGrids.toList()) {
+      _pickGrids.remove(grid);
+      final at = _displays.indexOf(grid);
+      if (at < 0) continue;
+      final kept = <AssistantMediaGridEntry>[];
+      for (final t in named) {
+        for (final e in grid.entries) {
+          if (assistantSameTitle(
+            (key: assistantTitleKey(e.item.title ?? ''), year: e.item.year),
+            assistantTitleKey(t.title),
+            t.year,
+          )) {
+            // One card per title, also across grids and for a title named twice.
+            if (used.add(e.item.globalKey)) kept.add(e);
+            break;
+          }
+        }
+      }
+      final room = (_wanted ?? 5) - total;
+      kept.removeRange(kept.length.clamp(0, room < 0 ? 0 : room), kept.length);
+      total += kept.length;
+      if (kept.isEmpty) {
+        _displays.removeAt(at);
+      } else {
+        _displays[at] = AssistantMediaGrid(kept);
+      }
+    }
+    return total;
   }
 }

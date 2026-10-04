@@ -28,6 +28,7 @@ class AssistantPersonalServices {
 
 const _recentShown = 8;
 const _picksShown = 12;
+const _picksShownConstrained = 6;
 
 final List<AssistantTool> _personalTools = [
   AssistantTool(
@@ -37,13 +38,32 @@ final List<AssistantTool> _personalTools = [
         'lately, what they like (genres, actors, directors) and Pleya\'s personal picks for them from their own '
         'libraries, each with the row it comes from ("Because you watched ..."). Use it for a tip for the user or '
         'a question about their history. watch_stats is everyone on the servers under server account names. '
-        'Empty lists mean no history yet or personal recommendations switched off; say so.',
+        'Empty lists mean no history yet or personal recommendations switched off; say so. Pass kind when the '
+        'user asks for films or for series only, and exclude_kids when they want kids titles left out (a shared '
+        'account); the lists and the cards then hold only what fits.',
     risk: AssistantToolRisk.read,
-    properties: const {},
+    properties: const {
+      'kind': {
+        'type': 'string',
+        'enum': ['movie', 'show'],
+      },
+      'exclude_kids': {'type': 'boolean'},
+    },
     needsServer: false,
     serves: (ctx, _) => ctx.personal != null,
-    run: (ctx, _, _) async {
+    run: (ctx, _, args) async {
       final personal = ctx.personal ?? (throw const AssistantToolError('personal_unavailable'));
+      // The run's constraints (from the prompt) widened by what the model passed.
+      final c = ctx.recommend = ctx.recommend.merge(
+        AssistantRecommendConstraints(
+          kind: switch (args['kind']) {
+            'movie' => MediaKind.movie,
+            'show' => MediaKind.show,
+            _ => null,
+          },
+          excludeKids: args['exclude_kids'] == true,
+        ),
+      );
       final clients = {for (final id in ctx.userServers) id: ?ctx.userClient(id)};
       final (seeds, taste, hubs) = await (
         personal.recent(),
@@ -57,7 +77,7 @@ final List<AssistantTool> _personalTools = [
             clients[key.serverId]!
                 .fetchItem(key.ratingKey)
                 .then<Map<String, Object?>?>(
-                  (item) => item?.title == null
+                  (item) => item?.title == null || (c.excludeKids && AssistantRecommendConstraints.isKids(item!))
                       ? null
                       : {
                           'title': clipText(
@@ -71,6 +91,16 @@ final List<AssistantTool> _personalTools = [
                 .catchError((Object _) => null),
       ]);
 
+      final watchedList = watched.nonNulls.toList();
+      // Another server's copy of a watched title is as seen as this one.
+      final seenTitles = {for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?)};
+      bool seenBefore(MediaItem item) =>
+          c.excludeWatched &&
+          seenTitles.any(
+            (s) =>
+                s.$1 == assistantTitleKey(item.title ?? '') && (s.$2 == null || item.year == null || s.$2 == item.year),
+          );
+      final limit = c.active ? _picksShownConstrained : _picksShown;
       final picks = <MediaItem>[];
       final rows = <Map<String, Object?>>[];
       final seen = <String>{};
@@ -78,7 +108,8 @@ final List<AssistantTool> _personalTools = [
         final titles = <Map<String, Object?>>[];
         for (final item in hub.items) {
           final serverId = item.serverId;
-          if (serverId == null || picks.length >= _picksShown || !seen.add(item.globalKey)) continue;
+          if (serverId == null || picks.length >= limit || !c.admitsItem(item) || seenBefore(item)) continue;
+          if (!seen.add(item.globalKey)) continue;
           ctx.showItem(ServerId(serverId), item.id);
           picks.add(item);
           titles.add({
@@ -92,9 +123,15 @@ final List<AssistantTool> _personalTools = [
         if (titles.isNotEmpty) rows.add({'row': clipText(hub.title), 'titles': titles});
       }
 
-      List<String> likes(String dim, int limit) => taste.topFeatures(dim, threshold: 0.3, limit: limit);
+      // ponytail: the affinity vector itself still counts kids titles; a vector
+      // without them only if this falls short in practice.
+      List<String> likes(String dim, int limit) => taste
+          .topFeatures(dim, threshold: 0.3, limit: limit + assistantKidsTasteGenres.length)
+          .where((f) => !(c.excludeKids && dim == 'genre' && assistantKidsTasteGenres.contains(f.toLowerCase())))
+          .take(limit)
+          .toList();
       return AssistantToolResult({
-        'watched_recently': watched.nonNulls.toList(),
+        'watched_recently': watchedList,
         'likes': {'genres': likes('genre', 4), 'actors': likes('actor', 3), 'directors': likes('director', 2)},
         'picks': rows,
       }, display: picks.isEmpty ? null : AssistantMediaGrid([for (final item in picks) (item: item, group: null)]));

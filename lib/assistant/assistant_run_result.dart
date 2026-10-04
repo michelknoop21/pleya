@@ -4,6 +4,9 @@ part of 'assistant_run.dart';
 
 extension _AssistantResult on AssistantRun {
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
+    // A pick grid the answer never narrowed (cancelled, an action, a step
+    // limit) names nothing: its picks were never shown.
+    _displays.removeWhere(_pickGrids.contains);
     final evidenceContext = _ctx;
     final namedTitlesCurrent = _namedTitlesCurrent;
     bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);

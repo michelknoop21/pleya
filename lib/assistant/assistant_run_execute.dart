@@ -121,9 +121,17 @@ extension _AssistantExecute on AssistantRun {
             _actions.add(record);
             _consumeLookups(args);
           }
-          if (display != null) _displays.add(display);
-          if (tool.name == 'find_media' && display is AssistantMediaGrid) {
-            _lookups[display] = {for (final e in display.entries) e.item.id};
+          final shown = display == null ? null : _ctx.recommend.admit(display);
+          if (shown != null) _displays.add(shown);
+          if (tool.name == 'my_watching') {
+            _personal = true;
+            if (shown is AssistantMediaGrid) _pickGrids.add(shown);
+            for (final w in (data['watched_recently'] as List?) ?? const []) {
+              _history.add(assistantTitleKey((w as Map)['title'] as String));
+            }
+          }
+          if (tool.name == 'find_media' && shown is AssistantMediaGrid) {
+            _lookups[shown] = {for (final e in shown.entries) e.item.id};
           }
           return data;
         case final AssistantPendingAction action:

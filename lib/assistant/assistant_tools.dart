@@ -50,6 +50,8 @@ import '../utils/global_key_utils.dart';
 import '../services/tmdb/tmdb_client.dart' show TmdbAuthException, TmdbClient, TmdbException, TmdbKind;
 import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
+import 'assistant_named_titles.dart' show assistantTitleKey;
+import 'assistant_recommend_constraints.dart';
 import 'assistant_find_route.dart';
 import 'assistant_plot_index.dart' show titleKey;
 import 'assistant_title_facts.dart';

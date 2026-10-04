@@ -12,6 +12,7 @@ import 'assistant_entitlement.dart';
 import 'assistant_execution.dart';
 import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
+import 'assistant_recommend_constraints.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 
@@ -247,6 +248,11 @@ class AssistantRun {
     _ageNotice = false;
     // The profile decides, never the prompt or the model.
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
+    _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
+    _pickGrids.clear();
+    _history.clear();
+    _personal = false;
+    _wanted = assistantAskedCount(prompt);
     var corrected = false;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
@@ -263,6 +269,7 @@ class AssistantRun {
     final messages = <Map<String, Object?>>[
       {'role': 'system', 'content': _system},
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
+      if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       {'role': 'user', 'content': prompt},
     ];
 
@@ -487,6 +494,14 @@ class AssistantRun {
   /// Read by [_end]: the named-title cards are only shown while the sources
   /// they came from are still current.
   bool Function()? _namedTitlesCurrent;
+
+  /// The my_watching pick grids of this run and the titles of the history it
+  /// returned. The picks are material for the model, not an answer: only what
+  /// the answer names stays a card, in the order the answer names it.
+  final Set<AssistantMediaGrid> _pickGrids = {};
+  final Set<String> _history = {};
+  int? _wanted;
+  bool _personal = false;
 
   /// find_media grids whose titles a later call acted on: a lookup on the way
   /// to an action, so the action is the result, not the grid.
