@@ -24,6 +24,7 @@ import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/optimized_media_image.dart';
 import '../widgets/seerr_poster_card.dart';
+import 'big_p/big_p_ask_row.dart';
 import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
 import '../mixins/mounted_set_state_mixin.dart';
@@ -1128,9 +1129,16 @@ class _SearchScreenState extends State<SearchScreen>
       );
     }
 
+    final bigP = summonableBigP(context);
+    final query = _lastSearchedQuery.trim();
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      sliver: SliverList(delegate: SliverChildListDelegate(sections)),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          if (bigP != null && query.isNotEmpty) BigPAskRow(session: bigP, query: query),
+          ...sections,
+        ]),
+      ),
     );
   }
 

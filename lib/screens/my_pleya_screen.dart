@@ -24,6 +24,9 @@ import '../widgets/desktop_app_bar.dart';
 import '../widgets/media_card_grid_layout.dart';
 import '../widgets/settings_section.dart' show settingsOutlineColor;
 import '../widgets/watchlist_card.dart';
+import '../widgets/big_p/big_p_portrait.dart';
+import 'big_p/big_p_ask_row.dart' show summonableBigP;
+import 'big_p/big_p_mobile_session.dart';
 import 'now_watching_screen.dart';
 import 'servers_screen.dart';
 import 'settings/about_screen.dart';
@@ -78,6 +81,7 @@ class MyPleyaScreen extends StatelessWidget {
     final downloads = context.watch<DownloadProvider?>();
     final hasSeerr = context.watch<SeerrProvider?>()?.isConfigured ?? false;
     final servers = context.watch<MultiServerProvider?>();
+    final bigP = summonableBigP(context);
 
     final groups = buildTvMyPleyaGroups(
       hasWatchlist: watchlist?.hasWatchlist ?? false,
@@ -86,6 +90,7 @@ class MyPleyaScreen extends StatelessWidget {
       showActivity: servers?.hasOnlinePlexServers ?? false,
       showCollections: false,
       showPlaylists: false,
+      showAssistant: bigP != null,
       watchlistCount: watchlist?.entriesByRecentlyAdded.length,
       downloadCount: downloads == null ? null : downloads.downloadedMovies.length + downloads.downloadedShows.length,
     );
@@ -107,6 +112,8 @@ class MyPleyaScreen extends StatelessWidget {
           clipBehavior: Clip.none,
           slivers: [
             CustomAppBar(title: Text(t.myPleya.title), automaticallyImplyLeading: false),
+            // First, so it is built whatever the scroll position.
+            const SliverToBoxAdapter(child: _RefreshesBigP()),
             SliverToBoxAdapter(
               child: _ProfileHeader(
                 profile: profile,
@@ -170,6 +177,22 @@ class MyPleyaScreen extends StatelessWidget {
               ),
             ),
             SliverToBoxAdapter(child: _MyPleyaGroupLabel(t.tvMyPleya.groupPleya)),
+            // Mockup 38 A on the phone: Big P's portrait for an icon.
+            if ((tileFor[TvMyPleyaSection.assistant], bigP) case (final tile?, final session?))
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _MyPleyaCardRow(
+                    cards: [
+                      _MyPleyaCard(
+                        tile: tile,
+                        icon: const BigPPortrait(focused: false, size: 40),
+                        onTap: () => session.summon(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (tileFor[TvMyPleyaSection.watchTogether] case final tile?)
               SliverToBoxAdapter(
                 child: _SectionRow(
@@ -220,6 +243,27 @@ class MyPleyaScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Big P's tile depends on entitlement, servers and the model config, which
+/// the controller works out only when asked: once as My Pleya shows, as
+/// TV's hub does.
+class _RefreshesBigP extends StatefulWidget {
+  const _RefreshesBigP();
+
+  @override
+  State<_RefreshesBigP> createState() => _RefreshesBigPState();
+}
+
+class _RefreshesBigPState extends State<_RefreshesBigP> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(context.read<BigPMobileSession?>()?.controller.refreshAvailability());
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 /// Avatar, name and the server-status line from northstar 18. Deliberately
@@ -327,9 +371,12 @@ class _MyPleyaCardRow extends StatelessWidget {
 /// Material container color — those collapse onto the page background in
 /// this theme (see [[mono-theme-material-collisions]] in the tvOS gotchas).
 class _MyPleyaCard extends StatelessWidget {
-  const _MyPleyaCard({required this.tile, required this.onTap, this.onLongPress});
+  const _MyPleyaCard({required this.tile, required this.onTap, this.onLongPress, this.icon});
 
   final TvMyPleyaTile tile;
+
+  /// In place of the tile's line icon.
+  final Widget? icon;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
@@ -368,7 +415,7 @@ class _MyPleyaCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(tile.icon, size: 22),
+                    icon ?? Icon(tile.icon, size: 22),
                     if (tile.count != null) Text('${tile.count}', style: theme.textTheme.titleMedium),
                   ],
                 ),

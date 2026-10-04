@@ -40,6 +40,22 @@ TvMenuItem? assistantSettingsTvItem({
       )
     : null;
 
+/// The same row in the phone, tablet and desktop settings list: where the
+/// model is chosen.
+Widget? assistantSettingsTile({bool rolloutEnabled = AssistantEntitlement.rolloutEnabled}) => rolloutEnabled
+    ? AutomationNode(
+        id: AutomationIds.settingsTile,
+        instance: 'assistant',
+        role: 'list.item',
+        child: SettingNavigationTile(
+          icon: Symbols.smart_toy_rounded,
+          title: t.assistant.tileTitle,
+          subtitle: t.assistant.tileSubtitle,
+          destinationBuilder: (_) => const AssistantSettingsScreen(),
+        ),
+      )
+    : null;
+
 /// The sentence a failed model lookup shows on this screen.
 String assistantSettingsErrorText(Object error) {
   final s = t.assistant.settings;

@@ -7,6 +7,9 @@ import 'package:pleya/media/ids.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 
 import '../../widgets/big_p/fake_assistant_controller.dart';
@@ -118,3 +121,31 @@ AssistantPendingAction createSam({AssistantPasswordMode password = AssistantPass
       password: password,
       execute: ({password}) async => const {},
     );
+
+/// One Plex server that answers every search with [items], for Zoeken.
+class FakeSearchServer implements MediaServerClient {
+  FakeSearchServer(this.items);
+
+  final List<MediaItem> items;
+
+  @override
+  ServerId get serverId => ServerId('nas');
+
+  @override
+  String? get serverName => 'NAS';
+
+  @override
+  MediaBackend get backend => MediaBackend.plex;
+
+  @override
+  ServerCapabilities get capabilities => ServerCapabilities.plex;
+
+  @override
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => items;
+
+  @override
+  Future<ExternalIds> fetchExternalIds(String itemId) async => const ExternalIds();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
