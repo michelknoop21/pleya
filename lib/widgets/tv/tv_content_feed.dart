@@ -57,6 +57,7 @@ import '../../media/unified/unified_media_hub.dart';
 import '../../media/media_kind.dart';
 import '../../providers/discover_provider.dart';
 import '../../providers/home_custom_rows_provider.dart';
+import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
@@ -329,8 +330,12 @@ class TvContentFeedState extends State<TvContentFeed>
 
   bool get _routeIsCurrent => ModalRoute.of(context)?.isCurrent ?? true;
 
-  Future<void> _activate(UnifiedMediaGroup group, {String? containerId}) =>
-      activateDiscoveryGroup(group, onManageServers: widget.onManageServers, containerId: containerId);
+  Future<void> _activate(UnifiedMediaGroup group, {String? containerId}) async {
+    // A Nu op tv card tunes its channel; it has no detail page to open.
+    if (await context.read<HomeExtraRowsProvider?>()?.activateLiveTv(context, group) ?? false) return;
+    if (!mounted) return;
+    await activateDiscoveryGroup(group, onManageServers: widget.onManageServers, containerId: containerId);
+  }
 
   /// HERO7: resolves a card by its stable rowId+groupId directly, instead of
   /// the ambient `contentFocusScope` history a detail route's own related-rail
@@ -484,7 +489,8 @@ class TvContentFeedState extends State<TvContentFeed>
     final discover = context.watch<DiscoverProvider>();
     final layout = context.watch<HomeLayoutProvider?>();
     final customRows = context.watch<HomeCustomRowsProvider?>();
-    final rows = tvHomeFeedRows(projection: projection, layout: layout, customRows: customRows);
+    final extraRows = context.watch<HomeExtraRowsProvider?>();
+    final rows = tvHomeFeedRows(projection: projection, layout: layout, customRows: customRows, extraRows: extraRows);
     // ROW1c. Built once per build rather than looked up per row: `viewAll`
     // hubIds move as the feed reorders, and matching by the same key the rows
     // are already keyed on is simpler than a second lookup per row.
@@ -639,8 +645,14 @@ class TvContentFeedState extends State<TvContentFeed>
                               initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],
                               onFocusedGroupChanged: (id) => _focusedGroupIdByRowId[rows[i].hubId] = id,
                               onActivate: (group) => _activate(group, containerId: rows[i].hubId),
-                              onContextMenu: (group) =>
-                                  _openContextMenu(group, isInContinueWatching: rows[i].hubId == continueWatchingHubId),
+                              // No menu on a Nu op tv card: every action in
+                              // it is about a library title.
+                              onContextMenu: (group) => extraRows?.isLiveTv(group) ?? false
+                                  ? null
+                                  : _openContextMenu(
+                                      group,
+                                      isInContinueWatching: rows[i].hubId == continueWatchingHubId,
+                                    ),
                               // Row to row, at the column the step leaves from
                               // (LAND4). UP that runs out of rows above goes back
                               // to the hero; DOWN off the last row has nothing

@@ -4442,3 +4442,59 @@ terugkomen als de representatieve bron van een samengevoegde titel wisselt.
 
 De Nederlandse menutekst zei nog "Doorgaan met kijken" terwijl de rij "Verder kijken" heet; beide
 bestaande strings zijn gelijkgetrokken.
+
+## DEC-145: iPhone-Home leest dezelfde rijenlijst als de TV, en Kijklijst en Nu op tv worden Home-rijen
+
+**Date:** 2026-10-04
+
+Mockups 39 en 24 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`), door Michel beoordeeld op
+4 oktober: Kijklijst mag standaard aan, Nu op tv alleen als de kijker hem aanzet, en "Beschikbaar
+gekomen" (Aanvragen op Home) is uitgesteld. Dit is fase 4 van de ronde uit DEC-144.
+
+**Eén rijenlijst.** De iPhone-Home tekende alleen `TvHomeProjectionProvider.hubs` en miste daardoor
+de eigen rijen (DEC-100) en Recent uitgebracht. Hij leest nu `tvHomeOrderableRows`, dezelfde
+functie als de TV-feed en het aanpaspaneel. De chips Films en Series filteren die lijst daarna per
+rij, zoals ze al deden. Het bestand heet nog `tv_home_row_assembly.dart`; hernoemen is uitgesteld
+omdat het alleen diff oplevert.
+
+**Twee rijen van Pleya zelf.** `HomeExtraRowsProvider` levert Kijklijst (`#pleya:watchlist`) en Nu
+op tv (`#pleya:livetv`) als gewone rijen in de indeling, onder Recent uitgebracht tot de kijker ze
+verplaatst. De Kijklijst-rij toont de eerste twintig titels op volgorde van toevoegen, en alleen
+titels die naar een bibliotheekitem resolven: een kaart die je niet kunt openen hoort op het
+tabblad Kijklijst, niet op Home. Nu op tv toont wat nu loopt op een zender die af te stemmen is;
+een druk op de kaart stemt af en opent geen detailpagina, en de kaart heeft geen contextmenu.
+
+**Een verborgen rij haalt niets op.** De Kijklijst-rij vraagt de kijklijst pas op als hij zichtbaar
+is, en Nu op tv kost een profiel dat hem nooit aanzet geen enkel verzoek.
+`test/providers/home_extra_rows_provider_test.dart` legt beide vast.
+
+**Opt-in zonder nieuwe opslag.** Nu op tv staat uit tot `HomeLayoutProvider` de markering
+`#pleya:livetv:shown` in de bestaande set verborgen rijen vindt. Die set is apparaatlokaal, net
+als de rest van wat hier verborgen wordt, en reset met de indeling. De keuze voor Nu op tv geldt
+dus per apparaat. Een oudere build negeert een id die hij niet kent.
+
+**Home-indeling.** Het instellingenscherm somt op iPhone en TV dezelfde unified rijen op als Home
+tekent, inclusief Recent uitgebracht, Kijklijst en Nu op tv. Een samengevoegde rij verbergt en
+verplaatst al zijn ids tegelijk. Onderaan staat `Verborgen items · N` zodra er iets uit Verder
+kijken verborgen is. Dat is de tweede ingang die DEC-144 fase 3 openliet: zijn alle titels
+verborgen, dan is de rij weg en was er geen weg terug behalve opnieuw afspelen.
+
+**Opschonen niet gebouwd.** Een verborgen titel die elders is uitgekeken blijft in de verborgen
+lijst staan. Een eerste versie ruimde hem op zodra zijn server hem niet meer meldde, en de review
+liet zien dat dat signaal niet te vertrouwen is: de samengevoegde lijst mist ook titels uit een
+verborgen bibliotheek, de verliezer van een ontdubbeling, en elke volgende aflevering van een
+Jellyfin-server waarvan alleen de NextUp-aanroep faalde. Een regel te veel in de verborgen lijst
+is goedkoper dan een titel die ongevraagd terugkomt. Het kan pas goed als de aggregatie de ruwe
+sleutels per server teruggeeft.
+
+**Wat desktop en iPad niet krijgen.** Desktop-Home tekent nog één rij per backend-hub in de oude
+`MediaHub`-vorm, met een eigen hero. De Kijklijst-rij staat er wel, omgezet met
+`mediaHubFromCustomRow`. Nu op tv niet: de kaarten van dat scherm openen een bibliotheektitel en
+kunnen geen zender afstemmen. De hero op `heroGroups` en samengevoegde rijen horen bij de
+werkstroom Unified 2026 voor desktop en iPad (branch `feat/unified-desktop-ipad`) en zijn hier
+bewust niet dubbel gebouwd.
+
+**Open.** Live TV heeft geen fixture, dus afstemmen vanaf Home is alleen op hardware te bewijzen.
+Een titel die op desktop verborgen is kan terugkomen als de representatieve bron van een
+samengevoegde titel wisselt; dat lost zich op zodra desktop unified rijen tekent. De focusbare
+Alles-ingang bij de TV-rijtitel en de 16:9-rustvorm uit 38 A en D wachten op een eigen ronde.

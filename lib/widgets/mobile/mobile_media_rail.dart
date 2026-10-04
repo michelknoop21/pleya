@@ -13,6 +13,7 @@ import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
+import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/offline_mode_provider.dart';
 import '../../screens/tv/tv_unified_activation.dart';
@@ -249,6 +250,8 @@ class _RailCardCellState extends State<_RailCardCell> {
   }
 
   Future<void> _showContextMenu(BuildContext context) async {
+    // No menu on a Nu op tv card: every action in it is about a library title.
+    if (context.read<HomeExtraRowsProvider?>()?.isLiveTv(widget.group) ?? false) return;
     final manager = context.read<MultiServerProvider>().serverManager;
     final health = unifiedServerHealth(
       isOnline: manager.isServerOnline,

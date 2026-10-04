@@ -24,11 +24,12 @@ import '../../media/unified/unified_media_source.dart';
 import '../../media/unified/unified_route_context.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../providers/discover_provider.dart';
+import '../../providers/home_custom_rows_provider.dart';
+import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../screens/tv/tv_unified_activation.dart';
-import '../../services/unified_catalog/home_row_layout.dart';
 import '../../services/unified_catalog/mobile_media_source_picker_route.dart';
 import '../../utils/home_hero_layout.dart';
 import 'mobile_continue_watching_screen.dart';
@@ -38,6 +39,7 @@ import '../../widgets/mobile/mobile_hero_card.dart';
 import '../../widgets/mobile/mobile_media_card.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/mobile/mobile_page_header.dart';
+import '../../widgets/tv/tv_home_row_assembly.dart';
 import '../libraries/content_state_builder.dart' show SliverErrorState;
 
 class MobileHomeScreen extends StatefulWidget {
@@ -72,6 +74,9 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
   }
 
   Future<void> _openDetails(UnifiedMediaGroup group) async {
+    // A Nu op tv card tunes its channel; it has no detail page to open.
+    if (await context.read<HomeExtraRowsProvider?>()?.activateLiveTv(context, group) ?? false) return;
+    if (!mounted) return;
     await openMobileMediaGroup(
       context,
       group: group,
@@ -151,12 +156,22 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
     // Series home and are not guessed onto one. That is why a chip can leave
     // few rows, or none, on a server whose hubs are mostly mixed, and why this
     // screen has an empty state at all.
-    final rawHubs = switch (_chip) {
-      MobileHomeChip.home => homeProjection.hubs,
-      MobileHomeChip.series => _ofSurface(homeProjection.hubs, UnifiedCatalogSurface.series),
-      MobileHomeChip.movies => _ofSurface(homeProjection.hubs, UnifiedCatalogSurface.movies),
+    //
+    // The rows themselves are the ones the TV feed draws, from the same
+    // assembly (DEC-145): own rows, Recent uitgebracht, Kijklijst and Nu op tv
+    // take part here too, in the order the viewer gave them.
+    final extraRows = context.watch<HomeExtraRowsProvider?>();
+    final allHubs = tvHomeOrderableRows(
+      projection: homeProjection,
+      layout: layout,
+      customRows: context.watch<HomeCustomRowsProvider?>(),
+      extraRows: extraRows,
+    );
+    final hubs = switch (_chip) {
+      MobileHomeChip.home => allHubs,
+      MobileHomeChip.series => _ofSurface(allHubs, UnifiedCatalogSurface.series),
+      MobileHomeChip.movies => _ofSurface(allHubs, UnifiedCatalogSurface.movies),
     };
-    final hubs = applyHomeLayoutToUnifiedRows(rawHubs, hiddenRowIds: layout.hiddenRowIds, order: layout.order);
     final continueWatching = _chip == MobileHomeChip.home ? homeProjection.continueWatching : null;
     // Whether this screen actually draws a hero, not whether it could: the
     // pool is empty on a source without release dates (DEC-097 point 2), and a

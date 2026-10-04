@@ -32,7 +32,9 @@ import '../assistant/assistant_entitlement.dart';
 import 'big_p/big_p_face_button.dart';
 import 'big_p/big_p_mobile_session.dart';
 import '../providers/discover_refresh_policy.dart';
+import '../media/unified/unified_media_hub.dart';
 import '../providers/home_custom_rows_provider.dart';
+import '../providers/home_extra_rows_provider.dart';
 import '../providers/multi_server_provider.dart';
 import 'tv/tv_discovery_activation_mixin.dart';
 import '../providers/home_layout_provider.dart';
@@ -152,15 +154,21 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<MediaItem> get _latestMovies => _discover.latestMovies;
   HomeLayoutProvider? _homeLayout;
   HomeCustomRowsProvider? _customRows;
+  HomeExtraRowsProvider? _extraRows;
 
   // ROW1b: the rows the viewer defined themselves, projected into the legacy
   // [MediaHub] shape this screen already draws (`mediaHubFromCustomRow`).
   // Empty ones are dropped here, same as the TV feed (DEC-100 (6)) — a row
   // reserving space it may never fill would push the backend hubs down the
   // page and then pull them back up.
-  List<MediaHub> get _customRowHubs =>
-      _customRows?.visibleRows(titleFor: homeCustomRowLabel).map(mediaHubFromCustomRow).toList(growable: false) ??
-      const [];
+  //
+  // Kijklijst follows them (DEC-145). Nu op tv is left to the iPhone and the
+  // TV: its cards tune a channel, and this screen's cards open a library title.
+  List<MediaHub> get _customRowHubs => [
+    ...?_customRows?.visibleRows(titleFor: homeCustomRowLabel).map(mediaHubFromCustomRow),
+    for (final row in _extraRows?.visibleRows() ?? const <UnifiedMediaHub>[])
+      if (!row.contributingRowIds.contains(homeLiveTvRowId)) mediaHubFromCustomRow(row),
+  ];
 
   // User layout (hide + reorder) applied here for the phone/desktop sliver
   // loop. The TV feed applies the same preferences to its *unified* rows
@@ -428,7 +436,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _customRows = customRows?..addListener(_onCustomRowsChanged);
     }
 
-    if (layoutChanged || customRowsChanged) _updateHubKeys();
+    final extraRows = Provider.of<HomeExtraRowsProvider?>(context);
+    final extraRowsChanged = !identical(extraRows, _extraRows);
+    if (extraRowsChanged) {
+      _extraRows?.removeListener(_onCustomRowsChanged);
+      _extraRows = extraRows?..addListener(_onCustomRowsChanged);
+    }
+
+    if (layoutChanged || customRowsChanged || extraRowsChanged) _updateHubKeys();
   }
 
   void _onHomeLayoutChanged() {
@@ -648,6 +663,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _discover.removeListener(_onDiscoverChanged);
     _homeLayout?.removeListener(_onHomeLayoutChanged);
     _customRows?.removeListener(_onCustomRowsChanged);
+    _extraRows?.removeListener(_onCustomRowsChanged);
     _nowWatching?.releaseAmbient();
     WidgetsBinding.instance.removeObserver(this);
     _refreshTicker.dispose();
