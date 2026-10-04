@@ -83,4 +83,8 @@ steps:
   - assert: {id: "assistant.button[cancel]", present: false}
   - press: menu
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
+  # Menu returns focus immediately; the host unmounts after its 380 ms slide-out.
+  - assert: {id: assistant.summon, state: {shown: false, pending: false}}
+  - settle: 800
   - assert: {id: assistant.summon, present: false}
+  - snapshot: 05-summon-dismissed
