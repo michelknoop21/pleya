@@ -114,7 +114,8 @@ void main() {
     await build();
     final provider = HomeLayoutProvider(storageService: storage, profileId: profile, refreshBus: bus);
     await provider.ensureInitialized();
-    expect(provider.hiddenRowIds, isEmpty);
+    // Nothing stored; only the opt-in row, which is hidden until turned on.
+    expect(provider.hiddenRowIds, {homeLiveTvRowId});
 
     // What an import does: write straight to storage, then announce.
     await storage.saveHiddenHomeRows(profile, {'$plexId:home.continue'});

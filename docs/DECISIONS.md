@@ -4299,3 +4299,202 @@ Libraryrechten wijzigen van een bestaande Pleya Server-gebruiker weigert de clie
 **Status:** accepted. Productbesluit van Michel op 3 oktober 2026; breidt het protocol uit buiten de tien wijzigingen waarvoor [DEC-138](#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein) venster 2 opende.
 
 Big P antwoordde op "wie heeft de afgelopen dagen het meest gekeken?" bij Pleya Server met "deze server bewaart geen kijkgeschiedenis", terwijl `watch_states` per gebruiker per item wel bijhoudt wat er is afgekeken; alleen `GET /watch-state` levert uitsluitend de eigen regels. Er komt daarom één leesroute bij, `GET /pleya/v1/watch-history?days=N` (1 tot en met 31, geklemd, standaard 7), klasse `admin` via `requireAdmin`, matrixregel 39 en hoofdstuk 17b.7 van de specificatie. Hij geeft per gebruiker de films en afleveringen met `watched` of `play_count` boven nul waarvan de kijkstatus binnen het venster is bijgewerkt, met gebruikersnaam, titel en bij een aflevering de serie, nieuwste eerst en ten hoogste 1000 regels met `truncated` als er meer waren. Het is geen afspeellog: een regel is de laatste aanraking, dezelfde lezing die de client al voor Jellyfin en Emby gebruikt, en `watch_stats` telt een periode op Pleya Server dus precies zoals bij Jellyfin. Een server zonder de route antwoordt de bestaande `404` `library.not_found` voor een onbekend pad, en dan valt Big P terug op het oude antwoord. Er komt geen migratie en geen nieuw foutdomein bij; venster 2 zelf blijft open voor zijn tien wijzigingen en sluit nog steeds met S2.6.
+
+## DEC-144: Een Verder kijken-kaart draagt één statusregel, en de TV-focusregel van een aflevering noemt zichzelf in plaats van jaar en genre
+
+Genummerd als DEC-144 bij het samenvoegen met main, waar DEC-119 al twee keer vergeven was. De commits 16428415, 80bb0706 en 199f88ab noemen dit besluit nog DEC-119.
+
+4 oktober 2026. Mockups 38 A, 38 C en 22 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`),
+beoordeeld en vrijgegeven door Michel dezelfde dag. Dit is fase 1 van de overzichtsronde; het
+volledige overzicht (38 D, 23), het opruimen (38 E) en de extra rijen (39, 24) volgen in eigen
+fasen en krijgen dan hun eigen entry.
+
+De rij Verder kijken liet op desktop en iPhone niet zien wat je kon hervatten: een poster, een
+balk, en in het beste geval `S1 E2`. Films en volgende afleveringen waren alleen uit elkaar te
+houden aan het ontbreken van die balk. Het besluit: elke kaart in die rij draagt één statusregel
+onder de titel, op elk platform dezelfde.
+
+| begonnen | volgende aflevering |
+|---|---|
+| `S3 E4 · 18 min over` met balk | `S3 E5 · Volgende aflevering` zonder balk |
+
+Een film zegt `42 min over`, of zijn speelduur als er niets van gekeken is. De regel komt uit
+één helper, `continueWatchingStatusLine` in `lib/utils/continue_watching_labels.dart`, en
+`MediaCard` (raster en lijst), `MobileMediaCard` en de TV-focusregel lezen die. De staat is
+voorlopig afgeleid van `hasActiveProgress`: een aflevering in de rij zonder voortgang is door de
+constructie van elke fetcher de volgende aflevering van zijn serie. Fase 2 voegt de expliciete
+herkomst (resume tegenover next_up) uit de bron toe en de helper wisselt dan van bron zonder dat
+de kaarten veranderen. Afleveringstitel en "2 dagen geleden" staan bewust niet op de kaart; die
+horen bij de focusregel en het volledige overzicht. Eén kaart per exacte aflevering (§11.8) blijft
+staan: een serienaam op de kaart is geen groepering.
+
+**Amendement op DEC-087.** Die legde de TV-focusregel vast als `S2 E4 · 18 min resterend · jaar ·
+genre`. Voor een aflevering wordt dat `S3 E4 · Violet · 18 min over`: plaats, eigen titel, en wat
+er nog over is. Jaar en genre vervallen voor afleveringen; ze zeggen niets dat iemand midden in
+een serie afweegt. In Verder kijken zegt een aflevering zonder voortgang `S3 E5 · Volgende
+aflevering`, buiten die rij blijft zo'n aflevering gewoon `S3 E5 · titel` zonder verzonnen staat;
+de rail krijgt daarvoor `isContinueWatching` van `TvContentFeed`. De regel voor films is
+ongewijzigd. Michel wees de eerste voordracht (met laatst gekeken, jaar en genre erbij) af als
+"metadata-soep"; relatieve kijktijd hoort in het overzicht.
+
+Eén vertaalsleutel erbij, `discover.nextEpisodeStatus`, in en en nl; de andere talen vallen terug
+op en. De resterende tijd is overal `formatRemainingTime` met `nowWatching.remaining`, dezelfde
+regel als de hervatknop op de detailpagina; de Nederlandse tekst daarvan is daarbij van "nog 18min"
+naar "18min over" gegaan, zodat de kaart, de focusregel en de detailpagina één formulering delen.
+De eenheid volgt `formatDurationTextual`, dus `18min` en `2h 46min`, dezelfde schrijfwijze als de
+speelduur op elke andere kaart.
+
+Twee bewuste grenzen van deze fase. De desktopkaart in de rij maakt het seizoen niet meer apart
+klikbaar (dat deed de oude ondertitel met `S3`); de serietitel blijft klikbaar en het seizoen is
+via de detailpagina bereikbaar. En een aflevering die een bron nog in de rij laat staan terwijl de
+offset de duur al haalt, leest als "Volgende aflevering" omdat de staat uit de voortgang komt;
+fase 2 lost dat op met de herkomst uit de bron.
+
+Bewijs: `test/utils/continue_watching_labels_test.dart`, de nieuwe gevallen in
+`test/widgets/mobile/mobile_media_card_test.dart` en `test/widgets/tv/tv_discovery_rail_test.dart`,
+`scripts/ci_checks.sh` groen, en lokale renders van de TV-home-goldens, de iPhone-Home en de
+desktopkaarten. De tvOS-goldens zelf zijn Linux-only en regenereren via `goldens.yml`; op macOS
+falen ze op HEAD al identiek (6 van 30 groen), dus die 24 zijn geen regressie van deze wijziging.
+Welke goldens door dit besluit verschuiven: `tv_home_production_*` waar de eerste rij een
+aflevering focust, en `tv_discovery` "series landing, an episode-context item focused".
+
+**Fase 2, 4 oktober 2026: het overzicht en de Alles-route** (mockups 38 D, 23 en 40, goedgekeurd
+met de tekstfix "binnen elke sectie op laatst gekeken"). Verder kijken heeft nu een volledig
+overzicht in vier vaste secties: Series hervatten, Films hervatten, Volgende afleveringen en
+Eerder begonnen. Elk item staat in precies één sectie en een lege sectie verdwijnt
+(`lib/utils/continue_watching_sections.dart`). De indeling leest de herkomst uit de bron, niet
+alleen de voortgang: `MediaItem.continueWatchingKind` (resume of nextUp) wordt gezet door Plex
+(uit de offset), door Jellyfin en Emby, en door Pleya Server, waarvoor de `next_up`-hub nu ook in
+de rij gemerged wordt met dezelfde regel als Jellyfin (`lib/utils/continue_watching_merge.dart`,
+uit de Jellyfin-client gelicht). Eerder begonnen is iets dat begonnen is en langer dan drie maanden
+niet is aangeraakt; die grens is een productregel, geen instelling. Een volgende aflevering is
+nooit oud, ook niet als de serie zelf lang stil lag, en zonder datum is niets oud. Niets wordt
+automatisch verwijderd; de still dimt licht, de tekst niet.
+
+De rijtitel draagt de echte teller na mergen, ontdubbelen en verbergen (`Verder kijken · 23`):
+het aantal groepen van de volledige projectie, hetzelfde getal als het overzicht toont. Daarvoor
+laadt `DiscoverProvider` de hele lijst in plaats van een proef van 21 (Plex laat `count` dan weg,
+wat daar onbegrensd betekent en door `plex_home_retry_test` is vastgelegd; Pleya Server vraagt een
+hubpagina van 200, want zijn hub kent geen onbegrensde vorm), houdt de eerste 20 voor de rij en
+geeft het overzicht uit het geheugen.
+Een snapshot bevatte alleen de rij en telt dus tot de netwerkronde landt als onvolledig: het
+overzicht haalt dan alsnog op. De projectie draait één keer over de hele lijst en de rij is daar
+de eerste 20 groepen van. Kijkgebeurtenissen (verwijderen, gekeken, hervat) gelden voor de hele
+lijst, niet alleen voor de twintig in de rij; de onafhankelijke review van deze fase vond precies
+die twee gaten en ze zijn met een test afgedekt. De ingang naar het overzicht: op de iPhone
+"Alles weergeven" naast de titel (`MobileContinueWatchingScreen`, lijstrijen met still,
+afleveringstitel, resterende tijd en laatst gekeken), op desktop en iPad de bestaande titel- en
+hover-ingang van de rij naar een gesectioneerd `HubDetailScreen`, op TV de eindtegel "Alle N" naar
+`TvContinueWatchingScreen` met gestapelde banden zoals de zoekweergave, met focusherstel per band
+bij terugkeer. Nog open na deze fase: de focusbare Alles-ingang bij de rijtitel op TV (de
+eindtegel is nu de enige ingang daar) en de 16:9-rustvorm van de TV-kaarten uit 38 A; beide raken
+de focuschoreografie van Home en krijgen een eigen ronde. Verborgen items hoort bij fase 3.
+
+**Fase 3, 4 oktober 2026: opruimen via één pad** (mockup 38 E, goedgekeurd met de correctie dat
+"Op alle bronnen" alleen mag staan waar het letterlijk klopt). Een titel uit Verder kijken halen
+gaat op elk platform door `WatchActions.removeFromContinueWatching`. Kan de bron het op de server
+(Plex, Pleya Server), dan gebeurt het daar. Kan hij het niet (Jellyfin, Emby, lokale mappen), dan
+wordt de titel op dit apparaat verborgen. Dat laatste was een echte fout: het tvOS-menu bood
+verwijderen aan zonder de capability te lezen en de Jellyfin-client gooide dan `UnsupportedError`.
+Het desktopmenu verborg de regel in dat geval helemaal; die staat er nu ook, met de juiste tekst.
+
+De regel in het menu zegt wat er gebeurt en hoe ver het reikt
+(`lib/utils/continue_watching_removal.dart`):
+
+| bronnen van de titel | regel | reikwijdte |
+|---|---|---|
+| geen enkele kan het op de server | Verbergen uit Verder kijken | Alleen op dit apparaat |
+| één bron, kan het op de server | Verwijderen uit Verder kijken | geen |
+| meerdere, allemaal op de server én nu bereikbaar | Verwijderen uit Verder kijken | Op alle bronnen |
+| meerdere, allemaal op de server, één onbereikbaar | Verwijderen uit Verder kijken | geen, want de wachtrij is geen garantie |
+| gemengd | Verwijderen uit Verder kijken | "Zolder op de server, NAS alleen hier" |
+
+Lokaal verbergen staat per profiel in `ContinueWatchingHiddenProvider` en synchroniseert nooit:
+de sleutel `hidden_continue_watching` is in het syncbeleid als apparaatlokaal aangemerkt, want
+"alleen op dit apparaat" is wat de regel belooft. Er wordt niets op een server gewist.
+`DiscoverProvider` filtert de verborgen sleutels uit elke ophaalronde, laat de kaart bij verbergen
+meteen vallen, en haalt hem bij herstel weer op. Een titel die je opnieuw afspeelt komt vanzelf
+terug: dat is de kijker die zegt dat hij in de rij hoort. Een onbereikbare bron die het niet op de
+server kan, wordt direct lokaal verborgen in plaats van in de wachtrij gezet; een rij die daar van
+vóór deze wijziging nog stond, laat de replay nu vallen in plaats van hem bij elke herverbinding
+opnieuw te laten falen. Hetzelfde geldt voor een bron die de aanmelding weigert, en een bron
+zonder gebonden client (koude start) wordt op zijn backend beoordeeld, zodat een Jellyfin-bron
+nooit een serververwijdering beloofd krijgt die niet komt.
+
+De sleutels van verwijderingen die nog in de wachtrij staan leest `DiscoverProvider` nu bij elke
+ophaalronde (`pendingContinueWatchingRemovalKeys` had tot nu toe geen enkele aanroeper) en houdt
+ze in een eigen set. Niet in de set die zichzelf opschoont: een onbereikbare server meldt niets,
+dus daar zou de sleutel bij de eerste ronde al verdwijnen en de kaart terugkomen zodra de server
+herverbindt, vóór de replay. De eigen set loopt pas leeg wanneer de wachtrijrij weg is.
+
+De eigen Verder kijken-rij van een bibliotheek haalt rechtstreeks bij haar server op en filtert
+de lokaal verborgen titels nu ook; anders zou "Verbergen" daar niets zichtbaars doen.
+
+Verborgen items: onderaan het overzicht op alle drie de platforms staat `Verborgen items · N`
+zodra er iets verborgen is. Een item kiezen herstelt het. Het overzicht is daarom nu altijd
+bereikbaar vanaf de rij, ook bij minder dan twintig titels: de TV-eindtegel en de desktopingang
+hangen niet meer aan de overloop. Open na deze fase: is elke titel verborgen, dan verdwijnt de
+rij en daarmee de ingang; terughalen kan dan alleen door de titel opnieuw af te spelen. Fase 4
+raakt de Home-indeling toch aan en geeft Verborgen items daar een tweede ingang. Ook voor fase
+4: een verborgen titel die elders is uitgekeken blijft in de lijst staan tot je hem herstelt, en
+omdat het filter na het ontdubbelen over servers loopt kan een op desktop verborgen titel
+terugkomen als de representatieve bron van een samengevoegde titel wisselt.
+
+De Nederlandse menutekst zei nog "Doorgaan met kijken" terwijl de rij "Verder kijken" heet; beide
+bestaande strings zijn gelijkgetrokken.
+
+## DEC-145: iPhone-Home leest dezelfde rijenlijst als de TV, en Kijklijst en Nu op tv worden Home-rijen
+
+**Date:** 2026-10-04
+
+Mockups 39 en 24 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`), door Michel beoordeeld op
+4 oktober: Kijklijst mag standaard aan, Nu op tv alleen als de kijker hem aanzet, en "Beschikbaar
+gekomen" (Aanvragen op Home) is uitgesteld. Dit is fase 4 van de ronde uit DEC-144.
+
+**Eén rijenlijst.** De iPhone-Home tekende alleen `TvHomeProjectionProvider.hubs` en miste daardoor
+de eigen rijen (DEC-100) en Recent uitgebracht. Hij leest nu `tvHomeOrderableRows`, dezelfde
+functie als de TV-feed en het aanpaspaneel. De chips Films en Series filteren die lijst daarna per
+rij, zoals ze al deden. Het bestand heet nog `tv_home_row_assembly.dart`; hernoemen is uitgesteld
+omdat het alleen diff oplevert.
+
+**Twee rijen van Pleya zelf.** `HomeExtraRowsProvider` levert Kijklijst (`#pleya:watchlist`) en Nu
+op tv (`#pleya:livetv`) als gewone rijen in de indeling, onder Recent uitgebracht tot de kijker ze
+verplaatst. De Kijklijst-rij toont de eerste twintig titels op volgorde van toevoegen, en alleen
+titels die naar een bibliotheekitem resolven: een kaart die je niet kunt openen hoort op het
+tabblad Kijklijst, niet op Home. Nu op tv toont wat nu loopt op een zender die af te stemmen is;
+een druk op de kaart stemt af en opent geen detailpagina, en de kaart heeft geen contextmenu.
+
+**Een verborgen rij haalt niets op.** De Kijklijst-rij vraagt de kijklijst pas op als hij zichtbaar
+is, en Nu op tv kost een profiel dat hem nooit aanzet geen enkel verzoek.
+`test/providers/home_extra_rows_provider_test.dart` legt beide vast.
+
+**Opt-in zonder nieuwe opslag.** Nu op tv staat uit tot `HomeLayoutProvider` de markering
+`#pleya:livetv:shown` in de bestaande set verborgen rijen vindt. Die set is apparaatlokaal, net
+als de rest van wat hier verborgen wordt, en reset met de indeling. De keuze voor Nu op tv geldt
+dus per apparaat. Een oudere build negeert een id die hij niet kent.
+
+**Home-indeling.** Het instellingenscherm somt op iPhone en TV dezelfde unified rijen op als Home
+tekent, inclusief Recent uitgebracht, Kijklijst en Nu op tv. Een samengevoegde rij verbergt en
+verplaatst al zijn ids tegelijk. Onderaan staat `Verborgen items · N` zodra er iets uit Verder
+kijken verborgen is. Dat is de tweede ingang die DEC-144 fase 3 openliet: zijn alle titels
+verborgen, dan is de rij weg en was er geen weg terug behalve opnieuw afspelen.
+
+**Opschonen niet gebouwd.** Een verborgen titel die elders is uitgekeken blijft in de verborgen
+lijst staan. Een eerste versie ruimde hem op zodra zijn server hem niet meer meldde, en de review
+liet zien dat dat signaal niet te vertrouwen is: de samengevoegde lijst mist ook titels uit een
+verborgen bibliotheek, de verliezer van een ontdubbeling, en elke volgende aflevering van een
+Jellyfin-server waarvan alleen de NextUp-aanroep faalde. Een regel te veel in de verborgen lijst
+is goedkoper dan een titel die ongevraagd terugkomt. Het kan pas goed als de aggregatie de ruwe
+sleutels per server teruggeeft.
+
+**Wat desktop en iPad niet krijgen.** Desktop-Home tekent nog één rij per backend-hub in de oude
+`MediaHub`-vorm, met een eigen hero. De Kijklijst-rij staat er wel, omgezet met
+`mediaHubFromCustomRow`. Nu op tv niet: de kaarten van dat scherm openen een bibliotheektitel en
+kunnen geen zender afstemmen. De hero op `heroGroups` en samengevoegde rijen horen bij de
+werkstroom Unified 2026 voor desktop en iPad (branch `feat/unified-desktop-ipad`) en zijn hier
+bewust niet dubbel gebouwd.
+
+**Open.** Live TV heeft geen fixture, dus afstemmen vanaf Home is alleen op hardware te bewijzen.
+Een titel die op desktop verborgen is kan terugkomen als de representatieve bron van een
+samengevoegde titel wisselt; dat lost zich op zodra desktop unified rijen tekent. De focusbare
+Alles-ingang bij de TV-rijtitel en de 16:9-rustvorm uit 38 A en D wachten op een eigen ronde.

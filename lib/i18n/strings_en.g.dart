@@ -1466,6 +1466,21 @@ class TranslationsMediaMenuEn {
 	/// en: 'Remove from Continue Watching'
 	String get removeFromContinueWatching => 'Remove from Continue Watching';
 
+	/// en: 'Hide from Continue Watching'
+	String get hideFromContinueWatching => 'Hide from Continue Watching';
+
+	/// en: 'On this device only'
+	String get cwScopeThisDevice => 'On this device only';
+
+	/// en: 'On all sources'
+	String get cwScopeAllSources => 'On all sources';
+
+	/// en: '${server} on the server, ${local} here only'
+	String cwScopeMixed({required Object server, required Object local}) => '${server} on the server, ${local} here only';
+
+	/// en: 'Partly on this device only'
+	String get cwScopePartlyLocal => 'Partly on this device only';
+
 	/// en: 'View details'
 	String get viewDetails => 'View details';
 
@@ -1919,6 +1934,9 @@ class TranslationsMessagesEn {
 
 	/// en: 'Removed from Continue Watching'
 	String get removedFromContinueWatching => 'Removed from Continue Watching';
+
+	/// en: 'Hidden from Continue Watching'
+	String get hiddenFromContinueWatching => 'Hidden from Continue Watching';
 
 	/// en: 'Error'
 	String get errorLoading => 'Error';
@@ -2495,6 +2513,32 @@ class TranslationsDiscoverEn {
 
 	/// en: '${minutes} min left'
 	String minutesLeft({required Object minutes}) => '${minutes} min left';
+
+	/// en: 'Next episode'
+	String get nextEpisodeStatus => 'Next episode';
+
+	/// en: 'Resume series'
+	String get cwSectionResumeShows => 'Resume series';
+
+	/// en: 'Resume films'
+	String get cwSectionResumeMovies => 'Resume films';
+
+	/// en: 'Next episodes'
+	String get cwSectionNextEpisodes => 'Next episodes';
+
+	/// en: 'Started earlier'
+	String get cwSectionStale => 'Started earlier';
+
+	/// en: 'Hidden items'
+	String get hiddenItems => 'Hidden items';
+
+	/// en: 'Restore'
+	String get restoreHidden => 'Restore';
+
+	/// en: 'Hidden on this device only. Restore puts a title back in Continue Watching.'
+	String get hiddenItemsHint => 'Hidden on this device only. Restore puts a title back in Continue Watching.';
+
+	late final TranslationsDiscoverWatchedAgoEn watchedAgo = TranslationsDiscoverWatchedAgoEn.internal(_root);
 
 	/// en: 'More Like This'
 	String get moreLikeThis => 'More Like This';
@@ -6316,6 +6360,30 @@ class TranslationsVideoControlsPipErrorsEn {
 	String get unknown => 'An error occurred';
 }
 
+// Path: discover.watchedAgo
+class TranslationsDiscoverWatchedAgoEn {
+	TranslationsDiscoverWatchedAgoEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'today'
+	String get today => 'today';
+
+	/// en: 'yesterday'
+	String get yesterday => 'yesterday';
+
+	/// en: '${count} days ago'
+	String days({required Object count}) => '${count} days ago';
+
+	/// en: '${count} weeks ago'
+	String weeks({required Object count}) => '${count} weeks ago';
+
+	/// en: '${count} months ago'
+	String months({required Object count}) => '${count} months ago';
+}
+
 // Path: libraries.tabs
 class TranslationsLibrariesTabsEn {
 	TranslationsLibrariesTabsEn.internal(this._root);
@@ -8726,6 +8794,11 @@ extension on Translations {
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
+			'mediaMenu.hideFromContinueWatching' => 'Hide from Continue Watching',
+			'mediaMenu.cwScopeThisDevice' => 'On this device only',
+			'mediaMenu.cwScopeAllSources' => 'On all sources',
+			'mediaMenu.cwScopeMixed' => ({required Object server, required Object local}) => '${server} on the server, ${local} here only',
+			'mediaMenu.cwScopePartlyLocal' => 'Partly on this device only',
 			'mediaMenu.viewDetails' => 'View details',
 			'mediaMenu.goToSeries' => 'Go to series',
 			'mediaMenu.shufflePlay' => 'Shuffle Play',
@@ -8781,13 +8854,13 @@ extension on Translations {
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
 			'videoControls.sleepTimerDurationHeader' => 'Timer',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playbackWillPauseAtEnd' => 'Playback will pause at the end of this video',
 			'videoControls.stillWatching' => 'Still watching?',
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.playNext' => 'Play Next',
 			'videoControls.nextEpisode' => 'Next Episode',
 			'videoControls.skipIntro' => 'Skip Intro',
@@ -8904,6 +8977,7 @@ extension on Translations {
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
+			'messages.hiddenFromContinueWatching' => 'Hidden from Continue Watching',
 			'messages.errorLoading' => 'Error',
 			'messages.fileInfoNotAvailable' => 'File information not available',
 			'messages.errorLoadingFileInfo' => 'Error loading file info',
@@ -9078,6 +9152,19 @@ extension on Translations {
 			'discover.watched' => 'Watched',
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
+			'discover.nextEpisodeStatus' => 'Next episode',
+			'discover.cwSectionResumeShows' => 'Resume series',
+			'discover.cwSectionResumeMovies' => 'Resume films',
+			'discover.cwSectionNextEpisodes' => 'Next episodes',
+			'discover.cwSectionStale' => 'Started earlier',
+			'discover.hiddenItems' => 'Hidden items',
+			'discover.restoreHidden' => 'Restore',
+			'discover.hiddenItemsHint' => 'Hidden on this device only. Restore puts a title back in Continue Watching.',
+			'discover.watchedAgo.today' => 'today',
+			'discover.watchedAgo.yesterday' => 'yesterday',
+			'discover.watchedAgo.days' => ({required Object count}) => '${count} days ago',
+			'discover.watchedAgo.weeks' => ({required Object count}) => '${count} weeks ago',
+			'discover.watchedAgo.months' => ({required Object count}) => '${count} months ago',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
 			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
@@ -9281,6 +9368,8 @@ extension on Translations {
 			'watchlist.title' => 'Watchlist',
 			'watchlist.seeAll' => 'See all',
 			'watchlist.empty' => 'Nothing on your watchlist yet',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.emptyBody' => 'Titles you add from Plex or mark as a Jellyfin favorite show up here.',
 			'watchlist.emptyFiltered' => 'No titles match this filter',
 			'watchlist.retry' => 'Try again',
@@ -9300,8 +9389,6 @@ extension on Translations {
 			'watchlist.filterShows' => 'Shows',
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.sortTitle' => 'Title',
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
@@ -9795,6 +9882,8 @@ extension on Translations {
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Aired)',
 			'metadataEdit.tvdbAbsolute' => 'TheTVDB (Absolute)',
 			'metadataEdit.metadataLanguage' => 'Metadata Language',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.useOriginalTitle' => 'Use Original Title',
 			'metadataEdit.preferredAudioLanguage' => 'Preferred Audio Language',
 			'metadataEdit.preferredSubtitleLanguage' => 'Preferred Subtitle Language',
@@ -9814,8 +9903,6 @@ extension on Translations {
 			'metadataEdit.style' => 'Style',
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.fixMatch' => 'Fix Match...',
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
@@ -10309,6 +10396,8 @@ extension on Translations {
 			'languageSettings.subtitleFallback' => 'Subtitle fallback language',
 			'languageSettings.subtitleFallbackNote' => 'Used when your preferred language is missing. Missing as well, and subtitles go off',
 			'languageSettings.subtitleDisplay' => 'Show subtitles',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.subtitleDisplayNote' => 'When subtitles come on by themselves',
 			'languageSettings.subtitleDisplayForeign' => 'With foreign audio',
 			'languageSettings.subtitleDisplayAlways' => 'Always',
@@ -10328,8 +10417,6 @@ extension on Translations {
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Chosen on ${date} · ${device}',
 			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Chosen on ${date}',
 			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Series preference, chosen on ${date} at ${episode} on ${device}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.sheetOrigin' => ({required Object date}) => 'Series preference, chosen on ${date}.',
 			'languageSettings.sheetScopeLogical' => 'Applies wherever Pleya recognises this series as the same one.',
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',

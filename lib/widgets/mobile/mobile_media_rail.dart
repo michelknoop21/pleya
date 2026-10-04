@@ -13,6 +13,7 @@ import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../media/unified/unified_media_hub.dart';
+import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/offline_mode_provider.dart';
 import '../../screens/tv/tv_unified_activation.dart';
@@ -82,6 +83,10 @@ class MobileMediaRail extends StatelessWidget {
   final int railIndex;
   final MobileCardShape shape;
   final VoidCallback? onViewAll;
+
+  /// Beside the title (`Verder kijken · 23`): the real size of the list behind
+  /// the rail, after merging, deduplicating and hiding. Null leaves it off.
+  final int? count;
   final void Function(UnifiedMediaGroup group)? onCardTap;
 
   /// Continue Watching's rows offer "Remove from Continue Watching" in the
@@ -106,6 +111,7 @@ class MobileMediaRail extends StatelessWidget {
     required this.railIndex,
     this.shape = MobileCardShape.portrait,
     this.onViewAll,
+    this.count,
     this.onCardTap,
     this.isContinueWatching = false,
     this.automationId = AutomationIds.homeRail,
@@ -133,11 +139,39 @@ class MobileMediaRail extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(hub.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: mobileRailTitleStyle),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          hub.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: mobileRailTitleStyle,
+                        ),
+                      ),
+                      if (count != null)
+                        Text(
+                          ' · $count',
+                          style: mobileRailTitleStyle.copyWith(
+                            color: tokens(context).textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 if (onViewAll != null)
                   TextButton(
                     onPressed: onViewAll,
+                    // Compact: the title row is budgeted at one line of
+                    // [mobileRailTitleStyle] (`mobileRailHeight`), and a
+                    // default 48pt button would push the rail below the fold.
+                    style: TextButton.styleFrom(
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
                     child: Text(
                       t.common.viewAll,
                       style: TextStyle(color: tokens(context).textMuted, fontWeight: FontWeight.w600),
@@ -211,10 +245,13 @@ class _RailCardCellState extends State<_RailCardCell> {
       width: widget.width,
       onTap: widget.onTap,
       onLongPress: () => unawaited(_showContextMenu(context)),
+      isInContinueWatching: widget.isContinueWatching,
     );
   }
 
   Future<void> _showContextMenu(BuildContext context) async {
+    // No menu on a Nu op tv card: every action in it is about a library title.
+    if (context.read<HomeExtraRowsProvider?>()?.isLiveTv(widget.group) ?? false) return;
     final manager = context.read<MultiServerProvider>().serverManager;
     final health = unifiedServerHealth(
       isOnline: manager.isServerOnline,

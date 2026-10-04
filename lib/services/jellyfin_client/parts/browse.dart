@@ -1455,7 +1455,7 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
       }, retry: _continueWatchingRetry),
     ]);
 
-    return _mergeContinueWatchingAndNextUp(
+    return mergeContinueWatchingAndNextUp(
       resume: _mapItems(results.first),
       nextUp: await _attachSeriesLastPlayed(_mapItems(results[1])),
       limit: count,
@@ -2013,45 +2013,6 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         else
           item,
     ];
-  }
-
-  /// Merge Jellyfin's two continue-watching sources into one recency-ordered
-  /// shelf. Resume items are deduped first so an in-progress episode wins over
-  /// the same series' Next Up entry, then the combined list is ordered by
-  /// [MediaItem.recencySortKey] (matching `DataAggregationService`) before the
-  /// limit is applied — so a recent Next Up episode is never starved by a long
-  /// run of older resume items.
-  List<MediaItem> _mergeContinueWatchingAndNextUp({
-    required List<MediaItem> resume,
-    required List<MediaItem> nextUp,
-    required int? limit,
-  }) {
-    if (limit != null && limit <= 0) return const [];
-
-    final merged = <MediaItem>[];
-    final seenIds = <String>{};
-    final seenSeriesIds = <String>{};
-
-    // Resume first: first-wins dedup makes an in-progress episode beat the same
-    // series' Next Up entry.
-    for (final item in [...resume, ...nextUp]) {
-      if (!seenIds.add(item.id)) continue;
-      final seriesId = item.kind == MediaKind.episode ? item.grandparentId : null;
-      if (seriesId != null && !seenSeriesIds.add(seriesId)) continue;
-      merged.add(item);
-    }
-
-    // Stable sort by recency: Dart's List.sort isn't stable, so break ties on the
-    // insertion index to keep ordering deterministic across refreshes.
-    final ordered = [for (var i = 0; i < merged.length; i++) (item: merged[i], index: i)];
-    ordered.sort((a, b) {
-      final byRecency = b.item.recencySortKey.compareTo(a.item.recencySortKey);
-      return byRecency != 0 ? byRecency : a.index.compareTo(b.index);
-    });
-    final result = [for (final entry in ordered) entry.item];
-
-    if (limit != null && result.length > limit) return result.sublist(0, limit);
-    return result;
   }
 
   /// GET [path], optionally under a hub-surface transport policy ([retry]):
