@@ -1,0 +1,234 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/assistant/assistant_provider.dart';
+import 'package:pleya/services/base_shared_preferences_service.dart';
+import 'package:pleya/services/pleya_keychain.dart';
+import 'package:pleya/utils/platform_detector.dart';
+
+import '../test_helpers/prefs.dart';
+
+const _channel = MethodChannel('com.pleya/keychain');
+const _key = AssistantProviderStore.key;
+
+const _cloud = AssistantProviderConfig(
+  kind: AssistantProviderKind.ollamaCloud,
+  baseUrl: 'https://ollama.com',
+  apiKey: 'sk-cloud',
+  model: 'gpt-oss:120b',
+);
+const _server = AssistantProviderConfig(
+  kind: AssistantProviderKind.ollamaServer,
+  baseUrl: 'http://nas.lan:11434',
+  model: 'qwen3:8b',
+);
+
+/// The native side in memory: items, a call log and switchable failures.
+class _Keychain {
+  final items = <String, String>{};
+  final calls = <String>[];
+  PlatformException? readError;
+  PlatformException? writeError;
+  PlatformException? deleteError;
+  bool writeResult = true;
+
+  /// Replaces what a read returns, to fake a readback that differs.
+  String? Function(String? stored)? readTamper;
+
+  void install() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, (call) async {
+      final args = (call.arguments as Map).cast<String, Object?>();
+      final key = args['key'] as String;
+      calls.add(call.method);
+      switch (call.method) {
+        case 'read':
+          if (readError != null) throw readError!;
+          final stored = items[key];
+          return readTamper == null ? stored : readTamper!(stored);
+        case 'write':
+          if (writeError != null) throw writeError!;
+          if (!writeResult) return false;
+          items[key] = args['value'] as String;
+          return true;
+        case 'delete':
+          if (deleteError != null) throw deleteError!;
+          items.remove(key);
+          return null;
+      }
+      throw MissingPluginException(call.method);
+    });
+  }
+}
+
+PlatformException _osStatus(int status) => PlatformException(code: 'keychain', message: 'OSStatus $status');
+
+Future<String?> _prefsBlob() async => (await BaseSharedPreferencesService.sharedCache()).getString(_key);
+
+/// A blob written by the old prefs-only store, as tvOS has it today.
+Future<void> _legacy(AssistantProviderConfig config) => AssistantProviderStore().save(config);
+
+String _json(AssistantProviderConfig config) => jsonEncode(config.toJson());
+
+void main() {
+  late _Keychain keychain;
+  late AssistantProviderStore store;
+
+  setUp(() {
+    resetSharedPreferencesForTest();
+    keychain = _Keychain()..install();
+    store = AssistantProviderStore(keychain: const PleyaKeychain());
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_channel, null);
+    TvDetectionService.debugSetAppleTVOverride(null);
+  });
+
+  group('save', () {
+    test('a fresh save goes to the keychain, not to the prefs', () async {
+      await store.save(_cloud);
+
+      expect(keychain.items[_key], _json(_cloud));
+      expect(await _prefsBlob(), isNull);
+      expect((await store.load())?.apiKey, 'sk-cloud');
+    });
+
+    test('negative control: a failed keychain write keeps the prefs path working', () async {
+      keychain.writeError = _osStatus(-34018);
+
+      await store.save(_cloud);
+
+      expect(keychain.items, isEmpty);
+      expect(await _prefsBlob(), isNotNull);
+      expect((await store.load())?.model, 'gpt-oss:120b');
+    });
+  });
+
+  group('legacy migration', () {
+    test('moves the blob to the keychain and drops the prefs key only after the readback', () async {
+      await _legacy(_cloud);
+      expect(await _prefsBlob(), isNotNull);
+
+      final loaded = await store.load();
+
+      expect(loaded?.apiKey, 'sk-cloud');
+      expect(keychain.items[_key], _json(_cloud));
+      expect(keychain.calls, ['read', 'write', 'read']);
+      expect(await _prefsBlob(), isNull);
+      // The next load reads the keychain alone.
+      expect((await store.load())?.model, 'gpt-oss:120b');
+    });
+
+    test('negative control: a readback that differs keeps the prefs blob', () async {
+      await _legacy(_cloud);
+      var reads = 0;
+      keychain.readTamper = (stored) => ++reads == 1 ? stored : '{"kind":"openRouter"}';
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+    });
+
+    test('negative control: a write the keychain declines keeps the prefs blob', () async {
+      await _legacy(_cloud);
+      keychain.writeResult = false;
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+    });
+  });
+
+  group('keychain errors', () {
+    test('a read error falls back to the legacy blob and deletes nothing', () async {
+      await _legacy(_cloud);
+      keychain.readError = _osStatus(-25308);
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+      expect(keychain.calls, ['read']);
+    });
+
+    test('a write error during migration keeps the legacy blob', () async {
+      await _legacy(_cloud);
+      keychain.writeError = _osStatus(-34018);
+
+      expect((await store.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+    });
+
+    test('a read error without a legacy blob throws instead of reading as not configured', () async {
+      keychain.readError = _osStatus(-25308);
+
+      await expectLater(store.load(), throwsA(isA<AssistantProviderStoreException>()));
+    });
+
+    test('negative control: a missing item without a legacy blob is not configured', () async {
+      expect(await store.load(), isNull);
+    });
+  });
+
+  group('conflict', () {
+    test('a synced item wins and the local legacy blob goes', () async {
+      await _legacy(_server);
+      keychain.items[_key] = _json(_cloud);
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+      expect(await _prefsBlob(), isNull);
+      expect(keychain.items[_key], _json(_cloud));
+      expect(keychain.calls, isNot(contains('write')));
+    });
+
+    test('negative control: an unreadable synced item neither wins nor gets overwritten', () async {
+      await _legacy(_server);
+      keychain.items[_key] = '{"kind":"fromTheFuture"}';
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaServer);
+      expect(await _prefsBlob(), isNotNull);
+      expect(keychain.items[_key], '{"kind":"fromTheFuture"}');
+    });
+  });
+
+  group('clear', () {
+    test('wipes the keychain item and the prefs blob and signals the change', () async {
+      await _legacy(_server);
+      keychain.items[_key] = _json(_cloud);
+      final before = AssistantProviderStore.changes.value;
+
+      await store.clear();
+
+      expect(keychain.items, isEmpty);
+      expect(await _prefsBlob(), isNull);
+      expect(AssistantProviderStore.changes.value, before + 1);
+      expect(await store.load(), isNull);
+    });
+
+    test('negative control: a failed keychain delete is reported, not hidden', () async {
+      keychain.items[_key] = _json(_cloud);
+      keychain.deleteError = _osStatus(-25308);
+
+      await expectLater(store.clear(), throwsA(isA<PlatformException>()));
+      expect(keychain.items[_key], isNotNull);
+    });
+  });
+
+  group('platforms', () {
+    test('an unsupported platform uses only the prefs', () async {
+      final prefsOnly = AssistantProviderStore();
+
+      await prefsOnly.save(_cloud);
+
+      expect((await prefsOnly.load())?.apiKey, 'sk-cloud');
+      expect(await _prefsBlob(), isNotNull);
+      expect(keychain.calls, isEmpty);
+    });
+
+    test('negative control: on Apple TV the default store uses the keychain', () async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+
+      await AssistantProviderStore().save(_cloud);
+
+      expect(keychain.calls, ['write']);
+      expect(await _prefsBlob(), isNull);
+    });
+  });
+}

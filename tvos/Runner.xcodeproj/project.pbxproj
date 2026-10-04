@@ -26,6 +26,7 @@
 		A7596F780E93AF0BE3838A26 /* ConnectivityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CCA7E80F3A99D8759F2E59F /* ConnectivityProvider.swift */; };
 		AA34E3E5872B3792D6959EAA /* MpvPipController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2635E12EB9322B151EE5127 /* MpvPipController.swift */; };
 		B1D51A6A2F00110000000202 /* AudioSessionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000201 /* AudioSessionPlugin.swift */; };
+		B1D51A6A2F00110000000402 /* PleyaKeychainPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000401 /* PleyaKeychainPlugin.swift */; };
 		B383187BB759E0E5AE27F24B /* PleyaFlutterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D586A24420395B0472883B77 /* PleyaFlutterViewController.swift */; };
 		BDD87DA7F5C435F9DBB8F9BE /* TopShelfExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 035F0D5A5E54BE7AD9AFA23C /* TopShelfExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C6A15611158B29B0FF43A960 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 824D2C68D1F1206932E118C2 /* Pods_Runner.framework */; };
@@ -106,6 +107,7 @@
 		A2635E12EB9322B151EE5127 /* MpvPipController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MpvPipController.swift; path = ../ios/Runner/MpvPlayer/MpvPipController.swift; sourceTree = "<source_root>"; };
 		A67091A871BD13E936572DF1 /* PleyaSceneDelegate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PleyaSceneDelegate.swift; sourceTree = "<group>"; };
 		B1D51A6A2F00110000000201 /* AudioSessionPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioSessionPlugin.swift; path = ../shared/apple/AudioSession/AudioSessionPlugin.swift; sourceTree = SOURCE_ROOT; };
+		B1D51A6A2F00110000000401 /* PleyaKeychainPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PleyaKeychainPlugin.swift; path = ../shared/apple/Keychain/PleyaKeychainPlugin.swift; sourceTree = SOURCE_ROOT; };
 		BBCB49C8AE9E90DEF97A87CA /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C0455EBA0EF4A61D3B71D2D7 /* SharedPreferencesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedPreferencesPlugin.swift; sourceTree = "<group>"; };
 		D41AA251EF365516E2AC5287 /* PathProviderPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PathProviderPlugin.swift; sourceTree = "<group>"; };
@@ -249,6 +251,7 @@
 				937C0D45D6114EF1E957F5F6 /* Runner.entitlements */,
 				5619FB8F8DAA81B7457DAADF /* ICloudKvsPlugin.swift */,
 				B1D51A6A2F00110000000201 /* AudioSessionPlugin.swift */,
+				B1D51A6A2F00110000000401 /* PleyaKeychainPlugin.swift */,
 				FE11223344556677889900AB /* NativeTextEntryPlugin.swift */,
 				FE11223344556677889900AC /* NativeTextEntryViewController.swift */,
 				A67091A871BD13E936572DF1 /* PleyaSceneDelegate.swift */,
@@ -505,6 +508,7 @@
 				D2A548D9DE1A0F319B30B74C /* SystemShelfPlugin.swift in Sources */,
 				5E6706124D3840AD39CA63F4 /* ICloudKvsPlugin.swift in Sources */,
 				B1D51A6A2F00110000000202 /* AudioSessionPlugin.swift in Sources */,
+				B1D51A6A2F00110000000402 /* PleyaKeychainPlugin.swift in Sources */,
 				FE01A2B3C4D5E6F708192A3B /* NativeTextEntryPlugin.swift in Sources */,
 				FE01A2B3C4D5E6F708192A3C /* NativeTextEntryViewController.swift in Sources */,
 				F00D58EB918A2ECBA5DC4DC2 /* PleyaSceneDelegate.swift in Sources */,

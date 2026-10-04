@@ -100,7 +100,13 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   }
 
   Future<void> _load() async {
-    final saved = await _store.load();
+    AssistantProviderConfig? saved;
+    try {
+      saved = await _store.load();
+    } on AssistantProviderStoreException {
+      // The keychain is unreadable and nothing is stored locally: the form
+      // stays the way in, and a save falls back to this device's prefs.
+    }
     if (!mounted) return;
     setState(() {
       _saved = saved;

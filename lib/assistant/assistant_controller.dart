@@ -168,7 +168,13 @@ class AssistantController extends ChangeNotifier {
     final ctx = _buildContext(null);
     if (ctx.userServers.isEmpty && ctx.requests?.client() == null) return AssistantAvailability.hidden;
     if (await _entitlement.check() != AssistantEntitlementState.entitled) return AssistantAvailability.locked;
-    final config = await _loadConfig();
+    final AssistantProviderConfig? config;
+    try {
+      config = await _loadConfig();
+    } on AssistantProviderStoreException {
+      // An unreadable keychain is not "not configured": keep the last answer.
+      return _availability;
+    }
     if (config == null || !config.isComplete) return AssistantAvailability.needsSetup;
     return AssistantAvailability.ready;
   }
