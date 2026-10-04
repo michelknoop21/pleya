@@ -255,6 +255,10 @@ class TitleFactsService {
   final _inFlight = <String, Future<TitleFacts>>{};
   bool _tmdbRejected = false;
 
+  /// TMDB turned the key down this ask; no further TMDB call is made.
+  bool get tmdbKeyRejected => _tmdbRejected;
+  void rejectTmdbKey() => _tmdbRejected = true;
+
   /// A TMDB client on the user's own key; null without a key, offline or
   /// after the key was rejected.
   TmdbClient? tmdb() {

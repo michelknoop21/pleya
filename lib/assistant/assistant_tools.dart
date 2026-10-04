@@ -47,7 +47,7 @@ import '../media/server_administration.dart';
 import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems;
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
-import '../services/tmdb/tmdb_client.dart' show TmdbClient, TmdbException, TmdbKind;
+import '../services/tmdb/tmdb_client.dart' show TmdbAuthException, TmdbClient, TmdbException, TmdbKind;
 import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
 import 'assistant_find_route.dart';

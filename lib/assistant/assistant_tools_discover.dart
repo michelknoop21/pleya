@@ -20,14 +20,22 @@ SeerrMedia? _fromTmdb(Map<String, dynamic> r, TmdbKind kind) {
   );
 }
 
-/// Seerr's answer as codes, TMDB's failure as an unavailable source.
-Future<T> _source<T>(Future<T> Function() call) async {
+/// Seerr's answer as codes, TMDB's failure as an unavailable source. A
+/// rejected TMDB key is remembered for the ask, as the facts chain does.
+Future<T> _source<T>(AssistantToolContext ctx, Future<T> Function() call) async {
   try {
     return await _seerrCall(call);
+  } on TmdbAuthException {
+    ctx.titleFacts?.rejectTmdbKey();
+    throw const AssistantToolError('tmdb_key_rejected');
   } on TmdbException {
     throw const AssistantToolError('source_unavailable');
   }
 }
+
+/// Without a TMDB client: `tmdb_key_rejected` when the key was turned down.
+AssistantToolError _noTmdb(AssistantToolContext ctx, String code) =>
+    AssistantToolError((ctx.titleFacts?.tmdbKeyRejected ?? false) ? 'tmdb_key_rejected' : code);
 
 /// Tries Seerr, then TMDB; `no_source` when neither is there.
 Future<List<SeerrMedia>> _fromSources(
@@ -38,14 +46,14 @@ Future<List<SeerrMedia>> _fromSources(
   final seerr = ctx.requests?.client();
   if (seerr != null) {
     try {
-      return await _source(() => viaSeerr(seerr));
+      return await _source(ctx, () => viaSeerr(seerr));
     } on AssistantToolError catch (e) {
       if (e.code == 'not_allowed' || ctx.titleFacts?.tmdb() == null) rethrow;
     }
   }
   final tmdb = ctx.titleFacts?.tmdb();
-  if (tmdb == null) throw const AssistantToolError('no_source');
-  return _source(() => viaTmdb(tmdb));
+  if (tmdb == null) throw _noTmdb(ctx, 'no_source');
+  return _source(ctx, () => viaTmdb(tmdb));
 }
 
 /// Dedupes, drops [skip] and cuts to the limit, links the library and shows
@@ -87,7 +95,7 @@ final List<AssistantTool> _discoverTools = [
         'What is popular right now: trending films and series, from the request service (Seerr) or, without it, '
         'from TMDB with the user\'s own key. Returns up to 12 titles, each in the library (item_id, server_id) or '
         'with a seerr_id for request_title. When it fails with no_source, say the user can connect Seerr or '
-        'enter a TMDB key under Settings > Big P.',
+        'enter a TMDB key under Settings > Big P; with tmdb_key_rejected, that TMDB turned down the key there.',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
@@ -123,7 +131,8 @@ final List<AssistantTool> _discoverTools = [
     description:
         'Titles like one the user names ("something like Dark"). Finds the title first, in the library or in '
         'Seerr or TMDB, then returns up to 12 similar and recommended titles, each in the library (item_id, '
-        'server_id) or with a seerr_id for request_title. Fails with title_not_found or no_source.',
+        'server_id) or with a seerr_id for request_title. Fails with title_not_found, no_source or '
+        'tmdb_key_rejected (TMDB turned down the key under Settings > Big P).',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
@@ -182,8 +191,8 @@ Future<({int id, bool isMovie})> _resolveSource(
     return (id: m.seerr?.tmdbId ?? m.ids.tmdb!, isMovie: (m.kind ?? kind) != MediaKind.show);
   }
   final tmdb = ctx.titleFacts?.tmdb();
-  if (tmdb == null) throw AssistantToolError(ctx.requests?.client() == null ? 'no_source' : 'title_not_found');
-  for (final r in await _source(() => tmdb.searchMulti(title, year: year))) {
+  if (tmdb == null) throw _noTmdb(ctx, ctx.requests?.client() == null ? 'no_source' : 'title_not_found');
+  for (final r in await _source(ctx, () => tmdb.searchMulti(title, year: year))) {
     final type = r['media_type'];
     if ((type != 'movie' && type != 'tv') || r['id'] is! int) continue;
     if (kind != null && (type == 'movie') != (kind == MediaKind.movie)) continue;

@@ -119,6 +119,34 @@ void main() {
     }
   });
 
+  test('a TMDB key that gets a 401 is remembered: tmdb_key_rejected, and no second call', () async {
+    var calls = 0;
+    final net = MockClient((_) async {
+      calls++;
+      return http.Response('{}', 401);
+    });
+    final ctx = _ctx(tmdbKey: 'bad', net: net);
+    for (final name in ['trending_titles', 'trending_titles', 'similar_titles']) {
+      await expectLater(
+        _run(ctx, name, {'title': 'The Matrix'}),
+        throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'tmdb_key_rejected')),
+      );
+    }
+    expect(calls, 1);
+    expect(ctx.titleFacts!.tmdbKeyRejected, isTrue);
+  });
+
+  test('trending of every kind via Seerr leaves people out', () async {
+    final seerr = FakeSeerr()
+      ..details['/discover/trending'] = _page([
+        _film(862, 'Toy Story', '1995-11-22'),
+        {'id': 5, 'mediaType': 'person', 'name': 'Someone'},
+        {'id': 6, 'mediaType': 'tv', 'name': 'Dark', 'firstAirDate': '2017-12-01'},
+      ]);
+    final data = await _run(_ctx(seerr: seerr), 'trending_titles', {'kind': 'all'});
+    expect([for (final r in _titles(data)) r['title']], ['Toy Story', 'Dark']);
+  });
+
   test(
     'similar: the library names the id, Seerr recommends and finds similar, deduped without the title itself',
     () async {
