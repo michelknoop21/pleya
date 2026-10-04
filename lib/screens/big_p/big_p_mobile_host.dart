@@ -166,6 +166,26 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
                   ),
                 ),
               ),
+              // Darker under the follow-ups and Big P: Home's posters and
+              // titles do not show through their text.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _shown ? 1 : 0,
+                    duration: motion,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.4, 0.75],
+                          colors: [Color(0x00000000), Color(0xD9000000)],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Positioned(
                 left: 12,
                 right: 12,
