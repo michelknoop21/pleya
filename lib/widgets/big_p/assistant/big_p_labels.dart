@@ -175,9 +175,14 @@ final _listItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
 String assistantWithoutList(String answer) =>
     answer.split('\n').where((line) => !_listItem.hasMatch(line)).join('\n').trim();
 
-// ": «A», «B» en «C»." in any language: a colon, then marked titles joined
-// by commas or one short word ("en", "and", "und", "et").
-final _inlineList = RegExp(r':\s*«[^»\n]*»(?:[\s,;]+(?:[^\s«»]{1,4}\s+)?«[^»\n]*»)*\s*[.!]?');
+// ": «A» (2022), «B» en «C»." in any language: a colon, then marked titles,
+// each with an optional year, joined by commas or one short word ("en",
+// "and", "und", "et"). Only a list that ends the sentence goes; one that
+// runs on ("«A» (2022) joined ...") stays as text.
+final _inlineList = RegExp(
+  r':\s*«[^»\n]*»(?:\s*\(\d{4}\))?(?:[\s,;]+(?:[^\s«»]{1,4}\s+)?«[^»\n]*»(?:\s*\(\d{4}\))?)*[ \t]*(?:[.!]|$)',
+  multiLine: true,
+);
 
 /// "Hoi Michel, ..." or, without a profile name, "Hoi, ...": the space
 /// the name leaves before the punctuation goes too, in every language.
