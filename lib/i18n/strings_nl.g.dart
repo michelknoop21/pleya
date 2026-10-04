@@ -3125,16 +3125,28 @@ class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
 
 	// Translations
 	@override String greeting({required Object name}) => 'Hoi ${name}, wat zoeken we?';
-	@override List<String> get examples => [
-		'Wat kan ik vanavond kijken?',
-		'Geef me een komedie voor vanavond.',
-		'Welke serie kan ik nu beginnen?',
-		'Heb ik iets voor de kinderen?',
-		'Welke films heb ik nog niet gezien?',
-		'Welke films staan al lang ongezien in mijn bibliotheek?',
-		'Wat is er deze week toegevoegd?',
-		'Zoek een spannende film voor vanavond.',
-		'Wie heeft deze week het meest gekeken?',
+	@override List<List<String>> get examples => [
+		[
+			'Wat kan ik vanavond kijken?',
+			'Geef me een komedie voor vanavond.',
+			'Zoek een spannende film voor vanavond.',
+		],
+		[
+			'Welke serie kan ik nu beginnen?',
+		],
+		[
+			'Heb ik iets voor de kinderen?',
+		],
+		[
+			'Welke films heb ik nog niet gezien?',
+			'Welke films staan al lang ongezien in mijn bibliotheek?',
+		],
+		[
+			'Wat is er deze week toegevoegd?',
+		],
+		[
+			'Wie heeft deze week het meest gekeken?',
+		],
 	];
 	@override String get noModelTitle => 'Ik heb nog geen brein.';
 	@override String get noModelBody => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.';
@@ -3188,15 +3200,26 @@ class _TranslationsAssistantIdleNl extends TranslationsAssistantIdleEn {
 	@override String status({required Object servers}) => 'Klaar voor je vraag · ${servers}';
 	@override String get ask => 'Vraag Big P';
 	@override String get examplesHeader => 'Bijvoorbeeld';
-	@override List<String> get examples => [
-		'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
-		'Scan alle filmbibliotheken op al mijn servers.',
-		'Scan mijn seriebibliotheken op al mijn servers.',
-		'Wie heeft deze week het meest gekeken?',
-		'Wie kijkt er nu?',
-		'Wat kan ik vanavond kijken?',
-		'Wat is er deze week toegevoegd?',
-		'Welke nieuwe films zijn populair die ik nog niet heb?',
+	@override List<List<String>> get examples => [
+		[
+			'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+		],
+		[
+			'Scan alle filmbibliotheken op al mijn servers.',
+		],
+		[
+			'Wie heeft deze week het meest gekeken?',
+			'Wie kijkt er nu?',
+		],
+		[
+			'Wat kan ik vanavond kijken?',
+		],
+		[
+			'Wat is er deze week toegevoegd?',
+		],
+		[
+			'Welke nieuwe films zijn populair die ik nog niet heb?',
+		],
 	];
 }
 
@@ -5673,15 +5696,15 @@ extension on TranslationsNl {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
-			'assistant.mobile.examples.0' => 'Wat kan ik vanavond kijken?',
-			'assistant.mobile.examples.1' => 'Geef me een komedie voor vanavond.',
-			'assistant.mobile.examples.2' => 'Welke serie kan ik nu beginnen?',
-			'assistant.mobile.examples.3' => 'Heb ik iets voor de kinderen?',
-			'assistant.mobile.examples.4' => 'Welke films heb ik nog niet gezien?',
-			'assistant.mobile.examples.5' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
-			'assistant.mobile.examples.6' => 'Wat is er deze week toegevoegd?',
-			'assistant.mobile.examples.7' => 'Zoek een spannende film voor vanavond.',
-			'assistant.mobile.examples.8' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.mobile.examples.0.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.mobile.examples.0.1' => 'Geef me een komedie voor vanavond.',
+			'assistant.mobile.examples.0.2' => 'Zoek een spannende film voor vanavond.',
+			'assistant.mobile.examples.1.0' => 'Welke serie kan ik nu beginnen?',
+			'assistant.mobile.examples.2.0' => 'Heb ik iets voor de kinderen?',
+			'assistant.mobile.examples.3.0' => 'Welke films heb ik nog niet gezien?',
+			'assistant.mobile.examples.3.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.mobile.examples.4.0' => 'Wat is er deze week toegevoegd?',
+			'assistant.mobile.examples.5.0' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
@@ -5707,14 +5730,13 @@ extension on TranslationsNl {
 			'assistant.idle.status' => ({required Object servers}) => 'Klaar voor je vraag · ${servers}',
 			'assistant.idle.ask' => 'Vraag Big P',
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
-			'assistant.idle.examples.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
-			'assistant.idle.examples.1' => 'Scan alle filmbibliotheken op al mijn servers.',
-			'assistant.idle.examples.2' => 'Scan mijn seriebibliotheken op al mijn servers.',
-			'assistant.idle.examples.3' => 'Wie heeft deze week het meest gekeken?',
-			'assistant.idle.examples.4' => 'Wie kijkt er nu?',
-			'assistant.idle.examples.5' => 'Wat kan ik vanavond kijken?',
-			'assistant.idle.examples.6' => 'Wat is er deze week toegevoegd?',
-			'assistant.idle.examples.7' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
+			'assistant.idle.examples.0.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+			'assistant.idle.examples.1.0' => 'Scan alle filmbibliotheken op al mijn servers.',
+			'assistant.idle.examples.2.0' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.2.1' => 'Wie kijkt er nu?',
+			'assistant.idle.examples.3.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.idle.examples.4.0' => 'Wat is er deze week toegevoegd?',
+			'assistant.idle.examples.5.0' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.listening.title' => 'Ik luister…',
 			'assistant.listening.body' => 'Spreek je vraag in.',
 			'assistant.working.status' => 'Even kijken…',

@@ -2277,15 +2277,27 @@
     "mobile": {
       "greeting": "Hoi ${name}, wat zoeken we?",
       "examples": [
-        "Wat kan ik vanavond kijken?",
-        "Geef me een komedie voor vanavond.",
-        "Welke serie kan ik nu beginnen?",
-        "Heb ik iets voor de kinderen?",
-        "Welke films heb ik nog niet gezien?",
-        "Welke films staan al lang ongezien in mijn bibliotheek?",
-        "Wat is er deze week toegevoegd?",
-        "Zoek een spannende film voor vanavond.",
-        "Wie heeft deze week het meest gekeken?"
+        [
+          "Wat kan ik vanavond kijken?",
+          "Geef me een komedie voor vanavond.",
+          "Zoek een spannende film voor vanavond."
+        ],
+        [
+          "Welke serie kan ik nu beginnen?"
+        ],
+        [
+          "Heb ik iets voor de kinderen?"
+        ],
+        [
+          "Welke films heb ik nog niet gezien?",
+          "Welke films staan al lang ongezien in mijn bibliotheek?"
+        ],
+        [
+          "Wat is er deze week toegevoegd?"
+        ],
+        [
+          "Wie heeft deze week het meest gekeken?"
+        ]
       ],
       "noModelTitle": "Ik heb nog geen brein.",
       "noModelBody": "Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.",
@@ -2319,14 +2331,25 @@
       "ask": "Vraag Big P",
       "examplesHeader": "Bijvoorbeeld",
       "examples": [
-        "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.",
-        "Scan alle filmbibliotheken op al mijn servers.",
-        "Scan mijn seriebibliotheken op al mijn servers.",
-        "Wie heeft deze week het meest gekeken?",
-        "Wie kijkt er nu?",
-        "Wat kan ik vanavond kijken?",
-        "Wat is er deze week toegevoegd?",
-        "Welke nieuwe films zijn populair die ik nog niet heb?"
+        [
+          "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw."
+        ],
+        [
+          "Scan alle filmbibliotheken op al mijn servers."
+        ],
+        [
+          "Wie heeft deze week het meest gekeken?",
+          "Wie kijkt er nu?"
+        ],
+        [
+          "Wat kan ik vanavond kijken?"
+        ],
+        [
+          "Wat is er deze week toegevoegd?"
+        ],
+        [
+          "Welke nieuwe films zijn populair die ik nog niet heb?"
+        ]
       ]
     },
     "listening": {

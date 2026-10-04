@@ -97,6 +97,35 @@ void main() {
     }
   });
 
+  test('examples: three kinds, one phrasing of each', () {
+    for (final pool in [t.assistant.mobile.examples, t.assistant.idle.examples]) {
+      final kindOf = {
+        for (final (i, kind) in pool.indexed)
+          for (final phrasing in kind) phrasing: i,
+      };
+      for (var seed = 0; seed < 200; seed++) {
+        final shown = BigPSuggestions(random: Random(seed)).examples(pool);
+        expect(shown, hasLength(3));
+        expect(shown.map((q) => kindOf[q]).toSet(), hasLength(3), reason: 'seed $seed: $shown');
+      }
+    }
+  });
+
+  test('a new language with the same answer and summon speaks it', () async {
+    addTearDown(() => LocaleSettings.setLocale(AppLocale.en));
+    final c = answered(const [AssistantMediaGrid([])]);
+    final s = BigPSuggestions(random: Random(3));
+    final en = s.followUps(c);
+    final enExamples = s.examples(t.assistant.mobile.examples);
+    await LocaleSettings.setLocale(AppLocale.nl);
+    final nl = t.assistant.followUp;
+    final nlPool = {...nl.tonight, ...nl.unwatched, ...nl.recent};
+    expect(s.followUps(c), everyElement(isIn(nlPool)));
+    expect(s.followUps(c), isNot(equals(en)));
+    expect(s.examples(t.assistant.mobile.examples), everyElement(isIn(t.assistant.mobile.examples.expand((k) => k))));
+    expect(s.examples(t.assistant.mobile.examples), isNot(equals(enExamples)));
+  });
+
   test('watch stats still lead to watch questions, title cards to viewing questions', () {
     for (var seed = 0; seed < 20; seed++) {
       final stats = assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)], random: Random(seed));

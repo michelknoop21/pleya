@@ -7282,16 +7282,28 @@ class TranslationsAssistantMobileEn {
 	/// en: 'Hi ${name}, what are we looking for?'
 	String greeting({required Object name}) => 'Hi ${name}, what are we looking for?';
 
-	List<String> get examples => [
-		'What can I watch tonight?',
-		'Give me a comedy for tonight.',
-		'Which series can I start now?',
-		'Do I have something for the kids?',
-		'Which movies haven\'t I seen yet?',
-		'Which movies have sat unwatched in my library for a long time?',
-		'What was added this week?',
-		'Find an exciting movie for tonight.',
-		'Who watched the most this week?',
+	List<List<String>> get examples => [
+		[
+			'What can I watch tonight?',
+			'Give me a comedy for tonight.',
+			'Find an exciting movie for tonight.',
+		],
+		[
+			'Which series can I start now?',
+		],
+		[
+			'Do I have something for the kids?',
+		],
+		[
+			'Which movies haven\'t I seen yet?',
+			'Which movies have sat unwatched in my library for a long time?',
+		],
+		[
+			'What was added this week?',
+		],
+		[
+			'Who watched the most this week?',
+		],
 	];
 
 	/// en: 'I don't have a brain yet.'
@@ -7396,15 +7408,26 @@ class TranslationsAssistantIdleEn {
 	/// en: 'For example'
 	String get examplesHeader => 'For example';
 
-	List<String> get examples => [
-		'Which tasks failed on my servers today? Restart them.',
-		'Scan all movie libraries on all my servers.',
-		'Scan my series libraries on all my servers.',
-		'Who watched the most this week?',
-		'Who is watching right now?',
-		'What can I watch tonight?',
-		'What was added this week?',
-		'Which popular new movies don\'t I have yet?',
+	List<List<String>> get examples => [
+		[
+			'Which tasks failed on my servers today? Restart them.',
+		],
+		[
+			'Scan all movie libraries on all my servers.',
+		],
+		[
+			'Who watched the most this week?',
+			'Who is watching right now?',
+		],
+		[
+			'What can I watch tonight?',
+		],
+		[
+			'What was added this week?',
+		],
+		[
+			'Which popular new movies don\'t I have yet?',
+		],
 	];
 }
 
@@ -10271,15 +10294,15 @@ extension on Translations {
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
-			'assistant.mobile.examples.0' => 'What can I watch tonight?',
-			'assistant.mobile.examples.1' => 'Give me a comedy for tonight.',
-			'assistant.mobile.examples.2' => 'Which series can I start now?',
-			'assistant.mobile.examples.3' => 'Do I have something for the kids?',
-			'assistant.mobile.examples.4' => 'Which movies haven\'t I seen yet?',
-			'assistant.mobile.examples.5' => 'Which movies have sat unwatched in my library for a long time?',
-			'assistant.mobile.examples.6' => 'What was added this week?',
-			'assistant.mobile.examples.7' => 'Find an exciting movie for tonight.',
-			'assistant.mobile.examples.8' => 'Who watched the most this week?',
+			'assistant.mobile.examples.0.0' => 'What can I watch tonight?',
+			'assistant.mobile.examples.0.1' => 'Give me a comedy for tonight.',
+			'assistant.mobile.examples.0.2' => 'Find an exciting movie for tonight.',
+			'assistant.mobile.examples.1.0' => 'Which series can I start now?',
+			'assistant.mobile.examples.2.0' => 'Do I have something for the kids?',
+			'assistant.mobile.examples.3.0' => 'Which movies haven\'t I seen yet?',
+			'assistant.mobile.examples.3.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.mobile.examples.4.0' => 'What was added this week?',
+			'assistant.mobile.examples.5.0' => 'Who watched the most this week?',
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
@@ -10305,14 +10328,13 @@ extension on Translations {
 			'assistant.idle.status' => ({required Object servers}) => 'Ready for your question · ${servers}',
 			'assistant.idle.ask' => 'Ask Big P',
 			'assistant.idle.examplesHeader' => 'For example',
-			'assistant.idle.examples.0' => 'Which tasks failed on my servers today? Restart them.',
-			'assistant.idle.examples.1' => 'Scan all movie libraries on all my servers.',
-			'assistant.idle.examples.2' => 'Scan my series libraries on all my servers.',
-			'assistant.idle.examples.3' => 'Who watched the most this week?',
-			'assistant.idle.examples.4' => 'Who is watching right now?',
-			'assistant.idle.examples.5' => 'What can I watch tonight?',
-			'assistant.idle.examples.6' => 'What was added this week?',
-			'assistant.idle.examples.7' => 'Which popular new movies don\'t I have yet?',
+			'assistant.idle.examples.0.0' => 'Which tasks failed on my servers today? Restart them.',
+			'assistant.idle.examples.1.0' => 'Scan all movie libraries on all my servers.',
+			'assistant.idle.examples.2.0' => 'Who watched the most this week?',
+			'assistant.idle.examples.2.1' => 'Who is watching right now?',
+			'assistant.idle.examples.3.0' => 'What can I watch tonight?',
+			'assistant.idle.examples.4.0' => 'What was added this week?',
+			'assistant.idle.examples.5.0' => 'Which popular new movies don\'t I have yet?',
 			'assistant.listening.title' => 'I\'m listening…',
 			'assistant.listening.body' => 'Speak your question.',
 			'assistant.working.status' => 'Let me check…',

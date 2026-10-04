@@ -89,6 +89,7 @@ class BigPSuggestions {
       _byController[controller] = suggestions;
 
   List<String>? _examples;
+  AppLocale? _examplesLocale;
   List<String> _lastExamples = const [];
   Object? _answer;
   List<String> _followUps = const [];
@@ -97,16 +98,24 @@ class BigPSuggestions {
   /// Big P came out: the next greeting picks new examples.
   void summoned() => _examples = null;
 
-  /// Three of [pool], the same until [summoned].
-  List<String> examples(List<String> pool) =>
-      _examples ??= _lastExamples = _fresh(() => (List.of(pool)..shuffle(_random)).take(3).toList(), _lastExamples);
+  /// Three of [pool], the same until [summoned] or a new language. The pool
+  /// is grouped by kind: three kinds, one phrasing of each.
+  List<String> examples(List<List<String>> pool) {
+    final locale = LocaleSettings.currentLocale;
+    if (_examples case final shown? when _examplesLocale == locale) return shown;
+    _examplesLocale = locale;
+    return _examples = _lastExamples = _fresh(
+      () => [for (final kind in (List.of(pool)..shuffle(_random)).take(3)) kind[_random.nextInt(kind.length)]],
+      _lastExamples,
+    );
+  }
 
   /// The follow-ups for [c]'s answer, the same while that answer shows.
   List<String> followUps(AssistantController c) {
     final jobs = c.actions.any((a) => a.job != null);
-    // A started job changes which questions fit; nothing else in an answer
-    // does once it shows.
-    final answer = (c.runs, jobs);
+    // A started job changes which questions fit, a new language their
+    // words; nothing else in an answer does once it shows.
+    final answer = (c.runs, jobs, LocaleSettings.currentLocale);
     if (answer == _answer) return _followUps;
     _answer = answer;
     return _followUps = _lastFollowUps = _fresh(

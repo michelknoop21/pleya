@@ -113,7 +113,7 @@ void main() {
       expect(focusedLabel(), 'assistant.ask');
       final shown = BigPSuggestions.of(c).examples(t.assistant.idle.examples);
       expect(shown, hasLength(3));
-      expect(t.assistant.idle.examples, containsAll(shown));
+      expect(t.assistant.idle.examples.expand((kind) => kind), containsAll(shown));
       for (final example in shown) {
         expect(find.text(example), findsOneWidget);
       }
