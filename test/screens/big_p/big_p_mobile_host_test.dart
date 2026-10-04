@@ -264,6 +264,19 @@ void main() {
     expect(find.text('En nog iets'), findsOneWidget);
   });
 
+  testWidgets('an iPad held upright fits the balloon beside Big P', (tester) async {
+    c.availability = AssistantAvailability.needsSetup;
+    await pump(tester, size: const Size(820, 1180), safe: const EdgeInsets.only(top: 24, bottom: 20));
+    await summon(tester);
+    // A row wider than the screen paints the overflow stripe over Big P.
+    expect(tester.takeException(), isNull);
+    expect(tester.getTopRight(find.byType(BigPAvatar)).dx, lessThanOrEqualTo(820));
+    expect(
+      tester.getTopRight(find.byType(BigPBalloon)).dx,
+      lessThanOrEqualTo(tester.getTopLeft(find.byType(BigPAvatar)).dx),
+    );
+  });
+
   testWidgets('an iPhone SE with the keyboard up keeps the balloon readable', (tester) async {
     await pump(tester, size: const Size(375, 667), safe: const EdgeInsets.only(top: 20), keyboard: 260);
     await summon(tester);

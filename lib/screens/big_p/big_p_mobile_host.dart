@@ -261,10 +261,17 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: min(620, box.maxWidth - size * 0.8 - 8)),
-          // Its tail at his head, not his feet.
-          child: Padding(padding: const EdgeInsets.only(bottom: 45), child: _balloon(context, session, regular: true)),
+        // What his box leaves, up to 620: an iPad held upright (820 pt) has
+        // less than 620 beside him.
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            // Its tail at his head, not his feet.
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 45),
+              child: _balloon(context, session, regular: true),
+            ),
+          ),
         ),
         const SizedBox(width: 8),
         _avatar(c, size),

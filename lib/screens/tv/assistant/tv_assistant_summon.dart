@@ -322,7 +322,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     );
   }
 
-  /// 440 px wide at 1080p in 39 J, so he reads as the one speaking.
+  /// About 416 pt wide at 1080p in 39 J, so he reads as the one speaking.
   static const _avatarHeight = 520.0;
 
   Widget _overlay(BuildContext context, AssistantController? c) {

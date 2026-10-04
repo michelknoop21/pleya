@@ -14,8 +14,8 @@ import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 
-/// What the glass panel holds in each stand (rust, luisteren, werken,
-/// resultaat), newest at the bottom. Reads [controller]; the surface owns
+/// What the full surface's glass panel or the summoned balloon holds in each
+/// stand (rust, luisteren, werken, resultaat), newest at the bottom. Reads [controller]; the surface owns
 /// the focus nodes and the actions.
 class TvAssistantConversation extends StatelessWidget {
   const TvAssistantConversation({
