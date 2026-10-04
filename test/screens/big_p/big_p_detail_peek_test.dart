@@ -11,6 +11,7 @@ import 'package:pleya/screens/big_p/big_p_detail_peek.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/screens/media_detail_screen.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -148,6 +149,49 @@ void main() {
     expect(c.displays, same(displays));
     expect(find.byKey(const ValueKey('bigp-dim')), findsOneWidget);
     expect(find.text('Drie nog niet.'), findsOneWidget);
+  });
+
+  testWidgets('a peek tap while titles still come in lets the run go on', (tester) async {
+    await pump(tester);
+    await openSintel(tester);
+    c
+      ..stillChecking = true
+      ..state = AssistantSurfaceState.working
+      ..emit();
+    await tester.pump();
+    await tester.tap(find.text(peekText(2)));
+    await settle(tester);
+    expect(find.text('home'), findsOneWidget);
+    expect(session.stage, BigPStage.out);
+    expect(c.aborts, 0);
+    expect(c.resets, 0);
+    expect(find.byKey(const ValueKey('bigp-dim')), findsOneWidget);
+  });
+
+  testWidgets('only the pill and Big P take a tap; below the pill is the page', (tester) async {
+    await pump(tester);
+    var pageTaps = 0;
+    session.openedTitle(nasTarget('s', 'Sintel', 2010).item.globalKey);
+    nav.currentState!.push(
+      MaterialPageRoute<bool>(
+        builder: (_) => Stack(
+          fit: StackFit.expand,
+          children: [
+            GestureDetector(
+              onTap: () => pageTaps++,
+              child: const ColoredBox(color: Colors.black),
+            ),
+            const BigPDetailPeek(),
+          ],
+        ),
+      ),
+    );
+    await settle(tester);
+    final pill = tester.getRect(find.text(peekText(2)));
+    await tester.tapAt(Offset(pill.center.dx, tester.getBottomLeft(find.byType(BigPChip)).dy + 10));
+    await settle(tester);
+    expect(pageTaps, 1);
+    expect(session.stage, BigPStage.peek);
   });
 
   testWidgets('a route over the detail page (the player) hides the peek', (tester) async {

@@ -136,6 +136,27 @@ void main() {
     expect(c.resets, 1);
   });
 
+  test('a summon from the peek keeps the answer, however old (a film long)', () {
+    session.summon();
+    answer();
+    session.openedTitle('nas:s');
+    now = now.add(const Duration(minutes: 31));
+    session.summon();
+    expect(c.resets, 0);
+    expect(c.answer, 'Twee films.');
+    expect(session.stage, BigPStage.out);
+  });
+
+  test('a summon from the parked button still clears an answer of 31 minutes', () {
+    session.summon();
+    answer();
+    session.openedTitle('nas:s');
+    session.park();
+    now = now.add(const Duration(minutes: 31));
+    session.summon();
+    expect(c.resets, 1);
+  });
+
   test('a picked option restarts the 30 minutes', () {
     session.summon();
     answer();

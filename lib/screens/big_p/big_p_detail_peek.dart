@@ -34,9 +34,11 @@ class BigPDetailPeek extends StatelessWidget {
       builder: (context, _) {
         final remaining = session.remainingTitles;
         if (session.stage != BigPStage.peek || remaining == 0) return const SizedBox.shrink();
+        // Out first: the host's didPopNext then finds him out and does not
+        // park him, which would abort titles still coming in.
         void back() {
-          Navigator.of(context).popUntil((r) => r.isFirst);
           session.summon();
+          Navigator.of(context).popUntil((r) => r.isFirst);
         }
 
         // Beside the page's Scaffold, not in it: the pill needs its own
@@ -50,7 +52,9 @@ class BigPDetailPeek extends StatelessWidget {
               role: 'button',
               state: () => {'remaining': remaining},
               child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+                // Only the pill and Big P's box take a tap; the air
+                // around them is the page's.
+                behavior: HitTestBehavior.deferToChild,
                 onTap: back,
                 // Big P first, so the pill paints over his edge: it
                 // reaches 6 pt into his box (`.peek-tip` right: 74).

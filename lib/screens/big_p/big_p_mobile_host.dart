@@ -56,6 +56,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
   bool _shown = false;
   Timer? _leave;
   RouteObserver<PageRoute<dynamic>>? _observer;
+  PageRoute<dynamic>? _route;
 
   /// The host sits in MainScreen, the profile navigator's first route (a
   /// MaterialPageRoute that observer sees): a pop back onto it is the user
@@ -65,9 +66,13 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     super.didChangeDependencies();
     final observer = ProfileNavigationScope.maybeOf(context)?.routeObserver;
     final route = ModalRoute.of(context);
+    final page = route is PageRoute<dynamic> ? route : null;
+    // Keyboard frames change the MediaQuery, not the route.
+    if (page == _route && observer == _observer) return;
     _observer?.unsubscribe(this);
-    _observer = null;
-    if (observer != null && route is PageRoute<dynamic>) _observer = observer..subscribe(this, route);
+    _route = page;
+    _observer = observer;
+    if (page != null) observer?.subscribe(this, page);
   }
 
   /// Back on Home from the detail page (39 H): Big P into his button, the

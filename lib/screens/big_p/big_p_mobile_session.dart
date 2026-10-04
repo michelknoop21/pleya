@@ -67,10 +67,12 @@ class BigPMobileSession extends ChangeNotifier {
         if (match.targets.firstOrNull case final target?) target.item.globalKey,
   }.difference(_opened).length;
 
-  /// Brings Big P out. Never called by Pleya on its own.
+  /// Brings Big P out. Never called by Pleya on its own. From the peek the
+  /// answer is kept whatever its age: the peek shows it is still there.
   void summon({AssistantScreenContext? context, String? question}) {
     final resultAt = _resultAt;
-    if (controller.state == AssistantSurfaceState.result &&
+    if (_stage != BigPStage.peek &&
+        controller.state == AssistantSurfaceState.result &&
         resultAt != null &&
         _now().difference(resultAt) >= keepAnswer) {
       controller.reset();
