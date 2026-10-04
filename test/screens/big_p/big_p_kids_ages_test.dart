@@ -11,6 +11,7 @@ import 'package:pleya/screens/big_p/big_p_mobile_followups.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/theme/mono_theme.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_kids_ages_card.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_title_facts.dart';
 import 'package:provider/provider.dart';
@@ -96,15 +97,15 @@ void main() {
     expect(c.savedAges, [
       [4, 9],
     ]);
-    expect(c.unfilteredRetries, 0);
   });
 
-  testWidgets('Zonder filter asks again without saving', (tester) async {
+  testWidgets('no way around the filter: Bewaar is the only button, no Zonder filter', (tester) async {
     answerKidsAges(c);
     await pumpHost(tester);
-    await tapText(tester, t.assistant.kids.skip);
-    expect(c.unfilteredRetries, 1);
-    expect(c.savedAges, isEmpty);
+    final card = find.byType(BigPKidsAgesCard);
+    expect(find.descendant(of: card, matching: find.byType(BigPButton)), findsOneWidget);
+    expect(find.descendant(of: card, matching: find.text(t.assistant.kids.save)), findsOneWidget);
+    expect(find.text('Zonder filter'), findsNothing);
   });
 
   testWidgets('negative control: without the card the question field is back', (tester) async {

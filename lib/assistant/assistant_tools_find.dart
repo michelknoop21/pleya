@@ -151,7 +151,6 @@ final List<AssistantTool> _findTools = [
             'true when the user wants films about a topic (a list), false or absent when looking for one '
             'specific title',
       },
-      ..._forKids,
     },
     required: const ['variants'],
     // A visible server that is online now, or Seerr.
@@ -160,7 +159,7 @@ final List<AssistantTool> _findTools = [
       _requestContextLive(ctx);
       final client = ctx.requests?.client();
       final query = _findQuery(args);
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
       final result = await findTitles(ctx, query);
       _requestContextLive(ctx);
       if (ctx.requests?.client() != client) throw const AssistantToolError('not_allowed');

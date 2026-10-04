@@ -46,7 +46,10 @@ class _Server extends FakeServer {
   Future<HealthStatus> checkHealth() async => HealthStatus.online;
 }
 
-AssistantToolContext _ctx({List<int> ages = const [8], FakeSeerr? seerr}) {
+/// The run's context on a children's profile, or with [kidsProfile] false on
+/// an adult one. A run reads the profile at the start of its ask; a tool
+/// called directly gets [kidsMode] as the run would have set it.
+AssistantToolContext _ctx({List<int> ages = const [8], FakeSeerr? seerr, bool kidsProfile = true}) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
   m.debugRegisterClientForTesting(
@@ -73,8 +76,9 @@ AssistantToolContext _ctx({List<int> ages = const [8], FakeSeerr? seerr}) {
     requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
     titleFacts: _Facts(),
     kidsAges: () async => ages,
+    kidsProfile: () async => kidsProfile,
     region: () => 'NL',
-  );
+  )..kidsMode = kidsProfile;
 }
 
 /// A model that answers from [script]: a string is a closing answer, a map a
@@ -164,7 +168,6 @@ void main() {
             {'title': 'Toy Story'},
           ],
           'variants': ['Toy Story'],
-          'for_kids': true,
         },
       },
       'Kijk Toy Story (1995), heel leuk.',
@@ -236,7 +239,7 @@ void main() {
     expect(result.displays, [isA<AssistantKidsAgesPrompt>()]);
   });
 
-  test('find_title rows carry facts; for_kids filters them and says so', () async {
+  test('find_title rows carry facts; a children\'s profile filters them and says so', () async {
     final args = {
       'candidates': [
         {'title': _hp},
@@ -244,12 +247,12 @@ void main() {
       ],
       'variants': [_hp, 'Toy Story'],
     };
-    final all = matchesOf(await _tool(_ctx(), 'find_title', args));
+    final all = matchesOf(await _tool(_ctx(kidsProfile: false), 'find_title', args));
     final hp = all.firstWhere((r) => r['title'] == _hp);
     expect((hp['facts'] as Map)['age_min'], 12);
     expect((hp['facts'] as Map)['age'], {'NL': '12', 'US': 'PG-13'});
 
-    final kids = await _tool(_ctx(), 'find_title', {...args, 'for_kids': true});
+    final kids = await _tool(_ctx(), 'find_title', args);
     expect([for (final r in matchesOf(kids)) r['title']], ['Toy Story']);
     expect(kids['filtered_for_age'], 1);
     expect(kids['kids_age'], 8);
@@ -266,7 +269,6 @@ void main() {
       'titles': [
         {'title': 'Harry'},
       ],
-      'for_kids': true,
     });
     expect([for (final r in (data['titles'] as List).cast<Map>()) r['title']], ['Toy Story']);
     expect(data['filtered_for_age'], 1);
@@ -313,64 +315,68 @@ void main() {
     expect(c.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
   });
 
-  test('Zonder filter: no ages card and no gate, for this one ask', () async {
-    final args = {
-      'candidates': [
-        {'title': _hp},
-        {'title': 'Toy Story'},
-      ],
-      'variants': [_hp, 'Toy Story'],
-      'for_kids': true,
-    };
-    final unfiltered = await _tool(_ctx(ages: []).fresh(kidsFilter: false), 'find_title', args);
-    expect(unfiltered['error'], isNull);
-    expect([for (final r in matchesOf(unfiltered)) r['title']], containsAll([_hp, 'Toy Story']));
-    // Negative control: the same ask with the filter on still asks for ages.
-    await expectLater(
-      _tool(_ctx(ages: []), 'find_title', args),
-      throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'kids_ages_unknown')),
-    );
+  group('an adult profile: the kids machinery is off', () {
+    test('"film voor de kinderen" answers with normal results: no gate, no ages card, no notice', () async {
+      final m = _model(['Kijk «$_hp» (2011).']);
+      final result = await _ask(m.model, _ctx(kidsProfile: false, ages: []), prompt);
+      expect(m.sent, hasLength(1), reason: 'no correction round');
+      expect(_cards(result), [_hp]);
+      expect(result.text, 'Kijk «$_hp» (2011).');
+      expect(result.kidsAgesNeeded, isFalse);
+      expect(result.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
+      expect(result.ageFilterNotice, isFalse);
+    });
+
+    test('a for_kids argument from the model filters nothing', () async {
+      final ctx = _ctx(kidsProfile: false, ages: []);
+      final data = await _tool(ctx, 'find_title', {
+        'candidates': [
+          {'title': _hp},
+          {'title': 'Toy Story'},
+        ],
+        'variants': [_hp, 'Toy Story'],
+        'for_kids': true,
+      });
+      expect([for (final r in matchesOf(data)) r['title']], containsAll([_hp, 'Toy Story']));
+      expect(data.containsKey('filtered_for_age'), isFalse);
+      expect(ctx.kidsMode, isFalse);
+      expect(ctx.ageRejected, isEmpty);
+    });
+
+    test('the system prompt only mentions the filter on a children\'s profile', () async {
+      final adult = _model(['Klaar.']);
+      await _ask(adult.model, _ctx(kidsProfile: false), prompt);
+      expect(adult.sent.first.first['content'], isNot(contains("children's profile")));
+      final kids = _model(['Klaar.']);
+      await _ask(kids.model, _ctx(), prompt);
+      expect(kids.sent.first.first['content'], contains("This is a children's profile"));
+    });
   });
 
-  test('retryWithoutKidsFilter asks the same question again without the gate and saves nothing', () async {
-    final filters = <bool>[];
-    final pick = AssistantTool(
-      name: 'pick',
-      description: 'pick',
-      risk: AssistantToolRisk.read,
-      properties: const {},
-      needsServer: false,
-      serves: (_, _) => true,
-      run: (ctx, _, _) async {
-        filters.add(ctx.kidsFilter);
-        if (ctx.kidsFilter) throw const AssistantToolError('kids_ages_unknown');
-        return const AssistantToolResult({'ok': true});
-      },
-    );
-    var saves = 0;
-    final c = AssistantController(
-      buildContext: (_) => AssistantToolContext(servers: MultiServerManager()),
-      entitlement: const _Entitled(),
-      loadConfig: () async =>
-          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
-      modelFor: (_) => _model([
-        {'name': 'pick', 'args': <String, Object?>{}},
-        'klaar',
-      ]).model,
-      languageName: () => 'Dutch',
-      tools: [pick],
-      saveKidsAges: (_) async => saves++,
-    );
-    addTearDown(c.dispose);
+  test('no title tool offers a for_kids parameter: the profile decides, not the model', () {
+    for (final tool in assistantTools) {
+      expect(tool.properties.containsKey('for_kids'), isFalse, reason: tool.name);
+    }
+  });
 
-    await c.submit(prompt);
-    expect(c.kidsAgesPrompt?.prompt, prompt);
-
-    await c.retryWithoutKidsFilter();
-    expect(filters, [true, false]);
-    expect(saves, 0);
-    expect(c.prompt, prompt);
-    expect(c.kidsAgesPrompt, isNull);
+  test('the profile is read at the start of every ask', () async {
+    var kids = false;
+    final ctx = _ctx(kidsProfile: false);
+    final perAsk = AssistantToolContext(
+      servers: ctx.servers,
+      catalog: ctx.catalog,
+      titleFacts: ctx.titleFacts,
+      kidsAges: ctx.kidsAges,
+      kidsProfile: () async => kids,
+      region: ctx.region,
+    );
+    final adult = await _ask(_model(['Kijk «$_hp» (2011).']).model, perAsk, prompt);
+    expect(_cards(adult), [_hp]);
+    kids = true;
+    final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
+    final child = await _ask(m.model, perAsk, prompt);
+    expect(m.sent, hasLength(2), reason: 'the correction round of a children\'s profile');
+    expect(_cards(child), ['Toy Story']);
   });
 
   test('dismissKidsAges takes the card away and keeps the answer', () async {
@@ -443,11 +449,11 @@ void main() {
     );
     setUp(() => ran = 0);
 
-    Future<List<List<Map<String, Object?>>>> run(String prompt, List<Object> script) async {
+    Future<List<List<Map<String, Object?>>>> run(String prompt, List<Object> script, {bool kids = true}) async {
       final m = _model(script);
       await AssistantRun(
         model: m.model,
-        context: _ctx(),
+        context: _ctx(kidsProfile: kids),
         confirm: (_) async => null,
         entitlement: const _Entitled(),
         tools: [watching, find],
@@ -455,71 +461,20 @@ void main() {
       return m.sent;
     }
 
-    test('a kids prompt: my_watching is refused with a hint and never runs', () async {
-      final sent = await run(prompt, [
-        {'name': 'my_watching', 'args': <String, Object?>{}},
-        'Klaar.',
-      ]);
-      expect(jsonDecode(sent[1].last['content'] as String), assistantKidsRefusal);
-      expect(ran, 0);
-    });
-
-    test('for_kids in the same reply makes the whole ask one for children', () async {
-      final sent = <List<Map<String, Object?>>>[];
-      // Two calls in one reply: find_title with for_kids, then my_watching.
-      final model = AssistantModelClient(
-        const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
-        httpClient: MockClient((request) async {
-          final body = jsonDecode(request.body) as Map<String, Object?>;
-          sent.add((body['messages'] as List).cast());
-          if (sent.length > 1) {
-            return jsonResponse({
-              'choices': [
-                {
-                  'message': {'role': 'assistant', 'content': 'Klaar.'},
-                },
-              ],
-            });
-          }
-          return jsonResponse({
-            'choices': [
-              {
-                'message': {
-                  'role': 'assistant',
-                  'content': '',
-                  'tool_calls': [
-                    for (final (i, (name, args)) in [
-                      ('find_title', {'for_kids': true}),
-                      ('my_watching', <String, Object?>{}),
-                    ].indexed)
-                      {
-                        'id': 'c$i',
-                        'type': 'function',
-                        'function': {'name': name, 'arguments': jsonEncode(args)},
-                      },
-                  ],
-                },
-              },
-            ],
-          });
-        }),
-      );
-      await AssistantRun(
-        model: model,
-        context: _ctx(),
-        confirm: (_) async => null,
-        entitlement: const _Entitled(),
-        tools: [watching, find],
-      ).ask('Wat heb ik gekeken?');
-      expect(jsonDecode(sent[1].last['content'] as String), assistantKidsRefusal);
-      expect(ran, 0);
-    });
-
-    test('negative control: an ask not for children runs my_watching', () async {
+    test('a children\'s profile: my_watching is refused with a hint and never runs', () async {
       final sent = await run('Wat heb ik laatst gekeken?', [
         {'name': 'my_watching', 'args': <String, Object?>{}},
         'Klaar.',
       ]);
+      expect(jsonDecode(sent[1].last['content'] as String), assistantKidsRefusal);
+      expect(ran, 0);
+    });
+
+    test('an adult profile runs my_watching, also for a question about the kids', () async {
+      final sent = await run(prompt, [
+        {'name': 'my_watching', 'args': <String, Object?>{}},
+        'Klaar.',
+      ], kids: false);
       expect(jsonDecode(sent[1].last['content'] as String), {
         'titles': [_hp],
       });

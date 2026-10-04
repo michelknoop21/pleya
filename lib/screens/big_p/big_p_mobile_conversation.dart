@@ -195,7 +195,6 @@ class BigPMobileConversation extends StatelessWidget {
           key: ObjectKey(prompt),
           embedded: true,
           onSave: (ages) => unawaited(c.saveKidsAgesAndRetry(ages)),
-          onSkip: () => unawaited(c.retryWithoutKidsFilter()),
         ),
       ],
       if (regular) ...[const SizedBox(height: 12), BigPMobileFollowUps(controller: c, onAsk: onExample)],

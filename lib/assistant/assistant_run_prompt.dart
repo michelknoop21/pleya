@@ -20,7 +20,15 @@ extension _AssistantPrompt on AssistantRun {
       '- Write every film or series title you name between « and », with the year when you know it: '
       '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
       '- For "what is popular or trending" use trending_titles; for "something like X" use similar_titles.\n'
-      '$_who';
+      '$_who$_kids';
+
+  /// On a children's profile only. Pleya filters itself; the model is told
+  /// so it does not ask for ages or name a title from its own memory.
+  String get _kids => _ctx.kidsMode
+      ? '\n- This is a children\'s profile. Pleya itself keeps only titles that suit the children\'s ages and '
+            'asks for their ages when it needs them; never ask for ages yourself. Name only titles from tool '
+            'results.'
+      : '';
 
   /// Who "I" is. Without this the model read "my history" as the household's
   /// and searched watch_stats for a server account with the user's name.

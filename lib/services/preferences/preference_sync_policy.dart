@@ -505,6 +505,9 @@ class PreferenceSyncPolicyRegistry {
     // The children's ages Big P picks for: family data that stays on this
     // device and with this profile, never synced and never exported.
     'assistant_kids_ages': _profileRuntimeCache,
+    // Whether this profile is a children's profile for Big P: the same family
+    // data, so the same answer. Syncing it would let another device decide.
+    'assistant_kids_profile': _profileRuntimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,

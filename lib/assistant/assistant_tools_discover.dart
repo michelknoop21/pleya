@@ -103,14 +103,13 @@ final List<AssistantTool> _discoverTools = [
         'type': 'string',
         'enum': ['movie', 'tv', 'all'],
       },
-      ..._forKids,
     },
     required: const [],
     serves: _servesDiscover,
     run: (ctx, _, args) async {
       final kind = args['kind'] ?? 'all';
       if (kind != 'movie' && kind != 'tv' && kind != 'all') throw const AssistantToolError('invalid_kind');
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
       final found = await _fromSources(
         ctx,
         (seerr) async => [
@@ -142,7 +141,6 @@ final List<AssistantTool> _discoverTools = [
         'type': 'string',
         'enum': ['movie', 'show'],
       },
-      ..._forKids,
     },
     required: const ['title'],
     serves: _servesDiscover,
@@ -151,7 +149,7 @@ final List<AssistantTool> _discoverTools = [
       final year = _int(args, 'year', 1870, 2100);
       final kind = _findKind(args['kind']);
       if (kind == MediaKind.episode) throw const AssistantToolError('invalid_kind');
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
       final (:id, :isMovie) = await _resolveSource(ctx, title, year, kind);
       final found = await _fromSources(
         ctx,

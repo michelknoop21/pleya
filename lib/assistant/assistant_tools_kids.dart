@@ -11,7 +11,7 @@ class AssistantKidsAgesPrompt extends AssistantDisplay {
   final String prompt;
 }
 
-/// How a tool behaves when an ask picks for children.
+/// How a tool behaves on a children's profile.
 enum KidsTool {
   /// Its titles pass the age gate.
   gated,
@@ -23,7 +23,7 @@ enum KidsTool {
   blocked,
 }
 
-/// Every tool's place in kids mode. A new tool must be added here: a test
+/// Every tool's place in kids mode (a children's profile). A new tool must be added here: a test
 /// walks the whole tool list, so a title tool cannot slip past the gate.
 const kidsToolPolicy = <String, KidsTool>{
   'find_media': KidsTool.gated,
@@ -69,18 +69,9 @@ const assistantKidsRefusal = <String, Object?>{
   'hint': 'For children Pleya only searches titles, trending titles and similar titles.',
 };
 
-const _forKids = {
-  'for_kids': {
-    'type': 'boolean',
-    'description': 'true when the titles are for children; Pleya then keeps only titles suitable for their age',
-  },
-};
-
-/// The youngest child's age when this ask picks for children, else null.
-/// Throws `kids_ages_unknown` when it does but no ages are saved yet.
-Future<int?> _kidsAge(AssistantToolContext ctx, Map<String, Object?> args) async {
-  if (!ctx.kidsFilter) return null;
-  if (_bool(args, 'for_kids')) ctx.kidsMode = true;
+/// The youngest child's age on a children's profile, else null. Throws
+/// `kids_ages_unknown` when no ages are saved yet.
+Future<int?> _kidsAge(AssistantToolContext ctx) async {
   if (!ctx.kidsMode) return null;
   final ages = await ctx.kidsAges?.call() ?? const <int>[];
   if (ages.isEmpty) throw const AssistantToolError('kids_ages_unknown');

@@ -15,6 +15,7 @@ import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/utils/native_input_session.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_kids_ages_card.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 
@@ -100,12 +101,11 @@ void main() {
     expect(find.byType(BigPKidsAgesCard), findsOneWidget);
   });
 
-  testWidgets('Zonder filter asks again without the gate and saves nothing', (tester) async {
+  testWidgets('no way around the filter: Bewaar is the only button, no Zonder filter', (tester) async {
     await raise(tester);
-    await tester.tap(find.text(t.assistant.kids.skip));
-    await settle(tester);
-    expect(c.unfilteredRetries, 1);
-    expect(c.savedAges, isEmpty);
+    final card = find.byType(BigPKidsAgesCard);
+    expect(find.descendant(of: card, matching: find.byType(BigPButton)), findsOneWidget);
+    expect(find.text('Zonder filter'), findsNothing);
   });
 
   testWidgets('Menu closes the card; the answer stays and the card does not come back', (tester) async {

@@ -2305,8 +2305,7 @@
       "title": "Hoe oud zijn de kinderen?",
       "body": "Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.",
       "age": "${age} jaar",
-      "save": "Bewaar en zoek verder",
-      "skip": "Zonder filter"
+      "save": "Bewaar en zoek verder"
     },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
@@ -2600,7 +2599,10 @@
       "kidsAges": "Leeftijden kinderen (dit profiel)",
       "kidsAgesNone": "Niet ingesteld",
       "kidsAgesClear": "Leeftijden wissen",
-      "kidsAgesValue": "${ages} jaar"
+      "kidsAgesValue": "${ages} jaar",
+      "kidsProfile": "Kinderprofiel",
+      "kidsProfileNote": "Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.",
+      "kidsProfileLocked": "Plex markeert dit account als beperkt, dus dit staat altijd aan."
     },
     "tasks": {
       "working": "Bezig met ${count} taken · ${done} klaar",

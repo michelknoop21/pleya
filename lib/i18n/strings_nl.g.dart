@@ -3168,7 +3168,6 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 	@override String get body => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.';
 	@override String age({required Object age}) => '${age} jaar';
 	@override String get save => 'Bewaar en zoek verder';
-	@override String get skip => 'Zonder filter';
 }
 
 // Path: assistant.mobile
@@ -3532,6 +3531,9 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get kidsAgesNone => 'Niet ingesteld';
 	@override String get kidsAgesClear => 'Leeftijden wissen';
 	@override String kidsAgesValue({required Object ages}) => '${ages} jaar';
+	@override String get kidsProfile => 'Kinderprofiel';
+	@override String get kidsProfileNote => 'Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.';
+	@override String get kidsProfileLocked => 'Plex markeert dit account als beperkt, dus dit staat altijd aan.';
 }
 
 // Path: assistant.tasks
@@ -5820,7 +5822,6 @@ extension on TranslationsNl {
 			'assistant.kids.body' => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.',
 			'assistant.kids.age' => ({required Object age}) => '${age} jaar',
 			'assistant.kids.save' => 'Bewaar en zoek verder',
-			'assistant.kids.skip' => 'Zonder filter',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -6044,6 +6045,9 @@ extension on TranslationsNl {
 			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
 			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
+			'assistant.settings.kidsProfile' => 'Kinderprofiel',
+			'assistant.settings.kidsProfileNote' => 'Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.',
+			'assistant.settings.kidsProfileLocked' => 'Plex markeert dit account als beperkt, dus dit staat altijd aan.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar',
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} taken zijn klaar.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} van ${count} taken klaar.',

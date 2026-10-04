@@ -13,19 +13,13 @@ import 'big_p_assistant_widgets.dart';
 
 /// The Pleya card that asks for the children's ages (39 G's card, not a
 /// message from Big P): a chip per age, several at once for several
-/// children. Bewaar hands the ages to [onSave]; Zonder filter runs the
-/// question once without the age gate. Focus opens on the first chip.
+/// children. Bewaar hands the ages to [onSave]. It only shows on a children's
+/// profile, so it has no way around the filter. Focus opens on the first
+/// chip; on TV Menu closes it.
 class BigPKidsAgesCard extends StatefulWidget {
-  const BigPKidsAgesCard({
-    super.key,
-    required this.onSave,
-    required this.onSkip,
-    this.firstNode,
-    this.embedded = false,
-  });
+  const BigPKidsAgesCard({super.key, required this.onSave, this.firstNode, this.embedded = false});
 
   final ValueChanged<List<int>> onSave;
-  final VoidCallback onSkip;
 
   /// Gets the first chip, for the surface's initial focus.
   final FocusNode? firstNode;
@@ -48,12 +42,6 @@ class _BigPKidsAgesCardState extends State<BigPKidsAgesCard> {
     final tk = tokens(context);
     final k = t.assistant.kids;
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt);
-    final skip = BigPButton(
-      label: k.skip,
-      automationId: AutomationIds.assistantKidsAgesButton,
-      automationInstance: 'skip',
-      onPressed: widget.onSkip,
-    );
     final save = BigPButton(
       label: k.save,
       primary: true,
@@ -104,20 +92,8 @@ class _BigPKidsAgesCardState extends State<BigPKidsAgesCard> {
               ],
             ),
             SizedBox(height: 32 * pt),
-            // Right-aligned on TV, wrapping when the labels need it. In Big
-            // P's balloon one above the other: these labels are too long for
-            // 39 G's two halves on an iPhone SE.
-            if (widget.embedded)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  save,
-                  SizedBox(height: 4 * pt),
-                  skip,
-                ],
-              )
-            else
-              Wrap(alignment: WrapAlignment.end, spacing: 12 * pt, runSpacing: 12 * pt, children: [skip, save]),
+            // Full width in Big P's balloon, right-aligned on TV.
+            if (widget.embedded) save else Align(alignment: Alignment.centerRight, child: save),
           ],
         ),
       ),

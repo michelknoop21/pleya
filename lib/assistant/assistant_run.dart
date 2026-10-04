@@ -8,7 +8,6 @@ import '../media/media_kind.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
-import 'assistant_age_gate.dart';
 import 'assistant_entitlement.dart';
 import 'assistant_execution.dart';
 import 'assistant_named_titles.dart';
@@ -246,7 +245,8 @@ class AssistantRun {
     _stepIndex = 0;
     _prompt = prompt;
     _ageNotice = false;
-    _ctx.kidsMode = AgeGate.kidsIntent(prompt);
+    // The profile decides, never the prompt or the model.
+    _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
     var corrected = false;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
@@ -305,9 +305,6 @@ class AssistantRun {
       if (reply.toolCalls.any((call) => call.name == 'diagnose_library')) {
         _ctx.libraryDoctorMode = true;
       }
-      // A for_kids call anywhere in the reply makes the whole ask one for
-      // children before any sibling runs.
-      if (reply.toolCalls.any(_asksForKids)) _ctx.kidsMode = true;
       if (reply.toolCalls.any((call) => call.name == 'spoiler_context')) {
         _spoilerQuestion ??= prompt;
         _ctx.spoilerQuestion = _spoilerQuestion;

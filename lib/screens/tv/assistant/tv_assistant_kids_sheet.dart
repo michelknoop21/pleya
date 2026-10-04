@@ -35,8 +35,9 @@ class TvKidsAgesSheet {
   }
 
   Future<void> _show(BuildContext context, AssistantController c, AssistantKidsAgesPrompt prompt) async {
-    // The ages to save, false for Zonder filter, null for Menu.
-    final result = await OverlaySheetController.showAdaptive<Object>(
+    // The ages to save, null for Menu. There is no way around the filter:
+    // this card only shows on a children's profile.
+    final result = await OverlaySheetController.showAdaptive<List<int>>(
       context,
       presentation: OverlaySheetPresentation.panel,
       restoreLauncherFocus: true,
@@ -48,19 +49,15 @@ class TvKidsAgesSheet {
         return BigPKidsAgesCard(
           firstNode: firstNode,
           onSave: (ages) => OverlaySheetController.closeAdaptive(sheetContext, ages),
-          onSkip: () => OverlaySheetController.closeAdaptive(sheetContext, false),
         );
       },
     );
     _sheet = null;
     if (!identical(c.kidsAgesPrompt, prompt)) return;
-    switch (result) {
-      case final List<int> ages:
-        unawaited(c.saveKidsAgesAndRetry(ages));
-      case false:
-        unawaited(c.retryWithoutKidsFilter());
-      default:
-        c.dismissKidsAges();
+    if (result != null) {
+      unawaited(c.saveKidsAgesAndRetry(result));
+    } else {
+      c.dismissKidsAges();
     }
   }
 

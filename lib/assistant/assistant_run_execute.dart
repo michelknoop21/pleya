@@ -74,9 +74,9 @@ extension _AssistantExecute on AssistantRun {
     final available = _available();
     final tool = available.keys.where((t) => t.name == call.name).firstOrNull;
     if (tool == null) return {'error': 'unknown_tool'};
-    // The whole ask picks for children: a tool whose titles skip the age
-    // gate is refused, whatever arguments the model sent.
-    if (_ctx.kidsFilter && _ctx.kidsMode && kidsToolPolicy[tool.name] == KidsTool.blocked) {
+    // A children's profile: a tool whose titles skip the age gate is
+    // refused, whatever arguments the model sent.
+    if (_ctx.kidsMode && kidsToolPolicy[tool.name] == KidsTool.blocked) {
       return assistantKidsRefusal;
     }
     final Map<String, Object?> args;

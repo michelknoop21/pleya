@@ -202,23 +202,23 @@ void main() {
     expect([for (final r in _titles(data)) r['title']], ['The Matrix Reloaded', 'Dark City']);
   });
 
-  test('for_kids with age 8 drops PG-13 titles, requestable ones included', () async {
+  test('a children\'s profile with age 8 drops PG-13 titles, requestable ones included', () async {
     final seerr = FakeSeerr()
       ..details['/discover/trending'] = _page([
         _film(12445, 'Harry Potter', '2011-07-07'),
         _film(862, 'Toy Story', '1995-11-22'),
       ]);
-    final ctx = _ctx(seerr: seerr, age: 8);
-    final data = await _run(ctx, 'trending_titles', {'for_kids': true});
+    final ctx = _ctx(seerr: seerr, age: 8)..kidsMode = true;
+    final data = await _run(ctx, 'trending_titles', {});
     expect([for (final r in _titles(data)) r['title']], ['Toy Story']);
     expect(data['filtered_for_age'], 1);
     final refused = await assistantRequestFromOption(ctx, 'movie:12445');
     expect((refused as AssistantToolResult).data, {'error': 'unknown_seerr_id'});
   });
 
-  test('for_kids without saved ages is kids_ages_unknown', () async {
+  test('a children\'s profile without saved ages is kids_ages_unknown', () async {
     await expectLater(
-      _run(_ctx(seerr: FakeSeerr()), 'trending_titles', {'for_kids': true}),
+      _run(_ctx(seerr: FakeSeerr())..kidsMode = true, 'trending_titles', {}),
       throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'kids_ages_unknown')),
     );
   });

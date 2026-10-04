@@ -61,7 +61,7 @@ class AssistantToolContext {
     this.kidsAges,
     this.region = assistantRegion,
     this.cancel,
-    this.kidsFilter = true,
+    this.kidsProfile,
   });
 
   final MultiServerManager servers;
@@ -99,24 +99,23 @@ class AssistantToolContext {
   }
 
   /// Same servers, screen and services, none of the per-run state.
-  AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web, bool? kidsFilter}) =>
-      AssistantToolContext(
-        servers: servers,
-        screen: screen,
-        catalog: catalog,
-        insights: insights,
-        requests: requests,
-        media: media,
-        playback: playback,
-        spoilers: spoilers,
-        personal: personal,
-        web: web ?? this.web,
-        titleFacts: titleFacts,
-        kidsAges: kidsAges,
-        region: region,
-        cancel: cancel ?? this.cancel,
-        kidsFilter: kidsFilter ?? this.kidsFilter,
-      );
+  AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web}) => AssistantToolContext(
+    servers: servers,
+    screen: screen,
+    catalog: catalog,
+    insights: insights,
+    requests: requests,
+    media: media,
+    playback: playback,
+    spoilers: spoilers,
+    personal: personal,
+    web: web ?? this.web,
+    titleFacts: titleFacts,
+    kidsAges: kidsAges,
+    region: region,
+    cancel: cancel ?? this.cancel,
+    kidsProfile: kidsProfile,
+  );
 
   /// Domain services the UI layer hands in. A missing one keeps its tools
   /// out of the run; nothing here grants rights on a server.
@@ -152,19 +151,21 @@ class AssistantToolContext {
   final TitleFactsService? titleFacts;
 
   /// The ages of this profile's children, for the age gate. Null or empty
-  /// while an ask picks for children: the title tools answer
-  /// `kids_ages_unknown` and Pleya shows its ages card.
+  /// on a children's profile: the title tools answer `kids_ages_unknown` and
+  /// Pleya shows its ages card.
   final Future<List<int>> Function()? kidsAges;
 
-  /// False for one ask the viewer ran "Zonder filter": no age gate, and no
-  /// ages card either.
-  final bool kidsFilter;
+  /// Whether the active profile is a children's profile
+  /// (`assistantIsKidsProfile`); read at the start of every ask. Null is an
+  /// adult profile.
+  final Future<bool> Function()? kidsProfile;
 
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;
 
-  /// This ask picks for children: the prompt said so, or a title tool got
-  /// `for_kids`. Titles then pass only through the age gate.
+  /// This ask runs on a children's profile ([kidsProfile]): titles pass only
+  /// through the age gate. On any other profile the whole kids machinery is
+  /// off.
   bool kidsMode = false;
 
   /// The youngest child's age once a title tool read it.

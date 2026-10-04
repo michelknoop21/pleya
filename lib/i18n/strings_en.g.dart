@@ -7387,9 +7387,6 @@ class TranslationsAssistantKidsEn {
 
 	/// en: 'Save and keep looking'
 	String get save => 'Save and keep looking';
-
-	/// en: 'No filter'
-	String get skip => 'No filter';
 }
 
 // Path: assistant.mobile
@@ -8118,6 +8115,15 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: '${ages} years'
 	String kidsAgesValue({required Object ages}) => '${ages} years';
+
+	/// en: 'Children's profile'
+	String get kidsProfile => 'Children\'s profile';
+
+	/// en: 'Big P only shows titles that suit the children's ages. Only for this profile, only on this device.'
+	String get kidsProfileNote => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.';
+
+	/// en: 'Plex marks this account as restricted, so this is always on.'
+	String get kidsProfileLocked => 'Plex marks this account as restricted, so this is always on.';
 }
 
 // Path: assistant.tasks
@@ -10545,7 +10551,6 @@ extension on Translations {
 			'assistant.kids.body' => 'So I can keep the titles suitable. This stays on this device and with this profile only.',
 			'assistant.kids.age' => ({required Object age}) => '${age} years',
 			'assistant.kids.save' => 'Save and keep looking',
-			'assistant.kids.skip' => 'No filter',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -10769,6 +10774,9 @@ extension on Translations {
 			'assistant.settings.kidsAgesNone' => 'Not set',
 			'assistant.settings.kidsAgesClear' => 'Clear ages',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
+			'assistant.settings.kidsProfile' => 'Children\'s profile',
+			'assistant.settings.kidsProfileNote' => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.',
+			'assistant.settings.kidsProfileLocked' => 'Plex marks this account as restricted, so this is always on.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',

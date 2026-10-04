@@ -10,7 +10,6 @@ extension _AssistantTaskRunning on AssistantController {
     Future<void> Function() refreshHealth, {
     bool allowSplit = false,
     bool libraryDoctorScope = false,
-    bool kidsFilter = true,
   }) async {
     AssistantModelClient? model;
     try {
@@ -20,9 +19,7 @@ extension _AssistantTaskRunning on AssistantController {
       model = _modelFor(config);
       final result = await AssistantRun(
         model: model,
-        context: _buildContext(
-          _screenContext,
-        ).fresh(web: config.webSearch ? _webFor?.call(config) : null, kidsFilter: kidsFilter),
+        context: _buildContext(_screenContext).fresh(web: config.webSearch ? _webFor?.call(config) : null),
         confirm: (action) => _confirm(action, task),
         entitlement: _entitlement,
         tools: _tools,
@@ -67,8 +64,7 @@ extension _AssistantTaskRunning on AssistantController {
         _update();
         final doctorScope = libraryDoctorScope || assistantNeedsLibraryDoctorScope(task.prompt);
         await Future.wait([
-          for (final child in children)
-            _runTask(child, config, refreshHealth, libraryDoctorScope: doctorScope, kidsFilter: kidsFilter),
+          for (final child in children) _runTask(child, config, refreshHealth, libraryDoctorScope: doctorScope),
         ]);
         return;
       }

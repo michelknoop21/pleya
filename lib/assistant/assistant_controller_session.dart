@@ -21,6 +21,7 @@ import 'assistant_spoiler_context.dart';
 import 'assistant_spoiler_progress.dart';
 import 'assistant_controller.dart';
 import 'assistant_kids_ages_store.dart';
+import 'assistant_kids_profile_store.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_playback.dart';
 import 'assistant_provider.dart';
@@ -152,6 +153,9 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
       online: () => AssistantProviderStore.current?.onlineFacts ?? true,
     ),
     kidsAges: KidsAgesStore().read,
+    // Read per ask, so a switch flipped in Instellingen counts from the next
+    // question.
+    kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
     personal: recommendations == null
         ? null
         : AssistantPersonalServices(

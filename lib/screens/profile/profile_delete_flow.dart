@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_kids_ages_store.dart';
+import '../../assistant/assistant_kids_profile_store.dart';
 import '../../connection/connection_registry.dart';
 import '../../database/app_database.dart';
 import '../../i18n/strings.g.dart';
@@ -103,4 +104,5 @@ Future<void> clearProfileScopedStores(StorageService storage, String profileId) 
   await SearchRecencyStore.clearForProfileScope(scope);
   // And the children's ages Big P picks for: local to this profile.
   await KidsAgesStore.clearForProfileScope(scope);
+  await KidsProfileStore.clearForProfileScope(scope);
 }

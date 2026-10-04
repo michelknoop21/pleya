@@ -7,24 +7,11 @@ part of 'assistant_run.dart';
 /// Tool errors that are no failure of the task.
 const _kidsCodes = {'kids_ages_unknown', 'kids_mode_unsupported'};
 
-/// A call with `for_kids: true`.
-bool _asksForKids(AssistantToolCall call) {
-  try {
-    final args = jsonDecode(call.arguments.isEmpty ? '{}' : call.arguments);
-    return args is Map && args['for_kids'] == true;
-  } on FormatException {
-    return false;
-  }
-}
-
 extension _AssistantAnswer on AssistantRun {
-  /// This ask is for children and no ages are saved, while no title tool
-  /// has read them yet.
+  /// A children's profile without saved ages, while no title tool has read
+  /// them yet.
   Future<bool> _kidsAgesMissing() async =>
-      _ctx.kidsFilter &&
-      _ctx.kidsMode &&
-      _ctx.kidsAge == null &&
-      (await _ctx.kidsAges?.call() ?? const <int>[]).isEmpty;
+      _ctx.kidsMode && _ctx.kidsAge == null && (await _ctx.kidsAges?.call() ?? const <int>[]).isEmpty;
 
   /// The ages card, once per ask.
   void _askKidsAges() {
@@ -71,7 +58,7 @@ extension _AssistantAnswer on AssistantRun {
   /// one followed by a year counts, so ordinary prose is left alone. The
   /// [rejected] ones are already reported.
   List<String> _unvettedNamed(String answer, List<({String title, int? year, String reason})> rejected) {
-    if (!_ctx.kidsFilter || !_ctx.kidsMode) return const [];
+    if (!_ctx.kidsMode) return const [];
     final allowed = [for (final a in _ctx.ageAllowed) (key: assistantTitleKey(a.title), year: a.year)];
     final skip = {for (final r in rejected) assistantTitleKey(r.title)};
     final found = <String>[];

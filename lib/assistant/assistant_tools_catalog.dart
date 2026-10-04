@@ -74,13 +74,12 @@ final List<AssistantTool> _catalogTools = [
         'enum': ['added', 'released', 'rating', 'title', 'random'],
       },
       'limit': {'type': 'integer'},
-      ..._forKids,
     },
     needsServer: false,
     serves: (ctx, _) => ctx.catalog != null,
     run: (ctx, _, args) async {
       if (ctx.catalog == null) throw const AssistantToolError('catalog_unavailable');
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
       final query = await _search(ctx, args);
       final queries = _catalogQueries[ctx] ??= {};
       final queryId = 'q${queries.length + 1}';

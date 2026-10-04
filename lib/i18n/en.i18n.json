@@ -2305,8 +2305,7 @@
       "title": "How old are the children?",
       "body": "So I can keep the titles suitable. This stays on this device and with this profile only.",
       "age": "${age} years",
-      "save": "Save and keep looking",
-      "skip": "No filter"
+      "save": "Save and keep looking"
     },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
@@ -2600,7 +2599,10 @@
       "kidsAges": "Children's ages (this profile)",
       "kidsAgesNone": "Not set",
       "kidsAgesClear": "Clear ages",
-      "kidsAgesValue": "${ages} years"
+      "kidsAgesValue": "${ages} years",
+      "kidsProfile": "Children's profile",
+      "kidsProfileNote": "Big P only shows titles that suit the children's ages. Only for this profile, only on this device.",
+      "kidsProfileLocked": "Plex marks this account as restricted, so this is always on."
     },
     "tasks": {
       "working": "Working on ${count} tasks · ${done} done",

@@ -55,17 +55,6 @@ class AgeGate {
 
   static final _number = RegExp(r'\d+');
 
-  static final _kidsIntent = RegExp(
-    r'\b(kind|kindje|kindjes|kinderen|kinderfilms?|kids?|child|children|family|familie|familiefilms?|gezin|'
-    r'dochters?|dochtertje|zoon|zoontje|zonen)\b|\bvoor de kleinen?\b',
-    caseSensitive: false,
-  );
-
-  /// Whether [prompt] asks for something for children or the family. A
-  /// static member rather than a top-level function until the tools use it
-  /// (T5), so the unused-code gate stays green.
-  static bool kidsIntent(String prompt) => _kidsIntent.hasMatch(prompt);
-
   /// Age for [code] as rated in [country] (null: country unknown). A
   /// Plex-style `nl/12` names its own country. An unknown code with a number
   /// in it counts as that number; anything else as no rating.

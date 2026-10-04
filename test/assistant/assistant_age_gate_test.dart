@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_age_gate.dart';
 import 'package:pleya/assistant/assistant_kids_ages_store.dart';
+import 'package:pleya/assistant/assistant_kids_profile_store.dart';
 import 'package:pleya/assistant/assistant_title_facts.dart';
+import 'package:pleya/profiles/profile.dart';
 import 'package:pleya/screens/profile/profile_delete_flow.dart';
 import 'package:pleya/services/preferences/preference_sync_policy.dart';
 import 'package:pleya/services/settings_service.dart';
@@ -75,22 +77,6 @@ void main() {
     });
   });
 
-  group('AgeGate.kidsIntent', () {
-    for (final (prompt, hit) in [
-      ('iets voor de kinderen', true),
-      ('a movie for the kids tonight', true),
-      ('film voor mijn dochter van 7', true),
-      ('family night', true),
-      ('voor de kleintjes? nee, voor de kleinen', true),
-      ('Voor het hele gezin', true),
-      ('iets spannends op de kindle-avond', false),
-      ('een docu over een kinderboerderij', false),
-      ('een thriller', false),
-    ]) {
-      test(prompt, () => expect(AgeGate.kidsIntent(prompt), hit));
-    }
-  });
-
   group('KidsAgesStore', () {
     late StorageService storage;
 
@@ -139,6 +125,71 @@ void main() {
       expect(PreferenceSyncPolicyRegistry.isProfileScoped(key), isTrue);
       expect(PreferenceSyncPolicyRegistry.maySync(key), isFalse);
       expect(PreferenceSyncPolicyRegistry.isExportable(key), isFalse);
+    });
+  });
+
+  group('KidsProfileStore', () {
+    late StorageService storage;
+
+    setUp(() async {
+      resetSharedPreferencesForTest();
+      SettingsService.resetForTesting();
+      storage = await StorageService.getInstance();
+      await SettingsService.getInstance();
+    });
+
+    test('per profile: the switch of one profile is not the other\'s', () async {
+      await storage.setActiveProfileId('child');
+      await KidsProfileStore().save(true);
+      await storage.setActiveProfileId('parent');
+      expect(await KidsProfileStore().read(), isFalse);
+      await storage.setActiveProfileId('child');
+      expect(await KidsProfileStore().read(), isTrue);
+      await KidsProfileStore().save(false);
+      expect(await KidsProfileStore().read(), isFalse);
+    });
+
+    test('without an active profile nothing is kept', () async {
+      await KidsProfileStore().save(true);
+      expect(await KidsProfileStore().read(), isFalse);
+    });
+
+    test('deleting a profile drops its switch and nobody else\'s', () async {
+      await storage.setActiveProfileId('child');
+      await KidsProfileStore().save(true);
+      await storage.setActiveProfileId('other');
+      await KidsProfileStore().save(true);
+
+      await clearProfileScopedStores(storage, 'child');
+
+      expect(await KidsProfileStore().read(), isTrue);
+      await storage.setActiveProfileId('child');
+      expect(await KidsProfileStore().read(), isFalse);
+    });
+
+    test('the policy keeps the switch on this device and out of exports', () {
+      const key = 'assistant_kids_profile';
+      expect(PreferenceSyncPolicyRegistry.isProfileScoped(key), isTrue);
+      expect(PreferenceSyncPolicyRegistry.maySync(key), isFalse);
+      expect(PreferenceSyncPolicyRegistry.isExportable(key), isFalse);
+    });
+
+    final created = DateTime(2026);
+    test('a Plex Home account Plex marks as restricted is a children\'s profile without the switch', () async {
+      await storage.setActiveProfileId('plex');
+      final kid = Profile.plexHome(id: 'plex', displayName: 'Mila', plexRestricted: true, createdAt: created);
+      final adult = Profile.plexHome(id: 'plex', displayName: 'Ouder', createdAt: created);
+      expect(await assistantIsKidsProfile(kid), isTrue);
+      expect(await assistantIsKidsProfile(adult), isFalse);
+    });
+
+    test('any other profile follows its own switch', () async {
+      await storage.setActiveProfileId('local');
+      final local = Profile.local(id: 'local', displayName: 'Thuis', createdAt: created);
+      expect(await assistantIsKidsProfile(local), isFalse);
+      await KidsProfileStore().save(true);
+      expect(await assistantIsKidsProfile(local), isTrue);
+      expect(await assistantIsKidsProfile(null), isTrue, reason: 'the switch of the active scope still counts');
     });
   });
 }

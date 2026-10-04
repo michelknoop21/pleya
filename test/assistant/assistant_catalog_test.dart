@@ -515,16 +515,16 @@ void main() {
       groups: [on('a', 'Toy Story'), on('b', 'Deathly Hallows')],
       others: [_SearchServer('a', MediaBackend.jellyfin), _SearchServer('b', MediaBackend.jellyfin)],
     );
-    AssistantToolContext ctx() => AssistantToolContext(
+    // kidsMode as a run on a children's profile sets it.
+    AssistantToolContext ctx({bool kids = false}) => AssistantToolContext(
       servers: base.servers,
       catalog: base.catalog,
       titleFacts: _Facts(),
       kidsAges: () async => [8],
       region: () => 'NL',
-    );
+    )..kidsMode = kids;
 
-    final kids =
-        await _tool('search_catalog').run(ctx(), null, {'kind': 'movie', 'for_kids': true}) as AssistantToolResult;
+    final kids = await _tool('search_catalog').run(ctx(kids: true), null, {'kind': 'movie'}) as AssistantToolResult;
     final grid = kids.display! as AssistantMediaGrid;
     expect([for (final e in grid.entries) e.item.title], ['Toy Story']);
     expect(kids.data['count'], 1, reason: 'the filtered count');

@@ -48,13 +48,12 @@ final List<AssistantTool> _generalTools = [
     risk: AssistantToolRisk.read,
     properties: const {
       'query': {'type': 'string'},
-      ..._forKids,
     },
     required: const ['query'],
     serves: (ctx, id) => ctx.userClient(id) != null,
     run: (ctx, id, args) async {
       final query = _string(args, 'query');
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
       final client = ctx.userClient(id!)!;
       // Home's hidden libraries stay out, as in the app's own search.
       final items = filterHiddenLibraryItems([

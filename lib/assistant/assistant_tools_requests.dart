@@ -92,7 +92,6 @@ final List<AssistantTool> _requestTools = [
           'additionalProperties': false,
         },
       },
-      ..._forKids,
     },
     required: const ['titles'],
     serves: _servesRequests,
@@ -100,7 +99,7 @@ final List<AssistantTool> _requestTools = [
       final client = _seerr(ctx);
       _requestLive(ctx, client);
       final candidates = _candidates(args);
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
       // Ten results at most in all, at least two per candidate.
       final perCandidate = (10 ~/ candidates.length).clamp(2, 8);
       final found = <SeerrMedia>[];
@@ -155,7 +154,6 @@ final List<AssistantTool> _requestTools = [
         'type': 'string',
         'enum': ['popularity', 'rating'],
       },
-      ..._forKids,
     },
     required: const ['kind'],
     serves: _servesRequests,
@@ -175,7 +173,7 @@ final List<AssistantTool> _requestTools = [
       }
       final yearFrom = _yearArg(args, 'year_from');
       final yearTo = _yearArg(args, 'year_to');
-      final age = await _kidsAge(ctx, args);
+      final age = await _kidsAge(ctx);
 
       // The API documents date ranges and original language on /discover;
       // SeerrClient only passes genre, keywords and sortBy through yet. The

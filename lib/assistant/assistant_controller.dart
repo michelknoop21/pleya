@@ -229,8 +229,7 @@ class AssistantController extends ChangeNotifier {
   }
 
   /// A new question supersedes every task and card from the previous one.
-  /// [kidsFilter] false runs it once without the age gate ("Zonder filter").
-  Future<void> submit(String prompt, {bool kidsFilter = true}) async {
+  Future<void> submit(String prompt) async {
     final text = prompt.trim();
     if (_disposed || text.isEmpty) return;
     final screen = _screenContext;
@@ -263,7 +262,7 @@ class AssistantController extends ChangeNotifier {
       final context = _buildContext(_screenContext);
       Future<void>? health;
       Future<void> refresh() => health ??= context.servers.checkServerHealth();
-      await _runTask(root, config, refresh, allowSplit: true, kidsFilter: kidsFilter);
+      await _runTask(root, config, refresh, allowSplit: true);
     } catch (e, st) {
       appLogger.w('Assistant ask failed', error: e.runtimeType, stackTrace: st);
       if (_alive(root)) {
@@ -344,13 +343,6 @@ class AssistantController extends ChangeNotifier {
     final prompt = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull?.prompt ?? _prompt;
     await _saveKidsAges(ages);
     if (prompt != null && !_disposed) await submit(prompt);
-  }
-
-  /// "Zonder filter": the same question once more without the age gate.
-  /// Nothing is saved, so a next ask for children shows the card again.
-  Future<void> retryWithoutKidsFilter() async {
-    final prompt = kidsAgesPrompt?.prompt ?? _prompt;
-    if (prompt != null && !_disposed) await submit(prompt, kidsFilter: false);
   }
 
   /// The ages card closed unanswered (Menu): the answer stays, the card goes.
