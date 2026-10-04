@@ -55,7 +55,12 @@ class AssistantProviderStore {
   /// read failed too, the last item this device saw ([seenKey]) stands in.
   /// `unknown` only when this device never read the keychain: the blob then
   /// goes up only into an empty keychain, a decodable item wins over it and
-  /// an undecodable one is left alone. Device-local.
+  /// an undecodable one is left alone. After a `|` follows the fingerprint of
+  /// the blob the marker was written for: the two are separate prefs writes,
+  /// and a marker left next to another blob gives that blob no right to go
+  /// up or to stay. A marker without one (written before the blob was named)
+  /// cannot show which blob it was for, so its blob never goes up either.
+  /// Device-local.
   static const String pendingKey = 'assistant_provider_pending';
 
   /// Fingerprint of the keychain item as this device last read, wrote or
@@ -68,7 +73,7 @@ class AssistantProviderStore {
   /// [AssistantProviderStoreException] rather than reading as unset.
   Future<AssistantProviderConfig?> load() => _serial(_load);
 
-  Future<AssistantProviderConfig?> _load() async {
+  Future<AssistantProviderConfig?> _load({bool again = false}) async {
     final keychain = _keychain;
     if (keychain == null) return (await _readLegacy())?.config;
     String? synced;
@@ -84,21 +89,38 @@ class AssistantProviderStore {
     var legacy = await _readLegacy();
     final marker = prefs.getString(pendingKey);
     if (legacy != null && marker != null) {
-      // A save the keychain refused earlier. While the keychain still fails
-      // it is all this device has.
-      if (keychainError != null) return legacy.config;
-      // It goes up only over the item it was saved over (a hash marker), or
-      // into an empty keychain. With an 'unknown' marker its read failed, so
-      // any config in the keychain now may be newer: a decodable one wins.
-      if (marker == _fingerprint(synced) || (marker == _unknown && synced == null)) {
-        await _migrate(keychain, legacy.json);
-        return legacy.config;
+      final bar = marker.indexOf('|');
+      final over = bar < 0 ? marker : marker.substring(0, bar);
+      // A save cut off between its two prefs writes: the marker is the new
+      // save's, the blob still the old one. That blob is no longer anyone's
+      // config: it goes, whatever the keychain says.
+      final stale = bar >= 0 && marker.substring(bar + 1) != _fingerprint(legacy.json);
+      if (!stale) {
+        // A save the keychain refused earlier. While the keychain still fails
+        // it is all this device has.
+        if (keychainError != null) return _blobOrSuperseded(legacy.config, again, keychainError);
+        final current = over == _fingerprint(synced) || (over == _unknown && synced == null);
+        // An item this version cannot read is never overwritten from here,
+        // not even one this device has seen before: the blob stays this
+        // device's config until a save with Vervangen.
+        // ponytail: an old marker (no `|`) over a readable but undecodable item
+        // keeps the blob and writes nothing. Dropping it would cost a device
+        // with a real waiting save its config; the blob never goes up. The same
+        // marker over an empty keychain drops the blob too (below): accepted,
+        // an old-format marker proves nothing about which blob it was for.
+        if ((current || over == _unknown) && synced != null && _decode(synced) == null) return legacy.config;
+        // It goes up only over the item it was saved over (a hash marker), or
+        // into an empty keychain. With an 'unknown' marker its read failed, so
+        // any config in the keychain now may be newer: a decodable one wins.
+        // A marker that names no blob gives no such right.
+        if (current && bar >= 0) {
+          if (await _migrate(keychain, legacy.json, synced)) return legacy.config;
+          return _overtaken(again);
+        }
       }
-      // An item this version cannot read is never overwritten from here; the
-      // blob stays this device's config until a save with Vervangen.
-      if (marker == _unknown && _decode(synced!) == null) return legacy.config;
-      // Another device saved or cleared since, or the keychain holds a config
-      // where the read had failed: its state wins.
+      // Another device saved or cleared since, the keychain holds a config
+      // where the read had failed, or the blob is not the marker's: the
+      // keychain's state wins.
       appLogger.d('Assistant pending config dropped: the keychain item changed since the save');
       await _removeLegacy();
       legacy = null;
@@ -119,8 +141,26 @@ class AssistantProviderStore {
       return null;
     }
     // That undecodable item is never overwritten by this device's older blob.
-    if (keychainError == null && synced == null) await _migrate(keychain, legacy.json);
-    return legacy.config;
+    if (keychainError == null && synced == null && !await _migrate(keychain, legacy.json, null)) {
+      return _overtaken(again);
+    }
+    return _blobOrSuperseded(legacy.config, again, keychainError);
+  }
+
+  /// The blob as this device's config, unless this load is the retry of one
+  /// that saw the item change: the blob then is superseded, and a read that
+  /// fails now must not bring it back.
+  AssistantProviderConfig _blobOrSuperseded(AssistantProviderConfig blob, bool superseded, Object? keychainError) {
+    if (superseded && keychainError != null) throw AssistantProviderStoreException(keychainError);
+    return blob;
+  }
+
+  /// The item changed between this load's read and its migration: the blob
+  /// is superseded, so the load decides again from the new item. Once; a
+  /// keychain that changes again is a read that missed, not "unset".
+  Future<AssistantProviderConfig?> _overtaken(bool again) {
+    if (again) throw const AssistantProviderStoreException('keychain item keeps changing');
+    return _load(again: true);
   }
 
   /// The keychain when it takes the write; otherwise the prefs path keeps
@@ -163,9 +203,10 @@ class AssistantProviderStore {
       await _removeLegacy();
     } else {
       final prefs = await BaseSharedPreferencesService.sharedCache();
-      final marker = readFailed ? prefs.getString(seenKey) ?? _unknown : _fingerprint(current);
+      final over = readFailed ? prefs.getString(seenKey) ?? _unknown : _fingerprint(current);
       // Marker first: a marker without a blob is harmless, the reverse is not.
-      if (keychain != null) await prefs.setString(pendingKey, marker);
+      // Cut off before the blob, the marker names a blob that is not there.
+      if (keychain != null) await prefs.setString(pendingKey, _marker(over, json));
       await prefs.setString(key, await CredentialVault.protect(json));
     }
     changes.value++;
@@ -189,21 +230,42 @@ class AssistantProviderStore {
     }
   }
 
-  /// Writes [json] and drops the prefs blob after an equal readback. A
-  /// readback that differs most likely is another device's sync landing in
-  /// between: the blob stays, nothing is deleted, the next load decides.
-  Future<void> _migrate(PleyaKeychain keychain, String json) async {
+  /// Writes [json] over [expected] and drops the prefs blob after an equal
+  /// readback. A readback that differs most likely is another device's sync
+  /// landing in between: the blob stays, nothing is deleted, the next load
+  /// decides. False when the item no longer is [expected] or the readback
+  /// shows another item than [json] (overtaken: the caller decides again);
+  /// a readback that fails stays true.
+  ///
+  /// ponytail: the keychain has no compare-and-swap. The read right before
+  /// the write narrows the window for another device's sync to the two
+  /// native calls; it does not close it.
+  Future<bool> _migrate(PleyaKeychain keychain, String json, String? expected) async {
     try {
-      if (await keychain.write(key, json) && await keychain.read(key) == json) {
+      if (await keychain.read(key) != expected) return false;
+      if (!await keychain.write(key, json)) return true;
+      // The blob is now a copy of the item it wrote. Should the readback
+      // fail, it may go up again over that item only: not into a keychain
+      // another device cleared since.
+      final prefs = await BaseSharedPreferencesService.sharedCache();
+      await prefs.setString(pendingKey, _marker(_fingerprint(json), json));
+      final back = await keychain.read(key);
+      if (back == json) {
         await _remember(json);
         await _removeLegacy();
+      } else if (back != null) {
+        return false;
       }
     } catch (e) {
       appLogger.w('Assistant keychain migration failed', error: e.runtimeType);
     }
+    return true;
   }
 
   static const String _unknown = 'unknown';
+
+  /// [over] is the synced item the blob [json] may replace.
+  static String _marker(String over, String json) => '$over|${_fingerprint(json)}';
 
   Future<void> _remember(String? synced) async {
     final prefs = await BaseSharedPreferencesService.sharedCache();
