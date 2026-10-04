@@ -118,7 +118,7 @@ void main() {
   });
 
   // Mockup 22 (4 oktober 2026): in Verder kijken the caption is the status
-  // line, `S3 E4 · 18min left` with a bar or `S3 E5 · Next episode` without.
+  // line, `S3 E4 · 18 min left` with a bar or `S3 E5 · Next episode` without.
   MediaItem episode({required int episode, int? viewOffsetMs}) => MediaItem(
     id: 'bear-$episode',
     backend: .jellyfin,
@@ -145,7 +145,7 @@ void main() {
       ),
     );
     expect(find.text('The Bear'), findsOneWidget);
-    expect(find.text('S3 E4 · 18min left'), findsOneWidget);
+    expect(find.text('S3 E4 · 18 min left'), findsOneWidget);
   });
 
   testWidgets('volgende aflevering: the state is in the text, not only in a missing bar', (tester) async {

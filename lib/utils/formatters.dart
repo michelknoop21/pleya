@@ -239,5 +239,10 @@ String formatSourceCount(int count) => count == 1 ? t.unifiedCatalog.oneSource :
 String? formatRemainingTime(int? durationMs, int? viewOffsetMs) {
   final offset = viewOffsetMs ?? 0;
   if (durationMs == null || offset <= 0 || durationMs <= offset) return null;
-  return t.nowWatching.remaining(time: formatDurationTextual(durationMs - offset));
+  // "18 min left", as in the approved mockups; formatDurationTextual packs the
+  // unit against the number ("18min"), which reads as a typo on a card.
+  final time = formatDurationTextual(
+    durationMs - offset,
+  ).replaceAllMapped(RegExp(r'(\d)(min)\b'), (m) => '${m[1]} ${m[2]}');
+  return t.nowWatching.remaining(time: time);
 }

@@ -56,14 +56,14 @@ void main() {
     test('begonnen: place and what is left', () {
       expect(
         continueWatchingStatusLine(episode(durationMs: 48 * minute, viewOffsetMs: 30 * minute)),
-        'S3 E4 · 18min left',
+        'S3 E4 · 18 min left',
       );
     });
     test('volgende aflevering: place and the explicit state, no bar text', () {
       expect(continueWatchingStatusLine(episode(episode: 5)), 'S3 E5 · Next episode');
     });
     test('a film says only what is left', () {
-      expect(continueWatchingStatusLine(film(durationMs: 100 * minute, viewOffsetMs: 58 * minute)), '42min left');
+      expect(continueWatchingStatusLine(film(durationMs: 100 * minute, viewOffsetMs: 58 * minute)), '42 min left');
     });
     test('an unstarted film falls back to its runtime', () {
       expect(continueWatchingStatusLine(film(durationMs: 166 * minute)), '2h 46min');
@@ -76,7 +76,7 @@ void main() {
       expect(continueWatchingStatusLine(film()), '');
     });
     test('hours and minutes for a long remainder', () {
-      expect(continueWatchingStatusLine(film(durationMs: 180 * minute, viewOffsetMs: 70 * minute)), '1h 50min left');
+      expect(continueWatchingStatusLine(film(durationMs: 180 * minute, viewOffsetMs: 70 * minute)), '1h 50 min left');
     });
   });
 }

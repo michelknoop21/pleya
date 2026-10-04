@@ -27,6 +27,7 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/widgets/media_markers.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:pleya/widgets/tv/tv_view_all_action.dart';
 import 'package:provider/provider.dart';
@@ -248,9 +249,18 @@ void main() {
     expect(find.text('Oppenheimer'), findsOneWidget);
     expect(find.text('Andor'), findsOneWidget, reason: 'a next episode of a silent series is not old');
     expect(find.text('Interstellar'), findsOneWidget);
-    expect(find.textContaining('18min left · 2 days ago'), findsOneWidget);
+    expect(find.textContaining('18 min left · 2 days ago'), findsOneWidget);
     expect(find.textContaining('Next episode'), findsOneWidget);
     expect(find.text('4'), findsOneWidget, reason: 'the count beside the title');
+  });
+
+  testWidgets('iPhone: the progress bar is a thin line on the still, not a block over it', (tester) async {
+    await pump(tester, const MobileContinueWatchingScreen());
+    final lines = find.byType(ResumeLine);
+    expect(lines, findsWidgets);
+    for (final line in lines.evaluate()) {
+      expect(tester.getSize(find.byWidget(line.widget)).height, 3);
+    }
   });
 
   testWidgets('desktop: the hub detail groups Verder kijken into the same sections', (tester) async {
@@ -272,7 +282,7 @@ void main() {
     for (final label in ['Resume series', 'Resume films', 'Next episodes', 'Started earlier']) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
-    expect(find.text('S1 E2 · 18min left'), findsOneWidget);
+    expect(find.text('S1 E2 · 18 min left'), findsOneWidget);
     expect(find.text('S1 E2 · Next episode'), findsOneWidget);
   });
 
