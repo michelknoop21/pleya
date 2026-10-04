@@ -156,8 +156,11 @@ void main() {
       ),
     );
     answerFactsTitles(c);
+    // Two tasks: the notice belongs to the first, so the joined answer does
+    // not end with it.
     c
-      ..answer = '${c.answer}\n\n${t.assistant.kids.filterNotice}'
+      ..answer = '${c.answer}\n\n${t.assistant.kids.filterNotice}\nDe scan is gestart.'
+      ..ageFilterNotice = true
       ..emit();
     await settle(tester);
     expect(find.text(t.assistant.kids.filterNotice), findsOneWidget);

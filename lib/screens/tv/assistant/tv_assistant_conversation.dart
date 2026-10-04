@@ -228,7 +228,7 @@ class TvAssistantConversation extends StatelessWidget {
             BigPAnswer(text: headline, style: headlineStyle, bodyLines: cards ? 0 : 3),
           // Above cards only the lead shows; Pleya's age notice, which the
           // controller puts after the answer, stays in view under it.
-          if (cards && c.answer.endsWith(t.assistant.kids.filterNotice)) ...[
+          if (cards && c.ageFilterNotice) ...[
             SizedBox(height: 10 * pt),
             Text(
               t.assistant.kids.filterNotice,

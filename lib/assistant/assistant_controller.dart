@@ -132,6 +132,7 @@ class AssistantController extends ChangeNotifier {
   bool _modelMissing = false;
   String? _prompt;
   String _answer = '';
+  bool _ageFilterNotice = false;
   final List<AssistantStep> _steps = [];
   final List<AssistantActionRecord> _actions = [];
   final List<AssistantDisplay> _displays = [];
@@ -177,6 +178,10 @@ class AssistantController extends ChangeNotifier {
 
   /// The model's words: display only, never a source of actions.
   String get answer => _answer;
+
+  /// Some answer carries Pleya's age notice ([t.assistant.kids.filterNotice]),
+  /// so a surface that shows only the lead can still show the notice.
+  bool get ageFilterNotice => _ageFilterNotice;
   List<AssistantStep> get steps => List.unmodifiable(_steps);
   List<AssistantActionRecord> get actions => List.unmodifiable(_actions);
   List<AssistantDisplay> get displays => List.unmodifiable(_displays);
@@ -386,6 +391,7 @@ class AssistantController extends ChangeNotifier {
           ? '${result.text}\n\n${t.assistant.kids.filterNotice}'
           : result.text;
       task.answer = playbackCurrent && doctorError == null && displayCurrent ? text : '';
+      task.ageFilterNotice = result.ageFilterNotice && !result.kidsAgesNeeded;
       task.actions.addAll(result.actions);
       if (playbackCurrent && doctorError == null && displayCurrent) {
         task.displays
@@ -523,6 +529,7 @@ class AssistantController extends ChangeNotifier {
     _modelMissing = false;
     _prompt = null;
     _answer = '';
+    _ageFilterNotice = false;
     _steps.clear();
     _actions.clear();
     _displays.clear();
@@ -545,6 +552,7 @@ class AssistantController extends ChangeNotifier {
         : AssistantSurfaceState.result;
     _resultIsError = _tasks.any((task) => task.status == AssistantTaskStatus.failed);
     _answer = _tasks.map((task) => task.answer).where((answer) => answer.isNotEmpty).join('\n');
+    _ageFilterNotice = _tasks.any((task) => task.ageFilterNotice && task.answer.isNotEmpty);
     _steps
       ..clear()
       ..addAll(_tasks.expand((task) => task.steps));
@@ -594,6 +602,7 @@ class _AssistantTaskState {
   final AbortController cancel = AbortController();
   AssistantTaskStatus status = AssistantTaskStatus.pending;
   String answer = '';
+  bool ageFilterNotice = false;
   String? error;
   AssistantRunEnd? lastEnd;
   AssistantModelError? providerError;

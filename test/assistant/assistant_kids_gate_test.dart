@@ -174,6 +174,22 @@ void main() {
     expect(result.text, 'Kijk Toy Story (1995), heel leuk.');
   });
 
+  test('the controller carries the age notice as a flag, not only as text', () async {
+    final ctx = _ctx();
+    final c = AssistantController(
+      buildContext: (_) => ctx,
+      entitlement: const _Entitled(),
+      loadConfig: () async =>
+          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+      modelFor: (_) => _model(['Kijk «$_hp» (2011).', 'Toch «$_hp» (2011).']).model,
+      languageName: () => 'Dutch',
+    );
+    addTearDown(c.dispose);
+    await c.submit(prompt);
+    expect(c.ageFilterNotice, isTrue);
+    expect(c.answer, endsWith(t.assistant.kids.filterNotice));
+  });
+
   test('negative control: for a 13-year-old the Harry Potter card comes', () async {
     final m = _model(['Kijk «$_hp» (2011).']);
     final result = await _ask(m.model, _ctx(ages: [13]), prompt);

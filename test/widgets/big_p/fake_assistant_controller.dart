@@ -24,6 +24,8 @@ class FakeAssistantController extends AssistantController {
   @override
   String answer = '';
   @override
+  bool ageFilterNotice = false;
+  @override
   List<AssistantStep> steps = [];
   @override
   List<AssistantActionRecord> actions = [];
