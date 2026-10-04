@@ -168,6 +168,9 @@ class AssistantRun {
     _displays.clear();
     _stepIndex = 0;
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
+    _pickGrids.clear();
+    _history.clear();
+    _wanted = assistantAskedCount(prompt);
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
@@ -280,11 +283,21 @@ class AssistantRun {
   /// action the action is the answer, and a named title is its subject.
   Future<void> _cardsForNamedTitles(String answer) async {
     if (_actions.isNotEmpty || _cancelled) return;
+    var all = assistantNamedTitles(answer);
+    if (_pickGrids.isNotEmpty) {
+      // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
+      all = [
+        for (final t in all)
+          if (!_history.contains(assistantTitleKey(t.title))) t,
+      ];
+      _narrowPicks(all);
+    }
     final shown = assistantShownTitles(_displays);
+    final room = _pickGrids.isEmpty ? 5 : (_wanted ?? 5) - shown.length;
     final named = [
-      for (final t in assistantNamedTitles(answer))
+      for (final t in all)
         if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
-    ];
+    ].take(room < 0 ? 0 : room).toList();
     if (named.isEmpty) return;
     final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
     if (tool == null) return;
@@ -321,6 +334,39 @@ class AssistantRun {
       appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
     }
     onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.done, display: display));
+  }
+
+  /// The my_watching pick grids of this run and the titles of the history it
+  /// returned. The picks are material for the model, not an answer: only what
+  /// the answer names stays a card, in the order the answer names it.
+  final Set<AssistantMediaGrid> _pickGrids = {};
+  final Set<String> _history = {};
+  int? _wanted;
+
+  void _narrowPicks(List<({String title, int? year})> named) {
+    for (final grid in _pickGrids) {
+      final at = _displays.indexOf(grid);
+      if (at < 0) continue;
+      final kept = <AssistantMediaGridEntry>[];
+      for (final t in named) {
+        for (final e in grid.entries) {
+          if (assistantSameTitle(
+            (key: assistantTitleKey(e.item.title ?? ''), year: e.item.year),
+            assistantTitleKey(t.title),
+            t.year,
+          )) {
+            kept.add(e);
+            break;
+          }
+        }
+      }
+      kept.removeRange(kept.length.clamp(0, _wanted ?? 5), kept.length);
+      if (kept.isEmpty) {
+        _displays.removeAt(at);
+      } else {
+        _displays[at] = AssistantMediaGrid(kept);
+      }
+    }
   }
 
   /// find_media grids whose titles a later call acted on: a lookup on the way
@@ -401,6 +447,12 @@ class AssistantRun {
           }
           final shown = display == null ? null : _ctx.recommend.admit(display);
           if (shown != null) _displays.add(shown);
+          if (tool.name == 'my_watching') {
+            if (shown is AssistantMediaGrid) _pickGrids.add(shown);
+            for (final w in (data['watched_recently'] as List?) ?? const []) {
+              _history.add(assistantTitleKey((w as Map)['title'] as String));
+            }
+          }
           if (tool.name == 'find_media' && shown is AssistantMediaGrid) {
             _lookups[shown] = {for (final e in shown.entries) e.item.id};
           }

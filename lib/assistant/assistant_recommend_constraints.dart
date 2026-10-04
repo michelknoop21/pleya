@@ -99,3 +99,35 @@ class AssistantRecommendConstraints {
         'Pleya does not show cards that do not meet this: name only titles that do.';
   }
 }
+
+final _count = RegExp(
+  r'\b(een paar|a few|a couple of|\d+|een|één|twee|drie|vier|vijf|zes|one|two|three|four|five|six|an?)\s+(?:\w+\s+)?'
+  r'(?:films?|movies?|series|shows?|opties|options|tips?|voorstel(?:len)?|suggest\w*|aanraders?|recommendations?)',
+);
+const _countWords = {
+  'een paar': 3,
+  'a few': 3,
+  'a couple of': 2,
+  'een': 1,
+  'één': 1,
+  'a': 1,
+  'an': 1,
+  'one': 1,
+  'twee': 2,
+  'two': 2,
+  'drie': 3,
+  'three': 3,
+  'vier': 4,
+  'four': 4,
+  'vijf': 5,
+  'five': 5,
+  'zes': 6,
+  'six': 6,
+};
+
+/// How many titles the question asks for ("twee films", "een paar opties",
+/// "een film voor vanavond"), or null when it names no number.
+int? assistantAskedCount(String prompt) {
+  final w = _count.firstMatch(prompt.toLowerCase())?[1];
+  return w == null ? null : int.tryParse(w) ?? _countWords[w];
+}
