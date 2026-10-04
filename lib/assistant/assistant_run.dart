@@ -12,6 +12,7 @@ import 'assistant_entitlement.dart';
 import 'assistant_execution.dart';
 import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
+import 'assistant_recommend_constraints.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 
@@ -211,6 +212,7 @@ class AssistantRun {
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
       '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
+      '- Only offer what your tools can do. You cannot create accounts, profiles or users.\n'
       '$_who';
 
   /// Who "I" is. Without this the model read "my history" as the household's
@@ -258,6 +260,7 @@ class AssistantRun {
     _lookups.clear();
     _namedTitlesCurrent = null;
     _stepIndex = 0;
+    _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
@@ -273,6 +276,7 @@ class AssistantRun {
     final messages = <Map<String, Object?>>[
       {'role': 'system', 'content': _system},
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
+      if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       {'role': 'user', 'content': prompt},
     ];
 
@@ -653,7 +657,10 @@ class AssistantRun {
                 ))
               m,
         ];
-        if (exact.isNotEmpty) _displays.add(display = AssistantTitleMatches(context, exact));
+        if (exact.isNotEmpty) {
+          display = _ctx.recommend.admit(AssistantTitleMatches(context, exact));
+          if (display != null) _displays.add(display);
+        }
       }
     } catch (e) {
       appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
@@ -786,9 +793,10 @@ class AssistantRun {
             _actions.add(record);
             _consumeLookups(args);
           }
-          if (display != null) _displays.add(display);
-          if (tool.name == 'find_media' && display is AssistantMediaGrid) {
-            _lookups[display] = {for (final e in display.entries) e.item.id};
+          final shown = display == null ? null : _ctx.recommend.admit(display);
+          if (shown != null) _displays.add(shown);
+          if (tool.name == 'find_media' && shown is AssistantMediaGrid) {
+            _lookups[shown] = {for (final e in shown.entries) e.item.id};
           }
           return data;
         case final AssistantPendingAction action:

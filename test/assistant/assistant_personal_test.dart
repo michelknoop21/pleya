@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/assistant/assistant_recommend_constraints.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -21,13 +22,23 @@ class _Server extends FakeServer {
   Future<MediaItem?> fetchItem(String id) async => items[id];
 }
 
-MediaItem _item(String id, String title, MediaKind kind, {int? year, String? series}) => MediaItem(
+MediaItem _item(
+  String id,
+  String title,
+  MediaKind kind, {
+  int? year,
+  String? series,
+  List<String>? genres,
+  int? viewCount,
+}) => MediaItem(
   id: id,
   backend: MediaBackend.jellyfin,
   kind: kind,
   title: title,
   year: year,
   grandparentTitle: series,
+  genres: genres,
+  viewCount: viewCount,
   serverId: 'nas',
 );
 
@@ -37,6 +48,7 @@ AssistantToolContext _ctx({
   List<RecommendationSeed> seeds = const [],
   AffinityVector taste = AffinityVector.empty,
   List<MediaHub> hubs = const [],
+  Map<String, MediaItem> items = const {},
 }) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
@@ -44,6 +56,7 @@ AssistantToolContext _ctx({
     _Server('nas', {
       'm1': _item('m1', 'Dune', MediaKind.movie, year: 2021),
       'e1': _item('e1', 'The Constant', MediaKind.episode, series: 'Lost'),
+      ...items,
     }),
   );
   return AssistantToolContext(
@@ -110,5 +123,58 @@ void main() {
     final m = MultiServerManager();
     addTearDown(m.dispose);
     expect(_tool().serves(AssistantToolContext(servers: m), ServerId('nas')), isFalse);
+  });
+
+  test('a shared account: only unseen films, no kids titles, in data and cards alike', () async {
+    const crime = ['Crime'];
+    const family = ['Animation', 'Family'];
+    final watched = {
+      'w1': _item('w1', 'MobLand', MediaKind.show, genres: crime),
+      'w2': _item('w2', 'Reacher', MediaKind.show, genres: crime),
+      'w3': _item('w3', 'The Gentlemen', MediaKind.movie, year: 2019, genres: crime),
+      'w4': _item('w4', 'Ted Lasso', MediaKind.show, genres: ['Comedy']),
+      'w5': _item('w5', 'Bluey', MediaKind.show, genres: ['Kids']),
+      'w6': _item('w6', 'Puss in Boots', MediaKind.movie, year: 2022, genres: family),
+    };
+    final picks = [
+      _item('p1', 'The Invite', MediaKind.movie, year: 2021, genres: crime, viewCount: 1),
+      _item('p2', 'Code 3', MediaKind.movie, year: 2025, genres: crime),
+      _item('p3', 'Den of Thieves', MediaKind.movie, year: 2018, genres: crime),
+      // Another server's copy of a film in the history.
+      _item('p4', 'The Gentlemen', MediaKind.movie, year: 2019, genres: crime),
+      _item('p5', 'Bluey', MediaKind.show, genres: ['Kids']),
+      _item('p6', 'Emily in Paris', MediaKind.show, genres: ['Comedy']),
+      _item('p7', 'The Bear', MediaKind.show, genres: ['Drama']),
+      _item('p8', 'Toy Story 5', MediaKind.movie, year: 2026, genres: family),
+      _item('p9', 'Despicable Me 4', MediaKind.movie, year: 2024, genres: family),
+    ];
+    final ctx = _ctx(
+      items: watched,
+      seeds: [for (final id in watched.keys) _seed('nas:$id')],
+      taste: const AffinityVector({
+        'genre': {'crime': 1.0, 'family': 0.9, 'animation': 0.8, 'comedy': 0.5},
+      }, eventCount: 6),
+      hubs: [MediaHub(id: 'rows', title: 'Voor jou', type: 'movie', items: picks)],
+    );
+    ctx.recommend = const AssistantRecommendConstraints(excludeWatched: true);
+
+    final result = await _tool().run(ctx, null, const {'kind': 'movie', 'exclude_kids': true}) as AssistantToolResult;
+
+    final titles = [
+      for (final row in result.data['picks']! as List)
+        for (final t in (row as Map)['titles'] as List) (t as Map)['title'],
+    ];
+    expect(titles, ['Code 3', 'Den of Thieves']);
+    expect([for (final e in (result.display! as AssistantMediaGrid).entries) e.item.title], titles);
+    expect(
+      [for (final w in result.data['watched_recently']! as List) (w as Map)['title']],
+      ['MobLand', 'Reacher', 'The Gentlemen', 'Ted Lasso'],
+    );
+    expect((result.data['likes']! as Map)['genres'], ['crime', 'comedy']);
+    expect(
+      () => ctx.requireShownItem(ServerId('nas'), 'p5'),
+      throwsA(anything),
+      reason: 'a dropped pick cannot be opened',
+    );
   });
 }
