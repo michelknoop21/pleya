@@ -94,7 +94,7 @@ final List<AssistantTool> _generalTools = [
             for (final (item, _) in gated.kept)
               if (item.kind == MediaKind.movie || item.kind == MediaKind.show) (item: item, group: null),
           ],
-          facts: {for (final (item, facts) in gated.kept) item.id: ?facts},
+          facts: {for (final (item, facts) in gated.kept) item.globalKey: ?facts},
         ),
       );
     },

@@ -43,8 +43,12 @@ class AssistantMediaGrid extends AssistantDisplay {
   const AssistantMediaGrid(this.entries, {this.facts = const {}});
   final List<AssistantMediaGridEntry> entries;
 
-  /// Facts per item id, for the titles that were looked up.
+  /// Facts per [keyOf], for the titles that were looked up.
   final Map<String, TitleFacts> facts;
+
+  /// Server and item id: two servers can use the same item id.
+  static String keyOf(AssistantMediaGridEntry e) =>
+      e.group == null ? e.item.globalKey : buildGlobalKey(e.group!.representativeSource.serverId, e.item.id);
 }
 
 final List<AssistantTool> _catalogTools = [
@@ -95,7 +99,7 @@ final List<AssistantTool> _catalogTools = [
         final item = source.item;
         final serverId = source.serverId;
         ctx.showItem(serverId, item.id);
-        if (f != null) facts[item.id] = f;
+        if (f != null) facts[buildGlobalKey(serverId, item.id)] = f;
         results.add({
           'item_id': item.id,
           'title': clipText(item.title),
@@ -107,8 +111,13 @@ final List<AssistantTool> _catalogTools = [
         });
       }
       // For children only the titles that passed; the rest of the grid is unchecked.
-      final kept = {for (final (g, _) in gated.kept) g.representativeSource.item.id};
-      final entries = age == null ? query.entries : query.entries.where((e) => kept.contains(e.item.id)).toList();
+      final kept = {
+        for (final (g, _) in gated.kept)
+          buildGlobalKey(g.representativeSource.serverId, g.representativeSource.item.id),
+      };
+      final entries = age == null
+          ? query.entries
+          : query.entries.where((e) => kept.contains(AssistantMediaGrid.keyOf(e))).toList();
       return AssistantToolResult({
         'query_id': queryId,
         'count': query.groups.length,

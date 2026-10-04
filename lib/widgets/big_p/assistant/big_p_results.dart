@@ -196,7 +196,7 @@ List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (
         year: e.item.year,
         kind: e.item.kind.name,
         confidence: 'high',
-        facts: facts[e.item.id],
+        facts: facts[AssistantMediaGrid.keyOf(e)],
         targets: [
           // The representative first: the copy the card names is the
           // copy it opens.
