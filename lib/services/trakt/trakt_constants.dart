@@ -16,6 +16,10 @@ class TraktConstants {
   /// Whether Trakt integration has been configured for this build.
   static bool get isConfigured => clientId.isNotEmpty && clientSecret.isNotEmpty;
 
+  /// Whether public, unauthenticated calls (trending, related) can be made.
+  /// Those only need the `trakt-api-key` header, not the client secret.
+  static bool get hasClientId => clientId.isNotEmpty;
+
   static const String apiBase = 'https://api.trakt.tv';
   static const String apiVersion = '2';
 
