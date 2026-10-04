@@ -253,6 +253,7 @@ class BigPDisplayView extends StatelessWidget {
     this.firstOptionNode,
     this.optionOffset = 0,
     this.compact = false,
+    this.columns = 1,
   });
 
   final AssistantDisplay display;
@@ -261,6 +262,9 @@ class BigPDisplayView extends StatelessWidget {
 
   /// The summoned panel: the cards take their compact form.
   final bool compact;
+
+  /// Cards side by side: 2 in the iPad balloon (39 I), 1 elsewhere.
+  final int columns;
 
   /// Gets the first option card, for the surface's default focus (still 7).
   final FocusNode? firstOptionNode;
@@ -283,31 +287,47 @@ class BigPDisplayView extends StatelessWidget {
   /// is what bounds how many show at once. [ranked] badges each poster with
   /// its place (most watched).
   Widget _matches(double pt, List<AssistantTitleMatch> matches, {bool ranked = false}) {
-    return Column(
-      children: [
-        for (final (i, match) in matches.indexed)
-          Padding(
-            padding: EdgeInsets.only(bottom: 10 * pt),
-            child: BigPMatchCard(
-              match: match,
-              index: optionOffset + i,
-              // A ranking is a list to scan: one line of detail per title.
-              compact: compact || ranked,
-              // More than three in the summoned panel: the list form, so
-              // five show where three did.
-              dense: compact && !ranked && matches.length > 3,
-              rank: ranked ? i + 1 : null,
-              focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
-              // Nothing to open and nothing to request: shown, never a dead
-              // focus stop.
-              onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
-                  ? () => _selectMatch(match)
-                  : null,
-            ),
-          ),
-      ],
-    );
+    return _cards(pt, [
+      for (final (i, match) in matches.indexed)
+        BigPMatchCard(
+          match: match,
+          index: optionOffset + i,
+          // A ranking is a list to scan: one line of detail per title.
+          compact: compact || ranked,
+          // More than three in the summoned panel: the list form, so
+          // five show where three did.
+          dense: compact && !ranked && matches.length > 3,
+          rank: ranked ? i + 1 : null,
+          focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
+          // Nothing to open and nothing to request: shown, never a dead
+          // focus stop.
+          onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
+              ? () => _selectMatch(match)
+              : null,
+        ),
+    ]);
   }
+
+  /// One card per row, or [columns] side by side, in reading order.
+  Widget _cards(double pt, List<Widget> cards) => Column(
+    children: [
+      for (var i = 0; i < cards.length; i += columns)
+        Padding(
+          padding: EdgeInsets.only(bottom: 10 * pt),
+          child: columns == 1
+              ? cards[i]
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var j = i; j < i + columns; j++) ...[
+                      if (j > i) SizedBox(width: 10 * pt),
+                      Expanded(child: j < cards.length ? cards[j] : const SizedBox.shrink()),
+                    ],
+                  ],
+                ),
+        ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -341,24 +361,19 @@ class BigPDisplayView extends StatelessWidget {
     );
     String titled(String title, int? year) => year == null ? title : '$title ($year)';
     return switch (display) {
-      AssistantRequestOptions(:final options) => Column(
-        children: [
-          for (var i = 0; i < options.length; i++)
-            Padding(
-              padding: EdgeInsets.only(bottom: 10 * pt),
-              child: BigPOptionCard(
-                option: options[i],
-                index: optionOffset + i,
-                focusNode: i == 0 ? firstOptionNode : null,
-                compact: compact,
-                onSelect: switch (onPickOption) {
-                  final pick? => () => pick(options[i]),
-                  null => null,
-                },
-              ),
-            ),
-        ],
-      ),
+      AssistantRequestOptions(:final options) => _cards(pt, [
+        for (var i = 0; i < options.length; i++)
+          BigPOptionCard(
+            option: options[i],
+            index: optionOffset + i,
+            focusNode: i == 0 ? firstOptionNode : null,
+            compact: compact,
+            onSelect: switch (onPickOption) {
+              final pick? => () => pick(options[i]),
+              null => null,
+            },
+          ),
+      ]),
       AssistantTitleMatches(:final matches) => _matches(pt, matches),
       // A preview on the confirm card has nothing to open: text, as before.
       AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [

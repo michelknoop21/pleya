@@ -158,8 +158,11 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
                 ),
               ],
               SizedBox(height: 32 * pt),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              // Wraps on a phone, where the two do not fit side by side.
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 12 * pt,
+                runSpacing: 12 * pt,
                 children: [
                   BigPButton(
                     label: t.assistant.result.cancel,
@@ -169,7 +172,6 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
                     automationInstance: 'cancel',
                     onPressed: widget.onCancel,
                   ),
-                  SizedBox(width: 12 * pt),
                   BigPButton(
                     label: approveLabel,
                     primary: true,
@@ -199,25 +201,30 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
       SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
       _enterPassword();
     },
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 14 * pt),
-      decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14 * pt)),
-      child: Row(
-        children: [
-          Icon(Symbols.lock_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6)),
-          SizedBox(width: 14 * pt),
-          Expanded(
-            child: Text(
-              _password.isEmpty ? t.assistant.confirm.passwordPlaceholder : '•' * _password.length.clamp(6, 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tk.text.withValues(alpha: _password.isEmpty ? 0.6 : 1),
-                fontSize: TvHig.body * pt,
+    // FocusableWrapper answers keys only: a tap on a phone opens it too.
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _enterPassword,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 14 * pt),
+        decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14 * pt)),
+        child: Row(
+          children: [
+            Icon(Symbols.lock_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6)),
+            SizedBox(width: 14 * pt),
+            Expanded(
+              child: Text(
+                _password.isEmpty ? t.assistant.confirm.passwordPlaceholder : '•' * _password.length.clamp(6, 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: tk.text.withValues(alpha: _password.isEmpty ? 0.6 : 1),
+                  fontSize: TvHig.body * pt,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

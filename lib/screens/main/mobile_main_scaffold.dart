@@ -63,7 +63,10 @@ class _RenderHeightReporter extends RenderProxyBox {
     super.performLayout();
     final h = size.height;
     if (h == height.value) return;
-    SchedulerBinding.instance.addPostFrameCallback((_) => height.value = h);
+    // Gone by then (the shell left): its notifier is disposed.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (attached) height.value = h;
+    });
   }
 }
 

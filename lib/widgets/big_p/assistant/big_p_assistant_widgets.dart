@@ -71,9 +71,12 @@ class BigPCard extends StatelessWidget {
 
 /// "Je vroeg: …", right-aligned above Big P's answer.
 class BigPQuestion extends StatelessWidget {
-  const BigPQuestion({super.key, required this.prompt, this.maxLines = 3});
+  const BigPQuestion({super.key, required this.prompt, this.maxLines = 3, this.fill = false});
 
   final String prompt;
+
+  /// Across the whole balloon, as on iPhone and iPad (39 E to I).
+  final bool fill;
 
   /// One line in the summoned panel, so the results keep the room.
   final int maxLines;
@@ -85,7 +88,8 @@ class BigPQuestion extends StatelessWidget {
     return Align(
       alignment: Alignment.centerRight,
       child: Container(
-        constraints: BoxConstraints(maxWidth: 640 * pt),
+        width: fill ? double.infinity : null,
+        constraints: fill ? null : BoxConstraints(maxWidth: 640 * pt),
         padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 12 * pt),
         decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(16 * pt)),
         child: Text.rich(
@@ -147,6 +151,7 @@ class BigPChip extends StatefulWidget {
     required this.onSelect,
     this.icon,
     this.dense = false,
+    this.fill,
     this.focusNode,
     this.automationId,
     this.automationInstance,
@@ -154,6 +159,9 @@ class BigPChip extends StatefulWidget {
 
   final String label;
   final VoidCallback onSelect;
+
+  /// The resting fill; a pill floating over the page (39 E) is opaque.
+  final Color? fill;
 
   /// A leading glyph, e.g. the follow-up arrow; examples go without.
   final IconData? icon;
@@ -198,7 +206,7 @@ class _BigPChipState extends State<BigPChip> {
               ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 10 * pt)
               : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
           decoration: BoxDecoration(
-            color: _focused ? colors.inverseSurface : const Color(0x1FFFFFFF),
+            color: _focused ? colors.inverseSurface : widget.fill ?? const Color(0x1FFFFFFF),
             borderRadius: BorderRadius.circular(40 * pt),
           ),
           child: Row(

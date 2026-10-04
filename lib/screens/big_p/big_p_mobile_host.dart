@@ -1,17 +1,21 @@
-/// Big P out of his face button on iPhone (39 B, C, D): the screen dims, he
+/// Big P out of his face button on iPhone (39 B to G): the screen dims, he
 /// hops in bottom right above the tab bar and talks from a balloon above him,
-/// with the question field under him. A tap on the dim parks him.
+/// with the question field under him. On iPad (39 I) the balloon stands
+/// beside him. A tap on the dim parks him, unless a confirmation waits.
 library;
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_controller.dart';
+import '../../assistant/assistant_tools.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../profiles/active_profile_provider.dart';
+import '../../utils/media_navigation_helper.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import '../../widgets/big_p/big_p_avatar.dart';
@@ -21,6 +25,7 @@ import '../main/mobile_main_scaffold.dart';
 import '../settings/assistant_settings_screen.dart';
 import 'big_p_input_bar.dart';
 import 'big_p_mobile_conversation.dart';
+import 'big_p_mobile_followups.dart';
 import 'big_p_mobile_session.dart';
 
 /// Above the mobile main scaffold, tab bar included. Nothing without a
@@ -28,6 +33,9 @@ import 'big_p_mobile_session.dart';
 /// nothing mounted, so no ticker, while he is parked.
 class BigPMobileHost extends StatefulWidget {
   const BigPMobileHost({super.key});
+
+  /// From here on the iPad layout (39 I): balloon beside Big P.
+  static const regularWidth = 700.0;
 
   /// Big P's height in [room]: 237 (190 pt wide, as in 39 B) when it fits.
   /// With the keyboard up he shrinks so the balloon keeps 220 pt, room for
@@ -98,13 +106,12 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
     if (!_open) return const SizedBox.shrink();
     final motion = _motion(context);
     final media = MediaQuery.of(context);
-    final keyboard = media.viewInsets.bottom > 0;
-    final bottom = keyboard ? media.viewInsets.bottom + 8 : mobileBottomBarExtent(context);
+    // The higher of the keyboard and the tab bar: no one-frame drop while
+    // the keyboard comes up.
+    final bottom = max(media.viewInsets.bottom + 8, mobileBottomBarExtent(context));
     return ListenableBuilder(
       listenable: session.controller,
       builder: (context, _) {
-        final c = session.controller;
-        final ready = c.availability == AssistantAvailability.ready;
         // Above the Scaffold: the field and the ink need their own Material.
         return Material(
           type: MaterialType.transparency,
@@ -126,7 +133,8 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
               Positioned(
                 left: 12,
                 right: 12,
-                top: media.viewPadding.top + 40,
+                // A long answer grows over the header (39 F).
+                top: media.viewPadding.top + 4,
                 bottom: bottom,
                 child: AnimatedSlide(
                   offset: _shown ? Offset.zero : const Offset(0.35, 0),
@@ -136,27 +144,9 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
                     opacity: _shown ? 1 : 0,
                     duration: motion,
                     child: LayoutBuilder(
-                      builder: (context, box) => Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Flexible(child: _balloon(context, session)),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: RepaintBoundary(
-                              child: BigPVoiceMouth(
-                                controller: c,
-                                builder: (line) => BigPAvatar(
-                                  mood: ready ? bigPMood(c) : BigPMood.attentive,
-                                  size: BigPMobileHost.avatarSize(box.maxHeight, withBar: ready),
-                                  talkingText: line,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (ready) ...[const SizedBox(height: 4), BigPInputBar(session: session)],
-                        ],
-                      ),
+                      builder: (context, box) => media.size.width >= BigPMobileHost.regularWidth
+                          ? _regular(context, session, box)
+                          : _compact(context, session, box),
                     ),
                   ),
                 ),
@@ -168,8 +158,98 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
     );
   }
 
-  Widget _balloon(BuildContext context, BigPMobileSession session) {
+  /// No question field while a confirmation waits (39 G): only the card
+  /// answers it.
+  bool _asks(AssistantController c) => c.availability == AssistantAvailability.ready && c.pending == null;
+
+  Widget _avatar(AssistantController c, double size) => RepaintBoundary(
+    child: BigPVoiceMouth(
+      controller: c,
+      builder: (line) => BigPAvatar(
+        mood: c.availability == AssistantAvailability.ready ? bigPMood(c) : BigPMood.attentive,
+        size: size,
+        talkingText: line,
+      ),
+    ),
+  );
+
+  /// iPhone (39 B to G): the balloon over Big P, the follow-ups floating
+  /// left of him, the field under him.
+  Widget _compact(BuildContext context, BigPMobileSession session, BoxConstraints box) {
     final c = session.controller;
+    final asks = _asks(c);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Flexible(child: _balloon(context, session)),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: _avatar(c, BigPMobileHost.avatarSize(box.maxHeight, withBar: asks)),
+            ),
+            Positioned(
+              left: 0,
+              bottom: 8,
+              child: ConstrainedBox(
+                // As far as his arm, as in 39 E.
+                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.66),
+                child: BigPMobileFollowUps(controller: c, floating: true, onAsk: (q) => _ask(session, q)),
+              ),
+            ),
+          ],
+        ),
+        if (asks) ...[const SizedBox(height: 4), BigPInputBar(session: session)],
+      ],
+    );
+  }
+
+  /// iPad (39 I): a 620 pt balloon left of a 250 pt Big P, its tail to
+  /// him; the follow-ups and the field inside it.
+  Widget _regular(BuildContext context, BigPMobileSession session, BoxConstraints box) {
+    final c = session.controller;
+    final size = min(312.0, box.maxHeight);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: min(620, box.maxWidth - size * 0.8 - 8)),
+          child: _balloon(context, session, regular: true),
+        ),
+        const SizedBox(width: 8),
+        _avatar(c, size),
+      ],
+    );
+  }
+
+  void _ask(BigPMobileSession session, String question) {
+    session.controller.beginListening(context: session.pendingContext);
+    unawaited(session.controller.submit(question));
+  }
+
+  /// A title from the answer opens on the profile navigator, from the
+  /// host's own context (docs/agents/ui-and-tv.md); Big P goes to the peek.
+  void _openTitle(BigPMobileSession session, AssistantTitleTarget target) {
+    session.openedTitle(target.item.globalKey);
+    unawaited(navigateToMediaItemDetails(context, target.item));
+  }
+
+  Widget _balloon(BuildContext context, BigPMobileSession session, {bool regular = false}) {
+    final c = session.controller;
+    final conversation = BigPScale(
+      pt: 0.53,
+      child: BigPMobileConversation(
+        controller: c,
+        regular: regular,
+        name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
+        onExample: (question) => _ask(session, question),
+        onSetup: () => unawaited(_setup(session)),
+        onOpenTitle: (target) => _openTitle(session, target),
+      ),
+    );
     return AutomationNode(
       id: AutomationIds.bigpBalloon,
       role: 'region',
@@ -179,23 +259,24 @@ class _BigPMobileHostState extends State<BigPMobileHost> {
         'state': c.state.name,
         'error': c.resultIsError,
         'pending': c.pending != null,
+        'regular': regular,
       },
-      child: BigPBalloon(
-        // Over Big P's head, a little right of his middle.
-        tailAt: 0.81,
-        child: BigPScale(
-          pt: 0.53,
-          child: BigPMobileConversation(
-            controller: c,
-            name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
-            onExample: (question) {
-              c.beginListening(context: session.pendingContext);
-              unawaited(c.submit(question));
-            },
-            onSetup: () => unawaited(_setup(session)),
-          ),
-        ),
-      ),
+      child: regular
+          ? BigPBalloon(
+              tail: AxisDirection.right,
+              // At his head.
+              tailAt: 0.7,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(child: conversation),
+                  if (_asks(c)) ...[const SizedBox(height: 12), BigPInputBar(session: session)],
+                ],
+              ),
+            )
+          // Over Big P's head, a little right of his middle.
+          : BigPBalloon(tailAt: 0.81, child: conversation),
     );
   }
 }

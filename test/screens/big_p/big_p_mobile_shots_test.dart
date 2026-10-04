@@ -1,5 +1,5 @@
-// Visual evidence: Big P on iPhone (39 A to D) at 402x874 with the app's
-// fonts, over the 39 A mockup as Home. The header is the real one; the iOS
+// Visual evidence: Big P on iPhone (39 A to G) at 402x874 and on iPad (39 I)
+// at 1180x820, with the app's fonts, over the 39 A mockup as Home. The header is the real one; the iOS
 // keyboard is the mockup's, cut from 39 B. Skipped unless BIGP_SHOT_DIR is set:
 //   BIGP_SHOT_DIR=/tmp/bigp flutter test test/screens/big_p/big_p_mobile_shots_test.dart
 import 'dart:io';
@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 
 import '../../test_helpers/golden.dart';
 import '../../widgets/big_p/fake_assistant_controller.dart';
+import 'big_p_mobile_fixtures.dart';
 
 final _dir = Platform.environment['BIGP_SHOT_DIR'];
 const _mockups = 'docs/assets/ios-unified/big-p-39';
@@ -50,6 +51,7 @@ void main() {
     _Phone phone = _iPhone17Pro,
     bool keyboard = false,
     Future<void> Function(BigPMobileSession session)? before,
+    void Function(FakeAssistantController c)? answer,
   }) async {
     tester.view.physicalSize = phone.size * 2;
     tester.view.devicePixelRatio = 2;
@@ -77,7 +79,10 @@ void main() {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      RawImage(image: home, fit: BoxFit.cover, alignment: Alignment.topCenter),
+                      // No iPad Home without its balloon: black under the dim.
+                      if (phone.size.width < 700)
+                        RawImage(image: home, fit: BoxFit.cover, alignment: Alignment.topCenter),
+                      if (phone.size.width >= 700) const ColoredBox(color: Colors.black),
                       // The real header over the mockup's.
                       Positioned(
                         left: 0,
@@ -132,6 +137,10 @@ void main() {
     });
     await tester.pump(const Duration(milliseconds: 100));
     await before?.call(session);
+    if (answer != null) {
+      answer(c);
+      c.emit();
+    }
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
@@ -201,6 +210,39 @@ void main() {
     );
   });
 
+  testWidgets('39-e answer with titles', skip: _dir == null, (tester) async {
+    final c = FakeAssistantController();
+    addTearDown(c.dispose);
+    await shoot(tester, '39-e-antwoord-titels', c, before: (s) async => s.summon(), answer: answerTitles);
+  });
+
+  testWidgets('39-f watch stats', skip: _dir == null, (tester) async {
+    final c = FakeAssistantController();
+    addTearDown(c.dispose);
+    await shoot(tester, '39-f-kijkcijfers', c, before: (s) async => s.summon(), answer: answerWatchStats);
+  });
+
+  testWidgets('39-g confirm', skip: _dir == null, (tester) async {
+    final c = FakeAssistantController();
+    addTearDown(c.dispose);
+    await shoot(
+      tester,
+      '39-g-bevestigen',
+      c,
+      before: (s) async => s.summon(),
+      answer: (c) => c
+        ..prompt = 'Maak Sam aan en geef hem alleen Kids.'
+        ..state = AssistantSurfaceState.working
+        ..pending = createSam(),
+    );
+  });
+
+  testWidgets('39-i iPad', skip: _dir == null, (tester) async {
+    final c = FakeAssistantController();
+    addTearDown(c.dispose);
+    await shoot(tester, '39-i-ipad', c, phone: _iPad, before: (s) async => s.summon(), answer: answerTitles);
+  });
+
   for (final phone in _phones) {
     for (final keyboard in [false, true]) {
       final tag = '${phone.name}${keyboard ? '-kb' : ''}';
@@ -229,6 +271,9 @@ const _Phone _iPhone17Pro = (
   safe: EdgeInsets.only(top: 54, bottom: 34),
   keyboard: 300,
 );
+
+/// 39 I: an 11-inch iPad in landscape.
+const _Phone _iPad = (name: 'ipad', size: Size(1180, 820), safe: EdgeInsets.only(top: 24, bottom: 20), keyboard: 0);
 const List<_Phone> _phones = [
   _iPhone17Pro,
   (name: 'se', size: Size(375, 667), safe: EdgeInsets.only(top: 20), keyboard: 260),
