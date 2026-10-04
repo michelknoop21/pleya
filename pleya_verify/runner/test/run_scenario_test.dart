@@ -290,6 +290,30 @@ void main() {
     expect(manifest, contains('"result": "PASS"'));
   });
 
+  test('fixture seed diagnostics survive prelaunch teardown in the existing driver log', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.diagnostics\ntarget: macos\nsetup:\n  - reset_app\n  - seed: catalog.mixed.v1\nsteps: []\n',
+      sourcePath: 'inline.yaml',
+    );
+    Directory('${repoRoot.path}/pleya_verify').createSync();
+    Link('${repoRoot.path}/pleya_verify/fixture_server').createSync(Directory('../fixture_server').absolute.path);
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'diagnostic seed',
+      driver: FakeDriver(),
+      repoRoot: repoRoot,
+    );
+    expect(result.passed, isTrue);
+    final log = File('${result.bundleDir.path}/driver.log').readAsStringSync();
+    expect(log, contains('"stage":"seed_received"'));
+    expect(log, contains('"stage":"seed_response_closed"'));
+    expect(log, contains('"stage":"process_exit"'));
+    final manifest = jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map;
+    final reset = (manifest['steps'] as List).first as Map;
+    expect(DateTime.tryParse(reset['started_at_utc'] as String? ?? ''), isNotNull);
+    expect(reset['duration_ms'], isA<int>());
+  });
+
   group('a press is recorded by what it changed, not by whether it returned', () {
     test('a press that moves the app records before, after, changed and the events between', () async {
       final scenario = parseScenarioString(
