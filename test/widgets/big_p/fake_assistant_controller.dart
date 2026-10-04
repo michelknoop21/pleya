@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
@@ -58,9 +60,13 @@ class FakeAssistantController extends AssistantController {
   /// [availability] as it is.
   AssistantAvailability? refreshTo;
 
+  /// Holds a refresh in flight until the test completes it.
+  Completer<void>? refreshGate;
+
   @override
   Future<void> refreshAvailability() async {
     refreshes++;
+    await refreshGate?.future;
     if (refreshTo != null) availability = refreshTo!;
   }
 

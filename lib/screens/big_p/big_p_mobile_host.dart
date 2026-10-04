@@ -127,6 +127,8 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
   Future<void> _setup(BigPMobileSession session) async {
     session.park();
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AssistantSettingsScreen()));
+    // A profile switch in the meantime disposes this controller.
+    if (!mounted || session.controller.disposed) return;
     await session.controller.refreshAvailability();
   }
 
@@ -283,12 +285,12 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
   /// build (asking notifies the controller this subtree listens to). Still
   /// working, or a card waiting: it stays with the session and the question
   /// field picks it up when it shows. Not set up: the balloon says so and
-  /// the question is let go.
+  /// the question is let go, but only once the summon's own read is in.
   void _handOver(BigPMobileSession session) {
     final c = session.controller;
     if (session.stage != BigPStage.out) return;
     if (c.availability != AssistantAvailability.ready) {
-      session.takeQuestion();
+      if (!session.refreshing) session.takeQuestion();
     } else if (c.pending == null && c.state != AssistantSurfaceState.working) {
       if (session.takeQuestion() case final question?) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

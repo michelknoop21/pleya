@@ -1,6 +1,8 @@
 // The ways to summon Big P on iPhone and iPad besides the face button: the
 // My Pleya tile, "Vraag het Big P" in Zoeken and a long-press on a library,
 // plus the settings row where the model is chosen.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
@@ -291,6 +293,24 @@ void main() {
       await tester.pump();
       expect(session.stage, BigPStage.out);
       expect(c.submitted, isEmpty);
+    });
+
+    testWidgets('needsSetup whose summon read turns ready still asks the handed-over question', (tester) async {
+      c
+        ..availability = AssistantAvailability.needsSetup
+        ..refreshTo = AssistantAvailability.ready
+        ..refreshGate = Completer<void>();
+      final key = await pump(tester);
+      await search(tester, key, 'dune');
+      await tester.tap(find.byType(BigPAskRow));
+      await tester.pump();
+      await tester.pump();
+      expect(c.submitted, isEmpty, reason: 'the read is still in flight');
+
+      c.refreshGate!.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(c.submitted, ['dune']);
     });
   });
 

@@ -16,8 +16,11 @@ import 'big_p_mobile_session.dart';
 /// availability changes, through the controller provided beside the session.
 BigPMobileSession? summonableBigP(BuildContext context) {
   final session = context.watch<BigPMobileSession?>();
+  // No session first: watching the controller would create it (lazy) on
+  // Android and desktop, where Big P is not offered.
+  if (session == null) return null;
   context.watch<AssistantController?>();
-  if (session == null || session.controller.availability == AssistantAvailability.hidden) return null;
+  if (session.controller.availability == AssistantAvailability.hidden) return null;
   return session;
 }
 

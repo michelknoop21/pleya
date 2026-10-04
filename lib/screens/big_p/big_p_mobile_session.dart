@@ -53,6 +53,12 @@ class BigPMobileSession extends ChangeNotifier {
   /// The screen Big P was summoned from, for [AssistantController.beginListening].
   AssistantScreenContext? get pendingContext => _pendingContext;
 
+  /// True while the availability read a [summon] started is in flight: a
+  /// handed-over question waits for it before needsSetup lets it go.
+  bool get refreshing => _refresh != null;
+  Future<void>? _refresh;
+  bool _disposed = false;
+
   /// A question handed over by Zoeken; read once.
   String? takeQuestion() {
     final question = _question;
@@ -79,7 +85,17 @@ class BigPMobileSession extends ChangeNotifier {
       controller.reset();
     }
     // Short of ready it asks again: a keychain that failed may have recovered.
-    if (controller.availability != AssistantAvailability.ready) unawaited(controller.refreshAvailability());
+    if (controller.availability != AssistantAvailability.ready) {
+      final refresh = _refresh = controller.refreshAvailability();
+      unawaited(
+        refresh.whenComplete(() {
+          if (_refresh != refresh) return;
+          _refresh = null;
+          // The host reads the handed-over question again with the answer.
+          if (!_disposed) notifyListeners();
+        }),
+      );
+    }
     // From the peek the answer's own context stays, for its follow-ups.
     if (context == null && _stage != BigPStage.peek) controller.clearScreenContext();
     _pendingContext = context;
@@ -138,6 +154,7 @@ class BigPMobileSession extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     controller.removeListener(_onController);
     super.dispose();
   }

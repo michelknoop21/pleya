@@ -244,6 +244,25 @@ void main() {
     expect(c.availability, AssistantAvailability.needsSetup);
   });
 
+  test('with the rollout flag off a server change builds no tool context', () async {
+    final serverChanges = ValueNotifier(0);
+    var built = 0;
+    final c = AssistantController(
+      buildContext: (screen) {
+        built++;
+        return AssistantToolContext(servers: servers, screen: screen);
+      },
+      rolloutEnabled: false,
+      serverChanges: serverChanges,
+    );
+    addTearDown(c.dispose);
+    servers.debugRegisterClientForTesting(_Server());
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(built, 0);
+    expect(c.availability, AssistantAvailability.hidden);
+  });
+
   test('a provider saved elsewhere moves availability out of setup', () async {
     seerr = _seerr([]);
     AssistantProviderConfig? saved;

@@ -66,6 +66,9 @@ class AssistantController extends ChangeNotifier {
   final Listenable? _serverChanges;
   bool _hadServers = false;
   void _onServersChanged() {
+    // Every MultiServerProvider notify lands here; with the flag off nothing
+    // can become visible, so no tool context gets built.
+    if (!_rolloutEnabled || _disposed) return;
     final hasServers = _buildContext(null).userServers.isNotEmpty;
     final arrived = hasServers && !_hadServers;
     _hadServers = hasServers;
