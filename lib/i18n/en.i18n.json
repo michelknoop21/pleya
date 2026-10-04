@@ -2300,7 +2300,7 @@
   "assistant": {
     "kids": {
       "agesFirst": "First I need to know how old the children are.",
-      "filterNotice": "Not everything above suits the youngest child's age. Pleya shows no card for those titles.",
+      "noFit": "I have no title that suits the children's ages. Ask me another way.",
       "header": "Pleya asks",
       "title": "How old are the children?",
       "body": "So I can keep the titles suitable. This stays on this device and with this profile only.",
@@ -2620,6 +2620,7 @@
       },
       "choose": "Choose what to request",
       "cancelAll": "Cancel all",
+      "numbered": "Task ${n}",
       "cancelTask": "Cancel: ${title}"
     },
     "youAsked": "You asked:",

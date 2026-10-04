@@ -7370,8 +7370,8 @@ class TranslationsAssistantKidsEn {
 	/// en: 'First I need to know how old the children are.'
 	String get agesFirst => 'First I need to know how old the children are.';
 
-	/// en: 'Not everything above suits the youngest child's age. Pleya shows no card for those titles.'
-	String get filterNotice => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.';
+	/// en: 'I have no title that suits the children's ages. Ask me another way.'
+	String get noFit => 'I have no title that suits the children\'s ages. Ask me another way.';
 
 	/// en: 'Pleya asks'
 	String get header => 'Pleya asks';
@@ -8172,6 +8172,9 @@ class TranslationsAssistantTasksEn {
 
 	/// en: 'Cancel all'
 	String get cancelAll => 'Cancel all';
+
+	/// en: 'Task ${n}'
+	String numbered({required Object n}) => 'Task ${n}';
 
 	/// en: 'Cancel: ${title}'
 	String cancelTask({required Object title}) => 'Cancel: ${title}';
@@ -10545,7 +10548,7 @@ extension on Translations {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
 			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
-			'assistant.kids.filterNotice' => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.',
+			'assistant.kids.noFit' => 'I have no title that suits the children\'s ages. Ask me another way.',
 			'assistant.kids.header' => 'Pleya asks',
 			'assistant.kids.title' => 'How old are the children?',
 			'assistant.kids.body' => 'So I can keep the titles suitable. This stays on this device and with this profile only.',
@@ -10789,6 +10792,7 @@ extension on Translations {
 			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 title found', other: '${n} titles found', ), 
 			'assistant.tasks.choose' => 'Choose what to request',
 			'assistant.tasks.cancelAll' => 'Cancel all',
+			'assistant.tasks.numbered' => ({required Object n}) => 'Task ${n}',
 			'assistant.tasks.cancelTask' => ({required Object title}) => 'Cancel: ${title}',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',

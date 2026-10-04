@@ -141,12 +141,12 @@ void main() {
     expect(result.ageFilterNotice, isFalse);
   });
 
-  test('a model that keeps the title: still no card, no second correction, a notice from Pleya', () async {
+  test('a model that keeps the title: no card, no second correction, Pleya\'s own line in place of the text', () async {
     final m = _model(['Kijk «$_hp» (2011).', 'Toch «$_hp» (2011).', 'nooit gevraagd']);
     final result = await _ask(m.model, _ctx(), prompt);
     expect(m.sent, hasLength(2));
     expect(_cards(result), isEmpty);
-    expect(result.text, contains(_hp), reason: 'never edited out silently');
+    expect(result.text, isEmpty, reason: 'the title appears nowhere');
     expect(result.ageFilterNotice, isTrue);
   });
 
@@ -177,7 +177,7 @@ void main() {
     expect(result.text, 'Kijk Toy Story (1995), heel leuk.');
   });
 
-  test('the controller carries the age notice as a flag, not only as text', () async {
+  test('the controller shows Pleya\'s own line and carries it as a flag', () async {
     final ctx = _ctx();
     final c = AssistantController(
       buildContext: (_) => ctx,
@@ -190,7 +190,7 @@ void main() {
     addTearDown(c.dispose);
     await c.submit(prompt);
     expect(c.ageFilterNotice, isTrue);
-    expect(c.answer, endsWith(t.assistant.kids.filterNotice));
+    expect(c.answer, t.assistant.kids.noFit);
   });
 
   test('negative control: for a 13-year-old the Harry Potter card comes', () async {
@@ -216,8 +216,8 @@ void main() {
     expect(card.prompt, prompt);
   });
 
-  test('without ages a title in prose disappears: only the ages card, no model text', () async {
-    final m = _model(['Kijk Harry Potter, die is spannend.']);
+  test('without ages a named title disappears: only the ages card, no model text', () async {
+    final m = _model(['Kijk «Harry Potter», die is spannend.']);
     final result = await _ask(m.model, _ctx(ages: []), prompt);
     expect(result.text, isNot(contains('Harry')));
     expect(result.kidsAgesNeeded, isTrue);

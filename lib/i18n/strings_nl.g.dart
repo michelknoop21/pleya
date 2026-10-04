@@ -3162,7 +3162,7 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 
 	// Translations
 	@override String get agesFirst => 'Ik moet eerst weten hoe oud de kinderen zijn.';
-	@override String get filterNotice => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.';
+	@override String get noFit => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.';
 	@override String get header => 'Pleya vraagt';
 	@override String get title => 'Hoe oud zijn de kinderen?';
 	@override String get body => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.';
@@ -3558,6 +3558,7 @@ class _TranslationsAssistantTasksNl extends TranslationsAssistantTasksEn {
 	);
 	@override String get choose => 'Kies wat je wilt aanvragen';
 	@override String get cancelAll => 'Alles annuleren';
+	@override String numbered({required Object n}) => 'Taak ${n}';
 	@override String cancelTask({required Object title}) => 'Annuleren: ${title}';
 }
 
@@ -5816,7 +5817,7 @@ extension on TranslationsNl {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
 			'assistant.kids.agesFirst' => 'Ik moet eerst weten hoe oud de kinderen zijn.',
-			'assistant.kids.filterNotice' => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.',
+			'assistant.kids.noFit' => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.',
 			'assistant.kids.header' => 'Pleya vraagt',
 			'assistant.kids.title' => 'Hoe oud zijn de kinderen?',
 			'assistant.kids.body' => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.',
@@ -6060,6 +6061,7 @@ extension on TranslationsNl {
 			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 titel gevonden', other: '${n} titels gevonden', ), 
 			'assistant.tasks.choose' => 'Kies wat je wilt aanvragen',
 			'assistant.tasks.cancelAll' => 'Alles annuleren',
+			'assistant.tasks.numbered' => ({required Object n}) => 'Taak ${n}',
 			'assistant.tasks.cancelTask' => ({required Object title}) => 'Annuleren: ${title}',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',

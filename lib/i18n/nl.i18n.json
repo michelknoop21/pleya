@@ -2300,7 +2300,7 @@
   "assistant": {
     "kids": {
       "agesFirst": "Ik moet eerst weten hoe oud de kinderen zijn.",
-      "filterNotice": "Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.",
+      "noFit": "Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.",
       "header": "Pleya vraagt",
       "title": "Hoe oud zijn de kinderen?",
       "body": "Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.",
@@ -2620,6 +2620,7 @@
       },
       "choose": "Kies wat je wilt aanvragen",
       "cancelAll": "Alles annuleren",
+      "numbered": "Taak ${n}",
       "cancelTask": "Annuleren: ${title}"
     },
     "youAsked": "Je vroeg:",

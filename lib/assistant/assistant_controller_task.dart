@@ -46,11 +46,12 @@ extension _AssistantTaskRunning on AssistantController {
       if (result.splitTasks.isNotEmpty) {
         final inheritedSpoilerPrompt = task.originalSpoilerPrompt ?? result.spoilerPrompt;
         final children = [
-          for (final plan in result.splitTasks)
+          for (final (i, plan) in result.splitTasks.indexed)
             _newTask(
               // A fenced parent cannot delegate an unrestricted task or show
               // model-invented narrative labels. Conservative whole-question scope.
-              title: inheritedSpoilerPrompt ?? plan.title,
+              // An empty title is a children's profile's: Pleya numbers it.
+              title: inheritedSpoilerPrompt ?? (plan.title.isEmpty ? t.assistant.tasks.numbered(n: i + 1) : plan.title),
               intent: inheritedSpoilerPrompt == null ? plan.intent : 'spoiler_context',
               prompt: inheritedSpoilerPrompt ?? plan.prompt,
               originalSpoilerPrompt: inheritedSpoilerPrompt,
@@ -90,12 +91,12 @@ extension _AssistantTaskRunning on AssistantController {
           (playbackCurrent
               ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
               : 'playback_session_changed');
-      // Pleya's own words, never the model's: the answer still names a
-      // title the age filter turned down.
+      // Pleya's own words, never the model's: the answer kept naming a
+      // title the age filter did not pass.
       final text = result.kidsAgesNeeded
           ? t.assistant.kids.agesFirst
           : result.ageFilterNotice
-          ? '${result.text}\n\n${t.assistant.kids.filterNotice}'
+          ? t.assistant.kids.noFit
           : result.text;
       task.answer = playbackCurrent && doctorError == null && displayCurrent ? text : '';
       task.ageFilterNotice = result.ageFilterNotice && !result.kidsAgesNeeded;

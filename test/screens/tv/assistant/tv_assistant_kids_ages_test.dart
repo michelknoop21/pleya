@@ -145,7 +145,7 @@ void main() {
     expect(focusedLabel(), 'assistant.kids.first');
   });
 
-  testWidgets('above title cards the age notice stays in view under the lead', (tester) async {
+  testWidgets('above title cards Pleya\'s own line stays in view under the lead', (tester) async {
     final entry = AppleTvNativeTextEntry(channel: channel);
     await pumpTvFrame(
       tester,
@@ -156,14 +156,14 @@ void main() {
       ),
     );
     answerFactsTitles(c);
-    // Two tasks: the notice belongs to the first, so the joined answer does
-    // not end with it.
+    // Two tasks: Pleya's line is the first one's answer, so the joined
+    // answer does not end with it.
     c
-      ..answer = '${c.answer}\n\n${t.assistant.kids.filterNotice}\nDe scan is gestart.'
+      ..answer = '${t.assistant.kids.noFit}\nDe scan is gestart.'
       ..ageFilterNotice = true
       ..emit();
     await settle(tester);
-    expect(find.text(t.assistant.kids.filterNotice), findsOneWidget);
+    expect(find.text(t.assistant.kids.noFit), findsOneWidget);
   });
 }
 

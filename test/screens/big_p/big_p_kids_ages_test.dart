@@ -115,11 +115,11 @@ void main() {
     expect(find.byType(BigPInputBar), findsOneWidget);
   });
 
-  testWidgets('the age notice shows under the answer, above the title cards', (tester) async {
+  testWidgets('Pleya\'s own line in place of the answer shows above the title cards', (tester) async {
     answerFactsTitles(c);
-    c.answer = '${c.answer}\n\n${t.assistant.kids.filterNotice}';
+    c.answer = t.assistant.kids.noFit;
     await pumpHost(tester);
-    expect(find.textContaining(t.assistant.kids.filterNotice), findsOneWidget);
+    expect(find.textContaining(t.assistant.kids.noFit), findsOneWidget);
     expect(find.byType(BigPTitleFacts), findsWidgets);
     expect(tester.takeException(), isNull);
   });

@@ -7,6 +7,47 @@ import 'assistant_tools.dart';
 /// A title as the cards compare it: lower case, letters and digits only.
 String assistantTitleKey(String title) => title.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
 
+/// Accented letters and the plain letter they fold to.
+const _folds = {
+  'a': 'àáâãäåā',
+  'c': 'çč',
+  'e': 'èéêëē',
+  'i': 'ìíîïī',
+  'n': 'ñ',
+  'o': 'òóôõöøō',
+  's': 'š',
+  'u': 'ùúûüū',
+  'y': 'ýÿ',
+  'z': 'ž',
+};
+final _foldOf = {
+  for (final e in _folds.entries)
+    for (final c in e.value.split('')) c: e.key,
+};
+
+/// [text] as plain words: lower case, accents folded, every run of other
+/// characters a single space.
+String assistantPlainWords(String text) => text
+    .toLowerCase()
+    .split('')
+    .map((c) => _foldOf[c] ?? c)
+    .join()
+    .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
+    .trim();
+
+/// The plain words that name [title] in running text: the whole title, and
+/// the main title before a subtitle after ":" or " - " when it has two words
+/// or eight letters, so a short main title does not match ordinary prose.
+List<String> assistantTitleWords(String title) {
+  final full = assistantPlainWords(title);
+  final cut = title.indexOf(RegExp('[:]|\\s[-\u2013]\\s'));
+  final main = cut > 0 ? assistantPlainWords(title.substring(0, cut)) : '';
+  return [
+    if (full.isNotEmpty) full,
+    if (main.isNotEmpty && main != full && (main.contains(' ') || main.length >= 8)) main,
+  ];
+}
+
 /// The titles in [answer]: everything between « and », and list items that
 /// carry a year ("• Interstellar (2014)") when the model left the marks out.
 /// At most five, in order, each once.

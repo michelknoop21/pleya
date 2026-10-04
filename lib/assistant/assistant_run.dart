@@ -92,8 +92,8 @@ class AssistantRunResult {
   final String? Function()? libraryDoctorError;
   final bool Function()? displayEvidenceCurrent;
 
-  /// The answer still names a title the age filter turned down, after the
-  /// one correction round: Pleya adds its own notice under it.
+  /// The answer still named a title the age filter did not pass after the
+  /// one correction round: [text] is empty and Pleya shows its own line.
   final bool ageFilterNotice;
 
   /// The ask is for children whose ages Pleya does not know yet: no model
@@ -363,7 +363,12 @@ class AssistantRun {
         }
         return AssistantRunResult(
           end: AssistantRunEnd.answered,
-          splitTasks: List.unmodifiable(plans),
+          // A child task's title is model text the age gate never sees: on a
+          // children's profile it stays empty and the controller numbers it.
+          splitTasks: List.unmodifiable([
+            for (final plan in plans)
+              _ctx.kidsMode ? AssistantTaskPlan(title: '', intent: plan.intent, prompt: plan.prompt) : plan,
+          ]),
           spoilerPrompt: _spoilerQuestion,
         );
       }
@@ -395,9 +400,10 @@ class AssistantRun {
         return _end(AssistantRunEnd.answered, text: evidence.answer(languageName));
       }
       if (reply.toolCalls.isEmpty) {
-        // An answer for children without any known age: the model named its
-        // titles unchecked, so the ages card replaces it.
-        if (await _kidsAgesMissing()) {
+        // An answer for children that names titles without any known age:
+        // the model named them unchecked, so the ages card replaces it. An
+        // answer without titles (a server status) goes through.
+        if (_namesTitles(reply.content) && await _kidsAgesMissing()) {
           _askKidsAges();
           return _end(AssistantRunEnd.answered);
         }
@@ -409,7 +415,9 @@ class AssistantRun {
           messages.add({'role': 'system', 'content': correction});
           continue;
         }
-        return _end(AssistantRunEnd.answered, text: reply.content);
+        // Still naming a title the age filter did not pass: Pleya's own line
+        // (the controller words it), never the model's text.
+        return _end(AssistantRunEnd.answered, text: _ageNotice ? '' : reply.content);
       }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {

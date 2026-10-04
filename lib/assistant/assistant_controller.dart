@@ -180,8 +180,8 @@ class AssistantController extends ChangeNotifier {
   /// The model's words: display only, never a source of actions.
   String get answer => _answer;
 
-  /// Some answer carries Pleya's age notice ([t.assistant.kids.filterNotice]),
-  /// so a surface that shows only the lead can still show the notice.
+  /// Some answer is Pleya's own line ([t.assistant.kids.noFit]) in place of
+  /// the model's, so a surface that shows only the lead can still show it.
   bool get ageFilterNotice => _ageFilterNotice;
   List<AssistantStep> get steps => List.unmodifiable(_steps);
   List<AssistantActionRecord> get actions => List.unmodifiable(_actions);

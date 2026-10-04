@@ -19,28 +19,29 @@ extension _AssistantAnswer on AssistantRun {
   }
 
   /// Settles [answer]: returns the correction for the model when it names a
-  /// title the age filter turned down and [mayCorrect]; otherwise adds the
-  /// cards for its titles and returns null.
+  /// title the age filter did not pass and [mayCorrect]; otherwise adds the
+  /// cards for its titles and returns null. Still naming one after the
+  /// correction round sets [_ageNotice]: Pleya's own line replaces the
+  /// model's text and the named titles get no card.
   Future<String?> _settleAnswer(String answer, {required bool mayCorrect}) async {
     final step = await _lookupNamedTitles(answer);
     final rejected = _rejectedNamed(answer);
     final unvetted = _unvettedNamed(answer, rejected);
-    final keep = (rejected.isEmpty && unvetted.isEmpty) || !mayCorrect;
-    if (keep && step?.display != null) _displays.add(step!.display!);
+    final clean = rejected.isEmpty && unvetted.isEmpty;
+    if (clean && step?.display != null) _displays.add(step!.display!);
     if (step != null) {
       onStep?.call(
         AssistantStep(
           index: step.index,
           tool: 'find_title',
           phase: AssistantStepPhase.done,
-          display: keep ? step.display : null,
+          display: clean ? step.display : null,
           evidenceCurrent: step.current,
         ),
       );
     }
-    if (rejected.isEmpty && unvetted.isEmpty) return null;
-    if (keep) {
-      // The model kept it: no card, no silent edit, a notice from Pleya.
+    if (clean) return null;
+    if (!mayCorrect) {
       _ageNotice = true;
       return null;
     }
@@ -87,24 +88,34 @@ extension _AssistantAnswer on AssistantRun {
     return found;
   }
 
-  /// Named titles the age gate turned down this ask and no card shows.
+  /// The titles the age gate turned down this ask that the answer names
+  /// anywhere in its text, with or without « » or a year. A title of which
+  /// another year passed (Dune 1984, not Dune 2021) only counts when named
+  /// with its own year.
   List<({String title, int? year, String reason})> _rejectedNamed(String answer) {
     if (!_ctx.kidsMode || _ctx.ageRejected.isEmpty) return const [];
-    final shown = assistantShownTitles(_displays);
+    final text = ' ${assistantPlainWords(answer)} ';
+    final named = assistantNamedTitles(answer);
+    final passed = {for (final a in _ctx.ageAllowed) assistantTitleKey(a.title)};
+    final seen = <String>{};
     return [
-      for (final t in assistantNamedTitles(answer))
-        if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year)))
-          ?_ctx.ageRejected
-              .where(
-                (r) => assistantSameTitle(
+      for (final r in _ctx.ageRejected)
+        if (passed.contains(assistantTitleKey(r.title))
+            ? named.any(
+                (t) => assistantSameTitle(
                   (key: assistantTitleKey(r.title), year: r.year),
                   assistantTitleKey(t.title),
                   t.year,
                 ),
               )
-              .firstOrNull,
+            : assistantTitleWords(r.title).any((words) => text.contains(' $words ')))
+          if (seen.add(assistantTitleKey(r.title))) r,
     ];
   }
+
+  /// Whether a closing answer names titles the way Pleya can tell: in « »,
+  /// or followed by a year, also on a list line.
+  bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
 
   /// Titles the answer names without a card get one: Pleya looks them up
   /// itself with find_title and keeps the exact titles that can be opened
