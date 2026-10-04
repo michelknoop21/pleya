@@ -31,6 +31,8 @@ class FakeAssistantController extends AssistantController {
   AssistantPendingAction? pending;
   @override
   bool stillChecking = false;
+  @override
+  int runs = 0;
 
   final submitted = <String>[];
 
@@ -74,6 +76,7 @@ class FakeAssistantController extends AssistantController {
   Future<void> submit(String prompt) async {
     submitted.add(prompt);
     submittedContexts.add(_held);
+    runs++;
     this.prompt = prompt;
     state = AssistantSurfaceState.working;
     notifyListeners();

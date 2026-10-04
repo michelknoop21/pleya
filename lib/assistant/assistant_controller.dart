@@ -92,6 +92,11 @@ class AssistantController extends ChangeNotifier {
   AssistantAvailability _availability = AssistantAvailability.hidden;
   AssistantSurfaceState _state = AssistantSurfaceState.idle;
   bool _resultIsError = false;
+
+  /// Bumped by every [submit]: tells one answer from the next, also when the
+  /// same question is asked again.
+  int get runs => _runs;
+  int _runs = 0;
   AssistantRunEnd? _lastEnd;
   AssistantModelError? _lastProviderError;
   bool _modelMissing = false;
@@ -229,6 +234,7 @@ class AssistantController extends ChangeNotifier {
     if (_busy || text.isEmpty) return;
     _busy = true;
     _asking = true;
+    _runs++;
     _jobsSeq++;
     final generation = _generation;
     final cancel = _cancel = AbortController();

@@ -164,8 +164,7 @@ void main() {
     tester.view.physicalSize = phone.size * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     final session = BigPMobileSession(c);
     addTearDown(session.dispose);
     final boundary = GlobalKey();
@@ -267,28 +266,26 @@ void main() {
   );
 
   testWidgets('39-a face button', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(tester, '39-a-gezichtsknop', c);
   });
 
-  testWidgets('39-b summoned', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
-    await shoot(tester, '39-b-opgeroepen', c, before: (s) async => s.summon());
-  });
+  // Two seeds: the examples and the follow-ups differ per summon and answer.
+  for (final seed in [1, 2]) {
+    testWidgets('39-b summoned, seed $seed', skip: _dir == null, (tester) async {
+      await shoot(tester, '39-b-opgeroepen-seed$seed', shotController(seed: seed), before: (s) async => s.summon());
+    });
+  }
 
   testWidgets('39-c no model', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController()..availability = AssistantAvailability.needsSetup;
-    addTearDown(c.dispose);
+    final c = shotController()..availability = AssistantAvailability.needsSetup;
     PleyaKeychain.debugForceSupported = true;
     addTearDown(() => PleyaKeychain.debugForceSupported = false);
     await shoot(tester, '39-c-geen-model', c, before: (s) async => s.summon());
   });
 
   testWidgets('39-d dictating', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(
       tester,
       '39-d-dicteren',
@@ -303,8 +300,7 @@ void main() {
   });
 
   testWidgets('working', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(
       tester,
       'working',
@@ -323,21 +319,20 @@ void main() {
     );
   });
 
-  testWidgets('39-e answer with titles', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
-    await shoot(tester, '39-e-antwoord-titels', c, before: (s) async => s.summon(), answer: answerTitles);
-  });
+  for (final seed in [1, 2]) {
+    testWidgets('39-e answer with titles, seed $seed', skip: _dir == null, (tester) async {
+      final c = shotController(seed: seed);
+      await shoot(tester, '39-e-antwoord-titels-seed$seed', c, before: (s) async => s.summon(), answer: answerTitles);
+    });
+  }
 
   testWidgets('39-f watch stats', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(tester, '39-f-kijkcijfers', c, before: (s) async => s.summon(), answer: answerWatchStats);
   });
 
   testWidgets('39-g confirm', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(
       tester,
       '39-g-bevestigen',
@@ -351,8 +346,7 @@ void main() {
   });
 
   testWidgets('39-h back to Big P', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(
       tester,
       '39-h-terug-naar-big-p',
@@ -382,8 +376,7 @@ void main() {
   });
 
   testWidgets('39-i iPad', skip: _dir == null, (tester) async {
-    final c = FakeAssistantController();
-    addTearDown(c.dispose);
+    final c = shotController();
     await shoot(tester, '39-i-ipad', c, phone: _iPad, before: (s) async => s.summon(), answer: answerTitles);
   });
 
@@ -391,13 +384,11 @@ void main() {
     for (final keyboard in [false, true]) {
       final tag = '${phone.name}${keyboard ? '-kb' : ''}';
       testWidgets('sweep greet $tag', skip: _dir == null, (tester) async {
-        final c = FakeAssistantController();
-        addTearDown(c.dispose);
+        final c = shotController();
         await shoot(tester, 'sweep-$tag-greet', c, phone: phone, keyboard: keyboard, before: (s) async => s.summon());
       });
       testWidgets('sweep setup $tag', skip: _dir == null, (tester) async {
-        final c = FakeAssistantController()..availability = AssistantAvailability.needsSetup;
-        addTearDown(c.dispose);
+        final c = shotController()..availability = AssistantAvailability.needsSetup;
         PleyaKeychain.debugForceSupported = true;
         addTearDown(() => PleyaKeychain.debugForceSupported = false);
         await shoot(tester, 'sweep-$tag-setup', c, phone: phone, keyboard: keyboard, before: (s) async => s.summon());

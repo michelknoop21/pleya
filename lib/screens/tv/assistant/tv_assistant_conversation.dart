@@ -11,6 +11,7 @@ import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/assistant/big_p_answer.dart';
 import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 
 /// What the glass panel holds in each stand (rust, luisteren, werken,
@@ -95,7 +96,7 @@ class TvAssistantConversation extends StatelessWidget {
           style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
         ),
         SizedBox(height: 12 * pt),
-        for (final (i, example) in t.assistant.idle.examples.indexed) ...[
+        for (final (i, example) in BigPSuggestions.of(c).examples(t.assistant.idle.examples).indexed) ...[
           BigPChip(
             label: example,
             automationId: AutomationIds.assistantExample,
@@ -277,11 +278,7 @@ class TvAssistantConversation extends StatelessWidget {
       spacing: 10 * pt,
       runSpacing: 10 * pt,
       children: [
-        for (final (i, question) in assistantFollowUps(
-          c.displays,
-          jobs: c.actions.any((a) => a.job != null),
-          prompt: c.prompt,
-        ).indexed)
+        for (final (i, question) in BigPSuggestions.of(c).followUps(c).indexed)
           BigPChip(
             label: question,
             icon: Symbols.subdirectory_arrow_right_rounded,

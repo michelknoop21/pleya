@@ -7284,7 +7284,13 @@ class TranslationsAssistantMobileEn {
 
 	List<String> get examples => [
 		'What can I watch tonight?',
+		'Give me a comedy for tonight.',
+		'Which series can I start now?',
+		'Do I have something for the kids?',
 		'Which movies haven\'t I seen yet?',
+		'Which movies have sat unwatched in my library for a long time?',
+		'What was added this week?',
+		'Find an exciting movie for tonight.',
 		'Who watched the most this week?',
 	];
 
@@ -7393,7 +7399,12 @@ class TranslationsAssistantIdleEn {
 	List<String> get examples => [
 		'Which tasks failed on my servers today? Restart them.',
 		'Scan all movie libraries on all my servers.',
+		'Scan my series libraries on all my servers.',
 		'Who watched the most this week?',
+		'Who is watching right now?',
+		'What can I watch tonight?',
+		'What was added this week?',
+		'Which popular new movies don\'t I have yet?',
 	];
 }
 
@@ -8003,17 +8014,28 @@ class TranslationsAssistantFollowUpEn {
 	/// en: 'Who watched today?'
 	String get watchToday => 'Who watched today?';
 
-	/// en: 'Give me a film tip for tonight.'
-	String get tonight => 'Give me a film tip for tonight.';
+	/// en: 'Who watched yesterday?'
+	String get watchYesterday => 'Who watched yesterday?';
 
-	/// en: 'What was added to my library lately?'
-	String get recent => 'What was added to my library lately?';
-
-	/// en: 'Which films in my library have I not seen yet?'
-	String get unwatched => 'Which films in my library have I not seen yet?';
-
-	/// en: 'Which popular films do I not have yet?'
-	String get popular => 'Which popular films do I not have yet?';
+	List<String> get tonight => [
+		'Give me a comedy for tonight.',
+		'Find an exciting movie for tonight.',
+		'Do I have something for the kids?',
+		'Which series can I start now?',
+	];
+	List<String> get recent => [
+		'What was added to my library lately?',
+		'Which series were added recently?',
+		'What was added this week?',
+	];
+	List<String> get unwatched => [
+		'Which films in my library have I not seen yet?',
+		'Which movies have sat unwatched in my library for a long time?',
+	];
+	List<String> get popular => [
+		'Which popular films do I not have yet?',
+		'Which popular new movies don\'t I have yet?',
+	];
 
 	/// en: 'Which films are missing between my servers?'
 	String get missingMovies => 'Which films are missing between my servers?';
@@ -10250,8 +10272,14 @@ extension on Translations {
 			'assistant.providerLabel' => 'AI provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
 			'assistant.mobile.examples.0' => 'What can I watch tonight?',
-			'assistant.mobile.examples.1' => 'Which movies haven\'t I seen yet?',
-			'assistant.mobile.examples.2' => 'Who watched the most this week?',
+			'assistant.mobile.examples.1' => 'Give me a comedy for tonight.',
+			'assistant.mobile.examples.2' => 'Which series can I start now?',
+			'assistant.mobile.examples.3' => 'Do I have something for the kids?',
+			'assistant.mobile.examples.4' => 'Which movies haven\'t I seen yet?',
+			'assistant.mobile.examples.5' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.mobile.examples.6' => 'What was added this week?',
+			'assistant.mobile.examples.7' => 'Find an exciting movie for tonight.',
+			'assistant.mobile.examples.8' => 'Who watched the most this week?',
 			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
 			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
 			'assistant.mobile.setup' => 'Set up model',
@@ -10279,7 +10307,12 @@ extension on Translations {
 			'assistant.idle.examplesHeader' => 'For example',
 			'assistant.idle.examples.0' => 'Which tasks failed on my servers today? Restart them.',
 			'assistant.idle.examples.1' => 'Scan all movie libraries on all my servers.',
-			'assistant.idle.examples.2' => 'Who watched the most this week?',
+			'assistant.idle.examples.2' => 'Scan my series libraries on all my servers.',
+			'assistant.idle.examples.3' => 'Who watched the most this week?',
+			'assistant.idle.examples.4' => 'Who is watching right now?',
+			'assistant.idle.examples.5' => 'What can I watch tonight?',
+			'assistant.idle.examples.6' => 'What was added this week?',
+			'assistant.idle.examples.7' => 'Which popular new movies don\'t I have yet?',
 			'assistant.listening.title' => 'I\'m listening…',
 			'assistant.listening.body' => 'Speak your question.',
 			'assistant.working.status' => 'Let me check…',
@@ -10462,10 +10495,18 @@ extension on Translations {
 			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',
 			'assistant.followUp.watchToday' => 'Who watched today?',
-			'assistant.followUp.tonight' => 'Give me a film tip for tonight.',
-			'assistant.followUp.recent' => 'What was added to my library lately?',
-			'assistant.followUp.unwatched' => 'Which films in my library have I not seen yet?',
-			'assistant.followUp.popular' => 'Which popular films do I not have yet?',
+			'assistant.followUp.watchYesterday' => 'Who watched yesterday?',
+			'assistant.followUp.tonight.0' => 'Give me a comedy for tonight.',
+			'assistant.followUp.tonight.1' => 'Find an exciting movie for tonight.',
+			'assistant.followUp.tonight.2' => 'Do I have something for the kids?',
+			'assistant.followUp.tonight.3' => 'Which series can I start now?',
+			'assistant.followUp.recent.0' => 'What was added to my library lately?',
+			'assistant.followUp.recent.1' => 'Which series were added recently?',
+			'assistant.followUp.recent.2' => 'What was added this week?',
+			'assistant.followUp.unwatched.0' => 'Which films in my library have I not seen yet?',
+			'assistant.followUp.unwatched.1' => 'Which movies have sat unwatched in my library for a long time?',
+			'assistant.followUp.popular.0' => 'Which popular films do I not have yet?',
+			'assistant.followUp.popular.1' => 'Which popular new movies don\'t I have yet?',
 			'assistant.followUp.missingMovies' => 'Which films are missing between my servers?',
 			'assistant.followUp.missingShows' => 'Which series are missing between my servers?',
 			'assistant.followUp.jobs' => 'Which tasks are running on my servers now?',

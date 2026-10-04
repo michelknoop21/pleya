@@ -44,6 +44,7 @@ import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 
 class TvAssistantScreen extends StatefulWidget {
   const TvAssistantScreen({super.key, this.screenContext, this.speech, this.textEntry});
@@ -89,6 +90,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   void initState() {
     super.initState();
     _mounted.add(this);
+    // One visit, one set of examples: picked before the first frame.
+    if (context.read<AssistantController?>() case final c?) BigPSuggestions.of(c).summoned();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = _c;
       if (!mounted || c == null) return;

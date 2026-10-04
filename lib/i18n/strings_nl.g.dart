@@ -3127,7 +3127,13 @@ class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
 	@override String greeting({required Object name}) => 'Hoi ${name}, wat zoeken we?';
 	@override List<String> get examples => [
 		'Wat kan ik vanavond kijken?',
+		'Geef me een komedie voor vanavond.',
+		'Welke serie kan ik nu beginnen?',
+		'Heb ik iets voor de kinderen?',
 		'Welke films heb ik nog niet gezien?',
+		'Welke films staan al lang ongezien in mijn bibliotheek?',
+		'Wat is er deze week toegevoegd?',
+		'Zoek een spannende film voor vanavond.',
 		'Wie heeft deze week het meest gekeken?',
 	];
 	@override String get noModelTitle => 'Ik heb nog geen brein.';
@@ -3185,7 +3191,12 @@ class _TranslationsAssistantIdleNl extends TranslationsAssistantIdleEn {
 	@override List<String> get examples => [
 		'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
 		'Scan alle filmbibliotheken op al mijn servers.',
+		'Scan mijn seriebibliotheken op al mijn servers.',
 		'Wie heeft deze week het meest gekeken?',
+		'Wie kijkt er nu?',
+		'Wat kan ik vanavond kijken?',
+		'Wat is er deze week toegevoegd?',
+		'Welke nieuwe films zijn populair die ik nog niet heb?',
 	];
 }
 
@@ -3473,12 +3484,28 @@ class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
 	// Translations
 	@override String get watchNow => 'Wie kijkt er nu?';
 	@override String get watchMonth => 'Wie keek het meest de afgelopen 30 dagen?';
-	@override String get watchWeek => 'Wie keek het meest deze week?';
+	@override String get watchWeek => 'Wie heeft deze week het meest gekeken?';
 	@override String get watchToday => 'Wie keek er vandaag?';
-	@override String get tonight => 'Geef me een filmtip voor vanavond.';
-	@override String get recent => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?';
-	@override String get unwatched => 'Welke films in mijn bibliotheek heb ik nog niet gezien?';
-	@override String get popular => 'Welke populaire films heb ik nog niet?';
+	@override String get watchYesterday => 'Wie keek er gisteren?';
+	@override List<String> get tonight => [
+		'Geef me een komedie voor vanavond.',
+		'Zoek een spannende film voor vanavond.',
+		'Heb ik iets voor de kinderen?',
+		'Welke serie kan ik nu beginnen?',
+	];
+	@override List<String> get recent => [
+		'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+		'Welke series zijn onlangs toegevoegd?',
+		'Wat is er deze week toegevoegd?',
+	];
+	@override List<String> get unwatched => [
+		'Welke films heb ik nog niet gezien?',
+		'Welke films staan al lang ongezien in mijn bibliotheek?',
+	];
+	@override List<String> get popular => [
+		'Welke populaire films heb ik nog niet?',
+		'Welke nieuwe films zijn populair die ik nog niet heb?',
+	];
 	@override String get missingMovies => 'Welke films ontbreken tussen mijn servers?';
 	@override String get missingShows => 'Welke series ontbreken tussen mijn servers?';
 	@override String get jobs => 'Welke taken lopen er nu op mijn servers?';
@@ -5647,8 +5674,14 @@ extension on TranslationsNl {
 			'assistant.providerLabel' => 'AI-provider',
 			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
 			'assistant.mobile.examples.0' => 'Wat kan ik vanavond kijken?',
-			'assistant.mobile.examples.1' => 'Welke films heb ik nog niet gezien?',
-			'assistant.mobile.examples.2' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.mobile.examples.1' => 'Geef me een komedie voor vanavond.',
+			'assistant.mobile.examples.2' => 'Welke serie kan ik nu beginnen?',
+			'assistant.mobile.examples.3' => 'Heb ik iets voor de kinderen?',
+			'assistant.mobile.examples.4' => 'Welke films heb ik nog niet gezien?',
+			'assistant.mobile.examples.5' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.mobile.examples.6' => 'Wat is er deze week toegevoegd?',
+			'assistant.mobile.examples.7' => 'Zoek een spannende film voor vanavond.',
+			'assistant.mobile.examples.8' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
 			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
 			'assistant.mobile.setup' => 'Model instellen',
@@ -5676,7 +5709,12 @@ extension on TranslationsNl {
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
 			'assistant.idle.examples.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
 			'assistant.idle.examples.1' => 'Scan alle filmbibliotheken op al mijn servers.',
-			'assistant.idle.examples.2' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.2' => 'Scan mijn seriebibliotheken op al mijn servers.',
+			'assistant.idle.examples.3' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.4' => 'Wie kijkt er nu?',
+			'assistant.idle.examples.5' => 'Wat kan ik vanavond kijken?',
+			'assistant.idle.examples.6' => 'Wat is er deze week toegevoegd?',
+			'assistant.idle.examples.7' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.listening.title' => 'Ik luister…',
 			'assistant.listening.body' => 'Spreek je vraag in.',
 			'assistant.working.status' => 'Even kijken…',
@@ -5857,12 +5895,20 @@ extension on TranslationsNl {
 			'assistant.displays.playsTotal' => 'keer gekeken',
 			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
 			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
-			'assistant.followUp.watchWeek' => 'Wie keek het meest deze week?',
+			'assistant.followUp.watchWeek' => 'Wie heeft deze week het meest gekeken?',
 			'assistant.followUp.watchToday' => 'Wie keek er vandaag?',
-			'assistant.followUp.tonight' => 'Geef me een filmtip voor vanavond.',
-			'assistant.followUp.recent' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
-			'assistant.followUp.unwatched' => 'Welke films in mijn bibliotheek heb ik nog niet gezien?',
-			'assistant.followUp.popular' => 'Welke populaire films heb ik nog niet?',
+			'assistant.followUp.watchYesterday' => 'Wie keek er gisteren?',
+			'assistant.followUp.tonight.0' => 'Geef me een komedie voor vanavond.',
+			'assistant.followUp.tonight.1' => 'Zoek een spannende film voor vanavond.',
+			'assistant.followUp.tonight.2' => 'Heb ik iets voor de kinderen?',
+			'assistant.followUp.tonight.3' => 'Welke serie kan ik nu beginnen?',
+			'assistant.followUp.recent.0' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+			'assistant.followUp.recent.1' => 'Welke series zijn onlangs toegevoegd?',
+			'assistant.followUp.recent.2' => 'Wat is er deze week toegevoegd?',
+			'assistant.followUp.unwatched.0' => 'Welke films heb ik nog niet gezien?',
+			'assistant.followUp.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.followUp.popular.0' => 'Welke populaire films heb ik nog niet?',
+			'assistant.followUp.popular.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.followUp.missingMovies' => 'Welke films ontbreken tussen mijn servers?',
 			'assistant.followUp.missingShows' => 'Welke series ontbreken tussen mijn servers?',
 			'assistant.followUp.jobs' => 'Welke taken lopen er nu op mijn servers?',

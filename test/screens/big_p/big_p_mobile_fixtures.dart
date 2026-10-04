@@ -1,5 +1,8 @@
 // The answers of mockup 39 E, F and G as displays, for the results test
 // and the shots.
+import 'dart:math';
+
+import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
@@ -11,8 +14,18 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 
 import '../../widgets/big_p/fake_assistant_controller.dart';
+
+/// A controller for the shots, disposed after the test: its examples and
+/// follow-ups come from [seed], so a shot shows the same pick on every run.
+FakeAssistantController shotController({int seed = 1}) {
+  final c = FakeAssistantController();
+  BigPSuggestions.install(c, BigPSuggestions(random: Random(seed)));
+  addTearDown(c.dispose);
+  return c;
+}
 
 AssistantTitleTarget nasTarget(String id, String title, int year) => (
   serverId: ServerId('nas'),

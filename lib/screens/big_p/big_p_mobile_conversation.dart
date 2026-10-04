@@ -13,6 +13,7 @@ import '../../theme/mono_tokens.dart';
 import '../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../widgets/big_p/assistant/big_p_results.dart';
+import '../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../widgets/big_p/big_p_scale.dart';
 import 'big_p_mobile_confirm.dart';
 import 'big_p_mobile_followups.dart';
@@ -89,7 +90,7 @@ class BigPMobileConversation extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final (i, example) in t.assistant.mobile.examples.indexed) ...[
+          for (final (i, example) in BigPSuggestions.of(controller).examples(t.assistant.mobile.examples).indexed) ...[
             if (i > 0) const SizedBox(height: 8),
             BigPChip(
               label: example,

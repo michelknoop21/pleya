@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../assistant/assistant_controller.dart';
 import '../../assistant/assistant_tool_context.dart';
 import '../../widgets/big_p/assistant/big_p_results.dart';
+import '../../widgets/big_p/assistant/big_p_suggestions.dart';
 
 /// Where Big P stands on iPhone and iPad (mockup 39): in the face button,
 /// out with his balloon, or peeking in from the side of a title he opened.
@@ -82,6 +83,7 @@ class BigPMobileSession extends ChangeNotifier {
     if (context == null && _stage != BigPStage.peek) controller.clearScreenContext();
     _pendingContext = context;
     _question = question;
+    BigPSuggestions.of(controller).summoned();
     // Notifies even when already out: a new question or context is news.
     _stage = BigPStage.out;
     notifyListeners();

@@ -34,6 +34,7 @@ import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
 
@@ -150,6 +151,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _remove?.cancel();
     _returnTo = FocusManager.instance.primaryFocus;
     c.reset();
+    BigPSuggestions.of(c).summoned();
     _c = c..addListener(_onChange);
     _lastState = c.state;
     setState(() {

@@ -4,7 +4,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../assistant/assistant_controller.dart';
 import '../../automation/automation_ids.dart';
 import '../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
-import '../../widgets/big_p/assistant/big_p_labels.dart';
+import '../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../widgets/big_p/big_p_balloon.dart';
 import '../../widgets/big_p/big_p_scale.dart';
 
@@ -21,7 +21,7 @@ class BigPMobileFollowUps extends StatelessWidget {
   /// None while working, after an error or while a confirmation waits.
   static List<String> questions(AssistantController c) {
     if (c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return const [];
-    return assistantFollowUps(c.displays, jobs: c.actions.any((a) => a.job != null), prompt: c.prompt);
+    return BigPSuggestions.of(c).followUps(c);
   }
 
   @override

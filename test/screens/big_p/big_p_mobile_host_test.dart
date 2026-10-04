@@ -19,6 +19,7 @@ import 'package:pleya/screens/settings/assistant_settings_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 import 'package:pleya/widgets/big_p/big_p_balloon.dart';
 import 'package:provider/provider.dart';
@@ -101,6 +102,9 @@ void main() {
     }
   }
 
+  /// The examples the balloon shows: picked once per summon, then kept.
+  List<String> shownExamples() => BigPSuggestions.of(c).examples(t.assistant.mobile.examples);
+
   Future<void> summon(WidgetTester tester) async {
     await tester.tap(find.byType(BigPFaceButton));
     await settle(tester);
@@ -125,7 +129,10 @@ void main() {
     expect(session.stage, BigPStage.out);
     expect(find.byType(BigPPortrait), findsNothing);
     expect(find.byType(BigPAvatar), findsOneWidget);
-    expect(find.text(t.assistant.mobile.examples.first), findsOneWidget);
+    expect(shownExamples(), hasLength(3));
+    for (final example in shownExamples()) {
+      expect(find.text(example), findsOneWidget);
+    }
     expect(find.text(assistantGreeting('', greeting: t.assistant.mobile.greeting)), findsOneWidget);
   });
 
@@ -173,9 +180,10 @@ void main() {
   testWidgets('an example asks it', (tester) async {
     await pump(tester);
     await summon(tester);
-    await tester.tap(find.text(t.assistant.mobile.examples.first));
+    final example = shownExamples().first;
+    await tester.tap(find.text(example));
     await tester.pump();
-    expect(c.submitted, [t.assistant.mobile.examples.first]);
+    expect(c.submitted, [example]);
   });
 
   testWidgets('a tap on the dim parks Big P', (tester) async {
@@ -236,8 +244,10 @@ void main() {
     await settle(tester);
     expect(c.cancelledListening, 1);
     expect(c.state, AssistantSurfaceState.idle);
+    final before = shownExamples().toSet();
     await summon(tester);
-    expect(find.text(t.assistant.mobile.examples.first), findsOneWidget);
+    expect(find.text(shownExamples().first), findsOneWidget);
+    expect(shownExamples().toSet(), isNot(before), reason: 'a new summon, new examples');
   });
 
   testWidgets('send while he works keeps the text', (tester) async {

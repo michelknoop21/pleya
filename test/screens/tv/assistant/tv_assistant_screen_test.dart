@@ -20,6 +20,7 @@ import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
@@ -110,7 +111,10 @@ void main() {
       await pumpSurface(tester);
 
       expect(focusedLabel(), 'assistant.ask');
-      for (final example in t.assistant.idle.examples) {
+      final shown = BigPSuggestions.of(c).examples(t.assistant.idle.examples);
+      expect(shown, hasLength(3));
+      expect(t.assistant.idle.examples, containsAll(shown));
+      for (final example in shown) {
         expect(find.text(example), findsOneWidget);
       }
       expect(c.resets, 1);
@@ -162,7 +166,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.arrowDown);
       await press(tester, LogicalKeyboardKey.select);
 
-      expect(c.submitted, [t.assistant.idle.examples.first]);
+      expect(c.submitted, [BigPSuggestions.of(c).examples(t.assistant.idle.examples).first]);
       expect(edits, isEmpty, reason: 'an example needs no keyboard');
     });
   });

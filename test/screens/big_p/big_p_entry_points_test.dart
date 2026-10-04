@@ -243,6 +243,25 @@ void main() {
       expect(c.submittedContexts.last, isNull);
     });
 
+    testWidgets('a question behind a waiting card waits in the field once the card is answered', (tester) async {
+      await pump(tester);
+      c
+        ..state = AssistantSurfaceState.result
+        ..pending = createSam();
+      session.summon(question: 'dune');
+      await tester.pump();
+      await tester.pump();
+      expect(c.submitted, isEmpty, reason: 'only the card answers while it waits');
+
+      c
+        ..pending = null
+        ..emit();
+      await tester.pump();
+      expect(find.descendant(of: find.byType(BigPInputBar), matching: find.text('dune')), findsOneWidget);
+      expect(c.submitted, isEmpty, reason: 'the user sends it, the result stays until then');
+      expect(session.takeQuestion(), isNull, reason: 'handed over once');
+    });
+
     testWidgets('still working: the question waits in the field instead of being lost', (tester) async {
       final key = await pump(tester);
       await search(tester, key, 'dune');

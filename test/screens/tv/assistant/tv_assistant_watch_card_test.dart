@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -7,6 +9,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/watch_session.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_watch_card.dart';
@@ -125,25 +128,38 @@ void main() {
 
   test('always three follow-ups that fit the result, never the question just asked', () {
     final f = t.assistant.followUp;
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)]), [
+    final sinceYesterday = [f.watchToday, f.watchYesterday];
+    final general = {
       f.watchNow,
+      f.watchYesterday,
+      f.watchWeek,
       f.watchMonth,
-      f.watchToday,
-    ]);
-    expect(assistantFollowUps(const [AssistantWatchStats(serverName: 'P')]), [f.watchToday, f.watchWeek, f.watchMonth]);
-    expect(assistantFollowUps(const [], jobs: true), [f.jobs, f.failedJobs, f.watchWeek]);
-    expect(assistantFollowUps(const []), [f.watchWeek, f.tonight, f.recent]);
-    expect(assistantFollowUps(const [], prompt: f.watchWeek), [
-      f.tonight,
-      f.recent,
-      f.unwatched,
-    ], reason: 'the question just asked is not offered again');
-    expect(
-      assistantFollowUps(const [
-        AssistantWatchStats(serverName: 'P', days: 7, unavailable: ['P']),
-      ]),
-      hasLength(3),
-    );
+      ...f.tonight,
+      ...f.recent,
+      ...f.unwatched,
+    };
+    for (var seed = 0; seed < 20; seed++) {
+      Random r() => Random(seed);
+      final week = assistantFollowUps(const [AssistantWatchStats(serverName: 'P', days: 7)], random: r());
+      expect(week.take(2), [f.watchNow, f.watchMonth]);
+      expect(sinceYesterday, contains(week[2]));
+      final now = assistantFollowUps(const [AssistantWatchStats(serverName: 'P')], random: r());
+      expect(sinceYesterday, contains(now[0]));
+      expect(now.skip(1), [f.watchWeek, f.watchMonth]);
+      final jobs = assistantFollowUps(const [], jobs: true, random: r());
+      expect(jobs.take(2), [f.jobs, f.failedJobs]);
+      expect(general, contains(jobs[2]));
+      final plain = assistantFollowUps(const [], random: r());
+      expect(plain.toSet(), hasLength(3));
+      expect(general, containsAll(plain));
+      expect(assistantFollowUps(const [], prompt: f.watchWeek, random: r()), isNot(contains(f.watchWeek)));
+      expect(
+        assistantFollowUps(const [
+          AssistantWatchStats(serverName: 'P', days: 7, unavailable: ['P']),
+        ], random: r()),
+        hasLength(3),
+      );
+    }
   });
 
   testWidgets('a server that ran out of time is not "nothing watched"', (tester) async {

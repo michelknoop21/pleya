@@ -2278,7 +2278,13 @@
       "greeting": "Hi ${name}, what are we looking for?",
       "examples": [
         "What can I watch tonight?",
+        "Give me a comedy for tonight.",
+        "Which series can I start now?",
+        "Do I have something for the kids?",
         "Which movies haven't I seen yet?",
+        "Which movies have sat unwatched in my library for a long time?",
+        "What was added this week?",
+        "Find an exciting movie for tonight.",
         "Who watched the most this week?"
       ],
       "noModelTitle": "I don't have a brain yet.",
@@ -2315,7 +2321,12 @@
       "examples": [
         "Which tasks failed on my servers today? Restart them.",
         "Scan all movie libraries on all my servers.",
-        "Who watched the most this week?"
+        "Scan my series libraries on all my servers.",
+        "Who watched the most this week?",
+        "Who is watching right now?",
+        "What can I watch tonight?",
+        "What was added this week?",
+        "Which popular new movies don't I have yet?"
       ]
     },
     "listening": {
@@ -2540,10 +2551,26 @@
       "watchMonth": "Who watched the most in the last 30 days?",
       "watchWeek": "Who watched the most this week?",
       "watchToday": "Who watched today?",
-      "tonight": "Give me a film tip for tonight.",
-      "recent": "What was added to my library lately?",
-      "unwatched": "Which films in my library have I not seen yet?",
-      "popular": "Which popular films do I not have yet?",
+      "watchYesterday": "Who watched yesterday?",
+      "tonight": [
+        "Give me a comedy for tonight.",
+        "Find an exciting movie for tonight.",
+        "Do I have something for the kids?",
+        "Which series can I start now?"
+      ],
+      "recent": [
+        "What was added to my library lately?",
+        "Which series were added recently?",
+        "What was added this week?"
+      ],
+      "unwatched": [
+        "Which films in my library have I not seen yet?",
+        "Which movies have sat unwatched in my library for a long time?"
+      ],
+      "popular": [
+        "Which popular films do I not have yet?",
+        "Which popular new movies don't I have yet?"
+      ],
       "missingMovies": "Which films are missing between my servers?",
       "missingShows": "Which series are missing between my servers?",
       "jobs": "Which tasks are running on my servers now?",

@@ -2278,7 +2278,13 @@
       "greeting": "Hoi ${name}, wat zoeken we?",
       "examples": [
         "Wat kan ik vanavond kijken?",
+        "Geef me een komedie voor vanavond.",
+        "Welke serie kan ik nu beginnen?",
+        "Heb ik iets voor de kinderen?",
         "Welke films heb ik nog niet gezien?",
+        "Welke films staan al lang ongezien in mijn bibliotheek?",
+        "Wat is er deze week toegevoegd?",
+        "Zoek een spannende film voor vanavond.",
         "Wie heeft deze week het meest gekeken?"
       ],
       "noModelTitle": "Ik heb nog geen brein.",
@@ -2315,7 +2321,12 @@
       "examples": [
         "Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.",
         "Scan alle filmbibliotheken op al mijn servers.",
-        "Wie heeft deze week het meest gekeken?"
+        "Scan mijn seriebibliotheken op al mijn servers.",
+        "Wie heeft deze week het meest gekeken?",
+        "Wie kijkt er nu?",
+        "Wat kan ik vanavond kijken?",
+        "Wat is er deze week toegevoegd?",
+        "Welke nieuwe films zijn populair die ik nog niet heb?"
       ]
     },
     "listening": {
@@ -2538,12 +2549,28 @@
     "followUp": {
       "watchNow": "Wie kijkt er nu?",
       "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",
-      "watchWeek": "Wie keek het meest deze week?",
+      "watchWeek": "Wie heeft deze week het meest gekeken?",
       "watchToday": "Wie keek er vandaag?",
-      "tonight": "Geef me een filmtip voor vanavond.",
-      "recent": "Wat is er onlangs aan mijn bibliotheek toegevoegd?",
-      "unwatched": "Welke films in mijn bibliotheek heb ik nog niet gezien?",
-      "popular": "Welke populaire films heb ik nog niet?",
+      "watchYesterday": "Wie keek er gisteren?",
+      "tonight": [
+        "Geef me een komedie voor vanavond.",
+        "Zoek een spannende film voor vanavond.",
+        "Heb ik iets voor de kinderen?",
+        "Welke serie kan ik nu beginnen?"
+      ],
+      "recent": [
+        "Wat is er onlangs aan mijn bibliotheek toegevoegd?",
+        "Welke series zijn onlangs toegevoegd?",
+        "Wat is er deze week toegevoegd?"
+      ],
+      "unwatched": [
+        "Welke films heb ik nog niet gezien?",
+        "Welke films staan al lang ongezien in mijn bibliotheek?"
+      ],
+      "popular": [
+        "Welke populaire films heb ik nog niet?",
+        "Welke nieuwe films zijn populair die ik nog niet heb?"
+      ],
       "missingMovies": "Welke films ontbreken tussen mijn servers?",
       "missingShows": "Welke series ontbreken tussen mijn servers?",
       "jobs": "Welke taken lopen er nu op mijn servers?",
