@@ -13,6 +13,11 @@ import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_identity.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'assistant_find_fakes.dart' as find;
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/seerr/seerr_client.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
@@ -111,7 +116,7 @@ final _sensitive = AssistantTool(
 );
 
 /// Overseerr with one film, so the real find and request tools run.
-SeerrClient _seerr(List<Map<String, dynamic>> posts) => SeerrClient(
+SeerrClient _seerr(List<Map<String, dynamic>> posts, {int movieStatus = 1}) => SeerrClient(
   const SeerrSession(
     baseUrl: 'http://seerr.lan:5055',
     authMode: SeerrAuthMode.apiKey,
@@ -132,11 +137,35 @@ SeerrClient _seerr(List<Map<String, dynamic>> posts) => SeerrClient(
           {'id': 603, 'mediaType': 'movie', 'title': 'The Matrix', 'releaseDate': '1999-03-31'},
         ],
       }),
-      '/movie/603' => _json(const {'id': 603, 'title': 'The Matrix', 'releaseDate': '1999-03-31'}),
+      '/auth/me' => _json(const {'id': 7, 'permissions': SeerrPermission.request}),
+      '/movie/603' => _json({
+        'id': 603,
+        'title': 'The Matrix',
+        'releaseDate': '1999-03-31',
+        'mediaInfo': {'status': movieStatus},
+      }),
       _ => _json(const {'message': 'not found'}, status: 404),
     };
   }),
 );
+
+class _AvailableServer extends find.FakeServer {
+  _AvailableServer()
+    : super(
+        's',
+        libraries: {
+          'films': [find.fakeItem('m', 'The Matrix', year: 1999)],
+        },
+      );
+  Future<void> Function()? beforeLookup;
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.online;
+  @override
+  Future<List<MediaItem>> findAllByIdentity(MediaIdentity identity) async {
+    await beforeLookup?.call();
+    return super.findAllByIdentity(identity);
+  }
+}
 
 void main() {
   late MultiServerManager servers;
@@ -1061,6 +1090,146 @@ void main() {
     expect(c.tasks[0].status, AssistantTaskStatus.completed);
     expect(c.tasks[1].error, 'unknown_item_id');
   });
+
+  for (final movieStatus in [1, 5]) {
+    test(
+      'an option pick with Seerr status $movieStatus publishes ordinary titles while another task finishes',
+      () async {
+        final posts = <Map<String, dynamic>>[];
+        seerr = _seerr(posts, movieStatus: movieStatus);
+        final server = _AvailableServer();
+        servers.debugRegisterClientForTesting(server);
+        final independent = Completer<void>();
+        final models = [
+          _Model([
+            _call('split_tasks', {
+              'tasks': [
+                {'title': 'Request', 'intent': 'request', 'prompt': 'request'},
+                {'title': 'Other', 'intent': 'read', 'prompt': 'other'},
+              ],
+            }),
+          ]),
+          _Model([
+            _call('find_request_title', {
+              'titles': [
+                {'title': 'matrix'},
+              ],
+            }),
+            _say('found'),
+          ]),
+          _Model([_say('other')])..gate = independent,
+        ];
+        var next = 0;
+        final catalog = AssistantCatalogServices(
+          rowLoader: CatalogHomeCustomRowLoader(
+            libraries: () => [find.fakeLib('s', 'films')],
+            isServerVisible: servers.isServerVisible,
+            hiddenLibraryKeys: () => {},
+            clientFor: servers.getClient,
+          ),
+          profileId: 'p',
+          activeProfileId: () => 'p',
+        );
+        final c = AssistantController(
+          buildContext: (_) => AssistantToolContext(
+            servers: servers,
+            catalog: catalog,
+            requests: AssistantRequestServices(client: () => seerr),
+          ),
+          entitlement: _Entitlement(),
+          loadConfig: () async => _config,
+          modelFor: (_) => models[next++],
+        );
+        addTearDown(c.dispose);
+        final question = c.submit('two commands');
+        await pumpEventQueue();
+        final task = c.tasks.first;
+        final option = (task.displays.single as AssistantRequestOptions).options.single;
+        final started = Completer<void>(), release = Completer<void>();
+        server.beforeLookup = () async {
+          started.complete();
+          await release.future;
+        };
+        final picked = c.pickTaskRequestOption(task.id, option);
+        await started.future;
+        independent.complete();
+        await question;
+        expect(c.tasks[1].status, AssistantTaskStatus.completed);
+        expect(c.tasks[0].displays.whereType<AssistantTitleMatches>(), isEmpty);
+        release.complete();
+        await picked;
+        expect(
+          c.tasks[0].displays.whereType<AssistantTitleMatches>().single.matches.single.targets.single.item.id,
+          'm',
+        );
+        expect(c.tasks[1].displays.whereType<AssistantTitleMatches>(), isEmpty);
+        expect(c.pending, isNull);
+        expect(posts, isEmpty);
+      },
+    );
+  }
+
+  for (final boundary in ['cancel', 'new ask', 'profile']) {
+    test('late available option result after $boundary cannot publish title cards', () async {
+      final posts = <Map<String, dynamic>>[];
+      seerr = _seerr(posts);
+      final server = _AvailableServer();
+      servers.debugRegisterClientForTesting(server);
+      var profile = 'p';
+      final catalog = AssistantCatalogServices(
+        rowLoader: CatalogHomeCustomRowLoader(
+          libraries: () => [find.fakeLib('s', 'films')],
+          isServerVisible: servers.isServerVisible,
+          hiddenLibraryKeys: () => {},
+          clientFor: servers.getClient,
+        ),
+        profileId: 'p',
+        activeProfileId: () => profile,
+      );
+      final models = [
+        _Model([
+          _call('find_request_title', {
+            'titles': [
+              {'title': 'matrix'},
+            ],
+          }),
+          _say('found'),
+        ]),
+        _Model([_say('new question')]),
+      ];
+      var next = 0;
+      final c = AssistantController(
+        buildContext: (_) => AssistantToolContext(
+          servers: servers,
+          catalog: catalog,
+          requests: AssistantRequestServices(client: () => seerr),
+        ),
+        entitlement: _Entitlement(),
+        loadConfig: () async => _config,
+        modelFor: (_) => models[next++],
+      );
+      addTearDown(c.dispose);
+      await c.submit('find matrix');
+      final task = c.tasks.single;
+      final option = (task.displays.single as AssistantRequestOptions).options.single;
+      final started = Completer<void>(), release = Completer<void>();
+      server.beforeLookup = () async {
+        started.complete();
+        await release.future;
+      };
+      final picked = c.pickTaskRequestOption(task.id, option);
+      await started.future;
+      if (boundary == 'cancel') c.cancelTask(task.id);
+      if (boundary == 'profile') profile = 'other';
+      if (boundary == 'new ask') await c.submit('replacement');
+      release.complete();
+      await picked;
+      await pumpEventQueue();
+      expect(c.tasks.expand((task) => task.displays).whereType<AssistantTitleMatches>(), isEmpty);
+      expect(posts, isEmpty);
+      expect(c.pending, isNull);
+    });
+  }
 
   test('same Seerr IDs select the exact originating context while another task works', () async {
     final firstPosts = <Map<String, dynamic>>[];
