@@ -1,6 +1,6 @@
 /// Big P summoned from any TV screen (mockup 38, "Oproepen vanaf elk
 /// scherm"): a long press on Play/Pause brings him in bottom right with a
-/// 760 pt glass panel, the screen behind dims but stays the context, and the
+/// 760 pt speech balloon (39 J), the screen behind dims but stays the context, and the
 /// system keyboard opens right away. He stays until Menu or Klaar.
 library;
 
@@ -322,12 +322,16 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     );
   }
 
+  /// 440 px wide at 1080p in 39 J, so he reads as the one speaking.
+  static const _avatarHeight = 520.0;
+
   Widget _overlay(BuildContext context, AssistantController? c) {
     final pt = TvHig.of(context);
     return TvAssistantSummonLayer(
       shown: _shown,
       listening: c?.state == AssistantSurfaceState.listening,
       motion: _motion(context),
+      avatarHeight: _avatarHeight,
       panel: c == null
           ? null
           : TvAssistantConversation(
@@ -356,7 +360,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
         controller: c,
         builder: (line) => BigPAvatar(
           mood: c == null ? BigPMood.idle : bigPMood(c),
-          size: 340 * pt,
+          size: _avatarHeight * pt,
           nodSignal: _nod,
           talkingText: line,
           // He stands right of the panel: point left, down the list.

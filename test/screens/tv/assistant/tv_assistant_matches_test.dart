@@ -34,6 +34,7 @@ import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/utils/native_input_session.dart';
 import 'package:pleya/utils/global_key_utils.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/big_p/big_p_balloon.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -216,8 +217,13 @@ void main() {
   String? focusedMatch() =>
       FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<BigPMatchCard>()?.match.matchId;
 
-  /// The glass panel minus its 40 pt padding: what the panel shows.
-  Rect panelContent(WidgetTester tester) => tester.getRect(find.byType(BigPGlassPanel)).deflate(40);
+  /// What the panel shows: the surface's glass panel minus its 40 pt
+  /// padding, or the summoned balloon minus its own.
+  Rect panelContent(WidgetTester tester) {
+    final balloon = find.byType(BigPBalloon);
+    if (balloon.evaluate().isEmpty) return tester.getRect(find.byType(BigPGlassPanel)).deflate(40);
+    return tester.widget<BigPBalloon>(balloon).padding.deflateRect(tester.getRect(balloon));
+  }
 
   Rect focusedRect() => FocusManager.instance.primaryFocus!.rect;
 

@@ -22,6 +22,7 @@ import 'package:pleya/utils/native_input_session.dart';
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/utils/video_player_navigation.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
+import 'package:pleya/widgets/big_p/big_p_balloon.dart';
 
 import 'tv_assistant_test_support.dart';
 
@@ -364,7 +365,7 @@ void main() {
       await settle(tester);
 
       expect(find.textContaining('1. The Block'), findsOneWidget, reason: 'the cards do not replace this list');
-      final panel = tester.getRect(find.byType(BigPGlassPanel));
+      final panel = tester.getRect(find.byType(BigPBalloon));
       for (final chip in tester.widgetList(find.byType(BigPChip))) {
         final rect = tester.getRect(find.byWidget(chip));
         expect(rect.bottom, lessThanOrEqualTo(panel.bottom), reason: 'follow-up in view');
@@ -392,14 +393,14 @@ void main() {
         ..answer = 'De scan van Films loopt.'
         ..emit();
       await settle(tester);
-      final short = tester.getRect(find.byType(BigPGlassPanel)).height;
+      final short = tester.getRect(find.byType(BigPBalloon)).height;
 
       c
         ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
         ..emit();
       await settle(tester);
       // The three follow-ups stand under both, each up to two lines.
-      expect(short, lessThan(tester.getRect(find.byType(BigPGlassPanel)).height * 0.75));
+      expect(short, lessThan(tester.getRect(find.byType(BigPBalloon)).height * 0.75));
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not
@@ -413,7 +414,7 @@ void main() {
         ..emit();
       await settle(tester);
 
-      final panel = tester.getRect(find.byType(BigPGlassPanel));
+      final panel = tester.getRect(find.byType(BigPBalloon));
       final top = tester.getRect(find.byKey(const ValueKey('assistant.answer.body'))).top;
       expect(top, inInclusiveRange(panel.top, panel.bottom), reason: 'the first line is in the panel');
       expect(focusedLabel(), 'assistant.ask');
