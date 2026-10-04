@@ -4,6 +4,7 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
+import 'assistant_recommend_constraints.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
@@ -74,6 +75,11 @@ class AssistantToolContext {
     web: web ?? this.web,
     cancel: cancel ?? this.cancel,
   );
+
+  /// What this ask demands of recommendations; set by the run from the
+  /// prompt, widened by my_watching's arguments. Per ask, never copied by
+  /// [fresh].
+  AssistantRecommendConstraints recommend = const AssistantRecommendConstraints();
 
   /// Domain services the UI layer hands in. A missing one keeps its tools
   /// out of the run; nothing here grants rights on a server.

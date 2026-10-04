@@ -38,6 +38,8 @@ import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 import 'assistant_find_match.dart';
+import 'assistant_named_titles.dart' show assistantTitleKey;
+import 'assistant_recommend_constraints.dart';
 import 'assistant_find_route.dart';
 import 'assistant_tool_context.dart';
 

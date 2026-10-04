@@ -58,9 +58,15 @@ List<MediaHub> buildPersonalizedRows(
 }) {
   // Unseen, non-excluded pool, de-duplicated by global key.
   final seen = <String>{...excludeKeys};
+  // Another server's copy of a watched title (same title and year) is as seen.
+  String? copyKey(MediaItem i) => i.year == null || i.title == null ? null : '${i.title!.toLowerCase()}|${i.year}';
+  final watchedCopies = {
+    for (final i in candidates)
+      if (i.isWatched) ?copyKey(i),
+  };
   final pool = <MediaItem>[];
   for (final item in candidates) {
-    if (item.isWatched) continue;
+    if (item.isWatched || watchedCopies.contains(copyKey(item))) continue;
     if (!seen.add(item.globalKey)) continue;
     pool.add(item);
   }
