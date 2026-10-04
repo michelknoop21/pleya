@@ -6,6 +6,12 @@
 opt_out_usage
 
 PROJECT_ROOT = File.expand_path("..", __dir__)
+
+# TestFlight-builds hebben Big P standaard aan (de vlag stuurt iOS via
+# assistant_define en tvOS via tvos/scripts/xcode_appletv.sh). Uitzetten kan
+# met PLEYA_ASSISTANT_ENABLED=false in de omgeving van de lane.
+ENV["PLEYA_ASSISTANT_ENABLED"] ||= "true"
+
 BUNDLE_ID = "nl.michelknoop.pleya"
 
 # Lane-platform → App Store Connect-platform.

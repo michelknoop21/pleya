@@ -61,6 +61,12 @@ dus daar is "onbekend" geen uitkomst. Overrulen kan met `TESTFLIGHT_CHANGELOG`.
 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT` (base64 van de App Store
 Connect API `.p8`, rol App Manager).
 
+## Big P in TestFlight-builds
+
+De lanes zetten `PLEYA_ASSISTANT_ENABLED=true` zelf als hij niet in de omgeving staat, op iOS en tvOS.
+Een build zonder assistent maak je met `PLEYA_ASSISTANT_ENABLED=false fastlane ios_beta`. Op 4 oktober 2026
+ging tvOS-build 328 zonder de vlag naar TestFlight omdat hij alleen uit de omgeving kwam.
+
 ## Handmatig draaien
 
 ```bash
