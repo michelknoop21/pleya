@@ -212,17 +212,22 @@ class HomeExtraRowsProvider extends ChangeNotifier with DisposableChangeNotifier
 
   String _onlineServerKey() => (_multiServer.serverManager.onlineClients.keys.toList()..sort()).join(',');
 
+  /// Never synchronous. This provider is lazy, so its constructor runs inside
+  /// the build of the first widget that watches it, and loading the kijklijst
+  /// from there would notify the kijklijst's listeners in the middle of that
+  /// build. A microtask runs once the build has returned.
   void _refresh() {
     if (_running) {
       _pending = true;
       return;
     }
-    unawaited(_run());
+    _running = true;
+    scheduleMicrotask(() => unawaited(_run()));
   }
 
   Future<void> _run() async {
-    _running = true;
     try {
+      if (isDisposed) return;
       do {
         _pending = false;
         // Each row publishes as soon as it has an answer; Nu op tv does not

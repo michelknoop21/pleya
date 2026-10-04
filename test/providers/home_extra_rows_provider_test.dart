@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/media/media_backend.dart';
@@ -23,6 +24,8 @@ import 'package:pleya/services/unified_catalog/home_row_layout.dart';
 import 'package:pleya/services/watchlist/watchlist_repository.dart';
 import 'package:pleya/services/watchlist/watchlist_snapshot_store.dart';
 import 'package:pleya/utils/external_ids.dart';
+
+import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
 
@@ -191,6 +194,35 @@ void main() {
     expect(source.fetches, 1);
     expect(subject.visibleRows(), hasLength(1));
     subject.dispose();
+  });
+
+  testWidgets('created lazily during a build, it does not notify the kijklijst inside that build', (tester) async {
+    // What Home does: the provider is lazy, so the first `watch` constructs it
+    // in the middle of a build, while other widgets already listen to the
+    // kijklijst. Loading the kijklijst from the constructor notified those
+    // listeners mid-build and took Home down with it (PR #165, ios-sim).
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WatchlistProvider>.value(value: watchlist),
+          ChangeNotifierProvider<HomeExtraRowsProvider>(create: (_) => build(), lazy: true),
+        ],
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Column(
+            children: [
+              Consumer<WatchlistProvider>(builder: (_, w, _) => Text('loading=${w.isLoading}')),
+              Builder(
+                builder: (context) => Text('rows=${context.watch<HomeExtraRowsProvider>().visibleRows().length}'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
   });
 
   test('Nu op tv is off until the viewer turns it on, and costs nothing while off', () async {
