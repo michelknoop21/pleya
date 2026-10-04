@@ -18,6 +18,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/screens/settings/assistant_settings_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
@@ -103,6 +104,26 @@ void main() {
       expect(find.text(t.assistant.setup.title), findsOneWidget);
       expect(find.text(t.assistant.setup.action), findsOneWidget);
       expect(focusedLabel(), 'assistant.gate');
+    });
+  });
+
+  group('set-up gate', () {
+    testWidgets('closing the setup reads availability again', (tester) async {
+      c.availability = AssistantAvailability.needsSetup;
+      await pumpSurface(tester);
+      final before = c.refreshes;
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(find.byType(AssistantSettingsScreen), findsOneWidget);
+      expect(c.refreshes, before);
+
+      c.refreshTo = AssistantAvailability.ready;
+      Navigator.of(tester.element(find.byType(AssistantSettingsScreen))).pop();
+      await settle(tester);
+
+      expect(find.byType(AssistantSettingsScreen), findsNothing);
+      expect(c.refreshes, before + 1);
+      expect(c.availability, AssistantAvailability.ready);
     });
   });
 

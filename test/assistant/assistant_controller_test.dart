@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -12,6 +13,7 @@ import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/seerr/seerr_client.dart';
@@ -74,6 +76,18 @@ AssistantReply _call(String name, [Map<String, Object?> args = const {}]) {
       ],
     },
   );
+}
+
+/// A server that only needs to exist.
+class _Server implements MediaServerClient {
+  @override
+  ServerId get serverId => ServerId('s');
+
+  @override
+  void close() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// A serverless read and a serverless action behind a card.
@@ -195,6 +209,39 @@ void main() {
     expect(await availability(controller(config: null)), AssistantAvailability.needsSetup);
     expect(await availability(controller(config: _config.copyWith(model: ''))), AssistantAvailability.needsSetup);
     expect(await availability(controller()), AssistantAvailability.ready);
+  });
+
+  test('servers that arrive after the first read lift hidden without a summon', () async {
+    final serverChanges = ValueNotifier(0);
+    AssistantProviderConfig? saved;
+    final c = AssistantController(
+      buildContext: (screen) => AssistantToolContext(servers: servers, screen: screen),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => saved,
+      serverChanges: serverChanges,
+    );
+    addTearDown(c.dispose);
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.hidden);
+
+    // A change with still no servers reads nothing again.
+    var notified = 0;
+    c.addListener(() => notified++);
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(notified, 0);
+
+    servers.debugRegisterClientForTesting(_Server());
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(c.availability, AssistantAvailability.needsSetup);
+
+    // Later changes with servers present do not read again.
+    saved = _config;
+    serverChanges.value++;
+    await pumpEventQueue();
+    expect(c.availability, AssistantAvailability.needsSetup);
   });
 
   test('a provider saved elsewhere moves availability out of setup', () async {

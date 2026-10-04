@@ -177,6 +177,20 @@ void main() {
       expect(bigP(), findsNothing);
     });
 
+    testWidgets('needsSetup reads again on the press, so a keychain that recovered summons him', (tester) async {
+      c
+        ..availability = AssistantAvailability.needsSetup
+        ..refreshTo = AssistantAvailability.ready;
+      await pumpHost(tester);
+
+      await longPress(tester);
+
+      expect(c.refreshes, 1);
+      expect(find.byType(TvAssistantScreen), findsNothing);
+      expect(bigP(), findsOneWidget);
+      expect(c.listenContexts.single, same(screen));
+    });
+
     testWidgets('locked opens the full surface with its gate instead', (tester) async {
       c.availability = AssistantAvailability.locked;
       await pumpHost(tester);

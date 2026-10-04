@@ -563,6 +563,7 @@ class PreferenceSyncPolicyRegistry {
     'tautulli_session': _secret,
     'assistant_provider': _secret,
     'assistant_provider_pending': _secret,
+    'assistant_provider_seen': _runtimeCache,
     'pleya_share_tokens': _secret,
     'pleya_share_guests': _secret,
     'pleya_share_relay_host_id': _secret,

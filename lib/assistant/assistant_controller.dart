@@ -42,6 +42,7 @@ class AssistantController extends ChangeNotifier {
     DateTime Function()? now,
     this._tools,
     Listenable? configChanges,
+    this._serverChanges,
     this.jobPollInterval = const Duration(seconds: 2),
     this.jobWatchLimit = const Duration(minutes: 2),
     this._jobsFor,
@@ -51,12 +52,25 @@ class AssistantController extends ChangeNotifier {
        _languageName = languageName ?? assistantLanguageName,
        _configChanges = configChanges ?? AssistantProviderStore.changes {
     _configChanges.addListener(_onConfigChanged);
+    _serverChanges?.addListener(_onServersChanged);
   }
 
   /// A provider saved or cleared in Instellingen moves the tile and the
   /// summon out of (or into) setup without reopening Mijn Pleya.
   final Listenable _configChanges;
   void _onConfigChanged() => unawaited(refreshAvailability());
+
+  /// Servers load after the session starts, so the first read can see none
+  /// and answer hidden. Their arrival (none to some) reads once more, so the
+  /// face button and the Discover slot show up without a visit to Mijn Pleya.
+  final Listenable? _serverChanges;
+  bool _hadServers = false;
+  void _onServersChanged() {
+    final hasServers = _buildContext(null).userServers.isNotEmpty;
+    final arrived = hasServers && !_hadServers;
+    _hadServers = hasServers;
+    if (arrived && _availability == AssistantAvailability.hidden) unawaited(refreshAvailability());
+  }
 
   final AssistantToolContext Function(AssistantScreenContext? screen) _buildContext;
   final bool _rolloutEnabled;
@@ -462,6 +476,7 @@ class AssistantController extends ChangeNotifier {
   @override
   void dispose() {
     _configChanges.removeListener(_onConfigChanged);
+    _serverChanges?.removeListener(_onServersChanged);
     _disposed = true;
     _generation++;
     _jobsSeq++;

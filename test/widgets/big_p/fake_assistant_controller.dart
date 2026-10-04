@@ -54,8 +54,15 @@ class FakeAssistantController extends AssistantController {
   /// Whether anything still listens, e.g. a session after a profile switch.
   bool get listened => hasListeners;
 
+  /// What the next read finds, e.g. a keychain that recovered; null keeps
+  /// [availability] as it is.
+  AssistantAvailability? refreshTo;
+
   @override
-  Future<void> refreshAvailability() async => refreshes++;
+  Future<void> refreshAvailability() async {
+    refreshes++;
+    if (refreshTo != null) availability = refreshTo!;
+  }
 
   @override
   void beginListening({AssistantScreenContext? context}) {

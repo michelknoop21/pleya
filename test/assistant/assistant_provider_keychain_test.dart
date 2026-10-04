@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/services/base_shared_preferences_service.dart';
 import 'package:pleya/services/pleya_keychain.dart';
+import 'package:pleya/utils/app_logger.dart';
 import 'package:pleya/utils/platform_detector.dart';
 
 import '../test_helpers/prefs.dart';
@@ -202,6 +203,60 @@ void main() {
       expect(keychain.items[_key], _json(_cloud));
       expect(await _pending(), isNull);
       expect(await _prefsBlob(), isNull);
+    });
+
+    test('a save whose read fails is marked with the last item seen and goes up over that item', () async {
+      keychain.items[_key] = _json(_server);
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaServer);
+      keychain
+        ..readError = _osStatus(-25308)
+        ..writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      expect(await _pending(), _sha(_json(_server)));
+      keychain
+        ..readError = null
+        ..writeError = null;
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+      expect(keychain.items[_key], _json(_cloud));
+      expect(await _pending(), isNull);
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('negative control: a failed-read save loses to an item changed since, and says so in the log', () async {
+      keychain.items[_key] = _json(_server);
+      await store.load();
+      keychain
+        ..readError = _osStatus(-25308)
+        ..writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      keychain
+        ..readError = null
+        ..writeError = null
+        ..items[_key] = _json(_openRouter);
+      MemoryLogOutput.clearLogs();
+
+      expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+      expect(keychain.items[_key], _json(_openRouter));
+      expect(await _pending(), isNull);
+      expect(await _prefsBlob(), isNull);
+      expect(MemoryLogOutput.getLogs().map((e) => e.message), contains(contains('pending config dropped')));
+    });
+
+    test('a device that never read the keychain still marks unknown, and a decodable item wins', () async {
+      keychain
+        ..items[_key] = _json(_server)
+        ..readError = _osStatus(-25308)
+        ..writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      expect(await _pending(), 'unknown');
+      keychain
+        ..readError = null
+        ..writeError = null;
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaServer);
+      expect(keychain.items[_key], _json(_server));
+      expect(await _pending(), isNull);
     });
 
     test('a successful save clears an earlier pending marker', () async {

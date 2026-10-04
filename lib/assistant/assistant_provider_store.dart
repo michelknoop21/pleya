@@ -51,11 +51,16 @@ class AssistantProviderStore {
 
   /// Set while the prefs blob holds a save the keychain refused. Its value is
   /// the fingerprint of the synced item that save replaced: the blob beats
-  /// only that item, never a newer one another device saved since. `unknown`
-  /// when that read failed too: the blob then goes up only into an empty
-  /// keychain, a decodable item wins over it and an undecodable one is left
-  /// alone. Device-local.
+  /// only that item, never a newer one another device saved since. When that
+  /// read failed too, the last item this device saw ([seenKey]) stands in.
+  /// `unknown` only when this device never read the keychain: the blob then
+  /// goes up only into an empty keychain, a decodable item wins over it and
+  /// an undecodable one is left alone. Device-local.
   static const String pendingKey = 'assistant_provider_pending';
+
+  /// Fingerprint of the keychain item as this device last read, wrote or
+  /// migrated it. Not a secret; device-local, never synced.
+  static const String seenKey = 'assistant_provider_seen';
 
   /// The keychain first, then the old prefs blob, which moves to the keychain
   /// and leaves the prefs only once a readback matches. A keychain error
@@ -74,6 +79,7 @@ class AssistantProviderStore {
       keychainError = e;
       appLogger.w('Assistant keychain read failed', error: e.runtimeType);
     }
+    if (keychainError == null) await _remember(synced);
     final prefs = await BaseSharedPreferencesService.sharedCache();
     var legacy = await _readLegacy();
     final marker = prefs.getString(pendingKey);
@@ -93,6 +99,7 @@ class AssistantProviderStore {
       if (marker == _unknown && _decode(synced!) == null) return legacy.config;
       // Another device saved or cleared since, or the keychain holds a config
       // where the read had failed: its state wins.
+      appLogger.d('Assistant pending config dropped: the keychain item changed since the save');
       await _removeLegacy();
       legacy = null;
     }
@@ -133,6 +140,7 @@ class AssistantProviderStore {
     if (keychain != null) {
       try {
         current = await keychain.read(key);
+        await _remember(current);
       } catch (e) {
         readFailed = true;
         appLogger.w('Assistant keychain read failed', error: e.runtimeType);
@@ -151,11 +159,13 @@ class AssistantProviderStore {
       }
     }
     if (stored) {
+      await _remember(json);
       await _removeLegacy();
     } else {
       final prefs = await BaseSharedPreferencesService.sharedCache();
+      final marker = readFailed ? prefs.getString(seenKey) ?? _unknown : _fingerprint(current);
       // Marker first: a marker without a blob is harmless, the reverse is not.
-      if (keychain != null) await prefs.setString(pendingKey, readFailed ? _unknown : _fingerprint(current));
+      if (keychain != null) await prefs.setString(pendingKey, marker);
       await prefs.setString(key, await CredentialVault.protect(json));
     }
     changes.value++;
@@ -168,7 +178,11 @@ class AssistantProviderStore {
 
   Future<void> _clear() async {
     try {
-      await _keychain?.delete(key);
+      final keychain = _keychain;
+      if (keychain != null) {
+        await keychain.delete(key);
+        await _remember(null);
+      }
       await _removeLegacy();
     } finally {
       changes.value++;
@@ -180,13 +194,19 @@ class AssistantProviderStore {
   /// between: the blob stays, nothing is deleted, the next load decides.
   Future<void> _migrate(PleyaKeychain keychain, String json) async {
     try {
-      if (await keychain.write(key, json) && await keychain.read(key) == json) await _removeLegacy();
+      if (await keychain.write(key, json) && await keychain.read(key) == json) {
+        await _remember(json);
+        await _removeLegacy();
+      }
     } catch (e) {
       appLogger.w('Assistant keychain migration failed', error: e.runtimeType);
     }
   }
 
   static const String _unknown = 'unknown';
+
+  Future<void> _remember(String? synced) async =>
+      (await BaseSharedPreferencesService.sharedCache()).setString(seenKey, _fingerprint(synced));
 
   /// What the pending marker remembers of the synced item: its SHA-256, or
   /// `none` when there was none.
