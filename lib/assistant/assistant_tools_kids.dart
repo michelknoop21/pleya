@@ -35,7 +35,6 @@ const kidsToolPolicy = <String, KidsTool>{
   'discover_request_titles': KidsTool.gated,
   'list_servers': KidsTool.neutral,
   'list_libraries': KidsTool.neutral,
-  'list_jobs': KidsTool.neutral,
   'list_users': KidsTool.neutral,
   'scan_library': KidsTool.neutral,
   'refresh_metadata': KidsTool.neutral,
@@ -61,6 +60,8 @@ const kidsToolPolicy = <String, KidsTool>{
   'diagnose_playback': KidsTool.blocked,
   'download_next': KidsTool.blocked,
   'find_subtitles': KidsTool.blocked,
+  // Plex job titles name the items they work on.
+  'list_jobs': KidsTool.blocked,
 };
 
 /// What a refused tool returns in kids mode.

@@ -417,7 +417,13 @@ void main() {
     };
     expect(names.where((n) => !kidsToolPolicy.containsKey(n)), isEmpty, reason: 'add the tool to kidsToolPolicy');
     expect(kidsToolPolicy.keys.where((n) => !names.contains(n)), isEmpty, reason: 'no stale names');
-    for (final blocked in const ['my_watching', 'recommend_together', 'create_home_row', 'spoiler_context']) {
+    for (final blocked in const [
+      'my_watching',
+      'recommend_together',
+      'create_home_row',
+      'spoiler_context',
+      'list_jobs',
+    ]) {
       expect(kidsToolPolicy[blocked], KidsTool.blocked, reason: blocked);
     }
   });
