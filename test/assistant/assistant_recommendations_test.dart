@@ -238,6 +238,8 @@ void main() {
     final result = await _recommend(ctx);
     expect((result.data['results'] as List).map((e) => (e as Map)['item_id']), ['1', '2']);
     expect(result.display, isA<AssistantMediaGrid>());
+    expect(result.data['can_become_home_row'], isFalse);
+    expect(result.data['home_row_unavailable_reason'], isNotEmpty);
     expect(f.calls.any((r) => r.url.path == '/Items'), isFalse);
     expect(f.calls.every((r) => r.method == 'GET'), isTrue);
   });

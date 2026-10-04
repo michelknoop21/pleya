@@ -49,25 +49,16 @@ final List<AssistantTool> _catalogTools = [
     name: 'search_catalog',
     description:
         'Search films and series on all servers of this profile by text, kind, genres, years, minimum rating '
-        '(0-10), watch state or an actor (person). Returns a query_id for create_home_row and create_collection. '
-        'Flags to pass on to the user: partial (a server did not answer), sampled (rating/random order or '
-        'min_rating judged on the first 100 titles only), servers_left_out (servers that cannot run the '
-        'filters, so their titles are not in the list), genre_unverified (titles kept without genre data).',
+        '(0-10), watch state, audio languages, official ratings or an actor (person). Runtime bounds (inclusive minutes), '
+        'genre exclusions and subtitle languages use strict metadata evidence in a bounded temporary result. '
+        'Genres are OR for native rows, ALL when combined with temporary strict filters; multiple audio languages require ALL. '
+        'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
+        'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
     risk: AssistantToolRisk.read,
     properties: const {
+      ...AssistantStrictFilters.properties,
       'text': {'type': 'string'},
       'person': {'type': 'string'},
-      'kind': {
-        'type': 'string',
-        'enum': ['movie', 'show'],
-      },
-      'genres': {
-        'type': 'array',
-        'items': {'type': 'string'},
-      },
-      'year_from': {'type': 'integer'},
-      'year_to': {'type': 'integer'},
-      'min_rating': {'type': 'number'},
       'unwatched': {'type': 'boolean'},
       'in_progress': {'type': 'boolean'},
       'sort': {
@@ -104,6 +95,8 @@ final List<AssistantTool> _catalogTools = [
         'query_id': queryId,
         'count': query.groups.length,
         'can_become_home_row': query.row != null,
+        if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
+        if (query.coverage != null) 'coverage': query.coverage,
         if (query.partial) 'partial': true,
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
@@ -131,6 +124,7 @@ final List<AssistantTool> _catalogTools = [
       final profileId = catalog!.profileId;
       if (catalog.activeProfileId() != profileId) throw const AssistantToolError('profile_changed');
       final query = _requireQuery(ctx, args);
+      query.checkCurrent?.call();
       final title = _label(args, 'title');
       final row = query.row ?? (throw const AssistantToolError('query_not_row_compatible'));
       // A Home row belongs to the profile, not to a server. The run checks
@@ -146,6 +140,7 @@ final List<AssistantTool> _catalogTools = [
         preview: AssistantMediaGrid(preview),
         execute: ({password}) async {
           if (catalog.activeProfileId() != profileId) throw const AssistantToolError('profile_changed');
+          query.checkCurrent?.call();
           await save(
             HomeCustomRow(id: HomeCustomRow.newId(), kind: row.kind, name: title, preferences: row.preferences),
           );
