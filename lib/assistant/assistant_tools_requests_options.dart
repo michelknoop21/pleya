@@ -13,6 +13,7 @@ class AssistantRequestOption {
     required this.overview,
     required this.status,
     this.year,
+    this.facts,
   });
 
   /// Pass to [assistantRequestFromOption] when the user picks this card.
@@ -29,6 +30,9 @@ class AssistantRequestOption {
 
   /// `available`, `partially_available`, `requested` or `not_requested`.
   final String status;
+
+  /// Age rating, genres, runtime and services, when looked up.
+  final TitleFacts? facts;
 }
 
 /// Options from `find_request_title` or `discover_request_titles`. [context]
@@ -42,18 +46,30 @@ class AssistantRequestOptions extends AssistantDisplay {
 
 /// Registers [found] in the run's allow-list and returns what the model gets
 /// and what the UI shows. The model sees a short overview clip so it can
-/// match a description; the card gets a longer one.
-AssistantToolResult _requestOptions(AssistantToolContext ctx, SeerrClient client, Iterable<SeerrMedia> found) {
+/// match a description; the card gets a longer one. With [age] only titles
+/// the age gate allows for it are kept, and registered.
+Future<AssistantToolResult> _requestOptions(
+  AssistantToolContext ctx,
+  SeerrClient client,
+  Iterable<SeerrMedia> found,
+  int? age,
+) async {
   _requestLive(ctx, client);
   _shownRequestClients[ctx] ??= client;
   if (client.session.userId case final user?) _shownRequestUsers[ctx] ??= user;
+  final unique = <String, SeerrMedia>{};
+  for (final m in found) {
+    unique.putIfAbsent('${m.mediaType}:${m.tmdbId}', () => m);
+  }
+  final gated = await _gateTitles(ctx, unique.values.toList(), _seerrRef, age);
+  // The gate may look up facts; the profile or Seerr client can change meanwhile.
+  _requestLive(ctx, client);
   final shown = _shownRequestTitles[ctx] ??= {};
   final permissions = client.session.permissions;
   final rows = <Map<String, Object?>>[];
   final options = <AssistantRequestOption>[];
-  for (final m in found) {
+  for (final (m, facts) in gated.kept) {
     final id = '${m.mediaType}:${m.tmdbId}';
-    if (rows.any((r) => r['seerr_id'] == id)) continue;
     shown[id] = m;
     final title = clipText(m.title);
     final year = int.tryParse(m.year ?? '');
@@ -67,6 +83,7 @@ AssistantToolResult _requestOptions(AssistantToolContext ctx, SeerrClient client
       'status': status,
       'can_request_4k': SeerrPermission.canRequest4k(permissions, isMovie: m.isMovie),
       if (clipText(m.overview, 120) case final o when o.isNotEmpty) 'overview': o,
+      ..._factsField(facts, gated.region),
     });
     options.add(
       AssistantRequestOption(
@@ -77,10 +94,11 @@ AssistantToolResult _requestOptions(AssistantToolContext ctx, SeerrClient client
         posterUrl: m.posterUrl,
         overview: clipText(m.overview, 300),
         status: status,
+        facts: facts,
       ),
     );
   }
-  return AssistantToolResult({'titles': rows}, display: AssistantRequestOptions(ctx, options));
+  return AssistantToolResult({'titles': rows, ...gated.note}, display: AssistantRequestOptions(ctx, options));
 }
 
 typedef _Candidate = ({String title, String? kind, int? year});

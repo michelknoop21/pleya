@@ -78,7 +78,7 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 | `PLEX_TOKEN` | Dev/screenshot token | empty | Screenshot automation only |
 | `BLUR_ARTWORK` | Blur artwork, scramble titles | `false` | Screenshot automation only |
 | `TRAKT_CLIENT_ID` | Trakt tracker | empty | Trakt scrobble/sync |
-| `TRAKT_CLIENT_SECRET` | Trakt tracker | empty | Trakt scrobble/sync |
+| `TRAKT_CLIENT_SECRET` | Trakt tracker login (device code token exchange) | empty | Trakt scrobble/sync; not passed by the release lanes |
 | `SIMKL_CLIENT_ID` | Simkl tracker | empty | Simkl tracking |
 | `MAL_CLIENT_ID` | MAL tracker | empty | MAL tracking |
 | `PLEYA_ICE_BASE` | ICE relay/relay base URL | `https://ice.pleya.app` | Watch Together, Discord RPC, log uploads, Pleya Share-relayfallback. Host draait nog niet, zie [DEC-014](DECISIONS.md#dec-014) |
@@ -89,6 +89,12 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 | `ENABLE_DONATIONS` | Show donate tile | `false` | Donate tile visibility |
 | `SOURCE_REPO_URL` | GPL source link in About | empty | About screen source link |
 | `PRIVACY_POLICY_URL` | Privacy policy link | empty | About screen privacy link |
+
+`TRAKT_CLIENT_ID` comes from `.env` (see `.env.example`). `ios_beta` and `macos_beta` pass it through `api_key_defines` in `fastlane/Fastfile`, only when the value is non-empty. `tvos_beta` and `tvos_archive` need nothing extra: xcodebuild inherits the fastlane environment and `tvos/scripts/xcode_appletv.sh` adds the `-D` flag when it is set. A missing value leaves the feature off in the app.
+
+The client ID ends up readable in places other than `.env`. xcodebuild echoes the full environment of every Run Script phase into the build log, fastlane logs the `flutter build` command line, and on iOS and macOS the defines sit base64-encoded in the generated xcconfig. Anyone with the binary can extract it too. That is acceptable because a Trakt client ID is a public app identifier: it reads no user data on its own and can be revoked and reissued at Trakt, which switches the public Trakt calls off in builds that carry the old ID until the next build ships.
+
+Never put a secret in a dart-define. The release lanes therefore pass neither `TRAKT_CLIENT_SECRET` nor a TMDB key. Public Trakt calls only need the client ID (`TraktConstants.hasClientId`); the Trakt login keeps requiring both values and stays hidden in release builds. Pleya ships no TMDB key at all: `TmdbClient` takes the user's own TMDB token, entered in the app.
 
 ### Signing and distribution
 

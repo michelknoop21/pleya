@@ -24,6 +24,8 @@ class FakeAssistantController extends AssistantController {
   @override
   String answer = '';
   @override
+  bool ageFilterNotice = false;
+  @override
   List<AssistantStep> steps = [];
   @override
   List<AssistantActionRecord> actions = [];
@@ -158,4 +160,21 @@ class FakeAssistantController extends AssistantController {
 
   @override
   void reset() => resets++;
+
+  /// The ages the ages card saved, per press of Bewaar.
+  final savedAges = <List<int>>[];
+  var kidsDismissals = 0;
+
+  @override
+  Future<void> saveKidsAgesAndRetry(List<int> ages) async => savedAges.add(ages);
+
+  @override
+  void dismissKidsAges() {
+    kidsDismissals++;
+    displays = [
+      for (final d in displays)
+        if (d is! AssistantKidsAgesPrompt) d,
+    ];
+    notifyListeners();
+  }
 }

@@ -11,6 +11,7 @@ import '../../services/pleya_keychain.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import '../../widgets/big_p/assistant/big_p_kids_ages_card.dart';
 import '../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../widgets/big_p/assistant/big_p_results.dart';
 import '../../widgets/big_p/assistant/big_p_suggestions.dart';
@@ -187,6 +188,14 @@ class BigPMobileConversation extends StatelessWidget {
       if (c.resultIsError || c.actions.isNotEmpty) ...[
         const SizedBox(height: 12),
         BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
+      ],
+      if (c.kidsAgesPrompt case final prompt?) ...[
+        const SizedBox(height: 16),
+        BigPKidsAgesCard(
+          key: ObjectKey(prompt),
+          embedded: true,
+          onSave: (ages) => unawaited(c.saveKidsAgesAndRetry(ages)),
+        ),
       ],
       if (regular) ...[const SizedBox(height: 12), BigPMobileFollowUps(controller: c, onAsk: onExample)],
     ];

@@ -1245,6 +1245,12 @@ class _TranslationsAboutNl extends TranslationsAboutEn {
 	@override String get upstreamProject => 'Upstream-project';
 	@override String get privacyPolicy => 'Privacybeleid';
 	@override String get licence => 'Licentie';
+	@override String get sources => 'Bronnen';
+	@override String get tmdbSource => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.';
+	@override String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
+	@override String get wikidataSource => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.';
+	@override String get tvmazeSource => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.';
+	@override String get traktSource => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.';
 }
 
 // Path: serverSelection
@@ -2490,6 +2496,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override late final _TranslationsAssistantKidsNl kids = _TranslationsAssistantKidsNl._(_root);
 	@override String get tileTitle => 'Big P';
 	@override String get tileSubtitle => 'Pleya Assistant';
 	@override String get providerLabel => 'AI-provider';
@@ -3147,6 +3154,22 @@ class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn
 	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.kids
+class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
+	_TranslationsAssistantKidsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get agesFirst => 'Ik moet eerst weten hoe oud de kinderen zijn.';
+	@override String get noFit => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.';
+	@override String get header => 'Pleya vraagt';
+	@override String get title => 'Hoe oud zijn de kinderen?';
+	@override String get body => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.';
+	@override String age({required Object age}) => '${age} jaar';
+	@override String get save => 'Bewaar en zoek verder';
+}
+
 // Path: assistant.mobile
 class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
 	_TranslationsAssistantMobileNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3497,6 +3520,20 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get webSearchNoteOpenRouter => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.';
 	@override String get voice => 'Stem van Big P';
 	@override String get voiceNote => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.';
+	@override String get factsOnline => 'Online informatie aanvullen';
+	@override String get factsOnlineNote => 'Big P vult dan leeftijdsclassificatie, genres, speelduur, cast, score en streamingdiensten van een titel aan via TMDB, Trakt, TVmaze en Wikidata. Daarvoor gaan alleen de titel of de id\'s van die titel naar die diensten, nooit je account of profiel. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.';
+	@override String get tmdbKey => 'Eigen TMDB-sleutel';
+	@override String get tmdbKeyHelp => 'Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de \'API Read Access Token\'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.';
+	@override String get tmdbKeyStored => 'Sleutel opgeslagen';
+	@override String get tmdbKeySave => 'Sleutel opslaan';
+	@override String get tmdbKeyClear => 'Sleutel wissen';
+	@override String get kidsAges => 'Leeftijden kinderen (dit profiel)';
+	@override String get kidsAgesNone => 'Niet ingesteld';
+	@override String get kidsAgesClear => 'Leeftijden wissen';
+	@override String kidsAgesValue({required Object ages}) => '${ages} jaar';
+	@override String get kidsProfile => 'Kinderprofiel';
+	@override String get kidsProfileNote => 'Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.';
+	@override String get kidsProfileLocked => 'Plex markeert dit account als beperkt, dus dit staat altijd aan.';
 }
 
 // Path: assistant.tasks
@@ -3521,6 +3558,7 @@ class _TranslationsAssistantTasksNl extends TranslationsAssistantTasksEn {
 	);
 	@override String get choose => 'Kies wat je wilt aanvragen';
 	@override String get cancelAll => 'Alles annuleren';
+	@override String numbered({required Object n}) => 'Taak ${n}';
 	@override String cancelTask({required Object title}) => 'Annuleren: ${title}';
 }
 
@@ -3604,6 +3642,10 @@ class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
 	@override String get show => 'Serie';
 	@override String get episode => 'Aflevering';
 	@override String episodeCode({required Object season, required Object episode}) => 'S${season} A${episode}';
+	@override String watchOn({required Object services}) => 'Te zien op: ${services}';
+	@override String more({required Object count}) => '+${count}';
+	@override String get allAges => 'AL';
+	@override String score({required Object score}) => 'Score ${score}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -4664,6 +4706,12 @@ extension on TranslationsNl {
 			'about.upstreamProject' => 'Upstream-project',
 			'about.privacyPolicy' => 'Privacybeleid',
 			'about.licence' => 'Licentie',
+			'about.sources' => 'Bronnen',
+			'about.tmdbSource' => 'TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.',
+			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+			'about.wikidataSource' => 'Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.',
+			'about.traktSource' => 'Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Kon met geen enkele server verbinden. Controleer je netwerk.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'Geen servers gevonden voor ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'Geen mediaservers gevonden',
@@ -4695,14 +4743,14 @@ extension on TranslationsNl {
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
+			_ => null,
+		} ?? switch (path) {
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Kijklijst',
 			'navigation.myPleya' => 'Mijn Pleya',
 			'watchlist.title' => 'Kijklijst',
 			'watchlist.seeAll' => 'Alles bekijken',
 			'watchlist.empty' => 'Nog niets op je kijklijst',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.emptyBody' => 'Titels die je in Plex toevoegt of als Jellyfin-favoriet markeert, verschijnen hier.',
 			'watchlist.emptyFiltered' => 'Geen titels binnen dit filter',
 			'watchlist.retry' => 'Opnieuw proberen',
@@ -5209,14 +5257,14 @@ extension on TranslationsNl {
 			'metadataEdit.onNextRefresh' => 'Bij volgende verversing',
 			'metadataEdit.seasons' => 'Seizoenen',
 			'metadataEdit.show' => 'Tonen',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.hide' => 'Verbergen',
 			'metadataEdit.episodeOrdering' => 'Afleveringsvolgorde',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Uitgezonden)',
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Uitgezonden)',
 			'metadataEdit.tvdbAbsolute' => 'TheTVDB (Absoluut)',
 			'metadataEdit.metadataLanguage' => 'Metadatataal',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.useOriginalTitle' => 'Oorspronkelijke titel gebruiken',
 			'metadataEdit.preferredAudioLanguage' => 'Voorkeurstaal audio',
 			'metadataEdit.preferredSubtitleLanguage' => 'Voorkeurstaal ondertiteling',
@@ -5723,14 +5771,14 @@ extension on TranslationsNl {
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.audio' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
 			'languageSettings.subtitles' => 'Ondertitels',
 			'languageSettings.subtitlesNote' => 'Voorkeurstaal voor alle content',
 			'languageSettings.subtitleFallback' => 'Terugvaltaal ondertitels',
 			'languageSettings.subtitleFallbackNote' => 'Ontbreekt je voorkeurstaal, dan deze. Ontbreekt die ook, dan gaan ondertitels uit',
 			'languageSettings.subtitleDisplay' => 'Ondertitels tonen',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.subtitleDisplayNote' => 'Wanneer ondertitels vanzelf aangaan',
 			'languageSettings.subtitleDisplayForeign' => 'Bij vreemde taal',
 			'languageSettings.subtitleDisplayAlways' => 'Altijd',
@@ -5768,6 +5816,13 @@ extension on TranslationsNl {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
+			'assistant.kids.agesFirst' => 'Ik moet eerst weten hoe oud de kinderen zijn.',
+			'assistant.kids.noFit' => 'Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.',
+			'assistant.kids.header' => 'Pleya vraagt',
+			'assistant.kids.title' => 'Hoe oud zijn de kinderen?',
+			'assistant.kids.body' => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.',
+			'assistant.kids.age' => ({required Object age}) => '${age} jaar',
+			'assistant.kids.save' => 'Bewaar en zoek verder',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -5980,6 +6035,20 @@ extension on TranslationsNl {
 			'assistant.settings.webSearchNoteOpenRouter' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.',
 			'assistant.settings.voice' => 'Stem van Big P',
 			'assistant.settings.voiceNote' => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.',
+			'assistant.settings.factsOnline' => 'Online informatie aanvullen',
+			'assistant.settings.factsOnlineNote' => 'Big P vult dan leeftijdsclassificatie, genres, speelduur, cast, score en streamingdiensten van een titel aan via TMDB, Trakt, TVmaze en Wikidata. Daarvoor gaan alleen de titel of de id\'s van die titel naar die diensten, nooit je account of profiel. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.',
+			'assistant.settings.tmdbKey' => 'Eigen TMDB-sleutel',
+			'assistant.settings.tmdbKeyHelp' => 'Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de \'API Read Access Token\'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.',
+			'assistant.settings.tmdbKeyStored' => 'Sleutel opgeslagen',
+			'assistant.settings.tmdbKeySave' => 'Sleutel opslaan',
+			'assistant.settings.tmdbKeyClear' => 'Sleutel wissen',
+			'assistant.settings.kidsAges' => 'Leeftijden kinderen (dit profiel)',
+			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
+			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
+			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
+			'assistant.settings.kidsProfile' => 'Kinderprofiel',
+			'assistant.settings.kidsProfileNote' => 'Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.',
+			'assistant.settings.kidsProfileLocked' => 'Plex markeert dit account als beperkt, dus dit staat altijd aan.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar',
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} taken zijn klaar.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} van ${count} taken klaar.',
@@ -5992,6 +6061,7 @@ extension on TranslationsNl {
 			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 titel gevonden', other: '${n} titels gevonden', ), 
 			'assistant.tasks.choose' => 'Kies wat je wilt aanvragen',
 			'assistant.tasks.cancelAll' => 'Alles annuleren',
+			'assistant.tasks.numbered' => ({required Object n}) => 'Taak ${n}',
 			'assistant.tasks.cancelTask' => ({required Object title}) => 'Annuleren: ${title}',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
@@ -6032,6 +6102,10 @@ extension on TranslationsNl {
 			'assistant.match.show' => 'Serie',
 			'assistant.match.episode' => 'Aflevering',
 			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} A${episode}',
+			'assistant.match.watchOn' => ({required Object services}) => 'Te zien op: ${services}',
+			'assistant.match.more' => ({required Object count}) => '+${count}',
+			'assistant.match.allAges' => 'AL',
+			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
 			_ => null,
 		};
 	}

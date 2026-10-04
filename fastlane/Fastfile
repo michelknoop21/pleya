@@ -3,6 +3,8 @@
 #   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_CONTENT (base64 van de .p8)
 # Aanroepen: `fastlane beta` (alles) of `fastlane ios_beta` / `tvos_beta` / `macos_beta`.
 
+require "shellwords"
+
 opt_out_usage
 
 PROJECT_ROOT = File.expand_path("..", __dir__)
@@ -564,6 +566,21 @@ def assistant_define
   ENV["PLEYA_ASSISTANT_ENABLED"] == "true" ? " --dart-define=PLEYA_ASSISTANT_ENABLED=true" : ""
 end
 
+# Publieke API-sleutels uit .env, nu alleen de Trakt-client-ID. Alleen gezette,
+# niet-lege waarden worden een define; zonder sleutel blijft de functie uit.
+# TRAKT_CLIENT_SECRET hoort hier bewust niet bij: een define is uit de binary
+# te lezen, en een secret in de app is geen secret meer. Een TMDB-sleutel ook
+# niet: die vult de gebruiker zelf in.
+# tvos_beta heeft dit niet nodig: xcode_appletv.sh leest dezelfde naam uit
+# de omgeving die xcodebuild van fastlane erft.
+# De waarde gaat geescaped mee, want flutter_sh draait via een shell.
+def api_key_defines
+  %w[TRAKT_CLIENT_ID].filter_map do |name|
+    value = ENV[name].to_s.strip
+    " --dart-define=#{name}=#{Shellwords.escape(value)}" unless value.empty?
+  end.join
+end
+
 # Oude Verify-bundels en Pleya-archives opruimen vóór een nieuwe build
 # (PLEYA_KEEP_BUILDS=1 slaat over).
 def prune_old_builds
@@ -574,7 +591,7 @@ desc "iOS → TestFlight"
 lane :ios_beta do
   prune_old_builds
   build_number = ensure_build_number("ios")
-  flutter_sh("flutter build ios --config-only --release#{git_commit_define}#{assistant_define}")
+  flutter_sh("flutter build ios --config-only --release#{git_commit_define}#{assistant_define}#{api_key_defines}")
   patch_spm_min_ios
   build_app(
     workspace: File.join(PROJECT_ROOT, "ios/Runner.xcworkspace"),
@@ -708,7 +725,7 @@ desc "macOS → TestFlight (pkg)"
 lane :macos_beta do
   prune_old_builds
   build_number = ensure_build_number("osx")
-  flutter_sh("flutter build macos --config-only --release#{git_commit_define}")
+  flutter_sh("flutter build macos --config-only --release#{git_commit_define}#{api_key_defines}")
   # Buildnummer/-naam expliciet aan xcodebuild meegeven: DerivedData herprocesst
   # de Info.plist niet altijd als alleen de ephemeral xcconfig wijzigt → stale
   # CFBundleVersion in de archive (158-upload-rejectie terwijl de xcconfig al

@@ -71,7 +71,12 @@ class AssistantProviderStore {
   /// and leaves the prefs only once a readback matches. A keychain error
   /// never deletes the blob; with no blob to fall back to it throws
   /// [AssistantProviderStoreException] rather than reading as unset.
-  Future<AssistantProviderConfig?> load() => _serial(_load);
+  Future<AssistantProviderConfig?> load() => _serial(() async => current = await _load());
+
+  /// The config of the last [load], [save] or [clear], for readers that
+  /// cannot await (title facts read the TMDB key and the online switch per
+  /// lookup). Big P loads the config at the start of every ask.
+  static AssistantProviderConfig? current;
 
   Future<AssistantProviderConfig?> _load({bool again = false}) async {
     final keychain = _keychain;
@@ -209,6 +214,7 @@ class AssistantProviderStore {
       if (keychain != null) await prefs.setString(pendingKey, _marker(over, json));
       await prefs.setString(key, await CredentialVault.protect(json));
     }
+    AssistantProviderStore.current = config;
     changes.value++;
   }
 
@@ -226,6 +232,7 @@ class AssistantProviderStore {
       }
       await _removeLegacy();
     } finally {
+      current = null;
       changes.value++;
     }
   }
@@ -311,5 +318,6 @@ class AssistantProviderStore {
     LogRedactionManager.registerCustomValue(config.apiKey);
     LogRedactionManager.registerCustomValue(config.headerValue);
     LogRedactionManager.registerCustomValue(config.ollamaWebKey);
+    LogRedactionManager.registerCustomValue(config.tmdbKey);
   }
 }

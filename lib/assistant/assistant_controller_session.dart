@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../database/app_database.dart';
 import '../media/ids.dart';
 import '../profiles/active_profile_provider.dart';
 import '../profiles/profile_connection_registry.dart';
@@ -19,9 +20,13 @@ import '../services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_spoiler_context.dart';
 import 'assistant_spoiler_progress.dart';
 import 'assistant_controller.dart';
+import 'assistant_kids_ages_store.dart';
+import 'assistant_kids_profile_store.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_playback.dart';
 import 'assistant_provider.dart';
+import 'assistant_title_facts.dart';
+import 'assistant_title_facts_cache.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 import 'big_p_voice.dart';
@@ -40,8 +45,9 @@ import 'big_p_voice.dart';
 /// provider that is not in scope leaves its service null, which keeps those
 /// tools out of the run.
 AssistantController assistantControllerForSession(BuildContext context) {
+  final factsCache = TitleFactsCache(db: context.read<AppDatabase?>());
   final controller = AssistantController(
-    buildContext: (screen) => _sessionToolContext(context, screen),
+    buildContext: (screen) => _sessionToolContext(context, screen, factsCache),
     webFor: assistantWebServicesFor,
     serverChanges: context.read<MultiServerProvider>(),
   );
@@ -62,7 +68,7 @@ AssistantWebServices? assistantWebServicesFor(AssistantProviderConfig config) =>
   openRouterKey: config.kind == AssistantProviderKind.openRouter ? config.apiKey : '',
 );
 
-AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenContext? screen) {
+AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenContext? screen, TitleFactsCache cache) {
   final manager = context.read<MultiServerProvider>().serverManager;
   final activeProfile = context.read<ActiveProfileProvider>();
   final layout = context.read<HomeLayoutProvider?>();
@@ -136,6 +142,20 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
           ),
     insights: tautulli == null ? null : AssistantInsightServices(tautulliFor: tautulli.clientForServer),
     requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
+    // One per ask, so the lookup budget starts fresh. The TMDB key and the
+    // online switch are read per lookup, so a change in the settings counts
+    // from the next question.
+    titleFacts: TitleFactsService(
+      cache: cache,
+      clientFor: manager.getClient,
+      seerr: () => seerr?.client,
+      tmdbKey: () => AssistantProviderStore.current?.tmdbKey,
+      online: () => AssistantProviderStore.current?.onlineFacts ?? true,
+    ),
+    kidsAges: KidsAgesStore().read,
+    // Read per ask, so a switch flipped in Instellingen counts from the next
+    // question.
+    kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
     personal: recommendations == null
         ? null
         : AssistantPersonalServices(

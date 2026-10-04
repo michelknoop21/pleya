@@ -1,4 +1,5 @@
 import '../../services/seerr/seerr_constants.dart';
+import 'seerr_detail_facts.dart';
 
 /// A movie or TV result from a seerr search / discover / detail response.
 ///
@@ -151,12 +152,24 @@ class SeerrMediaDetail {
   final double? voteAverage;
   final List<SeerrCastMember> cast;
 
+  /// Country code to age classification (`NL` to `12`).
+  final Map<String, String> certifications;
+
+  /// Region code to subscription services offering the title.
+  final Map<String, List<String>> providers;
+
+  /// TMDB popularity score; null when absent.
+  final double? popularity;
+
   const SeerrMediaDetail({
     required this.media,
     this.genres = const [],
     this.runtimeMinutes,
     this.voteAverage,
     this.cast = const [],
+    this.certifications = const {},
+    this.providers = const {},
+    this.popularity,
   });
 
   factory SeerrMediaDetail.fromJson(Map<String, dynamic> json, {required String mediaType}) {
@@ -199,6 +212,9 @@ class SeerrMediaDetail {
       runtimeMinutes: runtime,
       voteAverage: vote != null && vote > 0 ? vote : null,
       cast: cast,
+      certifications: parseSeerrCertifications(json),
+      providers: parseSeerrFlatrateProviders(json),
+      popularity: json['popularity'] is num ? (json['popularity'] as num).toDouble() : null,
     );
   }
 }

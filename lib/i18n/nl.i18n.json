@@ -1070,7 +1070,13 @@
     "basedOnPlezy": "Gebaseerd op Plezy",
     "upstreamProject": "Upstream-project",
     "privacyPolicy": "Privacybeleid",
-    "licence": "Licentie"
+    "licence": "Licentie",
+    "sources": "Bronnen",
+    "tmdbSource": "TMDB: leeftijdsclassificatie, genres, cast, score, streamingdiensten, trending en vergelijkbare titels voor Big P.",
+    "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+    "wikidataSource": "Wikidata (CC0): leeftijdsclassificatie (MPA) van films voor Big P.",
+    "tvmazeSource": "TVmaze (CC BY-SA): genres, speelduur en score van series voor Big P.",
+    "traktSource": "Trakt: leeftijdsclassificatie, genres, speelduur en score voor Big P."
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Kon met geen enkele server verbinden. Controleer je netwerk.",
@@ -2292,6 +2298,15 @@
     "kindSubtitles": "Ondertitels"
   },
   "assistant": {
+    "kids": {
+      "agesFirst": "Ik moet eerst weten hoe oud de kinderen zijn.",
+      "noFit": "Ik heb geen titel die bij de leeftijd van de kinderen past. Vraag het me anders.",
+      "header": "Pleya vraagt",
+      "title": "Hoe oud zijn de kinderen?",
+      "body": "Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.",
+      "age": "${age} jaar",
+      "save": "Bewaar en zoek verder"
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI-provider",
@@ -2573,7 +2588,21 @@
       "webSearchNoteCloud": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.",
       "webSearchNoteOpenRouter": "De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.",
       "voice": "Stem van Big P",
-      "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken."
+      "voiceNote": "Korte gesproken reacties. Nooit tijdens dicteren of kijken.",
+      "factsOnline": "Online informatie aanvullen",
+      "factsOnlineNote": "Big P vult dan leeftijdsclassificatie, genres, speelduur, cast, score en streamingdiensten van een titel aan via TMDB, Trakt, TVmaze en Wikidata. Daarvoor gaan alleen de titel of de id's van die titel naar die diensten, nooit je account of profiel. Staat de schakelaar uit, dan gebruikt Big P alleen je server en Seerr.",
+      "tmdbKey": "Eigen TMDB-sleutel",
+      "tmdbKeyHelp": "Gratis aan te vragen op themoviedb.org (Instellingen > API). Plak de 'API Read Access Token'. Seerr heeft zijn eigen TMDB, dus zonder sleutel werkt Big P ook, met minder details.",
+      "tmdbKeyStored": "Sleutel opgeslagen",
+      "tmdbKeySave": "Sleutel opslaan",
+      "tmdbKeyClear": "Sleutel wissen",
+      "kidsAges": "Leeftijden kinderen (dit profiel)",
+      "kidsAgesNone": "Niet ingesteld",
+      "kidsAgesClear": "Leeftijden wissen",
+      "kidsAgesValue": "${ages} jaar",
+      "kidsProfile": "Kinderprofiel",
+      "kidsProfileNote": "Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.",
+      "kidsProfileLocked": "Plex markeert dit account als beperkt, dus dit staat altijd aan."
     },
     "tasks": {
       "working": "Bezig met ${count} taken · ${done} klaar",
@@ -2591,6 +2620,7 @@
       },
       "choose": "Kies wat je wilt aanvragen",
       "cancelAll": "Alles annuleren",
+      "numbered": "Taak ${n}",
       "cancelTask": "Annuleren: ${title}"
     },
     "youAsked": "Je vroeg:",
@@ -2646,7 +2676,11 @@
       "movie": "Film",
       "show": "Serie",
       "episode": "Aflevering",
-      "episodeCode": "S${season} A${episode}"
+      "episodeCode": "S${season} A${episode}",
+      "watchOn": "Te zien op: ${services}",
+      "more": "+${count}",
+      "allAges": "AL",
+      "score": "Score ${score}"
     }
   }
 }

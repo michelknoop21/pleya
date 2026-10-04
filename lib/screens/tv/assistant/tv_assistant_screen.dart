@@ -40,6 +40,7 @@ import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
+import 'tv_assistant_kids_sheet.dart';
 import 'tv_assistant_tasks.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
@@ -75,6 +76,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   final _tasksNode = FocusNode(debugLabel: 'assistant.tasks');
   final _taskOptionNodes = TvAssistantTaskOptionNodes();
   late final _confirm = TvAssistantConfirmPresenter(cancelNode: _confirmCancelNode);
+  final _kids = TvKidsAgesSheet();
 
   int _nod = 0;
   DateTime _lastPhraseNod = DateTime.fromMillisecondsSinceEpoch(0);
@@ -130,6 +132,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode, _tasksNode]) {
       node.dispose();
     }
+    _kids.dispose();
     super.dispose();
   }
 
@@ -153,6 +156,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     _doneSteps = done;
 
     _confirm.sync(context, c, _entry, _onConfirmClosed);
+    _kids.sync(context, c);
     setState(() {});
   }
 
@@ -189,7 +193,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
 
   @override
   void focusActiveTabIfReady() {
-    if (_confirm.isOpen) return; // the card owns the remote
+    if (_confirm.isOpen || _kids.open) return; // the card owns the remote
     final node = _defaultNode;
     if (node != null && node.context != null && node.canRequestFocus) node.requestFocus();
   }

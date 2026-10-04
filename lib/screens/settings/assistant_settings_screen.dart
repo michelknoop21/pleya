@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_entitlement.dart';
+import '../../assistant/assistant_kids_ages_store.dart';
+import '../../assistant/assistant_kids_profile_store.dart';
 import '../../assistant/assistant_provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
@@ -13,6 +16,7 @@ import '../../focus/key_event_utils.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
+import '../../profiles/active_profile_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
 import '../../services/settings_service.dart';
@@ -31,6 +35,7 @@ import 'async_form_state_mixin.dart';
 
 part 'assistant_settings_screen_support.dart';
 part 'assistant_settings_screen_views.dart';
+part 'assistant_settings_screen_facts.dart';
 part 'assistant_settings_screen_models.dart';
 
 /// Big P's AI provider (mockup 38 C2 and the steps after it): choose a
@@ -65,6 +70,11 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   late final _headerValueController = createTextEditingController();
   late final _keyController = createTextEditingController();
   late final _webKeyController = createTextEditingController();
+  late final _tmdbKeyController = createTextEditingController();
+  final _kidsAges = KidsAgesStore();
+  late Future<List<int>> _agesFuture = _kidsAges.read();
+  final _kidsProfile = KidsProfileStore();
+  late Future<bool> _kidsProfileFuture = _kidsProfile.read();
   bool? _webSearch;
   final _formKey = GlobalKey<FormState>();
 
@@ -289,6 +299,9 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
                   ))
           : '',
       webSearchChoice: _webSearch,
+      // Not part of the provider details: a change of provider keeps them.
+      tmdbKey: saved?.tmdbKey ?? '',
+      onlineFactsChoice: saved?.onlineFactsChoice,
       ollamaWebKey: kind == AssistantProviderKind.ollamaServer && _webSearch == true
           ? _secret(_webKeyController, (c) => c.ollamaWebKey)
           : '',

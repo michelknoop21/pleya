@@ -298,6 +298,14 @@ class AutomationIds {
   /// approve button reports `enabled`.
   static const String assistantConfirmButton = 'assistant.confirm.button';
 
+  /// The card Pleya shows when a pick for children needs their ages; state
+  /// carries the chosen `ages`.
+  static const String assistantKidsAges = 'assistant.kidsAges';
+
+  /// A control on that card: `[age3]` per age, `[save]` (reports `enabled`)
+  /// and `[skip]`.
+  static const String assistantKidsAgesButton = 'assistant.kidsAges.button';
+
   /// Big P summoned with a long Play/Pause press, over any TV screen. State
   /// carries `shown`, `state`, `error` and `pending`. A result stays until
   /// Menu or Klaar: it always offers follow-ups.
@@ -602,6 +610,7 @@ class AutomationIds {
     assistantTask,
     assistantTaskCancel,
     assistantConfirmButton,
+    assistantKidsAgesButton,
     bigpFollowUp,
     bigpLibraryAsk,
     playerPanelTab,
@@ -711,6 +720,8 @@ class AutomationIds {
     {'id': assistantTaskCancel, 'role': 'button', 'instanceable': true},
     {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantKidsAges, 'role': 'sheet', 'instanceable': false},
+    {'id': assistantKidsAgesButton, 'role': 'button', 'instanceable': true},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},
     {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
     {'id': bigpBalloon, 'role': 'region', 'instanceable': false},

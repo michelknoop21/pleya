@@ -2979,6 +2979,24 @@ class TranslationsAboutEn {
 
 	/// en: 'Licence'
 	String get licence => 'Licence';
+
+	/// en: 'Sources'
+	String get sources => 'Sources';
+
+	/// en: 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.'
+	String get tmdbSource => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.';
+
+	/// en: 'This product uses the TMDB API but is not endorsed or certified by TMDB.'
+	String get tmdbAttribution => 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
+
+	/// en: 'Wikidata (CC0): age rating (MPA) of films for Big P.'
+	String get wikidataSource => 'Wikidata (CC0): age rating (MPA) of films for Big P.';
+
+	/// en: 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.'
+	String get tvmazeSource => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.';
+
+	/// en: 'Trakt: age rating, genres, runtime and score for Big P.'
+	String get traktSource => 'Trakt: age rating, genres, runtime and score for Big P.';
 }
 
 // Path: serverSelection
@@ -6021,6 +6039,7 @@ class TranslationsAssistantEn {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+	late final TranslationsAssistantKidsEn kids = TranslationsAssistantKidsEn.internal(_root);
 
 	/// en: 'Big P'
 	String get tileTitle => 'Big P';
@@ -7340,6 +7359,36 @@ class TranslationsTvMyPleyaSemanticsEn {
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.kids
+class TranslationsAssistantKidsEn {
+	TranslationsAssistantKidsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'First I need to know how old the children are.'
+	String get agesFirst => 'First I need to know how old the children are.';
+
+	/// en: 'I have no title that suits the children's ages. Ask me another way.'
+	String get noFit => 'I have no title that suits the children\'s ages. Ask me another way.';
+
+	/// en: 'Pleya asks'
+	String get header => 'Pleya asks';
+
+	/// en: 'How old are the children?'
+	String get title => 'How old are the children?';
+
+	/// en: 'So I can keep the titles suitable. This stays on this device and with this profile only.'
+	String get body => 'So I can keep the titles suitable. This stays on this device and with this profile only.';
+
+	/// en: '${age} years'
+	String age({required Object age}) => '${age} years';
+
+	/// en: 'Save and keep looking'
+	String get save => 'Save and keep looking';
+}
+
 // Path: assistant.mobile
 class TranslationsAssistantMobileEn {
 	TranslationsAssistantMobileEn.internal(this._root);
@@ -8033,6 +8082,48 @@ class TranslationsAssistantSettingsEn {
 
 	/// en: 'Short spoken reactions. Never while you dictate or watch something.'
 	String get voiceNote => 'Short spoken reactions. Never while you dictate or watch something.';
+
+	/// en: 'Add online information'
+	String get factsOnline => 'Add online information';
+
+	/// en: 'Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title's ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.'
+	String get factsOnlineNote => 'Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title\'s ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.';
+
+	/// en: 'Your own TMDB key'
+	String get tmdbKey => 'Your own TMDB key';
+
+	/// en: 'Free to request at themoviedb.org (Settings > API). Paste the 'API Read Access Token'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.'
+	String get tmdbKeyHelp => 'Free to request at themoviedb.org (Settings > API). Paste the \'API Read Access Token\'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.';
+
+	/// en: 'Key saved'
+	String get tmdbKeyStored => 'Key saved';
+
+	/// en: 'Save key'
+	String get tmdbKeySave => 'Save key';
+
+	/// en: 'Clear key'
+	String get tmdbKeyClear => 'Clear key';
+
+	/// en: 'Children's ages (this profile)'
+	String get kidsAges => 'Children\'s ages (this profile)';
+
+	/// en: 'Not set'
+	String get kidsAgesNone => 'Not set';
+
+	/// en: 'Clear ages'
+	String get kidsAgesClear => 'Clear ages';
+
+	/// en: '${ages} years'
+	String kidsAgesValue({required Object ages}) => '${ages} years';
+
+	/// en: 'Children's profile'
+	String get kidsProfile => 'Children\'s profile';
+
+	/// en: 'Big P only shows titles that suit the children's ages. Only for this profile, only on this device.'
+	String get kidsProfileNote => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.';
+
+	/// en: 'Plex marks this account as restricted, so this is always on.'
+	String get kidsProfileLocked => 'Plex marks this account as restricted, so this is always on.';
 }
 
 // Path: assistant.tasks
@@ -8081,6 +8172,9 @@ class TranslationsAssistantTasksEn {
 
 	/// en: 'Cancel all'
 	String get cancelAll => 'Cancel all';
+
+	/// en: 'Task ${n}'
+	String numbered({required Object n}) => 'Task ${n}';
 
 	/// en: 'Cancel: ${title}'
 	String cancelTask({required Object title}) => 'Cancel: ${title}';
@@ -8221,6 +8315,18 @@ class TranslationsAssistantMatchEn {
 
 	/// en: 'S${season} E${episode}'
 	String episodeCode({required Object season, required Object episode}) => 'S${season} E${episode}';
+
+	/// en: 'On: ${services}'
+	String watchOn({required Object services}) => 'On: ${services}';
+
+	/// en: '+${count}'
+	String more({required Object count}) => '+${count}';
+
+	/// en: 'All'
+	String get allAges => 'All';
+
+	/// en: 'Score ${score}'
+	String score({required Object score}) => 'Score ${score}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -9331,6 +9437,12 @@ extension on Translations {
 			'about.upstreamProject' => 'Upstream project',
 			'about.privacyPolicy' => 'Privacy policy',
 			'about.licence' => 'Licence',
+			'about.sources' => 'Sources',
+			'about.tmdbSource' => 'TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.',
+			'about.tmdbAttribution' => 'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+			'about.wikidataSource' => 'Wikidata (CC0): age rating (MPA) of films for Big P.',
+			'about.tvmazeSource' => 'TVmaze (CC BY-SA): genres, runtime and score of series for Big P.',
+			'about.traktSource' => 'Trakt: age rating, genres, runtime and score for Big P.',
 			'serverSelection.allServerConnectionsFailed' => 'Couldn\'t connect to any servers. Check your network.',
 			'serverSelection.noServersFoundForAccount' => ({required Object username, required Object email}) => 'No servers found for ${username} (${email})',
 			'serverSelection.noServersFoundTitle' => 'No media servers found',
@@ -9362,14 +9474,14 @@ extension on Translations {
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
 			'navigation.libraries' => 'Libraries',
 			'navigation.downloads' => 'Downloads',
+			_ => null,
+		} ?? switch (path) {
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Watchlist',
 			'navigation.myPleya' => 'My Pleya',
 			'watchlist.title' => 'Watchlist',
 			'watchlist.seeAll' => 'See all',
 			'watchlist.empty' => 'Nothing on your watchlist yet',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.emptyBody' => 'Titles you add from Plex or mark as a Jellyfin favorite show up here.',
 			'watchlist.emptyFiltered' => 'No titles match this filter',
 			'watchlist.retry' => 'Try again',
@@ -9876,14 +9988,14 @@ extension on Translations {
 			'metadataEdit.onNextRefresh' => 'On next refresh',
 			'metadataEdit.seasons' => 'Seasons',
 			'metadataEdit.show' => 'Show',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.hide' => 'Hide',
 			'metadataEdit.episodeOrdering' => 'Episode Ordering',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Aired)',
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Aired)',
 			'metadataEdit.tvdbAbsolute' => 'TheTVDB (Absolute)',
 			'metadataEdit.metadataLanguage' => 'Metadata Language',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.useOriginalTitle' => 'Use Original Title',
 			'metadataEdit.preferredAudioLanguage' => 'Preferred Audio Language',
 			'metadataEdit.preferredSubtitleLanguage' => 'Preferred Subtitle Language',
@@ -10390,14 +10502,14 @@ extension on Translations {
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya profile ${name} · applies to everything without a series preference of its own',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya profile · applies to everything without a series preference of its own',
 			'languageSettings.audio' => 'Audio',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.audioFallbackNote' => 'Without that language, the file\'s own default track',
 			'languageSettings.subtitles' => 'Subtitles',
 			'languageSettings.subtitlesNote' => 'Preferred language for everything',
 			'languageSettings.subtitleFallback' => 'Subtitle fallback language',
 			'languageSettings.subtitleFallbackNote' => 'Used when your preferred language is missing. Missing as well, and subtitles go off',
 			'languageSettings.subtitleDisplay' => 'Show subtitles',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.subtitleDisplayNote' => 'When subtitles come on by themselves',
 			'languageSettings.subtitleDisplayForeign' => 'With foreign audio',
 			'languageSettings.subtitleDisplayAlways' => 'Always',
@@ -10435,6 +10547,13 @@ extension on Translations {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
+			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
+			'assistant.kids.noFit' => 'I have no title that suits the children\'s ages. Ask me another way.',
+			'assistant.kids.header' => 'Pleya asks',
+			'assistant.kids.title' => 'How old are the children?',
+			'assistant.kids.body' => 'So I can keep the titles suitable. This stays on this device and with this profile only.',
+			'assistant.kids.age' => ({required Object age}) => '${age} years',
+			'assistant.kids.save' => 'Save and keep looking',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -10647,6 +10766,20 @@ extension on Translations {
 			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
 			'assistant.settings.voice' => 'Big P\'s voice',
 			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
+			'assistant.settings.factsOnline' => 'Add online information',
+			'assistant.settings.factsOnlineNote' => 'Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title\'s ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.',
+			'assistant.settings.tmdbKey' => 'Your own TMDB key',
+			'assistant.settings.tmdbKeyHelp' => 'Free to request at themoviedb.org (Settings > API). Paste the \'API Read Access Token\'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.',
+			'assistant.settings.tmdbKeyStored' => 'Key saved',
+			'assistant.settings.tmdbKeySave' => 'Save key',
+			'assistant.settings.tmdbKeyClear' => 'Clear key',
+			'assistant.settings.kidsAges' => 'Children\'s ages (this profile)',
+			'assistant.settings.kidsAgesNone' => 'Not set',
+			'assistant.settings.kidsAgesClear' => 'Clear ages',
+			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
+			'assistant.settings.kidsProfile' => 'Children\'s profile',
+			'assistant.settings.kidsProfileNote' => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.',
+			'assistant.settings.kidsProfileLocked' => 'Plex marks this account as restricted, so this is always on.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',
@@ -10659,6 +10792,7 @@ extension on Translations {
 			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 title found', other: '${n} titles found', ), 
 			'assistant.tasks.choose' => 'Choose what to request',
 			'assistant.tasks.cancelAll' => 'Cancel all',
+			'assistant.tasks.numbered' => ({required Object n}) => 'Task ${n}',
 			'assistant.tasks.cancelTask' => ({required Object title}) => 'Cancel: ${title}',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
@@ -10699,6 +10833,10 @@ extension on Translations {
 			'assistant.match.show' => 'Series',
 			'assistant.match.episode' => 'Episode',
 			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'assistant.match.watchOn' => ({required Object services}) => 'On: ${services}',
+			'assistant.match.more' => ({required Object count}) => '+${count}',
+			'assistant.match.allAges' => 'All',
+			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
 			_ => null,
 		};
 	}

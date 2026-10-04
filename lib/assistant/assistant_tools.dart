@@ -47,10 +47,14 @@ import '../media/server_administration.dart';
 import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems;
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
+import '../services/tmdb/tmdb_client.dart' show TmdbAuthException, TmdbClient, TmdbException, TmdbKind;
+import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
 import 'assistant_named_titles.dart' show assistantTitleKey;
 import 'assistant_recommend_constraints.dart';
 import 'assistant_find_route.dart';
+import 'assistant_plot_index.dart' show titleKey;
+import 'assistant_title_facts.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_playback.dart';
 import 'assistant_spoiler_context.dart' show assistantIsMissingEpisodeDiagnosis;
@@ -65,6 +69,8 @@ part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
+part 'assistant_tools_discover.dart';
+part 'assistant_tools_kids.dart';
 part 'assistant_tools_spoiler.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_recommendations.dart';
@@ -326,6 +332,7 @@ final List<AssistantTool> assistantTools = [
   ..._insightTools,
   ..._requestTools,
   ..._findTools,
+  ..._discoverTools,
   ..._mediaTools,
   ..._playbackTools,
   ..._libraryDoctorTools,

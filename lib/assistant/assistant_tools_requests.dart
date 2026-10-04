@@ -99,6 +99,7 @@ final List<AssistantTool> _requestTools = [
       final client = _seerr(ctx);
       _requestLive(ctx, client);
       final candidates = _candidates(args);
+      final age = await _kidsAge(ctx);
       // Ten results at most in all, at least two per candidate.
       final perCandidate = (10 ~/ candidates.length).clamp(2, 8);
       final found = <SeerrMedia>[];
@@ -120,7 +121,7 @@ final List<AssistantTool> _requestTools = [
           );
         }
       }
-      return _requestOptions(ctx, client, found);
+      return _requestOptions(ctx, client, found, age);
     },
   ),
   AssistantTool(
@@ -172,6 +173,7 @@ final List<AssistantTool> _requestTools = [
       }
       final yearFrom = _yearArg(args, 'year_from');
       final yearTo = _yearArg(args, 'year_to');
+      final age = await _kidsAge(ctx);
 
       // The API documents date ranges and original language on /discover;
       // SeerrClient only passes genre, keywords and sortBy through yet. The
@@ -236,9 +238,10 @@ final List<AssistantTool> _requestTools = [
               .take(10);
       // Seerr's discover takes no original language, so only this page was
       // filtered: say so, the model must not claim the full catalog.
-      if (language != null)
+      if (language != null) {
         ignored.add({'filter': 'original_language', 'value': language, 'reason': 'first_page_only'});
-      final result = _requestOptions(ctx, client, picks);
+      }
+      final result = await _requestOptions(ctx, client, picks, age);
       return AssistantToolResult({
         ...result.data,
         if (ignored.isNotEmpty) 'ignored_filters': ignored,

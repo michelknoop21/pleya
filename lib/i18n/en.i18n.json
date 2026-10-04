@@ -1070,7 +1070,13 @@
     "basedOnPlezy": "Based on Plezy",
     "upstreamProject": "Upstream project",
     "privacyPolicy": "Privacy policy",
-    "licence": "Licence"
+    "licence": "Licence",
+    "sources": "Sources",
+    "tmdbSource": "TMDB: age rating, genres, cast, score, streaming services, trending and similar titles for Big P.",
+    "tmdbAttribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+    "wikidataSource": "Wikidata (CC0): age rating (MPA) of films for Big P.",
+    "tvmazeSource": "TVmaze (CC BY-SA): genres, runtime and score of series for Big P.",
+    "traktSource": "Trakt: age rating, genres, runtime and score for Big P."
   },
   "serverSelection": {
     "allServerConnectionsFailed": "Couldn't connect to any servers. Check your network.",
@@ -2292,6 +2298,15 @@
     "kindSubtitles": "Subtitles"
   },
   "assistant": {
+    "kids": {
+      "agesFirst": "First I need to know how old the children are.",
+      "noFit": "I have no title that suits the children's ages. Ask me another way.",
+      "header": "Pleya asks",
+      "title": "How old are the children?",
+      "body": "So I can keep the titles suitable. This stays on this device and with this profile only.",
+      "age": "${age} years",
+      "save": "Save and keep looking"
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI provider",
@@ -2573,7 +2588,21 @@
       "webSearchNoteCloud": "The description of a title you look for goes to Wikipedia and Ollama's web search.",
       "webSearchNoteOpenRouter": "The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.",
       "voice": "Big P's voice",
-      "voiceNote": "Short spoken reactions. Never while you dictate or watch something."
+      "voiceNote": "Short spoken reactions. Never while you dictate or watch something.",
+      "factsOnline": "Add online information",
+      "factsOnlineNote": "Big P then adds the age rating, genres, runtime, cast, score and streaming services of a title from TMDB, Trakt, TVmaze and Wikidata. Only the title or the title's ids go to those services, never your account or profile. With the switch off, Big P uses only your server and Seerr.",
+      "tmdbKey": "Your own TMDB key",
+      "tmdbKeyHelp": "Free to request at themoviedb.org (Settings > API). Paste the 'API Read Access Token'. Seerr has its own TMDB, so Big P also works without a key, with fewer details.",
+      "tmdbKeyStored": "Key saved",
+      "tmdbKeySave": "Save key",
+      "tmdbKeyClear": "Clear key",
+      "kidsAges": "Children's ages (this profile)",
+      "kidsAgesNone": "Not set",
+      "kidsAgesClear": "Clear ages",
+      "kidsAgesValue": "${ages} years",
+      "kidsProfile": "Children's profile",
+      "kidsProfileNote": "Big P only shows titles that suit the children's ages. Only for this profile, only on this device.",
+      "kidsProfileLocked": "Plex marks this account as restricted, so this is always on."
     },
     "tasks": {
       "working": "Working on ${count} tasks · ${done} done",
@@ -2591,6 +2620,7 @@
       },
       "choose": "Choose what to request",
       "cancelAll": "Cancel all",
+      "numbered": "Task ${n}",
       "cancelTask": "Cancel: ${title}"
     },
     "youAsked": "You asked:",
@@ -2646,7 +2676,11 @@
       "movie": "Movie",
       "show": "Series",
       "episode": "Episode",
-      "episodeCode": "S${season} E${episode}"
+      "episodeCode": "S${season} E${episode}",
+      "watchOn": "On: ${services}",
+      "more": "+${count}",
+      "allAges": "All",
+      "score": "Score ${score}"
     }
   }
 }

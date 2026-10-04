@@ -53,6 +53,7 @@ final List<AssistantTool> _generalTools = [
     serves: (ctx, id) => ctx.userClient(id) != null,
     run: (ctx, id, args) async {
       final query = _string(args, 'query');
+      final age = await _kidsAge(ctx);
       final client = ctx.userClient(id!)!;
       // Home's hidden libraries stay out, as in the app's own search.
       final items = filterHiddenLibraryItems([
@@ -67,11 +68,11 @@ final List<AssistantTool> _generalTools = [
         MediaKind.album,
         MediaKind.artist,
       };
-      final shown = items.where((i) => kinds.contains(i.kind)).take(10).toList();
+      final gated = await _gateTitles(ctx, items.where((i) => kinds.contains(i.kind)).take(10).toList(), _itemRef, age);
       return AssistantToolResult(
         {
           'items': [
-            for (final item in shown)
+            for (final (item, facts) in gated.kept)
               () {
                 ctx.showItem(id, item.id);
                 return {
@@ -80,15 +81,20 @@ final List<AssistantTool> _generalTools = [
                   if (item.grandparentTitle != null) 'series': clipText(item.grandparentTitle),
                   if (item.year != null) 'year': item.year,
                   'kind': item.kind.name,
+                  ..._factsField(facts, gated.region),
                 };
               }(),
           ],
+          ...gated.note,
           // Films and series it found are cards to open, not names in prose.
         },
-        display: AssistantMediaGrid([
-          for (final item in shown)
-            if (item.kind == MediaKind.movie || item.kind == MediaKind.show) (item: item, group: null),
-        ]),
+        display: AssistantMediaGrid(
+          [
+            for (final (item, _) in gated.kept)
+              if (item.kind == MediaKind.movie || item.kind == MediaKind.show) (item: item, group: null),
+          ],
+          facts: {for (final (item, facts) in gated.kept) item.globalKey: ?facts},
+        ),
       );
     },
   ),

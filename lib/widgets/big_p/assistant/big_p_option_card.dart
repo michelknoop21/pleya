@@ -10,6 +10,7 @@ import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import '../big_p_scale.dart';
 import '../../../widgets/seerr_poster_card.dart';
+import 'big_p_title_facts.dart';
 
 /// A Seerr status as the option and match cards show it, with its colour.
 (String, Color?) bigPRequestStatus(String status) => switch (status) {
@@ -127,7 +128,7 @@ class BigPOptionCard extends StatelessWidget {
         borderRadius: 18 * pt,
         disableScale: true,
         scrollOnlyWhenHidden: true,
-        semanticLabel: '${option.title}, $status',
+        semanticLabel: [option.title, status, ...BigPTitleFacts.describe(option.facts)].join(', '),
         automationId: AutomationIds.assistantOption,
         automationInstance: '$index',
         automationRole: 'list.item',
@@ -188,6 +189,7 @@ class BigPOptionCard extends StatelessWidget {
                         ),
                         compact ? pill : null,
                       ),
+                      BigPTitleFacts(facts: option.facts),
                     ],
                   ),
                 ),

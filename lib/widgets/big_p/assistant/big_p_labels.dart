@@ -272,7 +272,7 @@ String assistantPlainAnswer(String answer) => answer
 
 /// Big P's mood for the controller's stand; a waiting card wins.
 BigPMood bigPMood(AssistantController c) {
-  if (c.pending != null) return BigPMood.attentive;
+  if (c.pending != null || c.kidsAgesPrompt != null) return BigPMood.attentive;
   return switch (c.state) {
     AssistantSurfaceState.idle => BigPMood.idle,
     AssistantSurfaceState.listening => BigPMood.listening,

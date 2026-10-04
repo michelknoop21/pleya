@@ -5,6 +5,8 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
+import 'assistant_age_gate.dart';
+import 'assistant_title_facts.dart';
 import 'assistant_recommend_constraints.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
@@ -56,7 +58,11 @@ class AssistantToolContext {
     this.spoilers,
     this.personal,
     this.web,
+    this.titleFacts,
+    this.kidsAges,
+    this.region = assistantRegion,
     this.cancel,
+    this.kidsProfile,
   });
 
   final MultiServerManager servers;
@@ -105,7 +111,11 @@ class AssistantToolContext {
     spoilers: spoilers,
     personal: personal,
     web: web ?? this.web,
+    titleFacts: titleFacts,
+    kidsAges: kidsAges,
+    region: region,
     cancel: cancel ?? this.cancel,
+    kidsProfile: kidsProfile,
   );
 
   /// What this ask demands of recommendations; set by the run from the
@@ -142,6 +152,37 @@ class AssistantToolContext {
 
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;
+
+  /// Age ratings, genres, score and services per title; null leaves them out.
+  final TitleFactsService? titleFacts;
+
+  /// The ages of this profile's children, for the age gate. Null or empty
+  /// on a children's profile: the title tools answer `kids_ages_unknown` and
+  /// Pleya shows its ages card.
+  final Future<List<int>> Function()? kidsAges;
+
+  /// Whether the active profile is a children's profile
+  /// (`assistantIsKidsProfile`); read at the start of every ask. Null is an
+  /// adult profile.
+  final Future<bool> Function()? kidsProfile;
+
+  /// The region whose age ratings count (`NL`); the device's by default.
+  final String Function() region;
+
+  /// This ask runs on a children's profile ([kidsProfile]): titles pass only
+  /// through the age gate. On any other profile the whole kids machinery is
+  /// off.
+  bool kidsMode = false;
+
+  /// The youngest child's age once a title tool read it.
+  int? kidsAge;
+
+  /// Titles the age gate turned down this ask, with the rating that decided.
+  final List<({String title, int? year, String reason})> ageRejected = [];
+
+  /// Titles the age gate let through this ask: in kids mode the answer may
+  /// name only these.
+  final List<({String title, int? year})> ageAllowed = [];
 
   /// Shown job ids per server, with the title list_jobs gave them.
   final Map<String, Map<String, String>> _jobs = {};

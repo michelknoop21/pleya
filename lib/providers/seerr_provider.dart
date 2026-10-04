@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../mixins/disposable_change_notifier_mixin.dart';
 import '../services/seerr/seerr_account_store.dart';
@@ -18,7 +19,16 @@ typedef SeerrTestResult = ({String version, String? displayName, int permissions
 /// ([onActiveProfileChanged]) and generation guard so a late store load can't
 /// clobber a newer profile.
 class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
-  final SeerrAccountStore _store = SeerrAccountStore.instance;
+  /// [httpClient] and [store] are injection seams for tests; production uses
+  /// the default transport and [SeerrAccountStore.instance]. Every client swap
+  /// closes the previous [SeerrClient], which closes [httpClient] too, so only
+  /// inject a client that survives `close()` (such as `MockClient`).
+  SeerrProvider({http.Client? httpClient, SeerrAccountStore? store})
+    : _httpClient = httpClient,
+      _store = store ?? SeerrAccountStore.instance;
+
+  final http.Client? _httpClient;
+  final SeerrAccountStore _store;
 
   SeerrSession? _session;
   SeerrClient? _client;
@@ -85,7 +95,7 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
     String? plexToken,
   }) async {
     final provisional = SeerrSession(baseUrl: SeerrConstants.normalizeBaseUrl(baseUrl), authMode: mode, apiKey: apiKey);
-    final client = SeerrClient(provisional, plexTokenProvider: _resolvePlexToken);
+    final client = SeerrClient(provisional, plexTokenProvider: _resolvePlexToken, httpClient: _httpClient);
     try {
       final status = await client.getStatus(force: true);
       switch (mode) {
@@ -135,6 +145,7 @@ class SeerrProvider extends ChangeNotifier with DisposableChangeNotifierMixin {
             session,
             plexTokenProvider: _resolvePlexToken,
             onSessionUpdated: (s) => _onSessionUpdated(generation, boundUuid, s),
+            httpClient: _httpClient,
           );
   }
 

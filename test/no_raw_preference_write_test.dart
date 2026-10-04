@@ -174,6 +174,18 @@ void main() {
       1,
       'LAN discovery result; another network makes it wrong, and it is in the legacy prefs store',
     ),
+    'lib/assistant/assistant_kids_ages_store.dart': RawWriteRecord(
+      WriteCategory.runtimeCache,
+      1,
+      'the profile-delete sweep of the per-profile children\'s ages for Big P; registered as profile runtime '
+      'cache, so it never syncs',
+    ),
+    'lib/assistant/assistant_kids_profile_store.dart': RawWriteRecord(
+      WriteCategory.runtimeCache,
+      1,
+      'the profile-delete sweep of the per-profile children\'s profile switch for Big P; registered as profile '
+      'runtime cache, so it never syncs',
+    ),
     'lib/services/search_recency_store.dart': RawWriteRecord(
       WriteCategory.runtimeCache,
       3,
@@ -254,8 +266,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 100, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 27, reason: 'files containing them');
+    expect(total, 102, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 29, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {

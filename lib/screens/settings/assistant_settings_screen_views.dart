@@ -152,6 +152,7 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
           subtitle: s.voiceNote,
         ),
       ),
+      ..._factsSection(theme, config),
       ..._modelSection(theme),
       ..._errorLine(theme),
     ];

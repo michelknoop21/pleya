@@ -15,6 +15,7 @@ import '../big_p_scale.dart';
 import '../../../widgets/optimized_media_image.dart';
 import '../../../widgets/seerr_poster_card.dart';
 import 'big_p_option_card.dart';
+import 'big_p_title_facts.dart';
 
 /// One title find_title found (38-motion-7): poster, title and year, kind,
 /// where it can be played or its Seerr status, and a line of plot. Built
@@ -94,6 +95,8 @@ class BigPMatchCard extends StatelessWidget {
     final pill = status == null ? null : BigPStatusPill(label: status, color: statusColor, dense: compact);
     final low = match.confidence == 'low';
     final plot = _plot;
+    // The facts take the plot's lines, so a card with them is no taller.
+    final plotLines = (compact ? 1 : 2) - BigPTitleFacts.lineCount(match.facts, services: !dense);
     final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
     return GestureDetector(
       // FocusableWrapper only answers keys; on a touch screen a tap is Select.
@@ -113,7 +116,13 @@ class BigPMatchCard extends StatelessWidget {
         // A request card while Big P is still checking stays a stop (dimmed,
         // inert); a title with nothing to open or request is no stop at all.
         canRequestFocus: onSelect != null || match.request != null,
-        semanticLabel: [match.title, ?match.year?.toString(), _kind, ?status].join(', '),
+        semanticLabel: [
+          match.title,
+          ?match.year?.toString(),
+          _kind,
+          ?status,
+          ...BigPTitleFacts.describe(match.facts),
+        ].join(', '),
         automationId: AutomationIds.assistantMatch,
         automationInstance: '$index',
         automationRole: 'list.item',
@@ -205,9 +214,10 @@ class BigPMatchCard extends StatelessWidget {
                         ),
                         pill,
                       ),
-                      if (plot.isNotEmpty && !dense) ...[
+                      BigPTitleFacts(facts: match.facts, services: !dense),
+                      if (plot.isNotEmpty && !dense && plotLines > 0) ...[
                         SizedBox(height: 4 * pt),
-                        Text(plot, maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis, style: muted),
+                        Text(plot, maxLines: plotLines, overflow: TextOverflow.ellipsis, style: muted),
                       ],
                     ],
                   ),

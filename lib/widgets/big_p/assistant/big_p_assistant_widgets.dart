@@ -321,9 +321,14 @@ class _BigPButtonState extends State<BigPButton> {
                     Icon(widget.icon, size: TvHig.caption1 * pt, color: ink),
                     SizedBox(width: 12 * pt),
                   ],
-                  Text(
-                    widget.label,
-                    style: TextStyle(color: ink, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w700),
+                  // Wraps rather than overflows when the button is given less
+                  // width than its label (an iPhone SE balloon).
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: ink, fontSize: TvHig.caption1 * pt, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),

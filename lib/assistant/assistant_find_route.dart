@@ -67,6 +67,19 @@ Future<FindResult> findTitles(
   webCache ?? AssistantWebCache.shared,
 ).run(headStart);
 
+/// Links [matches] (ids already set) to every visible library copy, and to
+/// Seerr's status when they carry none, as find_title does for its own.
+Future<void> assistantLinkLibrary(AssistantToolContext ctx, List<FindMatch> matches) {
+  final run = FindRun(
+    ctx,
+    const FindQuery(),
+    fastSearchDeadline,
+    AssistantPlotIndexCache.shared,
+    AssistantWebCache.shared,
+  );
+  return Future.wait([for (final m in matches) run._link(m)]).whenComplete(run._abort.abort);
+}
+
 class FindRun {
   FindRun(this.ctx, this.q, this.budget, this.plots, this.webCache);
   final AssistantToolContext ctx;
