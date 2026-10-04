@@ -107,6 +107,8 @@ Nothing user-facing since the last published build.
 - Remove the last item from Continue Watching and check where focus lands.
 - Turn on "On now" in Home layout and tune a channel on a Plex server with Live TV.
 
+## 2.8.1 · builds 299 to 328 · 4 October 2026 · earlier TestFlight builds
+
 ### New
 
 - **Liquid Glass surfaces behind a switch in Appearance.** The tab bar, player controls and
