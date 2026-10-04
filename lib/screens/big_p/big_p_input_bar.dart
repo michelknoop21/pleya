@@ -1,0 +1,130 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
+
+import '../../assistant/assistant_controller.dart';
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
+import '../../focus/focusable_text_field.dart';
+import '../../i18n/strings.g.dart';
+import '../../theme/mono_tokens.dart';
+import 'big_p_mobile_session.dart';
+
+/// The question field under Big P (39 B, D). Focus starts listening, so his
+/// voice keeps quiet while the user types or dictates with the iOS
+/// keyboard's mic; leaving it empty stops listening; send asks.
+class BigPInputBar extends StatefulWidget {
+  const BigPInputBar({super.key, required this.session});
+
+  final BigPMobileSession session;
+
+  @override
+  State<BigPInputBar> createState() => _BigPInputBarState();
+}
+
+class _BigPInputBarState extends State<BigPInputBar> {
+  final _text = TextEditingController();
+  final _focus = FocusNode(debugLabel: 'bigp.input');
+
+  AssistantController get _c => widget.session.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocus);
+    _text.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _onFocus() {
+    if (_focus.hasFocus) {
+      if (_c.state != AssistantSurfaceState.working) _c.beginListening(context: widget.session.pendingContext);
+    } else if (_text.text.trim().isEmpty && _c.state == AssistantSurfaceState.listening) {
+      _c.cancelListening();
+    }
+  }
+
+  void _send() {
+    final question = _text.text.trim();
+    if (question.isEmpty) return;
+    _text.clear();
+    unawaited(_c.submit(question));
+    _focus.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tk = tokens(context);
+    final ready = _text.text.trim().isNotEmpty;
+    // bodyMedium, not the field's default bodyLarge: the theme gives only
+    // bodyMedium and titleMedium the app's font.
+    final style = Theme.of(context).textTheme.bodyMedium!.copyWith(color: tk.text, fontSize: 16);
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.only(left: 16, right: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(23),
+        border: Border.all(color: const Color(0x24FFFFFF)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: AutomationNode(
+              id: AutomationIds.bigpInput,
+              role: 'field',
+              focusNode: _focus,
+              child: FocusableTextField(
+                controller: _text,
+                focusNode: _focus,
+                textInputAction: TextInputAction.send,
+                textCapitalization: TextCapitalization.sentences,
+                style: style,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: t.assistant.idle.ask,
+                  hintStyle: style.copyWith(color: tk.text.withValues(alpha: 0.45)),
+                ),
+                onSubmitted: (_) => _send(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _send,
+            child: Semantics(
+              button: true,
+              label: t.assistant.idle.ask,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ready ? Colors.white : const Color(0x24FFFFFF),
+                ),
+                child: Icon(
+                  Symbols.arrow_upward_rounded,
+                  size: 20,
+                  weight: 600,
+                  color: ready ? Colors.black : tk.text.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

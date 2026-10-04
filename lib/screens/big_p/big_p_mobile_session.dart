@@ -42,6 +42,10 @@ class BigPMobileSession extends ChangeNotifier {
 
   BigPStage get stage => _stage;
 
+  /// A confirmation waits while Big P is not out (a pick ran on after a
+  /// park): the face button shows a dot, Big P stays put.
+  bool get waiting => _stage != BigPStage.out && controller.pending != null;
+
   /// The screen Big P was summoned from, for [AssistantController.beginListening].
   AssistantScreenContext? get pendingContext => _pendingContext;
 

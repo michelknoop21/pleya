@@ -12,12 +12,16 @@ import 'mobile_tab_bar.dart';
 /// hands the bar's height to the tab roots as `MediaQuery` bottom padding;
 /// the reconnect strip then floats too, as a pill with the capsule's side
 /// margins. With glass off this is the Scaffold `MainScreen` always had.
+///
+/// [overlay] lies over all of it, tab bar included (39 B: Big P's dim covers
+/// the bar).
 class MobileMainScaffold extends StatelessWidget {
-  const MobileMainScaffold({super.key, required this.body, required this.tabBar, this.reconnectStrip});
+  const MobileMainScaffold({super.key, required this.body, required this.tabBar, this.reconnectStrip, this.overlay});
 
   final Widget body;
   final Widget tabBar;
   final Widget? reconnectStrip;
+  final Widget? overlay;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,7 @@ class MobileMainScaffold extends StatelessWidget {
       builder: (context, _, _) {
         final floats = mobileTabBarFloats(context);
         final strip = reconnectStrip;
-        return Scaffold(
+        final scaffold = Scaffold(
           extendBody: floats,
           body: body,
           bottomNavigationBar: Column(
@@ -46,6 +50,9 @@ class MobileMainScaffold extends StatelessWidget {
             ],
           ),
         );
+        final overlay = this.overlay;
+        if (overlay == null) return scaffold;
+        return Stack(fit: StackFit.expand, children: [scaffold, overlay]);
       },
     );
   }

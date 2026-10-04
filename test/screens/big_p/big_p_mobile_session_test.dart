@@ -223,6 +223,27 @@ void main() {
     expect(c.resets, 0);
   });
 
+  test('a confirmation that arrives while parked waits without bringing Big P out', () {
+    session.summon();
+    answer();
+    session.park();
+    expect(session.waiting, isFalse);
+    c
+      ..state = AssistantSurfaceState.working
+      ..pending = AssistantPendingAction(
+        kind: AssistantActionKind.createUser,
+        serverId: ServerId('nas'),
+        serverName: 'NAS',
+        subject: 'Sam',
+        execute: ({password}) async => const {},
+      )
+      ..emit();
+    expect(session.stage, BigPStage.parked);
+    expect(session.waiting, isTrue);
+    session.summon();
+    expect(session.waiting, isFalse);
+  });
+
   test('remainingTitles counts library titles not opened yet', () {
     final servers = MultiServerManager();
     addTearDown(servers.dispose);

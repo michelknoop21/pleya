@@ -14,9 +14,12 @@ class PleyaKeychain {
 
   final MethodChannel _channel;
 
+  /// Test-only override; nothing in the app sets this.
+  static bool debugForceSupported = false;
+
   /// iOS and tvOS register the channel; every other platform keeps its own
   /// storage.
-  static bool get supported => !kIsWeb && (Platform.isIOS || PlatformDetector.isAppleTV());
+  static bool get supported => debugForceSupported || (!kIsWeb && (Platform.isIOS || PlatformDetector.isAppleTV()));
 
   Future<String?> read(String key) => _channel.invokeMethod<String>('read', {'key': key});
 

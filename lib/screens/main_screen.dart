@@ -53,6 +53,8 @@ import '../mixins/mounted_set_state_mixin.dart';
 import '../mixins/refreshable.dart';
 import '../widgets/overlay_sheet.dart';
 import '../mixins/tab_visibility_aware.dart';
+import 'big_p/big_p_mobile_host.dart';
+import 'big_p/big_p_mobile_session.dart';
 import 'main/mobile_main_scaffold.dart';
 import 'main/mobile_tab_bar.dart';
 import '../navigation/navigation_tabs.dart';
@@ -2893,12 +2895,17 @@ class _MainScreenState extends State<MainScreen>
       canPop: false,
       onSystemBack: () {
         if (BackKeyCoordinator.consumeIfHandled()) return;
+        // Back while Big P is out parks him (ignored while a card waits).
+        final bigP = context.read<BigPMobileSession?>();
+        if (bigP?.stage == BigPStage.out) return bigP!.park();
         _handleMainBack();
       },
       child: ScaffoldMessenger(
         key: ProfileNavigationScope.of(context).mainScaffoldMessengerKey,
         child: MobileMainScaffold(
           body: _buildTickerAwareStack(),
+          // Hides itself without a Big P session (V4: iPhone and iPad only).
+          overlay: const BigPMobileHost(),
           // Reconnect bar when offline
           reconnectStrip: _isOffline
               ? Material(

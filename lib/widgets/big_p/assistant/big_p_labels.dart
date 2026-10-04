@@ -221,10 +221,11 @@ final _inlineList = RegExp(r':\s*«[^»\n]*»(?:[\s,;]+(?:[^\s«»]{1,4}\s+)?«[
 
 /// "Hoi Michel, ..." or, without a profile name, "Hoi, ...": the space
 /// the name leaves before the punctuation goes too, in every language.
-String assistantGreeting(String name) => t.assistant.idle
-    .greeting(name: name.trim())
-    .replaceAll(RegExp(r' +(?=[,.!?])'), '')
-    .replaceAll(RegExp(' {2,}'), ' ');
+/// [greeting] picks the line (the iPhone balloon has its own).
+String assistantGreeting(String name, {String Function({required Object name})? greeting}) =>
+    (greeting ?? t.assistant.idle.greeting)(
+      name: name.trim(),
+    ).replaceAll(RegExp(r' +(?=[,.!?])'), '').replaceAll(RegExp(' {2,}'), ' ');
 
 /// The lead above title cards: [assistantHeadline] without the titles the
 /// cards show, as a list on their own lines or as "kandidaten: «A», «B»".
