@@ -65,6 +65,20 @@ class AssistantToolContext {
   final AbortController? cancel;
   bool get cancelled => cancel?.isAborted ?? false;
 
+  /// Diagnosis tasks never inherit the ordinary immediate administration path.
+  bool libraryDoctorMode = false;
+  final Set<String> libraryDoctorActions = {};
+  void Function()? libraryDoctorCheck;
+  String Function(String language)? libraryDoctorAnswer;
+  String? get libraryDoctorError {
+    try {
+      libraryDoctorCheck?.call();
+      return libraryDoctorMode && cancelled ? 'cancelled' : null;
+    } on AssistantToolError catch (e) {
+      return e.code;
+    }
+  }
+
   /// Same servers, screen and services, none of the per-run state.
   AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web}) => AssistantToolContext(
     servers: servers,

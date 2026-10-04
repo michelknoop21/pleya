@@ -92,10 +92,16 @@ final List<AssistantTool> _adminTools = [
     risk: AssistantToolRisk.mutation,
     properties: const {
       'library_id': {'type': 'string'},
+      'doctor_option_id': {'type': 'string'},
     },
     required: const ['library_id'],
-    serves: (ctx, id) => ctx.admin<LibraryScanClient>(id) != null,
+    serves: (ctx, id) =>
+        ctx.admin<LibraryScanClient>(id) != null &&
+        (!ctx.libraryDoctorMode || ctx.libraryDoctorActions.contains('scan_library')),
     run: (ctx, id, args) async {
+      if (ctx.libraryDoctorMode || args.containsKey('doctor_option_id')) {
+        return _doctorPending(ctx, id!, args, AssistantActionKind.scanLibrary);
+      }
       final library = await ctx.library(id!, _string(args, 'library_id'));
       await ctx.admin<LibraryScanClient>(id)!.scanLibrary(library.id);
       return AssistantToolResult(
@@ -114,10 +120,16 @@ final List<AssistantTool> _adminTools = [
     risk: AssistantToolRisk.mutation,
     properties: const {
       'item_id': {'type': 'string'},
+      'doctor_option_id': {'type': 'string'},
     },
     required: const ['item_id'],
-    serves: (ctx, id) => ctx.admin<ItemMetadataRefreshClient>(id) != null,
+    serves: (ctx, id) =>
+        ctx.admin<ItemMetadataRefreshClient>(id) != null &&
+        (!ctx.libraryDoctorMode || ctx.libraryDoctorActions.contains('refresh_metadata')),
     run: (ctx, id, args) async {
+      if (ctx.libraryDoctorMode || args.containsKey('doctor_option_id')) {
+        return _doctorPending(ctx, id!, args, AssistantActionKind.refreshMetadata);
+      }
       final itemId = _string(args, 'item_id');
       ctx.requireShownItem(id!, itemId);
       final item = await ctx.adminClient(id)!.fetchItem(itemId);

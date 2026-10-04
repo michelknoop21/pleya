@@ -266,6 +266,7 @@ class AssistantController extends ChangeNotifier {
     AssistantProviderConfig config,
     Future<void> Function() refreshHealth, {
     bool allowSplit = false,
+    bool libraryDoctorScope = false,
   }) async {
     AssistantModelClient? model;
     try {
@@ -285,6 +286,7 @@ class AssistantController extends ChangeNotifier {
         cancel: task.cancel,
         allowSplit: allowSplit,
         originalSpoilerPrompt: task.originalSpoilerPrompt,
+        originalLibraryDoctorScope: libraryDoctorScope,
         budget: task.budget,
         operations: _operations,
         mutations: _mutations,
@@ -317,23 +319,33 @@ class AssistantController extends ChangeNotifier {
           ..remove(task)
           ..addAll(children);
         _update();
-        await Future.wait([for (final child in children) _runTask(child, config, refreshHealth)]);
+        final doctorScope = libraryDoctorScope || assistantNeedsLibraryDoctorScope(task.prompt);
+        await Future.wait([
+          for (final child in children) _runTask(child, config, refreshHealth, libraryDoctorScope: doctorScope),
+        ]);
         return;
       }
       task.lastEnd = result.end;
       task.providerError = result.providerError;
       task.modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
       final playbackCurrent = result.playbackEvidenceCurrent?.call() ?? true;
+      final doctorError = result.libraryDoctorError?.call();
+      if (doctorError != null) {
+        task.displays.clear();
+        task.steps.clear();
+      }
       if (!playbackCurrent && (task.originalSpoilerPrompt != null || result.spoilerPrompt != null)) {
         // Only this current task: streamed evidence must disappear when its
         // final lease closes. Other tasks/generations retain their results.
         task.displays.clear();
         task.steps.clear();
       }
-      task.error = playbackCurrent
-          ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
-          : 'playback_session_changed';
-      task.answer = playbackCurrent ? result.text : '';
+      task.error =
+          doctorError ??
+          (playbackCurrent
+              ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
+              : 'playback_session_changed');
+      task.answer = playbackCurrent && doctorError == null ? result.text : '';
       task.actions.addAll(result.actions);
       task.status = _outcomeStatus(task.error);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
