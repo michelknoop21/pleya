@@ -2274,6 +2274,25 @@
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI-provider",
+    "mobile": {
+      "greeting": "Hoi ${name}, wat zoeken we?",
+      "examples": [
+        "Wat kan ik vanavond kijken?",
+        "Welke films heb ik nog niet gezien?",
+        "Wie heeft deze week het meest gekeken?"
+      ],
+      "noModelTitle": "Ik heb nog geen brein.",
+      "noModelBody": "Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.",
+      "setup": "Model instellen",
+      "icloudNote": "Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.",
+      "listening": "Ik luister…",
+      "listeningHint": "Spreek je vraag in, of typ hem.",
+      "askFurther": "Vraag verder",
+      "moreTitles": "Nog ${n} titels",
+      "searchAsk": "Vraag het Big P",
+      "faceButton": "Big P oproepen",
+      "notConfirmedYet": "Kies eerst: bevestigen of annuleren."
+    },
     "locked": {
       "badge": "Niet beschikbaar op dit account",
       "title": "Big P staat voor dit account nog niet aan",

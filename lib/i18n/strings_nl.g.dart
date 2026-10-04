@@ -2478,6 +2478,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get tileTitle => 'Big P';
 	@override String get tileSubtitle => 'Pleya Assistant';
 	@override String get providerLabel => 'AI-provider';
+	@override late final _TranslationsAssistantMobileNl mobile = _TranslationsAssistantMobileNl._(_root);
 	@override late final _TranslationsAssistantLockedNl locked = _TranslationsAssistantLockedNl._(_root);
 	@override late final _TranslationsAssistantSetupNl setup = _TranslationsAssistantSetupNl._(_root);
 	@override late final _TranslationsAssistantIdleNl idle = _TranslationsAssistantIdleNl._(_root);
@@ -3114,6 +3115,32 @@ class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn
 	// Translations
 	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
 	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: assistant.mobile
+class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
+	_TranslationsAssistantMobileNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String greeting({required Object name}) => 'Hoi ${name}, wat zoeken we?';
+	@override List<String> get examples => [
+		'Wat kan ik vanavond kijken?',
+		'Welke films heb ik nog niet gezien?',
+		'Wie heeft deze week het meest gekeken?',
+	];
+	@override String get noModelTitle => 'Ik heb nog geen brein.';
+	@override String get noModelBody => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.';
+	@override String get setup => 'Model instellen';
+	@override String get icloudNote => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.';
+	@override String get listening => 'Ik luister…';
+	@override String get listeningHint => 'Spreek je vraag in, of typ hem.';
+	@override String get askFurther => 'Vraag verder';
+	@override String moreTitles({required Object n}) => 'Nog ${n} titels';
+	@override String get searchAsk => 'Vraag het Big P';
+	@override String get faceButton => 'Big P oproepen';
+	@override String get notConfirmedYet => 'Kies eerst: bevestigen of annuleren.';
 }
 
 // Path: assistant.locked
@@ -5615,6 +5642,21 @@ extension on TranslationsNl {
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
+			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
+			'assistant.mobile.examples.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.mobile.examples.1' => 'Welke films heb ik nog niet gezien?',
+			'assistant.mobile.examples.2' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
+			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
+			'assistant.mobile.setup' => 'Model instellen',
+			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
+			'assistant.mobile.listening' => 'Ik luister…',
+			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
+			'assistant.mobile.askFurther' => 'Vraag verder',
+			'assistant.mobile.moreTitles' => ({required Object n}) => 'Nog ${n} titels',
+			'assistant.mobile.searchAsk' => 'Vraag het Big P',
+			'assistant.mobile.faceButton' => 'Big P oproepen',
+			'assistant.mobile.notConfirmedYet' => 'Kies eerst: bevestigen of annuleren.',
 			'assistant.locked.badge' => 'Niet beschikbaar op dit account',
 			'assistant.locked.title' => 'Big P staat voor dit account nog niet aan',
 			'assistant.locked.body' => 'Met Big P vraag je Pleya om beheertaken uit te voeren, zoals een bibliotheek scannen of een gebruiker aanmaken. Het is een functie van Pleya die op dit account nog niet beschikbaar is.',

@@ -5987,6 +5987,7 @@ class TranslationsAssistantEn {
 	/// en: 'AI provider'
 	String get providerLabel => 'AI provider';
 
+	late final TranslationsAssistantMobileEn mobile = TranslationsAssistantMobileEn.internal(_root);
 	late final TranslationsAssistantLockedEn locked = TranslationsAssistantLockedEn.internal(_root);
 	late final TranslationsAssistantSetupEn setup = TranslationsAssistantSetupEn.internal(_root);
 	late final TranslationsAssistantIdleEn idle = TranslationsAssistantIdleEn.internal(_root);
@@ -7268,6 +7269,57 @@ class TranslationsTvMyPleyaSemanticsEn {
 
 	/// en: '${title}. ${subtitle}. ${count}'
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: assistant.mobile
+class TranslationsAssistantMobileEn {
+	TranslationsAssistantMobileEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hi ${name}, what are we looking for?'
+	String greeting({required Object name}) => 'Hi ${name}, what are we looking for?';
+
+	List<String> get examples => [
+		'What can I watch tonight?',
+		'Which movies haven\'t I seen yet?',
+		'Who watched the most this week?',
+	];
+
+	/// en: 'I don't have a brain yet.'
+	String get noModelTitle => 'I don\'t have a brain yet.';
+
+	/// en: 'Pick a language model and I'll find movies, request titles and run your servers.'
+	String get noModelBody => 'Pick a language model and I\'ll find movies, request titles and run your servers.';
+
+	/// en: 'Set up model'
+	String get setup => 'Set up model';
+
+	/// en: 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.'
+	String get icloudNote => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.';
+
+	/// en: 'Listening…'
+	String get listening => 'Listening…';
+
+	/// en: 'Say your question, or type it.'
+	String get listeningHint => 'Say your question, or type it.';
+
+	/// en: 'Ask more'
+	String get askFurther => 'Ask more';
+
+	/// en: '${n} more titles'
+	String moreTitles({required Object n}) => '${n} more titles';
+
+	/// en: 'Ask Big P'
+	String get searchAsk => 'Ask Big P';
+
+	/// en: 'Summon Big P'
+	String get faceButton => 'Summon Big P';
+
+	/// en: 'Choose first: confirm or cancel.'
+	String get notConfirmedYet => 'Choose first: confirm or cancel.';
 }
 
 // Path: assistant.locked
@@ -10187,6 +10239,21 @@ extension on Translations {
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
+			'assistant.mobile.greeting' => ({required Object name}) => 'Hi ${name}, what are we looking for?',
+			'assistant.mobile.examples.0' => 'What can I watch tonight?',
+			'assistant.mobile.examples.1' => 'Which movies haven\'t I seen yet?',
+			'assistant.mobile.examples.2' => 'Who watched the most this week?',
+			'assistant.mobile.noModelTitle' => 'I don\'t have a brain yet.',
+			'assistant.mobile.noModelBody' => 'Pick a language model and I\'ll find movies, request titles and run your servers.',
+			'assistant.mobile.setup' => 'Set up model',
+			'assistant.mobile.icloudNote' => 'Your setting follows you to your iPad and Apple TV through iCloud Keychain.',
+			'assistant.mobile.listening' => 'Listening…',
+			'assistant.mobile.listeningHint' => 'Say your question, or type it.',
+			'assistant.mobile.askFurther' => 'Ask more',
+			'assistant.mobile.moreTitles' => ({required Object n}) => '${n} more titles',
+			'assistant.mobile.searchAsk' => 'Ask Big P',
+			'assistant.mobile.faceButton' => 'Summon Big P',
+			'assistant.mobile.notConfirmedYet' => 'Choose first: confirm or cancel.',
 			'assistant.locked.badge' => 'Not available on this account',
 			'assistant.locked.title' => 'Big P is not turned on for this account yet',
 			'assistant.locked.body' => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.',
