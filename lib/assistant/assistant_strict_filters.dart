@@ -13,6 +13,7 @@ class AssistantStrictFilters {
     this.excludeGenres = const {},
     this.minRuntimeMinutes,
     this.maxRuntimeMinutes,
+    this.maxRuntimeExclusive = false,
     this.yearFrom,
     this.yearTo,
     this.audioLanguages = const {},
@@ -25,6 +26,7 @@ class AssistantStrictFilters {
   final Set<String> excludeGenres;
   final int? minRuntimeMinutes;
   final int? maxRuntimeMinutes;
+  final bool maxRuntimeExclusive;
   final int? yearFrom;
   final int? yearTo;
   final Set<String> audioLanguages;
@@ -47,6 +49,7 @@ class AssistantStrictFilters {
     },
     'min_runtime_minutes': {'type': 'integer'},
     'max_runtime_minutes': {'type': 'integer'},
+    'max_runtime_exclusive': {'type': 'boolean', 'description': 'True for strictly under max_runtime_minutes.'},
     'year_from': {'type': 'integer'},
     'year_to': {'type': 'integer'},
     'audio_languages': {
@@ -83,6 +86,10 @@ class AssistantStrictFilters {
 
     final min = integer('min_runtime_minutes', 1, 1440);
     final max = integer('max_runtime_minutes', 1, 1440);
+    final exclusive = args['max_runtime_exclusive'] ?? false;
+    if (exclusive is! bool || exclusive && max == null) {
+      throw const AssistantToolError('invalid_max_runtime_exclusive');
+    }
     final from = integer('year_from', 1880, 2200);
     final to = integer('year_to', 1880, 2200);
     if (min != null && max != null && min > max) throw const AssistantToolError('invalid_max_runtime_minutes');
@@ -101,6 +108,7 @@ class AssistantStrictFilters {
       excludeGenres: strings('exclude_genres'),
       minRuntimeMinutes: min,
       maxRuntimeMinutes: max,
+      maxRuntimeExclusive: exclusive,
       yearFrom: from,
       yearTo: to,
       audioLanguages: strings('audio_languages'),
@@ -124,7 +132,10 @@ class AssistantStrictFilters {
       final duration = item.durationMs;
       if (duration == null || duration <= 0) return false;
       if (minRuntimeMinutes != null && duration < minRuntimeMinutes! * 60000) return false;
-      if (maxRuntimeMinutes != null && duration > maxRuntimeMinutes! * 60000) return false;
+      if (maxRuntimeMinutes != null &&
+          (maxRuntimeExclusive ? duration >= maxRuntimeMinutes! * 60000 : duration > maxRuntimeMinutes! * 60000)) {
+        return false;
+      }
     }
     if (yearFrom != null || yearTo != null) {
       final year = item.year;

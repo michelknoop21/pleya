@@ -265,6 +265,8 @@ Future<AssistantToolOutcome> _recommendTogether(
   for (final match in shown) ctx.showItem(id, match.id);
   return AssistantToolResult({
     'status': 'strict_cohort_results',
+    'can_become_home_row': false,
+    'home_row_unavailable_reason': 'Participant access and watch evidence cannot be replayed by a saved Home row.',
     'server_id': id.value,
     'profile_aliases': aliases,
     'identity_scope': 'server_user_shared_bindings_share_one_history',
