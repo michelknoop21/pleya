@@ -127,7 +127,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = context.read<AssistantController?>();
     if (c == null) return;
     // Nothing reads availability at app start; the press is the first ask.
-    if (c.availability == AssistantAvailability.hidden) await c.refreshAvailability();
+    // Short of ready it asks again: a keychain that failed may have recovered.
+    if (c.availability != AssistantAvailability.ready) await c.refreshAvailability();
     if (!_remoteIsFree) return;
     switch (c.availability) {
       case AssistantAvailability.hidden:

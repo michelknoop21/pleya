@@ -78,7 +78,8 @@ class BigPMobileSession extends ChangeNotifier {
         _now().difference(resultAt) >= keepAnswer) {
       controller.reset();
     }
-    if (controller.availability == AssistantAvailability.hidden) unawaited(controller.refreshAvailability());
+    // Short of ready it asks again: a keychain that failed may have recovered.
+    if (controller.availability != AssistantAvailability.ready) unawaited(controller.refreshAvailability());
     // From the peek the answer's own context stays, for its follow-ups.
     if (context == null && _stage != BigPStage.peek) controller.clearScreenContext();
     _pendingContext = context;

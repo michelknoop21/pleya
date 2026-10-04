@@ -110,6 +110,14 @@ void main() {
     await settle(tester);
   }
 
+  test('an action bar gives Big P no slot while hidden or without the rollout flag', () {
+    for (final a in AssistantAvailability.values) {
+      expect(showsBigPAction(rolloutEnabled: false, availability: a), isFalse, reason: 'flag off, $a');
+      expect(showsBigPAction(rolloutEnabled: true, availability: a), a != AssistantAvailability.hidden, reason: '$a');
+    }
+    expect(showsBigPAction(rolloutEnabled: true, availability: null), isFalse);
+  });
+
   testWidgets('the face button is hidden while Big P is hidden, shown at needsSetup', (tester) async {
     c.availability = AssistantAvailability.hidden;
     await pump(tester);

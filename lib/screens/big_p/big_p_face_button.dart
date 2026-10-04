@@ -12,6 +12,12 @@ import '../../theme/mono_theme.dart';
 import '../../widgets/big_p/big_p_avatar.dart';
 import 'big_p_mobile_session.dart';
 
+/// Whether an action bar gives Big P a slot at all. A slot for a button that
+/// shrinks to nothing would still take keyboard and D-pad focus, so a bar
+/// leaves it out without the rollout flag and while he is hidden.
+bool showsBigPAction({required bool rolloutEnabled, required AssistantAvailability? availability}) =>
+    rolloutEnabled && availability != null && availability != AssistantAvailability.hidden;
+
 /// Big P's face in the mobile page header (39 A), between search and the
 /// profile avatar. A tap brings him out; while he is out the button is an
 /// empty ring (39 B). A confirmation that came in while he was parked shows

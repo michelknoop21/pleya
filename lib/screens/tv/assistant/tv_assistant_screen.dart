@@ -258,10 +258,13 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
 
   void _openSetup() {
     Widget builder(BuildContext _) => const AssistantSettingsScreen();
-    // The store's change signal refreshes availability on save.
-    if (openTvContentRoute(id: 'tvAssistantSetup', builder: builder) == null) {
-      unawaited(Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: builder)));
-    }
+    final c = context.read<AssistantController?>();
+    // A save refreshes through the store's change signal; the close reads
+    // again too, so a keychain that recovered meanwhile ends the set-up gate.
+    final closed =
+        openTvContentRoute(id: 'tvAssistantSetup', builder: builder) ??
+        Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: builder));
+    unawaited(closed.then((_) => c?.refreshAvailability()));
   }
 
   String _servers() {

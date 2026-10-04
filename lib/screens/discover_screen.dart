@@ -27,6 +27,8 @@ import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
+import '../assistant/assistant_controller.dart';
+import '../assistant/assistant_entitlement.dart';
 import 'big_p/big_p_face_button.dart';
 import 'big_p/big_p_mobile_session.dart';
 import '../providers/discover_refresh_policy.dart';
@@ -368,6 +370,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _heroFocusNode = FocusNode(debugLabel: 'hero_section');
     _heroFocusNode.addListener(_onHeroFocusChanged);
     _discover = context.read<DiscoverProvider>();
+    // The iPad bar has no Big P slot until availability is known, so the
+    // button cannot ask for it itself (R1: one light read, only with the flag).
+    if (AssistantEntitlement.rolloutEnabled) {
+      unawaited(context.read<BigPMobileSession?>()?.controller.refreshAvailability());
+    }
     _seenLoadGeneration = _discover.loadGeneration;
     _discover.addListener(_onDiscoverChanged);
     _updateHubKeys();
@@ -1284,9 +1291,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           ),
                         ),
                         // Big P on iPad (39 I). The iPhone has him in its page
-                        // header; the session exists on iPhone and iPad only and
-                        // the button hides itself while he is unavailable.
-                        if (context.watch<BigPMobileSession?>() case final bigP?)
+                        // header; the session exists on iPhone and iPad only.
+                        // No slot while he is hidden, like Now Watching above.
+                        if (context.watch<BigPMobileSession?>() case final bigP?
+                            when showsBigPAction(
+                              rolloutEnabled: AssistantEntitlement.rolloutEnabled,
+                              availability: context.select<AssistantController?, AssistantAvailability?>(
+                                (c) => c?.availability,
+                              ),
+                            ))
                           FocusableAction(
                             onPressed: () => bigP.stage == BigPStage.out ? bigP.park() : bigP.summon(),
                             child: const BigPFaceButton(),

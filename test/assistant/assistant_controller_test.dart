@@ -12,6 +12,7 @@ import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/seerr/seerr_client.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
@@ -258,8 +259,13 @@ void main() {
     await c.refreshAvailability();
     expect(c.availability, AssistantAvailability.needsSetup);
 
+    // The keychain recovers; the next summon reads again instead of keeping
+    // the set-up gate.
     failure = null;
-    await c.refreshAvailability();
+    final session = BigPMobileSession(c);
+    addTearDown(session.dispose);
+    session.summon();
+    await pumpEventQueue();
     expect(c.availability, AssistantAvailability.ready);
   });
 

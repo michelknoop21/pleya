@@ -106,13 +106,16 @@ void main() {
     expect(session.takeQuestion(), isNull);
   });
 
-  test('a hidden controller is asked again at summon', () {
+  test('a controller short of ready is asked again at summon', () {
     c.availability = AssistantAvailability.hidden;
     session.summon();
     expect(c.refreshes, 1);
+    c.availability = AssistantAvailability.needsSetup;
+    session.summon();
+    expect(c.refreshes, 2);
     c.availability = AssistantAvailability.ready;
     session.summon();
-    expect(c.refreshes, 1);
+    expect(c.refreshes, 2);
   });
 
   test('the answer stays after park and summon', () {

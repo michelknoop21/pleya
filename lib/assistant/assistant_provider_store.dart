@@ -50,9 +50,11 @@ class AssistantProviderStore {
   PleyaKeychain? get _keychain => _injectedKeychain ?? (PleyaKeychain.supported ? const PleyaKeychain() : null);
 
   /// Set while the prefs blob holds a save the keychain refused. Its value is
-  /// the fingerprint of the synced item that save replaced (`unknown` when
-  /// that read failed too): the blob beats only that item, never a newer one
-  /// another device saved since. Device-local.
+  /// the fingerprint of the synced item that save replaced: the blob beats
+  /// only that item, never a newer one another device saved since. `unknown`
+  /// when that read failed too: the blob then goes up only into an empty
+  /// keychain, a decodable item wins over it and an undecodable one is left
+  /// alone. Device-local.
   static const String pendingKey = 'assistant_provider_pending';
 
   /// The keychain first, then the old prefs blob, which moves to the keychain
@@ -76,17 +78,21 @@ class AssistantProviderStore {
     var legacy = await _readLegacy();
     final marker = prefs.getString(pendingKey);
     if (legacy != null && marker != null) {
-      // A save the keychain refused earlier wins only while the synced item
-      // is still the one it was saved over (or that could not be read then).
-      if (keychainError != null || marker == _unknown || marker == _fingerprint(synced)) {
-        // ponytail: an 'unknown' marker still lets a stale blob win over a
-        // newer decodable save from another device; only an unreadable item
-        // is spared, since replacing that needs the Vervangen prompt.
-        final unreadable = marker == _unknown && synced != null && _decode(synced) == null;
-        if (keychainError == null && !unreadable) await _migrate(keychain, legacy.json);
+      // A save the keychain refused earlier. While the keychain still fails
+      // it is all this device has.
+      if (keychainError != null) return legacy.config;
+      // It goes up only over the item it was saved over (a hash marker), or
+      // into an empty keychain. With an 'unknown' marker its read failed, so
+      // any config in the keychain now may be newer: a decodable one wins.
+      if (marker == _fingerprint(synced) || (marker == _unknown && synced == null)) {
+        await _migrate(keychain, legacy.json);
         return legacy.config;
       }
-      // Another device saved or cleared since: its state wins.
+      // An item this version cannot read is never overwritten from here; the
+      // blob stays this device's config until a save with Vervangen.
+      if (marker == _unknown && _decode(synced!) == null) return legacy.config;
+      // Another device saved or cleared since, or the keychain holds a config
+      // where the read had failed: its state wins.
       await _removeLegacy();
       legacy = null;
     }

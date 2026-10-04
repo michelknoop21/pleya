@@ -173,7 +173,7 @@ void main() {
       expect(keychain.items, isEmpty);
     });
 
-    test('a refused save whose read failed too keeps winning (unknown marker)', () async {
+    test('with an unknown marker a decodable keychain item wins and the pending blob goes', () async {
       keychain.readError = _osStatus(-25308);
       keychain.writeError = _osStatus(-25308);
       await store.save(_cloud);
@@ -183,8 +183,25 @@ void main() {
         ..writeError = null
         ..items[_key] = _json(_openRouter);
 
+      expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+      expect(keychain.items[_key], _json(_openRouter));
+      expect(keychain.calls, isNot(contains('write')));
+      expect(await _pending(), isNull);
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('with an unknown marker the pending blob goes up into an empty keychain', () async {
+      keychain.readError = _osStatus(-25308);
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      keychain
+        ..readError = null
+        ..writeError = null;
+
       expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
       expect(keychain.items[_key], _json(_cloud));
+      expect(await _pending(), isNull);
+      expect(await _prefsBlob(), isNull);
     });
 
     test('a successful save clears an earlier pending marker', () async {
@@ -348,6 +365,9 @@ void main() {
       expect(keychain.calls, isNot(contains('write')));
       expect(await _pending(), 'unknown');
       expect(await _prefsBlob(), isNotNull);
+      // A save without Vervangen is refused, not written over it.
+      await expectLater(store.save(_server), throwsA(isA<AssistantProviderUnreadableException>()));
+      expect(keychain.items[_key], future);
     });
   });
 
