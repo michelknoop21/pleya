@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_kids_ages_store.dart';
 import 'package:pleya/assistant/assistant_kids_profile_store.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
+import 'package:pleya/focus/focusable_wrapper.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/profiles/active_profile_provider.dart';
 import 'package:pleya/profiles/profile.dart';
@@ -181,8 +183,17 @@ void main() {
     await tester.pumpAndSettle();
     final row = tester.widget<SwitchListTile>(kidsRow());
     expect(row.value, isTrue);
-    expect(row.onChanged, isNull, reason: 'cannot be switched off');
+    expect(row.onChanged, isNotNull, reason: 'drawn in the active colour, not greyed out');
+    expect(row.thumbIcon?.resolve({WidgetState.selected})?.icon, Symbols.lock_rounded);
     expect(find.textContaining(s.kidsProfileLocked), findsOneWidget);
+    final wrapper = find.ancestor(of: kidsRow(), matching: find.byType(FocusableWrapper)).first;
+    expect(tester.widget<FocusableWrapper>(wrapper).canRequestFocus, isTrue, reason: 'the D-pad reaches it');
+
+    await tester.ensureVisible(kidsRow());
+    await tester.tap(kidsRow());
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(kidsRow()).value, isTrue, reason: 'cannot be switched off');
     expect(await tester.runAsync(() => KidsProfileStore().read()), isFalse, reason: 'nothing stored: Plex decides');
   });
 }

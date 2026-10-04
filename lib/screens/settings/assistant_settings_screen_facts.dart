@@ -103,7 +103,8 @@ extension _AssistantSettingsFacts on _AssistantSettingsScreenState {
           state: () => {'selected': on, 'locked': restricted},
           child: SettingSwitchRow(
             value: on,
-            onChanged: restricted || busy || !snapshot.hasData ? null : _setKidsProfile,
+            onChanged: busy || !snapshot.hasData ? null : _setKidsProfile,
+            locked: restricted,
             icon: Symbols.child_care_rounded,
             title: s.kidsProfile,
             subtitle: restricted ? '${s.kidsProfileNote} ${s.kidsProfileLocked}' : s.kidsProfileNote,
