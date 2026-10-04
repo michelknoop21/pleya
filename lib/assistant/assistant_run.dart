@@ -124,7 +124,9 @@ class AssistantRun {
       'out is enough.\n'
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
-      '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
+      '«Interstellar» (2014). Pleya turns each into a card to open or request. '
+      'Mark only titles you recommend or answer with: a title you mention as a reason ("because you watched ...") '
+      'or as one you leave out goes without the marks, and name only as many as were asked.\n'
       '- Only offer what your tools can do. You cannot create accounts, profiles or users.\n'
       '$_who';
 
