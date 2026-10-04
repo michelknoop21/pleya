@@ -18,11 +18,15 @@ class _FakeStore implements AssistantProviderStore {
   int saves = 0;
   Object? clearError;
 
+  /// The keychain holds a setup this version cannot read.
+  bool unreadable = false;
+
   @override
   Future<AssistantProviderConfig?> load() async => config;
 
   @override
-  Future<void> save(AssistantProviderConfig config) async {
+  Future<void> save(AssistantProviderConfig config, {bool replaceUnreadable = false}) async {
+    if (unreadable && !replaceUnreadable) throw const AssistantProviderUnreadableException();
     saves++;
     this.config = config;
   }
@@ -229,6 +233,28 @@ void main() {
     expect(store.config!.apiKey, 'k');
     expect(find.text(s.savedModelGone(model: 'old:7b')), findsNothing);
   });
+
+  for (final replace in [true, false]) {
+    testWidgets('an unreadable synced setup is ${replace ? '' : 'not '}replaced after the notice', (tester) async {
+      final store = _FakeStore(
+        const AssistantProviderConfig(
+          kind: AssistantProviderKind.ollamaCloud,
+          baseUrl: AssistantProviderConfig.ollamaCloudUrl,
+          apiKey: 'k',
+          model: 'old:7b',
+        ),
+      )..unreadable = true;
+      await pump(tester, store, (_) async => _infos(['new:8b']));
+      await tapText(tester, 'new:8b');
+      expect(find.text(s.unreadableBody), findsOneWidget);
+      expect(store.saves, 0);
+
+      await tapText(tester, replace ? s.replace : t.common.cancel);
+      expect(find.text(s.unreadableBody), findsNothing);
+      expect(store.saves, replace ? 1 : 0);
+      expect(store.config!.model, replace ? 'new:8b' : 'old:7b');
+    });
+  }
 
   for (final (model, kept) in [('qwen3:32b', true), ('gpt-oss:120b', false)]) {
     testWidgets(

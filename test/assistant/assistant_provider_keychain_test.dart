@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
@@ -76,8 +77,17 @@ PlatformException _osStatus(int status) => PlatformException(code: 'keychain', m
 
 Future<String?> _prefsBlob() async => (await BaseSharedPreferencesService.sharedCache()).getString(_key);
 
-Future<bool?> _pending() async =>
-    (await BaseSharedPreferencesService.sharedCache()).getBool(AssistantProviderStore.pendingKey);
+Future<String?> _pending() async =>
+    (await BaseSharedPreferencesService.sharedCache()).getString(AssistantProviderStore.pendingKey);
+
+String _sha(String raw) => sha256.convert(utf8.encode(raw)).toString();
+
+const _openRouter = AssistantProviderConfig(
+  kind: AssistantProviderKind.openRouter,
+  baseUrl: AssistantProviderConfig.openRouterUrl,
+  apiKey: 'sk-or',
+  model: 'x/y',
+);
 
 /// A blob written by the old prefs-only store, as tvOS has it today.
 Future<void> _legacy(AssistantProviderConfig config) => AssistantProviderStore().save(config);
@@ -115,15 +125,16 @@ void main() {
 
       expect(keychain.items, isEmpty);
       expect(await _prefsBlob(), isNotNull);
-      expect(await _pending(), isTrue);
+      expect(await _pending(), 'none');
       expect((await store.load())?.model, 'gpt-oss:120b');
     });
 
-    test('a save the keychain refused beats an older synced item and goes up later', () async {
+    test('a refused save beats the synced item it was saved over and goes up later', () async {
       keychain.items[_key] = _json(_server);
       keychain.writeError = _osStatus(-25308);
 
       await store.save(_cloud);
+      expect(await _pending(), _sha(_json(_server)));
 
       expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
       expect(await _prefsBlob(), isNotNull);
@@ -135,6 +146,45 @@ void main() {
       expect(await _prefsBlob(), isNull);
       expect(await _pending(), isNull);
       expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+    });
+
+    test('negative control: a newer save from another device beats the refused one', () async {
+      keychain.items[_key] = _json(_server);
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      keychain.writeError = null;
+      keychain.items[_key] = _json(_openRouter); // another device saved since
+
+      expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+      expect(keychain.items[_key], _json(_openRouter));
+      expect(await _prefsBlob(), isNull);
+      expect(await _pending(), isNull);
+    });
+
+    test('another device clearing since the refused save wins too', () async {
+      keychain.items[_key] = _json(_server);
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      keychain.writeError = null;
+      keychain.items.clear();
+
+      expect(await store.load(), isNull);
+      expect(await _prefsBlob(), isNull);
+      expect(keychain.items, isEmpty);
+    });
+
+    test('a refused save whose read failed too keeps winning (unknown marker)', () async {
+      keychain.readError = _osStatus(-25308);
+      keychain.writeError = _osStatus(-25308);
+      await store.save(_cloud);
+      expect(await _pending(), 'unknown');
+      keychain
+        ..readError = null
+        ..writeError = null
+        ..items[_key] = _json(_openRouter);
+
+      expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
+      expect(keychain.items[_key], _json(_cloud));
     });
 
     test('a successful save clears an earlier pending marker', () async {
@@ -165,18 +215,19 @@ void main() {
       expect((await store.load())?.model, 'gpt-oss:120b');
     });
 
-    test('negative control: a readback that differs keeps the blob and drops the bad item', () async {
+    test('negative control: a readback that differs keeps the blob and deletes nothing', () async {
       await _legacy(_cloud);
-      // Decodes as a config, so a kept copy would win the next load.
-      keychain.writeTamper = (_) => '{"kind":"openRouter","baseUrl":"https://evil"}';
+      // Another device's sync lands between the write and the readback.
+      keychain.writeTamper = (_) => _json(_openRouter);
 
       expect((await store.load())?.apiKey, 'sk-cloud');
       expect(await _prefsBlob(), isNotNull);
-      expect(keychain.items, isEmpty);
-      expect(keychain.calls, ['read', 'write', 'read', 'delete']);
+      expect(keychain.items[_key], _json(_openRouter));
+      expect(keychain.calls, ['read', 'write', 'read']);
 
-      expect((await store.load())?.apiKey, 'sk-cloud');
-      expect(await _prefsBlob(), isNotNull);
+      // The next load resolves normally: the synced config wins.
+      expect((await store.load())?.kind, AssistantProviderKind.openRouter);
+      expect(await _prefsBlob(), isNull);
     });
 
     test('negative control: a write the keychain declines keeps the prefs blob', () async {
@@ -245,14 +296,38 @@ void main() {
     });
   });
 
+  group('unreadable synced item', () {
+    const future = '{"kind":"fromTheFuture"}';
+
+    test('a save refuses to overwrite it', () async {
+      keychain.items[_key] = future;
+
+      await expectLater(store.save(_cloud), throwsA(isA<AssistantProviderUnreadableException>()));
+      expect(keychain.items[_key], future);
+      expect(keychain.calls, ['read']);
+      expect(await _prefsBlob(), isNull);
+    });
+
+    test('an explicit replace overwrites it', () async {
+      keychain.items[_key] = future;
+
+      await store.save(_cloud, replaceUnreadable: true);
+
+      expect(keychain.items[_key], _json(_cloud));
+    });
+
+    test('negative control: a read error is not unreadable and keeps the fallback', () async {
+      keychain.readError = _osStatus(-25308);
+
+      await store.save(_cloud);
+
+      expect(keychain.items[_key], _json(_cloud));
+    });
+  });
+
   group('serial', () {
     test('a save that overlaps a pending migration ends with the save', () async {
-      const openRouter = AssistantProviderConfig(
-        kind: AssistantProviderKind.openRouter,
-        baseUrl: AssistantProviderConfig.openRouterUrl,
-        apiKey: 'sk-or',
-        model: 'x/y',
-      );
+      const openRouter = _openRouter;
       keychain.items[_key] = _json(_server);
       keychain.writeError = _osStatus(-25308);
       await store.save(_cloud); // pending blob
@@ -276,7 +351,7 @@ void main() {
   group('clear', () {
     test('wipes the keychain item, the prefs blob and the marker and signals the change', () async {
       await _legacy(_server);
-      await (await BaseSharedPreferencesService.sharedCache()).setBool(AssistantProviderStore.pendingKey, true);
+      await (await BaseSharedPreferencesService.sharedCache()).setString(AssistantProviderStore.pendingKey, 'none');
       keychain.items[_key] = _json(_cloud);
       final before = AssistantProviderStore.changes.value;
 
@@ -297,7 +372,7 @@ void main() {
 
       await expectLater(store.clear(), throwsA(isA<PlatformException>()));
       expect(await _prefsBlob(), isNotNull);
-      expect(await _pending(), isTrue);
+      expect(await _pending(), isNotNull);
       expect((await store.load())?.kind, AssistantProviderKind.ollamaCloud);
     });
 
@@ -326,7 +401,7 @@ void main() {
 
       await AssistantProviderStore().save(_cloud);
 
-      expect(keychain.calls, ['write']);
+      expect(keychain.calls, ['read', 'write']);
       expect(await _prefsBlob(), isNull);
     });
   });

@@ -64,3 +64,21 @@ String assistantPullErrorText(Object error) {
   final reason = error.message.length > 120 ? '${error.message.substring(0, 120)}…' : error.message;
   return s.pullErrorFailed(reason: reason);
 }
+
+/// Asks before a save replaces a setup this version cannot read (a newer
+/// Pleya on another device wrote it to the iCloud keychain).
+Future<bool> _confirmReplaceUnreadable(BuildContext context) async {
+  final s = t.assistant.settings;
+  final replace = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(s.unreadableTitle),
+      content: Text(s.unreadableBody),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.common.cancel)),
+        FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(s.replace)),
+      ],
+    ),
+  );
+  return replace == true;
+}

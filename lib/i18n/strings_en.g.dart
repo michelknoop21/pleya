@@ -7802,6 +7802,15 @@ class TranslationsAssistantSettingsEn {
 	/// en: 'The provider and key are removed from this device. You can set Big P up again at any time.'
 	String get disableBody => 'The provider and key are removed from this device. You can set Big P up again at any time.';
 
+	/// en: 'Replace the Big P setup?'
+	String get unreadableTitle => 'Replace the Big P setup?';
+
+	/// en: 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.'
+	String get unreadableBody => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.';
+
+	/// en: 'Replace'
+	String get replace => 'Replace';
+
 	/// en: 'Model'
 	String get currentModel => 'Model';
 
@@ -10397,6 +10406,9 @@ extension on Translations {
 			'assistant.settings.disable' => 'Turn off Big P',
 			'assistant.settings.disableConfirm' => 'Turn off Big P?',
 			'assistant.settings.disableBody' => 'The provider and key are removed from this device. You can set Big P up again at any time.',
+			'assistant.settings.unreadableTitle' => 'Replace the Big P setup?',
+			'assistant.settings.unreadableBody' => 'Your iCloud keychain holds a Big P setup from a newer Pleya version on another device. This version cannot read it. Replacing it changes the setup on all your devices.',
+			'assistant.settings.replace' => 'Replace',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Stored, hidden',
 			'assistant.settings.errorUrlInvalid' => 'Enter an address that starts with http:// or https://.',

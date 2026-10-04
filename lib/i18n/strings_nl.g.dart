@@ -3384,6 +3384,9 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get disable => 'Big P uitschakelen';
 	@override String get disableConfirm => 'Big P uitschakelen?';
 	@override String get disableBody => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.';
+	@override String get unreadableTitle => 'Big P-instelling vervangen?';
+	@override String get unreadableBody => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.';
+	@override String get replace => 'Vervangen';
 	@override String get currentModel => 'Model';
 	@override String get keyStored => 'Opgeslagen, verborgen';
 	@override String get errorUrlInvalid => 'Vul een adres in dat begint met http:// of https://.';
@@ -5800,6 +5803,9 @@ extension on TranslationsNl {
 			'assistant.settings.disable' => 'Big P uitschakelen',
 			'assistant.settings.disableConfirm' => 'Big P uitschakelen?',
 			'assistant.settings.disableBody' => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.',
+			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
+			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
+			'assistant.settings.replace' => 'Vervangen',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
 			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',
