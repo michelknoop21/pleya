@@ -223,7 +223,8 @@ class _Row extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         still,
-                        if (resume != null) ResumeLine(fraction: resume),
+                        if (resume != null)
+                          Positioned(left: 0, right: 0, bottom: 0, child: ResumeLine(fraction: resume)),
                       ],
                     ),
                   ),

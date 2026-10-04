@@ -394,7 +394,7 @@ void main() {
     // title and what is left; year and genre dropped off it.
     test('an episode names itself and drops year and genre', () {
       final line = discoveryContextFor(tvDiscoveryContinueWatchingRow().first).context;
-      expect(line, 'S2 E4 · The Fourth Crossing · 18min left');
+      expect(line, 'S2 E4 · The Fourth Crossing · 18 min left');
     });
 
     test('in Verder kijken an episode with nothing left is the next episode, and says so', () {

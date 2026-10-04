@@ -10,7 +10,7 @@ import 'package:pleya/widgets/media_card.dart';
 import '../test_helpers/prefs.dart';
 
 /// The desktop card in Verder kijken (DEC-144, mockup 38 A / 40): one status
-/// line, `S3 E4 · 18min left` or `S3 E5 · Next episode`, in the grid and in
+/// line, `S3 E4 · 18 min left` or `S3 E5 · Next episode`, in the grid and in
 /// the list, and never a second `S3 E4` under it.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +63,7 @@ void main() {
     testWidgets('$layout: begonnen shows place and what is left, once', (tester) async {
       await pump(tester, episode(episode: 4, viewOffsetMs: 30 * 60 * 1000), list: list);
       expect(find.text('The Bear'), findsOneWidget);
-      expect(find.text('S3 E4 · 18min left'), findsOneWidget);
+      expect(find.text('S3 E4 · 18 min left'), findsOneWidget);
       expect(find.textContaining('Violet'), findsNothing, reason: 'the episode title belongs to focus and overview');
       expect(find.text('S3 E4'), findsNothing, reason: 'no second place line under the status line');
       expect(find.text('S3'), findsNothing);
