@@ -231,7 +231,9 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     // Null means the whole list; a hub page is bounded, so ask for a page that
     // is in practice never full rather than silently capping at the preview.
     final limit = count ?? 200;
-    if (!wireCapabilities.watchState) return const [];
+    // Asked regardless of the advertised watch-state capability: a server
+    // without it answers both hubs with an empty list by design, and one that
+    // leaves the flag out can still have a list (the Verify fixture does).
     final pages = await Future.wait([
       _hubPage(PleyaHubId.continueWatching, limit: limit),
       _hubPage(PleyaHubId.nextUp, limit: limit),
