@@ -313,6 +313,24 @@ void main() {
     expect(find.text('De rest is ouder.'), findsOneWidget);
   });
 
+  testWidgets('a first sentence longer than two lines is no bold lead', (tester) async {
+    const long =
+        'The latest additions are mostly 2026 releases, with Tears of Steel and Sintel joined alongside a '
+        'handful of older favourites from the Blender studio.';
+    await pump(tester);
+    await summon(tester);
+    c
+      ..prompt = 'Wat is er nieuw?'
+      ..answer = '$long De rest is ouder.'
+      ..state = AssistantSurfaceState.result
+      ..emit();
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.text(long), findsNothing);
+    final text = tester.widget<Text>(find.text('$long De rest is ouder.'));
+    expect(text.style!.fontWeight, isNot(FontWeight.w700));
+  });
+
   testWidgets('the face button says whether Big P is out and that a card waits', (tester) async {
     final handle = tester.ensureSemantics();
     await pump(tester);

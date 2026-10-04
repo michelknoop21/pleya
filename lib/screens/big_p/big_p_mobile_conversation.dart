@@ -192,16 +192,34 @@ class BigPMobileConversation extends StatelessWidget {
   }
 
   /// The answer's first sentence as the bold lead, the rest as body text: a
-  /// long answer no longer fills the balloon in bold.
+  /// long answer no longer fills the balloon in bold. A lead longer than two
+  /// lines at the balloon's width is body text too.
   List<Widget> _answer(BuildContext context, String answer) {
     final lead = _firstSentence.firstMatch(answer)?[0] ?? answer;
     final rest = answer.substring(lead.length).trim();
+    final bold = _headline(context).copyWith(fontSize: 19, height: 1.28);
+    final body = TextStyle(color: tokens(context).text.withValues(alpha: 0.85), fontSize: 16, height: 1.35);
     return [
-      Text(lead, style: _headline(context).copyWith(fontSize: 19, height: 1.28)),
-      if (rest.isNotEmpty) ...[
-        const SizedBox(height: 6),
-        Text(rest, style: TextStyle(color: tokens(context).text.withValues(alpha: 0.85), fontSize: 16, height: 1.35)),
-      ],
+      LayoutBuilder(
+        builder: (context, box) {
+          final painter = TextPainter(
+            text: TextSpan(text: lead, style: bold),
+            maxLines: 2,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: box.maxWidth);
+          final tooLong = painter.didExceedMaxLines;
+          painter.dispose();
+          if (tooLong) return Text(answer, style: body);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(lead, style: bold),
+              if (rest.isNotEmpty) ...[const SizedBox(height: 6), Text(rest, style: body)],
+            ],
+          );
+        },
+      ),
     ];
   }
 
