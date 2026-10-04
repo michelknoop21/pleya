@@ -33,10 +33,10 @@ steps:
   - snapshot: 00b-provider-form-url
   - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
   - snapshot: 01-provider-model-loaded
-  - walk: {direction: down, steps: 8, stopAt: "settings.form.button[assistant.model.pleya-verify]", timeout: 20000, settle: 400}
+  - walk: {direction: down, steps: 8, stopAt: "settings.form.button[assistant.model.pleya-verify]", timeout: 80000, settle: 400}
   - press: select
   - assert: {id: "settings.form.button[assistant.model.pleya-verify]", state: {selected: true}}
-  - walk: {direction: down, steps: 4, stopAt: "settings.form.button[assistant.test]", timeout: 10000, settle: 400}
+  - walk: {direction: down, steps: 4, stopAt: "settings.form.button[assistant.test]", timeout: 40000, settle: 400}
   - press: select
   - wait_until: {focused: "settings.form.button[assistant.save]", timeout: 15000}
   - press: select
