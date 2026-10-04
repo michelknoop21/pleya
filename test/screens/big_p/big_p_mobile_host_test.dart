@@ -331,6 +331,25 @@ void main() {
     expect(text.style!.fontWeight, isNot(FontWeight.w700));
   });
 
+  for (final (answer, lead, rest) in [
+    ('Top drie:\n1. Inception\n2. Tenet', 'Top drie:', '1. Inception\n2. Tenet'),
+    ('Kijk dit\n• A. Goed', 'Kijk dit', '• A. Goed'),
+  ]) {
+    testWidgets('the lead stops at the first line: $lead', (tester) async {
+      await pump(tester);
+      await summon(tester);
+      c
+        ..prompt = 'Wat raad je aan?'
+        ..answer = answer
+        ..state = AssistantSurfaceState.result
+        ..emit();
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+      expect(tester.widget<Text>(find.text(lead)).style!.fontWeight, FontWeight.w700);
+      expect(find.text(rest), findsOneWidget);
+    });
+  }
+
   testWidgets('the face button says whether Big P is out and that a card waits', (tester) async {
     final handle = tester.ensureSemantics();
     await pump(tester);

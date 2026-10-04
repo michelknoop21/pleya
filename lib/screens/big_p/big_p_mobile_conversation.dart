@@ -19,8 +19,9 @@ import 'big_p_mobile_confirm.dart';
 import 'big_p_mobile_followups.dart';
 
 // ponytail: ". ", "! " or "? " ends the lead, so "Dr. Strange" splits too.
-// A sentence tokenizer is the upgrade if answers trip on it.
-final _firstSentence = RegExp(r'^.+?[.!?](?=\s+\S)', dotAll: true);
+// A sentence tokenizer is the upgrade if answers trip on it. Never past the
+// first line: "Top drie:" above a list is the lead on its own.
+final _firstSentence = RegExp(r'^[^\n]*?[.!?](?=[ \t]+\S)|^[^\n]+');
 
 /// What Big P's balloon says on iPhone and iPad (39 B to G, I): the
 /// greeting with example questions, the set-up and locked gates, listening,
@@ -203,7 +204,8 @@ class BigPMobileConversation extends StatelessWidget {
       LayoutBuilder(
         builder: (context, box) {
           final painter = TextPainter(
-            text: TextSpan(text: lead, style: bold),
+            // As Text draws it: merged with the theme's font.
+            text: TextSpan(text: lead, style: DefaultTextStyle.of(context).style.merge(bold)),
             maxLines: 2,
             textDirection: Directionality.of(context),
             textScaler: MediaQuery.textScalerOf(context),
