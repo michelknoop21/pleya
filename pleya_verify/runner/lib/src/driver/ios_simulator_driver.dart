@@ -137,6 +137,8 @@ class IosSimulatorDriver implements VerificationDriver {
       '--debug',
       '--dart-define=PLEYA_VERIFY=true',
       if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
+      // The Big P rollout gate, passed through as tvos/scripts/xcode_appletv.sh does.
+      if (Platform.environment['PLEYA_ASSISTANT_ENABLED'] == 'true') '--dart-define=PLEYA_ASSISTANT_ENABLED=true',
     ], workingDirectory: repoRoot.path);
     _log(result.stdout.toString());
     if (result.exitCode != 0) {

@@ -1,0 +1,58 @@
+name: ios.assistant.ipad
+target: ios-sim
+# Big P on the iPad (mockup 39 I): run with PLEYA_VERIFY_IOS_UDID pointed at
+# an iPad simulator and PLEYA_ASSISTANT_ENABLED=true.
+#
+# The iPad entries that exist today: the Search ask row and the Mijn Pleya
+# tile, which summons the regular balloon (`regular: true`, cards in two
+# columns). The face button of 39 I is not here: iPad Home is still the
+# pre-Unified tree without MobilePageHeader, so ios.assistant.entry.yaml
+# fails at its first wait on an iPad. That is a product gap, not something
+# this file works around.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - wait_until: {id: discover.continue_watching, timeout: 15000}
+  - settle: 3500
+
+  # Search: a query that finds something gets the ask row.
+  - tap: {id: nav.search}
+  - settle: 1000
+  - type: "aurora"
+  # The iPad result list has no search.results.section ids; the ask row only
+  # shows once a search ran, so it is the anchor.
+  - wait_until: {id: bigp.searchAsk, timeout: 10000}
+  - assert: {id: bigp.searchAsk, insideViewport: true, minimumTapTarget: 44}
+  - settle: 600
+  - snapshot: 01-search-ask
+
+  # Mijn Pleya: the tile summons the regular balloon on its set-up gate.
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - assert: {id: "my_pleya.tile[assistant]", insideViewport: true, minimumTapTarget: 44}
+  - settle: 800
+  - snapshot: 02-my-pleya-tile
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: bigp.balloon, timeout: 5000}
+  # Past the slide-in, so a geometry miss is the layout and not the motion.
+  - settle: 1500
+  - snapshot: 03a-summon-regular-settled
+  - assert: {id: bigp.balloon, insideViewport: true, state: {availability: needsSetup, regular: true}}
+  - wait_until: {id: "assistant.button[setup]", timeout: 5000}
+  - assert: {id: "assistant.button[setup]", insideViewport: true, minimumTapTarget: 44}
+  - settle: 1000
+  - snapshot: 03-summon-regular
+
+  # The set-up button opens the assistant settings on the provider choice.
+  - tap: {id: "assistant.button[setup]"}
+  - wait_until: {id: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - settle: 1000
+  - assert: {id: "settings.form.button[assistant.provider.ollamaCloud]", insideViewport: true}
+  - assert: {id: "settings.form.button[assistant.provider.openRouter]", insideViewport: true}
+  - assert: {id: bigp.balloon, present: false}
+  - snapshot: 04-assistant-settings

@@ -1,0 +1,88 @@
+name: ios.assistant.entry
+target: ios-sim
+# Big P on iPhone and iPad (mockup 39, DEC-142): the face button in the
+# header, the balloon it summons, the Search ask row and the Mijn Pleya tile.
+#
+# Needs PLEYA_ASSISTANT_ENABLED=true in the environment of `verify.dart run`:
+# the iOS driver passes it on as a dart-define (the rollout gate is
+# compile-time; without it the face button never shows and the first wait
+# fails).
+#
+# Free of phone-only ids and coordinates, so the same file can run on an iPad
+# (PLEYA_VERIFY_IOS_UDID) against 39 I. The DSL has no platform guard, so the
+# phone-only parts (the Bibliotheken long-press on MobileLibrariesScreen, and
+# the back arrow out of the settings, a coordinate tap) live in
+# ios.assistant.phone.yaml. On the iPad, Home is still the pre-Unified tree
+# without MobilePageHeader, so there is no face button to wait for yet (39 I
+# puts it in the header): this file then fails at its first wait, and
+# ios.assistant.ipad.yaml covers the iPad entries that do exist.
+#
+# The fixture configures no AI provider, so the balloon opens on the set-up
+# gate (39 C, availability needsSetup), never on the greeting.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 15000}
+  # Past IntroGate's cold-start splash, as ios.search.text-input.yaml does.
+  - settle: 3500
+
+  # 39 A: the face button sits in the header, parked.
+  - wait_until: {id: bigp.faceButton, timeout: 10000}
+  - assert: {id: bigp.faceButton, insideViewport: true, minimumTapTarget: 44, state: {active: false}}
+  - assert: {id: bigp.balloon, present: false}
+  - snapshot: 01-face-parked
+
+  # 39 B/C: a tap brings him out; with no model that is the set-up gate, and
+  # the face button turns into the empty ring (stage out).
+  - tap: {id: bigp.faceButton}
+  - wait_until: {id: bigp.balloon, timeout: 5000}
+  - assert: {id: bigp.balloon, state: {availability: needsSetup}}
+  - assert: {id: bigp.faceButton, state: {active: true}}
+  - wait_until: {id: "assistant.button[setup]", timeout: 5000}
+  - assert: {id: "assistant.button[setup]", insideViewport: true}
+  - settle: 1000
+  - snapshot: 02-summon-needs-setup
+
+  # A second tap on the ring parks him again.
+  - tap: {id: bigp.faceButton}
+  - settle: 1500
+  - assert: {id: bigp.faceButton, state: {active: false}}
+  - assert: {id: bigp.balloon, present: false}
+
+  # Search: a query that finds something gets the ask row.
+  - tap: {id: home.header.search}
+  - settle: 800
+  - type: "aurora"
+  - wait_until: {id: "search.results.section[movies]", timeout: 10000}
+  - wait_until: {id: bigp.searchAsk, timeout: 5000}
+  - assert: {id: bigp.searchAsk, insideViewport: true, minimumTapTarget: 44}
+  - settle: 600
+  - snapshot: 03-search-ask
+
+  # Mijn Pleya: the Big P tile (38 A on the phone) summons him as well.
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 10000}
+  - wait_until: {id: "my_pleya.tile[assistant]", timeout: 10000}
+  - assert: {id: "my_pleya.tile[assistant]", insideViewport: true, minimumTapTarget: 44}
+  - settle: 800
+  - snapshot: 04-my-pleya-tile
+  - tap: {id: "my_pleya.tile[assistant]"}
+  - wait_until: {id: bigp.balloon, timeout: 5000}
+  - assert: {id: bigp.balloon, state: {availability: needsSetup}}
+  # Home stays mounted under the other tab, so its header node still reports.
+  - assert: {id: bigp.faceButton, state: {active: true}}
+  - settle: 1000
+  - snapshot: 05-summon-from-my-pleya
+
+  # The set-up button opens the assistant settings on the provider choice.
+  - tap: {id: "assistant.button[setup]"}
+  - wait_until: {id: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  # Past the page's slide-in: mid-transition the cards still overflow on the right.
+  - settle: 1000
+  - assert: {id: "settings.form.button[assistant.provider.ollamaCloud]", insideViewport: true}
+  - assert: {id: "settings.form.button[assistant.provider.openRouter]", insideViewport: true}
+  - assert: {id: bigp.balloon, present: false}
+  - snapshot: 06-assistant-settings
