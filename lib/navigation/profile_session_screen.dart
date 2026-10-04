@@ -21,7 +21,10 @@ import '../providers/tv_discovery_landing_provider.dart';
 import '../providers/tv_home_projection_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_custom_rows_provider.dart';
+import '../providers/home_extra_rows_provider.dart';
+import '../providers/continue_watching_hidden_provider.dart';
 import '../providers/home_layout_provider.dart';
+import '../services/offline_watch_sync_service.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/personal_media_provider.dart';
@@ -257,6 +260,13 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     HomeLayoutProvider(storageService: context.read<StorageService>(), profileId: activeId),
                 lazy: true,
               ),
+              // Titles hidden from Verder kijken on this device (DEC-144 fase 3);
+              // above `DiscoverProvider`, which filters on it.
+              ChangeNotifierProvider(
+                create: (context) =>
+                    ContinueWatchingHiddenProvider(storageService: context.read<StorageService>(), profileId: activeId),
+                lazy: true,
+              ),
               ChangeNotifierProvider(
                 create: (context) => LibrariesProvider(
                   storageService: context.read<StorageService>(),
@@ -428,6 +438,10 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     context.read<LibrariesProvider>(),
                     isProfileBinding: () => activeProfile.isBinding,
                     recommendations: activeId == null ? null : context.read<RecommendationService>(),
+                    hiddenContinueWatching: context.read<ContinueWatchingHiddenProvider>(),
+                    pendingContinueWatchingRemovalKeys: context
+                        .read<OfflineWatchSyncService?>()
+                        ?.pendingContinueWatchingRemovalKeys,
                   );
                 },
               ),
@@ -496,6 +510,20 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   );
                   return provider;
                 },
+              ),
+              // Kijklijst and Nu op tv as Home rows (DEC-145). Lazy: a surface
+              // that never draws Home never asks for either.
+              ChangeNotifierProvider(
+                create: (context) => HomeExtraRowsProvider(
+                  layout: context.read<HomeLayoutProvider>(),
+                  multiServer: context.read<MultiServerProvider>(),
+                  watchlist: context.read<WatchlistProvider>(),
+                  hiddenLibraries: context.read<HiddenLibrariesProvider>(),
+                  discover: context.read<DiscoverProvider>(),
+                  watchlistTitle: t.navigation.watchlist,
+                  liveTvTitle: t.liveTv.whatsOn,
+                ),
+                lazy: true,
               ),
               // The Plex Live TV favorites live in the cloud, on an account
               // plus a Home user, so they hang off the profile session and not

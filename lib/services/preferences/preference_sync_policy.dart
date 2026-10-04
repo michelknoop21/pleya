@@ -431,6 +431,9 @@ class PreferenceSyncPolicyRegistry {
     // measurement is green; the stored format already uses portable ids.
     'home_row_order': _homeLayoutPref,
     'hidden_home_rows': _homeLayoutPref,
+    // "Alleen op dit apparaat" is what the menu row promises (DEC-144 fase 3):
+    // a local hide for sources that cannot remove server-side never syncs.
+    'hidden_continue_watching': _deviceLocalPref,
     // The rows the viewer defined themselves (ROW1, DEC-100). Same owner as
     // the two above — `HomeLayoutProvider` reads all three in one `refresh()` —
     // and local-only for a reason of its own: a saved row is a filter over

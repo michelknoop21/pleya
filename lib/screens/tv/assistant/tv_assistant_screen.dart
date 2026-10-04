@@ -16,7 +16,6 @@ import 'package:provider/provider.dart';
 import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tool_context.dart';
-import '../../../assistant/assistant_tools.dart';
 import '../../../assistant/big_p_voice.dart';
 import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import '../../../automation/automation_ids.dart';
@@ -37,12 +36,12 @@ import '../../../utils/media_navigation_helper.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
 import '../../../widgets/big_p/assistant/big_p_labels.dart';
-import '../../../widgets/overlay_sheet.dart';
 import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
 import 'tv_assistant_kids_sheet.dart';
+import 'tv_assistant_tasks.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
@@ -74,6 +73,9 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   final _optionNode = FocusNode(debugLabel: 'assistant.option');
   final _gateNode = FocusNode(debugLabel: 'assistant.gate');
   final _confirmCancelNode = FocusNode(debugLabel: 'assistant.confirm.cancel');
+  final _tasksNode = FocusNode(debugLabel: 'assistant.tasks');
+  final _taskOptionNodes = TvAssistantTaskOptionNodes();
+  late final _confirm = TvAssistantConfirmPresenter(cancelNode: _confirmCancelNode);
   final _kids = TvKidsAgesSheet();
 
   int _nod = 0;
@@ -82,8 +84,6 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   AssistantSurfaceState? _lastState;
   AssistantAvailability? _lastAvailability;
   DateTime _resultAt = DateTime.now();
-  AssistantPendingAction? _shownPending;
-  BuildContext? _sheetContext;
 
   SpeechSearchService get _speech => widget.speech ?? SpeechSearchService.instance;
   AppleTvNativeTextEntry get _entry => widget.textEntry ?? AppleTvNativeTextEntry.instance;
@@ -125,9 +125,11 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     _mounted.remove(this);
     _c?.removeListener(_onChange);
     // Leaving Big P stops the ask, as the summoned panel's dismissal does.
-    // abort() does not notify, so this is safe while the tree unmounts.
+    // abort() cancels every live task and notifies for each; this surface
+    // stopped listening on the line above.
     _c?.abort();
-    for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode]) {
+    _taskOptionNodes.dispose();
+    for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode, _tasksNode]) {
       node.dispose();
     }
     _kids.dispose();
@@ -141,7 +143,9 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
       _lastState = c.state;
       if (c.state == AssistantSurfaceState.working) _doneSteps = 0;
       if (c.state == AssistantSurfaceState.result) _resultAt = DateTime.now();
-      _focusDefaultSoon();
+      // Several tasks: a change behind the viewer leaves the remote on the
+      // capsule or result it is on.
+      if (c.tasks.length <= 1 || !_tasksNode.hasFocus) _focusDefaultSoon();
     }
     if (c.availability != _lastAvailability) {
       _lastAvailability = c.availability;
@@ -151,16 +155,19 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (done > _doneSteps) _nod++; // finger up: a step finished
     _doneSteps = done;
 
-    final pending = c.pending;
-    if (pending != null && !identical(pending, _shownPending)) {
-      unawaited(_showConfirm(pending));
-    } else if (pending == null && _shownPending != null) {
-      // Timed out or reset under the card: take it away.
-      final sheet = _sheetContext;
-      if (sheet != null && sheet.mounted) OverlaySheetController.closeAdaptive(sheet);
-    }
+    _confirm.sync(context, c, _entry, _onConfirmClosed);
     _kids.sync(context, c);
     setState(() {});
+  }
+
+  void _onConfirmClosed(bool confirmed) {
+    if (confirmed) setState(() => _nod++); // Big P nods when you confirm
+    if ((_c?.tasks.length ?? 0) <= 1) return;
+    // The capsule the card was raised from may be gone by now.
+    tvAssistantAfterFocusSettles(() {
+      final focus = FocusManager.instance.primaryFocus;
+      if (mounted && (focus == null || focus is FocusScopeNode)) focusActiveTabIfReady();
+    });
   }
 
   FocusNode? get _defaultNode {
@@ -173,14 +180,20 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
         AssistantSurfaceState.idle => _askNode,
         AssistantSurfaceState.listening => null,
         AssistantSurfaceState.working => _cancelNode,
-        AssistantSurfaceState.result => bigPHasChoices(c.displays) ? _optionNode : _askNode,
+        AssistantSurfaceState.result =>
+          (c.tasks.length > 1
+                  ? _taskOptionNodes.first(c.tasks)
+                  : bigPHasChoices(c.displays)
+                  ? _optionNode
+                  : null) ??
+              _askNode,
       },
     };
   }
 
   @override
   void focusActiveTabIfReady() {
-    if (_sheetContext != null || _kids.open) return; // the card owns the remote
+    if (_confirm.isOpen || _kids.open) return; // the card owns the remote
     final node = _defaultNode;
     if (node != null && node.context != null && node.canRequestFocus) node.requestFocus();
   }
@@ -233,22 +246,6 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (c == null) return;
     c.beginListening(context: widget.screenContext);
     unawaited(c.submit(example));
-  }
-
-  Future<void> _showConfirm(AssistantPendingAction pending) async {
-    final c = _c;
-    if (c == null) return;
-    _shownPending = pending;
-    final confirmed = await showTvAssistantConfirm(
-      context,
-      controller: c,
-      pending: pending,
-      cancelNode: _confirmCancelNode,
-      entry: _entry,
-      onSheet: (sheet) => _sheetContext = sheet,
-    );
-    _shownPending = null;
-    if (confirmed && mounted) setState(() => _nod++); // Big P nods when you confirm
   }
 
   void _dismiss() {
@@ -359,6 +356,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
                     askNode: _askNode,
                     cancelNode: _cancelNode,
                     firstOptionNode: _optionNode,
+                    taskOptionNodes: _taskOptionNodes,
+                    tasksNode: _tasksNode,
                     onAsk: () => unawaited(_ask()),
                     onDone: () {
                       c.reset();

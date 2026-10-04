@@ -49,6 +49,10 @@ class HubSection extends StatefulWidget {
   final bool showServerName;
   final Future<List<MediaItem>> Function()? loadMoreItems;
 
+  /// Shown muted beside the title: the real size of the list behind the row
+  /// (DEC-144 fase 2), not of the row itself. Null leaves it off.
+  final int? count;
+
   /// Reports the current focused media item. Used by TV spotlight layouts.
   final ValueChanged<MediaItem>? onFocusedItemChanged;
 
@@ -80,6 +84,7 @@ class HubSection extends StatefulWidget {
     required this.icon,
     this.onRefresh,
     this.onRemoveFromContinueWatching,
+    this.count,
     this.isInContinueWatching = false,
     bool? usesContinueWatchingAction,
     this.showServerName = false,
@@ -714,6 +719,13 @@ class HubSectionState extends State<HubSection> with MountedSetStateMixin {
                         Flexible(
                           child: Text(widget.hub.title, style: titleStyle, overflow: .ellipsis, maxLines: 1),
                         ),
+                        // `Verder kijken · 23`: its own widget, so the title
+                        // stays the title for anything that reads it.
+                        if (widget.count != null)
+                          Text(
+                            ' · ${widget.count}',
+                            style: titleStyle?.copyWith(color: tokens(context).textMuted, fontWeight: FontWeight.w500),
+                          ),
                         if (widget.showServerName && widget.hub.serverName != null) ...[
                           const SizedBox(width: 8),
                           Text(

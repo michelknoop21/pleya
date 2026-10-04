@@ -296,7 +296,7 @@ class SeerrClient {
     try {
       return await send();
     } on MediaServerHttpException catch (e) {
-      throw SeerrException.network(e.message);
+      throw SeerrException.network(e.message, statusCode: e.statusCode);
     }
   }
 

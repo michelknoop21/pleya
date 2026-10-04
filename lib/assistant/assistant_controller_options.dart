@@ -1,98 +1,130 @@
 part of 'assistant_controller.dart';
 
-// Pleya's own cards: a confirmation, and an option the user picked.
+// Pleya's own cards: the confirmation queue, and an option the user picked.
 
 extension _AssistantConfirming on AssistantController {
-  /// The run's confirm callback: shows [action] through [pending] until the
-  /// user answers, [reset] runs, or [confirmTimeout] passes.
-  Future<AssistantConfirmation?> _confirm(AssistantPendingAction action, int generation) async {
-    if (generation != _generation || _disposed) return null;
-    final completer = Completer<AssistantConfirmation?>();
-    _pending = action;
-    _confirmer = completer;
-    _notify();
-    try {
-      // A TimeoutException reaches the run, which reports `not_confirmed`.
-      return await completer.future.timeout(confirmTimeout);
-    } finally {
-      if (identical(_confirmer, completer)) {
-        _pending = null;
-        _confirmer = null;
-        _notify();
-      }
-    }
+  Future<AssistantConfirmation?> _confirm(AssistantPendingAction action, _AssistantTaskState task) {
+    if (!_alive(task)) return Future.value(null);
+    final entry = _QueuedConfirmation(id: 'confirmation-${++_nextConfirmation}', task: task, action: action);
+    _confirmations.add(entry);
+    task.pending = action;
+    task.status = AssistantTaskStatus.waitingForConfirmation;
+    _showNextConfirmation();
+    _update();
+    return entry.completer.future;
   }
 
-  void _answerPending(AssistantConfirmation? answer) {
-    final completer = _confirmer;
-    if (completer == null || completer.isCompleted) return;
-    completer.complete(answer);
+  void _showNextConfirmation() {
+    final entry = _confirmations.firstOrNull;
+    _pending = entry?.action;
+    if (entry == null || entry.timer != null) return;
+    entry.timer = Timer(confirmTimeout, () => _finishConfirmation(entry, null, timedOut: true));
+  }
+
+  void _finishConfirmation(_QueuedConfirmation entry, AssistantConfirmation? answer, {bool timedOut = false}) {
+    if (!_confirmations.remove(entry)) return;
+    entry.timer?.cancel();
+    if (_alive(entry.task)) {
+      entry.task.pending = null;
+      entry.task.status = AssistantTaskStatus.running;
+    }
+    if (!entry.completer.isCompleted) {
+      timedOut
+          ? entry.completer.completeError(TimeoutException('Confirmation expired'))
+          : entry.completer.complete(answer);
+    }
+    _showNextConfirmation();
+    _update();
   }
 }
 
 extension _AssistantOptionPicking on AssistantController {
-  /// Body of [AssistantController.pickRequestOption].
-  Future<void> _pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async {
-    if (_busy) return;
-    // Option cards and found titles both carry a Seerr request.
-    final ctx = _displays
-        .map(
-          (d) => switch (d) {
-            AssistantRequestOptions(:final context, :final options)
-                when options.any((o) => o.seerrId == option.seerrId) =>
-              context,
-            AssistantTitleMatches(:final context, :final matches)
-                when matches.any((m) => m.request?.seerrId == option.seerrId) =>
-              context,
-            _ => null,
-          },
-        )
-        .nonNulls
-        .firstOrNull;
+  AssistantToolContext? _optionContext(_AssistantTaskState task, AssistantRequestOption option) => task.displays
+      .map(
+        (display) => switch (display) {
+          AssistantRequestOptions(:final context, :final options) when options.any((o) => identical(o, option)) =>
+            context,
+          AssistantTitleMatches(:final context, :final matches) when matches.any((m) => identical(m.request, option)) =>
+            context,
+          _ => null,
+        },
+      )
+      .nonNulls
+      .firstOrNull;
+
+  /// Body of [AssistantController.pickTaskRequestOption].
+  Future<void> _pickTaskRequestOption(String taskId, AssistantRequestOption option, {bool fourK = false}) async {
+    final task = _tasks.where((task) => task.id == taskId).firstOrNull;
+    if (task == null ||
+        !_alive(task) ||
+        (task.status != AssistantTaskStatus.completed && task.status != AssistantTaskStatus.failed)) {
+      return;
+    }
+    final ctx = _optionContext(task, option);
     if (ctx == null) return;
-    _busy = true;
-    final generation = _generation;
-    _state = AssistantSurfaceState.working;
-    _notify();
-    var failed = true;
+    task.status = AssistantTaskStatus.running;
+    _update();
+    String? failure;
     try {
-      final outcome = await assistantRequestFromOption(ctx, option.seerrId, fourK: fourK);
-      if (generation != _generation) return;
+      if (!task.budget.reserveTool()) throw const AssistantToolError('budget_exhausted');
+      final outcome = await _operations.run(() async {
+        if (!_alive(task)) throw const AssistantToolError('cancelled');
+        return assistantRequestFromOption(ctx, option.seerrId, fourK: fourK);
+      });
+      if (!_alive(task)) return;
       switch (outcome) {
-        case AssistantToolResult(:final data):
-          failed = data.containsKey('error');
+        case AssistantToolResult(:final data, :final display):
+          failure = data['error'] as String?;
+          if (display != null) task.displays.add(display);
         case final AssistantPendingAction action:
           final AssistantConfirmation? answer;
           try {
-            answer = await _confirm(action, generation);
+            answer = await _confirm(action, task);
           } on TimeoutException {
-            return;
+            failure = 'not_confirmed';
+            break;
           }
-          if (answer == null || generation != _generation) {
-            failed = false;
-            return;
+          if (answer == null) {
+            failure = 'cancelled_by_user';
+            break;
           }
-          if (await _entitlement.check() != AssistantEntitlementState.entitled) return;
-          final tool = (_tools ?? assistantTools).where((t) => t.name == 'request_title').firstOrNull;
-          if (tool == null || !tool.serves(ctx, action.serverId)) return;
-          // The entitlement check awaited: a reset or profile switch since
-          // the confirmation must not still create the request.
-          if (generation != _generation || _disposed) return;
-          final result = await action.execute(password: answer.password);
-          if (generation != _generation) return;
-          failed = result.containsKey('error');
-          if (!failed && result['done'] != false) _actions.add(action.record);
+          final result = await _mutations.run(
+            () => _operations.run(() async {
+              if (!_alive(task)) return <String, Object?>{'error': 'cancelled'};
+              if (await _entitlement.check() != AssistantEntitlementState.entitled) {
+                return <String, Object?>{'error': 'not_entitled'};
+              }
+              if (!_alive(task)) return <String, Object?>{'error': 'cancelled'};
+              final tool = (_tools ?? assistantTools).where((t) => t.name == 'request_title').firstOrNull;
+              if (tool == null || !tool.serves(ctx, action.serverId)) return <String, Object?>{'error': 'not_allowed'};
+              return action.execute(password: answer?.password);
+            }),
+          );
+          if (!_alive(task)) return;
+          failure = result['error'] as String?;
+          if (failure == null && result['done'] != false) task.actions.add(action.record);
       }
+    } on AssistantToolError catch (e) {
+      failure = e.code;
     } catch (e, st) {
-      // Seerr refused, or the client changed under the card.
       appLogger.w('Assistant request option failed', error: e.runtimeType, stackTrace: st);
+      failure = 'failed';
     } finally {
-      if (generation == _generation) {
-        _busy = false;
-        _resultIsError = failed;
-        _state = AssistantSurfaceState.result;
+      if (_alive(task)) {
+        task.error = failure;
+        task.status = _outcomeStatus(failure);
+        _update();
       }
-      _notify();
     }
   }
+}
+
+class _QueuedConfirmation {
+  _QueuedConfirmation({required this.id, required this.task, required this.action});
+  final String id;
+  final _AssistantTaskState task;
+  final AssistantPendingAction action;
+  final Completer<AssistantConfirmation?> completer = Completer();
+  Timer? timer;
+  AssistantTaskConfirmation get view => AssistantTaskConfirmation(id: id, taskId: task.id, action: action);
 }

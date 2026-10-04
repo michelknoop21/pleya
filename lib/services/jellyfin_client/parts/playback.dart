@@ -156,6 +156,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
     String? playSessionId;
     var playMethod = 'DirectPlay';
     var isTranscoding = false;
+    var streamEvidence = const PlaybackStreamEvidence();
     TranscodeFallbackReason? fallbackReason;
 
     final preset = options.qualityPreset;
@@ -207,6 +208,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
           videoUrl = _withApiKey(transcodingUrl);
           playMethod = 'Transcode';
           isTranscoding = true;
+          streamEvidence = PlaybackStreamEvidence.jellyfin(chosenSource);
           includeExternalSubtitleDelivery = true;
         } else if (directStreamUrl is String && directStreamUrl.isNotEmpty) {
           capturePlaySessionId(directStreamUrl);
@@ -240,6 +242,7 @@ mixin _JellyfinPlaybackMethods on MediaServerCacheMixin {
       externalSubtitles: externalSubtitles,
       isOffline: false,
       isTranscoding: isTranscoding,
+      streamEvidence: streamEvidence,
       fallbackReason: fallbackReason,
       activeAudioStreamId: requestedAudioStreamId,
       playSessionId: playSessionId,

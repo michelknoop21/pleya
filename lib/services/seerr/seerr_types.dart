@@ -11,16 +11,24 @@ class SeerrException implements Exception {
   final bool isAuth;
   final bool isForbidden;
   final bool isNetwork;
+  final int? statusCode;
 
-  const SeerrException(this.message, {this.isAuth = false, this.isForbidden = false, this.isNetwork = false});
+  const SeerrException(
+    this.message, {
+    this.isAuth = false,
+    this.isForbidden = false,
+    this.isNetwork = false,
+    this.statusCode,
+  });
 
   factory SeerrException.auth() => const SeerrException('Not authenticated', isAuth: true);
   factory SeerrException.forbidden() => const SeerrException('Not permitted', isForbidden: true);
-  factory SeerrException.network(String m) => SeerrException(m, isNetwork: true);
+  factory SeerrException.network(String m, {int? statusCode}) =>
+      SeerrException(m, isNetwork: true, statusCode: statusCode);
   factory SeerrException.http(int code, Object? body) {
     // Overseerr/Jellyseerr return {"message": ...} on failure — surface it.
     final msg = body is Map ? body['message']?.toString() : null;
-    return SeerrException(msg != null && msg.isNotEmpty ? msg : 'HTTP $code');
+    return SeerrException(msg != null && msg.isNotEmpty ? msg : 'HTTP $code', statusCode: code);
   }
 
   @override

@@ -14,7 +14,9 @@ import '../../media/media_item.dart';
 import '../../media/media_item_types.dart';
 import '../../media/media_kind.dart';
 import '../../media/unified/unified_media_group.dart';
+import '../../services/settings_service.dart';
 import '../../theme/mono_tokens.dart';
+import '../../utils/continue_watching_labels.dart';
 import '../../utils/provider_extensions.dart';
 import '../app_icon.dart';
 import '../media_card_grid_layout.dart';
@@ -34,6 +36,10 @@ class MobileMediaCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
+  /// In Verder kijken the caption is the status line of mockup 22
+  /// (`S3 E4 · 18 min over`), not the year and genre.
+  final bool isInContinueWatching;
+
   const MobileMediaCard({
     super.key,
     required this.group,
@@ -41,6 +47,7 @@ class MobileMediaCard extends StatelessWidget {
     required this.width,
     this.onTap,
     this.onLongPress,
+    this.isInContinueWatching = false,
   });
 
   @override
@@ -108,7 +115,7 @@ class MobileMediaCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: MediaCardGridLayout.titleStyle.copyWith(color: DefaultTextStyle.of(context).style.color),
               ),
-              _CaptionSubtitle(item: item, shape: shape),
+              _CaptionSubtitle(item: item, shape: shape, isInContinueWatching: isInContinueWatching),
             ],
           ),
         ),
@@ -120,12 +127,23 @@ class MobileMediaCard extends StatelessWidget {
 class _CaptionSubtitle extends StatelessWidget {
   final MediaItem item;
   final MobileCardShape shape;
+  final bool isInContinueWatching;
 
-  const _CaptionSubtitle({required this.item, required this.shape});
+  const _CaptionSubtitle({required this.item, required this.shape, required this.isInContinueWatching});
 
   @override
   Widget build(BuildContext context) {
     final muted = tokens(context).textMuted;
+    final style = MediaCardGridLayout.subtitleStyleFrom(DefaultTextStyle.of(context).style, color: muted);
+    if (isInContinueWatching) {
+      final showEp = SettingsService.instance.read(SettingsService.showEpisodeNumberOnCards);
+      return Text(
+        continueWatchingStatusLine(item, showEpisodeNumber: showEp),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
     if (shape == MobileCardShape.wide) {
       final season = item.parentIndex;
       final episode = item.index;

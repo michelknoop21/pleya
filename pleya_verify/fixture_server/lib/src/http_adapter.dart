@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 import 'fixtures/named_fixtures.dart';
+import 'ollama_fake_server.dart';
 import 'pleya_fake_server.dart';
 import 'seerr_fake_server.dart';
 import 'tautulli_fake_server.dart';
@@ -37,6 +38,8 @@ class FixtureHttpServer {
   final String controlToken;
   final SeerrFakeServer seerr;
   final TautulliFakeServer tautulli;
+  final OllamaFakeServer _ollama = OllamaFakeServer();
+  final _modelResponses = <Future<void>>{};
 
   HttpServer? _bound;
 
@@ -53,6 +56,8 @@ class FixtureHttpServer {
   }
 
   Future<void> stop() async {
+    _ollama.holdAurora(false);
+    await Future.wait(_modelResponses.toList());
     await _bound?.close(force: true);
     _bound = null;
   }
@@ -65,6 +70,8 @@ class FixtureHttpServer {
         await _handleSeerrApi(request);
       } else if (request.uri.path.startsWith('/tautulli')) {
         await _handleTautulliApi(request);
+      } else if (request.uri.path.startsWith('/api/') || request.uri.path == '/v1/chat/completions') {
+        await _handleOllamaApi(request);
       } else {
         await _handlePleyaApi(request);
       }
@@ -74,6 +81,24 @@ class FixtureHttpServer {
         request.response.write(jsonEncode({'error': '$e'}));
         await request.response.close();
       } catch (_) {}
+    }
+  }
+
+  Future<void> _handleOllamaApi(HttpRequest request) async {
+    server.requests.add(request.uri.path);
+    final body = await utf8.decoder.bind(request).join();
+    final response = () async {
+      final result = await _ollama.handle(http.Request(request.method, request.requestedUri)..body = body);
+      request.response.statusCode = result.statusCode;
+      result.headers.forEach((name, value) => request.response.headers.set(name, value));
+      request.response.add(result.bodyBytes);
+      await request.response.close();
+    }();
+    _modelResponses.add(response);
+    try {
+      await response;
+    } finally {
+      _modelResponses.remove(response);
     }
   }
 
@@ -137,6 +162,7 @@ class FixtureHttpServer {
 
     switch (request.uri.path) {
       case '/__verify/reset':
+        _ollama.holdAurora(false);
         server.reset();
         seerr.reset();
         tautulli.reset();
@@ -154,14 +180,33 @@ class FixtureHttpServer {
           'seededIds': server.seededIds,
         });
       case '/__verify/seed':
+        final seedWatch = Stopwatch()..start();
+        void milestone(String stage) {
+          try {
+            stderr.writeln(
+              jsonEncode({
+                'verify_fixture': 'seed',
+                'stage': stage,
+                'elapsed_ms': seedWatch.elapsedMilliseconds,
+                'at_utc': DateTime.now().toUtc().toIso8601String(),
+              }),
+            );
+          } catch (_) {
+            // Diagnostic output must never change the control-plane result.
+          }
+        }
+        milestone('seed_received');
         final body = await _readJsonBody(request);
+        milestone('seed_body_read');
         final fixture = body['fixture'] as String?;
         if (fixture == null || !applyNamedFixture(server, fixture, seerr: seerr, tautulli: tautulli)) {
           request.response.statusCode = HttpStatus.badRequest;
           await _json(request, {'error': 'unknown fixture', 'fixture': fixture});
           return;
         }
+        milestone('seed_applied');
         await _json(request, {'ok': true, 'fixture': fixture});
+        milestone('seed_response_closed');
       case '/__verify/add_episode':
         final body = await _readJsonBody(request);
         final parentId = body['parent_id'] as String?;
@@ -217,6 +262,19 @@ class FixtureHttpServer {
         await _json(request, {'ok': true, 'offline': server.unreachable});
       case '/__verify/latency':
         final body = await _readJsonBody(request);
+        // Narrow model timing control for the real TV result-insertion test.
+        // Without this optional flag, the existing ms/count behavior is exact.
+        if (body.containsKey('ollama_hold_aurora')) {
+          final hold = body['ollama_hold_aurora'];
+          if (hold is! bool) {
+            request.response.statusCode = HttpStatus.badRequest;
+            await _json(request, {'error': 'ollama_hold_aurora must be a bool'});
+            return;
+          }
+          _ollama.holdAurora(hold);
+          await _json(request, {'ok': true});
+          return;
+        }
         server.queueLatency(
           Duration(milliseconds: (body['ms'] as num?)?.toInt() ?? 0),
           count: (body['count'] as num?)?.toInt() ?? 1,

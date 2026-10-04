@@ -62,6 +62,7 @@ import '../widgets/focusable_list_tile.dart';
 import '../widgets/overlay_sheet.dart';
 import '../widgets/rating_bottom_sheet.dart';
 import '../i18n/strings.g.dart';
+import '../utils/continue_watching_removal.dart';
 import '../utils/error_message_utils.dart';
 
 class _MenuAction {
@@ -70,7 +71,9 @@ class _MenuAction {
   final String label;
   final bool destructive;
 
-  _MenuAction({required this.value, required this.icon, required this.label, this.destructive = false});
+  final String? subtitle;
+
+  _MenuAction({required this.value, required this.icon, required this.label, this.destructive = false, this.subtitle});
 }
 
 String mediaDeletionFailureMessage(Object error, MediaBackend? backend) {
@@ -334,12 +337,18 @@ class MediaContextMenuState extends State<MediaContextMenu> {
         );
       }
 
-      if (widget.isInContinueWatching && canRemoveFromContinueWatching) {
+      // DEC-144 fase 3: always offered. A source that cannot remove
+      // server-side hides the title on this device and the row says so.
+      if (widget.isInContinueWatching && mediaClient != null) {
+        final removal = continueWatchingRemovalPresentation([
+          (serverName: mediaItem.serverName, removesOnServer: canRemoveFromContinueWatching, reachable: true),
+        ]);
         menuActions.add(
           _MenuAction(
             value: 'remove_from_continue_watching',
-            icon: Symbols.close_rounded,
-            label: t.mediaMenu.removeFromContinueWatching,
+            icon: removal.hidesOnly ? Symbols.visibility_off_rounded : Symbols.close_rounded,
+            label: removal.label,
+            subtitle: removal.scope,
           ),
         );
       }
@@ -633,9 +642,14 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           // This preserves the progression for partially watched items
           // and doesn't mark unwatched next episodes as watched
           try {
-            await WatchActions.removeFromContinueWatching(context, mediaItem!);
+            final outcome = await WatchActions.removeFromContinueWatching(context, mediaItem!);
             if (context.mounted) {
-              showSuccessSnackBar(context, t.messages.removedFromContinueWatching);
+              showSuccessSnackBar(
+                context,
+                outcome == ContinueWatchingRemoval.hiddenOnDevice
+                    ? t.messages.hiddenFromContinueWatching
+                    : t.messages.removedFromContinueWatching,
+              );
               if (widget.onRemoveFromContinueWatching != null) {
                 widget.onRemoveFromContinueWatching!();
               } else {
@@ -802,6 +816,7 @@ class MediaContextMenuState extends State<MediaContextMenu> {
           value: action.value,
           icon: action.icon,
           label: action.label,
+          subtitle: action.subtitle,
           destructive: action.destructive,
         ),
     ];

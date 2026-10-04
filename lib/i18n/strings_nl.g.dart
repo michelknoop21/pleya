@@ -298,7 +298,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get showHeroSection => 'Toon hoofdsectie';
 	@override String get hoverExpandCards => 'Kaarten uitklappen bij hover';
 	@override String get hoverExpandCardsDescription => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft';
-	@override String get continueWatchingAction => 'Actie voor Doorgaan met kijken';
+	@override String get continueWatchingAction => 'Actie voor Verder kijken';
 	@override String get continueWatchingPlay => 'Afspelen';
 	@override String get continueWatchingDetails => 'Details openen';
 	@override String get episodeAction => 'Afleveringsactie';
@@ -630,7 +630,12 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	// Translations
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
-	@override String get removeFromContinueWatching => 'Verwijder uit Doorgaan met kijken';
+	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
+	@override String get hideFromContinueWatching => 'Verbergen uit Verder kijken';
+	@override String get cwScopeThisDevice => 'Alleen op dit apparaat';
+	@override String get cwScopeAllSources => 'Op alle bronnen';
+	@override String cwScopeMixed({required Object server, required Object local}) => '${server} op de server, ${local} alleen hier';
+	@override String get cwScopePartlyLocal => 'Deels alleen op dit apparaat';
 	@override String get viewDetails => 'Details bekijken';
 	@override String get goToSeries => 'Ga naar serie';
 	@override String get shufflePlay => 'Willekeurig afspelen';
@@ -818,7 +823,8 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String get markedAsWatchedOffline => 'Gemarkeerd als gekeken (sync wanneer online)';
 	@override String get markedAsUnwatchedOffline => 'Gemarkeerd als ongekeken (sync wanneer online)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Automatisch verwijderd: ${title}';
-	@override String get removedFromContinueWatching => 'Verwijderd uit Doorgaan met kijken';
+	@override String get removedFromContinueWatching => 'Verwijderd uit Verder kijken';
+	@override String get hiddenFromContinueWatching => 'Verborgen uit Verder kijken';
 	@override String get errorLoading => 'Fout';
 	@override String get fileInfoNotAvailable => 'Bestand informatie niet beschikbaar';
 	@override String get errorLoadingFileInfo => 'Fout bij laden bestand info';
@@ -1047,6 +1053,15 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get watched => 'Bekeken';
 	@override String get tvShow => 'TV Serie';
 	@override String minutesLeft({required Object minutes}) => '${minutes} min over';
+	@override String get nextEpisodeStatus => 'Volgende aflevering';
+	@override String get cwSectionResumeShows => 'Series hervatten';
+	@override String get cwSectionResumeMovies => 'Films hervatten';
+	@override String get cwSectionNextEpisodes => 'Volgende afleveringen';
+	@override String get cwSectionStale => 'Eerder begonnen';
+	@override String get hiddenItems => 'Verborgen items';
+	@override String get restoreHidden => 'Herstellen';
+	@override String get hiddenItemsHint => 'Alleen op dit apparaat verborgen. Herstellen zet een titel terug in Verder kijken.';
+	@override late final _TranslationsDiscoverWatchedAgoNl watchedAgo = _TranslationsDiscoverWatchedAgoNl._(_root);
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
 	@override String becauseYouAreWatching({required Object title}) => 'Omdat je ${title} kijkt';
@@ -2265,7 +2280,7 @@ class _TranslationsNowWatchingNl extends TranslationsNowWatchingEn {
 	@override String get directStream => 'Direct stream';
 	@override String get transcode => 'Transcoderen';
 	@override String get paused => 'Gepauzeerd';
-	@override String remaining({required Object time}) => 'nog ${time}';
+	@override String remaining({required Object time}) => '${time} over';
 	@override String watchingNow({required Object name}) => '${name} kijkt dit nu';
 	@override String get hardware => 'Hardware';
 	@override String get onLan => 'Op je netwerk';
@@ -2500,6 +2515,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get summonHint => 'Houd Play/Pauze ingedrukt om Big P op te roepen';
 	@override String get contextAction => 'Vraag Big P';
 	@override late final _TranslationsAssistantSettingsNl settings = _TranslationsAssistantSettingsNl._(_root);
+	@override late final _TranslationsAssistantTasksNl tasks = _TranslationsAssistantTasksNl._(_root);
 	@override String get youAsked => 'Je vroeg:';
 	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
 	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
@@ -2640,6 +2656,20 @@ class _TranslationsVideoControlsPipErrorsNl extends TranslationsVideoControlsPip
 	@override String get voSwitchFailed => 'Kan video-uitvoer niet wisselen voor beeld-in-beeld';
 	@override String get failed => 'Beeld-in-beeld kon niet worden gestart';
 	@override String get unknown => 'Er is een fout opgetreden';
+}
+
+// Path: discover.watchedAgo
+class _TranslationsDiscoverWatchedAgoNl extends TranslationsDiscoverWatchedAgoEn {
+	_TranslationsDiscoverWatchedAgoNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get today => 'vandaag';
+	@override String get yesterday => 'gisteren';
+	@override String days({required Object count}) => '${count} dagen geleden';
+	@override String weeks({required Object count}) => '${count} weken geleden';
+	@override String months({required Object count}) => '${count} maanden geleden';
 }
 
 // Path: libraries.tabs
@@ -3346,6 +3376,7 @@ class _TranslationsAssistantActionsNl extends TranslationsAssistantActionsEn {
 	@override String get requestTitle => 'Aanvraag verstuurd';
 	@override String get downloadEpisodes => 'Download gestart';
 	@override String get downloadSubtitle => 'Ondertitel gedownload';
+	@override String get changePlayback => 'Afspelen aangepast';
 }
 
 // Path: assistant.confirm
@@ -3501,6 +3532,31 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String kidsAgesValue({required Object ages}) => '${ages} jaar';
 }
 
+// Path: assistant.tasks
+class _TranslationsAssistantTasksNl extends TranslationsAssistantTasksEn {
+	_TranslationsAssistantTasksNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String working({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar';
+	@override String allDone({required Object count}) => '${count} taken zijn klaar.';
+	@override String someDone({required Object done, required Object count}) => '${done} van ${count} taken klaar.';
+	@override String get queued => 'In de wachtrij';
+	@override String get running => 'Bezig';
+	@override String get waiting => 'Wacht op bevestiging';
+	@override String get completed => 'Klaar';
+	@override String get failed => 'Mislukt';
+	@override String get cancelled => 'Geannuleerd';
+	@override String found({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n,
+		one: '1 titel gevonden',
+		other: '${n} titels gevonden',
+	);
+	@override String get choose => 'Kies wat je wilt aanvragen';
+	@override String get cancelAll => 'Alles annuleren';
+	@override String cancelTask({required Object title}) => 'Annuleren: ${title}';
+}
+
 // Path: assistant.option
 class _TranslationsAssistantOptionNl extends TranslationsAssistantOptionEn {
 	_TranslationsAssistantOptionNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3645,6 +3701,7 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get downloadEpisodes => 'Afleveringen downloaden';
 	@override String get downloadSubtitle => 'Ondertitel downloaden';
+	@override String get changePlayback => 'Afspelen aanpassen';
 }
 
 /// The flat map containing all translations for locale <nl>.
@@ -3786,7 +3843,7 @@ extension on TranslationsNl {
 			'settings.showHeroSection' => 'Toon hoofdsectie',
 			'settings.hoverExpandCards' => 'Kaarten uitklappen bij hover',
 			'settings.hoverExpandCardsDescription' => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft',
-			'settings.continueWatchingAction' => 'Actie voor Doorgaan met kijken',
+			'settings.continueWatchingAction' => 'Actie voor Verder kijken',
 			'settings.continueWatchingPlay' => 'Afspelen',
 			'settings.continueWatchingDetails' => 'Details openen',
 			'settings.episodeAction' => 'Afleveringsactie',
@@ -4106,7 +4163,12 @@ extension on TranslationsNl {
 			'detailActions.more' => 'Meer',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
-			'mediaMenu.removeFromContinueWatching' => 'Verwijder uit Doorgaan met kijken',
+			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
+			'mediaMenu.hideFromContinueWatching' => 'Verbergen uit Verder kijken',
+			'mediaMenu.cwScopeThisDevice' => 'Alleen op dit apparaat',
+			'mediaMenu.cwScopeAllSources' => 'Op alle bronnen',
+			'mediaMenu.cwScopeMixed' => ({required Object server, required Object local}) => '${server} op de server, ${local} alleen hier',
+			'mediaMenu.cwScopePartlyLocal' => 'Deels alleen op dit apparaat',
 			'mediaMenu.viewDetails' => 'Details bekijken',
 			'mediaMenu.goToSeries' => 'Ga naar serie',
 			'mediaMenu.shufflePlay' => 'Willekeurig afspelen',
@@ -4162,13 +4224,13 @@ extension on TranslationsNl {
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
 			'videoControls.sleepTimerDurationHeader' => 'Timer',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playbackWillPauseAtEnd' => 'Afspelen wordt gepauzeerd aan het einde van deze video',
 			'videoControls.stillWatching' => 'Kijk je nog?',
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pauze over ${seconds}s',
 			'videoControls.continueWatching' => 'Doorgaan',
 			'videoControls.autoPlayNext' => 'Automatisch volgende afspelen',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.playNext' => 'Volgende afspelen',
 			'videoControls.nextEpisode' => 'Volgende aflevering',
 			'videoControls.skipIntro' => 'Intro overslaan',
@@ -4284,7 +4346,8 @@ extension on TranslationsNl {
 			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
 			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
-			'messages.removedFromContinueWatching' => 'Verwijderd uit Doorgaan met kijken',
+			'messages.removedFromContinueWatching' => 'Verwijderd uit Verder kijken',
+			'messages.hiddenFromContinueWatching' => 'Verborgen uit Verder kijken',
 			'messages.errorLoading' => 'Fout',
 			'messages.fileInfoNotAvailable' => 'Bestand informatie niet beschikbaar',
 			'messages.errorLoadingFileInfo' => 'Fout bij laden bestand info',
@@ -4459,6 +4522,19 @@ extension on TranslationsNl {
 			'discover.watched' => 'Bekeken',
 			'discover.tvShow' => 'TV Serie',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min over',
+			'discover.nextEpisodeStatus' => 'Volgende aflevering',
+			'discover.cwSectionResumeShows' => 'Series hervatten',
+			'discover.cwSectionResumeMovies' => 'Films hervatten',
+			'discover.cwSectionNextEpisodes' => 'Volgende afleveringen',
+			'discover.cwSectionStale' => 'Eerder begonnen',
+			'discover.hiddenItems' => 'Verborgen items',
+			'discover.restoreHidden' => 'Herstellen',
+			'discover.hiddenItemsHint' => 'Alleen op dit apparaat verborgen. Herstellen zet een titel terug in Verder kijken.',
+			'discover.watchedAgo.today' => 'vandaag',
+			'discover.watchedAgo.yesterday' => 'gisteren',
+			'discover.watchedAgo.days' => ({required Object count}) => '${count} dagen geleden',
+			'discover.watchedAgo.weeks' => ({required Object count}) => '${count} weken geleden',
+			'discover.watchedAgo.months' => ({required Object count}) => '${count} maanden geleden',
 			'discover.moreLikeThis' => 'Meer zoals dit',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Omdat je ${title} gekeken hebt',
 			'discover.becauseYouAreWatching' => ({required Object title}) => 'Omdat je ${title} kijkt',
@@ -4662,6 +4738,8 @@ extension on TranslationsNl {
 			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
+			_ => null,
+		} ?? switch (path) {
 			'navigation.watchlist' => 'Kijklijst',
 			'navigation.myPleya' => 'Mijn Pleya',
 			'watchlist.title' => 'Kijklijst',
@@ -4681,8 +4759,6 @@ extension on TranslationsNl {
 			'watchlist.addFailed' => 'Kon je kijklijst niet bijwerken',
 			'watchlist.partiallyFailed' => 'Alleen uit een deel van de lijsten verwijderd. Je kijklijst is opnieuw geladen.',
 			'watchlist.offlineRejected' => 'Je hebt verbinding nodig om je kijklijst te wijzigen',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.filterAll' => 'Alles',
 			'watchlist.filterMovies' => 'Films',
 			'watchlist.filterShows' => 'Series',
@@ -5176,6 +5252,8 @@ extension on TranslationsNl {
 			'metadataEdit.seasons' => 'Seizoenen',
 			'metadataEdit.show' => 'Tonen',
 			'metadataEdit.hide' => 'Verbergen',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.episodeOrdering' => 'Afleveringsvolgorde',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Uitgezonden)',
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Uitgezonden)',
@@ -5195,8 +5273,6 @@ extension on TranslationsNl {
 			'metadataEdit.writer' => 'Schrijver',
 			'metadataEdit.producer' => 'Producent',
 			'metadataEdit.country' => 'Land',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.collection' => 'Collectie',
 			'metadataEdit.label' => 'Label',
 			'metadataEdit.style' => 'Stijl',
@@ -5497,7 +5573,7 @@ extension on TranslationsNl {
 			'nowWatching.directStream' => 'Direct stream',
 			'nowWatching.transcode' => 'Transcoderen',
 			'nowWatching.paused' => 'Gepauzeerd',
-			'nowWatching.remaining' => ({required Object time}) => 'nog ${time}',
+			'nowWatching.remaining' => ({required Object time}) => '${time} over',
 			'nowWatching.watchingNow' => ({required Object name}) => '${name} kijkt dit nu',
 			'nowWatching.hardware' => 'Hardware',
 			'nowWatching.onLan' => 'Op je netwerk',
@@ -5690,6 +5766,8 @@ extension on TranslationsNl {
 			'languageSettings.globalOwnerNoProfile' => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.audio' => 'Audio',
 			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.subtitles' => 'Ondertitels',
 			'languageSettings.subtitlesNote' => 'Voorkeurstaal voor alle content',
 			'languageSettings.subtitleFallback' => 'Terugvaltaal ondertitels',
@@ -5709,8 +5787,6 @@ extension on TranslationsNl {
 			'languageSettings.seriesCount' => ({required Object count}) => '${count} series · ontstaan vanzelf als je tijdens een serie een andere taal kiest',
 			'languageSettings.seriesEmpty' => 'Serievoorkeuren ontstaan vanzelf als je tijdens een serie een andere taal kiest.',
 			'languageSettings.seriesFootnote' => 'Selecteer een serie om de voorkeur te bekijken of terug te zetten naar de globale voorkeur. Een aflevering die de taal mist, verandert hier niets aan.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.rowLanguages' => ({required Object audio, required Object subtitles}) => 'Audio: ${audio} · Ondertitels: ${subtitles}',
 			'languageSettings.rowOrigin' => ({required Object date, required Object episode, required Object device}) => 'Gekozen op ${date} bij ${episode} · ${device}',
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Gekozen op ${date} · ${device}',
@@ -5841,6 +5917,7 @@ extension on TranslationsNl {
 			'assistant.actions.requestTitle' => 'Aanvraag verstuurd',
 			'assistant.actions.downloadEpisodes' => 'Download gestart',
 			'assistant.actions.downloadSubtitle' => 'Ondertitel gedownload',
+			'assistant.actions.changePlayback' => 'Afspelen aangepast',
 			'assistant.confirm.header' => 'Pleya vraagt bevestiging',
 			'assistant.confirm.titles.scanLibrary' => 'Bibliotheek scannen',
 			'assistant.confirm.titles.refreshMetadata' => 'Metadata vernieuwen',
@@ -5854,6 +5931,7 @@ extension on TranslationsNl {
 			'assistant.confirm.titles.requestTitle' => 'Titel aanvragen',
 			'assistant.confirm.titles.downloadEpisodes' => 'Afleveringen downloaden',
 			'assistant.confirm.titles.downloadSubtitle' => 'Ondertitel downloaden',
+			'assistant.confirm.titles.changePlayback' => 'Afspelen aanpassen',
 			'assistant.confirm.user' => 'Gebruiker',
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Toegang',
@@ -5962,6 +6040,19 @@ extension on TranslationsNl {
 			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
 			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
+			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar',
+			'assistant.tasks.allDone' => ({required Object count}) => '${count} taken zijn klaar.',
+			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} van ${count} taken klaar.',
+			'assistant.tasks.queued' => 'In de wachtrij',
+			'assistant.tasks.running' => 'Bezig',
+			'assistant.tasks.waiting' => 'Wacht op bevestiging',
+			'assistant.tasks.completed' => 'Klaar',
+			'assistant.tasks.failed' => 'Mislukt',
+			'assistant.tasks.cancelled' => 'Geannuleerd',
+			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(n, one: '1 titel gevonden', other: '${n} titels gevonden', ), 
+			'assistant.tasks.choose' => 'Kies wat je wilt aanvragen',
+			'assistant.tasks.cancelAll' => 'Alles annuleren',
+			'assistant.tasks.cancelTask' => ({required Object title}) => 'Annuleren: ${title}',
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',

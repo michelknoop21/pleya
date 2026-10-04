@@ -157,9 +157,13 @@ final List<AssistantTool> _findTools = [
     // A visible server that is online now, or Seerr.
     serves: (ctx, _) => ctx.userServers.any((id) => ctx.userClient(id) != null) || ctx.requests?.client() != null,
     run: (ctx, _, args) async {
+      _requestContextLive(ctx);
+      final client = ctx.requests?.client();
       final query = _findQuery(args);
       final age = await _kidsAge(ctx, args);
       final result = await findTitles(ctx, query);
+      _requestContextLive(ctx);
+      if (ctx.requests?.client() != client) throw const AssistantToolError('not_allowed');
       final cards = await _titleCards(ctx, result.matches, age);
       return AssistantToolResult({
         'matches': cards.rows,
@@ -195,10 +199,18 @@ Future<({List<Map<String, Object?>> rows, List<AssistantTitleMatch> display, Map
   bool listing = false,
 }) async {
   final client = ctx.requests?.client();
+  void live() => client == null ? _requestContextLive(ctx) : _requestLive(ctx, client);
+  live();
+  if (client != null) {
+    _shownRequestClients[ctx] ??= client;
+    if (client.session.userId case final user?) _shownRequestUsers[ctx] ??= user;
+  }
   final shown = _shownRequestTitles[ctx] ??= {};
   final rows = <Map<String, Object?>>[];
   final display = <AssistantTitleMatch>[];
   final gated = await _gateTitles(ctx, matches, _matchRef, age);
+  // The gate may look up facts; the profile or Seerr client can change meanwhile.
+  live();
   for (final (i, (m, facts)) in gated.kept.indexed) {
     final id = 'm${i + 1}';
     final kind = (m.kind ?? MediaKind.movie).name;

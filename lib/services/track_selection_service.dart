@@ -1057,6 +1057,7 @@ class TrackSelectionService {
     SubtitleTrack? preferredSubtitleTrack,
     SubtitleTrack? preferredSecondarySubtitleTrack,
     double? defaultPlaybackSpeed,
+    bool Function()? isCurrent,
     // Typed as returning a future rather than `Function(...)`: both are fired
     // without awaiting below, and `unawaited` needs a real future to accept.
     //
@@ -1072,6 +1073,8 @@ class TrackSelectionService {
     void Function(PlaybackLanguageNotice)? onLanguageNotice,
   }) async {
     final player = this.player!;
+    bool live() => !player.disposed && (isCurrent?.call() ?? true);
+    if (!live()) return;
     // Wait for tracks to be loaded
     if (player.state.tracks.audio.isEmpty && player.state.tracks.subtitle.isEmpty) {
       try {
@@ -1084,7 +1087,7 @@ class TrackSelectionService {
       }
     }
 
-    if (player.disposed) return;
+    if (!live()) return;
 
     // Get real tracks (excluding auto and no)
     final realAudioTracks = player.state.tracks.audio.where((t) => t.id != 'auto' && t.id != 'no').toList();
@@ -1098,13 +1101,23 @@ class TrackSelectionService {
       appLogger.d(
         'Audio: ${selectedAudioTrack.title ?? selectedAudioTrack.language ?? "Track ${selectedAudioTrack.id}"} [${audioResult.priority.name}]',
       );
-      unawaited(player.selectAudioTrack(selectedAudioTrack));
+      if (isCurrent == null) {
+        unawaited(player.selectAudioTrack(selectedAudioTrack));
+      } else {
+        await player.selectAudioTrack(selectedAudioTrack);
+        if (!live()) return;
+      }
 
       // Tell the source which stream is playing, so a transcode session and
-      // the server's own bookkeeping follow along. Deliberately not awaited:
-      // that must not hold up applying the tracks.
+      // the server's own bookkeeping follow along. Ordinary playback keeps
+      // its timing; scoped reloads await it so cancellation reaches each step.
       if (onAudioTrackChanged != null) {
-        unawaited(onAudioTrackChanged(selectedAudioTrack, userInitiated: false));
+        if (isCurrent == null) {
+          unawaited(onAudioTrackChanged(selectedAudioTrack, userInitiated: false));
+        } else {
+          await onAudioTrackChanged(selectedAudioTrack, userInitiated: false);
+          if (!live()) return;
+        }
       }
 
       if (onLanguageNotice != null) {
@@ -1118,6 +1131,7 @@ class TrackSelectionService {
       }
     }
 
+    if (!live()) return;
     // Select and apply subtitle track
     final subtitleResult = selectSubtitleTrack(realSubtitleTracks, preferredSubtitleTrack, selectedAudioTrack);
     final selectedSubtitleTrack = subtitleResult.track;
@@ -1125,11 +1139,21 @@ class TrackSelectionService {
         ? 'OFF'
         : (selectedSubtitleTrack.title ?? selectedSubtitleTrack.language ?? 'Track ${selectedSubtitleTrack.id}');
     appLogger.d('Subtitle: $subtitleName [${subtitleResult.priority.name}]');
-    unawaited(player.selectSubtitleTrack(selectedSubtitleTrack));
+    if (isCurrent == null) {
+      unawaited(player.selectSubtitleTrack(selectedSubtitleTrack));
+    } else {
+      await player.selectSubtitleTrack(selectedSubtitleTrack);
+      if (!live()) return;
+    }
 
-    // Same as the audio side above: fire and forget, on purpose.
+    // Same timing and scoped cancellation as the audio side above.
     if (onSubtitleTrackChanged != null) {
-      unawaited(onSubtitleTrackChanged(selectedSubtitleTrack, userInitiated: false));
+      if (isCurrent == null) {
+        unawaited(onSubtitleTrackChanged(selectedSubtitleTrack, userInitiated: false));
+      } else {
+        await onSubtitleTrackChanged(selectedSubtitleTrack, userInitiated: false);
+        if (!live()) return;
+      }
     }
 
     if (onLanguageNotice != null) {
@@ -1152,13 +1176,24 @@ class TrackSelectionService {
         appLogger.d(
           'Secondary subtitle: ${secondaryMatch.title ?? secondaryMatch.language ?? "Track ${secondaryMatch.id}"}',
         );
-        unawaited(player.selectSecondarySubtitleTrack(secondaryMatch));
+        if (!live()) return;
+        if (isCurrent == null) {
+          unawaited(player.selectSecondarySubtitleTrack(secondaryMatch));
+        } else {
+          await player.selectSecondarySubtitleTrack(secondaryMatch);
+          if (!live()) return;
+        }
       }
     }
 
     // Apply default playback speed from settings
+    if (!live()) return;
     if (defaultPlaybackSpeed != null && defaultPlaybackSpeed != 1.0) {
-      unawaited(player.setRate(defaultPlaybackSpeed));
+      if (isCurrent == null) {
+        unawaited(player.setRate(defaultPlaybackSpeed));
+      } else {
+        await player.setRate(defaultPlaybackSpeed);
+      }
     }
   }
 }

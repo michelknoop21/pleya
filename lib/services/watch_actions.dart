@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../media/ids.dart';
 import '../media/media_item.dart';
 import '../media/media_server_client.dart';
+import '../providers/continue_watching_hidden_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/offline_mode_provider.dart';
 import '../providers/offline_watch_provider.dart';
@@ -105,12 +106,34 @@ class WatchActions {
     return WatchMarkOutcome.marked;
   }
 
-  /// Removes [item] from Continue Watching without touching watch state.
-  /// Throws when no client is bound for the item's server (mirrors the
-  /// pre-existing menu behaviour so callers surface an error snackbar).
-  static Future<void> removeFromContinueWatching(BuildContext context, MediaItem item) async {
+  /// Takes [item] out of Continue Watching without touching watch state: the
+  /// one path every menu goes through (DEC-144 fase 3).
+  ///
+  /// A source that can remove server-side is removed there. One that cannot
+  /// (Jellyfin, Emby, local folders) is hidden on this device instead, through
+  /// [ContinueWatchingHiddenProvider]; that used to throw `UnsupportedError`
+  /// out of the tvOS menu. Either way the row drops the card at once.
+  ///
+  /// Throws when no client is bound for the item's server (callers surface an
+  /// error snackbar), and when a local hide is needed but no hidden store is
+  /// in scope.
+  static Future<ContinueWatchingRemoval> removeFromContinueWatching(BuildContext context, MediaItem item) async {
     final client = context.getMediaClientForServer(ServerId(item.serverId!));
-    await client.removeFromContinueWatching(item);
+    // Read before the first await; the surface may be gone afterwards.
+    final hidden = context.read<ContinueWatchingHiddenProvider?>();
+    if (client.capabilities.continueWatchingRemoval) {
+      await client.removeFromContinueWatching(item);
+      WatchStateNotifier().notifyRemovedFromContinueWatching(item: item);
+      return ContinueWatchingRemoval.removedOnServer;
+    }
+    if (hidden == null) {
+      throw UnsupportedError('No hidden store in scope to hide ${item.globalKey} from Continue Watching');
+    }
+    await hidden.hide(item);
     WatchStateNotifier().notifyRemovedFromContinueWatching(item: item);
+    return ContinueWatchingRemoval.hiddenOnDevice;
   }
 }
+
+/// How [WatchActions.removeFromContinueWatching] took the title out.
+enum ContinueWatchingRemoval { removedOnServer, hiddenOnDevice }

@@ -5,7 +5,7 @@ part of 'seerr_client.dart';
 extension SeerrClientRequests on SeerrClient {
   /// `POST /request`. [seasons] is only sent for TV; pass a list of season
   /// numbers. Advanced (admin) options are optional.
-  Future<void> createRequest({
+  Future<Map<String, dynamic>> createRequest({
     required String mediaType,
     required int tmdbId,
     List<int>? seasons,
@@ -23,8 +23,17 @@ extension SeerrClientRequests on SeerrClient {
       'profileId': ?profileId,
       'rootFolder': ?rootFolder,
     };
-    final resp = await _send(() => _http.post('/request', body: body, headers: _authHeaders()));
+    final MediaServerResponse resp;
+    try {
+      resp = await _send(() => _http.post('/request', body: body, headers: _authHeaders()));
+    } on SeerrException catch (e) {
+      // A 2xx response can be accepted even when its JSON body is unreadable.
+      // Keep that evidence distinct from a response lost on the transport.
+      if (e.isNetwork && e.statusCode != null && e.statusCode! >= 200 && e.statusCode! < 300) return const {};
+      rethrow;
+    }
     _throwIfError(resp);
+    return resp.data is Map ? (resp.data as Map).cast<String, dynamic>() : const {};
   }
 
   /// `GET /request/count`. Feeds the counts next to the filter tabs. Returns

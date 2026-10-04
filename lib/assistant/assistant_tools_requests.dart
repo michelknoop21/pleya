@@ -29,6 +29,8 @@ final _seerrServerId = ServerId('seerr');
 /// collide between films and series). Keyed on the run's context, so it
 /// lives exactly as long as the run.
 final _shownRequestTitles = Expando<Map<String, SeerrMedia>>('shownRequestTitles');
+final _shownRequestClients = Expando<SeerrClient>('shownRequestClients');
+final _shownRequestUsers = Expando<int>('shownRequestUsers');
 
 bool _servesRequests(AssistantToolContext ctx, ServerId _) => ctx.requests?.client() != null;
 
@@ -41,8 +43,7 @@ Future<T> _seerrCall<T>(Future<T> Function() call) async {
     return await call();
   } on SeerrException catch (e) {
     if (e.isAuth || e.isForbidden) throw const AssistantToolError('not_allowed');
-    if (e.isNetwork) throw const AssistantToolError('requests_not_available');
-    rethrow;
+    throw const AssistantToolError('requests_not_available');
   }
 }
 
@@ -52,26 +53,6 @@ String _requestStatus(SeerrMediaStatus status) => switch (status) {
   SeerrMediaStatus.pending || SeerrMediaStatus.processing => 'requested',
   SeerrMediaStatus.unknown => 'not_requested',
 };
-
-/// `mediaInfo.status`, or `status4k` for the 4K copy, which Overseerr tracks
-/// separately on the media and on each season.
-SeerrMediaStatus _infoStatus(Object? info, bool fourK) {
-  final value = info is Map ? info[fourK ? 'status4k' : 'status'] : null;
-  return SeerrMediaStatus.fromValue(value is num ? value.toInt() : null);
-}
-
-/// Season number to status, specials left out, as the request sheet does.
-Map<int, SeerrMediaStatus> _seasonStatuses(Map<String, dynamic> detail, bool fourK) {
-  final seasons = SeerrSeason.listFromDetail(detail);
-  if (!fourK) return {for (final s in seasons) s.seasonNumber: s.status};
-  final info = detail['mediaInfo'];
-  final known = <int, SeerrMediaStatus>{
-    if (info is Map && info['seasons'] is List)
-      for (final s in info['seasons'] as List)
-        if (s is Map && s['seasonNumber'] is num) (s['seasonNumber'] as num).toInt(): _infoStatus(s, true),
-  };
-  return {for (final s in seasons) s.seasonNumber: known[s.seasonNumber] ?? SeerrMediaStatus.unknown};
-}
 
 List<int>? _seasonNumbers(Map<String, Object?> args) {
   final value = args['seasons'];
@@ -117,6 +98,7 @@ final List<AssistantTool> _requestTools = [
     serves: _servesRequests,
     run: (ctx, _, args) async {
       final client = _seerr(ctx);
+      _requestLive(ctx, client);
       final candidates = _candidates(args);
       final age = await _kidsAge(ctx, args);
       // Ten results at most in all, at least two per candidate.
@@ -127,6 +109,7 @@ final List<AssistantTool> _requestTools = [
         final pages = await Future.wait([
           for (final c in candidates.skip(start).take(3)) _seerrCall(() => client.search(c.title)),
         ]);
+        _requestLive(ctx, client);
         for (final (i, page) in pages.indexed) {
           final c = candidates[start + i];
           found.addAll(
@@ -178,6 +161,7 @@ final List<AssistantTool> _requestTools = [
     serves: _servesRequests,
     run: (ctx, _, args) async {
       final client = _seerr(ctx);
+      _requestLive(ctx, client);
       final kind = args['kind'];
       if (kind != 'movie' && kind != 'series') throw const AssistantToolError('invalid_kind');
       final movies = kind == 'movie';
@@ -223,6 +207,7 @@ final List<AssistantTool> _requestTools = [
       List<String>? knownGenres;
       if (genreNames.isNotEmpty) {
         final all = await _seerrCall(() => movies ? client.getMovieGenres() : client.getTvGenres());
+        _requestLive(ctx, client);
         for (final name in genreNames) {
           final match = all.where((g) => g.name.toLowerCase() == name.toLowerCase()).firstOrNull;
           final value = clipText(name, 40);
@@ -267,11 +252,36 @@ final List<AssistantTool> _requestTools = [
     },
   ),
   AssistantTool(
+    name: 'request_status',
+    description:
+        'Read or explicitly refresh the current Seerr status of a title shown in this task. '
+        'Use seerr_id exactly as returned by find_title/find_request_title/discover_request_titles. '
+        'Keeps standard and 4K copies and individual seasons separate. Unknown means unverified, not missing. '
+        'No monitoring or automatic retry; a later question first finds the title again.',
+    risk: AssistantToolRisk.read,
+    needsServer: false,
+    properties: const {
+      'seerr_id': {'type': 'string'},
+      'four_k': {'type': 'boolean'},
+    },
+    required: const ['seerr_id'],
+    serves: _servesRequests,
+    run: (ctx, _, args) async {
+      final shown =
+          _shownRequestTitles[ctx]?[_string(args, 'seerr_id')] ?? (throw const AssistantToolError('unknown_seerr_id'));
+      final client = _seerr(ctx);
+      final state = await _readRequestState(ctx, client, shown, _bool(args, 'four_k'));
+      return AssistantToolResult(state.data);
+    },
+  ),
+  AssistantTool(
     name: 'request_title',
     description:
-        'Ask the request service to add a title found with find_request_title or discover_request_titles. '
+        'Request a missing title found with find_title, find_request_title or discover_request_titles, in the same task. '
         'The user confirms in Pleya. For a series, seasons lists season numbers; leave it out for every season '
-        'not yet requested. four_k only where can_request_4k was true. Use seerr_id exactly as it was returned.',
+        'not yet requested. An available library copy opens normally without a request. '
+        'four_k only where can_request_4k was true. Use seerr_id exactly as returned. '
+        'Never retry an uncertain write automatically; read request_status first and obtain a new confirmation.',
     risk: AssistantToolRisk.sensitive,
     needsServer: false,
     properties: const {

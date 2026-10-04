@@ -31,63 +31,83 @@ AssistantJobProgress? assistantJobLook(AssistantJobWatch watch, List<ServerJob> 
   }
 }
 
-extension _AssistantJobWatching on AssistantController {
-  /// Follows the jobs the last ask started, so the result card shows them
-  /// running and ending. Stops on a new ask, [reset], [dispose], when every
-  /// job settled, or after [jobWatchLimit].
-  Future<void> _watchJobs() async {
-    final seq = ++_jobsSeq;
+extension _AssistantJobPolling on AssistantController {
+  /// Each completed task owns its watches. Aggregate action offsets change
+  /// when siblings finish, so they cannot identify an action across an await.
+  Future<void> _watchJobs(_AssistantTaskState task) async {
+    final seq = _jobsSeq;
     final deadline = _now().add(jobWatchLimit);
-    final seen = <int>{};
-    final misses = <int, int>{};
-    bool open(int i) => _actions[i].job != null && !(_actions[i].progress?.settled ?? false);
-    while (true) {
+    final watches = task.actions.map((action) => action.job).nonNulls.toList();
+    final context = _buildContext(null);
+    final clients = {for (final watch in watches) watch.serverId: context.admin<ServerJobsClient>(watch.serverId)};
+    final seen = <AssistantJobWatch>{};
+    final misses = <AssistantJobWatch, int>{};
+    bool current() => seq == _jobsSeq && _alive(task);
+    bool authorized(AssistantJobWatch watch) {
+      if (!current()) return false;
+      if (_jobsFor != null) return true; // Explicit test transport.
+      final latest = _buildContext(null);
+      return clients[watch.serverId] != null &&
+          identical(clients[watch.serverId], latest.admin<ServerJobsClient>(watch.serverId)) &&
+          (context.catalog == null || context.catalog!.activeProfileId() == context.catalog!.profileId);
+    }
+
+    int indexOf(AssistantJobWatch watch) => task.actions.indexWhere((action) => identical(action.job, watch));
+    while (current()) {
       await Future<void>.delayed(jobPollInterval);
-      if (seq != _jobsSeq || _disposed) return;
-      final indexes = [
-        for (var i = 0; i < _actions.length; i++)
-          if (open(i)) i,
-      ];
-      if (indexes.isEmpty) return;
+      if (!current()) return;
+      final open = watches.where((watch) {
+        final index = indexOf(watch);
+        return index >= 0 && !(task.actions[index].progress?.settled ?? false);
+      }).toList();
+      if (open.isEmpty) return;
       final timeUp = !_now().isBefore(deadline);
       final lists = <ServerId, List<ServerJob>?>{};
-      for (final i in indexes) {
-        final watch = _actions[i].job!;
+      for (final watch in open) {
+        if (!authorized(watch)) return;
         if (!lists.containsKey(watch.serverId)) {
           List<ServerJob>? jobs;
           try {
-            jobs = await _listJobs(watch.serverId);
+            final remaining = deadline.difference(_now());
+            if (remaining > Duration.zero) {
+              jobs = await Future.any<List<ServerJob>?>([
+                _operations.run(() {
+                  if (!authorized(watch)) return Future<List<ServerJob>?>.value();
+                  return _listJobs(watch.serverId);
+                }),
+                task.cancel.trigger.then<List<ServerJob>?>((_) => null),
+              ]).timeout(remaining);
+            }
           } catch (e) {
-            // One failed look is not a failed job; the next one may answer.
             appLogger.d('Assistant job poll failed', error: e.runtimeType);
           }
-          if (seq != _jobsSeq || _disposed) return;
+          if (!authorized(watch)) return;
           lists[watch.serverId] = jobs;
         }
+        if (!authorized(watch)) return;
         final jobs = lists[watch.serverId];
-        var next = jobs == null ? null : assistantJobLook(watch, jobs, seen: seen.contains(i));
-        if (next?.phase == AssistantJobPhase.running) seen.add(i);
-        if (next == null && jobs != null && !seen.contains(i) && (misses[i] = (misses[i] ?? 0) + 1) >= 3) {
-          // Nothing to follow: say what is known, that it started.
+        var next = jobs == null ? null : assistantJobLook(watch, jobs, seen: seen.contains(watch));
+        if (next?.phase == AssistantJobPhase.running) seen.add(watch);
+        if (next == null && jobs != null && !seen.contains(watch) && (misses[watch] = (misses[watch] ?? 0) + 1) >= 3) {
           next = const AssistantJobProgress(AssistantJobPhase.started);
         }
-        if (timeUp && !(next?.settled ?? false)) {
+        if ((timeUp || !_now().isBefore(deadline)) && !(next?.settled ?? false)) {
           next = AssistantJobProgress(
-            seen.contains(i) ? AssistantJobPhase.background : AssistantJobPhase.started,
+            seen.contains(watch) ? AssistantJobPhase.background : AssistantJobPhase.started,
             percent: next?.percent,
           );
         }
-        if (next != null) _actions[i] = _actions[i].withProgress(next);
+        final index = indexOf(watch);
+        if (next != null && index >= 0) task.actions[index] = task.actions[index].withProgress(next);
       }
-      _notify();
+      _update();
     }
   }
 
   Future<List<ServerJob>?> _listJobs(ServerId serverId) {
     final override = _jobsFor;
     if (override != null) return override(serverId);
-    // Authority is read live: a role lost mid-scan stops the look.
     final client = _buildContext(null).admin<ServerJobsClient>(serverId);
-    return client == null ? Future.value(const []) : client.listJobs();
+    return client == null ? Future.value(null) : client.listJobs();
   }
 }

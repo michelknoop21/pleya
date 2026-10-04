@@ -25,6 +25,7 @@ extension _AssistantAnswer on AssistantRun {
           tool: 'find_title',
           phase: AssistantStepPhase.done,
           display: keep ? step.display : null,
+          evidenceCurrent: step.current,
         ),
       );
     }
@@ -63,9 +64,47 @@ extension _AssistantAnswer on AssistantRun {
   /// from a library or requested. Never left to the model alone. After an
   /// action the action is the answer, and a named title is its subject. In
   /// kids mode find_title applies the age gate, so a turned-down title has
-  /// no card. Returns the started step with its cards, not yet added.
-  Future<({int index, AssistantDisplay? display})?> _lookupNamedTitles(String answer) async {
-    if (_actions.isNotEmpty || _cancelled) return null;
+  /// no card. Returns the started step with its cards, not yet added, and
+  /// whether its sources are still current.
+  Future<({int index, AssistantDisplay? display, bool Function() current})?> _lookupNamedTitles(String answer) async {
+    if (_actions.isNotEmpty || _cancelled || _spoilerQuestion != null || _ctx.libraryDoctorMode) return null;
+    final evidenceContext = _ctx;
+    final clients = {for (final id in evidenceContext.userServers) id: evidenceContext.userClient(id)};
+    final requestClient = evidenceContext.requests?.client();
+    final requestUser = requestClient?.session.userId;
+    // Match findTitles' own source roots, read live from Home's loader. Client
+    // identity alone cannot detect a library being removed or hidden.
+    Set<(ServerId, String, MediaKind)> visibleLibraryScope() => switch (evidenceContext.catalog?.rowLoader) {
+      final CatalogHomeCustomRowLoader loader => {
+        for (final kind in const [MediaKind.movie, MediaKind.show])
+          for (final library in loader.librariesFor(kind))
+            if (evidenceContext.userClient(library.serverId) != null) (library.serverId, library.libraryId, kind),
+      },
+      _ => const {},
+    };
+    final libraryScope = visibleLibraryScope();
+    bool librariesCurrent() {
+      final live = visibleLibraryScope();
+      return live.length == libraryScope.length && live.containsAll(libraryScope);
+    }
+
+    bool current() =>
+        !_cancelled &&
+        evidenceContext.playbackEvidenceCurrent &&
+        evidenceContext.libraryDoctorError == null &&
+        evidenceContext.recommendationError == null &&
+        identical(evidenceContext.requests?.client(), requestClient) &&
+        requestClient?.session.userId == requestUser &&
+        librariesCurrent() &&
+        (evidenceContext.catalog == null ||
+            evidenceContext.catalog!.activeProfileId() == evidenceContext.catalog!.profileId) &&
+        clients.length == evidenceContext.userServers.length &&
+        clients.entries.every(
+          (entry) =>
+              evidenceContext.userServers.contains(entry.key) &&
+              identical(evidenceContext.userClient(entry.key), entry.value),
+        );
+    if (!current()) return null;
     final shown = assistantShownTitles(_displays);
     final named = [
       for (final t in assistantNamedTitles(answer))
@@ -73,17 +112,29 @@ extension _AssistantAnswer on AssistantRun {
     ];
     if (named.isEmpty) return null;
     final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
-    if (tool == null) return null;
+    if (tool == null || tool.risk != AssistantToolRisk.read) return null;
+    if (budget != null && !budget!.reserveTool()) return null;
+    _namedTitlesCurrent = current;
     final index = _stepIndex++;
     onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.started));
+    AssistantDisplay? display;
     try {
       final titles = {for (final t in named) t.title}.toList();
-      final outcome = await tool.run(_ctx, null, {
-        'candidates': [
-          for (final t in named) {'title': t.title, 'year': ?t.year},
-        ],
-        'variants': [...titles, if (titles.length == 1) titles.single.toLowerCase()],
+      final operation = _operation(() async {
+        if (!current() || !tool.serves(_ctx, AssistantRun._noServer)) throw const AssistantToolError('cancelled');
+        return tool.run(_ctx, null, {
+          'candidates': [
+            for (final t in named) {'title': t.title, 'year': ?t.year},
+          ],
+          'variants': [...titles, if (titles.length == 1) titles.single.toLowerCase()],
+        });
       });
+      final outcome = await Future.any<AssistantToolOutcome>([
+        operation,
+        if (cancel != null)
+          cancel!.trigger.then<AssistantToolOutcome>((_) => throw const AssistantToolError('cancelled')),
+      ]);
+      if (!current()) return null;
       if (outcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
         final exact = [
           for (final m in matches)
@@ -97,13 +148,14 @@ extension _AssistantAnswer on AssistantRun {
                 ))
               m,
         ];
-        if (exact.isNotEmpty) return (index: index, display: AssistantTitleMatches(context, exact));
+        if (exact.isNotEmpty) display = AssistantTitleMatches(context, exact);
       }
     } on AssistantToolError catch (e) {
       if (e.code == 'kids_ages_unknown') _askKidsAges();
     } catch (e) {
       appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
     }
-    return (index: index, display: null);
+    if (!current()) return null;
+    return (index: index, display: display, current: current);
   }
 }

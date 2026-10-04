@@ -74,7 +74,9 @@ void main() {
         _film(862, 'Toy Story', '1995-11-22'),
         _film(438631, 'Dune', '2021-09-15'),
         {'id': 5, 'mediaType': 'person', 'name': 'Someone'},
-      ]);
+      ])
+      // The request card reads the title fresh and checks it is this one.
+      ..details['/movie/438631'] = {'id': 438631, 'title': 'Dune', 'releaseDate': '2021-09-15'};
     final ctx = _ctx(seerr: seerr, server: library);
     final data = await _run(ctx, 'trending_titles', {'kind': 'movie'});
 
@@ -84,8 +86,11 @@ void main() {
     expect(rows[0]['item_id'], 'ts');
     expect(rows[1]['in_library'], isFalse);
     expect(rows[1]['seerr_id'], 'movie:438631');
+    // The shown id is accepted: the request flow reads that title fresh from
+    // Seerr. What follows (library and rights evidence) is the request tests'.
     final request = await assistantRequestFromOption(ctx, 'movie:438631');
-    expect(request, isA<AssistantPendingAction>());
+    if (request case AssistantToolResult(:final data)) expect(data['error'], isNot('unknown_seerr_id'));
+    expect(seerr.paths, contains('/movie/438631'));
   });
 
   test('trending without Seerr: TMDB on the own key, one kind only when asked', () async {

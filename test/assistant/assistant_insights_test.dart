@@ -107,6 +107,7 @@ class _Jf implements JellyfinClient {
     required LibraryQuery query,
     MediaKind? libraryKind,
     AbortController? abort,
+    bool requireTotalCount = false,
   }) async {
     expect(libraryId, 'films');
     pages.add(query.offset);

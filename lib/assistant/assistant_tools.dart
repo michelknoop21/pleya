@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'dart:math';
+import '../media/media_stream.dart';
+import '../services/unified_catalog/source_cursor.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 import '../media/media_backend.dart';
 import '../media/unified/unified_media_group.dart';
 import '../services/unified_catalog/home_custom_row.dart';
@@ -24,6 +28,9 @@ import '../services/pleya_server_client.dart';
 import '../media/ids.dart';
 import '../media/episode_collection.dart';
 import '../media/media_item.dart';
+import '../media/participant_evidence.dart';
+import 'assistant_strict_filters.dart';
+import '../profiles/profile_server_identity.dart';
 import '../media/media_server_client.dart';
 import '../models/download_models.dart';
 import '../models/plex/plex_subtitle_search_result.dart';
@@ -32,11 +39,13 @@ import '../services/recommendations/recommendation_service.dart' show Recommenda
 import '../services/recommendations/taste_profile.dart' show AffinityVector;
 import '../media/media_hub.dart';
 import '../media/media_kind.dart';
+import '../media/media_identity.dart';
+import '../utils/external_ids.dart';
+import '../services/unified_catalog/source_resolver.dart';
 import '../media/media_library.dart';
 import '../media/server_administration.dart';
 import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems;
 import '../utils/app_logger.dart';
-import '../utils/external_ids.dart';
 import '../utils/global_key_utils.dart';
 import '../services/tmdb/tmdb_client.dart' show TmdbClient, TmdbException, TmdbKind;
 import 'assistant_age_gate.dart';
@@ -45,6 +54,8 @@ import 'assistant_find_route.dart';
 import 'assistant_plot_index.dart' show titleKey;
 import 'assistant_title_facts.dart';
 import 'assistant_tool_context.dart';
+import 'assistant_playback.dart';
+import 'assistant_spoiler_context.dart' show assistantIsMissingEpisodeDiagnosis;
 
 part 'assistant_tools_general.dart';
 part 'assistant_tools_admin.dart';
@@ -53,11 +64,16 @@ part 'assistant_tools_catalog_query.dart';
 part 'assistant_tools_insights.dart';
 part 'assistant_tools_insights_watch.dart';
 part 'assistant_tools_requests.dart';
+part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_discover.dart';
 part 'assistant_tools_kids.dart';
+part 'assistant_tools_spoiler.dart';
 part 'assistant_tools_media.dart';
+part 'assistant_tools_recommendations.dart';
+part 'assistant_tools_playback.dart';
+part 'assistant_tools_library_doctor.dart';
 part 'assistant_tools_personal.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
@@ -98,6 +114,7 @@ enum AssistantActionKind {
   requestTitle,
   downloadEpisodes,
   downloadSubtitle,
+  changePlayback,
 }
 
 /// How the backend really models the action, for the card's fine print.
@@ -171,6 +188,7 @@ class AssistantPendingAction extends AssistantToolOutcome {
     this.password = AssistantPasswordMode.none,
     this.items = const [],
     this.preview,
+    this.job,
   });
 
   final AssistantActionKind kind;
@@ -190,12 +208,16 @@ class AssistantPendingAction extends AssistantToolOutcome {
   /// A richer preview the card can render, when a list of titles is not enough.
   final AssistantDisplay? preview;
 
+  /// Work to follow only after this action actually succeeds.
+  final AssistantJobWatch? job;
+
   /// Runs the action. [password] comes from Pleya's secure input, never
   /// from the model. A result with `done: false` means nothing changed, and
   /// the run then does not list the action as done.
   final Future<Map<String, Object?>> Function({String? password}) execute;
 
-  AssistantActionRecord get record => AssistantActionRecord(kind: kind, serverName: serverName, subject: subject);
+  AssistantActionRecord get record =>
+      AssistantActionRecord(kind: kind, serverName: serverName, subject: subject, job: job);
 }
 
 class AssistantTool {
@@ -304,10 +326,13 @@ final List<AssistantTool> assistantTools = [
   ..._generalTools,
   ..._adminTools,
   ..._catalogTools,
+  ..._recommendationTools,
   ..._insightTools,
   ..._requestTools,
   ..._findTools,
   ..._discoverTools,
   ..._mediaTools,
+  ..._playbackTools,
+  ..._libraryDoctorTools,
   ..._personalTools,
 ];

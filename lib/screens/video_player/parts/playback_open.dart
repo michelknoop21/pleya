@@ -256,8 +256,12 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required _FrameRateStartupPlan plan,
     required Future<void> Function(String reason) resumeAfterStartupGate,
     bool playbackResumedForStartupFrame = false,
+    bool Function()? isCurrent,
   }) async {
+    bool live() => mounted && player == currentPlayer && (isCurrent?.call() ?? true);
+    if (!live()) return;
     Future<void> resumeAfterRefresh(String reason) async {
+      if (!live()) return;
       if (playbackResumedForStartupFrame) {
         appLogger.d('Frame rate matching: continuing already-resumed playback after $reason');
         await _playWithPlaybackIntent(currentPlayer);
@@ -282,7 +286,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
           videoWidth: plan.width,
           videoHeight: plan.height,
         );
-        if (!mounted || player != currentPlayer) return;
+        if (!live()) return;
         if (didSwitch) {
           await _refreshAndroidMpvDecoderAfterFrameRateSwitch(reason: 'post-open frame rate switch');
         }
@@ -304,9 +308,10 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
       appLogger.d('Frame rate matching: waiting for Android MPV startup frame before decoder refresh');
       final startupFrameReady = plan._startupFrameReady;
       final startupReady = startupFrameReady == null ? false : await startupFrameReady;
-      if (mounted && player == currentPlayer) {
+      if (live()) {
         if (startupReady) {
           await Future<void>.delayed(const Duration(milliseconds: 100));
+          if (!live()) return;
           await _refreshAndroidMpvDecoderAfterFrameRateSwitch(reason: 'pre-load frame rate startup');
           await resumeAfterRefresh('startup decoder refresh');
         } else {
@@ -334,14 +339,15 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required Player currentPlayer,
     required _ExternalSubtitleOpenPlan externalSubtitlePlan,
     required String reason,
+    bool Function()? isCurrent,
   }) async {
-    if (!mounted || player != currentPlayer) return;
+    if (!mounted || player != currentPlayer || !(isCurrent?.call() ?? true)) return;
     final trackManager = _trackManager;
     if (trackManager == null) return;
     appLogger.d('Frame rate matching: resuming playback after $reason');
     _playbackIntentShouldPlay = true;
     if (externalSubtitlePlan.requiresPostOpenAdd) {
-      await trackManager.resumeAfterSubtitleLoad();
+      await trackManager.resumeAfterSubtitleLoad(isCurrent: isCurrent);
     } else {
       await _playWithPlaybackIntent(currentPlayer);
     }
@@ -358,19 +364,22 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required String reason,
     required bool wtOwnsStart,
     Completer<void>? wtStartupHold,
+    bool Function()? isCurrent,
   }) async {
+    if (!(isCurrent?.call() ?? true)) return;
     if (!wtOwnsStart) {
       return _resumeAfterFrameRateStartupGate(
         currentPlayer: currentPlayer,
         externalSubtitlePlan: externalSubtitlePlan,
         reason: reason,
+        isCurrent: isCurrent,
       );
     }
     appLogger.d('Frame rate matching: yielding post-gate resume to Watch Together ($reason)');
     final trackManager = _trackManager;
     if (trackManager != null && externalSubtitlePlan.requiresPostOpenAdd) {
       trackManager.waitingForExternalSubsTrackSelection = false;
-      trackManager.applyTrackSelectionWhenReady();
+      trackManager.applyTrackSelectionWhenReady(isCurrent: isCurrent);
     }
     if (wtStartupHold != null && !wtStartupHold.isCompleted) {
       wtStartupHold.complete();
@@ -466,27 +475,30 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required _ExternalSubtitleOpenPlan externalSubtitlePlan,
     required bool Function() shouldResumeAfterSubtitleLoad,
     bool applySelectionWhenResumeSkipped = false,
+    bool Function()? isCurrent,
   }) async {
+    if (!(isCurrent?.call() ?? true)) return;
     if (externalSubtitlePlan.requiresPostOpenAdd) {
       trackManager.waitingForExternalSubsTrackSelection = true;
       try {
         await trackManager.addExternalSubtitles(
           externalSubtitlePlan.externalSubtitles,
           waitUntilReady: externalSubtitlePlan.readyAfterOpen,
+          isCurrent: isCurrent,
         );
       } finally {
-        if (shouldResumeAfterSubtitleLoad()) {
+        if ((isCurrent?.call() ?? true) && shouldResumeAfterSubtitleLoad()) {
           _playbackIntentShouldPlay = true;
-          await trackManager.resumeAfterSubtitleLoad();
-        } else if (applySelectionWhenResumeSkipped) {
+          await trackManager.resumeAfterSubtitleLoad(isCurrent: isCurrent);
+        } else if ((isCurrent?.call() ?? true) && applySelectionWhenResumeSkipped) {
           trackManager.waitingForExternalSubsTrackSelection = false;
-          trackManager.applyTrackSelectionWhenReady();
+          trackManager.applyTrackSelectionWhenReady(isCurrent: isCurrent);
         }
       }
     } else {
       // Subs attached at open time (ExoPlayer) or none: apply once tracks
       // are available.
-      trackManager.applyTrackSelectionWhenReady();
+      trackManager.applyTrackSelectionWhenReady(isCurrent: isCurrent);
     }
   }
 

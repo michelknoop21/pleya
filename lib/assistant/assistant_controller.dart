@@ -1,3 +1,4 @@
+import 'assistant_spoiler_context.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,10 @@ import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_kids_ages_store.dart';
+import 'assistant_execution.dart';
+import 'assistant_task.dart';
+
+export 'assistant_task.dart';
 import 'assistant_provider.dart';
 import 'assistant_run.dart';
 import 'assistant_tool_context.dart';
@@ -131,16 +136,20 @@ class AssistantController extends ChangeNotifier {
   final List<AssistantActionRecord> _actions = [];
   final List<AssistantDisplay> _displays = [];
   AssistantPendingAction? _pending;
-  Completer<AssistantConfirmation?>? _confirmer;
+  final List<_AssistantTaskState> _tasks = [];
+  final List<_QueuedConfirmation> _confirmations = [];
+  final AssistantOperationPool _operations = AssistantOperationPool(3);
+  final AssistantOperationPool _mutations = AssistantOperationPool(1);
+  int _nextTask = 0;
+  int _nextConfirmation = 0;
+
+  List<AssistantTask> get tasks => List.unmodifiable(_tasks.map((task) => task.view));
+  AssistantTaskConfirmation? get pendingConfirmation => _confirmations.firstOrNull?.view;
   AssistantScreenContext? _screenContext;
 
   /// Bumped by [reset]: a run that outlives its conversation (Annuleren
   /// while werken) can no longer write state or raise a card.
   int _generation = 0;
-
-  /// The ask in flight's cancel signal: [reset] and [dispose] fire it, which
-  /// aborts the model call on the wire and every find_title source.
-  AbortController? _cancel;
 
   /// True while a [submit] run is still going, displays streamed or not.
   bool _asking = false;
@@ -213,110 +222,225 @@ class AssistantController extends ChangeNotifier {
     _notify();
   }
 
-  /// One ask. A second call while one runs is ignored. [kidsFilter] false
-  /// runs it once without the age gate ("Zonder filter").
+  /// A new question supersedes every task and card from the previous one.
+  /// [kidsFilter] false runs it once without the age gate ("Zonder filter").
   Future<void> submit(String prompt, {bool kidsFilter = true}) async {
     final text = prompt.trim();
-    if (_busy || text.isEmpty) return;
-    _busy = true;
-    _asking = true;
+    if (_disposed || text.isEmpty) return;
+    final screen = _screenContext;
+    reset();
+    _screenContext = screen;
     _runs++;
-    _jobsSeq++;
     final generation = _generation;
-    final cancel = _cancel = AbortController();
     _prompt = text;
-    _answer = '';
-    _steps.clear();
-    _actions.clear();
-    _displays.clear();
-    _resultIsError = false;
-    _lastEnd = null;
-    _lastProviderError = null;
-    _modelMissing = false;
-    _state = AssistantSurfaceState.working;
-    _notify();
-
-    AssistantModelClient? model;
+    final budget = AssistantQuestionBudget();
+    final root = _newTask(
+      title: text,
+      intent: 'command',
+      prompt: text,
+      generation: generation,
+      budget: budget,
+      originalSpoilerPrompt: assistantNeedsSpoilerScope(text) ? text : null,
+    );
+    _tasks.add(root);
+    _update();
     try {
       final config = await _loadConfig();
+      if (!_alive(root)) return;
       if (config == null || !config.isComplete) {
-        if (generation != _generation) return;
         _availability = AssistantAvailability.needsSetup;
-        _prompt = null;
-        _state = AssistantSurfaceState.idle;
+        reset();
         return;
       }
+      // One health refresh per question. Child contexts still check live
+      // authority on every tool and after acquiring the mutation lock.
+      final context = _buildContext(_screenContext);
+      Future<void>? health;
+      Future<void> refresh() => health ??= context.servers.checkServerHealth();
+      await _runTask(root, config, refresh, allowSplit: true, kidsFilter: kidsFilter);
+    } catch (e, st) {
+      appLogger.w('Assistant ask failed', error: e.runtimeType, stackTrace: st);
+      if (_alive(root)) {
+        root.error = 'failed';
+        root.status = AssistantTaskStatus.failed;
+        _update();
+      }
+    }
+  }
+
+  _AssistantTaskState _newTask({
+    required String title,
+    required String intent,
+    required String prompt,
+    required int generation,
+    required AssistantQuestionBudget budget,
+    String? originalSpoilerPrompt,
+  }) => _AssistantTaskState(
+    id: 'task-${++_nextTask}',
+    title: title,
+    intent: intent,
+    prompt: prompt,
+    generation: generation,
+    budget: budget,
+    originalSpoilerPrompt: originalSpoilerPrompt,
+  );
+
+  bool _alive(_AssistantTaskState task) =>
+      !_disposed && task.generation == _generation && !task.cancel.isAborted && _tasks.contains(task);
+
+  Future<void> _runTask(
+    _AssistantTaskState task,
+    AssistantProviderConfig config,
+    Future<void> Function() refreshHealth, {
+    bool allowSplit = false,
+    bool libraryDoctorScope = false,
+    bool kidsFilter = true,
+  }) async {
+    AssistantModelClient? model;
+    try {
+      if (!_alive(task)) return;
+      task.status = AssistantTaskStatus.running;
+      _update();
       model = _modelFor(config);
       final result = await AssistantRun(
         model: model,
-        // The session builds contexts without the provider config, which
-        // decides the web lookup.
         context: _buildContext(
           _screenContext,
         ).fresh(web: config.webSearch ? _webFor?.call(config) : null, kidsFilter: kidsFilter),
-        confirm: (action) => _confirm(action, generation),
+        confirm: (action) => _confirm(action, task),
         entitlement: _entitlement,
         tools: _tools,
         languageName: _languageName(),
         confirmTimeout: confirmTimeout,
-        // Cancel, reset or a profile switch (dispose) aborts the model call
-        // and the tools in flight; nothing new starts after that.
-        cancel: cancel,
+        controllerOwnsConfirmTimeout: true,
+        cancel: task.cancel,
+        allowSplit: allowSplit,
+        originalSpoilerPrompt: task.originalSpoilerPrompt,
+        originalLibraryDoctorScope: libraryDoctorScope,
+        budget: task.budget,
+        operations: _operations,
+        mutations: _mutations,
+        refreshHealth: refreshHealth,
         onStep: (step) {
-          if (generation != _generation) return;
-          final at = _steps.indexWhere((s) => s.index == step.index);
-          at < 0 ? _steps.add(step) : _steps[at] = step;
-          // Shown now, not after the model's last turn; the run's own list
-          // repeats these and is not added again.
-          if (step.display case final display?) _displays.add(display);
-          _notify();
+          if (!_alive(task) || !(step.evidenceCurrent?.call() ?? true)) return;
+          final at = task.steps.indexWhere((s) => s.index == step.index);
+          at < 0 ? task.steps.add(step) : task.steps[at] = step;
+          if (step.display case final display?) task.displays.add(display);
+          _update();
         },
-      ).ask(text);
-      if (generation != _generation) return;
-      _lastEnd = result.end;
-      _lastProviderError = result.providerError;
-      _modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
-      _resultIsError = result.end != AssistantRunEnd.answered;
+      ).ask(task.prompt);
+      if (!_alive(task)) return;
+      if (result.splitTasks.isNotEmpty) {
+        final inheritedSpoilerPrompt = task.originalSpoilerPrompt ?? result.spoilerPrompt;
+        final children = [
+          for (final plan in result.splitTasks)
+            _newTask(
+              // A fenced parent cannot delegate an unrestricted task or show
+              // model-invented narrative labels. Conservative whole-question scope.
+              title: inheritedSpoilerPrompt ?? plan.title,
+              intent: inheritedSpoilerPrompt == null ? plan.intent : 'spoiler_context',
+              prompt: inheritedSpoilerPrompt ?? plan.prompt,
+              originalSpoilerPrompt: inheritedSpoilerPrompt,
+              generation: task.generation,
+              budget: task.budget,
+            ),
+        ];
+        _tasks
+          ..remove(task)
+          ..addAll(children);
+        _update();
+        final doctorScope = libraryDoctorScope || assistantNeedsLibraryDoctorScope(task.prompt);
+        await Future.wait([
+          for (final child in children)
+            _runTask(child, config, refreshHealth, libraryDoctorScope: doctorScope, kidsFilter: kidsFilter),
+        ]);
+        return;
+      }
+      task.lastEnd = result.end;
+      task.providerError = result.providerError;
+      task.modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
+      final playbackCurrent = result.playbackEvidenceCurrent?.call() ?? true;
+      final doctorError = result.libraryDoctorError?.call();
+      final displayCurrent = result.displayEvidenceCurrent?.call() ?? true;
+      if (doctorError != null || !displayCurrent) {
+        task.displays.clear();
+        task.steps.clear();
+      }
+      if (!playbackCurrent && (task.originalSpoilerPrompt != null || result.spoilerPrompt != null)) {
+        // Only this current task: streamed evidence must disappear when its
+        // final lease closes. Other tasks/generations retain their results.
+        task.displays.clear();
+        task.steps.clear();
+      }
+      task.error =
+          doctorError ??
+          (!displayCurrent ? 'catalog_changed' : null) ??
+          (playbackCurrent
+              ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
+              : 'playback_session_changed');
       // Pleya's own words, never the model's: the answer still names a
       // title the age filter turned down.
-      _answer = result.ageFilterNotice ? '${result.text}\n\n${t.assistant.kids.filterNotice}' : result.text;
-      _actions.addAll(result.actions);
-      // The run's list is the final word: it drops a lookup that led to an
-      // action and adds the cards for titles the answer named.
-      _displays
-        ..clear()
-        ..addAll(result.displays);
-      if (_actions.any((a) => a.job != null)) unawaited(_watchJobs());
+      final text = result.ageFilterNotice ? '${result.text}\n\n${t.assistant.kids.filterNotice}' : result.text;
+      task.answer = playbackCurrent && doctorError == null && displayCurrent ? text : '';
+      task.actions.addAll(result.actions);
+      if (playbackCurrent && doctorError == null && displayCurrent) {
+        task.displays
+          ..clear()
+          ..addAll(result.displays);
+      }
+      if (task.actions.any((action) => action.job != null)) unawaited(_watchJobs(task));
+      task.status = _outcomeStatus(task.error);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
-      _state = AssistantSurfaceState.result;
     } catch (e, st) {
-      appLogger.w('Assistant ask failed', error: e.runtimeType, stackTrace: st);
-      if (generation == _generation) {
-        _resultIsError = true;
-        _state = AssistantSurfaceState.result;
+      appLogger.w('Assistant task failed', error: e.runtimeType, stackTrace: st);
+      if (_alive(task)) {
+        task.error = 'failed';
+        task.status = AssistantTaskStatus.failed;
       }
     } finally {
       model?.close();
-      if (generation == _generation) {
-        _busy = false;
-        _asking = false;
-        _cancel = null;
-      }
-      _notify();
+      if (task.generation == _generation && !_disposed) _update();
     }
   }
 
-  /// [password] comes from Pleya's secure field, never from the model.
-  void confirmPending({String? password}) => _answerPending(AssistantConfirmation(password: password));
+  /// Confirm exactly the visible task/action. Old sheet responses do nothing.
+  void confirmTask(String taskId, String confirmationId, {String? password}) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || entry.task.id != taskId || entry.id != confirmationId || !_alive(entry.task)) return;
+    _finishConfirmation(entry, AssistantConfirmation(password: password));
+  }
 
-  void cancelPending() => _answerPending(null);
+  void cancelTaskConfirmation(String taskId, String confirmationId) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || entry.task.id != taskId || entry.id != confirmationId) return;
+    _finishConfirmation(entry, null);
+  }
+
+  /// Legacy single-card projection. Pass the captured action for stale-sheet
+  /// protection; task-aware surfaces use [confirmTask].
+  void confirmPending({String? password, AssistantPendingAction? action}) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || (action != null && !identical(action, entry.action))) return;
+    confirmTask(entry.task.id, entry.id, password: password);
+  }
+
+  void cancelPending({AssistantPendingAction? action}) {
+    final entry = _confirmations.firstOrNull;
+    if (entry == null || (action != null && !identical(action, entry.action))) return;
+    cancelTaskConfirmation(entry.task.id, entry.id);
+  }
+
+  Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async {
+    final task = _tasks.where((task) => _optionContext(task, option) != null).firstOrNull;
+    if (task != null) await pickTaskRequestOption(task.id, option, fourK: fourK);
+  }
 
   /// The user picked an option card. No model involved: the card is built
   /// by [assistantRequestFromOption] from the ask that showed [option], and
   /// goes through the same confirmation, entitlement and authority checks
   /// as a card the model asked for.
-  Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) =>
-      _pickRequestOption(option, fourK: fourK);
+  Future<void> pickTaskRequestOption(String taskId, AssistantRequestOption option, {bool fourK = false}) =>
+      _pickTaskRequestOption(taskId, option, fourK: fourK);
 
   /// The ages card waits: the last answer asked for the children's ages.
   /// Every surface hides its question field until it is answered or closed.
@@ -340,26 +464,54 @@ class AssistantController extends ChangeNotifier {
 
   /// The ages card closed unanswered (Menu): the answer stays, the card goes.
   void dismissKidsAges() {
-    _displays.removeWhere((d) => d is AssistantKidsAgesPrompt);
-    _notify();
+    for (final task in _tasks) {
+      task.displays.removeWhere((d) => d is AssistantKidsAgesPrompt);
+    }
+    _update();
   }
 
-  /// A run in flight and a waiting card are let go; what is on screen stays
-  /// until [reset] (Big P sliding out). Does not notify.
+  // Declining a confirmation declines that action; the model still receives
+  // its tool response and can continue. Only the final task label changes.
+  AssistantTaskStatus _outcomeStatus(String? error) => switch (error) {
+    null => AssistantTaskStatus.completed,
+    'cancelled_by_user' => AssistantTaskStatus.cancelled,
+    _ => AssistantTaskStatus.failed,
+  };
+
+  void cancelTask(String taskId) {
+    final task = _tasks.where((task) => task.id == taskId).firstOrNull;
+    if (task == null || task.status == AssistantTaskStatus.cancelled) return;
+    task.cancel.abort();
+    task.status = AssistantTaskStatus.cancelled;
+    for (final entry in _confirmations.where((entry) => identical(entry.task, task)).toList()) {
+      _finishConfirmation(entry, null);
+    }
+    _update();
+  }
+
+  void cancelAll() {
+    for (final task in _tasks.toList()) {
+      if (task.status == AssistantTaskStatus.pending ||
+          task.status == AssistantTaskStatus.running ||
+          task.status == AssistantTaskStatus.waitingForConfirmation) {
+        cancelTask(task.id);
+      }
+    }
+  }
+
+  /// Drop lifecycle authority while keeping the last visible results.
   void abort() {
+    cancelAll();
     _generation++;
     _jobsSeq++;
-    _abortAsk();
-    _answerPending(null);
   }
 
-  /// Back to rust; the conversation, a waiting card and a run in flight are
-  /// all let go.
   void reset() {
     abort();
+    _tasks.clear();
     _pending = null;
-    _confirmer = null;
     _busy = false;
+    _asking = false;
     _state = AssistantSurfaceState.idle;
     _resultIsError = false;
     _lastEnd = null;
@@ -374,10 +526,34 @@ class AssistantController extends ChangeNotifier {
     _notify();
   }
 
-  void _abortAsk() {
-    _cancel?.abort();
-    _cancel = null;
-    _asking = false;
+  void _update() {
+    _busy = _tasks.any(
+      (task) =>
+          task.status == AssistantTaskStatus.pending ||
+          task.status == AssistantTaskStatus.running ||
+          task.status == AssistantTaskStatus.waitingForConfirmation,
+    );
+    _asking = _busy;
+    _state = _busy
+        ? AssistantSurfaceState.working
+        : _tasks.isEmpty
+        ? AssistantSurfaceState.idle
+        : AssistantSurfaceState.result;
+    _resultIsError = _tasks.any((task) => task.status == AssistantTaskStatus.failed);
+    _answer = _tasks.map((task) => task.answer).where((answer) => answer.isNotEmpty).join('\n');
+    _steps
+      ..clear()
+      ..addAll(_tasks.expand((task) => task.steps));
+    _actions
+      ..clear()
+      ..addAll(_tasks.expand((task) => task.actions));
+    _displays
+      ..clear()
+      ..addAll(_tasks.expand((task) => task.displays));
+    _lastEnd = _tasks.map((task) => task.lastEnd).nonNulls.lastOrNull;
+    _lastProviderError = _tasks.map((task) => task.providerError).nonNulls.firstOrNull;
+    _modelMissing = _tasks.any((task) => task.modelMissing);
+    _notify();
   }
 
   void _notify() {
@@ -389,13 +565,52 @@ class AssistantController extends ChangeNotifier {
     _configChanges.removeListener(_onConfigChanged);
     _serverChanges?.removeListener(_onServersChanged);
     _disposed = true;
-    _generation++;
-    _jobsSeq++;
-    _abortAsk();
-    _answerPending(null);
+    abort();
     for (final cleanup in _onDispose) {
       cleanup();
     }
     super.dispose();
   }
+}
+
+class _AssistantTaskState {
+  _AssistantTaskState({
+    required this.id,
+    required this.title,
+    required this.intent,
+    required this.prompt,
+    required this.generation,
+    required this.budget,
+    this.originalSpoilerPrompt,
+  });
+  final String id, title, intent, prompt;
+  final int generation;
+  final String? originalSpoilerPrompt;
+  final AssistantQuestionBudget budget;
+  final AbortController cancel = AbortController();
+  AssistantTaskStatus status = AssistantTaskStatus.pending;
+  String answer = '';
+  String? error;
+  AssistantRunEnd? lastEnd;
+  AssistantModelError? providerError;
+  bool modelMissing = false;
+  AssistantPendingAction? pending;
+  final List<AssistantStep> steps = [];
+  final List<AssistantActionRecord> actions = [];
+  final List<AssistantDisplay> displays = [];
+  AssistantTask get view => AssistantTask(
+    id: id,
+    title: title,
+    intent: intent,
+    status: status,
+    answer: answer,
+    error: error,
+    lastEnd: lastEnd,
+    providerError: providerError,
+    modelMissing: modelMissing,
+    pending: pending,
+    steps: List.unmodifiable(steps),
+    actions: List.unmodifiable(actions),
+    displays: List.unmodifiable(displays),
+  );
 }

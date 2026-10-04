@@ -390,6 +390,31 @@ void main() {
       expect(line.split(' · ').length, lessThanOrEqualTo(4));
     });
 
+    // Mockup 38 C (4 oktober 2026): an episode's line is its place, its own
+    // title and what is left; year and genre dropped off it.
+    test('an episode names itself and drops year and genre', () {
+      final line = discoveryContextFor(tvDiscoveryContinueWatchingRow().first).context;
+      expect(line, 'S2 E4 · The Fourth Crossing · 18min left');
+    });
+
+    test('in Verder kijken an episode with nothing left is the next episode, and says so', () {
+      final group = tvDiscoveryGroup('ctx-next', [
+        tvDiscoveryEpisode(
+          id: 'ctx-next',
+          showTitle: 'Harbourlight',
+          episodeTitle: 'The Fifth Crossing',
+          season: 2,
+          episode: 5,
+          durationMs: 48 * kTvDiscoveryMinuteMs,
+          viewOffsetMs: 0,
+          artwork: 0,
+        ),
+      ]);
+      expect(discoveryContextFor(group, inContinueWatching: true).context, 'S2 E5 · The Fifth Crossing · Next episode');
+      // Outside that row the same episode is just an episode: no invented state.
+      expect(discoveryContextFor(group).context, 'S2 E5 · The Fifth Crossing');
+    });
+
     test('a resumable film shows what is left, not how long it is', () {
       final group = tvDiscoveryGroup('ctx-resume', [
         tvDiscoveryItem(
@@ -401,7 +426,7 @@ void main() {
         ),
       ], inProgress: true);
       final line = discoveryContextFor(group).context;
-      expect(line, contains('60'), reason: '60 minutes left of a 100-minute film');
+      expect(line, contains('1h left'), reason: '60 minutes left of a 100-minute film');
       expect(line, isNot(matches(RegExp(r'1\s*h\s*40'))));
     });
   });
