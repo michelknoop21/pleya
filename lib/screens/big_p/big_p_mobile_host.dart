@@ -251,7 +251,9 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
         Stack(
           alignment: Alignment.bottomLeft,
           children: [
-            Align(alignment: Alignment.bottomRight, child: _figure(c, size)),
+            // At the top of the row, right under the tail, also when the
+            // follow-ups beside him are taller than he is.
+            Align(alignment: Alignment.topRight, child: _figure(c, size)),
             Align(
               alignment: Alignment.bottomLeft,
               child: Padding(
@@ -266,6 +268,9 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
             ),
           ],
         ),
+        // The tail tip hangs 13.6 pt under the balloon and he bobs 2 pt:
+        // room for both above his crown, 11.3% down his box.
+        SizedBox(height: max(0.0, 16 - 0.113 * size).ceilToDouble()),
         // The tail over his head, a little right of his middle.
         Flexible(child: _balloon(context, session, tailAt: 1 - 0.3 * size / box.maxWidth)),
       ],
@@ -294,7 +299,9 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
             // Its tail at his head, not his feet: 45 pt up at 312.
             child: Padding(
               padding: EdgeInsets.only(bottom: 45 * size / 312),
-              child: _balloon(context, session, regular: true),
+              // His head is 79% up his box, so the tail stays on it however
+              // tall the balloon grows.
+              child: _balloon(context, session, regular: true, tailFromEnd: (0.79 - 45 / 312) * size),
             ),
           ),
         ),
@@ -335,7 +342,13 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
-  Widget _balloon(BuildContext context, BigPMobileSession session, {bool regular = false, double tailAt = 0.81}) {
+  Widget _balloon(
+    BuildContext context,
+    BigPMobileSession session, {
+    bool regular = false,
+    double tailAt = 0.81,
+    double? tailFromEnd,
+  }) {
     final c = session.controller;
     final conversation = BigPScale(
       pt: 0.53,
@@ -369,8 +382,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
       child: regular
           ? BigPBalloon(
               tail: AxisDirection.right,
-              // At his head.
-              tailAt: 0.7,
+              tailFromEnd: tailFromEnd,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,

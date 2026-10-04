@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:ui' as ui;
@@ -300,11 +302,17 @@ void main() {
     await pump(tester);
     await summon(tester);
     expect(tester.getSize(find.byType(BigPAvatar)).height, 118);
-    // The balloon stops above his box, so it never hides his forehead.
-    expect(
-      tester.getBottomLeft(find.byType(BigPBalloon)).dy,
-      lessThanOrEqualTo(tester.getTopLeft(find.byType(BigPAvatar)).dy),
-    );
+    // The tail tip, 22 / sqrt2 - 2 pt under the balloon, stops above his
+    // crown (11.3% down his box), so it never hides his forehead.
+    void tailClearsHisHead() {
+      final avatar = tester.getRect(find.byType(BigPAvatar));
+      expect(
+        tester.getBottomLeft(find.byType(BigPBalloon)).dy + 22 / sqrt2 - 2,
+        lessThanOrEqualTo(avatar.top + 0.113 * avatar.height),
+      );
+    }
+
+    tailClearsHisHead();
     c
       ..prompt = 'Wat is er nieuw?'
       ..answer = 'Twee films. De rest is ouder.'
@@ -313,6 +321,7 @@ void main() {
     await settle(tester);
     expect(tester.takeException(), isNull);
     expect(tester.getSize(find.byType(BigPAvatar)).height, 75);
+    tailClearsHisHead();
     // Only the first sentence is the bold lead.
     expect(find.text('Twee films.'), findsOneWidget);
     expect(find.text('De rest is ouder.'), findsOneWidget);

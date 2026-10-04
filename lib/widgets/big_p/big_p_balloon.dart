@@ -4,7 +4,9 @@ import 'package:flutter/widgets.dart';
 
 /// Big P's speech balloon (mockup 39, `.ball` and `tail()` in `bp39.js`): the
 /// dark panel with a thin light rim and a tail, a turned square, pointing at
-/// Big P on the [tail] side, [tailAt] of the way along that edge. [scale]
+/// Big P on the [tail] side, [tailAt] of the way along that edge, or
+/// [tailFromEnd] points before its end when he stands at a fixed height
+/// beside a balloon that grows. [scale]
 /// grows the corners, tail and shadow together (39 J draws it at 1.5x, times
 /// the TV point scale); 1 is the iOS size.
 class BigPBalloon extends StatelessWidget {
@@ -13,6 +15,7 @@ class BigPBalloon extends StatelessWidget {
     required this.child,
     this.tail = AxisDirection.down,
     this.tailAt = 0.8,
+    this.tailFromEnd,
     this.padding = const EdgeInsets.fromLTRB(16, 18, 16, 16),
     this.scale = 1,
   });
@@ -20,6 +23,7 @@ class BigPBalloon extends StatelessWidget {
   final Widget child;
   final AxisDirection tail;
   final double tailAt;
+  final double? tailFromEnd;
   final EdgeInsets padding;
   final double scale;
 
@@ -30,17 +34,18 @@ class BigPBalloon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _BalloonPainter(tail, tailAt, scale),
+      painter: _BalloonPainter(tail, tailAt, tailFromEnd, scale),
       child: Padding(padding: padding, child: child),
     );
   }
 }
 
 class _BalloonPainter extends CustomPainter {
-  const _BalloonPainter(this.tail, this.tailAt, this.scale);
+  const _BalloonPainter(this.tail, this.tailAt, this.tailFromEnd, this.scale);
 
   final AxisDirection tail;
   final double tailAt;
+  final double? tailFromEnd;
   final double scale;
 
   // Half the diagonal of the 22 pt square in bp39.css.
@@ -66,11 +71,12 @@ class _BalloonPainter extends CustomPainter {
 
     // The square's centre sits just inside the edge, so its inner half
     // covers the rim there and its outer half is the tail.
+    double along(double edge) => tailFromEnd == null ? edge * tailAt : edge - tailFromEnd!;
     final c = switch (tail) {
-      AxisDirection.down => Offset(size.width * tailAt, size.height - e),
-      AxisDirection.up => Offset(size.width * tailAt, e),
-      AxisDirection.left => Offset(e, size.height * tailAt),
-      AxisDirection.right => Offset(size.width - e, size.height * tailAt),
+      AxisDirection.down => Offset(along(size.width), size.height - e),
+      AxisDirection.up => Offset(along(size.width), e),
+      AxisDirection.left => Offset(e, along(size.height)),
+      AxisDirection.right => Offset(size.width - e, along(size.height)),
     };
     final top = c.translate(0, -r), right = c.translate(r, 0);
     final bottom = c.translate(0, r), left = c.translate(-r, 0);
@@ -86,5 +92,6 @@ class _BalloonPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BalloonPainter old) => old.tail != tail || old.tailAt != tailAt || old.scale != scale;
+  bool shouldRepaint(_BalloonPainter old) =>
+      old.tail != tail || old.tailAt != tailAt || old.tailFromEnd != tailFromEnd || old.scale != scale;
 }
