@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_registry.dart';
+import 'package:pleya/automation/pleya_verify.dart';
+import 'package:pleya/focus/focusable_button.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/screens/settings/assistant_settings_screen.dart';
@@ -448,6 +452,67 @@ void main() {
     expect(store.config!.webSearch, isTrue, reason: 'off by default for a local server');
     expect(store.config!.webSearchChoice, isTrue);
     expect(store.saves, 1);
+  });
+
+  group('Pleya Verify marker follows the remote', () {
+    Map<String, Object?> marker(String instance) {
+      final declared = (AutomationRegistry.instance.snapshot()['declared']! as List).cast<Map<String, Object?>>();
+      return declared.singleWhere((n) => n['id'] == '${AutomationIds.settingsFormButton}[assistant.$instance]');
+    }
+
+    /// The `Focus` holding the primary focus, when it sits inside [control].
+    Finder focusIn(Finder control) => find.descendant(
+      of: control,
+      matching: find.byWidgetPredicate((w) => w is Focus && identical(w.focusNode, primaryFocus)),
+    );
+
+    Future<void> walkDownTo(WidgetTester tester, Finder control) async {
+      for (var i = 0; i < 12 && focusIn(control).evaluate().isEmpty; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      expect(focusIn(control), findsOneWidget, reason: 'the remote reaches the control');
+    }
+
+    Future<_FakeStore> pumpSummary(WidgetTester tester) async {
+      final store = _FakeStore(
+        const AssistantProviderConfig(
+          kind: AssistantProviderKind.ollamaCloud,
+          baseUrl: AssistantProviderConfig.ollamaCloudUrl,
+          apiKey: 'k',
+          model: 'qwen3:32b',
+        ),
+      );
+      await pump(tester, store, (_) async => _infos(['gpt-oss:120b', 'qwen3:32b']));
+      // Positive control: Change carries its own node and already reports it.
+      expect(marker('change')['focused'], isTrue);
+      return store;
+    }
+
+    testWidgets('a model tile under the remote reports focused and keeps its selection', (tester) async {
+      final store = await pumpSummary(tester);
+      await walkDownTo(tester, find.widgetWithText(FocusableButton, 'qwen3:32b'));
+
+      final picked = marker('model.qwen3:32b');
+      expect(picked['focused'], isTrue);
+      expect(picked['node'], automationNodeNumber(primaryFocus!));
+      expect(picked['state'], {'selected': true});
+      final other = marker('model.gpt-oss:120b');
+      expect(other['focused'], isFalse);
+      expect(other['state'], {'selected': false});
+      expect(marker('change')['focused'], isFalse);
+      expect(store.saves, 0, reason: 'walking past a model picks nothing');
+    }, skip: !kPleyaVerify);
+
+    testWidgets('a button without its own node reports focused under the remote', (tester) async {
+      await pumpSummary(tester);
+      await walkDownTo(tester, find.widgetWithText(FocusableButton, s.refreshModels));
+
+      final refresh = marker('fetchModels');
+      expect(refresh['focused'], isTrue);
+      expect(refresh['node'], automationNodeNumber(primaryFocus!));
+      expect(marker('change')['focused'], isFalse);
+    }, skip: !kPleyaVerify);
   });
 
   test('pull errors map to their own sentences', () {

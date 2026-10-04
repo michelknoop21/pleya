@@ -66,17 +66,21 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
     bool primary = true,
   }) {
     final enabled = busy ? null : onPressed;
-    return AutomationNode(
-      id: AutomationIds.settingsFormButton,
-      instance: 'assistant.$instance',
-      role: 'button',
+    return FocusableButton(
       focusNode: focusNode,
-      child: FocusableButton(
-        focusNode: focusNode,
-        onPressed: enabled,
-        child: primary
-            ? FilledButton.icon(onPressed: enabled, icon: AppIcon(icon, fill: 1), label: Text(label))
-            : OutlinedButton.icon(onPressed: enabled, icon: AppIcon(icon, fill: 1), label: Text(label)),
+      onPressed: enabled,
+      // Inside the button, so a button without a node of its own still
+      // reports the one the remote lands on.
+      child: Builder(
+        builder: (context) => AutomationNode(
+          id: AutomationIds.settingsFormButton,
+          instance: 'assistant.$instance',
+          role: 'button',
+          focusNode: focusNode ?? Focus.of(context),
+          child: primary
+              ? FilledButton.icon(onPressed: enabled, icon: AppIcon(icon, fill: 1), label: Text(label))
+              : OutlinedButton.icon(onPressed: enabled, icon: AppIcon(icon, fill: 1), label: Text(label)),
+        ),
       ),
     );
   }

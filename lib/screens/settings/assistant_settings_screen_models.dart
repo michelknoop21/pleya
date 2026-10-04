@@ -90,16 +90,20 @@ extension _AssistantSettingsModelViews on _AssistantSettingsScreenState {
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: AutomationNode(
-        id: AutomationIds.settingsFormButton,
-        instance: 'assistant.model.${model.id}',
-        role: 'button',
-        state: () => {'selected': picked},
-        child: FocusableButton(
-          onPressed: onPressed,
-          child: picked
-              ? FilledButton(onPressed: busy ? null : () {}, child: content)
-              : OutlinedButton(onPressed: onPressed, child: content),
+      child: FocusableButton(
+        onPressed: onPressed,
+        // Inside the button, so the marker reports the node the remote lands on.
+        child: Builder(
+          builder: (context) => AutomationNode(
+            id: AutomationIds.settingsFormButton,
+            instance: 'assistant.model.${model.id}',
+            role: 'button',
+            focusNode: Focus.of(context),
+            state: () => {'selected': picked},
+            child: picked
+                ? FilledButton(onPressed: busy ? null : () {}, child: content)
+                : OutlinedButton(onPressed: onPressed, child: content),
+          ),
         ),
       ),
     );
