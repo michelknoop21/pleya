@@ -335,6 +335,128 @@ void main() {
     expect(c.answer, 'klaar');
   });
 
+  test('every tool chose its place in kids mode: gated, neutral or blocked', () {
+    final names = {
+      for (final t in [...assistantTools, assistantSpoilerTool]) t.name,
+    };
+    expect(names.where((n) => !kidsToolPolicy.containsKey(n)), isEmpty, reason: 'add the tool to kidsToolPolicy');
+    expect(kidsToolPolicy.keys.where((n) => !names.contains(n)), isEmpty, reason: 'no stale names');
+    for (final blocked in const ['my_watching', 'recommend_together', 'create_home_row', 'spoiler_context']) {
+      expect(kidsToolPolicy[blocked], KidsTool.blocked, reason: blocked);
+    }
+  });
+
+  group('kids mode refuses tools whose titles skip the gate', () {
+    var ran = 0;
+    final watching = AssistantTool(
+      name: 'my_watching',
+      description: 'w',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        ran++;
+        return const AssistantToolResult({
+          'titles': [_hp],
+        });
+      },
+    );
+    final find = AssistantTool(
+      name: 'find_title',
+      description: 'f',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({'titles': <Object>[]}),
+    );
+    setUp(() => ran = 0);
+
+    Future<List<List<Map<String, Object?>>>> run(String prompt, List<Object> script) async {
+      final m = _model(script);
+      await AssistantRun(
+        model: m.model,
+        context: _ctx(),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        tools: [watching, find],
+      ).ask(prompt);
+      return m.sent;
+    }
+
+    test('a kids prompt: my_watching is refused with a hint and never runs', () async {
+      final sent = await run(prompt, [
+        {'name': 'my_watching', 'args': <String, Object?>{}},
+        'Klaar.',
+      ]);
+      expect(jsonDecode(sent[1].last['content'] as String), assistantKidsRefusal);
+      expect(ran, 0);
+    });
+
+    test('for_kids in the same reply makes the whole ask one for children', () async {
+      final sent = <List<Map<String, Object?>>>[];
+      // Two calls in one reply: find_title with for_kids, then my_watching.
+      final model = AssistantModelClient(
+        const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+        httpClient: MockClient((request) async {
+          final body = jsonDecode(request.body) as Map<String, Object?>;
+          sent.add((body['messages'] as List).cast());
+          if (sent.length > 1) {
+            return jsonResponse({
+              'choices': [
+                {
+                  'message': {'role': 'assistant', 'content': 'Klaar.'},
+                },
+              ],
+            });
+          }
+          return jsonResponse({
+            'choices': [
+              {
+                'message': {
+                  'role': 'assistant',
+                  'content': '',
+                  'tool_calls': [
+                    for (final (i, (name, args)) in [
+                      ('find_title', {'for_kids': true}),
+                      ('my_watching', <String, Object?>{}),
+                    ].indexed)
+                      {
+                        'id': 'c$i',
+                        'type': 'function',
+                        'function': {'name': name, 'arguments': jsonEncode(args)},
+                      },
+                  ],
+                },
+              },
+            ],
+          });
+        }),
+      );
+      await AssistantRun(
+        model: model,
+        context: _ctx(),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        tools: [watching, find],
+      ).ask('Wat heb ik gekeken?');
+      expect(jsonDecode(sent[1].last['content'] as String), assistantKidsRefusal);
+      expect(ran, 0);
+    });
+
+    test('negative control: an ask not for children runs my_watching', () async {
+      final sent = await run('Wat heb ik laatst gekeken?', [
+        {'name': 'my_watching', 'args': <String, Object?>{}},
+        'Klaar.',
+      ]);
+      expect(jsonDecode(sent[1].last['content'] as String), {
+        'titles': [_hp],
+      });
+      expect(ran, 1);
+    });
+  });
+
   test('the existing renderers take the ages card as a display without choices', () {
     const display = AssistantKidsAgesPrompt(prompt);
     expect(bigPChoiceCount(display), 0);

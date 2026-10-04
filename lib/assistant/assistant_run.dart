@@ -298,6 +298,9 @@ class AssistantRun {
       if (reply.toolCalls.any((call) => call.name == 'diagnose_library')) {
         _ctx.libraryDoctorMode = true;
       }
+      // A for_kids call anywhere in the reply makes the whole ask one for
+      // children before any sibling runs.
+      if (reply.toolCalls.any(_asksForKids)) _ctx.kidsMode = true;
       if (reply.toolCalls.any((call) => call.name == 'spoiler_context')) {
         _spoilerQuestion ??= prompt;
         _ctx.spoilerQuestion = _spoilerQuestion;
@@ -382,7 +385,10 @@ class AssistantRun {
           await _execute(AssistantToolCall(id: 'safe-context', name: 'spoiler_context', arguments: '{}'));
         }
         if (_cancelled) return _end(AssistantRunEnd.stepLimit);
-        return _end(AssistantRunEnd.answered, text: _ctx.spoilerEvidence!.answer(languageName));
+        // Kids mode refuses spoiler_context: no evidence, no answer.
+        final evidence = _ctx.spoilerEvidence;
+        if (evidence == null) return _end(AssistantRunEnd.answered, failure: 'kids_mode_unsupported');
+        return _end(AssistantRunEnd.answered, text: evidence.answer(languageName));
       }
       if (reply.toolCalls.isEmpty) {
         // One correction round when the answer names a title the age
@@ -405,8 +411,9 @@ class AssistantRun {
             : await _execute(call);
         final operationKey = _operationKey(call);
         // Missing children's ages is a question for the user (the ages card),
-        // not a failed task.
-        if (output['error'] case final String code when code != 'kids_ages_unknown') {
+        // and a tool refused for children a hint to the model: neither is a
+        // failed task.
+        if (output['error'] case final String code when !_kidsCodes.contains(code)) {
           _errors[operationKey] = code;
         } else if (output['library_access'] == 'failed') {
           _errors[operationKey] = 'library_access_failed';
@@ -632,6 +639,11 @@ class AssistantRun {
     final available = _available();
     final tool = available.keys.where((t) => t.name == call.name).firstOrNull;
     if (tool == null) return {'error': 'unknown_tool'};
+    // The whole ask picks for children: a tool whose titles skip the age
+    // gate is refused, whatever arguments the model sent.
+    if (_ctx.kidsFilter && _ctx.kidsMode && kidsToolPolicy[tool.name] == KidsTool.blocked) {
+      return assistantKidsRefusal;
+    }
     final Map<String, Object?> args;
     try {
       final decoded = jsonDecode(call.arguments.isEmpty ? '{}' : call.arguments);

@@ -4,6 +4,19 @@ part of 'assistant_run.dart';
 // age gate on them. A title the gate turned down never gets a card, and the
 // model gets one correction round that Pleya itself words.
 
+/// Tool errors that are no failure of the task.
+const _kidsCodes = {'kids_ages_unknown', 'kids_mode_unsupported'};
+
+/// A call with `for_kids: true`.
+bool _asksForKids(AssistantToolCall call) {
+  try {
+    final args = jsonDecode(call.arguments.isEmpty ? '{}' : call.arguments);
+    return args is Map && args['for_kids'] == true;
+  } on FormatException {
+    return false;
+  }
+}
+
 extension _AssistantAnswer on AssistantRun {
   /// The ages card, once per ask.
   void _askKidsAges() {
