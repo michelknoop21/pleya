@@ -459,32 +459,6 @@ class AssistantRun {
   /// profile with Seerr but no media server still gets its request tools.
   static final _noServer = ServerId('none');
 
-  /// Each tool with the servers it may act on right now.
-  Map<AssistantTool, List<String>> _available() {
-    // Each tool decides through `serves` whether it needs administration.
-    final servers = _ctx.userServers;
-    return {
-      for (final tool in _spoilerQuestion != null ? [assistantSpoilerTool] : tools ?? assistantTools)
-        if ((!_ctx.libraryDoctorMode || tool.name != 'my_watching') &&
-            (!_ctx.libraryDoctorMode ||
-                tool.risk == AssistantToolRisk.read ||
-                (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
-                    _ctx.libraryDoctorActions.contains(tool.name))))
-          // A serverless tool still asks `serves`: a missing service (no Seerr)
-          // keeps it out.
-          if (!tool.needsServer && [...servers, _noServer].any((id) => tool.serves(_ctx, id)))
-            tool: const <String>[]
-          else if (!tool.needsServer)
-            ...const <AssistantTool, List<String>>{}
-          else if ([
-                for (final id in servers)
-                  if (tool.serves(_ctx, id)) id.value,
-              ]
-              case final ids when ids.isNotEmpty)
-            tool: ids,
-    };
-  }
-
   int _stepIndex = 0;
 
   /// The ask in progress, for the ages card that submits it again.
