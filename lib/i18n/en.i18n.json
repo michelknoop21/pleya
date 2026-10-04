@@ -2298,6 +2298,7 @@
   },
   "assistant": {
     "kids": {
+      "agesFirst": "First I need to know how old the children are.",
       "filterNotice": "Not everything above suits the youngest child's age. Pleya shows no card for those titles.",
       "header": "Pleya asks",
       "title": "How old are the children?",

@@ -10,6 +10,7 @@ import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_title_facts_cache.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
@@ -166,6 +167,29 @@ void main() {
     expect(jsonDecode(m.sent[1].last['content'] as String), {'error': 'kids_ages_unknown'});
     final card = result.displays.whereType<AssistantKidsAgesPrompt>().single;
     expect(card.prompt, prompt);
+  });
+
+  test('without ages a title in prose disappears: only the ages card, no model text', () async {
+    final m = _model(['Kijk Harry Potter, die is spannend.']);
+    final result = await _ask(m.model, _ctx(ages: []), prompt);
+    expect(result.text, isNot(contains('Harry')));
+    expect(result.kidsAgesNeeded, isTrue);
+    expect(result.displays, [isA<AssistantKidsAgesPrompt>()]);
+  });
+
+  test('without ages, after kids_ages_unknown the model text and its cards go', () async {
+    final m = _model([
+      {
+        'name': 'find_title',
+        'args': {
+          'variants': ['kinderfilm'],
+        },
+      },
+      'Kijk «$_hp» (2011).',
+    ]);
+    final result = await _ask(m.model, _ctx(ages: []), prompt);
+    expect(result.text, isEmpty);
+    expect(result.displays, [isA<AssistantKidsAgesPrompt>()]);
   });
 
   test('find_title rows carry facts; for_kids filters them and says so', () async {
@@ -330,9 +354,11 @@ void main() {
     addTearDown(c.dispose);
     await c.submit(prompt);
     expect(c.kidsAgesPrompt, isNotNull);
+    // Pleya's own line, not the model's: its text was written without ages.
+    expect(c.answer, t.assistant.kids.agesFirst);
     c.dismissKidsAges();
     expect(c.kidsAgesPrompt, isNull);
-    expect(c.answer, 'klaar');
+    expect(c.answer, t.assistant.kids.agesFirst);
   });
 
   test('every tool chose its place in kids mode: gated, neutral or blocked', () {

@@ -7364,6 +7364,9 @@ class TranslationsAssistantKidsEn {
 
 	// Translations
 
+	/// en: 'First I need to know how old the children are.'
+	String get agesFirst => 'First I need to know how old the children are.';
+
 	/// en: 'Not everything above suits the youngest child's age. Pleya shows no card for those titles.'
 	String get filterNotice => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.';
 
@@ -10531,6 +10534,7 @@ extension on Translations {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
+			'assistant.kids.agesFirst' => 'First I need to know how old the children are.',
 			'assistant.kids.filterNotice' => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.',
 			'assistant.kids.header' => 'Pleya asks',
 			'assistant.kids.title' => 'How old are the children?',

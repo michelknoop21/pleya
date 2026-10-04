@@ -3160,6 +3160,7 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get agesFirst => 'Ik moet eerst weten hoe oud de kinderen zijn.';
 	@override String get filterNotice => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.';
 	@override String get header => 'Pleya vraagt';
 	@override String get title => 'Hoe oud zijn de kinderen?';
@@ -5810,6 +5811,7 @@ extension on TranslationsNl {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
+			'assistant.kids.agesFirst' => 'Ik moet eerst weten hoe oud de kinderen zijn.',
 			'assistant.kids.filterNotice' => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.',
 			'assistant.kids.header' => 'Pleya vraagt',
 			'assistant.kids.title' => 'Hoe oud zijn de kinderen?',

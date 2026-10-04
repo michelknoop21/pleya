@@ -2298,6 +2298,7 @@
   },
   "assistant": {
     "kids": {
+      "agesFirst": "Ik moet eerst weten hoe oud de kinderen zijn.",
       "filterNotice": "Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.",
       "header": "Pleya vraagt",
       "title": "Hoe oud zijn de kinderen?",

@@ -18,6 +18,14 @@ bool _asksForKids(AssistantToolCall call) {
 }
 
 extension _AssistantAnswer on AssistantRun {
+  /// This ask is for children and no ages are saved, while no title tool
+  /// has read them yet.
+  Future<bool> _kidsAgesMissing() async =>
+      _ctx.kidsFilter &&
+      _ctx.kidsMode &&
+      _ctx.kidsAge == null &&
+      (await _ctx.kidsAges?.call() ?? const <int>[]).isEmpty;
+
   /// The ages card, once per ask.
   void _askKidsAges() {
     if (!_displays.any((d) => d is AssistantKidsAgesPrompt)) _displays.add(AssistantKidsAgesPrompt(_prompt));

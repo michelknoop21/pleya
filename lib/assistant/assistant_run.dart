@@ -71,6 +71,7 @@ class AssistantRunResult {
     this.libraryDoctorError,
     this.displayEvidenceCurrent,
     this.ageFilterNotice = false,
+    this.kidsAgesNeeded = false,
   });
   final AssistantRunEnd end;
 
@@ -93,6 +94,10 @@ class AssistantRunResult {
   /// The answer still names a title the age filter turned down, after the
   /// one correction round: Pleya adds its own notice under it.
   final bool ageFilterNotice;
+
+  /// The ask is for children whose ages Pleya does not know yet: no model
+  /// text and no title cards, only the ages card under Pleya's own line.
+  final bool kidsAgesNeeded;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -391,6 +396,12 @@ class AssistantRun {
         return _end(AssistantRunEnd.answered, text: evidence.answer(languageName));
       }
       if (reply.toolCalls.isEmpty) {
+        // An answer for children without any known age: the model named its
+        // titles unchecked, so the ages card replaces it.
+        if (await _kidsAgesMissing()) {
+          _askKidsAges();
+          return _end(AssistantRunEnd.answered);
+        }
         // One correction round when the answer names a title the age
         // filter turned down; Pleya writes that message, not the model.
         final correction = await _settleAnswer(reply.content, mayCorrect: !corrected && step + 1 < maxSteps);
@@ -458,6 +469,20 @@ class AssistantRun {
         actions: List.unmodifiable(_actions),
         error: recommendationError,
         displayEvidenceCurrent: displaysCurrent,
+      );
+    }
+    final agesFirst = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull;
+    if (agesFirst != null) {
+      return AssistantRunResult(
+        end: end,
+        actions: List.unmodifiable(_actions),
+        displays: [agesFirst],
+        kidsAgesNeeded: true,
+        spoilerPrompt: _spoilerQuestion,
+        playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,
+        libraryDoctorError: () => evidenceContext.libraryDoctorError,
+        providerError: error,
+        error: failure,
       );
     }
     return AssistantRunResult(

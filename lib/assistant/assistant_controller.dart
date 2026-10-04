@@ -380,7 +380,11 @@ class AssistantController extends ChangeNotifier {
               : 'playback_session_changed');
       // Pleya's own words, never the model's: the answer still names a
       // title the age filter turned down.
-      final text = result.ageFilterNotice ? '${result.text}\n\n${t.assistant.kids.filterNotice}' : result.text;
+      final text = result.kidsAgesNeeded
+          ? t.assistant.kids.agesFirst
+          : result.ageFilterNotice
+          ? '${result.text}\n\n${t.assistant.kids.filterNotice}'
+          : result.text;
       task.answer = playbackCurrent && doctorError == null && displayCurrent ? text : '';
       task.actions.addAll(result.actions);
       if (playbackCurrent && doctorError == null && displayCurrent) {
