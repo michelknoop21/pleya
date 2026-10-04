@@ -55,7 +55,12 @@ import Foundation
     /// that dropped the mode back to `.default` and lost the multichannel
     /// opt-in, so a host that played something while sharing was on got stereo
     /// until sharing stopped.
-    static func configure(multichannel: Bool, options: AVAudioSession.CategoryOptions = []) {
+    /// `activate: false` sets everything but leaves activation to the next
+    /// player; the restore after a Big P clip needs that, see
+    /// `restoreAfterClip`.
+    static func configure(
+      multichannel: Bool, options: AVAudioSession.CategoryOptions = [], activate: Bool = true
+    ) {
       let session = AVAudioSession.sharedInstance()
       // An Apple TV log showed mpv reading back `mode=AVAudioSessionModeDefault`
       // during playback, while this call asks for `.moviePlayback` and reports
@@ -69,7 +74,7 @@ import Foundation
         try session.setCategory(.playback, mode: .moviePlayback, options: options)
         let afterCategory = profile(session)
         try session.setSupportsMultichannelContent(multichannel)
-        try session.setActive(true)
+        if activate { try session.setActive(true) }
         NSLog(
           "[AudioSession] configure(multichannel: \(multichannel)) "
             + "before=[\(before)] afterSetCategory=[\(afterCategory)] afterSetActive=[\(profile(session))]"
@@ -161,8 +166,8 @@ import Foundation
     }
 
     #if os(iOS)
-      /// What `configure` last set, saved while a clip runs in `.ambient`.
-      /// Nil when nothing needs restoring.
+      /// The live session's options and multichannel opt-in, read when a
+      /// clip switched to `.ambient`. Nil when nothing needs restoring.
       private static var restoreState: (options: AVAudioSession.CategoryOptions, multichannel: Bool)?
     #endif
 
@@ -201,12 +206,25 @@ import Foundation
     /// `configure` so mode and multichannel opt-in come back too. Skipped when
     /// something else (video start) already reconfigured the session: running
     /// `configure` again mid-stream would reload the audio output.
+    ///
+    /// The session is deactivated first and not reactivated: an active
+    /// non-mixable `.playback` session would interrupt the music the clip just
+    /// mixed with. Nothing needs it active at this point. Video start runs
+    /// `configure` with activation before `loadfile`
+    /// (`AudioOutputCoordinator.prepare`), and the next clip's player
+    /// activates the session itself.
     private static func restoreAfterClip() {
       #if os(iOS)
         guard let saved = restoreState else { return }
         restoreState = nil
-        guard AVAudioSession.sharedInstance().category == .ambient else { return }
-        configure(multichannel: saved.multichannel, options: saved.options)
+        let session = AVAudioSession.sharedInstance()
+        guard session.category == .ambient else { return }
+        do {
+          try session.setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+          NSLog("[AudioSession] clip restore: setActive(false) failed: \(error)")
+        }
+        configure(multichannel: saved.multichannel, options: saved.options, activate: false)
       #endif
     }
 
