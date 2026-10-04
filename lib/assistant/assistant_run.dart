@@ -61,6 +61,7 @@ class AssistantRunResult {
     this.splitTasks = const [],
     this.playbackEvidenceCurrent,
     this.spoilerPrompt,
+    this.libraryDoctorError,
   });
   final AssistantRunEnd end;
 
@@ -77,6 +78,7 @@ class AssistantRunResult {
   final List<AssistantTaskPlan> splitTasks;
   final bool Function()? playbackEvidenceCurrent;
   final String? spoilerPrompt;
+  final String? Function()? libraryDoctorError;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -147,6 +149,7 @@ class AssistantRun {
     this.controllerOwnsConfirmTimeout = false,
     this.refreshHealth,
     this.originalSpoilerPrompt,
+    this.originalLibraryDoctorScope = false,
   });
 
   /// Fires once the user cancelled or left (reset, profile switch): the
@@ -173,6 +176,7 @@ class AssistantRun {
 
   /// Carried from the original submit; split children cannot rewrite it.
   final String? originalSpoilerPrompt;
+  final bool originalLibraryDoctorScope;
   String? _spoilerQuestion;
   final AssistantQuestionBudget? budget;
   final AssistantOperationPool? operations;
@@ -215,6 +219,7 @@ class AssistantRun {
     _busy = true;
     try {
       _ctx = context.fresh(cancel: cancel);
+      _ctx.libraryDoctorMode = originalLibraryDoctorScope || assistantNeedsLibraryDoctorScope(prompt);
       _spoilerQuestion = originalSpoilerPrompt ?? (assistantNeedsSpoilerScope(prompt) ? prompt : null);
       _ctx.spoilerQuestion = _spoilerQuestion;
       return await _ask(prompt);
@@ -282,6 +287,9 @@ class AssistantRun {
       }
       // Any request for the safe route tightens this run before executing
       // siblings in the same reply. Model candidates/prose never become facts.
+      if (reply.toolCalls.any((call) => call.name == 'diagnose_library')) {
+        _ctx.libraryDoctorMode = true;
+      }
       if (reply.toolCalls.any((call) => call.name == 'spoiler_context')) {
         _spoilerQuestion ??= prompt;
         _ctx.spoilerQuestion = _spoilerQuestion;
@@ -396,6 +404,14 @@ class AssistantRun {
 
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
     final evidenceContext = _ctx;
+    if (_ctx.libraryDoctorError case final doctorError?) {
+      return AssistantRunResult(
+        end: end,
+        actions: List.unmodifiable(_actions),
+        error: doctorError,
+        libraryDoctorError: () => evidenceContext.libraryDoctorError,
+      );
+    }
     if (!_ctx.playbackEvidenceCurrent) {
       return AssistantRunResult(
         end: end,
@@ -407,7 +423,13 @@ class AssistantRun {
     }
     return AssistantRunResult(
       end: end,
-      text: text,
+      text: _ctx.libraryDoctorMode
+          ? _ctx.libraryDoctorAnswer?.call(languageName) ??
+                (languageName == 'Dutch'
+                    ? 'Geen gecontroleerde bibliotheekgegevens; de diagnose blijft onbekend.'
+                    : 'No checked library evidence; the diagnosis remains unknown.')
+          : text,
+      libraryDoctorError: () => evidenceContext.libraryDoctorError,
       spoilerPrompt: _spoilerQuestion,
       playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,
       actions: List.unmodifiable(_actions),
@@ -472,18 +494,22 @@ class AssistantRun {
     final servers = _ctx.userServers;
     return {
       for (final tool in _spoilerQuestion != null ? [assistantSpoilerTool] : tools ?? assistantTools)
-        // A serverless tool still asks `serves`: a missing service (no Seerr)
-        // keeps it out.
-        if (!tool.needsServer && [...servers, _noServer].any((id) => tool.serves(_ctx, id)))
-          tool: const <String>[]
-        else if (!tool.needsServer)
-          ...const <AssistantTool, List<String>>{}
-        else if ([
-              for (final id in servers)
-                if (tool.serves(_ctx, id)) id.value,
-            ]
-            case final ids when ids.isNotEmpty)
-          tool: ids,
+        if (!_ctx.libraryDoctorMode ||
+            tool.risk == AssistantToolRisk.read ||
+            (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
+                _ctx.libraryDoctorActions.contains(tool.name)))
+          // A serverless tool still asks `serves`: a missing service (no Seerr)
+          // keeps it out.
+          if (!tool.needsServer && [...servers, _noServer].any((id) => tool.serves(_ctx, id)))
+            tool: const <String>[]
+          else if (!tool.needsServer)
+            ...const <AssistantTool, List<String>>{}
+          else if ([
+                for (final id in servers)
+                  if (tool.serves(_ctx, id)) id.value,
+              ]
+              case final ids when ids.isNotEmpty)
+            tool: ids,
     };
   }
 
@@ -517,6 +543,7 @@ class AssistantRun {
     );
     final shown = _displays.length;
     final output = await _executeCall(call);
+    if (_ctx.libraryDoctorError case final doctorError?) return {'error': doctorError};
     // Tool preparation and parent await each introduce a publication gap.
     // Never emit a payload whose source lease closed during either gap.
     if (_spoilerQuestion != null && (!_ctx.playbackEvidenceCurrent || _cancelled)) {
@@ -535,7 +562,11 @@ class AssistantRun {
         serverName: serverName,
         phase: failed ? AssistantStepPhase.failed : AssistantStepPhase.done,
         display: display,
-        evidenceCurrent: _ctx.spoilerEvidence?.position == null ? null : _ctx.spoilerEvidence!.current,
+        evidenceCurrent: _ctx.libraryDoctorMode
+            ? () => _ctx.libraryDoctorError == null
+            : _ctx.spoilerEvidence?.position == null
+            ? null
+            : _ctx.spoilerEvidence!.current,
       ),
     );
     return output;
@@ -579,6 +610,7 @@ class AssistantRun {
           : await prepare();
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
+          if (_ctx.libraryDoctorError case final doctorError?) return {'error': doctorError};
           if (_spoilerQuestion != null && (!_ctx.playbackEvidenceCurrent || _cancelled)) {
             return {'error': 'playback_session_changed'};
           }

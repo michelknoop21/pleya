@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'dart:math';
+import '../media/media_stream.dart';
+import '../services/unified_catalog/source_cursor.dart';
+import '../utils/media_server_http_client.dart' show AbortController;
 import '../media/media_backend.dart';
 import '../media/unified/unified_media_group.dart';
 import '../services/unified_catalog/home_custom_row.dart';
@@ -43,6 +47,7 @@ import 'assistant_find_match.dart';
 import 'assistant_find_route.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_playback.dart';
+import 'assistant_spoiler_context.dart' show assistantIsMissingEpisodeDiagnosis;
 
 part 'assistant_tools_general.dart';
 part 'assistant_tools_admin.dart';
@@ -58,6 +63,7 @@ part 'assistant_tools_spoiler.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_recommendations.dart';
 part 'assistant_tools_playback.dart';
+part 'assistant_tools_library_doctor.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
 
@@ -268,4 +274,5 @@ final List<AssistantTool> assistantTools = [
   ..._findTools,
   ..._mediaTools,
   ..._playbackTools,
+  ..._libraryDoctorTools,
 ];

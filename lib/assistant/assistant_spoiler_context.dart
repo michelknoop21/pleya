@@ -7,8 +7,16 @@ import 'assistant_plot_index.dart';
 
 /// A conservative content fence, established from the original question.
 /// Routing text can request less access; it cannot remove this fence.
+bool assistantIsMissingEpisodeDiagnosis(String prompt) => RegExp(
+  r'^(welke afleveringen (missen|ontbreken) (in|uit) seizoen \d+|'
+  r'(which|what) episodes are missing from season \d+)\s*[?.!]*$',
+).hasMatch(foldText(prompt).trim());
+
 bool assistantNeedsSpoilerScope(String prompt) {
   final text = foldText(prompt);
+  // Only this bounded factual question overlaps the broad episode/story
+  // classifier. Added clauses, narrative and future-story requests stay fenced.
+  if (assistantIsMissingEpisodeDiagnosis(prompt)) return false;
   final explicit = RegExp(
     r'spoiler|spoilervrij|recap|summariz|summaris|summary|samenvat|personage|persoon|character|person\b|scene|who is|wie is|what happened|wat gebeurde|'
     r'gebleven|where was|wie was|who was|remind|herinner|verhaal|story|plot|'
