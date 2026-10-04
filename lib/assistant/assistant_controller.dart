@@ -178,7 +178,10 @@ class AssistantController extends ChangeNotifier {
       config = await _loadConfig();
     } on AssistantProviderStoreException {
       // An unreadable keychain is not "not configured": keep the last answer.
-      return _availability;
+      // Without one (hidden is only the initial value past the checks above)
+      // setup stays reachable: its save never overwrites the keychain item it
+      // could not read, and every refresh reads again.
+      return _availability == AssistantAvailability.hidden ? AssistantAvailability.needsSetup : _availability;
     }
     if (config == null || !config.isComplete) return AssistantAvailability.needsSetup;
     return AssistantAvailability.ready;

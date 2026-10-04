@@ -241,6 +241,28 @@ void main() {
     expect(c.availability, AssistantAvailability.ready);
   });
 
+  test('a keychain that fails on the first read offers setup, then follows the next good read', () async {
+    seerr = _seerr([]);
+    Object? failure = const AssistantProviderStoreException('OSStatus -34018');
+    final c = AssistantController(
+      buildContext: (screen) => AssistantToolContext(
+        servers: servers,
+        screen: screen,
+        requests: AssistantRequestServices(client: () => seerr),
+      ),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => failure == null ? _config : throw failure,
+    );
+    addTearDown(c.dispose);
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.needsSetup);
+
+    failure = null;
+    await c.refreshAvailability();
+    expect(c.availability, AssistantAvailability.ready);
+  });
+
   test('submit goes idle, working, result and forwards steps', () async {
     seerr = _seerr([]);
     final model = _Model([_call('ping'), _say('Gedaan.')])..gate = Completer();
