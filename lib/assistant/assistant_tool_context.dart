@@ -172,6 +172,10 @@ class AssistantToolContext {
   /// Titles the age gate turned down this ask, with the rating that decided.
   final List<({String title, int? year, String reason})> ageRejected = [];
 
+  /// Titles the age gate let through this ask: in kids mode the answer may
+  /// name only these.
+  final List<({String title, int? year})> ageAllowed = [];
+
   /// Shown job ids per server, with the title list_jobs gave them.
   final Map<String, Map<String, String>> _jobs = {};
   final Map<String, Set<String>> _items = {};

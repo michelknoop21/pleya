@@ -146,6 +146,34 @@ void main() {
     expect(result.ageFilterNotice, isTrue);
   });
 
+  test('a title the gate never saw, named in prose with a year, gets the same correction', () async {
+    final m = _model(['Kijk Shrek (2001), heel grappig.', 'Kijk «Toy Story» (1995).']);
+    final result = await _ask(m.model, _ctx(), prompt);
+    expect(m.sent, hasLength(2), reason: 'one correction round');
+    expect(m.sent[1].last['content'], allOf(contains('Not checked by the age filter'), contains('Shrek (2001)')));
+    expect(result.text, 'Kijk «Toy Story» (1995).');
+    expect(result.ageFilterNotice, isFalse);
+  });
+
+  test('a title that passed the gate may be named in prose with its year', () async {
+    final m = _model([
+      {
+        'name': 'find_title',
+        'args': {
+          'candidates': [
+            {'title': 'Toy Story'},
+          ],
+          'variants': ['Toy Story'],
+          'for_kids': true,
+        },
+      },
+      'Kijk Toy Story (1995), heel leuk.',
+    ]);
+    final result = await _ask(m.model, _ctx(), prompt);
+    expect(m.sent, hasLength(2), reason: 'no correction');
+    expect(result.text, 'Kijk Toy Story (1995), heel leuk.');
+  });
+
   test('negative control: for a 13-year-old the Harry Potter card comes', () async {
     final m = _model(['Kijk «$_hp» (2011).']);
     final result = await _ask(m.model, _ctx(ages: [13]), prompt);

@@ -131,6 +131,7 @@ Future<_Gated<T>> _gateTitles<T>(
     final f = facts[i] ?? const TitleFacts();
     if (AgeGate.allows(f, age, region)) {
       kept.add((r, facts[i]));
+      ctx.ageAllowed.add((title: refs[i].title, year: refs[i].year));
     } else {
       ctx.ageRejected.add((title: clipText(refs[i].title), year: refs[i].year, reason: AgeGate.reason(f, region)));
     }

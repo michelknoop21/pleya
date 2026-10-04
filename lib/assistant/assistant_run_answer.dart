@@ -37,7 +37,8 @@ extension _AssistantAnswer on AssistantRun {
   Future<String?> _settleAnswer(String answer, {required bool mayCorrect}) async {
     final step = await _lookupNamedTitles(answer);
     final rejected = _rejectedNamed(answer);
-    final keep = rejected.isEmpty || !mayCorrect;
+    final unvetted = _unvettedNamed(answer, rejected);
+    final keep = (rejected.isEmpty && unvetted.isEmpty) || !mayCorrect;
     if (keep && step?.display != null) _displays.add(step!.display!);
     if (step != null) {
       onStep?.call(
@@ -50,15 +51,53 @@ extension _AssistantAnswer on AssistantRun {
         ),
       );
     }
-    if (rejected.isEmpty) return null;
+    if (rejected.isEmpty && unvetted.isEmpty) return null;
     if (keep) {
       // The model kept it: no card, no silent edit, a notice from Pleya.
       _ageNotice = true;
       return null;
     }
-    return 'Not suitable for the youngest child (${_ctx.kidsAge} years): '
-        '${[for (final r in rejected) '«${r.title}» (${r.reason})'].join(', ')}. '
-        'Name only titles from tool results that passed the age filter, or say that none fits.';
+    return [
+      if (rejected.isNotEmpty)
+        'Not suitable for the youngest child (${_ctx.kidsAge} years): '
+            '${[for (final r in rejected) '«${r.title}» (${r.reason})'].join(', ')}.',
+      if (unvetted.isNotEmpty) 'Not checked by the age filter: ${unvetted.join(', ')}.',
+      'Name only titles from tool results that passed the age filter, or say that none fits.',
+    ].join(' ');
+  }
+
+  /// In kids mode, the titles the answer names that the age gate did not let
+  /// through this ask, as quoted for the correction. Only a title in « » or
+  /// one followed by a year counts, so ordinary prose is left alone. The
+  /// [rejected] ones are already reported.
+  List<String> _unvettedNamed(String answer, List<({String title, int? year, String reason})> rejected) {
+    if (!_ctx.kidsFilter || !_ctx.kidsMode) return const [];
+    final allowed = [for (final a in _ctx.ageAllowed) (key: assistantTitleKey(a.title), year: a.year)];
+    final skip = {for (final r in rejected) assistantTitleKey(r.title)};
+    final found = <String>[];
+    void check(String title, String key, int? year, {required bool suffix}) {
+      if (key.isEmpty || skip.contains(key) || found.contains(title)) return;
+      final ok = allowed.any(
+        (a) =>
+            a.key.isNotEmpty &&
+            (suffix ? key.endsWith(a.key) : key == a.key) &&
+            (year == null || a.year == null || a.year == year),
+      );
+      if (!ok) found.add(title);
+    }
+
+    for (final m in RegExp(r'«([^»\n]{1,80})»').allMatches(answer)) {
+      check('«${m[1]!.trim()}»', assistantTitleKey(m[1]!), null, suffix: false);
+    }
+    // "Shrek (2001)" in prose: the words before the year must end in a title
+    // that passed.
+    for (final m in RegExp(r'([^\n«»()]{1,80}?)[ \t]*\(((?:19|20)\d{2})\)').allMatches(answer)) {
+      if (m.start > 0 && answer[m.start - 1] == '»') continue;
+      final before = m[1]!.trim();
+      final quote = before.length > 40 ? '...${before.substring(before.length - 40)}' : before;
+      check('"$quote (${m[2]})"', assistantTitleKey(before), int.parse(m[2]!), suffix: true);
+    }
+    return found;
   }
 
   /// Named titles the age gate turned down this ask and no card shows.
