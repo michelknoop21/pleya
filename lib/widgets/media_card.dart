@@ -24,6 +24,7 @@ import '../utils/content_utils.dart';
 import '../utils/hero_flight.dart';
 import '../utils/provider_extensions.dart';
 import '../utils/formatters.dart';
+import '../utils/continue_watching_labels.dart';
 import '../utils/media_navigation_helper.dart';
 import '../utils/snackbar_helper.dart';
 import '../theme/mono_tokens.dart';
@@ -283,6 +284,7 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
             localPosterPath: localPosterPath,
             showServerName: widget.showServerName,
             episodePosterModeOverride: widget.episodePosterModeOverride,
+            isInContinueWatching: widget.isInContinueWatching,
           );
 
     // Netflix desktop hover-expand: grid posters on desktop grow into an
@@ -602,6 +604,8 @@ class MediaCardState extends State<MediaCard> with ContextMenuTapMixin<MediaCard
                       // Subtitle
                       if (item is MediaPlaylist)
                         _MediaCardHelpers.buildPlaylistMeta(context, item)
+                      else if (item is MediaItem && widget.isInContinueWatching)
+                        _MediaCardHelpers.buildContinueWatchingStatus(context, item)
                       else if (item is MediaItem)
                         _MediaCardHelpers.buildMetadataSubtitle(context, item, isOffline: widget.isOffline),
                     ],
@@ -630,6 +634,7 @@ class _MediaCardList extends StatelessWidget {
   final String? localPosterPath;
   final bool showServerName;
   final EpisodePosterMode? episodePosterModeOverride;
+  final bool isInContinueWatching;
 
   const _MediaCardList({
     required this.item,
@@ -644,6 +649,7 @@ class _MediaCardList extends StatelessWidget {
     this.localPosterPath,
     this.showServerName = false,
     this.episodePosterModeOverride,
+    this.isInContinueWatching = false,
   });
 
   bool _usesWideAspectRatio() {
@@ -673,6 +679,11 @@ class _MediaCardList extends StatelessWidget {
   int get _summaryMaxLines => density <= 2 ? 2 : density; // 2, 2, 3, 4, 5
 
   String _buildMetadataLine() {
+    // Verder kijken says what you can resume, not when the film came out.
+    if (isInContinueWatching && item is MediaItem) {
+      final showEp = SettingsService.instance.read(SettingsService.showEpisodeNumberOnCards);
+      return continueWatchingStatusLine(item as MediaItem, showEpisodeNumber: showEp);
+    }
     final parts = <String>[];
 
     if (item is MediaPlaylist) {
@@ -870,7 +881,11 @@ class _MediaCardList extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                       ],
-                      if (item is MediaItem &&
+                      // In Verder kijken the metadata line already is `S3 E4 · …`;
+                      // a second place line under it would say the same thing twice.
+                      if (isInContinueWatching) ...[
+                        const SizedBox.shrink(),
+                      ] else if (item is MediaItem &&
                           (item as MediaItem).isEpisode &&
                           (item as MediaItem).parentIndex != null &&
                           (item as MediaItem).parentId != null) ...[
@@ -1063,6 +1078,22 @@ class _MediaCardHelpers {
   }
 
   /// Builds metadata subtitle (for collections, episodes, movies, shows)
+  /// Mockup 38 A: `S3 E4 · 18 min over` or `S3 E5 · Volgende aflevering`
+  /// under the series title, in place of the year/episode-title subtitle.
+  static Widget buildContinueWatchingStatus(BuildContext context, MediaItem mi) {
+    final style = MediaCardGridLayout.subtitleStyleFrom(
+      Theme.of(context).textTheme.bodySmall,
+      color: tokens(context).textMuted,
+    );
+    final showEp = SettingsService.instance.read(SettingsService.showEpisodeNumberOnCards);
+    return Text(
+      continueWatchingStatusLine(mi, showEpisodeNumber: showEp),
+      maxLines: 1,
+      overflow: .ellipsis,
+      style: style,
+    );
+  }
+
   static Widget buildMetadataSubtitle(BuildContext context, MediaItem mi, {bool isOffline = false}) {
     final subtitleStyle = MediaCardGridLayout.subtitleStyleFrom(
       Theme.of(context).textTheme.bodySmall,

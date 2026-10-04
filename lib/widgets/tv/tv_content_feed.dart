@@ -616,6 +616,7 @@ class TvContentFeedState extends State<TvContentFeed>
                             height: TvContentRow.height(scale),
                             child: TvContentRow(
                               hub: rows[i],
+                              isContinueWatching: rows[i].hubId == continueWatchingHubId,
                               railKey: _rowStack.keyFor(rows[i].hubId),
                               clientFor: _clientFor,
                               initialFocusedGroupId: _focusedGroupIdByRowId[rows[i].hubId],

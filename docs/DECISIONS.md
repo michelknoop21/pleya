@@ -2829,3 +2829,59 @@ De spiegel is een tussenstap, geen eindstand. `docs/upstream-decoupling-plan.md`
 spiegelen van exacte commits expliciet als voorkeursstap en het vendoren naar `plugins/` als
 eindbeeld; dat laatste haalt de laatste externe host uit het buildpad en heeft in deze repo al een
 precedent in `plugins/pleya_aware`.
+
+## DEC-119: Een Verder kijken-kaart draagt één statusregel, en de TV-focusregel van een aflevering noemt zichzelf in plaats van jaar en genre
+
+4 oktober 2026. Mockups 38 A, 38 C en 22 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`),
+beoordeeld en vrijgegeven door Michel dezelfde dag. Dit is fase 1 van de overzichtsronde; het
+volledige overzicht (38 D, 23), het opruimen (38 E) en de extra rijen (39, 24) volgen in eigen
+fasen en krijgen dan hun eigen entry.
+
+De rij Verder kijken liet op desktop en iPhone niet zien wat je kon hervatten: een poster, een
+balk, en in het beste geval `S1 E2`. Films en volgende afleveringen waren alleen uit elkaar te
+houden aan het ontbreken van die balk. Het besluit: elke kaart in die rij draagt één statusregel
+onder de titel, op elk platform dezelfde.
+
+| begonnen | volgende aflevering |
+|---|---|
+| `S3 E4 · 18 min over` met balk | `S3 E5 · Volgende aflevering` zonder balk |
+
+Een film zegt `42 min over`, of zijn speelduur als er niets van gekeken is. De regel komt uit
+één helper, `continueWatchingStatusLine` in `lib/utils/continue_watching_labels.dart`, en
+`MediaCard` (raster en lijst), `MobileMediaCard` en de TV-focusregel lezen die. De staat is
+voorlopig afgeleid van `hasActiveProgress`: een aflevering in de rij zonder voortgang is door de
+constructie van elke fetcher de volgende aflevering van zijn serie. Fase 2 voegt de expliciete
+herkomst (resume tegenover next_up) uit de bron toe en de helper wisselt dan van bron zonder dat
+de kaarten veranderen. Afleveringstitel en "2 dagen geleden" staan bewust niet op de kaart; die
+horen bij de focusregel en het volledige overzicht. Eén kaart per exacte aflevering (§11.8) blijft
+staan: een serienaam op de kaart is geen groepering.
+
+**Amendement op DEC-087.** Die legde de TV-focusregel vast als `S2 E4 · 18 min resterend · jaar ·
+genre`. Voor een aflevering wordt dat `S3 E4 · Violet · 18 min over`: plaats, eigen titel, en wat
+er nog over is. Jaar en genre vervallen voor afleveringen; ze zeggen niets dat iemand midden in
+een serie afweegt. In Verder kijken zegt een aflevering zonder voortgang `S3 E5 · Volgende
+aflevering`, buiten die rij blijft zo'n aflevering gewoon `S3 E5 · titel` zonder verzonnen staat;
+de rail krijgt daarvoor `isContinueWatching` van `TvContentFeed`. De regel voor films is
+ongewijzigd. Michel wees de eerste voordracht (met laatst gekeken, jaar en genre erbij) af als
+"metadata-soep"; relatieve kijktijd hoort in het overzicht.
+
+Eén vertaalsleutel erbij, `discover.nextEpisodeStatus`, in en en nl; de andere talen vallen terug
+op en. De resterende tijd is overal `formatRemainingTime` met `nowWatching.remaining`, dezelfde
+regel als de hervatknop op de detailpagina; de Nederlandse tekst daarvan is daarbij van "nog 18min"
+naar "18min over" gegaan, zodat de kaart, de focusregel en de detailpagina één formulering delen.
+De eenheid volgt `formatDurationTextual`, dus `18min` en `2h 46min`, dezelfde schrijfwijze als de
+speelduur op elke andere kaart.
+
+Twee bewuste grenzen van deze fase. De desktopkaart in de rij maakt het seizoen niet meer apart
+klikbaar (dat deed de oude ondertitel met `S3`); de serietitel blijft klikbaar en het seizoen is
+via de detailpagina bereikbaar. En een aflevering die een bron nog in de rij laat staan terwijl de
+offset de duur al haalt, leest als "Volgende aflevering" omdat de staat uit de voortgang komt;
+fase 2 lost dat op met de herkomst uit de bron.
+
+Bewijs: `test/utils/continue_watching_labels_test.dart`, de nieuwe gevallen in
+`test/widgets/mobile/mobile_media_card_test.dart` en `test/widgets/tv/tv_discovery_rail_test.dart`,
+`scripts/ci_checks.sh` groen, en lokale renders van de TV-home-goldens, de iPhone-Home en de
+desktopkaarten. De tvOS-goldens zelf zijn Linux-only en regenereren via `goldens.yml`; op macOS
+falen ze op HEAD al identiek (6 van 30 groen), dus die 24 zijn geen regressie van deze wijziging.
+Welke goldens door dit besluit verschuiven: `tv_home_production_*` waar de eerste rij een
+aflevering focust, en `tv_discovery` "series landing, an episode-context item focused".

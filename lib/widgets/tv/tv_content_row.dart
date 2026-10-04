@@ -65,6 +65,7 @@ class TvContentRow extends StatelessWidget {
     this.tileScrollAlignment = 0.5,
     this.viewAllTarget,
     this.onViewAll,
+    this.isContinueWatching = false,
   });
 
   /// A projected Home row: Continue Watching, or one of
@@ -116,6 +117,10 @@ class TvContentRow extends StatelessWidget {
   /// catalog needs [UnifiedCatalogs], which this row does not hold.
   final ValueChanged<HomeCustomRowViewAllTarget>? onViewAll;
 
+  /// True for the one row that is Verder kijken; the rail's focus line names
+  /// an episode without progress as the next one (mockup 38 C).
+  final bool isContinueWatching;
+
   static String _destinationLabel(MediaKind kind) =>
       kind == MediaKind.movie ? t.unifiedCatalog.discovery.allMovies : t.unifiedCatalog.discovery.allSeries;
 
@@ -127,6 +132,7 @@ class TvContentRow extends StatelessWidget {
       title: hub.title,
       groups: hub.groups,
       isPartial: hub.isPartial,
+      isContinueWatching: isContinueWatching,
       clientFor: clientFor,
       initialFocusedGroupId: initialFocusedGroupId,
       onFocusedGroupChanged: onFocusedGroupChanged,

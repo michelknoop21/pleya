@@ -836,6 +836,7 @@
     "watched": "Watched",
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
+    "nextEpisodeStatus": "Next episode",
     "moreLikeThis": "More Like This",
     "becauseYouWatched": "Because you watched ${title}",
     "latestShows": "Recently Added Shows",

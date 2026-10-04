@@ -99,17 +99,29 @@ typedef DiscoveryContext = ({String title, String context, String? synopsis});
 ///
 /// This supersedes 33.4's metadata format, which binds genre plus source count
 /// literally.
-DiscoveryContext discoveryContextFor(UnifiedMediaGroup group) {
+///
+/// **Amended 4 oktober 2026 (mockup 38 C).** An episode's line is
+/// `S3 E4 · Violet · 18 min over`: its place, its own title, and what is left.
+/// Year and genre dropped off it; they say nothing a viewer mid-series weighs.
+/// In Verder kijken an episode with nothing left is the next one of its series
+/// and says so, `S3 E5 · Volgende aflevering`, so the card type is explicit and
+/// not only "no progress bar". A film's line is unchanged.
+DiscoveryContext discoveryContextFor(UnifiedMediaGroup group, {bool inContinueWatching = false}) {
   final item = group.representativeSource.item;
   final isEpisode = item.kind == MediaKind.episode;
   final title = isEpisode ? (item.grandparentTitle ?? item.displayTitle) : item.displayTitle;
 
   final parts = <String>[
-    if (isEpisode) ?_episodeLabel(item),
-    ?_remainingLabel(group, item),
-    if (item.year != null) '${item.year}',
-    if (item.genres != null && item.genres!.isNotEmpty) item.genres!.first,
-    if (!isEpisode) ?_runtimeLabel(group, item),
+    if (isEpisode) ...[
+      ?_episodeLabel(item),
+      ?item.displaySubtitle,
+      ?(_remainingLabel(group, item) ?? (inContinueWatching ? t.discover.nextEpisodeStatus : null)),
+    ] else ...[
+      ?_remainingLabel(group, item),
+      if (item.year != null) '${item.year}',
+      if (item.genres != null && item.genres!.isNotEmpty) item.genres!.first,
+      ?_runtimeLabel(group, item),
+    ],
   ];
 
   final summary = item.summary?.trim();
@@ -136,17 +148,13 @@ String? _episodeLabel(MediaItem item) {
   return t.unifiedCatalog.discovery.episodeLabel(season: season, episode: episode);
 }
 
-/// "18 min left", but only when there is a real offset and a real runtime to
-/// subtract it from. A resumable row whose server reported no duration gets no
-/// line rather than a made-up one.
+/// "18min left", the same [formatRemainingTime] every Verder kijken card and
+/// the detail page use (DEC-119), and only when there is a real offset and a
+/// real runtime to subtract it from. A resumable row whose server reported no
+/// duration gets no line rather than a made-up one.
 String? _remainingLabel(UnifiedMediaGroup group, MediaItem item) {
   if (resumeFractionFor(group) == null) return null;
-  final offset = item.viewOffsetMs;
-  final duration = item.durationMs;
-  if (offset == null || duration == null || duration <= offset) return null;
-  final minutes = ((duration - offset) / 60000).round();
-  if (minutes <= 0) return null;
-  return t.discover.minutesLeft(minutes: minutes);
+  return formatRemainingTime(item.durationMs, item.viewOffsetMs);
 }
 
 class TvDiscoveryRail extends StatefulWidget {
@@ -168,9 +176,14 @@ class TvDiscoveryRail extends StatefulWidget {
     this.tileScrollAlignment = 0.5,
     this.precache,
     this.viewAll,
+    this.isContinueWatching = false,
   });
 
   final String title;
+
+  /// Verder kijken is the one rail whose episodes without progress are the
+  /// next episode of their series; the focus line names that state.
+  final bool isContinueWatching;
 
   /// Already projected, already deduplicated, already bounded. The rail does no
   /// grouping, no filtering and no fetching of its own — hoofdstuk 10.2a's
@@ -609,8 +622,9 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
                     ? const SizedBox.shrink()
                     : ValueListenableBuilder<UnifiedMediaGroup?>(
                         valueListenable: _focused,
-                        builder: (context, group, _) =>
-                            group == null ? const SizedBox.shrink() : _MetaBlock(group: group),
+                        builder: (context, group, _) => group == null
+                            ? const SizedBox.shrink()
+                            : _MetaBlock(group: group, inContinueWatching: widget.isContinueWatching),
                       ),
               ),
             ),
@@ -751,15 +765,16 @@ class TvDiscoveryRailState extends State<TvDiscoveryRail> {
 
 /// The focused tile's three tiers, under the rail.
 class _MetaBlock extends StatelessWidget {
-  const _MetaBlock({required this.group});
+  const _MetaBlock({required this.group, this.inContinueWatching = false});
 
   final UnifiedMediaGroup group;
+  final bool inContinueWatching;
 
   @override
   Widget build(BuildContext context) {
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
-    final ctx = discoveryContextFor(group);
+    final ctx = discoveryContextFor(group, inContinueWatching: inContinueWatching);
 
     // Each tier gets exactly the height [TvDiscoveryLayout.metaBlockHeight]
     // budgets for it. Left to their intrinsic heights the three texts land a

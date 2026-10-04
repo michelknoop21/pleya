@@ -211,6 +211,7 @@ class _RailCardCellState extends State<_RailCardCell> {
       width: widget.width,
       onTap: widget.onTap,
       onLongPress: () => unawaited(_showContextMenu(context)),
+      isInContinueWatching: widget.isContinueWatching,
     );
   }
 
