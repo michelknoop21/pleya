@@ -1,3 +1,4 @@
+import 'assistant_spoiler_context.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -206,7 +207,14 @@ class AssistantController extends ChangeNotifier {
     final generation = _generation;
     _prompt = text;
     final budget = AssistantQuestionBudget();
-    final root = _newTask(title: text, intent: 'command', prompt: text, generation: generation, budget: budget);
+    final root = _newTask(
+      title: text,
+      intent: 'command',
+      prompt: text,
+      generation: generation,
+      budget: budget,
+      originalSpoilerPrompt: assistantNeedsSpoilerScope(text) ? text : null,
+    );
     _tasks.add(root);
     _update();
     try {
@@ -239,6 +247,7 @@ class AssistantController extends ChangeNotifier {
     required String prompt,
     required int generation,
     required AssistantQuestionBudget budget,
+    String? originalSpoilerPrompt,
   }) => _AssistantTaskState(
     id: 'task-${++_nextTask}',
     title: title,
@@ -246,6 +255,7 @@ class AssistantController extends ChangeNotifier {
     prompt: prompt,
     generation: generation,
     budget: budget,
+    originalSpoilerPrompt: originalSpoilerPrompt,
   );
 
   bool _alive(_AssistantTaskState task) =>
@@ -274,12 +284,13 @@ class AssistantController extends ChangeNotifier {
         controllerOwnsConfirmTimeout: true,
         cancel: task.cancel,
         allowSplit: allowSplit,
+        originalSpoilerPrompt: task.originalSpoilerPrompt,
         budget: task.budget,
         operations: _operations,
         mutations: _mutations,
         refreshHealth: refreshHealth,
         onStep: (step) {
-          if (!_alive(task)) return;
+          if (!_alive(task) || !(step.evidenceCurrent?.call() ?? true)) return;
           final at = task.steps.indexWhere((s) => s.index == step.index);
           at < 0 ? task.steps.add(step) : task.steps[at] = step;
           if (step.display case final display?) task.displays.add(display);
@@ -288,12 +299,16 @@ class AssistantController extends ChangeNotifier {
       ).ask(task.prompt);
       if (!_alive(task)) return;
       if (result.splitTasks.isNotEmpty) {
+        final inheritedSpoilerPrompt = task.originalSpoilerPrompt ?? result.spoilerPrompt;
         final children = [
           for (final plan in result.splitTasks)
             _newTask(
-              title: plan.title,
-              intent: plan.intent,
-              prompt: plan.prompt,
+              // A fenced parent cannot delegate an unrestricted task or show
+              // model-invented narrative labels. Conservative whole-question scope.
+              title: inheritedSpoilerPrompt ?? plan.title,
+              intent: inheritedSpoilerPrompt == null ? plan.intent : 'spoiler_context',
+              prompt: inheritedSpoilerPrompt ?? plan.prompt,
+              originalSpoilerPrompt: inheritedSpoilerPrompt,
               generation: task.generation,
               budget: task.budget,
             ),
@@ -309,6 +324,12 @@ class AssistantController extends ChangeNotifier {
       task.providerError = result.providerError;
       task.modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
       final playbackCurrent = result.playbackEvidenceCurrent?.call() ?? true;
+      if (!playbackCurrent && (task.originalSpoilerPrompt != null || result.spoilerPrompt != null)) {
+        // Only this current task: streamed evidence must disappear when its
+        // final lease closes. Other tasks/generations retain their results.
+        task.displays.clear();
+        task.steps.clear();
+      }
       task.error = playbackCurrent
           ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
           : 'playback_session_changed';
@@ -578,9 +599,11 @@ class _AssistantTaskState {
     required this.prompt,
     required this.generation,
     required this.budget,
+    this.originalSpoilerPrompt,
   });
   final String id, title, intent, prompt;
   final int generation;
+  final String? originalSpoilerPrompt;
   final AssistantQuestionBudget budget;
   final AbortController cancel = AbortController();
   AssistantTaskStatus status = AssistantTaskStatus.pending;

@@ -1,3 +1,4 @@
+import 'assistant_spoiler_context.dart';
 import '../media/ids.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
@@ -51,6 +52,7 @@ class AssistantToolContext {
     this.requests,
     this.media,
     this.playback,
+    this.spoilers,
     this.web,
     this.cancel,
   });
@@ -72,6 +74,7 @@ class AssistantToolContext {
     requests: requests,
     media: media,
     playback: playback,
+    spoilers: spoilers,
     web: web ?? this.web,
     cancel: cancel ?? this.cancel,
   );
@@ -83,10 +86,21 @@ class AssistantToolContext {
   final AssistantRequestServices? requests;
   final AssistantMediaServices? media;
   final AssistantPlaybackServices? playback;
+  final AssistantSpoilerServices? spoilers;
+  String? spoilerQuestion;
+  AssistantSpoilerContext? spoilerEvidence;
+  Future<AssistantSpoilerContext> safeSpoilerContext() async => spoilerEvidence ??= await buildAssistantSpoilerContext(
+    services: spoilers,
+    clientFor: (id) => userClient(ServerId(id)),
+    cancelled: () => cancelled,
+    question: spoilerQuestion ?? '',
+  );
   AssistantPlaybackSnapshot? _playbackEvidence;
 
   void bindPlaybackEvidence(AssistantPlaybackSnapshot snapshot) => _playbackEvidence = snapshot;
-  bool get playbackEvidenceCurrent => _playbackEvidence == null || (playback?.isCurrent(_playbackEvidence!) ?? false);
+  bool get playbackEvidenceCurrent =>
+      (_playbackEvidence == null || (playback?.isCurrent(_playbackEvidence!) ?? false)) &&
+      (spoilerEvidence?.position == null || spoilerEvidence!.current());
 
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;
