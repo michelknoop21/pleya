@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
@@ -89,6 +90,74 @@ void answerLongTitles(FakeAssistantController c) => c
       libraryMatch('s', 'Sintel', 2010),
     ]),
   ];
+
+/// Facts as the chain finds them for a Dutch device: Kijkwijzer 6, runtime,
+/// three genres (the card shows two), a score and three services.
+const nlFacts = TitleFacts(
+  certifications: {'NL': '6', 'US': 'PG'},
+  genres: ['Animatie', 'Familie', 'Avontuur'],
+  runtimeMin: 105,
+  score: 7.84,
+  providers: {
+    'NL': ['Netflix', 'Disney Plus', 'Videoland'],
+  },
+  sources: {'tmdb'},
+);
+
+/// T8: three titles with facts, one of them with a long title. Three, so
+/// the balloon keeps the full card form (four and more are the dense list).
+void answerFactsTitles(FakeAssistantController c) => c
+  ..prompt = 'Een animatiefilm voor vanavond?'
+  ..answer = 'Drie die passen. Spring kan ik aanvragen.'
+  ..state = AssistantSurfaceState.result
+  ..displays = [
+    AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
+      AssistantTitleMatch(
+        matchId: 'tos',
+        title: 'Tears of Steel',
+        year: 2012,
+        kind: 'movie',
+        confidence: 'high',
+        targets: [nasTarget('tos', 'Tears of Steel', 2012)],
+        facts: nlFacts,
+      ),
+      AssistantTitleMatch(
+        matchId: 'long',
+        title: 'The Extraordinarily Long Adventures of the Little Elephant Who Dreamed',
+        year: 2006,
+        kind: 'movie',
+        confidence: 'high',
+        targets: [nasTarget('long', 'The Extraordinarily Long Adventures of the Little Elephant Who Dreamed', 2006)],
+        facts: const TitleFacts(genres: ['Animatie'], runtimeMin: 11, sources: {'server'}),
+      ),
+      const AssistantTitleMatch(
+        matchId: 'spring',
+        title: 'Spring',
+        year: 2019,
+        kind: 'movie',
+        confidence: 'high',
+        targets: [],
+        request: springRequest,
+        facts: TitleFacts(
+          certifications: {'NL': 'AL'},
+          runtimeMin: 8,
+          score: 7.1,
+          providers: {
+            'NL': ['YouTube'],
+          },
+          sources: {'tmdb'},
+        ),
+      ),
+    ]),
+  ];
+
+/// T8: a pick for children before any ages are saved.
+const kidsPrompt = 'Is er een film voor de kinderen?';
+void answerKidsAges(FakeAssistantController c) => c
+  ..prompt = kidsPrompt
+  ..answer = 'Daarvoor moet Pleya eerst weten hoe oud de kinderen zijn.'
+  ..state = AssistantSurfaceState.result
+  ..displays = [const AssistantKidsAgesPrompt(kidsPrompt)];
 
 /// 39 H: three titles, all in the library.
 void answerLibraryTitles(FakeAssistantController c) => c

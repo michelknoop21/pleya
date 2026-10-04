@@ -2277,7 +2277,13 @@
   },
   "assistant": {
     "kids": {
-      "filterNotice": "Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart."
+      "filterNotice": "Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.",
+      "header": "Pleya vraagt",
+      "title": "Hoe oud zijn de kinderen?",
+      "body": "Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.",
+      "age": "${age} jaar",
+      "save": "Bewaar en zoek verder",
+      "skip": "Zonder filter"
     },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
@@ -2624,7 +2630,11 @@
       "movie": "Film",
       "show": "Serie",
       "episode": "Aflevering",
-      "episodeCode": "S${season} A${episode}"
+      "episodeCode": "S${season} A${episode}",
+      "watchOn": "Te zien op: ${services}",
+      "more": "+${count}",
+      "allAges": "AL",
+      "score": "Score ${score}"
     }
   }
 }

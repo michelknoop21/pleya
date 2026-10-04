@@ -3131,6 +3131,12 @@ class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
 
 	// Translations
 	@override String get filterNotice => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.';
+	@override String get header => 'Pleya vraagt';
+	@override String get title => 'Hoe oud zijn de kinderen?';
+	@override String get body => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.';
+	@override String age({required Object age}) => '${age} jaar';
+	@override String get save => 'Bewaar en zoek verder';
+	@override String get skip => 'Zonder filter';
 }
 
 // Path: assistant.mobile
@@ -3575,6 +3581,10 @@ class _TranslationsAssistantMatchNl extends TranslationsAssistantMatchEn {
 	@override String get show => 'Serie';
 	@override String get episode => 'Aflevering';
 	@override String episodeCode({required Object season, required Object episode}) => 'S${season} A${episode}';
+	@override String watchOn({required Object services}) => 'Te zien op: ${services}';
+	@override String more({required Object count}) => '+${count}';
+	@override String get allAges => 'AL';
+	@override String score({required Object score}) => 'Score ${score}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -5725,6 +5735,12 @@ extension on TranslationsNl {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
 			'assistant.kids.filterNotice' => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.',
+			'assistant.kids.header' => 'Pleya vraagt',
+			'assistant.kids.title' => 'Hoe oud zijn de kinderen?',
+			'assistant.kids.body' => 'Zo houd ik de titels passend. Dit blijft op dit toestel en alleen bij dit profiel.',
+			'assistant.kids.age' => ({required Object age}) => '${age} jaar',
+			'assistant.kids.save' => 'Bewaar en zoek verder',
+			'assistant.kids.skip' => 'Zonder filter',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -5985,6 +6001,10 @@ extension on TranslationsNl {
 			'assistant.match.show' => 'Serie',
 			'assistant.match.episode' => 'Aflevering',
 			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} A${episode}',
+			'assistant.match.watchOn' => ({required Object services}) => 'Te zien op: ${services}',
+			'assistant.match.more' => ({required Object count}) => '+${count}',
+			'assistant.match.allAges' => 'AL',
+			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
 			_ => null,
 		};
 	}

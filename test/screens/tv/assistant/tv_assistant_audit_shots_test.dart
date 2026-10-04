@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/assistant/assistant_title_facts.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -60,6 +61,16 @@ final _matches = AssistantTitleMatches(AssistantToolContext(servers: MultiServer
     confidence: 'high',
     targets: [_target(_movie('42', 'The Martian', 2015))],
     snippet: 'Astronaut Mark Watney blijft achter op Mars en moet overleven tot er hulp komt.',
+    facts: const TitleFacts(
+      certifications: {'NL': '12'},
+      genres: ['Sciencefiction', 'Drama', 'Avontuur'],
+      runtimeMin: 144,
+      score: 7.7,
+      providers: {
+        'NL': ['Disney Plus', 'Netflix', 'Videoland'],
+      },
+      sources: {'tmdb'},
+    ),
   ),
   const AssistantTitleMatch(
     matchId: 'm2',
@@ -78,6 +89,7 @@ final _matches = AssistantTitleMatches(AssistantToolContext(servers: MultiServer
       status: 'not_requested',
     ),
     snippet: 'Astronauts stranded on a dying Mars.',
+    facts: const TitleFacts(certifications: {'US': 'R'}, runtimeMin: 106, score: 5.6, sources: {'tmdb'}),
   ),
   AssistantTitleMatch(
     matchId: 'm3',
@@ -190,6 +202,11 @@ final Map<String, _Stand> _stands = {
     ..state = AssistantSurfaceState.result
     ..answer = 'Dit zijn de beste kandidaten: «The Martian», «Red Planet», «Interstellar» en «Gravity».'
     ..displays = [_matches],
+  'kids-ages': (c) => c
+    ..prompt = 'Is er een film voor de kinderen?'
+    ..state = AssistantSurfaceState.result
+    ..answer = 'Daarvoor moet Pleya eerst weten hoe oud de kinderen zijn.'
+    ..displays = [const AssistantKidsAgesPrompt('Is er een film voor de kinderen?')],
   'result-watch': (c) => c
     ..prompt = 'Wat is er deze week het meest bekeken?'
     ..state = AssistantSurfaceState.result
@@ -267,11 +284,14 @@ void main() {
   });
 
   setUp(() {
+    // A Dutch Apple TV: the Kijkwijzer rating and the NL services (T8).
+    TestWidgetsFlutterBinding.instance.platformDispatcher.localeTestValue = const Locale('nl', 'NL');
     TvDetectionService.debugSetAppleTVOverride(true);
     messenger.setMockMethodCallHandler(_channel, (call) async => <String, dynamic>{'text': 'Vraag', 'submitted': true});
   });
 
   tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.clearLocaleTestValue();
     TvDetectionService.debugSetAppleTVOverride(null);
     messenger.setMockMethodCallHandler(_channel, null);
     NativeInputSession.debugReset();
@@ -380,7 +400,7 @@ void main() {
     });
   }
 
-  for (final name in ['idle', 'result-long', 'result-matches', 'result-watch', 'confirm']) {
+  for (final name in ['idle', 'result-long', 'result-matches', 'result-watch', 'confirm', 'kids-ages']) {
     testWidgets('surface $name', skip: _dir == null, (tester) async {
       final c = FakeAssistantController();
       addTearDown(c.dispose);
@@ -394,6 +414,11 @@ void main() {
           speech: SpeechSearchService(textEntry: entry),
           textEntry: entry,
         ),
+        // The ages card rises on a controller change, as after a real run.
+        before: () async {
+          c.emit();
+          await settle(tester);
+        },
       );
     });
   }

@@ -57,6 +57,7 @@ class AssistantToolContext {
     this.kidsAges,
     this.region = assistantRegion,
     this.cancel,
+    this.kidsFilter = true,
   });
 
   final MultiServerManager servers;
@@ -68,20 +69,22 @@ class AssistantToolContext {
   bool get cancelled => cancel?.isAborted ?? false;
 
   /// Same servers, screen and services, none of the per-run state.
-  AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web}) => AssistantToolContext(
-    servers: servers,
-    screen: screen,
-    catalog: catalog,
-    insights: insights,
-    requests: requests,
-    media: media,
-    personal: personal,
-    web: web ?? this.web,
-    titleFacts: titleFacts,
-    kidsAges: kidsAges,
-    region: region,
-    cancel: cancel ?? this.cancel,
-  );
+  AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web, bool? kidsFilter}) =>
+      AssistantToolContext(
+        servers: servers,
+        screen: screen,
+        catalog: catalog,
+        insights: insights,
+        requests: requests,
+        media: media,
+        personal: personal,
+        web: web ?? this.web,
+        titleFacts: titleFacts,
+        kidsAges: kidsAges,
+        region: region,
+        cancel: cancel ?? this.cancel,
+        kidsFilter: kidsFilter ?? this.kidsFilter,
+      );
 
   /// Domain services the UI layer hands in. A missing one keeps its tools
   /// out of the run; nothing here grants rights on a server.
@@ -103,6 +106,10 @@ class AssistantToolContext {
   /// The ages of this profile's children, for the age gate; null or empty
   /// leaves it off.
   final Future<List<int>> Function()? kidsAges;
+
+  /// False for one ask the viewer ran "Zonder filter": no age gate, and no
+  /// ages card either.
+  final bool kidsFilter;
 
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;

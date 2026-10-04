@@ -390,6 +390,37 @@ void main() {
     );
   });
 
+  // T8: title facts on the cards and the ages card, on a Dutch device.
+  for (final phone in [_iPhone17Pro, _phones[1], _iPad]) {
+    for (final (tag, answer) in [('feiten', answerFactsTitles), ('leeftijden', answerKidsAges)]) {
+      testWidgets('t8 $tag ${phone.name}', skip: _dir == null, (tester) async {
+        tester.platformDispatcher.localeTestValue = const Locale('nl', 'NL');
+        addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+        final c = shotController();
+        await shoot(tester, 't8-$tag-${phone.name}', c, phone: phone, before: (s) async => s.summon(), answer: answer);
+      });
+    }
+  }
+
+  testWidgets('t8 leeftijden gekozen 402', skip: _dir == null, (tester) async {
+    final c = shotController();
+    await shoot(
+      tester,
+      't8-leeftijden-gekozen-402',
+      c,
+      before: (s) async {
+        s.summon();
+        answerKidsAges(c);
+        c.emit();
+        await tester.pump(const Duration(milliseconds: 100));
+        for (final age in ['4', '9']) {
+          await tester.tap(find.text(age));
+          await tester.pump();
+        }
+      },
+    );
+  });
+
   testWidgets('39-i iPad', skip: _dir == null, (tester) async {
     final c = shotController();
     await shoot(tester, '39-i-ipad', c, phone: _iPad, before: (s) async => s.summon(), answer: answerTitles);

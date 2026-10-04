@@ -86,7 +86,7 @@ class FakeAssistantController extends AssistantController {
   }
 
   @override
-  Future<void> submit(String prompt) async {
+  Future<void> submit(String prompt, {bool kidsFilter = true}) async {
     submitted.add(prompt);
     submittedContexts.add(_held);
     runs++;
@@ -112,4 +112,25 @@ class FakeAssistantController extends AssistantController {
 
   @override
   void reset() => resets++;
+
+  /// The ages the ages card saved, per press of Bewaar.
+  final savedAges = <List<int>>[];
+  var unfilteredRetries = 0;
+  var kidsDismissals = 0;
+
+  @override
+  Future<void> saveKidsAgesAndRetry(List<int> ages) async => savedAges.add(ages);
+
+  @override
+  Future<void> retryWithoutKidsFilter() async => unfilteredRetries++;
+
+  @override
+  void dismissKidsAges() {
+    kidsDismissals++;
+    displays = [
+      for (final d in displays)
+        if (d is! AssistantKidsAgesPrompt) d,
+    ];
+    notifyListeners();
+  }
 }

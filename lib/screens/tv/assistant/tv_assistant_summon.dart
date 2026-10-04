@@ -33,6 +33,7 @@ import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
+import 'tv_assistant_kids_sheet.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import 'tv_assistant_screen.dart';
@@ -86,6 +87,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   final _cancelNode = FocusNode(debugLabel: 'assistant.cancel');
   final _optionNode = FocusNode(debugLabel: 'assistant.option');
   final _confirmCancelNode = FocusNode(debugLabel: 'assistant.confirm.cancel');
+  final _kids = TvKidsAgesSheet();
 
   SpeechSearchService get _speech => widget.speech ?? SpeechSearchService.instance;
   AppleTvNativeTextEntry get _entry => widget.textEntry ?? AppleTvNativeTextEntry.instance;
@@ -106,6 +108,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     for (final node in [_panelNode, _askNode, _cancelNode, _optionNode, _confirmCancelNode, _scope]) {
       node.dispose();
     }
+    _kids.dispose();
     super.dispose();
   }
 
@@ -215,6 +218,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       final sheet = _sheetContext;
       if (sheet != null && sheet.mounted) OverlaySheetController.closeAdaptive(sheet);
     }
+    _kids.sync(context, c);
     setState(() {});
   }
 
@@ -234,7 +238,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
 
   void _focusDefault() {
     final c = _c;
-    if (!mounted || c == null || _sheetContext != null) return;
+    if (!mounted || c == null || _sheetContext != null || _kids.open) return;
     final node = switch (c.state) {
       AssistantSurfaceState.working => _cancelNode,
       AssistantSurfaceState.result => bigPHasChoices(c.displays) ? _optionNode : _askNode,

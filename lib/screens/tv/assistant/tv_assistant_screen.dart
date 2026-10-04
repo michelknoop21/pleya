@@ -42,6 +42,7 @@ import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
+import 'tv_assistant_kids_sheet.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
@@ -73,6 +74,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   final _optionNode = FocusNode(debugLabel: 'assistant.option');
   final _gateNode = FocusNode(debugLabel: 'assistant.gate');
   final _confirmCancelNode = FocusNode(debugLabel: 'assistant.confirm.cancel');
+  final _kids = TvKidsAgesSheet();
 
   int _nod = 0;
   DateTime _lastPhraseNod = DateTime.fromMillisecondsSinceEpoch(0);
@@ -128,6 +130,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode]) {
       node.dispose();
     }
+    _kids.dispose();
     super.dispose();
   }
 
@@ -156,6 +159,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
       final sheet = _sheetContext;
       if (sheet != null && sheet.mounted) OverlaySheetController.closeAdaptive(sheet);
     }
+    _kids.sync(context, c);
     setState(() {});
   }
 
@@ -176,7 +180,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
 
   @override
   void focusActiveTabIfReady() {
-    if (_sheetContext != null) return; // the card owns the remote
+    if (_sheetContext != null || _kids.open) return; // the card owns the remote
     final node = _defaultNode;
     if (node != null && node.context != null && node.canRequestFocus) node.requestFocus();
   }

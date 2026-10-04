@@ -2277,7 +2277,13 @@
   },
   "assistant": {
     "kids": {
-      "filterNotice": "Not everything above suits the youngest child's age. Pleya shows no card for those titles."
+      "filterNotice": "Not everything above suits the youngest child's age. Pleya shows no card for those titles.",
+      "header": "Pleya asks",
+      "title": "How old are the children?",
+      "body": "So I can keep the titles suitable. This stays on this device and with this profile only.",
+      "age": "${age} years",
+      "save": "Save and keep looking",
+      "skip": "No filter"
     },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
@@ -2624,7 +2630,11 @@
       "movie": "Movie",
       "show": "Series",
       "episode": "Episode",
-      "episodeCode": "S${season} E${episode}"
+      "episodeCode": "S${season} E${episode}",
+      "watchOn": "On: ${services}",
+      "more": "+${count}",
+      "allAges": "All",
+      "score": "Score ${score}"
     }
   }
 }

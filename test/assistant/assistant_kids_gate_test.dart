@@ -245,6 +245,96 @@ void main() {
     expect(c.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
   });
 
+  test('Zonder filter: no ages card and no gate, for this one ask', () async {
+    final args = {
+      'candidates': [
+        {'title': _hp},
+        {'title': 'Toy Story'},
+      ],
+      'variants': [_hp, 'Toy Story'],
+      'for_kids': true,
+    };
+    final unfiltered = await _tool(_ctx(ages: []).fresh(kidsFilter: false), 'find_title', args);
+    expect(unfiltered['error'], isNull);
+    expect([for (final r in matchesOf(unfiltered)) r['title']], containsAll([_hp, 'Toy Story']));
+    // Negative control: the same ask with the filter on still asks for ages.
+    await expectLater(
+      _tool(_ctx(ages: []), 'find_title', args),
+      throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'kids_ages_unknown')),
+    );
+  });
+
+  test('retryWithoutKidsFilter asks the same question again without the gate and saves nothing', () async {
+    final filters = <bool>[];
+    final pick = AssistantTool(
+      name: 'pick',
+      description: 'pick',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (ctx, _, _) async {
+        filters.add(ctx.kidsFilter);
+        if (ctx.kidsFilter) throw const AssistantToolError('kids_ages_unknown');
+        return const AssistantToolResult({'ok': true});
+      },
+    );
+    var saves = 0;
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: MultiServerManager()),
+      entitlement: const _Entitled(),
+      loadConfig: () async =>
+          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+      modelFor: (_) => _model([
+        {'name': 'pick', 'args': <String, Object?>{}},
+        'klaar',
+      ]).model,
+      languageName: () => 'Dutch',
+      tools: [pick],
+      saveKidsAges: (_) async => saves++,
+    );
+    addTearDown(c.dispose);
+
+    await c.submit(prompt);
+    expect(c.kidsAgesPrompt?.prompt, prompt);
+
+    await c.retryWithoutKidsFilter();
+    expect(filters, [true, false]);
+    expect(saves, 0);
+    expect(c.prompt, prompt);
+    expect(c.kidsAgesPrompt, isNull);
+  });
+
+  test('dismissKidsAges takes the card away and keeps the answer', () async {
+    final pick = AssistantTool(
+      name: 'pick',
+      description: 'pick',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async => throw const AssistantToolError('kids_ages_unknown'),
+    );
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: MultiServerManager()),
+      entitlement: const _Entitled(),
+      loadConfig: () async =>
+          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+      modelFor: (_) => _model([
+        {'name': 'pick', 'args': <String, Object?>{}},
+        'klaar',
+      ]).model,
+      languageName: () => 'Dutch',
+      tools: [pick],
+    );
+    addTearDown(c.dispose);
+    await c.submit(prompt);
+    expect(c.kidsAgesPrompt, isNotNull);
+    c.dismissKidsAges();
+    expect(c.kidsAgesPrompt, isNull);
+    expect(c.answer, 'klaar');
+  });
+
   test('the existing renderers take the ages card as a display without choices', () {
     const display = AssistantKidsAgesPrompt(prompt);
     expect(bigPChoiceCount(display), 0);

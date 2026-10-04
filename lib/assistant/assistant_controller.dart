@@ -18,6 +18,7 @@ import 'assistant_web_lookup.dart';
 part 'assistant_controller_jobs.dart';
 part 'assistant_controller_options.dart';
 part 'assistant_controller_language.dart';
+part 'assistant_controller_reads.dart';
 
 enum AssistantAvailability { hidden, locked, needsSetup, ready }
 
@@ -192,26 +193,6 @@ class AssistantController extends ChangeNotifier {
 
   int _availabilitySeq = 0;
 
-  Future<AssistantAvailability> _computeAvailability() async {
-    if (!_rolloutEnabled) return AssistantAvailability.hidden;
-    final ctx = _buildContext(null);
-    if (ctx.userServers.isEmpty && ctx.requests?.client() == null) return AssistantAvailability.hidden;
-    if (await _entitlement.check() != AssistantEntitlementState.entitled) return AssistantAvailability.locked;
-    final AssistantProviderConfig? config;
-    try {
-      config = await _loadConfig();
-    } on AssistantProviderStoreException {
-      // An unreadable keychain is not "not configured": keep the last answer.
-      // Without one (hidden is only the initial value past the checks above)
-      // setup stays reachable. A save there does not write over the item it
-      // could not read: it stays on this device and goes up later only into
-      // an empty keychain. Every refresh reads again.
-      return _availability == AssistantAvailability.hidden ? AssistantAvailability.needsSetup : _availability;
-    }
-    if (config == null || !config.isComplete) return AssistantAvailability.needsSetup;
-    return AssistantAvailability.ready;
-  }
-
   /// Forgets the screen Big P was last asked from. [beginListening] keeps it
   /// across a null context (TV's follow-ups); a summon from somewhere
   /// without one (iPhone and iPad) must not ask about the last library.
@@ -225,30 +206,6 @@ class AssistantController extends ChangeNotifier {
     unawaited(_preload());
   }
 
-  /// Warms the Ollama server's model while the user speaks, so the first
-  /// answer does not wait for loading. Fire and forget: never blocks, never
-  /// surfaces an error. Ollama Cloud and OpenRouter keep models hot already.
-  Future<void> _preload() async {
-    final now = _now();
-    final last = _lastPreload;
-    if (last != null && now.difference(last) < preloadWindow) return;
-    _lastPreload = now;
-    AssistantModelClient? client;
-    try {
-      final config = await _loadConfig();
-      if (_disposed || config == null || !config.isComplete || config.kind != AssistantProviderKind.ollamaServer) {
-        return;
-      }
-      client = _modelFor(config);
-      await client.preload(keepAlive: _preloadKeepAlive);
-    } catch (e) {
-      // Type only: a message could echo the server address or a header.
-      appLogger.d('Assistant model preload failed', error: e.runtimeType);
-    } finally {
-      client?.close();
-    }
-  }
-
   /// Back to where listening started: the last result when there is one.
   void cancelListening() {
     if (_state != AssistantSurfaceState.listening) return;
@@ -256,8 +213,9 @@ class AssistantController extends ChangeNotifier {
     _notify();
   }
 
-  /// One ask. A second call while one runs is ignored.
-  Future<void> submit(String prompt) async {
+  /// One ask. A second call while one runs is ignored. [kidsFilter] false
+  /// runs it once without the age gate ("Zonder filter").
+  Future<void> submit(String prompt, {bool kidsFilter = true}) async {
     final text = prompt.trim();
     if (_busy || text.isEmpty) return;
     _busy = true;
@@ -293,7 +251,9 @@ class AssistantController extends ChangeNotifier {
         model: model,
         // The session builds contexts without the provider config, which
         // decides the web lookup.
-        context: _buildContext(_screenContext).fresh(web: config.webSearch ? _webFor?.call(config) : null),
+        context: _buildContext(
+          _screenContext,
+        ).fresh(web: config.webSearch ? _webFor?.call(config) : null, kidsFilter: kidsFilter),
         confirm: (action) => _confirm(action, generation),
         entitlement: _entitlement,
         tools: _tools,
@@ -358,12 +318,30 @@ class AssistantController extends ChangeNotifier {
   Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) =>
       _pickRequestOption(option, fourK: fourK);
 
+  /// The ages card waits: the last answer asked for the children's ages.
+  /// Every surface hides its question field until it is answered or closed.
+  AssistantKidsAgesPrompt? get kidsAgesPrompt =>
+      state == AssistantSurfaceState.result ? displays.whereType<AssistantKidsAgesPrompt>().firstOrNull : null;
+
   /// The ages card was answered: saves [ages] for this profile and asks the
   /// question that needed them again.
   Future<void> saveKidsAgesAndRetry(List<int> ages) async {
     final prompt = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull?.prompt ?? _prompt;
     await _saveKidsAges(ages);
     if (prompt != null && !_disposed) await submit(prompt);
+  }
+
+  /// "Zonder filter": the same question once more without the age gate.
+  /// Nothing is saved, so a next ask for children shows the card again.
+  Future<void> retryWithoutKidsFilter() async {
+    final prompt = kidsAgesPrompt?.prompt ?? _prompt;
+    if (prompt != null && !_disposed) await submit(prompt, kidsFilter: false);
+  }
+
+  /// The ages card closed unanswered (Menu): the answer stays, the card goes.
+  void dismissKidsAges() {
+    _displays.removeWhere((d) => d is AssistantKidsAgesPrompt);
+    _notify();
   }
 
   /// A run in flight and a waiting card are let go; what is on screen stays

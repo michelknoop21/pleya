@@ -7297,6 +7297,24 @@ class TranslationsAssistantKidsEn {
 
 	/// en: 'Not everything above suits the youngest child's age. Pleya shows no card for those titles.'
 	String get filterNotice => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.';
+
+	/// en: 'Pleya asks'
+	String get header => 'Pleya asks';
+
+	/// en: 'How old are the children?'
+	String get title => 'How old are the children?';
+
+	/// en: 'So I can keep the titles suitable. This stays on this device and with this profile only.'
+	String get body => 'So I can keep the titles suitable. This stays on this device and with this profile only.';
+
+	/// en: '${age} years'
+	String age({required Object age}) => '${age} years';
+
+	/// en: 'Save and keep looking'
+	String get save => 'Save and keep looking';
+
+	/// en: 'No filter'
+	String get skip => 'No filter';
 }
 
 // Path: assistant.mobile
@@ -8159,6 +8177,18 @@ class TranslationsAssistantMatchEn {
 
 	/// en: 'S${season} E${episode}'
 	String episodeCode({required Object season, required Object episode}) => 'S${season} E${episode}';
+
+	/// en: 'On: ${services}'
+	String watchOn({required Object services}) => 'On: ${services}';
+
+	/// en: '+${count}'
+	String more({required Object count}) => '+${count}';
+
+	/// en: 'All'
+	String get allAges => 'All';
+
+	/// en: 'Score ${score}'
+	String score({required Object score}) => 'Score ${score}';
 }
 
 // Path: unifiedCatalog.discovery.semantics
@@ -10357,6 +10387,12 @@ extension on Translations {
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
 			'assistant.kids.filterNotice' => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.',
+			'assistant.kids.header' => 'Pleya asks',
+			'assistant.kids.title' => 'How old are the children?',
+			'assistant.kids.body' => 'So I can keep the titles suitable. This stays on this device and with this profile only.',
+			'assistant.kids.age' => ({required Object age}) => '${age} years',
+			'assistant.kids.save' => 'Save and keep looking',
+			'assistant.kids.skip' => 'No filter',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -10617,6 +10653,10 @@ extension on Translations {
 			'assistant.match.show' => 'Series',
 			'assistant.match.episode' => 'Episode',
 			'assistant.match.episodeCode' => ({required Object season, required Object episode}) => 'S${season} E${episode}',
+			'assistant.match.watchOn' => ({required Object services}) => 'On: ${services}',
+			'assistant.match.more' => ({required Object count}) => '+${count}',
+			'assistant.match.allAges' => 'All',
+			'assistant.match.score' => ({required Object score}) => 'Score ${score}',
 			_ => null,
 		};
 	}

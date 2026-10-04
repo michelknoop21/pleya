@@ -188,7 +188,7 @@ bool bigPHasChoices(List<AssistantDisplay> displays) => displays.any((d) => bigP
 /// titles still left to open.
 List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (display) {
   AssistantTitleMatches(:final matches) => matches,
-  AssistantMediaGrid(:final entries) => [
+  AssistantMediaGrid(:final entries, :final facts) => [
     for (final e in entries.take(_gridCap))
       AssistantTitleMatch(
         matchId: e.item.globalKey,
@@ -196,6 +196,7 @@ List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (
         year: e.item.year,
         kind: e.item.kind.name,
         confidence: 'high',
+        facts: facts[e.item.id],
         targets: [
           // The representative first: the copy the card names is the
           // copy it opens.

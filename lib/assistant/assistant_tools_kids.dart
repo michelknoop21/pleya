@@ -21,6 +21,7 @@ const _forKids = {
 /// The youngest child's age when this ask picks for children, else null.
 /// Throws `kids_ages_unknown` when it does but no ages are saved yet.
 Future<int?> _kidsAge(AssistantToolContext ctx, Map<String, Object?> args) async {
+  if (!ctx.kidsFilter) return null;
   if (_bool(args, 'for_kids')) ctx.kidsMode = true;
   if (!ctx.kidsMode) return null;
   final ages = await ctx.kidsAges?.call() ?? const <int>[];
