@@ -427,8 +427,9 @@ class AssistantController extends ChangeNotifier {
       });
       if (!_alive(task)) return;
       switch (outcome) {
-        case AssistantToolResult(:final data):
+        case AssistantToolResult(:final data, :final display):
           failure = data['error'] as String?;
+          if (display != null) task.displays.add(display);
         case final AssistantPendingAction action:
           final AssistantConfirmation? answer;
           try {

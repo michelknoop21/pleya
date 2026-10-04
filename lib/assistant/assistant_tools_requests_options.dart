@@ -44,6 +44,9 @@ class AssistantRequestOptions extends AssistantDisplay {
 /// and what the UI shows. The model sees a short overview clip so it can
 /// match a description; the card gets a longer one.
 AssistantToolResult _requestOptions(AssistantToolContext ctx, SeerrClient client, Iterable<SeerrMedia> found) {
+  _requestLive(ctx, client);
+  _shownRequestClients[ctx] ??= client;
+  if (client.session.userId case final user?) _shownRequestUsers[ctx] ??= user;
   final shown = _shownRequestTitles[ctx] ??= {};
   final permissions = client.session.permissions;
   final rows = <Map<String, Object?>>[];
@@ -116,42 +119,39 @@ Future<AssistantToolOutcome> _requestCard(
   List<int>? wanted,
 }) async {
   final client = _seerr(ctx);
+  _requestLive(ctx, client);
+  if (shown.isMovie && wanted != null) throw const AssistantToolError('invalid_seasons');
   if (fourK && !SeerrPermission.canRequest4k(client.session.permissions, isMovie: shown.isMovie)) {
     throw const AssistantToolError('4k_not_allowed');
   }
-  if (shown.isMovie && wanted != null) throw const AssistantToolError('invalid_seasons');
-
-  // Fresh from Seerr: the status may have moved since the search, and
-  // the card is built from this answer, not from the model.
-  final detail = await _seerrCall(() => shown.isMovie ? client.getMovie(shown.tmdbId) : client.getTv(shown.tmdbId));
-  final media = SeerrMedia.fromDetail(detail, mediaType: shown.mediaType);
-  final title = clipText(media.title.isEmpty ? shown.title : media.title);
-  final subject = media.year == null ? title : '$title (${media.year})';
-
-  List<int>? seasons;
-  final List<SeerrMediaStatus> covered;
-  if (shown.isMovie) {
-    final status = _infoStatus(detail['mediaInfo'], fourK);
-    covered = status == SeerrMediaStatus.unknown ? const [] : [status];
-  } else {
-    final all = _seasonStatuses(detail, fourK);
-    if (wanted != null && wanted.any((n) => !all.containsKey(n))) throw const AssistantToolError('unknown_season');
-    final asked = wanted ?? all.keys.toList();
-    if (asked.isEmpty) throw const AssistantToolError('no_seasons');
-    seasons = [
-      for (final n in asked)
-        if (all[n] == SeerrMediaStatus.unknown) n,
-    ]..sort();
-    covered = seasons.isEmpty ? [for (final n in asked) all[n]!] : const [];
+  final state = await _readRequestState(ctx, client, shown, fourK);
+  final title = clipText(state.media.title);
+  final subject = state.media.year == null ? title : '$title (${state.media.year})';
+  final selection = _requestSelection(state, wanted);
+  if (selection.covered != null && selection.covered != 'already_available') {
+    return AssistantToolResult({'status': selection.covered, 'title': subject, if (fourK) 'four_k': true});
   }
-  if (covered.isNotEmpty) {
+  try {
+    final copies = await _requestLibraryCopies(ctx, client, state.media, fourK: fourK);
+    final available = await _libraryRequestedCopies(ctx, client, state.media, copies, fourK);
+    if (available.targets.isNotEmpty) {
+      return _availableRequestResult(ctx, state.media, available, fourK);
+    }
+  } on AssistantToolError catch (e) {
+    if (selection.covered != 'already_available' || e.code != 'library_availability_unknown') rethrow;
+    _requestLive(ctx, client);
     return AssistantToolResult({
-      'status': covered.every((s) => s.isAvailable) ? 'already_available' : 'already_requested',
+      'status': selection.covered,
       'title': subject,
       if (fourK) 'four_k': true,
+      'library_availability': 'unknown',
     });
   }
-
+  if (selection.covered != null) {
+    return AssistantToolResult({'status': selection.covered, 'title': subject, if (fourK) 'four_k': true});
+  }
+  await _requestRights(ctx, client, shown, fourK);
+  final seasons = selection.seasons == null ? null : List<int>.unmodifiable(selection.seasons!);
   return AssistantPendingAction(
     kind: AssistantActionKind.requestTitle,
     serverId: _seerrServerId,
@@ -162,13 +162,60 @@ Future<AssistantToolOutcome> _requestCard(
       if (fourK) '4K',
     ],
     execute: ({password}) async {
-      // The card may have been open a while: after a disconnect or a
-      // profile switch this request no longer belongs to this client.
-      if (ctx.requests?.client() != client) throw const AssistantToolError('not_allowed');
-      await _seerrCall(
-        () => client.createRequest(mediaType: shown.mediaType, tmdbId: shown.tmdbId, seasons: seasons, is4k: fourK),
-      );
-      return {'status': 'requested', 'title': subject, 'seasons': ?seasons, if (fourK) 'four_k': true};
+      _requestLive(ctx, client);
+      final fresh = await _readRequestState(ctx, client, shown, fourK);
+      final checked = _requestSelection(fresh, seasons);
+      if (checked.covered != null) return {'status': checked.covered, 'title': subject, 'done': false};
+      if (seasons != null && checked.seasons!.length != seasons.length) {
+        return {'error': 'request_coverage_changed', 'done': false};
+      }
+      final copies = await _requestLibraryCopies(ctx, client, fresh.media, fourK: fourK);
+      final available = await _libraryRequestedCopies(ctx, client, fresh.media, copies, fourK);
+      if (_visibleRequestCopies(ctx, client, available, shown.isMovie ? MediaKind.movie : MediaKind.show).isNotEmpty) {
+        return {'status': 'already_available', 'title': subject, 'done': false};
+      }
+      await _requestRights(ctx, client, shown, fourK);
+      _requestLibraryEvidenceLive(ctx, client, copies, shown.isMovie ? MediaKind.movie : MediaKind.show);
+      final Map<String, dynamic> response;
+      try {
+        response = await client.createRequest(
+          mediaType: shown.mediaType,
+          tmdbId: shown.tmdbId,
+          seasons: seasons,
+          is4k: fourK,
+        );
+      } on SeerrException catch (e) {
+        _requestLive(ctx, client);
+        if (e.isAuth || e.isForbidden) throw const AssistantToolError('not_allowed');
+        if (e.statusCode == 409) {
+          return {'status': 'already_requested', 'title': subject, 'done': false};
+        }
+        // The service may have accepted a write whose response was lost.
+        // A new request always starts with another fresh read and confirmation.
+        return {
+          'error': e.isNetwork || (e.statusCode ?? 0) >= 500 ? 'request_outcome_unknown' : 'request_failed',
+          'done': false,
+        };
+      }
+      _requestLive(ctx, client);
+      final base = <String, Object?>{
+        'accepted': true,
+        'title': subject,
+        'seasons': ?seasons,
+        if (fourK) 'four_k': true,
+        'request_status': _observedRequestLifecycle(response['status']),
+      };
+      try {
+        final observed = await _readRequestState(ctx, client, shown, fourK);
+        return {
+          ...base,
+          'status': observed.status == 'pending' ? 'requested' : observed.status,
+          if (!shown.isMovie) 'season_statuses': observed.data['seasons'],
+        };
+      } on AssistantToolError catch (e) {
+        _requestLive(ctx, client);
+        return {...base, 'status': 'unknown', 'status_error': e.code};
+      }
     },
   );
 }

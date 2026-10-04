@@ -184,11 +184,14 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
         .toList();
   }
 
+  /// Request evidence can require an explicit server count and lossless rows.
+  /// Normal browsing retains its existing fallback pagination by default.
   @override
   Future<LibraryPage<MediaItem>> fetchLibraryContent(
     String libraryId,
     LibraryQuery query, {
     AbortController? abort,
+    bool requireTotalCount = false,
   }) async {
     final translator = JellyfinLibraryQueryTranslator(
       userId: connection.userId,
@@ -202,10 +205,19 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     final data = response.data;
     final items = _itemsArray(data);
     final rawTotal = data is Map<String, dynamic> ? data['TotalRecordCount'] : null;
+    final mapped = _mapItems(items);
+    if (requireTotalCount &&
+        (rawTotal is! int ||
+            rawTotal < 0 ||
+            data is! Map ||
+            data['Items'] is! List ||
+            (data['Items'] as List).length != mapped.length)) {
+      throw StateError('Unverified library page');
+    }
     final total = rawTotal is int
         ? rawTotal
         : _fallbackPageTotal(offset: query.offset, itemCount: items.length, requestedSize: query.limit);
-    return LibraryPage<MediaItem>(items: _mapItems(items), totalCount: total, offset: query.offset);
+    return LibraryPage<MediaItem>(items: mapped, totalCount: total, offset: query.offset);
   }
 
   @override
@@ -512,13 +524,23 @@ mixin _JellyfinBrowseMethods on MediaServerCacheMixin {
     required LibraryQuery query,
     MediaKind? libraryKind,
     AbortController? abort,
+    bool requireTotalCount = false,
   }) async {
     // [libraryKind] is only a fallback for library-default browsing. Explicit
     // grouping types on [query] (seasons/episodes) must keep priority.
     final effective = (query.kind == null && libraryKind != null && libraryKind != MediaKind.unknown)
         ? query.copyWith(kind: libraryKind)
         : query;
-    final page = await fetchLibraryContent(libraryId, effective, abort: abort);
+    final page = await fetchLibraryContent(libraryId, effective, abort: abort, requireTotalCount: requireTotalCount);
+    if (requireTotalCount &&
+        page.items.any((item) {
+          final raw = item.raw;
+          return raw != null &&
+              raw.containsKey('ParentLibraryId') &&
+              (raw['ParentLibraryId'] is! String || (raw['ParentLibraryId'] as String).isEmpty);
+        })) {
+      throw StateError('Unverified top-level library');
+    }
     // A typed catalog page was queried recursively under this top-level
     // library. ParentId on individual DTOs may be a nested folder, or absent.
     // Preserve an explicit ParentLibraryId: conflicting scope must remain
