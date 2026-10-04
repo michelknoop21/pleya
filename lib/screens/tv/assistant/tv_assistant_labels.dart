@@ -62,6 +62,7 @@ String assistantActionKindLabel(AssistantActionKind kind) {
     AssistantActionKind.requestTitle => a.requestTitle,
     AssistantActionKind.downloadEpisodes => a.downloadEpisodes,
     AssistantActionKind.downloadSubtitle => a.downloadSubtitle,
+    AssistantActionKind.changePlayback => a.changePlayback,
   };
 }
 
@@ -87,6 +88,7 @@ String assistantConfirmTitle(AssistantActionKind kind) {
     AssistantActionKind.requestTitle => c.requestTitle,
     AssistantActionKind.downloadEpisodes => c.downloadEpisodes,
     AssistantActionKind.downloadSubtitle => c.downloadSubtitle,
+    AssistantActionKind.changePlayback => c.changePlayback,
   };
 }
 

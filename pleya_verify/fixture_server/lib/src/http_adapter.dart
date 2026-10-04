@@ -180,14 +180,33 @@ class FixtureHttpServer {
           'seededIds': server.seededIds,
         });
       case '/__verify/seed':
+        final seedWatch = Stopwatch()..start();
+        void milestone(String stage) {
+          try {
+            stderr.writeln(
+              jsonEncode({
+                'verify_fixture': 'seed',
+                'stage': stage,
+                'elapsed_ms': seedWatch.elapsedMilliseconds,
+                'at_utc': DateTime.now().toUtc().toIso8601String(),
+              }),
+            );
+          } catch (_) {
+            // Diagnostic output must never change the control-plane result.
+          }
+        }
+        milestone('seed_received');
         final body = await _readJsonBody(request);
+        milestone('seed_body_read');
         final fixture = body['fixture'] as String?;
         if (fixture == null || !applyNamedFixture(server, fixture, seerr: seerr, tautulli: tautulli)) {
           request.response.statusCode = HttpStatus.badRequest;
           await _json(request, {'error': 'unknown fixture', 'fixture': fixture});
           return;
         }
+        milestone('seed_applied');
         await _json(request, {'ok': true, 'fixture': fixture});
+        milestone('seed_response_closed');
       case '/__verify/add_episode':
         final body = await _readJsonBody(request);
         final parentId = body['parent_id'] as String?;

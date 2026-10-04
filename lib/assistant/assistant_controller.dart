@@ -308,8 +308,11 @@ class AssistantController extends ChangeNotifier {
       task.lastEnd = result.end;
       task.providerError = result.providerError;
       task.modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
-      task.error = result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name);
-      task.answer = result.text;
+      final playbackCurrent = result.playbackEvidenceCurrent?.call() ?? true;
+      task.error = playbackCurrent
+          ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
+          : 'playback_session_changed';
+      task.answer = playbackCurrent ? result.text : '';
       task.actions.addAll(result.actions);
       task.status = _outcomeStatus(task.error);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;

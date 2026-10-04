@@ -2354,7 +2354,8 @@
       "createCollection": "Collectie aangemaakt",
       "requestTitle": "Aanvraag verstuurd",
       "downloadEpisodes": "Download gestart",
-      "downloadSubtitle": "Ondertitel gedownload"
+      "downloadSubtitle": "Ondertitel gedownload",
+      "changePlayback": "Afspelen aangepast"
     },
     "confirm": {
       "header": "Pleya vraagt bevestiging",
@@ -2370,7 +2371,8 @@
         "createCollection": "Collectie maken",
         "requestTitle": "Titel aanvragen",
         "downloadEpisodes": "Afleveringen downloaden",
-        "downloadSubtitle": "Ondertitel downloaden"
+        "downloadSubtitle": "Ondertitel downloaden",
+        "changePlayback": "Afspelen aanpassen"
       },
       "user": "Gebruiker",
       "server": "Server",

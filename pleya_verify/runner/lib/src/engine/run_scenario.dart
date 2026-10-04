@@ -116,6 +116,8 @@ Future<ScenarioRunResult> runScenario({
 
   Future<void> runStep(ScenarioStep step) async {
     final record = <String, Object?>{'verb': step.verb, 'line': step.line};
+    final resetWatch = step.verb == 'reset_app' ? (Stopwatch()..start()) : null;
+    if (resetWatch != null) record['started_at_utc'] = DateTime.now().toUtc().toIso8601String();
     try {
       switch (step.verb) {
         case 'reset_app':
@@ -296,6 +298,10 @@ Future<ScenarioRunResult> runScenario({
       record['error'] = redact('$e');
       rethrow;
     } finally {
+      if (resetWatch != null) {
+        record['duration_ms'] = resetWatch.elapsedMilliseconds;
+        record['finished_at_utc'] = DateTime.now().toUtc().toIso8601String();
+      }
       stepRecords.add(record);
     }
   }
@@ -388,7 +394,10 @@ Future<ScenarioRunResult> runScenario({
   bundle.writeManifest(manifest);
   bundle.writeReport(_buildReport(scenario, manifest));
   bundle.writeResolvedScenario(scenarioSource);
-  bundle.writeDriverLog(driver.driverLog);
+  bundle.writeDriverLog([
+    ...driver.driverLog,
+    if (fixture != null) ...fixture.diagnostics.map((event) => '[fixture-diagnostic] ${jsonEncode(event)}'),
+  ]);
 
   return ScenarioRunResult(passed: passed, failureMessage: failureMessage, bundleDir: bundle.dir);
 }

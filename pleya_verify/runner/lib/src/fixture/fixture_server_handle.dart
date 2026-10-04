@@ -34,12 +34,92 @@ class FixtureServerHandle {
   /// fixture, which every one of its handlers answers from memory.
   final Duration timeout;
 
+  final _diagnostics = <Map<String, Object?>>[];
+  final _clock = Stopwatch()..start();
+  final _stderrDone = Completer<void>();
+  late final Future<void> _exitDone;
+  var _requestNumber = 0;
+
+  /// Bounded, payload-free evidence for the native seed timeout. Child elapsed
+  /// times use the child's own seed stopwatch; never subtract them from ours.
+  List<Map<String, Object?>> get diagnostics => List.unmodifiable(_diagnostics);
+
+  void _record(Map<String, Object?> event) {
+    if (_diagnostics.length == 128) _diagnostics.removeAt(0);
+    _diagnostics.add(
+      Map.unmodifiable({
+        'observed_at_utc': DateTime.now().toUtc().toIso8601String(),
+        'handle_elapsed_ms': _clock.elapsedMilliseconds,
+        ...event,
+      }),
+    );
+  }
+
   FixtureServerHandle._({
     required this.process,
     required this.port,
     required this.controlToken,
     this.timeout = const Duration(seconds: 10),
-  });
+  }) {
+    _record({'component': 'fixture-process', 'stage': 'started'});
+    _exitDone = process.exitCode.then((code) {
+      _record({'component': 'fixture-process', 'stage': 'process_exit', 'exit_code': code});
+    });
+    // Keep draining even after the evidence cap. Only known seed milestones
+    // are retained; arbitrary stderr can contain credentials or giant lines.
+    final line = <int>[];
+    var oversized = false;
+    var discarded = 0;
+    process.stderr.listen(
+      (bytes) {
+        for (final byte in bytes) {
+          if (byte == 10) {
+            if (oversized || !_recordSeedLine(line)) discarded++;
+            line.clear();
+            oversized = false;
+          } else if (line.length < 4096) {
+            line.add(byte);
+          } else {
+            oversized = true;
+          }
+        }
+      },
+      onError: (_) {
+        _record({'component': 'fixture-process', 'stage': 'stderr_error'});
+        if (!_stderrDone.isCompleted) _stderrDone.complete();
+      },
+      onDone: () {
+        if (line.isNotEmpty || oversized) discarded++;
+        _record({'component': 'fixture-process', 'stage': 'stderr_drained', 'discarded_lines': discarded});
+        if (!_stderrDone.isCompleted) _stderrDone.complete();
+      },
+    );
+  }
+
+  bool _recordSeedLine(List<int> line) {
+    try {
+      final event = jsonDecode(utf8.decode(line));
+      if (event is! Map || event['verify_fixture'] != 'seed') return false;
+      final stage = event['stage'];
+      final elapsed = event['elapsed_ms'];
+      if (!const {'seed_received', 'seed_body_read', 'seed_applied', 'seed_response_closed'}.contains(stage) ||
+          elapsed is! int ||
+          elapsed < 0) {
+        return false;
+      }
+      final at = event['at_utc'];
+      final parsedAt = at is String ? DateTime.tryParse(at) : null;
+      _record({
+        'component': 'fixture-server',
+        'stage': stage,
+        'child_elapsed_ms': elapsed,
+        if (parsedAt != null) 'child_at_utc': parsedAt.toUtc().toIso8601String(),
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Test seam only — builds a handle against a server the test already
   /// controls directly (e.g. a bare `HttpServer` that never answers),
@@ -84,8 +164,7 @@ class FixtureServerHandle {
           .first
           .timeout(
             const Duration(seconds: 30),
-            onTimeout: () =>
-                throw StateError('fixture server did not print its {port, controlToken} line within 30s'),
+            onTimeout: () => throw StateError('fixture server did not print its {port, controlToken} line within 30s'),
           );
       final decoded = jsonDecode(firstLine) as Map<String, Object?>;
       final port = decoded['port'];
@@ -145,58 +224,82 @@ class FixtureServerHandle {
     return {for (final e in ids.entries) '${e.key}': '${e.value}'};
   }
 
-  /// Races [body] against [timeout], throwing [FixtureControlTimeoutException]
-  /// naming [path] on expiry — the single deadline every `_controlGet`/
-  /// `_controlPost` call shares, covering connect, response headers, and
-  /// reading the whole response body as one bounded operation.
-  Future<T> _withTimeout<T>(String path, Future<T> body) => body.timeout(
-    timeout,
-    onTimeout: () => throw FixtureControlTimeoutException(path: path, timeout: timeout),
-  );
+  Future<Map<String, Object?>> _controlGet(String path) => _control('GET', path);
 
-  Future<Map<String, Object?>> _controlGet(String path) async {
+  Future<Map<String, Object?>> _controlPost(String path, Map<String, Object?> body) => _control('POST', path, body);
+
+  Future<Map<String, Object?>> _control(String method, String path, [Map<String, Object?>? body]) async {
     final client = HttpClient();
-    try {
-      return await _withTimeout(path, () async {
-        final request = await client.getUrl(Uri.parse('$baseUrl$path'));
-        _controlHeaders.forEach(request.headers.set);
-        final response = await request.close();
-        final responseBody = await response.transform(utf8.decoder).join();
-        return jsonDecode(responseBody) as Map<String, Object?>;
-      }());
-    } finally {
-      // force: true so a connection stuck mid-request (the exact case a
-      // timeout above just fired for) does not keep the client open waiting
-      // for it to finish gracefully.
-      client.close(force: true);
+    final watch = Stopwatch()..start();
+    final number = ++_requestNumber;
+    var stage = 'connecting';
+    var finished = false;
+    // Mutation names are caller-supplied. Retain only the route needed for
+    // this diagnosis, never URI query strings, tokens or request/response bodies.
+    final route = path.split('?').first;
+    final safePath = const {'/__verify/seed', '/__verify/state', '/__verify/requests'}.contains(route)
+        ? route
+        : '/__verify/other';
+    void record(String next, {String? pending}) {
+      _record({
+        'component': 'fixture-client',
+        'request': number,
+        'method': method,
+        'path': safePath,
+        'stage': next,
+        'request_elapsed_ms': watch.elapsedMilliseconds,
+        if (pending != null) 'pending_stage': pending,
+      });
+      stage = next;
     }
-  }
 
-  Future<Map<String, Object?>> _controlPost(String path, Map<String, Object?> body) async {
-    final client = HttpClient();
+    record(stage);
     try {
-      return await _withTimeout(path, () async {
-        final request = await client.postUrl(Uri.parse('$baseUrl$path'));
+      return await (() async {
+        final request = await client.openUrl(method, Uri.parse('$baseUrl$path'));
+        if (finished) return <String, Object?>{};
         _controlHeaders.forEach(request.headers.set);
-        request.headers.contentType = ContentType.json;
-        request.write(jsonEncode(body));
+        if (body != null) {
+          request.headers.contentType = ContentType.json;
+          request.write(jsonEncode(body));
+        }
+        record('waiting_headers');
         final response = await request.close();
+        if (finished) return <String, Object?>{};
+        record('reading_body');
         final responseBody = await response.transform(utf8.decoder).join();
-        return jsonDecode(responseBody) as Map<String, Object?>;
-      }());
+        if (finished) return <String, Object?>{};
+        final result = jsonDecode(responseBody) as Map<String, Object?>;
+        record('complete');
+        return result;
+      }()).timeout(
+        timeout,
+        onTimeout: () {
+          finished = true;
+          record('timeout', pending: stage);
+          throw FixtureControlTimeoutException(path: path, timeout: timeout);
+        },
+      );
+    } catch (e) {
+      if (!finished) record('error', pending: stage);
+      rethrow;
     } finally {
+      finished = true;
       client.close(force: true);
     }
   }
 
   Future<void> stop() async {
+    _record({'component': 'fixture-process', 'stage': 'stop_requested'});
     process.stdin.close().ignore();
     await process.exitCode.timeout(
       const Duration(seconds: 5),
       onTimeout: () {
+        _record({'component': 'fixture-process', 'stage': 'stop_kill'});
         process.kill(ProcessSignal.sigkill);
-        return process.exitCode;
+        return process.exitCode.timeout(const Duration(seconds: 5), onTimeout: () => -1);
       },
     );
+    await Future.wait([_exitDone, _stderrDone.future]).timeout(const Duration(seconds: 1), onTimeout: () => []);
   }
 }
