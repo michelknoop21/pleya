@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_entitlement.dart';
 import '../../assistant/assistant_kids_ages_store.dart';
+import '../../assistant/assistant_kids_profile_store.dart';
 import '../../assistant/assistant_provider.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
@@ -14,6 +16,7 @@ import '../../focus/key_event_utils.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
+import '../../profiles/active_profile_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
 import '../../services/settings_service.dart';
@@ -70,6 +73,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   late final _tmdbKeyController = createTextEditingController();
   final _kidsAges = KidsAgesStore();
   late Future<List<int>> _agesFuture = _kidsAges.read();
+  final _kidsProfile = KidsProfileStore();
+  late Future<bool> _kidsProfileFuture = _kidsProfile.read();
   bool? _webSearch;
   final _formKey = GlobalKey<FormState>();
 
