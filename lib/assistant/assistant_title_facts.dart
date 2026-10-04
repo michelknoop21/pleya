@@ -15,6 +15,7 @@ import '../services/seerr/seerr_client.dart';
 import '../services/tmdb/tmdb_client.dart';
 import '../services/trakt/trakt_constants.dart';
 import '../utils/app_logger.dart';
+import 'assistant_age_gate.dart';
 import 'assistant_title_facts_cache.dart';
 import 'assistant_title_facts_sources.dart';
 
@@ -155,15 +156,18 @@ class TitleFacts {
   }
 
   /// What the model gets: the age rating for [region] and the US, the
-  /// genres, runtime, three cast names, score and the region's services.
+  /// minimum age [AgeGate] reads from those, the genres, runtime, three
+  /// cast names, score and the region's services.
   Map<String, Object?> toModelJson(String region) {
     final age = {
       for (final c in {region, 'US'})
         if (certifications[c] != null) c: certifications[c],
     };
     if (age.isEmpty && certifications[anyCountry] != null) age['server'] = certifications[anyCountry];
+    final ageMin = AgeGate.minimumAge(this, region);
     return {
       if (age.isNotEmpty) 'age': age,
+      'age_min': ?ageMin,
       if (genres.isNotEmpty) 'genres': genres,
       if (runtimeMin != null) 'runtime_min': runtimeMin,
       if (cast.isNotEmpty) 'cast': cast.take(3).toList(),

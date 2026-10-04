@@ -15,6 +15,7 @@ import '../services/download_manager_service.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_controller.dart';
+import 'assistant_kids_ages_store.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_provider.dart';
 import 'assistant_title_facts.dart';
@@ -93,6 +94,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
     // One per ask, so the lookup budget starts fresh. The TMDB key and the
     // online switch come from the provider settings once those carry them.
     titleFacts: TitleFactsService(cache: cache, clientFor: manager.getClient, seerr: () => seerr?.client),
+    kidsAges: KidsAgesStore().read,
     personal: recommendations == null
         ? null
         : AssistantPersonalServices(

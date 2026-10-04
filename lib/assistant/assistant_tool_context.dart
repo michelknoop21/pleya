@@ -53,6 +53,7 @@ class AssistantToolContext {
     this.personal,
     this.web,
     this.titleFacts,
+    this.kidsAges,
     this.cancel,
   });
 
@@ -75,6 +76,7 @@ class AssistantToolContext {
     personal: personal,
     web: web ?? this.web,
     titleFacts: titleFacts,
+    kidsAges: kidsAges,
     cancel: cancel ?? this.cancel,
   );
 
@@ -94,6 +96,10 @@ class AssistantToolContext {
 
   /// Age ratings, genres, score and services per title; null leaves them out.
   final TitleFactsService? titleFacts;
+
+  /// The ages of this profile's children, for the age gate; null or empty
+  /// leaves it off.
+  final Future<List<int>> Function()? kidsAges;
 
   /// Shown job ids per server, with the title list_jobs gave them.
   final Map<String, Map<String, String>> _jobs = {};

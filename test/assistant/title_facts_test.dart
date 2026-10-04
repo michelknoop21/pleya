@@ -156,6 +156,7 @@ void main() {
     expect(f.sources, {'server', 'seerr', 'tmdb'});
     expect(f.toModelJson('NL'), {
       'age': {'NL': '12', 'US': 'PG-13'},
+      'age_min': 12,
       'genres': ['Seerr Genre'],
       'runtime_min': 99,
       'cast': ['A', 'B', 'C'],

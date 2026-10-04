@@ -499,6 +499,9 @@ class PreferenceSyncPolicyRegistry {
     // by being used, and a row of posters from someone else's television is not
     // a preference anyone set.
     'search_recent_items': _profileRuntimeCache,
+    // The children's ages Big P picks for: family data that stays on this
+    // device and with this profile, never synced and never exported.
+    'assistant_kids_ages': _profileRuntimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,
