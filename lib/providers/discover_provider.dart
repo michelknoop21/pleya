@@ -21,6 +21,7 @@ import '../utils/error_message_utils.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/media_hub_ordering.dart';
 import '../utils/watch_state_notifier.dart';
+import 'continue_watching_hidden_provider.dart';
 import 'hidden_libraries_provider.dart';
 import 'libraries_provider.dart';
 import 'multi_server_provider.dart';
@@ -49,7 +50,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     this._libraries, {
     required this.isProfileBinding,
     this.recommendations,
+    this.hiddenContinueWatching,
+    this.pendingContinueWatchingRemovalKeys,
   }) {
+    _lastHiddenKeys = hiddenContinueWatching?.keys ?? const {};
+    hiddenContinueWatching?.addListener(_onHiddenContinueWatchingChanged);
     // Late server connects (reconnect after outage, slow wave) refresh
     // discover the same way they refresh libraries. Removed in [dispose] so a
     // profile switch can't leave a stale listener on the app-global provider.
@@ -109,8 +114,35 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// On-device personalized rows (Top Picks, Because you like…, Hidden Gems).
   /// Like [_seedHubs], held outside [_hubs] and recomputed only on full loads.
   List<MediaHub> _personalizedHubs = [];
-  bool _hasMoreContinueWatching = false;
   List<MediaItem> _allOnDeck = const [];
+
+  /// Titles hidden from Verder kijken on this device (DEC-119 fase 3). Filtered
+  /// out of every fetch; a restore brings the title back on the next one.
+  final ContinueWatchingHiddenProvider? hiddenContinueWatching;
+  Set<String> _lastHiddenKeys = const {};
+
+  /// Global keys of removals still queued for a server that was unreachable.
+  /// Read once per load, so a card dismissed before a restart does not come
+  /// back while its write is still waiting (hoofdstuk 13.4 point 3).
+  final Future<Set<String>> Function()? pendingContinueWatchingRemovalKeys;
+
+  /// Kept apart from [_suppressedOnDeckKeys] on purpose. That set cleans itself
+  /// as soon as a fetch no longer lists a key, and a server that is still
+  /// unreachable lists nothing, so a queued removal folded into it would be
+  /// forgotten on the first fetch and its card would return the moment the
+  /// server reconnected, before the replay. This one is re-read from the queue
+  /// and empties only when the queue row does.
+  Set<String> _queuedRemovalKeys = const {};
+
+  Future<void> _readQueuedRemovalKeys() async {
+    final read = pendingContinueWatchingRemovalKeys;
+    if (read == null) return;
+    try {
+      _queuedRemovalKeys = await read();
+    } catch (e) {
+      appLogger.d('DiscoverProvider: queued removal keys unavailable', error: e);
+    }
+  }
 
   /// False while [_allOnDeck] came from a snapshot (which only ever held the
   /// row), so the overview still fetches instead of trusting a 20-item "all".
@@ -155,7 +187,6 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   List<MediaHub> get hubs => (_seedHubs.isEmpty && _personalizedHubs.isEmpty && _latestShowsHub == null)
       ? _hubs
       : [?_latestShowsHub, ..._seedHubs, ..._personalizedHubs, ..._hubs];
-  bool get hasMoreContinueWatching => _hasMoreContinueWatching;
 
   /// Online servers whose hub or Continue Watching fetch has not succeeded in
   /// the current load — the `failedServerIds` the fase-6 discovery projection
@@ -283,6 +314,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
 
       // On-deck and hubs fetch in parallel; on-deck is published as soon as
       // it lands so the hero renders while hubs are still loading.
+      await hiddenContinueWatching?.ensureInitialized();
+      await _readQueuedRemovalKeys();
+      if (isDisposed) return;
+
       // The whole list, not a probe: the row title carries the real count after
       // merging, deduplicating and hiding (DEC-119 fase 2), and the overview
       // opens from memory instead of refetching.
@@ -398,6 +433,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final useGlobalHubs = settings.read(SettingsService.useGlobalHubs);
       final aggregation = _multiServer.aggregationService;
 
+      // Before the fetches start, never between starting and awaiting them: a
+      // fetch that fails while something else is awaited is an unhandled error.
+      await _readQueuedRemovalKeys();
+      if (isDisposed) return;
       final Future<OnDeckAggregationResult?> onDeckFuture = onDeckIds.isEmpty
           ? Future<OnDeckAggregationResult?>.value()
           : aggregation.getOnDeckFromAllServers(
@@ -626,6 +665,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   Future<void> refreshContinueWatching() async {
     try {
       if (!_multiServer.hasConnectedServers) return;
+      await _readQueuedRemovalKeys();
       final fetched = await _multiServer.aggregationService.getOnDeckFromAllServers(
         hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
       );
@@ -649,7 +689,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     final fetched = await _multiServer.aggregationService.getOnDeckFromAllServers(
       hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
     );
-    return fetched.items;
+    return _withoutHiddenAndQueued([
+      for (final item in fetched.items)
+        if (!_suppressedOnDeckKeys.contains(item.globalKey)) item,
+    ]);
   }
 
   /// Refetch a single item (post-edit refresh, or a return from the player)
@@ -724,14 +767,39 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         fetched = fetched.where((item) => !_suppressedOnDeckKeys.contains(item.globalKey)).toList();
       }
     }
-    _setOnDeck(fetched);
+    _setOnDeck(_withoutHiddenAndQueued(fetched));
+  }
+
+  /// Titles hidden on this device and titles whose removal is still queued.
+  List<MediaItem> _withoutHiddenAndQueued(List<MediaItem> items) {
+    final hidden = hiddenContinueWatching?.keys ?? const <String>{};
+    if (hidden.isEmpty && _queuedRemovalKeys.isEmpty) return items;
+    return [
+      for (final item in items)
+        if (!hidden.contains(item.globalKey) && !_queuedRemovalKeys.contains(item.globalKey)) item,
+    ];
+  }
+
+  /// A hide drops the title at once; a restore lifts its suppression and
+  /// refetches, because the item itself is no longer in memory.
+  void _onHiddenContinueWatchingChanged() {
+    final current = hiddenContinueWatching?.keys ?? const <String>{};
+    final restored = _lastHiddenKeys.difference(current);
+    _lastHiddenKeys = current;
+    if (restored.isNotEmpty) {
+      _suppressedOnDeckKeys.removeAll(restored);
+      unawaited(refreshContinueWatching());
+    }
+    final remaining = _allOnDeck.where((item) => !current.contains(item.globalKey)).toList();
+    if (remaining.length != _allOnDeck.length) {
+      _setOnDeck(remaining);
+      safeNotifyListeners();
+    }
   }
 
   void _setOnDeck(List<MediaItem> all) {
     _allOnDeck = all;
-    final hasMore = all.length > continueWatchingPreviewLimit;
-    _onDeck = hasMore ? all.take(continueWatchingPreviewLimit).toList() : all;
-    _hasMoreContinueWatching = hasMore;
+    _onDeck = all.length > continueWatchingPreviewLimit ? all.take(continueWatchingPreviewLimit).toList() : all;
   }
 
   // --- Event reactions -----------------------------------------------------
@@ -751,7 +819,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   Set<String>? get _watchedGlobalKeys {
     // Suppressed movies are no longer in _onDeck but must keep receiving
     // events: a rewatch (unwatched/progress) has to lift the suppression.
-    final keys = <String>{..._suppressedOnDeckKeys};
+    final keys = <String>{..._suppressedOnDeckKeys, ...?hiddenContinueWatching?.keys};
     for (final item in _allOnDeck) {
       final serverId = item.serverId;
       if (serverId == null) return null;
@@ -782,10 +850,16 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         _removeFromOnDeck(event.globalKey);
       case WatchStateChangeType.unwatched:
         _suppressedOnDeckKeys.remove(event.globalKey);
+        unawaited(hiddenContinueWatching?.restore(event.globalKey));
       case WatchStateChangeType.progressUpdate:
         // A rewatch must resurface immediately, but a trailing near-complete
         // progress event (isNowWatched) must not undo the watched suppression.
-        if (event.isNowWatched != true) _suppressedOnDeckKeys.remove(event.globalKey);
+        // The same holds for a title hidden on this device: playing it again
+        // is the viewer saying it belongs in the row.
+        if (event.isNowWatched != true) {
+          _suppressedOnDeckKeys.remove(event.globalKey);
+          unawaited(hiddenContinueWatching?.restore(event.globalKey));
+        }
       default:
         break;
     }
@@ -899,6 +973,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   void dispose() {
     _multiServer.removeOnlineServersListener(syncToOnlineServers);
     _hiddenLibraries.removeListener(_onHiddenLibrariesChanged);
+    hiddenContinueWatching?.removeListener(_onHiddenContinueWatchingChanged);
     _libraries.removeListener(_onLibrariesChanged);
     _watchStateSubscription?.cancel();
     _watchStateSubscription = null;

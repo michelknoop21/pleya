@@ -2901,9 +2901,10 @@ automatisch verwijderd; de still dimt licht, de tekst niet.
 
 De rijtitel draagt de echte teller na mergen, ontdubbelen en verbergen (`Verder kijken · 23`):
 het aantal groepen van de volledige projectie, hetzelfde getal als het overzicht toont. Daarvoor
-laadt `DiscoverProvider` de hele lijst in plaats van een proef van 21 (Plex en Pleya Server
-krijgen daarvoor expliciet een paginagrootte van 200 mee, want zonder getal antwoorden ze met hun
-eigen kleine standaard), houdt de eerste 20 voor de rij en geeft het overzicht uit het geheugen.
+laadt `DiscoverProvider` de hele lijst in plaats van een proef van 21 (Plex laat `count` dan weg,
+wat daar onbegrensd betekent en door `plex_home_retry_test` is vastgelegd; Pleya Server vraagt een
+hubpagina van 200, want zijn hub kent geen onbegrensde vorm), houdt de eerste 20 voor de rij en
+geeft het overzicht uit het geheugen.
 Een snapshot bevatte alleen de rij en telt dus tot de netwerkronde landt als onvolledig: het
 overzicht haalt dan alsnog op. De projectie draait één keer over de hele lijst en de rij is daar
 de eerste 20 groepen van. Kijkgebeurtenissen (verwijderen, gekeken, hervat) gelden voor de hele
@@ -2916,3 +2917,56 @@ hover-ingang van de rij naar een gesectioneerd `HubDetailScreen`, op TV de eindt
 bij terugkeer. Nog open na deze fase: de focusbare Alles-ingang bij de rijtitel op TV (de
 eindtegel is nu de enige ingang daar) en de 16:9-rustvorm van de TV-kaarten uit 38 A; beide raken
 de focuschoreografie van Home en krijgen een eigen ronde. Verborgen items hoort bij fase 3.
+
+**Fase 3, 4 oktober 2026: opruimen via één pad** (mockup 38 E, goedgekeurd met de correctie dat
+"Op alle bronnen" alleen mag staan waar het letterlijk klopt). Een titel uit Verder kijken halen
+gaat op elk platform door `WatchActions.removeFromContinueWatching`. Kan de bron het op de server
+(Plex, Pleya Server), dan gebeurt het daar. Kan hij het niet (Jellyfin, Emby, lokale mappen), dan
+wordt de titel op dit apparaat verborgen. Dat laatste was een echte fout: het tvOS-menu bood
+verwijderen aan zonder de capability te lezen en de Jellyfin-client gooide dan `UnsupportedError`.
+Het desktopmenu verborg de regel in dat geval helemaal; die staat er nu ook, met de juiste tekst.
+
+De regel in het menu zegt wat er gebeurt en hoe ver het reikt
+(`lib/utils/continue_watching_removal.dart`):
+
+| bronnen van de titel | regel | reikwijdte |
+|---|---|---|
+| geen enkele kan het op de server | Verbergen uit Verder kijken | Alleen op dit apparaat |
+| één bron, kan het op de server | Verwijderen uit Verder kijken | geen |
+| meerdere, allemaal op de server én nu bereikbaar | Verwijderen uit Verder kijken | Op alle bronnen |
+| meerdere, allemaal op de server, één onbereikbaar | Verwijderen uit Verder kijken | geen, want de wachtrij is geen garantie |
+| gemengd | Verwijderen uit Verder kijken | "Zolder op de server, NAS alleen hier" |
+
+Lokaal verbergen staat per profiel in `ContinueWatchingHiddenProvider` en synchroniseert nooit:
+de sleutel `hidden_continue_watching` is in het syncbeleid als apparaatlokaal aangemerkt, want
+"alleen op dit apparaat" is wat de regel belooft. Er wordt niets op een server gewist.
+`DiscoverProvider` filtert de verborgen sleutels uit elke ophaalronde, laat de kaart bij verbergen
+meteen vallen, en haalt hem bij herstel weer op. Een titel die je opnieuw afspeelt komt vanzelf
+terug: dat is de kijker die zegt dat hij in de rij hoort. Een onbereikbare bron die het niet op de
+server kan, wordt direct lokaal verborgen in plaats van in de wachtrij gezet; een rij die daar van
+vóór deze wijziging nog stond, laat de replay nu vallen in plaats van hem bij elke herverbinding
+opnieuw te laten falen. Hetzelfde geldt voor een bron die de aanmelding weigert, en een bron
+zonder gebonden client (koude start) wordt op zijn backend beoordeeld, zodat een Jellyfin-bron
+nooit een serververwijdering beloofd krijgt die niet komt.
+
+De sleutels van verwijderingen die nog in de wachtrij staan leest `DiscoverProvider` nu bij elke
+ophaalronde (`pendingContinueWatchingRemovalKeys` had tot nu toe geen enkele aanroeper) en houdt
+ze in een eigen set. Niet in de set die zichzelf opschoont: een onbereikbare server meldt niets,
+dus daar zou de sleutel bij de eerste ronde al verdwijnen en de kaart terugkomen zodra de server
+herverbindt, vóór de replay. De eigen set loopt pas leeg wanneer de wachtrijrij weg is.
+
+De eigen Verder kijken-rij van een bibliotheek haalt rechtstreeks bij haar server op en filtert
+de lokaal verborgen titels nu ook; anders zou "Verbergen" daar niets zichtbaars doen.
+
+Verborgen items: onderaan het overzicht op alle drie de platforms staat `Verborgen items · N`
+zodra er iets verborgen is. Een item kiezen herstelt het. Het overzicht is daarom nu altijd
+bereikbaar vanaf de rij, ook bij minder dan twintig titels: de TV-eindtegel en de desktopingang
+hangen niet meer aan de overloop. Open na deze fase: is elke titel verborgen, dan verdwijnt de
+rij en daarmee de ingang; terughalen kan dan alleen door de titel opnieuw af te spelen. Fase 4
+raakt de Home-indeling toch aan en geeft Verborgen items daar een tweede ingang. Ook voor fase
+4: een verborgen titel die elders is uitgekeken blijft in de lijst staan tot je hem herstelt, en
+omdat het filter na het ontdubbelen over servers loopt kan een op desktop verborgen titel
+terugkomen als de representatieve bron van een samengevoegde titel wisselt.
+
+De Nederlandse menutekst zei nog "Doorgaan met kijken" terwijl de rij "Verder kijken" heet; beide
+bestaande strings zijn gelijkgetrokken.

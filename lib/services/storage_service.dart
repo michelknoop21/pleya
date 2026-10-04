@@ -24,6 +24,7 @@ class StorageService extends BaseSharedPreferencesService {
   static const String _keyActiveProfileId = PreferenceSyncScope.activeProfileIdKey;
   static const String _keyHomeRowOrder = 'home_row_order';
   static const String _keyHiddenHomeRows = 'hidden_home_rows';
+  static const String _keyHiddenContinueWatching = 'hidden_continue_watching';
   static const String _keyHomeCustomRows = 'home_custom_rows';
 
   // Key prefixes for per-id storage
@@ -370,6 +371,16 @@ class StorageService extends BaseSharedPreferencesService {
 
   Set<String> getHiddenHomeRows(String? profileId) {
     return (_getStringList('${_homePrefix(profileId)}$_keyHiddenHomeRows') ?? const []).toSet();
+  }
+
+  /// Titles hidden from Verder kijken on this device (DEC-119 fase 3), one JSON
+  /// object per entry so a corrupt line costs its own entry, not the set.
+  Future<void> saveHiddenContinueWatching(String? profileId, List<String> encoded) async {
+    await _setStringList('${_homePrefix(profileId)}$_keyHiddenContinueWatching', encoded);
+  }
+
+  List<String> getHiddenContinueWatching(String? profileId) {
+    return _getStringList('${_homePrefix(profileId)}$_keyHiddenContinueWatching') ?? const [];
   }
 
   /// The profile's own Home rows (ROW1/DEC-100), one JSON object per entry.

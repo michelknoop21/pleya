@@ -296,7 +296,7 @@ class _TranslationsSettingsNl extends TranslationsSettingsEn {
 	@override String get showHeroSection => 'Toon hoofdsectie';
 	@override String get hoverExpandCards => 'Kaarten uitklappen bij hover';
 	@override String get hoverExpandCardsDescription => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft';
-	@override String get continueWatchingAction => 'Actie voor Doorgaan met kijken';
+	@override String get continueWatchingAction => 'Actie voor Verder kijken';
 	@override String get continueWatchingPlay => 'Afspelen';
 	@override String get continueWatchingDetails => 'Details openen';
 	@override String get episodeAction => 'Afleveringsactie';
@@ -606,7 +606,12 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	// Translations
 	@override String get markAsWatched => 'Markeer als gekeken';
 	@override String get markAsUnwatched => 'Markeer als ongekeken';
-	@override String get removeFromContinueWatching => 'Verwijder uit Doorgaan met kijken';
+	@override String get removeFromContinueWatching => 'Verwijderen uit Verder kijken';
+	@override String get hideFromContinueWatching => 'Verbergen uit Verder kijken';
+	@override String get cwScopeThisDevice => 'Alleen op dit apparaat';
+	@override String get cwScopeAllSources => 'Op alle bronnen';
+	@override String cwScopeMixed({required Object server, required Object local}) => '${server} op de server, ${local} alleen hier';
+	@override String get cwScopePartlyLocal => 'Deels alleen op dit apparaat';
 	@override String get viewDetails => 'Details bekijken';
 	@override String get goToSeries => 'Ga naar serie';
 	@override String get shufflePlay => 'Willekeurig afspelen';
@@ -794,7 +799,8 @@ class _TranslationsMessagesNl extends TranslationsMessagesEn {
 	@override String get markedAsWatchedOffline => 'Gemarkeerd als gekeken (sync wanneer online)';
 	@override String get markedAsUnwatchedOffline => 'Gemarkeerd als ongekeken (sync wanneer online)';
 	@override String autoRemovedWatchedDownload({required Object title}) => 'Automatisch verwijderd: ${title}';
-	@override String get removedFromContinueWatching => 'Verwijderd uit Doorgaan met kijken';
+	@override String get removedFromContinueWatching => 'Verwijderd uit Verder kijken';
+	@override String get hiddenFromContinueWatching => 'Verborgen uit Verder kijken';
 	@override String get errorLoading => 'Fout';
 	@override String get fileInfoNotAvailable => 'Bestand informatie niet beschikbaar';
 	@override String get errorLoadingFileInfo => 'Fout bij laden bestand info';
@@ -1027,6 +1033,9 @@ class _TranslationsDiscoverNl extends TranslationsDiscoverEn {
 	@override String get cwSectionResumeMovies => 'Films hervatten';
 	@override String get cwSectionNextEpisodes => 'Volgende afleveringen';
 	@override String get cwSectionStale => 'Eerder begonnen';
+	@override String get hiddenItems => 'Verborgen items';
+	@override String get restoreHidden => 'Herstellen';
+	@override String get hiddenItemsHint => 'Alleen op dit apparaat verborgen. Herstellen zet een titel terug in Verder kijken.';
 	@override late final _TranslationsDiscoverWatchedAgoNl watchedAgo = _TranslationsDiscoverWatchedAgoNl._(_root);
 	@override String get moreLikeThis => 'Meer zoals dit';
 	@override String becauseYouWatched({required Object title}) => 'Omdat je ${title} gekeken hebt';
@@ -3173,7 +3182,7 @@ extension on TranslationsNl {
 			'settings.showHeroSection' => 'Toon hoofdsectie',
 			'settings.hoverExpandCards' => 'Kaarten uitklappen bij hover',
 			'settings.hoverExpandCardsDescription' => 'Toon een voorbeeldkaart met snelknoppen als je over een poster zweeft',
-			'settings.continueWatchingAction' => 'Actie voor Doorgaan met kijken',
+			'settings.continueWatchingAction' => 'Actie voor Verder kijken',
 			'settings.continueWatchingPlay' => 'Afspelen',
 			'settings.continueWatchingDetails' => 'Details openen',
 			'settings.episodeAction' => 'Afleveringsactie',
@@ -3476,7 +3485,12 @@ extension on TranslationsNl {
 			'fileInfo.has64bitOffsets' => '64-bit Offsets',
 			'mediaMenu.markAsWatched' => 'Markeer als gekeken',
 			'mediaMenu.markAsUnwatched' => 'Markeer als ongekeken',
-			'mediaMenu.removeFromContinueWatching' => 'Verwijder uit Doorgaan met kijken',
+			'mediaMenu.removeFromContinueWatching' => 'Verwijderen uit Verder kijken',
+			'mediaMenu.hideFromContinueWatching' => 'Verbergen uit Verder kijken',
+			'mediaMenu.cwScopeThisDevice' => 'Alleen op dit apparaat',
+			'mediaMenu.cwScopeAllSources' => 'Op alle bronnen',
+			'mediaMenu.cwScopeMixed' => ({required Object server, required Object local}) => '${server} op de server, ${local} alleen hier',
+			'mediaMenu.cwScopePartlyLocal' => 'Deels alleen op dit apparaat',
 			'mediaMenu.viewDetails' => 'Details bekijken',
 			'mediaMenu.goToSeries' => 'Ga naar serie',
 			'mediaMenu.shufflePlay' => 'Willekeurig afspelen',
@@ -3549,13 +3563,13 @@ extension on TranslationsNl {
 			'videoControls.nextButton' => 'Volgende aflevering',
 			'videoControls.previousChapterButton' => 'Vorig hoofdstuk',
 			'videoControls.nextChapterButton' => 'Volgend hoofdstuk',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.muteButton' => 'Dempen',
 			'videoControls.unmuteButton' => 'Dempen opheffen',
 			'videoControls.settingsButton' => 'Afspeelinstellingen',
 			'videoControls.tracksButton' => 'Audio en ondertitels',
 			'videoControls.chaptersButton' => 'Hoofdstukken',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.versionsButton' => 'Videoversies',
 			'videoControls.versionQualityButton' => 'Versie en kwaliteit',
 			'videoControls.versionColumnHeader' => 'Versie',
@@ -3654,7 +3668,8 @@ extension on TranslationsNl {
 			'messages.markedAsWatchedOffline' => 'Gemarkeerd als gekeken (sync wanneer online)',
 			'messages.markedAsUnwatchedOffline' => 'Gemarkeerd als ongekeken (sync wanneer online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Automatisch verwijderd: ${title}',
-			'messages.removedFromContinueWatching' => 'Verwijderd uit Doorgaan met kijken',
+			'messages.removedFromContinueWatching' => 'Verwijderd uit Verder kijken',
+			'messages.hiddenFromContinueWatching' => 'Verborgen uit Verder kijken',
 			'messages.errorLoading' => 'Fout',
 			'messages.fileInfoNotAvailable' => 'Bestand informatie niet beschikbaar',
 			'messages.errorLoadingFileInfo' => 'Fout bij laden bestand info',
@@ -3833,6 +3848,9 @@ extension on TranslationsNl {
 			'discover.cwSectionResumeMovies' => 'Films hervatten',
 			'discover.cwSectionNextEpisodes' => 'Volgende afleveringen',
 			'discover.cwSectionStale' => 'Eerder begonnen',
+			'discover.hiddenItems' => 'Verborgen items',
+			'discover.restoreHidden' => 'Herstellen',
+			'discover.hiddenItemsHint' => 'Alleen op dit apparaat verborgen. Herstellen zet een titel terug in Verder kijken.',
 			'discover.watchedAgo.today' => 'vandaag',
 			'discover.watchedAgo.yesterday' => 'gisteren',
 			'discover.watchedAgo.days' => ({required Object count}) => '${count} dagen geleden',
@@ -4059,6 +4077,8 @@ extension on TranslationsNl {
 			'liveTv.unknownProgram' => 'Onbekend programma',
 			'liveTv.unknownHub' => 'Onbekend',
 			'liveTv.unknownError' => 'Onbekende fout',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.channelNumber' => ({required Object number}) => 'Kanaal ${number}',
 			'liveTv.unknownChannel' => 'Onbekend kanaal',
 			'liveTv.live' => 'LIVE',
@@ -4068,8 +4088,6 @@ extension on TranslationsNl {
 			'liveTv.tomorrow' => 'Morgen',
 			'liveTv.midnight' => 'Middernacht',
 			'liveTv.overnight' => 'Nacht',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.morning' => 'Ochtend',
 			'liveTv.daytime' => 'Overdag',
 			'liveTv.evening' => 'Avond',
@@ -4573,6 +4591,8 @@ extension on TranslationsNl {
 			'trakt.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trakt.disconnectConfirm' => 'Trakt-account loskoppelen?',
 			'trakt.disconnectConfirmBody' => 'Pleya stopt met gebeurtenissen naar Trakt sturen. Je kunt altijd opnieuw verbinden.',
+			_ => null,
+		} ?? switch (path) {
 			'trakt.scrobble' => 'Realtime scrobbling',
 			'trakt.scrobbleDescription' => 'Verstuur play-, pauze- en stopgebeurtenissen tijdens afspelen naar Trakt.',
 			'trakt.watchedSync' => 'Bekeken-status synchroniseren',
@@ -4582,8 +4602,6 @@ extension on TranslationsNl {
 			'trackers.notConnected' => 'Niet verbonden',
 			'trackers.connectedAs' => ({required Object username}) => 'Verbonden als @${username}',
 			'trackers.scrobble' => 'Voortgang automatisch volgen',
-			_ => null,
-		} ?? switch (path) {
 			'trackers.scrobbleDescription' => 'Werk je lijst bij wanneer je een aflevering of film afrondt.',
 			'trackers.disconnectConfirm' => ({required Object service}) => '${service} loskoppelen?',
 			'trackers.disconnectConfirmBody' => ({required Object service}) => 'Pleya stopt met ${service} bijwerken. Je kunt altijd opnieuw verbinden.',

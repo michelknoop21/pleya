@@ -39,6 +39,7 @@ import '../../media/unified/unified_media_source.dart';
 import 'package:provider/provider.dart';
 
 import '../../exceptions/media_server_exceptions.dart';
+import '../../providers/continue_watching_hidden_provider.dart';
 import '../../providers/offline_watch_provider.dart';
 import '../../providers/watchlist_provider.dart';
 import '../../providers/watchlist_store.dart';
@@ -47,6 +48,7 @@ import '../../services/unified_action_outcome.dart';
 import '../../services/watch_actions.dart';
 import '../../services/watchlist_ui_actions.dart';
 import '../../utils/app_logger.dart';
+import '../../utils/continue_watching_removal.dart';
 import '../../utils/formatters.dart';
 import '../../utils/layout_constants.dart';
 import '../../utils/provider_extensions.dart';
@@ -59,6 +61,7 @@ import '../../widgets/tv/tv_media_source_picker.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/snackbar_helper.dart';
+import '../../utils/watch_state_notifier.dart';
 import 'tv_unified_context_actions.dart';
 
 /// Opens the context menu for [group].
@@ -119,6 +122,9 @@ Future<void> showTvUnifiedContextMenu(
   );
   final navigationActions = _availableNavigationActions(group);
   final hasResumeProgress = group.watchState.hasActiveProgress;
+  final removal = actions.contains(UnifiedGroupAction.removeFromContinueWatching)
+      ? continueWatchingRemovalPresentationFor(context, group, availabilityFor)
+      : null;
 
   // CTX2. `hasActiveProgress` bepaalt het woord op de rij: hij komt uit
   // `group.watchState`, een selectie die onafhankelijk is van
@@ -154,6 +160,7 @@ Future<void> showTvUnifiedContextMenu(
       navigationActions: navigationActions,
       navigationLabel: (action) => labelForUnifiedNavigationAction(action, hasResumeProgress: hasResumeProgress),
       actions: actions,
+      removal: removal,
       extraActionLabel: extraAction?.label,
       onChooseExtra: () {
         extraChosen = true;
@@ -282,6 +289,29 @@ Future<void> runUnifiedGroupAction(
       );
   }
 }
+
+/// The label and scope of the Verder kijken removal row for [group], from
+/// what each of its sources can actually do (mockup 38 E, DEC-119 fase 3).
+///
+/// A source with no bound client is judged by its backend
+/// ([backendRemovesFromContinueWatching]), so a cold start does not promise a
+/// Jellyfin source a server-side removal it will never get.
+ContinueWatchingRemovalPresentation continueWatchingRemovalPresentationFor(
+  BuildContext context,
+  UnifiedMediaGroup group,
+  SourceAvailability Function(UnifiedMediaSource source) availabilityFor,
+) => continueWatchingRemovalPresentation([
+  for (final source in group.sources)
+    (
+      serverName: source.item.serverName,
+      removesOnServer: _removesOnServer(context, source),
+      reachable: availabilityFor(source) == SourceAvailability.online,
+    ),
+]);
+
+bool _removesOnServer(BuildContext context, UnifiedMediaSource source) =>
+    context.tryGetMediaClientForServer(source.serverId)?.capabilities.continueWatchingRemoval ??
+    backendRemovesFromContinueWatching(source.item.backend);
 
 String labelForUnifiedGroupAction(UnifiedGroupAction action) => switch (action) {
   UnifiedGroupAction.markWatched => t.mediaMenu.markAsWatched,
@@ -422,7 +452,33 @@ Future<void> _applyToSources(
   }
 
   final total = sources.length + deferredSources.length + unreachableSources.length;
-  final toQueue = action.queuesUnreachableMemberships ? [...deferredSources] : <UnifiedMediaSource>[];
+
+  // DEC-119 fase 3. A membership that cannot remove server-side has nothing to
+  // wait for: queueing it would only replay an unsupported call on reconnect.
+  // It is hidden on this device instead, now, and counts as done. That holds
+  // for one that is offline and for one whose server refused the sign-in
+  // alike: the scope line promised "alleen hier" for both. Worked out before
+  // the first await, like the queue provider above.
+  final hidden = context.read<ContinueWatchingHiddenProvider?>();
+  final isRemoval = action == UnifiedGroupAction.removeFromContinueWatching;
+  final localOnlyKeys = isRemoval
+      ? {
+          for (final source in [...sources, ...deferredSources, ...unreachableSources])
+            if (!_removesOnServer(context, source)) source.sourceKey,
+        }
+      : const <String>{};
+  final hideOnDevice = hidden == null
+      ? const <UnifiedMediaSource>[]
+      : [
+          for (final source in [...deferredSources, ...unreachableSources])
+            if (localOnlyKeys.contains(source.sourceKey)) source,
+        ];
+  final toQueue = action.queuesUnreachableMemberships
+      ? [
+          for (final source in deferredSources)
+            if (!localOnlyKeys.contains(source.sourceKey)) source,
+        ]
+      : <UnifiedMediaSource>[];
 
   var done = 0;
   for (final source in sources) {
@@ -434,8 +490,23 @@ Future<void> _applyToSources(
       appLogger.w('Unified context action ${action.name} failed on ${source.sourceKey}', error: e, stackTrace: st);
       // A write that failed on a server that *was* online is still a write
       // the contract wanted; if the reason is one a reconnect fixes, it joins
-      // the queue instead of being reported and forgotten.
-      if (action.queuesUnreachableMemberships && isRetryableServerWriteFailure(e)) toQueue.add(source);
+      // the queue instead of being reported and forgotten. A local hide that
+      // failed is not such a write: there is no server to retry it against.
+      if (action.queuesUnreachableMemberships &&
+          isRetryableServerWriteFailure(e) &&
+          !localOnlyKeys.contains(source.sourceKey)) {
+        toQueue.add(source);
+      }
+    }
+  }
+
+  for (final source in hideOnDevice) {
+    try {
+      await hidden!.hide(source.item);
+      WatchStateNotifier().notifyRemovedFromContinueWatching(item: source.item);
+      done++;
+    } catch (e, st) {
+      appLogger.w('Could not hide ${source.sourceKey} from Continue Watching', error: e, stackTrace: st);
     }
   }
 
@@ -605,6 +676,7 @@ class _ActionMenuPanel extends StatelessWidget {
     required this.navigationActions,
     required this.navigationLabel,
     required this.actions,
+    this.removal,
     required this.onChoose,
     required this.onChooseNavigation,
     required this.onClose,
@@ -628,6 +700,10 @@ class _ActionMenuPanel extends StatelessWidget {
   final List<UnifiedNavigationAction> navigationActions;
   final String Function(UnifiedNavigationAction) navigationLabel;
   final List<UnifiedGroupAction> actions;
+
+  /// What the Verder kijken removal row says and how far it reaches; null
+  /// when the menu has no such row.
+  final ContinueWatchingRemovalPresentation? removal;
   final ValueChanged<UnifiedGroupAction> onChoose;
   final ValueChanged<UnifiedNavigationAction> onChooseNavigation;
   final VoidCallback onClose;
@@ -697,7 +773,11 @@ class _ActionMenuPanel extends StatelessWidget {
     }
 
     Widget writeRow(UnifiedGroupAction action) {
-      final label = labelForUnifiedGroupAction(action);
+      final isRemoval = action == UnifiedGroupAction.removeFromContinueWatching;
+      final label = isRemoval
+          ? (removal?.label ?? labelForUnifiedGroupAction(action))
+          : labelForUnifiedGroupAction(action);
+      final secondary = isRemoval ? removal?.scope : null;
       // `tvContextMenu.menuSemantics` — "Action 3 of 7: Mark as watched".
       // Translated into sixteen locales and, until now, called from nowhere:
       // this panel contained no `Semantics(` at all and the row's only
@@ -707,11 +787,14 @@ class _ActionMenuPanel extends StatelessWidget {
         id: AutomationIds.sheetContextMenuItem,
         instance: '$index',
         role: 'list.item',
-        state: () => {'label': label, 'secondary': null},
+        state: () => {'label': label, 'secondary': secondary},
         child: TvCatalogOptionRow(
           key: ValueKey(action),
           label: label,
-          leadingIcon: iconForUnifiedGroupAction(action),
+          secondary: secondary,
+          leadingIcon: isRemoval && (removal?.hidesOnly ?? false)
+              ? Symbols.visibility_off_rounded
+              : iconForUnifiedGroupAction(action),
           semanticLabel: t.tvContextMenu.menuSemantics(index: index + 1, count: totalRows, label: label),
           // Nothing here is a setting, so nothing is "the current answer". A
           // selected tint on an action row would read as "this one is already

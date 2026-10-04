@@ -20,7 +20,9 @@ import '../providers/tv_discovery_landing_provider.dart';
 import '../providers/tv_home_projection_provider.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/home_custom_rows_provider.dart';
+import '../providers/continue_watching_hidden_provider.dart';
 import '../providers/home_layout_provider.dart';
+import '../services/offline_watch_sync_service.dart';
 import '../providers/libraries_provider.dart';
 import '../providers/multi_server_provider.dart';
 import '../providers/personal_media_provider.dart';
@@ -234,6 +236,13 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     HomeLayoutProvider(storageService: context.read<StorageService>(), profileId: activeId),
                 lazy: true,
               ),
+              // Titles hidden from Verder kijken on this device (DEC-119 fase 3);
+              // above `DiscoverProvider`, which filters on it.
+              ChangeNotifierProvider(
+                create: (context) =>
+                    ContinueWatchingHiddenProvider(storageService: context.read<StorageService>(), profileId: activeId),
+                lazy: true,
+              ),
               ChangeNotifierProvider(
                 create: (context) => LibrariesProvider(
                   storageService: context.read<StorageService>(),
@@ -373,6 +382,10 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     context.read<LibrariesProvider>(),
                     isProfileBinding: () => activeProfile.isBinding,
                     recommendations: activeId == null ? null : context.read<RecommendationService>(),
+                    hiddenContinueWatching: context.read<ContinueWatchingHiddenProvider>(),
+                    pendingContinueWatchingRemovalKeys: context
+                        .read<OfflineWatchSyncService?>()
+                        ?.pendingContinueWatchingRemovalKeys,
                   );
                 },
               ),

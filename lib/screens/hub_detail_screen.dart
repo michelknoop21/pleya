@@ -3,6 +3,7 @@ import '../media/ids.dart';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 import '../media/library_query.dart';
 import '../media/media_backend.dart';
 import '../media/media_hub.dart';
@@ -32,7 +33,11 @@ import 'libraries/content_state_builder.dart';
 import '../mixins/refreshable.dart';
 import '../i18n/strings.g.dart';
 import '../theme/mono_tokens.dart';
+import '../providers/continue_watching_hidden_provider.dart';
+import '../providers/discover_provider.dart';
 import '../utils/continue_watching_sections.dart';
+import '../widgets/app_icon.dart';
+import '../widgets/continue_watching_hidden_items.dart';
 import 'focusable_detail_screen_mixin.dart';
 import '../utils/error_message_utils.dart';
 
@@ -451,6 +456,20 @@ class _HubDetailScreenState extends State<HubDetailScreen>
     }
   }
 
+  /// A restored title is not in [_items]; the row's owner refetches, and this
+  /// screen reloads from it so the title is back without reopening.
+  Future<void> _openHiddenItems() async {
+    final discover = context.read<DiscoverProvider?>();
+    final before = context.read<ContinueWatchingHiddenProvider?>()?.count ?? 0;
+    await showContinueWatchingHiddenItems(context);
+    if (!mounted) return;
+    if ((context.read<ContinueWatchingHiddenProvider?>()?.count ?? 0) == before) return;
+    await discover?.refreshContinueWatching();
+    if (!mounted) return;
+    widget.onRemoveFromContinueWatching?.call();
+    unawaited(_loadMoreItems());
+  }
+
   void _handleRemoveFromContinueWatching() {
     widget.onRemoveFromContinueWatching?.call();
     unawaited(_loadMoreItems());
@@ -666,6 +685,26 @@ class _HubDetailScreenState extends State<HubDetailScreen>
                         }
                         slivers.add(
                           _gridSliver(items, start, libraryDensity, useWideLayout, fullCardLayout, isMixedHub),
+                        );
+                      }
+                      final hiddenCount = widget.isInContinueWatching
+                          ? (context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0)
+                          : 0;
+                      if (hiddenCount > 0) {
+                        slivers.add(
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 20, 16, 16),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: _openHiddenItems,
+                                  icon: const AppIcon(Symbols.visibility_off_rounded, size: 20),
+                                  label: Text(continueWatchingHiddenLabel(hiddenCount)),
+                                ),
+                              ),
+                            ),
+                          ),
                         );
                       }
                       return SliverMainAxisGroup(slivers: slivers);

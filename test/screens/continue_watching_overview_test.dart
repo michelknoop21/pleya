@@ -12,6 +12,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/providers/continue_watching_hidden_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
@@ -27,6 +28,7 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
+import 'package:pleya/widgets/tv/tv_view_all_action.dart';
 import 'package:provider/provider.dart';
 
 import '../test_helpers/prefs.dart';
@@ -166,6 +168,7 @@ void main() {
   late DiscoverProvider discover;
   late HomeLayoutProvider homeLayout;
   late TvHomeProjectionProvider homeProjection;
+  late ContinueWatchingHiddenProvider hidden;
 
   setUp(() async {
     resetSharedPreferencesForTest();
@@ -176,7 +179,15 @@ void main() {
     hiddenLibraries = HiddenLibrariesProvider();
     await hiddenLibraries.ensureInitialized();
     libraries = LibrariesProvider();
-    discover = DiscoverProvider(multiServer, hiddenLibraries, libraries, isProfileBinding: () => false);
+    hidden = ContinueWatchingHiddenProvider();
+    await hidden.ensureInitialized();
+    discover = DiscoverProvider(
+      multiServer,
+      hiddenLibraries,
+      libraries,
+      isProfileBinding: () => false,
+      hiddenContinueWatching: hidden,
+    );
     homeLayout = HomeLayoutProvider();
     homeProjection = TvHomeProjectionProvider(
       discover: discover,
@@ -190,6 +201,7 @@ void main() {
     homeProjection.dispose();
     homeLayout.dispose();
     discover.dispose();
+    hidden.dispose();
     libraries.dispose();
     hiddenLibraries.dispose();
     multiServer.dispose();
@@ -206,6 +218,7 @@ void main() {
           ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
           ChangeNotifierProvider<HomeLayoutProvider>.value(value: homeLayout),
           ChangeNotifierProvider<TvHomeProjectionProvider>.value(value: homeProjection),
+          ChangeNotifierProvider<ContinueWatchingHiddenProvider>.value(value: hidden),
         ],
         child: MaterialApp(theme: monoTheme(dark: true), home: screen),
       ),
@@ -223,7 +236,7 @@ void main() {
     await discover.load();
     expect(discover.continueWatchingCount, 4);
     expect(discover.allContinueWatching.map((i) => i.id), ['e-resume', 'f-resume', 'e-next', 'f-old']);
-    expect(discover.hasMoreContinueWatching, isFalse, reason: 'four fits the row');
+    expect(discover.onDeck, hasLength(4), reason: 'four fits the row');
   });
 
   testWidgets('iPhone: four sections, each item once, Eerder begonnen for the old film only', (tester) async {
@@ -282,5 +295,66 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     final second = tester.widget<TvUnifiedMediaCard>(find.byType(TvUnifiedMediaCard).at(1));
     expect(second.focusNode!.hasFocus, isTrue, reason: 'DOWN off Series hervatten lands on Films hervatten');
+  });
+
+  Future<void> settle(WidgetTester tester) async {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    await tester.pump();
+  }
+
+  testWidgets('iPhone: a hidden title leaves its section, is counted under Hidden items, and comes back', (
+    tester,
+  ) async {
+    await pump(tester, const MobileContinueWatchingScreen());
+    expect(find.textContaining('Hidden items'), findsNothing, reason: 'no entry while nothing is hidden');
+
+    await tester.runAsync(() => hidden.hide(_onDeck.last));
+    await settle(tester);
+    expect(find.text('Interstellar'), findsNothing);
+    expect(find.text('STARTED EARLIER'), findsNothing, reason: 'an empty section disappears');
+    expect(find.text('Hidden items · 1'), findsOneWidget);
+
+    await tester.runAsync(() => hidden.restore(_onDeck.last.globalKey));
+    await settle(tester);
+    expect(find.text('Interstellar'), findsOneWidget);
+    expect(find.textContaining('Hidden items'), findsNothing);
+  });
+
+  testWidgets('desktop: the sectioned detail carries the same Hidden items entry', (tester) async {
+    await tester.runAsync(() => hidden.hide(_onDeck.last));
+    await pump(
+      tester,
+      HubDetailScreen(
+        hub: MediaHub(
+          id: 'cw',
+          identifier: '_continue_watching_',
+          title: 'Continue Watching',
+          type: 'mixed',
+          items: _onDeck.take(3).toList(),
+          size: 3,
+        ),
+        isInContinueWatching: true,
+      ),
+      size: const Size(1200, 1000),
+    );
+    expect(find.text('Hidden items · 1'), findsOneWidget);
+  });
+
+  testWidgets('TV: DOWN off the last band lands on Hidden items', (tester) async {
+    await tester.runAsync(() => hidden.hide(_onDeck.last));
+    await pump(tester, const Scaffold(body: TvContinueWatchingScreen()), size: const Size(1038, 584));
+    expect(find.byType(TvUnifiedMediaCard), findsNWidgets(3));
+    expect(find.text('Hidden items · 1'), findsOneWidget);
+
+    final last = tester.widget<TvUnifiedMediaCard>(find.byType(TvUnifiedMediaCard).last);
+    last.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final action = tester.widget<TvViewAllAction>(find.byType(TvViewAllAction));
+    expect(action.focusNode!.hasFocus, isTrue);
   });
 }

@@ -1419,6 +1419,21 @@ class TranslationsMediaMenuEn {
 	/// en: 'Remove from Continue Watching'
 	String get removeFromContinueWatching => 'Remove from Continue Watching';
 
+	/// en: 'Hide from Continue Watching'
+	String get hideFromContinueWatching => 'Hide from Continue Watching';
+
+	/// en: 'On this device only'
+	String get cwScopeThisDevice => 'On this device only';
+
+	/// en: 'On all sources'
+	String get cwScopeAllSources => 'On all sources';
+
+	/// en: '${server} on the server, ${local} here only'
+	String cwScopeMixed({required Object server, required Object local}) => '${server} on the server, ${local} here only';
+
+	/// en: 'Partly on this device only'
+	String get cwScopePartlyLocal => 'Partly on this device only';
+
 	/// en: 'View details'
 	String get viewDetails => 'View details';
 
@@ -1872,6 +1887,9 @@ class TranslationsMessagesEn {
 
 	/// en: 'Removed from Continue Watching'
 	String get removedFromContinueWatching => 'Removed from Continue Watching';
+
+	/// en: 'Hidden from Continue Watching'
+	String get hiddenFromContinueWatching => 'Hidden from Continue Watching';
 
 	/// en: 'Error'
 	String get errorLoading => 'Error';
@@ -2460,6 +2478,15 @@ class TranslationsDiscoverEn {
 
 	/// en: 'Started earlier'
 	String get cwSectionStale => 'Started earlier';
+
+	/// en: 'Hidden items'
+	String get hiddenItems => 'Hidden items';
+
+	/// en: 'Restore'
+	String get restoreHidden => 'Restore';
+
+	/// en: 'Hidden on this device only. Restore puts a title back in Continue Watching.'
+	String get hiddenItemsHint => 'Hidden on this device only. Restore puts a title back in Continue Watching.';
 
 	late final TranslationsDiscoverWatchedAgoEn watchedAgo = TranslationsDiscoverWatchedAgoEn.internal(_root);
 
@@ -7552,6 +7579,11 @@ extension on Translations {
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
+			'mediaMenu.hideFromContinueWatching' => 'Hide from Continue Watching',
+			'mediaMenu.cwScopeThisDevice' => 'On this device only',
+			'mediaMenu.cwScopeAllSources' => 'On all sources',
+			'mediaMenu.cwScopeMixed' => ({required Object server, required Object local}) => '${server} on the server, ${local} here only',
+			'mediaMenu.cwScopePartlyLocal' => 'Partly on this device only',
 			'mediaMenu.viewDetails' => 'View details',
 			'mediaMenu.goToSeries' => 'Go to series',
 			'mediaMenu.shufflePlay' => 'Shuffle Play',
@@ -7624,13 +7656,13 @@ extension on Translations {
 			'videoControls.nextButton' => 'Next episode',
 			'videoControls.previousChapterButton' => 'Previous chapter',
 			'videoControls.nextChapterButton' => 'Next chapter',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.muteButton' => 'Mute',
 			'videoControls.unmuteButton' => 'Unmute',
 			'videoControls.settingsButton' => 'Playback Settings',
 			'videoControls.tracksButton' => 'Audio & Subtitles',
 			'videoControls.chaptersButton' => 'Chapters',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.versionsButton' => 'Video versions',
 			'videoControls.versionQualityButton' => 'Version & Quality',
 			'videoControls.versionColumnHeader' => 'Version',
@@ -7730,6 +7762,7 @@ extension on Translations {
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
+			'messages.hiddenFromContinueWatching' => 'Hidden from Continue Watching',
 			'messages.errorLoading' => 'Error',
 			'messages.fileInfoNotAvailable' => 'File information not available',
 			'messages.errorLoadingFileInfo' => 'Error loading file info',
@@ -7908,6 +7941,9 @@ extension on Translations {
 			'discover.cwSectionResumeMovies' => 'Resume films',
 			'discover.cwSectionNextEpisodes' => 'Next episodes',
 			'discover.cwSectionStale' => 'Started earlier',
+			'discover.hiddenItems' => 'Hidden items',
+			'discover.restoreHidden' => 'Restore',
+			'discover.hiddenItemsHint' => 'Hidden on this device only. Restore puts a title back in Continue Watching.',
 			'discover.watchedAgo.today' => 'today',
 			'discover.watchedAgo.yesterday' => 'yesterday',
 			'discover.watchedAgo.days' => ({required Object count}) => '${count} days ago',
@@ -8134,6 +8170,8 @@ extension on Translations {
 			'liveTv.unknownProgram' => 'Unknown Program',
 			'liveTv.unknownHub' => 'Unknown',
 			'liveTv.unknownError' => 'Unknown error',
+			_ => null,
+		} ?? switch (path) {
 			'liveTv.channelNumber' => ({required Object number}) => 'Channel ${number}',
 			'liveTv.unknownChannel' => 'Unknown channel',
 			'liveTv.live' => 'LIVE',
@@ -8143,8 +8181,6 @@ extension on Translations {
 			'liveTv.tomorrow' => 'Tomorrow',
 			'liveTv.midnight' => 'Midnight',
 			'liveTv.overnight' => 'Overnight',
-			_ => null,
-		} ?? switch (path) {
 			'liveTv.morning' => 'Morning',
 			'liveTv.daytime' => 'Daytime',
 			'liveTv.evening' => 'Evening',
@@ -8648,6 +8684,8 @@ extension on Translations {
 			'seerr.notConfigured' => 'Not configured',
 			'seerr.serverUrl' => 'Server URL',
 			'seerr.serverUrlHint' => 'https://requests.example.com',
+			_ => null,
+		} ?? switch (path) {
 			'seerr.authMode' => 'Sign-in method',
 			'seerr.authPlex' => 'Sign in with Plex',
 			'seerr.authPlexSubtitle' => 'One-tap using your existing Plex login.',
@@ -8657,8 +8695,6 @@ extension on Translations {
 			'seerr.password' => 'Password',
 			'seerr.apiKey' => 'API key',
 			'seerr.apiKeyHint' => 'From Settings → General on your server',
-			_ => null,
-		} ?? switch (path) {
 			'seerr.adminAttributionNote' => 'API-key mode files requests as the admin user. Sign in with Plex for per-user attribution.',
 			'seerr.setupOnDesktopNote' => 'Tip: this is easier to set up on your phone or computer.',
 			'seerr.testConnection' => 'Test connection',

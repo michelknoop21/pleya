@@ -3,6 +3,7 @@ import '../../../media/ids.dart';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 
 import '../../../i18n/strings.g.dart';
 import '../../../media/media_hub.dart';
@@ -10,6 +11,7 @@ import '../../../media/media_item.dart';
 import '../../../media/media_server_client.dart';
 import '../../../mixins/item_updatable.dart';
 import '../../../mixins/watch_state_aware.dart';
+import '../../../providers/continue_watching_hidden_provider.dart';
 import '../../../services/settings_service.dart';
 import '../../../utils/debouncer.dart';
 import '../../../utils/global_key_utils.dart';
@@ -200,6 +202,21 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
 
   static bool _usesContinueWatchingAction(MediaHub hub) => hub.usesContinueWatchingAction;
 
+  /// A library's own Continue Watching row fetches straight from its server,
+  /// so a title hidden on this device (DEC-119 fase 3) is taken out here; the
+  /// Home row gets the same filter from `DiscoverProvider`.
+  static MediaHub _withoutHidden(BuildContext context, MediaHub hub) {
+    if (!hub.isContinueWatchingHub) return hub;
+    final hidden = context.watch<ContinueWatchingHiddenProvider?>()?.keys ?? const <String>{};
+    if (hidden.isEmpty) return hub;
+    return hub.copyWith(
+      items: [
+        for (final item in hub.items)
+          if (!hidden.contains(item.globalKey)) item,
+      ],
+    );
+  }
+
   @override
   Future<List<MediaHub>> loadData() async {
     // Clear hub keys before loading new hubs to prevent stale references
@@ -313,7 +330,7 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
           sliver: SliverList.builder(
             itemCount: items.length,
             itemBuilder: (context, index) {
-              final hub = items[index];
+              final hub = _withoutHidden(context, items[index]);
               final isContinueWatching = _isContinueWatchingHub(hub);
               final usesContinueWatchingAction = _usesContinueWatchingAction(hub);
 
@@ -338,7 +355,7 @@ class _LibraryRecommendedTabState extends BaseLibraryTabState<MediaHub, LibraryR
   }
 
   Widget _buildTvContent(List<MediaHub> items) {
-    final tvHubs = items.where((hub) => hub.items.isNotEmpty).toList();
+    final tvHubs = items.map((hub) => _withoutHidden(context, hub)).where((hub) => hub.items.isNotEmpty).toList();
     final size = MediaQuery.sizeOf(context);
     final theme = Theme.of(context);
     final svc = SettingsService.instance;

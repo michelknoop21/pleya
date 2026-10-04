@@ -124,7 +124,9 @@ class TvContentRow extends StatelessWidget {
   final bool isContinueWatching;
 
   /// For the Verder kijken row only: the full count beside the title and the
-  /// "Alle N" tile that opens the sectioned overview (DEC-119 fase 2).
+  /// "Alle N" tile that opens the sectioned overview (DEC-119 fase 2). The tile
+  /// is there whenever the row is, not only past twenty titles: the overview
+  /// is also where a hidden title is put back (fase 3).
   final int? continueWatchingCount;
   final VoidCallback? onViewAllContinueWatching;
 
@@ -156,9 +158,7 @@ class TvContentRow extends StatelessWidget {
               destinationLabel: _destinationLabel(target.kind),
               onSelect: () => onViewAll?.call(target),
             )
-          : (isContinueWatching &&
-                onViewAllContinueWatching != null &&
-                (continueWatchingCount ?? 0) > hub.groups.length)
+          : (isContinueWatching && onViewAllContinueWatching != null && (continueWatchingCount ?? 0) > 0)
           ? TvDiscoveryViewAllTile(
               count: continueWatchingCount!,
               destinationLabel: t.discover.continueWatching,

@@ -165,7 +165,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return _homeLayout?.apply(combined, _hubIdentity) ?? combined;
   }
 
-  bool get _hasMoreContinueWatching => _discover.hasMoreContinueWatching;
   bool get _isLoading => _discover.isLoading;
   bool get _areHubsLoading => _discover.areHubsLoading;
   String? get _errorMessage => _discover.errorMessage;
@@ -1366,18 +1365,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         key: _continueWatchingHubKey,
                         hub: MediaHub(
                           id: 'continue_watching',
-                          // The real count beside the title (DEC-119 fase 2);
-                          // the detail screen behind it is sectioned.
-                          title: _discover.continueWatchingCount > 0
-                              ? '${t.discover.continueWatching} · ${_discover.continueWatchingCount}'
-                              : t.discover.continueWatching,
+                          title: t.discover.continueWatching,
                           type: 'mixed',
                           identifier: '_continue_watching_',
                           size: _discover.continueWatchingCount,
-                          more: _hasMoreContinueWatching,
+                          // Always: the overview is also where a hidden title is
+                          // put back (DEC-119 fase 3), not only the overflow.
+                          more: _discover.continueWatchingCount > 0,
                           items: _onDeck,
                         ),
                         icon: Symbols.play_circle_rounded,
+                        // The real count beside the title (DEC-119 fase 2).
+                        count: _discover.continueWatchingCount > 0 ? _discover.continueWatchingCount : null,
                         onRefresh: _discover.updateItem,
                         onRemoveFromContinueWatching: _discover.refreshContinueWatching,
                         isInContinueWatching: true,

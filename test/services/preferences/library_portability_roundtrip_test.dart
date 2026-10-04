@@ -148,6 +148,8 @@ void main() {
 
     expect(PreferenceSyncPolicyRegistry.maySync('home_row_order'), isFalse);
     expect(PreferenceSyncPolicyRegistry.maySync('hidden_home_rows'), isFalse);
+    // "Alleen op dit apparaat" is what the menu row promises (DEC-119 fase 3).
+    expect(PreferenceSyncPolicyRegistry.maySync('hidden_continue_watching'), isFalse);
     expect(coordinator.cloudKeyFor('user_${homeUuid}_home_row_order'), isNull);
     // Not because of serverId: that half is portable, same as the library
     // families above. It is `hub.identifier` that has not been shown to be the

@@ -3894,9 +3894,9 @@ class PlexClient
 
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
-    // Null means the whole list; without `count` Plex answers with its own
-    // small hub default, so ask explicitly for more than any row ever holds.
-    final items = await _getContinueWatching(count: count ?? 200);
+    // Null is uncapped: `count` is then left off the request, the contract
+    // `plex_home_retry_test` pins.
+    final items = await _getContinueWatching(count: count);
     // Plex's one hub mixes both: an entry with an offset is something begun,
     // one without is the next episode the server picked (DEC-119).
     return [

@@ -20,17 +20,20 @@ import '../../media/ids.dart';
 import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../navigation/tv/tv_navigation_coordinator.dart';
+import '../../providers/continue_watching_hidden_provider.dart';
 import '../../providers/multi_server_provider.dart';
 import '../../providers/tv_home_projection_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../utils/continue_watching_sections.dart';
 import '../../utils/layout_constants.dart';
+import '../../widgets/continue_watching_hidden_items.dart';
 import '../../widgets/tv/tv_catalog_card_rail.dart';
 import '../../widgets/tv/tv_catalog_header_bar.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_section_header.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../../widgets/tv/tv_unified_media_card.dart';
+import '../../widgets/tv/tv_view_all_action.dart';
 import 'tv_discovery_activation_mixin.dart';
 
 const String tvContinueWatchingSurface = 'continueWatchingAll';
@@ -47,6 +50,14 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
     implements TvFocusRestoreHost {
   final _railKeys = <ContinueWatchingSection, GlobalKey<TvCatalogCardRailState>>{};
   List<(ContinueWatchingSection, List<UnifiedMediaGroup>)> _sections = const [];
+  final _hiddenFocus = FocusNode(debugLabel: 'TvContinueWatchingHidden');
+  bool _hasHiddenEntry = false;
+
+  @override
+  void dispose() {
+    _hiddenFocus.dispose();
+    super.dispose();
+  }
 
   GlobalKey<TvCatalogCardRailState> _railKeyFor(ContinueWatchingSection s) =>
       _railKeys.putIfAbsent(s, () => GlobalKey<TvCatalogCardRailState>(debugLabel: 'TvContinueWatchingBand($s)'));
@@ -74,6 +85,8 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
     final groups = projection.continueWatchingAll?.groups ?? const <UnifiedMediaGroup>[];
     _sections = continueWatchingSections(groups, itemOf: (g) => g.representativeSource.item);
 
+    final hiddenCount = context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0;
+    _hasHiddenEntry = hiddenCount > 0;
     final tk = tokens(context);
     final scale = TvLayoutConstants.scaleOf(context);
     final width = MediaQuery.sizeOf(context).width;
@@ -93,7 +106,7 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
             tags: [TvCatalogSelectionTag('${groups.length}', muted: true)],
           ),
           Expanded(
-            child: groups.isEmpty
+            child: groups.isEmpty && hiddenCount == 0
                 ? Center(
                     child: Text(t.discover.noContentAvailable, style: TextStyle(color: tk.textMuted)),
                   )
@@ -120,6 +133,29 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
                           ),
                           _band(scale, i),
                         ],
+                        // Mockup 38 D: the way back for a title hidden on this
+                        // device, DOWN off the last band.
+                        if (hiddenCount > 0)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              headingInset,
+                              TvCatalogLayout.headerContentGap * scale,
+                              headingInset,
+                              0,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: TvViewAllAction(
+                                label: continueWatchingHiddenLabel(hiddenCount),
+                                semanticLabel: continueWatchingHiddenLabel(hiddenCount),
+                                focusNode: _hiddenFocus,
+                                onSelect: _openHiddenItems,
+                                onNavigateUp: _sections.isEmpty
+                                    ? null
+                                    : () => _railKeyFor(_sections.last.$1).currentState?.focusRail(),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -127,6 +163,17 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
         ],
       ),
     );
+  }
+
+  /// Restoring the last hidden title removes the very action the panel would
+  /// hand the focus back to, so the remote goes to the last band instead.
+  Future<void> _openHiddenItems() async {
+    await showContinueWatchingHiddenItems(context);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _hasHiddenEntry || _sections.isEmpty) return;
+      _railKeyFor(_sections.last.$1).currentState?.focusRail();
+    });
   }
 
   MediaServerClient? _clientFor(String serverId) =>
@@ -148,7 +195,9 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
         onLoadMore: () {},
         nodeDebugLabel: 'TvContinueWatchingCard(${section.name})',
         onExitUp: index == 0 ? null : (column) => _focusBand(index - 1, column),
-        onExitDown: index == _sections.length - 1 ? null : (column) => _focusBand(index + 1, column),
+        onExitDown: index == _sections.length - 1
+            ? (_hasHiddenEntry ? (_) => _hiddenFocus.requestFocus() : null)
+            : (column) => _focusBand(index + 1, column),
         itemBuilder: (context, cell) {
           final group = groups[cell.index];
           return AutomationNode(
