@@ -32,6 +32,8 @@ class _BigPInputBarState extends State<BigPInputBar> {
   @override
   void initState() {
     super.initState();
+    // A question from Zoeken that came while Big P was still busy waits here.
+    _text.text = widget.session.takeQuestion() ?? '';
     _focus.addListener(_onFocus);
     _text.addListener(() => setState(() {}));
   }

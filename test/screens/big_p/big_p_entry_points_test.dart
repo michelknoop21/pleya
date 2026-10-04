@@ -15,7 +15,9 @@ import 'package:pleya/mixins/refreshable.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
+import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/screens/big_p/big_p_ask_row.dart';
+import 'package:pleya/screens/big_p/big_p_input_bar.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/screens/libraries/mobile_libraries_screen.dart';
@@ -27,8 +29,6 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
-import 'package:pleya/utils/media_navigation_helper.dart';
-import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
 import 'package:pleya/widgets/big_p/big_p_portrait.dart';
 import 'package:provider/provider.dart';
 
@@ -119,21 +119,29 @@ void main() {
   });
 
   group('Zoeken', () {
-    Future<GlobalKey<State<SearchScreen>>> pump(WidgetTester tester) async {
-      phone(tester);
-      final manager = MultiServerManager()
-        ..debugRegisterClientForTesting(
-          FakeSearchServer([
-            MediaItem(
-              id: 'dune',
-              backend: MediaBackend.plex,
-              kind: MediaKind.movie,
-              title: 'Dune',
-              serverId: 'nas',
-              serverName: 'NAS',
-            ),
-          ]),
-        );
+    final dune = MediaItem(
+      id: 'dune',
+      backend: MediaBackend.plex,
+      kind: MediaKind.movie,
+      title: 'Dune',
+      serverId: 'nas',
+      serverName: 'NAS',
+    );
+
+    Future<GlobalKey<State<SearchScreen>>> pump(
+      WidgetTester tester, {
+      List<MediaItem>? items,
+      bool iPad = false,
+    }) async {
+      if (iPad) {
+        // 39 I's 11-inch iPad: not a phone, so the desktop result list.
+        tester.view.devicePixelRatio = 2;
+        tester.view.physicalSize = const Size(1180 * 2, 820 * 2);
+        addTearDown(tester.view.reset);
+      } else {
+        phone(tester);
+      }
+      final manager = MultiServerManager()..debugRegisterClientForTesting(FakeSearchServer(items ?? [dune]));
       final servers = MultiServerProvider(manager, DataAggregationService(manager));
       addTearDown(servers.dispose);
       final hidden = HiddenLibrariesProvider();
@@ -190,6 +198,61 @@ void main() {
       expect(session.stage, BigPStage.out);
       expect(c.submitted, ['dune']);
       expect(session.takeQuestion(), isNull, reason: 'asked once');
+    });
+
+    testWidgets('no results: the row is still there, above the empty state', (tester) async {
+      final key = await pump(tester, items: []);
+      await search(tester, key, 'xyzzy');
+      expect(find.text(t.messages.noResultsFound), findsOneWidget);
+      expect(find.descendant(of: find.byType(BigPAskRow), matching: find.text('xyzzy')), findsOneWidget);
+      expect(
+        tester.getRect(find.byType(BigPAskRow)).bottom,
+        lessThan(tester.getRect(find.text(t.messages.noResultsFound)).top),
+      );
+    });
+
+    testWidgets('iPad: the row above the result list', (tester) async {
+      final key = await pump(tester, iPad: true);
+      await search(tester, key, 'dune');
+      expect(find.byType(BigPAskRow), findsOneWidget);
+      expect(find.text('Dune'), findsOneWidget);
+      expect(tester.getRect(find.byType(BigPAskRow)).bottom, lessThan(tester.getRect(find.text('Dune')).top));
+    });
+
+    testWidgets('after a library summon, a question from Zoeken asks without that library', (tester) async {
+      final key = await pump(tester);
+      // What a long-press on Films does, then a question there.
+      session.summon(
+        context: const AssistantScreenContext(serverId: 'nas', libraryId: '7'),
+        question: 'Scan deze',
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(c.submittedContexts.single?.libraryId, '7');
+      c
+        ..state = AssistantSurfaceState.result
+        ..emit();
+      session.park();
+      await tester.pumpAndSettle();
+
+      await search(tester, key, 'dune');
+      await tester.tap(find.byType(BigPAskRow));
+      await tester.pump();
+      await tester.pump();
+      expect(c.submitted.last, 'dune');
+      expect(c.submittedContexts.last, isNull);
+    });
+
+    testWidgets('still working: the question waits in the field instead of being lost', (tester) async {
+      final key = await pump(tester);
+      await search(tester, key, 'dune');
+      c.state = AssistantSurfaceState.working;
+      await tester.tap(find.byType(BigPAskRow));
+      await tester.pump();
+      await tester.pump();
+      expect(session.stage, BigPStage.out);
+      expect(c.submitted, isEmpty);
+      expect(find.descendant(of: find.byType(BigPInputBar), matching: find.text('dune')), findsOneWidget);
     });
 
     testWidgets('hidden: no row', (tester) async {
@@ -277,15 +340,41 @@ void main() {
   });
 
   group('Instellingen', () {
-    testWidgets('the Big P row exists only with the rollout flag and opens the model settings', (tester) async {
-      expect(assistantSettingsTile(rolloutEnabled: false), isNull);
+    /// The tile as the settings list would get it, with or without a session.
+    Future<Widget?> tileIn(WidgetTester tester, {required bool flag, required bool withSession}) async {
+      Widget? tile;
+      await tester.pumpWidget(
+        withBigP(
+          Builder(
+            builder: (context) {
+              tile = assistantSettingsTile(context, rolloutEnabled: flag);
+              return const SizedBox();
+            },
+          ),
+          withSession: withSession,
+        ),
+      );
+      return tile;
+    }
+
+    testWidgets('no flag, or no session (Android, desktop, the iOS app on a Mac): no row', (tester) async {
+      expect(await tileIn(tester, flag: false, withSession: true), isNull);
+      expect(await tileIn(tester, flag: true, withSession: false), isNull);
+      expect(await tileIn(tester, flag: true, withSession: true), isNotNull);
+    });
+
+    testWidgets('the Big P row opens the model settings', (tester) async {
       final routes = <Route<dynamic>>[];
       await tester.pumpWidget(
         TranslationProvider(
-          child: MaterialApp(
-            theme: monoTheme(dark: true),
-            navigatorObservers: [_Pushes(routes)],
-            home: Scaffold(body: assistantSettingsTile(rolloutEnabled: true)),
+          child: withBigP(
+            MaterialApp(
+              theme: monoTheme(dark: true),
+              navigatorObservers: [_Pushes(routes)],
+              home: Scaffold(
+                body: Builder(builder: (context) => assistantSettingsTile(context, rolloutEnabled: true)!),
+              ),
+            ),
           ),
         ),
       );
@@ -295,80 +384,6 @@ void main() {
       expect(routes.single, isA<MaterialPageRoute<dynamic>>());
       final page = (routes.single as MaterialPageRoute<dynamic>).builder(tester.element(find.byType(Scaffold).first));
       expect(page, isA<AssistantSettingsScreen>());
-    });
-  });
-
-  group('a title from the answer', () {
-    testWidgets('that pushes nothing parks Big P instead of leaving an unseen peek', (tester) async {
-      final opened = <MediaItem>[];
-      BigPMobileHost.openDetails = (context, item) async {
-        opened.add(item);
-        return MediaNavigationResult.unsupported;
-      };
-      addTearDown(() => BigPMobileHost.openDetails = navigateToMediaItemDetails);
-      answerLibraryTitles(c);
-      tester.view.physicalSize = const Size(402, 874);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-        TranslationProvider(
-          child: withBigP(
-            MaterialApp(
-              theme: monoTheme(dark: true),
-              home: Builder(
-                builder: (context) => MediaQuery(
-                  data: MediaQuery.of(context).copyWith(disableAnimations: true),
-                  child: const Stack(fit: StackFit.expand, children: [Scaffold(), BigPMobileHost()]),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      session.summon();
-      await tester.pump();
-      await tester.pump();
-
-      await tester.tap(find.widgetWithText(BigPMatchCard, 'Sintel'));
-      await tester.pump();
-      expect(opened.single.title, 'Sintel');
-      expect(session.stage, BigPStage.parked);
-      expect(c.answer, isNotEmpty, reason: 'the answer stays for the next summon');
-    });
-
-    testWidgets('that opens a page keeps the peek while it is open', (tester) async {
-      final done = <void Function()>[];
-      BigPMobileHost.openDetails = (context, item) {
-        final route = MaterialPageRoute<void>(builder: (_) => const Scaffold());
-        done.add(() => Navigator.of(context).removeRoute(route));
-        return Navigator.of(context).push(route).then((_) => MediaNavigationResult.navigated);
-      };
-      addTearDown(() => BigPMobileHost.openDetails = navigateToMediaItemDetails);
-      answerLibraryTitles(c);
-      tester.view.physicalSize = const Size(402, 874);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-        TranslationProvider(
-          child: withBigP(
-            MaterialApp(
-              theme: monoTheme(dark: true),
-              home: Builder(
-                builder: (context) => MediaQuery(
-                  data: MediaQuery.of(context).copyWith(disableAnimations: true),
-                  child: const Stack(fit: StackFit.expand, children: [Scaffold(), BigPMobileHost()]),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      session.summon();
-      await tester.pump();
-      await tester.pump();
-      await tester.tap(find.widgetWithText(BigPMatchCard, 'Sintel'));
-      await tester.pumpAndSettle();
-      expect(session.stage, BigPStage.peek);
     });
   });
 }

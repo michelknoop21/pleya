@@ -33,6 +33,11 @@ class FakeAssistantController extends AssistantController {
   bool stillChecking = false;
 
   final submitted = <String>[];
+
+  /// The screen context each submit runs with, kept across a null one as
+  /// the real controller keeps it.
+  final submittedContexts = <AssistantScreenContext?>[];
+  AssistantScreenContext? _held;
   final listenContexts = <AssistantScreenContext?>[];
   final confirmedPasswords = <String?>[];
   final picked = <AssistantRequestOption>[];
@@ -53,6 +58,7 @@ class FakeAssistantController extends AssistantController {
   @override
   void beginListening({AssistantScreenContext? context}) {
     listenContexts.add(context);
+    _held = context ?? _held;
     state = AssistantSurfaceState.listening;
     notifyListeners();
   }
@@ -67,6 +73,7 @@ class FakeAssistantController extends AssistantController {
   @override
   Future<void> submit(String prompt) async {
     submitted.add(prompt);
+    submittedContexts.add(_held);
     this.prompt = prompt;
     state = AssistantSurfaceState.working;
     notifyListeners();
@@ -80,6 +87,9 @@ class FakeAssistantController extends AssistantController {
 
   @override
   Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async => picked.add(option);
+
+  @override
+  void clearScreenContext() => _held = null;
 
   @override
   void abort() => aborts++;

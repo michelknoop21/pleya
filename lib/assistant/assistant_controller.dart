@@ -179,6 +179,11 @@ class AssistantController extends ChangeNotifier {
     return AssistantAvailability.ready;
   }
 
+  /// Forgets the screen Big P was last asked from. [beginListening] keeps it
+  /// across a null context (TV's follow-ups); a summon from somewhere
+  /// without one (iPhone and iPad) must not ask about the last library.
+  void clearScreenContext() => _screenContext = null;
+
   void beginListening({AssistantScreenContext? context}) {
     if (_busy || _pending != null) return;
     _screenContext = context ?? _screenContext;

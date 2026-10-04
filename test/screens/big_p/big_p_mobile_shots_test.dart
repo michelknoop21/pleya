@@ -152,15 +152,16 @@ void main() {
     await save(tester, boundary, name);
   }
 
-  /// Task 9: a whole screen with Big P ready, on the 402 iPhone.
+  /// Task 9: a whole screen with Big P ready, on the 402 iPhone or [phone].
   Future<void> shootScreen(
     WidgetTester tester,
     String name,
     Widget home, {
+    _Phone phone = _iPhone17Pro,
     List<SingleChildWidget> more = const [],
     Future<void> Function()? after,
   }) async {
-    tester.view.physicalSize = _iPhone17Pro.size * 3;
+    tester.view.physicalSize = phone.size * 3;
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final c = FakeAssistantController();
@@ -190,7 +191,7 @@ void main() {
                 builder: (context) => MediaQuery(
                   data: MediaQuery.of(
                     context,
-                  ).copyWith(disableAnimations: true, viewPadding: _iPhone17Pro.safe, padding: _iPhone17Pro.safe),
+                  ).copyWith(disableAnimations: true, viewPadding: phone.safe, padding: phone.safe),
                   child: home,
                 ),
               ),
@@ -210,21 +211,23 @@ void main() {
     await shootScreen(tester, 't9-mijn-pleya', MyPleyaScreen(onOpenTab: (_) {}));
   });
 
-  testWidgets('t9 search row', skip: _dir == null, (tester) async {
+  /// Zoeken after [query] over two Dune films.
+  Future<void> shootSearch(WidgetTester tester, String name, String query, {_Phone phone = _iPhone17Pro}) async {
     await _services(tester);
     final manager = MultiServerManager()
       ..debugRegisterClientForTesting(
         FakeSearchServer([
           for (final (id, title, year) in [('d1', 'Dune', 2021), ('d2', 'Dune: Part Two', 2024)])
-            MediaItem(
-              id: id,
-              backend: MediaBackend.plex,
-              kind: MediaKind.movie,
-              title: title,
-              year: year,
-              serverId: 'nas',
-              serverName: 'NAS',
-            ),
+            if (title.toLowerCase().contains(query))
+              MediaItem(
+                id: id,
+                backend: MediaBackend.plex,
+                kind: MediaKind.movie,
+                title: title,
+                year: year,
+                serverId: 'nas',
+                serverName: 'NAS',
+              ),
         ]),
       );
     final servers = MultiServerProvider(manager, DataAggregationService(manager));
@@ -234,19 +237,34 @@ void main() {
     final key = GlobalKey<State<SearchScreen>>();
     await shootScreen(
       tester,
-      't9-zoeken',
+      name,
       SearchScreen(key: key),
+      phone: phone,
       more: [
         ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
         ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
       ],
       after: () async {
-        (key.currentState! as SearchInputFocusable).setSearchQuery('dune');
+        (key.currentState! as SearchInputFocusable).setSearchQuery(query);
         (key.currentState! as Refreshable).refresh();
         await tester.pumpAndSettle();
       },
     );
-  });
+  }
+
+  testWidgets('t9 search row', skip: _dir == null, (tester) async => shootSearch(tester, 't9-zoeken', 'dune'));
+
+  testWidgets(
+    't9 search row, no results',
+    skip: _dir == null,
+    (tester) async => shootSearch(tester, 't9-zoeken-geen-resultaten', 'blade runner'),
+  );
+
+  testWidgets(
+    't9 search row, iPad',
+    skip: _dir == null,
+    (tester) async => shootSearch(tester, 't9-zoeken-ipad', 'dune', phone: _iPad),
+  );
 
   testWidgets('39-a face button', skip: _dir == null, (tester) async {
     final c = FakeAssistantController();

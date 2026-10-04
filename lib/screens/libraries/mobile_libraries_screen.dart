@@ -345,7 +345,12 @@ class _LibraryPickerCard extends StatelessWidget {
     // The long-press, for a scenario: one node per library Big P can take.
     return askBigP == null
         ? card
-        : AutomationNode(id: AutomationIds.bigpLibraryAsk, instance: library.id, role: 'button', child: card);
+        : AutomationNode(
+            id: AutomationIds.bigpLibraryAsk,
+            instance: '${library.serverId}:${library.id}',
+            role: 'button',
+            child: card,
+          );
   }
 }
 

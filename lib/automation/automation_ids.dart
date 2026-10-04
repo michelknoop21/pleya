@@ -312,7 +312,7 @@ class AutomationIds {
   /// The "Vraag het Big P" entry on the search screen.
   static const String bigpSearchAsk = 'bigp.searchAsk';
 
-  /// Ask Big P about one library (`bigp.libraryAsk[<libraryId>]`).
+  /// Ask Big P about one library (`bigp.libraryAsk[<serverId>:<libraryId>]`).
   static const String bigpLibraryAsk = 'bigp.libraryAsk';
 
   /// A text field on a connect-a-service settings screen, suffixed with the

@@ -78,6 +78,8 @@ class BigPMobileSession extends ChangeNotifier {
       controller.reset();
     }
     if (controller.availability == AssistantAvailability.hidden) unawaited(controller.refreshAvailability());
+    // From the peek the answer's own context stays, for its follow-ups.
+    if (context == null && _stage != BigPStage.peek) controller.clearScreenContext();
     _pendingContext = context;
     _question = question;
     // Notifies even when already out: a new question or context is news.

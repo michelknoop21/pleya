@@ -240,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
                         _buildTrackersTile(),
                         _buildRequestsTile(),
                         _buildTautulliTile(),
-                        ?assistantSettingsTile(),
+                        ?assistantSettingsTile(context),
                         _buildProfilesTile(),
                       ],
                     ),

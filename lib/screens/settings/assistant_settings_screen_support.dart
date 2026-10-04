@@ -40,9 +40,11 @@ TvMenuItem? assistantSettingsTvItem({
       )
     : null;
 
-/// The same row in the phone, tablet and desktop settings list: where the
-/// model is chosen.
-Widget? assistantSettingsTile({bool rolloutEnabled = AssistantEntitlement.rolloutEnabled}) => rolloutEnabled
+/// The same row in the iPhone and iPad settings list, where the model is
+/// chosen: only where Big P lives (a [BigPMobileSession]; not Android,
+/// desktop or the iOS app on a Mac) and in a build with Big P.
+Widget? assistantSettingsTile(BuildContext context, {bool rolloutEnabled = AssistantEntitlement.rolloutEnabled}) =>
+    rolloutEnabled && context.watch<BigPMobileSession?>() != null
     ? AutomationNode(
         id: AutomationIds.settingsTile,
         instance: 'assistant',

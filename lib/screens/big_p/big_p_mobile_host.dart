@@ -14,7 +14,6 @@ import '../../assistant/assistant_controller.dart';
 import '../../assistant/assistant_tools.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
-import '../../media/media_item.dart';
 import '../../navigation/profile_navigation_scope.dart';
 import '../../profiles/active_profile_provider.dart';
 import '../../utils/media_navigation_helper.dart';
@@ -47,12 +46,6 @@ class BigPMobileHost extends StatefulWidget {
   /// the three examples, but never under 120 (an iPhone SE).
   static double avatarSize(double room, {required bool withBar}) =>
       (room - 220 - (withBar ? 50 : 0)).clamp(120.0, 237.0);
-
-  /// Opens a title from the answer; a test swaps it for one that pushes
-  /// nothing.
-  @visibleForTesting
-  static Future<MediaNavigationResult> Function(BuildContext context, MediaItem item) openDetails =
-      navigateToMediaItemDetails;
 
   @override
   State<BigPMobileHost> createState() => _BigPMobileHostState();
@@ -142,16 +135,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     final session = context.watch<BigPMobileSession?>();
     if (session == null) return const SizedBox.shrink();
     _follow(session);
-    // A question handed over by Zoeken is asked at once, after this build:
-    // asking notifies the controller this subtree listens to. Not set up
-    // yet, the balloon says so and the question is let go.
-    if (session.stage == BigPStage.out) {
-      if (session.takeQuestion() case final question?) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _asks(session.controller)) _ask(session, question);
-        });
-      }
-    }
+    _handOver(session);
     if (!_open) return const SizedBox.shrink();
     final motion = _motion(context);
     final media = MediaQuery.of(context);
@@ -288,6 +272,25 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     );
   }
 
+  /// A question handed over by Zoeken. Asked at once when he can, after this
+  /// build (asking notifies the controller this subtree listens to). Still
+  /// working, or a card waiting: it stays with the session and the question
+  /// field picks it up when it shows. Not set up: the balloon says so and
+  /// the question is let go.
+  void _handOver(BigPMobileSession session) {
+    final c = session.controller;
+    if (session.stage != BigPStage.out) return;
+    if (c.availability != AssistantAvailability.ready) {
+      session.takeQuestion();
+    } else if (c.pending == null && c.state != AssistantSurfaceState.working) {
+      if (session.takeQuestion() case final question?) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _ask(session, question);
+        });
+      }
+    }
+  }
+
   void _ask(BigPMobileSession session, String question) {
     session.controller.beginListening(context: session.pendingContext);
     unawaited(session.controller.submit(question));
@@ -295,14 +298,9 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
 
   /// A title from the answer opens on the profile navigator, from the
   /// host's own context (docs/agents/ui-and-tv.md); Big P goes to the peek.
-  ///
-  /// Back here with Big P still peeking means no pop onto Home ever came
-  /// (nothing was pushed, or the route went another way): he parks, so no
-  /// stale peek outlives the page.
-  Future<void> _openTitle(BigPMobileSession session, AssistantTitleTarget target) async {
+  void _openTitle(BigPMobileSession session, AssistantTitleTarget target) {
     session.openedTitle(target.item.globalKey);
-    await BigPMobileHost.openDetails(context, target.item);
-    if (mounted && session.stage == BigPStage.peek) session.park();
+    unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
   Widget _balloon(BuildContext context, BigPMobileSession session, {bool regular = false}) {
@@ -315,7 +313,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
         name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
         onExample: (question) => _ask(session, question),
         onSetup: () => unawaited(_setup(session)),
-        onOpenTitle: (target) => unawaited(_openTitle(session, target)),
+        onOpenTitle: (target) => _openTitle(session, target),
         resultTime: switch (session.resultAt) {
           final at? => MaterialLocalizations.of(context).formatTimeOfDay(
             TimeOfDay.fromDateTime(at),
