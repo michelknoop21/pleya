@@ -201,6 +201,50 @@ void main() {
     expect(fromDb.single.certifications['NL'], '16');
   });
 
+  test('a lookup whose TMDB call failed stays 10 minutes, in memory only', () async {
+    var now = DateTime(2026, 10, 4, 12);
+    final net = FakeNet()
+      ..tmdbStatus = 500
+      ..tmdb['/3/movie/603'] = tmdbMovie();
+    final seerr = FakeSeerr()..details['/movie/603'] = {'voteAverage': 6.0};
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    final cache = TitleFactsCache(db: db, now: () => now);
+    await service(net, seerr: seerr, cache: cache).factsFor([matrix]);
+    expect(net.count('api.themoviedb.org'), 1);
+
+    net.tmdbStatus = 200;
+    await service(net, seerr: seerr, cache: cache).factsFor([matrix]);
+    expect(net.count('api.themoviedb.org'), 1, reason: 'within 10 minutes: from memory');
+    await service(
+      net,
+      seerr: seerr,
+      cache: TitleFactsCache(db: db, now: () => now),
+    ).factsFor([matrix]);
+    expect(net.count('api.themoviedb.org'), 2, reason: 'never written to the database');
+
+    now = now.add(const Duration(minutes: 11));
+    final fresh = TitleFactsCache(now: () => now);
+    await service(net, seerr: seerr, cache: fresh).factsFor([matrix]);
+    now = now.add(const Duration(minutes: 11));
+    final later = await service(net, seerr: seerr, cache: fresh).factsFor([matrix]);
+    expect(net.count('api.themoviedb.org'), 3, reason: 'the complete lookup is kept');
+    expect(later.single.certifications['NL'], '16');
+  });
+
+  test('saving a TMDB key, or turning online off, starts a fresh cache', () async {
+    final net = FakeNet()..tmdb['/3/movie/603'] = tmdbMovie();
+    final seerr = FakeSeerr()..details['/movie/603'] = {'voteAverage': 6.0};
+    final cache = TitleFactsCache();
+    await service(net, seerr: seerr, tmdbKey: null, cache: cache).factsFor([matrix]);
+    expect(net.count('api.themoviedb.org'), 0);
+    final withKey = await service(net, seerr: seerr, cache: cache).factsFor([matrix]);
+    expect(net.count('api.themoviedb.org'), 1, reason: 'the keyless entry is not reused');
+    expect(withKey.single.certifications['NL'], '16');
+    final off = await service(net, seerr: seerr, online: false, cache: cache).factsFor([matrix]);
+    expect(off.single.certifications, isEmpty, reason: 'online off: no TMDB facts from the cache either');
+  });
+
   test('ten identical refs make one call', () async {
     final net = FakeNet()..tmdb['/3/movie/603'] = tmdbMovie();
     final facts = await service(net).factsFor(List.filled(10, matrix));

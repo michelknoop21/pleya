@@ -306,8 +306,18 @@ class TitleFactsService {
     }
     final lang = language();
     final online = this.online();
+    final key = tmdbKey();
+    final hasKey = key != null && key.isNotEmpty;
+    // The key state is part of the cache key: what was cached without TMDB
+    // is not reused once a key is saved, and the other way round.
+    final cacheLang =
+        '$lang:${!online
+            ? 'off'
+            : hasKey
+            ? 'tmdb'
+            : 'notmdb'}';
     if (tmdbId != null) {
-      final cached = await cache.get(ref.kind, tmdbId, lang);
+      final cached = await cache.get(ref.kind, tmdbId, cacheLang);
       if (cached != null) return facts.merge(cached);
     }
 
@@ -317,9 +327,10 @@ class TitleFactsService {
       final id = tmdbId;
       external = external.merge(await _guard('seerr', () => seerrFacts(seerr, ref.kind, id)) ?? const TitleFacts());
     }
+    // Complete when TMDB answered, or when there is no key to ask it with.
+    var tmdbDone = !hasKey;
     if (online) {
-      final key = tmdbKey();
-      if (key != null && key.isNotEmpty && !_tmdbRejected) {
+      if (hasKey && !_tmdbRejected) {
         final tmdb = TmdbClient(key, httpClient: _http);
         if (tmdbId == null && (imdb ?? tvdb) != null && _take()) {
           tmdbId = await _guard('tmdb find', () => tmdbFind(tmdb, ref.kind, imdb: imdb, tvdb: tvdb));
@@ -328,6 +339,7 @@ class TitleFactsService {
           final id = tmdbId;
           final got = await _guard('tmdb', () => tmdbFacts(tmdb, ref.kind, id, lang));
           external = external.merge(got?.facts ?? const TitleFacts());
+          tmdbDone = got != null;
           imdb ??= got?.imdb;
           tvdb ??= got?.tvdb;
         }
@@ -355,7 +367,9 @@ class TitleFactsService {
           await _guard('wikidata', () => wikidataFacts(_http, id, _take)) ?? const TitleFacts(),
         );
       }
-      if (tmdbId != null && !external.isEmpty) await cache.put(ref.kind, tmdbId, lang, external);
+      if (tmdbId != null && !external.isEmpty) {
+        await cache.put(ref.kind, tmdbId, cacheLang, external, complete: tmdbDone);
+      }
     }
     return facts.merge(external);
   }
