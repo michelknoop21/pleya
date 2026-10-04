@@ -8,14 +8,12 @@ target: ios-sim
 # compile-time; without it the face button never shows and the first wait
 # fails).
 #
-# Free of phone-only ids and coordinates, so the same file can run on an iPad
-# (PLEYA_VERIFY_IOS_UDID) against 39 I. The DSL has no platform guard, so the
-# phone-only parts (the Bibliotheken long-press on MobileLibrariesScreen, and
-# the back arrow out of the settings, a coordinate tap) live in
-# ios.assistant.phone.yaml. On the iPad, Home is still the pre-Unified tree
-# without MobilePageHeader, so there is no face button to wait for yet (39 I
-# puts it in the header): this file then fails at its first wait, and
-# ios.assistant.ipad.yaml covers the iPad entries that do exist.
+# iPhone only: it uses the header's search button (home.header.search),
+# which the iPad lacks. The DSL has no platform guard, so the iPad (39 I: the
+# face button in the Home action bar, the Search tab, the Mijn Pleya tile)
+# runs ios.assistant.ipad.yaml instead. The other phone-only parts (the
+# Bibliotheken long-press on MobileLibrariesScreen, and the back arrow out of
+# the settings, a coordinate tap) live in ios.assistant.phone.yaml.
 #
 # The fixture configures no AI provider, so the balloon opens on the set-up
 # gate (39 C, availability needsSetup), never on the greeting.

@@ -3,12 +3,12 @@ target: ios-sim
 # Big P on the iPad (mockup 39 I): run with PLEYA_VERIFY_IOS_UDID pointed at
 # an iPad simulator and PLEYA_ASSISTANT_ENABLED=true.
 #
-# The iPad entries that exist today: the Search ask row and the Mijn Pleya
+# The iPad entries: the face button, the Search ask row and the Mijn Pleya
 # tile, which summons the regular balloon (`regular: true`, cards in two
-# columns). The face button of 39 I is not here: iPad Home is still the
-# pre-Unified tree without MobilePageHeader, so ios.assistant.entry.yaml
-# fails at its first wait on an iPad. That is a product gap, not something
-# this file works around.
+# columns). iPad Home is still the pre-Unified tree without
+# MobilePageHeader, so the face button sits at the end of its overlaid
+# action bar, and Search is a tab instead of a header button. That is why
+# ios.assistant.entry.yaml stays iPhone-only.
 setup:
   - reset_app
   - seed: catalog.mixed.v1
@@ -18,6 +18,22 @@ steps:
   - wait_until: {id: screen.discover, timeout: 15000}
   - wait_until: {id: discover.continue_watching, timeout: 15000}
   - settle: 3500
+
+  # 39 I: the face button in the Home action bar, parked; a tap brings him
+  # out on the set-up gate, a second tap parks him again.
+  - wait_until: {id: bigp.faceButton, timeout: 10000}
+  - assert: {id: bigp.faceButton, insideViewport: true, minimumTapTarget: 44, state: {active: false}}
+  - snapshot: 00-face-parked
+  - tap: {id: bigp.faceButton}
+  - wait_until: {id: bigp.balloon, timeout: 5000}
+  - settle: 1500
+  - assert: {id: bigp.balloon, insideViewport: true, state: {availability: needsSetup, regular: true}}
+  - assert: {id: bigp.faceButton, state: {active: true}}
+  - snapshot: 00b-face-summon
+  - tap: {id: bigp.faceButton}
+  - settle: 1500
+  - assert: {id: bigp.faceButton, state: {active: false}}
+  - assert: {id: bigp.balloon, present: false}
 
   # Search: a query that finds something gets the ask row.
   - tap: {id: nav.search}

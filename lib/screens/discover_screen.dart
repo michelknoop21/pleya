@@ -27,6 +27,8 @@ import '../utils/media_image_helper.dart';
 import '../widgets/optimized_media_image.dart' show blurArtwork;
 import '../widgets/home_hero_artwork.dart';
 import '../providers/discover_provider.dart';
+import 'big_p/big_p_face_button.dart';
+import 'big_p/big_p_mobile_session.dart';
 import '../providers/discover_refresh_policy.dart';
 import '../providers/home_custom_rows_provider.dart';
 import '../providers/multi_server_provider.dart';
@@ -1281,6 +1283,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             ],
                           ),
                         ),
+                        // Big P on iPad (39 I). The iPhone has him in its page
+                        // header; the session exists on iPhone and iPad only and
+                        // the button hides itself while he is unavailable.
+                        if (context.watch<BigPMobileSession?>() case final bigP?)
+                          FocusableAction(
+                            onPressed: () => bigP.stage == BigPStage.out ? bigP.park() : bigP.summon(),
+                            child: const BigPFaceButton(),
+                          ),
                         // Server Tasks — Plex-only (`/activities` API has no
                         // Jellyfin equivalent), hide the button entirely on
                         // Jellyfin-only profiles so the chrome doesn't show
