@@ -172,6 +172,7 @@ class AssistantRun {
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     _pickGrids.clear();
     _history.clear();
+    _personal = false;
     _wanted = assistantAskedCount(prompt);
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
@@ -235,13 +236,18 @@ class AssistantRun {
     return _end(AssistantRunEnd.stepLimit);
   }
 
-  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error}) => AssistantRunResult(
-    end: end,
-    text: text,
-    actions: List.unmodifiable(_actions),
-    displays: List.unmodifiable(_displays),
-    providerError: error,
-  );
+  AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error}) {
+    // A pick grid the answer never narrowed (cancelled, an action, a step
+    // limit) names nothing: its picks were never shown.
+    _displays.removeWhere(_pickGrids.contains);
+    return AssistantRunResult(
+      end: end,
+      text: text,
+      actions: List.unmodifiable(_actions),
+      displays: List.unmodifiable(_displays),
+      providerError: error,
+    );
+  }
 
   /// Stand-in id for asking a serverless tool whether it serves at all, so a
   /// profile with Seerr but no media server still gets its request tools.
@@ -286,16 +292,17 @@ class AssistantRun {
   Future<void> _cardsForNamedTitles(String answer) async {
     if (_actions.isNotEmpty || _cancelled) return;
     var all = assistantNamedTitles(answer);
-    if (_pickGrids.isNotEmpty) {
+    var kept = 0;
+    if (_personal) {
       // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
       all = [
         for (final t in all)
           if (!_history.contains(assistantTitleKey(t.title))) t,
       ];
-      _narrowPicks(all);
+      kept = _narrowPicks(all);
     }
     final shown = assistantShownTitles(_displays);
-    final room = _pickGrids.isEmpty ? 5 : (_wanted ?? 5) - shown.length;
+    final room = _personal ? (_wanted ?? 5) - kept : 5;
     final named = [
       for (final t in all)
         if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
@@ -344,9 +351,15 @@ class AssistantRun {
   final Set<AssistantMediaGrid> _pickGrids = {};
   final Set<String> _history = {};
   int? _wanted;
+  bool _personal = false;
 
-  void _narrowPicks(List<({String title, int? year})> named) {
-    for (final grid in _pickGrids) {
+  /// Narrows the pick grids to the named titles; returns how many cards stay.
+  /// A grid not narrowed by the end of the run is dropped in [_end].
+  int _narrowPicks(List<({String title, int? year})> named) {
+    final used = <String>{};
+    var total = 0;
+    for (final grid in _pickGrids.toList()) {
+      _pickGrids.remove(grid);
       final at = _displays.indexOf(grid);
       if (at < 0) continue;
       final kept = <AssistantMediaGridEntry>[];
@@ -357,18 +370,22 @@ class AssistantRun {
             assistantTitleKey(t.title),
             t.year,
           )) {
-            kept.add(e);
+            // One card per title, also across grids and for a title named twice.
+            if (used.add(e.item.globalKey)) kept.add(e);
             break;
           }
         }
       }
-      kept.removeRange(kept.length.clamp(0, _wanted ?? 5), kept.length);
+      final room = (_wanted ?? 5) - total;
+      kept.removeRange(kept.length.clamp(0, room < 0 ? 0 : room), kept.length);
+      total += kept.length;
       if (kept.isEmpty) {
         _displays.removeAt(at);
       } else {
         _displays[at] = AssistantMediaGrid(kept);
       }
     }
+    return total;
   }
 
   /// find_media grids whose titles a later call acted on: a lookup on the way
@@ -450,6 +467,7 @@ class AssistantRun {
           final shown = display == null ? null : _ctx.recommend.admit(display);
           if (shown != null) _displays.add(shown);
           if (tool.name == 'my_watching') {
+            _personal = true;
             if (shown is AssistantMediaGrid) _pickGrids.add(shown);
             for (final w in (data['watched_recently'] as List?) ?? const []) {
               _history.add(assistantTitleKey((w as Map)['title'] as String));

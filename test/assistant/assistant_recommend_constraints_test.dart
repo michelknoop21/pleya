@@ -77,6 +77,35 @@ void main() {
       expect(c.kind, MediaKind.movie);
     });
 
+    test('a kids word next to "geen"/"zonder" elsewhere in the prompt does not drop kids titles', () {
+      for (final q in [
+        'Ik heb geen idee, wat kijk ik vanavond met mijn kinderen?',
+        'Zoek kinderfilms zonder geweld',
+        'family movie for me and my kids without subtitles',
+      ]) {
+        expect(AssistantRecommendConstraints.fromPrompt(q).excludeKids, isFalse, reason: q);
+      }
+      expect(AssistantRecommendConstraints.fromPrompt('Geen kinderfilms graag').excludeKids, isTrue);
+      expect(AssistantRecommendConstraints.fromPrompt('Forget the kids shows').excludeKids, isTrue);
+    });
+
+    test('watching again or "voorstellen" is no request for something unseen', () {
+      expect(
+        AssistantRecommendConstraints.fromPrompt('Ik wil Inception nog eens kijken, tips?').excludeWatched,
+        isFalse,
+      );
+      expect(AssistantRecommendConstraints.fromPrompt('Kun je je dat voorstellen?').excludeWatched, isFalse);
+      expect(AssistantRecommendConstraints.fromPrompt('Doe een voorstel voor vanavond').excludeWatched, isTrue);
+    });
+
+    test('the asked number: explicit beats an article, serie and één count', () {
+      expect(assistantAskedCount('Ik zoek een film voor vanavond, geef me drie opties'), 3);
+      expect(assistantAskedCount('Is there a movie like X? Give me 4 suggestions'), 4);
+      expect(assistantAskedCount('een goede serie'), 1);
+      expect(assistantAskedCount('één film graag'), 1);
+      expect(assistantAskedCount('Wat zal ik kijken?'), isNull);
+    });
+
     test('negative control: a question about series is not films, a plain one is not constrained', () {
       expect(AssistantRecommendConstraints.fromPrompt('Een tip voor een serie of film?').kind, isNull);
       expect(AssistantRecommendConstraints.fromPrompt('Welke series zijn er?').kind, isNull);

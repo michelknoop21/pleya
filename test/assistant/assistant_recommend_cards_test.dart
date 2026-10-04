@@ -61,6 +61,7 @@ Future<(AssistantRunResult, List<String>)> _recommend(
   String answer, {
   required List<MediaItem> picks,
   Map<String, MediaItem> watched = const {},
+  int? maxSteps,
 }) async {
   final m = MultiServerManager();
   addTearDown(m.dispose);
@@ -121,6 +122,7 @@ Future<(AssistantRunResult, List<String>)> _recommend(
     ),
     confirm: (_) async => null,
     entitlement: const _Entitled(),
+    maxSteps: maxSteps ?? 8,
     tools: [...assistantTools.where((t) => t.name == 'my_watching'), findTitle],
   ).ask(prompt);
   return (result, asked);
@@ -183,6 +185,17 @@ void main() {
 
   test('an answer that names no pick shows no pick cards, whatever the question was', () async {
     final (r, _) = await _recommend('Wat zal ik kijken?', 'Zie hieronder.', picks: picks);
+    expect(_cards(r), isEmpty);
+  });
+
+  test('a recommendation outside the picks still gets its card while another grid is on screen', () async {
+    final (r, asked) = await _recommend('Geef me drie films voor vanavond', 'Kijk «Heat» (1995).', picks: picks);
+    expect(_cards(r), isEmpty);
+    expect(asked, ['Heat'], reason: 'find_title is asked for it, whatever else was shown');
+  });
+
+  test('a run that ends before the answer (step limit) ships no pick grid', () async {
+    final (r, _) = await _recommend('Zoek een film voor vanavond', 'Kijk «The Order».', picks: picks, maxSteps: 1);
     expect(_cards(r), isEmpty);
   });
 }
