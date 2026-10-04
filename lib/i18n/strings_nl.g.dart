@@ -2475,6 +2475,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override late final _TranslationsAssistantKidsNl kids = _TranslationsAssistantKidsNl._(_root);
 	@override String get tileTitle => 'Big P';
 	@override String get tileSubtitle => 'Pleya Assistant';
 	@override String get providerLabel => 'AI-provider';
@@ -3115,6 +3116,16 @@ class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn
 	// Translations
 	@override String tile({required Object title, required Object subtitle}) => '${title}. ${subtitle}';
 	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: assistant.kids
+class _TranslationsAssistantKidsNl extends TranslationsAssistantKidsEn {
+	_TranslationsAssistantKidsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get filterNotice => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.';
 }
 
 // Path: assistant.mobile
@@ -5692,6 +5703,7 @@ extension on TranslationsNl {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Je globale voorkeur blijft ${wanted} en geldt weer zodra een aflevering hem heeft.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Ondertitels',
+			'assistant.kids.filterNotice' => 'Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',

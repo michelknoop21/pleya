@@ -23,6 +23,7 @@ class AssistantTitleMatch {
     this.season,
     this.episode,
     this.snippet = '',
+    this.facts,
   });
   final String matchId;
   final String title;
@@ -43,6 +44,9 @@ class AssistantTitleMatch {
 
   /// The plot text the title was matched on, clipped; may be empty.
   final String snippet;
+
+  /// Age rating, genres, runtime and services, when looked up.
+  final TitleFacts? facts;
 }
 
 class AssistantTitleMatches extends AssistantDisplay {
@@ -147,17 +151,21 @@ final List<AssistantTool> _findTools = [
             'true when the user wants films about a topic (a list), false or absent when looking for one '
             'specific title',
       },
+      ..._forKids,
     },
     required: const ['variants'],
     // A visible server that is online now, or Seerr.
     serves: (ctx, _) => ctx.userServers.any((id) => ctx.userClient(id) != null) || ctx.requests?.client() != null,
     run: (ctx, _, args) async {
-      final result = await findTitles(ctx, _findQuery(args));
+      final query = _findQuery(args);
+      final age = await _kidsAge(ctx, args);
+      final result = await findTitles(ctx, query);
       final client = ctx.requests?.client();
       final shown = _shownRequestTitles[ctx] ??= {};
       final rows = <Map<String, Object?>>[];
       final display = <AssistantTitleMatch>[];
-      for (final (i, m) in result.matches.indexed) {
+      final gated = await _gateTitles(ctx, result.matches, _matchRef, age);
+      for (final (i, (m, facts)) in gated.kept.indexed) {
         final id = 'm${i + 1}';
         final kind = (m.kind ?? MediaKind.movie).name;
         final targets = <AssistantTitleTarget>[
@@ -179,6 +187,7 @@ final List<AssistantTool> _findTools = [
             posterUrl: s.posterUrl,
             overview: clipText(s.overview, 300),
             status: _requestStatus(s.status),
+            facts: facts,
           );
         }
         final first = targets.firstOrNull;
@@ -196,6 +205,7 @@ final List<AssistantTool> _findTools = [
           if (clipText(m.snippet, 160) case final s when s.isNotEmpty) 'snippet': s,
           if (first != null) ...{'item_id': first.item.id, 'server_id': first.serverId.value},
           if (m.series != null) ...{'series': clipText(m.series), 'season': ?m.season, 'episode': ?m.episode},
+          ..._factsField(facts, gated.region),
         });
         display.add(
           AssistantTitleMatch(
@@ -210,14 +220,29 @@ final List<AssistantTool> _findTools = [
             season: m.season,
             episode: m.episode,
             snippet: clipText(m.snippet, 160),
+            facts: facts,
           ),
         );
       }
       return AssistantToolResult({
         'matches': rows,
+        ...gated.note,
         if (result.partial) 'partial': true,
         if (result.webSearched) 'web_searched': true,
       }, display: AssistantTitleMatches(ctx, display));
     },
   ),
 ];
+
+/// A found title as the facts chain looks it up: its library copy and its
+/// TMDB id when Seerr or the server knew them.
+TitleRef _matchRef(FindMatch m) => TitleRef(
+  kind: _tmdbKind(m.kind ?? MediaKind.movie),
+  title: m.title,
+  year: m.year,
+  tmdbId: m.seerr?.tmdbId ?? m.ids.tmdb,
+  imdb: m.ids.imdb,
+  tvdb: m.ids.tvdb,
+  item: m.library.firstOrNull,
+  serverId: m.library.firstOrNull?.serverId,
+);

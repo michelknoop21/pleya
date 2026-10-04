@@ -5977,6 +5977,7 @@ class TranslationsAssistantEn {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+	late final TranslationsAssistantKidsEn kids = TranslationsAssistantKidsEn.internal(_root);
 
 	/// en: 'Big P'
 	String get tileTitle => 'Big P';
@@ -7269,6 +7270,18 @@ class TranslationsTvMyPleyaSemanticsEn {
 
 	/// en: '${title}. ${subtitle}. ${count}'
 	String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
+}
+
+// Path: assistant.kids
+class TranslationsAssistantKidsEn {
+	TranslationsAssistantKidsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not everything above suits the youngest child's age. Pleya shows no card for those titles.'
+	String get filterNotice => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.';
 }
 
 // Path: assistant.mobile
@@ -10290,6 +10303,7 @@ extension on Translations {
 			'languageSettings.toastFallbackDetailGlobal' => ({required Object wanted}) => 'Your global preference stays ${wanted} and applies again as soon as an episode has it.',
 			'languageSettings.kindAudio' => 'Audio',
 			'languageSettings.kindSubtitles' => 'Subtitles',
+			'assistant.kids.filterNotice' => 'Not everything above suits the youngest child\'s age. Pleya shows no card for those titles.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',

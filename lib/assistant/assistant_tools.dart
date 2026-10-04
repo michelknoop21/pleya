@@ -37,8 +37,11 @@ import '../media/server_administration.dart';
 import '../services/data_aggregation_service.dart' show filterHiddenLibraryItems;
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
+import '../services/tmdb/tmdb_client.dart' show TmdbKind;
+import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
 import 'assistant_find_route.dart';
+import 'assistant_title_facts.dart';
 import 'assistant_tool_context.dart';
 
 part 'assistant_tools_general.dart';
@@ -50,6 +53,7 @@ part 'assistant_tools_insights_watch.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
+part 'assistant_tools_kids.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_personal.dart';
 

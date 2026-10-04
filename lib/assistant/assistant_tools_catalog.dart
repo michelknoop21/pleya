@@ -35,8 +35,11 @@ typedef AssistantMediaGridEntry = ({MediaItem item, UnifiedMediaGroup? group});
 
 /// Titles for the UI to draw as a Pleya grid.
 class AssistantMediaGrid extends AssistantDisplay {
-  const AssistantMediaGrid(this.entries);
+  const AssistantMediaGrid(this.entries, {this.facts = const {}});
   final List<AssistantMediaGridEntry> entries;
+
+  /// Facts per item id, for the titles that were looked up.
+  final Map<String, TitleFacts> facts;
 }
 
 final List<AssistantTool> _catalogTools = [
@@ -71,22 +74,32 @@ final List<AssistantTool> _catalogTools = [
         'enum': ['added', 'released', 'rating', 'title', 'random'],
       },
       'limit': {'type': 'integer'},
+      ..._forKids,
     },
     needsServer: false,
     serves: (ctx, _) => ctx.catalog != null,
     run: (ctx, _, args) async {
       if (ctx.catalog == null) throw const AssistantToolError('catalog_unavailable');
+      final age = await _kidsAge(ctx, args);
       final query = await _search(ctx, args);
       final queries = _catalogQueries[ctx] ??= {};
       final queryId = 'q${queries.length + 1}';
       queries[queryId] = query;
       final results = <Map<String, Object?>>[];
-      for (final g in query.groups.take(15)) {
+      final gated = await _gateTitles(
+        ctx,
+        query.groups.take(15).toList(),
+        (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
+        age,
+      );
+      final facts = <String, TitleFacts>{};
+      for (final (g, f) in gated.kept) {
         // The source's own server id: always set, unlike the item's.
         final source = g.representativeSource;
         final item = source.item;
         final serverId = source.serverId;
         ctx.showItem(serverId, item.id);
+        if (f != null) facts[item.id] = f;
         results.add({
           'item_id': item.id,
           'title': clipText(item.title),
@@ -94,8 +107,12 @@ final List<AssistantTool> _catalogTools = [
           'kind': item.kind.name,
           'server_id': serverId.value,
           if (query.genreUnverified.contains(g.groupId)) 'genre_unverified': true,
+          ..._factsField(f, gated.region),
         });
       }
+      // For children only the titles that passed; the rest of the grid is unchecked.
+      final kept = {for (final (g, _) in gated.kept) g.representativeSource.item.id};
+      final entries = age == null ? query.entries : query.entries.where((e) => kept.contains(e.item.id)).toList();
       return AssistantToolResult({
         'query_id': queryId,
         'count': query.groups.length,
@@ -104,8 +121,9 @@ final List<AssistantTool> _catalogTools = [
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,
+        ...gated.note,
         'results': results,
-      }, display: AssistantMediaGrid(query.entries));
+      }, display: AssistantMediaGrid(entries, facts: facts));
     },
   ),
   AssistantTool(

@@ -8,6 +8,7 @@ import '../media/server_administration.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
+import 'assistant_kids_ages_store.dart';
 import 'assistant_provider.dart';
 import 'assistant_run.dart';
 import 'assistant_tool_context.dart';
@@ -15,6 +16,7 @@ import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
 part 'assistant_controller_jobs.dart';
+part 'assistant_controller_options.dart';
 part 'assistant_controller_language.dart';
 
 enum AssistantAvailability { hidden, locked, needsSetup, ready }
@@ -46,7 +48,9 @@ class AssistantController extends ChangeNotifier {
     this.jobPollInterval = const Duration(seconds: 2),
     this.jobWatchLimit = const Duration(minutes: 2),
     this._jobsFor,
+    Future<void> Function(List<int> ages)? saveKidsAges,
   }) : _now = now ?? DateTime.now,
+       _saveKidsAges = saveKidsAges ?? KidsAgesStore().save,
        _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
        _languageName = languageName ?? assistantLanguageName,
@@ -86,6 +90,9 @@ class AssistantController extends ChangeNotifier {
   final String Function() _languageName;
   final List<AssistantTool>? _tools;
   final DateTime Function() _now;
+
+  /// Writes the children's ages of this profile ([KidsAgesStore.save]).
+  final Future<void> Function(List<int> ages) _saveKidsAges;
 
   /// At most one model preload per window; Ollama keeps it loaded for
   /// [_preloadKeepAlive], which outlasts the window.
@@ -310,7 +317,9 @@ class AssistantController extends ChangeNotifier {
       _lastProviderError = result.providerError;
       _modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
       _resultIsError = result.end != AssistantRunEnd.answered;
-      _answer = result.text;
+      // Pleya's own words, never the model's: the answer still names a
+      // title the age filter turned down.
+      _answer = result.ageFilterNotice ? '${result.text}\n\n${t.assistant.kids.filterNotice}' : result.text;
       _actions.addAll(result.actions);
       // The run's list is the final word: it drops a lookup that led to an
       // action and adds the cards for titles the answer named.
@@ -337,103 +346,24 @@ class AssistantController extends ChangeNotifier {
     }
   }
 
-  /// The run's confirm callback: shows [action] through [pending] until the
-  /// user answers, [reset] runs, or [confirmTimeout] passes.
-  Future<AssistantConfirmation?> _confirm(AssistantPendingAction action, int generation) async {
-    if (generation != _generation || _disposed) return null;
-    final completer = Completer<AssistantConfirmation?>();
-    _pending = action;
-    _confirmer = completer;
-    _notify();
-    try {
-      // A TimeoutException reaches the run, which reports `not_confirmed`.
-      return await completer.future.timeout(confirmTimeout);
-    } finally {
-      if (identical(_confirmer, completer)) {
-        _pending = null;
-        _confirmer = null;
-        _notify();
-      }
-    }
-  }
-
   /// [password] comes from Pleya's secure field, never from the model.
   void confirmPending({String? password}) => _answerPending(AssistantConfirmation(password: password));
 
   void cancelPending() => _answerPending(null);
 
-  void _answerPending(AssistantConfirmation? answer) {
-    final completer = _confirmer;
-    if (completer == null || completer.isCompleted) return;
-    completer.complete(answer);
-  }
-
   /// The user picked an option card. No model involved: the card is built
   /// by [assistantRequestFromOption] from the ask that showed [option], and
   /// goes through the same confirmation, entitlement and authority checks
   /// as a card the model asked for.
-  Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async {
-    if (_busy) return;
-    // Option cards and found titles both carry a Seerr request.
-    final ctx = _displays
-        .map(
-          (d) => switch (d) {
-            AssistantRequestOptions(:final context, :final options)
-                when options.any((o) => o.seerrId == option.seerrId) =>
-              context,
-            AssistantTitleMatches(:final context, :final matches)
-                when matches.any((m) => m.request?.seerrId == option.seerrId) =>
-              context,
-            _ => null,
-          },
-        )
-        .nonNulls
-        .firstOrNull;
-    if (ctx == null) return;
-    _busy = true;
-    final generation = _generation;
-    _state = AssistantSurfaceState.working;
-    _notify();
-    var failed = true;
-    try {
-      final outcome = await assistantRequestFromOption(ctx, option.seerrId, fourK: fourK);
-      if (generation != _generation) return;
-      switch (outcome) {
-        case AssistantToolResult(:final data):
-          failed = data.containsKey('error');
-        case final AssistantPendingAction action:
-          final AssistantConfirmation? answer;
-          try {
-            answer = await _confirm(action, generation);
-          } on TimeoutException {
-            return;
-          }
-          if (answer == null || generation != _generation) {
-            failed = false;
-            return;
-          }
-          if (await _entitlement.check() != AssistantEntitlementState.entitled) return;
-          final tool = (_tools ?? assistantTools).where((t) => t.name == 'request_title').firstOrNull;
-          if (tool == null || !tool.serves(ctx, action.serverId)) return;
-          // The entitlement check awaited: a reset or profile switch since
-          // the confirmation must not still create the request.
-          if (generation != _generation || _disposed) return;
-          final result = await action.execute(password: answer.password);
-          if (generation != _generation) return;
-          failed = result.containsKey('error');
-          if (!failed && result['done'] != false) _actions.add(action.record);
-      }
-    } catch (e, st) {
-      // Seerr refused, or the client changed under the card.
-      appLogger.w('Assistant request option failed', error: e.runtimeType, stackTrace: st);
-    } finally {
-      if (generation == _generation) {
-        _busy = false;
-        _resultIsError = failed;
-        _state = AssistantSurfaceState.result;
-      }
-      _notify();
-    }
+  Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) =>
+      _pickRequestOption(option, fourK: fourK);
+
+  /// The ages card was answered: saves [ages] for this profile and asks the
+  /// question that needed them again.
+  Future<void> saveKidsAgesAndRetry(List<int> ages) async {
+    final prompt = _displays.whereType<AssistantKidsAgesPrompt>().firstOrNull?.prompt ?? _prompt;
+    await _saveKidsAges(ages);
+    if (prompt != null && !_disposed) await submit(prompt);
   }
 
   /// A run in flight and a waiting card are let go; what is on screen stays

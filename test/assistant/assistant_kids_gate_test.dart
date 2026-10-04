@@ -1,0 +1,254 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/testing.dart';
+import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_entitlement.dart';
+import 'package:pleya/assistant/assistant_provider.dart';
+import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/assistant/assistant_title_facts.dart';
+import 'package:pleya/assistant/assistant_title_facts_cache.dart';
+import 'package:pleya/assistant/assistant_tool_context.dart';
+import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/services/multi_server_manager.dart';
+import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
+
+import 'assistant_find_fakes.dart';
+
+const _hp = 'Harry Potter and the Deathly Hallows: Part 2';
+
+class _Entitled extends AssistantEntitlement {
+  const _Entitled();
+  @override
+  Future<AssistantEntitlementState> check() async => AssistantEntitlementState.entitled;
+}
+
+/// Facts per title, as the chain would have found them.
+class _Facts extends TitleFactsService {
+  _Facts() : super(cache: TitleFactsCache());
+  static const byTitle = {
+    _hp: TitleFacts(certifications: {'NL': '12', 'US': 'PG-13'}, genres: ['Fantasy']),
+    'Toy Story': TitleFacts(certifications: {'NL': 'AL', 'US': 'G'}, genres: ['Animation']),
+  };
+  @override
+  Future<List<TitleFacts>> factsFor(List<TitleRef> refs) async => [
+    for (final r in refs) byTitle[r.title] ?? const TitleFacts(),
+  ];
+}
+
+/// The fake library server, healthy for the run's opening probe.
+class _Server extends FakeServer {
+  _Server(super.id, {super.libraries});
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.online;
+}
+
+AssistantToolContext _ctx({List<int> ages = const [8], FakeSeerr? seerr}) {
+  final m = MultiServerManager();
+  addTearDown(m.dispose);
+  m.debugRegisterClientForTesting(
+    _Server(
+      'w',
+      libraries: {
+        'films': [fakeItem('hp', _hp, year: 2011), fakeItem('ts', 'Toy Story', year: 1995)],
+      },
+    ),
+  );
+  m.setVisibleServerIds(null);
+  return AssistantToolContext(
+    servers: m,
+    catalog: AssistantCatalogServices(
+      rowLoader: CatalogHomeCustomRowLoader(
+        libraries: () => [fakeLib('w', 'films')],
+        isServerVisible: m.isServerVisible,
+        hiddenLibraryKeys: () => const {},
+        clientFor: m.getClient,
+      ),
+      profileId: 'p',
+      activeProfileId: () => 'p',
+    ),
+    requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
+    titleFacts: _Facts(),
+    kidsAges: () async => ages,
+    region: () => 'NL',
+  );
+}
+
+/// A model that answers from [script]: a string is a closing answer, a map a
+/// tool call. Every request body is kept.
+({AssistantModelClient model, List<List<Map<String, Object?>>> sent}) _model(List<Object> script) {
+  final sent = <List<Map<String, Object?>>>[];
+  final model = AssistantModelClient(
+    const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+    httpClient: MockClient((request) async {
+      final body = jsonDecode(request.body) as Map<String, Object?>;
+      sent.add((body['messages'] as List).cast());
+      final step = script[sent.length - 1];
+      final message = step is String
+          ? {'role': 'assistant', 'content': step}
+          : {
+              'role': 'assistant',
+              'content': '',
+              'tool_calls': [
+                {
+                  'id': 'c${sent.length}',
+                  'type': 'function',
+                  'function': {'name': (step as Map)['name'], 'arguments': jsonEncode(step['args'])},
+                },
+              ],
+            };
+      return jsonResponse({
+        'choices': [
+          {'message': message},
+        ],
+      });
+    }),
+  );
+  return (model: model, sent: sent);
+}
+
+Future<AssistantRunResult> _ask(AssistantModelClient model, AssistantToolContext ctx, String prompt) =>
+    AssistantRun(model: model, context: ctx, confirm: (_) async => null, entitlement: const _Entitled()).ask(prompt);
+
+List<String> _cards(AssistantRunResult r) => [
+  for (final d in r.displays.whereType<AssistantTitleMatches>())
+    for (final m in d.matches) m.title,
+];
+
+Future<Map<String, Object?>> _tool(AssistantToolContext ctx, String name, Map<String, Object?> args) async =>
+    ((await assistantTools.firstWhere((t) => t.name == name).run(ctx, null, args)) as AssistantToolResult).data;
+
+void main() {
+  const prompt = 'Is er een film voor de kinderen?';
+
+  test('the iOS case: a title for 12+ named for an 8-year-old gets no card and one correction', () async {
+    final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
+    final result = await _ask(m.model, _ctx(), prompt);
+
+    expect(m.sent, hasLength(2), reason: 'exactly one correction round');
+    final correction = m.sent[1].last;
+    expect(correction['role'], 'system');
+    expect(correction['content'], allOf(contains('«$_hp» (NL 12)'), contains('8 years')));
+    expect(_cards(result), ['Toy Story']);
+    expect(result.text, 'Kijk «Toy Story» (1995).');
+    expect(result.ageFilterNotice, isFalse);
+  });
+
+  test('a model that keeps the title: still no card, no second correction, a notice from Pleya', () async {
+    final m = _model(['Kijk «$_hp» (2011).', 'Toch «$_hp» (2011).', 'nooit gevraagd']);
+    final result = await _ask(m.model, _ctx(), prompt);
+    expect(m.sent, hasLength(2));
+    expect(_cards(result), isEmpty);
+    expect(result.text, contains(_hp), reason: 'never edited out silently');
+    expect(result.ageFilterNotice, isTrue);
+  });
+
+  test('negative control: for a 13-year-old the Harry Potter card comes', () async {
+    final m = _model(['Kijk «$_hp» (2011).']);
+    final result = await _ask(m.model, _ctx(ages: [13]), prompt);
+    expect(m.sent, hasLength(1));
+    expect(_cards(result), [_hp]);
+  });
+
+  test('without known ages the tool says kids_ages_unknown and Pleya shows its ages card', () async {
+    final m = _model([
+      {
+        'name': 'find_title',
+        'args': {
+          'variants': ['kids film', 'kinderfilm'],
+        },
+      },
+      'Pleya vraagt eerst hun leeftijd.',
+    ]);
+    final result = await _ask(m.model, _ctx(ages: []), prompt);
+    expect(jsonDecode(m.sent[1].last['content'] as String), {'error': 'kids_ages_unknown'});
+    final card = result.displays.whereType<AssistantKidsAgesPrompt>().single;
+    expect(card.prompt, prompt);
+  });
+
+  test('find_title rows carry facts; for_kids filters them and says so', () async {
+    final args = {
+      'candidates': [
+        {'title': _hp},
+        {'title': 'Toy Story'},
+      ],
+      'variants': [_hp, 'Toy Story'],
+    };
+    final all = matchesOf(await _tool(_ctx(), 'find_title', args));
+    final hp = all.firstWhere((r) => r['title'] == _hp);
+    expect((hp['facts'] as Map)['age_min'], 12);
+    expect((hp['facts'] as Map)['age'], {'NL': '12', 'US': 'PG-13'});
+
+    final kids = await _tool(_ctx(), 'find_title', {...args, 'for_kids': true});
+    expect([for (final r in matchesOf(kids)) r['title']], ['Toy Story']);
+    expect(kids['filtered_for_age'], 1);
+    expect(kids['kids_age'], 8);
+  });
+
+  test('a PG-13 request suggestion falls away for an 8-year-old and cannot be requested', () async {
+    final seerr = FakeSeerr()
+      ..search['Harry'] = [
+        {'id': 12445, 'mediaType': 'movie', 'title': _hp, 'releaseDate': '2011-07-07'},
+        {'id': 862, 'mediaType': 'movie', 'title': 'Toy Story', 'releaseDate': '1995-11-22'},
+      ];
+    final ctx = _ctx(seerr: seerr);
+    final data = await _tool(ctx, 'find_request_title', {
+      'titles': [
+        {'title': 'Harry'},
+      ],
+      'for_kids': true,
+    });
+    expect([for (final r in (data['titles'] as List).cast<Map>()) r['title']], ['Toy Story']);
+    expect(data['filtered_for_age'], 1);
+    final refused = await assistantRequestFromOption(ctx, 'movie:12445');
+    expect((refused as AssistantToolResult).data, {'error': 'unknown_seerr_id'});
+  });
+
+  test('saveKidsAgesAndRetry saves the ages and asks the same question again', () async {
+    var saved = <int>[];
+    final pick = AssistantTool(
+      name: 'pick',
+      description: 'pick',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (ctx, _, _) async {
+        if ((await ctx.kidsAges!()).isEmpty) throw const AssistantToolError('kids_ages_unknown');
+        return const AssistantToolResult({'ok': true});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: MultiServerManager(), kidsAges: () async => saved),
+      entitlement: const _Entitled(),
+      loadConfig: () async =>
+          const AssistantProviderConfig(kind: AssistantProviderKind.ollamaServer, baseUrl: 'http://o.lan', model: 'm'),
+      modelFor: (_) => _model([
+        {'name': 'pick', 'args': <String, Object?>{}},
+        'klaar',
+      ]).model,
+      languageName: () => 'Dutch',
+      tools: [pick],
+      saveKidsAges: (ages) async => saved = ages,
+    );
+    addTearDown(c.dispose);
+
+    await c.submit(prompt);
+    expect(c.displays.whereType<AssistantKidsAgesPrompt>().single.prompt, prompt);
+
+    await c.saveKidsAgesAndRetry([6, 9]);
+    expect(saved, [6, 9]);
+    expect(c.runs, 2);
+    expect(c.prompt, prompt);
+    expect(c.displays.whereType<AssistantKidsAgesPrompt>(), isEmpty);
+  });
+
+  test('the existing renderers take the ages card as a display without choices', () {
+    const display = AssistantKidsAgesPrompt(prompt);
+    expect(bigPChoiceCount(display), 0);
+    expect(bigPTitleMatches(display), isEmpty);
+    expect(bigPDisplayIsEmpty(display), isFalse);
+  });
+}

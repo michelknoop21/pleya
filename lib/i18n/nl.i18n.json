@@ -2271,6 +2271,9 @@
     "kindSubtitles": "Ondertitels"
   },
   "assistant": {
+    "kids": {
+      "filterNotice": "Niet alles hierboven past bij de leeftijd van het jongste kind. Voor die titels toont Pleya geen kaart."
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI-provider",

@@ -4,6 +4,7 @@ import '../media/media_server_client.dart';
 import '../media/server_administration.dart';
 import '../services/multi_server_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
+import 'assistant_age_gate.dart';
 import 'assistant_title_facts.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
@@ -54,6 +55,7 @@ class AssistantToolContext {
     this.web,
     this.titleFacts,
     this.kidsAges,
+    this.region = assistantRegion,
     this.cancel,
   });
 
@@ -77,6 +79,7 @@ class AssistantToolContext {
     web: web ?? this.web,
     titleFacts: titleFacts,
     kidsAges: kidsAges,
+    region: region,
     cancel: cancel ?? this.cancel,
   );
 
@@ -100,6 +103,19 @@ class AssistantToolContext {
   /// The ages of this profile's children, for the age gate; null or empty
   /// leaves it off.
   final Future<List<int>> Function()? kidsAges;
+
+  /// The region whose age ratings count (`NL`); the device's by default.
+  final String Function() region;
+
+  /// This ask picks for children: the prompt said so, or a title tool got
+  /// `for_kids`. Titles then pass only through the age gate.
+  bool kidsMode = false;
+
+  /// The youngest child's age once a title tool read it.
+  int? kidsAge;
+
+  /// Titles the age gate turned down this ask, with the rating that decided.
+  final List<({String title, int? year, String reason})> ageRejected = [];
 
   /// Shown job ids per server, with the title list_jobs gave them.
   final Map<String, Map<String, String>> _jobs = {};

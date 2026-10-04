@@ -2271,6 +2271,9 @@
     "kindSubtitles": "Subtitles"
   },
   "assistant": {
+    "kids": {
+      "filterNotice": "Not everything above suits the youngest child's age. Pleya shows no card for those titles."
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI provider",
