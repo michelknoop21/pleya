@@ -326,6 +326,21 @@ void main() {
     });
   }
 
+  // Build 323 device feedback: a long answer, two cards, three follow-ups.
+  for (final phone in [_iPhone17Pro, _phones[1]]) {
+    testWidgets('long answer ${phone.name}', skip: _dir == null, (tester) async {
+      final c = shotController();
+      await shoot(
+        tester,
+        'long-${phone.name}',
+        c,
+        phone: phone,
+        before: (s) async => s.summon(),
+        answer: answerLongTitles,
+      );
+    });
+  }
+
   testWidgets('39-f watch stats', skip: _dir == null, (tester) async {
     final c = shotController();
     await shoot(tester, '39-f-kijkcijfers', c, before: (s) async => s.summon(), answer: answerWatchStats);
