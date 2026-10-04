@@ -120,7 +120,8 @@ final List<AssistantTool> _catalogTools = [
           : query.entries.where((e) => kept.contains(AssistantMediaGrid.keyOf(e))).toList();
       return AssistantToolResult({
         'query_id': queryId,
-        'count': query.groups.length,
+        // For children only what passed counts.
+        'count': age == null ? query.groups.length : entries.length,
         'can_become_home_row': query.row != null,
         if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,

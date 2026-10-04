@@ -527,6 +527,7 @@ void main() {
         await _tool('search_catalog').run(ctx(), null, {'kind': 'movie', 'for_kids': true}) as AssistantToolResult;
     final grid = kids.display! as AssistantMediaGrid;
     expect([for (final e in grid.entries) e.item.title], ['Toy Story']);
+    expect(kids.data['count'], 1, reason: 'the filtered count');
 
     final all = await _tool('search_catalog').run(ctx(), null, {'kind': 'movie'}) as AssistantToolResult;
     final cards = bigPTitleMatches(all.display!);

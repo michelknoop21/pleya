@@ -151,8 +151,9 @@ class AssistantToolContext {
   /// Age ratings, genres, score and services per title; null leaves them out.
   final TitleFactsService? titleFacts;
 
-  /// The ages of this profile's children, for the age gate; null or empty
-  /// leaves it off.
+  /// The ages of this profile's children, for the age gate. Null or empty
+  /// while an ask picks for children: the title tools answer
+  /// `kids_ages_unknown` and Pleya shows its ages card.
   final Future<List<int>> Function()? kidsAges;
 
   /// False for one ask the viewer ran "Zonder filter": no age gate, and no
