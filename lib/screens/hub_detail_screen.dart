@@ -3,6 +3,7 @@ import '../media/ids.dart';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 import '../media/library_query.dart';
 import '../media/media_backend.dart';
 import '../media/media_hub.dart';
@@ -31,6 +32,12 @@ import 'libraries/sort_bottom_sheet.dart';
 import 'libraries/content_state_builder.dart';
 import '../mixins/refreshable.dart';
 import '../i18n/strings.g.dart';
+import '../theme/mono_tokens.dart';
+import '../providers/continue_watching_hidden_provider.dart';
+import '../providers/discover_provider.dart';
+import '../utils/continue_watching_sections.dart';
+import '../widgets/app_icon.dart';
+import '../widgets/continue_watching_hidden_items.dart';
 import 'focusable_detail_screen_mixin.dart';
 import '../utils/error_message_utils.dart';
 
@@ -449,9 +456,78 @@ class _HubDetailScreenState extends State<HubDetailScreen>
     }
   }
 
+  /// A restored title is not in [_items]; the row's owner refetches, and this
+  /// screen reloads from it so the title is back without reopening.
+  Future<void> _openHiddenItems() async {
+    final discover = context.read<DiscoverProvider?>();
+    final before = context.read<ContinueWatchingHiddenProvider?>()?.count ?? 0;
+    await showContinueWatchingHiddenItems(context);
+    if (!mounted) return;
+    if ((context.read<ContinueWatchingHiddenProvider?>()?.count ?? 0) == before) return;
+    await discover?.refreshContinueWatching();
+    if (!mounted) return;
+    widget.onRemoveFromContinueWatching?.call();
+    unawaited(_loadMoreItems());
+  }
+
   void _handleRemoveFromContinueWatching() {
     widget.onRemoveFromContinueWatching?.call();
     unawaited(_loadMoreItems());
+  }
+
+  Widget _gridSliver(
+    List<MediaItem> items,
+    int start,
+    int libraryDensity,
+    bool useWideLayout,
+    bool fullCardLayout,
+    bool isMixedHub,
+  ) {
+    return SliverPadding(
+      padding: const EdgeInsets.all(8),
+      sliver: SliverCrossAxisLayoutBuilder(
+        builder: (context, crossAxisExtent) {
+          final geometry = MediaGridGeometry.resolve(
+            context: context,
+            crossAxisExtent: crossAxisExtent,
+            density: libraryDensity,
+            usePaddingAware: true,
+            horizontalPadding: 16,
+            useWideAspectRatio: useWideLayout,
+            fullBleedImage: fullCardLayout,
+          );
+          final columnCount = geometry.columnCount;
+
+          return SliverGrid(
+            gridDelegate: geometry.delegate,
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = items[index];
+              final flatIndex = start + index;
+              final focusNode = _focusNodeForIndex(flatIndex);
+              final isFirstRow = start == 0 && GridSizeCalculator.isFirstRow(index, columnCount);
+              final isFirstColumn = GridSizeCalculator.isFirstColumn(index, columnCount);
+
+              return geometry.insetCell(
+                FocusableMediaCard(
+                  focusNode: focusNode,
+                  item: item,
+                  onRefresh: _handleItemRefresh,
+                  onRemoveFromContinueWatching: widget.isInContinueWatching ? _handleRemoveFromContinueWatching : null,
+                  isInContinueWatching: widget.isInContinueWatching,
+                  usesContinueWatchingAction: widget.usesContinueWatchingAction,
+                  onNavigateUp: isFirstRow ? navigateToAppBar : null,
+                  onNavigateLeft: isFirstColumn ? () {} : null,
+                  onBack: handleBackFromContent,
+                  onFocusChange: (hasFocus) => trackGridItemFocus(flatIndex, hasFocus),
+                  mixedHubContext: isMixedHub,
+                  fullBleedImage: fullCardLayout,
+                ),
+              );
+            }, childCount: items.length),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildContinuationStatusSliver() {
@@ -569,52 +645,69 @@ class _HubDetailScreenState extends State<HubDetailScreen>
                         );
                       }
 
-                      return SliverPadding(
-                        padding: const EdgeInsets.all(8),
-                        sliver: SliverCrossAxisLayoutBuilder(
-                          builder: (context, crossAxisExtent) {
-                            final geometry = MediaGridGeometry.resolve(
-                              context: context,
-                              crossAxisExtent: crossAxisExtent,
-                              density: libraryDensity,
-                              usePaddingAware: true,
-                              horizontalPadding: 16,
-                              useWideAspectRatio: useWideLayout,
-                              fullBleedImage: fullCardLayout,
-                            );
-                            final columnCount = geometry.columnCount;
-
-                            return SliverGrid(
-                              gridDelegate: geometry.delegate,
-                              delegate: SliverChildBuilderDelegate((context, index) {
-                                final item = _filteredItems[index];
-                                final focusNode = _focusNodeForIndex(index);
-                                final isFirstRow = GridSizeCalculator.isFirstRow(index, columnCount);
-                                final isFirstColumn = GridSizeCalculator.isFirstColumn(index, columnCount);
-
-                                return geometry.insetCell(
-                                  FocusableMediaCard(
-                                    focusNode: focusNode,
-                                    item: item,
-                                    onRefresh: _handleItemRefresh,
-                                    onRemoveFromContinueWatching: widget.isInContinueWatching
-                                        ? _handleRemoveFromContinueWatching
-                                        : null,
-                                    isInContinueWatching: widget.isInContinueWatching,
-                                    usesContinueWatchingAction: widget.usesContinueWatchingAction,
-                                    onNavigateUp: isFirstRow ? navigateToAppBar : null,
-                                    onNavigateLeft: isFirstColumn ? () {} : null,
-                                    onBack: handleBackFromContent,
-                                    onFocusChange: (hasFocus) => trackGridItemFocus(index, hasFocus),
-                                    mixedHubContext: isMixedHub,
-                                    fullBleedImage: fullCardLayout,
-                                  ),
-                                );
-                              }, childCount: _filteredItems.length),
-                            );
-                          },
-                        ),
-                      );
+                      // DEC-144 fase 2 (mockup 40): Verder kijken is grouped into
+                      // four fixed sections; every other hub stays one grid.
+                      // Indexes run on across sections, so focus memory and the
+                      // first-row/first-column rules are untouched.
+                      final sections = widget.isInContinueWatching
+                          ? continueWatchingSections(_filteredItems, itemOf: (item) => item)
+                          : [(null, _filteredItems)];
+                      var offset = 0;
+                      final slivers = <Widget>[];
+                      for (final (section, items) in sections) {
+                        final start = offset;
+                        offset += items.length;
+                        if (section != null) {
+                          slivers.add(
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      continueWatchingSectionTitle(section),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${items.length}',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleSmall?.copyWith(color: tokens(context).textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        slivers.add(
+                          _gridSliver(items, start, libraryDensity, useWideLayout, fullCardLayout, isMixedHub),
+                        );
+                      }
+                      final hiddenCount = widget.isInContinueWatching
+                          ? (context.watch<ContinueWatchingHiddenProvider?>()?.count ?? 0)
+                          : 0;
+                      if (hiddenCount > 0) {
+                        slivers.add(
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 20, 16, 16),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: _openHiddenItems,
+                                  icon: const AppIcon(Symbols.visibility_off_rounded, size: 20),
+                                  label: Text(continueWatchingHiddenLabel(hiddenCount)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return SliverMainAxisGroup(slivers: slivers);
                     },
                   ),
                 if (_filteredItems.isNotEmpty && (_isLoadingMore || _continuationErrorMessage != null))

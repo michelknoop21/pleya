@@ -1,0 +1,55 @@
+<style>
+.bleed { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+.bleed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 35%; }
+.bleed .scrim { position: absolute; inset: 0; }
+.htext { position: absolute; left: var(--inset); width: 900px; }
+.htext h1 { font-size: 56px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+.htext .meta { margin-top: 12px; }
+.htext .syn { margin-top: 12px; font-size: 22px; line-height: 1.35; color: var(--ink-2); }
+.htext .btn-row { margin-top: 26px; }
+.rails { position: absolute; left: var(--inset); right: 0; }
+.rh { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.rh .rail-label { margin: 0; }
+.rh .cnt { font-size: 27px; font-weight: 500; color: var(--ink-3); }
+.rh .all { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 16px 0 18px; border-radius: 999px; background: var(--fill-2); font-size: 19px; font-weight: 500; color: var(--ink-2); }
+.rh .all .ic { width: 18px; height: 18px; }
+.rh .all.focus { background: var(--ink); color: var(--bg); box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink); }
+.rb { display: flex; gap: 22px; align-items: flex-end; }
+.cw { position: relative; flex: none; width: 400px; height: 225px; border-radius: var(--r-card); overflow: hidden; background: var(--surface); transform-origin: 50% 100%; }
+.cw img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cw .ov { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 14px; background: linear-gradient(180deg, rgba(20,20,20,0), rgba(20,20,20,.88) 70%); }
+.cw .ov .t { font-size: 21px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw .ov .m { font-size: 18px; color: var(--ink-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.25); }
+.cw .prog i { display: block; height: 100%; background: var(--accent); }
+.cw .src { position: absolute; left: 12px; top: 12px; background: rgba(20,20,20,.78); font-size: 16px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+.cw .new { position: absolute; right: 12px; top: 12px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); }
+.cw.focus { transform: scale(1.05); box-shadow: 0 0 0 var(--ring-gap) var(--bg), 0 0 0 calc(var(--ring-gap) + var(--ring)) var(--ink), 0 24px 48px rgba(0,0,0,.6); z-index: 2; }
+.cw.old img { filter: brightness(.7); }
+.tail { flex: none; width: 400px; height: 225px; border-radius: var(--r-card); background: var(--surface); display: grid; place-items: center; text-align: center; color: var(--ink-2); font-size: 22px; font-weight: 500; }
+.tail small { display: block; font-size: 18px; color: var(--ink-3); margin-top: 6px; }
+.cap { margin-top: 24px; width: 820px; }
+.cap .t { font-size: 27px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap .m { margin-top: 4px; font-size: 20px; line-height: 1.3; color: var(--ink-2); }
+.cap .m .sep { margin: 0 10px; color: var(--ink-4); }
+.cap .d { margin-top: 6px; font-size: 19px; line-height: 1.3; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-label.next { margin-top: 26px; }
+.rbp { display: flex; gap: 22px; align-items: flex-end; height: 346px; }
+.rbp .c { position: relative; flex: none; width: 231px; height: 346px; border-radius: var(--r-card); overflow: hidden; background: var(--surface); }
+.rbp .c img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rbp .c .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,.25); }
+.rbp .c .prog i { display: block; height: 100%; background: var(--accent); }
+.rbp .c .new { position: absolute; right: 12px; top: 12px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); }
+
+.bleed .scrim { background: linear-gradient(90deg, rgba(20,20,20,.92) 0%, rgba(20,20,20,.70) 28%, rgba(20,20,20,.12) 56%, rgba(20,20,20,0) 100%), linear-gradient(180deg, rgba(20,20,20,.66) 0%, rgba(20,20,20,0) 18%, rgba(20,20,20,0) 46%, rgba(20,20,20,.74) 72%, var(--bg) 94%); }
+</style>
+<div class="bleed"><img src="{{art:dune2-backdrop}}"><div class="scrim"></div></div>
+{{nav:Home}}
+<div class="htext" style="top:452px">
+  <h1>Dune: Part Two</h1>
+  <div class="meta">Film<span class="sep">·</span>Sciencefiction<span class="sep">·</span>2024<span class="sep">·</span>2u 46m</div>
+  <div class="syn">Paul Atreides verenigt zich met Chani en de Fremen en zint op wraak op de samenzweerders die zijn familie vernietigden.</div>
+  <div class="btn-row"><div class="btn primary focus">{{icon:play}} Afspelen</div><div class="btn">{{icon:info}} Meer info</div></div>
+</div>
+<div class="rails" style="top:762px"><div class="rh"><div class="rail-label">Verder kijken</div><div class="cnt">· 23</div><div class="all">Alles bekijken {{icon:chev}}</div></div><div class="rb"><div class="cw"><img src="{{art:thebear-backdrop}}"><div class="ov"><div class="t">The Bear</div><div class="m">S3 E4 · 18 min over</div></div><div class="prog"><i style="width:62%"></i></div></div><div class="cw"><img src="{{art:andor-backdrop}}"><div class="ov"><div class="t">Andor</div><div class="m">S2 E5 · Volgende aflevering</div></div></div><div class="cw"><img src="{{art:eeaao-backdrop}}"><div class="ov"><div class="t">Everything Everywhere All at Once</div><div class="m">42 min over</div></div><div class="prog"><i style="width:70%"></i></div></div><div class="cw"><img src="{{art:slowhorses-backdrop}}"><div class="ov"><div class="t">Slow Horses</div><div class="m">S4 E2 · 9 min over</div></div><div class="prog"><i style="width:84%"></i></div></div><div class="cw"><img src="{{art:penguin-backdrop}}"><span class="src">Jellyfin</span><div class="ov"><div class="t">The Penguin</div><div class="m">S1 E6 · Volgende aflevering</div></div></div></div></div>
+<div class="note">CANDIDATE · MOCKUP 38 · A Home bij openen: herotekst 452..712, raillabel met teller en Alles-ingang op 762, 16:9-kaarten 400x225 met titel en statusregel in de kaart, 832..1057; vier kaarten plus een halve in beeld zonder scrollen</div>

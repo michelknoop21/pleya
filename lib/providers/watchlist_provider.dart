@@ -247,6 +247,19 @@ class WatchlistProvider extends ChangeNotifier with DisposableChangeNotifierMixi
     }
   }
 
+  /// Ask again for [entry] when its last lookup could not reach every server.
+  ///
+  /// A miss with incomplete coverage is recorded as not found, and
+  /// [resolveAvailability] leaves anything that is not unknown alone. Without
+  /// this a title on a server that was down stays "not found" after the server
+  /// is back, until the whole list is reloaded.
+  Future<void> retryIncompleteAvailability(WatchlistEntry entry) async {
+    if (entry.availability != WatchlistAvailability.notFound || entry.coverageComplete) return;
+    final reset = entry.copyWith(availability: WatchlistAvailability.unknown);
+    _replace(reset);
+    await resolveAvailability(reset);
+  }
+
   /// Resolve everything still unknown, bounded by the resolver's own
   /// concurrency cap.
   ///

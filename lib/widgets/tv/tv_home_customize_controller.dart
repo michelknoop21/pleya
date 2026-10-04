@@ -27,6 +27,7 @@ import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_hub.dart';
 import '../../providers/hidden_libraries_provider.dart';
 import '../../providers/home_custom_rows_provider.dart';
+import '../../providers/home_extra_rows_provider.dart';
 import '../../providers/home_layout_provider.dart';
 import '../../providers/libraries_provider.dart';
 import '../../providers/multi_server_provider.dart';
@@ -66,6 +67,7 @@ class TvHomeCustomizeController {
   const TvHomeCustomizeController({
     required this.layout,
     required this.customRows,
+    this.extraRows,
     required this.projection,
     required this.librariesFor,
     required this.preview,
@@ -74,6 +76,7 @@ class TvHomeCustomizeController {
 
   final HomeLayoutProvider layout;
   final HomeCustomRowsProvider customRows;
+  final HomeExtraRowsProvider? extraRows;
   final TvHomeProjectionProvider projection;
   final List<CatalogLibrary> Function(MediaKind kind) librariesFor;
   final Future<HomeCustomRowContent> Function(HomeCustomRow draft) preview;
@@ -103,6 +106,7 @@ class TvHomeCustomizeController {
     return TvHomeCustomizeController(
       layout: layout,
       customRows: customRows,
+      extraRows: context.read<HomeExtraRowsProvider?>(),
       projection: context.read<TvHomeProjectionProvider>(),
       clientFor: clientFor,
       librariesFor: (kind) => eligibleCatalogLibraries(
@@ -129,6 +133,7 @@ class TvHomeCustomizeController {
     projection: projection,
     layout: layout,
     customRows: customRows,
+    extraRows: extraRows,
     includeHidden: true,
     includeEmpty: true,
   );

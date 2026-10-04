@@ -12,10 +12,12 @@ import '../../services/system_shelf_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/global_key_utils.dart';
 import '../../utils/watch_state_notifier.dart';
+import '../continue_watching_hidden_provider.dart';
 import '../hidden_libraries_provider.dart';
 import '../multi_server_provider.dart';
 
-/// The Continue Watching row of Home: the on-deck list, its "more" probe, the
+/// The Continue Watching row of Home: the whole on-deck list and its preview, the
+/// titles hidden on this device or waiting in the removal queue, the
 /// watched-movie suppression that beats the scrobble race, the reaction to
 /// watch events, and the platform launcher shelf that mirrors the row. The
 /// owning provider decides when to fetch and when a full load bumps its
@@ -26,20 +28,46 @@ class ContinueWatchingRow {
     required this._hiddenLibraries,
     required this._isDisposed,
     required this._notify,
-  });
+    this.hidden,
+    this.pendingRemovalKeys,
+  }) {
+    _lastHiddenKeys = hidden?.keys ?? const {};
+    hidden?.addListener(_onHiddenChanged);
+  }
 
-  /// Preview row caps at 20; one extra item is fetched as a probe so
-  /// [hasMore] can show the "more" affordance without a second request.
+  /// The row shows the first 20 of [all]; the whole list is fetched so the
+  /// title can count it and the overview reads it from memory (DEC-144 fase 2).
   static const int previewLimit = 20;
-  static const int _probeLimit = previewLimit + 1;
 
   final MultiServerProvider _multiServer;
   final HiddenLibrariesProvider _hiddenLibraries;
   final bool Function() _isDisposed;
   final VoidCallback _notify;
 
+  /// Titles hidden from Verder kijken on this device (DEC-144 fase 3). Filtered
+  /// out of every fetch; a restore brings the title back on the next one.
+  final ContinueWatchingHiddenProvider? hidden;
+  Set<String> _lastHiddenKeys = const {};
+
+  /// Global keys of removals still queued for a server that was unreachable,
+  /// so a card dismissed before a restart does not come back while its write
+  /// is still waiting (hoofdstuk 13.4 point 3).
+  final Future<Set<String>> Function()? pendingRemovalKeys;
+
+  /// Kept apart from [_suppressedKeys] on purpose. That set cleans itself as
+  /// soon as a fetch no longer lists a key, and a server that is still
+  /// unreachable lists nothing, so a queued removal folded into it would be
+  /// forgotten on the first fetch and its card would return the moment the
+  /// server reconnected, before the replay. This one is re-read from the queue
+  /// and empties only when the queue row does.
+  Set<String> _queuedRemovalKeys = const {};
+
+  List<MediaItem> _all = const [];
   List<MediaItem> _items = [];
-  bool _hasMore = false;
+
+  /// False while [all] came from a snapshot (which only ever held the row), so
+  /// the overview still fetches instead of trusting a 20-item "all".
+  bool allFromNetwork = false;
 
   /// Global keys of watched movies filtered out of every apply until the
   /// server stops returning them — beats the scrobble race deterministically
@@ -57,12 +85,30 @@ class ContinueWatchingRow {
   List<MediaItem> _topShelfHero = const [];
 
   List<MediaItem> get items => _items;
-  bool get hasMore => _hasMore;
 
-  /// The probe-sized on-deck fetch, from every server or only [serverIds].
+  /// Everything in Verder kijken after merging, deduplicating and hiding.
+  List<MediaItem> get all => _all;
+
+  /// Reads the hidden list and the removal queue. Awaited before a fetch is
+  /// started, never between starting and awaiting one.
+  Future<void> prepare() async {
+    await hidden?.ensureInitialized();
+    await readQueuedRemovalKeys();
+  }
+
+  Future<void> readQueuedRemovalKeys() async {
+    final read = pendingRemovalKeys;
+    if (read == null) return;
+    try {
+      _queuedRemovalKeys = await read();
+    } catch (e) {
+      appLogger.d('ContinueWatchingRow: queued removal keys unavailable', error: e);
+    }
+  }
+
+  /// The whole on-deck list, from every server or only [serverIds].
   Future<OnDeckAggregationResult> fetch({Set<String>? serverIds}) {
     return _multiServer.aggregationService.getOnDeckFromAllServers(
-      limit: _probeLimit,
       hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
       serverIds: serverIds,
     );
@@ -71,13 +117,9 @@ class ContinueWatchingRow {
   /// Merges [fresh] from newly-online servers into the stored list. Returns
   /// false when the owner was disposed while the merge ran.
   Future<bool> merge(OnDeckAggregationResult fresh) async {
-    final hadMore = _hasMore;
-    final merged = await _multiServer.aggregationService.mergeContinueWatching(_items, fresh.items, limit: _probeLimit);
+    final merged = await _multiServer.aggregationService.mergeContinueWatching(_all, fresh.items);
     if (_isDisposed()) return false;
     apply(merged);
-    // The stored list is already trimmed, so the merge can't see old items
-    // past the cap — a previously-true "more" affordance stays true.
-    if (hadMore) _hasMore = true;
     loadedServerIds = {...loadedServerIds, ...fresh.succeededServerIds};
     return true;
   }
@@ -88,12 +130,10 @@ class ContinueWatchingRow {
   Future<void> refresh() async {
     try {
       if (!_multiServer.hasConnectedServers) return;
-      final fetched = await _multiServer.aggregationService.getOnDeckFromAllServers(
-        limit: _probeLimit,
-        hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
-      );
+      await readQueuedRemovalKeys();
+      final fetched = await fetch();
       if (_isDisposed()) return;
-      apply(fetched.items);
+      apply(fetched.items, fromNetwork: true);
       loadedServerIds = fetched.succeededServerIds;
       _notify();
       unawaited(syncShelf());
@@ -102,18 +142,24 @@ class ContinueWatchingRow {
     }
   }
 
-  /// The full unlimited Continue Watching list for the hub's load-more path.
-  Future<List<MediaItem>> loadAll() async {
+  /// The full Continue Watching list for the overview: from memory once a
+  /// network load holds it, fetched otherwise.
+  Future<List<MediaItem>> loadAll({required bool loaded}) async {
+    if (loaded && allFromNetwork) return _all;
     if (!_multiServer.hasConnectedServers) return const [];
     await _hiddenLibraries.ensureInitialized();
     if (_isDisposed()) return const [];
-    final fetched = await _multiServer.aggregationService.getOnDeckFromAllServers(
-      hiddenLibraryKeys: _hiddenLibraries.hiddenLibraryKeys,
-    );
-    return fetched.items;
+    final fetched = await fetch();
+    return _withoutHiddenAndQueued([
+      for (final item in fetched.items)
+        if (!_suppressedKeys.contains(item.globalKey)) item,
+    ]);
   }
 
-  void apply(List<MediaItem> fetched) {
+  /// [fromNetwork] says whether [fetched] is the whole list; null leaves the
+  /// flag as it was (a delta merge extends what was already there).
+  void apply(List<MediaItem> fetched, {bool? fromNetwork}) {
+    if (fromNetwork != null) allFromNetwork = fromNetwork;
     if (_suppressedKeys.isNotEmpty) {
       // Self-cleaning: once the server stops returning a suppressed item, its
       // scrobble has landed and the suppression is no longer needed.
@@ -124,24 +170,53 @@ class ContinueWatchingRow {
         fetched = fetched.where((item) => !_suppressedKeys.contains(item.globalKey)).toList();
       }
     }
-    final hasMore = fetched.length > previewLimit;
-    _items = hasMore ? fetched.take(previewLimit).toList() : fetched;
-    _hasMore = hasMore;
+    _set(_withoutHiddenAndQueued(fetched));
   }
 
-  /// Swaps [updatedItem] in for the first item that [matches].
-  void replaceWhere(bool Function(MediaItem item) matches, MediaItem updatedItem) {
-    final index = _items.indexWhere(matches);
-    if (index != -1) {
-      _items = List.of(_items)..[index] = updatedItem;
+  void _set(List<MediaItem> all) {
+    _all = all;
+    _items = all.length > previewLimit ? all.take(previewLimit).toList() : all;
+  }
+
+  /// Titles hidden on this device and titles whose removal is still queued.
+  List<MediaItem> _withoutHiddenAndQueued(List<MediaItem> items) {
+    final hiddenKeys = hidden?.keys ?? const <String>{};
+    if (hiddenKeys.isEmpty && _queuedRemovalKeys.isEmpty) return items;
+    return [
+      for (final item in items)
+        if (!hiddenKeys.contains(item.globalKey) && !_queuedRemovalKeys.contains(item.globalKey)) item,
+    ];
+  }
+
+  /// A hide drops the title at once; a restore lifts its suppression and
+  /// refetches, because the item itself is no longer in memory.
+  void _onHiddenChanged() {
+    final current = hidden?.keys ?? const <String>{};
+    final restored = _lastHiddenKeys.difference(current);
+    _lastHiddenKeys = current;
+    if (restored.isNotEmpty) {
+      _suppressedKeys.removeAll(restored);
+      unawaited(refresh());
     }
+    final remaining = _all.where((item) => !current.contains(item.globalKey)).toList();
+    if (remaining.length != _all.length) {
+      _set(remaining);
+      _notify();
+    }
+  }
+
+  /// Swaps [updatedItem] in for the first item that [matches]. On the whole
+  /// list, so the overview and the row agree after a player return.
+  void replaceWhere(bool Function(MediaItem item) matches, MediaItem updatedItem) {
+    final index = _all.indexWhere(matches);
+    if (index != -1) _set(List.of(_all)..[index] = updatedItem);
   }
 
   /// Watch on-deck items and their parent shows/seasons (an episode's watch
   /// flip changes what Continue Watching should show for its series).
   Set<String>? get watchedIds {
     final keys = <String>{};
-    for (final item in _items) {
+    for (final item in _all) {
       keys.add(item.id);
       if (item.parentId != null) keys.add(item.parentId!);
       if (item.grandparentId != null) keys.add(item.grandparentId!);
@@ -152,8 +227,8 @@ class ContinueWatchingRow {
   Set<String>? get watchedGlobalKeys {
     // Suppressed movies are no longer in the list but must keep receiving
     // events: a rewatch (unwatched/progress) has to lift the suppression.
-    final keys = <String>{..._suppressedKeys};
-    for (final item in _items) {
+    final keys = <String>{..._suppressedKeys, ...?hidden?.keys};
+    for (final item in _all) {
       final serverId = item.serverId;
       if (serverId == null) return null;
 
@@ -183,10 +258,16 @@ class ContinueWatchingRow {
         _remove(event.globalKey);
       case WatchStateChangeType.unwatched:
         _suppressedKeys.remove(event.globalKey);
+        unawaited(hidden?.restore(event.globalKey));
       case WatchStateChangeType.progressUpdate:
         // A rewatch must resurface immediately, but a trailing near-complete
         // progress event (isNowWatched) must not undo the watched suppression.
-        if (event.isNowWatched != true) _suppressedKeys.remove(event.globalKey);
+        // The same holds for a title hidden on this device: playing it again
+        // is the viewer saying it belongs in the row.
+        if (event.isNowWatched != true) {
+          _suppressedKeys.remove(event.globalKey);
+          unawaited(hidden?.restore(event.globalKey));
+        }
       default:
         break;
     }
@@ -194,9 +275,11 @@ class ContinueWatchingRow {
   }
 
   void _remove(String globalKey) {
-    final remaining = _items.where((item) => item.globalKey != globalKey).toList();
-    if (remaining.length != _items.length) {
-      _items = remaining;
+    final remaining = _all.where((item) => item.globalKey != globalKey).toList();
+    if (remaining.length != _all.length) {
+      // Not through [apply]: its self-cleaning would drop the very
+      // suppression this removal just added.
+      _set(remaining);
       _notify();
     }
   }
@@ -267,6 +350,7 @@ class ContinueWatchingRow {
 
   /// Drops a queued shelf pass; the owner is going away.
   void dispose() {
+    hidden?.removeListener(_onHiddenChanged);
     _pendingSystemShelfItems = null;
   }
 }
