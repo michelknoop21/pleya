@@ -48,8 +48,9 @@ class AssistantServerComparison extends AssistantDisplay {
   final bool partial;
 }
 
-/// Who watches what on one server: Tautulli for Plex, the server itself for
-/// Jellyfin, Emby and (streams only) Pleya Server.
+/// Who watches what across the administered servers, in one card: Tautulli
+/// or Plex itself for Plex, the server itself for Jellyfin, Emby and Pleya
+/// Server. A title or person on several servers is one entry.
 class AssistantWatchStats extends AssistantDisplay {
   const AssistantWatchStats({
     required this.serverName,
@@ -57,18 +58,25 @@ class AssistantWatchStats extends AssistantDisplay {
     this.sessions = const [],
     this.titles = const [],
     this.users = const [],
-    this.available = true,
+    this.unavailable = const [],
+    this.partial = false,
   });
+
+  /// The servers that answered, joined; the asked ones when none did.
   final String serverName;
 
   /// Null for "now".
   final int? days;
   final List<WatchSession> sessions;
-  final List<({String title, int plays, List<String> viewers})> titles;
+  final List<({String title, int plays, List<String> viewers, bool show, AssistantTitleTarget? target})> titles;
+
+  /// A server answered only in part (its time ran out): no rows is then not
+  /// "nothing watched".
+  final bool partial;
   final List<({String name, int plays, int seconds})> users;
 
-  /// False when the server has no source for the asked scope.
-  final bool available;
+  /// Servers with no source for the asked scope, each named once.
+  final List<String> unavailable;
 }
 
 const _compareCap = 5000;
@@ -82,8 +90,10 @@ const _playsUserCap = 50;
 const _playsPerUser = 200;
 
 /// One play for the period aggregate, already clipped. [userKey] is the
-/// account, so two people who clip to one display name stay two users.
-typedef _Play = ({String titleKey, String title, String userKey, String user, int seconds});
+/// account on [server], so two people who clip to one display name on one
+/// server stay two users. [named] is false for a fallback label ("User 7"),
+/// which is never matched across servers.
+typedef _Play = ({String server, String titleKey, String title, String userKey, String user, int seconds, bool named});
 
 /// The wall-clock budget of one tool call. [race] answers null once it is
 /// spent, so a slow server ends the reading instead of the whole tool.
@@ -237,9 +247,7 @@ final List<AssistantTool> _insightTools = [
     },
     required: const ['other_server_id', 'kind'],
     serves: (ctx, id) =>
-        ctx.insights != null &&
-        _comparable(ctx, id) &&
-        ctx.administeredServers.any((other) => other != id && _comparable(ctx, other)),
+        _comparable(ctx, id) && ctx.administeredServers.any((other) => other != id && _comparable(ctx, other)),
     run: (ctx, id, args) async {
       final other = ServerId.tryParse(_string(args, 'other_server_id'));
       if (other == null || other == id! || !ctx.administeredServers.contains(other) || !_comparable(ctx, other)) {
@@ -293,12 +301,14 @@ final List<AssistantTool> _insightTools = [
   AssistantTool(
     name: 'watch_stats',
     description:
-        'What is being watched on a server and by whom: scope "now" for current streams, "period" for the most '
-        'watched titles and most active users over the last days (1-31). One server per call; to cover several '
-        'servers, call once per server. On Jellyfin and Emby a period counts each title once per user, at its '
-        'last play (the server keeps no play log), and only finished titles; on Pleya Server only "now" is '
-        'available.',
+        'What is being watched and by whom, across every server this profile administers, in one answer: '
+        'scope "now" for current streams, "period" for the most watched titles and most active users over the '
+        'last days (1-31). Call it once per question: one call covers all servers, a title or person on several '
+        'servers is counted once with the plays summed, and "unavailable" names the servers that could not '
+        'answer (with their backend). On Jellyfin, Emby and Pleya Server a period counts each finished title once '
+        'per user, at its last play (those servers keep no play log).',
     risk: AssistantToolRisk.read,
+    needsServer: false,
     properties: const {
       'scope': {
         'type': 'string',
@@ -307,8 +317,8 @@ final List<AssistantTool> _insightTools = [
       'days': {'type': 'integer', 'minimum': 1, 'maximum': 31},
     },
     required: const ['scope'],
-    serves: (ctx, id) => ctx.insights != null && ctx.adminClient(id) != null,
-    run: (ctx, id, args) async {
+    serves: (ctx, _) => _watchServers(ctx).isNotEmpty,
+    run: (ctx, _, args) async {
       final scope = _string(args, 'scope');
       if (scope != 'now' && scope != 'period') throw const AssistantToolError('invalid_scope');
       final days = switch (args['days']) {
@@ -316,25 +326,7 @@ final List<AssistantTool> _insightTools = [
         final int d when d >= 1 && d <= 31 => d,
         _ => throw const AssistantToolError('invalid_days'),
       };
-      // Tautulli answers only for the Plex server it monitors.
-      final tautulli = ctx.insights!.tautulliFor(id!);
-      if (tautulli != null) {
-        return scope == 'now' ? _watchedNow(ctx, id, tautulli) : _watchedPeriod(ctx, id, tautulli, days);
-      }
-      switch (ctx.adminClient(id)) {
-        case final JellyfinClient jf:
-          return scope == 'now'
-              ? _streamsNow(ctx, id, await jf.listActiveSessions())
-              : _jellyfinPeriod(ctx, id, jf, days);
-        case final PleyaServerClient ps when scope == 'now':
-          return _streamsNow(ctx, id, await ps.streamSessions());
-      }
-      final name = ctx.serverName(id);
-      return AssistantToolResult({
-        'server': clipText(name),
-        // Plex without Tautulli, or Pleya Server history (it keeps none).
-        scope == 'now' ? 'now_unavailable_for' : 'history_unavailable_for': [clipText(name)],
-      }, display: AssistantWatchStats(serverName: name, days: scope == 'now' ? null : days, available: false));
+      return scope == 'now' ? _watchedNow(ctx) : _watchedPeriod(ctx, days);
     },
   ),
 ];

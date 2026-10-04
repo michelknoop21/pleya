@@ -1,0 +1,23 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>39 F Kijkcijfers</title>
+<link rel="stylesheet" href="bp39.css"><script src="bp39.js"></script></head><body><script>
+document.body.innerHTML = homeBg({out:true}) + tabbar() + `<div class="dim"></div>
+<div class="ball" style="left:12px;right:12px;top:58px">
+  <div class="asked"><span>Je vroeg: </span>Wie heeft deze week het meest gekeken?</div>
+  <div class="answer">Robin keek het meest, vooral Sintel.</div>
+  <div class="wc"><div class="top"><div><h4>Kijkcijfers</h4><div class="sub">NAS · Afgelopen 7 dagen</div></div><div class="tot"><b>83</b><span>keer gekeken</span></div></div>
+    <div class="vs">
+      <div class="v lead"><span class="mono" style="background:#6b2f6e">R</span><b>Robin</b><i>36×</i></div>
+      <div class="v"><span class="mono" style="background:#2f4f8a">M</span><b>Michel</b><i>19×</i></div>
+      <div class="v"><span class="mono" style="background:#2f6e52">S</span><b>Sam</b><i>17×</i></div>
+      <div class="v"><span class="mono" style="background:#7a5a20">N</span><b>Noor</b><i>8×</i></div>
+      <div class="v"><span class="mono" style="background:#5a6b2f">J</span><b>Jan</b><i>3×</i></div>
+    </div></div>
+  <div class="cards">
+    ${mc('sintel-poster.jpg','Sintel',2010,'19× bekeken · Robin · Sam',['ok','In je bibliotheek · NAS'],{rank:1})}
+    ${mc('caminandes-poster.jpg','Caminandes',2016,'9× bekeken · Noor',['ok','In je bibliotheek · NAS'],{rank:2})}
+  </div>
+</div>` + tail(326, 627) + bp('bigp-duim_presenteren', {left:222, top:597, width:180}) +
+`<div class="fu float" style="position:absolute;left:12px;top:650px;width:220px;flex-direction:column;z-index:29">
+  <span class="pill">${I.follow}En deze maand?</span><span class="pill">${I.follow}En vandaag?</span><span class="pill">${I.follow}Wie kijkt er nu?</span></div>` +
+`<div class="input" style="top:790px"><span class="txt ph">Vraag verder</span><span class="send off">${I.mic}</span></div><div class="homeind"></div>`;
+</script></body></html>

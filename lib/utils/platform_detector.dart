@@ -37,6 +37,7 @@ class TvDetectionService {
   bool _forceTv = false;
   bool _isTV = false;
   bool _isAppleTV = false;
+  bool _isIOSAppOnMac = false;
   bool _initialized = false;
   List<String> _detectionReasons = const [];
 
@@ -80,6 +81,7 @@ class TvDetectionService {
             iosInfo.utsname.machine.toLowerCase().contains('appletv');
         _detected = _isAppleTV;
         _detectionReasons = _isAppleTV ? const ['apple_tv'] : const [];
+        _isIOSAppOnMac = iosInfo.isiOSAppOnMac;
       }
     }
     _forceTv = forceTv;
@@ -145,6 +147,10 @@ class TvDetectionService {
 
   /// Synchronous Apple TV check (returns false if not initialized or not tvOS).
   static bool isAppleTVSync() => _debugAppleTVOverride ?? (_tvosBuild || _instance?._isAppleTV == true);
+
+  /// The iOS app running on a Mac ("Designed for iPad", the shipped macOS
+  /// build). False until detection ran.
+  static bool isIOSAppOnMacSync() => _instance?._isIOSAppOnMac == true;
 
   @visibleForTesting
   static void debugSetAppleTVOverride(bool? value) {

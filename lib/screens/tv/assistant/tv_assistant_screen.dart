@@ -16,6 +16,8 @@ import 'package:provider/provider.dart';
 import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tool_context.dart';
+import '../../../assistant/big_p_voice.dart';
+import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../automation/automation_screen.dart';
@@ -33,25 +35,15 @@ import '../../../utils/dialogs.dart';
 import '../../../utils/media_navigation_helper.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
+import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_results.dart';
 import 'tv_assistant_tasks.dart';
-import 'tv_assistant_widgets.dart';
-
-/// Big P's mood for the controller's stand; a waiting card wins.
-BigPMood tvAssistantMood(AssistantController c) {
-  if (c.pending != null) return BigPMood.attentive;
-  return switch (c.state) {
-    AssistantSurfaceState.idle => BigPMood.idle,
-    AssistantSurfaceState.listening => BigPMood.listening,
-    AssistantSurfaceState.working => BigPMood.working,
-    AssistantSurfaceState.result => c.resultIsError ? BigPMood.error : BigPMood.success,
-  };
-}
+import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 
 class TvAssistantScreen extends StatefulWidget {
   const TvAssistantScreen({super.key, this.screenContext, this.speech, this.textEntry});
@@ -87,8 +79,6 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   int _nod = 0;
   DateTime _lastPhraseNod = DateTime.fromMillisecondsSinceEpoch(0);
   int _doneSteps = 0;
-  String? _talking;
-  Timer? _talkTimer;
   AssistantSurfaceState? _lastState;
   AssistantAvailability? _lastAvailability;
   DateTime _resultAt = DateTime.now();
@@ -100,6 +90,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   void initState() {
     super.initState();
     _mounted.add(this);
+    // One visit, one set of examples: picked before the first frame.
+    if (context.read<AssistantController?>() case final c?) BigPSuggestions.of(c).summoned();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = _c;
       if (!mounted || c == null) return;
@@ -110,6 +102,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
         unawaited(_ask());
       } else {
         focusActiveTabIfReady();
+        if (c.availability == AssistantAvailability.ready) unawaited(BigPVoice.of(c)?.say(BigPMoment.greet));
       }
     });
   }
@@ -133,7 +126,6 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     // abort() cancels every live task and notifies for each; this surface
     // stopped listening on the line above.
     _c?.abort();
-    _talkTimer?.cancel();
     _taskOptionNodes.dispose();
     for (final node in [_askNode, _cancelNode, _optionNode, _gateNode, _confirmCancelNode, _tasksNode]) {
       node.dispose();
@@ -146,18 +138,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (c == null || !mounted) return;
     if (c.state != _lastState) {
       _lastState = c.state;
-      _talkTimer?.cancel();
-      _talking = null;
       if (c.state == AssistantSurfaceState.working) _doneSteps = 0;
-      if (c.state == AssistantSurfaceState.result) {
-        _resultAt = DateTime.now();
-        // Motion: Big P cheers first, then says the answer.
-        _talkTimer = Timer(const Duration(milliseconds: 1200), () {
-          if (!mounted) return;
-          final text = assistantHeadline(c);
-          setState(() => _talking = text.isEmpty ? null : text);
-        });
-      }
+      if (c.state == AssistantSurfaceState.result) _resultAt = DateTime.now();
       // Several tasks: a change behind the viewer leaves the remote on the
       // capsule or result it is on.
       if (c.tasks.length <= 1 || !_tasksNode.hasFocus) _focusDefaultSoon();
@@ -197,7 +179,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
         AssistantSurfaceState.result =>
           (c.tasks.length > 1
                   ? _taskOptionNodes.first(c.tasks)
-                  : tvAssistantHasChoices(c.displays)
+                  : bigPHasChoices(c.displays)
                   ? _optionNode
                   : null) ??
               _askNode,
@@ -273,10 +255,13 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
 
   void _openSetup() {
     Widget builder(BuildContext _) => const AssistantSettingsScreen();
-    // The store's change signal refreshes availability on save.
-    if (openTvContentRoute(id: 'tvAssistantSetup', builder: builder) == null) {
-      unawaited(Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: builder)));
-    }
+    final c = context.read<AssistantController?>();
+    // A save refreshes through the store's change signal; the close reads
+    // again too, so a keychain that recovered meanwhile ends the set-up gate.
+    final closed =
+        openTvContentRoute(id: 'tvAssistantSetup', builder: builder) ??
+        Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: builder));
+    unawaited(closed.then((_) => c?.refreshAvailability()));
   }
 
   String _servers() {
@@ -293,7 +278,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
   Widget build(BuildContext context) {
     final c = _c;
     if (c == null || c.availability == AssistantAvailability.hidden) return const SizedBox.shrink();
-    final mood = tvAssistantMood(c);
+    final mood = bigPMood(c);
     final Widget body = switch (c.availability) {
       AssistantAvailability.locked || AssistantAvailability.needsSetup => TvAssistantGate(
         locked: c.availability == AssistantAvailability.locked,
@@ -339,13 +324,16 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
                 padding: EdgeInsets.only(bottom: 100 * pt),
                 child: Center(
                   child: RepaintBoundary(
-                    child: BigPAvatar(
-                      mood: mood,
-                      size: (560 * pt).clamp(0.0, box.maxHeight * 0.75),
-                      nodSignal: _nod,
-                      talkingText: c.state == AssistantSurfaceState.result ? _talking : null,
-                      // Working: the arm follows the newest step down the list.
-                      pointAt: working ? Alignment(1, (0.15 * c.steps.length).clamp(0.0, 1.0)) : null,
+                    child: BigPVoiceMouth(
+                      controller: c,
+                      builder: (line) => BigPAvatar(
+                        mood: mood,
+                        size: (560 * pt).clamp(0.0, box.maxHeight * 0.75),
+                        nodSignal: _nod,
+                        talkingText: line,
+                        // Working: the arm follows the newest step down the list.
+                        pointAt: working ? Alignment(1, (0.15 * c.steps.length).clamp(0.0, 1.0)) : null,
+                      ),
                     ),
                   ),
                 ),
@@ -355,7 +343,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
               width: 800 * pt,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: box.maxHeight - 110 * pt),
-                child: TvAssistantGlassPanel(
+                child: BigPGlassPanel(
                   child: TvAssistantConversation(
                     controller: c,
                     name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',

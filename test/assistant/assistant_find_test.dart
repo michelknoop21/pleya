@@ -97,6 +97,42 @@ void main() {
     ctx.requireShownItem(ServerId('zolder'), '1');
   });
 
+  test('a subject finds plots about it, not titles that only carry the word', () async {
+    final server = FakeServer(
+      'zolder',
+      libraries: {
+        'films': [
+          fakeItem('1', 'Space Jam', year: 1996, summary: 'Michael Jordan plays basketball with the Looney Tunes.'),
+          fakeItem('2', 'Safe Space', year: 2021, summary: 'A comedian navigates a campus controversy.'),
+          fakeItem('3', 'Gravity', year: 2013, summary: 'Two astronauts are stranded in space after an accident.'),
+          fakeItem('4', 'Apollo 13', year: 1995, summary: 'NASA must bring a damaged spacecraft back to Earth.'),
+        ],
+      },
+    );
+    final ctx = findCtx([server], libraries: [fakeLib('zolder', 'films')]);
+    final titles = [
+      for (final m in matchesOf(
+        await runFind(ctx, {
+          'kind': 'movie',
+          'subject': true,
+          // What qwen3:8b sent for "een film over de ruimte".
+          'variants': ['space', 'ruimte'],
+        }),
+      ))
+        m['title'],
+    ];
+    expect(titles, ['Gravity']);
+
+    // Named by the model, a title still comes up on its title alone.
+    final named = await runFind(ctx, {
+      'candidates': [
+        {'title': 'Space Jam'},
+      ],
+      'variants': ['basketball cartoon', 'tekenfilm basketbal'],
+    });
+    expect(matchesOf(named).first['title'], 'Space Jam');
+  });
+
   test('a Wikipedia hit is normalised through Seerr search, without Wikidata', () async {
     final web = FakeWeb()
       ..wiki = {
@@ -285,7 +321,21 @@ void main() {
 
     expect(web.search.queries, ['garage engineers accidental time machine']);
     expect(data['web_searched'], isTrue);
+    expect(matchesOf(data).first['title'], 'Primer', reason: 'without Seerr the web page is still shown');
+  });
+
+  test('with Seerr the film from the web becomes a requestable card', () async {
+    final web = FakeWeb();
+    web.search.hits = [
+      (title: 'Primer (2004) - IMDb', url: 'https://imdb.example', snippet: 'Engineers build a time machine.'),
+    ];
+    final ctx = findCtx(const [], web: web, seerr: primerSeerr());
+    final data = await runFind(ctx, {
+      'variants': ['garage engineers accidental time machine', 'tijdmachine'],
+    });
+
     expect(matchesOf(data).first['title'], 'Primer');
+    expect(matchesOf(data).first['seerr_id'], 'movie:14337');
   });
 
   test('ids from the model are never used', () async {

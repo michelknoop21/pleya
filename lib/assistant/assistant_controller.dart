@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../i18n/strings.g.dart';
+import '../media/ids.dart';
+import '../media/server_administration.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
@@ -17,6 +19,7 @@ import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 
+part 'assistant_controller_jobs.dart';
 part 'assistant_controller_language.dart';
 
 enum AssistantAvailability { hidden, locked, needsSetup, ready }
@@ -44,18 +47,38 @@ class AssistantController extends ChangeNotifier {
     DateTime Function()? now,
     this._tools,
     Listenable? configChanges,
+    this._serverChanges,
+    this.jobPollInterval = const Duration(seconds: 2),
+    this.jobWatchLimit = const Duration(minutes: 2),
+    this._jobsFor,
   }) : _now = now ?? DateTime.now,
        _loadConfig = loadConfig ?? AssistantProviderStore.instance.load,
        _modelFor = modelFor ?? AssistantModelClient.new,
        _languageName = languageName ?? assistantLanguageName,
        _configChanges = configChanges ?? AssistantProviderStore.changes {
     _configChanges.addListener(_onConfigChanged);
+    _serverChanges?.addListener(_onServersChanged);
   }
 
   /// A provider saved or cleared in Instellingen moves the tile and the
   /// summon out of (or into) setup without reopening Mijn Pleya.
   final Listenable _configChanges;
   void _onConfigChanged() => unawaited(refreshAvailability());
+
+  /// Servers load after the session starts, so the first read can see none
+  /// and answer hidden. Their arrival (none to some) reads once more, so the
+  /// face button and the Discover slot show up without a visit to Mijn Pleya.
+  final Listenable? _serverChanges;
+  bool _hadServers = false;
+  void _onServersChanged() {
+    // Every MultiServerProvider notify lands here; with the flag off nothing
+    // can become visible, so no tool context gets built.
+    if (!_rolloutEnabled || _disposed) return;
+    final hasServers = _buildContext(null).userServers.isNotEmpty;
+    final arrived = hasServers && !_hadServers;
+    _hadServers = hasServers;
+    if (arrived && _availability == AssistantAvailability.hidden) unawaited(refreshAvailability());
+  }
 
   final AssistantToolContext Function(AssistantScreenContext? screen) _buildContext;
   final bool _rolloutEnabled;
@@ -78,9 +101,24 @@ class AssistantController extends ChangeNotifier {
   /// How long a confirmation card waits; then the run hears `not_confirmed`.
   final Duration confirmTimeout;
 
+  /// How often a started scan or job is looked up, and for how long.
+  final Duration jobPollInterval;
+  final Duration jobWatchLimit;
+
+  /// Tests only: job lists without a registered server.
+  final Future<List<ServerJob>?> Function(ServerId serverId)? _jobsFor;
+
+  /// Bumped by a new ask, [abort] and [dispose]: stops the job watch.
+  int _jobsSeq = 0;
+
   AssistantAvailability _availability = AssistantAvailability.hidden;
   AssistantSurfaceState _state = AssistantSurfaceState.idle;
   bool _resultIsError = false;
+
+  /// Bumped by every [submit]: tells one answer from the next, also when the
+  /// same question is asked again.
+  int get runs => _runs;
+  int _runs = 0;
   AssistantRunEnd? _lastEnd;
   AssistantModelError? _lastProviderError;
   bool _modelMissing = false;
@@ -111,6 +149,14 @@ class AssistantController extends ChangeNotifier {
   bool _disposed = false;
 
   AssistantAvailability get availability => _availability;
+
+  /// Lets a listener with its own timers (Big P's voice) stand down.
+  bool get disposed => _disposed;
+
+  final List<VoidCallback> _onDispose = [];
+
+  /// Runs [cleanup] when this controller is disposed, e.g. to silence Big P.
+  void onDispose(VoidCallback cleanup) => _onDispose.add(cleanup);
   AssistantSurfaceState get state => _state;
   bool get resultIsError => _resultIsError;
   AssistantRunEnd? get lastEnd => _lastEnd;
@@ -153,10 +199,25 @@ class AssistantController extends ChangeNotifier {
     final ctx = _buildContext(null);
     if (ctx.userServers.isEmpty && ctx.requests?.client() == null) return AssistantAvailability.hidden;
     if (await _entitlement.check() != AssistantEntitlementState.entitled) return AssistantAvailability.locked;
-    final config = await _loadConfig();
+    final AssistantProviderConfig? config;
+    try {
+      config = await _loadConfig();
+    } on AssistantProviderStoreException {
+      // An unreadable keychain is not "not configured": keep the last answer.
+      // Without one (hidden is only the initial value past the checks above)
+      // setup stays reachable. A save there does not write over the item it
+      // could not read: it stays on this device and goes up later only into
+      // an empty keychain. Every refresh reads again.
+      return _availability == AssistantAvailability.hidden ? AssistantAvailability.needsSetup : _availability;
+    }
     if (config == null || !config.isComplete) return AssistantAvailability.needsSetup;
     return AssistantAvailability.ready;
   }
+
+  /// Forgets the screen Big P was last asked from. [beginListening] keeps it
+  /// across a null context (TV's follow-ups); a summon from somewhere
+  /// without one (iPhone and iPad) must not ask about the last library.
+  void clearScreenContext() => _screenContext = null;
 
   void beginListening({AssistantScreenContext? context}) {
     if (_busy || _pending != null) return;
@@ -204,6 +265,7 @@ class AssistantController extends ChangeNotifier {
     final screen = _screenContext;
     reset();
     _screenContext = screen;
+    _runs++;
     final generation = _generation;
     _prompt = text;
     final budget = AssistantQuestionBudget();
@@ -330,7 +392,8 @@ class AssistantController extends ChangeNotifier {
       task.modelMissing = result.end == AssistantRunEnd.providerError && model.modelMissing;
       final playbackCurrent = result.playbackEvidenceCurrent?.call() ?? true;
       final doctorError = result.libraryDoctorError?.call();
-      if (doctorError != null) {
+      final displayCurrent = result.displayEvidenceCurrent?.call() ?? true;
+      if (doctorError != null || !displayCurrent) {
         task.displays.clear();
         task.steps.clear();
       }
@@ -342,11 +405,18 @@ class AssistantController extends ChangeNotifier {
       }
       task.error =
           doctorError ??
+          (!displayCurrent ? 'catalog_changed' : null) ??
           (playbackCurrent
               ? result.error ?? (result.end == AssistantRunEnd.answered ? null : result.end.name)
               : 'playback_session_changed');
-      task.answer = playbackCurrent && doctorError == null ? result.text : '';
+      task.answer = playbackCurrent && doctorError == null && displayCurrent ? result.text : '';
       task.actions.addAll(result.actions);
+      if (playbackCurrent && doctorError == null && displayCurrent) {
+        task.displays
+          ..clear()
+          ..addAll(result.displays);
+      }
+      if (task.actions.any((action) => action.job != null)) unawaited(_watchJobs(task));
       task.status = _outcomeStatus(task.error);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
     } catch (e, st) {
@@ -538,6 +608,7 @@ class AssistantController extends ChangeNotifier {
   void abort() {
     cancelAll();
     _generation++;
+    _jobsSeq++;
   }
 
   void reset() {
@@ -597,8 +668,12 @@ class AssistantController extends ChangeNotifier {
   @override
   void dispose() {
     _configChanges.removeListener(_onConfigChanged);
+    _serverChanges?.removeListener(_onServersChanged);
     _disposed = true;
     abort();
+    for (final cleanup in _onDispose) {
+      cleanup();
+    }
     super.dispose();
   }
 }

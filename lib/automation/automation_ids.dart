@@ -266,6 +266,9 @@ class AutomationIds {
   /// One example question in rust (`assistant.example[0]`).
   static const String assistantExample = 'assistant.example';
 
+  /// One follow-up question under a result (`assistant.followUp[0]`).
+  static const String assistantFollowUp = 'assistant.followUp';
+
   /// The live step list while Big P works; state carries the step count.
   static const String assistantSteps = 'assistant.steps';
 
@@ -296,9 +299,30 @@ class AutomationIds {
   static const String assistantConfirmButton = 'assistant.confirm.button';
 
   /// Big P summoned with a long Play/Pause press, over any TV screen. State
-  /// carries `shown`, `state`, `error`, `pending` and `lingering` (a good
-  /// result counting down to leaving on its own).
+  /// carries `shown`, `state`, `error` and `pending`. A result stays until
+  /// Menu or Klaar: it always offers follow-ups.
   static const String assistantSummon = 'assistant.summon';
+
+  /// Big P's face button in the mobile page header; state carries `active` while he is out.
+  static const String bigpFaceButton = 'bigp.faceButton';
+
+  /// The speech balloon on iPhone and iPad; state carries `state`, `error` and `pending`.
+  static const String bigpBalloon = 'bigp.balloon';
+
+  /// The question field under the balloon.
+  static const String bigpInput = 'bigp.input';
+
+  /// One follow-up question beside Big P (`bigp.followUp[0]`).
+  static const String bigpFollowUp = 'bigp.followUp';
+
+  /// Big P peeking over the edge of a detail screen after a title tap; state carries the remaining title count.
+  static const String bigpPeek = 'bigp.peek';
+
+  /// The "Vraag het Big P" entry on the search screen.
+  static const String bigpSearchAsk = 'bigp.searchAsk';
+
+  /// Ask Big P about one library (`bigp.libraryAsk[<serverId>:<libraryId>]`).
+  static const String bigpLibraryAsk = 'bigp.libraryAsk';
 
   /// A text field on a connect-a-service settings screen, suffixed with the
   /// service and the field (`settings.form.field[seerr.url]`,
@@ -571,11 +595,14 @@ class AutomationIds {
     myPleyaLogRow,
     assistantButton,
     assistantExample,
+    assistantFollowUp,
     assistantOption,
     assistantMatch,
     assistantTask,
     assistantTaskCancel,
     assistantConfirmButton,
+    bigpFollowUp,
+    bigpLibraryAsk,
     playerPanelTab,
     playerPanelRow,
     requestsMineItem,
@@ -674,6 +701,7 @@ class AutomationIds {
     {'id': screenAssistant, 'role': 'screen', 'instanceable': false},
     {'id': assistantButton, 'role': 'button', 'instanceable': true},
     {'id': assistantExample, 'role': 'button', 'instanceable': true},
+    {'id': assistantFollowUp, 'role': 'button', 'instanceable': true},
     {'id': assistantSteps, 'role': 'list', 'instanceable': false},
     {'id': assistantResult, 'role': 'region', 'instanceable': false},
     {'id': assistantOption, 'role': 'list.item', 'instanceable': true},
@@ -683,6 +711,13 @@ class AutomationIds {
     {'id': assistantConfirm, 'role': 'sheet', 'instanceable': false},
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},
+    {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
+    {'id': bigpBalloon, 'role': 'region', 'instanceable': false},
+    {'id': bigpInput, 'role': 'field', 'instanceable': false},
+    {'id': bigpFollowUp, 'role': 'button', 'instanceable': true},
+    {'id': bigpPeek, 'role': 'button', 'instanceable': false},
+    {'id': bigpSearchAsk, 'role': 'button', 'instanceable': false},
+    {'id': bigpLibraryAsk, 'role': 'button', 'instanceable': true},
     {'id': settingsFormField, 'role': 'field', 'instanceable': true},
     {'id': settingsFormButton, 'role': 'button', 'instanceable': true},
     {'id': activityRow, 'role': 'list.item', 'instanceable': true},

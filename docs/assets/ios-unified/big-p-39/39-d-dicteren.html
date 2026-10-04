@@ -1,0 +1,9 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>39 D Dicteren</title>
+<link rel="stylesheet" href="bp39.css"><script src="bp39.js"></script></head><body><script>
+document.body.innerHTML = homeBg({out:true}) + tabbar() + `<div class="dim"></div>
+<div class="ball" style="left:12px;right:12px;top:250px">
+  <div class="state"><span class="dot"></span>Ik luister…</div>
+  <div class="label" style="margin-top:8px;font-size:15px">Spreek je vraag in, of typ hem.</div>
+</div>` + tail(318, 340) + bp('bigp-blij', {left:214, top:314, width:190}) +
+`<div class="input" style="top:520px"><span class="txt">welke animatiefilms heb ik nog niet ge<span class="caret"></span></span>${wave()}<span class="send">${I.up}</span></div>` + keyboard({dictating:true, sug:['gezien','gekeken','gedaan']});
+</script></body></html>

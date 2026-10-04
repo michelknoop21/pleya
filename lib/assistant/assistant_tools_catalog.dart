@@ -51,6 +51,7 @@ final List<AssistantTool> _catalogTools = [
         'Search films and series on all servers of this profile by text, kind, genres, years, minimum rating '
         '(0-10), watch state, audio languages, official ratings or an actor (person). Runtime bounds (inclusive minutes), '
         'genre exclusions and subtitle languages use strict metadata evidence in a bounded temporary result. '
+        'text matches titles, not themes or plots: use find_title for those. '
         'Genres are OR for native rows, ALL when combined with temporary strict filters; multiple audio languages require ALL. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
         'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',

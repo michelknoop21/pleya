@@ -57,6 +57,11 @@ steps:
   - wait_until: {id: screen.assistant, timeout: 10000}
   - assert: {id: screen.assistant, state: {availability: needsSetup}}
   - wait_until: {focused: "assistant.button[setup]", timeout: 5000}
+  # The balloon (assistant.summon, 39 J) is the ready-state summon only; with
+  # no provider the hold opens the full surface instead. The balloon itself
+  # needs a model the fixture does not have, so its pixels come from
+  # test/screens/tv/assistant/tv_assistant_audit_shots_test.dart (summon-*).
+  - assert: {id: assistant.summon, present: false}
   - settle: 800
   - snapshot: 04-summon
   # Mijn Pleya stays mounted under the nested route, so its id is no anchor

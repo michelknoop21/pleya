@@ -46,12 +46,15 @@ void main() {
       expect(_state(tester).expression, 'worried');
     });
 
-    testWidgets('working with pointAt on the left uses the three-quarter pose without face layer', (tester) async {
+    // The three-quarter wijzen_links art is narrower and turned (the big-p
+    // skill keeps it to a moment without text); held through werken it read
+    // as a squashed Big P on hardware. Left of him, he raises a finger.
+    testWidgets('working with pointAt on the left raises a finger, never the three-quarter pose', (tester) async {
       await tester.pumpWidget(
         _host(const BigPAvatar(mood: BigPMood.working, pointAt: Alignment.centerLeft, entrance: false), reduced: true),
       );
-      expect(find.byKey(const ValueKey('bigp-pose-wijzen_links')), findsOneWidget);
-      expect(find.byKey(const ValueKey('bigp-face-working')), findsNothing);
+      expect(find.byKey(const ValueKey('bigp-pose-vinger_presenteren')), findsOneWidget);
+      expect(find.byKey(const ValueKey('bigp-pose-wijzen_links')), findsNothing);
     });
 
     testWidgets('success cheers first, then swaps mid-squash to the thumbs-up pose', (tester) async {

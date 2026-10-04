@@ -1,0 +1,163 @@
+/* Mockup 39: Big P op iPhone en iPad, Clippy-vorm.
+   Bron van de stijl: de iOS-app op main 91e02ba2 (Verify-screenshots Home, Mijn Pleya,
+   Zoeken, Instellingen) en de Big P-componenten van tvOS 319 (paneel, vraagchip,
+   titelkaart met statuspil en rangbadge, kijkcijferkaart, pillen). */
+@font-face { font-family: Inter; src: url(../../../../assets/fonts/Inter-Regular.otf); font-weight: 400; }
+@font-face { font-family: Inter; src: url(../../../../assets/fonts/Inter-Medium.otf); font-weight: 500; }
+@font-face { font-family: Inter; src: url(../../../../assets/fonts/Inter-Bold.otf); font-weight: 700; }
+@font-face { font-family: Archivo; src: url(../../../../assets/fonts/ArchivoBlack-Regular.ttf); }
+:root {
+  --bg:#000; --accent:#E5140F; --accent-alt:#FFB020; --success:#3DD68C;
+  --grad:linear-gradient(135deg,#E5140F,#FFB020);
+  --ink:#fff; --ink-2:rgba(255,255,255,.65); --ink-3:rgba(255,255,255,.45);
+  /* tvOS-paneel: 0xB3202424 met rand 0x24FFFFFF; kaarten 0xE6161616 */
+  --panel:rgba(31,35,35,.97); --panel-line:rgba(255,255,255,.14); --card:rgba(22,22,22,.92);
+  --pill:rgba(255,255,255,.12);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { position:relative; width:402px; height:874px; overflow:hidden; background:var(--bg); color:var(--ink);
+  font-family:Inter,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.35; }
+svg.ic { width:1em; height:1em; display:block; flex:none; }
+
+/* ---------- home zoals de app hem nu tekent ---------- */
+.status { position:absolute; left:0; right:0; top:0; height:54px; display:flex; align-items:center; justify-content:space-between; padding:6px 30px 0 40px; font-weight:700; font-size:17px; z-index:30; }
+.status .island { position:absolute; left:50%; top:11px; width:124px; height:36px; transform:translateX(-50%); background:#111; border-radius:999px; }
+.hdr { position:absolute; left:16px; right:12px; top:62px; height:48px; display:flex; align-items:center; gap:10px; }
+.hdr .logo { height:34px; margin-right:auto; }
+.hdr .search { font-size:28px; width:44px; height:44px; display:grid; place-items:center; }
+.mono { border-radius:50%; display:grid; place-items:center; font-weight:700; color:#fff; flex:none; }
+.hdr .ava { width:40px; height:40px; background:#C62828; font-size:17px; margin:0 4px; }
+.chips { position:absolute; left:16px; top:124px; display:flex; gap:10px; }
+.chips span { height:38px; padding:0 17px; border-radius:999px; border:1.5px solid rgba(255,255,255,.75); display:flex; align-items:center; font-size:16px; letter-spacing:.02em; }
+.sec { position:absolute; left:16px; font-size:24px; font-weight:700; letter-spacing:-.01em; }
+.land { position:absolute; left:16px; display:flex; gap:12px; }
+.land div { width:290px; } .land img { width:290px; height:164px; border-radius:12px; object-fit:cover; display:block; }
+.land b, .rail b { display:block; font-size:16px; font-weight:700; margin-top:6px; }
+.rail { position:absolute; left:16px; display:flex; gap:12px; }
+.rail div { width:156px; } .rail img { width:156px; height:234px; border-radius:12px; object-fit:cover; display:block; }
+.rail i { font-style:normal; font-size:13px; color:var(--ink-2); }
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:96px; background:#111; display:flex; justify-content:space-around; padding-top:12px; z-index:20; }
+.tabbar div { width:90px; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:14px; color:var(--ink-2); }
+.tabbar div svg { font-size:28px; color:#fff; }
+.tabbar .on, .tabbar .on svg { color:var(--accent); }
+.tabbar .tava { width:30px; height:30px; background:#C62828; font-size:12px; }
+.tabbar .me { color:var(--accent); }
+.homeind { position:absolute; left:50%; bottom:8px; width:136px; height:5px; border-radius:3px; background:#fff; transform:translateX(-50%); z-index:40; }
+
+/* ---------- de gezichtsknop (nieuw) ---------- */
+.face { position:relative; width:40px; height:40px; border-radius:50%; flex:none; overflow:hidden; margin:0 2px;
+  background:radial-gradient(circle at 50% 35%,#3a1210,#1a0605); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22); }
+.face img { position:absolute; width:112px; left:-40px; top:-22px; }
+/* opgeroepen: Big P is uit zijn knop gesprongen, de knop blijft als lege ring achter */
+.face.out { background:transparent; box-shadow:inset 0 0 0 1.5px rgba(255,176,32,.7); }
+.face.out img { display:none; }
+.face .pip { position:absolute; right:0; top:0; width:11px; height:11px; border-radius:50%; background:var(--accent-alt); box-shadow:0 0 0 2px #000; }
+
+/* ---------- oproeplaag ---------- */
+.dim { position:absolute; inset:0; background:rgba(0,0,0,.6); z-index:24; }
+.bp { position:absolute; z-index:28; }
+.bp img { display:block; width:100%; }
+.bp .shadow { position:absolute; left:20%; right:18%; bottom:4%; height:14px; border-radius:50%;
+  background:radial-gradient(rgba(229,20,15,.45),transparent 70%); z-index:-1; filter:blur(2px); }
+
+/* tekstballon = het Big P-paneel van tvOS, met een staart naar Big P */
+.ball { position:absolute; z-index:27; background:var(--panel); backdrop-filter:blur(30px) saturate(1.4);
+  border:1px solid var(--panel-line); border-radius:28px; padding:18px 16px 16px; box-shadow:0 30px 70px rgba(0,0,0,.6); }
+.tail { position:absolute; z-index:27; width:22px; height:22px; background:var(--panel); border-right:1px solid var(--panel-line); border-bottom:1px solid var(--panel-line);
+  border-radius:0 0 6px 0; transform:rotate(45deg); }
+.greet { font-size:23px; font-weight:700; line-height:1.2; letter-spacing:-.015em; }
+.asked { background:rgba(255,255,255,.12); border-radius:12px; padding:9px 12px; font-size:14px; line-height:1.3; }
+.asked span { color:var(--ink-2); }
+.answer { font-size:19px; font-weight:700; line-height:1.28; margin-top:12px; letter-spacing:-.01em; }
+.label { font-size:14px; color:var(--ink-2); margin-top:16px; }
+.state { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--ink-2); }
+.state .dot { width:8px; height:8px; border-radius:50%; background:var(--success); }
+.state .dot.busy { background:var(--accent-alt); }
+
+/* pillen: wit = primair, grijs = voorbeeld/vervolg (TvAssistantChip) */
+.pills { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.pill { display:flex; align-items:center; gap:8px; min-height:42px; padding:10px 15px; border-radius:999px; background:var(--pill); font-size:15px; line-height:1.25; align-self:flex-start; }
+.pill svg { font-size:17px; color:var(--ink-2); }
+.pill.pri { background:#fff; color:#000; font-weight:700; }
+.pill.pri svg { color:#000; }
+.fu { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.fu .pill { min-height:36px; padding:7px 13px 7px 10px; font-size:14px; }
+
+/* titelkaart (TvAssistantMatchCard, aanraakversie) */
+.cards { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.mc { position:relative; display:flex; gap:12px; background:var(--card); border-radius:16px; padding:10px; }
+.mc .art { position:relative; flex:none; width:58px; height:87px; }
+.mc .art img { width:100%; height:100%; border-radius:8px; object-fit:cover; display:block; }
+.mc .rank { position:absolute; left:-7px; top:-7px; width:24px; height:24px; border-radius:50%; background:var(--grad); border:2.5px solid #161616;
+  font-size:12px; font-weight:700; display:grid; place-items:center; }
+.mc .txt { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; }
+.mc .t { font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mc .t span { color:var(--ink-3); font-weight:500; }
+.mc .k { font-size:13px; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.st { align-self:flex-start; margin-top:4px; height:24px; padding:0 10px; border-radius:999px; font-size:12.5px; font-weight:500; display:flex; align-items:center; }
+.st.ok { background:rgba(61,214,140,.16); color:var(--success); }
+.st.req { background:rgba(255,176,32,.16); color:var(--accent-alt); }
+.st.ask { background:rgba(255,255,255,.16); color:#fff; }
+.mc .go { align-self:center; color:var(--ink-3); font-size:18px; }
+
+/* kijkcijfers (TvAssistantWatchCard) */
+.wc { background:var(--card); border-radius:18px; padding:16px 16px 14px; margin-top:12px; }
+.wc .top { display:flex; justify-content:space-between; align-items:flex-start; }
+.wc h4 { font-size:20px; font-weight:700; }
+.wc .sub { font-size:13px; color:var(--ink-2); margin-top:2px; }
+.wc .tot { text-align:right; }
+.wc .tot b { display:block; font-family:Archivo; font-size:34px; line-height:1; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.wc .tot span { font-size:12px; color:var(--ink-2); }
+.wc .vs { display:flex; justify-content:space-between; margin-top:16px; }
+.wc .v { width:62px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.wc .v .mono { width:42px; height:42px; font-size:17px; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18); }
+.wc .v.lead .mono { box-shadow:0 0 0 2.5px #161616, 0 0 0 4.5px var(--accent-alt); }
+.wc .v b { font-size:12.5px; font-weight:700; max-width:62px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wc .v.lead b { } .wc .v i { font-style:normal; font-size:12.5px; font-weight:700; color:var(--ink-2); }
+.wc .v.lead i { color:var(--accent); }
+
+/* bevestiging (TvAssistantConfirmCard) */
+.cf h3 { font-size:21px; font-weight:700; margin-top:10px; }
+.cf .rows { background:var(--card); border-radius:16px; padding:2px 14px; margin-top:12px; }
+.cf .rows div { display:flex; justify-content:space-between; padding:11px 0; border-top:1px solid rgba(255,255,255,.08); font-size:15px; }
+.cf .rows div:first-child { border-top:0; }
+.cf .rows span { color:var(--ink-2); }
+.cf .rows b { font-weight:700; }
+.cf .why { font-size:13px; color:var(--ink-2); margin-top:12px; line-height:1.4; }
+.btns { display:flex; gap:10px; margin-top:14px; }
+.btns .pill { flex:1; justify-content:center; align-self:auto; min-height:48px; font-size:16px; font-weight:700; }
+
+/* invoerbalk boven het toetsenbord */
+.input { position:absolute; left:10px; right:10px; height:46px; border-radius:23px; z-index:29; background:#1c1c1e; border:1px solid rgba(255,255,255,.14);
+  display:flex; align-items:center; padding:0 5px 0 16px; gap:10px; font-size:16px; }
+.input .txt { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.input .txt.ph { color:var(--ink-3); }
+.input .caret { display:inline-block; width:2px; height:20px; background:#0A84FF; vertical-align:-4px; margin-left:1px; }
+.input .send { width:36px; height:36px; border-radius:50%; background:#fff; color:#000; display:grid; place-items:center; font-size:18px; }
+.input .send.off { background:rgba(255,255,255,.14); color:var(--ink-3); }
+
+/* iOS-toetsenbord zoals de Zoeken-screenshot het toont */
+.kb { position:absolute; left:0; right:0; bottom:0; height:300px; background:#1e1e1f; border-radius:22px 22px 0 0; z-index:29; padding:10px 4px 0; }
+.kb .sug { height:40px; display:flex; align-items:center; font-size:17px; color:var(--ink-2); margin-bottom:6px; }
+.kb .sug span { flex:1; text-align:center; border-right:1px solid rgba(255,255,255,.18); }
+.kb .sug span:last-child { border:0; }
+.kb .row { display:flex; justify-content:center; gap:6px; margin-bottom:12px; }
+.kb .k { width:33.5px; height:44px; border-radius:7px; background:#4a4a4c; display:grid; place-items:center; font-size:23px; }
+.kb .k.w { width:46px; background:#2f2f31; font-size:16px; }
+.kb .k.sp { width:170px; background:#4a4a4c; }
+.kb .k.ret { width:96px; background:#0A84FF; font-size:16px; }
+.kb .k.mic.on { background:#0A84FF; }
+
+/* geluidsgolf tijdens dicteren */
+.wave { display:inline-flex; gap:3px; align-items:center; height:22px; vertical-align:middle; }
+.wave i { width:3px; border-radius:2px; background:#0A84FF; }
+
+/* Big P die vanaf de rand meekijkt op een ander scherm */
+.peek { position:absolute; z-index:28; overflow:hidden; }
+.peek img { position:absolute; display:block; }
+.peek-tip { position:absolute; z-index:28; }
+/* iPad en tvOS: dezelfde componenten, groter getekend */
+.zoom2 { zoom:2; }
+.zoom15 { zoom:1.5; }
+/* vervolgvragen naast Big P, buiten de ballon: dicht, anders loopt de achtergrond erdoor */
+.fu.float .pill { background:#2a2e2e; border:1px solid var(--panel-line); box-shadow:0 8px 20px rgba(0,0,0,.5); }

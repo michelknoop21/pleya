@@ -12,16 +12,17 @@ import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/assistant/big_p_voice.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/media/ids.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_confirm_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_option_card.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_results.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_summon.dart';
-import 'package:pleya/screens/tv/assistant/tv_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_confirm_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_option_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_results.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
@@ -50,12 +51,13 @@ AssistantTask _task(
   List<AssistantStep> steps = const [],
   List<AssistantActionRecord> actions = const [],
   AssistantRunEnd? lastEnd,
+  String answer = '',
 }) => AssistantTask(
   id: 'task-$n',
   title: title,
   intent: 'command',
   status: status,
-  answer: '',
+  answer: answer,
   displays: displays,
   steps: steps,
   actions: actions,
@@ -129,9 +131,65 @@ void main() {
 
   /// The capsules on screen, by the index of their task.
   List<String?> capsules(WidgetTester tester) => [
-    for (final chip in tester.widgetList<TvAssistantChip>(find.byType(TvAssistantChip)))
+    for (final chip in tester.widgetList<BigPChip>(find.byType(BigPChip)))
       if (chip.automationId == AutomationIds.assistantTaskCancel) chip.automationInstance,
   ];
+
+  /// The follow-ups on screen, by their place in the row.
+  List<String?> followUps(WidgetTester tester) => [
+    for (final chip in tester.widgetList<BigPChip>(find.byType(BigPChip)))
+      if (chip.automationId == AutomationIds.assistantFollowUp) chip.automationInstance,
+  ];
+
+  /// The scrolling part of the task list; an answer's own box comes after it.
+  Finder list() => find
+      .descendant(of: find.byKey(const ValueKey('assistant.tasks')), matching: find.byType(SingleChildScrollView))
+      .first;
+
+  ScrollPosition listPosition(WidgetTester tester) =>
+      tester.state<ScrollableState>(find.descendant(of: list(), matching: find.byType(Scrollable)).first).position;
+
+  Rect focusedRect() {
+    final box = FocusManager.instance.primaryFocus!.context!.findRenderObject()! as RenderBox;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// What the remote is on, with the ring it draws inside its own box, is in
+  /// the list's box and in no edge that fades because there is more beyond.
+  void expectFocusedClearOfFades(WidgetTester tester) {
+    final view = tester.getRect(list());
+    final position = listPosition(tester);
+    final rect = focusedRect();
+    final label = focusedLabel();
+    expect(
+      rect.top,
+      greaterThanOrEqualTo(view.top + (position.extentBefore > 0.5 ? 44 : 0) - 0.5),
+      reason: '$label under the top edge',
+    );
+    expect(
+      rect.bottom,
+      lessThanOrEqualTo(view.bottom - (position.extentAfter > 0.5 ? 44 : 0) + 0.5),
+      reason: '$label over the bottom edge',
+    );
+  }
+
+  /// Whether the remote is in the scrolling list, not on the buttons that
+  /// stand under it: only the list has edges that fade.
+  bool focusedInList(WidgetTester tester) {
+    final view = tester.element(list());
+    var inside = false;
+    FocusManager.instance.primaryFocus?.context?.visitAncestorElements((element) {
+      inside = identical(element, view);
+      return !inside;
+    });
+    return inside;
+  }
+
+  String? focusedOption() =>
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<BigPOptionCard>()?.option.title;
+
+  String? focusedChip() =>
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<BigPChip>()?.automationId;
 
   Finder taskCard(int index) => find.byWidgetPredicate(
     (w) => w is AutomationNode && w.id == AutomationIds.assistantTask && w.instance == '$index',
@@ -184,7 +242,7 @@ void main() {
           _task(1, _question, AssistantTaskStatus.running, steps: const [_step]),
         ]);
 
-        expect(find.byType(TvAssistantStepList), findsOneWidget);
+        expect(find.byType(BigPStepList), findsOneWidget);
         expect(taskStates(tester), isEmpty);
         expect(capsules(tester), isEmpty);
         expect(button(t.assistant.result.cancel), findsOneWidget);
@@ -205,7 +263,7 @@ void main() {
           {'id': 'task-2', 'status': 'running', 'cancellable': true},
           {'id': 'task-3', 'status': 'pending', 'cancellable': true},
         ]);
-        expect(find.byType(TvAssistantStepList), findsNothing);
+        expect(find.byType(BigPStepList), findsNothing);
         expect(find.text(t.assistant.tasks.working(count: 3, done: 1)), findsOneWidget);
         expect(find.text('Films scannen · Zolder'), findsOneWidget);
         expect(find.textContaining(t.assistant.actions.scanLibrary, findRichText: true), findsOneWidget);
@@ -236,7 +294,7 @@ void main() {
         expect(taskStates(tester).map((s) => (s! as Map)['id']), ['task-1', 'task-2', 'task-3']);
         final first = tester.getTopLeft(taskCard(0)).dy;
         final second = tester.getTopLeft(taskCard(1)).dy;
-        final result = tester.getTopLeft(find.byType(TvAssistantOptionCard)).dy;
+        final result = tester.getTopLeft(find.byType(BigPOptionCard)).dy;
         final third = tester.getTopLeft(taskCard(2)).dy;
         expect(first, lessThan(second));
         expect(second, lessThan(result));
@@ -303,7 +361,7 @@ void main() {
           ),
         ]);
 
-        final cards = tester.widgetList<TvAssistantOptionCard>(find.byType(TvAssistantOptionCard)).toList();
+        final cards = tester.widgetList<BigPOptionCard>(find.byType(BigPOptionCard)).toList();
         expect(cards.map((card) => card.onSelect != null), [true, false]);
         expect(focusedLabel(), 'assistant.cancel', reason: 'a result that came in does not take the remote');
 
@@ -352,9 +410,12 @@ void main() {
           _task(3, 'Gebruiker aanmaken · Guido', AssistantTaskStatus.completed),
         ]);
         expect(focusedLabel(), 'assistant.ask');
-        // Nothing above it is a stop any more; the remote stays on a control.
+        // No card above it is a stop any more: Up finds the follow-ups, the
+        // only thing left to choose, and the remote stays on a control.
         await press(tester, LogicalKeyboardKey.arrowUp);
-        expect(focusedLabel(), 'assistant.ask');
+        expect(focusedChip(), AutomationIds.assistantFollowUp);
+        await press(tester, LogicalKeyboardKey.arrowUp);
+        expect(focusedChip(), AutomationIds.assistantFollowUp);
       });
 
       testWidgets('a choice the viewer is on keeps the remote when the last task ends', (tester) async {
@@ -412,26 +473,65 @@ void main() {
             ],
           ),
         ];
-        String? focusedTitle() => FocusManager.instance.primaryFocus?.context
-            ?.findAncestorWidgetOfExactType<TvAssistantOptionCard>()
-            ?.option
-            .title;
-
         await show(tester, AssistantSurfaceState.working, tasks(duneFound: false));
         await press(tester, LogicalKeyboardKey.arrowUp);
         final held = FocusManager.instance.primaryFocus;
-        expect(focusedTitle(), 'Severance');
+        expect(focusedOption(), 'Severance');
 
         // Task 1's first result comes in above the card the viewer is on.
         await show(tester, AssistantSurfaceState.working, tasks(duneFound: true));
 
-        expect(find.byType(TvAssistantOptionCard), findsNWidgets(2));
+        expect(find.byType(BigPOptionCard), findsNWidgets(2));
         expect(FocusManager.instance.primaryFocus, same(held));
-        expect(focusedTitle(), 'Severance');
+        expect(focusedOption(), 'Severance');
         await press(tester, LogicalKeyboardKey.select);
         expect(c.picked, [same(severance)]);
         expect(c.pickedForTask, ['task-2']);
       });
+
+      // A task's displays are not append-only: its final result can take
+      // away what it streamed, also the card the viewer is on.
+      for (final sibling in [true, false]) {
+        testWidgets('a choice that goes under the remote hands it to '
+            '${sibling ? 'the first choice left' : 'the bottom control'}', (tester) async {
+          await pump(tester);
+          final dune = _option('Dune');
+          List<AssistantTask> tasks({required bool current}) => [
+            _task(
+              1,
+              'Dune zoeken',
+              AssistantTaskStatus.completed,
+              displays: [
+                if (sibling) AssistantRequestOptions(toolContext, [dune]),
+              ],
+            ),
+            _task(
+              2,
+              'Arrival zoeken',
+              current ? AssistantTaskStatus.running : AssistantTaskStatus.failed,
+              displays: [
+                if (current) AssistantRequestOptions(toolContext, [_option('Arrival')]),
+              ],
+            ),
+          ];
+          await show(tester, AssistantSurfaceState.working, tasks(current: true));
+          await press(tester, LogicalKeyboardKey.arrowUp);
+          expect(focusedOption(), 'Arrival');
+
+          // Task 2 ends on evidence that no longer holds: its card is gone.
+          await show(tester, AssistantSurfaceState.result, tasks(current: false));
+
+          expect(find.byType(BigPOptionCard), findsNWidgets(sibling ? 1 : 0));
+          if (sibling) {
+            expect(focusedOption(), 'Dune');
+            await press(tester, LogicalKeyboardKey.select);
+            expect(c.picked, [same(dune)]);
+            expect(c.pickedForTask, ['task-1']);
+          } else {
+            expect(focusedLabel(), 'assistant.ask');
+          }
+        });
+      }
 
       testWidgets('resultaat with choices: the remote starts on the first choice of the first task that has one', (
         tester,
@@ -484,7 +584,7 @@ void main() {
           {'id': 'task-3', 'status': 'cancelled', 'cancellable': false},
         ]);
         expect(capsules(tester), isEmpty);
-        expect(find.byType(TvAssistantResultCard), findsNothing);
+        expect(find.byType(BigPResultCard), findsNothing);
         expect(find.text(t.assistant.tasks.someDone(count: 3, done: 1)), findsOneWidget);
         expect(find.textContaining(t.assistant.result.doneBy), findsOneWidget);
         expect(find.textContaining(t.assistant.tasks.failed, findRichText: true), findsOneWidget);
@@ -494,6 +594,254 @@ void main() {
         expect(find.textContaining(t.assistant.ends.nothingChanged, findRichText: true), findsNothing);
         expect(button(t.assistant.tasks.cancelAll), findsNothing);
         expect(focusedLabel(), 'assistant.ask');
+      });
+
+      group('several results in one panel:', () {
+        final long = List.filled(30, 'De film speelt direct af op deze Apple TV, zonder omzetten.').join(' ');
+
+        AssistantWatchStats watched() => AssistantWatchStats(
+          serverName: 'Zolder',
+          days: 7,
+          users: const [(name: 'Gideuh', plays: 36, seconds: 0), (name: 'Jan', plays: 6, seconds: 0)],
+          titles: [
+            for (final title in ['The Block', 'House', 'Heat', 'Ronin', 'Sintel'])
+              (title: title, plays: 9, viewers: const ['Jan'], show: false, target: null),
+          ],
+        );
+
+        AssistantTask found(int n, String title, AssistantTaskStatus status, List<String> titles) => _task(
+          n,
+          title,
+          status,
+          displays: [
+            if (titles.isNotEmpty) AssistantRequestOptions(toolContext, [for (final title in titles) _option(title)]),
+          ],
+        );
+
+        testWidgets('a task that only answered reads whole: four lines at once, the rest by Up and Down', (
+          tester,
+        ) async {
+          await pump(tester);
+          await show(tester, AssistantSurfaceState.result, [
+            _task(1, 'Afspelen van Dune controleren', AssistantTaskStatus.completed, answer: '**Dune** $long'),
+            _task(2, 'Films scannen · Zolder', AssistantTaskStatus.completed, actions: const [_scanned]),
+          ]);
+
+          final answer = find.byKey(const ValueKey('assistant.task.answer.task-1'));
+          final body = find.descendant(of: answer, matching: find.byKey(const ValueKey('assistant.answer.body')));
+          final text = tester.widget<Text>(body);
+          expect(text.data, 'Dune $long', reason: 'every word, in plain text');
+          expect(text.maxLines, isNull, reason: 'never cut short with an ellipsis');
+          final line = text.style!.fontSize! * text.style!.height!;
+          expect(tester.getSize(answer).height, closeTo(4 * line, 0.5));
+          // Under its own task, above the next one.
+          expect(tester.getRect(answer).top, greaterThan(tester.getRect(taskCard(0)).bottom - 0.5));
+          expect(tester.getRect(answer).bottom, lessThan(tester.getRect(taskCard(1)).top + 0.5));
+
+          // Up from Ask, past the follow-ups.
+          for (var i = 0; i < 8 && focusedLabel() != 'assistant.task.answer.task-1'; i++) {
+            await press(tester, LogicalKeyboardKey.arrowUp);
+          }
+          expect(focusedLabel(), 'assistant.task.answer.task-1');
+          final top = tester.getRect(body).top;
+          await press(tester, LogicalKeyboardKey.arrowDown);
+          expect(tester.getRect(body).top, lessThan(top), reason: 'Down reads on');
+          expect(focusedLabel(), 'assistant.task.answer.task-1');
+          for (var i = 0; i < 60 && focusedLabel() == 'assistant.task.answer.task-1'; i++) {
+            await press(tester, LogicalKeyboardKey.arrowDown);
+          }
+          expect(focusedLabel(), isNot('assistant.task.answer.task-1'), reason: 'at its last line the key moves on');
+        });
+
+        testWidgets('each answer keeps its own words and its own reading stop', (tester) async {
+          await pump(tester);
+          await show(tester, AssistantSurfaceState.result, [
+            _task(1, 'Afspelen van Dune controleren', AssistantTaskStatus.completed, answer: 'Eerste. $long'),
+            _task(2, 'Afspelen van Heat controleren', AssistantTaskStatus.completed, answer: 'Tweede. $long'),
+          ]);
+
+          Finder body(int n) => find.descendant(
+            of: find.byKey(ValueKey('assistant.task.answer.task-$n')),
+            matching: find.byKey(const ValueKey('assistant.answer.body')),
+          );
+          expect(tester.widget<Text>(body(1)).data, startsWith('Eerste.'));
+          expect(tester.widget<Text>(body(2)).data, startsWith('Tweede.'));
+
+          final seen = <String?>{};
+          for (var i = 0; i < 12; i++) {
+            await press(tester, LogicalKeyboardKey.arrowUp);
+            seen.add(focusedLabel());
+          }
+          expect(seen, containsAll(['assistant.task.answer.task-1', 'assistant.task.answer.task-2']));
+        });
+
+        testWidgets('follow-ups: one row of three, only once every task has ended and none failed', (tester) async {
+          await pump(tester);
+          await show(tester, AssistantSurfaceState.working, [
+            found(1, 'Dune zoeken', AssistantTaskStatus.completed, ['Dune']),
+            _task(2, 'Films scannen', AssistantTaskStatus.running),
+          ]);
+          expect(followUps(tester), isEmpty, reason: 'a task still runs');
+
+          await show(tester, AssistantSurfaceState.result, [
+            found(1, 'Dune zoeken', AssistantTaskStatus.completed, ['Dune']),
+            _task(2, 'Films scannen', AssistantTaskStatus.completed),
+          ]);
+          expect(followUps(tester), ['0', '1', '2']);
+
+          await show(tester, AssistantSurfaceState.result, [
+            found(1, 'Dune zoeken', AssistantTaskStatus.completed, ['Dune']),
+            _task(2, 'Films scannen', AssistantTaskStatus.failed, lastEnd: AssistantRunEnd.stepLimit),
+          ]);
+          expect(followUps(tester), isEmpty, reason: 'a failed task is no answer to follow up on');
+        });
+
+        testWidgets('a failed task keeps what the others found on screen and theirs to choose', (tester) async {
+          await pump(tester);
+          final heat = _option('Heat');
+          await show(tester, AssistantSurfaceState.result, [
+            _task(1, 'Afspelen van Dune controleren', AssistantTaskStatus.failed, lastEnd: AssistantRunEnd.stepLimit),
+            _task(
+              2,
+              'Iets voor vanavond zoeken',
+              AssistantTaskStatus.completed,
+              displays: [
+                AssistantRequestOptions(toolContext, [heat]),
+              ],
+            ),
+            _task(3, 'Reacher aanvragen', AssistantTaskStatus.cancelled),
+          ]);
+
+          expect(find.textContaining(t.assistant.ends.stepLimit, findRichText: true), findsOneWidget);
+          expect(find.byType(BigPResultCard), findsNothing, reason: 'no red card over the task that did end well');
+          expect(tester.widget<BigPOptionCard>(find.byType(BigPOptionCard)).onSelect, isNotNull);
+          expect(focusedLabel(), 'assistant.task.option.task-2');
+          await press(tester, LogicalKeyboardKey.select);
+          expect(c.picked, [same(heat)]);
+          expect(c.pickedForTask, ['task-2']);
+          expect(button(t.assistant.idle.ask), findsOneWidget);
+          expect(button(t.assistant.result.done), findsOneWidget);
+        });
+
+        testWidgets('a long list scrolls under buttons that stay put, and the remote is never in a fading edge', (
+          tester,
+        ) async {
+          await pump(tester);
+          await show(tester, AssistantSurfaceState.result, [
+            found(1, 'Dune zoeken', AssistantTaskStatus.completed, ['Dune', 'Dune: Part Two', 'Arrival', 'Tenet']),
+            found(2, 'Heat zoeken', AssistantTaskStatus.completed, ['Heat', 'Ronin', 'Collateral', 'Thief']),
+            found(3, 'Alien zoeken', AssistantTaskStatus.completed, ['Alien', 'Aliens', 'Prometheus', 'Sunshine']),
+          ]);
+
+          final ask = tester.getRect(button(t.assistant.idle.ask));
+          expect(listPosition(tester).maxScrollExtent, greaterThan(0), reason: 'twelve cards do not fit');
+          expect(focusedLabel(), 'assistant.task.option.task-1');
+          expect(followUps(tester), ['0', '1', '2']);
+
+          final walked = <String?>[];
+          var scrolled = false;
+          for (var i = 0; i < 20 && focusedInList(tester); i++) {
+            expectFocusedClearOfFades(tester);
+            walked.add(focusedOption());
+            scrolled |= listPosition(tester).pixels > 0.5;
+            expect(tester.getRect(button(t.assistant.idle.ask)), ask, reason: 'the buttons do not scroll');
+            await press(tester, LogicalKeyboardKey.arrowDown);
+          }
+          // Out of the list, on a button under it: whichever is nearest to
+          // the last follow-up.
+          expect(focusedLabel(), anyOf('assistant.ask', t.assistant.result.done));
+          expect(scrolled, isTrue);
+          expect(
+            walked.nonNulls,
+            containsAllInOrder(['Dune', 'Tenet', 'Heat', 'Thief', 'Alien', 'Sunshine']),
+            reason: 'every card is a stop, in the order asked',
+          );
+
+          // And back up, to the first card.
+          for (var i = 0; i < 20 && focusedLabel() != 'assistant.task.option.task-1'; i++) {
+            await press(tester, LogicalKeyboardKey.arrowUp);
+            expectFocusedClearOfFades(tester);
+          }
+          expect(focusedLabel(), 'assistant.task.option.task-1');
+          expect(tester.getRect(button(t.assistant.idle.ask)), ask);
+        });
+
+        testWidgets('results that come in above the remote leave it on its card, in the same place', (tester) async {
+          await pump(tester);
+          List<AssistantTask> tasks(List<String> first) => [
+            found(1, 'Dune zoeken', AssistantTaskStatus.running, first),
+            found(2, 'Heat zoeken', AssistantTaskStatus.completed, ['Heat', 'Ronin', 'Collateral', 'Thief']),
+            found(3, 'Alien zoeken', AssistantTaskStatus.completed, ['Alien', 'Aliens', 'Prometheus', 'Sunshine']),
+          ];
+          await show(tester, AssistantSurfaceState.working, tasks(const []));
+          expect(focusedLabel(), 'assistant.cancel');
+          // Up from the bottom button: the lowest card in view.
+          await press(tester, LogicalKeyboardKey.arrowUp);
+          final held = FocusManager.instance.primaryFocus;
+          final title = focusedOption();
+          expect(title, isNotNull, reason: 'the remote is on a card of task 2 or 3');
+          expect(listPosition(tester).maxScrollExtent, greaterThan(0));
+          final before = focusedRect();
+          final footer = tester.getRect(button(t.assistant.tasks.cancelAll));
+
+          // Task 1 streams its first result in above that card, then a second.
+          await show(tester, AssistantSurfaceState.working, tasks(const ['Dune']));
+          expect(FocusManager.instance.primaryFocus, same(held));
+          expect(focusedOption(), title);
+          expect(focusedRect().top, closeTo(before.top, 1), reason: 'the list took the new card by scrolling');
+          expectFocusedClearOfFades(tester);
+
+          await show(tester, AssistantSurfaceState.working, tasks(const ['Dune', 'Dune: Part Two']));
+          expect(FocusManager.instance.primaryFocus, same(held));
+          expect(focusedOption(), title);
+          expect(focusedRect().top, closeTo(before.top, 1));
+          expect(tester.getRect(button(t.assistant.tasks.cancelAll)), footer);
+
+          // Its own task, though every card's place in the panel moved on.
+          await press(tester, LogicalKeyboardKey.select);
+          expect(c.picked.single.title, title);
+          expect(c.pickedForTask.single, anyOf('task-2', 'task-3'));
+        });
+
+        testWidgets('rows that cannot be chosen are no stops: the list is read as one, the buttons stay put', (
+          tester,
+        ) async {
+          await pump(tester);
+          await show(tester, AssistantSurfaceState.result, [
+            _task(1, 'Afspelen van Dune controleren', AssistantTaskStatus.completed, answer: long),
+            _task(2, 'Kijkcijfers van Zolder tonen', AssistantTaskStatus.completed, displays: [watched()]),
+            _task(3, 'Kijkcijfers van Kelder tonen', AssistantTaskStatus.completed, displays: [watched()]),
+          ]);
+
+          expect(find.text('The Block'), findsNWidgets(2), reason: 'both tasks show their rows');
+          expect(followUps(tester), ['0', '1', '2']);
+          expect(focusedLabel(), 'assistant.ask');
+          final ask = tester.getRect(button(t.assistant.idle.ask));
+          final chips = [
+            for (final chip in find.byType(BigPChip).evaluate()) tester.getRect(find.byWidget(chip.widget)),
+          ];
+          expect(listPosition(tester).maxScrollExtent, greaterThan(0));
+
+          final seen = <String?>{};
+          for (var i = 0; i < 24; i++) {
+            await press(tester, i < 12 ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowDown);
+            seen.add(focusedLabel());
+            expect(focusedOption(), isNull);
+            expect(tester.getRect(button(t.assistant.idle.ask)), ask, reason: 'the buttons do not scroll');
+          }
+          expect(seen, contains('assistant.results'), reason: 'the list itself is the reading stop');
+          expect(seen, contains('assistant.task.answer.task-1'));
+          expect(
+            seen.difference(<String?>{'assistant.results', 'assistant.task.answer.task-1', 'assistant.ask'}),
+            everyElement(isNot(startsWith('assistant.task'))),
+            reason: 'no row and no task card took the remote',
+          );
+          expect(
+            [for (final chip in find.byType(BigPChip).evaluate()) tester.getRect(find.byWidget(chip.widget))],
+            chips,
+            reason: 'the follow-ups stand above the buttons, out of the scrolling list',
+          );
+        });
       });
 
       group('the confirmation card', () {
@@ -517,7 +865,7 @@ void main() {
         testWidgets('comes up by itself on Annuleren and answers for its own task', (tester) async {
           await raise(tester);
 
-          expect(find.byType(TvAssistantConfirmCard), findsOneWidget);
+          expect(find.byType(BigPConfirmCard), findsOneWidget);
           expect(focusedLabel(), 'assistant.confirm.cancel');
           expect((taskStates(tester)[1]! as Map)['status'], 'waitingForConfirmation');
 
@@ -544,8 +892,8 @@ void main() {
           // Now it hears: the card for the new action comes, and answers for it.
           c.emit();
           await settle(tester);
-          expect(find.byType(TvAssistantConfirmCard), findsOneWidget);
-          expect(find.descendant(of: find.byType(TvAssistantConfirmCard), matching: find.text('Sam')), findsOneWidget);
+          expect(find.byType(BigPConfirmCard), findsOneWidget);
+          expect(find.descendant(of: find.byType(BigPConfirmCard), matching: find.text('Sam')), findsOneWidget);
           await press(tester, LogicalKeyboardKey.arrowRight);
           await press(tester, LogicalKeyboardKey.select);
 
@@ -565,7 +913,7 @@ void main() {
             ..emit();
           await settle(tester);
 
-          expect(find.byType(TvAssistantConfirmCard), findsOneWidget);
+          expect(find.byType(BigPConfirmCard), findsOneWidget);
           expect(focusedLabel(), 'assistant.confirm.cancel');
           await press(tester, LogicalKeyboardKey.select);
           expect(c.cancelledConfirmations, [('task-3', 'confirmation-2')]);
@@ -575,28 +923,105 @@ void main() {
             ..pending = null
             ..emit();
           await settle(tester);
-          expect(find.byType(TvAssistantConfirmCard), findsNothing);
+          expect(find.byType(BigPConfirmCard), findsNothing);
           expect(focusedLabel(), 'assistant.cancel', reason: 'back where the remote was before the cards');
+        });
+
+        testWidgets('declining the card leaves its task running; only the controller ends it', (tester) async {
+          await raise(tester);
+          await press(tester, LogicalKeyboardKey.select);
+          expect(c.cancelledConfirmations, [('task-2', 'confirmation-1')]);
+
+          // The model got its answer and goes on: the task is still live,
+          // with its capsule, and so are the others.
+          c
+            ..confirmation = null
+            ..pending = null;
+          await show(tester, AssistantSurfaceState.working, [
+            _task(1, 'Films scannen · Zolder', AssistantTaskStatus.running),
+            _task(2, 'Gebruiker aanmaken · Guido', AssistantTaskStatus.running),
+            _task(3, 'Gebruiker aanmaken · Sam', AssistantTaskStatus.pending),
+          ]);
+          expect(find.byType(BigPConfirmCard), findsNothing);
+          expect(capsules(tester), ['0', '1', '2']);
+          expect((taskStates(tester)[1]! as Map)['status'], 'running');
+          expect(c.cancelledTasks, isEmpty);
+          expect(c.cancelledAll, 0);
+
+          // Its end is the controller's to say.
+          await show(tester, AssistantSurfaceState.working, [
+            _task(1, 'Films scannen · Zolder', AssistantTaskStatus.running),
+            _task(2, 'Gebruiker aanmaken · Guido', AssistantTaskStatus.cancelled),
+            _task(3, 'Gebruiker aanmaken · Sam', AssistantTaskStatus.running),
+          ]);
+          expect(capsules(tester), ['0', '2']);
+          expect(find.textContaining(t.assistant.tasks.cancelled, findRichText: true), findsOneWidget);
+        });
+
+        testWidgets('Big P says his nod only when the card on screen was confirmed while still current', (
+          tester,
+        ) async {
+          await raise(tester);
+          final played = <String>[];
+          BigPVoice(
+            c,
+            enabled: () => true,
+            dictating: () => false,
+            playbackActive: () => false,
+            language: () => 'nl',
+            clips: () async => const {'assets/audio/bigp/nl_nod_1.m4a': 'Doe ik.'},
+            play: (asset) async {
+              played.add(asset);
+              return 0.05;
+            },
+            stop: () async {},
+          );
+
+          // The queue moved on under the card: its Goedkeuren confirms nothing.
+          c
+            ..confirmation = second
+            ..pending = second.action;
+          await press(tester, LogicalKeyboardKey.arrowRight);
+          await press(tester, LogicalKeyboardKey.select);
+          expect(c.confirmedTasks, isEmpty);
+          expect(played, isEmpty, reason: 'nothing was confirmed');
+
+          // The card for the action now waiting: declined, then no nod either.
+          c.emit();
+          await settle(tester);
+          await press(tester, LogicalKeyboardKey.select);
+          expect(c.cancelledConfirmations, [('task-3', 'confirmation-2')]);
+          expect(played, isEmpty, reason: 'a declined action gets no nod');
+
+          // A card confirmed while it is the one waiting.
+          final third = AssistantTaskConfirmation(id: 'confirmation-3', taskId: 'task-2', action: _create('Guido'));
+          c
+            ..confirmation = third
+            ..pending = third.action
+            ..emit();
+          await settle(tester);
+          await press(tester, LogicalKeyboardKey.arrowRight);
+          await press(tester, LogicalKeyboardKey.select);
+          expect(c.confirmedTasks, [('task-2', 'confirmation-3')]);
+          expect(played, ['assets/audio/bigp/nl_nod_1.m4a']);
         });
       });
 
       if (summoned) {
-        Object? lingering(WidgetTester tester) =>
-            (nodes(tester, AutomationIds.assistantSummon).single.state!()! as Map)['lingering'];
-
-        testWidgets('stays until Menu when a task was cancelled; leaves by itself when all are done', (tester) async {
+        testWidgets('stays until Menu or Klaar, also when every task is done', (tester) async {
           await pump(tester);
-          await show(tester, AssistantSurfaceState.result, [
-            _task(1, 'Films scannen', AssistantTaskStatus.completed),
-            _task(2, 'Gebruiker aanmaken', AssistantTaskStatus.cancelled),
-          ]);
-          expect(lingering(tester), isFalse);
-
+          final aborts = c.aborts;
           await show(tester, AssistantSurfaceState.result, [
             _task(1, 'Films scannen', AssistantTaskStatus.completed),
             _task(2, 'Gebruiker aanmaken', AssistantTaskStatus.completed),
           ]);
-          expect(lingering(tester), isTrue);
+
+          await tester.pump(const Duration(seconds: 30));
+          await settle(tester);
+
+          expect((nodes(tester, AutomationIds.assistantSummon).single.state!()! as Map)['shown'], isTrue);
+          expect(taskStates(tester), hasLength(2));
+          expect(c.aborts, aborts, reason: 'he does not leave by himself');
         });
       }
     });

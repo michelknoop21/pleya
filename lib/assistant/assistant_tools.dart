@@ -23,6 +23,7 @@ import '../models/seerr/seerr_media.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
 import '../services/jellyfin_client.dart';
+import '../exceptions/media_server_exceptions.dart';
 import '../services/pleya_server_client.dart';
 import '../media/ids.dart';
 import '../media/episode_collection.dart';
@@ -34,6 +35,9 @@ import '../media/media_server_client.dart';
 import '../models/download_models.dart';
 import '../models/plex/plex_subtitle_search_result.dart';
 import '../services/plex_client.dart';
+import '../services/recommendations/recommendation_service.dart' show RecommendationSeed;
+import '../services/recommendations/taste_profile.dart' show AffinityVector;
+import '../media/media_hub.dart';
 import '../media/media_kind.dart';
 import '../media/media_identity.dart';
 import '../utils/external_ids.dart';
@@ -64,6 +68,7 @@ part 'assistant_tools_media.dart';
 part 'assistant_tools_recommendations.dart';
 part 'assistant_tools_playback.dart';
 part 'assistant_tools_library_doctor.dart';
+part 'assistant_tools_personal.dart';
 
 enum AssistantToolRisk { read, mutation, sensitive }
 
@@ -113,10 +118,52 @@ enum AssistantPasswordMode { none, optional, required }
 
 /// What Pleya shows after an action: built from validated data only.
 class AssistantActionRecord {
-  const AssistantActionRecord({required this.kind, required this.serverName, required this.subject});
+  const AssistantActionRecord({
+    required this.kind,
+    required this.serverName,
+    required this.subject,
+    this.job,
+    this.progress,
+  });
   final AssistantActionKind kind;
   final String serverName;
   final String subject;
+
+  /// The server job this action started, when Pleya can look for it.
+  final AssistantJobWatch? job;
+
+  /// Live state of [job]; null before the first look and for actions
+  /// without a job.
+  final AssistantJobProgress? progress;
+
+  AssistantActionRecord withProgress(AssistantJobProgress progress) =>
+      AssistantActionRecord(kind: kind, serverName: serverName, subject: subject, job: job, progress: progress);
+}
+
+/// How to find a started job in `ServerJobsClient.listJobs`: by its own id
+/// (a retry), or as the newest job on a library (a scan). An action without
+/// either is only ever "started".
+class AssistantJobWatch {
+  const AssistantJobWatch({required this.serverId, required this.startedAt, this.jobId, this.libraryId})
+    : assert(jobId != null || libraryId != null);
+  final ServerId serverId;
+  final DateTime startedAt;
+  final String? jobId;
+  final String? libraryId;
+}
+
+/// [started]: accepted, but no job to follow (or not found). [background]:
+/// still running when Pleya stopped looking.
+enum AssistantJobPhase { started, running, done, failed, background }
+
+class AssistantJobProgress {
+  const AssistantJobProgress(this.phase, {this.percent});
+  final AssistantJobPhase phase;
+
+  /// 0 to 100 while [AssistantJobPhase.running], when the server says.
+  final int? percent;
+
+  bool get settled => phase != AssistantJobPhase.running;
 }
 
 /// A sensitive action waiting for the user. The UI renders it as a Pleya
@@ -135,6 +182,7 @@ class AssistantPendingAction extends AssistantToolOutcome {
     this.password = AssistantPasswordMode.none,
     this.items = const [],
     this.preview,
+    this.job,
   });
 
   final AssistantActionKind kind;
@@ -154,12 +202,16 @@ class AssistantPendingAction extends AssistantToolOutcome {
   /// A richer preview the card can render, when a list of titles is not enough.
   final AssistantDisplay? preview;
 
+  /// Work to follow only after this action actually succeeds.
+  final AssistantJobWatch? job;
+
   /// Runs the action. [password] comes from Pleya's secure input, never
   /// from the model. A result with `done: false` means nothing changed, and
   /// the run then does not list the action as done.
   final Future<Map<String, Object?>> Function({String? password}) execute;
 
-  AssistantActionRecord get record => AssistantActionRecord(kind: kind, serverName: serverName, subject: subject);
+  AssistantActionRecord get record =>
+      AssistantActionRecord(kind: kind, serverName: serverName, subject: subject, job: job);
 }
 
 class AssistantTool {
@@ -275,4 +327,5 @@ final List<AssistantTool> assistantTools = [
   ..._mediaTools,
   ..._playbackTools,
   ..._libraryDoctorTools,
+  ..._personalTools,
 ];

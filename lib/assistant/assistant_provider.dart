@@ -2,17 +2,21 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
 import '../services/base_shared_preferences_service.dart';
 import '../services/credential_vault.dart';
+import '../services/pleya_keychain.dart';
 import '../utils/abortable_http_request.dart';
+import '../utils/app_logger.dart';
 import '../utils/log_redaction_manager.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 
 part 'assistant_models.dart';
+part 'assistant_provider_store.dart';
 
 /// Where the Assistant's language model runs. This is inference only: it
 /// decides nothing about rights or about the Pleya Assistant entitlement.
@@ -128,54 +132,6 @@ class AssistantProviderConfig {
         _ => null,
       },
     );
-  }
-}
-
-/// Device-wide provider settings. One vault-protected blob under a key that
-/// `PreferenceSyncPolicy` marks secret: never synced, never exported.
-class AssistantProviderStore {
-  AssistantProviderStore._();
-  static final AssistantProviderStore instance = AssistantProviderStore._();
-
-  static const String key = 'assistant_provider';
-
-  /// Bumped by every [save] and [clear], wherever the settings screen was
-  /// opened from, so Big P's availability follows without a reopen.
-  static final ValueNotifier<int> changes = ValueNotifier(0);
-
-  Future<AssistantProviderConfig?> load() async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    final raw = prefs.getString(key);
-    if (raw == null) return null;
-    try {
-      final config = AssistantProviderConfig.fromJson(
-        jsonDecode(await CredentialVault.reveal(raw)) as Map<String, Object?>,
-      );
-      if (config != null) _registerSecrets(config);
-      return config;
-    } catch (_) {
-      // Unreadable is "not configured": the setup state offers a way back.
-      return null;
-    }
-  }
-
-  Future<void> save(AssistantProviderConfig config) async {
-    _registerSecrets(config);
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.setString(key, await CredentialVault.protect(jsonEncode(config.toJson())));
-    changes.value++;
-  }
-
-  Future<void> clear() async {
-    final prefs = await BaseSharedPreferencesService.sharedCache();
-    await prefs.remove(key);
-    changes.value++;
-  }
-
-  static void _registerSecrets(AssistantProviderConfig config) {
-    LogRedactionManager.registerCustomValue(config.apiKey);
-    LogRedactionManager.registerCustomValue(config.headerValue);
-    LogRedactionManager.registerCustomValue(config.ollamaWebKey);
   }
 }
 

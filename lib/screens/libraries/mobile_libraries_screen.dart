@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../assistant/assistant_tool_context.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
@@ -54,6 +55,7 @@ import '../../widgets/app_icon.dart';
 import '../../widgets/desktop_app_bar.dart';
 import '../../widgets/mobile/mobile_media_rail.dart';
 import '../../widgets/settings_section.dart' show settingsOutlineColor;
+import '../big_p/big_p_ask_row.dart' show summonableBigP;
 import '../settings/library_visibility_screen.dart';
 import 'libraries_screen.dart';
 import 'state_messages.dart';
@@ -270,18 +272,27 @@ class _LibraryPickerCard extends StatelessWidget {
     final servers = context.watch<MultiServerProvider?>();
     final serverId = serverIdOrNull(library.serverId);
     final isOnline = serverId == null || (servers?.isServerOnline(serverId) ?? true);
+    // As TV's "Vraag Big P": this library is what "scan deze" means.
+    final bigP = summonableBigP(context);
+    final libraryServerId = library.serverId;
+    final askBigP = bigP == null || libraryServerId == null
+        ? null
+        : () => bigP.summon(
+            context: AssistantScreenContext(serverId: libraryServerId, libraryId: library.id),
+          );
     final countText = itemCount == null
         ? null
         : itemCount == 1
         ? t.libraries.oneItem
         : t.libraries.itemCount(count: '$itemCount');
 
-    return AutomationNode(
+    final card = AutomationNode(
       id: AutomationIds.libraryPickerCard,
       instance: '$index',
       role: 'grid.item',
       child: InkWell(
         onTap: onTap,
+        onLongPress: askBigP,
         borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.all(10),
@@ -331,6 +342,15 @@ class _LibraryPickerCard extends StatelessWidget {
         ),
       ),
     );
+    // The long-press, for a scenario: one node per library Big P can take.
+    return askBigP == null
+        ? card
+        : AutomationNode(
+            id: AutomationIds.bigpLibraryAsk,
+            instance: '${library.serverId}:${library.id}',
+            role: 'button',
+            child: card,
+          );
   }
 }
 

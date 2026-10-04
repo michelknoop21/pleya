@@ -74,6 +74,7 @@ import 'playback_initialization_types.dart';
 import 'playback_stream_evidence.dart';
 
 part 'plex_client/parts/live_tv.dart';
+part 'plex_client/parts/server_activity.dart';
 
 /// Result of a paginated library content fetch
 class _LibraryContentResult {
@@ -872,7 +873,9 @@ class PlexClient
           id: a.uuid,
           title: a.subtitle == null || a.subtitle!.isEmpty ? a.title : '${a.title}: ${a.subtitle}',
           state: ServerJobState.running,
-          progress: (a.progress.clamp(0, 100)) / 100,
+          // -1 is Plex's "indeterminate".
+          progress: a.progress < 0 ? null : (a.progress.clamp(0, 100)) / 100,
+          libraryId: a.librarySectionId,
           cancellable: a.cancellable,
         ),
     ];

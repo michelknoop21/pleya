@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/pleya_server/pleya_wire.dart';
 import 'package:pleya/models/pleya_server/pleya_wire_library.dart';
+import 'package:pleya/services/pleya_server_client.dart' show pleyaWatchHistoryFromJson;
 
 /// The Dart wire types are a hand transcription of
 /// `docs/pleya-protocol/v1/openapi.yaml`, so the only thing that keeps them
@@ -118,6 +119,12 @@ void main() {
     'UserState': (json) => PleyaUserState.fromJson(json),
     'WatchStatePage': (json) => PleyaWatchStateEntry.pageFromJson(json),
     'StreamSession': (json) => PleyaStreamSession.fromJson(json),
+    // DEC-143: Big P reads it for watch_stats over a period.
+    'WatchHistory': (json) {
+      final history = pleyaWatchHistoryFromJson(json);
+      expect(history.items, hasLength((json['items'] as List).length), reason: 'every row has a timestamp');
+      expect(history.items.where((w) => w.seriesId != null), isNotEmpty);
+    },
     'WatchStateEvent': (json) {
       // Round-trip: parse the fixture and write it back. That proves the type
       // reads the contract's shape and produces it, which is what matters for a
@@ -145,8 +152,8 @@ void main() {
       );
     });
 
-    test('covers the 76 fixtures the contract ships', () {
-      expect(fixtures, hasLength(76));
+    test('covers the 77 fixtures the contract ships', () {
+      expect(fixtures, hasLength(77));
     });
 
     for (final fixture in fixtures) {

@@ -14,6 +14,42 @@ typedef PleyaActiveStream = ({
   String? device,
 });
 
+/// One user's finished film or episode from `GET /watch-history`: the last
+/// touch per user per item, not a play log. [seriesId] and [seriesTitle] are
+/// set for an episode only.
+typedef PleyaWatchedTitle = ({
+  String userId,
+  String userName,
+  String itemId,
+  String title,
+  String? seriesId,
+  String? seriesTitle,
+  DateTime updatedAt,
+});
+
+/// Reads a `WatchHistory` body. A row without a readable `updated_at` is
+/// dropped: it cannot be placed in a period.
+({List<PleyaWatchedTitle> items, bool truncated}) pleyaWatchHistoryFromJson(Map<String, dynamic> json) {
+  final items = json['items'];
+  return (
+    items: <PleyaWatchedTitle>[
+      if (items is List)
+        for (final w in items.whereType<Map<String, dynamic>>())
+          if (DateTime.tryParse(w['updated_at'] as String? ?? '') case final at?)
+            (
+              userId: w['user_id'] as String? ?? '',
+              userName: w['username'] as String? ?? '',
+              itemId: w['item_id'] as String? ?? '',
+              title: w['item_title'] as String? ?? '',
+              seriesId: w['series_id'] as String?,
+              seriesTitle: w['series_title'] as String?,
+              updatedAt: at,
+            ),
+    ],
+    truncated: json['truncated'] == true,
+  );
+}
+
 /// Server administration: scans, jobs, users and library access.
 ///
 /// Unlike the read paths elsewhere, nothing here answers null or empty on a
@@ -113,6 +149,17 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
             device: s['device_name'] as String?,
           ),
     ];
+  }
+
+  /// Finished titles per user whose watch state changed in the last [days]
+  /// (`GET /watch-history`, admin class, DEC-143), newest first. The server
+  /// caps the list at 1000 rows and says so with [truncated]. An older server
+  /// without the route answers 404 `library.not_found`.
+  Future<({List<PleyaWatchedTitle> items, bool truncated})> watchHistory(int days) async {
+    assertCanAdministerServer();
+    return pleyaWatchHistoryFromJson(
+      await _adminSend('GET', '/watch-history', queryParameters: {'days': '$days'}) ?? const {},
+    );
   }
 
   @override

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:provider/provider.dart';
 
 import '../../assistant/assistant_entitlement.dart';
 import '../../assistant/assistant_provider.dart';
@@ -14,6 +15,7 @@ import '../../i18n/strings.g.dart';
 import '../../mixins/controller_disposer_mixin.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
+import '../../services/settings_service.dart';
 import '../../utils/formatters.dart';
 import '../../utils/platform_detector.dart';
 import '../../utils/tv_hig.dart';
@@ -24,6 +26,7 @@ import '../../widgets/setting_tile.dart';
 import '../../widgets/tv/tv_menu_grid.dart';
 import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
+import '../big_p/big_p_mobile_session.dart';
 import 'async_form_state_mixin.dart';
 
 part 'assistant_settings_screen_support.dart';
@@ -99,7 +102,13 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   }
 
   Future<void> _load() async {
-    final saved = await _store.load();
+    AssistantProviderConfig? saved;
+    try {
+      saved = await _store.load();
+    } on AssistantProviderStoreException {
+      // The keychain is unreadable and nothing is stored locally: the form
+      // stays the way in, and a save falls back to this device's prefs.
+    }
     if (!mounted) return;
     setState(() {
       _saved = saved;
@@ -141,7 +150,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   /// "submit" key that would make one obvious.
   bool get _draftLooksComplete => switch (_kind) {
     AssistantProviderKind.ollamaServer => _validateUrl(_urlController.text) == null && _validateHeader(null) == null,
-    AssistantProviderKind.ollamaCloud || AssistantProviderKind.openRouter => _keyController.text.trim().isNotEmpty,
+    AssistantProviderKind.ollamaCloud ||
+    AssistantProviderKind.openRouter => _secret(_keyController, (c) => c.apiKey).isNotEmpty,
     null => false,
   };
 
@@ -203,8 +213,33 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   }
 
   void _chooseKind(AssistantProviderKind kind) {
-    setState(() => _kind = kind);
+    final kept = _kept(kind);
+    setState(() {
+      _kind = kind;
+      // Change to the same provider, e.g. for another model: the plain fields
+      // come back, the secrets stay out of the fields (see [_draft]).
+      if (kept != null) {
+        _urlController.text = kind == AssistantProviderKind.ollamaServer ? kept.baseUrl : '';
+        _headerNameController.text = kept.headerName;
+        _webSearch = kept.webSearchChoice;
+        _model = kept.model;
+      }
+    });
     _focusLater(_firstFieldFocus);
+    if (kept != null && _draftLooksComplete) unawaited(_loadModels(_draft()));
+  }
+
+  /// The saved config while changing to its own provider kind.
+  AssistantProviderConfig? _kept(AssistantProviderKind? kind) => switch (_saved) {
+    final saved? when _editing && saved.kind == kind => saved,
+    _ => null,
+  };
+
+  /// A field left empty keeps the saved secret of the same provider.
+  String _secret(TextEditingController field, String Function(AssistantProviderConfig) saved) {
+    final typed = field.text.trim();
+    final kept = _kept(_kind);
+    return typed.isEmpty && kept != null ? saved(kept) : typed;
   }
 
   /// Any edit to a field invalidates the model list it produced.
@@ -237,12 +272,25 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
         AssistantProviderKind.openRouter => AssistantProviderConfig.openRouterUrl,
       },
       model: model,
-      apiKey: kind == AssistantProviderKind.ollamaServer ? '' : _keyController.text.trim(),
+      apiKey: kind == AssistantProviderKind.ollamaServer ? '' : _secret(_keyController, (c) => c.apiKey),
       headerName: kind == AssistantProviderKind.ollamaServer ? _headerNameController.text.trim() : '',
-      headerValue: kind == AssistantProviderKind.ollamaServer ? _headerValueController.text : '',
+      // The saved header value only goes back to the host and header it was
+      // saved for: an edited URL or header name needs it typed again.
+      headerValue: kind == AssistantProviderKind.ollamaServer
+          ? (_headerNameController.text.trim().isEmpty
+                ? ''
+                : _secret(
+                    _headerValueController,
+                    (c) =>
+                        c.baseUrl == normaliseBaseUrl(_urlController.text) &&
+                            c.headerName == _headerNameController.text.trim()
+                        ? c.headerValue
+                        : '',
+                  ))
+          : '',
       webSearchChoice: _webSearch,
       ollamaWebKey: kind == AssistantProviderKind.ollamaServer && _webSearch == true
-          ? _webKeyController.text.trim()
+          ? _secret(_webKeyController, (c) => c.ollamaWebKey)
           : '',
       // Set for one model (as in copyWith): the same model keeps it.
       timeoutOverride: saved != null && saved.kind == kind && saved.model == model ? saved.timeoutOverride : null,
@@ -299,11 +347,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   Future<void> _save() async {
     final config = _draft();
     if (!_tested || !config.isComplete) return;
-    var ok = false;
-    await runAsync(() async {
-      await _store.save(config);
-      ok = true;
-    });
+    final ok = await _saveConfig(config);
     if (!ok || !mounted) return;
     setState(() {
       _saved = config;
@@ -315,6 +359,27 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       _model = config.model;
     });
     _focusLater(_summaryFocus);
+  }
+
+  /// Saves [config]; a setup in the keychain this version cannot read is
+  /// replaced only after the user chooses Vervangen. False when not saved.
+  Future<bool> _saveConfig(AssistantProviderConfig config) async {
+    var ok = false;
+    var unreadable = false;
+    await runAsync(() async {
+      try {
+        await _store.save(config);
+        ok = true;
+      } on AssistantProviderUnreadableException {
+        unreadable = true;
+      }
+    });
+    if (!unreadable || !mounted || !await _confirmReplaceUnreadable(context)) return ok;
+    await runAsync(() async {
+      await _store.save(config, replaceUnreadable: true);
+      ok = true;
+    });
+    return ok;
   }
 
   Future<void> _disable() async {
@@ -331,8 +396,13 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       ),
     );
     if (confirmed != true || !mounted) return;
-    await runAsync(_store.clear);
-    if (!mounted) return;
+    var ok = false;
+    await runAsync(() async {
+      await _store.clear();
+      ok = true;
+    });
+    // A failed clear leaves the synced config in place: keep showing it.
+    if (!ok || !mounted) return;
     setState(() {
       _saved = null;
       _resetDraft();
@@ -359,8 +429,8 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   Future<void> _setWebSearch(bool value) async {
     if (!_showSummary) return setState(() => _webSearch = value);
     final config = _saved!.copyWith(webSearch: value);
-    await runAsync(() => _store.save(config));
-    if (mounted && errorText == null) setState(() => _saved = config);
+    final ok = await _saveConfig(config);
+    if (ok && mounted) setState(() => _saved = config);
   }
 
   void _showMore() => setState(() => _shown += _pageSize);
@@ -377,11 +447,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
       return;
     }
     final config = _saved!.copyWith(model: model);
-    var ok = false;
-    await runAsync(() async {
-      await _store.save(config);
-      ok = true;
-    });
+    final ok = await _saveConfig(config);
     if (!ok || !mounted) return;
     setState(() {
       _saved = config;

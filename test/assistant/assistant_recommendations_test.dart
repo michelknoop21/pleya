@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
+import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/assistant/assistant_playback.dart';
 import 'package:pleya/profiles/profile_server_identity.dart';
 import 'package:pleya/assistant/assistant_strict_filters.dart';
 import 'package:pleya/media/media_library.dart';
@@ -198,12 +200,20 @@ class _Entitlement extends AssistantEntitlement {
 class _Model extends AssistantModelClient {
   _Model(this.replies) : super(_config, httpClient: MockClient((_) async => _json({})));
   final List<AssistantReply> replies;
+  Completer<void>? closingEntered;
+  Completer<void>? closingRelease;
   @override
   Future<AssistantReply> chat(
     List<Map<String, Object?>> messages,
     List<Map<String, Object?>> tools, {
     AbortController? abort,
-  }) async => replies.isEmpty ? _reply() : replies.removeAt(0);
+  }) async {
+    if (replies.length == 1 && closingEntered != null) {
+      closingEntered!.complete();
+      await closingRelease!.future;
+    }
+    return replies.isEmpty ? _reply() : replies.removeAt(0);
+  }
 }
 
 AssistantReply _reply([String? name, Map<String, Object?> args = const {}]) {
@@ -668,6 +678,302 @@ void main() {
     expect(c.tasks[1].displays, isEmpty);
     expect(c.tasks[0].actions, isEmpty);
   });
+  for (final change in [
+    'hide library',
+    'remove library',
+    'replace client',
+    'revoke admin',
+    'switch profile',
+    'unchanged',
+  ]) {
+    for (final path in ['controller await', 'direct run await', 'publication callbacks']) {
+      test('cohort publication lease: $change at $path', () async {
+        final f = _Fixture();
+        f.context(['1']);
+        final hidden = <String>{};
+        var libraries = [
+          const MediaLibrary(
+            id: 'films',
+            backend: MediaBackend.jellyfin,
+            title: 'Films',
+            kind: MediaKind.movie,
+            serverId: 'jf',
+          ),
+        ];
+        final ctx = AssistantToolContext(
+          servers: f.manager,
+          catalog: AssistantCatalogServices(
+            rowLoader: CatalogHomeCustomRowLoader(
+              libraries: () => libraries,
+              isServerVisible: f.manager.isServerVisible,
+              hiddenLibraryKeys: () => hidden,
+              clientFor: f.manager.getClient,
+            ),
+            profileId: 'p',
+            activeProfileId: () => f.profile,
+          ),
+        );
+        void revoke() {
+          switch (change) {
+            case 'hide library':
+              hidden.add('jf:films');
+            case 'remove library':
+              libraries = [];
+            case 'replace client':
+              final other = _Fixture();
+              other.context(['1']);
+              f.manager.debugRegisterJellyfinClientForTesting(other.client);
+            case 'revoke admin':
+              f.manager.setServerAuthorityRestrictions(serverIds: {'jf'});
+            case 'switch profile':
+              f.profile = 'other';
+            case 'unchanged':
+              break;
+          }
+        }
+
+        final cohort =
+            _Model([
+                _reply('recommend_together', {
+                  'server_id': 'jf',
+                  'participants': ['Bob'],
+                  'kind': 'movie',
+                }),
+                const AssistantReply(
+                  content: 'These suit everyone',
+                  toolCalls: [],
+                  message: {'role': 'assistant', 'content': 'These suit everyone'},
+                ),
+              ])
+              ..closingEntered = Completer<void>()
+              ..closingRelease = Completer<void>();
+        if (path == 'controller await') {
+          final models = [
+            _Model([
+              _reply('split_tasks', {
+                'tasks': [
+                  {'title': 'Together', 'intent': 'recommend', 'prompt': 'Recommend for Bob and me'},
+                  {'title': 'Servers', 'intent': 'list', 'prompt': 'List servers'},
+                ],
+              }),
+            ]),
+            cohort,
+            _Model([_reply('list_servers'), _reply()]),
+          ];
+          final c = AssistantController(
+            buildContext: (_) => ctx,
+            rolloutEnabled: true,
+            entitlement: _Entitlement(),
+            loadConfig: () async => _config,
+            modelFor: (_) => models.removeAt(0),
+          );
+          addTearDown(c.dispose);
+          final done = c.submit('Recommend for Bob and me and list servers');
+          await cohort.closingEntered!.future;
+          expect(
+            c.tasks.first.displays.single,
+            isA<AssistantMediaGrid>(),
+            reason: 'actual cohort grid streamed before revocation',
+          );
+          revoke();
+          cohort.closingRelease!.complete();
+          await done;
+          expect(c.tasks.last.status, AssistantTaskStatus.completed);
+          expect(c.tasks.last.answer, 'Done');
+          if (change == 'unchanged') {
+            expect(c.tasks.first.displays, hasLength(1));
+            expect(c.tasks.first.answer, 'These suit everyone');
+          } else {
+            expect(c.tasks.first.displays, isEmpty);
+            expect(c.tasks.first.steps, isEmpty);
+            expect(c.tasks.first.answer, isEmpty);
+            expect(c.tasks.first.status, AssistantTaskStatus.failed);
+          }
+        } else {
+          final steps = <AssistantStep>[];
+          addTearDown(cohort.close);
+          final done = AssistantRun(
+            model: cohort,
+            context: ctx,
+            confirm: (_) async => null,
+            entitlement: _Entitlement(),
+            refreshHealth: () async {},
+            onStep: steps.add,
+          ).ask('Recommend for Bob and me');
+          await cohort.closingEntered!.future;
+          final streamed = steps.singleWhere((step) => step.display is AssistantMediaGrid);
+          if (path == 'direct run await') revoke();
+          cohort.closingRelease!.complete();
+          final result = await done;
+          if (path == 'publication callbacks') {
+            expect(result.displays, hasLength(1));
+            expect(streamed.evidenceCurrent, isNotNull);
+            expect(result.displayEvidenceCurrent, isNotNull);
+            expect(streamed.evidenceCurrent!(), isTrue);
+            expect(result.displayEvidenceCurrent!(), isTrue);
+            revoke();
+            expect(streamed.evidenceCurrent!(), change == 'unchanged');
+            expect(result.displayEvidenceCurrent!(), change == 'unchanged');
+          } else if (change == 'unchanged') {
+            expect(result.displays, hasLength(1));
+            expect(result.text, 'These suit everyone');
+          } else {
+            expect(result.displays, isEmpty);
+            expect(result.text, isEmpty);
+            expect(result.error, isNotNull);
+          }
+        }
+      });
+    }
+  }
+
+  for (final change in ['hide library', 'revoke admin', 'playback only', 'unchanged']) {
+    for (final direct in [false, true]) {
+      test('cohort and playback composition: $change ${direct ? 'direct' : 'controller'}', () async {
+        final f = _Fixture();
+        f.context(['1']);
+        final hidden = <String>{};
+        var playbackCurrent = true;
+        var samples = 0;
+        final snapshot = AssistantPlaybackSnapshot(sessionId: 'playback', revision: '1');
+        final ctx = AssistantToolContext(
+          servers: f.manager,
+          catalog: AssistantCatalogServices(
+            rowLoader: CatalogHomeCustomRowLoader(
+              libraries: () => [
+                const MediaLibrary(
+                  id: 'films',
+                  backend: MediaBackend.jellyfin,
+                  title: 'Films',
+                  kind: MediaKind.movie,
+                  serverId: 'jf',
+                ),
+              ],
+              isServerVisible: f.manager.isServerVisible,
+              hiddenLibraryKeys: () => hidden,
+              clientFor: f.manager.getClient,
+            ),
+            profileId: 'p',
+            activeProfileId: () => f.profile,
+          ),
+          playback: AssistantPlaybackServices(
+            available: () => playbackCurrent,
+            sample: () async {
+              samples++;
+              return snapshot;
+            },
+            isCurrent: (_) => playbackCurrent,
+          ),
+        );
+        final cohort =
+            _Model([
+                _reply('recommend_together', {
+                  'server_id': 'jf',
+                  'participants': ['Bob'],
+                  'kind': 'movie',
+                }),
+                _reply('diagnose_playback'),
+                const AssistantReply(
+                  content: 'These suit everyone',
+                  toolCalls: [],
+                  message: {'role': 'assistant', 'content': 'These suit everyone'},
+                ),
+              ])
+              ..closingEntered = Completer<void>()
+              ..closingRelease = Completer<void>();
+        void revoke() {
+          if (change == 'hide library') hidden.add('jf:films');
+          if (change == 'revoke admin') f.manager.setServerAuthorityRestrictions(serverIds: {'jf'});
+          if (change != 'unchanged') playbackCurrent = false;
+        }
+
+        final revokedCohort = change == 'hide library' || change == 'revoke admin';
+        if (direct) {
+          addTearDown(cohort.close);
+          final steps = <AssistantStep>[];
+          final done = AssistantRun(
+            model: cohort,
+            context: ctx,
+            confirm: (_) async => null,
+            entitlement: _Entitlement(),
+            refreshHealth: () async {},
+            onStep: steps.add,
+          ).ask('Recommend for Bob and me and diagnose current playback');
+          await cohort.closingEntered!.future;
+          expect(samples, 1);
+          expect(steps.any((step) => step.display is AssistantMediaGrid), isTrue);
+          expect(
+            steps.any((step) => step.tool == 'diagnose_playback' && step.phase == AssistantStepPhase.done),
+            isTrue,
+          );
+          revoke();
+          cohort.closingRelease!.complete();
+          final result = await done;
+          expect(result.displayEvidenceCurrent, isNotNull);
+          expect(result.displayEvidenceCurrent!(), !revokedCohort);
+          if (change == 'unchanged') {
+            expect(result.displays, hasLength(1));
+            expect(result.text, 'These suit everyone');
+          } else {
+            expect(result.error, 'playback_session_changed');
+            expect(result.playbackEvidenceCurrent!(), isFalse);
+            expect(result.displays, isEmpty);
+            expect(result.text, isEmpty);
+          }
+        } else {
+          final models = [
+            _Model([
+              _reply('split_tasks', {
+                'tasks': [
+                  {
+                    'title': 'Together',
+                    'intent': 'recommend',
+                    'prompt': 'Recommend for Bob and me and diagnose current playback',
+                  },
+                  {'title': 'Servers', 'intent': 'list', 'prompt': 'List servers'},
+                ],
+              }),
+            ]),
+            cohort,
+            _Model([_reply('list_servers'), _reply()]),
+          ];
+          final c = AssistantController(
+            buildContext: (_) => ctx,
+            rolloutEnabled: true,
+            entitlement: _Entitlement(),
+            loadConfig: () async => _config,
+            modelFor: (_) => models.removeAt(0),
+          );
+          addTearDown(c.dispose);
+          final done = c.submit('Recommend together, diagnose playback and list servers');
+          await cohort.closingEntered!.future;
+          expect(samples, 1);
+          expect(c.tasks.first.displays.single, isA<AssistantMediaGrid>());
+          expect(
+            c.tasks.first.steps.any(
+              (step) => step.tool == 'diagnose_playback' && step.phase == AssistantStepPhase.done,
+            ),
+            isTrue,
+          );
+          revoke();
+          cohort.closingRelease!.complete();
+          await done;
+          expect(c.tasks.last.status, AssistantTaskStatus.completed);
+          expect(c.tasks.last.answer, 'Done');
+          if (revokedCohort) {
+            expect(c.tasks.first.displays, isEmpty);
+            expect(c.tasks.first.steps, isEmpty);
+            expect(c.tasks.first.answer, isEmpty);
+            expect(c.tasks.first.status, AssistantTaskStatus.failed);
+          } else {
+            expect(c.tasks.first.displays, hasLength(1), reason: 'still-authorized cohort evidence is retained');
+            expect(c.tasks.first.answer, change == 'unchanged' ? 'These suit everyone' : '');
+          }
+        }
+      });
+    }
+  }
+
   test('same-title groups never transfer another servers access or watch evidence', () async {
     final f = _Fixture();
     final ctx = f.context(['1']);

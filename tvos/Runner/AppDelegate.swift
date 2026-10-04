@@ -85,6 +85,9 @@ import wakelock_plus
     if let r = engineBridge.pluginRegistry.registrar(forPlugin: "AudioSessionPlugin") {
       AudioSessionPlugin.register(with: r)
     }
+    if let r = engineBridge.pluginRegistry.registrar(forPlugin: "PleyaKeychainPlugin") {
+      PleyaKeychainPlugin.register(with: r)
+    }
     if let r = engineBridge.pluginRegistry.registrar(forPlugin: "NativeTextEntryPlugin") {
       NativeTextEntryPlugin.register(with: r)
     }

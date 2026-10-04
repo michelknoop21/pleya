@@ -67,21 +67,29 @@ final List<AssistantTool> _generalTools = [
         MediaKind.album,
         MediaKind.artist,
       };
-      return AssistantToolResult({
-        'items': [
-          for (final item in items.where((i) => kinds.contains(i.kind)).take(10))
-            () {
-              ctx.showItem(id, item.id);
-              return {
-                'item_id': item.id,
-                'title': clipText(item.title),
-                if (item.grandparentTitle != null) 'series': clipText(item.grandparentTitle),
-                if (item.year != null) 'year': item.year,
-                'kind': item.kind.name,
-              };
-            }(),
-        ],
-      });
+      final shown = items.where((i) => kinds.contains(i.kind)).take(10).toList();
+      return AssistantToolResult(
+        {
+          'items': [
+            for (final item in shown)
+              () {
+                ctx.showItem(id, item.id);
+                return {
+                  'item_id': item.id,
+                  'title': clipText(item.title),
+                  if (item.grandparentTitle != null) 'series': clipText(item.grandparentTitle),
+                  if (item.year != null) 'year': item.year,
+                  'kind': item.kind.name,
+                };
+              }(),
+          ],
+          // Films and series it found are cards to open, not names in prose.
+        },
+        display: AssistantMediaGrid([
+          for (final item in shown)
+            if (item.kind == MediaKind.movie || item.kind == MediaKind.show) (item: item, group: null),
+        ]),
+      );
     },
   ),
 ];

@@ -516,6 +516,8 @@ void main() {
     await action.execute();
     expect(f.server.reads, ['item:show', 'library:series']);
     expect(f.server.writes, ['scan:series']);
+    expect(action.record.job?.serverId, _id);
+    expect(action.record.job?.libraryId, 'series');
   });
   test('complete compatible evidence distinguishes gap from proved missing aired episode', () async {
     final f = _Fixture();

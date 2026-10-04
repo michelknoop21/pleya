@@ -341,6 +341,7 @@ class PreferenceSyncPolicyRegistry {
     'audio_normalization': _globalPref,
     'audio_normalization_mode': _globalPref,
     'audio_reduce_loud_sounds': _globalPref,
+    'big_p_voice': _globalPref,
     'audio_level_volume': _globalPref,
     // GPU-bound: a shader the Mac runs can stall an Apple TV.
     'global_shader_preset': _deviceBoundPref,
@@ -561,6 +562,8 @@ class PreferenceSyncPolicyRegistry {
     'seerr_session': _secret,
     'tautulli_session': _secret,
     'assistant_provider': _secret,
+    'assistant_provider_pending': _secret,
+    'assistant_provider_seen': _runtimeCache,
     'pleya_share_tokens': _secret,
     'pleya_share_guests': _secret,
     'pleya_share_relay_host_id': _secret,

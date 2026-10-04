@@ -1,8 +1,7 @@
 /// Big P summoned from any TV screen (mockup 38, "Oproepen vanaf elk
 /// scherm"): a long press on Play/Pause brings him in bottom right with a
-/// 570 pt glass panel, the screen behind dims but stays the context, and the
-/// system keyboard opens right away. After a good result he leaves on his
-/// own; an error or a choice stays until Menu.
+/// 760 pt speech balloon (39 J), the screen behind dims but stays the context, and the
+/// system keyboard opens right away. He stays until Menu or Klaar.
 library;
 
 import 'dart:async';
@@ -19,6 +18,7 @@ import '../../../automation/automation_node.dart';
 import '../../../focus/key_event_utils.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
+import '../../../profiles/active_profile_provider.dart';
 import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../services/apple_tv_remote_touch_service.dart';
 import '../../../services/speech_search_service.dart';
@@ -28,12 +28,14 @@ import '../../../utils/native_input_session.dart';
 import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/big_p/big_p_avatar.dart';
+import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/overlay_sheet.dart';
+import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
-import 'tv_assistant_labels.dart';
-import 'tv_assistant_results.dart';
 import 'tv_assistant_tasks.dart';
+import '../../../widgets/big_p/assistant/big_p_results.dart';
+import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import 'tv_assistant_screen.dart';
 import 'tv_assistant_summon_layer.dart';
 
@@ -60,9 +62,6 @@ class TvAssistantSummonHost extends StatefulWidget {
   final SpeechSearchService? speech;
   final AppleTvNativeTextEntry? textEntry;
 
-  /// How long a good result stays before Big P leaves, restarted by any key.
-  static const linger = Duration(seconds: 4);
-
   @override
   State<TvAssistantSummonHost> createState() => _TvAssistantSummonHostState();
 }
@@ -75,7 +74,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   bool _leaving = false;
   DateTime _resultAt = DateTime.now();
   FocusNode? _returnTo;
-  Timer? _linger;
   Timer? _remove;
   AssistantSurfaceState? _lastState;
   int _nod = 0;
@@ -107,7 +105,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   @override
   void dispose() {
     unawaited(_sub?.cancel());
-    _linger?.cancel();
     _remove?.cancel();
     _c?.removeListener(_onChange);
     for (final node in [_panelNode, _askNode, _cancelNode, _optionNode, _confirmCancelNode, _tasksNode, _scope]) {
@@ -135,7 +132,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = context.read<AssistantController?>();
     if (c == null) return;
     // Nothing reads availability at app start; the press is the first ask.
-    if (c.availability == AssistantAvailability.hidden) await c.refreshAvailability();
+    // Short of ready it asks again: a keychain that failed may have recovered.
+    if (c.availability != AssistantAvailability.ready) await c.refreshAvailability();
     if (!_remoteIsFree) return;
     switch (c.availability) {
       case AssistantAvailability.hidden:
@@ -159,6 +157,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _remove?.cancel();
     _returnTo = FocusManager.instance.primaryFocus;
     c.reset();
+    BigPSuggestions.of(c).summoned();
     _c = c..addListener(_onChange);
     _lastState = c.state;
     setState(() {
@@ -219,7 +218,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _doneSteps = done;
 
     _confirm.sync(context, c, _entry, _onConfirmClosed);
-    _armLinger();
     setState(() {});
   }
 
@@ -233,17 +231,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     });
   }
 
-  /// A good result with nothing left to choose: Big P leaves after [linger].
-  /// Of several tasks, every one must have ended well.
-  void _armLinger() {
-    _linger?.cancel();
-    final c = _c;
-    if (c == null || c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null) return;
-    if (tvAssistantHasChoices(c.displays)) return;
-    if (c.tasks.length > 1 && c.tasks.any((task) => task.status != AssistantTaskStatus.completed)) return;
-    _linger = Timer(TvAssistantSummonHost.linger, _dismiss);
-  }
-
   void _focusDefault() {
     final c = _c;
     if (!mounted || c == null || _confirm.isOpen) return;
@@ -252,7 +239,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       AssistantSurfaceState.result =>
         (c.tasks.length > 1
                 ? _taskOptionNodes.first(c.tasks)
-                : tvAssistantHasChoices(c.displays)
+                : bigPHasChoices(c.displays)
                 ? _optionNode
                 : null) ??
             _askNode,
@@ -268,12 +255,12 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     unawaited(navigateToMediaItemDetails(context, target.item));
   }
 
-  /// Menu, Klaar or the linger: Big P slides out, a run in flight or a
+  /// Menu or Klaar: Big P slides out (every result offers follow-ups, so he
+  /// waits for the user), a run in flight or a
   /// waiting card is let go, and the remote is back where it was.
   void _dismiss() {
     if (!_open || _leaving) return;
     _leaving = true;
-    _linger?.cancel();
     final c = _c;
     c?.removeListener(_onChange);
     c?.abort();
@@ -302,7 +289,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
       MediaQuery.maybeDisableAnimationsOf(context) ?? false ? Duration.zero : const Duration(milliseconds: 380);
 
   KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    if (_linger?.isActive ?? false) _armLinger(); // still reading
     return handleBackKeyAction(event, _dismiss);
   }
 
@@ -320,6 +306,9 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               node: _scope,
               child: Focus(
                 focusNode: _panelNode,
+                // Holds the focus when nothing else can; Up or Down must
+                // not land on it and strand the remote.
+                skipTraversal: true,
                 onKeyEvent: _onKey,
                 child: AutomationNode(
                   id: AutomationIds.assistantSummon,
@@ -329,7 +318,6 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
                     'state': c?.state.name,
                     'error': c?.resultIsError ?? false,
                     'pending': c?.pending != null,
-                    'lingering': _linger?.isActive ?? false,
                   },
                   child: _overlay(context, c),
                 ),
@@ -340,19 +328,21 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     );
   }
 
+  /// About 416 pt wide at 1080p in 39 J, so he reads as the one speaking.
+  static const _avatarHeight = 520.0;
+
   Widget _overlay(BuildContext context, AssistantController? c) {
     final pt = TvHig.of(context);
-    final result = c?.state == AssistantSurfaceState.result;
-    final headline = c == null ? '' : assistantHeadline(c);
     return TvAssistantSummonLayer(
       shown: _shown,
       listening: c?.state == AssistantSurfaceState.listening,
       motion: _motion(context),
+      avatarHeight: _avatarHeight,
       panel: c == null
           ? null
           : TvAssistantConversation(
               controller: c,
-              name: '',
+              name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
               servers: '',
               compact: true,
               resultTime: MaterialLocalizations.of(context).formatTimeOfDay(
@@ -367,19 +357,25 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               onAsk: () => unawaited(_ask()),
               onDone: _dismiss,
               onCancelWork: _dismiss,
-              onExample: (_) {},
+              onExample: (question) {
+                c.beginListening();
+                unawaited(c.submit(question));
+              },
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
               onOpenTitle: _openTitle,
             ),
-      avatar: BigPAvatar(
-        mood: c == null ? BigPMood.idle : tvAssistantMood(c),
-        size: 340 * pt,
-        nodSignal: _nod,
-        talkingText: result && headline.isNotEmpty ? headline : null,
-        // He stands right of the panel: point left, down the list.
-        pointAt: c?.state == AssistantSurfaceState.working
-            ? Alignment(-1, (0.15 * c!.steps.length).clamp(0.0, 1.0))
-            : null,
+      avatar: BigPVoiceMouth(
+        controller: c,
+        builder: (line) => BigPAvatar(
+          mood: c == null ? BigPMood.idle : bigPMood(c),
+          size: _avatarHeight * pt,
+          nodSignal: _nod,
+          talkingText: line,
+          // He stands right of the panel: point left, down the list.
+          pointAt: c?.state == AssistantSurfaceState.working
+              ? Alignment(-1, (0.15 * c!.steps.length).clamp(0.0, 1.0))
+              : null,
+        ),
       ),
     );
   }

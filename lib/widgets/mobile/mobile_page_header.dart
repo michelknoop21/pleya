@@ -14,6 +14,7 @@ import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
 import '../../profiles/profile.dart';
+import '../../screens/big_p/big_p_face_button.dart';
 import '../../profiles/profile_avatar.dart';
 import '../../services/account_ui_actions.dart';
 import '../../theme/glass/glass_settings.dart';
@@ -94,6 +95,7 @@ class MobilePageHeader extends StatelessWidget {
                 ),
               ),
             ),
+            const BigPFaceButton(),
             // The avatar is the profile switcher, as in the northstar: it opens
             // the same list Mijn Pleya's "Profiel wisselen" does. It used to be
             // a bare image, so tapping it did nothing (Michel, 25 September).

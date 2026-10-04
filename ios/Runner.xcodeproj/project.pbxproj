@@ -27,6 +27,7 @@
 		B1D51A6A2F00110000000005 /* MpvPlayerPluginShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000006 /* MpvPlayerPluginShared.swift */; };
 		B1D51A6A2F00110000000008 /* ExternalDisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000007 /* ExternalDisplayManager.swift */; };
 		B1D51A6A2F00110000000102 /* AudioSessionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */; };
+		B1D51A6A2F00110000000302 /* PleyaKeychainPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D51A6A2F00110000000301 /* PleyaKeychainPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +82,7 @@
 		B1D51A6A2F00110000000006 /* MpvPlayerPluginShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MpvPlayerPluginShared.swift; path = ../shared/apple/MpvPlayer/MpvPlayerPluginShared.swift; sourceTree = SOURCE_ROOT; };
 		B1D51A6A2F00110000000007 /* ExternalDisplayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplayManager.swift; sourceTree = "<group>"; };
 		B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioSessionPlugin.swift; path = ../shared/apple/AudioSession/AudioSessionPlugin.swift; sourceTree = SOURCE_ROOT; };
+		B1D51A6A2F00110000000301 /* PleyaKeychainPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PleyaKeychainPlugin.swift; path = ../shared/apple/Keychain/PleyaKeychainPlugin.swift; sourceTree = SOURCE_ROOT; };
 		B2C3D4E5F60718293A4B5C6D /* SecureFolderPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SecureFolderPlugin.swift; sourceTree = "<group>"; };
 		BB346A1D0705AB171F80B11B /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C924A20B2FF7B7CF00A24BBC /* Podfile 2 */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Podfile 2"; sourceTree = "<group>"; };
@@ -202,6 +204,7 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				D5AEF09791812EA3DEE53491 /* ICloudKvsPlugin.swift */,
 				B1D51A6A2F00110000000101 /* AudioSessionPlugin.swift */,
+				B1D51A6A2F00110000000301 /* PleyaKeychainPlugin.swift */,
 				B2C3D4E5F60718293A4B5C6D /* SecureFolderPlugin.swift */,
 			);
 			path = Runner;
@@ -436,6 +439,7 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				2F296BD395FD28B5FE4153F8 /* ICloudKvsPlugin.swift in Sources */,
 				B1D51A6A2F00110000000102 /* AudioSessionPlugin.swift in Sources */,
+				B1D51A6A2F00110000000302 /* PleyaKeychainPlugin.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* SecureFolderPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

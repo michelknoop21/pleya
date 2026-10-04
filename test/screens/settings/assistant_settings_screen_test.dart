@@ -7,30 +7,47 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/navigation/tv/tv_nested_surface.dart';
 import 'package:pleya/screens/settings/assistant_settings_screen.dart';
+import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
+
+import '../../test_helpers/prefs.dart';
 
 class _FakeStore implements AssistantProviderStore {
   _FakeStore([this.config]);
   AssistantProviderConfig? config;
   int saves = 0;
+  Object? clearError;
+
+  /// The keychain holds a setup this version cannot read.
+  bool unreadable = false;
 
   @override
   Future<AssistantProviderConfig?> load() async => config;
 
   @override
-  Future<void> save(AssistantProviderConfig config) async {
+  Future<void> save(AssistantProviderConfig config, {bool replaceUnreadable = false}) async {
+    if (unreadable && !replaceUnreadable) throw const AssistantProviderUnreadableException();
     saves++;
     this.config = config;
   }
 
   @override
-  Future<void> clear() async => config = null;
+  Future<void> clear() async {
+    if (clearError != null) throw clearError!;
+    config = null;
+  }
 }
 
 List<AssistantModelInfo> _infos(List<String> ids) => [for (final id in ids) AssistantModelInfo(id: id)];
 
 void main() {
   final s = t.assistant.settings;
+
+  // The summary carries Big P's voice switch, a SettingsService pref.
+  setUp(() async {
+    resetSharedPreferencesForTest();
+    await SettingsService.getInstance();
+  });
 
   Future<void> pump(
     WidgetTester tester,
@@ -173,6 +190,22 @@ void main() {
     expect(find.text(s.providerHeading), findsOneWidget);
   });
 
+  testWidgets('a disable the keychain refuses keeps the summary', (tester) async {
+    final store = _FakeStore(
+      const AssistantProviderConfig(
+        kind: AssistantProviderKind.ollamaServer,
+        baseUrl: 'http://nas.lan:11434',
+        model: 'llama3.1',
+      ),
+    )..clearError = PlatformException(code: 'KEYCHAIN', message: 'OSStatus -25308');
+    await pump(tester, store, (_) async => []);
+    await tapText(tester, s.disable);
+    await tapText(tester, s.disable); // dialog confirm
+    expect(store.config, isNotNull);
+    expect(find.text(s.providerHeading), findsNothing);
+    expect(find.text(s.disable), findsOneWidget);
+  });
+
   testWidgets('a single tool model is picked by itself', (tester) async {
     await pump(tester, _FakeStore(), (_) async => _infos(['only:1b']));
     await tapText(tester, s.ollamaCloud);
@@ -201,6 +234,28 @@ void main() {
     expect(find.text(s.savedModelGone(model: 'old:7b')), findsNothing);
   });
 
+  for (final replace in [true, false]) {
+    testWidgets('an unreadable synced setup is ${replace ? '' : 'not '}replaced after the notice', (tester) async {
+      final store = _FakeStore(
+        const AssistantProviderConfig(
+          kind: AssistantProviderKind.ollamaCloud,
+          baseUrl: AssistantProviderConfig.ollamaCloudUrl,
+          apiKey: 'k',
+          model: 'old:7b',
+        ),
+      )..unreadable = true;
+      await pump(tester, store, (_) async => _infos(['new:8b']));
+      await tapText(tester, 'new:8b');
+      expect(find.text(s.unreadableBody), findsOneWidget);
+      expect(store.saves, 0);
+
+      await tapText(tester, replace ? s.replace : t.common.cancel);
+      expect(find.text(s.unreadableBody), findsNothing);
+      expect(store.saves, replace ? 1 : 0);
+      expect(store.config!.model, replace ? 'new:8b' : 'old:7b');
+    });
+  }
+
   for (final (model, kept) in [('qwen3:32b', true), ('gpt-oss:120b', false)]) {
     testWidgets(
       'Change and save again with ${kept ? 'the same' : 'another'} model ${kept ? 'keeps' : 'drops'} the timeout',
@@ -228,6 +283,85 @@ void main() {
       },
     );
   }
+
+  testWidgets('Change to the same provider keeps the saved key and URL: only the model changes', (tester) async {
+    final seen = <AssistantProviderConfig>[];
+    for (final saved in const [
+      AssistantProviderConfig(
+        kind: AssistantProviderKind.ollamaCloud,
+        baseUrl: AssistantProviderConfig.ollamaCloudUrl,
+        apiKey: 'k',
+        model: 'qwen3:32b',
+      ),
+      AssistantProviderConfig(
+        kind: AssistantProviderKind.ollamaServer,
+        baseUrl: 'http://o.lan:11434',
+        headerName: 'X-Auth',
+        headerValue: 'secret',
+        model: 'qwen3:32b',
+      ),
+    ]) {
+      final store = _FakeStore(saved);
+      await pump(tester, store, (config) async {
+        seen.add(config);
+        return _infos(['gpt-oss:120b', 'qwen3:32b']);
+      });
+      await tapText(tester, s.change);
+      await tapText(tester, saved.kind == AssistantProviderKind.ollamaCloud ? s.ollamaCloud : s.ollamaServer);
+      await settle(tester);
+      // Nothing typed: the secret stays out of the field, the models load anyway.
+      expect(find.text('gpt-oss:120b'), findsOneWidget, reason: saved.kind.name);
+      expect(find.text('secret'), findsNothing);
+      await tapText(tester, 'gpt-oss:120b');
+      await tapText(tester, s.test);
+      await tapText(tester, s.save);
+
+      expect(store.config!.model, 'gpt-oss:120b');
+      expect(store.config!.apiKey, saved.apiKey);
+      expect(store.config!.baseUrl, saved.baseUrl);
+      expect(store.config!.headerName, saved.headerName);
+      expect(store.config!.headerValue, saved.headerValue);
+      expect(seen.last.apiKey, saved.apiKey, reason: 'the test call used the kept key');
+      await tester.pumpWidget(const SizedBox());
+    }
+  });
+
+  testWidgets('Change to the same server with another URL or header does not send the saved header value', (
+    tester,
+  ) async {
+    final seen = <AssistantProviderConfig>[];
+    await pump(
+      tester,
+      _FakeStore(
+        const AssistantProviderConfig(
+          kind: AssistantProviderKind.ollamaServer,
+          baseUrl: 'http://o.lan:11434',
+          headerName: 'X-Auth',
+          headerValue: 'secret',
+          model: 'qwen3:32b',
+        ),
+      ),
+      (config) async {
+        seen.add(config);
+        return _infos(['qwen3:32b']);
+      },
+    );
+    await tapText(tester, s.change);
+    await tapText(tester, s.ollamaServer);
+    await settle(tester);
+    expect(seen.last.headerValue, 'secret', reason: 'same host and header keep it');
+
+    await tester.enterText(field(0), 'http://other.lan:11434');
+    await settle(tester);
+    expect(seen.last.baseUrl, 'http://other.lan:11434');
+    expect(seen.last.headerValue, isEmpty);
+
+    await tester.enterText(field(0), 'http://o.lan:11434');
+    await tester.enterText(field(1), 'X-Other');
+    await settle(tester);
+    expect(seen.last.headerName, 'X-Other');
+    expect(seen.last.headerValue, isEmpty);
+  });
 
   testWidgets('summary: long OpenRouter lists are capped behind Meer tonen', (tester) async {
     final store = _FakeStore(

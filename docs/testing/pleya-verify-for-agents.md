@@ -43,6 +43,11 @@ dart run bin/verify.dart run ../scenarios/<name>.yaml --json
 - `ERROR`: the scenario never ran (missing file, parse/validation error, no driver for that
   `target:`). Fix the scenario or the environment, not the assertion.
 
+Big P scenarios (`ios.assistant.*`) need `PLEYA_ASSISTANT_ENABLED=true` in the environment of `run`:
+the iOS simulator driver reads it and adds the matching `--dart-define` to its build
+(`pleya_verify/runner/lib/src/driver/ios_simulator_driver.dart:141`). Without it the rollout gate
+keeps Big P hidden and the scenario fails on a missing face button.
+
 The MCP layer (`pleya_verify/mcp/`) exposes `list_scenarios` and `run_scenario` as tools over
 stdio, for a session that wants structured results without spawning a subprocess directly. Both
 wrap the identical CLI subcommands above; `run_scenario`'s response includes a `reproduce` field

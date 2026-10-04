@@ -22,6 +22,7 @@ class FindQuery {
     this.series,
     this.season,
     this.episode,
+    this.subject = false,
   });
   final List<FindCandidate> candidates;
 
@@ -33,6 +34,10 @@ class FindQuery {
   final String? series;
   final int? season;
   final int? episode;
+
+  /// The model says the user wants titles about a topic (a list), not one
+  /// specific title.
+  final bool subject;
 
   bool get wantsEpisode => kind == MediaKind.episode || season != null || episode != null;
 }
@@ -223,8 +228,22 @@ void attachLooseMatches(List<FindMatch> matches) {
 /// as a film title, site names and separators cut off.
 ({String title, int? year}) webTitle(String raw) {
   var title = raw.split(RegExp(r'\s[-|–—:]\s')).first.trim();
-  final year = RegExp(r'\((1[89]\d\d|20\d\d)\)').firstMatch(title);
+  final year = RegExp(
+    r'\((1[89]\d\d|20\d\d)(?: film| tv series| miniseries)?\)',
+    caseSensitive: false,
+  ).firstMatch(title);
   if (year != null) title = title.substring(0, year.start).trim();
   title = title.replaceAll(RegExp(r'\s*\((film|tv series|miniseries|movie)\)$', caseSensitive: false), '');
   return (title: title, year: year == null ? null : int.parse(year.group(1)!));
 }
+
+final _filmPage = RegExp(
+  r'\((?:(?:1[89]|20)\d\d(?: film| movie| tv series| miniseries)?|film|movie|tv series|miniseries)\)',
+  caseSensitive: false,
+);
+final _filmSite = RegExp(r'imdb|themoviedb|letterboxd|rottentomatoes|rotten tomatoes|metacritic', caseSensitive: false);
+
+/// A web result that is about a film or series: "Primer (2004) - IMDb",
+/// "Heat (film) - Wikipedia", or a page on a film site.
+bool looksLikeFilmPage(({String title, String url, String snippet}) hit) =>
+    _filmPage.hasMatch(hit.title) || _filmSite.hasMatch('${hit.title} ${hit.url}');

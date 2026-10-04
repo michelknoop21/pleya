@@ -1,0 +1,405 @@
+/// What Pleya shows while and after Big P works: the live step list, the
+/// result card (38 G, 38 J) and the displays a tool handed over.
+library;
+
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
+
+import '../../../assistant/assistant_run.dart';
+import '../../../assistant/assistant_tools.dart';
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
+import '../../../i18n/strings.g.dart';
+import '../../../media/ids.dart';
+import '../../../theme/mono_theme.dart';
+import '../../../theme/mono_tokens.dart';
+import '../../../utils/tv_hig.dart';
+import '../big_p_scale.dart';
+import 'big_p_labels.dart';
+import 'big_p_match_card.dart';
+import 'big_p_option_card.dart';
+import 'big_p_watch_card.dart';
+import 'big_p_assistant_widgets.dart';
+
+Widget _statusIcon(BuildContext context, AssistantStepPhase phase) {
+  final pt = BigPScale.of(context);
+  final size = 30 * pt;
+  return switch (phase) {
+    AssistantStepPhase.done => Icon(Symbols.check_circle_rounded, fill: 1, color: kSuccess, size: size),
+    AssistantStepPhase.failed => Icon(Symbols.cancel_rounded, fill: 1, color: kNoticeErrorDark, size: size),
+    AssistantStepPhase.started => Icon(
+      Symbols.radio_button_unchecked_rounded,
+      color: tokens(context).text.withValues(alpha: 0.6),
+      size: size,
+    ),
+  };
+}
+
+/// The live step list (motion still 3): one dark row per tool call, label
+/// from the tool name and Pleya's server name, icon from the phase.
+class BigPStepList extends StatelessWidget {
+  const BigPStepList({super.key, required this.steps});
+
+  final List<AssistantStep> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = BigPScale.of(context);
+    final tk = tokens(context);
+    return AutomationNode(
+      id: AutomationIds.assistantSteps,
+      role: 'list',
+      state: () => {
+        'count': steps.length,
+        'done': steps.where((s) => s.phase == AssistantStepPhase.done).length,
+        'failed': steps.where((s) => s.phase == AssistantStepPhase.failed).length,
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final step in steps) ...[
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 14 * pt),
+              decoration: BoxDecoration(color: const Color(0xCC161616), borderRadius: BorderRadius.circular(14 * pt)),
+              child: Row(
+                children: [
+                  _statusIcon(context, step.phase),
+                  SizedBox(width: 18 * pt),
+                  Expanded(
+                    child: Text(
+                      assistantStepLabel(step),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8 * pt),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Uitgevoerd door Pleya · 21:14" with one line per action (38 G), or the
+/// red "Niet uitgevoerd" card when the run failed without doing anything
+/// (38 J). A failure after some actions keeps the green lines: what Pleya
+/// already did is never hidden.
+class BigPResultCard extends StatelessWidget {
+  const BigPResultCard({super.key, required this.error, required this.actions, required this.time});
+
+  final bool error;
+  final List<AssistantActionRecord> actions;
+  final String time;
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = BigPScale.of(context);
+    final tk = tokens(context);
+    final done = actions.isNotEmpty;
+    Widget line(Widget icon, String text) => Padding(
+      padding: EdgeInsets.only(top: 16 * pt),
+      child: Row(
+        children: [
+          icon,
+          SizedBox(width: 18 * pt),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: tk.text, fontSize: TvHig.body * pt, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+    return AutomationNode(
+      id: AutomationIds.assistantResult,
+      role: 'region',
+      state: () => {
+        'error': error,
+        'actions': actions.length,
+        // Per followed job: phase and percent, for Pleya Verify.
+        'jobs': [
+          for (final a in actions)
+            if (a.progress case final p?) {'phase': p.phase.name, 'percent': ?p.percent},
+        ],
+      },
+      child: BigPCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${done ? t.assistant.result.doneBy : t.assistant.result.notDoneBy} · $time',
+              style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption2 * pt),
+            ),
+            for (final action in actions)
+              line(
+                _statusIcon(context, switch (action.progress?.phase) {
+                  AssistantJobPhase.running || AssistantJobPhase.background => AssistantStepPhase.started,
+                  AssistantJobPhase.failed => AssistantStepPhase.failed,
+                  _ => AssistantStepPhase.done,
+                }),
+                assistantActionLabel(action),
+              ),
+            if (!done) line(_statusIcon(context, AssistantStepPhase.failed), t.assistant.ends.nothingChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A media grid draws at most this many titles.
+const _gridCap = 12;
+
+/// The watched titles shown as cards: the ones watch_stats resolved.
+const _watchTitles = 5;
+
+/// How many focusable cards [display] draws: request options, found titles
+/// and a grid's titles. The first of them takes the focus after a result
+/// (still 7).
+int bigPChoiceCount(AssistantDisplay display) => switch (display) {
+  AssistantRequestOptions(:final options) => options.length,
+  AssistantTitleMatches(:final matches) => matches.where((m) => m.targets.isNotEmpty || m.request != null).length,
+  AssistantMediaGrid(:final entries) => min(entries.length, _gridCap),
+  AssistantServerComparison(:final missing) => min(missing.length, _gridCap),
+  AssistantWatchStats(:final titles) => titles.take(_watchTitles).where((t) => t.target != null).length,
+  _ => 0,
+};
+
+/// A display with nothing in it, e.g. a search that found nothing: the
+/// answer says so, an empty card would only be a grey bar.
+bool bigPDisplayIsEmpty(AssistantDisplay display) => switch (display) {
+  AssistantRequestOptions(:final options) => options.isEmpty,
+  AssistantTitleMatches(:final matches) => matches.isEmpty,
+  AssistantMediaGrid(:final entries) => entries.isEmpty,
+  _ => false,
+};
+
+bool bigPHasChoices(List<AssistantDisplay> displays) => displays.any((d) => bigPChoiceCount(d) > 0);
+
+/// The title cards [display] draws when titles can be opened; each card
+/// opens its first target. Big P on the phone counts these too, for the
+/// titles still left to open.
+List<AssistantTitleMatch> bigPTitleMatches(AssistantDisplay display) => switch (display) {
+  AssistantTitleMatches(:final matches) => matches,
+  AssistantMediaGrid(:final entries) => [
+    for (final e in entries.take(_gridCap))
+      AssistantTitleMatch(
+        matchId: e.item.globalKey,
+        title: e.item.displayTitle,
+        year: e.item.year,
+        kind: e.item.kind.name,
+        confidence: 'high',
+        targets: [
+          // The representative first: the copy the card names is the
+          // copy it opens.
+          if (e.group case final group?)
+            for (final s in [
+              group.representativeSource,
+              ...group.sources.where((s) => s.sourceKey != group.representativeSourceKey),
+            ])
+              (serverId: s.serverId, serverName: s.serverName, item: s.item)
+          else if (e.item.serverId case final id?)
+            (serverId: ServerId(id), serverName: e.item.serverName ?? '', item: e.item),
+        ],
+      ),
+  ],
+  // The missing titles are on [serverName]: cards that open that copy.
+  final AssistantServerComparison c => [
+    for (final item in c.missing.take(_gridCap))
+      AssistantTitleMatch(
+        matchId: item.globalKey,
+        title: item.displayTitle,
+        year: item.year,
+        kind: item.kind.name,
+        confidence: 'high',
+        targets: [(serverId: c.serverId, serverName: c.serverName, item: item)],
+      ),
+  ],
+  // The watched titles are title cards, as a found title is: poster,
+  // plays and viewers, and they open their library copy.
+  AssistantWatchStats(:final titles) => [
+    for (final x in titles.take(_watchTitles))
+      AssistantTitleMatch(
+        matchId: x.target?.item.globalKey ?? 'watched:${x.title}',
+        title: x.title,
+        year: x.target?.item.year,
+        kind: x.target?.item.kind.name ?? (x.show ? 'show' : 'movie'),
+        confidence: 'high',
+        targets: [?x.target],
+        snippet: [t.assistant.displays.plays(count: x.plays), ...x.viewers.take(3)].join(' · '),
+      ),
+  ],
+  _ => const [],
+};
+
+/// A tool's display, drawn on the panel. Request options and found titles
+/// are the focusable kinds: an option goes to [onPickOption]; a found title
+/// opens its library copy through [onOpenTitle], or, not in a library, goes
+/// to [onPickOption] with its Seerr request. Without [onPickOption] (Big P
+/// still checking) a request card stays focusable but dimmed and inert.
+class BigPDisplayView extends StatelessWidget {
+  const BigPDisplayView({
+    super.key,
+    required this.display,
+    this.onPickOption,
+    this.onOpenTitle,
+    this.firstOptionNode,
+    this.optionOffset = 0,
+    this.compact = false,
+    this.columns = 1,
+  });
+
+  final AssistantDisplay display;
+  final ValueChanged<AssistantRequestOption>? onPickOption;
+  final ValueChanged<AssistantTitleTarget>? onOpenTitle;
+
+  /// The summoned panel: the cards take their compact form.
+  final bool compact;
+
+  /// Cards side by side: 2 in the iPad balloon (39 I), 1 elsewhere.
+  final int columns;
+
+  /// Gets the first option card, for the surface's default focus (still 7).
+  final FocusNode? firstOptionNode;
+
+  /// Index of this display's first card across all displays, so automation
+  /// instances stay unique.
+  final int optionOffset;
+
+  void _selectMatch(AssistantTitleMatch match) {
+    if (match.targets.firstOrNull case final target?) {
+      onOpenTitle?.call(target);
+    } else if (match.request case final request?) {
+      onPickOption?.call(request);
+    }
+  }
+
+  bool _selectable(AssistantTitleMatch m) => m.targets.isNotEmpty || m.request != null;
+
+  /// The cards scroll in the panel's own results list; the panel's height
+  /// is what bounds how many show at once. [ranked] badges each poster with
+  /// its place (most watched).
+  Widget _matches(double pt, List<AssistantTitleMatch> matches, {bool ranked = false}) {
+    return _cards(pt, [
+      for (final (i, match) in matches.indexed)
+        BigPMatchCard(
+          match: match,
+          index: optionOffset + i,
+          // A ranking is a list to scan: one line of detail per title.
+          compact: compact || ranked,
+          // More than three in the summoned panel: the list form, so
+          // five show where three did.
+          dense: compact && !ranked && matches.length > 3,
+          rank: ranked ? i + 1 : null,
+          focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
+          // Nothing to open and nothing to request: shown, never a dead
+          // focus stop.
+          onSelect: match.targets.isNotEmpty || (match.request != null && onPickOption != null)
+              ? () => _selectMatch(match)
+              : null,
+        ),
+    ]);
+  }
+
+  /// One card per row, or [columns] side by side, in reading order.
+  Widget _cards(double pt, List<Widget> cards) => Column(
+    children: [
+      for (var i = 0; i < cards.length; i += columns)
+        Padding(
+          padding: EdgeInsets.only(bottom: 10 * pt),
+          child: columns == 1
+              ? cards[i]
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var j = i; j < i + columns; j++) ...[
+                      if (j > i) SizedBox(width: 10 * pt),
+                      Expanded(child: j < cards.length ? cards[j] : const SizedBox.shrink()),
+                    ],
+                  ],
+                ),
+        ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final pt = BigPScale.of(context);
+    final tk = tokens(context);
+    final muted = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt);
+    final row = TextStyle(color: tk.text, fontSize: TvHig.caption1 * pt);
+    final heading = TextStyle(color: tk.text, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700);
+    Widget card(String? header, List<String> lines) => BigPCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (header != null) ...[Text(header, style: heading), SizedBox(height: 12 * pt)],
+          for (final (i, l) in lines.indexed)
+            Padding(
+              padding: EdgeInsets.only(top: 8 * pt),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 40 * pt,
+                    child: Text('${i + 1}', style: muted),
+                  ),
+                  Expanded(
+                    child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: row),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    String titled(String title, int? year) => year == null ? title : '$title ($year)';
+    return switch (display) {
+      AssistantRequestOptions(:final options) => _cards(pt, [
+        for (var i = 0; i < options.length; i++)
+          BigPOptionCard(
+            option: options[i],
+            index: optionOffset + i,
+            focusNode: i == 0 ? firstOptionNode : null,
+            compact: compact,
+            onSelect: switch (onPickOption) {
+              final pick? => () => pick(options[i]),
+              null => null,
+            },
+          ),
+      ]),
+      AssistantTitleMatches(:final matches) => _matches(pt, matches),
+      // A preview on the confirm card has nothing to open: text, as before.
+      AssistantMediaGrid(:final entries) when onOpenTitle == null => card(null, [
+        for (final e in entries.take(_gridCap)) titled(e.item.displayTitle, e.item.year),
+      ]),
+      AssistantMediaGrid() => _matches(pt, bigPTitleMatches(display)),
+      final AssistantServerComparison c when onOpenTitle != null && c.missing.isNotEmpty => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          card(t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName), []),
+          SizedBox(height: 10 * pt),
+          _matches(pt, bigPTitleMatches(c)),
+        ],
+      ),
+      final AssistantServerComparison c => card(
+        t.assistant.displays.missing(count: c.missingTotal, server: c.serverName, other: c.otherServerName),
+        [for (final item in c.missing.take(12)) titled(item.displayTitle, item.year)],
+      ),
+      final AssistantWatchStats s => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          BigPWatchCard(stats: s),
+          if (s.titles.isNotEmpty) ...[SizedBox(height: 10 * pt), _matches(ranked: true, pt, bigPTitleMatches(s))],
+        ],
+      ),
+      _ => const SizedBox.shrink(),
+    };
+  }
+}

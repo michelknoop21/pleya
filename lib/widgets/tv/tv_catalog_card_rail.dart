@@ -19,6 +19,8 @@
 /// viewer reaches them.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../focus/focus_theme.dart';
@@ -112,6 +114,8 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   /// a second computation is a second thing to keep in step.
   double _pitch = 0;
   double _leadingPad = 0;
+  double _cardWidth = 0;
+  double _inset = 0;
 
   @override
   void didUpdateWidget(TvCatalogCardRail oldWidget) {
@@ -261,7 +265,8 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     // screen, which is the half of the bug that is hardest to see.
     if (!_controller.hasClients || _pitch <= 0) return false;
     final position = _controller.position;
-    final wanted = (_leadingPad + target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
+    // At the row's inset, where [_reveal] keeps a card: no slide after the jump.
+    final wanted = (target * _pitch).clamp(position.minScrollExtent, position.maxScrollExtent);
     _controller.jumpTo(wanted);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -274,7 +279,38 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
   void _focusIndex(int index) {
     if (index < 0 || index >= widget.itemIds.length) return;
     final node = _nodes[widget.itemIds[index]];
-    if (node != null && node.canRequestFocus) node.requestFocus();
+    if (node != null && node.parent != null && node.canRequestFocus) {
+      node.requestFocus();
+      return;
+    }
+    // Not built yet, or built and scrolled away: a held key outruns the
+    // list. Bring the card in and focus it, rather than swallow the press.
+    focusColumn(index);
+  }
+
+  /// Keeps the focused card inside the row (SEARCH4). A card consumes its
+  /// own arrow keys, so Flutter's traversal and its `ensureVisible` never
+  /// run, and `FocusableWrapper` only scrolls a vertical scrollable into
+  /// view: without this the ring walks off the screen and the row stays put.
+  /// The card keeps the row's margin on whichever side it would otherwise
+  /// leave by.
+  void _reveal(int index) {
+    if (!_controller.hasClients || _pitch <= 0) return;
+    final position = _controller.position;
+    final start = _leadingPad + index * _pitch;
+    final end = start + _cardWidth;
+    var target = position.pixels;
+    if (end > target + position.viewportDimension - _inset) {
+      target = end - position.viewportDimension + _inset;
+    }
+    if (start < target + _leadingPad) target = start - _leadingPad;
+    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 0.5) return;
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _controller.jumpTo(target);
+    } else {
+      unawaited(_controller.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic));
+    }
   }
 
   void _maybeLoadMore(int index) {
@@ -295,6 +331,8 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     final headroom = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale);
     _pitch = grid.cardWidth + grid.gutter;
     _leadingPad = grid.inset + grid.leading;
+    _cardWidth = grid.cardWidth;
+    _inset = grid.inset;
 
     return SizedBox(
       height: cardHeight + headroom * 2,
@@ -318,6 +356,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
               focusNode: _nodeFor(id),
               onFocusChange: (hasFocus) {
                 if (!hasFocus) return;
+                _reveal(index);
                 _focusedId = id;
                 widget.onFocusedIdChanged?.call(id);
                 _maybeLoadMore(index);
@@ -328,8 +367,11 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
               // The backstop the threshold above does not cover: `hasMore` can
               // become true after the focus has already settled on the last
               // card. It loads and keeps the focus exactly where it is.
+              // With nothing left to load the last card still consumes
+              // RIGHT: handed to default traversal, the key drops the ring
+              // into the next row's peeking card.
               onNavigateRight: index == widget.itemIds.length - 1
-                  ? (widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : null)
+                  ? (widget.hasMore && !widget.isLoadingMore ? widget.onLoadMore : () {})
                   : () => _focusIndex(index + 1),
               onBack: widget.onBack,
             ),

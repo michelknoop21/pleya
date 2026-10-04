@@ -2478,12 +2478,14 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get tileTitle => 'Big P';
 	@override String get tileSubtitle => 'Pleya Assistant';
 	@override String get providerLabel => 'AI-provider';
+	@override late final _TranslationsAssistantMobileNl mobile = _TranslationsAssistantMobileNl._(_root);
 	@override late final _TranslationsAssistantLockedNl locked = _TranslationsAssistantLockedNl._(_root);
 	@override late final _TranslationsAssistantSetupNl setup = _TranslationsAssistantSetupNl._(_root);
 	@override late final _TranslationsAssistantIdleNl idle = _TranslationsAssistantIdleNl._(_root);
 	@override late final _TranslationsAssistantListeningNl listening = _TranslationsAssistantListeningNl._(_root);
 	@override late final _TranslationsAssistantWorkingNl working = _TranslationsAssistantWorkingNl._(_root);
 	@override late final _TranslationsAssistantStepsNl steps = _TranslationsAssistantStepsNl._(_root);
+	@override late final _TranslationsAssistantJobsNl jobs = _TranslationsAssistantJobsNl._(_root);
 	@override late final _TranslationsAssistantResultNl result = _TranslationsAssistantResultNl._(_root);
 	@override late final _TranslationsAssistantActionsNl actions = _TranslationsAssistantActionsNl._(_root);
 	@override late final _TranslationsAssistantConfirmNl confirm = _TranslationsAssistantConfirmNl._(_root);
@@ -2496,6 +2498,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get youAsked => 'Je vroeg:';
 	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
 	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
+	@override late final _TranslationsAssistantFollowUpNl followUp = _TranslationsAssistantFollowUpNl._(_root);
 	@override late final _TranslationsAssistantMatchNl match = _TranslationsAssistantMatchNl._(_root);
 }
 
@@ -3115,6 +3118,50 @@ class _TranslationsTvMyPleyaSemanticsNl extends TranslationsTvMyPleyaSemanticsEn
 	@override String tileWithCount({required Object title, required Object subtitle, required Object count}) => '${title}. ${subtitle}. ${count}';
 }
 
+// Path: assistant.mobile
+class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
+	_TranslationsAssistantMobileNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String greeting({required Object name}) => 'Hoi ${name}, wat zoeken we?';
+	@override List<List<String>> get examples => [
+		[
+			'Wat kan ik vanavond kijken?',
+			'Geef me een komedie voor vanavond.',
+			'Zoek een spannende film voor vanavond.',
+		],
+		[
+			'Welke serie kan ik nu beginnen?',
+		],
+		[
+			'Heb ik iets voor de kinderen?',
+		],
+		[
+			'Welke films heb ik nog niet gezien?',
+			'Welke films staan al lang ongezien in mijn bibliotheek?',
+		],
+		[
+			'Wat is er deze week toegevoegd?',
+		],
+		[
+			'Wie heeft deze week het meest gekeken?',
+		],
+	];
+	@override String get noModelTitle => 'Ik heb nog geen brein.';
+	@override String get noModelBody => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.';
+	@override String get setup => 'Model instellen';
+	@override String get icloudNote => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.';
+	@override String get listening => 'Ik luister…';
+	@override String get listeningHint => 'Spreek je vraag in, of typ hem.';
+	@override String get askFurther => 'Vraag verder';
+	@override String moreTitles({required Object n}) => 'Nog ${n} titels';
+	@override String get searchAsk => 'Vraag het Big P';
+	@override String get faceButton => 'Big P oproepen';
+	@override String get notConfirmedYet => 'Kies eerst: bevestigen of annuleren.';
+}
+
 // Path: assistant.locked
 class _TranslationsAssistantLockedNl extends TranslationsAssistantLockedEn {
 	_TranslationsAssistantLockedNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3154,10 +3201,26 @@ class _TranslationsAssistantIdleNl extends TranslationsAssistantIdleEn {
 	@override String status({required Object servers}) => 'Klaar voor je vraag · ${servers}';
 	@override String get ask => 'Vraag Big P';
 	@override String get examplesHeader => 'Bijvoorbeeld';
-	@override List<String> get examples => [
-		'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
-		'Scan alle filmbibliotheken op al mijn servers.',
-		'Wie heeft deze week het meest gekeken?',
+	@override List<List<String>> get examples => [
+		[
+			'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+		],
+		[
+			'Scan alle filmbibliotheken op al mijn servers.',
+		],
+		[
+			'Wie heeft deze week het meest gekeken?',
+			'Wie kijkt er nu?',
+		],
+		[
+			'Wat kan ik vanavond kijken?',
+		],
+		[
+			'Wat is er deze week toegevoegd?',
+		],
+		[
+			'Welke nieuwe films zijn populair die ik nog niet heb?',
+		],
 	];
 }
 
@@ -3217,6 +3280,17 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get requestTitle => 'Titel aanvragen';
 	@override String get findTitle => 'Titel op beschrijving zoeken';
 	@override String get fallback => 'Bezig';
+}
+
+// Path: assistant.jobs
+class _TranslationsAssistantJobsNl extends TranslationsAssistantJobsEn {
+	_TranslationsAssistantJobsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override late final _TranslationsAssistantJobsScanLibraryNl scanLibrary = _TranslationsAssistantJobsScanLibraryNl._(_root);
+	@override late final _TranslationsAssistantJobsRetryJobNl retryJob = _TranslationsAssistantJobsRetryJobNl._(_root);
 }
 
 // Path: assistant.result
@@ -3346,6 +3420,9 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get disable => 'Big P uitschakelen';
 	@override String get disableConfirm => 'Big P uitschakelen?';
 	@override String get disableBody => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.';
+	@override String get unreadableTitle => 'Big P-instelling vervangen?';
+	@override String get unreadableBody => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.';
+	@override String get replace => 'Vervangen';
 	@override String get currentModel => 'Model';
 	@override String get keyStored => 'Opgeslagen, verborgen';
 	@override String get errorUrlInvalid => 'Vul een adres in dat begint met http:// of https://.';
@@ -3389,6 +3466,8 @@ class _TranslationsAssistantSettingsNl extends TranslationsAssistantSettingsEn {
 	@override String get webSearchNoteServer => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.';
 	@override String get webSearchNoteCloud => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.';
 	@override String get webSearchNoteOpenRouter => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.';
+	@override String get voice => 'Stem van Big P';
+	@override String get voiceNote => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.';
 }
 
 // Path: assistant.tasks
@@ -3434,9 +3513,53 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 
 	// Translations
 	@override String missing({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}';
-	@override String watchStats({required Object server}) => 'Kijkcijfers · ${server}';
 	@override String plays({required Object count}) => '${count}× bekeken';
 	@override String noSource({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.';
+	@override String playsShort({required Object count}) => '${count}×';
+	@override String get watchNow => 'Op dit moment';
+	@override String watchDays({required Object n}) => 'Afgelopen ${n} dagen';
+	@override String get nobodyNow => 'Er kijkt nu niemand.';
+	@override String get nothingWatched => 'In deze periode is niets bekeken.';
+	@override String get partialData => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.';
+	@override String get watchTitle => 'Kijkcijfers';
+	@override String get playsTotal => 'keer gekeken';
+}
+
+// Path: assistant.followUp
+class _TranslationsAssistantFollowUpNl extends TranslationsAssistantFollowUpEn {
+	_TranslationsAssistantFollowUpNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get watchNow => 'Wie kijkt er nu?';
+	@override String get watchMonth => 'Wie keek het meest de afgelopen 30 dagen?';
+	@override String get watchWeek => 'Wie heeft deze week het meest gekeken?';
+	@override String get watchToday => 'Wie keek er vandaag?';
+	@override String get watchYesterday => 'Wie keek er gisteren?';
+	@override List<String> get tonight => [
+		'Geef me een komedie voor vanavond.',
+		'Zoek een spannende film voor vanavond.',
+		'Heb ik iets voor de kinderen?',
+		'Welke serie kan ik nu beginnen?',
+	];
+	@override List<String> get recent => [
+		'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+		'Welke series zijn onlangs toegevoegd?',
+		'Wat is er deze week toegevoegd?',
+	];
+	@override List<String> get unwatched => [
+		'Welke films heb ik nog niet gezien?',
+		'Welke films staan al lang ongezien in mijn bibliotheek?',
+	];
+	@override List<String> get popular => [
+		'Welke populaire films heb ik nog niet?',
+		'Welke nieuwe films zijn populair die ik nog niet heb?',
+	];
+	@override String get missingMovies => 'Welke films ontbreken tussen mijn servers?';
+	@override String get missingShows => 'Welke series ontbreken tussen mijn servers?';
+	@override String get jobs => 'Welke taken lopen er nu op mijn servers?';
+	@override String get failedJobs => 'Zijn er vandaag taken mislukt?';
 }
 
 // Path: assistant.match
@@ -3465,6 +3588,32 @@ class _TranslationsUnifiedCatalogDiscoverySemanticsNl extends TranslationsUnifie
 	@override String position({required Object position, required Object count}) => '${position} van ${count}';
 	@override String get viewAllMovies => 'Alle films bekijken, opent de volledige catalogus';
 	@override String get viewAllSeries => 'Alle series bekijken, opent de volledige catalogus';
+}
+
+// Path: assistant.jobs.scanLibrary
+class _TranslationsAssistantJobsScanLibraryNl extends TranslationsAssistantJobsScanLibraryEn {
+	_TranslationsAssistantJobsScanLibraryNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get running => 'Scan loopt';
+	@override String get done => 'Scan klaar';
+	@override String get failed => 'Scan mislukt';
+	@override String get background => 'Scan loopt nog op de achtergrond';
+}
+
+// Path: assistant.jobs.retryJob
+class _TranslationsAssistantJobsRetryJobNl extends TranslationsAssistantJobsRetryJobEn {
+	_TranslationsAssistantJobsRetryJobNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get running => 'Taak loopt';
+	@override String get done => 'Taak klaar';
+	@override String get failed => 'Taak mislukt';
+	@override String get background => 'Taak loopt nog op de achtergrond';
 }
 
 // Path: assistant.confirm.titles
@@ -5574,6 +5723,27 @@ extension on TranslationsNl {
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
+			'assistant.mobile.greeting' => ({required Object name}) => 'Hoi ${name}, wat zoeken we?',
+			'assistant.mobile.examples.0.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.mobile.examples.0.1' => 'Geef me een komedie voor vanavond.',
+			'assistant.mobile.examples.0.2' => 'Zoek een spannende film voor vanavond.',
+			'assistant.mobile.examples.1.0' => 'Welke serie kan ik nu beginnen?',
+			'assistant.mobile.examples.2.0' => 'Heb ik iets voor de kinderen?',
+			'assistant.mobile.examples.3.0' => 'Welke films heb ik nog niet gezien?',
+			'assistant.mobile.examples.3.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.mobile.examples.4.0' => 'Wat is er deze week toegevoegd?',
+			'assistant.mobile.examples.5.0' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.mobile.noModelTitle' => 'Ik heb nog geen brein.',
+			'assistant.mobile.noModelBody' => 'Kies een taalmodel, dan zoek ik films, vraag ik titels aan en regel ik je servers.',
+			'assistant.mobile.setup' => 'Model instellen',
+			'assistant.mobile.icloudNote' => 'Je instelling gaat via je iCloud-sleutelhanger mee naar je iPad en Apple TV.',
+			'assistant.mobile.listening' => 'Ik luister…',
+			'assistant.mobile.listeningHint' => 'Spreek je vraag in, of typ hem.',
+			'assistant.mobile.askFurther' => 'Vraag verder',
+			'assistant.mobile.moreTitles' => ({required Object n}) => 'Nog ${n} titels',
+			'assistant.mobile.searchAsk' => 'Vraag het Big P',
+			'assistant.mobile.faceButton' => 'Big P oproepen',
+			'assistant.mobile.notConfirmedYet' => 'Kies eerst: bevestigen of annuleren.',
 			'assistant.locked.badge' => 'Niet beschikbaar op dit account',
 			'assistant.locked.title' => 'Big P staat voor dit account nog niet aan',
 			'assistant.locked.body' => 'Met Big P vraag je Pleya om beheertaken uit te voeren, zoals een bibliotheek scannen of een gebruiker aanmaken. Het is een functie van Pleya die op dit account nog niet beschikbaar is.',
@@ -5588,9 +5758,13 @@ extension on TranslationsNl {
 			'assistant.idle.status' => ({required Object servers}) => 'Klaar voor je vraag · ${servers}',
 			'assistant.idle.ask' => 'Vraag Big P',
 			'assistant.idle.examplesHeader' => 'Bijvoorbeeld',
-			'assistant.idle.examples.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
-			'assistant.idle.examples.1' => 'Scan alle filmbibliotheken op al mijn servers.',
-			'assistant.idle.examples.2' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.0.0' => 'Welke taken zijn vandaag mislukt op mijn servers? Start ze opnieuw.',
+			'assistant.idle.examples.1.0' => 'Scan alle filmbibliotheken op al mijn servers.',
+			'assistant.idle.examples.2.0' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.idle.examples.2.1' => 'Wie kijkt er nu?',
+			'assistant.idle.examples.3.0' => 'Wat kan ik vanavond kijken?',
+			'assistant.idle.examples.4.0' => 'Wat is er deze week toegevoegd?',
+			'assistant.idle.examples.5.0' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.listening.title' => 'Ik luister…',
 			'assistant.listening.body' => 'Spreek je vraag in.',
 			'assistant.working.status' => 'Even kijken…',
@@ -5622,6 +5796,14 @@ extension on TranslationsNl {
 			'assistant.steps.requestTitle' => 'Titel aanvragen',
 			'assistant.steps.findTitle' => 'Titel op beschrijving zoeken',
 			'assistant.steps.fallback' => 'Bezig',
+			'assistant.jobs.scanLibrary.running' => 'Scan loopt',
+			'assistant.jobs.scanLibrary.done' => 'Scan klaar',
+			'assistant.jobs.scanLibrary.failed' => 'Scan mislukt',
+			'assistant.jobs.scanLibrary.background' => 'Scan loopt nog op de achtergrond',
+			'assistant.jobs.retryJob.running' => 'Taak loopt',
+			'assistant.jobs.retryJob.done' => 'Taak klaar',
+			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
+			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',
@@ -5711,6 +5893,9 @@ extension on TranslationsNl {
 			'assistant.settings.disable' => 'Big P uitschakelen',
 			'assistant.settings.disableConfirm' => 'Big P uitschakelen?',
 			'assistant.settings.disableBody' => 'De provider en de sleutel worden van dit apparaat verwijderd. Je kunt Big P altijd opnieuw instellen.',
+			'assistant.settings.unreadableTitle' => 'Big P-instelling vervangen?',
+			'assistant.settings.unreadableBody' => 'Je iCloud-sleutelhanger heeft een Big P-instelling van een nieuwere Pleya op een ander apparaat. Deze versie kan die niet lezen. Vervangen wijzigt de instelling op al je apparaten.',
+			'assistant.settings.replace' => 'Vervangen',
 			'assistant.settings.currentModel' => 'Model',
 			'assistant.settings.keyStored' => 'Opgeslagen, verborgen',
 			'assistant.settings.errorUrlInvalid' => 'Vul een adres in dat begint met http:// of https://.',
@@ -5745,6 +5930,8 @@ extension on TranslationsNl {
 			'assistant.settings.webSearchNoteServer' => 'Staat standaard uit, zodat alles in je eigen netwerk blijft. Zet je hem aan, dan gaat de omschrijving van een titel die je zoekt naar Wikipedia en, met een ollama.com-sleutel, naar de zoekdienst van Ollama.',
 			'assistant.settings.webSearchNoteCloud' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekdienst van Ollama.',
 			'assistant.settings.webSearchNoteOpenRouter' => 'De omschrijving van een titel die je zoekt gaat naar Wikipedia en de zoekfunctie van OpenRouter. Die kost ongeveer 0,005 tot 0,007 dollar per zoekopdracht.',
+			'assistant.settings.voice' => 'Stem van Big P',
+			'assistant.settings.voiceNote' => 'Korte gesproken reacties. Nooit tijdens dicteren of kijken.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Bezig met ${count} taken · ${done} klaar',
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} taken zijn klaar.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} van ${count} taken klaar.',
@@ -5761,9 +5948,36 @@ extension on TranslationsNl {
 			'assistant.youAsked' => 'Je vroeg:',
 			'assistant.option.notRequested' => 'Aan te vragen',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titels op ${server} ontbreken op ${other}',
-			'assistant.displays.watchStats' => ({required Object server}) => 'Kijkcijfers · ${server}',
 			'assistant.displays.plays' => ({required Object count}) => '${count}× bekeken',
 			'assistant.displays.noSource' => ({required Object server}) => 'Geen kijkgegevens beschikbaar voor ${server}.',
+			'assistant.displays.playsShort' => ({required Object count}) => '${count}×',
+			'assistant.displays.watchNow' => 'Op dit moment',
+			'assistant.displays.watchDays' => ({required Object n}) => 'Afgelopen ${n} dagen',
+			'assistant.displays.nobodyNow' => 'Er kijkt nu niemand.',
+			'assistant.displays.nothingWatched' => 'In deze periode is niets bekeken.',
+			'assistant.displays.partialData' => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.',
+			'assistant.displays.watchTitle' => 'Kijkcijfers',
+			'assistant.displays.playsTotal' => 'keer gekeken',
+			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
+			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
+			'assistant.followUp.watchWeek' => 'Wie heeft deze week het meest gekeken?',
+			'assistant.followUp.watchToday' => 'Wie keek er vandaag?',
+			'assistant.followUp.watchYesterday' => 'Wie keek er gisteren?',
+			'assistant.followUp.tonight.0' => 'Geef me een komedie voor vanavond.',
+			'assistant.followUp.tonight.1' => 'Zoek een spannende film voor vanavond.',
+			'assistant.followUp.tonight.2' => 'Heb ik iets voor de kinderen?',
+			'assistant.followUp.tonight.3' => 'Welke serie kan ik nu beginnen?',
+			'assistant.followUp.recent.0' => 'Wat is er onlangs aan mijn bibliotheek toegevoegd?',
+			'assistant.followUp.recent.1' => 'Welke series zijn onlangs toegevoegd?',
+			'assistant.followUp.recent.2' => 'Wat is er deze week toegevoegd?',
+			'assistant.followUp.unwatched.0' => 'Welke films heb ik nog niet gezien?',
+			'assistant.followUp.unwatched.1' => 'Welke films staan al lang ongezien in mijn bibliotheek?',
+			'assistant.followUp.popular.0' => 'Welke populaire films heb ik nog niet?',
+			'assistant.followUp.popular.1' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
+			'assistant.followUp.missingMovies' => 'Welke films ontbreken tussen mijn servers?',
+			'assistant.followUp.missingShows' => 'Welke series ontbreken tussen mijn servers?',
+			'assistant.followUp.jobs' => 'Welke taken lopen er nu op mijn servers?',
+			'assistant.followUp.failedJobs' => 'Zijn er vandaag taken mislukt?',
 			'assistant.match.inLibrary' => ({required Object servers}) => 'In je bibliotheek · ${servers}',
 			'assistant.match.maybe' => 'mogelijk',
 			'assistant.match.movie' => 'Film',

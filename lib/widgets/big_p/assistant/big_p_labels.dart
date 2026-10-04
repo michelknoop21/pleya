@@ -8,6 +8,7 @@ import '../../../assistant/assistant_provider.dart';
 import '../../../assistant/assistant_run.dart';
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
+import '../big_p_avatar.dart';
 
 String assistantToolLabel(String tool) {
   final s = t.assistant.steps;
@@ -66,12 +67,35 @@ String assistantActionKindLabel(AssistantActionKind kind) {
   };
 }
 
-/// "Scan gestart · Films · Zolder" (mockup 38 G).
+/// "Scan gestart · Films · Zolder" (mockup 38 G), or while Pleya follows
+/// the job: "Scan loopt · 40% · Films · Zolder", "Scan klaar · Films · Zolder".
 String assistantActionLabel(AssistantActionRecord record) => [
-  assistantActionKindLabel(record.kind),
+  _jobPhaseLabel(record) ?? assistantActionKindLabel(record.kind),
+  if (record.progress case AssistantJobProgress(phase: AssistantJobPhase.running, :final percent?)) '$percent%',
   record.subject,
   record.serverName,
 ].where((part) => part.isNotEmpty).join(' · ');
+
+String? _jobPhaseLabel(AssistantActionRecord record) {
+  final j = t.assistant.jobs;
+  final (running, done, failed, background) = switch (record.kind) {
+    AssistantActionKind.scanLibrary => (
+      j.scanLibrary.running,
+      j.scanLibrary.done,
+      j.scanLibrary.failed,
+      j.scanLibrary.background,
+    ),
+    _ => (j.retryJob.running, j.retryJob.done, j.retryJob.failed, j.retryJob.background),
+  };
+  return switch (record.progress?.phase) {
+    AssistantJobPhase.running => running,
+    AssistantJobPhase.done => done,
+    AssistantJobPhase.failed => failed,
+    AssistantJobPhase.background => background,
+    // Not followed: the action's own "gestart".
+    AssistantJobPhase.started || null => null,
+  };
+}
 
 String assistantConfirmTitle(AssistantActionKind kind) {
   final c = t.assistant.confirm.titles;
@@ -125,7 +149,7 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 /// else Pleya's reason the run ended. Several tasks get Pleya's own count.
 String assistantHeadline(AssistantController c) {
   if (c.tasks.length > 1) return assistantTasksHeadline(c.tasks);
-  if (c.answer.trim().isNotEmpty) return c.answer.trim();
+  if (assistantPlainAnswer(c.answer) case final answer when answer.isNotEmpty) return answer;
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
@@ -182,5 +206,77 @@ String assistantTasksHeadline(List<AssistantTask> tasks) {
           : assistantEndLabel(task.lastEnd, task.providerError),
     ),
     AssistantTaskStatus.cancelled => (status: s.cancelled, detail: null),
+  };
+}
+
+// ponytail: one pass over paired marks on one line; nested emphasis keeps
+// its inner marks. A Markdown renderer is the upgrade if answers need more.
+final _markdownMarks = RegExp(
+  r'(?<![\w*])\*{2,3}(\S(?:[^\n]*?\S)?)\*{2,3}(?![\w*])|(?<![\w*])\*(\S(?:[^*\n]*?\S)?)\*(?![\w*])|(?<!\w)`([^`\n]+)`(?!\w)'
+  r'|(?<![\w_])_{1,2}(\S(?:[^_\n]*?\S)?)_{1,2}(?![\w_])',
+);
+final _markdownHeading = RegExp(r'^#{1,6}\s+', multiLine: true);
+final _marksOnly = RegExp(r'^[\s*`#]+$');
+final _markdownLink = RegExp(r'!?\[([^\]\n]+)\]\((?:[^)\s]+)\)');
+final _markdownBullet = RegExp(r'^[ \t]*[-*+][ \t]+', multiLine: true);
+
+// One or two digits: "1917. Oorlogsfilm." is a title, not item 1917.
+final _listItem = RegExp(r'^\s*(?:\d{1,2}[.)]|•)\s');
+
+/// The answer without its list items, for above cards that show the same
+/// titles: the cards are the list, and the lines they free go to the cards.
+// ponytail: drops every list line, also one that says more than its card.
+// Matching lines to cards by title is the upgrade.
+String assistantWithoutList(String answer) =>
+    answer.split('\n').where((line) => !_listItem.hasMatch(line)).join('\n').trim();
+
+// ": «A» (2022), «B» en «C»." in any language: a colon, then marked titles,
+// each with an optional year, joined by commas or one short word ("en",
+// "and", "und", "et"). Only a list that ends the sentence goes; one that
+// runs on ("«A» (2022) joined ...") stays as text.
+final _inlineList = RegExp(
+  r':\s*«[^»\n]*»(?:\s*\(\d{4}\))?(?:[\s,;]+(?:[^\s«»]{1,4}\s+)?«[^»\n]*»(?:\s*\(\d{4}\))?)*[ \t]*(?:[.!]|$)',
+  multiLine: true,
+);
+
+/// "Hoi Michel, ..." or, without a profile name, "Hoi, ...": the space
+/// the name leaves before the punctuation goes too, in every language.
+/// [greeting] picks the line (the iPhone balloon has its own).
+String assistantGreeting(String name, {String Function({required Object name})? greeting}) =>
+    (greeting ?? t.assistant.idle.greeting)(
+      name: name.trim(),
+    ).replaceAll(RegExp(r' +(?=[,.!?])'), '').replaceAll(RegExp(' {2,}'), ' ');
+
+/// The lead above title cards: [assistantHeadline] without the titles the
+/// cards show, as a list on their own lines or as "kandidaten: «A», «B»".
+/// Cut to two lines, the inline list read "Interstellar en ...".
+String assistantCardsLead(AssistantController c) {
+  final stripped = c.answer.replaceAll(_inlineList, '.');
+  return assistantWithoutList(stripped == c.answer ? assistantHeadline(c) : assistantPlainAnswer(stripped));
+}
+
+/// The model's answer as the panel shows it. The panel draws plain text, so
+/// Markdown emphasis (`**bold**`, `*italic*`, `` `code` ``) and heading marks
+/// are dropped and their text kept; a link shows its text and a list item
+/// a bullet; runs of blank lines become one. An asterisk inside a word or a
+/// sum, as in `M*A*S*H` or `2 * 3`, stays.
+String assistantPlainAnswer(String answer) => answer
+    .replaceAllMapped(_markdownMarks, (m) => m[1] ?? m[2] ?? m[3] ?? m[4]!)
+    .replaceAll(_markdownHeading, '')
+    .replaceAllMapped(_markdownLink, (m) => m[1]!)
+    .replaceAll(_markdownBullet, '• ')
+    .replaceAll(RegExp('[«»]'), '')
+    .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+    .replaceFirst(_marksOnly, '')
+    .trim();
+
+/// Big P's mood for the controller's stand; a waiting card wins.
+BigPMood bigPMood(AssistantController c) {
+  if (c.pending != null) return BigPMood.attentive;
+  return switch (c.state) {
+    AssistantSurfaceState.idle => BigPMood.idle,
+    AssistantSurfaceState.listening => BigPMood.listening,
+    AssistantSurfaceState.working => BigPMood.working,
+    AssistantSurfaceState.result => c.resultIsError ? BigPMood.error : BigPMood.success,
   };
 }

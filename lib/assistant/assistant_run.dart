@@ -4,10 +4,13 @@ import 'dart:convert';
 
 import '../exceptions/media_server_exceptions.dart';
 import '../media/ids.dart';
+import '../media/media_kind.dart';
+import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_execution.dart';
+import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
 import 'assistant_tool_context.dart';
 import 'assistant_tools.dart';
@@ -62,6 +65,7 @@ class AssistantRunResult {
     this.playbackEvidenceCurrent,
     this.spoilerPrompt,
     this.libraryDoctorError,
+    this.displayEvidenceCurrent,
   });
   final AssistantRunEnd end;
 
@@ -79,6 +83,7 @@ class AssistantRunResult {
   final bool Function()? playbackEvidenceCurrent;
   final String? spoilerPrompt;
   final String? Function()? libraryDoctorError;
+  final bool Function()? displayEvidenceCurrent;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -200,7 +205,25 @@ class AssistantRun {
       '- If several servers, libraries or users could match, ask one short question instead of acting.\n'
       '- Sensitive actions are confirmed by the user in Pleya. You cannot confirm them and must not ask '
       'for passwords.\n'
-      '- Reply briefly, in $languageName, without technical details such as ids or tool names.';
+      '- Reply briefly, in $languageName, without technical details such as ids or tool names.\n'
+      '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
+      'out is enough.\n'
+      '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
+      '- Write every film or series title you name between « and », with the year when you know it: '
+      '«Interstellar» (2014). Pleya turns each into a card to open or request.\n'
+      '$_who';
+
+  /// Who "I" is. Without this the model read "my history" as the household's
+  /// and searched watch_stats for a server account with the user's name.
+  String get _who {
+    // The profile name is the user's own text: one line, clipped, so it
+    // cannot open a rule of its own.
+    final name = clipText((context.personal?.userName ?? '').replaceAll(RegExp(r'\s+'), ' ').trim(), 40);
+    final person = name.isEmpty ? 'the person using this Pleya profile' : '$name, the person using this Pleya profile';
+    return '- You talk with $person. I, me and my mean them. For their own watching, history or a tip for them '
+        'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
+        'match theirs.';
+  }
 
   /// Calls carried out per model reply and per run. A reply with a hundred
   /// scans, or a planted instruction that asks for them, stops here.
@@ -232,6 +255,8 @@ class AssistantRun {
     _errors.clear();
     _actions.clear();
     _displays.clear();
+    _lookups.clear();
+    _namedTitlesCurrent = null;
     _stepIndex = 0;
     var callsThisRun = 0;
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
@@ -376,7 +401,10 @@ class AssistantRun {
         if (_cancelled) return _end(AssistantRunEnd.stepLimit);
         return _end(AssistantRunEnd.answered, text: _ctx.spoilerEvidence!.answer(languageName));
       }
-      if (reply.toolCalls.isEmpty) return _end(AssistantRunEnd.answered, text: reply.content);
+      if (reply.toolCalls.isEmpty) {
+        await _cardsForNamedTitles(reply.content);
+        return _end(AssistantRunEnd.answered, text: reply.content);
+      }
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
         // Every call gets an answer, so the history stays valid.
@@ -404,6 +432,8 @@ class AssistantRun {
 
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
     final evidenceContext = _ctx;
+    final namedTitlesCurrent = _namedTitlesCurrent;
+    bool displaysCurrent() => evidenceContext.recommendationError == null && (namedTitlesCurrent?.call() ?? true);
     if (_ctx.libraryDoctorError case final doctorError?) {
       return AssistantRunResult(
         end: end,
@@ -418,7 +448,16 @@ class AssistantRun {
         actions: List.unmodifiable(_actions),
         error: 'playback_session_changed',
         playbackEvidenceCurrent: () => false,
+        displayEvidenceCurrent: displaysCurrent,
         spoilerPrompt: _spoilerQuestion,
+      );
+    }
+    if (evidenceContext.recommendationError case final recommendationError?) {
+      return AssistantRunResult(
+        end: end,
+        actions: List.unmodifiable(_actions),
+        error: recommendationError,
+        displayEvidenceCurrent: displaysCurrent,
       );
     }
     return AssistantRunResult(
@@ -433,7 +472,8 @@ class AssistantRun {
       spoilerPrompt: _spoilerQuestion,
       playbackEvidenceCurrent: () => evidenceContext.playbackEvidenceCurrent,
       actions: List.unmodifiable(_actions),
-      displays: List.unmodifiable(_displays),
+      displays: displaysCurrent() ? List.unmodifiable(_displays) : const [],
+      displayEvidenceCurrent: displaysCurrent,
       providerError: error,
       error:
           failure ??
@@ -494,10 +534,11 @@ class AssistantRun {
     final servers = _ctx.userServers;
     return {
       for (final tool in _spoilerQuestion != null ? [assistantSpoilerTool] : tools ?? assistantTools)
-        if (!_ctx.libraryDoctorMode ||
-            tool.risk == AssistantToolRisk.read ||
-            (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
-                _ctx.libraryDoctorActions.contains(tool.name)))
+        if ((!_ctx.libraryDoctorMode || tool.name != 'my_watching') &&
+            (!_ctx.libraryDoctorMode ||
+                tool.risk == AssistantToolRisk.read ||
+                (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
+                    _ctx.libraryDoctorActions.contains(tool.name))))
           // A serverless tool still asks `serves`: a missing service (no Seerr)
           // keeps it out.
           if (!tool.needsServer && [...servers, _noServer].any((id) => tool.serves(_ctx, id)))
@@ -524,6 +565,125 @@ class AssistantRun {
 
   int _stepIndex = 0;
 
+  /// Titles the answer names without a card get one: Pleya looks them up
+  /// itself with find_title and keeps the exact titles that can be opened
+  /// from a library or requested. Never left to the model alone. After an
+  /// action the action is the answer, and a named title is its subject.
+  bool Function()? _namedTitlesCurrent;
+
+  Future<void> _cardsForNamedTitles(String answer) async {
+    if (_actions.isNotEmpty || _cancelled || _spoilerQuestion != null || _ctx.libraryDoctorMode) return;
+    final evidenceContext = _ctx;
+    final clients = {for (final id in evidenceContext.userServers) id: evidenceContext.userClient(id)};
+    final requestClient = evidenceContext.requests?.client();
+    final requestUser = requestClient?.session.userId;
+    // Match findTitles' own source roots, read live from Home's loader. Client
+    // identity alone cannot detect a library being removed or hidden.
+    Set<(ServerId, String, MediaKind)> visibleLibraryScope() => switch (evidenceContext.catalog?.rowLoader) {
+      final CatalogHomeCustomRowLoader loader => {
+        for (final kind in const [MediaKind.movie, MediaKind.show])
+          for (final library in loader.librariesFor(kind))
+            if (evidenceContext.userClient(library.serverId) != null) (library.serverId, library.libraryId, kind),
+      },
+      _ => const {},
+    };
+    final libraryScope = visibleLibraryScope();
+    bool librariesCurrent() {
+      final live = visibleLibraryScope();
+      return live.length == libraryScope.length && live.containsAll(libraryScope);
+    }
+
+    bool current() =>
+        !_cancelled &&
+        evidenceContext.playbackEvidenceCurrent &&
+        evidenceContext.libraryDoctorError == null &&
+        evidenceContext.recommendationError == null &&
+        identical(evidenceContext.requests?.client(), requestClient) &&
+        requestClient?.session.userId == requestUser &&
+        librariesCurrent() &&
+        (evidenceContext.catalog == null ||
+            evidenceContext.catalog!.activeProfileId() == evidenceContext.catalog!.profileId) &&
+        clients.length == evidenceContext.userServers.length &&
+        clients.entries.every(
+          (entry) =>
+              evidenceContext.userServers.contains(entry.key) &&
+              identical(evidenceContext.userClient(entry.key), entry.value),
+        );
+    if (!current()) return;
+    final shown = assistantShownTitles(_displays);
+    final named = [
+      for (final t in assistantNamedTitles(answer))
+        if (!shown.any((c) => assistantSameTitle(c, assistantTitleKey(t.title), t.year))) t,
+    ];
+    if (named.isEmpty) return;
+    final tool = _available().keys.where((t) => t.name == 'find_title').firstOrNull;
+    if (tool == null || tool.risk != AssistantToolRisk.read) return;
+    if (budget != null && !budget!.reserveTool()) return;
+    _namedTitlesCurrent = current;
+    final index = _stepIndex++;
+    onStep?.call(AssistantStep(index: index, tool: tool.name, phase: AssistantStepPhase.started));
+    AssistantDisplay? display;
+    try {
+      final titles = {for (final t in named) t.title}.toList();
+      final operation = _operation(() async {
+        if (!current() || !tool.serves(_ctx, _noServer)) throw const AssistantToolError('cancelled');
+        return tool.run(_ctx, null, {
+          'candidates': [
+            for (final t in named) {'title': t.title, 'year': ?t.year},
+          ],
+          'variants': [...titles, if (titles.length == 1) titles.single.toLowerCase()],
+        });
+      });
+      final outcome = await Future.any<AssistantToolOutcome>([
+        operation,
+        if (cancel != null)
+          cancel!.trigger.then<AssistantToolOutcome>((_) => throw const AssistantToolError('cancelled')),
+      ]);
+      if (!current()) return;
+      if (outcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
+        final exact = [
+          for (final m in matches)
+            if ((m.targets.isNotEmpty || m.request != null) &&
+                named.any(
+                  (t) => assistantSameTitle(
+                    (key: assistantTitleKey(m.title), year: m.year),
+                    assistantTitleKey(t.title),
+                    t.year,
+                  ),
+                ))
+              m,
+        ];
+        if (exact.isNotEmpty) _displays.add(display = AssistantTitleMatches(context, exact));
+      }
+    } catch (e) {
+      appLogger.d('Assistant: named titles lookup failed', error: e.runtimeType);
+    }
+    if (!current()) return;
+    onStep?.call(
+      AssistantStep(
+        index: index,
+        tool: tool.name,
+        phase: AssistantStepPhase.done,
+        display: display,
+        evidenceCurrent: current,
+      ),
+    );
+  }
+
+  /// find_media grids whose titles a later call acted on: a lookup on the way
+  /// to an action, so the action is the result, not the grid.
+  final Map<AssistantMediaGrid, Set<String>> _lookups = {};
+
+  void _consumeLookups(Map<String, Object?> args) {
+    final item = args['item_id'];
+    if (item is! String) return;
+    _lookups.removeWhere((grid, ids) {
+      if (!ids.contains(item)) return false;
+      _displays.remove(grid);
+      return true;
+    });
+  }
+
   Future<Map<String, Object?>> _execute(AssistantToolCall call) async {
     if (_cancelled) return {'error': 'cancelled'};
     final index = _stepIndex++;
@@ -543,6 +703,8 @@ class AssistantRun {
     );
     final shown = _displays.length;
     final output = await _executeCall(call);
+    final evidenceContext = _ctx;
+    if (evidenceContext.recommendationError case final recommendationError?) return {'error': recommendationError};
     if (_ctx.libraryDoctorError case final doctorError?) return {'error': doctorError};
     // Tool preparation and parent await each introduce a publication gap.
     // Never emit a payload whose source lease closed during either gap.
@@ -562,7 +724,12 @@ class AssistantRun {
         serverName: serverName,
         phase: failed ? AssistantStepPhase.failed : AssistantStepPhase.done,
         display: display,
-        evidenceCurrent: _ctx.libraryDoctorMode
+        evidenceCurrent: evidenceContext.recommendationCheck != null
+            ? () =>
+                  evidenceContext.recommendationError == null &&
+                  evidenceContext.libraryDoctorError == null &&
+                  evidenceContext.playbackEvidenceCurrent
+            : _ctx.libraryDoctorMode
             ? () => _ctx.libraryDoctorError == null
             : _ctx.spoilerEvidence?.position == null
             ? null
@@ -610,15 +777,27 @@ class AssistantRun {
           : await prepare();
       switch (outcome) {
         case AssistantToolResult(:final data, :final record, :final display):
+          if (_ctx.recommendationError case final recommendationError?) return {'error': recommendationError};
           if (_ctx.libraryDoctorError case final doctorError?) return {'error': doctorError};
           if (_spoilerQuestion != null && (!_ctx.playbackEvidenceCurrent || _cancelled)) {
             return {'error': 'playback_session_changed'};
           }
-          if (record != null && !data.containsKey('error') && data['done'] != false) _actions.add(record);
+          if (record != null && _actionSucceeded(data)) {
+            _actions.add(record);
+            _consumeLookups(args);
+          }
           if (display != null) _displays.add(display);
+          if (tool.name == 'find_media' && display is AssistantMediaGrid) {
+            _lookups[display] = {for (final e in display.entries) e.item.id};
+          }
           return data;
         case final AssistantPendingAction action:
-          return await _confirmAndRun(tool, action);
+          final output = await _confirmAndRun(tool, action);
+          // A declined or failed action leaves the lookup as the result.
+          if (_actionSucceeded(output)) {
+            _consumeLookups(args);
+          }
+          return output;
       }
     } on AssistantToolError catch (e) {
       return {'error': e.code};
@@ -631,6 +810,12 @@ class AssistantRun {
       return {'error': 'failed'};
     }
   }
+
+  bool _actionSucceeded(Map<String, Object?> data) =>
+      data['done'] != false &&
+      !data.containsKey('error') &&
+      data['status'] != 'cancelled_by_user' &&
+      data['status'] != 'not_confirmed';
 
   Future<Map<String, Object?>> _confirmAndRun(AssistantTool tool, AssistantPendingAction action) async {
     final AssistantConfirmation? answer;
@@ -651,10 +836,7 @@ class AssistantRun {
     final result = mutations == null ? await execute() : await mutations!.run(execute);
     // A confirmed action that changed nothing (`done: false`) is not shown
     // as done.
-    if (result['done'] != false &&
-        !result.containsKey('error') &&
-        result['status'] != 'cancelled_by_user' &&
-        result['status'] != 'not_confirmed') {
+    if (_actionSucceeded(result)) {
       _actions.add(action.record);
     }
     return result;

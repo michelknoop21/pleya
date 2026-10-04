@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../assistant/assistant_controller.dart';
 import '../../../assistant/assistant_run.dart';
+import '../../../assistant/big_p_voice.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../services/apple_tv_native_text_entry.dart';
 import '../../../utils/app_logger.dart';
@@ -12,7 +13,7 @@ import '../../../utils/platform_detector.dart';
 import '../../../utils/tv_hig.dart';
 import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/overlay_sheet_geometry.dart';
-import 'tv_assistant_confirm_card.dart';
+import '../../../widgets/big_p/assistant/big_p_confirm_card.dart';
 
 /// Shows the Pleya confirmation card for [confirmation] in the shell's
 /// overlay host and hands the answer to [controller] under the card's own
@@ -36,7 +37,7 @@ Future<bool> showTvAssistantConfirm(
     constraints: BoxConstraints(maxWidth: 880 * TvHig.of(context)),
     builder: (sheetContext) {
       onSheet(sheetContext);
-      return TvAssistantConfirmCard(
+      return BigPConfirmCard(
         action: confirmation.action,
         cancelNode: cancelNode,
         onCancel: () => OverlaySheetController.closeAdaptive(sheetContext),
@@ -53,6 +54,8 @@ Future<bool> showTvAssistantConfirm(
     return false;
   }
   controller.confirmTask(confirmation.taskId, confirmation.id, password: result.password);
+  // Only here: the card was still the queue's head and the viewer said yes.
+  unawaited(BigPVoice.of(controller)?.say(BigPMoment.nod));
   return true;
 }
 

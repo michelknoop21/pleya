@@ -28,15 +28,9 @@ steps:
   - press: select
   - wait_until: {focused: "settings.form.field[assistant.url]", timeout: 10000}
   - snapshot: 00-provider-form-before-url
-  # Apple TV fields open their real native editor only on explicit Select.
-  - press: select
-  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
-  - settle: 1000
   - type: "{{fixture}}"
-  - snapshot: 00b-provider-native-url
-  - press: select
-  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: false}, timeout: 10000}
-  - snapshot: 00c-provider-url-submitted
+  - settle: 1000
+  - snapshot: 00b-provider-form-url
   - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
   - snapshot: 01-provider-model-loaded
   - walk: {direction: down, steps: 8, stopAt: "settings.form.button[assistant.model.pleya-verify]", timeout: 20000, settle: 400}
@@ -56,6 +50,7 @@ steps:
   - wait_until: {id: assistant.summon, state: {shown: true, state: listening}, timeout: 10000}
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
   - settle: 1000
+  - snapshot: 02b-assistant-native-editor
   # Existing fixture latency op holds the first Aurora child model reply.
   # Basalt can finish first; release inserts Aurora above the focused result.
   - fixture_mutate: {op: latency, ollama_hold_aurora: true}
@@ -84,7 +79,7 @@ steps:
   - assert: {id: "assistant.match[1]", insideViewport: true, below: "assistant.task[1]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[0]"}
   - settle: 800
   - snapshot: 04-multitask-results-after-insertion
-  - assert: {id: assistant.summon, state: {shown: true, state: result, error: false, pending: false, lingering: false}}
+  - assert: {id: assistant.summon, state: {shown: true, state: result, error: false, pending: false}}
   - assert: {id: "assistant.button[cancel]", present: false}
   - press: menu
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}

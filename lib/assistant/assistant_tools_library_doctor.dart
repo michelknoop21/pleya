@@ -767,6 +767,9 @@ Future<AssistantPendingAction> _doctorPending(
     serverId: id,
     serverName: ctx.serverName(id),
     subject: clipText(kind == AssistantActionKind.scanLibrary ? root.libraryTitle : proposal.item.title),
+    job: kind == AssistantActionKind.scanLibrary
+        ? AssistantJobWatch(serverId: id, startedAt: DateTime.now(), libraryId: root.libraryId)
+        : null,
     execute: ({password}) async {
       if (_doctorProposals[ctx]?.remove(token) != proposal) throw const AssistantToolError('unknown_doctor_option');
       await checkAction();

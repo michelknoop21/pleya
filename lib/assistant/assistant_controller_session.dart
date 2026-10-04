@@ -12,7 +12,9 @@ import '../providers/multi_server_provider.dart';
 import '../providers/playback_state_provider.dart';
 import '../providers/seerr_provider.dart';
 import '../providers/tautulli_provider.dart';
+import '../screens/video_player_screen.dart' show VideoPlayerScreenState;
 import '../services/download_manager_service.dart';
+import '../services/recommendations/recommendation_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_spoiler_context.dart';
 import 'assistant_spoiler_progress.dart';
@@ -22,6 +24,7 @@ import 'assistant_playback.dart';
 import 'assistant_provider.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
+import 'big_p_voice.dart';
 
 /// The controller for one profile session. Register it lazily inside the
 /// profile-scoped providers (`ProfileSessionScreen`), so a profile switch
@@ -36,10 +39,15 @@ import 'assistant_web_lookup.dart';
 /// [HomeLayoutProvider] is only built once Big P is asked something. A
 /// provider that is not in scope leaves its service null, which keeps those
 /// tools out of the run.
-AssistantController assistantControllerForSession(BuildContext context) => AssistantController(
-  buildContext: (screen) => _sessionToolContext(context, screen),
-  webFor: assistantWebServicesFor,
-);
+AssistantController assistantControllerForSession(BuildContext context) {
+  final controller = AssistantController(
+    buildContext: (screen) => _sessionToolContext(context, screen),
+    webFor: assistantWebServicesFor,
+    serverChanges: context.read<MultiServerProvider>(),
+  );
+  BigPVoice(controller, playbackActive: () => VideoPlayerScreenState.activeId != null);
+  return controller;
+}
 
 /// Web search for find_title, from the provider settings. Wikipedia needs
 /// no key; the one web search per question uses the Ollama key (the Cloud
@@ -64,6 +72,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   final tautulli = context.read<TautulliProvider?>();
   final downloads = context.read<DownloadProvider?>();
   final profileConnections = context.read<ProfileConnectionRegistry?>();
+  final recommendations = context.read<RecommendationService?>();
   final profileId = layout?.profileId ?? activeProfile.activeId;
   final playback = context.read<PlaybackStateProvider?>()?.assistantPlayback;
   return AssistantToolContext(
@@ -127,6 +136,14 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
           ),
     insights: tautulli == null ? null : AssistantInsightServices(tautulliFor: tautulli.clientForServer),
     requests: seerr == null ? null : AssistantRequestServices(client: () => seerr.client),
+    personal: recommendations == null
+        ? null
+        : AssistantPersonalServices(
+            userName: activeProfile.active?.displayName ?? '',
+            recent: () => recommendations.recentSeeds(limit: 12),
+            taste: recommendations.taste,
+            picks: recommendations.buildRows,
+          ),
     media: downloads == null
         ? null
         : AssistantMediaServices(

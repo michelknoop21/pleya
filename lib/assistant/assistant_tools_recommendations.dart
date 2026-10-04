@@ -129,6 +129,13 @@ Future<AssistantToolOutcome> _recommendTogether(
   }
   if (selected.length > _cohortParticipantCap) throw const AssistantToolError('invalid_participants');
   await client.assertRecommendationAdministrator(abort: ctx.cancel, checkCurrent: checkCurrent);
+  // Keep every cohort result in this run tied to its original authority.
+  // A later recommendation must not replace an earlier result's source checks.
+  final priorCheck = ctx.recommendationCheck;
+  ctx.recommendationCheck = () {
+    priorCheck?.call();
+    checkCurrent();
+  };
   final unanswered = [
     for (final u in selected.values)
       if (u.id != requester.id && offeredBefore.contains(u.id)) clipText(u.name, 64),
