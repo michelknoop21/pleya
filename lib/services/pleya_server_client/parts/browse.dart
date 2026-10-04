@@ -224,8 +224,22 @@ mixin _PleyaServerBrowseMethods on _PleyaServerRequests {
     return items.where((item) => item.kind == MediaKind.show).toList();
   }
 
-  Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async =>
-      (await _hubPage(PleyaHubId.continueWatching, limit: count ?? 20)).items;
+  /// `continue_watching` and `next_up` merged by the same rule Jellyfin uses
+  /// (DEC-144 fase 2); the home rows below still hand `next_up` over as its
+  /// own row, unchanged.
+  Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
+    // Null means the whole list; a hub page is bounded, so ask for a page that
+    // is in practice never full rather than silently capping at the preview.
+    final limit = count ?? 200;
+    // Asked regardless of the advertised watch-state capability: a server
+    // without it answers both hubs with an empty list by design, and one that
+    // leaves the flag out can still have a list (the Verify fixture does).
+    final pages = await Future.wait([
+      _hubPage(PleyaHubId.continueWatching, limit: limit),
+      _hubPage(PleyaHubId.nextUp, limit: limit),
+    ]);
+    return mergeContinueWatchingAndNextUp(resume: pages[0].items, nextUp: pages[1].items, limit: count);
+  }
 
   /// The three hubs the contract defines, as home rows.
   ///

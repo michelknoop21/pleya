@@ -19,9 +19,19 @@ import '../services/unified_catalog/home_custom_row.dart';
 /// stores hide/order preferences against.
 String homeRowId(MediaHub hub) {
   final identifier = hub.identifier;
-  if (identifier != null && HomeCustomRow.isCustomLayoutRowId(identifier)) return identifier;
+  // `#` is the prefix no backend hub can produce: a custom row and the rows
+  // Pleya adds itself both name themselves with it.
+  if (identifier != null && (HomeCustomRow.isCustomLayoutRowId(identifier) || identifier.startsWith('#pleya:'))) {
+    return identifier;
+  }
   return '${hub.serverId ?? ''}:${identifier ?? hub.id}';
 }
+
+/// The rows Pleya adds to Home itself (DEC-145), named in the same space as a
+/// custom row. Kijklijst is on until the viewer hides it; Nu op tv is off until
+/// the viewer turns it on.
+const String homeWatchlistRowId = '#pleya:watchlist';
+const String homeLiveTvRowId = '#pleya:livetv';
 
 /// User-defined layout of the home screen rows: which rows are hidden, in what
 /// order they appear, and which of them the viewer defined themselves. Hero and
@@ -78,7 +88,19 @@ class HomeLayoutProvider extends ChangeNotifier with DisposableChangeNotifierMix
   bool get isInitialized => _isInitialized;
 
   List<String> get order => List.unmodifiable(_order);
-  Set<String> get hiddenRowIds => Set.unmodifiable(_hidden);
+
+  /// An opt-in row is hidden until the stored set holds its marker. The marker
+  /// lives in the hidden-rows preference, which is per device like the rest of
+  /// what is hidden here, so it needs no storage key of its own and resets with
+  /// the layout. A build that predates the row ignores an id it does not know.
+  static const Set<String> _optInRowIds = {homeLiveTvRowId};
+  static String _shownMarker(String rowId) => '$rowId:shown';
+
+  Set<String> get hiddenRowIds => Set.unmodifiable({
+    ..._hidden,
+    for (final id in _optInRowIds)
+      if (!_hidden.contains(_shownMarker(id))) id,
+  });
 
   /// The rows this profile defined itself, in creation order. Where they land
   /// on Home is [order]'s business, not this list's.
@@ -107,12 +129,15 @@ class HomeLayoutProvider extends ChangeNotifier with DisposableChangeNotifierMix
     for (final stored in storage.getHomeCustomRows(profileId)) ?HomeCustomRow.decode(stored),
   ];
 
-  bool isRowHidden(String rowId) => _hidden.contains(rowId);
+  bool isRowHidden(String rowId) =>
+      _optInRowIds.contains(rowId) ? !_hidden.contains(_shownMarker(rowId)) : _hidden.contains(rowId);
 
   Future<void> setRowHidden(String rowId, bool hidden) async {
     if (!_isInitialized) await _initialize();
-    if (_hidden.contains(rowId) == hidden) return;
-    _hidden = hidden ? (Set.from(_hidden)..add(rowId)) : (Set.from(_hidden)..remove(rowId));
+    if (isRowHidden(rowId) == hidden) return;
+    final optIn = _optInRowIds.contains(rowId);
+    final key = optIn ? _shownMarker(rowId) : rowId;
+    _hidden = (optIn ? !hidden : hidden) ? (Set.from(_hidden)..add(key)) : (Set.from(_hidden)..remove(key));
     final storage = _storageService ??= await StorageService.getInstance();
     await storage.saveHiddenHomeRows(profileId, _hidden);
     safeNotifyListeners();

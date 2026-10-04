@@ -12,6 +12,9 @@ class _CatalogQuery {
     this.sampled = false,
     this.serversLeftOut = const [],
     this.genreUnverified = const {},
+    this.rowUnavailableReason = 'This query cannot be replayed by a saved Home row.',
+    this.coverage,
+    this.checkCurrent,
   });
   final List<UnifiedMediaGroup> groups;
 
@@ -19,6 +22,9 @@ class _CatalogQuery {
   /// hold: free text, a person, a minimum rating, rating or random order, or
   /// no kind.
   final HomeCustomRow? row;
+  final String rowUnavailableReason;
+  final Map<String, Object?>? coverage;
+  final void Function()? checkCurrent;
 
   /// A server or library did not answer, or could not run this search.
   final bool partial;
@@ -85,6 +91,48 @@ const _rowSorts = {
 };
 
 Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> args) async {
+  final catalog = ctx.catalog!;
+  final clients = {for (final id in ctx.userServers) id: ctx.servers.getClient(id)};
+  final onlineBefore = ctx.userServers.where(ctx.servers.isServerOnline).toSet();
+  final loader = catalog.rowLoader;
+  Set<String> visibleLibraries() => loader is CatalogHomeCustomRowLoader
+      ? {
+          for (final kind in [MediaKind.movie, MediaKind.show])
+            for (final library in loader.librariesFor(kind)) buildGlobalKey(library.serverId, library.libraryId),
+        }
+      : const {};
+  final librariesBefore = visibleLibraries();
+  void checkCurrent() {
+    if (ctx.cancelled) throw const AssistantToolError('cancelled');
+    if (catalog.activeProfileId() != catalog.profileId) throw const AssistantToolError('profile_changed');
+    if (onlineBefore.any((id) => !ctx.servers.isServerOnline(id))) throw const AssistantToolError('catalog_changed');
+    if (clients.entries.any(
+          (entry) =>
+              !ctx.servers.isServerVisible(entry.key) || !identical(ctx.servers.getClient(entry.key), entry.value),
+        ) ||
+        !_setSame(librariesBefore, visibleLibraries())) {
+      throw const AssistantToolError('catalog_changed');
+    }
+  }
+
+  checkCurrent();
+  if (args.containsKey('participants') || args.containsKey('user_ids')) {
+    throw const AssistantToolError('use_recommend_together');
+  }
+  final strict = AssistantStrictFilters.parse(args);
+  final genres = _strings(args, 'genres').map((s) => s.trim()).toSet();
+  final audioLanguages = _strings(args, 'audio_languages').map((s) => s.trim()).toSet();
+  final officialRatings = _strings(args, 'official_ratings').map((s) => s.trim()).toSet();
+  // These are raw native values, not packed multi-value expressions.
+  if ([...genres, ...audioLanguages, ...officialRatings].any((s) => s.contains('|') || s.contains(','))) {
+    throw const AssistantToolError('invalid_filter_value');
+  }
+  final temporaryFilters =
+      strict.excludeGenres.isNotEmpty ||
+      strict.minRuntimeMinutes != null ||
+      strict.maxRuntimeMinutes != null ||
+      strict.subtitleLanguages.isNotEmpty ||
+      audioLanguages.length > 1;
   final text = _optionalText(args, 'text');
   final person = _optionalText(args, 'person');
   final kind = switch (args['kind']) {
@@ -93,7 +141,6 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     'show' => MediaKind.show,
     _ => throw const AssistantToolError('invalid_kind'),
   };
-  final genres = {for (final g in _strings(args, 'genres').take(5)) clipText(g, 40)};
   final lastYear = DateTime.now().year + 2;
   final yearFrom = _int(args, 'year_from', 1880, lastYear);
   final yearTo = _int(args, 'year_to', 1880, lastYear);
@@ -115,7 +162,19 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     throw const AssistantToolError('invalid_sort');
   }
   final limit = _int(args, 'limit', 1, 50) ?? 20;
-  final rowShaped = text == null && person == null && minRating == null && _rowSorts.containsKey(sort);
+  final openYears = (yearFrom == null) != (yearTo == null);
+  final rowShaped =
+      text == null &&
+      person == null &&
+      minRating == null &&
+      _rowSorts.containsKey(sort) &&
+      !temporaryFilters &&
+      !openYears;
+  final unavailableReason = temporaryFilters
+      ? 'Runtime, exclusions, subtitles and required multiple audio languages cannot be replayed by a Home row.'
+      : openYears
+      ? 'An open year window cannot be replayed exactly by a Home row.'
+      : 'Text, person, minimum rating, sampled sort or mixed kinds cannot be replayed by a Home row.';
 
   if (text == null && person == null) {
     // The Home-row path: the row's own filter model, loader and merge.
@@ -132,7 +191,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       final backend = ctx.servers.getClient(id)?.backend;
       if (backend == null) continue;
       final caps = unifiedFilterCapabilitiesFor([backend]);
-      if ((genres.isEmpty && years.isEmpty || caps.supportsMetadataFilters) && caps.supportsWatchState(watch)) {
+      if ((genres.isEmpty && years.isEmpty && audioLanguages.isEmpty && officialRatings.isEmpty ||
+              caps.supportsMetadataFilters) &&
+          caps.supportsWatchState(watch)) {
         capable.add(id.value);
       } else {
         leftOut.add(clipText(ctx.serverName(id), 40));
@@ -151,9 +212,21 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
           sort: _rowSorts[sort] ?? UnifiedCatalogSort.titleAsc,
           filters: UnifiedCatalogFilterSelection(
             genres: genres,
+            audioLanguages: audioLanguages.length > 1 ? const {} : audioLanguages,
+            officialRatings: officialRatings,
             years: years,
             watchState: watch,
-            serverIds: leftOut.isEmpty ? const {} : capable,
+            // Pin filtered queries to supporting sources: a later unsupported
+            // backend must not make the loader silently drop their filters.
+            serverIds:
+                leftOut.isEmpty &&
+                    genres.isEmpty &&
+                    years.isEmpty &&
+                    audioLanguages.isEmpty &&
+                    officialRatings.isEmpty &&
+                    watch == UnifiedWatchFilter.all
+                ? const {}
+                : capable,
           ),
         ),
       );
@@ -161,10 +234,22 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       // 100 titles (flagged as sampled); a rating sort in the catalog contract
       // lifts that ceiling.
       final content = await ctx.catalog!.rowLoader.load(row, limit: rowShaped ? limit : 100);
+      checkCurrent();
       partial |= content.isPartial;
       sampled |= !rowShaped && !content.isExact;
       groups.addAll(content.groups);
     }
+    Map<String, Object?>? coverage;
+    if (temporaryFilters) {
+      final filtered = await _strictCatalogMatches(ctx, groups, strict, unwatched, inProgress, checkCurrent);
+      groups
+        ..clear()
+        ..addAll(filtered.groups);
+      coverage = filtered.coverage;
+      partial |= filtered.failed;
+      sampled |= filtered.sampled;
+    }
+    checkCurrent();
     if (minRating != null) groups.removeWhere((g) => (g.representativeSource.item.rating ?? -1) < minRating);
     // A single kind keeps the catalog's order; two kinds need one order.
     if (!rowShaped || kind == null) _order(groups, sort);
@@ -174,6 +259,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       partial: partial,
       sampled: sampled,
       serversLeftOut: leftOut,
+      rowUnavailableReason: unavailableReason,
+      coverage: coverage,
+      checkCurrent: checkCurrent,
     );
   }
 
@@ -198,6 +286,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       } else {
         hits = await client.searchItems(text!, limit: 50);
       }
+      checkCurrent();
       for (final hit in hits) {
         if (hit.kind != MediaKind.movie && hit.kind != MediaKind.show) continue;
         if (kind != null && hit.kind != kind) continue;
@@ -217,13 +306,33 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
         }
         found.add(item);
       }
+    } on AssistantToolError {
+      rethrow;
     } catch (e) {
       // One server failing leaves the others' answer standing.
       partial = true;
       appLogger.w('Assistant: catalog search failed on one server', error: e.runtimeType);
     }
   }
-  final groups = await _merge(ctx, found);
+  Map<String, Object?>? coverage;
+  var groups = await _merge(ctx, found);
+  checkCurrent();
+  if (temporaryFilters || audioLanguages.isNotEmpty || officialRatings.isNotEmpty) {
+    // Singleton audio/rating hydration must preserve the text/person route's
+    // genre OR. Genuine temporary strict combinations continue to use ALL.
+    final filtered = await _strictCatalogMatches(
+      ctx,
+      groups,
+      temporaryFilters ? strict : AssistantStrictFilters.parse({...args, 'genres': const <String>[]}),
+      unwatched,
+      inProgress,
+      checkCurrent,
+      genreAlternatives: temporaryFilters ? const {} : strict.genres,
+    );
+    groups = filtered.groups;
+    coverage = filtered.coverage;
+    partial |= filtered.failed;
+  }
   // No sort asked: the servers' relevance order stands.
   if (askedSort != null) _order(groups, sort);
   final kept = groups.take(limit).toList();
@@ -231,12 +340,112 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     kept,
     null,
     partial: partial,
-    genreUnverified: genres.isEmpty
+    sampled: coverage != null,
+    rowUnavailableReason: unavailableReason,
+    coverage: coverage,
+    checkCurrent: checkCurrent,
+    genreUnverified: genres.isEmpty || coverage != null
         ? const {}
         : {
             for (final g in kept)
               if (!g.sources.any((s) => genreChecked.contains(s.sourceKey))) g.groupId,
           },
+  );
+}
+
+bool _setSame(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
+
+Future<({List<UnifiedMediaGroup> groups, Map<String, Object?> coverage, bool failed, bool sampled})>
+_strictCatalogMatches(
+  AssistantToolContext ctx,
+  List<UnifiedMediaGroup> groups,
+  AssistantStrictFilters filters,
+  bool unwatched,
+  bool inProgress,
+  void Function() checkCurrent, {
+  Set<String> genreAlternatives = const {},
+}) async {
+  final matched = <MediaItem>[];
+  var checked = 0;
+  var unavailable = 0;
+  var excluded = 0;
+  final sources = groups.expand((g) => g.sources).toList();
+  // The metadata reads have their own cap: merged titles may contain many
+  // copies, and mixed-kind searches may have loaded 100 of each kind.
+  for (final source in sources.take(100)) {
+    checkCurrent();
+    if (ctx.catalog!.rowLoader case final CatalogHomeCustomRowLoader loader) {
+      if (!loader
+          .librariesFor(source.item.kind)
+          .any((library) => library.serverId == source.serverId && library.libraryId == source.libraryId)) {
+        unavailable++;
+        continue;
+      }
+    }
+    final client = ctx.userClient(source.serverId);
+    if (client == null) {
+      unavailable++;
+      continue;
+    }
+    checked++;
+    MediaItem? item;
+    try {
+      item = await client.fetchItem(source.item.id);
+    } catch (_) {
+      // The unavailable count is incremented once below, for null or failure.
+    }
+    checkCurrent();
+    if (!identical(ctx.userClient(source.serverId), client)) throw const AssistantToolError('catalog_changed');
+    if (item == null) {
+      unavailable++;
+      continue;
+    }
+    // Jellyfin's ParentId can be a nested folder; the catalog already proved
+    // the root via its recursive ParentId query. Only an explicit root on the
+    // detail DTO may contradict that proof.
+    final detailLibrary = item.backend == MediaBackend.jellyfin ? (item.raw?['ParentLibraryId']) : item.libraryId;
+    final malformedLibrary =
+        item.backend == MediaBackend.jellyfin &&
+        (item.raw?.containsKey('ParentLibraryId') ?? false) &&
+        (detailLibrary is! String || detailLibrary.isEmpty);
+    if (item.id != source.item.id ||
+        item.kind != source.item.kind ||
+        item.backend != source.backend ||
+        (item.serverId != null && item.serverId != source.serverId.value) ||
+        malformedLibrary ||
+        (detailLibrary != null && detailLibrary != source.libraryId)) {
+      unavailable++;
+      continue;
+    }
+    item = item.copyWith(serverId: source.serverId.value, libraryId: source.libraryId);
+    final watchKnown =
+        item.backend != MediaBackend.jellyfin ||
+        item.raw?['UserData'] is Map && (item.raw!['UserData'] as Map)['Played'] is bool;
+    final genreMatches =
+        genreAlternatives.isEmpty ||
+        (item.genres?.any((genre) => genreAlternatives.contains(genre.trim().toLowerCase())) ?? false);
+    if (!genreMatches ||
+        (unwatched && !watchKnown) ||
+        !filters.matches(item) ||
+        (unwatched && item.isWatched) ||
+        (inProgress && !item.hasActiveProgress)) {
+      excluded++;
+      continue;
+    }
+    matched.add(item);
+  }
+  final merged = await _merge(ctx, matched);
+  checkCurrent();
+  return (
+    groups: merged,
+    failed: unavailable > 0,
+    sampled: sources.length > 100,
+    coverage: {
+      'candidates_checked': checked,
+      'excluded_metadata_or_watch': excluded,
+      'unavailable_metadata': unavailable,
+      'candidate_limit': 100,
+    },
   );
 }
 

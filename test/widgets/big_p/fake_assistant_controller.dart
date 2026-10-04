@@ -35,6 +35,22 @@ class FakeAssistantController extends AssistantController {
   bool stillChecking = false;
   @override
   int runs = 0;
+  @override
+  List<AssistantTask> tasks = [];
+
+  /// The head of the confirmation queue. Unset, a [pending] action stands
+  /// for a single command's only card.
+  AssistantTaskConfirmation? confirmation;
+  @override
+  AssistantTaskConfirmation? get pendingConfirmation => switch ((confirmation, pending)) {
+    (final head?, _) => head,
+    (null, final action?) => AssistantTaskConfirmation(
+      id: 'confirmation-${identityHashCode(action)}',
+      taskId: 'task-1',
+      action: action,
+    ),
+    _ => null,
+  };
 
   final submitted = <String>[];
 
@@ -45,6 +61,11 @@ class FakeAssistantController extends AssistantController {
   final listenContexts = <AssistantScreenContext?>[];
   final confirmedPasswords = <String?>[];
   final picked = <AssistantRequestOption>[];
+  final pickedForTask = <String>[];
+  final confirmedTasks = <(String, String)>[];
+  final cancelledConfirmations = <(String, String)>[];
+  final cancelledTasks = <String>[];
+  var cancelledAll = 0;
   var cancelledListening = 0;
   var cancelledPending = 0;
   var resets = 0;
@@ -96,10 +117,35 @@ class FakeAssistantController extends AssistantController {
   }
 
   @override
-  void confirmPending({String? password}) => confirmedPasswords.add(password);
+  void confirmTask(String taskId, String confirmationId, {String? password}) {
+    confirmedTasks.add((taskId, confirmationId));
+    confirmedPasswords.add(password);
+  }
 
   @override
-  void cancelPending() => cancelledPending++;
+  void cancelTaskConfirmation(String taskId, String confirmationId) {
+    cancelledConfirmations.add((taskId, confirmationId));
+    cancelledPending++;
+  }
+
+  // The phone's card answers through the single-card projection.
+  @override
+  void confirmPending({String? password, AssistantPendingAction? action}) => confirmedPasswords.add(password);
+
+  @override
+  void cancelPending({AssistantPendingAction? action}) => cancelledPending++;
+
+  @override
+  Future<void> pickTaskRequestOption(String taskId, AssistantRequestOption option, {bool fourK = false}) async {
+    pickedForTask.add(taskId);
+    picked.add(option);
+  }
+
+  @override
+  void cancelTask(String taskId) => cancelledTasks.add(taskId);
+
+  @override
+  void cancelAll() => cancelledAll++;
 
   @override
   Future<void> pickRequestOption(AssistantRequestOption option, {bool fourK = false}) async => picked.add(option);

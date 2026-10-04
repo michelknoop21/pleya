@@ -123,6 +123,9 @@ for (const f of pages) {
   const html = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>${name}</title><link rel="stylesheet" href="../tv.css"></head><body>${render(readFileSync(join(ROOT, 'pages', f), 'utf8'))}</body></html>`;
   const out = join(OUT, f);
   writeFileSync(out, html);
+  // Een pagina kan een eigen formaat vragen, bijvoorbeeld 1440x900 voor desktop/iPad.
+  const vp = html.match(/<!--\s*viewport:(\d+)x(\d+)\s*-->/);
+  await page.setViewportSize(vp ? { width: +vp[1], height: +vp[2] } : { width: 1920, height: 1080 });
   await page.goto('file://' + out, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(150);

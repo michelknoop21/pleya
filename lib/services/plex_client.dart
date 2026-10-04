@@ -71,6 +71,7 @@ import 'plex_api_cache.dart';
 import 'plex_mappers.dart';
 import 'plex_playback_mapper.dart';
 import 'playback_initialization_types.dart';
+import 'playback_stream_evidence.dart';
 
 part 'plex_client/parts/live_tv.dart';
 part 'plex_client/parts/server_activity.dart';
@@ -913,6 +914,7 @@ class PlexClient
     int? size,
     Map<String, String>? filters,
     AbortController? abort,
+    bool requireTotalCount = false,
   }) async {
     final queryParams = _buildPaginationParams(start, size);
     if (filters != null) queryParams.addAll(filters);
@@ -923,6 +925,7 @@ class PlexClient
       librarySectionID: _librarySectionIdFromString(sectionId),
       start: start,
       requestedSize: size,
+      requireTotalCount: requireTotalCount,
     );
   }
 
@@ -939,12 +942,29 @@ class PlexClient
     String? librarySectionTitle,
     int? start,
     int? requestedSize,
+    bool requireTotalCount = false,
   }) {
     final items = _extractMetadataListWithLibrary(
       response,
       librarySectionID: librarySectionID,
       librarySectionTitle: librarySectionTitle,
     );
+    if (requireTotalCount) {
+      final container = _getMediaContainer(response);
+      final rawTotal = container?['totalSize'];
+      final headerTotal = _responseHeaderInt(response, 'X-Plex-Container-Total-Size');
+      final total = rawTotal is int ? rawTotal : headerTotal;
+      final rawItems = container?['Metadata'];
+      if (total == null ||
+          total < 0 ||
+          (rawTotal != null && rawTotal is! int) ||
+          (rawItems != null && rawItems is! List) ||
+          (rawItems is List && rawItems.length != items.length) ||
+          (container?['offset'] != null && container?['offset'] != (start ?? 0))) {
+        throw StateError('Unverified library page');
+      }
+      return _LibraryContentResult(items: items, totalSize: total);
+    }
     final totalSize = _responseTotalSize(response, itemCount: items.length, start: start, requestedSize: requestedSize);
     return _LibraryContentResult(items: items, totalSize: totalSize);
   }
@@ -3074,7 +3094,8 @@ class PlexClient
   /// [transcodeSessionId] and [sessionIdentifier] should be reused across
   /// seeks + quality/version/audio switches within one playback so the
   /// server-side transcode session is preserved.
-  Future<({String? startPath, TranscodeDecisionOutcome outcome})> buildTranscodeStartPath({
+  Future<({String? startPath, TranscodeDecisionOutcome outcome, PlaybackStreamEvidence evidence})>
+  buildTranscodeStartPath({
     required String ratingKey,
     required int mediaIndex,
     int partIndex = 0,
@@ -3119,21 +3140,25 @@ class PlexClient
 
         if (decisionResponse.statusCode != 200) {
           appLogger.w('Transcode decision returned ${decisionResponse.statusCode}');
-          return (startPath: null, outcome: TranscodeDecisionOutcome.failed);
+          return (startPath: null, outcome: TranscodeDecisionOutcome.failed, evidence: const PlaybackStreamEvidence());
         }
 
         final outcome = _parseTranscodeDecisionOutcome(decisionResponse.data, isOriginal: preset.isOriginal);
         if (outcome == TranscodeDecisionOutcome.failed) {
-          return (startPath: null, outcome: outcome);
+          return (startPath: null, outcome: outcome, evidence: const PlaybackStreamEvidence());
         }
 
-        return (startPath: _buildTranscodeStartPathFromParams(allParams), outcome: outcome);
+        return (
+          startPath: _buildTranscodeStartPathFromParams(allParams),
+          outcome: outcome,
+          evidence: PlaybackStreamEvidence.plex(decisionResponse.data),
+        );
       } finally {
         decisionClient.close();
       }
     } catch (e, st) {
       appLogger.e('Failed to build transcode start path', error: e, stackTrace: st);
-      return (startPath: null, outcome: TranscodeDecisionOutcome.failed);
+      return (startPath: null, outcome: TranscodeDecisionOutcome.failed, evidence: const PlaybackStreamEvidence());
     }
   }
 
@@ -3254,10 +3279,22 @@ class PlexClient
     return libraries.map((l) => PlexMappers.mediaLibrary(l)).toList();
   }
 
+  /// Request evidence can require an explicit server count and lossless rows.
+  /// Normal browsing retains its existing fallback pagination by default.
   @override
-  Future<LibraryPage<MediaItem>> fetchLibraryContent(String libraryId, LibraryQuery query) async {
+  Future<LibraryPage<MediaItem>> fetchLibraryContent(
+    String libraryId,
+    LibraryQuery query, {
+    bool requireTotalCount = false,
+  }) async {
     final filters = const PlexLibraryQueryTranslator().toQueryParameters(query);
-    final result = await _getLibraryContent(libraryId, start: query.offset, size: query.limit, filters: filters);
+    final result = await _getLibraryContent(
+      libraryId,
+      start: query.offset,
+      size: query.limit,
+      filters: filters,
+      requireTotalCount: requireTotalCount,
+    );
     return LibraryPage<MediaItem>(
       items: result.items.map((m) => PlexMappers.mediaItem(m)).toList(),
       totalCount: result.totalSize,
@@ -3381,6 +3418,7 @@ class PlexClient
             externalSubtitles: sidecarSubs,
             isOffline: false,
             isTranscoding: true,
+            streamEvidence: result.evidence,
             activeAudioStreamId: resolvedAudioId,
             playMethod: 'Transcode',
             playSessionId: options.sessionIdentifier,
@@ -3831,8 +3869,17 @@ class PlexClient
 
   @override
   Future<List<MediaItem>> fetchContinueWatching({int? count = 20}) async {
+    // Null is uncapped: `count` is then left off the request, the contract
+    // `plex_home_retry_test` pins.
     final items = await _getContinueWatching(count: count);
-    return items.map((m) => PlexMappers.mediaItem(m)).toList();
+    // Plex's one hub mixes both: an entry with an offset is something begun,
+    // one without is the next episode the server picked (DEC-144).
+    return [
+      for (final item in items.map(PlexMappers.mediaItem))
+        item.copyWith(
+          continueWatchingKind: item.hasActiveProgress ? ContinueWatchingKind.resume : ContinueWatchingKind.nextUp,
+        ),
+    ];
   }
 
   /// `/library/all` sorted by `lastViewedAt` is user-scoped per token, so

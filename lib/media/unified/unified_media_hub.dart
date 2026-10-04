@@ -250,6 +250,19 @@ class UnifiedMediaHub {
   }) : groups = List.unmodifiable(groups),
        contributingRowIds = List.unmodifiable(contributingRowIds);
 
+  /// The same row with [groups] swapped: how the Verder kijken row becomes the
+  /// first 20 of its own full projection (DEC-144 fase 2).
+  UnifiedMediaHub withGroups(List<UnifiedMediaGroup> groups) => UnifiedMediaHub(
+    hubId: hubId,
+    title: title,
+    kind: kind,
+    groups: groups,
+    isPartial: isPartial,
+    viewAll: viewAll,
+    contributingRowIds: contributingRowIds,
+    serverName: serverName,
+  );
+
   /// A row projected from one or more backend hubs sharing [key].
   factory UnifiedMediaHub.fromKey({
     required UnifiedHubKey key,

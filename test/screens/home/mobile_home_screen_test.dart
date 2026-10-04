@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/widgets/mobile/mobile_media_card.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_registry.dart';
 import 'package:pleya/media/ids.dart';
@@ -9,8 +11,11 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/media/unified/unified_media_group.dart';
+import 'package:pleya/media/unified/unified_media_hub.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
+import 'package:pleya/providers/home_extra_rows_provider.dart';
 import 'package:pleya/providers/home_layout_provider.dart';
 import 'package:pleya/providers/libraries_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
@@ -143,6 +148,41 @@ class _FakeClient implements MediaServerClient {
 const bool _verifyOn = bool.fromEnvironment('PLEYA_VERIFY');
 const String _skipReason = 'run with --dart-define=PLEYA_VERIFY=true';
 
+class _StubExtraRows extends ChangeNotifier implements HomeExtraRowsProvider {
+  _StubExtraRows(this._groups, {this.live = false});
+
+  final List<UnifiedMediaGroup> Function() _groups;
+
+  /// True makes this the Nu op tv row: its cards tune instead of opening.
+  final bool live;
+  final List<String> tuned = [];
+
+  @override
+  List<UnifiedMediaHub> visibleRows() => [
+    if (_groups().isNotEmpty)
+      UnifiedMediaHub.synthesized(
+        slug: live ? 'livetv' : 'watchlist',
+        title: live ? 'Nu op tv' : 'Kijklijst',
+        kind: UnifiedHubKind.mixed,
+        groups: _groups(),
+        contributingRowIds: [live ? homeLiveTvRowId : homeWatchlistRowId],
+      ),
+  ];
+
+  @override
+  bool isLiveTv(UnifiedMediaGroup group) => live && _groups().any((g) => g.groupId == group.groupId);
+
+  @override
+  Future<bool> activateLiveTv(BuildContext context, UnifiedMediaGroup group) async {
+    if (!isLiveTv(group)) return false;
+    tuned.add(group.groupId);
+    return true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -185,7 +225,7 @@ void main() {
     multiServer.dispose();
   });
 
-  Future<void> pumpHome(WidgetTester tester) async {
+  Future<void> pumpHome(WidgetTester tester, {HomeExtraRowsProvider? extraRows}) async {
     tester.view.physicalSize = const Size(393, 852);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -200,6 +240,7 @@ void main() {
             create: (context) => TvDiscoveryLandingProvider(discover: discover, multiServer: multiServer),
           ),
           ChangeNotifierProvider<TvHomeProjectionProvider>.value(value: homeProjection),
+          if (extraRows != null) ChangeNotifierProvider<HomeExtraRowsProvider>.value(value: extraRows),
         ],
         child: MaterialApp(theme: monoTheme(dark: true), home: const MobileHomeScreen()),
       ),
@@ -242,18 +283,109 @@ void main() {
 
     collect();
     expect(seen[0], 'Continue Watching', reason: 'Verder kijken sits directly under the hero');
-    for (var i = 0; i < 4 && seen.length < 3; i++) {
+    for (var i = 0; i < 6 && seen.length < 4; i++) {
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
       await tester.pump();
       collect();
     }
+    // Recent uitgebracht is a row here as it is on the TV (DEC-145), directly
+    // under Verder kijken.
+    expect(seen[1], homeProjection.latestMovies?.title);
     // The row order itself is the projection's, not the screen's: assert the
     // screen reproduces `TvHomeProjectionProvider.hubs` rather than the raw
     // fixture order, so this test cannot silently re-decide row ranking.
     final projected = homeProjection.hubs.map((h) => h.title).toList();
     expect(projected, hasLength(2));
-    expect(seen[1], projected[0]);
-    expect(seen[2], projected[1]);
+    expect(seen[2], projected[0]);
+    expect(seen[3], projected[1]);
+  });
+
+  testWidgets('Kijklijst is a row under Recent uitgebracht, and the layout can hide it (DEC-145)', (tester) async {
+    aggregation.latestMovies = [_movie('m1', title: 'Recent One', year: 2026)];
+    aggregation.onDeck = [_movie('d1', title: 'Half Watched')];
+    aggregation.hubs = [
+      _hub('Trending', items: [_movie('t1')]),
+    ];
+    final extra = _StubExtraRows(() => homeProjection.hubs.firstOrNull?.groups ?? const []);
+    addTearDown(extra.dispose);
+
+    await pumpHome(tester, extraRows: extra);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.pump();
+
+    final seen = <int, String>{};
+    Future<void> collectAll() async {
+      seen.clear();
+      for (var i = 0; i < 6; i++) {
+        for (final rail in tester.widgetList<MobileMediaRail>(find.byType(MobileMediaRail))) {
+          seen[rail.railIndex] = rail.hub.title;
+        }
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+        await tester.pump();
+      }
+    }
+
+    await collectAll();
+    expect(
+      [for (var i = 0; i < seen.length; i++) seen[i]],
+      ['Continue Watching', 'Recently Released', 'Kijklijst', 'Trending'],
+    );
+
+    await tester.runAsync(() => homeLayout.setRowHidden(homeWatchlistRowId, true));
+    await tester.pump();
+    await collectAll();
+    expect(seen.values, isNot(contains('Kijklijst')));
+  });
+
+  testWidgets('a Nu op tv card tunes on tap and opens no menu on long press (DEC-145)', (tester) async {
+    aggregation.hubs = [
+      _hub('Trending', items: [_movie('t1', title: 'Library Film')]),
+      _hub('On Air', items: [_movie('l1', title: 'Journaal')]),
+    ];
+    // The live row borrows the second hub's group, so the first hub's card is
+    // the library control.
+    final extra = _StubExtraRows(
+      () => homeProjection.hubs.where((h) => h.title == 'On Air').expand((h) => h.groups).toList(),
+      live: true,
+    );
+    addTearDown(extra.dispose);
+    await tester.runAsync(() => homeLayout.setRowHidden(homeLiveTvRowId, false));
+
+    await pumpHome(tester, extraRows: extra);
+    await tester.runAsync(discover.load);
+    await tester.pump();
+    await tester.pump();
+
+    Finder cardIn(String railTitle) => find
+        .descendant(
+          of: find.byWidgetPredicate((w) => w is MobileMediaRail && w.hub.title == railTitle),
+          matching: find.byType(MobileMediaCard),
+        )
+        .first;
+
+    final live = cardIn('Nu op tv');
+    await tester.ensureVisible(live);
+    await tester.pump();
+    await tester.tap(live);
+    await tester.pump();
+    expect(extra.tuned, hasLength(1));
+    expect(find.byType(MobileHomeScreen), findsOneWidget, reason: 'no detail page was pushed over Home');
+
+    await tester.longPress(live);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text(t.mediaMenu.markAsWatched), findsNothing, reason: 'a live card has no library actions');
+    expect(extra.tuned, hasLength(1));
+
+    // The control: the same gesture on a library card does open the menu.
+    final library = cardIn('Trending');
+    await tester.ensureVisible(library);
+    await tester.pump();
+    await tester.longPress(library);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text(t.mediaMenu.markAsWatched), findsOneWidget);
   });
 
   testWidgets('the Series chip drops the hero and titles the page Voor jou', (tester) async {

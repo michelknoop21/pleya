@@ -1,3 +1,4 @@
+import 'assistant_spoiler_context.dart';
 import '../media/ids.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
@@ -7,6 +8,7 @@ import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_recommend_constraints.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
+import 'assistant_playback.dart';
 
 /// Where the user opened the Assistant from. Pleya data, never authority:
 /// every id here is checked again like any id the model sends.
@@ -50,6 +52,8 @@ class AssistantToolContext {
     this.insights,
     this.requests,
     this.media,
+    this.playback,
+    this.spoilers,
     this.personal,
     this.web,
     this.cancel,
@@ -63,6 +67,32 @@ class AssistantToolContext {
   final AbortController? cancel;
   bool get cancelled => cancel?.isAborted ?? false;
 
+  /// Diagnosis tasks never inherit the ordinary immediate administration path.
+  bool libraryDoctorMode = false;
+  final Set<String> libraryDoctorActions = {};
+  void Function()? libraryDoctorCheck;
+  String Function(String language)? libraryDoctorAnswer;
+  String? get libraryDoctorError {
+    try {
+      libraryDoctorCheck?.call();
+      return libraryDoctorMode && cancelled ? 'cancelled' : null;
+    } on AssistantToolError catch (e) {
+      return e.code;
+    }
+  }
+
+  /// Cohort evidence retains the same live source checks used by its reads.
+  /// Per-run only: fresh child contexts never inherit another task's evidence.
+  void Function()? recommendationCheck;
+  String? get recommendationError {
+    try {
+      recommendationCheck?.call();
+      return null;
+    } on AssistantToolError catch (e) {
+      return e.code;
+    }
+  }
+
   /// Same servers, screen and services, none of the per-run state.
   AssistantToolContext fresh({AbortController? cancel, AssistantWebServices? web}) => AssistantToolContext(
     servers: servers,
@@ -71,6 +101,8 @@ class AssistantToolContext {
     insights: insights,
     requests: requests,
     media: media,
+    playback: playback,
+    spoilers: spoilers,
     personal: personal,
     web: web ?? this.web,
     cancel: cancel ?? this.cancel,
@@ -87,6 +119,22 @@ class AssistantToolContext {
   final AssistantInsightServices? insights;
   final AssistantRequestServices? requests;
   final AssistantMediaServices? media;
+  final AssistantPlaybackServices? playback;
+  final AssistantSpoilerServices? spoilers;
+  String? spoilerQuestion;
+  AssistantSpoilerContext? spoilerEvidence;
+  Future<AssistantSpoilerContext> safeSpoilerContext() async => spoilerEvidence ??= await buildAssistantSpoilerContext(
+    services: spoilers,
+    clientFor: (id) => userClient(ServerId(id)),
+    cancelled: () => cancelled,
+    question: spoilerQuestion ?? '',
+  );
+  AssistantPlaybackSnapshot? _playbackEvidence;
+
+  void bindPlaybackEvidence(AssistantPlaybackSnapshot snapshot) => _playbackEvidence = snapshot;
+  bool get playbackEvidenceCurrent =>
+      (_playbackEvidence == null || (playback?.isCurrent(_playbackEvidence!) ?? false)) &&
+      (spoilerEvidence?.position == null || spoilerEvidence!.current());
 
   /// Who is asking and what this profile watched; null keeps my_watching out
   /// and the system prompt without a name.

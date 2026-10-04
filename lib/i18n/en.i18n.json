@@ -482,6 +482,11 @@
     "markAsWatched": "Mark as Watched",
     "markAsUnwatched": "Mark as Unwatched",
     "removeFromContinueWatching": "Remove from Continue Watching",
+    "hideFromContinueWatching": "Hide from Continue Watching",
+    "cwScopeThisDevice": "On this device only",
+    "cwScopeAllSources": "On all sources",
+    "cwScopeMixed": "${server} on the server, ${local} here only",
+    "cwScopePartlyLocal": "Partly on this device only",
     "viewDetails": "View details",
     "goToSeries": "Go to series",
     "shufflePlay": "Shuffle Play",
@@ -674,6 +679,7 @@
     "markedAsUnwatchedOffline": "Marked as unwatched (will sync when online)",
     "autoRemovedWatchedDownload": "Auto-removed: ${title}",
     "removedFromContinueWatching": "Removed from Continue Watching",
+    "hiddenFromContinueWatching": "Hidden from Continue Watching",
     "errorLoading": "Error",
     "fileInfoNotAvailable": "File information not available",
     "errorLoadingFileInfo": "Error loading file info",
@@ -860,6 +866,21 @@
     "watched": "Watched",
     "tvShow": "TV Show",
     "minutesLeft": "${minutes} min left",
+    "nextEpisodeStatus": "Next episode",
+    "cwSectionResumeShows": "Resume series",
+    "cwSectionResumeMovies": "Resume films",
+    "cwSectionNextEpisodes": "Next episodes",
+    "cwSectionStale": "Started earlier",
+    "hiddenItems": "Hidden items",
+    "restoreHidden": "Restore",
+    "hiddenItemsHint": "Hidden on this device only. Restore puts a title back in Continue Watching.",
+    "watchedAgo": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "days": "${count} days ago",
+      "weeks": "${count} weeks ago",
+      "months": "${count} months ago"
+    },
     "moreLikeThis": "More Like This",
     "becauseYouWatched": "Because you watched ${title}",
     "becauseYouAreWatching": "Because you're watching ${title}",
@@ -2421,7 +2442,8 @@
       "createCollection": "Collection created",
       "requestTitle": "Request sent",
       "downloadEpisodes": "Download started",
-      "downloadSubtitle": "Subtitle downloaded"
+      "downloadSubtitle": "Subtitle downloaded",
+      "changePlayback": "Playback changed"
     },
     "confirm": {
       "header": "Pleya asks for confirmation",
@@ -2437,7 +2459,8 @@
         "createCollection": "Create collection",
         "requestTitle": "Request title",
         "downloadEpisodes": "Download episodes",
-        "downloadSubtitle": "Download subtitle"
+        "downloadSubtitle": "Download subtitle",
+        "changePlayback": "Change playback"
       },
       "user": "User",
       "server": "Server",
@@ -2551,6 +2574,24 @@
       "webSearchNoteOpenRouter": "The description of a title you look for goes to Wikipedia and OpenRouter's web search, which costs roughly 0.005 to 0.007 dollars per search.",
       "voice": "Big P's voice",
       "voiceNote": "Short spoken reactions. Never while you dictate or watch something."
+    },
+    "tasks": {
+      "working": "Working on ${count} tasks · ${done} done",
+      "allDone": "${count} tasks are done.",
+      "someDone": "${done} of ${count} tasks done.",
+      "queued": "Queued",
+      "running": "Working",
+      "waiting": "Waiting for confirmation",
+      "completed": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "found": {
+        "one": "1 title found",
+        "other": "${n} titles found"
+      },
+      "choose": "Choose what to request",
+      "cancelAll": "Cancel all",
+      "cancelTask": "Cancel: ${title}"
     },
     "youAsked": "You asked:",
     "option": {

@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
@@ -48,6 +49,13 @@ Future<void> showMobileUnifiedContextMenu(
     ),
   );
   if (actions.isEmpty) return;
+  final removal = actions.contains(UnifiedGroupAction.removeFromContinueWatching)
+      ? continueWatchingRemovalPresentationFor(context, group, availabilityFor)
+      : null;
+  String labelFor(UnifiedGroupAction action) =>
+      action == UnifiedGroupAction.removeFromContinueWatching && removal != null
+      ? removal.label
+      : labelForUnifiedGroupAction(action);
 
   final chosen = await OverlaySheetController.showAdaptive<UnifiedGroupAction>(
     context,
@@ -68,13 +76,17 @@ Future<void> showMobileUnifiedContextMenu(
           for (var i = 0; i < actions.length; i++)
             AppMenuItem<UnifiedGroupAction>(
               value: actions[i],
-              icon: iconForUnifiedGroupAction(actions[i]),
-              label: labelForUnifiedGroupAction(actions[i]),
+              icon: actions[i] == UnifiedGroupAction.removeFromContinueWatching && (removal?.hidesOnly ?? false)
+                  ? Symbols.visibility_off_rounded
+                  : iconForUnifiedGroupAction(actions[i]),
+              label: labelFor(actions[i]),
+              // Mockup 38 E: the reach of the removal sits on the row itself.
+              subtitle: actions[i] == UnifiedGroupAction.removeFromContinueWatching ? removal?.scope : null,
               child: AutomationNode(
                 id: AutomationIds.sheetContextMenuItem,
                 instance: '$i',
                 role: 'list.item',
-                child: Text(labelForUnifiedGroupAction(actions[i])),
+                child: Text(labelFor(actions[i])),
               ),
             ),
         ],

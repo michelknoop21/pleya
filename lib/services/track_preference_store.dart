@@ -182,11 +182,13 @@ class TrackPreferenceStore {
     }
   }
 
-  static Future<void> saveAudio(MediaItem metadata, {String? language, String? title}) => _update(
-    metadata,
-    (current, now, provenance) =>
-        current.copyWithAudio(language: language, title: title, provenance: provenance, updatedAt: now),
-  );
+  static Future<void> saveAudio(MediaItem metadata, {String? language, String? title, bool Function()? isCurrent}) =>
+      _update(
+        metadata,
+        (current, now, provenance) =>
+            current.copyWithAudio(language: language, title: title, provenance: provenance, updatedAt: now),
+        isCurrent: isCurrent,
+      );
 
   static Future<void> saveSubtitle(
     MediaItem metadata, {
@@ -194,6 +196,7 @@ class TrackPreferenceStore {
     String? title,
     bool forced = false,
     bool off = false,
+    bool Function()? isCurrent,
   }) => _update(
     metadata,
     (current, now, provenance) => current.copyWithSubtitle(
@@ -204,6 +207,7 @@ class TrackPreferenceStore {
       provenance: provenance,
       updatedAt: now,
     ),
+    isCurrent: isCurrent,
   );
 
   /// Drop this title's series preference entirely — the "Gebruik globale
@@ -288,8 +292,9 @@ class TrackPreferenceStore {
   /// it ever queued.
   static Future<void> _update(
     MediaItem metadata,
-    TrackLanguageChoice Function(TrackLanguageChoice current, int now, TrackChoiceProvenance provenance) apply,
-  ) {
+    TrackLanguageChoice Function(TrackLanguageChoice current, int now, TrackChoiceProvenance provenance) apply, {
+    bool Function()? isCurrent,
+  }) {
     return _locked(() async {
       try {
         final settings = await SettingsService.getInstance();
@@ -301,6 +306,7 @@ class TrackPreferenceStore {
         if (!(await PleyaProfileLanguagePreferenceStore.read()).rememberPerSeries) return;
 
         final scope = await _scope();
+        if (!(isCurrent?.call() ?? true)) return;
         final key = '$scope|${seriesKeyFor(metadata)}';
         final stored = settings.read(SettingsService.trackLanguagePreferences);
         final now = DateTime.now().millisecondsSinceEpoch;
@@ -319,7 +325,9 @@ class TrackPreferenceStore {
           current = null;
         }
 
-        final updated = apply(current ?? TrackLanguageChoice(updatedAt: now), now, await _provenanceFor(metadata));
+        final provenance = await _provenanceFor(metadata);
+        if (!(isCurrent?.call() ?? true)) return;
+        final updated = apply(current ?? TrackLanguageChoice(updatedAt: now), now, provenance);
 
         final next = Map<String, TrackLanguageChoice>.from(stored);
         for (final candidate in candidates) {
@@ -332,6 +340,7 @@ class TrackPreferenceStore {
         } else {
           next[key] = updated;
         }
+        if (!(isCurrent?.call() ?? true)) return;
         await settings.write(SettingsService.trackLanguagePreferences, _capped(next));
       } catch (e) {
         appLogger.w('Failed to remember track languages', error: e);

@@ -91,10 +91,26 @@ class _BigPEdgeFadeState extends State<BigPEdgeFade> {
 /// are), and Up and Down move through it; at either end the key moves the
 /// focus on as usual.
 class BigPAnswer extends StatefulWidget {
-  const BigPAnswer({super.key, required this.text, required this.style, this.bodyLines});
+  const BigPAnswer({
+    super.key,
+    required this.text,
+    required this.style,
+    this.bodyLines,
+    this.lead = true,
+    this.focusNode,
+  });
 
   final String text;
   final TextStyle style;
+
+  /// False for one task's answer among several: no headline, the whole text
+  /// reads as running text in [style], which then carries a size and a
+  /// height. With the focus on it no line is faded.
+  final bool lead;
+
+  /// The owner's node for the reading stop, when a panel holds more than
+  /// one answer and hands the remote from one to the next itself.
+  final FocusNode? focusNode;
 
   /// How many lines of running text show at once; null takes the height
   /// the parent leaves. Zero shows the lead alone, in two lines at most:
@@ -114,7 +130,8 @@ final _leadEnd = RegExp(r'(?<!(?:^|\n)\s*\d{1,2})(?<!\b[A-Za-z])[.!?…](?=\s)|(
 
 class _BigPAnswerState extends State<BigPAnswer> {
   final _scroll = ScrollController();
-  final _node = FocusNode(debugLabel: 'assistant.answer');
+  FocusNode? _own;
+  late final FocusNode _node = widget.focusNode ?? (_own = FocusNode(debugLabel: 'assistant.answer'));
   bool _overflows = false;
   double _line = 1;
 
@@ -126,9 +143,8 @@ class _BigPAnswerState extends State<BigPAnswer> {
 
   @override
   void dispose() {
-    _node
-      ..removeListener(_changed)
-      ..dispose();
+    _node.removeListener(_changed);
+    _own?.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -176,10 +192,11 @@ class _BigPAnswerState extends State<BigPAnswer> {
         .where((m) => m.end > 0 && (m.end >= 24 || (m.end == m.start && !_startsWithItem.hasMatch(widget.text))))
         .map((m) => m.end)
         .firstOrNull;
-    final split = end != null && end <= 140 && end < widget.text.length;
+    final split = widget.lead && end != null && end <= 140 && end < widget.text.length;
     final rest = split ? widget.text.substring(end).trim() : '';
     // One long sentence is no headline: it reads as running text.
-    final bodyStyle = rest.isEmpty && widget.text.length <= 140 && !_startsWithItem.hasMatch(widget.text)
+    final bodyStyle =
+        !widget.lead || rest.isEmpty && widget.text.length <= 140 && !_startsWithItem.hasMatch(widget.text)
         ? widget.style
         : TextStyle(
             color: tk.text.withValues(alpha: 0.86),
@@ -214,8 +231,9 @@ class _BigPAnswerState extends State<BigPAnswer> {
           ),
           BigPEdgeFade(
             controller: _scroll,
-            // A hint at the edge; the last line stays readable.
-            extent: _line * 0.25,
+            // A hint at the edge; the last line stays readable. A task's
+            // answer under the remote is read whole: the thumb says the rest.
+            extent: !widget.lead && _node.hasFocus ? 0 : _line * 0.25,
             builder: (controller) => SingleChildScrollView(
               controller: controller,
               child: Text(
@@ -267,17 +285,27 @@ class _BigPAnswerState extends State<BigPAnswer> {
 /// focus itself, and Up and Down scroll it; at either end the key moves the
 /// focus on. A list with cards needs none of this: the focus scrolls it.
 class BigPReadableList extends StatefulWidget {
-  const BigPReadableList({super.key, required this.child});
+  const BigPReadableList({super.key, required this.child, this.controller, this.focusNode});
 
   final Widget child;
+
+  /// The owner's controller, when it scrolls the list itself too.
+  final ScrollController? controller;
+
+  /// The owner's node for the list's reading stop, when it hands the remote
+  /// on to a reading stop inside the list itself. While the list is a stop,
+  /// the D-pad then finds the list and not what is inside it.
+  final FocusNode? focusNode;
 
   @override
   State<BigPReadableList> createState() => _BigPReadableListState();
 }
 
 class _BigPReadableListState extends State<BigPReadableList> {
-  final _scroll = ScrollController();
-  final _node = FocusNode(debugLabel: 'assistant.results');
+  ScrollController? _own;
+  ScrollController get _scroll => widget.controller ?? (_own ??= ScrollController());
+  FocusNode? _ownNode;
+  late final FocusNode _node = widget.focusNode ?? (_ownNode = FocusNode(debugLabel: 'assistant.results'));
   bool _overflows = false;
 
   @override
@@ -288,10 +316,9 @@ class _BigPReadableListState extends State<BigPReadableList> {
 
   @override
   void dispose() {
-    _node
-      ..removeListener(_changed)
-      ..dispose();
-    _scroll.dispose();
+    _node.removeListener(_changed);
+    _ownNode?.dispose();
+    _own?.dispose();
     super.dispose();
   }
 
@@ -323,6 +350,7 @@ class _BigPReadableListState extends State<BigPReadableList> {
     return Focus(
       focusNode: _node,
       canRequestFocus: _overflows,
+      descendantsAreTraversable: widget.focusNode == null || !_overflows,
       onKeyEvent: _onKey,
       child: Stack(
         clipBehavior: Clip.none,

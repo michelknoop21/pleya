@@ -1,6 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/testing.dart';
+import 'package:pleya/assistant/assistant_tool_context.dart';
+import 'package:pleya/services/seerr/seerr_client.dart';
+import 'package:pleya/services/seerr/seerr_session.dart';
+import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/assistant/assistant_find_match.dart';
 import 'package:pleya/assistant/assistant_find_route.dart';
 import 'package:pleya/assistant/assistant_plot_index.dart';
@@ -20,6 +25,46 @@ void main() {
   setUp(() {
     resetSharedPreferencesForTest();
     AssistantWebCache.shared.clear();
+  });
+
+  test('find cannot bind an old Seerr answer to a newly connected client', () async {
+    final started = Completer<void>(), release = Completer<void>();
+    final old = SeerrClient(
+      const SeerrSession(baseUrl: 'http://old.lan', authMode: SeerrAuthMode.apiKey, apiKey: 'fake'),
+      httpClient: MockClient((request) async {
+        if (request.url.path.endsWith('/search')) {
+          started.complete();
+          await release.future;
+          return jsonResponse({
+            'results': [
+              {'id': 603, 'mediaType': 'movie', 'title': 'The Matrix'},
+            ],
+          });
+        }
+        return jsonResponse({'id': 603, 'title': 'The Matrix'});
+      }),
+    );
+    addTearDown(old.dispose);
+    final newer = FakeSeerr();
+    SeerrClient? live = old;
+    final base = findCtx([]);
+    final ctx = AssistantToolContext(
+      servers: base.servers,
+      catalog: base.catalog,
+      requests: AssistantRequestServices(client: () => live),
+    );
+    final search = runFind(ctx, {
+      'candidates': [
+        {'title': 'The Matrix'},
+      ],
+      'variants': ['matrix', 'the matrix'],
+    });
+    await started.future;
+    live = newer.client;
+    release.complete();
+    await expectLater(search, throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'not_allowed')));
+    final outcome = await assistantRequestFromOption(ctx, 'movie:603') as AssistantToolResult;
+    expect(outcome.data, {'error': 'unknown_seerr_id'});
   });
 
   test('the own synopsis answers first: no Wikipedia, Wikidata or web call', () async {

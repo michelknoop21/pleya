@@ -17,6 +17,7 @@ import '../utils/app_logger.dart';
 import '../utils/error_message_utils.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/watch_state_notifier.dart';
+import 'continue_watching_hidden_provider.dart';
 import 'discover/continue_watching_row.dart';
 import 'discover/discover_hubs.dart';
 import 'discover/recommendation_rows.dart';
@@ -47,6 +48,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     this._libraries, {
     required this.isProfileBinding,
     this.recommendations,
+    this.hiddenContinueWatching,
+    this.pendingContinueWatchingRemovalKeys,
     DateTime Function()? now,
   }) : _refreshPolicy = DiscoverRefreshPolicy(now: now) {
     // Late server connects (reconnect after outage, slow wave) refresh
@@ -80,11 +83,18 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// built off the counted aggregation paths so the fetch contract holds.
   final RecommendationService? recommendations;
 
+  /// Titles hidden from Verder kijken on this device, and the removals still
+  /// queued for an unreachable server; see [ContinueWatchingRow].
+  final ContinueWatchingHiddenProvider? hiddenContinueWatching;
+  final Future<Set<String>> Function()? pendingContinueWatchingRemovalKeys;
+
   late final ContinueWatchingRow _continueWatching = ContinueWatchingRow(
     multiServer: _multiServer,
     hiddenLibraries: _hiddenLibraries,
     isDisposed: () => isDisposed,
     notify: safeNotifyListeners,
+    hidden: hiddenContinueWatching,
+    pendingRemovalKeys: pendingContinueWatchingRemovalKeys,
   );
 
   /// Seed and personalized rows. Kept outside [_hubs] so library-order
@@ -152,7 +162,10 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
         : [?_latestShowsHub, ...seedHubs, ...personalizedHubs, ..._hubs];
   }
 
-  bool get hasMoreContinueWatching => _continueWatching.hasMore;
+  /// Everything in Verder kijken after merging, deduplicating and hiding. The
+  /// row title counts this and the overview reads it (DEC-144 fase 2).
+  List<MediaItem> get allContinueWatching => _continueWatching.all;
+  int get continueWatchingCount => _continueWatching.all.length;
 
   /// Online servers whose hub or Continue Watching fetch has not succeeded in
   /// the current load — the `failedServerIds` the fase-6 discovery projection
@@ -284,6 +297,11 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final useGlobalHubs = settings.read(SettingsService.useGlobalHubs);
       final aggregation = _multiServer.aggregationService;
 
+      // Before the fetches start, never between starting and awaiting them: a
+      // fetch that fails while something else is awaited is an unhandled error.
+      await _continueWatching.prepare();
+      if (isDisposed) return;
+
       // On-deck and hubs fetch in parallel; on-deck is published as soon as
       // it lands so the hero renders while hubs are still loading.
       final onDeckFuture = _continueWatching.fetch();
@@ -307,7 +325,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final fetchedOnDeck = await onDeckFuture;
       if (isDisposed) return;
       if (!audit.keepOld(fetchedOnDeck.succeededServerIds, 'continue watching')) {
-        _continueWatching.apply(fetchedOnDeck.items);
+        _continueWatching.apply(fetchedOnDeck.items, fromNetwork: true);
         _continueWatching.loadedServerIds = fetchedOnDeck.succeededServerIds;
       }
       _onDeckState = DiscoverLoadState.loaded;
@@ -380,7 +398,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
     if (snapshot == null || isDisposed) return;
     if (snapshot.onDeck.isEmpty && snapshot.hubs.isEmpty) return;
     appLogger.d('DiscoverProvider: showing snapshot (${snapshot.onDeck.length} on-deck, ${snapshot.hubs.length} hubs)');
-    _continueWatching.apply(snapshot.onDeck);
+    _continueWatching.apply(snapshot.onDeck, fromNetwork: false);
     _hubs = snapshot.hubs;
     _latestMovies = snapshot.latestMovies;
     _onDeckState = DiscoverLoadState.loaded;
@@ -409,6 +427,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
       final settings = await SettingsService.getInstance();
       final useGlobalHubs = settings.read(SettingsService.useGlobalHubs);
 
+      await _continueWatching.readQueuedRemovalKeys();
+      if (isDisposed) return;
       final Future<OnDeckAggregationResult?> onDeckFuture = onDeckIds.isEmpty
           ? Future<OnDeckAggregationResult?>.value()
           : _continueWatching.fetch(serverIds: onDeckIds);
@@ -487,7 +507,8 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   }
 
   /// The full unlimited Continue Watching list for the hub's load-more path.
-  Future<List<MediaItem>> loadAllContinueWatching() => _continueWatching.loadAll();
+  Future<List<MediaItem>> loadAllContinueWatching() =>
+      _continueWatching.loadAll(loaded: _onDeckState == DiscoverLoadState.loaded);
 
   /// Refetch a single item (post-edit refresh, or a return from the player)
   /// and swap it into whichever lists hold it.
@@ -506,7 +527,7 @@ class DiscoverProvider extends ChangeNotifier with DisposableChangeNotifierMixin
   /// single-source callers that have no server to give.
   Future<void> updateItem(String itemId, {String? serverId}) async {
     try {
-      final ownerId = serverId ?? serverIdForItem(itemId, _onDeck, _hubs);
+      final ownerId = serverId ?? serverIdForItem(itemId, _continueWatching.all, _hubs);
       if (ownerId == null) return;
       final key = buildGlobalKey(ServerId(ownerId), itemId);
       final updated = await _multiServer.getClientForServer(ServerId(ownerId))?.fetchItem(itemId);

@@ -451,6 +451,16 @@ class TvosSimulatorDriver implements VerificationDriver {
 
   @override
   Future<void> typeText(String text) async {
+    if (text.contains(':')) {
+      for (final match in RegExp(r'[^:]+|:').allMatches(text)) {
+        final result = await _runTvosSim(['type', match.group(0)!]);
+        if (result.exitCode != 0) {
+          throw StateError('scripts/tvos_sim.sh type failed (exit ${result.exitCode}): ${result.stderr}');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      return;
+    }
     final result = await _runTvosSim(['type', text]);
     if (result.exitCode != 0) {
       throw StateError('scripts/tvos_sim.sh type failed (exit ${result.exitCode}): ${result.stderr}');

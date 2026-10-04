@@ -1466,6 +1466,21 @@ class TranslationsMediaMenuEn {
 	/// en: 'Remove from Continue Watching'
 	String get removeFromContinueWatching => 'Remove from Continue Watching';
 
+	/// en: 'Hide from Continue Watching'
+	String get hideFromContinueWatching => 'Hide from Continue Watching';
+
+	/// en: 'On this device only'
+	String get cwScopeThisDevice => 'On this device only';
+
+	/// en: 'On all sources'
+	String get cwScopeAllSources => 'On all sources';
+
+	/// en: '${server} on the server, ${local} here only'
+	String cwScopeMixed({required Object server, required Object local}) => '${server} on the server, ${local} here only';
+
+	/// en: 'Partly on this device only'
+	String get cwScopePartlyLocal => 'Partly on this device only';
+
 	/// en: 'View details'
 	String get viewDetails => 'View details';
 
@@ -1919,6 +1934,9 @@ class TranslationsMessagesEn {
 
 	/// en: 'Removed from Continue Watching'
 	String get removedFromContinueWatching => 'Removed from Continue Watching';
+
+	/// en: 'Hidden from Continue Watching'
+	String get hiddenFromContinueWatching => 'Hidden from Continue Watching';
 
 	/// en: 'Error'
 	String get errorLoading => 'Error';
@@ -2495,6 +2513,32 @@ class TranslationsDiscoverEn {
 
 	/// en: '${minutes} min left'
 	String minutesLeft({required Object minutes}) => '${minutes} min left';
+
+	/// en: 'Next episode'
+	String get nextEpisodeStatus => 'Next episode';
+
+	/// en: 'Resume series'
+	String get cwSectionResumeShows => 'Resume series';
+
+	/// en: 'Resume films'
+	String get cwSectionResumeMovies => 'Resume films';
+
+	/// en: 'Next episodes'
+	String get cwSectionNextEpisodes => 'Next episodes';
+
+	/// en: 'Started earlier'
+	String get cwSectionStale => 'Started earlier';
+
+	/// en: 'Hidden items'
+	String get hiddenItems => 'Hidden items';
+
+	/// en: 'Restore'
+	String get restoreHidden => 'Restore';
+
+	/// en: 'Hidden on this device only. Restore puts a title back in Continue Watching.'
+	String get hiddenItemsHint => 'Hidden on this device only. Restore puts a title back in Continue Watching.';
+
+	late final TranslationsDiscoverWatchedAgoEn watchedAgo = TranslationsDiscoverWatchedAgoEn.internal(_root);
 
 	/// en: 'More Like This'
 	String get moreLikeThis => 'More Like This';
@@ -6008,6 +6052,7 @@ class TranslationsAssistantEn {
 	String get contextAction => 'Ask Big P';
 
 	late final TranslationsAssistantSettingsEn settings = TranslationsAssistantSettingsEn.internal(_root);
+	late final TranslationsAssistantTasksEn tasks = TranslationsAssistantTasksEn.internal(_root);
 
 	/// en: 'You asked:'
 	String get youAsked => 'You asked:';
@@ -6313,6 +6358,30 @@ class TranslationsVideoControlsPipErrorsEn {
 
 	/// en: 'An error occurred'
 	String get unknown => 'An error occurred';
+}
+
+// Path: discover.watchedAgo
+class TranslationsDiscoverWatchedAgoEn {
+	TranslationsDiscoverWatchedAgoEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'today'
+	String get today => 'today';
+
+	/// en: 'yesterday'
+	String get yesterday => 'yesterday';
+
+	/// en: '${count} days ago'
+	String days({required Object count}) => '${count} days ago';
+
+	/// en: '${count} weeks ago'
+	String weeks({required Object count}) => '${count} weeks ago';
+
+	/// en: '${count} months ago'
+	String months({required Object count}) => '${count} months ago';
 }
 
 // Path: libraries.tabs
@@ -7626,6 +7695,9 @@ class TranslationsAssistantActionsEn {
 
 	/// en: 'Subtitle downloaded'
 	String get downloadSubtitle => 'Subtitle downloaded';
+
+	/// en: 'Playback changed'
+	String get changePlayback => 'Playback changed';
 }
 
 // Path: assistant.confirm
@@ -7963,6 +8035,57 @@ class TranslationsAssistantSettingsEn {
 	String get voiceNote => 'Short spoken reactions. Never while you dictate or watch something.';
 }
 
+// Path: assistant.tasks
+class TranslationsAssistantTasksEn {
+	TranslationsAssistantTasksEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Working on ${count} tasks · ${done} done'
+	String working({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done';
+
+	/// en: '${count} tasks are done.'
+	String allDone({required Object count}) => '${count} tasks are done.';
+
+	/// en: '${done} of ${count} tasks done.'
+	String someDone({required Object done, required Object count}) => '${done} of ${count} tasks done.';
+
+	/// en: 'Queued'
+	String get queued => 'Queued';
+
+	/// en: 'Working'
+	String get running => 'Working';
+
+	/// en: 'Waiting for confirmation'
+	String get waiting => 'Waiting for confirmation';
+
+	/// en: 'Done'
+	String get completed => 'Done';
+
+	/// en: 'Failed'
+	String get failed => 'Failed';
+
+	/// en: 'Cancelled'
+	String get cancelled => 'Cancelled';
+
+	/// en: '(one) {1 title found} (other) {${n} titles found}'
+	String found({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 title found',
+		other: '${n} titles found',
+	);
+
+	/// en: 'Choose what to request'
+	String get choose => 'Choose what to request';
+
+	/// en: 'Cancel all'
+	String get cancelAll => 'Cancel all';
+
+	/// en: 'Cancel: ${title}'
+	String cancelTask({required Object title}) => 'Cancel: ${title}';
+}
+
 // Path: assistant.option
 class TranslationsAssistantOptionEn {
 	TranslationsAssistantOptionEn.internal(this._root);
@@ -8206,6 +8329,9 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Download subtitle'
 	String get downloadSubtitle => 'Download subtitle';
+
+	/// en: 'Change playback'
+	String get changePlayback => 'Change playback';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -8668,6 +8794,11 @@ extension on Translations {
 			'mediaMenu.markAsWatched' => 'Mark as Watched',
 			'mediaMenu.markAsUnwatched' => 'Mark as Unwatched',
 			'mediaMenu.removeFromContinueWatching' => 'Remove from Continue Watching',
+			'mediaMenu.hideFromContinueWatching' => 'Hide from Continue Watching',
+			'mediaMenu.cwScopeThisDevice' => 'On this device only',
+			'mediaMenu.cwScopeAllSources' => 'On all sources',
+			'mediaMenu.cwScopeMixed' => ({required Object server, required Object local}) => '${server} on the server, ${local} here only',
+			'mediaMenu.cwScopePartlyLocal' => 'Partly on this device only',
 			'mediaMenu.viewDetails' => 'View details',
 			'mediaMenu.goToSeries' => 'Go to series',
 			'mediaMenu.shufflePlay' => 'Shuffle Play',
@@ -8723,13 +8854,13 @@ extension on Translations {
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
 			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
 			'videoControls.sleepTimerDurationHeader' => 'Timer',
+			_ => null,
+		} ?? switch (path) {
 			'videoControls.playbackWillPauseAtEnd' => 'Playback will pause at the end of this video',
 			'videoControls.stillWatching' => 'Still watching?',
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
 			'videoControls.continueWatching' => 'Continue',
 			'videoControls.autoPlayNext' => 'Auto-Play Next',
-			_ => null,
-		} ?? switch (path) {
 			'videoControls.playNext' => 'Play Next',
 			'videoControls.nextEpisode' => 'Next Episode',
 			'videoControls.skipIntro' => 'Skip Intro',
@@ -8846,6 +8977,7 @@ extension on Translations {
 			'messages.markedAsUnwatchedOffline' => 'Marked as unwatched (will sync when online)',
 			'messages.autoRemovedWatchedDownload' => ({required Object title}) => 'Auto-removed: ${title}',
 			'messages.removedFromContinueWatching' => 'Removed from Continue Watching',
+			'messages.hiddenFromContinueWatching' => 'Hidden from Continue Watching',
 			'messages.errorLoading' => 'Error',
 			'messages.fileInfoNotAvailable' => 'File information not available',
 			'messages.errorLoadingFileInfo' => 'Error loading file info',
@@ -9020,6 +9152,19 @@ extension on Translations {
 			'discover.watched' => 'Watched',
 			'discover.tvShow' => 'TV Show',
 			'discover.minutesLeft' => ({required Object minutes}) => '${minutes} min left',
+			'discover.nextEpisodeStatus' => 'Next episode',
+			'discover.cwSectionResumeShows' => 'Resume series',
+			'discover.cwSectionResumeMovies' => 'Resume films',
+			'discover.cwSectionNextEpisodes' => 'Next episodes',
+			'discover.cwSectionStale' => 'Started earlier',
+			'discover.hiddenItems' => 'Hidden items',
+			'discover.restoreHidden' => 'Restore',
+			'discover.hiddenItemsHint' => 'Hidden on this device only. Restore puts a title back in Continue Watching.',
+			'discover.watchedAgo.today' => 'today',
+			'discover.watchedAgo.yesterday' => 'yesterday',
+			'discover.watchedAgo.days' => ({required Object count}) => '${count} days ago',
+			'discover.watchedAgo.weeks' => ({required Object count}) => '${count} weeks ago',
+			'discover.watchedAgo.months' => ({required Object count}) => '${count} months ago',
 			'discover.moreLikeThis' => 'More Like This',
 			'discover.becauseYouWatched' => ({required Object title}) => 'Because you watched ${title}',
 			'discover.becauseYouAreWatching' => ({required Object title}) => 'Because you\'re watching ${title}',
@@ -9223,6 +9368,8 @@ extension on Translations {
 			'watchlist.title' => 'Watchlist',
 			'watchlist.seeAll' => 'See all',
 			'watchlist.empty' => 'Nothing on your watchlist yet',
+			_ => null,
+		} ?? switch (path) {
 			'watchlist.emptyBody' => 'Titles you add from Plex or mark as a Jellyfin favorite show up here.',
 			'watchlist.emptyFiltered' => 'No titles match this filter',
 			'watchlist.retry' => 'Try again',
@@ -9242,8 +9389,6 @@ extension on Translations {
 			'watchlist.filterShows' => 'Shows',
 			'watchlist.filterAvailable' => 'Available',
 			'watchlist.sortRecentlyAdded' => 'Recently added',
-			_ => null,
-		} ?? switch (path) {
 			'watchlist.sortTitle' => 'Title',
 			'watchlist.sortYear' => 'Year',
 			'watchlist.emptyFilteredBody' => ({required Object count}) => 'Your watchlist has ${count} titles, but none of them match this filter.',
@@ -9737,6 +9882,8 @@ extension on Translations {
 			'metadataEdit.tvdbAiring' => 'TheTVDB (Aired)',
 			'metadataEdit.tvdbAbsolute' => 'TheTVDB (Absolute)',
 			'metadataEdit.metadataLanguage' => 'Metadata Language',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.useOriginalTitle' => 'Use Original Title',
 			'metadataEdit.preferredAudioLanguage' => 'Preferred Audio Language',
 			'metadataEdit.preferredSubtitleLanguage' => 'Preferred Subtitle Language',
@@ -9756,8 +9903,6 @@ extension on Translations {
 			'metadataEdit.style' => 'Style',
 			'metadataEdit.mood' => 'Mood',
 			'matchScreen.match' => 'Match...',
-			_ => null,
-		} ?? switch (path) {
 			'matchScreen.fixMatch' => 'Fix Match...',
 			'matchScreen.unmatch' => 'Unmatch',
 			'matchScreen.unmatchConfirm' => 'Clear this match? Plex treats it as unmatched until rematched.',
@@ -10251,6 +10396,8 @@ extension on Translations {
 			'languageSettings.subtitleFallback' => 'Subtitle fallback language',
 			'languageSettings.subtitleFallbackNote' => 'Used when your preferred language is missing. Missing as well, and subtitles go off',
 			'languageSettings.subtitleDisplay' => 'Show subtitles',
+			_ => null,
+		} ?? switch (path) {
 			'languageSettings.subtitleDisplayNote' => 'When subtitles come on by themselves',
 			'languageSettings.subtitleDisplayForeign' => 'With foreign audio',
 			'languageSettings.subtitleDisplayAlways' => 'Always',
@@ -10270,8 +10417,6 @@ extension on Translations {
 			'languageSettings.rowOriginNoEpisode' => ({required Object date, required Object device}) => 'Chosen on ${date} · ${device}',
 			'languageSettings.rowOriginNoDevice' => ({required Object date}) => 'Chosen on ${date}',
 			'languageSettings.sheetOriginEpisode' => ({required Object date, required Object episode, required Object device}) => 'Series preference, chosen on ${date} at ${episode} on ${device}.',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.sheetOrigin' => ({required Object date}) => 'Series preference, chosen on ${date}.',
 			'languageSettings.sheetScopeLogical' => 'Applies wherever Pleya recognises this series as the same one.',
 			'languageSettings.sheetScopeServer' => 'Applies on the source it was chosen on.',
@@ -10390,6 +10535,7 @@ extension on Translations {
 			'assistant.actions.requestTitle' => 'Request sent',
 			'assistant.actions.downloadEpisodes' => 'Download started',
 			'assistant.actions.downloadSubtitle' => 'Subtitle downloaded',
+			'assistant.actions.changePlayback' => 'Playback changed',
 			'assistant.confirm.header' => 'Pleya asks for confirmation',
 			'assistant.confirm.titles.scanLibrary' => 'Scan library',
 			'assistant.confirm.titles.refreshMetadata' => 'Refresh metadata',
@@ -10403,6 +10549,7 @@ extension on Translations {
 			'assistant.confirm.titles.requestTitle' => 'Request title',
 			'assistant.confirm.titles.downloadEpisodes' => 'Download episodes',
 			'assistant.confirm.titles.downloadSubtitle' => 'Download subtitle',
+			'assistant.confirm.titles.changePlayback' => 'Change playback',
 			'assistant.confirm.user' => 'User',
 			'assistant.confirm.server' => 'Server',
 			'assistant.confirm.access' => 'Access',
@@ -10500,6 +10647,19 @@ extension on Translations {
 			'assistant.settings.webSearchNoteOpenRouter' => 'The description of a title you look for goes to Wikipedia and OpenRouter\'s web search, which costs roughly 0.005 to 0.007 dollars per search.',
 			'assistant.settings.voice' => 'Big P\'s voice',
 			'assistant.settings.voiceNote' => 'Short spoken reactions. Never while you dictate or watch something.',
+			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
+			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
+			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',
+			'assistant.tasks.queued' => 'Queued',
+			'assistant.tasks.running' => 'Working',
+			'assistant.tasks.waiting' => 'Waiting for confirmation',
+			'assistant.tasks.completed' => 'Done',
+			'assistant.tasks.failed' => 'Failed',
+			'assistant.tasks.cancelled' => 'Cancelled',
+			'assistant.tasks.found' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 title found', other: '${n} titles found', ), 
+			'assistant.tasks.choose' => 'Choose what to request',
+			'assistant.tasks.cancelAll' => 'Cancel all',
+			'assistant.tasks.cancelTask' => ({required Object title}) => 'Cancel: ${title}',
 			'assistant.youAsked' => 'You asked:',
 			'assistant.option.notRequested' => 'Requestable',
 			'assistant.displays.missing' => ({required Object count, required Object server, required Object other}) => '${count} titles on ${server} are missing on ${other}',
