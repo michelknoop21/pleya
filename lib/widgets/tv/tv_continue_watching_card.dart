@@ -88,7 +88,10 @@ class TvContinueWatchingCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.78)],
+            colors: [
+              Colors.transparent,
+              tk.artworkScrim.withValues(alpha: tk.artworkScrimAlpha(dark: 0.78, light: 0.9)),
+            ],
           ),
         ),
         child: Padding(
@@ -105,13 +108,13 @@ class TvContinueWatchingCard extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w600, color: tk.text, height: 1.2),
+                  style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w600, color: tk.onArtwork, height: 1.2),
                 ),
                 Text(
                   status,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 16 * scale, color: tk.text.withValues(alpha: 0.78), height: 1.25),
+                  style: TextStyle(fontSize: 16 * scale, color: tk.onArtworkInk(dark: 0.78, light: 0.9), height: 1.25),
                 ),
               ],
             ),
