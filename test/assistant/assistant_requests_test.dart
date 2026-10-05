@@ -1596,7 +1596,34 @@ void main() {
     test('a request with nothing mainstream (anime) still returns the page', () async {
       final anime = [film(1, 'ja', 900), film(2, 'ko', 30), film(4, 'ja', 4)];
       expect(await titles({}, anime), ['Film 1', 'Film 2', 'Film 4']);
-      expect(await titles({}, page), ['Film 3'], reason: 'with mainstream titles on the page only those');
+      // The well-known title first, the rest only to fill up (five suggestions are asked for).
+      expect(await titles({}, page), ['Film 3', 'Film 1', 'Film 2', 'Film 4']);
+    });
+
+    test('a blockbuster beats an obscure film that the page listed first (a sort on rating)', () async {
+      final byRating = [
+        film(1, 'en', 12),
+        film(2, 'en', 18000),
+        film(3, 'en', 9000),
+        film(4, 'en', 7000),
+        film(5, 'en', 5000),
+        film(6, 'en', 4000),
+      ];
+      final result = await titles({'sort': 'rating'}, byRating);
+      expect(result.first, isNot('Film 1'));
+      expect(result.last, 'Film 1', reason: 'five known titles, fewer than the floor: the obscure one only fills up');
+    });
+
+    test('an explicit niche question keeps the page order, Han titles stay skipped', () async {
+      final result = await titles(
+        {'niche': true},
+        [
+          film(1, 'en', 12),
+          film(2, 'en', 18000),
+          {...film(3, 'zh', 900), 'title': '流浪地球'},
+        ],
+      );
+      expect(result, ['Film 1', 'Film 2']);
     });
   });
 

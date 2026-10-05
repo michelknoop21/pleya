@@ -105,9 +105,120 @@ void main() {
     });
     final ctx = _ctx(tmdbKey: 'key', net: net);
     final data = await _run(ctx, 'trending_titles', {'kind': 'movie'});
-    expect(paths.where((p) => p.contains('trending')), ['/3/trending/movie/week']);
+    // One title is fewer than the floor, so the next page is read too; never the series list.
+    expect(paths.where((p) => p.contains('trending')).toSet(), {'/3/trending/movie/week'});
     expect([for (final r in _titles(data)) r['title']], ['The Matrix']);
     expect(_titles(data).single['year'], 1999);
+  });
+
+  test('trending without Seerr: well-known first, Dutch title first, a title only in Han is skipped', () async {
+    final languages = <String>[];
+    final net = MockClient((request) async {
+      languages.add(request.url.queryParameters['language'] ?? '');
+      final english = request.url.queryParameters['language'] == 'en-US';
+      return jsonResponse(
+        _tmdbList([
+          {'id': 1, 'title': 'Kleine Arthouse', 'original_language': 'en', 'vote_count': 14, 'popularity': 2.0},
+          {
+            'id': 2,
+            'title': english ? 'The Wandering Earth' : '流浪地球',
+            'original_title': '流浪地球',
+            'original_language': 'zh',
+            'vote_count': 6000,
+            'popularity': 300.0,
+            'release_date': '2019-02-05',
+          },
+          {'id': 3, 'title': '流浪的', 'original_title': '流浪的', 'original_language': 'zh', 'vote_count': 9000},
+          {
+            'id': 4,
+            'title': 'De Wolf van Wall Street',
+            'original_language': 'en',
+            'vote_count': 21000,
+            'popularity': 90.0,
+          },
+          {'id': 5, 'title': 'Dune', 'original_language': 'en', 'vote_count': 12000, 'popularity': 200.0},
+          {'id': 6, 'title': 'Joker', 'original_language': 'en', 'vote_count': 20000, 'popularity': 150.0},
+          {'id': 7, 'title': 'Inception', 'original_language': 'en', 'vote_count': 30000, 'popularity': 120.0},
+        ]),
+      );
+    });
+    final ctx = _ctx(tmdbKey: 'key', net: net);
+    final data = await _run(ctx, 'trending_titles', {'kind': 'movie'});
+    final titles = [for (final r in _titles(data)) r['title']];
+    // Dutch first; the English listing only because a Dutch title was Han.
+    expect(languages.take(2), ['nl-NL', 'en-US']);
+    expect(titles, isNot(contains('流浪的')), reason: 'no title without Han: skipped');
+    expect(titles, contains('The Wandering Earth'));
+    expect(titles, contains('De Wolf van Wall Street'));
+    // Five known titles, fewer than the floor: the obscure one fills up, last.
+    expect(titles, hasLength(6));
+    expect(titles.last, 'Kleine Arthouse');
+  });
+
+  test(
+    'trending reads the next page first when the first has too few known titles, before obscure ones fill up',
+    () async {
+      final pages = <String>[];
+      final net = MockClient((request) async {
+        final page = request.url.queryParameters['page'] ?? '1';
+        pages.add(page);
+        return jsonResponse(
+          _tmdbList(
+            page == '1'
+                ? [
+                    for (var i = 1; i <= 3; i++)
+                      {'id': i, 'title': 'Hit $i', 'original_language': 'en', 'vote_count': 9000, 'popularity': 100.0},
+                    for (var i = 4; i <= 7; i++)
+                      {'id': i, 'title': 'Obscure $i', 'original_language': 'en', 'vote_count': 9, 'popularity': 1.0},
+                  ]
+                : [
+                    for (var i = 11; i <= 16; i++)
+                      {
+                        'id': i,
+                        'title': 'Page Two Hit $i',
+                        'original_language': 'en',
+                        'vote_count': 7000,
+                        'popularity': 90.0,
+                      },
+                  ],
+          ),
+        );
+      });
+      final data = await _run(_ctx(tmdbKey: 'key', net: net), 'trending_titles', {'kind': 'movie'});
+      final titles = [for (final r in _titles(data)) r['title']];
+      expect(pages, ['1', '2']);
+      expect(titles, hasLength(9));
+      expect(titles.where((t) => '$t'.startsWith('Obscure')), isEmpty, reason: 'nine known titles: nothing to fill up');
+    },
+  );
+
+  test('trending takes one page when it already holds enough known titles', () async {
+    final pages = <String>[];
+    final net = MockClient((request) async {
+      pages.add(request.url.queryParameters['page'] ?? '1');
+      return jsonResponse(
+        _tmdbList([
+          for (var i = 1; i <= 9; i++)
+            {'id': i, 'title': 'Hit $i', 'original_language': 'en', 'vote_count': 9000, 'popularity': 100.0},
+        ]),
+      );
+    });
+    await _run(_ctx(tmdbKey: 'key', net: net), 'trending_titles', {'kind': 'movie'});
+    expect(pages, ['1']);
+  });
+
+  test('trending with niche keeps the source order', () async {
+    final net = MockClient(
+      (request) async => jsonResponse(
+        _tmdbList([
+          {'id': 1, 'title': 'Kleine Arthouse', 'original_language': 'en', 'vote_count': 14, 'popularity': 2.0},
+          {'id': 2, 'title': 'Inception', 'original_language': 'en', 'vote_count': 30000, 'popularity': 120.0},
+        ]),
+      ),
+    );
+    final ctx = _ctx(tmdbKey: 'key', net: net);
+    final data = await _run(ctx, 'trending_titles', {'kind': 'movie', 'niche': true});
+    expect([for (final r in _titles(data)) r['title']], ['Kleine Arthouse', 'Inception']);
   });
 
   test('trending without Seerr and without a TMDB key is no_source', () async {

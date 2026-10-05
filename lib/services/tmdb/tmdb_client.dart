@@ -61,14 +61,16 @@ class TmdbClient {
   Future<Map<String, dynamic>> details(TmdbKind kind, int id, {String? language}) =>
       _get('/3/${kind.path}/$id', {'append_to_response': kind.appends, 'language': ?language});
 
-  Future<List<Map<String, dynamic>>> trending(TmdbKind kind) async =>
-      _results(await _get('/3/trending/${kind.path}/week'));
+  Future<List<Map<String, dynamic>>> trending(TmdbKind kind, {String? language, int page = 1}) async =>
+      _results(await _get('/3/trending/${kind.path}/week', _listQuery(language, page)));
 
-  Future<List<Map<String, dynamic>>> recommendations(TmdbKind kind, int id) async =>
-      _results(await _get('/3/${kind.path}/$id/recommendations'));
+  Future<List<Map<String, dynamic>>> recommendations(TmdbKind kind, int id, {String? language, int page = 1}) async =>
+      _results(await _get('/3/${kind.path}/$id/recommendations', _listQuery(language, page)));
 
-  Future<List<Map<String, dynamic>>> similar(TmdbKind kind, int id) async =>
-      _results(await _get('/3/${kind.path}/$id/similar'));
+  Future<List<Map<String, dynamic>>> similar(TmdbKind kind, int id, {String? language, int page = 1}) async =>
+      _results(await _get('/3/${kind.path}/$id/similar', _listQuery(language, page)));
+
+  Map<String, String> _listQuery(String? language, int page) => {'language': ?language, if (page > 1) 'page': '$page'};
 
   /// `/search/multi` has no year filter, so [year] filters on the
   /// release or first-air date client-side.

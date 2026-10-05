@@ -131,7 +131,7 @@ final List<AssistantTool> _requestTools = [
         'comes to mind. Genres are TMDB genre names; keywords are TMDB keywords for the subject, in English '
         '("space", "time travel"), the first one TMDB knows is applied. Filters the service cannot apply come back in '
         'ignored_filters; say so instead of pretending they were used. Returns at most 10 titles with a '
-        'seerr_id for request_title.',
+        'seerr_id for request_title, ranked best first (well-known before less known; give the first N the user asked for).',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
@@ -154,6 +154,7 @@ final List<AssistantTool> _requestTools = [
         'type': 'string',
         'enum': ['popularity', 'rating'],
       },
+      'niche': _nicheProperty,
     },
     required: const ['kind'],
     serves: _servesRequests,
@@ -221,22 +222,24 @@ final List<AssistantTool> _requestTools = [
       }
 
       final sortBy = sort == 'rating' ? 'vote_average.desc' : 'popularity.desc';
-      final page = await _seerrCall(
-        () => movies
-            ? client.discoverMovies(genre: genre, sortBy: sortBy, keywords: [?keyword])
-            : client.discoverTv(genre: genre, sortBy: sortBy, keywords: [?keyword]),
+      final asksNiche = language != null || _niche(ctx, args);
+      final items = await _seerrCall(
+        () => _widen(
+          asksNiche,
+          (p) async =>
+              (movies
+                      ? await client.discoverMovies(page: p, genre: genre, sortBy: sortBy, keywords: [?keyword])
+                      : await client.discoverTv(page: p, genre: genre, sortBy: sortBy, keywords: [?keyword]))
+                  .items,
+        ),
       );
-      // The asked language; otherwise popular American and Dutch titles, unless
-      // that leaves nothing (anime, K-drama): then the page as Seerr ranks it.
-      final mainstream = page.items.where((m) => m.mainstream);
-      final picks =
-          (language != null
-                  ? page.items.where((m) => m.originalLanguage == language)
-                  : mainstream.isEmpty
-                  ? page.items
-                  : mainstream)
-              .take(10);
-      // Seerr's discover takes no original language, so only this page was
+      // The asked language, or the niche the user asked for, keeps Seerr's
+      // order; otherwise the well-known titles first (see rankSuggestions).
+      final picks = rankSuggestions(
+        language != null ? items.where((m) => m.originalLanguage == language) : items,
+        niche: asksNiche,
+      ).take(10);
+      // Seerr's discover takes no original language, so only these pages were
       // filtered: say so, the model must not claim the full catalog.
       if (language != null) {
         ignored.add({'filter': 'original_language', 'value': language, 'reason': 'first_page_only'});
