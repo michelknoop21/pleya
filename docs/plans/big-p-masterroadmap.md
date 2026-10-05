@@ -11,7 +11,7 @@ Big P antwoordt nu met een vaste set losse tools (`assistantTools`, ruim dertig)
 
 Geen gekoppelde, relevante bron blijft voor Big P onbereikbaar alleen omdat er nog geen losse LLM-tool voor bestaat. De grenzen blijven: de rechten van de gebruiker, wat de bron zelf aanbiedt, en privacy en beveiliging van die verbinding.
 
-Een tijdelijke connectivity-wisseling (server offline, daarna weer online) maakt een antwoord niet ongeldig. Een echte identiteits- of rechtenwijziging wel: ander clientobject, ander profiel, andere zichtbaarheid. Dit is dezelfde scheiding als in `assistant_run_named_titles.dart` (commit 88a2b325).
+Een tijdelijke connectivity-wisseling (server offline, daarna weer online) maakt een antwoord niet ongeldig. Een echte identiteits- of rechtenwijziging wel: ander clientobject, ander profiel, andere zichtbaarheid. Dit is dezelfde scheiding als in `_lookupNamedTitles` in `assistant_run_answer.dart` (commit 22f93fc2).
 
 ## Fase A: capability-inventaris
 
@@ -21,8 +21,8 @@ Per koppeling vastleggen, in een tabel in dit document of een los bestand ernaas
 |---|---|---|---|
 | Plex | bibliotheken, items, recent toegevoegd, historie, gebruikers, wijzigingstijden | token van de gebruiker, admin voor beheer | in te vullen |
 | Jellyfin / Emby | idem, per gebruiker | gebruikerstoken | in te vullen |
-| Trakt | historie, watchlist, kalender (de API; `trakt_client.dart` leest nu alleen aanbevelingen, trending en populair en schrijft scrobbles, historie en beoordelingen) | OAuth van de gebruiker | in te vullen |
-| TMDB | metadata, releasedata (nog geen eigen client in `lib/services`, te verifiëren) | API-sleutel via proxy | in te vullen |
+| Trakt | historie, watchlist, kalender (de API; `trakt_client.dart` leest nu aanbevelingen, trending, populair, beoordelingen en gebruikersinstellingen, en schrijft scrobbles, historie en beoordelingen) | OAuth van de gebruiker | in te vullen |
+| TMDB | metadata, releasedata (`lib/services/tmdb/tmdb_client.dart` heeft details, trending, recommendations, similar, searchMulti en findByExternal) | API-sleutel via proxy | in te vullen |
 | Pleya Server | catalogus, historie, tokens, audit | sessie plus scope | in te vullen |
 | Seerr | aanvragen, status, beschikbaarheid | Seerr-gebruiker | in te vullen |
 | Tautulli | afspeelhistorie, gebruikers | API-sleutel | in te vullen |
@@ -35,7 +35,7 @@ Eén querymodel in plaats van een toolnaam per vraag: `scope` (servers, biblioth
 
 ## Fase C: lokale wijzigingsindex, alleen waar nodig
 
-Bronnen die alleen de huidige toestand kennen (geen "toegevoegd op") krijgen een kleine index: identiteit, bron, `firstSeenAt`, `lastSeenAt`, `sourceUpdatedAt`, metadata-hash en beschikbaarheidswijzigingen. Het is geen kopie van de bibliotheek en wordt alleen gevuld voor bronnen waar fase A laat zien dat historie ontbreekt. Gesleuteld op verbinding en eigen/geleend (owned/borrowed, zie `docs/agents/architecture.md`) en per profiel, nooit gedeeld tussen profielen met verschillende rechten. De index reikt nooit verder dan de zichtbare bibliotheken en wat `canAdministerServer` toestaat, en wordt gewist bij een rechtenwijziging (bibliotheek verborgen, profielwissel, verbinding losgekoppeld).
+Bronnen die alleen de huidige toestand kennen (geen "toegevoegd op") krijgen een kleine index: identiteit, bron, `firstSeenAt`, `lastSeenAt`, `sourceUpdatedAt`, metadata-hash en beschikbaarheidswijzigingen. Het is geen kopie van de bibliotheek en wordt alleen gevuld voor bronnen waar fase A laat zien dat historie ontbreekt. Gesleuteld op verbinding en eigen/geleend (owned/borrowed, zie `docs/agents/architecture.md`) en per profiel, nooit gedeeld tussen profielen met verschillende rechten. Leesacties op de index lopen door dezelfde autoriteitscheck per aanroep als de live tools: een profiel dat een bron niet mag beheren of zien krijgt er geen wijzigingen uit, ook niet als een ander profiel de index vulde. De index staat nooit in de modelcontext of in logs. De index reikt nooit verder dan de zichtbare bibliotheken en wat `canAdministerServer` toestaat, en wordt gewist bij een rechtenwijziging (bibliotheek verborgen, profielwissel, verbinding losgekoppeld).
 
 ## Eerste end-to-end acceptatiescenario
 
@@ -45,6 +45,7 @@ Vraag: "Wat is er recent toegevoegd of veranderd?" over alle gekoppelde bronnen.
 - Bron die alleen de huidige toestand vertelt: antwoord uit de wijzigingsindex, met de vermelding sinds wanneer Pleya die bron volgt.
 - Per onderdeel van het antwoord staat de bron erbij.
 - Kan een bron het niet, dan zegt Big P dat en waarom, in plaats van de vraag te herinterpreteren naar kijkcijfers.
+- Negatieve test: een geleende of niet-beheerde verbinding levert geen data en vult de index niet. Pleya Server-historie hangt aan `GET /watch-history` (DEC-143, alleen beheerders, buiten protocolvenster 2).
 - Test: een server gaat offline tijdens de vraag, het antwoord blijft staan maar wordt niet ververst en de wijzigingsindex vult zich voor die bron niet bij. Een profielwissel, een vervangen client of een verborgen bibliotheek tijdens de vraag, het antwoord verdwijnt.
 
 ## Volgorde en review
