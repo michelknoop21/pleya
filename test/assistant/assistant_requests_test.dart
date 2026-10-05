@@ -1611,7 +1611,7 @@ void main() {
       ];
       final result = await titles({'sort': 'rating'}, byRating);
       expect(result.first, isNot('Film 1'));
-      expect(result, isNot(contains('Film 1')), reason: 'five known titles are enough');
+      expect(result.last, 'Film 1', reason: 'five known titles, fewer than the floor: the obscure one only fills up');
     });
 
     test('an explicit niche question keeps the page order, Han titles stay skipped', () async {

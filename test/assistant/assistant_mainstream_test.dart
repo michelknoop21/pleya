@@ -38,10 +38,11 @@ void main() {
         _m(6, 'Third Hit', votes: 15000, popularity: 300),
       ]);
       expect(_titles(ranked).first, isNot('Obscure Gem'));
-      expect(_titles(ranked), isNot(contains('Obscure Gem')), reason: 'five known ones are enough');
+      // Only five known ones: the obscure film fills up, at the end.
+      expect(_titles(ranked).last, 'Obscure Gem');
       // The four big titles come first, the mid-sized one after them.
       expect(_titles(ranked).take(4), unorderedEquals(['Big Blockbuster', 'Known Drama', 'Another Hit', 'Third Hit']));
-      expect(_titles(ranked).last, 'Mid Film');
+      expect(_titles(ranked)[4], 'Mid Film');
     });
 
     test('a worldwide hit in another language counts as mainstream', () {
@@ -50,6 +51,15 @@ void main() {
         _m(2, 'Squid Game', votes: 14000, popularity: 700, language: 'ko'),
       ]);
       expect(_titles(ranked).first, 'Squid Game');
+    });
+
+    test('a regional title with 2000 votes is well known, not top: a big American one stays above it', () {
+      final ranked = rankSuggestions([
+        _m(1, 'Big American', votes: 9000, popularity: 200),
+        _m(2, 'Regional Hit', votes: 2500, popularity: 40, language: 'pl'),
+        _m(3, 'Second American', votes: 8000, popularity: 180),
+      ]);
+      expect(_titles(ranked).last, 'Regional Hit');
     });
 
     test('a Dutch title sits under a big American one and above a small one', () {
@@ -72,8 +82,8 @@ void main() {
       expect(_titles(ranked).first, 'Close Match');
     });
 
-    test('obscure titles only fill up when fewer than five known ones are left', () {
-      final ranked = rankSuggestions([
+    test('obscure titles only fill up to the floor when there are fewer known ones', () {
+      final ranked = rankSuggestions(fillTo: 5, [
         _m(1, 'Hit A', votes: 9000, popularity: 200),
         _m(2, 'Hit B', votes: 8000, popularity: 180),
         _m(3, 'Obscure One', votes: 5, popularity: 1),
@@ -140,7 +150,9 @@ void main() {
           MediaItem(id: title, backend: MediaBackend.plex, kind: MediaKind.movie, title: title);
       const c = AssistantRecommendConstraints();
       expect(c.admitsItem(item('Dune')), isTrue);
-      expect(c.admitsItem(item('流浪地球')), isFalse);
+      expect(c.admitsItem(item('流浪地球')), isTrue, reason: 'a title the user typed is not held to the display rule');
+      expect(c.admitsSuggestion(item('Dune')), isTrue);
+      expect(c.admitsSuggestion(item('流浪地球')), isFalse);
     });
   });
 }

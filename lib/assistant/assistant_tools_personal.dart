@@ -116,7 +116,7 @@ final List<AssistantTool> _personalTools = [
         final titles = <Map<String, Object?>>[];
         for (final item in hub.items) {
           final serverId = item.serverId;
-          if (serverId == null || picks.length >= limit || !c.admitsItem(item) || seenBefore(item)) continue;
+          if (serverId == null || picks.length >= limit || !c.admitsSuggestion(item) || seenBefore(item)) continue;
           if (!seen.add(item.globalKey)) continue;
           ctx.showItem(ServerId(serverId), item.id);
           picks.add(item);

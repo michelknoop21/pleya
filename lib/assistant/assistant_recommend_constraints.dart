@@ -73,8 +73,11 @@ class AssistantRecommendConstraints {
   bool admitsItem(MediaItem item) =>
       (kind == null || _kindOf(item.kind) == kind) &&
       !(excludeKids && isKids(item)) &&
-      !(excludeWatched && item.isWatched) &&
-      !hasHan(item.title);
+      !(excludeWatched && item.isWatched);
+
+  /// A title Big P may put forward on its own: what the constraints admit,
+  /// and a name it can show. A title the user typed is not held to the last.
+  bool admitsSuggestion(MediaItem item) => admitsItem(item) && !hasHan(item.title);
 
   static MediaKind _kindOf(MediaKind k) => k == MediaKind.episode ? MediaKind.show : k;
 

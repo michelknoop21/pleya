@@ -222,18 +222,24 @@ final List<AssistantTool> _requestTools = [
       }
 
       final sortBy = sort == 'rating' ? 'vote_average.desc' : 'popularity.desc';
-      final page = await _seerrCall(
-        () => movies
-            ? client.discoverMovies(genre: genre, sortBy: sortBy, keywords: [?keyword])
-            : client.discoverTv(genre: genre, sortBy: sortBy, keywords: [?keyword]),
+      final asksNiche = language != null || _niche(ctx, args);
+      final items = await _seerrCall(
+        () => _widen(
+          asksNiche,
+          (p) async =>
+              (movies
+                      ? await client.discoverMovies(page: p, genre: genre, sortBy: sortBy, keywords: [?keyword])
+                      : await client.discoverTv(page: p, genre: genre, sortBy: sortBy, keywords: [?keyword]))
+                  .items,
+        ),
       );
       // The asked language, or the niche the user asked for, keeps Seerr's
       // order; otherwise the well-known titles first (see rankSuggestions).
       final picks = rankSuggestions(
-        language != null ? page.items.where((m) => m.originalLanguage == language) : page.items,
-        niche: language != null || _niche(ctx, args),
+        language != null ? items.where((m) => m.originalLanguage == language) : items,
+        niche: asksNiche,
       ).take(10);
-      // Seerr's discover takes no original language, so only this page was
+      // Seerr's discover takes no original language, so only these pages were
       // filtered: say so, the model must not claim the full catalog.
       if (language != null) {
         ignored.add({'filter': 'original_language', 'value': language, 'reason': 'first_page_only'});

@@ -117,6 +117,22 @@ Future<AssistantToolResult> _discoverResult(
   return AssistantToolResult({'titles': cards.rows, ...cards.note}, display: AssistantTitleMatches(ctx, cards.display));
 }
 
+/// The source's first page, and the next one too when the first holds fewer
+/// than [suggestionFloor] known titles: the pool is widened before any
+/// obscure title fills up. A niche question takes the first as it is. A
+/// failing second page leaves the first.
+Future<List<SeerrMedia>> _widen(bool niche, Future<List<SeerrMedia>> Function(int page) fetch) async {
+  final first = await fetch(1);
+  if (niche || knownCount(first) >= suggestionFloor) return first;
+  try {
+    return [...first, ...await fetch(2)];
+  } on AssistantToolError {
+    rethrow;
+  } on Exception {
+    return first;
+  }
+}
+
 /// The user asked for obscure, arthouse or foreign titles: the prompt said so,
 /// or the model passed `niche`.
 bool _niche(AssistantToolContext ctx, Map<String, Object?> args) => ctx.recommend.niche || args['niche'] == true;
@@ -155,18 +171,26 @@ final List<AssistantTool> _discoverTools = [
       final kind = args['kind'] ?? 'all';
       if (kind != 'movie' && kind != 'tv' && kind != 'all') throw const AssistantToolError('invalid_kind');
       final age = await _kidsAge(ctx);
+      final niche = _niche(ctx, args);
       final found = await _fromSources(
         ctx,
-        (seerr) async => [
-          for (final m in (await seerr.discoverTrending()).items)
-            if (kind == 'all' || m.mediaType == kind) m,
-        ],
-        (tmdb) async => [
-          for (final k in TmdbKind.values)
-            if (kind == 'all' || kind == k.path) ...await _tmdbMedia(k, (l) => tmdb.trending(k, language: l)),
-        ],
+        (seerr) => _widen(
+          niche,
+          (p) async => [
+            for (final m in (await seerr.discoverTrending(page: p)).items)
+              if (kind == 'all' || m.mediaType == kind) m,
+          ],
+        ),
+        (tmdb) => _widen(
+          niche,
+          (p) async => [
+            for (final k in TmdbKind.values)
+              if (kind == 'all' || kind == k.path)
+                ...await _tmdbMedia(k, (l) => tmdb.trending(k, language: l, page: p)),
+          ],
+        ),
       );
-      return _discoverResult(ctx, found, age, niche: _niche(ctx, args));
+      return _discoverResult(ctx, found, age, niche: niche);
     },
   ),
   AssistantTool(
@@ -196,21 +220,31 @@ final List<AssistantTool> _discoverTools = [
       if (kind == MediaKind.episode) throw const AssistantToolError('invalid_kind');
       final age = await _kidsAge(ctx);
       final (:id, :isMovie) = await _resolveSource(ctx, title, year, kind);
+      final niche = _niche(ctx, args);
       final found = await _fromSources(
         ctx,
-        (seerr) async => [
-          ...(await seerr.getRecommendations(tmdbId: id, isMovie: isMovie)).items,
-          ...(await seerr.getSimilar(tmdbId: id, isMovie: isMovie)).items,
-        ],
-        (tmdb) async {
+        (seerr) => _widen(
+          niche,
+          (p) async => [
+            ...(await seerr.getRecommendations(tmdbId: id, isMovie: isMovie, page: p)).items,
+            ...(await seerr.getSimilar(tmdbId: id, isMovie: isMovie, page: p)).items,
+          ],
+        ),
+        (tmdb) {
           final k = isMovie ? TmdbKind.movie : TmdbKind.tv;
-          return _tmdbMedia(
-            k,
-            (l) async => [...await tmdb.recommendations(k, id, language: l), ...await tmdb.similar(k, id, language: l)],
+          return _widen(
+            niche,
+            (p) => _tmdbMedia(
+              k,
+              (l) async => [
+                ...await tmdb.recommendations(k, id, language: l, page: p),
+                ...await tmdb.similar(k, id, language: l, page: p),
+              ],
+            ),
           );
         },
       );
-      return _discoverResult(ctx, found, age, skip: id, niche: _niche(ctx, args));
+      return _discoverResult(ctx, found, age, skip: id, niche: niche);
     },
   ),
 ];
