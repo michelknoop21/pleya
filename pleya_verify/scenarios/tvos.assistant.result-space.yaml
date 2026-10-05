@@ -1,8 +1,9 @@
 name: tvos.assistant.result-space
 target: tvos-sim
 # Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
-# BP-09: six request cards in one display go dense on the full surface, and the
-# first five stand inside the panel without scrolling. Real settings UI and
+# BP-09: six request option cards in one display. Four stand inside the panel
+# without scrolling, the sixth is reachable by D-pad. Not dense: dense applies
+# to match cards only (see the widget test). Real settings UI and
 # native idb input; the model fixture answers "Ontdek ruimtefilms." with one
 # discover_request_titles call (find_title is capped at five candidates).
 setup:
