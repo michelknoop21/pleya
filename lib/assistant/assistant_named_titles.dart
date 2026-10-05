@@ -111,3 +111,13 @@ Set<({String key, int? year})> assistantShownTitles(Iterable<AssistantDisplay> d
 /// [namedYear]: the same title, and the same year when both are known.
 bool assistantSameTitle(({String key, int? year}) card, String key, int? namedYear) =>
     card.key == key && (namedYear == null || card.year == null || card.year == namedYear);
+
+/// Big P's words without em or en dashes: a spaced or run-on dash becomes a
+/// comma, one between digits or letters a hyphen ("2018\u20132020" is "2018-2020").
+/// The model is told so too; this is the net under it.
+String assistantPlainDashes(String text) => text
+    .replaceAll(RegExp(r'\s*[\u2014\u2015]\s*'), ', ')
+    .replaceAll(RegExp(r'\s+\u2013\s+'), ', ')
+    .replaceAll('\u2013', '-')
+    .replaceAllMapped(RegExp(r',\s*([.!?])'), (m) => m[1]!)
+    .replaceAll(RegExp(r',\s*$'), '');
