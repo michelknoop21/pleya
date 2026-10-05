@@ -265,4 +265,23 @@ void main() {
     await done;
     expect(_executed, 1);
   });
+
+  test(
+    'newConversation (the button) forgets the memory and the answer on screen, and is offered only with one',
+    () async {
+      final c = make([_say('a1'), _say('a2')]);
+      expect(c.hasConversation, isFalse, reason: 'not in the greeting');
+      await c.submit('q1');
+      expect(c.hasConversation, isTrue);
+      c.newConversation();
+      expect(c.hasConversation, isFalse);
+      expect(c.conversation, isEmpty);
+      expect(c.prompt, isNull);
+      expect(c.answer, '');
+      expect(c.state, AssistantSurfaceState.idle);
+
+      await c.submit('q2');
+      expect(roles(1, 'assistant'), isEmpty, reason: 'the next question starts without q1');
+    },
+  );
 }

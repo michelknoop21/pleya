@@ -11,14 +11,18 @@ import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
 import '../../widgets/big_p/big_p_scale.dart';
 import 'big_p_mobile_session.dart';
+import 'big_p_new_conversation_button.dart';
 
 /// The question field under Big P (39 B, D). Focus starts listening, so his
 /// voice keeps quiet while the user types or dictates with the iOS
 /// keyboard's mic; leaving it empty stops listening; send asks.
 class BigPInputBar extends StatefulWidget {
-  const BigPInputBar({super.key, required this.session});
+  const BigPInputBar({super.key, required this.session, this.inline = false});
 
   final BigPMobileSession session;
+
+  /// iPad: "Nieuw gesprek" sits inside the field. iPhone: a pill beside it.
+  final bool inline;
 
   @override
   State<BigPInputBar> createState() => _BigPInputBarState();
@@ -76,10 +80,11 @@ class _BigPInputBarState extends State<BigPInputBar> {
     // bodyMedium, not the field's default bodyLarge: the theme gives only
     // bodyMedium and titleMedium the app's font.
     final style = Theme.of(context).textTheme.bodyMedium!.copyWith(color: tk.text, fontSize: 16);
-    return Container(
+    final showNew = _c.hasConversation;
+    final field = Container(
       height: 46,
       // 1 + 4 around the 36 pt button: its 44 pt touch area ends 1 pt inside.
-      padding: const EdgeInsets.only(left: 16, right: 1),
+      padding: EdgeInsets.only(left: showNew && widget.inline ? 1 : 16, right: 1),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
         borderRadius: BorderRadius.circular(23),
@@ -87,6 +92,10 @@ class _BigPInputBarState extends State<BigPInputBar> {
       ),
       child: Row(
         children: [
+          if (showNew && widget.inline) ...[
+            BigPNewConversationButton(session: widget.session, inline: true),
+            const SizedBox(width: 8),
+          ],
           Expanded(
             child: AutomationNode(
               id: AutomationIds.bigpInput,
@@ -147,6 +156,16 @@ class _BigPInputBarState extends State<BigPInputBar> {
           ),
         ],
       ),
+    );
+    if (!showNew || widget.inline) return field;
+    // iPhone: the pill and the field on one line, both 46 pt, centred.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        BigPNewConversationButton(session: widget.session),
+        const SizedBox(width: 8),
+        Expanded(child: field),
+      ],
     );
   }
 }

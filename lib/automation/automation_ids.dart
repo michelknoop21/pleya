@@ -320,6 +320,9 @@ class AutomationIds {
   /// The question field under the balloon.
   static const String bigpInput = 'bigp.input';
 
+  /// "Nieuw gesprek" beside the question field; only once there is a conversation.
+  static const String bigpNewConversation = 'bigp.newConversation';
+
   /// One follow-up question beside Big P (`bigp.followUp[0]`).
   static const String bigpFollowUp = 'bigp.followUp';
 
@@ -726,6 +729,7 @@ class AutomationIds {
     {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
     {'id': bigpBalloon, 'role': 'region', 'instanceable': false},
     {'id': bigpInput, 'role': 'field', 'instanceable': false},
+    {'id': bigpNewConversation, 'role': 'button', 'instanceable': false},
     {'id': bigpFollowUp, 'role': 'button', 'instanceable': true},
     {'id': bigpPeek, 'role': 'button', 'instanceable': false},
     {'id': bigpSearchAsk, 'role': 'button', 'instanceable': false},

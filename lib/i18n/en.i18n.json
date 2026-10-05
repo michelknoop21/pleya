@@ -2345,7 +2345,9 @@
       "moreTitles": "${n} more titles",
       "searchAsk": "Ask Big P",
       "faceButton": "Summon Big P",
-      "notConfirmedYet": "Choose first: confirm or cancel."
+      "notConfirmedYet": "Choose first: confirm or cancel.",
+      "newConversation": "New conversation",
+      "newConversationShort": "New"
     },
     "locked": {
       "badge": "Not available on this account",

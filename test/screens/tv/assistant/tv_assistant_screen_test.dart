@@ -302,6 +302,7 @@ void main() {
         ..emit();
       await settle(tester);
 
+      await press(tester, LogicalKeyboardKey.arrowRight); // Nieuw gesprek
       await press(tester, LogicalKeyboardKey.arrowRight);
       await press(tester, LogicalKeyboardKey.select);
 

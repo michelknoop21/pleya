@@ -415,8 +415,9 @@ void main() {
         ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
         ..emit();
       await settle(tester);
-      // The three follow-ups stand under both, each up to two lines.
-      expect(short, lessThan(tester.getRect(find.byType(BigPBalloon)).height * 0.75));
+      // The three follow-ups stand under both, each up to two lines. The
+      // three buttons wrap to a second row in this 760 pt panel.
+      expect(short, lessThan(tester.getRect(find.byType(BigPBalloon)).height * 0.85));
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not

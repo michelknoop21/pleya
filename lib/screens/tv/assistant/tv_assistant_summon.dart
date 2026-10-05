@@ -362,6 +362,10 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               tasksNode: _tasksNode,
               onAsk: () => unawaited(_ask()),
               onDone: _dismiss,
+              onNewConversation: () {
+                c.newConversation();
+                BigPSuggestions.of(c).summoned();
+              },
               onCancelWork: _dismiss,
               onExample: (question) {
                 c.beginListening();

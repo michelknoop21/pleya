@@ -31,6 +31,7 @@ class TvAssistantConversation extends StatelessWidget {
     required this.taskOptionNodes,
     required this.onAsk,
     required this.onDone,
+    required this.onNewConversation,
     required this.onCancelWork,
     required this.onExample,
     required this.onPickOption,
@@ -53,6 +54,9 @@ class TvAssistantConversation extends StatelessWidget {
   final TvAssistantTaskOptionNodes taskOptionNodes;
   final VoidCallback onAsk;
   final VoidCallback onDone;
+
+  /// "Nieuw gesprek": forgets the answer and the memory (mockup 40 A).
+  final VoidCallback onNewConversation;
   final VoidCallback onCancelWork;
   final ValueChanged<String> onExample;
   final ValueChanged<AssistantRequestOption> onPickOption;
@@ -274,26 +278,43 @@ class TvAssistantConversation extends StatelessWidget {
     ]);
   }
 
-  /// Vraag Big P and Klaar. A button keeps 6 pt around its fill for the
+  /// Vraag Big P, Nieuw gesprek and Klaar. "Nieuw gesprek" (mockup 40 A) sits
+  /// in this row, not behind the follow-ups: a row of its own under them cost
+  /// the panel the fifth card (tv_assistant_space_test). A button keeps 6 pt around its fill for the
   /// focus ring; pulled back so the fill, not the ring, lines up with the
   /// text and cards.
-  Widget _resultButtons(double pt, Widget Function({bool primary}) ask) => Transform.translate(
-    offset: Offset(-6 * pt, 0),
-    child: Wrap(
-      spacing: 12 * pt,
-      runSpacing: 12 * pt,
-      children: [
-        ask(),
-        BigPButton(
-          label: t.assistant.result.done,
-          primary: false,
-          automationId: AutomationIds.assistantButton,
-          automationInstance: 'done',
-          onPressed: onDone,
-        ),
-      ],
-    ),
-  );
+  Widget _resultButtons(double pt, Widget Function({bool primary}) ask) {
+    final c = controller;
+    return Transform.translate(
+      offset: Offset(-6 * pt, 0),
+      child: Wrap(
+        spacing: 12 * pt,
+        runSpacing: 12 * pt,
+        children: [
+          ask(),
+          if (c.hasConversation)
+            BigPButton(
+              // The short label: with the long one the three buttons wrap to a
+              // second row in the summoned panel and in the 1038 pt surface,
+              // which costs the answer its fifth card.
+              label: t.assistant.mobile.newConversationShort,
+              icon: Symbols.edit_square_rounded,
+              primary: false,
+              automationId: AutomationIds.assistantButton,
+              automationInstance: 'newConversation',
+              onPressed: onNewConversation,
+            ),
+          BigPButton(
+            label: t.assistant.result.done,
+            primary: false,
+            automationId: AutomationIds.assistantButton,
+            automationInstance: 'done',
+            onPressed: onDone,
+          ),
+        ],
+      ),
+    );
+  }
 
   /// The run's displays. Only the result stand hands the first choice the
   /// surface's option node. While [working], a request card is shown but

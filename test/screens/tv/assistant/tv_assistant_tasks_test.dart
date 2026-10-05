@@ -749,7 +749,10 @@ void main() {
           }
           // Out of the list, on a button under it: whichever is nearest to
           // the last follow-up.
-          expect(focusedLabel(), anyOf('assistant.ask', t.assistant.result.done));
+          expect(
+            focusedLabel(),
+            anyOf('assistant.ask', t.assistant.mobile.newConversationShort, t.assistant.result.done),
+          );
           expect(scrolled, isTrue);
           expect(
             walked.nonNulls,

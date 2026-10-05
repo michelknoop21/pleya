@@ -184,6 +184,19 @@ class AssistantController extends ChangeNotifier {
     _memoryEpoch++;
   }
 
+  /// There is something to start over from: an answer on screen or earlier
+  /// turns. Not while a run is going; "Nieuw gesprek" is offered between
+  /// questions only.
+  bool get hasConversation =>
+      !_asking && _state != AssistantSurfaceState.working && (_prompt != null || _conversation.isNotEmpty);
+
+  /// The "Nieuw gesprek" button: forgets the memory and the answer on screen.
+  /// No card, no undo.
+  void newConversation() {
+    reset();
+    clearConversation();
+  }
+
   /// True while a [submit] run is still going, displays streamed or not.
   bool _asking = false;
   bool _busy = false;

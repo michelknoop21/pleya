@@ -2345,7 +2345,9 @@
       "moreTitles": "Nog ${n} titels",
       "searchAsk": "Vraag het Big P",
       "faceButton": "Big P oproepen",
-      "notConfirmedYet": "Kies eerst: bevestigen of annuleren."
+      "notConfirmedYet": "Kies eerst: bevestigen of annuleren.",
+      "newConversation": "Nieuw gesprek",
+      "newConversationShort": "Nieuw"
     },
     "locked": {
       "badge": "Niet beschikbaar op dit account",

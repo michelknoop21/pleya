@@ -143,6 +143,7 @@ void main() {
         seen.add(where());
       }
     }
-    expect(seen, containsAll(['assistant.ask', 'assistant.results', 'chip', 'Klaar']));
+    // "Nieuw" sits between Vraag Big P and Klaar, so Down from the chips lands on it.
+    expect(seen, containsAll(['assistant.ask', 'assistant.results', 'chip', t.assistant.mobile.newConversationShort]));
   });
 }

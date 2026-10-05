@@ -3212,6 +3212,8 @@ class _TranslationsAssistantMobileNl extends TranslationsAssistantMobileEn {
 	@override String get searchAsk => 'Vraag het Big P';
 	@override String get faceButton => 'Big P oproepen';
 	@override String get notConfirmedYet => 'Kies eerst: bevestigen of annuleren.';
+	@override String get newConversation => 'Nieuw gesprek';
+	@override String get newConversationShort => 'Nieuw';
 }
 
 // Path: assistant.locked
@@ -5857,6 +5859,8 @@ extension on TranslationsNl {
 			'assistant.mobile.searchAsk' => 'Vraag het Big P',
 			'assistant.mobile.faceButton' => 'Big P oproepen',
 			'assistant.mobile.notConfirmedYet' => 'Kies eerst: bevestigen of annuleren.',
+			'assistant.mobile.newConversation' => 'Nieuw gesprek',
+			'assistant.mobile.newConversationShort' => 'Nieuw',
 			'assistant.locked.badge' => 'Niet beschikbaar op dit account',
 			'assistant.locked.title' => 'Big P staat voor dit account nog niet aan',
 			'assistant.locked.body' => 'Met Big P vraag je Pleya om beheertaken uit te voeren, zoals een bibliotheek scannen of een gebruiker aanmaken. Het is een functie van Pleya die op dit account nog niet beschikbaar is.',
