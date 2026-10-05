@@ -258,10 +258,20 @@ final List<AssistantTool> _insightTools = [
         'show' => MediaKind.show,
         _ => throw const AssistantToolError('invalid_kind'),
       };
+      final client = ctx.adminClient(id);
+      final otherClient = ctx.adminClient(other);
       final budget = _Budget(_compareDeadline);
       final mine = await _wholeKind(ctx, id, kind, budget);
       final theirs = await _wholeKind(ctx, other, kind, budget);
       final (:missing, :lookupsCapped) = await _missingOn(ctx, [...mine.items, ...theirs.items], other, budget);
+      // The reads take seconds: administration revoked on either side, or a
+      // connection replaced, publishes no list and no card.
+      if (!ctx.administeredServers.contains(id) ||
+          !ctx.administeredServers.contains(other) ||
+          !identical(ctx.adminClient(id), client) ||
+          !identical(ctx.adminClient(other), otherClient)) {
+        throw const AssistantToolError('not_allowed');
+      }
       final shown = missing.take(_missingShown).toList();
       for (final item in shown) {
         ctx.showItem(id, item.id);

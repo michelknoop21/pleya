@@ -63,9 +63,21 @@ void main() {
     final byLibrary = AssistantJobWatch(serverId: _server, startedAt: _start, libraryId: 'films');
     final byId = AssistantJobWatch(serverId: _server, startedAt: _start, jobId: 'j1');
 
-    test('a running job on the library, with its percent', () {
-      final p = assistantJobLook(byLibrary, [_job(ServerJobState.running, progress: 0.4)], seen: false)!;
+    test('a running job, with its percent', () {
+      final p = assistantJobLook(byId, [_job(ServerJobState.running, progress: 0.4)], seen: false)!;
       expect((p.phase, p.percent), (AssistantJobPhase.running, 40));
+    });
+
+    test('without an operation id the outcome is not followable, even if another job runs on the library', () {
+      for (final jobs in [
+        const <ServerJob>[],
+        [_job(ServerJobState.running, id: 'other')],
+      ]) {
+        expect(assistantJobLook(byLibrary, jobs, seen: false)!.phase, AssistantJobPhase.started);
+      }
+      // A later scan on the same library, finished after our start, is not ours.
+      final later = _job(ServerJobState.succeeded, id: 'other', at: _start.add(const Duration(seconds: 5)));
+      expect(assistantJobLook(byLibrary, [later], seen: false)!.phase, AssistantJobPhase.started);
     });
 
     test('a retried job still showing its old outcome is not ours yet', () {
@@ -75,9 +87,9 @@ void main() {
       expect(assistantJobLook(byId, [fresh], seen: false)!.phase, AssistantJobPhase.failed);
     });
 
-    test('Plex: a job that was seen running and vanished is done; never seen decides nothing', () {
-      expect(assistantJobLook(byLibrary, const [], seen: true)!.phase, AssistantJobPhase.done);
-      expect(assistantJobLook(byLibrary, const [], seen: false), isNull);
+    test('a job that was seen running and vanished is unknown, never done; never seen decides nothing', () {
+      expect(assistantJobLook(byId, const [], seen: true)!.phase, AssistantJobPhase.unknown);
+      expect(assistantJobLook(byId, const [], seen: false), isNull);
     });
   });
 
@@ -121,7 +133,7 @@ void main() {
             kind: AssistantActionKind.scanLibrary,
             serverName: 'Zolder',
             subject: 'Films',
-            job: AssistantJobWatch(serverId: _server, startedAt: _start, libraryId: 'films'),
+            job: AssistantJobWatch(serverId: _server, startedAt: _start, jobId: 'j1'),
           ),
         ),
       );
@@ -170,7 +182,7 @@ void main() {
       expect(polls, after, reason: 'a settled job is no longer polled');
     });
 
-    test('a failed job says so', () async {
+    test('a failed job says so and fails the question', () async {
       answers = [
         [_job(ServerJobState.failed, at: _start.add(const Duration(seconds: 5)))],
       ];
@@ -178,6 +190,43 @@ void main() {
       await c.submit('scan films');
       await until(() => progress(c)?.settled ?? false);
       expect(progress(c)!.phase, AssistantJobPhase.failed);
+      expect(c.tasks.single.status, AssistantTaskStatus.failed);
+    });
+
+    test('a cancelled job shows failed but does not fail the question', () async {
+      answers = [
+        [_job(ServerJobState.cancelled, at: _start.add(const Duration(seconds: 5)))],
+      ];
+      final c = controller();
+      await c.submit('scan films');
+      await until(() => progress(c)?.settled ?? false);
+      expect(progress(c)!.phase, AssistantJobPhase.failed);
+      expect(c.tasks.single.status, isNot(AssistantTaskStatus.failed));
+    });
+
+    test('seen running, then gone: unknown, not done and not failed', () async {
+      answers = [
+        [_job(ServerJobState.running, progress: 0.4)],
+        const [],
+      ];
+      final c = controller();
+      await c.submit('scan films');
+      await until(() => progress(c)?.settled ?? false);
+      expect(progress(c)!.phase, AssistantJobPhase.unknown);
+      expect(c.tasks.single.status, isNot(AssistantTaskStatus.failed));
+    });
+
+    test('failed, then gone: stays failed', () async {
+      answers = [
+        [_job(ServerJobState.failed, at: _start.add(const Duration(seconds: 5)))],
+        const [],
+      ];
+      final c = controller();
+      await c.submit('scan films');
+      await until(() => progress(c)?.settled ?? false);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(progress(c)!.phase, AssistantJobPhase.failed);
+      expect(c.tasks.single.status, AssistantTaskStatus.failed);
     });
 
     test('still running after the limit: background, and the watch stops', () async {

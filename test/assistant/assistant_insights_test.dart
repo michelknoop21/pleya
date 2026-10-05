@@ -63,6 +63,9 @@ class _Jf implements JellyfinClient {
 
   /// Runs while the active sessions are being read.
   void Function()? onSessions;
+
+  /// Runs while a library page is being read.
+  void Function()? onPage;
   final List<(String id, String title, int year)> films;
   final Map<String, ExternalIds> ids;
   @override
@@ -114,6 +117,7 @@ class _Jf implements JellyfinClient {
   }) async {
     expect(libraryId, 'films');
     pages.add(query.offset);
+    onPage?.call();
     if (pageDelay > Duration.zero) await Future<void>.delayed(pageDelay);
     final all = [
       for (var i = 0; i < leadingCollections; i++)
@@ -411,6 +415,24 @@ void main() {
       // Only what was shown may be named by a later tool.
       ctx.requireShownItem(a.serverId, 'a3');
       expect(() => ctx.requireShownItem(a.serverId, 'a2'), throwsA(isA<AssistantToolError>()));
+    });
+
+    test('administration revoked on the other server while pages are read: no list, no card', () async {
+      final a = _Jf('gplex', 'G-Plexflix', films: [('a1', 'Dune', 2021)]);
+      final b = _Jf('woon', 'Woonkamer', films: [('b1', 'Arrival', 2016)]);
+      final control = _ctx([a, b]);
+      final ok = await _tool('compare_servers').run(control, a.serverId, {'other_server_id': 'woon', 'kind': 'movie'});
+      expect(ok, isA<AssistantToolResult>(), reason: 'control: still administered');
+
+      final c = _Jf('gplex', 'G-Plexflix', films: [('a1', 'Dune', 2021)]);
+      final d = _Jf('woon', 'Woonkamer', films: [('b1', 'Arrival', 2016)]);
+      d.onPage = () => d.admin = false;
+      final ctx = _ctx([c, d]);
+      await expectLater(
+        _tool('compare_servers').run(ctx, c.serverId, {'other_server_id': 'woon', 'kind': 'movie'}),
+        throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'not_allowed')),
+      );
+      expect(() => ctx.requireShownItem(c.serverId, 'a1'), throwsA(isA<AssistantToolError>()));
     });
 
     test('a library over the cap is reported as capped', () async {

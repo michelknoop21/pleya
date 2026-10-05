@@ -8393,6 +8393,9 @@ class TranslationsAssistantJobsScanLibraryEn {
 
 	/// en: 'Scan still running in the background'
 	String get background => 'Scan still running in the background';
+
+	/// en: 'Scan: status can no longer be determined'
+	String get unknown => 'Scan: status can no longer be determined';
 }
 
 // Path: assistant.jobs.retryJob
@@ -8414,6 +8417,9 @@ class TranslationsAssistantJobsRetryJobEn {
 
 	/// en: 'Job still running in the background'
 	String get background => 'Job still running in the background';
+
+	/// en: 'Job: status can no longer be determined'
+	String get unknown => 'Job: status can no longer be determined';
 }
 
 // Path: assistant.confirm.titles
@@ -10666,10 +10672,12 @@ extension on Translations {
 			'assistant.jobs.scanLibrary.done' => 'Scan finished',
 			'assistant.jobs.scanLibrary.failed' => 'Scan failed',
 			'assistant.jobs.scanLibrary.background' => 'Scan still running in the background',
+			'assistant.jobs.scanLibrary.unknown' => 'Scan: status can no longer be determined',
 			'assistant.jobs.retryJob.running' => 'Job running',
 			'assistant.jobs.retryJob.done' => 'Job finished',
 			'assistant.jobs.retryJob.failed' => 'Job failed',
 			'assistant.jobs.retryJob.background' => 'Job still running in the background',
+			'assistant.jobs.retryJob.unknown' => 'Job: status can no longer be determined',
 			'assistant.result.doneBy' => 'Carried out by Pleya',
 			'assistant.result.notDoneBy' => 'Not carried out by Pleya',
 			'assistant.result.done' => 'Done',

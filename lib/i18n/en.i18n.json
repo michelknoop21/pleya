@@ -2438,13 +2438,15 @@
         "running": "Scan running",
         "done": "Scan finished",
         "failed": "Scan failed",
-        "background": "Scan still running in the background"
+        "background": "Scan still running in the background",
+        "unknown": "Scan: status can no longer be determined"
       },
       "retryJob": {
         "running": "Job running",
         "done": "Job finished",
         "failed": "Job failed",
-        "background": "Job still running in the background"
+        "background": "Job still running in the background",
+        "unknown": "Job: status can no longer be determined"
       }
     },
     "result": {

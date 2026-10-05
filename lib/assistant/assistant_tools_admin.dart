@@ -1,5 +1,12 @@
 part of 'assistant_tools.dart';
 
+/// After an await: the same administration, still granted, or nothing is
+/// published or started. A different client object means the connection was
+/// replaced meanwhile.
+void _stillAllowed(Object? now, Object? before) {
+  if (now == null || !identical(now, before)) throw const AssistantToolError('not_allowed');
+}
+
 /// Server administration: only where `canAdministerServer` holds.
 final List<AssistantTool> _adminTools = [
   AssistantTool(
@@ -9,7 +16,10 @@ final List<AssistantTool> _adminTools = [
     properties: const {},
     serves: (ctx, id) => ctx.admin<ServerJobsClient>(id) != null,
     run: (ctx, id, _) async {
-      final jobs = await ctx.admin<ServerJobsClient>(id!)!.listJobs();
+      final client = ctx.admin<ServerJobsClient>(id!)!;
+      final jobs = await client.listJobs();
+      // The read takes seconds: rights revoked meanwhile publish nothing.
+      _stillAllowed(ctx.admin<ServerJobsClient>(id), client);
       return AssistantToolResult({
         'jobs': [
           for (final job in jobs.take(30))
@@ -39,7 +49,12 @@ final List<AssistantTool> _adminTools = [
     run: (ctx, id, _) async {
       final sharing = ctx.plexSharing(id!);
       if (sharing != null) {
+        // The sharing service is rebuilt on every ask, so the server's own
+        // client is what must stay the same.
+        final client = ctx.adminClient(id);
         final shares = await sharing.listShares();
+        _stillAllowed(ctx.adminClient(id), client);
+        if (ctx.plexSharing(id) == null) throw const AssistantToolError('not_allowed');
         return AssistantToolResult({
           'users': [
             for (final s in shares)
@@ -61,7 +76,11 @@ final List<AssistantTool> _adminTools = [
           ],
         });
       }
-      final users = await _userAdmin(ctx, id)!.listUsers();
+      final admin = _userAdmin(ctx, id)!;
+      final users = await admin.listUsers();
+      if (!_managesUsers(ctx, id) || !identical(_userAdmin(ctx, id), admin)) {
+        throw const AssistantToolError('not_allowed');
+      }
       return AssistantToolResult({
         'users': [
           for (final u in users)
@@ -102,10 +121,14 @@ final List<AssistantTool> _adminTools = [
       if (ctx.libraryDoctorMode || args.containsKey('doctor_option_id')) {
         return _doctorPending(ctx, id!, args, AssistantActionKind.scanLibrary);
       }
-      final library = await ctx.library(id!, _string(args, 'library_id'));
+      final client = ctx.admin<LibraryScanClient>(id!)!;
+      final library = await ctx.library(id, _string(args, 'library_id'));
+      // The library lookup takes a round trip: rights revoked meanwhile
+      // start no scan.
+      _stillAllowed(ctx.admin<LibraryScanClient>(id), client);
       // Before the request: a scan can end before its response arrives.
       final startedAt = DateTime.now();
-      await ctx.admin<LibraryScanClient>(id)!.scanLibrary(library.id);
+      await client.scanLibrary(library.id);
       return AssistantToolResult(
         {'status': 'scan_started', 'library': clipText(library.title)},
         record: AssistantActionRecord(
@@ -135,9 +158,11 @@ final List<AssistantTool> _adminTools = [
       }
       final itemId = _string(args, 'item_id');
       ctx.requireShownItem(id!, itemId);
+      final client = ctx.admin<ItemMetadataRefreshClient>(id)!;
       final item = await ctx.adminClient(id)!.fetchItem(itemId);
       if (item == null) throw const AssistantToolError('unknown_item_id');
-      await ctx.admin<ItemMetadataRefreshClient>(id)!.refreshItemMetadata(itemId);
+      _stillAllowed(ctx.admin<ItemMetadataRefreshClient>(id), client);
+      await client.refreshItemMetadata(itemId);
       final title = item.title ?? itemId;
       return AssistantToolResult(
         {'status': 'refresh_started', 'title': clipText(title)},
@@ -165,7 +190,9 @@ final List<AssistantTool> _adminTools = [
       ctx.requireShownJob(id!, jobId);
       // The card names the job as the server lists it now, not as the model
       // calls it.
-      final job = (await ctx.admin<ServerJobsClient>(id)!.listJobs()).where((j) => j.id == jobId).firstOrNull;
+      final client = ctx.admin<ServerJobsClient>(id)!;
+      final job = (await client.listJobs()).where((j) => j.id == jobId).firstOrNull;
+      _stillAllowed(ctx.admin<ServerJobsClient>(id), client);
       if (job == null) throw const AssistantToolError('unknown_job_id');
       if (!job.cancellable) throw const AssistantToolError('job_not_cancellable');
       return AssistantPendingAction(
@@ -225,8 +252,11 @@ final List<AssistantTool> _adminTools = [
     run: (ctx, id, args) async {
       final name = _userName(args);
       final all = _bool(args, 'all_libraries');
-      final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id!, _strings(args, 'library_ids'));
-      final sharing = ctx.plexSharing(id!);
+      final client = ctx.adminClient(id!);
+      final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id, _strings(args, 'library_ids'));
+      // The library lookup takes a round trip: no card under revoked rights.
+      _stillAllowed(ctx.adminClient(id), client);
+      final sharing = ctx.plexSharing(id);
       if (sharing != null) {
         return AssistantPendingAction(
           kind: AssistantActionKind.createUser,
@@ -299,7 +329,9 @@ final List<AssistantTool> _adminTools = [
       if (!user.accessKnown) throw const AssistantToolError('library_access_unknown');
       if (user.isAdmin) throw const AssistantToolError('user_is_admin');
       final all = _bool(args, 'all_libraries');
+      final client = ctx.adminClient(id);
       final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id, _strings(args, 'library_ids'));
+      _stillAllowed(ctx.adminClient(id), client);
       final ids = [for (final l in libraries) l.id];
       final plex = ctx.plexSharing(id) != null;
       return AssistantPendingAction(

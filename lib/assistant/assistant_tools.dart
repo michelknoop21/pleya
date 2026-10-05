@@ -161,8 +161,10 @@ class AssistantJobWatch {
 }
 
 /// [started]: accepted, but no job to follow (or not found). [background]:
-/// still running when Pleya stopped looking.
-enum AssistantJobPhase { started, running, done, failed, background }
+/// still running when Pleya stopped looking. [unknown]: the job was seen
+/// running and then vanished, so it neither finished nor failed as far as
+/// Pleya can tell.
+enum AssistantJobPhase { started, running, done, failed, background, unknown }
 
 class AssistantJobProgress {
   const AssistantJobProgress(this.phase, {this.percent});

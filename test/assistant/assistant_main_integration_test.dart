@@ -145,7 +145,7 @@ void main() {
   }
 
   test('final display replacement is per task and removes only successful lookups', () async {
-    final grid = AssistantMediaGrid([(item: find.fakeItem('d', 'Dune'), group: null)]);
+    final grid = AssistantMediaGrid([(item: find.fakeItem('d', 'Dune').copyWith(serverId: 's1'), group: null)]);
     final tools = [
       _tool('find_media', (_, _) async => AssistantToolResult(const {}, display: grid)),
       _tool(
@@ -159,7 +159,7 @@ void main() {
       _Model([_split()]),
       _Model([
         _call('find_media'),
-        _call('act', {'item_id': 'd'}),
+        _call('act', {'item_id': 'd', 'server_id': 's1'}),
         _say('done'),
       ]),
       _Model([_call('find_media'), _say('found')]),
@@ -169,6 +169,35 @@ void main() {
     expect(c.tasks.last.displays.single, same(grid));
     expect(c.displays, [grid]);
     expect(c.tasks.first.actions, hasLength(1));
+  });
+
+  test('the same item id on another server does not consume the lookup', () async {
+    manager.debugRegisterClientForTesting(find.FakeServer('s1'));
+    manager.debugRegisterClientForTesting(find.FakeServer('s2'));
+    final grid = AssistantMediaGrid([(item: find.fakeItem('d', 'Dune').copyWith(serverId: 's1'), group: null)]);
+    final act = AssistantTool(
+      name: 'act',
+      description: 'act',
+      risk: AssistantToolRisk.read,
+      needsServer: true,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({
+        'done': true,
+      }, record: AssistantActionRecord(kind: AssistantActionKind.refreshMetadata, serverName: 'S', subject: 'Dune')),
+    );
+    final c = controller(
+      [
+        _Model([
+          _call('find_media'),
+          _call('act', {'item_id': 'd', 'server_id': 's2'}),
+          _say('done'),
+        ]),
+      ],
+      [_tool('find_media', (_, _) async => AssistantToolResult(const {}, display: grid)), act],
+    );
+    await c.submit('act');
+    expect(c.displays, [grid]);
   });
 
   for (final outcome in ['declined', 'failed', 'unchanged']) {

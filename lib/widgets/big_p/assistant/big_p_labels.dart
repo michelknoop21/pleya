@@ -86,20 +86,24 @@ String assistantActionLabel(AssistantActionRecord record) => [
 
 String? _jobPhaseLabel(AssistantActionRecord record) {
   final j = t.assistant.jobs;
-  final (running, done, failed, background) = switch (record.kind) {
+  final (running, done, failed, background, unknown) = switch (record.kind) {
     AssistantActionKind.scanLibrary => (
       j.scanLibrary.running,
       j.scanLibrary.done,
       j.scanLibrary.failed,
       j.scanLibrary.background,
+      j.scanLibrary.unknown,
     ),
-    _ => (j.retryJob.running, j.retryJob.done, j.retryJob.failed, j.retryJob.background),
+    _ => (j.retryJob.running, j.retryJob.done, j.retryJob.failed, j.retryJob.background, j.retryJob.unknown),
   };
   return switch (record.progress?.phase) {
     AssistantJobPhase.running => running,
     AssistantJobPhase.done => done,
     AssistantJobPhase.failed => failed,
     AssistantJobPhase.background => background,
+    // Seen running and then gone: neither finished nor failed as far as Pleya
+    // can tell, and the card says so instead of "gestart".
+    AssistantJobPhase.unknown => unknown,
     // Not followed: the action's own "gestart".
     AssistantJobPhase.started || null => null,
   };

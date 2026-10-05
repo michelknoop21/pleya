@@ -45,4 +45,17 @@ void main() {
     await pump(tester, scan(const AssistantJobProgress(AssistantJobPhase.started)));
     expect(find.text('Scan gestart · Films · Zolder'), findsOneWidget);
   });
+
+  testWidgets('a job seen running and then gone says its status can no longer be determined', (tester) async {
+    await pump(tester, scan(const AssistantJobProgress(AssistantJobPhase.unknown)));
+    expect(find.text('Scan: status niet meer vast te stellen · Films · Zolder'), findsOneWidget);
+    expect(find.textContaining('klaar'), findsNothing);
+    expect(find.textContaining('mislukt'), findsNothing);
+    expect(find.textContaining('gestart'), findsNothing);
+
+    LocaleSettings.setLocaleSync(AppLocale.en);
+    addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.nl));
+    await pump(tester, scan(const AssistantJobProgress(AssistantJobPhase.unknown)));
+    expect(find.text('Scan: status can no longer be determined · Films · Zolder'), findsOneWidget);
+  });
 }
