@@ -140,7 +140,9 @@ class BigPResultCard extends StatelessWidget {
             for (final action in actions)
               line(
                 _statusIcon(context, switch (action.progress?.phase) {
-                  AssistantJobPhase.running || AssistantJobPhase.background => AssistantStepPhase.started,
+                  AssistantJobPhase.running ||
+                  AssistantJobPhase.background ||
+                  AssistantJobPhase.unknown => AssistantStepPhase.started,
                   AssistantJobPhase.failed => AssistantStepPhase.failed,
                   _ => AssistantStepPhase.done,
                 }),

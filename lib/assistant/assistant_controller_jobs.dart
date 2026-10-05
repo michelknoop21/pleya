@@ -5,14 +5,14 @@ part of 'assistant_controller.dart';
 /// up. Returns null when this look decides nothing.
 @visibleForTesting
 AssistantJobProgress? assistantJobLook(AssistantJobWatch watch, List<ServerJob> jobs, {required bool seen}) {
-  final job = watch.jobId != null
-      ? jobs.where((j) => j.id == watch.jobId).firstOrNull
-      // The newest job on the library: Pleya Server lists newest first and
-      // refuses a second scan while one runs; Plex lists only running work.
-      : jobs.where((j) => j.libraryId == watch.libraryId).firstOrNull;
+  // Only an operation id proves a job belongs to this action. A library and a
+  // start time do not: another scan on the same library would be taken over.
+  final id = watch.jobId;
+  if (id == null) return const AssistantJobProgress(AssistantJobPhase.started);
+  final job = jobs.where((j) => j.id == id).firstOrNull;
   if (job == null) {
-    // Plex drops an activity once it is over.
-    return seen ? const AssistantJobProgress(AssistantJobPhase.done) : null;
+    // A job that was seen and is gone may have finished or failed: unknown.
+    return seen ? const AssistantJobProgress(AssistantJobPhase.unknown) : null;
   }
   switch (job.state) {
     case ServerJobState.queued || ServerJobState.running:
@@ -21,7 +21,7 @@ AssistantJobProgress? assistantJobLook(AssistantJobWatch watch, List<ServerJob> 
     case ServerJobState.succeeded || ServerJobState.failed || ServerJobState.cancelled:
       // A retried job still shows its previous outcome until the server
       // picks it up: only an end after the start is this run's end.
-      final ours = watch.libraryId != null || seen || (job.updatedAt?.isAfter(watch.startedAt) ?? false);
+      final ours = seen || (job.updatedAt?.isAfter(watch.startedAt) ?? false);
       if (!ours) return null;
       return AssistantJobProgress(
         job.state == ServerJobState.succeeded ? AssistantJobPhase.done : AssistantJobPhase.failed,
@@ -99,6 +99,11 @@ extension _AssistantJobPolling on AssistantController {
         }
         final index = indexOf(watch);
         if (next != null && index >= 0) task.actions[index] = task.actions[index].withProgress(next);
+        // A job seen failing keeps the question failed, also once the job is gone.
+        if (next?.phase == AssistantJobPhase.failed && task.error == null) {
+          task.error = 'job_failed';
+          task.status = AssistantTaskStatus.failed;
+        }
       }
       _update();
     }

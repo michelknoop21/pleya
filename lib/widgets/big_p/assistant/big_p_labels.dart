@@ -101,7 +101,7 @@ String? _jobPhaseLabel(AssistantActionRecord record) {
     AssistantJobPhase.failed => failed,
     AssistantJobPhase.background => background,
     // Not followed: the action's own "gestart".
-    AssistantJobPhase.started || null => null,
+    AssistantJobPhase.started || AssistantJobPhase.unknown || null => null,
   };
 }
 
