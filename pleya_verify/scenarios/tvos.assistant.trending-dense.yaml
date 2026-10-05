@@ -3,7 +3,7 @@ target: tvos-sim
 # Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
 # BP-09: trending_titles without Seerr, answered by the fixture's TMDB stand-in
 # (TmdbClient.verifyBase, read off the Ollama fixture URL): eight titles as
-# match cards, so the full surface goes dense. Four of them are in the
+# match cards, so the full surface goes dense, with the follow-ups under them. Four of them are in the
 # catalog.mixed.v1 library, the rest are not. Real settings UI (provider, then
 # the TMDB key) and native idb input.
 setup:
@@ -75,15 +75,18 @@ steps:
   - press: select
   - wait_until: {id: screen.assistant, state: {state: result, error: false, pending: false}, timeout: 30000}
   - wait_until: {id: "assistant.match[7]", timeout: 15000}
-  # Eight match cards, one column, in order, none on top of another. Only the
-  # first three are visible at rest: the follow-up chips share the panel, so
-  # insideViewport (the screen, not the scroll area) is asserted for those.
+  # Eight match cards, one column, in order, none on top of another. The cards
+  # cannot be opened (not in the library), so the follow-ups used to stand
+  # outside the list and left room for three; they now stand under the cards,
+  # in the list, and five show. The tree has no scroll clip, so the proof is
+  # the chips below the eighth card (they sat above the buttons before), plus
+  # the screenshot.
   - assert: {id: "assistant.match[0]", insideViewport: true}
-  - assert: {id: "assistant.match[2]", insideViewport: true, below: "assistant.match[1]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[1]"}
+  - assert: {id: "assistant.match[4]", insideViewport: true, below: "assistant.match[3]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[3]"}
+  - assert: {id: "assistant.followUp[0]", below: "assistant.match[7]"}
   - assert: {id: "assistant.match[1]", below: "assistant.match[0]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[0]"}
   - assert: {id: "assistant.match[2]", below: "assistant.match[1]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[1]"}
   - assert: {id: "assistant.match[3]", below: "assistant.match[2]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[2]"}
-  - assert: {id: "assistant.match[4]", below: "assistant.match[3]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[3]"}
   - assert: {id: "assistant.match[5]", below: "assistant.match[4]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[4]"}
   - assert: {id: "assistant.match[6]", below: "assistant.match[5]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[5]"}
   - assert: {id: "assistant.match[7]", below: "assistant.match[6]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[6]"}

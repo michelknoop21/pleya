@@ -267,7 +267,7 @@ class TvAssistantConversation extends StatelessWidget {
       if (c.state == AssistantSurfaceState.result) ...[
         // No cards to walk through: the follow-ups stand above the buttons,
         // in view, and the list above them needs no focus to be read.
-        if (!hasChoices)
+        if (!_followUpsInList)
           if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
         _resultButtons(pt, ask),
       ],
@@ -338,10 +338,16 @@ class TvAssistantConversation extends StatelessWidget {
     // After the cards, in the same list: the cards keep the height.
     return [
       ...results,
-      if (bigPHasChoices(c.displays))
+      if (_followUpsInList)
         if (_followUps(pt) case final followUps?) ...[followUps, SizedBox(height: 16 * pt)],
     ];
   }
+
+  /// Under the cards in the list when they can be walked through, and also
+  /// when a long list of cards that cannot (not in the library) would
+  /// otherwise lose three rows of its height to them: five show, not three.
+  bool get _followUpsInList =>
+      bigPHasChoices(controller.displays) || bigPHasDenseMatches(controller.displays, compact: compact);
 
   /// Three follow-ups after an answer; an error or a gate is no answer.
   Widget? _followUps(double pt) {

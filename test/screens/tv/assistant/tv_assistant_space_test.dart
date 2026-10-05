@@ -1,5 +1,8 @@
 // How much of the answer the TV surface shows without scrolling: the panel
-// must not waste screen (IMG_8805, 4 Oct 2026). Laid out at Apple TV's 1038x584.
+// must not waste screen (IMG_8805, 4 Oct 2026). Laid out at Apple TV's 1038x584,
+// and at 1920x935, the surface under the tab bar as the simulator runs it.
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
@@ -17,31 +20,34 @@ import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/speech_search_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_match_card.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 import 'package:provider/provider.dart';
 
 import 'tv_assistant_test_support.dart';
 
-AssistantTitleMatch _match(int i) => AssistantTitleMatch(
+AssistantTitleMatch _match(int i, {bool inLibrary = true}) => AssistantTitleMatch(
   matchId: 'm$i',
   title: 'Mission: Impossible $i',
   year: 1996 + i,
   kind: 'movie',
   confidence: 'high',
   targets: [
-    (
-      serverId: ServerId('zolder'),
-      serverName: 'Zolder',
-      item: MediaItem(
-        id: 'i$i',
-        backend: MediaBackend.plex,
-        kind: MediaKind.movie,
-        title: 'Mission: Impossible $i',
-        year: 1996 + i,
-        serverId: 'zolder',
+    if (inLibrary)
+      (
+        serverId: ServerId('zolder'),
         serverName: 'Zolder',
+        item: MediaItem(
+          id: 'i$i',
+          backend: MediaBackend.plex,
+          kind: MediaKind.movie,
+          title: 'Mission: Impossible $i',
+          year: 1996 + i,
+          serverId: 'zolder',
+          serverName: 'Zolder',
+        ),
       ),
-    ),
   ],
 );
 
@@ -50,10 +56,9 @@ void main() {
   setUp(() => TvDetectionService.debugSetAppleTVOverride(true));
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-  testWidgets('eight matches: five cards fit the panel without scrolling (four before the panel was widened)', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1038, 584);
+  // Fully inside the list's own viewport, edges included.
+  Future<({int visible, int chips})> pump(WidgetTester tester, Size size, {required bool inLibrary}) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final c = FakeAssistantController()
@@ -62,10 +67,12 @@ void main() {
       ..answer = 'Dit zijn de beste kandidaten.'
       ..displays = [
         AssistantTitleMatches(AssistantToolContext(servers: MultiServerManager()), [
-          for (var i = 1; i <= 8; i++) _match(i),
+          for (var i = 1; i <= 8; i++) _match(i, inLibrary: inLibrary),
         ]),
       ];
     addTearDown(c.dispose);
+    // The same three follow-ups every run, whatever the pool draws.
+    BigPSuggestions.install(c, BigPSuggestions(random: Random(7)));
     final entry = AppleTvNativeTextEntry();
     await tester.pumpWidget(
       TranslationProvider(
@@ -74,7 +81,7 @@ void main() {
           child: MaterialApp(
             theme: monoTheme(dark: true),
             home: MediaQuery(
-              data: const MediaQueryData(size: Size(1038, 584), disableAnimations: true),
+              data: MediaQueryData(size: size, disableAnimations: true),
               child: InputModeTracker(
                 child: Scaffold(
                   body: TvAssistantScreen(
@@ -89,17 +96,27 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    final viewport = tester.getRect(find.byType(Scrollable).first);
     final cards = find.byType(BigPMatchCard);
-    // Fully inside the list's own viewport, edges included.
-    final visible = cards.evaluate().length == 0
-        ? 0
-        : [
-            for (var i = 0; i < cards.evaluate().length; i++)
-              if (tester.getRect(cards.at(i)).top >= viewport.top - 0.5 &&
-                  tester.getRect(cards.at(i)).bottom <= viewport.bottom + 0.5)
-                i,
-          ].length;
-    expect(visible, greaterThanOrEqualTo(5));
+    final viewport = tester.getRect(find.ancestor(of: cards.first, matching: find.byType(Scrollable)).first);
+    var visible = 0;
+    for (var i = 0; i < cards.evaluate().length; i++) {
+      final rect = tester.getRect(cards.at(i));
+      if (rect.top >= viewport.top - 0.5 && rect.bottom <= viewport.bottom + 0.5) visible++;
+    }
+    return (visible: visible, chips: find.byType(BigPChip).evaluate().length);
+  }
+
+  testWidgets('eight matches: five cards fit the panel without scrolling (four before the panel was widened)', (
+    tester,
+  ) async {
+    final shown = await pump(tester, const Size(1038, 584), inLibrary: true);
+    expect(shown.chips, 3);
+    expect(shown.visible, greaterThanOrEqualTo(5));
+  });
+
+  testWidgets('eight matches that cannot be opened: five still show with the follow-ups, not three', (tester) async {
+    final shown = await pump(tester, const Size(1920, 935), inLibrary: false);
+    expect(shown.chips, 3, reason: 'the follow-ups are in the tree, under the cards');
+    expect(shown.visible, greaterThanOrEqualTo(5));
   });
 }
