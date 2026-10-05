@@ -191,7 +191,7 @@ class _Row extends StatelessWidget {
     );
     final place = item.isEpisode
         ? [?formatSeasonEpisodeLabel(item.parentIndex, item.index), ?item.displaySubtitle].join(' · ')
-        : null;
+        : [if (item.genres?.isNotEmpty ?? false) item.genres!.first, if (item.year != null) '${item.year}'].join(' · ');
     final status = [
       continueWatchingStatusLine(item, includePlace: false),
       ?lastWatchedLabel(item),
@@ -223,7 +223,8 @@ class _Row extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         still,
-                        if (resume != null) ResumeLine(fraction: resume),
+                        if (resume != null)
+                          Positioned(left: 0, right: 0, bottom: 0, child: ResumeLine(fraction: resume)),
                       ],
                     ),
                   ),
@@ -240,7 +241,7 @@ class _Row extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
-                    if (place != null && place.isNotEmpty)
+                    if (place.isNotEmpty)
                       Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: subtitleStyle),
                     Text(
                       status,
