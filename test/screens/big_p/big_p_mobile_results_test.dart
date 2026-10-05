@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -161,6 +162,46 @@ void main() {
     await tester.tap(find.text(t.assistant.result.cancel));
     expect(c.cancelledPending, 1);
     expect(c.confirmedPasswords, isEmpty);
+  });
+
+  testWidgets('a typed draft survives a confirmation and is never sent by itself', (tester) async {
+    await pumpHost(tester);
+    await tester.enterText(find.byType(TextField), 'wat is nieuw');
+    c.pending = createSam();
+    c.emit();
+    await settle(tester);
+    expect(find.byType(BigPInputBar), findsNothing);
+
+    c.pending = null;
+    c.emit();
+    await settle(tester);
+    expect(find.text('wat is nieuw'), findsOneWidget, reason: 'the draft is back in the field');
+    expect(c.submitted, isEmpty, reason: 'a draft is never submitted by itself');
+    expect(session.draft, 'wat is nieuw');
+
+    await tester.tap(find.byIcon(Symbols.arrow_upward_rounded));
+    await settle(tester);
+    expect(c.submitted, ['wat is nieuw']);
+    expect(session.draft, isEmpty, reason: 'sent: nothing left to restore');
+  });
+
+  testWidgets('a handed-over question replaces an older draft and stays after a rebuild', (tester) async {
+    session.draft = 'old';
+    session.summon(question: 'from Zoeken');
+    await tester.pumpWidget(app(Scaffold(body: BigPInputBar(session: session))));
+    expect(find.text('from Zoeken'), findsOneWidget);
+    expect(session.draft, 'from Zoeken');
+    expect(c.submitted, isEmpty);
+  });
+
+  test('a draft belongs to its session and is not the handed-over question', () {
+    session.draft = 'half a thought';
+    session.summon(question: 'from Zoeken');
+    expect(session.takeQuestion(), 'from Zoeken');
+    expect(session.draft, 'half a thought');
+    final other = BigPMobileSession(FakeAssistantController());
+    addTearDown(other.dispose);
+    expect(other.draft, isEmpty, reason: 'another profile session starts empty');
   });
 
   testWidgets('negative control: without a card the dim parks him', (tester) async {

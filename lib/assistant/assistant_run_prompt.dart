@@ -40,6 +40,11 @@ extension _AssistantPrompt on AssistantRun {
     // cannot open a rule of its own.
     final name = clipText((context.personal?.userName ?? '').replaceAll(RegExp(r'\s+'), ' ').trim(), 40);
     final person = name.isEmpty ? 'the person using this Pleya profile' : '$name, the person using this Pleya profile';
+    // The tool is offered only with a personal source and outside a Doctor
+    // diagnosis; naming it otherwise sends the model to a tool that is not there.
+    if (!_available().keys.any((t) => t.name == 'my_watching')) {
+      return '- You talk with $person. I, me and my mean them.';
+    }
     return '- You talk with $person. I, me and my mean them. For their own watching, history or a tip for them '
         'use my_watching; watch_stats is everyone on the servers, under server account names that need not '
         'match theirs.';

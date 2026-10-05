@@ -75,7 +75,7 @@ class TvAssistantConversation extends StatelessWidget {
       fontWeight: FontWeight.w700,
       height: 1.2,
     );
-    final gap = SizedBox(height: 24 * pt);
+    final gap = SizedBox(height: 16 * pt);
 
     Widget ask({bool primary = true}) => BigPButton(
       label: t.assistant.idle.ask,

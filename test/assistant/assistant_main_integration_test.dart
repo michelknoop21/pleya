@@ -375,6 +375,71 @@ void main() {
     expect(c.tasks.single.error, 'catalog_changed');
   });
 
+  // Only a connectivity flip keeps a valid card; a replaced client, another
+  // profile or a hidden server still revokes it. The flip happens at the
+  // lookup's own await, so there is no timing involved.
+  for (final change in ['server goes offline', 'replaced client', 'profile switch', 'server hidden']) {
+    test('named title evidence: $change', () async {
+      final server = _Jobs();
+      manager.debugRegisterClientForTesting(server);
+      var profile = 'p';
+      final catalog = AssistantCatalogServices(
+        rowLoader: CatalogHomeCustomRowLoader(
+          libraries: () => const [],
+          isServerVisible: manager.isServerVisible,
+          hiddenLibraryKeys: () => const {},
+          clientFor: manager.getClient,
+        ),
+        profileId: 'p',
+        activeProfileId: () => profile,
+      );
+      final entered = Completer<void>();
+      final release = Completer<void>();
+      final models = [
+        _Model([_split()]),
+        _Model([_say('Try «Dune».')]),
+        _Model([_say('Sibling remains')]),
+      ];
+      var next = 0;
+      final c = AssistantController(
+        buildContext: (_) => AssistantToolContext(servers: manager, catalog: catalog),
+        entitlement: _Entitled(),
+        loadConfig: () async => _config,
+        modelFor: (_) => models[next++],
+        tools: [
+          _tool('find_title', (ctx, _) async {
+            entered.complete();
+            await release.future;
+            return AssistantToolResult(const {}, display: _cards(ctx));
+          }),
+        ],
+      );
+      addTearDown(c.dispose);
+      final done = c.submit('first and second');
+      await entered.future;
+      switch (change) {
+        case 'server goes offline':
+          manager.debugRegisterClientForTesting(server, online: false);
+        case 'replaced client':
+          manager.debugRegisterClientForTesting(_Jobs());
+        case 'profile switch':
+          profile = 'other';
+        case 'server hidden':
+          manager.setVisibleServerIds({});
+      }
+      release.complete();
+      await done;
+      if (change == 'server goes offline') {
+        expect(c.tasks.first.error, isNull);
+        expect(c.tasks.first.displays, hasLength(1));
+      } else {
+        expect(c.tasks.first.error, 'catalog_changed');
+        expect(c.tasks.first.displays, isEmpty);
+        expect(c.displays, isEmpty);
+      }
+    });
+  }
+
   test('named title enrichment waits for the shared operation pool', () async {
     final pool = AssistantOperationPool(1);
     final release = Completer<void>();
