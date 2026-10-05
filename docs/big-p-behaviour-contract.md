@@ -28,7 +28,7 @@ Een lager niveau overschrijft nooit een hoger niveau. Onbekend betekent wedervra
 
 ## Nultolerantie
 
-Elk van deze is een harde fout in de handmatige poort en heeft een test die faalt als het gedrag terugkomt:
+Elk van deze is een harde fout in de handmatige poort. Per fase komt er een test bij die faalt als het gedrag terugkomt (BP-01 voor 4 en 6, BP-02 voor 1, 2 en 7, BP-03 voor 3, 5 en 8):
 
 1. Antwoord over de verkeerde gebruiker.
 2. Eigen data bij een vraag over anderen.
@@ -47,14 +47,14 @@ Gecontroleerd tegen de code op 5 oktober 2026. "Mist" is wat Big P nu niet kan l
 
 | Bron | Levert | Adapter | Rechten | Mist (gecontroleerd) |
 |---|---|---|---|---|
-| Plex | bibliotheken, items, recent toegevoegd, serverhistorie met account, collecties, eigen beoordeling, watchlist | `PlexClient`, `fetchRecentlyAdded`, `PlexHistoryPlay` (`server_activity.dart`) | eigen token; historie van anderen alleen als eigenaar | `PlexHistoryPlay` draagt geen item-id; eigen beoordeling en watchlist worden niet gelezen |
-| Jellyfin, Emby | idem plus favorieten | `JellyfinClient`, `fetchFavorites`, `ExternalIds.fromJellyfinProviderIds` | eigen gebruiker; anderen alleen als beheerder | historie vraagt geen `ProviderIds` en `ProductionYear` op; favorieten niet bij Big P |
+| Plex | bibliotheken, items, recent toegevoegd, serverhistorie met account, collecties, eigen beoordeling, watchlist | `PlexClient`, `fetchRecentlyAdded`, `PlexHistoryPlay` (`server_activity.dart`) | eigen token; historie van anderen alleen als eigenaar | `PlexHistoryPlay` draagt geen item-id; eigen beoordeling en watchlist worden niet gelezen; `PlexClient.fetchFavorites` is een stub die een lege pagina geeft, dus geen favorietenbron |
+| Jellyfin, Emby | idem plus favorieten | `JellyfinClient`, `fetchFavorites`, `ExternalIds.fromJellyfinProviderIds` | eigen gebruiker; anderen alleen als beheerder | de historie-aanvraag (`_historyFields` in `jellyfin_client/parts/browse.dart`) bevat geen `ProviderIds`; favorieten zijn niet aan Big P gekoppeld |
 | Pleya Server | bibliotheken, items, recent toegevoegd, kijkhistorie voor beheerders | `PleyaServerClient`, `fetchRecentlyAdded` in `parts/browse.dart`, `/users/me` | rol op de verbinding | `fetchFavorites` is `unsupported`; geen externe id's of beoordelingen |
 | Lokaal | items, recent toegevoegd | `LocalFolderClient` | apparaat | geen accounts, dus geen "anderen" |
 | Tautulli | speelhistorie met gebruiker | `TautulliHistoryEntry` | beheerder | model heeft `rating_key` en `grandparent_rating_key`, maar geen `year` of `guid` |
 | Seerr | zoeken, ontdekken, status, quota | `SeerrClient` | eigen Seerr-gebruiker | de client kan aanvragen lijsten (`seerr_client_requests.dart`, `GET /request`); of `request_status` op de eigen Seerr-gebruiker filtert, toetst BP-02 |
 | TMDB | details, trending, aanbevolen, vergelijkbaar | `TmdbClient` (eigen sleutel) | geen gebruikersdata | `details` geeft een ruwe map; `belongs_to_collection` wordt nergens gelezen |
-| Trakt | historie, beoordelingen, watchlist | alleen uitgaand (`scrobble*`, `addToHistory`, `addRatings`, `getUserSettings`) | eigen Trakt-account | de hele leeskant |
+| Trakt | historie, beoordelingen, watchlist | `TraktClient`: schrijven (`scrobble*`, `addToHistory`, `addRatings`) en lezen van `getRatings`, `getRecommendations`, `getTrending`, `getPopular`; `getUserSettings` | eigen Trakt-account | leeskant voor historie en watchlist ontbreekt; de bestaande leesaanroepen zijn niet aan Big P gekoppeld |
 
 Eigen sleutel per bron voor "ik" (BP-02): Tautulli via `plexSelfAccountIdIn` (`lib/profiles/plex_self_account.dart`), Plex-historie alleen als eigenaar, Jellyfin/Emby via `connection.userId`, Pleya Server via `/users/me`, Trakt via `getUserSettings`. Is die sleutel er niet, dan is "ik" voor die bron onbekend en geldt de voorrangsregel hierboven.
 
@@ -66,7 +66,7 @@ Wat vastligt in code, wat het model mag kiezen, en de terugval. Tools naar huidi
 |---|---|---|---|---|---|---|
 | Wat heb ik gekeken | ik | film/serie uit de vraag | kijkhistorie plus ooit-gezien | `my_watching` | alleen zachte filters | venster noemen; sleutel onbekend: wedervraag |
 | Kijkcijfers, wat kijken anderen | anderen op account-id, nooit iedereen | uit de vraag | historie per bron | `watch_stats` | periode binnen vaste lijst | publiek onbekend: wedervraag; geen bewijsde identiteit over servers: per server tonen |
-| Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (en BP-07-pijplijn) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
+| Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (BP-07-pijplijn: gepland, bestaat nog niet) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
 | Aanbevelen samen | ik plus genoemde personen | uit de vraag | bibliotheek | `recommend_together` | persoonskeuze alleen uit treffers | meerdere treffers: knoppen |
 | Recent toegevoegd | ik (zichtbare bibliotheken) | uit de vraag | `fetchRecentlyAdded`, `addedAt` | `search_catalog` met `sort: added` | geen | bron die het venster niet haalt: als gedeeltelijk melden |
 | Titel zoeken, vergelijkbaar, trending | ik | uit de vraag | catalogus, TMDB | `search_catalog`, `find_title`, `similar_titles`, `trending_titles` | zoektermen | geen treffer: zeggen, niet raden |
