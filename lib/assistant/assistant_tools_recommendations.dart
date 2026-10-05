@@ -90,38 +90,28 @@ Future<AssistantToolOutcome> _recommendTogether(
   checkCurrent();
   final selected = <String, ServerUser>{requester.id: requester};
   final offeredBefore = {...?_offeredParticipants[ctx]};
-  final aliases = <String, String>{};
+  final people = resolvePeople(
+    names: names,
+    users: users,
+    profiles: profiles,
+    sameUserId: client.sameUserId,
+    requesterUserId: client.connection.userId,
+    initial: selected,
+  );
+  selected
+    ..clear()
+    ..addAll(people.selected);
   final ambiguous = <Map<String, Object?>>[];
-  final missing = <String>[];
-  for (final name in names) {
-    final matchingProfiles = profiles
-        .where((p) => p.displayName.trim().toLowerCase() == name.trim().toLowerCase())
-        .toList();
-    final aliasIds = {for (final p in matchingProfiles) ...p.userIds};
-    final matches = users
-        .where(
-          (u) => name.trim().toLowerCase() == 'me'
-              ? client.sameUserId(u.id, client.connection.userId)
-              : matchingProfiles.isNotEmpty
-              ? aliasIds.any((alias) => client.sameUserId(alias, u.id))
-              : u.name.trim().toLowerCase() == name.trim().toLowerCase(),
-        )
-        .toList();
-    if (matches.length == 1 && matchingProfiles.length <= 1) {
-      selected[matches.single.id] = matches.single;
-      if (matchingProfiles.isNotEmpty) aliases[name] = matches.single.id;
-    } else if (matches.isEmpty) {
-      missing.add(clipText(name, 64));
-    } else {
-      (_offeredParticipants[ctx] ??= {}).addAll(matches.map((u) => u.id));
-      ambiguous.add({
-        'name': clipText(name, 64),
-        'choices': [
-          for (final u in matches) {'user_id': u.id, 'name': clipText(u.name, 64), 'server_id': id.value},
-        ],
-      });
-    }
+  for (final entry in people.ambiguous) {
+    (_offeredParticipants[ctx] ??= {}).addAll(entry.choices.map((u) => u.id));
+    ambiguous.add({
+      'name': clipText(entry.name, 64),
+      'choices': [
+        for (final u in entry.choices) {'user_id': u.id, 'name': clipText(u.name, 64), 'server_id': id.value},
+      ],
+    });
   }
+  final missing = [for (final name in people.missing) clipText(name, 64)];
   for (final userId in explicitIds) {
     final match = users.where((u) => client.sameUserId(u.id, userId)).firstOrNull;
     if (match == null) throw const AssistantToolError('unknown_user_id');
@@ -275,7 +265,7 @@ Future<AssistantToolOutcome> _recommendTogether(
     'can_become_home_row': false,
     'home_row_unavailable_reason': 'Participant access and watch evidence cannot be replayed by a saved Home row.',
     'server_id': id.value,
-    'profile_aliases': aliases,
+    'profile_aliases': people.aliases,
     'identity_scope': 'server_user_shared_bindings_share_one_history',
     'participants': [
       for (final u in selected.values) {'user_id': u.id, 'name': clipText(u.name, 64)},

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'assistant_people.dart';
 import '../media/media_stream.dart';
 import '../services/unified_catalog/source_cursor.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
