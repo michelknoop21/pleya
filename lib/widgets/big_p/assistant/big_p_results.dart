@@ -185,6 +185,15 @@ bool bigPDisplayIsEmpty(AssistantDisplay display) => switch (display) {
 
 bool bigPHasChoices(List<AssistantDisplay> displays) => displays.any((d) => bigPChoiceCount(d) > 0);
 
+/// The list form of a title list: from 4 matches in the summoned panel, from 6
+/// on the full surface, once its wider panel no longer shows them all.
+bool bigPIsDense(int matches, {required bool compact}) => matches > (compact ? 3 : 5);
+
+/// A title list in the list form. Its follow-ups stand under the cards, in the
+/// list, so the cards keep the height (see TvAssistantConversation).
+bool bigPHasDenseMatches(List<AssistantDisplay> displays, {required bool compact}) =>
+    displays.any((d) => d is AssistantTitleMatches && bigPIsDense(d.matches.length, compact: compact));
+
 /// The title cards [display] draws when titles can be opened; each card
 /// opens its first target. Big P on the phone counts these too, for the
 /// titles still left to open.
@@ -301,7 +310,7 @@ class BigPDisplayView extends StatelessWidget {
           // five show where three did.
           // The summoned panel is dense from 4 matches; the full surface only from
           // 6, once its wider panel no longer shows them all.
-          dense: !ranked && matches.length > (compact ? 3 : 5),
+          dense: !ranked && bigPIsDense(matches.length, compact: compact),
           rank: ranked ? i + 1 : null,
           focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
           // Nothing to open and nothing to request: shown, never a dead
