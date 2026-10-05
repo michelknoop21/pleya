@@ -59,6 +59,11 @@ class BigPMobileSession extends ChangeNotifier {
   Future<void>? _refresh;
   bool _disposed = false;
 
+  /// What the user typed and has not sent. The input bar goes away while a
+  /// confirmation is open and comes back with this text; it is never
+  /// submitted by itself and lives and dies with this (per profile) session.
+  String draft = '';
+
   /// A question handed over by Zoeken; read once.
   String? takeQuestion() {
     final question = _question;
