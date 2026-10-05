@@ -70,7 +70,11 @@ class AssistantController extends ChangeNotifier {
   /// A provider saved or cleared in Instellingen moves the tile and the
   /// summon out of (or into) setup without reopening Mijn Pleya.
   final Listenable _configChanges;
-  void _onConfigChanged() => unawaited(refreshAvailability());
+  void _onConfigChanged() {
+    // Another provider or model must not inherit the earlier turns.
+    clearConversation();
+    unawaited(refreshAvailability());
+  }
 
   /// Servers load after the session starts, so the first read can see none
   /// and answer hidden. Their arrival (none to some) reads once more, so the
@@ -153,6 +157,32 @@ class AssistantController extends ChangeNotifier {
   /// Bumped by [reset]: a run that outlives its conversation (Annuleren
   /// while werken) can no longer write state or raise a card.
   int _generation = 0;
+
+  /// The last turns of this conversation, for follow-ups ("and the last 30
+  /// days?"). Working memory only: never persisted, never logged, plain text
+  /// the user saw. [reset] (the next question) keeps it; [clearConversation]
+  /// (the conversation is over) drops it.
+  ///
+  /// The whole conversation stays until it ends; a sliding window of
+  /// [maxMemoryChars] (question plus clipped answer per turn) drops the
+  /// oldest turns silently, without a summary or an extra model call.
+  static const int maxMemoryChars = 6000;
+  static const int maxAnswerChars = 1200;
+  static const int maxQuestionChars = 400;
+  final List<AssistantTurn> _conversation = [];
+
+  /// Bumped by [clearConversation]: a run that started before it cannot
+  /// write a turn afterwards.
+  int _memoryEpoch = 0;
+
+  List<AssistantTurn> get conversation => List.unmodifiable(_conversation);
+
+  /// The conversation is over (new session after idle, profile or provider
+  /// change, disposal): forget every earlier turn.
+  void clearConversation() {
+    _conversation.clear();
+    _memoryEpoch++;
+  }
 
   /// True while a [submit] run is still going, displays streamed or not.
   bool _asking = false;
@@ -291,6 +321,7 @@ class AssistantController extends ChangeNotifier {
     budget: budget,
     originalSpoilerPrompt: originalSpoilerPrompt,
     parentIntent: parentIntent,
+    memoryEpoch: _memoryEpoch,
   );
 
   bool _alive(_AssistantTaskState task) =>
@@ -453,6 +484,7 @@ class AssistantController extends ChangeNotifier {
     _configChanges.removeListener(_onConfigChanged);
     _serverChanges?.removeListener(_onServersChanged);
     _disposed = true;
+    clearConversation();
     abort();
     for (final cleanup in _onDispose) {
       cleanup();

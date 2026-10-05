@@ -40,6 +40,7 @@ extension _AssistantLoop on AssistantRun {
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
       if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
       if (_intent.describe() case final note?) {'role': 'system', 'content': note},
+      ..._memoryMessages(),
       {'role': 'user', 'content': prompt},
     ];
 

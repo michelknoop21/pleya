@@ -100,6 +100,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
       // One visit, one conversation: a run left behind on an earlier visit
       // is let go rather than shown half-finished.
       c.reset();
+      c.clearConversation();
       if (widget.screenContext != null && c.availability == AssistantAvailability.ready) {
         unawaited(_ask());
       } else {
@@ -363,6 +364,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
                     onAsk: () => unawaited(_ask()),
                     onDone: () {
                       c.reset();
+                      c.clearConversation();
                       _dismiss();
                     },
                     onCancelWork: c.reset,
