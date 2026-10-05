@@ -4,6 +4,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
@@ -118,5 +119,30 @@ void main() {
     final shown = await pump(tester, const Size(1920, 935), inLibrary: false);
     expect(shown.chips, 3, reason: 'the follow-ups are in the tree, under the cards');
     expect(shown.visible, greaterThanOrEqualTo(5));
+  });
+
+  testWidgets('the follow-ups in the list stay reachable: Ask, the chips, Klaar and the list, no focus trap', (
+    tester,
+  ) async {
+    await pump(tester, const Size(1920, 935), inLibrary: false);
+    String where() {
+      final f = FocusManager.instance.primaryFocus;
+      final ctx = f?.context;
+      if (ctx == null) return 'none';
+      if (ctx.findAncestorWidgetOfExactType<BigPChip>() != null) return 'chip';
+      return f?.debugLabel ?? '${f.runtimeType}';
+    }
+
+    // The traversal itself, not the list's key handler: what the focus order
+    // allows, whichever way the remote leaves the list.
+    final seen = <String>{where()};
+    for (final direction in [TraversalDirection.up, TraversalDirection.down]) {
+      for (var i = 0; i < 8; i++) {
+        FocusManager.instance.primaryFocus!.focusInDirection(direction);
+        await tester.pump(const Duration(milliseconds: 400));
+        seen.add(where());
+      }
+    }
+    expect(seen, containsAll(['assistant.ask', 'assistant.results', 'chip', 'Klaar']));
   });
 }

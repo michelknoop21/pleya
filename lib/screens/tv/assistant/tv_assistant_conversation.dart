@@ -345,7 +345,8 @@ class TvAssistantConversation extends StatelessWidget {
 
   /// Under the cards in the list when they can be walked through, and also
   /// when a long list of cards that cannot (not in the library) would
-  /// otherwise lose three rows of its height to them: five show, not three.
+  /// otherwise lose three rows of its height to them (three cards show on the
+  /// 1920x935 panel without this, five with it).
   bool get _followUpsInList =>
       bigPHasChoices(controller.displays) || bigPHasDenseMatches(controller.displays, compact: compact);
 
