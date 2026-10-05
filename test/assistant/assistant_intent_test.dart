@@ -168,4 +168,27 @@ void main() {
       expect(_i('Wat is er door anderen bekeken?').audience.value, AssistantAudience.others);
     });
   });
+
+  group('BP-04b', () {
+    test('"vorige week" is not the last 7 days: refused, not answered with days 7', () {
+      final i = _i('Wat is er vorige week gekeken?');
+      expect(i.previousWeek, isTrue);
+      expect(i.constrain('watch_stats', {'scope': 'period', 'days': 7}).error, 'previous_week_not_supported');
+      expect(_i('Wat is er deze week gekeken?').previousWeek, isFalse);
+      expect(_i('What was watched last week?').previousWeek, isTrue);
+    });
+
+    test('a child task inherits the previous-week flag', () {
+      final child = _i('Wat keken ze?').inheriting(_i('Wat is er vorige week gekeken?'));
+      expect(child.constrain('watch_stats', {'scope': 'period'}).error, 'previous_week_not_supported');
+    });
+
+    test('me and the others in one question: no audience fixed, the model is told to answer both', () {
+      final i = _i('Wat heb ik gekeken en wat keken de anderen?');
+      expect(i.audience.known, isFalse);
+      expect(i.mixedAudience, isTrue);
+      expect(i.describe(), contains('more than one audience'));
+      expect(_i('Wat keken de anderen?').mixedAudience, isFalse);
+    });
+  });
 }
