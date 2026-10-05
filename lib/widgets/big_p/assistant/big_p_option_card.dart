@@ -22,7 +22,7 @@ import 'big_p_title_facts.dart';
 
 /// The rounded status label at the right of a card (38-motion-7).
 class BigPStatusPill extends StatelessWidget {
-  const BigPStatusPill({super.key, required this.label, this.color, this.dense = false});
+  const BigPStatusPill({super.key, required this.label, this.color, this.dense = false, this.maxLines = 1});
 
   final String label;
   final Color? color;
@@ -30,6 +30,9 @@ class BigPStatusPill extends StatelessWidget {
   /// No vertical padding: on a card's second line (BIGP-UI1) the label is
   /// as tall as the text beside it, so the card keeps its height.
   final bool dense;
+
+  /// A narrow card lets a long label wrap instead of cutting it.
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +43,7 @@ class BigPStatusPill extends StatelessWidget {
       decoration: BoxDecoration(color: c.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20 * pt)),
       child: Text(
         label,
-        maxLines: 1,
+        maxLines: maxLines,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: c, fontSize: TvHig.caption2 * pt),
       ),
@@ -63,6 +66,35 @@ Widget bigPSecondLine(double pt, Widget line, Widget? pill) => pill == null
               child: pill,
             ),
           ],
+        ),
+      );
+
+/// A match card's second line: the line and the status label apart at the
+/// ends of one row when both fit, the label under the line when they do not,
+/// so a narrow card (the iPad's two columns, a large text size) wraps rather
+/// than cutting the year or the library.
+Widget bigPWrapSecondLine(double pt, Widget line, Widget? pill) => pill == null
+    ? line
+    : LayoutBuilder(
+        builder: (context, box) => SizedBox(
+          // Full width, or spaceBetween has no ends to put them at.
+          width: box.maxWidth,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12 * pt,
+            runSpacing: 4 * pt,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth),
+                child: line,
+              ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth),
+                child: pill,
+              ),
+            ],
+          ),
         ),
       );
 

@@ -92,7 +92,11 @@ class BigPMatchCard extends StatelessWidget {
     final pt = BigPScale.of(context);
     final tk = tokens(context);
     final (status, statusColor) = _status;
-    final pill = status == null ? null : BigPStatusPill(label: status, color: statusColor, dense: compact);
+    // On a phone or tablet a narrow card wraps its second line, not cuts it.
+    final phone = BigPScale.minTouch(context) > 0;
+    final pill = status == null
+        ? null
+        : BigPStatusPill(label: status, color: statusColor, dense: compact, maxLines: phone ? 2 : 1);
     final low = match.confidence == 'low';
     final plot = _plot;
     // The facts take the plot's lines, so a card with them is no taller.
@@ -204,11 +208,11 @@ class BigPMatchCard extends StatelessWidget {
                           style: TextStyle(color: tk.text, fontSize: TvHig.body * pt),
                         ),
                       SizedBox(height: 4 * pt),
-                      bigPSecondLine(
+                      (phone ? bigPWrapSecondLine : bigPSecondLine)(
                         pt,
                         Text(
                           [_kind, if (compact) ?match.year?.toString(), if (low) t.assistant.match.maybe].join(' · '),
-                          maxLines: 1,
+                          maxLines: phone ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                           style: muted,
                         ),

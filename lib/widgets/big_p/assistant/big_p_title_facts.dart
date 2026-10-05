@@ -61,6 +61,8 @@ class BigPTitleFacts extends StatelessWidget {
     final pt = BigPScale.of(context);
     final tk = tokens(context);
     final p = bigPFactParts(facts);
+    // A phone or tablet wraps a long facts line; on TV one line is the rule.
+    final lines = BigPScale.minTouch(context) > 0 ? 2 : 1;
     final style = TextStyle(color: tk.text.withValues(alpha: 0.65), fontSize: TvHig.caption2 * pt, height: 1.2);
     final first = p.age != null || p.meta.isNotEmpty || p.score != null;
     final second = services && p.services != null;
@@ -75,7 +77,7 @@ class BigPTitleFacts extends StatelessWidget {
             children: [
               if (p.age case final age?) ...[_AgeBadge(label: age, style: style), SizedBox(width: 10 * pt)],
               Flexible(
-                child: Text(p.meta.join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+                child: Text(p.meta.join(' · '), maxLines: lines, overflow: TextOverflow.ellipsis, style: style),
               ),
               if (p.score case final score?) ...[
                 SizedBox(width: p.meta.isEmpty ? 0 : 12 * pt),
@@ -88,7 +90,7 @@ class BigPTitleFacts extends StatelessWidget {
         ],
         if (second) ...[
           SizedBox(height: 4 * pt),
-          Text(p.services!, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+          Text(p.services!, maxLines: lines, overflow: TextOverflow.ellipsis, style: style),
         ],
       ],
     );
