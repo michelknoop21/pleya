@@ -34,6 +34,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 FILES=(
   "CLAUDE.md"
   "AGENTS.md"
+  "docs/ROADMAP.md"
   "docs/RELEASES.md"
   "docs/DECISIONS.md"
   "docs/CHANGELOG.md"
