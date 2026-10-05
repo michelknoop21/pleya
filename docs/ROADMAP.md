@@ -39,7 +39,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster: ongevensterde kijklogsleutels in `my_watching` en het venster benoemd; kijklog-migratie (titel en externe id's in `MediaInteractions`) volgt als BP-03c | Draft-PR, gestapeld op BP-03a |
 | BP-03c | P0 | Big P | Kijklog-migratie: titel en externe id's in `MediaInteractions` zodat een kopie op een andere server herkend wordt; tweede Plex-nep, Pleya-eigen-id, Emby-test | Gepland |
 | BP-04a | P0 | Big P | Intent met herkomst per veld (publiek, soort, periode), parser NL/EN, afdwingen op tool-argumenten, `assistant_run.dart` gesplitst | PR #193, adversariële review en scoped re-review gedaan, bevindingen hersteld; wacht op CI |
-| BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Gepland |
+| BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Deels: periode "vorige week" geweigerd, gemengd publiek gemeld aan het model; rest gepland |
 | BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland |
@@ -100,6 +100,8 @@ Open gaten van BP-02 (Michel, 5 oktober 2026: per gat beslist waar het hoort):
 - Recht dat tijdens één leesactie wordt ingetrokken en teruggezet: BP-04, als run-brede rechtenstempel naast de bestaande controle voor en na het wachten.
 - Het model kiest `audience` nog niet zelf: BP-04 (intent).
 - Testgaten uit de review: Tautulli met `audience: others` is gedekt in BP-03a. Emby in `watch_stats`, randgevallen van `resolvePeople` en het Plex-eigenaar-id 1: BP-03c.
+
+BP-04b nulmeting (14 vragen, eerste toolaanroep, beide modellen): 9 gelijk en goed; gaten: gemengde vraag verdween stil tot `my_watching`, "vorige week" werd `days: 7`, "mijn bibliotheken deze week" kreeg geen route (BP-05), "films nu" kreeg geen terugval. Eerste twee gedicht in de intent; wedervraag-UI, run-brede rechtenstempel en terugval voor soort bij `now` open.
 
 BP-04a: bekend en bewust laten staan: een gemengde vraag in vreemde zinsbouw ("wat hebben de anderen en ik gekeken") geeft "anderen" in plaats van onbekend (de smallere richting); een kindtaak erft publiek en periode van de vraag, nooit de soort; `search_catalog` en `recommend_together` hebben een eigen `kind` en vallen onder het vangnet `ctx.recommend`, niet onder `constrain` (BP-04b).
 

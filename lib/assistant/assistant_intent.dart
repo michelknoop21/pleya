@@ -57,6 +57,7 @@ final _daysWord = RegExp(r'\b(\d{1,2})\s*(?:dagen|days)\b');
 final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 hours)\b');
 // "Last week" and "vorige week" are the week before, not the past seven days.
 final _week = RegExp(r'\b(deze week|afgelopen week|laatste week|this week|past week)\b');
+final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
 /// What a question is about, fixed by code from what the user wrote, with the
@@ -67,6 +68,8 @@ class AssistantIntent {
     this.audience = const IntentField.unknown(),
     this.kind = const IntentField.unknown(),
     this.days = const IntentField.unknown(),
+    this.previousWeek = false,
+    this.mixedAudience = false,
   });
 
   final IntentField<AssistantAudience> audience;
@@ -74,6 +77,14 @@ class AssistantIntent {
 
   /// A period in days (1-31), as watch_stats takes it.
   final IntentField<int> days;
+
+  /// The question names the calendar week before this one, which watch_stats
+  /// (a window of the last N days) cannot express.
+  final bool previousWeek;
+
+  /// The question asks about more than one audience at once; neither is fixed,
+  /// and the model must not answer only one of them.
+  final bool mixedAudience;
 
   static const unknown = AssistantIntent();
 
@@ -105,6 +116,8 @@ class AssistantIntent {
     };
     final days = periods.length == 1 ? periods.single : null;
     return AssistantIntent(
+      previousWeek: _previousWeek.hasMatch(p),
+      mixedAudience: readings.length > 1,
       audience: audience == null ? const IntentField.unknown() : IntentField(audience, AssistantFieldSource.explicit),
       kind: kind == null ? const IntentField.unknown() : IntentField(kind, AssistantFieldSource.explicit),
       days: days == null || days < 1 || days > 31
@@ -122,6 +135,8 @@ class AssistantIntent {
     audience: audience.known ? audience : (parent.audience.explicit ? parent.audience : audience),
     kind: kind,
     days: days.known ? days : (parent.days.explicit ? parent.days : days),
+    previousWeek: previousWeek || parent.previousWeek,
+    mixedAudience: mixedAudience,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -145,8 +160,11 @@ class AssistantIntent {
           if (out['scope'] == 'now') return (args: out, error: 'media_needs_period');
           out['media'] = kind.value == MediaKind.movie ? 'movie' : 'show';
         }
+        if (previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (days.explicit && out['scope'] == 'period') out['days'] = days.value;
       case 'my_watching':
+        // Also the tip tool, so no refusal here: the describe() note stops its
+        // unwindowed history from passing as "last week".
         if (audience.explicit && audience.value != AssistantAudience.me) return (args: out, error: 'use_watch_stats');
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
     }
@@ -156,8 +174,20 @@ class AssistantIntent {
   /// A system note for the model: what is already fixed, so it neither asks nor
   /// widens. Null when nothing is.
   String? describe() {
-    if (!any) return null;
-    return 'Fixed by Pleya from the user\'s words (do not change or ask again): '
-        '${[if (audience.explicit) 'audience ${audience.value!.name}', if (kind.explicit) 'only ${kind.value == MediaKind.movie ? 'films' : 'series'}', if (days.explicit) 'last ${days.value} days'].join(', ')}.';
+    final fixed = [
+      if (audience.explicit) 'audience ${audience.value!.name}',
+      if (kind.explicit) 'only ${kind.value == MediaKind.movie ? 'films' : 'series'}',
+      if (days.explicit) 'last ${days.value} days',
+    ];
+    final notes = [
+      if (fixed.isNotEmpty) 'Fixed by Pleya from the user\'s words (do not change or ask again): ${fixed.join(', ')}.',
+      if (mixedAudience)
+        'The question covers more than one audience (for example the asker and the others): '
+            'answer each part with its own tool call and say so, never only one part.',
+      if (previousWeek)
+        'The question is about the calendar week before this one, which the tools cannot give: '
+            'say so and offer the last 7 days instead; do not present another window as that week.',
+    ];
+    return notes.isEmpty ? null : notes.join(' ');
   }
 }
