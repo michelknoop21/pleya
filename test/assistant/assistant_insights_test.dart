@@ -59,7 +59,10 @@ class _Jf implements JellyfinClient {
   Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => searchable;
   final String machine;
   final String name;
-  final bool admin;
+  bool admin;
+
+  /// Runs while the active sessions are being read.
+  void Function()? onSessions;
   final List<(String id, String title, int year)> films;
   final Map<String, ExternalIds> ids;
   @override
@@ -142,7 +145,10 @@ class _Jf implements JellyfinClient {
   }
 
   @override
-  Future<List<JellyfinActiveSession>> listActiveSessions() async => sessions;
+  Future<List<JellyfinActiveSession>> listActiveSessions() async {
+    onSessions?.call();
+    return sessions;
+  }
 
   @override
   Future<List<ServerUser>> listUsers() async => users;
@@ -688,6 +694,28 @@ void main() {
       expect((session['user']! as String).length, lessThanOrEqualTo(41));
       expect(session['user'], isNot(contains('\n')));
       expect((result.display! as AssistantWatchStats).sessions.single.title, 'Severance');
+    });
+
+    test('administration revoked while the servers answer: nothing is published', () async {
+      const session = (
+        userName: 'Alex',
+        title: 'Severance',
+        episode: null,
+        progressPercent: 30,
+        paused: false,
+        transcoding: null,
+        device: 'TV',
+      );
+      final control = _Jf('woon', 'Woonkamer', sessions: const [session]);
+      final ok = await _tool('watch_stats').run(_ctx([control]), ServerId('woon'), {'scope': 'now'});
+      expect((ok as AssistantToolResult).data['sessions'], hasLength(1), reason: 'control: still administered');
+
+      final jf = _Jf('woon', 'Woonkamer', sessions: const [session]);
+      jf.onSessions = () => jf.admin = false;
+      await expectLater(
+        _tool('watch_stats').run(_ctx([jf]), ServerId('woon'), {'scope': 'now'}),
+        throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'not_allowed')),
+      );
     });
 
     test('Jellyfin period: last plays in the period, series by name, users by account', () async {

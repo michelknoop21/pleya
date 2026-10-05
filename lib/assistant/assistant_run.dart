@@ -479,5 +479,7 @@ class AssistantRun {
 
   /// find_media grids whose titles a later call acted on: a lookup on the way
   /// to an action, so the action is the result, not the grid.
-  final Map<AssistantMediaGrid, Set<String>> _lookups = {};
+  /// Each entry is (server, item id): backend ids are only unique per
+  /// server, so an action on A's item `42` must not take B's `42` grid.
+  final Map<AssistantMediaGrid, Set<(String?, String)>> _lookups = {};
 }

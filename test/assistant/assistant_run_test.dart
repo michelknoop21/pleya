@@ -9,6 +9,9 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
+import 'package:pleya/media/media_backend.dart';
+import 'package:pleya/media/media_item.dart';
+import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/services/multi_server_manager.dart';
@@ -25,6 +28,9 @@ class _Server {
   String filmsTitle = 'Films';
   bool online = true;
   bool failPermissions = false;
+
+  /// How long a mutating request takes to answer.
+  Duration writeDelay = Duration.zero;
 
   /// Goes offline as soon as the first write arrives.
   bool dropOnWrite = false;
@@ -105,6 +111,7 @@ class _Server {
         online = false;
         throw http.ClientException('connection reset');
       }
+      if (writeDelay > Duration.zero) await Future<void>.delayed(writeDelay);
       writes.add('${request.method} $path');
       bodies.add(request.body.isEmpty ? null : jsonDecode(request.body));
       if (role != 'owner' && role != 'admin') {
@@ -699,6 +706,91 @@ void main() {
     final params = (scan['function'] as Map)['parameters'] as Map;
     expect(((params['properties'] as Map)['server_id'] as Map)['enum'], ['srv-1']);
     expect(model.toolNamesOffered(0), isNot(contains('refresh_metadata')), reason: 'Pleya Server has no item refresh');
+  });
+
+  test('without a personal source the prompt does not send the model to my_watching', () async {
+    final m = await _Server().manager();
+    final model = _Model(AssistantProviderKind.ollamaServer, [_say('Hoi')]);
+    await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m, personal: null),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+    ).ask('Geef me een kijktip');
+    final system = ((model.requests.first['messages'] as List).first as Map)['content'] as String;
+
+    expect(model.toolNamesOffered(0), isNot(contains('my_watching')));
+    expect(system, isNot(contains('my_watching')), reason: 'a tool the model cannot call is not named');
+    expect(system, contains('I, me and my mean them'));
+  });
+
+  test('a scan watch starts when the scan is sent, not when its response has arrived', () async {
+    final server = _Server()..writeDelay = const Duration(milliseconds: 400);
+    final before = DateTime.now();
+    final (result, _, _) = await run(scanScript, server: server);
+    final job = result.actions.single.job!;
+    // A scan that ends inside the request time must still count as this one.
+    expect(job.startedAt.difference(before), lessThan(const Duration(milliseconds: 200)));
+  });
+
+  group('a find_media grid and an action on the same item id', () {
+    // Backend ids are unique per server only: Plex ratingKeys repeat across servers.
+    Future<AssistantRunResult> actOn({required String? gridServer}) async {
+      final m = await _Server().manager();
+      final model = _Model(AssistantProviderKind.ollamaServer, [
+        _call('find_media', {'server_id': 'srv-1'}),
+        _call('refresh_metadata', {'server_id': 'srv-1', 'item_id': '42'}, id: 'call_2'),
+        _say('Klaar.'),
+      ]);
+      AssistantTool tool(String name, AssistantToolResult Function() result) => AssistantTool(
+        name: name,
+        description: name,
+        risk: AssistantToolRisk.read,
+        properties: const {},
+        serves: (_, _) => true,
+        run: (_, _, _) async => result(),
+      );
+      final item = MediaItem(
+        id: '42',
+        backend: MediaBackend.plex,
+        kind: MediaKind.movie,
+        title: 'Dune',
+        serverId: gridServer,
+      );
+      return AssistantRun(
+        model: model.client(),
+        context: AssistantToolContext(servers: m),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        tools: [
+          tool(
+            'find_media',
+            () => AssistantToolResult(const {}, display: AssistantMediaGrid([(item: item, group: null)])),
+          ),
+          tool(
+            'refresh_metadata',
+            () => const AssistantToolResult(
+              {'ok': true},
+              record: AssistantActionRecord(
+                kind: AssistantActionKind.refreshMetadata,
+                serverName: 'Zolder',
+                subject: 'Dune',
+              ),
+            ),
+          ),
+        ],
+      ).ask('x');
+    }
+
+    test('another server\'s item with the same id keeps its grid', () async {
+      final result = await actOn(gridServer: 'other');
+      expect(result.displays.whereType<AssistantMediaGrid>(), hasLength(1));
+    });
+
+    test('the same server\'s item (control) is consumed by the action', () async {
+      final result = await actOn(gridServer: 'srv-1');
+      expect(result.displays.whereType<AssistantMediaGrid>(), isEmpty);
+    });
   });
 }
 

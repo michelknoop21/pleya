@@ -519,6 +519,19 @@ void main() {
     expect(action.record.job?.serverId, _id);
     expect(action.record.job?.libraryId, 'series');
   });
+  test('the scan watch starts when the confirmed scan is sent, not when its card was made', () async {
+    final f = _Fixture();
+    final data = await f.diagnose();
+    final proposal = Map<String, Object?>.from(
+      (data['actions'] as List).firstWhere((a) => a['tool'] == 'scan_library') as Map,
+    );
+    final action = await _tool('scan_library').run(f.ctx, _id, proposal) as AssistantPendingAction;
+    final cardMade = DateTime.now();
+    // The user takes a while; another scan may end in the meantime.
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    await action.execute();
+    expect(action.record.job!.startedAt.isAfter(cardMade.add(const Duration(milliseconds: 40))), isTrue);
+  });
   test('complete compatible evidence distinguishes gap from proved missing aired episode', () async {
     final f = _Fixture();
     final data = await f.diagnose();
