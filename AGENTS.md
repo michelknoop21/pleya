@@ -24,7 +24,7 @@ section's shape.
 - Before implementation starts, map the task to an existing roadmap work-package ID. PRs and handoffs state `Roadmap: <ID>`. If work fits no ID or changes priority/order/scope, stop and record a roadmap deviation first; product choices require Michel's decision.
 - Prioriteit, WIP-limiet en uitzonderingen staan in `docs/ROADMAP.md` (Roadmap rules); dit bestand herhaalt ze niet.
 - Security, data-loss, regression and release-blocking hotfixes may interrupt the order; reconcile the roadmap and owning register in the same PR or the next documentation commit.
-- Wie een werkpakket van status laat veranderen, werkt `docs/ROADMAP.md` bij in dezelfde PR.
+- Whoever changes a work package's status updates `docs/ROADMAP.md` in the same PR.
 - The roadmap owns order, not detailed item status. Existing registers and masterplans remain the status authority for their domains.
 
 ## Review and release bundling

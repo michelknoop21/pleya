@@ -8,7 +8,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 ## Current direction
 
 0. Big P (BP-00 t/m BP-09) is de primaire stroom: eerst begrijpen wie, wat en welke data bedoeld is, dan gecontroleerd antwoorden. Volgorde en detail: sectie Big P (na Work packages); de Execution phases hieronder gelden voor de rest van het product.
-1. Reconcile the current source/release/status baseline.
+1. Reconcile the current source/release/status baseline. Items 1-6 resume when Michel lifts the Big P pause (section Big P).
 2. Close correctness, permission/profile and concrete library bugs in the existing app.
 3. Finish only the currently valid UI gaps; do not rebuild already-landed surfaces.
 4. Run real-account, simulator and physical-device acceptance for the chosen release scope.
@@ -20,7 +20,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 - Every implementation task must name one roadmap work-package ID before code starts.
 - PRs and handoffs use `Roadmap: <ID>`.
 - Work that does not fit an ID does not silently become a new side track. First record `Roadmap deviation: <approved decision/proposal>`.
-- Open P0 work precedes P1/P2/P3 unless lower-priority work is demonstrably independent and does not delay review/release of the primary stream.
+- Open P0 work precedes P1/P2/P3 unless lower-priority work is demonstrably independent and does not delay review/release of the primary stream. Exception: Michel's decision of 5 October 2026 (section Big P) makes BP-00..BP-09 the single primary stream, whatever their P-level, and pauses the other open P0 items except hotfixes.
 - WIP limit: one primary implementation stream plus at most one truly independent parallel implementation. Design/spec work may run ahead only if it does not create an unreviewed implementation pile.
 - Security, data-loss, regression and release-blocking hotfixes may interrupt the order. Reconcile this roadmap and the owning register in the same PR or the next documentation commit.
 - This roadmap owns order; domain registers own detailed state. Do not create a second detailed status administration here.
@@ -32,7 +32,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 | ID | P | Track | Work package | Current state |
 | --- | --- | --- | --- | --- |
-| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`, PR #175) | Akkoord Michel 5 okt; contract merget vóór BP-01 |
+| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`, PR #175) | Akkoord Michel 5 okt; contract (PR #175) merget vóór BP-01 |
 | BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gepland |
 | BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Gepland |
 | BP-03 | P0 | Big P | Mediasleutel, titelkoppeling en kijkcijfers; historie tegenover ooit gezien | Gepland |
@@ -197,8 +197,8 @@ Payment entitlement never substitutes for media-server administration rights.
 | 1-2 Oct | Roadmap authority, current baseline, per-platform/window coverage map, A-01/PR111 gates | decisions/status only |
 | 5-9 Oct | Big P: BP-00, BP-09 landen, BP-01 (primair) | A-02 permissions/profiles (enige onafhankelijke stroom); issue #112 en de rest van de UI pauzeren |
 | 12-16 Oct | Big P: BP-02 t/m BP-04 (primair); acceptatie van de rest hervat zodra de pauze opgeheven is | A-02 |
-| 19-23 Oct | Big P: BP-05 en build 1; release bundle and actual distribution if gates pass, in overleg met Michel | website/release copy aligned to that build |
-| 26-30 Oct | choose and close one next product increment | one released Server/Web/e-book package; Requests A-19/A-20 or Audiobooks D-04/D-05 may run as design/spec work when they do not delay the primary stream |
+| 19-23 Oct | Big P: BP-05 en build 1 (alleen wat erin zit) | A-02; A-18, REG-03 en E-02 blijven gepauzeerd |
+| 26-30 Oct | Big P: BP-06 t/m BP-08 en build 2; daarna beslist Michel of de pauze opgeheven wordt | A-02; Requests A-19/A-20, Audiobooks D-04/D-05 en overige increments wachten op het opheffen van de pauze |
 
 These are work windows, not guaranteed completion dates. Missing evidence or a regression moves the window; evidence is not planned away. They do not promise delivery of all 46 Web designs or the full Server completion scope within October.
 
