@@ -150,6 +150,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
       clientFor: manager.getClient,
       seerr: () => seerr?.client,
       tmdbKey: () => AssistantProviderStore.current?.tmdbKey,
+      tmdbBase: () => AssistantProviderStore.current?.baseUrl,
       online: () => AssistantProviderStore.current?.onlineFacts ?? true,
     ),
     kidsAges: KidsAgesStore().read,

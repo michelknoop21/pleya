@@ -71,6 +71,16 @@ class OllamaFakeServer {
         } else {
           return _json({'error': 'discover tool not offered'}, status: 400);
         }
+      } else if (prompt == 'Wat is er trending?') {
+        // trending_titles without Seerr: TMDB behind the fixture, eight titles
+        // as match cards, past the point where the TV list goes dense (BP-09).
+        if (replies.isNotEmpty) {
+          message = {'role': 'assistant', 'content': 'Dit is er populair.'};
+        } else if (names.contains('trending_titles')) {
+          message = _call('trending-space', 'trending_titles', {'kind': 'all'});
+        } else {
+          return _json({'error': 'trending tool not offered'}, status: 400);
+        }
       } else if (prompt == 'Zoek Aurora.' || prompt == 'Zoek Basalt.') {
         final title = prompt == 'Zoek Aurora.' ? 'Aurora' : 'Basalt';
         if (replies.isNotEmpty) {
