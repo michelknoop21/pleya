@@ -3,7 +3,7 @@ target: tvos-sim
 # Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
 # BP-09: trending_titles without Seerr, answered by the fixture's TMDB stand-in
 # (TmdbClient.verifyBase, read off the Ollama fixture URL): eight titles as
-# match cards, so the full surface goes dense. Three of them are in the
+# match cards, so the full surface goes dense. Four of them are in the
 # catalog.mixed.v1 library, the rest are not. Real settings UI (provider, then
 # the TMDB key) and native idb input.
 setup:
