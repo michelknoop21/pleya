@@ -731,6 +731,57 @@ void main() {
       expect(result.data, isNot(contains('partial')));
     });
 
+    test(
+      'Jellyfin period: media movie keeps films only, exclude_users leaves accounts out of answer and card',
+      () async {
+        final inside = DateTime.now().subtract(const Duration(days: 1));
+        _Jf server() => _Jf(
+          'woon',
+          'Woonkamer',
+          users: const [
+            ServerUser(id: 'u1', name: 'Alex', role: ServerUserRole.admin, allLibraries: true),
+            ServerUser(id: 'u2', name: 'Sam', role: ServerUserRole.member, allLibraries: true),
+          ],
+          played: {
+            'u1': [
+              _played('m1', 'Dune', inside),
+              _played('e1', 'Half Loop', inside, series: 'Severance'),
+              _played('e2', 'Good News', inside, series: 'Severance'),
+            ],
+            'u2': [_played('m1', 'Dune', inside), _played('m2', 'Barbie', inside)],
+          },
+        );
+        Future<AssistantToolResult> ask(Map<String, Object?> args) async =>
+            await _tool('watch_stats').run(_ctx([server()]), ServerId('woon'), {'scope': 'period', 'days': 7, ...args})
+                as AssistantToolResult;
+        List<String> titles(AssistantToolResult r) => [
+          for (final t in (r.display! as AssistantWatchStats).titles) t.title,
+        ];
+
+        final all = await ask({});
+        expect(titles(all), contains('Severance'));
+
+        final films = await ask({'media': 'movie'});
+        expect(titles(films), unorderedEquals(['Dune', 'Barbie']), reason: 'the card holds no series');
+        expect(films.data['plays'], 3, reason: 'two Dune plays and Barbie, no episodes');
+        final users = (films.data['top_users']! as List).cast<Map<String, Object?>>();
+        expect(users.map((u) => u['user']), ['Sam', 'Alex'], reason: 'plays count films only');
+
+        final friends = await ask({
+          'media': 'movie',
+          'exclude_users': ['alex'],
+        });
+        expect(titles(friends), unorderedEquals(['Dune', 'Barbie']));
+        expect(friends.data['plays'], 2);
+        expect((friends.data['top_users']! as List).cast<Map<String, Object?>>().single['user'], 'Sam');
+
+        await expectLater(
+          _tool('watch_stats').run(_ctx([server()]), ServerId('woon'), {'scope': 'period', 'media': 'book'}),
+          throwsA(isA<AssistantToolError>()),
+        );
+      },
+    );
+
     test('Jellyfin period: users and plays per user are capped', () async {
       final day = DateTime.now();
       final jf = _Jf(

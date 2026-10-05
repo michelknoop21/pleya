@@ -336,7 +336,12 @@ Future<_ServerPlays?> _pleyaPlays(ServerId id, PleyaServerClient ps, int days) a
 /// Top titles and users over every server that answered. A title is one
 /// entry by identity ([_titleKey]); a person is one entry by name across
 /// servers, while two accounts on one server that share a name stay two.
-Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) async {
+Future<AssistantToolResult> _watchedPeriod(
+  AssistantToolContext ctx,
+  int days, {
+  String? media,
+  Set<String> excluded = const {},
+}) async {
   final read = await _perServer(ctx, (id) => _playsOn(ctx, id, days));
   final answered = [
     for (final (id, r) in read)
@@ -347,7 +352,13 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
       if (r == null) id,
   ];
   final served = [for (final (_, r) in read) ?r];
-  final plays = [for (final r in served) ...r.plays];
+  final plays = [
+    for (final r in served)
+      for (final p in r.plays)
+        if ((media == null || p.titleKey.startsWith('show:') == (media == 'show')) &&
+            !excluded.contains(p.user.trim().toLowerCase()))
+          p,
+  ];
   final hours = served.isNotEmpty && served.every((r) => r.hours);
   // A server that ran out of time, or whose history hit the cap, may miss
   // plays: the card says so rather than ranking as if complete.
@@ -413,7 +424,7 @@ Future<AssistantToolResult> _watchedPeriod(AssistantToolContext ctx, int days) a
     },
     display: _onceInRun(
       ctx,
-      'period/$days',
+      'period/$days/${media ?? 'all'}/${(excluded.toList()..sort()).join(',')}',
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,

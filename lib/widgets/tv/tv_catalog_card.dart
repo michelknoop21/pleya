@@ -63,6 +63,8 @@ class TvCatalogCard extends StatefulWidget {
     this.onBack,
     this.onFocusChange,
     this.semanticLabel,
+    this.aspectRatio = TvCatalogLayout.posterAspectRatio,
+    this.overlay,
   });
 
   /// Resolved by the grid from the viewport, never assumed: see
@@ -130,6 +132,16 @@ class TvCatalogCard extends StatefulWidget {
   /// "decoratieve backdrops en clearlogo's worden uitgesloten van dubbele
   /// semantiek", which without it says the title and the year twice.
   final String? semanticLabel;
+
+  /// Shape of the artwork box. 2:3 everywhere except Verder kijken, whose
+  /// episode stills and film backdrops are 16:9 and cropping them into a
+  /// poster slot shows the wrong part of the picture (mockup 38 D).
+  final double aspectRatio;
+
+  /// Text drawn on the artwork instead of a footer under it. Non-null drops the
+  /// footer, so the card is exactly its artwork block tall
+  /// ([TvCatalogLayout.wideCardHeight]).
+  final Widget? overlay;
 
   @override
   State<TvCatalogCard> createState() => _TvCatalogCardState();
@@ -235,25 +247,28 @@ class _TvCatalogCardState extends State<TvCatalogCard> {
                       topRightMarker: widget.topRightMarker,
                       bottomLeftMarker: widget.bottomLeftMarker,
                       progressFraction: widget.progressFraction,
+                      aspectRatio: widget.aspectRatio,
+                      overlay: widget.overlay,
                     ),
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.cardContentInset(scale)),
-                child: _Footer(
-                  title: widget.title,
-                  // `instanceOrNull`, not `.instance`: this card is built by
-                  // widget tests that never bootstrap the settings singleton,
-                  // and the pref's own default (`true`, unchanged behavior)
-                  // is the right answer for "not initialized yet" regardless.
-                  showTitle: SettingsService.instanceOrNull?.read(SettingsService.tvShowTitlesUnderPosters) ?? true,
-                  meta: widget.meta,
-                  tertiary: widget.tertiary,
-                  scale: scale,
-                  tk: tk,
+              if (widget.overlay == null)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: TvCatalogLayout.cardContentInset(scale)),
+                  child: _Footer(
+                    title: widget.title,
+                    // `instanceOrNull`, not `.instance`: this card is built by
+                    // widget tests that never bootstrap the settings singleton,
+                    // and the pref's own default (`true`, unchanged behavior)
+                    // is the right answer for "not initialized yet" regardless.
+                    showTitle: SettingsService.instanceOrNull?.read(SettingsService.tvShowTitlesUnderPosters) ?? true,
+                    meta: widget.meta,
+                    tertiary: widget.tertiary,
+                    scale: scale,
+                    tk: tk,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -271,8 +286,12 @@ class _ArtworkBox extends StatelessWidget {
     required this.topRightMarker,
     required this.bottomLeftMarker,
     required this.progressFraction,
+    required this.aspectRatio,
+    required this.overlay,
   });
 
+  final double aspectRatio;
+  final Widget? overlay;
   final double scale;
   final bool isFocused;
   final Widget artwork;
@@ -288,7 +307,7 @@ class _ArtworkBox extends StatelessWidget {
     final fraction = progressFraction;
 
     return AspectRatio(
-      aspectRatio: TvCatalogLayout.posterAspectRatio,
+      aspectRatio: aspectRatio,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -303,6 +322,7 @@ class _ArtworkBox extends StatelessWidget {
             opacity: isFocused ? 1 : 0,
             child: ColoredBox(color: Colors.white.withValues(alpha: TvCatalogLayout.cardFocusArtworkLift)),
           ),
+          if (overlay != null) Positioned(left: 0, right: 0, bottom: 0, child: overlay!),
           if (topLeftMarker != null) Positioned(top: inset, left: inset, child: topLeftMarker!),
           if (topRightMarker != null) Positioned(top: inset, right: inset, child: topRightMarker!),
           if (bottomLeftMarker != null) Positioned(bottom: inset, left: inset, child: bottomLeftMarker!),
