@@ -235,26 +235,37 @@ Future<AssistantToolResult> _watchedPeriod(
     (r) => r.extra['partial'] == true || r.extra.keys.any((k) => k.startsWith('capped_at_plays')),
   );
 
-  final titles = <String, ({String title, int plays, Set<String> viewers, Set<ServerId> servers, bool show})>{};
+  // A title is one entry when its sources are the same title: the same server's
+  // own plays, or another server's only on a match (see assistantMediaMatch).
+  // A merge on the title alone is a guess and is said so, never ranked as complete.
+  final clusters = clusterByMediaKey(
+    plays,
+    keyOf: (p) => AssistantMediaKey(bucket: p.titleKey, year: p.year, ids: p.ids ?? const ExternalIds()),
+    serverOf: (p) => p.server,
+  );
   final users = <String, ({String name, int plays, int seconds})>{};
   // One person per account key. Only a key that is global (a plex.tv id) joins
   // servers; every other id is its server's own. A name or a nickname is
   // never evidence, so two same-named accounts stay two rows.
   String person(_Play p) => p.account?.toString() ?? '${p.server}|${p.userKey}';
   for (final p in plays) {
-    final t = titles[p.titleKey];
-    titles[p.titleKey] = (
-      title: t?.title ?? p.title,
-      plays: (t?.plays ?? 0) + 1,
-      viewers: {...?t?.viewers, p.user},
-      servers: {...?t?.servers, ServerId(p.server)},
-      show: p.titleKey.startsWith('show:'),
-    );
     final key = person(p);
     final u = users[key];
     users[key] = (name: u?.name ?? p.user, plays: (u?.plays ?? 0) + 1, seconds: (u?.seconds ?? 0) + p.seconds);
   }
-  final ranked = titles.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
+  final titles = [
+    for (final c in clusters)
+      (
+        title: c.members.first.title,
+        plays: c.members.length,
+        viewers: {for (final p in c.members) p.user},
+        servers: {for (final s in c.servers) ServerId(s)},
+        show: c.members.first.titleKey.startsWith('show:'),
+        proof: c.crossServer ? c.weakest : null,
+      ),
+  ];
+  final guessed = titles.where((t) => t.proof == AssistantMediaProof.titleOnly).length;
+  final ranked = titles..sort((a, b) => b.plays.compareTo(a.plays));
   // The titles the card shows open their library copy, as a found title does.
   final targets = await Future.wait([
     for (final t in ranked.take(_watchTargets)) _watchTarget(ctx, t.title, t.show, t.servers),
@@ -276,8 +287,16 @@ Future<AssistantToolResult> _watchedPeriod(
       'days': days,
       'plays': plays.length,
       'top_titles': [
-        for (final t in topTitles.take(10)) {'title': t.title, 'plays': t.plays, 'viewers': t.viewers.take(5).toList()},
+        for (final t in ranked.take(10))
+          {
+            'title': t.title,
+            'plays': t.plays,
+            'viewers': t.viewers.take(5).toList(),
+            // Plays from several servers joined into this entry, and how firmly.
+            if (t.proof != null) 'merged_across_servers': t.proof!.name,
+          },
       ],
+      if (guessed > 0) 'merged_on_title_only': guessed,
       'top_users': [
         for (final u in topUsers.take(10))
           {'user': u.name, 'plays': u.plays, if (hours) 'hours': (u.seconds / 3600).round()},
@@ -298,8 +317,9 @@ Future<AssistantToolResult> _watchedPeriod(
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,
-        // Plays left out of "the others" make the ranking incomplete too.
-        partial: partial || leftOut.isNotEmpty,
+        // Plays left out of "the others", or titles joined across servers on
+        // their name alone, make the ranking unproven too.
+        partial: partial || leftOut.isNotEmpty || guessed > 0,
         titles: topTitles,
         users: topUsers,
         unavailable: [for (final id in unavailable) ctx.serverName(id)],
