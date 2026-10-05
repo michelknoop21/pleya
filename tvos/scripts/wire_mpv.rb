@@ -43,7 +43,7 @@ end
 # Swift Package: MPVKit. The iOS project is the source of truth for the
 # exact release. Re-running this wiring script must never downgrade tvOS to a
 # stale commit revision after a dependency bump.
-pkg_url = 'https://github.com/edde746/MPVKit'
+pkg_url = 'https://github.com/michelknoop21/MPVKit'
 ios_pbxproj_path = File.expand_path('../../ios/Runner.xcodeproj/project.pbxproj', __dir__)
 ios_pbxproj = File.read(ios_pbxproj_path)
 pkg_version = ios_pbxproj[/XCRemoteSwiftPackageReference "MPVKit".*?kind = exactVersion;.*?version = ([0-9.]+);/m, 1]
