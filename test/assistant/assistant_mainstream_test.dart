@@ -62,6 +62,26 @@ void main() {
       expect(_titles(ranked).last, 'Regional Hit');
     });
 
+    test('the source order counts per kind: the first series is not ranked below the last film', () {
+      SeerrMedia show(int id, String title, int votes) => SeerrMedia(
+        tmdbId: id,
+        mediaType: 'tv',
+        title: title,
+        voteCount: votes,
+        popularity: 100,
+        originalLanguage: 'en',
+      );
+      final ranked = rankSuggestions([
+        _m(1, 'Film One', votes: 9000, popularity: 100),
+        _m(2, 'Film Two', votes: 9000, popularity: 100),
+        _m(3, 'Film Three', votes: 9000, popularity: 100),
+        show(11, 'Series One', 9500),
+        show(12, 'Series Two', 9500),
+        show(13, 'Series Three', 9500),
+      ]);
+      expect(_titles(ranked).indexOf('Series One'), lessThan(_titles(ranked).indexOf('Film Three')));
+    });
+
     test('a Dutch title sits under a big American one and above a small one', () {
       final ranked = rankSuggestions([
         _m(1, 'Kleine Indie', votes: 40, popularity: 4, language: 'en'),

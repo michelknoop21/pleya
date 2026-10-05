@@ -128,6 +128,9 @@ Future<List<SeerrMedia>> _widen(bool niche, Future<List<SeerrMedia>> Function(in
     return [...first, ...await fetch(2)];
   } on AssistantToolError {
     rethrow;
+  } on TmdbAuthException {
+    // A rejected key is remembered for the ask, as on the first page.
+    rethrow;
   } on Exception {
     return first;
   }
