@@ -7,7 +7,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 ## Current direction
 
-0. Big P (BP-00 t/m BP-09) is de primaire stroom: eerst begrijpen wie, wat en welke data bedoeld is, dan gecontroleerd antwoorden. Volgorde en detail: sectie Big P hieronder.
+0. Big P (BP-00 t/m BP-09) is de primaire stroom: eerst begrijpen wie, wat en welke data bedoeld is, dan gecontroleerd antwoorden. Volgorde en detail: sectie Big P (na Work packages); de Execution phases hieronder gelden voor de rest van het product.
 1. Reconcile the current source/release/status baseline.
 2. Close correctness, permission/profile and concrete library bugs in the existing app.
 3. Finish only the currently valid UI gaps; do not rebuild already-landed surfaces.
@@ -32,7 +32,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 | ID | P | Track | Work package | Current state |
 | --- | --- | --- | --- | --- |
-| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`) | Concept; Michel keurt goed vóór code |
+| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`, PR #175) | Akkoord Michel 5 okt; contract merget vóór BP-01 |
 | BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gepland |
 | BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Gepland |
 | BP-03 | P0 | Big P | Mediasleutel, titelkoppeling en kijkcijfers; historie tegenover ooit gezien | Gepland |
@@ -90,11 +90,11 @@ Primaire stroom (Michel, 5 oktober 2026). Doel: Pleya stelt eerst vast wie, wat 
 
 Volgorde: BP-00 (Michel keurt het contract goed) → BP-01 → BP-02 → BP-03 → BP-04 → BP-05 → build 1 → BP-06 → BP-07 → BP-08 → build 2. Elke fase is een eigen PR met gerichte tests, negatieve controle en onafhankelijke review (adversarieel voor BP-01, BP-02, BP-04, BP-07 en BP-08).
 
-BP-09 is eigendom van de parallelle sessie; BP-05 wacht op haar `catalog_changed`-fix. Nieuwe tools uit BP-02 t/m BP-07 krijgen een stap-label via dezelfde volledigheidstest.
+BP-09 is eigendom van de parallelle sessie; BP-05 wacht op haar `catalog_changed`-fix. Nieuwe tools uit BP-02 t/m BP-07 krijgen een stap-label via de volledigheidstest tegen `assistantTools` die BP-09 (fase 3 van de parallelle sessie) toevoegt.
 
 Connected Knowledge: geen gekoppelde, relevante bron blijft onbereikbaar voor Big P alleen omdat er geen losse tool voor bestaat. De grens zijn de rechten van de gebruiker (per bron en per gegevenstype), wat de bron aanbiedt en de privacy van die verbinding. De inventaris staat in het contract.
 
-Uitgesteld: fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
+Uitgesteld (geen werkpakket tot Michel er een opent, verwijzing: `docs/big-p-behaviour-contract.md`): fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
 
 ## Execution phases
 
