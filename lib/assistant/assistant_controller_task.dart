@@ -30,6 +30,7 @@ extension _AssistantTaskRunning on AssistantController {
         allowSplit: allowSplit,
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
+        inheritedIntent: task.parentIntent,
         budget: task.budget,
         operations: _operations,
         mutations: _mutations,
@@ -55,6 +56,7 @@ extension _AssistantTaskRunning on AssistantController {
               intent: inheritedSpoilerPrompt == null ? plan.intent : 'spoiler_context',
               prompt: inheritedSpoilerPrompt ?? plan.prompt,
               originalSpoilerPrompt: inheritedSpoilerPrompt,
+              parentIntent: result.intent,
               generation: task.generation,
               budget: task.budget,
             ),
@@ -131,10 +133,14 @@ class _AssistantTaskState {
     required this.generation,
     required this.budget,
     this.originalSpoilerPrompt,
+    this.parentIntent,
   });
   final String id, title, intent, prompt;
   final int generation;
   final String? originalSpoilerPrompt;
+
+  /// What the question this task was split from fixed (audience, kind, period).
+  final AssistantIntent? parentIntent;
   final AssistantQuestionBudget budget;
   final AbortController cancel = AbortController();
   AssistantTaskStatus status = AssistantTaskStatus.pending;

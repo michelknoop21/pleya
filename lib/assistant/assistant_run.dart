@@ -76,6 +76,7 @@ class AssistantRunResult {
     this.displayEvidenceCurrent,
     this.ageFilterNotice = false,
     this.kidsAgesNeeded = false,
+    this.intent = AssistantIntent.unknown,
   });
   final AssistantRunEnd end;
 
@@ -102,6 +103,9 @@ class AssistantRunResult {
   /// The ask is for children whose ages Pleya does not know yet: no model
   /// text and no title cards, only the ages card under Pleya's own line.
   final bool kidsAgesNeeded;
+
+  /// What this ask fixed from the user's words, for tasks split off it.
+  final AssistantIntent intent;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -173,6 +177,7 @@ class AssistantRun {
     this.refreshHealth,
     this.originalSpoilerPrompt,
     this.originalLibraryDoctorScope = false,
+    this.inheritedIntent,
   });
 
   /// Fires once the user cancelled or left (reset, profile switch): the
@@ -200,6 +205,9 @@ class AssistantRun {
   /// Carried from the original submit; split children cannot rewrite it.
   final String? originalSpoilerPrompt;
   final bool originalLibraryDoctorScope;
+
+  /// What the question this task was split from fixed; the task's own words win.
+  final AssistantIntent? inheritedIntent;
   String? _spoilerQuestion;
   final AssistantQuestionBudget? budget;
   final AssistantOperationPool? operations;

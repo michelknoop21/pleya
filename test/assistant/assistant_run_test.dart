@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/assistant/assistant_entitlement.dart';
+import 'package:pleya/assistant/assistant_intent.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
@@ -325,6 +326,34 @@ void main() {
       expect(system, contains('audience others'));
     },
   );
+
+  test('a task split off a question about others keeps that audience, however its own prompt is worded', () async {
+    final m = await _Server().manager();
+    final model = _Model(AssistantProviderKind.ollamaServer, [_call('my_watching', const {}), _say('Klaar')]);
+    var personalRead = false;
+    await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(
+        servers: m,
+        personal: AssistantPersonalServices(
+          userName: 'Michel',
+          recent: () async {
+            personalRead = true;
+            return const [];
+          },
+          everSeen: () async => const {},
+          taste: () async => AffinityVector.empty,
+          picks: (_) async => const [],
+        ),
+      ),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      inheritedIntent: AssistantIntent.fromPrompt('Wat kijken de anderen deze week?'),
+    ).ask('Toon de meest bekeken titels');
+
+    expect(model.toolResults.single, {'error': 'use_watch_stats'});
+    expect(personalRead, isFalse);
+  });
 
   test('a model without tool support ends the run without touching a server', () async {
     final server = _Server();

@@ -17,6 +17,7 @@ extension _AssistantLoop on AssistantRun {
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
     _intent = AssistantIntent.fromPrompt(prompt);
+    if (inheritedIntent case final parent?) _intent = _intent.inheriting(parent);
     _pickGrids.clear();
     _history.clear();
     _personal = false;
@@ -146,6 +147,7 @@ extension _AssistantLoop on AssistantRun {
               _ctx.kidsMode ? AssistantTaskPlan(title: '', intent: plan.intent, prompt: plan.prompt) : plan,
           ]),
           spoilerPrompt: _spoilerQuestion,
+          intent: _intent,
         );
       }
       if (_spoilerQuestion != null) {

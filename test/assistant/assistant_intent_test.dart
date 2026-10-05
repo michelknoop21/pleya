@@ -8,7 +8,7 @@ void main() {
   group('fromPrompt', () {
     test('others, me and everyone, in Dutch and English, each marked explicit', () {
       expect(_i('Wat kijken de anderen het meest?').audience.value, AssistantAudience.others);
-      expect(_i('What do my friends watch?').audience.value, AssistantAudience.others);
+      expect(_i('What do the others watch?').audience.value, AssistantAudience.others);
       expect(_i('Welke films heb ik gekeken?').audience.value, AssistantAudience.me);
       expect(_i('What did I watch last week?').audience.value, AssistantAudience.me);
       expect(_i('What is popular?').audience.known, isFalse);
@@ -82,6 +82,67 @@ void main() {
       expect(_i('Wat kijken de anderen?').constrain('my_watching', const {}).error, 'use_watch_stats');
       expect(_i('Wat heb ik gekeken?').constrain('my_watching', const {}).error, isNull);
       expect(_i('Wat kijken de anderen?').constrain('scan_library', {'a': 1}).args, {'a': 1});
+    });
+  });
+
+  group('review findings (BP-04a)', () {
+    test('"show me" is the verb: no series filter; "tv shows" and "shows" are series', () {
+      expect(_i('Show me what the others watched this week').kind.known, isFalse);
+      expect(_i('Show me a good thriller').kind.known, isFalse);
+      expect(_i('Something like The Truman Show').kind.known, isFalse);
+      expect(_i('Welke tv shows keken de anderen?').kind.value, MediaKind.show);
+      expect(_i('Which shows did the others watch?').kind.value, MediaKind.show);
+    });
+
+    test('a kind cannot be enforced on current streams: refused, not a mixed list', () {
+      final fixed = _i('Welke films kijkt iedereen nu?').constrain('watch_stats', {'scope': 'now'});
+      expect(fixed.error, 'media_needs_period');
+    });
+
+    test('"everyone except <name>" is no audience; except me still is "others"', () {
+      expect(_i('Wat kijkt iedereen behalve Sam?').audience.known, isFalse);
+      expect(
+        _i('Wat kijkt iedereen behalve Sam?').constrain('watch_stats', {'scope': 'period'}).args,
+        isNot(contains('audience')),
+      );
+      expect(_i('Wat kijkt iedereen behalve ik?').audience.value, AssistantAudience.others);
+      expect(_i('What does everyone except Sam watch?').audience.known, isFalse);
+    });
+
+    test('words that are not a watch question about others stay open', () {
+      for (final p in [
+        'Wat is de rest van de film?',
+        'Wat kan ik met mijn gezin kijken?',
+        'What can I watch with my friends?',
+        'Is er iets dat anderen ook goed vonden?',
+        'Wat moet ik kijken? Een film die iedereen leuk vindt',
+        'Een film voor iedereen',
+      ]) {
+        expect(_i(p).audience.known, isFalse, reason: p);
+      }
+    });
+
+    test('negation and mixed questions are not decided: nothing narrowed, nothing widened', () {
+      expect(_i('Wat heb ik gekeken, niet wat de anderen keken').audience.value, AssistantAudience.me);
+      expect(_i('Wat heb ik gekeken en wat keken de anderen?').audience.known, isFalse);
+      expect(_i('What did I watch and what did the others watch?').audience.known, isFalse);
+    });
+
+    test('"last week" is not the past seven days; two periods fix none', () {
+      expect(_i('Wat keken we vorige week?').days.known, isFalse);
+      expect(_i('What did the others watch last week?').days.known, isFalse);
+      expect(_i('Wat kijken anderen vandaag en deze week?').days.known, isFalse);
+      expect(_i('Wat keken de anderen deze week?').days.value, 7);
+    });
+
+    test('a task split off a question keeps what that question fixed; its own words win', () {
+      final parent = _i('Wat kijken de anderen deze week, en hoeveel films?');
+      final child = _i('Toon de meest bekeken titels').inheriting(parent);
+      expect(child.audience.value, AssistantAudience.others);
+      expect(child.days.value, 7);
+      final own = _i('Toon wat ik gekeken heb').inheriting(parent);
+      expect(own.audience.value, AssistantAudience.me, reason: 'the child states its own audience');
+      expect(AssistantIntent.unknown.inheriting(AssistantIntent.unknown).any, isFalse);
     });
   });
 }
