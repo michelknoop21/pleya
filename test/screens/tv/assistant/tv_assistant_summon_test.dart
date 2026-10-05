@@ -218,6 +218,7 @@ void main() {
       expect(bigP(), findsNothing);
       expect(focusedLabel(), 'behind');
       expect(c.resets, 2, reason: 'one fresh start on summon, one on leaving');
+      expect(c.conversationClears, 2, reason: 'a new conversation on summon, forgotten on leaving');
     });
 
     testWidgets('Menu lets the run go at once, not after the slide-out, so an unmount in between cannot keep it', (
@@ -227,6 +228,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       expect(c.aborts, 1, reason: 'aborted by the dismissal itself');
       expect(c.resets, 1, reason: 'the clear-out still waits for the slide-out');
+      expect(c.conversationClears, 1, reason: 'memory goes with the clear-out');
 
       await tester.pumpWidget(const SizedBox());
       expect(c.aborts, 1);

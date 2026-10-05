@@ -161,6 +161,10 @@ class FakeAssistantController extends AssistantController {
   @override
   void reset() => resets++;
 
+  var conversationClears = 0;
+  @override
+  void clearConversation() => conversationClears++;
+
   /// The ages the ages card saved, per press of Bewaar.
   final savedAges = <List<int>>[];
   var kidsDismissals = 0;
