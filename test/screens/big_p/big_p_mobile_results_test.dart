@@ -185,6 +185,15 @@ void main() {
     expect(session.draft, isEmpty, reason: 'sent: nothing left to restore');
   });
 
+  testWidgets('a handed-over question replaces an older draft and stays after a rebuild', (tester) async {
+    session.draft = 'old';
+    session.summon(question: 'from Zoeken');
+    await tester.pumpWidget(app(Scaffold(body: BigPInputBar(session: session))));
+    expect(find.text('from Zoeken'), findsOneWidget);
+    expect(session.draft, 'from Zoeken');
+    expect(c.submitted, isEmpty);
+  });
+
   test('a draft belongs to its session and is not the handed-over question', () {
     session.draft = 'half a thought';
     session.summon(question: 'from Zoeken');
