@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math';
+import 'assistant_account_key.dart';
+import 'assistant_people.dart';
 import '../media/media_stream.dart';
 import '../services/unified_catalog/source_cursor.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
@@ -65,6 +67,7 @@ part 'assistant_tools_catalog.dart';
 part 'assistant_tools_catalog_query.dart';
 part 'assistant_tools_insights.dart';
 part 'assistant_tools_insights_watch.dart';
+part 'assistant_tools_insights_plays.dart';
 part 'assistant_tools_requests.dart';
 part 'assistant_tools_requests_state.dart';
 part 'assistant_tools_requests_options.dart';

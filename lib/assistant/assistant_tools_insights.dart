@@ -92,8 +92,19 @@ const _playsPerUser = 200;
 /// One play for the period aggregate, already clipped. [userKey] is the
 /// account on [server], so two people who clip to one display name on one
 /// server stay two users. [named] is false for a fallback label ("User 7"),
-/// which is never matched across servers.
-typedef _Play = ({String server, String titleKey, String title, String userKey, String user, int seconds, bool named});
+/// which is never matched across servers. [account] is the source's own key
+/// for the person (a plex.tv id from Tautulli is global; every other id is
+/// that server's), null when the source gives none.
+typedef _Play = ({
+  String server,
+  String titleKey,
+  String title,
+  String userKey,
+  String user,
+  int seconds,
+  bool named,
+  AssistantAccountKey? account,
+});
 
 /// The wall-clock budget of one tool call. [race] answers null once it is
 /// spent, so a slow server ends the reading instead of the whole tool.
@@ -318,7 +329,9 @@ final List<AssistantTool> _insightTools = [
         'answer (with their backend). On Jellyfin, Emby and Pleya Server a period counts each finished title once '
         'per user, at its last play (those servers keep no play log). For a question about films only or series '
         'only pass media "movie" or "show" (period only, rejected with scope "now"): the answer and the card then hold just those titles. '
-        'To leave accounts out (the asker\'s own, when they say "my friends"), pass up to 10 server account names in '
+        'For "the others", "my friends" or "without me" pass audience "others" (period only): the asker is removed by account id, '
+        'and accounts whose owner cannot be told apart from the asker are reported under left_out, never counted. '
+        'To leave accounts out by name instead, pass up to 10 server account names in '
         'exclude_users (both scopes); the asker\'s account name is not known unless they said it.',
     risk: AssistantToolRisk.read,
     needsServer: false,
@@ -336,6 +349,10 @@ final List<AssistantTool> _insightTools = [
         'type': 'array',
         'items': {'type': 'string'},
         'maxItems': 10,
+      },
+      'audience': {
+        'type': 'string',
+        'enum': ['all', 'others'],
       },
     },
     required: const ['scope'],
@@ -361,10 +378,18 @@ final List<AssistantTool> _insightTools = [
         _ => throw const AssistantToolError('invalid_exclude_users'),
       };
       if (scope == 'now' && media != null) throw const AssistantToolError('media_needs_period');
+      final others = switch (args['audience']) {
+        null || 'all' => false,
+        'others' => true,
+        _ => throw const AssistantToolError('invalid_audience'),
+      };
+      // Current streams carry a display name only, no account id: "the others"
+      // cannot be decided on them.
+      if (scope == 'now' && others) throw const AssistantToolError('audience_needs_period');
       final before = _watchServers(ctx);
       final result = await (scope == 'now'
           ? _watchedNow(ctx, excluded: excluded)
-          : _watchedPeriod(ctx, days, media: media, excluded: excluded));
+          : _watchedPeriod(ctx, days, media: media, excluded: excluded, others: others));
       // The reads take seconds. Administration revoked or a server gone
       // meanwhile: household viewing data must not be published.
       final after = _watchServers(ctx);
