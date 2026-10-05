@@ -7456,6 +7456,12 @@ class TranslationsAssistantMobileEn {
 
 	/// en: 'Choose first: confirm or cancel.'
 	String get notConfirmedYet => 'Choose first: confirm or cancel.';
+
+	/// en: 'New conversation'
+	String get newConversation => 'New conversation';
+
+	/// en: 'New'
+	String get newConversationShort => 'New';
 }
 
 // Path: assistant.locked
@@ -10608,6 +10614,8 @@ extension on Translations {
 			'assistant.mobile.searchAsk' => 'Ask Big P',
 			'assistant.mobile.faceButton' => 'Summon Big P',
 			'assistant.mobile.notConfirmedYet' => 'Choose first: confirm or cancel.',
+			'assistant.mobile.newConversation' => 'New conversation',
+			'assistant.mobile.newConversationShort' => 'New',
 			'assistant.locked.badge' => 'Not available on this account',
 			'assistant.locked.title' => 'Big P is not turned on for this account yet',
 			'assistant.locked.body' => 'With Big P you ask Pleya to do admin tasks, such as scanning a library or creating a user. It is a Pleya feature that this account does not have yet.',

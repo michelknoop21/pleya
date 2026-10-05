@@ -126,6 +126,7 @@ void main() {
     now = now.add(const Duration(minutes: 29, seconds: 59));
     session.summon();
     expect(c.resets, 0);
+    expect(c.conversationClears, 0);
     expect(c.answer, 'Twee films.');
     expect(session.stage, BigPStage.out);
   });
@@ -137,6 +138,7 @@ void main() {
     now = now.add(const Duration(minutes: 30));
     session.summon();
     expect(c.resets, 1);
+    expect(c.conversationClears, 1, reason: '30 minutes of silence end the conversation');
   });
 
   test('a summon from the peek keeps the answer, however old (a film long)', () {

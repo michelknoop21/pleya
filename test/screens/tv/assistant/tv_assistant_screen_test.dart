@@ -139,6 +139,7 @@ void main() {
         expect(find.text(example), findsOneWidget);
       }
       expect(c.resets, 1);
+      expect(c.conversationClears, 1, reason: 'a new visit is a new conversation');
       expect(avatar(tester).mood, BigPMood.idle);
     });
 
@@ -168,6 +169,7 @@ void main() {
       await settle(tester);
 
       expect(c.submitted, [question]);
+      expect(c.conversationClears, 1, reason: 'asking keeps the conversation going');
     });
 
     testWidgets('backing out of the keyboard asks nothing', (tester) async {
@@ -300,11 +302,13 @@ void main() {
         ..emit();
       await settle(tester);
 
+      await press(tester, LogicalKeyboardKey.arrowRight); // Nieuw gesprek
       await press(tester, LogicalKeyboardKey.arrowRight);
       await press(tester, LogicalKeyboardKey.select);
 
       expect(dismissed, 1);
       expect(c.resets, 2, reason: 'once on open, once for Klaar');
+      expect(c.conversationClears, 2, reason: 'Klaar ends the conversation');
     });
 
     testWidgets('an option card takes the focus and hands the pick to the controller', (tester) async {

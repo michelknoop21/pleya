@@ -160,6 +160,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _remove?.cancel();
     _returnTo = FocusManager.instance.primaryFocus;
     c.reset();
+    c.clearConversation();
     BigPSuggestions.of(c).summoned();
     _c = c..addListener(_onChange);
     _lastState = c.state;
@@ -280,6 +281,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     // words while it slides out, then the conversation is cleared.
     _remove = Timer(_motion(context), () {
       c?.reset();
+      c?.clearConversation();
       if (!mounted) return;
       setState(() {
         _c = null;
@@ -360,6 +362,10 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               tasksNode: _tasksNode,
               onAsk: () => unawaited(_ask()),
               onDone: _dismiss,
+              onNewConversation: () {
+                c.newConversation();
+                BigPSuggestions.of(c).summoned();
+              },
               onCancelWork: _dismiss,
               onExample: (question) {
                 c.beginListening();

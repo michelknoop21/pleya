@@ -243,6 +243,9 @@ ids:
   - id: bigp.input
     role: field
     instanceable: false
+  - id: bigp.newConversation
+    role: button
+    instanceable: false
   - id: bigp.followUp
     role: button
     instanceable: true

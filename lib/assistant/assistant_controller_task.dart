@@ -17,7 +17,7 @@ extension _AssistantTaskRunning on AssistantController {
       task.status = AssistantTaskStatus.running;
       _update();
       model = _modelFor(config);
-      final result = await AssistantRun(
+      final run = AssistantRun(
         model: model,
         context: _buildContext(_screenContext).fresh(web: config.webSearch ? _webFor?.call(config) : null),
         confirm: (action) => _confirm(action, task),
@@ -31,6 +31,8 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        // Only the question itself follows on; a split child is standalone.
+        conversation: allowSplit ? List.of(_conversation) : const [],
         budget: task.budget,
         operations: _operations,
         mutations: _mutations,
@@ -42,7 +44,8 @@ extension _AssistantTaskRunning on AssistantController {
           if (step.display case final display?) task.displays.add(display);
           _update();
         },
-      ).ask(task.prompt);
+      );
+      final result = await run.ask(task.prompt);
       if (!_alive(task)) return;
       if (result.splitTasks.isNotEmpty) {
         final inheritedSpoilerPrompt = task.originalSpoilerPrompt ?? result.spoilerPrompt;
@@ -110,6 +113,7 @@ extension _AssistantTaskRunning on AssistantController {
       }
       if (task.actions.any((action) => action.job != null)) unawaited(_watchJobs(task));
       task.status = _outcomeStatus(task.error);
+      if (allowSplit && task.memoryEpoch == _memoryEpoch) _remember(task, result, text, run.askedAsKids);
       if (result.end == AssistantRunEnd.notEntitled) _availability = AssistantAvailability.locked;
     } catch (e, st) {
       appLogger.w('Assistant task failed', error: e.runtimeType, stackTrace: st);
@@ -124,6 +128,26 @@ extension _AssistantTaskRunning on AssistantController {
   }
 }
 
+extension _AssistantMemory on AssistantController {
+  /// Keeps a finished, plain answer as a turn. Never a failed, cancelled or
+  /// split run, a fenced (spoiler) one, or Pleya's own kids lines.
+  void _remember(_AssistantTaskState task, AssistantRunResult result, String text, bool kids) {
+    if (task.status != AssistantTaskStatus.completed || result.end != AssistantRunEnd.answered) return;
+    if (task.originalSpoilerPrompt != null || result.spoilerPrompt != null) return;
+    if (result.kidsAgesNeeded || result.ageFilterNotice) return;
+    final answer = clipText(text, AssistantController.maxAnswerChars);
+    if (answer.isEmpty) return;
+    _conversation.add(
+      AssistantTurn(question: clipText(task.prompt, AssistantController.maxQuestionChars), answer: answer, kids: kids),
+    );
+    // Oldest first out, but the newest turn always stays.
+    int size() => _conversation.fold(0, (sum, t) => sum + t.question.length + t.answer.length);
+    while (_conversation.length > 1 && size() > AssistantController.maxMemoryChars) {
+      _conversation.removeAt(0);
+    }
+  }
+}
+
 class _AssistantTaskState {
   _AssistantTaskState({
     required this.id,
@@ -134,7 +158,12 @@ class _AssistantTaskState {
     required this.budget,
     this.originalSpoilerPrompt,
     this.parentIntent,
+    required this.memoryEpoch,
   });
+
+  /// The conversation this task started in; a clear since then keeps its
+  /// answer out of the memory.
+  final int memoryEpoch;
   final String id, title, intent, prompt;
   final int generation;
   final String? originalSpoilerPrompt;

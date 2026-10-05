@@ -398,7 +398,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Flexible(child: conversation),
-                  if (_asks(c)) ...[const SizedBox(height: 12), BigPInputBar(session: session)],
+                  if (_asks(c)) ...[const SizedBox(height: 12), BigPInputBar(session: session, inline: true)],
                 ],
               ),
             )

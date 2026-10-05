@@ -178,7 +178,16 @@ class AssistantRun {
     this.originalSpoilerPrompt,
     this.originalLibraryDoctorScope = false,
     this.inheritedIntent,
+    this.conversation = const [],
   });
+
+  /// The earlier turns of this conversation, oldest first: context for a
+  /// follow-up, never evidence. See [_memoryMessages].
+  final List<AssistantTurn> conversation;
+
+  /// Whether the last [ask] ran for a children's profile; read by the
+  /// controller to tag the turn it keeps.
+  bool get askedAsKids => _ctx.kidsMode;
 
   /// Fires once the user cancelled or left (reset, profile switch): the
   /// model call on the wire is aborted, tools see it through their context,
