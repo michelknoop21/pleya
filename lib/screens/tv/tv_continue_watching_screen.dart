@@ -32,7 +32,7 @@ import '../../widgets/tv/tv_catalog_header_bar.dart';
 import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_section_header.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
-import '../../widgets/tv/tv_unified_media_card.dart';
+import '../../widgets/tv/tv_continue_watching_card.dart';
 import '../../widgets/tv/tv_view_all_action.dart';
 import 'tv_discovery_activation_mixin.dart';
 
@@ -189,7 +189,8 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
       child: TvCatalogCardRail(
         key: _railKeyFor(section),
         itemIds: [for (final g in groups) g.groupId],
-        cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
+        cardHeight: (cardWidth) => TvCatalogLayout.wideCardHeight(cardWidth, scale),
+        cardWidthFactor: 1.3,
         hasMore: false,
         isLoadingMore: false,
         onLoadMore: () {},
@@ -209,7 +210,7 @@ class TvContinueWatchingScreenState extends State<TvContinueWatchingScreen>
               // Eerder begonnen is less prominent, not unreadable: the still
               // dims, the text does not (Michel, 4 oktober 2026).
               opacity: dim ? 0.85 : 1,
-              child: TvUnifiedMediaCard(
+              child: TvContinueWatchingCard(
                 group: group,
                 width: cell.width,
                 clientFor: _clientFor,

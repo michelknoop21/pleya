@@ -45,6 +45,7 @@ class TvCatalogCardRail extends StatefulWidget {
     this.reservedLeading = 0,
     this.onBack,
     this.nodeDebugLabel = 'TvCatalogRailCard',
+    this.cardWidthFactor = 1,
   });
 
   /// One stable id per card, in display order.
@@ -90,6 +91,10 @@ class TvCatalogCardRail extends StatefulWidget {
   final VoidCallback? onBack;
 
   final String nodeDebugLabel;
+
+  /// Widens the cards beyond the poster grid's column width: a 16:9 card in a
+  /// poster-wide slot is too small to read at three metres.
+  final double cardWidthFactor;
 
   /// How close to the end the focus has to get before the next page is asked
   /// for, in cards.
@@ -324,14 +329,15 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
     final scale = TvLayoutConstants.scaleOf(context);
     final width = MediaQuery.sizeOf(context).width;
     final grid = TvCatalogGrid.forWidth(width, scale: scale, reservedLeading: widget.reservedLeading);
-    final cardHeight = widget.cardHeight(grid.cardWidth);
+    final cardWidth = grid.cardWidth * widget.cardWidthFactor;
+    final cardHeight = widget.cardHeight(cardWidth);
     // The same reservation the grid pays above its first row, on both sides:
     // a focused card scales about its centre, so half the growth reaches past
     // each edge of the row's box, and a `ListView` clips at its own bounds.
     final headroom = TvCatalogGrid.focusHeadroom(cardHeight: cardHeight, focusScale: widget.focusScale);
-    _pitch = grid.cardWidth + grid.gutter;
+    _pitch = cardWidth + grid.gutter;
     _leadingPad = grid.inset + grid.leading;
-    _cardWidth = grid.cardWidth;
+    _cardWidth = cardWidth;
     _inset = grid.inset;
 
     return SizedBox(
@@ -352,7 +358,7 @@ class TvCatalogCardRailState extends State<TvCatalogCardRail> {
             context,
             TvCatalogGridCell(
               index: index,
-              width: grid.cardWidth,
+              width: cardWidth,
               focusNode: _nodeFor(id),
               onFocusChange: (hasFocus) {
                 if (!hasFocus) return;

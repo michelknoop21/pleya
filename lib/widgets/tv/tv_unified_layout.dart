@@ -265,6 +265,7 @@ class TvCatalogLayout {
   /// Card metrics. The poster is 2:3 (hoofdstuk 10.2, binding for both pages);
   /// the meta footer below it is the shared card language both mockups use.
   static const double posterAspectRatio = 2 / 3;
+  static const double wideAspectRatio = 16 / 9;
   static const double cardRadius = 10;
 
   /// Band of page background between the card's content and its focus ring —
@@ -380,6 +381,13 @@ class TvCatalogLayout {
         cardTitleFontSize * scale * cardTitleLineHeight * 2 +
         metaLine * (1 + extraMetaLines);
     return posterBlock + footer;
+  }
+
+  /// A 16:9 card with its text on the artwork (Verder kijken): the artwork
+  /// block and nothing under it.
+  static double wideCardHeight(double cardWidth, double scale) {
+    final inset = cardContentInset(scale);
+    return (cardWidth - inset * 2) / wideAspectRatio + inset * 2;
   }
 
   /// The loading placeholder's fills, as alphas on `MonoTokens.text`.
