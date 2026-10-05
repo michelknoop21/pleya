@@ -4498,3 +4498,40 @@ bewust niet dubbel gebouwd.
 Een titel die op desktop verborgen is kan terugkomen als de representatieve bron van een
 samengevoegde titel wisselt; dat lost zich op zodra desktop unified rijen tekent. De focusbare
 Alles-ingang bij de TV-rijtitel en de 16:9-rustvorm uit 38 A en D wachten op een eigen ronde.
+
+## DEC-XXX: MPVKit komt uit een eigen fork, met een teardown-fix in de avfoundation-audio-output
+
+Build 332 crashte op tvOS bij een wissel naar AirPods tijdens het afspelen (`EXC_BREAKPOINT` in
+`_dispatch_sync_f`, crashrapport `Runner-2026-10-05-120055.ips`). Twee threads tegelijk: de
+AVFoundation-queue draaide een feed-blok dat `[AVSampleBufferRenderSynchronizer currentTime]` aanroept,
+terwijl mpv's core in `uninit()` diezelfde synchronizer vrijgaf. mpv herlaadt de audio-output bij een
+routewissel, door onze `audio-channels`-update of door de eigen `OutputConfigurationDidChange`-restart.
+Het is een timingrace, vandaar dat een tweede poging goed ging.
+
+**Besluit.** De fix zit in `ao_avfoundation.m` en kan alleen in de MPVKit-fork. Upstream (`edde746/MPVKit`)
+heeft hem niet, dus de pin gaat naar `michelknoop21/MPVKit` (patch `0026`, versie 1.0.29). In het PCM-pad
+zet `stop()` een `pcm_stopped`-vlag waarop `feed()` meteen terugkeert, `uninit()` zet eerst `closing` en haalt
+de restart-observer weg, laat daarna `p->queue` leeglopen en geeft pas dan renderer en synchronizer vrij.
+De observer moest vooraf weg: `handleRestartNotification` roept `stop(); start();` aan, en `start()` na de
+drain plant een nieuw feed-blok in. `closing` en de handler gebruiken dezelfde `@synchronized`-lock, zodat
+`uninit()` wacht op een delivery die al loopt voordat hij iets vrijgeeft.
+
+**Gevolg.** De pin op alle negen plekken, `tvos/scripts/wire_mpv.rb` en `scripts/check_mpvkit_update.sh`
+wijzen naar de fork. De fork volgt upstream niet vanzelf: een nieuwe upstream-tag komt er alleen in als
+iemand hem naar de fork haalt, en `check_mpvkit_update.sh` meldt alleen fork-tags. De binaries staan in de
+rolling release `binaries` van de fork; 1.0.27 wees nog naar de upstream-URL's en resolvede niet
+(`binary_keys.py` had de asset-base hardcoded), dat is met 1.0.28 hersteld. Libass en Libdav1d zijn uit hun
+upstream-releases naar de fork gekopieerd, dezelfde bytes (sha256 gelijk aan de checksum in `Package.swift`);
+Libdav1d bleef in 1.0.28 nog upstream en is met 1.0.29 verplaatst. De overige prebuilt libraries
+(`mpvkit/*-build`) staan nog bij hun eigen releases.
+
+**Meeliftende scope sinds 1.0.26.** Fork-main bevat meer dan 0026: patch 0025 (hwdec-herstel na een
+decode-foutenreeks; een permanent kapotte hw-stream blijft tot 240 frames op het falende pad), patch 0024
+(PiP-OSD op het frame, raakt iOS in PiP), `NDEBUG` in de meson-crossfile (asserts uit in libmpv) en een
+herbouwde FFmpeg onder de content-addressed pijplijn (andere hash, compilerversie zit niet in de sleutel).
+De hardwarematrix moet daarom ook algemene hw-decode (HEVC 4K), Dolby/Atmos, ondertitels en PiP dekken, niet
+alleen het wisselen naar AirPods.
+
+**Open.** Het bewijs is een stress-run met `ao-reload` in een lus op de tvOS-simulator en tien keer wisselen
+tussen luidsprekers en AirPods op de Apple TV. Dat de 1.0.28-libmpv patch 0026 echt bevat is alleen via zo'n
+run aan te tonen. De patch heeft geen reproduceerbare regressietest, want het is een timingrace.

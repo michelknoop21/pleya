@@ -17,7 +17,7 @@ set -uo pipefail
 # -resolvePackageDependencies`) and verify playback before shipping: the
 # binaries change, so audio/video regressions are the risk, not compile errors.
 
-REPO="https://github.com/edde746/MPVKit"
+REPO="https://github.com/michelknoop21/MPVKit"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT"
@@ -67,7 +67,7 @@ echo
 echo "Changes since $current_tag:"
 # The compare payload also carries base/merge-base commits; take only the
 # commit list, so the range reads as the changes actually being pulled in.
-curl -fsSL "https://api.github.com/repos/edde746/MPVKit/compare/$current_tag...$latest_tag" 2>/dev/null |
+curl -fsSL "https://api.github.com/repos/michelknoop21/MPVKit/compare/$current_tag...$latest_tag" 2>/dev/null |
   python3 -c 'import json,sys
 for c in json.load(sys.stdin).get("commits", []):
     print("  - " + c["commit"]["message"].splitlines()[0])' ||

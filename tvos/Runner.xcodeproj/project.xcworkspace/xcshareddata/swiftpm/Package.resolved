@@ -4,10 +4,10 @@
     {
       "identity" : "mpvkit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/edde746/MPVKit",
+      "location" : "https://github.com/michelknoop21/MPVKit",
       "state" : {
-        "revision" : "5caf7c771c89cf40c2215185a3df5ff4c7c7cb3f",
-        "version" : "1.0.26"
+        "revision" : "8c7025156570d982b5e9648a7ab31c49cce6791c",
+        "version" : "1.0.28"
       }
     }
   ],
