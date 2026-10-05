@@ -190,6 +190,23 @@ class RecommendationService {
     }
   }
 
+  /// Every title in this profile's log: the series key for an episode, the
+  /// item's own key otherwise. Unlike [recentSeeds] no seed window applies;
+  /// the log's own retention does. Empty when personalization is off or nothing qualifies.
+  Future<Set<String>> everSeenKeys() async {
+    if (!_enabled) return const {};
+    try {
+      return await _db.everWatchedKeys(
+        profileId,
+        minWeight: kSeedMinWeight,
+        enabledImportServerIds: _enabledImportServerIds(),
+      );
+    } catch (e, s) {
+      appLogger.w('RecommendationService: everSeenKeys failed (none)', error: e, stackTrace: s);
+      return const {};
+    }
+  }
+
   /// Servers the seed rows may not read the server-side history of. Throws
   /// when the answer is unknown; the caller then leaves that path out.
   Future<Set<String>> sharedHistoryServerIds() async => await _sharedHistoryServerIds?.call() ?? const {};

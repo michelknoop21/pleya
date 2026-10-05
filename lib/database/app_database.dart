@@ -62,6 +62,10 @@ const int kInteractionRetentionDays = 365;
 /// to one per title.
 const int kRecentPositiveRowCap = 500;
 
+/// Most rows [AppDatabase.everWatchedKeys] reads. A profile with more positive
+/// rows than this loses its oldest titles from "seen before".
+const int kEverSeenRowCap = 20000;
+
 /// [MediaInteractions.source] values.
 const String kInteractionSourceLocal = 'local';
 const String kInteractionSourceTautulli = 'tautulli';
@@ -445,6 +449,31 @@ class AppDatabase extends _$AppDatabase {
       if (out.length >= limit) break;
     }
     return out;
+  }
+
+  /// Every title this profile has positive evidence for: the series key for an
+  /// episode, the item key otherwise. No seed window and no dismissal logic, so
+  /// "seen before" does not depend on how far back the seed rows look. It still
+  /// ends where the log does ([kInteractionRetentionDays]); older watches are
+  /// only known from a server's own watched state. Newest [kEverSeenRowCap]
+  /// rows; same scoring scope as the vector.
+  Future<Set<String>> everWatchedKeys(
+    String profileId, {
+    required double minWeight,
+    Set<String> enabledImportServerIds = const {},
+  }) async {
+    final rows =
+        await (select(mediaInteractions)
+              ..where(
+                (t) =>
+                    t.profileId.equals(profileId) &
+                    t.eventWeight.isBiggerOrEqualValue(minWeight) &
+                    _scoringScope(enabledImportServerIds),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])
+              ..limit(kEverSeenRowCap))
+            .get();
+    return {for (final row in rows) row.seriesKey ?? row.globalKey};
   }
 
   /// Newest first, the id breaking ties, as in [recentPositiveInteractions].

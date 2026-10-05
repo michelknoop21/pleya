@@ -410,6 +410,22 @@ void main() {
       expect(await service().recentSeeds(nowMs: now + 25 * day), isEmpty, reason: 'now 35 days old');
     });
 
+    test('everSeenKeys has no seed window: a watch from months ago counts, a dismissal does not', () async {
+      await insert('pms:old', at: now - 300 * day);
+      await insert('pms:ep7', seriesKey: 'pms:show', at: now - 200 * day);
+      await insert('pms:dropped', weight: -0.3, at: now - 2 * day);
+
+      expect(await service().recentSeeds(nowMs: now), isEmpty, reason: 'both watches lie outside the seed window');
+      expect(await service().everSeenKeys(), {'pms:old', 'pms:show'});
+    });
+
+    test('the settings gate yields no ever-seen keys', () async {
+      await insert('pms:film', at: now);
+      await SettingsService.instance.write(SettingsService.personalizedRecommendations, false);
+
+      expect(await service().everSeenKeys(), isEmpty);
+    });
+
     test('the settings gate yields no seeds', () async {
       await insert('pms:film', at: now);
       await SettingsService.instance.write(SettingsService.personalizedRecommendations, false);

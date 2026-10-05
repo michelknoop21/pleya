@@ -49,6 +49,7 @@ AssistantToolContext _ctx({
   AffinityVector taste = AffinityVector.empty,
   List<MediaHub> hubs = const [],
   Map<String, MediaItem> items = const {},
+  Set<String> everSeen = const {},
 }) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
@@ -64,6 +65,7 @@ AssistantToolContext _ctx({
     personal: AssistantPersonalServices(
       userName: 'Michel',
       recent: () async => seeds,
+      everSeen: () async => everSeen,
       taste: () async => taste,
       picks: (_) async => hubs,
     ),
@@ -176,5 +178,42 @@ void main() {
       throwsA(anything),
       reason: 'a dropped pick cannot be opened',
     );
+  });
+
+  test('the recent list names its window, so it is never taken for the whole history', () async {
+    final result = await _tool().run(_ctx(), null, const {}) as AssistantToolResult;
+    expect(result.data['watched_recently_window_days'], 30);
+  });
+
+  test('a title seen long ago is still seen: it leaves the picks although no recent seed names it', () async {
+    final picks = [
+      _item('p1', 'Arrival', MediaKind.movie, year: 2016),
+      _item('p2', 'Sicario', MediaKind.movie, year: 2015),
+    ];
+    final ctx = _ctx(
+      // Nothing recent: the watch of Arrival lies outside the seed window.
+      everSeen: {'nas:p1'},
+      hubs: [MediaHub(id: 'rows', title: 'Voor jou', type: 'movie', items: picks)],
+    );
+    ctx.recommend = const AssistantRecommendConstraints(excludeWatched: true);
+
+    final result = await _tool().run(ctx, null, const {}) as AssistantToolResult;
+
+    final titles = [
+      for (final row in result.data['picks']! as List)
+        for (final t in (row as Map)['titles'] as List) (t as Map)['title'],
+    ];
+    expect(titles, ['Sicario']);
+  });
+
+  test('without "nothing already seen" the long-ago watch does not filter', () async {
+    final ctx = _ctx(
+      everSeen: {'nas:p1'},
+      hubs: [
+        MediaHub(id: 'rows', title: 'Voor jou', type: 'movie', items: [_item('p1', 'Arrival', MediaKind.movie)]),
+      ],
+    );
+    final result = await _tool().run(ctx, null, const {}) as AssistantToolResult;
+    expect((result.data['picks']! as List), isNotEmpty);
   });
 }

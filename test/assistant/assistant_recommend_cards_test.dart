@@ -116,6 +116,7 @@ Future<(AssistantRunResult, List<String>)> _recommend(
         recent: () async => [
           for (final id in watched.keys) RecommendationSeed(globalKey: 'nas:$id', completed: true, occurredAtMs: 0),
         ],
+        everSeen: () async => const {},
         taste: () async => AffinityVector.empty,
         picks: (_) async => [MediaHub(id: 'r', title: 'Voor jou', type: 'movie', items: picks)],
       ),
