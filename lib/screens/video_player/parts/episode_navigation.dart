@@ -183,10 +183,12 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     int? subtitleStreamId,
     int? audioStreamId,
     PlexClient? plexClient,
+    bool Function()? isCurrent,
   }) async {
     // Never let remembering break the switch it is attached to: the user asked
     // for a different subtitle, not for a bookkeeping guarantee.
     try {
+      if (!(isCurrent?.call() ?? true)) return;
       // No remember-switch check here any more: `TrackPreferenceStore` owns it,
       // and the session intent below is set either way — with the switch off a
       // deliberate choice still holds for the rest of this playback, it just
@@ -195,7 +197,8 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         if (subtitleStreamId == 0) {
           // Turning subtitles off here is as much a decision as picking one.
           _recordSessionLanguageIntent(subtitlesOff: true);
-          await TrackPreferenceStore.saveSubtitle(item, off: true);
+          await TrackPreferenceStore.saveSubtitle(item, off: true, isCurrent: isCurrent);
+          if (!(isCurrent?.call() ?? true)) return;
           await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.subtitles, subtitlesOff: true);
         } else {
           final choice = subtitleStreamLanguage(subtitleTracks, subtitleStreamId);
@@ -210,17 +213,26 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
               language: choice.language,
               title: choice.title,
               forced: choice.forced,
+              isCurrent: isCurrent,
             );
+            if (!(isCurrent?.call() ?? true)) return;
             await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.subtitles, language: choice.language);
           }
         }
       }
 
       if (audioStreamId != null) {
+        if (!(isCurrent?.call() ?? true)) return;
         final choice = audioStreamLanguage(audioTracks, audioStreamId);
         if (choice != null) {
           _recordSessionLanguageIntent(audioLanguage: choice.language, audioTitle: choice.title);
-          await TrackPreferenceStore.saveAudio(item, language: choice.language, title: choice.title);
+          await TrackPreferenceStore.saveAudio(
+            item,
+            language: choice.language,
+            title: choice.title,
+            isCurrent: isCurrent,
+          );
+          if (!(isCurrent?.call() ?? true)) return;
           await _trackManager?.announceRememberedChoice(kind: LanguageTrackKind.audio, language: choice.language);
         }
       }
@@ -229,7 +241,14 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       // caller is about to start does not depend on it. Awaiting would put a
       // round trip between the user's tap and the subtitle actually changing,
       // and the next episode is minutes away regardless.
-      unawaited(_mirrorSwitchedLanguageToSeries(item, plexClient));
+      if (!(isCurrent?.call() ?? true)) return;
+      // Scoped assistant changes retain the mutation lock until this existing
+      // persistence settles; ordinary UI selection keeps its current timing.
+      if (isCurrent == null) {
+        unawaited(_mirrorSwitchedLanguageToSeries(item, plexClient));
+      } else {
+        await _mirrorSwitchedLanguageToSeries(item, plexClient, isCurrent: isCurrent);
+      }
     } catch (e) {
       appLogger.w('Failed to remember the switched source language', error: e);
     }
@@ -243,13 +262,19 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
   /// tracks; when Plex burns the subtitle into the video the decision has to be
   /// the server's, and `selectStreams` above only covers the parts of this one
   /// episode. Episodes only: a movie has no show to carry the choice.
-  Future<void> _mirrorSwitchedLanguageToSeries(MediaItem item, PlexClient? plexClient) async {
+  Future<void> _mirrorSwitchedLanguageToSeries(
+    MediaItem item,
+    PlexClient? plexClient, {
+    bool Function()? isCurrent,
+  }) async {
+    if (!(isCurrent?.call() ?? true)) return;
     if (plexClient == null) return;
     final seriesRatingKey = item.grandparentId;
     if (seriesRatingKey == null || seriesRatingKey.isEmpty) return;
 
     try {
       final choice = await TrackPreferenceStore.read(item);
+      if (!(isCurrent?.call() ?? true)) return;
       if (choice == null || choice.isEmpty) return;
 
       await plexSeriesLanguagePersister(() => plexClient)(
@@ -269,7 +294,10 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     TranscodeQualityPreset? newPreset,
     int? newAudioStreamId,
     int? newSubtitleStreamId,
+    bool Function()? isCurrent,
+    bool Function()? shouldContinue,
   }) async {
+    if (!(isCurrent?.call() ?? true)) return;
     final currentPlayer = player;
     if (!mounted || currentPlayer == null || _playbackTransition != _PlaybackTransition.idle) return;
 
@@ -309,10 +337,12 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
 
     try {
       if (isVersionChange) {
-        await saveMediaVersionIndexFor(_currentMetadata, effectiveMediaIndex);
+        await saveMediaVersionIndexFor(_currentMetadata, effectiveMediaIndex, isCurrent: isCurrent);
+        if (!(isCurrent?.call() ?? true)) return;
       }
 
       if (isSubtitleChange || (isAudioChange && isPlexBacked)) {
+        if (!(isCurrent?.call() ?? true)) return;
         final partId = _currentMediaInfo?.partId;
         if (streamSelectClient == null || partId == null) {
           throw StateError('No Plex part available for stream selection');
@@ -323,6 +353,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
           subtitleStreamID: isSubtitleChange ? effectiveSubtitleStreamId : null,
           allParts: true,
         );
+        if (!(isCurrent?.call() ?? true)) return;
         if (!saved) {
           throw StateError('Failed to select streams');
         }
@@ -333,9 +364,12 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
           subtitleStreamId: isSubtitleChange ? effectiveSubtitleStreamId : null,
           audioStreamId: isAudioChange ? effectiveAudioStreamId : null,
           plexClient: streamSelectClient,
+          isCurrent: isCurrent,
         );
+        if (!(isCurrent?.call() ?? true)) return;
       }
 
+      if (!(isCurrent?.call() ?? true)) return;
       await _reloadMediaInPlace(
         metadata: _currentMetadata.copyWith(viewOffsetMs: currentPlayer.state.position.inMilliseconds),
         selectedMediaIndex: effectiveMediaIndex,
@@ -348,6 +382,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         resumePosition: currentPlayer.state.position,
         preserveCurrentTrackSelection: false,
         reason: 'source switch',
+        shouldContinue: shouldContinue,
       );
     } catch (e) {
       if (mounted) {
@@ -369,7 +404,9 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     bool preserveCurrentTrackSelection = false,
     bool useCurrentAudioStreamSelection = true,
     String reason = 'media reload',
+    bool Function()? shouldContinue,
   }) async {
+    if (!(shouldContinue?.call() ?? true)) return false;
     if (widget.isLive) {
       _clearEpisodeLoadingFlags();
       return false;
@@ -383,7 +420,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
     _playbackTransition = _PlaybackTransition.reloadingMedia;
     final currentPlayer = player!;
     final attempt = _beginPlaybackAttempt(currentPlayer, isMediaReload: true);
-    bool isCurrentReload() => attempt.isCurrent;
+    bool isCurrentReload() => attempt.isCurrent && (shouldContinue?.call() ?? true);
 
     // The session itself swaps atomically at the open boundary, so the only
     // rollback state is the eagerly-set identity (shown by the loading UI)
@@ -532,6 +569,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         durationMs: metadata.durationMs,
       );
       await stoppedProgressFuture;
+      if (!isCurrentReload()) return true;
       _progressTracker?.stopTracking();
       _progressTracker?.dispose();
       _progressTracker = null;
@@ -570,6 +608,8 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         },
       );
       if (!didOpen || !isCurrentReload()) return true;
+      await _initVideoFilterAndPip();
+      if (!isCurrentReload()) return true;
       _completionLatch.reset();
 
       // Versions/mediaInfo come from the committed session; rebuild so the
@@ -611,6 +651,7 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
       await _applyTracksAfterOpen(
         trackManager: trackManager,
         externalSubtitlePlan: externalSubtitlePlan,
+        isCurrent: shouldContinue == null ? null : isCurrentReload,
         // Same guard as the start path: don't resume a player a newer flow
         // owns, and let a pending startup gate (or Watch Together's group
         // start) own the resume instead. Post-open external-subtitle paths
@@ -619,7 +660,8 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
             (!frameRatePlan.holdPlaybackStart || resumeForStartupFrame) &&
             !wtOwnsStart &&
             mounted &&
-            player == currentPlayer,
+            player == currentPlayer &&
+            isCurrentReload(),
         applySelectionWhenResumeSkipped: wtOwnsStart && !frameRatePlan.holdPlaybackStart,
       );
       if (!isCurrentReload()) return true;
@@ -628,12 +670,17 @@ extension _VideoPlayerEpisodeNavigationMethods on VideoPlayerScreenState {
         currentPlayer: currentPlayer,
         settingsService: settingsService,
         plan: frameRatePlan,
-        resumeAfterStartupGate: (reason) => _resumeAfterStartupGateOrYieldToWatchTogether(
-          currentPlayer: currentPlayer,
-          externalSubtitlePlan: externalSubtitlePlan,
-          reason: reason,
-          wtOwnsStart: wtOwnsStart,
-        ),
+        isCurrent: shouldContinue == null ? null : isCurrentReload,
+        resumeAfterStartupGate: (reason) async {
+          if (!isCurrentReload()) return;
+          await _resumeAfterStartupGateOrYieldToWatchTogether(
+            currentPlayer: currentPlayer,
+            externalSubtitlePlan: externalSubtitlePlan,
+            reason: reason,
+            wtOwnsStart: wtOwnsStart,
+            isCurrent: shouldContinue == null ? null : isCurrentReload,
+          );
+        },
         playbackResumedForStartupFrame: resumeForStartupFrame,
       );
       if (!isCurrentReload()) return true;

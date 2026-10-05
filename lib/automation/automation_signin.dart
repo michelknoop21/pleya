@@ -141,6 +141,7 @@ Future<Map<String, Object?>> handleAutomationSignIn(Map<String, Object?> body) a
       serverName: detail?.name.isNotEmpty == true ? detail!.name : 'Pleya Server',
       userName: authResult.userName,
       refreshToken: authResult.tokens.refreshToken,
+      role: authResult.role,
       status: ConnectionStatus.online,
       createdAt: DateTime.now(),
       lastAuthenticatedAt: DateTime.now(),

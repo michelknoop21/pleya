@@ -100,6 +100,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   final FeaturedSelector _featuredSelector;
 
   UnifiedMediaHub? _continueWatching;
+  UnifiedMediaHub? _continueWatchingAll;
   UnifiedMediaHub? _latestMoviesRow;
   List<UnifiedMediaGroup> _heroGroups = const [];
   List<UnifiedMediaHub> _hubs = const [];
@@ -161,13 +162,21 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   //   showing a partial-source state. It is a handful of server ids, so
   //   `setEquals` is the cheap correct answer, not a deep list walk.
   List<MediaItem>? _lastLatestMovies;
-  List<MediaItem>? _lastOnDeck;
+  List<MediaItem>? _lastAllOnDeck;
   List<MediaHub>? _lastHubs;
   Set<String>? _lastUnansweredServerIds;
 
   /// Unified Continue Watching, `null` when empty — same shape
   /// `TvDiscoveryLandingProvider` exposes, so fase 8 can reuse it directly.
   UnifiedMediaHub? get continueWatching => _continueWatching;
+
+  /// The whole of Verder kijken, projected the same way as the row, for the
+  /// sectioned overview (DEC-144 fase 2). Null until projected or when empty.
+  UnifiedMediaHub? get continueWatchingAll => _continueWatchingAll;
+
+  /// What the row title counts: groups after merging, deduplicating and
+  /// hiding, the same number the overview shows.
+  int get continueWatchingCount => _continueWatchingAll?.groups.length ?? 0;
 
   /// Unified recommendation hubs (Top Picks, recently added series,
   /// redactional/backend rows), in `DiscoverProvider.hubs`' own order.
@@ -246,7 +255,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
     // `unansweredServerIds`.
     if (_lastUnansweredServerIds != null &&
         listEquals(_discover.latestMovies, _lastLatestMovies) &&
-        listEquals(_discover.onDeck, _lastOnDeck) &&
+        listEquals(_discover.allContinueWatching, _lastAllOnDeck) &&
         listEquals(_discover.hubs, _lastHubs) &&
         setEquals(_discover.unansweredServerIds, _lastUnansweredServerIds)) {
       return;
@@ -261,7 +270,7 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
   Future<void> _project() async {
     _projecting = true;
     final latestMovies = _discover.latestMovies;
-    final onDeck = _discover.onDeck;
+    final allOnDeck = _discover.allContinueWatching;
     final hubs = _discover.hubs;
     try {
       final failedServerIds = _discover.unansweredServerIds;
@@ -278,17 +287,27 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
         items: latestMovies,
       );
 
+      // One projection of the whole list; the row is its first 20 groups, so
+      // the identity resolver runs once per item, not once for the prefix and
+      // again for the rest (DEC-144 fase 2).
       final results = await Future.wait([
-        _service.projectContinueWatching(onDeck, title: _continueWatchingTitle, failedServerIds: failedServerIds),
+        _service.projectContinueWatching(allOnDeck, title: _continueWatchingTitle, failedServerIds: failedServerIds),
         _service.projectHubs([latestMoviesHub], failedServerIds: failedServerIds),
         _service.projectHubs(hubs, failedServerIds: failedServerIds),
       ]);
 
-      final continueWatching = results[0] as UnifiedMediaHub;
+      final continueWatchingAll = results[0] as UnifiedMediaHub;
       final latestMoviesProjected = results[1] as List<UnifiedMediaHub>;
       final otherHubs = results[2] as List<UnifiedMediaHub>;
 
-      _continueWatching = continueWatching.isEmpty ? null : continueWatching;
+      _continueWatchingAll = continueWatchingAll.isEmpty ? null : continueWatchingAll;
+      _continueWatching = continueWatchingAll.isEmpty
+          ? null
+          : continueWatchingAll.groups.length <= DiscoverProvider.continueWatchingPreviewLimit
+          ? continueWatchingAll
+          : continueWatchingAll.withGroups(
+              continueWatchingAll.groups.take(DiscoverProvider.continueWatchingPreviewLimit).toList(),
+            );
       final latestRow = latestMoviesProjected.isEmpty ? null : latestMoviesProjected.first;
       _latestMoviesRow = latestRow == null || latestRow.isEmpty ? null : latestRow;
       _hubs = otherHubs;
@@ -315,10 +334,10 @@ class TvHomeProjectionProvider extends ChangeNotifier with DisposableChangeNotif
       // (see `featuredGroupFor`): rail focus, and the empty-hero fallback to
       // Continue Watching or a hub item.
       _allProjectedGroups = [
-        for (final hub in [continueWatching, ...latestMoviesProjected, ...otherHubs]) ...hub.groups,
+        for (final hub in [?_continueWatching, ...latestMoviesProjected, ...otherHubs]) ...hub.groups,
       ];
       _lastLatestMovies = latestMovies;
-      _lastOnDeck = onDeck;
+      _lastAllOnDeck = allOnDeck;
       _lastHubs = hubs;
       _lastUnansweredServerIds = failedServerIds;
       safeNotifyListeners();

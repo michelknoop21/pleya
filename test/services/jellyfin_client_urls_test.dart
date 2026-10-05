@@ -12,6 +12,7 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/models/transcode_quality_preset.dart';
 import 'package:pleya/services/device_capabilities_service.dart';
 import 'package:pleya/services/jellyfin_client.dart';
+import 'package:pleya/services/jellyfin_auth_header.dart';
 import 'package:pleya/services/jellyfin_client/jellyfin_device_profile.dart';
 import 'package:pleya/services/playback_initialization_types.dart';
 
@@ -34,6 +35,53 @@ JellyfinConnection _conn({String accessToken = 'tok-abc', String baseUrl = 'http
 /// tests pin the contract so the next iteration of the player (Task 8 wiring)
 /// has something to point at.
 void main() {
+  for (final count in [null, 'broken', -1]) {
+    test('strict request title page rejects unverified Jellyfin total $count', () async {
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient(
+          (request) async => http.Response(
+            jsonEncode({'Items': <Object>[], 'TotalRecordCount': ?count}),
+            200,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+      addTearDown(scoped.close);
+      const query = LibraryQuery(search: 'The Matrix', limit: 100);
+      await expectLater(scoped.fetchLibraryContent('lib', query, requireTotalCount: true), throwsStateError);
+      await scoped.fetchLibraryContent('lib', query);
+    });
+  }
+
+  test('strict request title page preserves Jellyfin matching count and rejects parse loss', () async {
+    var broken = false;
+    Uri? uri;
+    final scoped = JellyfinClient.forTesting(
+      connection: _conn(),
+      httpClient: MockClient((request) async {
+        uri = request.url;
+        return http.Response(
+          jsonEncode({
+            'Items': broken ? [null] : <Object>[],
+            'TotalRecordCount': broken ? 1 : 101,
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    addTearDown(scoped.close);
+    const query = LibraryQuery(search: 'The Matrix', limit: 100);
+    final page = await scoped.fetchLibraryContent('lib', query, requireTotalCount: true);
+    expect(page.totalCount, 101);
+    expect(uri!.queryParameters['SearchTerm'], 'The Matrix');
+    expect(uri!.queryParameters['ParentId'], 'lib');
+    expect(uri!.queryParameters['Limit'], '100');
+    broken = true;
+    await expectLater(scoped.fetchLibraryContent('lib', query, requireTotalCount: true), throwsStateError);
+  });
+
   group('JellyfinClient URL builders', () {
     late JellyfinClient client;
 
@@ -3457,7 +3505,7 @@ void main() {
       expect(requests[1].queryParameters['imageUrl'], 'https://img.example/poster.jpg');
     });
 
-    test('uploadItemImage sends binary image body and image content type', () async {
+    test('uploadItemImage sends the image base64-encoded with the image content type', () async {
       Uri? capturedUri;
       List<int>? capturedBody;
       Map<String, String>? capturedHeaders;
@@ -3483,7 +3531,7 @@ void main() {
 
       expect(success, isTrue);
       expect(capturedUri!.path, '/Items/item-1/Images/Primary');
-      expect(capturedBody, [0xff, 0xd8, 0xff, 0x00]);
+      expect(base64Decode(utf8.decode(capturedBody!)), [0xff, 0xd8, 0xff, 0x00]);
       expect(capturedHeaders!['Content-Type'] ?? capturedHeaders!['content-type'], 'image/jpeg');
     });
 
@@ -3494,6 +3542,174 @@ void main() {
 
       expect(playlists, isEmpty);
       client.close();
+    });
+  });
+
+  group('Emby flavor (DEC-141)', () {
+    final emby = JellyfinConnection(
+      id: 'emby-1/user-1',
+      baseUrl: 'https://emby.example.com',
+      serverName: 'Emby',
+      serverMachineId: 'emby-1',
+      userId: 'user 1',
+      userName: 'edde',
+      accessToken: 'tok-abc',
+      deviceId: 'dev-xyz',
+      isEmby: true,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+
+    test('user-scoped routes use the /Users/{id} form Emby still serves', () async {
+      final captured = <Uri>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: emby,
+        httpClient: MockClient((request) async {
+          captured.add(request.url);
+          return http.Response(jsonEncode({'Items': <Object>[]}), 200, headers: {'content-type': 'application/json'});
+        }),
+      );
+      addTearDown(scoped.close);
+      final item = MediaItem(id: 'i 1', backend: MediaBackend.jellyfin, kind: MediaKind.movie, serverId: 'emby-1');
+
+      await scoped.markWatched(item);
+      await scoped.rate(item, 7);
+      await scoped.fetchContinueWatching();
+      await scoped.checkHealth();
+
+      final paths = captured.map((u) => u.path).toList();
+      expect(paths, contains('/Users/user%201/PlayedItems/i%201'));
+      expect(paths, contains('/Users/user%201/Items/i%201/Rating'));
+      expect(paths, contains('/Users/user%201/Items/Resume'));
+      expect(paths, contains('/Users/user%201'));
+      expect(
+        paths.where((p) => p.startsWith('/UserItems') || p.startsWith('/UserPlayedItems') || p == '/Users/Me'),
+        isEmpty,
+      );
+    });
+
+    test('extras, Continue Watching removal and play-session reports follow Emby rules', () async {
+      final requests = <http.Request>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: emby,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response(jsonEncode({'Items': <Object>[]}), 200, headers: {'content-type': 'application/json'});
+        }),
+      );
+      addTearDown(scoped.close);
+      final item = MediaItem(id: 'i1', backend: MediaBackend.jellyfin, kind: MediaKind.movie, serverId: 'emby-1');
+
+      await scoped.fetchExtras('i1');
+      await scoped.removeFromContinueWatching(item);
+      await scoped.reportPlaybackStarted(itemId: 'i1', position: Duration.zero);
+      await scoped.reportPlaybackProgress(itemId: 'i1', position: Duration.zero, duration: const Duration(minutes: 1));
+
+      final paths = requests.map((r) => r.url.path).toList();
+      expect(
+        paths,
+        containsAll(['/Users/user%201/Items/i1/LocalTrailers', '/Users/user%201/Items/i1/SpecialFeatures']),
+      );
+      final hide = requests.singleWhere((r) => r.url.path.endsWith('/HideFromResume'));
+      expect(hide.url.path, '/Users/user%201/Items/i1/HideFromResume');
+      expect(hide.url.queryParameters['Hide'], 'true');
+      expect(scoped.capabilities.continueWatchingRemoval, isTrue);
+      // Emby 400s these without a PlaySessionId (live: "Value cannot be null. (Parameter 'key')").
+      for (final r in requests.where((r) => r.url.path.startsWith('/Sessions/Playing'))) {
+        expect(jsonDecode(r.body)['PlaySessionId'], 'pleya-dev-xyz-i1');
+      }
+    });
+
+    test('Jellyfin keeps PlaySessionId optional and cannot hide from Continue Watching', () async {
+      final requests = <http.Request>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: _conn(),
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          return http.Response('', 204);
+        }),
+      );
+      addTearDown(scoped.close);
+
+      await scoped.reportPlaybackStarted(itemId: 'i1', position: Duration.zero);
+
+      expect(jsonDecode(requests.single.body).containsKey('PlaySessionId'), isFalse);
+      expect(scoped.capabilities.continueWatchingRemoval, isFalse);
+    });
+
+    test('filters come from the four Emby facet endpoints, since /Items/Filters does not exist', () async {
+      final paths = <String>[];
+      final scoped = JellyfinClient.forTesting(
+        connection: emby,
+        httpClient: MockClient((request) async {
+          paths.add(request.url.path);
+          final name = switch (request.url.path) {
+            '/Genres' => 'Animation',
+            '/OfficialRatings' => 'PG',
+            '/Tags' => 'blender',
+            '/Years' => '2008',
+            _ => throw StateError('unexpected ${request.url.path}'),
+          };
+          return http.Response(
+            jsonEncode({
+              'Items': [
+                {'Name': name},
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      addTearDown(scoped.close);
+
+      final result = await scoped.fetchLibraryFiltersWithValues('lib-1');
+
+      expect(paths, unorderedEquals(['/Genres', '/OfficialRatings', '/Tags', '/Years']));
+      expect(result.filters.map((f) => f.filter), containsAll(['genre', 'year', 'contentRating', 'tag']));
+      expect(result.cachedValues['year']!.single.key, '2008');
+    });
+
+    test('a facet Emby refuses drops only that facet, not the whole filter sheet', () async {
+      final scoped = JellyfinClient.forTesting(
+        connection: emby,
+        httpClient: MockClient((request) async {
+          if (request.url.path == '/Tags') return http.Response('', 403);
+          return http.Response(
+            jsonEncode({
+              'Items': [
+                {'Name': request.url.path == '/Years' ? '2008' : 'x'},
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      addTearDown(scoped.close);
+
+      final result = await scoped.fetchLibraryFiltersWithValues('lib-1');
+
+      expect(result.filters.map((f) => f.filter), containsAll(['genre', 'year', 'contentRating']));
+      expect(result.filters.map((f) => f.filter), isNot(contains('tag')));
+    });
+
+    test('Emby gets the auth value under X-Emby-Authorization too; Jellyfin does not', () {
+      expect(jellyfinAuthHeaders('MediaBrowser x', isEmby: true), {
+        'Authorization': 'MediaBrowser x',
+        'X-Emby-Authorization': 'MediaBrowser x',
+      });
+      expect(jellyfinAuthHeaders('MediaBrowser x', isEmby: false), {'Authorization': 'MediaBrowser x'});
+    });
+
+    test('the client registers its server so labels read Emby, and drops trickplay scrubbing', () {
+      final client = JellyfinClient.forTesting(
+        connection: emby,
+        httpClient: MockClient((_) async => http.Response('', 200)),
+      );
+      addTearDown(client.close);
+      addTearDown(() => embyServerIds.remove('emby-1'));
+      expect(isEmbyServer('emby-1'), isTrue);
+      expect(client.capabilities.scrubThumbnails, isFalse);
     });
   });
 }

@@ -7,6 +7,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 ## Current direction
 
+0. Big P (BP-00 t/m BP-09) is de primaire stroom: eerst begrijpen wie, wat en welke data bedoeld is, dan gecontroleerd antwoorden. Volgorde en detail: sectie Big P hieronder.
 1. Reconcile the current source/release/status baseline.
 2. Close correctness, permission/profile and concrete library bugs in the existing app.
 3. Finish only the currently valid UI gaps; do not rebuild already-landed surfaces.
@@ -31,6 +32,16 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 | ID | P | Track | Work package | Current state |
 | --- | --- | --- | --- | --- |
+| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`) | Concept; Michel keurt goed vóór code |
+| BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gepland |
+| BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Gepland |
+| BP-03 | P0 | Big P | Mediasleutel, titelkoppeling en kijkcijfers; historie tegenover ooit gezien | Gepland |
+| BP-04 | P0 | Big P | Intent, routing en minimale wedervraag | Gepland |
+| BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
+| BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
+| BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland |
+| BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
+| BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | Loopt in een andere sessie |
 | REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Status herijken |
 | REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
 | REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken |
@@ -72,6 +83,18 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | E-04 | P1 | Commercieel/site | Website, screenshots en release-informatie | Status herijken |
 | F-01 | P3 | Optioneel | Apple Intelligence: kleine zoekfilter-MVP | Gepland |
 | F-02 | P3 | Optioneel | Nieuwe ideeën zonder bestaande release te blokkeren | Gepland |
+
+## Big P
+
+Primaire stroom (Michel, 5 oktober 2026). Doel: Pleya stelt eerst vast wie, wat en welke data bedoeld is, verzamelt gecontroleerd de juiste gegevens, geeft het model alleen de juiste context, controleert de uitkomst en toont tekst en acties uit één waarheid.
+
+Volgorde: BP-00 (Michel keurt het contract goed) → BP-01 → BP-02 → BP-03 → BP-04 → BP-05 → build 1 → BP-06 → BP-07 → BP-08 → build 2. Elke fase is een eigen PR met gerichte tests, negatieve controle en onafhankelijke review (adversarieel voor BP-01, BP-02, BP-04, BP-07 en BP-08).
+
+BP-09 is eigendom van de parallelle sessie; BP-05 wacht op haar `catalog_changed`-fix. Nieuwe tools uit BP-02 t/m BP-07 krijgen een stap-label via dezelfde volledigheidstest.
+
+Connected Knowledge: geen gekoppelde, relevante bron blijft onbereikbaar voor Big P alleen omdat er geen losse tool voor bestaat. De grens zijn de rechten van de gebruiker (per bron en per gegevenstype), wat de bron aanbiedt en de privacy van die verbinding. De inventaris staat in het contract.
+
+Uitgesteld: fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
 
 ## Execution phases
 

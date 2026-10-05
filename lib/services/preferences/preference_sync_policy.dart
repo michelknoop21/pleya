@@ -341,6 +341,7 @@ class PreferenceSyncPolicyRegistry {
     'audio_normalization': _globalPref,
     'audio_normalization_mode': _globalPref,
     'audio_reduce_loud_sounds': _globalPref,
+    'big_p_voice': _globalPref,
     'audio_level_volume': _globalPref,
     // GPU-bound: a shader the Mac runs can stall an Apple TV.
     'global_shader_preset': _deviceBoundPref,
@@ -430,6 +431,9 @@ class PreferenceSyncPolicyRegistry {
     // measurement is green; the stored format already uses portable ids.
     'home_row_order': _homeLayoutPref,
     'hidden_home_rows': _homeLayoutPref,
+    // "Alleen op dit apparaat" is what the menu row promises (DEC-144 fase 3):
+    // a local hide for sources that cannot remove server-side never syncs.
+    'hidden_continue_watching': _deviceLocalPref,
     // The rows the viewer defined themselves (ROW1, DEC-100). Same owner as
     // the two above — `HomeLayoutProvider` reads all three in one `refresh()` —
     // and local-only for a reason of its own: a saved row is a filter over
@@ -498,6 +502,12 @@ class PreferenceSyncPolicyRegistry {
     // by being used, and a row of posters from someone else's television is not
     // a preference anyone set.
     'search_recent_items': _profileRuntimeCache,
+    // The children's ages Big P picks for: family data that stays on this
+    // device and with this profile, never synced and never exported.
+    'assistant_kids_ages': _profileRuntimeCache,
+    // Whether this profile is a children's profile for Big P: the same family
+    // data, so the same answer. Syncing it would let another device decide.
+    'assistant_kids_profile': _profileRuntimeCache,
     'watch_together_recent_rooms': _runtimeCache,
     'cleaned_old_image_cache': _runtimeCache,
     'buffer_size_migrated_to_auto': _runtimeCache,
@@ -542,6 +552,7 @@ class PreferenceSyncPolicyRegistry {
     'keyboard_hotkeys': _globalPref,
     // The chosen version index depends on what the server offers this device.
     'media_version_preferences': _deviceLocalPref,
+    'video_display_preferences': _deviceLocalPref,
     // Both name a server id; a portable-server filter is a follow-up, not a fix
     // (row F2 in docs/icloud-sync-repair-register.md).
     'unified_source_preferences': _deviceLocalPref,
@@ -559,6 +570,9 @@ class PreferenceSyncPolicyRegistry {
     'credential_vault_key_v1': _secret,
     'seerr_session': _secret,
     'tautulli_session': _secret,
+    'assistant_provider': _secret,
+    'assistant_provider_pending': _secret,
+    'assistant_provider_seen': _runtimeCache,
     'pleya_share_tokens': _secret,
     'pleya_share_guests': _secret,
     'pleya_share_relay_host_id': _secret,

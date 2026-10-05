@@ -109,6 +109,14 @@ void main() {
       'in the export service and unregistered in the policy registry, so it reaches neither an '
       'export nor iCloud',
     ),
+    'lib/assistant/assistant_provider_store.dart': RawWriteRecord(
+      WriteCategory.secret,
+      6,
+      'the vault-protected Big P provider config with its API keys, plus the pending marker (written on save '
+      'and again once a migration has written the keychain item) and the '
+      'fingerprint of the last seen keychain item; device-local, the blob and marker are registered '
+      'secret and the fingerprint runtime cache',
+    ),
     'lib/services/credential_vault.dart': RawWriteRecord(
       WriteCategory.secret,
       1,
@@ -165,6 +173,18 @@ void main() {
       WriteCategory.runtimeCache,
       1,
       'LAN discovery result; another network makes it wrong, and it is in the legacy prefs store',
+    ),
+    'lib/assistant/assistant_kids_ages_store.dart': RawWriteRecord(
+      WriteCategory.runtimeCache,
+      1,
+      'the profile-delete sweep of the per-profile children\'s ages for Big P; registered as profile runtime '
+      'cache, so it never syncs',
+    ),
+    'lib/assistant/assistant_kids_profile_store.dart': RawWriteRecord(
+      WriteCategory.runtimeCache,
+      1,
+      'the profile-delete sweep of the per-profile children\'s profile switch for Big P; registered as profile '
+      'runtime cache, so it never syncs',
     ),
     'lib/services/search_recency_store.dart': RawWriteRecord(
       WriteCategory.runtimeCache,
@@ -246,8 +266,8 @@ void main() {
     // matching *lines*; this counts matching *calls*, which is the number that
     // actually has to be classified.
     final total = inventory.values.fold<int>(0, (sum, r) => sum + r.count);
-    expect(total, 94, reason: 'total raw preference writes still classified as staying outside the coordinator');
-    expect(inventory.length, 26, reason: 'files containing them');
+    expect(total, 102, reason: 'total raw preference writes still classified as staying outside the coordinator');
+    expect(inventory.length, 29, reason: 'files containing them');
   });
 
   test('no category is a dumping ground', () {

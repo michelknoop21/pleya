@@ -116,6 +116,8 @@ Future<ScenarioRunResult> runScenario({
 
   Future<void> runStep(ScenarioStep step) async {
     final record = <String, Object?>{'verb': step.verb, 'line': step.line};
+    final resetWatch = step.verb == 'reset_app' ? (Stopwatch()..start()) : null;
+    if (resetWatch != null) record['started_at_utc'] = DateTime.now().toUtc().toIso8601String();
     try {
       switch (step.verb) {
         case 'reset_app':
@@ -296,6 +298,10 @@ Future<ScenarioRunResult> runScenario({
       record['error'] = redact('$e');
       rethrow;
     } finally {
+      if (resetWatch != null) {
+        record['duration_ms'] = resetWatch.elapsedMilliseconds;
+        record['finished_at_utc'] = DateTime.now().toUtc().toIso8601String();
+      }
       stepRecords.add(record);
     }
   }
@@ -388,7 +394,10 @@ Future<ScenarioRunResult> runScenario({
   bundle.writeManifest(manifest);
   bundle.writeReport(_buildReport(scenario, manifest));
   bundle.writeResolvedScenario(scenarioSource);
-  bundle.writeDriverLog(driver.driverLog);
+  bundle.writeDriverLog([
+    ...driver.driverLog,
+    if (fixture != null) ...fixture.diagnostics.map((event) => '[fixture-diagnostic] ${jsonEncode(event)}'),
+  ]);
 
   return ScenarioRunResult(passed: passed, failureMessage: failureMessage, bundleDir: bundle.dir);
 }
@@ -627,10 +636,26 @@ Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) as
   final args = step.args as Map<String, Object?>;
   final timeoutMs = (args['timeout'] as num).toInt();
   final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
+  String? lastMismatch;
 
   Future<bool> predicate() async {
     if (args['focused'] case final String id) return (await _focusedIds(driver)).contains(id);
-    if (args['id'] case final String id) return _idReady(driver, id);
+    if (args['id'] case final String id) {
+      if (!await _idReady(driver, id)) return false;
+      if (!args.containsKey('state')) return true;
+      final state = args['state'];
+      if (state is! Map || state.isEmpty) throw ArgumentError('wait_until state must be a non-empty map: $args');
+      // Same check as `assert: {id, state}`; a node without that state yet
+      // keeps the wait going, and the timeout names the last mismatch.
+      try {
+        final results = evaluateNodeAssertions({'id': id, 'state': state}, uiTree: await driver.uiTree());
+        lastMismatch = results.where((r) => !r.ok).map((r) => r.message).firstOrNull;
+        return lastMismatch == null;
+      } on NodeAssertionException catch (e) {
+        lastMismatch = e.message;
+        return false;
+      }
+    }
     if (args['event'] case final String eventName) {
       final events = await driver.eventsSince(0);
       return events.any((e) => e['name'] == eventName);
@@ -642,7 +667,9 @@ Future<void> _dispatchWaitUntil(ScenarioStep step, VerificationDriver driver) as
     if (await predicate()) return;
     await Future<void>.delayed(const Duration(milliseconds: 150));
   }
-  throw StateError('wait_until timed out after ${timeoutMs}ms: $args');
+  throw StateError(
+    'wait_until timed out after ${timeoutMs}ms: $args${lastMismatch == null ? '' : ' (last: $lastMismatch)'}',
+  );
 }
 
 /// Presence first, then any geometry and/or `state`/`focused` predicates the

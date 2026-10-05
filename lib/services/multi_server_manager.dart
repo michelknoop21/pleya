@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../connection/connection.dart';
 import '../media/media_backend.dart';
 import '../media/media_server_client.dart';
+import '../media/server_administration.dart';
 import '../media/server_authority_guard.dart';
 import '../services/api_cache.dart';
 import 'jellyfin_client.dart';
@@ -17,9 +18,11 @@ import 'pleya_share/pleya_share_client.dart';
 import 'pleya_share/pleya_share_host_service.dart';
 import 'pleya_server_client.dart';
 import 'plex_client.dart';
+import 'plex_sharing_service.dart';
 import 'server_matchable_client.dart';
 import '../models/plex/plex_config.dart';
 import '../utils/app_logger.dart';
+import '../utils/media_server_http_client.dart';
 import '../utils/media_server_timeouts.dart';
 import '../utils/future_extensions.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -118,6 +121,14 @@ class MultiServerManager {
   final Map<String, String> _clientIdByServer = {};
 
   String? _resolveClientIdentifier(ServerId serverId) => _clientIdByServer[serverId];
+
+  /// The Plex account each server was bound through, kept in memory only for
+  /// [plexSharingFor]. Its `accountToken` is the plex.tv account token; the
+  /// per-server `accessToken` may be a Home member's `/switch` token.
+  final Map<String, PlexAccountConnection> _plexAccountByServer = {};
+
+  /// Shared plex.tv client for [plexSharingFor]; closed in [dispose].
+  MediaServerHttpClient? _plexTvHttp;
 
   /// All Jellyfin clients ever added, keyed by the compound connection id
   /// (`{serverMachineId}/{userId}`). Lets two users on the same Jellyfin
@@ -229,6 +240,7 @@ class MultiServerManager {
   /// server) is refused.
   void _wireServerAuthority(ServerAuthorityGuard client, ServerId serverId) {
     client.canManageServerMetadata = () => identical(_clients[serverId], client) && canManageServerMetadata(serverId);
+    client.canAdministerServer = () => identical(_clients[serverId], client) && canAdministerServer(serverId);
   }
 
   @visibleForTesting
@@ -265,6 +277,7 @@ class MultiServerManager {
     for (final server in connection.servers) {
       final id = server.clientIdentifier;
       _clientIdByServer[id] = connection.clientIdentifier;
+      _plexAccountByServer[id] = connection;
       _plexServers[id] = server;
       _serverStatus[id] = false;
       _authErrorServers.add(id);
@@ -346,9 +359,9 @@ class MultiServerManager {
   ///     its API; administrator is the highest role it exposes and already
   ///     holds metadata rights server-side, so every admin counts as owner
   ///     (owner decision, 25 Sep 2026). A borrowed row never inherits it.
-  ///   - Pleya Server: `false` until PS-9 delivers roles. Only `role == owner`
-  ///     may ever return true there; `admin` is not owner and a library's
-  ///     `read_write` grant is about watch state, never about metadata.
+  ///   - Pleya Server: `false`. The client has no canonical metadata write
+  ///     path there; server administration (scans, jobs, users) goes
+  ///     through [canAdministerServer] instead.
   ///   - A borrowed connection (any backend): `false`.
   ///   - Unknown server: `false`.
   bool canManageServerMetadata(ServerId serverId) {
@@ -362,6 +375,58 @@ class MultiServerManager {
       return client.connection.isAdministrator;
     }
     return false;
+  }
+
+  /// May the active profile administer [serverId]: scans, jobs, users and
+  /// their library access?
+  ///
+  ///   - Plex, Jellyfin, Emby: exactly [canManageServerMetadata]. Their admin
+  ///     role is the owner rule.
+  ///   - Pleya Server: the signed-in role is `owner` or `admin`, which is the
+  ///     line the server itself draws (DEC-142). Metadata stays owner-only.
+  ///   - A borrowed connection (any backend): `false`.
+  ///   - Unknown server: `false`.
+  ///
+  /// Reads the last known role, not live connectivity, so callers that need
+  /// an online server check that separately.
+  bool canAdministerServer(ServerId serverId) {
+    if (_restrictedServerIds.contains(serverId)) return false;
+    final client = _clients[serverId];
+    if (client is PleyaServerClient) return client.connection.isServerAdministrator;
+    return canManageServerMetadata(serverId);
+  }
+
+  /// Plex Home and share administration for an owned Plex server, or null.
+  ///
+  /// Non-null only when [serverId] is a registered [PlexClient], the server is
+  /// `owned` by the signed-in account, [canAdministerServer] holds (so not a
+  /// restricted or non-admin Home member, not a borrowed row) and the account
+  /// it was bound through has a plex.tv account token.
+  ///
+  /// The token is `PlexAccountConnection.accountToken`, never
+  /// `PlexServer.accessToken`: for a Home member profile the latter is a
+  /// `/switch` user token, a different identity with no right to manage the
+  /// Home or its shares. plex.tv sharing must run as the Home admin.
+  ///
+  /// The returned service re-checks [canAdministerServer] live before every
+  /// call, so a profile switch after this returns still refuses. Ask again
+  /// per operation rather than holding on to it; the token can rotate.
+  PlexSharingAdministration? plexSharingFor(ServerId serverId) {
+    if (_clients[serverId] is! PlexClient) return null;
+    if (_plexServers[serverId]?.owned != true) return null;
+    if (!canAdministerServer(serverId)) return null;
+    final account = _plexAccountByServer[serverId];
+    if (account == null || account.accountToken.isEmpty) return null;
+    return PlexSharingService(
+      accountToken: account.accountToken,
+      clientIdentifier: account.clientIdentifier,
+      machineIdentifier: serverId.value,
+      canAdminister: () => canAdministerServer(serverId),
+      http: _plexTvHttp ??= MediaServerHttpClient(
+        connectTimeout: MediaServerTimeouts.plexTvConnect,
+        receiveTimeout: MediaServerTimeouts.plexTvReceive,
+      ),
+    );
   }
 
   /// [canManageServerMetadata] on a Plex server. Gates administering the
@@ -568,6 +633,7 @@ class MultiServerManager {
       if (client != null) _closeClient(client);
     }
     _plexServers.remove(serverId);
+    _plexAccountByServer.remove(serverId);
     _serverStatus.remove(serverId);
     _authErrorServers.remove(serverId);
     _releaseGeneration(serverId);
@@ -614,6 +680,7 @@ class MultiServerManager {
     final futures = connection.servers.map((server) async {
       final serverId = server.clientIdentifier;
       _clientIdByServer[serverId] = connection.clientIdentifier;
+      _plexAccountByServer[serverId] = connection;
       _plexServers[serverId] = server;
       try {
         final client = await _createClientForServer(
@@ -669,6 +736,7 @@ class MultiServerManager {
     final futures = connection.servers.map((server) async {
       final serverId = server.clientIdentifier;
       _clientIdByServer[serverId] = connection.clientIdentifier;
+      _plexAccountByServer[serverId] = connection;
       _plexServers[serverId] = server;
       final existing = _clients[serverId];
       if (existing is PlexClient && ((_serverStatus[serverId] ?? false) || _authErrorServers.contains(serverId))) {
@@ -722,6 +790,7 @@ class MultiServerManager {
       _serverStatus.remove(id);
       _authErrorServers.remove(id);
       _clientIdByServer.remove(id);
+      _plexAccountByServer.remove(id);
       _unreachableSince.remove(id);
       _releaseGeneration(ServerId(id));
     }
@@ -790,6 +859,11 @@ class MultiServerManager {
 
       final health = await client.checkHealth();
       final healthy = health == HealthStatus.online;
+      // A legacy Emby connection fails over on the 500 from `/Users/Me` before
+      // checkHealth migrates it (DEC-141); drop that stale offline debounce.
+      if (healthy && client.connection.isEmby != resolvedConnection.isEmby) {
+        _reconnectDebounce.remove(machineId)?.cancel();
+      }
       _jellyfinHealthByCompoundId[compoundId] = health;
       _applyHealth(ServerId(machineId), health);
 
@@ -1642,6 +1716,7 @@ class MultiServerManager {
     _authErrorServers.clear();
     _serverGenerations.clear();
     _clientIdByServer.clear();
+    _plexAccountByServer.clear();
     _activeOptimizations.clear();
     _sharePollTimer?.cancel();
     _sharePollTimer = null;
@@ -1657,6 +1732,8 @@ class MultiServerManager {
 
   /// Dispose resources
   void dispose() {
+    _plexTvHttp?.close();
+    _plexTvHttp = null;
     _sharePollTimer?.cancel();
     _sharePollTimer = null;
     disconnectAll();

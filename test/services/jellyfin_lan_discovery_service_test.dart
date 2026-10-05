@@ -74,6 +74,15 @@ void main() {
       await expectLater(socketSet.close(), completes);
     });
   });
+
+  test('parses the reply Emby 4.9 sends to "who is EmbyServer?"', () {
+    // Captured from emby/embyserver 4.9.3 on UDP 7359.
+    final server = JellyfinLanDiscoveryService.parseDiscoveryResponse(
+      utf8.encode('{"Address":"http://127.0.0.1:8096","Id":"16dc0347f14c4fabb62e3a6644507367","Name":"a07c2078a3c9"}'),
+    );
+    expect(server?.address, 'http://127.0.0.1:8096');
+    expect(server?.id, '16dc0347f14c4fabb62e3a6644507367');
+  });
 }
 
 Future<void> _waitFor(bool Function() condition) async {

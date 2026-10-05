@@ -65,6 +65,9 @@ class TvContentRow extends StatelessWidget {
     this.tileScrollAlignment = 0.5,
     this.viewAllTarget,
     this.onViewAll,
+    this.isContinueWatching = false,
+    this.continueWatchingCount,
+    this.onViewAllContinueWatching,
   });
 
   /// A projected Home row: Continue Watching, or one of
@@ -116,6 +119,17 @@ class TvContentRow extends StatelessWidget {
   /// catalog needs [UnifiedCatalogs], which this row does not hold.
   final ValueChanged<HomeCustomRowViewAllTarget>? onViewAll;
 
+  /// True for the one row that is Verder kijken; the rail's focus line names
+  /// an episode without progress as the next one (mockup 38 C).
+  final bool isContinueWatching;
+
+  /// For the Verder kijken row only: the full count beside the title and the
+  /// "Alle N" tile that opens the sectioned overview (DEC-144 fase 2). The tile
+  /// is there whenever the row is, not only past twenty titles: the overview
+  /// is also where a hidden title is put back (fase 3).
+  final int? continueWatchingCount;
+  final VoidCallback? onViewAllContinueWatching;
+
   static String _destinationLabel(MediaKind kind) =>
       kind == MediaKind.movie ? t.unifiedCatalog.discovery.allMovies : t.unifiedCatalog.discovery.allSeries;
 
@@ -127,6 +141,7 @@ class TvContentRow extends StatelessWidget {
       title: hub.title,
       groups: hub.groups,
       isPartial: hub.isPartial,
+      isContinueWatching: isContinueWatching,
       clientFor: clientFor,
       initialFocusedGroupId: initialFocusedGroupId,
       onFocusedGroupChanged: onFocusedGroupChanged,
@@ -136,13 +151,20 @@ class TvContentRow extends StatelessWidget {
       onNavigateDown: onNavigateDown,
       automationRailIndex: automationRailIndex,
       tileScrollAlignment: tileScrollAlignment,
-      viewAll: target == null
-          ? null
-          : TvDiscoveryViewAllTile(
+      count: isContinueWatching ? continueWatchingCount : null,
+      viewAll: target != null
+          ? TvDiscoveryViewAllTile(
               count: target.count,
               destinationLabel: _destinationLabel(target.kind),
               onSelect: () => onViewAll?.call(target),
-            ),
+            )
+          : (isContinueWatching && onViewAllContinueWatching != null && (continueWatchingCount ?? 0) > 0)
+          ? TvDiscoveryViewAllTile(
+              count: continueWatchingCount!,
+              destinationLabel: t.discover.continueWatching,
+              onSelect: onViewAllContinueWatching!,
+            )
+          : null,
     );
   }
 }

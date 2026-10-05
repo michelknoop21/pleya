@@ -31,3 +31,15 @@ bun run build
 ```
 
 The production output is written to `build/` and is intentionally ignored by git.
+
+## TV download and counter
+
+`/install` is an unlisted page for the Android TV APK. The APK itself is mounted from
+`/volume1/docker/pleya/downloads` on the NAS, outside the site image. The download
+button first calls `/get/android-tv`, which records one download start and redirects
+to the APK. `/download-counts.json` returns the total shown on the page. These are
+download starts, not completed transfers or installations.
+
+The counter database lives in `/volume1/docker/pleya/download-data` and survives
+website redeploys. It stores daily totals only; no visitor identifiers. Deploy with
+`./deploy-nas.sh`, which creates that data directory and starts both containers.

@@ -290,6 +290,30 @@ void main() {
     expect(manifest, contains('"result": "PASS"'));
   });
 
+  test('fixture seed diagnostics survive prelaunch teardown in the existing driver log', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.diagnostics\ntarget: macos\nsetup:\n  - reset_app\n  - seed: catalog.mixed.v1\nsteps: []\n',
+      sourcePath: 'inline.yaml',
+    );
+    Directory('${repoRoot.path}/pleya_verify').createSync();
+    Link('${repoRoot.path}/pleya_verify/fixture_server').createSync(Directory('../fixture_server').absolute.path);
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'diagnostic seed',
+      driver: FakeDriver(),
+      repoRoot: repoRoot,
+    );
+    expect(result.passed, isTrue);
+    final log = File('${result.bundleDir.path}/driver.log').readAsStringSync();
+    expect(log, contains('"stage":"seed_received"'));
+    expect(log, contains('"stage":"seed_response_closed"'));
+    expect(log, contains('"stage":"process_exit"'));
+    final manifest = jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map;
+    final reset = (manifest['steps'] as List).first as Map;
+    expect(DateTime.tryParse(reset['started_at_utc'] as String? ?? ''), isNotNull);
+    expect(reset['duration_ms'], isA<int>());
+  });
+
   group('a press is recorded by what it changed, not by whether it returned', () {
     test('a press that moves the app records before, after, changed and the events between', () async {
       final scenario = parseScenarioString(
@@ -458,6 +482,26 @@ void main() {
 
     expect(result.passed, isFalse);
     expect(result.failureMessage, contains('timed out'));
+  });
+
+  test('wait_until with state waits for that state, not only for the node (VERIFY-WAIT1)', () async {
+    Future<ScenarioRunResult> waitFor(bool collapsed) {
+      final source =
+          'name: fixture.wait_state\ntarget: macos\nsteps:\n'
+          '  - wait_until: {id: sidebar.rail, state: {collapsed: $collapsed}, timeout: 300}\n';
+      return runScenario(
+        scenario: parseScenarioString(source, sourcePath: 'inline.yaml'),
+        scenarioSource: source,
+        driver: FakeDriver(stateForSidebar: const {'collapsed': false}),
+        repoRoot: repoRoot,
+      );
+    }
+
+    expect((await waitFor(false)).passed, isTrue);
+    final wrong = await waitFor(true);
+    expect(wrong.passed, isFalse);
+    expect(wrong.failureMessage, contains('timed out'));
+    expect(wrong.failureMessage, contains('collapsed is false, expected true'));
   });
 
   test('a verb the engine genuinely has no case for fails cleanly instead of silently no-opping', () async {

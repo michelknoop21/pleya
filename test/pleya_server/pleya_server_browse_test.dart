@@ -359,6 +359,19 @@ void main() {
       expect(server.requests.any((r) => r.contains('next_up')), isFalse);
     });
 
+    test('Verder kijken is asked for even when the server leaves the watch-state flag out', () async {
+      // The Verify fixture is such a server and still has a list; guarding the
+      // fetch on the flag emptied Home's Verder kijken row there (PR #165).
+      final id = server.hubs['recently_added']!.first;
+      server.hubs['continue_watching']!.add(id);
+      client = await connected(server);
+
+      final items = await client.fetchContinueWatching(count: null);
+
+      expect(items.map((i) => i.id), [id]);
+      expect(server.requests.any((r) => r.contains('continue_watching')), isTrue);
+    });
+
     test('empty playback rows do not reach the home screen as blank sections', () async {
       final withWatchState = PleyaFakeServer(watchState: true);
       withWatchState.addLibrary(id: 'lib-films', title: 'Films', kind: 'movies');

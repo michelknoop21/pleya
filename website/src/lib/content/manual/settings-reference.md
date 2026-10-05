@@ -72,10 +72,10 @@ removes it from this device even while the server is offline or its sign-in has 
 - **Trakt, MyAnimeList, AniList and Simkl** keep your watch history on those services
 - **Discord Rich Presence** shows what you are watching, on desktop
 - **Companion Remote** lets a phone drive this device
-- **Requests** connects Jellyseerr or Overseerr, see [Requests](/docs/requests)
+- **Requests** connects Seerr, Jellyseerr or Overseerr, see [Requests](/docs/requests)
 - **Pleya Share** hosts or joins a device share, see [Pleya Share](/docs/pleya-share)
 - **Tautulli** adds viewers, watch statistics and live activity to Pleya, see
-  [Movie and show details](/docs/movie-and-show-details). Its own screen carries **Use history
+  [Tautulli](/docs/tautulli). Its own screen carries **Use history
   for recommendations**, which lets the taste rows on Home learn from what that server recorded
   before you had Pleya. Each profile only ever gets its own history, and the processing happens
   in Pleya on this device

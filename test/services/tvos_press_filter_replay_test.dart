@@ -1,6 +1,6 @@
 // DBL1 negative control. Models station 3 (`tvosHandlePress`, `filterArrowPress`,
 // `pressFilterDrop`, the RAIL2 delivery memory and `undoDropsReachingResponderChain`
-// in tvos/Runner/AppDelegate.swift) together with the parts of the engine it
+// in tvos/Runner/PleyaFlutterViewController.swift) together with the parts of the engine it
 // talks to (the two swizzle hops of `FlutterTvosHandlePressesEvent`, the pressed
 // set with `tapIfMissingKeyDown`, and the `pressesBegan:` fallback), then replays
 // three hardware logs through it. The Swift cannot run here; the last test pins
@@ -16,7 +16,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-// ---- mirror of AppDelegate.swift ------------------------------------------
+// ---- mirror of PleyaFlutterViewController.swift ---------------------------
 
 const double bounceGapMs = 30.0;
 
@@ -331,8 +331,8 @@ void main() {
     });
   });
 
-  test('the Swift lines this model mirrors are still in AppDelegate.swift', () {
-    final swift = File('tvos/Runner/AppDelegate.swift').readAsStringSync();
+  test('the Swift lines this model mirrors are still in PleyaFlutterViewController.swift', () {
+    final swift = File('tvos/Runner/PleyaFlutterViewController.swift').readAsStringSync();
     for (final line in [
       'static let bounceGapMs = $bounceGapMs',
       'guard gap >= 0, gap < bounceGapMs else { return nil }',

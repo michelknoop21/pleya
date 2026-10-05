@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/connection/connection_registry.dart';
 import 'package:pleya/database/app_database.dart';
+import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/services/credential_vault.dart';
 import 'package:pleya/services/plex_auth_service.dart';
 
@@ -82,6 +83,17 @@ void main() {
 
       final defaultConn = await registry.getDefault();
       expect(defaultConn?.id, 'a');
+    });
+
+    test('loading a stored Emby connection registers it for labels before any client exists', () async {
+      await registry.upsert(_jellyfin(id: 'e').copyWith(isEmby: true));
+      embyServerIds.clear();
+      addTearDown(embyServerIds.clear);
+
+      final loaded = await registry.get('e');
+
+      expect(loaded, isA<JellyfinConnection>().having((c) => c.isEmby, 'isEmby', isTrue));
+      expect(isEmbyServer('jf-machine-e'), isTrue);
     });
 
     test('upsert preserves type discriminator (Plex vs Jellyfin)', () async {

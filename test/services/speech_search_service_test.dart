@@ -56,6 +56,20 @@ void main() {
     expect(result.submitted, isTrue);
   });
 
+  test('Apple TV: a caller can ask for a send key instead of search', () async {
+    final service = buildAppleTvService();
+    late Map<Object?, Object?> sentArgs;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      sentArgs = call.arguments as Map<Object?, Object?>;
+      return <String, dynamic>{'text': 'scan films', 'submitted': true};
+    });
+
+    final result = await service.capture(action: 'send');
+
+    expect(sentArgs['action'], 'send');
+    expect(result!.text, 'scan films');
+  });
+
   test('Apple TV: cancelling with text returns submitted=false', () async {
     final service = buildAppleTvService();
     messenger.setMockMethodCallHandler(channel, (call) async {

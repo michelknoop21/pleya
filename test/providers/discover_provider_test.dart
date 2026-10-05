@@ -16,6 +16,7 @@ import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_library.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/providers/continue_watching_hidden_provider.dart';
 import 'package:pleya/providers/discover_provider.dart';
 import 'package:pleya/providers/discover_refresh_policy.dart';
 import 'package:pleya/providers/hidden_libraries_provider.dart';
@@ -404,13 +405,130 @@ void main() {
     expect(provider.isRefreshing, isFalse);
   });
 
-  test('limits the preview row and probes for more', () async {
+  test('keeps the whole list, shows the first 20 and counts all of it', () async {
     aggregation.onDeckResult = () => [for (var i = 0; i < 30; i++) _item('item-$i')];
 
     await provider.load();
 
     expect(provider.onDeck, hasLength(DiscoverProvider.continueWatchingPreviewLimit));
-    expect(provider.hasMoreContinueWatching, isTrue);
+    expect(provider.continueWatchingCount, 30);
+    expect(provider.allContinueWatching, hasLength(30));
+    expect(await provider.loadAllContinueWatching(), hasLength(30), reason: 'from memory, no second fetch');
+  });
+
+  test('a removal past the row still reaches the provider (DEC-144 fase 2)', () async {
+    aggregation.onDeckResult = () => [for (var i = 0; i < 25; i++) _item('item-$i')];
+    await provider.load();
+
+    WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('item-23'));
+    await pumpEventQueue();
+
+    expect(provider.allContinueWatching.map((i) => i.id), isNot(contains('item-23')));
+    expect(provider.continueWatchingCount, 24);
+  });
+
+  group('hidden on this device (DEC-144 fase 3)', () {
+    late ContinueWatchingHiddenProvider hidden;
+    late DiscoverProvider subject;
+    Set<String> pending = {};
+
+    setUp(() async {
+      pending = {};
+      hidden = ContinueWatchingHiddenProvider();
+      await hidden.ensureInitialized();
+      subject = DiscoverProvider(
+        multiServer,
+        hiddenLibraries,
+        libraries,
+        isProfileBinding: () => isBinding,
+        hiddenContinueWatching: hidden,
+        pendingContinueWatchingRemovalKeys: () async => pending,
+      );
+      aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+    });
+
+    tearDown(() {
+      subject.dispose();
+      hidden.dispose();
+    });
+
+    test('a hidden title is filtered out of every fetch, and stays out after a refetch', () async {
+      await hidden.hide(_item('ep-1'));
+      await subject.load();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-2']);
+
+      await subject.refreshContinueWatching();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-2'], reason: 'the server never stops listing it');
+    });
+
+    test('hiding drops the card at once, without waiting for a fetch', () async {
+      await subject.load();
+      final callsBefore = aggregation.onDeckCalls;
+      await hidden.hide(_item('ep-1'));
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-2']);
+      expect(aggregation.onDeckCalls, callsBefore);
+    });
+
+    test('restore brings the title back', () async {
+      await hidden.hide(_item('ep-1'));
+      await subject.load();
+
+      await hidden.restore(_item('ep-1').globalKey);
+      await pumpEventQueue();
+
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-1', 'ep-2']);
+    });
+
+    test('a removal through the menu on a hidden title does not resurface it on restore of another', () async {
+      await subject.load();
+      await hidden.hide(_item('ep-1'));
+      WatchStateNotifier().notifyRemovedFromContinueWatching(item: _item('ep-1'));
+      await pumpEventQueue();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-2']);
+
+      await hidden.restore(_item('ep-1').globalKey);
+      await pumpEventQueue();
+      expect(subject.allContinueWatching.map((i) => i.id), [
+        'ep-1',
+        'ep-2',
+      ], reason: 'the suppression lifts with the hide');
+    });
+
+    test('playing a hidden title again puts it back by itself', () async {
+      await hidden.hide(_item('ep-1'));
+      await subject.load();
+
+      WatchStateNotifier().notifyProgress(item: _item('ep-1'), viewOffset: 1000, duration: 100000);
+      await pumpEventQueue();
+
+      expect(hidden.count, 0);
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-1', 'ep-2']);
+    });
+
+    test('a removal still queued for its server keeps the card away after a restart', () async {
+      pending = {_item('ep-2').globalKey};
+      await subject.load();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-1']);
+    });
+
+    test('and survives its server being unreachable, then reconnecting before the replay', () async {
+      pending = {_item('ep-2').globalKey};
+      // The server that owns ep-2 does not answer the first fetch at all.
+      aggregation.onDeckResult = () => [_item('ep-1')];
+      await subject.load();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-1']);
+
+      // It reconnects and lists the title again; the removal is still queued.
+      aggregation.onDeckResult = () => [_item('ep-1'), _item('ep-2')];
+      await subject.refreshContinueWatching();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-1'], reason: 'the queue row is still there');
+
+      // The replay lands: the row is gone and so is the title on the server.
+      pending = {};
+      aggregation.onDeckResult = () => [_item('ep-1')];
+      await subject.refreshContinueWatching();
+      expect(subject.allContinueWatching.map((i) => i.id), ['ep-1']);
+    });
   });
 
   test('filters playback-progress hubs that duplicate the continue watching row', () async {

@@ -189,6 +189,72 @@ ids:
   - id: my_pleya.log_row
     role: list.item
     instanceable: true
+  - id: screen.assistant
+    role: screen
+    instanceable: false
+  - id: assistant.button
+    role: button
+    instanceable: true
+  - id: assistant.example
+    role: button
+    instanceable: true
+  - id: assistant.followUp
+    role: button
+    instanceable: true
+  - id: assistant.steps
+    role: list
+    instanceable: false
+  - id: assistant.result
+    role: region
+    instanceable: false
+  - id: assistant.option
+    role: list.item
+    instanceable: true
+  - id: assistant.match
+    role: list.item
+    instanceable: true
+  - id: assistant.task
+    role: list.item
+    instanceable: true
+  - id: assistant.task.cancel
+    role: button
+    instanceable: true
+  - id: assistant.confirm
+    role: sheet
+    instanceable: false
+  - id: assistant.confirm.button
+    role: button
+    instanceable: true
+  - id: assistant.kidsAges
+    role: sheet
+    instanceable: false
+  - id: assistant.kidsAges.button
+    role: button
+    instanceable: true
+  - id: assistant.summon
+    role: region
+    instanceable: false
+  - id: bigp.faceButton
+    role: button
+    instanceable: false
+  - id: bigp.balloon
+    role: region
+    instanceable: false
+  - id: bigp.input
+    role: field
+    instanceable: false
+  - id: bigp.followUp
+    role: button
+    instanceable: true
+  - id: bigp.peek
+    role: button
+    instanceable: false
+  - id: bigp.searchAsk
+    role: button
+    instanceable: false
+  - id: bigp.libraryAsk
+    role: button
+    instanceable: true
   - id: settings.form.field
     role: field
     instanceable: true

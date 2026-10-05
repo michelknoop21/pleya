@@ -24,6 +24,7 @@ section's shape.
 - Before implementation starts, map the task to an existing roadmap work-package ID. PRs and handoffs state `Roadmap: <ID>`. If work fits no ID or changes priority/order/scope, stop and record a roadmap deviation first; product choices require Michel's decision.
 - Open P0 work precedes lower-priority work unless the lower item is demonstrably independent and does not delay review or release of the primary stream. Keep at most one primary implementation stream plus one truly independent parallel implementation.
 - Security, data-loss, regression and release-blocking hotfixes may interrupt the order; reconcile the roadmap and owning register in the same PR or the next documentation commit.
+- Wie een werkpakket van status laat veranderen, werkt `docs/ROADMAP.md` bij in dezelfde PR.
 - The roadmap owns order, not detailed item status. Existing registers and masterplans remain the status authority for their domains.
 
 ## Review and release bundling

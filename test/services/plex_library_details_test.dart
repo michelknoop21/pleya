@@ -37,6 +37,51 @@ void main() {
     );
   }
 
+  for (final count in [null, 'broken', -1]) {
+    test('strict request title page rejects unverified Plex total $count', () async {
+      final client = makeClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'MediaContainer': {'totalSize': ?count, 'Metadata': <Object>[]},
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+      addTearDown(client.close);
+      const query = LibraryQuery(search: 'The Matrix', limit: 100);
+      await expectLater(client.fetchLibraryContent('1', query, requireTotalCount: true), throwsStateError);
+      // The opt-in guard leaves ordinary browsing's fallback behavior intact.
+      await client.fetchLibraryContent('1', query);
+    });
+  }
+
+  test('strict request title page preserves Plex matching count and rejects parse loss', () async {
+    var broken = false;
+    Uri? uri;
+    final client = makeClient((request) async {
+      uri = request.url;
+      return http.Response(
+        jsonEncode({
+          'MediaContainer': {
+            'totalSize': broken ? 1 : 101,
+            'Metadata': broken ? [null] : <Object>[],
+          },
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    addTearDown(client.close);
+    const query = LibraryQuery(search: 'The Matrix', limit: 100);
+    final page = await client.fetchLibraryContent('1', query, requireTotalCount: true);
+    expect(page.totalCount, 101); // Never synthesized from the empty visible page.
+    expect(uri!.queryParameters['title'], 'The Matrix');
+    expect(uri!.queryParameters['X-Plex-Container-Size'], '100');
+    broken = true;
+    await expectLater(client.fetchLibraryContent('1', query, requireTotalCount: true), throwsA(anything));
+  });
+
   test('filters and sorts use dedicated Plex endpoints', () async {
     final requests = <Uri>[];
     final client = makeClient((request) async {

@@ -108,7 +108,7 @@ void main() {
         viewOffsetMs: 3600000, // 1h in
         sourceCount: 2,
       ),
-      resumeRemaining: t.nowWatching.remaining(time: formatDurationTextual(9360000 - 3600000)),
+      resumeRemaining: formatRemainingTime(9360000, 3600000),
     );
 
     expect(line, isNotNull);
@@ -117,7 +117,7 @@ void main() {
     expect(parts[0], 'Science fiction', reason: 'one genre, not the whole list');
     expect(parts[1], formatDurationTextual(9360000));
     expect(parts[2], t.unifiedCatalog.sources(count: 2));
-    expect(parts[3], t.nowWatching.remaining(time: formatDurationTextual(9360000 - 3600000)));
+    expect(parts[3], formatRemainingTime(9360000, 3600000));
   });
 
   test('a part with nothing behind it is left out, not printed empty', () {
@@ -187,7 +187,7 @@ void main() {
     final rows = tester.widgetList<TvCatalogOptionRow>(find.byType(TvCatalogOptionRow)).toList();
     final resume = rows.firstWhere((r) => r.label == t.common.resume);
 
-    expect(resume.secondary, t.nowWatching.remaining(time: formatDurationTextual(9360000 - 3600000)));
+    expect(resume.secondary, formatRemainingTime(9360000, 3600000));
   });
 
   testWidgets('a title with no progress says Play and carries no second line', (tester) async {

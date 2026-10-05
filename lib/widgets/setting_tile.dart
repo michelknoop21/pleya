@@ -90,6 +90,11 @@ class SettingSwitchRow extends StatelessWidget {
   final bool enabled;
   final FocusNode? focusNode;
 
+  /// Fixed by something else (a Plex restriction): drawn in the active
+  /// colour with a lock in the thumb, and still focusable so the D-pad
+  /// reaches it and its subtitle is read, but it does nothing.
+  final bool locked;
+
   const SettingSwitchRow({
     super.key,
     required this.value,
@@ -99,15 +104,18 @@ class SettingSwitchRow extends StatelessWidget {
     this.subtitle,
     this.enabled = true,
     this.focusNode,
+    this.locked = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final active = enabled && onChanged != null;
+    final active = enabled && onChanged != null && !locked;
     return SettingRowFocus(
-      enabled: active,
+      enabled: active || locked,
       focusNode: focusNode,
-      onSelect: () => onChanged?.call(!value),
+      onSelect: () {
+        if (active) onChanged!(!value);
+      },
       child: ClickableCursor(
         enabled: active,
         child: SwitchListTile(
@@ -116,7 +124,12 @@ class SettingSwitchRow extends StatelessWidget {
           title: Text(title),
           subtitle: subtitle != null ? Text(subtitle!) : null,
           value: value,
-          onChanged: active ? onChanged : null,
+          // A no-op keeps a locked switch in the active colour.
+          onChanged: active ? onChanged : (locked ? (_) {} : null),
+          // The track's colour: the theme draws a thumb icon white on the white thumb.
+          thumbIcon: locked
+              ? WidgetStatePropertyAll(Icon(Symbols.lock_rounded, color: Theme.of(context).colorScheme.primary))
+              : null,
         ),
       ),
     );
@@ -133,6 +146,10 @@ class SettingNavigationTile extends StatelessWidget {
   final FocusNode? focusNode;
   final IconData trailingIcon;
 
+  /// What the destination asks for next ("API-sleutel"), right-aligned
+  /// before the chevron.
+  final String? trailingLabel;
+
   /// Amber dot next to the chevron, same convention and color
   /// (`kAccentAlt`) as `TvTopNavigation`'s expired-session marker: something
   /// the viewer can fix from here, not breakage, so it stays off the brand
@@ -148,6 +165,7 @@ class SettingNavigationTile extends StatelessWidget {
     this.onTap,
     this.focusNode,
     this.trailingIcon = Symbols.chevron_right_rounded,
+    this.trailingLabel,
     this.needsAttention = false,
   }) : assert(destinationBuilder != null || onTap != null);
 
@@ -174,6 +192,7 @@ class SettingNavigationTile extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (trailingLabel != null) ...[Text(trailingLabel!), const SizedBox(width: 16)],
               if (needsAttention) ...[
                 Semantics(label: t.tvNavigation.attentionRequired, child: const NewEpisodeDot()),
                 const SizedBox(width: 8),

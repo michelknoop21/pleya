@@ -19,4 +19,16 @@ mixin ServerAuthorityGuard {
       throw const MediaServerAuthException('Only the server owner can change server metadata', statusCode: 403);
     }
   }
+
+  /// Server administration beyond metadata: users, library access, jobs and
+  /// scans on backends whose admin role is wider than the owner rule
+  /// (Pleya Server admins). Wired and evaluated like
+  /// [canManageServerMetadata]; unwired refuses.
+  bool Function()? canAdministerServer;
+
+  void assertCanAdministerServer() {
+    if (canAdministerServer?.call() != true) {
+      throw const MediaServerAuthException('Only a server administrator can do this', statusCode: 403);
+    }
+  }
 }

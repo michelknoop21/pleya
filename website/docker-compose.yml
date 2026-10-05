@@ -5,7 +5,17 @@ services:
     restart: unless-stopped
     ports:
       - "8830:80"
+    depends_on:
+      - download-counter
     volumes:
       # Private downloads (APK's e.d.) — buiten de image zodat site-deploys
       # ze niet weggooien. URL-pad bevat een geheim token.
       - /volume1/docker/pleya/downloads:/downloads:ro
+  download-counter:
+    image: python:3.13-alpine
+    container_name: pleya-download-counter
+    restart: unless-stopped
+    command: python /app/download_counter.py
+    volumes:
+      - ./download_counter.py:/app/download_counter.py:ro
+      - /volume1/docker/pleya/download-data:/data

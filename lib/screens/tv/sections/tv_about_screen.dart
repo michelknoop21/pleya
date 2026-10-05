@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -132,6 +133,15 @@ class _TvAboutScreenState extends State<TvAboutScreen> {
         // Verbatim, and unfocusable: this is the attribution and
         // corresponding-source offer the GPL requires, not a control.
         TvPageBlock.text(AboutScreen.licenceNotice),
+        SizedBox(height: TvMyPleyaLayout.groupGap * scale),
+        TvPageGroupLabel(t.about.sources),
+        TvPageBlock(
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SvgPicture.asset(AboutScreen.tmdbLogo, height: 40 * scale, semanticsLabel: 'TMDB'),
+          ),
+        ),
+        for (final (_, text) in AboutScreen.sourceLines()) TvPageBlock.text(text),
       ],
     );
   }

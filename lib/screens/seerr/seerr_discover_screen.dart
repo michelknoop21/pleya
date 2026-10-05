@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../assistant/assistant_age_gate.dart' show assistantRegion;
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../automation/automation_screen.dart';
@@ -248,7 +249,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
   /// Availability differs per country, so the region comes from the device
   /// locale. Falls back to US, which is what seerr itself defaults to.
-  String get _watchRegion => WidgetsBinding.instance.platformDispatcher.locale.countryCode?.toUpperCase() ?? 'US';
+  String get _watchRegion => assistantRegion();
 
   Future<void> _loadProviders() async {
     final client = _client;

@@ -285,6 +285,8 @@ func matrixProbes() []matrixProbe {
 		{row: 38, name: "POST /jobs/{id}/retry", method: http.MethodPost,
 			path: func(f *matrixFixture) string { return "/pleya/v1/jobs/" + f.pendingJobID + "/retry" },
 			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		{row: 39, name: "GET /watch-history", method: http.MethodGet,
+			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
 }
 

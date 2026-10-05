@@ -596,7 +596,7 @@ Wat bewust open blijft staan:
 
 *Afbakening tegen [DEC-020](#dec-020).* DEC-020 legt vast dat watchlist-verwijdering een titel uit **alle** `WatchlistMembership`-records tegelijk haalt, zonder bronkeuze — dat blijft ongewijzigd. De source picker uit hoofdstuk 14 introduceert géén bronkeuze voor verwijderen uit de watchlist. De picker geldt uitsluitend voor: availability tonen (hoofdstuk 14.7/14.8), een item openen, de detailpagina met source switching (hoofdstuk 15), en afspelen. Watchlist-add/-remove, de partially-failed-afhandeling en de ordinale bronvolgorde uit DEC-020 lopen buiten de unified-picker om.
 
-*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share; Pleya heeft geen Emby-backend (`MediaBackend` kent alleen plex, jellyfin, pleyaServer, local, pleyaShare).
+*Cross-server mergen van Pleya Server, local en Pleya Share.* Zoals hoofdstuk 11 en 33.6 (conflictpunt 3) al specificeren: een `UnifiedMediaGroup` mag een Pleya Server-, local- of Pleya Share-bron als **single-source** groep bevatten, maar die bronnen worden **niet** cross-server gemerged met Plex- of Jellyfin-bronnen, noch onderling met elkaar. Waar de goedgekeurde mockups "Emby" tonen is dat te lezen als Pleya Server of Pleya Share. *Bijgesteld door [DEC-141](#dec-141-emby-als-variant-van-de-jellyfin-backend):* Emby bestaat sinds oktober 2026 als variant van de Jellyfin-backend en merget zoals Jellyfin.
 **Consequences:** DEC-023, DEC-002 en DEC-020 blijven allemaal `accepted` en worden niet op `superseded` gezet: dit is per paragraaf een partiële supersede/afbakening, geen vervanging van de hele beslissing. Toekomstige lezers van DEC-002 moeten de kleurwaarden hier lezen, niet de oorspronkelijke hexcodes; toekomstige lezers van DEC-023 moeten voor tvOS naar hoofdstuk 6/7 van het unified-plan, voor mobiel blijft DEC-023 zelf de bron. De zes architectuurbesluiten hierboven zijn vanaf nu bindend voor elke fase van Pleya Unified TV 2026 en worden, net als de rest van dit besluit, niet per fase herwogen — een latere fase die een van deze punten wil heropenen heeft een nieuw ADR nodig, geen stille afwijking in code of plan.
 
 
@@ -4200,3 +4200,301 @@ northstar 06. Op de seriepagina vervallen de inline afleveringenlijst en de seiz
 nog aanhield; die afleveringen staan voortaan op de eigen seizoenspagina. Delen verhuist van de
 actierij naar Meer. De vier mockups en hun HTML-bron staan vanaf deze taak in
 `docs/assets/ios-unified/detail-2026/`.
+
+## DEC-141: Emby als variant van de Jellyfin-backend
+
+**Date:** 2026-10-02
+**Status:** accepted. Stelt de laatste zin van de cross-server-paragraaf in [DEC-063](#dec-063) bij ("Pleya heeft geen Emby-backend").
+
+**Context:** Michel wil Emby-servers kunnen toevoegen. Jellyfin is in 2018 geforkt van Emby 3.5 en
+de twee delen nog steeds het grootste deel van hun REST-API. Een eigen `MediaBackend.emby` of
+`ConnectionKind.emby` zou alle exhaustieve switches raken (ruim dertig bestanden, plus Drift,
+downloads en watchlist). Een nieuwe `ConnectionKind` valt in `credential_vault.dart` bovendien
+terug op onversleutelde opslag van het token.
+
+De verschillen zijn op twee manieren vastgesteld. Eerst tegen de OpenAPI-specificatie van Emby 4.10.1
+(`Resources/OpenApi/openapi_v3.json` in `MediaBrowser/Emby.SDK`), daarna met
+`test/live/emby_live_test.dart` tegen een echte `emby/embyserver` 4.9.3 in Docker. Die test doorloopt
+de echte auth-service en client: inloggen, bibliotheken, filters, details, extra's, zoeken, direct
+play, transcode, ondertitels, voortgang, hervatten, kijkstatus, favorieten, playlists, collecties en
+metadata bewerken. Eindstand 77 van 77 tegen Emby. Dezelfde test met `PLEYA_LIVE_EXPECT=jellyfin`
+haalt 74 van 74 tegen Jellyfin 12.1, dus de Emby-takken laten Jellyfin ongemoeid.
+
+**Decision:** Emby draait op `MediaBackend.jellyfin`. `JellyfinConnection` krijgt `isEmby`
+(JSON-veld, ontbreekt het dan is het `false`), gevuld door de probe: Jellyfin stuurt
+`ProductName: "Jellyfin Server"`, Emby 4.9 stuurt geen ProductName en dan beslist de versie (Emby
+4.x, Jellyfin 10.x en hoger). De client vertakt alleen waar Emby aantoonbaar anders is:
+
+| Jellyfin | Emby | Wat er live misging zonder vertakking |
+| --- | --- | --- |
+| `/Users/Me` | `/Users/{uid}` | 500, gezondheidscheck en validatie faalden |
+| `/UserItems/Resume`, `/UserPlayedItems/{id}`, `/UserItems/{id}/Rating` | `/Users/{uid}/Items/Resume`, `/Users/{uid}/PlayedItems/{id}`, `/Users/{uid}/Items/{id}/Rating` | 404 |
+| `/Items/{id}/LocalTrailers`, `/Items/{id}/SpecialFeatures` | onder `/Users/{uid}/Items/{id}/` | 404, extra's stil leeg |
+| `/Items/Filters` | `/Genres`, `/OfficialRatings`, `/Tags`, `/Years` samengevoegd; een geweigerde lijst valt alleen zelf weg | 404 kwam als fout in de filterweergave |
+| `PlaySessionId` optioneel | verplicht bij `/Sessions/Playing` en `/Progress` | 400 "Value cannot be null. (Parameter 'key')"; externe speler en offline-sync sturen er geen, Emby krijgt dan `pleya-{deviceId}-{itemId}` |
+| geen verbergen uit Verder kijken | `POST /Users/{uid}/Items/{id}/HideFromResume?Hide=true` | nieuw: `continueWatchingRemoval` staat aan voor Emby |
+| LAN `who is JellyfinServer?` | `who is EmbyServer?` (zelfde poort 7359, zelfde antwoordvorm) | Emby antwoordt niet op de Jellyfin-vraag |
+
+De `MediaBrowser`-headerwaarde gaat voor Emby ook mee als `X-Emby-Authorization`, de header die
+Emby documenteert. Emby 4.9 accepteert de gewone `Authorization` ook. `scrubThumbnails` staat uit
+voor Emby; trickplay bestaat daar niet en BIF is nog niet aangesloten.
+
+Een fout die beide servers raakte kwam ook boven: `uploadItemImage` stuurde ruwe bytes, terwijl
+Jellyfin (`GetFromBase64Stream` in `ImageController`) en Emby de body als base64 lezen. Ruwe bytes
+gaven op beide een 500. De upload stuurt nu base64.
+
+Op tvOS is de nieuwe Emby-tegel bewezen met `tvos.settings.add-connection-grid` (vijf keer PASS op
+de tvOS 26.5-simulator). Dat scenario assert de beginfocus nu pas na een `wait_until`: de focus komt
+een frame na het openen van de route, en met een tegel meer verloor de directe assert die race in
+twee van zes runs.
+
+Omdat de backend gelijk blijft, lopen Emby-bronnen mee in grouping, identiteit, catalogus, zoeken en
+bronkeuze. Een film op Plex, Jellyfin en Emby met hetzelfde TMDB-id wordt één groep met drie bronnen
+(test in `unified_grouping_service_test.dart`). Alleen label en badge moeten het verschil zien:
+`ConnectionRegistry` zet het server-id in `embyServerIds` zodra een opgeslagen Emby-verbinding wordt
+ingelezen (dus ook bij een koude start of een offline server), `JellyfinClient` doet dat bij een
+nieuwe verbinding, en `backendDisplayLabel` en `BackendBadge` lezen die set. De bronkiezer toont het backendwoord zodra de labels verschillen, dus ook bij alleen
+Jellyfin plus Emby. De twee kopieën van `backendDisplayLabel` zijn samengevoegd.
+
+**Consequences:** QuickConnect (`/QuickConnect/Enabled` geeft 404) en `/MediaSegments` vallen op
+Emby stil terug: geen knop, geen markers. Niet gebouwd: Emby Connect, BIF-scrubthumbnails en
+intro-markers via chapter `MarkerType`. Een Emby-server die vóór deze wijziging als Jellyfin is
+toegevoegd, heeft `isEmby: false` en krijgt op `/Users/Me` een 500. De health check vraagt dan
+`/System/Info/Public` op en zet de vlag alleen als dat antwoord van hetzelfde server-id komt en
+Emby identificeert; de nieuwe vlag wordt direct opgeslagen. Een transportfout (timeout, DNS, TLS)
+leidt nooit tot detectie en een echte Jellyfin met een falende `/Users/Me` blijft Jellyfin
+(`jellyfin_emby_migration_test.dart`, live bewezen tegen beide servers). De Emby-teksten staan in
+alle zestien talen, afgeleid van de bestaande Jellyfin-vertaling. Live TV is niet live getest
+(geen tuner in de testserver); de gebruikte paden `/LiveTv/Channels` en `/LiveTv/Programs` staan wel
+in de Emby-specificatie. Twee Emby-eigenaardigheden zonder gevolg voor de app: een collectie
+aanmaken met de naam van een eerder verwijderde geeft een SQLite-500, en items korter dan de
+minimale hervatduur (standaard 5 minuten) bewaren geen positie, net als bij Jellyfin.
+
+## DEC-142: Pleya Assistant (Big P) als beheerassistent, en serverbeheer los van de owner-regel
+
+**Date:** 2026-10-02
+**Status:** accepted. Stelt de Pleya Server-regel in `docs/agents/architecture.md` ("only `role == owner`, after PS-9") bij voor serverbeheer; voor metadata blijft die regel staan.
+
+**Context:** Michel wil beheer in natuurlijke taal: "Scan mijn filmbibliotheek opnieuw", "Maak Sam aan en geef hem alleen toegang tot Kids", ingesproken met de Siri Remote. Een taalmodel kiest welke Pleya-functie nodig is. Discovery op `github/main` liet drie dingen zien. Gebruikersbeheer bestond client-side voor geen enkele backend, terwijl Pleya Server het server-side al had (`/users`, `/users/{id}/permissions`, `/jobs`, `/libraries/{id}/scan`). De client gooide de Pleya-rol uit `/users/me` weg, waardoor elk beheerpad voor Pleya dicht zat. Een geleende Pleya Server-rij kwam niet in de restrictieset; dat lekte nog niet omdat het predicaat voor Pleya altijd `false` gaf.
+
+**Decision:** Big P is het gezicht van de functie Pleya Assistant. Drie verantwoordelijkheden blijven gescheiden:
+
+- *Modelprovider* (Ollama op het eigen netwerk, Ollama Cloud, OpenRouter) doet alleen inferentie, achter één OpenAI-compatibele chatclient. Het model ziet nooit een servertoken en kiest alleen uit tools die Pleya aanbiedt.
+- *Serverautoriteit* bepaalt per server en per aanroep wat mag. Nieuw predicaat `canAdministerServer`: op Plex, Jellyfin en Emby gelijk aan `canManageServerMetadata`, op Pleya Server rol owner of admin, zoals de server zelf in `requireAdmin` doet. De rol staat op `PleyaServerConnection` en wordt bij elke health-probe ververst. Geleend is altijd `false`, ook voor Pleya Server.
+- *Entitlement* bepaalt of iemand de Assistant mag gebruiken. Een abonnement geeft toegang tot Big P, nooit rechten op een server. Een eigen model of eigen API-key omzeilt de entitlement niet.
+
+Beheer loopt via kleine optionele interfaces in `lib/media/server_administration.dart`, niet via `MediaServerClient`. Plex krijgt geen nep-`createUser`: een "gebruiker met alleen Kids" is daar een beheerde Home-gebruiker plus een server-share op plex.tv. Die plex.tv-API is niet officieel gedocumenteerd, draait alleen met het account-token van de Home-admin (nooit een `/switch`-token) en weigert elk antwoord dat niet herkend wordt.
+
+Gevoelige acties (gebruiker aanmaken of verwijderen, libraryrechten wijzigen) voert Pleya pas uit na een bevestigingskaart die Pleya zelf opbouwt uit gevalideerde gegevens. Het model kan die bevestiging niet geven. Wachtwoorden gaan nooit via het model of via dictatie.
+
+**Consequences:** Big P verschijnt voor elk profiel met minstens één zichtbare server of een ingestelde Seerr-koppeling, dus ook voor gezinsleden en Seerr-only-profielen. Bijgesteld door Michel op 3 oktober 2026 (optie A: het besluit volgt de code): zulke profielen gebruiken Big P voor zoeken, homerijen, downloads, ondertitels en Seerr-aanvragen. Beheertools (scan, jobs, gebruikers, libraryrechten, metadata, kijkcijfers) blijven per aanroep op `canAdministerServer` staan en weigeren zonder beheerrechten; zichtbaarheid geeft geen rechten. De vaste ingang is Mijn Pleya, groep Pleya, geen root-tab. Bijgesteld door Michel op 2 oktober 2026: Big P kan ook vanaf elk scherm buiten de speler worden opgeroepen met een lange druk op Play/Pause. Hij verschijnt dan zwevend rechtsonder met het dicteertoetsenbord klaar, kent het scherm als context en verdwijnt na het resultaat; een bevestigingskaart houdt hem in beeld tot die is afgehandeld. Permanent in beeld staat hij niet. Metadata-edit op Pleya Server blijft owner-only en heeft client-side nog steeds geen schrijfpad. Rol- en wachtwoordwijzigingen, vrienden uitnodigen per e-mail en media verwijderen zitten bewust niet in de eerste ronde. Plex-gebruikersbeheer geldt pas als ondersteund na een test tegen een echt Plex Home-account.
+
+Big P is op de Assistant-surface een bewegende avatar en in de Mijn Pleya-tegel een stil portret dat bij focus één keer reageert. Big P is rustig wanneer Pleya hem niet nodig heeft en komt tot leven wanneer de gebruiker met de Assistant werkt; motion ondersteunt status en persoonlijkheid en concurreert nooit met de informatie of de beheeractie. De beweging is Flutter zelf op de bestaande lagen uit de big-p-skill (lichaam, mond, wenkbrauwen, getekende oogleden), zonder Rive, Lottie, video of sprite-reeks, en stopt bij minder beweging. De goedgekeurde set en de motion-spec staan in `docs/tvos-redesign-38-big-p-approved.md`; het prototype v2 is de motion-autoriteit.
+
+Libraryrechten wijzigen van een bestaande Pleya Server-gebruiker weigert de client vóór het netwerk. De server heeft geen leesroute voor de grants van een member en `PUT /users/{id}/permissions` vervangt de hele lijst, dus elke wijziging zou een `download`-recht dat niemand noemde terugzetten naar `view`. Een leesroute toevoegen valt buiten protocolvenster 2 (DEC-138 dekt alleen de tien wijzigingen uit J.3) en vraagt een eigen besluit. Tot dan krijgt een Pleya Server-gebruiker zijn bibliotheken alleen bij het aanmaken, wanneer de lijst aantoonbaar leeg is.
+
+## DEC-143: `GET /watch-history` als beheerroute buiten protocolvenster 2
+
+**Date:** 2026-10-03
+**Status:** accepted. Productbesluit van Michel op 3 oktober 2026; breidt het protocol uit buiten de tien wijzigingen waarvoor [DEC-138](#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein) venster 2 opende.
+
+Big P antwoordde op "wie heeft de afgelopen dagen het meest gekeken?" bij Pleya Server met "deze server bewaart geen kijkgeschiedenis", terwijl `watch_states` per gebruiker per item wel bijhoudt wat er is afgekeken; alleen `GET /watch-state` levert uitsluitend de eigen regels. Er komt daarom één leesroute bij, `GET /pleya/v1/watch-history?days=N` (1 tot en met 31, geklemd, standaard 7), klasse `admin` via `requireAdmin`, matrixregel 39 en hoofdstuk 17b.7 van de specificatie. Hij geeft per gebruiker de films en afleveringen met `watched` of `play_count` boven nul waarvan de kijkstatus binnen het venster is bijgewerkt, met gebruikersnaam, titel en bij een aflevering de serie, nieuwste eerst en ten hoogste 1000 regels met `truncated` als er meer waren. Het is geen afspeellog: een regel is de laatste aanraking, dezelfde lezing die de client al voor Jellyfin en Emby gebruikt, en `watch_stats` telt een periode op Pleya Server dus precies zoals bij Jellyfin. Een server zonder de route antwoordt de bestaande `404` `library.not_found` voor een onbekend pad, en dan valt Big P terug op het oude antwoord. Er komt geen migratie en geen nieuw foutdomein bij; venster 2 zelf blijft open voor zijn tien wijzigingen en sluit nog steeds met S2.6.
+
+## DEC-144: Een Verder kijken-kaart draagt één statusregel, en de TV-focusregel van een aflevering noemt zichzelf in plaats van jaar en genre
+
+Genummerd als DEC-144 bij het samenvoegen met main, waar DEC-119 al twee keer vergeven was. De commits 16428415, 80bb0706 en 199f88ab noemen dit besluit nog DEC-119.
+
+4 oktober 2026. Mockups 38 A, 38 C en 22 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`),
+beoordeeld en vrijgegeven door Michel dezelfde dag. Dit is fase 1 van de overzichtsronde; het
+volledige overzicht (38 D, 23), het opruimen (38 E) en de extra rijen (39, 24) volgen in eigen
+fasen en krijgen dan hun eigen entry.
+
+De rij Verder kijken liet op desktop en iPhone niet zien wat je kon hervatten: een poster, een
+balk, en in het beste geval `S1 E2`. Films en volgende afleveringen waren alleen uit elkaar te
+houden aan het ontbreken van die balk. Het besluit: elke kaart in die rij draagt één statusregel
+onder de titel, op elk platform dezelfde.
+
+| begonnen | volgende aflevering |
+|---|---|
+| `S3 E4 · 18 min over` met balk | `S3 E5 · Volgende aflevering` zonder balk |
+
+Een film zegt `42 min over`, of zijn speelduur als er niets van gekeken is. De regel komt uit
+één helper, `continueWatchingStatusLine` in `lib/utils/continue_watching_labels.dart`, en
+`MediaCard` (raster en lijst), `MobileMediaCard` en de TV-focusregel lezen die. De staat is
+voorlopig afgeleid van `hasActiveProgress`: een aflevering in de rij zonder voortgang is door de
+constructie van elke fetcher de volgende aflevering van zijn serie. Fase 2 voegt de expliciete
+herkomst (resume tegenover next_up) uit de bron toe en de helper wisselt dan van bron zonder dat
+de kaarten veranderen. Afleveringstitel en "2 dagen geleden" staan bewust niet op de kaart; die
+horen bij de focusregel en het volledige overzicht. Eén kaart per exacte aflevering (§11.8) blijft
+staan: een serienaam op de kaart is geen groepering.
+
+**Amendement op DEC-087.** Die legde de TV-focusregel vast als `S2 E4 · 18 min resterend · jaar ·
+genre`. Voor een aflevering wordt dat `S3 E4 · Violet · 18 min over`: plaats, eigen titel, en wat
+er nog over is. Jaar en genre vervallen voor afleveringen; ze zeggen niets dat iemand midden in
+een serie afweegt. In Verder kijken zegt een aflevering zonder voortgang `S3 E5 · Volgende
+aflevering`, buiten die rij blijft zo'n aflevering gewoon `S3 E5 · titel` zonder verzonnen staat;
+de rail krijgt daarvoor `isContinueWatching` van `TvContentFeed`. De regel voor films is
+ongewijzigd. Michel wees de eerste voordracht (met laatst gekeken, jaar en genre erbij) af als
+"metadata-soep"; relatieve kijktijd hoort in het overzicht.
+
+Eén vertaalsleutel erbij, `discover.nextEpisodeStatus`, in en en nl; de andere talen vallen terug
+op en. De resterende tijd is overal `formatRemainingTime` met `nowWatching.remaining`, dezelfde
+regel als de hervatknop op de detailpagina; de Nederlandse tekst daarvan is daarbij van "nog 18min"
+naar "18min over" gegaan, zodat de kaart, de focusregel en de detailpagina één formulering delen.
+De eenheid volgt `formatDurationTextual`, dus `18min` en `2h 46min`, dezelfde schrijfwijze als de
+speelduur op elke andere kaart.
+
+Twee bewuste grenzen van deze fase. De desktopkaart in de rij maakt het seizoen niet meer apart
+klikbaar (dat deed de oude ondertitel met `S3`); de serietitel blijft klikbaar en het seizoen is
+via de detailpagina bereikbaar. En een aflevering die een bron nog in de rij laat staan terwijl de
+offset de duur al haalt, leest als "Volgende aflevering" omdat de staat uit de voortgang komt;
+fase 2 lost dat op met de herkomst uit de bron.
+
+Bewijs: `test/utils/continue_watching_labels_test.dart`, de nieuwe gevallen in
+`test/widgets/mobile/mobile_media_card_test.dart` en `test/widgets/tv/tv_discovery_rail_test.dart`,
+`scripts/ci_checks.sh` groen, en lokale renders van de TV-home-goldens, de iPhone-Home en de
+desktopkaarten. De tvOS-goldens zelf zijn Linux-only en regenereren via `goldens.yml`; op macOS
+falen ze op HEAD al identiek (6 van 30 groen), dus die 24 zijn geen regressie van deze wijziging.
+Welke goldens door dit besluit verschuiven: `tv_home_production_*` waar de eerste rij een
+aflevering focust, en `tv_discovery` "series landing, an episode-context item focused".
+
+**Fase 2, 4 oktober 2026: het overzicht en de Alles-route** (mockups 38 D, 23 en 40, goedgekeurd
+met de tekstfix "binnen elke sectie op laatst gekeken"). Verder kijken heeft nu een volledig
+overzicht in vier vaste secties: Series hervatten, Films hervatten, Volgende afleveringen en
+Eerder begonnen. Elk item staat in precies één sectie en een lege sectie verdwijnt
+(`lib/utils/continue_watching_sections.dart`). De indeling leest de herkomst uit de bron, niet
+alleen de voortgang: `MediaItem.continueWatchingKind` (resume of nextUp) wordt gezet door Plex
+(uit de offset), door Jellyfin en Emby, en door Pleya Server, waarvoor de `next_up`-hub nu ook in
+de rij gemerged wordt met dezelfde regel als Jellyfin (`lib/utils/continue_watching_merge.dart`,
+uit de Jellyfin-client gelicht). Eerder begonnen is iets dat begonnen is en langer dan drie maanden
+niet is aangeraakt; die grens is een productregel, geen instelling. Een volgende aflevering is
+nooit oud, ook niet als de serie zelf lang stil lag, en zonder datum is niets oud. Niets wordt
+automatisch verwijderd; de still dimt licht, de tekst niet.
+
+De rijtitel draagt de echte teller na mergen, ontdubbelen en verbergen (`Verder kijken · 23`):
+het aantal groepen van de volledige projectie, hetzelfde getal als het overzicht toont. Daarvoor
+laadt `DiscoverProvider` de hele lijst in plaats van een proef van 21 (Plex laat `count` dan weg,
+wat daar onbegrensd betekent en door `plex_home_retry_test` is vastgelegd; Pleya Server vraagt een
+hubpagina van 200, want zijn hub kent geen onbegrensde vorm), houdt de eerste 20 voor de rij en
+geeft het overzicht uit het geheugen.
+Een snapshot bevatte alleen de rij en telt dus tot de netwerkronde landt als onvolledig: het
+overzicht haalt dan alsnog op. De projectie draait één keer over de hele lijst en de rij is daar
+de eerste 20 groepen van. Kijkgebeurtenissen (verwijderen, gekeken, hervat) gelden voor de hele
+lijst, niet alleen voor de twintig in de rij; de onafhankelijke review van deze fase vond precies
+die twee gaten en ze zijn met een test afgedekt. De ingang naar het overzicht: op de iPhone
+"Alles weergeven" naast de titel (`MobileContinueWatchingScreen`, lijstrijen met still,
+afleveringstitel, resterende tijd en laatst gekeken), op desktop en iPad de bestaande titel- en
+hover-ingang van de rij naar een gesectioneerd `HubDetailScreen`, op TV de eindtegel "Alle N" naar
+`TvContinueWatchingScreen` met gestapelde banden zoals de zoekweergave, met focusherstel per band
+bij terugkeer. Nog open na deze fase: de focusbare Alles-ingang bij de rijtitel op TV (de
+eindtegel is nu de enige ingang daar) en de 16:9-rustvorm van de TV-kaarten uit 38 A; beide raken
+de focuschoreografie van Home en krijgen een eigen ronde. Verborgen items hoort bij fase 3.
+
+**Fase 3, 4 oktober 2026: opruimen via één pad** (mockup 38 E, goedgekeurd met de correctie dat
+"Op alle bronnen" alleen mag staan waar het letterlijk klopt). Een titel uit Verder kijken halen
+gaat op elk platform door `WatchActions.removeFromContinueWatching`. Kan de bron het op de server
+(Plex, Pleya Server), dan gebeurt het daar. Kan hij het niet (Jellyfin, Emby, lokale mappen), dan
+wordt de titel op dit apparaat verborgen. Dat laatste was een echte fout: het tvOS-menu bood
+verwijderen aan zonder de capability te lezen en de Jellyfin-client gooide dan `UnsupportedError`.
+Het desktopmenu verborg de regel in dat geval helemaal; die staat er nu ook, met de juiste tekst.
+
+De regel in het menu zegt wat er gebeurt en hoe ver het reikt
+(`lib/utils/continue_watching_removal.dart`):
+
+| bronnen van de titel | regel | reikwijdte |
+|---|---|---|
+| geen enkele kan het op de server | Verbergen uit Verder kijken | Alleen op dit apparaat |
+| één bron, kan het op de server | Verwijderen uit Verder kijken | geen |
+| meerdere, allemaal op de server én nu bereikbaar | Verwijderen uit Verder kijken | Op alle bronnen |
+| meerdere, allemaal op de server, één onbereikbaar | Verwijderen uit Verder kijken | geen, want de wachtrij is geen garantie |
+| gemengd | Verwijderen uit Verder kijken | "Zolder op de server, NAS alleen hier" |
+
+Lokaal verbergen staat per profiel in `ContinueWatchingHiddenProvider` en synchroniseert nooit:
+de sleutel `hidden_continue_watching` is in het syncbeleid als apparaatlokaal aangemerkt, want
+"alleen op dit apparaat" is wat de regel belooft. Er wordt niets op een server gewist.
+`DiscoverProvider` filtert de verborgen sleutels uit elke ophaalronde, laat de kaart bij verbergen
+meteen vallen, en haalt hem bij herstel weer op. Een titel die je opnieuw afspeelt komt vanzelf
+terug: dat is de kijker die zegt dat hij in de rij hoort. Een onbereikbare bron die het niet op de
+server kan, wordt direct lokaal verborgen in plaats van in de wachtrij gezet; een rij die daar van
+vóór deze wijziging nog stond, laat de replay nu vallen in plaats van hem bij elke herverbinding
+opnieuw te laten falen. Hetzelfde geldt voor een bron die de aanmelding weigert, en een bron
+zonder gebonden client (koude start) wordt op zijn backend beoordeeld, zodat een Jellyfin-bron
+nooit een serververwijdering beloofd krijgt die niet komt.
+
+De sleutels van verwijderingen die nog in de wachtrij staan leest `DiscoverProvider` nu bij elke
+ophaalronde (`pendingContinueWatchingRemovalKeys` had tot nu toe geen enkele aanroeper) en houdt
+ze in een eigen set. Niet in de set die zichzelf opschoont: een onbereikbare server meldt niets,
+dus daar zou de sleutel bij de eerste ronde al verdwijnen en de kaart terugkomen zodra de server
+herverbindt, vóór de replay. De eigen set loopt pas leeg wanneer de wachtrijrij weg is.
+
+De eigen Verder kijken-rij van een bibliotheek haalt rechtstreeks bij haar server op en filtert
+de lokaal verborgen titels nu ook; anders zou "Verbergen" daar niets zichtbaars doen.
+
+Verborgen items: onderaan het overzicht op alle drie de platforms staat `Verborgen items · N`
+zodra er iets verborgen is. Een item kiezen herstelt het. Het overzicht is daarom nu altijd
+bereikbaar vanaf de rij, ook bij minder dan twintig titels: de TV-eindtegel en de desktopingang
+hangen niet meer aan de overloop. Open na deze fase: is elke titel verborgen, dan verdwijnt de
+rij en daarmee de ingang; terughalen kan dan alleen door de titel opnieuw af te spelen. Fase 4
+raakt de Home-indeling toch aan en geeft Verborgen items daar een tweede ingang. Ook voor fase
+4: een verborgen titel die elders is uitgekeken blijft in de lijst staan tot je hem herstelt, en
+omdat het filter na het ontdubbelen over servers loopt kan een op desktop verborgen titel
+terugkomen als de representatieve bron van een samengevoegde titel wisselt.
+
+De Nederlandse menutekst zei nog "Doorgaan met kijken" terwijl de rij "Verder kijken" heet; beide
+bestaande strings zijn gelijkgetrokken.
+
+## DEC-145: iPhone-Home leest dezelfde rijenlijst als de TV, en Kijklijst en Nu op tv worden Home-rijen
+
+**Date:** 2026-10-04
+
+Mockups 39 en 24 (`docs/assets/tvos-unified/mockups-2026-10-04-home/`), door Michel beoordeeld op
+4 oktober: Kijklijst mag standaard aan, Nu op tv alleen als de kijker hem aanzet, en "Beschikbaar
+gekomen" (Aanvragen op Home) is uitgesteld. Dit is fase 4 van de ronde uit DEC-144.
+
+**Eén rijenlijst.** De iPhone-Home tekende alleen `TvHomeProjectionProvider.hubs` en miste daardoor
+de eigen rijen (DEC-100) en Recent uitgebracht. Hij leest nu `tvHomeOrderableRows`, dezelfde
+functie als de TV-feed en het aanpaspaneel. De chips Films en Series filteren die lijst daarna per
+rij, zoals ze al deden. Het bestand heet nog `tv_home_row_assembly.dart`; hernoemen is uitgesteld
+omdat het alleen diff oplevert.
+
+**Twee rijen van Pleya zelf.** `HomeExtraRowsProvider` levert Kijklijst (`#pleya:watchlist`) en Nu
+op tv (`#pleya:livetv`) als gewone rijen in de indeling, onder Recent uitgebracht tot de kijker ze
+verplaatst. De Kijklijst-rij toont de eerste twintig titels op volgorde van toevoegen, en alleen
+titels die naar een bibliotheekitem resolven: een kaart die je niet kunt openen hoort op het
+tabblad Kijklijst, niet op Home. Nu op tv toont wat nu loopt op een zender die af te stemmen is;
+een druk op de kaart stemt af en opent geen detailpagina, en de kaart heeft geen contextmenu.
+
+**Een verborgen rij haalt niets op.** De Kijklijst-rij vraagt de kijklijst pas op als hij zichtbaar
+is, en Nu op tv kost een profiel dat hem nooit aanzet geen enkel verzoek.
+`test/providers/home_extra_rows_provider_test.dart` legt beide vast.
+
+**Opt-in zonder nieuwe opslag.** Nu op tv staat uit tot `HomeLayoutProvider` de markering
+`#pleya:livetv:shown` in de bestaande set verborgen rijen vindt. Die set is apparaatlokaal, net
+als de rest van wat hier verborgen wordt, en reset met de indeling. De keuze voor Nu op tv geldt
+dus per apparaat. Een oudere build negeert een id die hij niet kent.
+
+**Home-indeling.** Het instellingenscherm somt op iPhone en TV dezelfde unified rijen op als Home
+tekent, inclusief Recent uitgebracht, Kijklijst en Nu op tv. Een samengevoegde rij verbergt en
+verplaatst al zijn ids tegelijk. Onderaan staat `Verborgen items · N` zodra er iets uit Verder
+kijken verborgen is. Dat is de tweede ingang die DEC-144 fase 3 openliet: zijn alle titels
+verborgen, dan is de rij weg en was er geen weg terug behalve opnieuw afspelen.
+
+**Opschonen niet gebouwd.** Een verborgen titel die elders is uitgekeken blijft in de verborgen
+lijst staan. Een eerste versie ruimde hem op zodra zijn server hem niet meer meldde, en de review
+liet zien dat dat signaal niet te vertrouwen is: de samengevoegde lijst mist ook titels uit een
+verborgen bibliotheek, de verliezer van een ontdubbeling, en elke volgende aflevering van een
+Jellyfin-server waarvan alleen de NextUp-aanroep faalde. Een regel te veel in de verborgen lijst
+is goedkoper dan een titel die ongevraagd terugkomt. Het kan pas goed als de aggregatie de ruwe
+sleutels per server teruggeeft.
+
+**Wat desktop en iPad niet krijgen.** Desktop-Home tekent nog één rij per backend-hub in de oude
+`MediaHub`-vorm, met een eigen hero. De Kijklijst-rij staat er wel, omgezet met
+`mediaHubFromCustomRow`. Nu op tv niet: de kaarten van dat scherm openen een bibliotheektitel en
+kunnen geen zender afstemmen. De hero op `heroGroups` en samengevoegde rijen horen bij de
+werkstroom Unified 2026 voor desktop en iPad (branch `feat/unified-desktop-ipad`) en zijn hier
+bewust niet dubbel gebouwd.
+
+**Open.** Live TV heeft geen fixture, dus afstemmen vanaf Home is alleen op hardware te bewijzen.
+Een titel die op desktop verborgen is kan terugkomen als de representatieve bron van een
+samengevoegde titel wisselt; dat lost zich op zodra desktop unified rijen tekent. De focusbare
+Alles-ingang bij de TV-rijtitel en de 16:9-rustvorm uit 38 A en D wachten op een eigen ronde.

@@ -114,7 +114,7 @@ List<SourceRowDescriptor> describeSources(
   String? currentSourceKey,
   String? preferredServerId,
 }) {
-  final showBackend = sources.map((s) => s.backend).toSet().length > 1;
+  final showBackend = sources.map((s) => backendDisplayLabel(s.backend, serverId: s.serverId)).toSet().length > 1;
   return [
     for (final source in sources)
       describeSource(
@@ -161,7 +161,7 @@ SourceRowDescriptor describeSource(
     // `UnifiedMediaSource.fromItem`, so a row always has something to head it.
     serverName: source.serverName,
     contextParts: [
-      if (showBackend) backendDisplayLabel(source.backend),
+      if (showBackend) backendDisplayLabel(source.backend, serverId: source.serverId),
       if (_present(source.libraryTitle)) source.libraryTitle!.trim(),
       if (_present(item.editionTitle)) item.editionTitle!.trim(),
     ],
@@ -179,10 +179,11 @@ SourceRowDescriptor describeSource(
   );
 }
 
-/// Brand names, matching the labels the rating sheet already shows.
-String backendDisplayLabel(MediaBackend backend) => switch (backend) {
+/// Brand names, matching the labels the rating sheet already shows. Emby runs
+/// on the Jellyfin backend (DEC-141), so [serverId] decides between the two.
+String backendDisplayLabel(MediaBackend backend, {String? serverId}) => switch (backend) {
   MediaBackend.plex => 'Plex',
-  MediaBackend.jellyfin => 'Jellyfin',
+  MediaBackend.jellyfin => isEmbyServer(serverId) ? 'Emby' : 'Jellyfin',
   MediaBackend.local => 'Local',
   MediaBackend.pleyaServer => 'Pleya Server',
 };

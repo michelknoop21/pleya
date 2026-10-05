@@ -170,6 +170,7 @@ class _AddPleyaServerScreenState extends State<AddPleyaServerScreen> with AsyncF
       serverName: detail?.name.isNotEmpty == true ? detail!.name : 'Pleya Server',
       userName: result.userName,
       refreshToken: result.tokens.refreshToken,
+      role: result.role,
       status: ConnectionStatus.online,
       createdAt: DateTime.now(),
       lastAuthenticatedAt: DateTime.now(),

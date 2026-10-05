@@ -331,7 +331,7 @@ class _ConnectionsList extends StatelessWidget {
                     if (parentConn != null)
                       Card(
                         child: ListTile(
-                          leading: BackendBadge(backend: parentConn.backend, size: 24),
+                          leading: BackendBadge(backend: parentConn.backend, isEmby: parentConn.isEmby, size: 24),
                           title: Text(parentConn.displayLabel),
                           subtitle: Text(t.profiles.plexHomeAccount),
                         ),
@@ -342,7 +342,7 @@ class _ConnectionsList extends StatelessWidget {
                           child: ListTile(
                             leading: conn is PleyaShareConnection
                                 ? Icon(Symbols.devices_rounded, fill: 1, size: 24, color: theme.colorScheme.primary)
-                                : BackendBadge(backend: conn.backend, size: 24),
+                                : BackendBadge(backend: conn.backend, isEmby: conn.isEmby, size: 24),
                             title: Text(conn.displayLabel),
                             subtitle: _ConnectionSubtitle.build(conn: conn, pc: pc, homeCache: homeCache, theme: theme),
                             trailing: FocusablePopupMenuButton<String>(

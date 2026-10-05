@@ -11,6 +11,7 @@ import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
+import 'package:pleya/media/server_capabilities.dart';
 import 'package:pleya/media/playback_report_metadata.dart';
 import 'package:pleya/services/jellyfin_api_cache.dart';
 import 'package:pleya/services/jellyfin_client.dart';
@@ -73,6 +74,11 @@ class _RecordingMediaClient implements MediaServerClient {
 
   @override
   final MediaBackend backend;
+
+  // The replay reads this before a Continue Watching removal (DEC-144 fase 3).
+  @override
+  ServerCapabilities get capabilities =>
+      backend == MediaBackend.jellyfin ? ServerCapabilities.jellyfin : ServerCapabilities.plex;
 
   @override
   double get watchedThreshold => 0.9;
@@ -533,7 +539,9 @@ void main() {
       expect(await svc.pendingContinueWatchingRemovalKeys(), {'srv:42'});
     });
 
-    test('a backend without the endpoint records the failure instead of removing the entry', () async {
+    // DEC-144 fase 3. Such a source is hidden on the device now and never gets
+    // a queue row; one left over from before would throw on every reconnect.
+    test('a row for a backend without the endpoint is dropped, not retried forever', () async {
       final (svc: svc, db: db, mgr: mgr) = _makeService();
       addTearDown(() async {
         svc.dispose();
@@ -548,9 +556,9 @@ void main() {
 
       await svc.syncPendingItems();
 
-      final action = await db.getLatestWatchAction('srv:42');
-      expect(action!.syncAttempts, 1);
-      expect(action.lastError, isNotNull);
+      expect(client.removedFromContinueWatching, isEmpty, reason: 'the unsupported call is never made');
+      expect(await svc.getPendingSyncCount(), 0);
+      expect(await svc.pendingContinueWatchingRemovalKeys(), isEmpty);
     });
 
     test('a still-queued removal is re-announced, so the card stays gone after a restart', () async {

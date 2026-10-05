@@ -49,6 +49,10 @@ class OnlinePlexClientDouble implements PlexClient {
   @override
   bool Function()? canManageServerMetadata;
 
+  /// Set alongside it since DEC-142 (`canAdministerServer`).
+  @override
+  bool Function()? canAdministerServer;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

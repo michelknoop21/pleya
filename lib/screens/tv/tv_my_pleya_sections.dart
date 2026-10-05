@@ -31,6 +31,9 @@ enum TvMyPleyaSection {
   // screen is functional integration, which is fase 9. The gap is registered in
   // [DEC-070] rather than papered over with the wrong screen.
   watchTogether,
+  // Big P (mockup 38, DEC-142): first tile of the Pleya group, only for a
+  // profile the AssistantController does not hide it from.
+  assistant,
   settings,
   logs,
   about;
@@ -54,6 +57,7 @@ enum TvMyPleyaSection {
     TvMyPleyaSection.servers => t.tvMyPleya.servers,
     TvMyPleyaSection.activity => t.tvMyPleya.activity,
     TvMyPleyaSection.watchTogether => t.watchTogether.title,
+    TvMyPleyaSection.assistant => t.assistant.tileTitle,
     // `t.settings.title`, not `t.common.settings`. The two differ in Dutch,
     // "Instellingen" against "Opties", and the section page heading is the
     // screen's own name. Same rule as Bibliotheken one line up: the tile takes

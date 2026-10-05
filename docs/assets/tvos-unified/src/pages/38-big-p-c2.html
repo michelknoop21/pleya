@@ -1,0 +1,26 @@
+<link rel="stylesheet" href="../assets/bigp/bigp.css">
+<style>
+.setup { position: absolute; left: var(--inset); right: var(--inset); top: 300px; }
+.setup .rows { width: 1180px; margin-top: 30px; }
+.setup .row { min-height: 112px; }
+.setup .row .ic { width: 32px; height: 32px; color: var(--ink); }
+.setup .row .t { font-size: 27px; font-weight: 700; }
+.setup .row .s { font-size: 21px; }
+.setup .row .val { font-size: 20px; color: var(--ink-3); }
+.setup .priv { margin-top: 34px; width: 1180px; font-size: 21px; line-height: 1.45; color: var(--ink-3); display: flex; gap: 14px; }
+.setup .priv .ic { width: 26px; height: 26px; margin-top: 2px; color: var(--ink-2); }
+.foot { position: absolute; left: var(--inset); bottom: 60px; }
+</style>
+{{nav:Mijn Pleya|live,avatar}}
+<div class="page"><div class="page-title">Big P instellen</div><div class="page-sub">Mijn Pleya ▸ Big P ▸ AI-provider</div></div>
+<div class="setup">
+  <div class="bp-h" style="font-size:34px;margin-top:0">Kies waar Big P zijn taalmodel vandaan haalt</div>
+  <div class="rows">
+    <div class="row focus">{{icon:server}}<div class="body"><div class="t">Ollama-server</div><div class="s">Draait in je eigen netwerk, bijvoorbeeld op je NAS.</div></div><span class="val">Adres van de server</span>{{icon:chev}}</div>
+    <div class="row">{{icon:wifi}}<div class="body"><div class="t">Ollama Cloud</div><div class="s">Modellen die Ollama voor je draait.</div></div><span class="val">API-sleutel</span>{{icon:chev}}</div>
+    <div class="row">{{icon:swap}}<div class="body"><div class="t">OpenRouter</div><div class="s">Eén sleutel voor modellen van verschillende aanbieders.</div></div><span class="val">API-sleutel</span>{{icon:chev}}</div>
+  </div>
+  <div class="priv">{{icon:info}}<div>Naar de provider gaan je vraag en de namen van bibliotheken, servers en gebruikers die nodig zijn om hem te beantwoorden. Wachtwoorden en tokens blijven in Pleya.</div></div>
+</div>
+<div class="foot hint"><kbd>Menu</kbd> Terug</div>
+<div class="note">PROPOSED · MOCKUP 38 C2 · Providerkeuze; de enige plek waar Ollama en OpenRouter bij naam staan</div>

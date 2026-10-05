@@ -1,0 +1,25 @@
+/* Gedeelde opbouw van het Big P-scherm (mockup 38). Links staat Big P, rechts de kolom met
+   tekst en acties. De figuur staat alleen op donkere vlakken: de bronkunst heeft een donkere rand. */
+.bp-fig { position: absolute; left: 60px; top: 236px; width: 448px; }
+.bp-fig img { width: 100%; display: block; }
+.bp-col { position: absolute; left: 600px; top: 300px; width: 1180px; }
+.bp-state { font-size: 20px; color: var(--ink-3); display: flex; align-items: center; gap: 12px; }
+.bp-h { font-size: 44px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; margin-top: 14px; }
+.bp-p { font-size: 26px; line-height: 1.45; color: var(--ink-2); margin-top: 18px; max-width: 1040px; }
+.bp-p.small { font-size: 22px; color: var(--ink-3); }
+.bp-col .btn-row { margin-top: 44px; }
+.bp-q { font-size: 24px; color: var(--ink-3); }
+.bp-q b { color: var(--ink); font-weight: 500; }
+.bp-ex-label { font-size: 22px; color: var(--ink-3); margin: 56px 0 18px; }
+.bp-ex { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+/* Pleya-resultaatkaart: uitgevoerd door Pleya, niet door Big P */
+.pcard { background: var(--surface); border-radius: var(--r-tile); padding: 28px 32px; margin-top: 36px; width: 1040px; }
+.pcard .hd { display: flex; align-items: center; gap: 12px; font-size: 19px; color: var(--ink-3); }
+.pcard .hd .ic { width: 22px; height: 22px; color: var(--ink-2); }
+.pcard .line { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+.pcard .line .t { font-size: 28px; font-weight: 700; }
+.pcard .line .s { font-size: 20px; color: var(--ink-3); margin-top: 4px; }
+.pcard .check { width: 40px; height: 40px; background: var(--ok); }
+.pcard .check .ic { width: 24px; height: 24px; }
+
+.pcard .check.fail { background: #c0392b; }

@@ -58,6 +58,16 @@ void main() {
       expect(restored.userName, base.userName);
       expect(restored.accessToken, base.accessToken);
       expect(restored.deviceId, base.deviceId);
+      expect(restored.isEmby, base.isEmby);
+      expect(
+        JellyfinConnection.fromConfigJson(
+          id: base.id,
+          json: base.copyWith(isEmby: true).toConfigJson(),
+          status: base.status,
+          createdAt: base.createdAt,
+        ).isEmby,
+        isTrue,
+      );
       expect(restored.createdAt, base.createdAt);
       expect(restored.lastAuthenticatedAt, base.lastAuthenticatedAt);
     });
@@ -74,6 +84,7 @@ void main() {
       expect(restored.baseUrls, isEmpty);
       expect(restored.serverName, 'Jellyfin');
       expect(restored.accessToken, '');
+      expect(restored.isEmby, isFalse, reason: 'rows from before DEC-141 are Jellyfin');
     });
 
     test('fromConfigJson backfills baseUrls from legacy baseUrl', () {

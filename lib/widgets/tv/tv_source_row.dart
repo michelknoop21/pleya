@@ -323,6 +323,7 @@ class TvSourceRowState extends State<TvSourceRow> {
               padding: EdgeInsets.only(right: TvSourcePickerLayout.rowBadgeGap * scale),
               child: BackendBadge(
                 backend: descriptor.backend,
+                serverId: descriptor.serverId,
                 size: TvSourcePickerLayout.rowBadgeSize * scale,
                 color: primaryColor,
               ),

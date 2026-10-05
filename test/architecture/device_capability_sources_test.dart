@@ -114,6 +114,13 @@ void main() {
       20,
       'codec aliases and display names, the shared normalizer for both backends',
     ),
+    'lib/assistant/assistant_playback.dart': CapabilityListRecord(
+      CapabilityListKind.naming,
+      14,
+      'allowlisted codec aliases and diagnostic display names; unknown values '
+      'stay null to keep arbitrary metadata out of model context, not a '
+      'declaration of device support',
+    ),
     'lib/widgets/video_controls/widgets/performance_overlay/performance_stats_service.dart': CapabilityListRecord(
       CapabilityListKind.naming,
       14,

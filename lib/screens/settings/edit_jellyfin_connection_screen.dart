@@ -40,25 +40,29 @@ class _EditJellyfinConnectionScreenState extends State<EditJellyfinConnectionScr
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    await runAsync<void>(() async {
-      final input = JellyfinEndpointDiscovery.buildUserInputCandidates(_enteredUrls());
-      final endpoint = await JellyfinEndpointDiscovery().raceEndpoints(
-        input.probeBaseUrls,
-        preferredUrl: widget.connection.baseUrl,
-        expectedMachineId: widget.connection.serverMachineId,
-        baseUrlsToPersist: input.explicitBaseUrls,
-        baseUrlValidationGroups: input.validationBaseUrlGroups,
-      );
-      final updated = widget.connection.copyWith(
-        baseUrl: endpoint.activeBaseUrl,
-        baseUrls: endpoint.baseUrls,
-        serverName: endpoint.serverInfo.serverName,
-      );
-      if (!mounted) return;
-      await context.read<ConnectionRegistry>().upsert(updated);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    }, errorMapper: (e) => friendlyError(e, context: t.addServer.addJellyfinTitle));
+    await runAsync<void>(
+      () async {
+        final input = JellyfinEndpointDiscovery.buildUserInputCandidates(_enteredUrls());
+        final endpoint = await JellyfinEndpointDiscovery().raceEndpoints(
+          input.probeBaseUrls,
+          preferredUrl: widget.connection.baseUrl,
+          expectedMachineId: widget.connection.serverMachineId,
+          baseUrlsToPersist: input.explicitBaseUrls,
+          baseUrlValidationGroups: input.validationBaseUrlGroups,
+        );
+        final updated = widget.connection.copyWith(
+          baseUrl: endpoint.activeBaseUrl,
+          baseUrls: endpoint.baseUrls,
+          serverName: endpoint.serverInfo.serverName,
+        );
+        if (!mounted) return;
+        await context.read<ConnectionRegistry>().upsert(updated);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      },
+      errorMapper: (e) =>
+          friendlyError(e, context: widget.connection.isEmby ? t.addServer.addEmbyTitle : t.addServer.addJellyfinTitle),
+    );
   }
 
   List<String> _enteredUrls() {
@@ -73,7 +77,7 @@ class _EditJellyfinConnectionScreenState extends State<EditJellyfinConnectionScr
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FocusedScrollScaffold(
-      title: Text(t.connections.editJellyfinTitle),
+      title: Text(widget.connection.isEmby ? t.connections.editEmbyTitle : t.connections.editJellyfinTitle),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),

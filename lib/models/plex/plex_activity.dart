@@ -17,6 +17,10 @@ class PlexActivity {
   @JsonKey(defaultValue: false)
   final bool cancellable;
 
+  /// The library section a scan or refresh works on (`Context.librarySectionID`).
+  @JsonKey(readValue: _readLibrarySectionId)
+  final String? librarySectionId;
+
   const PlexActivity({
     required this.uuid,
     required this.type,
@@ -24,7 +28,13 @@ class PlexActivity {
     this.subtitle,
     required this.progress,
     required this.cancellable,
+    this.librarySectionId,
   });
 
   factory PlexActivity.fromJson(Map<String, dynamic> json) => _$PlexActivityFromJson(json);
 }
+
+Object? _readLibrarySectionId(Map<dynamic, dynamic> json, String _) => switch (json['Context']) {
+  {'librarySectionID': final Object id} when id is String || id is num => '$id',
+  _ => null,
+};

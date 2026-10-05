@@ -82,6 +82,18 @@ class _AddConnectionScreenState extends State<AddConnectionScreen> {
             : t.addServer.connectToJellyfinCardSubtitle,
         builder: (_) => AddJellyfinScreen(targetProfile: targetProfile),
       ),
+      // Same flow as Jellyfin; the probe tells the two apart (DEC-141).
+      _BackendOption(
+        key: 'emby',
+        tvIcon: Symbols.dns_rounded,
+        backend: MediaBackend.jellyfin,
+        isEmby: true,
+        title: t.addServer.connectToEmbyCard,
+        subtitle: scoped
+            ? t.addServer.connectToEmbyCardSubtitleScoped(name: targetProfile.displayName)
+            : t.addServer.connectToJellyfinCardSubtitle,
+        builder: (_) => AddJellyfinScreen(targetProfile: targetProfile, emby: true),
+      ),
       _BackendOption(
         key: 'pleya_server',
         tvIcon: Symbols.dns_rounded,
@@ -160,7 +172,7 @@ class _AddConnectionScreenState extends State<AddConnectionScreen> {
                 _BackendCard(
                   leading: options[i].icon != null
                       ? AppIcon(options[i].icon!, fill: 1, size: 28)
-                      : BackendBadge(backend: options[i].backend, size: 28),
+                      : BackendBadge(backend: options[i].backend, isEmby: options[i].isEmby, size: 28),
                   title: options[i].title,
                   subtitle: options[i].subtitle,
                   onTap: () => _openOption(options[i].builder),
@@ -194,6 +206,7 @@ class _BackendOption {
   /// Overrides the backend badge — used by Pleya Share, which shares
   /// [MediaBackend.local] but needs its own visual identity in this picker.
   final IconData? icon;
+  final bool isEmby;
 
   const _BackendOption({
     required this.key,
@@ -203,6 +216,7 @@ class _BackendOption {
     required this.subtitle,
     required this.builder,
     this.icon,
+    this.isEmby = false,
   });
 }
 

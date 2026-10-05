@@ -60,6 +60,9 @@ sealed class Connection {
   /// (badges, etc.). Just a passthrough to [kind.backend].
   MediaBackend get backend => kind.backend;
 
+  /// Whether this is an Emby server riding the Jellyfin backend (DEC-141).
+  bool get isEmby => false;
+
   /// Primary label shown in connection-list UIs. Plex shows the active
   /// profile/account name; Jellyfin shows the server name.
   String get displayLabel;
@@ -254,6 +257,11 @@ class JellyfinConnection extends Connection {
   /// match/unmatch, edit metadata) without an extra round-trip.
   final bool isAdministrator;
 
+  /// Emby server instead of Jellyfin. Same API family; the client branches
+  /// only on the few routes and headers where Emby differs (DEC-141).
+  @override
+  final bool isEmby;
+
   JellyfinConnection({
     required this.id,
     required this.baseUrl,
@@ -265,6 +273,7 @@ class JellyfinConnection extends Connection {
     required this.accessToken,
     required this.deviceId,
     this.isAdministrator = false,
+    this.isEmby = false,
     this.status = ConnectionStatus.unknown,
     required this.createdAt,
     this.lastAuthenticatedAt,
@@ -319,6 +328,7 @@ class JellyfinConnection extends Connection {
     String? accessToken,
     String? deviceId,
     bool? isAdministrator,
+    bool? isEmby,
     ConnectionStatus? status,
     DateTime? createdAt,
     DateTime? lastAuthenticatedAt,
@@ -335,6 +345,7 @@ class JellyfinConnection extends Connection {
       accessToken: accessToken ?? this.accessToken,
       deviceId: deviceId ?? this.deviceId,
       isAdministrator: isAdministrator ?? this.isAdministrator,
+      isEmby: isEmby ?? this.isEmby,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
@@ -353,6 +364,7 @@ class JellyfinConnection extends Connection {
       'accessToken': accessToken,
       'deviceId': deviceId,
       'isAdministrator': isAdministrator,
+      'isEmby': isEmby,
     };
   }
 
@@ -380,6 +392,7 @@ class JellyfinConnection extends Connection {
       accessToken: json['accessToken'] as String? ?? '',
       deviceId: json['deviceId'] as String? ?? '',
       isAdministrator: json['isAdministrator'] as bool? ?? false,
+      isEmby: json['isEmby'] as bool? ?? false,
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,
@@ -672,6 +685,12 @@ class PleyaServerConnection extends Connection {
   /// when persisted. Empty means "never authenticated" or "chain revoked".
   final String refreshToken;
 
+  /// The signed-in user's server role (`owner`, `admin`, `member`,
+  /// `restricted`) as `/users/me` last reported it. Empty means unknown.
+  /// Persisted so a known admin stays known while the server is offline;
+  /// the server re-checks the role on every request regardless.
+  final String role;
+
   PleyaServerConnection({
     required this.id,
     required this.baseUrl,
@@ -679,6 +698,7 @@ class PleyaServerConnection extends Connection {
     required this.serverName,
     required this.userName,
     required this.refreshToken,
+    this.role = '',
     this.status = ConnectionStatus.unknown,
     required this.createdAt,
     this.lastAuthenticatedAt,
@@ -686,6 +706,9 @@ class PleyaServerConnection extends Connection {
 
   @override
   ConnectionKind get kind => ConnectionKind.pleyaServer;
+
+  /// Owner and admin administer the server; the server treats them alike.
+  bool get isServerAdministrator => role == 'owner' || role == 'admin';
 
   @override
   String get displayName => '$userName · $serverName';
@@ -707,6 +730,7 @@ class PleyaServerConnection extends Connection {
     String? serverName,
     String? userName,
     String? refreshToken,
+    String? role,
     ConnectionStatus? status,
     DateTime? lastAuthenticatedAt,
   }) {
@@ -717,6 +741,7 @@ class PleyaServerConnection extends Connection {
       serverName: serverName ?? this.serverName,
       userName: userName ?? this.userName,
       refreshToken: refreshToken ?? this.refreshToken,
+      role: role ?? this.role,
       status: status ?? this.status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt ?? this.lastAuthenticatedAt,
@@ -731,6 +756,7 @@ class PleyaServerConnection extends Connection {
       'serverName': serverName,
       'userName': userName,
       'refreshToken': refreshToken,
+      'role': role,
     };
   }
 
@@ -748,6 +774,7 @@ class PleyaServerConnection extends Connection {
       serverName: json['serverName'] as String? ?? 'Pleya Server',
       userName: json['userName'] as String? ?? '',
       refreshToken: json['refreshToken'] as String? ?? '',
+      role: json['role'] as String? ?? '',
       status: status,
       createdAt: createdAt,
       lastAuthenticatedAt: lastAuthenticatedAt,

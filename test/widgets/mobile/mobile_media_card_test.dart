@@ -117,6 +117,56 @@ void main() {
     expect(sizedBox.height, closeTo(width * 9 / 16, 0.01));
   });
 
+  // Mockup 22 (4 oktober 2026): in Verder kijken the caption is the status
+  // line, `S3 E4 · 18 min left` with a bar or `S3 E5 · Next episode` without.
+  MediaItem episode({required int episode, int? viewOffsetMs}) => MediaItem(
+    id: 'bear-$episode',
+    backend: .jellyfin,
+    kind: MediaKind.episode,
+    title: 'Violet',
+    grandparentTitle: 'The Bear',
+    parentIndex: 3,
+    index: episode,
+    durationMs: 48 * 60 * 1000,
+    viewOffsetMs: viewOffsetMs,
+    serverId: 'nas',
+    serverName: 'nas',
+  );
+
+  testWidgets('begonnen: place and what is left', (tester) async {
+    final item = episode(episode: 4, viewOffsetMs: 30 * 60 * 1000);
+    await pump(
+      tester,
+      MobileMediaCard(
+        group: group(item, hasActiveProgress: true),
+        shape: MobileCardShape.wide,
+        width: 212,
+        isInContinueWatching: true,
+      ),
+    );
+    expect(find.text('The Bear'), findsOneWidget);
+    expect(find.text('S3 E4 · 18 min left'), findsOneWidget);
+  });
+
+  testWidgets('volgende aflevering: the state is in the text, not only in a missing bar', (tester) async {
+    await pump(
+      tester,
+      MobileMediaCard(
+        group: group(episode(episode: 5)),
+        shape: MobileCardShape.wide,
+        width: 212,
+        isInContinueWatching: true,
+      ),
+    );
+    expect(find.text('S3 E5 · Next episode'), findsOneWidget);
+  });
+
+  testWidgets('outside Verder kijken a wide card keeps its episode label', (tester) async {
+    await pump(tester, MobileMediaCard(group: group(episode(episode: 5)), shape: MobileCardShape.wide, width: 212));
+    expect(find.text('S3 E5'), findsOneWidget);
+    expect(find.textContaining('Next episode'), findsNothing);
+  });
+
   testWidgets('the source capsule is absent with a single source', (tester) async {
     await pump(tester, MobileMediaCard(group: group(item()), shape: MobileCardShape.portrait, width: 118));
     expect(find.byType(SourceCountCapsule), findsNothing);

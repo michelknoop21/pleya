@@ -864,6 +864,7 @@ class _TranslationsConnectionsJa extends TranslationsConnectionsEn {
 	@override String sessionExpiredMany({required Object count}) => '${count} 台のサーバーのセッションの有効期限が切れました';
 	@override String get signInAgain => '再度サインイン';
 	@override String get editJellyfinTitle => 'Jellyfin接続を編集';
+	@override String get editEmbyTitle => 'Emby接続を編集';
 	@override String editJellyfinIntro({required Object serverName}) => '${serverName} のURLを追加または削除します。Pleyaは到達可能なURLのうち最も低遅延のものを使用します。';
 	@override String get localSources => 'このデバイスのソース';
 	@override String get removeSource => 'ソースを削除';
@@ -1646,11 +1647,12 @@ class _TranslationsAddServerJa extends TranslationsAddServerEn {
 
 	// Translations
 	@override String get addJellyfinTitle => 'Jellyfinサーバーを追加';
+	@override String get addEmbyTitle => 'Embyサーバーを追加';
 	@override String get serverUrls => 'サーバーURL';
 	@override String get serverUrlsHelper => '複数のURLをカンマ区切りで入力できます。';
 	@override String get findServer => 'サーバーを検索';
-	@override String get searchingLocalServers => 'ローカル Jellyfin サーバーを検索中...';
-	@override String get localServers => 'ローカル Jellyfin サーバー';
+	@override String get searchingLocalServers => 'ローカルサーバーを検索中...';
+	@override String get localServers => 'ローカルサーバー';
 	@override String get username => 'ユーザー名';
 	@override String get password => 'パスワード';
 	@override String get signIn => 'サインイン';
@@ -1664,14 +1666,17 @@ class _TranslationsAddServerJa extends TranslationsAddServerEn {
 	@override String get duplicatePlexAccount => 'すでにPlexにサインインしています。アカウントを切り替えるにはサインアウトしてください。';
 	@override String get failedToRegisterAccount => 'アカウントの登録に失敗しました';
 	@override String get enterJellyfinUrlError => 'JellyfinサーバーのURLを入力してください';
+	@override String get enterEmbyUrlError => 'EmbyサーバーのURLを入力してください';
 	@override String get addConnectionTitle => '接続を追加';
 	@override String addConnectionTitleScoped({required Object name}) => '${name}に追加';
 	@override String get signInWithPlexCard => 'Plexでサインイン';
 	@override String get signInWithPlexCardSubtitle => 'このデバイスを承認します。共有サーバーが追加されます。';
 	@override String get signInWithPlexCardSubtitleScoped => 'Plexアカウントを承認します。Homeユーザーはプロフィールになります。';
 	@override String get connectToJellyfinCard => 'Jellyfinに接続';
+	@override String get connectToEmbyCard => 'Embyに接続';
 	@override String get connectToJellyfinCardSubtitle => 'サーバーURL、ユーザー名、パスワードを入力してください。';
 	@override String connectToJellyfinCardSubtitleScoped({required Object name}) => 'Jellyfinサーバーにサインインします。${name}に紐付けられます。';
+	@override String connectToEmbyCardSubtitleScoped({required Object name}) => 'Embyサーバーにサインインします。${name}に紐付けられます。';
 	@override String get borrowFromAnotherProfile => '別のプロファイルから借りる';
 	@override String get borrowFromAnotherProfileSubtitle => '別のプロフィールの接続を再利用します。PIN保護されたプロフィールにはPINが必要です。';
 }
@@ -2895,6 +2900,7 @@ extension on TranslationsJa {
 			'connections.sessionExpiredMany' => ({required Object count}) => '${count} 台のサーバーのセッションの有効期限が切れました',
 			'connections.signInAgain' => '再度サインイン',
 			'connections.editJellyfinTitle' => 'Jellyfin接続を編集',
+			'connections.editEmbyTitle' => 'Emby接続を編集',
 			'connections.editJellyfinIntro' => ({required Object serverName}) => '${serverName} のURLを追加または削除します。Pleyaは到達可能なURLのうち最も低遅延のものを使用します。',
 			'connections.localSources' => 'このデバイスのソース',
 			'connections.removeSource' => 'ソースを削除',
@@ -3302,9 +3308,9 @@ extension on TranslationsJa {
 			'companionRemote.session.startServer' => 'サーバーを起動',
 			'companionRemote.session.stopServer' => 'サーバーを停止',
 			'companionRemote.session.minimize' => '最小化',
-			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			_ => null,
 		} ?? switch (path) {
+			'companionRemote.pairing.discoveryDescription' => '同じPlexアカウントのPleyaデバイスがここに表示されます',
 			'companionRemote.pairing.hostAddressHint' => '192.168.1.100:48632',
 			'companionRemote.pairing.connecting' => '接続中...',
 			'companionRemote.pairing.searchingForDevices' => 'デバイスを検索中...',
@@ -3545,11 +3551,12 @@ extension on TranslationsJa {
 			'trackers.libraryFilter.libraries' => 'ライブラリ',
 			'trackers.libraryFilter.noLibraries' => '利用できるライブラリがありません',
 			'addServer.addJellyfinTitle' => 'Jellyfinサーバーを追加',
+			'addServer.addEmbyTitle' => 'Embyサーバーを追加',
 			'addServer.serverUrls' => 'サーバーURL',
 			'addServer.serverUrlsHelper' => '複数のURLをカンマ区切りで入力できます。',
 			'addServer.findServer' => 'サーバーを検索',
-			'addServer.searchingLocalServers' => 'ローカル Jellyfin サーバーを検索中...',
-			'addServer.localServers' => 'ローカル Jellyfin サーバー',
+			'addServer.searchingLocalServers' => 'ローカルサーバーを検索中...',
+			'addServer.localServers' => 'ローカルサーバー',
 			'addServer.username' => 'ユーザー名',
 			'addServer.password' => 'パスワード',
 			'addServer.signIn' => 'サインイン',
@@ -3563,14 +3570,17 @@ extension on TranslationsJa {
 			'addServer.duplicatePlexAccount' => 'すでにPlexにサインインしています。アカウントを切り替えるにはサインアウトしてください。',
 			'addServer.failedToRegisterAccount' => 'アカウントの登録に失敗しました',
 			'addServer.enterJellyfinUrlError' => 'JellyfinサーバーのURLを入力してください',
+			'addServer.enterEmbyUrlError' => 'EmbyサーバーのURLを入力してください',
 			'addServer.addConnectionTitle' => '接続を追加',
 			'addServer.addConnectionTitleScoped' => ({required Object name}) => '${name}に追加',
 			'addServer.signInWithPlexCard' => 'Plexでサインイン',
 			'addServer.signInWithPlexCardSubtitle' => 'このデバイスを承認します。共有サーバーが追加されます。',
 			'addServer.signInWithPlexCardSubtitleScoped' => 'Plexアカウントを承認します。Homeユーザーはプロフィールになります。',
 			'addServer.connectToJellyfinCard' => 'Jellyfinに接続',
+			'addServer.connectToEmbyCard' => 'Embyに接続',
 			'addServer.connectToJellyfinCardSubtitle' => 'サーバーURL、ユーザー名、パスワードを入力してください。',
 			'addServer.connectToJellyfinCardSubtitleScoped' => ({required Object name}) => 'Jellyfinサーバーにサインインします。${name}に紐付けられます。',
+			'addServer.connectToEmbyCardSubtitleScoped' => ({required Object name}) => 'Embyサーバーにサインインします。${name}に紐付けられます。',
 			'addServer.borrowFromAnotherProfile' => '別のプロファイルから借りる',
 			'addServer.borrowFromAnotherProfileSubtitle' => '別のプロフィールの接続を再利用します。PIN保護されたプロフィールにはPINが必要です。',
 			'addLocalFolder.cardTitle' => 'Local Folder',

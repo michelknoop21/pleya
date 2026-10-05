@@ -1,0 +1,32 @@
+<style>
+body .bp-fig { width: 270px; top: 250px; left: 140px; }
+.kb { position: absolute; left: 0; right: 0; bottom: 0; height: 430px; background: rgba(38,38,40,.97); box-shadow: 0 -30px 80px rgba(0,0,0,.55); }
+.kb .fld { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); width: 1240px; height: 84px; border-radius: 14px; background: rgba(255,255,255,.10); display: flex; align-items: center; gap: 18px; padding: 0 28px; font-size: 30px; }
+.kb .fld .caret { width: 3px; height: 38px; background: var(--ink); }
+.kb .fld .live { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 20px; color: var(--ink-2); }
+.kb .fld .live .ic { width: 26px; height: 26px; color: var(--ink); }
+.kb .keys { position: absolute; left: 50%; top: 168px; transform: translateX(-50%); display: flex; gap: 6px; }
+.kb .k { width: 52px; height: 64px; border-radius: 10px; display: grid; place-items: center; font-size: 28px; color: var(--ink-2); }
+.kb .ctl { position: absolute; left: 50%; top: 262px; transform: translateX(-50%); display: flex; gap: 14px; }
+.kb .c { height: 64px; padding: 0 28px; border-radius: 10px; background: rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; font-size: 22px; color: var(--ink-2); }
+.kb .c .ic { width: 26px; height: 26px; }
+.kb .c.on { background: var(--ink); color: var(--bg); font-weight: 700; box-shadow: 0 0 0 6px rgba(38,38,40,1), 0 0 0 10px var(--ink); }
+.kb .lbl { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font-size: 18px; color: var(--ink-3); }
+.dim { position: absolute; inset: 0; background: rgba(20,20,20,.35); }
+</style>
+<link rel="stylesheet" href="../assets/bigp/bigp.css">
+{{nav:Mijn Pleya|live,avatar}}
+<div class="page"><div class="page-title">Big P</div><div class="page-sub">Mijn Pleya ▸ Big P</div></div>
+<div class="dim"></div>
+<div class="bp-fig"><img src="../assets/bigp/bigp-verrast.png" alt=""></div>
+<div class="bp-col">
+  <div class="bp-state"><span class="dot"></span> Ik luister…</div>
+  <div class="bp-h">Spreek je vraag in.</div>
+</div>
+<div class="kb">
+  <div class="lbl">Vraag Big P</div>
+  <div class="fld">Scan mijn filmbibliotheek opn<span class="caret"></span><span class="live">{{icon:mic}} Dicteren</span></div>
+  <div class="keys"><span class="k">a</span><span class="k">b</span><span class="k">c</span><span class="k">d</span><span class="k">e</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">i</span><span class="k">j</span><span class="k">k</span><span class="k">l</span><span class="k">m</span><span class="k">n</span><span class="k">o</span><span class="k">p</span><span class="k">q</span><span class="k">r</span><span class="k">s</span><span class="k">t</span><span class="k">u</span><span class="k">v</span><span class="k">w</span><span class="k">x</span><span class="k">y</span><span class="k">z</span></div>
+  <div class="ctl"><span class="c">abc</span><span class="c">123</span><span class="c">spatie</span><span class="c">{{icon:back}} wis</span><span class="c on">{{icon:mic}} Dicteren</span><span class="c">Gereed</span></div>
+</div>
+<div class="note">PROPOSED · MOCKUP 38 E · Luisteren: het systeemtoetsenbord van tvOS met dicteren, hier benaderd getekend</div>

@@ -20,6 +20,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/providers/home_extra_rows_provider.dart';
+import 'package:pleya/models/livetv_program.dart';
+import 'package:pleya/models/livetv_hub_result.dart';
+import 'package:pleya/models/livetv_channel.dart';
 import 'package:pleya/focus/dpad_navigator.dart';
 import 'package:pleya/focus/focus_theme.dart';
 import 'package:pleya/focus/input_mode_tracker.dart';
@@ -68,6 +72,7 @@ import 'package:pleya/widgets/tv/tv_hero_billboard_carousel.dart';
 import 'package:pleya/widgets/tv/tv_top_navigation.dart';
 import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 
 import '../../test_helpers/golden.dart';
 import '../../test_helpers/prefs.dart';
@@ -262,6 +267,8 @@ void main() {
     List<MediaHub> hubs = const [],
     Set<String>? succeeded,
     Map<String, ExternalIds> externalIds = const {},
+    List<SingleChildWidget> Function()? extraProviders,
+    Future<void> Function()? beforePump,
   }) async {
     resetSharedPreferencesForTest();
     SettingsService.resetForTesting();
@@ -302,6 +309,9 @@ void main() {
       await Future<void>.value();
     }
 
+    // Providers that read storage are built here, off the fake clock.
+    if (beforePump != null) await tester.runAsync(beforePump);
+
     setGoldenSurfaceSize(tester);
     final offlineMode = OfflineModeProvider(manager, multiServerProvider: multiServer);
     addTearDown(offlineMode.dispose);
@@ -312,6 +322,7 @@ void main() {
           ChangeNotifierProvider<DiscoverProvider>.value(value: discover),
           ChangeNotifierProvider<TvHomeProjectionProvider>.value(value: projection),
           ChangeNotifierProvider<OfflineModeProvider>.value(value: offlineMode),
+          ...?extraProviders?.call(),
         ],
         child: TranslationProvider(
           child: MaterialApp(
@@ -578,6 +589,87 @@ void main() {
         expect(row.hub.groups, isNotEmpty);
         expect(row.onActivate, isNotNull);
       }
+    });
+  });
+
+  group('Nu op tv (DEC-145)', () {
+    testWidgets('Select on a Nu op tv card tunes its channel, and a long press opens no menu', (tester) async {
+      final tuned = <String>[];
+      late HomeLayoutProvider layout;
+      late HomeExtraRowsProvider extraRows;
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      Future<void> buildRow() async {
+        layout = HomeLayoutProvider();
+        await layout.ensureInitialized();
+        await layout.setRowHidden(homeLiveTvRowId, false);
+        extraRows = HomeExtraRowsProvider(
+          layout: layout,
+          multiServer: multiServer,
+          watchlistTitle: 'Kijklijst',
+          liveTvTitle: 'Nu op tv',
+          loadLiveTv: () async => (
+            entries: [
+              LiveTvHubEntry(
+                metadata: _film('news', title: 'Journaal'),
+                program: LiveTvProgram(
+                  title: 'Journaal',
+                  beginsAt: now - 600,
+                  endsAt: now + 600,
+                  channelIdentifier: 'npo1',
+                ),
+              ),
+            ],
+            channels: [
+              LiveTvChannel(key: 'npo1'),
+              LiveTvChannel(key: 'npo2'),
+            ],
+          ),
+          tuneChannel: (_, channel, all) async => tuned.add('${channel.key}/${all.length}'),
+        );
+        for (var i = 0; i < 20 && extraRows.visibleRows().isEmpty; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      addTearDown(() {
+        extraRows.dispose();
+        layout.dispose();
+      });
+      addTearDown(SelectKeyUpSuppressor.clearSuppression);
+      await boot(
+        tester,
+        beforePump: buildRow,
+        hubs: [
+          _hub('top-picks', 'Top Picks', [_film('tp1', title: 'Quarry Road')]),
+        ],
+        extraProviders: () => [
+          ChangeNotifierProvider<HomeLayoutProvider>.value(value: layout),
+          ChangeNotifierProvider<HomeExtraRowsProvider>.value(value: extraRows),
+        ],
+      );
+
+      final liveRow = rows(tester).firstWhere((row) => row.hub.title == 'Nu op tv');
+      final libraryRow = rows(tester).firstWhere((row) => row.hub.title == 'Top Picks');
+
+      tileNode(tester, liveRow.hub.groups.single.groupId).requestFocus();
+      await tester.pump();
+      SelectKeyUpSuppressor.clearSuppression();
+      await press(tester, LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(tuned, ['npo1/2'], reason: 'the matching channel, with the full list for channel up/down');
+
+      SelectKeyUpSuppressor.clearSuppression();
+      await holdSelect(tester);
+      expect(find.text(t.mediaMenu.markAsWatched), findsNothing, reason: 'a live card has no library actions');
+      expect(tuned, hasLength(1), reason: 'the long press did not tune a second time');
+
+      // The control: the same gesture on a library card does open the menu.
+      tileNode(tester, libraryRow.hub.groups.single.groupId).requestFocus();
+      await tester.pump();
+      SelectKeyUpSuppressor.clearSuppression();
+      await holdSelect(tester);
+      expect(find.text(t.mediaMenu.markAsWatched), findsOneWidget);
     });
   });
 

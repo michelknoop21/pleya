@@ -3,6 +3,7 @@ import '../media/media_source_info.dart';
 import '../media/media_version.dart';
 import '../models/transcode_quality_preset.dart';
 import '../mpv/mpv.dart';
+import 'playback_stream_evidence.dart';
 
 /// Inputs for [MediaServerClient.getPlaybackInitialization]. Most fields
 /// are backend-specific knobs (transcode preset, audio stream, session ids).
@@ -62,6 +63,7 @@ class PlaybackInitializationResult {
 
   /// `true` when [videoUrl] points at a backend transcoding stream.
   final bool isTranscoding;
+  final PlaybackStreamEvidence streamEvidence;
 
   /// Non-null when a non-original preset was requested but fallback kicked in.
   final TranscodeFallbackReason? fallbackReason;
@@ -97,6 +99,7 @@ class PlaybackInitializationResult {
     this.externalSubtitles = const [],
     this.isOffline = false,
     this.isTranscoding = false,
+    this.streamEvidence = const PlaybackStreamEvidence(),
     this.fallbackReason,
     this.activeAudioStreamId,
     this.playSessionId,

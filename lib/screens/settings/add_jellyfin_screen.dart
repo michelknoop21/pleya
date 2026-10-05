@@ -70,12 +70,17 @@ class AddJellyfinScreen extends StatefulWidget {
   /// [ProfileConnection] row. When null, falls back to the currently active
   /// profile (typical for the global Connections screen entry point).
   final Profile? targetProfile;
+
+  /// Opened from the Emby entry: only the wording differs, the probe decides
+  /// the flavor that gets stored (DEC-141).
+  final bool emby;
   final FutureOr<JellyfinConnectionAuthService> Function()? _authServiceFactory;
   final FutureOr<List<DiscoveredJellyfinServer>> Function()? _localDiscoveryFactory;
 
   const AddJellyfinScreen({
     super.key,
     this.targetProfile,
+    this.emby = false,
     @visibleForTesting this._authServiceFactory,
     @visibleForTesting this._localDiscoveryFactory,
   });
@@ -190,7 +195,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
   Future<void> _probe() async {
     final input = JellyfinEndpointDiscovery.buildUserInputCandidates(_enteredUrls());
     if (input.probeBaseUrls.isEmpty) {
-      setErrorText(t.addServer.enterJellyfinUrlError);
+      setErrorText(widget.emby ? t.addServer.enterEmbyUrlError : t.addServer.enterJellyfinUrlError);
       return;
     }
     final autoStartQuickConnect = await runAsync<bool>(() async {
@@ -438,7 +443,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FocusedScrollScaffold(
-      title: Text(t.addServer.addJellyfinTitle),
+      title: Text(widget.emby ? t.addServer.addEmbyTitle : t.addServer.addJellyfinTitle),
       slivers: [
         if (_qcInitiation != null)
           SliverFillRemaining(
@@ -498,7 +503,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
         decoration: InputDecoration(
           labelText: t.addServer.serverUrls,
           // URL example — intentionally not localized.
-          hintText: 'https://jellyfin.example.com',
+          hintText: widget.emby ? 'https://emby.example.com' : 'https://jellyfin.example.com',
           helperText: _serverInfo == null ? t.addServer.serverUrlsHelper : null,
           prefixIcon: const AppIcon(Symbols.link_rounded, fill: 1),
         ),
@@ -598,7 +603,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen> with AsyncFormSta
               children: [
                 Text(_serverInfo!.serverName, style: theme.textTheme.titleSmall),
                 Text(
-                  'Jellyfin ${_serverInfo!.version}',
+                  '${_serverInfo!.isEmby ? 'Emby' : 'Jellyfin'} ${_serverInfo!.version}',
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
                 ),
               ],

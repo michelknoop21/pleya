@@ -664,6 +664,39 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /watch-history:
+    get:
+      tags: [administration]
+      operationId: getWatchHistory
+      summary: Wat het huishouden de laatste dagen heeft afgekeken.
+      description: |
+        Klasse `admin` (DEC-143, hoofdstuk 17b.7). Per gebruiker de films en
+        afleveringen met `watched` of `play_count` boven nul waarvan de
+        kijkstatus in de laatste `days` dagen is bijgewerkt. Geen afspeellog:
+        een regel is de laatste aanraking van een gebruiker op een item.
+
+        Nieuwste eerst, ten hoogste 1000 regels; `truncated` zegt dat er meer
+        waren.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: 1 tot en met 31, standaard 7. Een waarde daarbuiten wordt geklemd.
+          schema: { type: integer, minimum: 1, maximum: 31, default: 7 }
+      responses:
+        "200":
+          description: De afgekeken titels per gebruiker.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WatchHistory" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404":
+          description: auth.user_not_found. De aanvrager is geen admin of owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /server:
     get:
       tags: [discovery]
@@ -2207,6 +2240,43 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/StreamSessionSummary" }
+
+    WatchHistoryEntry:
+      type: object
+      required: [user_id, username, item_id, item_title, item_kind, watched, play_count, updated_at]
+      description: |
+        Eén gebruiker op één film of aflevering. `series_id` en
+        `series_title` staan er alleen bij een aflevering: een titel telt per
+        serie, en zonder deze twee zou een client per aflevering de stamboom
+        moeten opvragen.
+      properties:
+        user_id: { $ref: "#/components/schemas/Id" }
+        username: { type: string }
+        item_id: { $ref: "#/components/schemas/Id" }
+        item_title: { type: string }
+        item_kind: { $ref: "#/components/schemas/ItemKind" }
+        series_id: { $ref: "#/components/schemas/Id" }
+        series_title: { type: string }
+        watched: { type: boolean }
+        play_count: { type: integer, minimum: 0 }
+        updated_at: { $ref: "#/components/schemas/Timestamp" }
+
+    WatchHistory:
+      type: object
+      required: [days, items, truncated]
+      properties:
+        days:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Het venster na het klemmen van de parameter.
+        items:
+          type: array
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/WatchHistoryEntry" }
+        truncated:
+          type: boolean
+          description: Waar wanneer er meer dan 1000 regels in het venster vielen.
 
     StreamToken:
       type: object

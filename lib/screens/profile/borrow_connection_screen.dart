@@ -413,7 +413,7 @@ class _BorrowTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: .start,
           children: [
-            BackendBadge(backend: candidate.connection.backend, size: 28),
+            BackendBadge(backend: candidate.connection.backend, isEmby: candidate.connection.isEmby, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

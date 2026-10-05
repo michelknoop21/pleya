@@ -12,6 +12,27 @@ List<String> _ids(List<MediaHub> hubs) => hubs.map(homeRowId).toList();
 void main() {
   setUp(resetSharedPreferencesForTest);
 
+  test('an opt-in row is hidden until it is turned on, and the choice survives a reload', () async {
+    final p = HomeLayoutProvider();
+    await p.ensureInitialized();
+    expect(p.isRowHidden(homeLiveTvRowId), isTrue);
+    expect(p.hiddenRowIds, contains(homeLiveTvRowId));
+    expect(p.isRowHidden(homeWatchlistRowId), isFalse);
+
+    await p.setRowHidden(homeLiveTvRowId, false);
+    expect(p.isRowHidden(homeLiveTvRowId), isFalse);
+    expect(p.hiddenRowIds, isNot(contains(homeLiveTvRowId)));
+    p.dispose();
+
+    final reloaded = HomeLayoutProvider();
+    await reloaded.ensureInitialized();
+    expect(reloaded.isRowHidden(homeLiveTvRowId), isFalse);
+
+    await reloaded.setRowHidden(homeLiveTvRowId, true);
+    expect(reloaded.isRowHidden(homeLiveTvRowId), isTrue);
+    reloaded.dispose();
+  });
+
   group('HomeLayoutProvider.apply', () {
     final hubs = [_hub('a'), _hub('b'), _hub('c')];
 

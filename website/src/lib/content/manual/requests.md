@@ -1,24 +1,28 @@
 ---
-title: Requests
+title: Requests with Seerr
 slug: requests
 order: 13
 group: More to watch
 icon: add_circle
-summary: Asking for titles the server does not have, through Jellyseerr or Overseerr.
-updated: 2026-08-19
+summary: Asking for titles the server does not have, through Seerr, Jellyseerr or Overseerr.
+updated: 2026-10-02
 ---
 
-# Requests
+# Requests with Seerr
 
-If whoever runs your server also runs **Jellyseerr** or **Overseerr**, Pleya can browse,
+If whoever runs your server also runs **Seerr**, **Jellyseerr** or **Overseerr**, Pleya can browse,
 search and request titles without leaving the app, and follow each request until it lands.
 Without such a server configured, the feature stays hidden entirely.
+
+[Seerr](https://docs.seerr.dev/blog/seerr-release/) brings Jellyseerr and Overseerr together
+in one project. In Pleya, all three use the **Requests** integration. You connect to the
+requests service separately from your Plex or Jellyfin library.
 
 ![Discover in Requests with status badges](/docs-media/requests-discover.png)
 
 ## Connecting
 
-**Settings**, then **Requests**. Enter the server address, then sign in one of three ways:
+**Settings**, then **Integrations**, then **Requests**. Enter the server address, then sign in one of three ways:
 
 | Method | When to use it |
 |---|---|
@@ -78,3 +82,17 @@ visible instead of being smoothed over.
 On a phone, under [My Pleya](/docs/watchlist-and-my-pleya). On desktop and Apple TV, as
 their own destination in the sidebar. Search results also show request status, so a title
 you cannot play tells you whether it is already on its way.
+
+## Permissions and availability
+
+A request asks your existing service to obtain a title; it does not put a file on your
+server immediately. Your Seerr configuration, approval rules and Radarr or Sonarr setup
+decide what happens next. Pleya shows the service's status.
+
+Use a regular Plex or local account for everyday requests. Use an API key only when you
+administer the requests server: it has administrator access, rather than the permissions
+of an individual viewer.
+
+If a title stays pending, check whether an administrator needs to approve it. If it is
+processing, check the requests service and its connected download services. If Pleya
+cannot connect, check the service address and whether this device can reach it.

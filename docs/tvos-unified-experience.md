@@ -2538,7 +2538,7 @@ backend** — zie 33.10.
 | --- | --- | --- | --- | --- |
 | 1 | Oranje/rode focusring (movies, series, source picker, my-pleya) | Focusring is **altijd crisp wit**, "pinned so it never drifts on palette changes" | **Code** | `lib/focus/focus_theme.dart:16-19` |
 | 2 | Rode Afspelen-knop (source picker) | Primaire Play-CTA is wit; `home-reference.png` toont hem ook wit | **Code/plan** | hoofdstuk 8.2, 34 |
-| 3 | **Emby** als backend (source picker, my-pleya) | Pleya kent Plex, Jellyfin, Pleya Server, local en Pleya Share. Er is geen Emby-backend | **Code** | `MediaBackend`, `lib/media/media_item.dart` |
+| 3 | **Emby** als backend (source picker, my-pleya) | Sinds [DEC-141](DECISIONS.md#dec-141-emby-als-variant-van-de-jellyfin-backend) een variant van de Jellyfin-backend met eigen label en badge. De derde bron in de canonieke fixture blijft Pleya Server | **Code** | `JellyfinConnection.isEmby`, `backendDisplayLabel` |
 | 4 | Paars/blauw/groen tegelicoon (my-pleya) | Mono-thema; rood/amber spaarzaam; geen paarse styling | **Code/plan** | hoofdstuk 8.2, 34 |
 | 5 | "1–10 van 342 resultaten" | Geen exact totaal voordat alle bronstreams uitgeput zijn; wél "N titels geladen" | **Plan** | hoofdstuk 10.7 |
 | 6 | Vijf permanente carousel-dots (home) | Geen permanente reeks dots; alleen tijdelijke segmentindicator | **Plan** | hoofdstuk 9.6 |
@@ -2546,7 +2546,8 @@ backend** — zie 33.10.
 | 8 | De **"Onthoud mijn keuze"-optie** in de source picker | Hoofdstuk 14.8 onthoudt de laatst gekozen source *altijd*, zonder opt-in, en gebruikt hem alleen voor focus; 14.8a voegt daar een expliciete voorkeursserver-actie aan toe. Een derde, per-titel opt-in bestaat in geen van beide | **Code/plan** | **Besloten 30-08-2026**, zie hieronder |
 
 Punt 3 verdient nadruk: waar de mockups "Emby" tonen, is de bedoelde derde backend in de canonieke
-fixture (hoofdstuk 28) **Pleya Server** of **Pleya Share**. Een `UnifiedMediaGroup` mag zo'n bron wel
+fixture (hoofdstuk 28) **Pleya Server** of **Pleya Share**. Echte Emby-servers bestaan sinds DEC-141 en
+mergen zoals Jellyfin. Een `UnifiedMediaGroup` mag zo'n bron wel
 als single-source tonen, maar hij wordt niet cross-server gemerged met Plex of Jellyfin — zie
 hoofdstuk 11 en [DEC-063](DECISIONS.md#dec-063).
 

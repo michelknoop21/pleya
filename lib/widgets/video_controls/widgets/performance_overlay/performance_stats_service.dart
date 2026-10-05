@@ -41,11 +41,21 @@ class PerformanceStatsService {
   String _runtimePlayerType = 'unknown';
   StreamSubscription<void>? _backendSwitchedSubscription;
   bool _fetchInProgress = false;
+  PerformanceStats? _lastSample;
 
   PerformanceStatsService(this.player);
 
   /// Stream of performance stats updates.
   Stream<PerformanceStats> get statsStream => _statsController.stream;
+
+  /// One read without polling, subscriptions, or persistent FPS callbacks.
+  /// A failed read never returns a previous sample as current evidence.
+  Future<PerformanceStats?> sample() async {
+    if (_fetchInProgress) return null;
+    _lastSample = null;
+    await _fetchStats();
+    return _lastSample;
+  }
 
   /// Start polling for stats at regular intervals.
   void startPolling() {
@@ -182,6 +192,7 @@ class PerformanceStatsService {
         appMemoryBytes: appMemory,
         uiFps: _currentUiFps,
       );
+      _lastSample = stats;
       _statsController.add(stats);
     } else {
       // Parse ExoPlayer stats format
@@ -206,7 +217,10 @@ class PerformanceStatsService {
         // Performance metrics
         frameDropCount: statsMap['videoDroppedFrames'] as int?,
         // Buffer metrics - convert ms to seconds for duration
-        cacheDuration: ((statsMap['totalBufferedDurationMs'] as int?) ?? 0) / 1000.0,
+        cacheDuration: switch (statsMap['totalBufferedDurationMs']) {
+          final num ms => ms / 1000.0,
+          _ => null,
+        },
         // DV conversion
         dvConversionActive: statsMap['dvConversionActive'] == true,
         dvConversionMode: statsMap['dvConversionMode'] as String? ?? '',
@@ -222,6 +236,7 @@ class PerformanceStatsService {
         appMemoryBytes: appMemory,
         uiFps: _currentUiFps,
       );
+      _lastSample = stats;
       _statsController.add(stats);
     }
   }
@@ -327,6 +342,7 @@ class PerformanceStatsService {
       uiFps: _currentUiFps,
     );
 
+    _lastSample = stats;
     _statsController.add(stats);
   }
 
@@ -352,8 +368,8 @@ class PerformanceStatsService {
     if (upper.contains('AV1')) return 'AV1';
     if (upper.contains('VP9')) return 'VP9';
     if (upper.contains('AAC')) return 'AAC';
-    if (upper.contains('AC3') || upper.contains('AC-3')) return 'AC3';
     if (upper.contains('EAC3') || upper.contains('E-AC-3')) return 'EAC3';
+    if (upper.contains('AC3') || upper.contains('AC-3')) return 'AC3';
     if (upper.contains('DTS')) return 'DTS';
     if (upper.contains('TRUEHD')) return 'TrueHD';
     if (upper.contains('FLAC')) return 'FLAC';

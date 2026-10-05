@@ -176,14 +176,14 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
     final loading = _loading.contains(_serverKey);
     final status = _statuses[_serverKey];
     final subtitle =
-        '${backendDisplayLabel(client.backend)} - ${client.serverName ?? widget.item.serverName ?? t.common.unknown}';
+        '${backendDisplayLabel(client.backend, serverId: client.serverId)} - ${client.serverName ?? widget.item.serverName ?? t.common.unknown}';
 
     if (client.capabilities.numericUserRating) {
       final value = (_serverStars * 2).round().clamp(0, 10).toInt();
       return _RatingRow(
         focusNode: focusNode,
         autofocus: autofocus,
-        leading: BackendBadge(backend: client.backend, size: 22),
+        leading: BackendBadge(backend: client.backend, serverId: client.serverId, size: 22),
         title: t.rateSheet.server,
         subtitle: subtitle,
         loading: loading,
@@ -211,7 +211,7 @@ class _RatingBottomSheetState extends State<RatingBottomSheet> {
     return _RatingRow(
       focusNode: focusNode,
       autofocus: autofocus,
-      leading: BackendBadge(backend: client.backend, size: 22),
+      leading: BackendBadge(backend: client.backend, serverId: client.serverId, size: 22),
       title: t.rateSheet.server,
       subtitle: subtitle,
       loading: loading,

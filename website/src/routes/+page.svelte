@@ -2,10 +2,12 @@
   import '$lib/components/home/home.css';
   import Hero from '$lib/components/home/Hero.svelte';
   import Unified from '$lib/components/home/Unified.svelte';
+  import Video from '$lib/components/home/Video.svelte';
   import Reel from '$lib/components/home/Reel.svelte';
   import Devices from '$lib/components/home/Devices.svelte';
   import Share from '$lib/components/home/Share.svelte';
   import Extras from '$lib/components/home/Extras.svelte';
+  import Integrations from '$lib/components/home/Integrations.svelte';
   import Faq from '$lib/components/home/Faq.svelte';
   import Final from '$lib/components/home/Final.svelte';
   import Footer from '$lib/components/Footer.svelte';
@@ -58,10 +60,12 @@
   <TopNav />
   <Hero />
   <main>
+    <Video />
     <Unified />
     <Reel />
     <Devices />
     <Share />
+    <Integrations />
     <Extras />
     <Faq />
     <Final />
