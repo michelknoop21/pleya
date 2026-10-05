@@ -42,18 +42,18 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland |
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
 | BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | Loopt in een andere sessie |
-| REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Status herijken |
+| REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Gepauzeerd t.g.v. Big P (5 okt) |
 | REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
-| REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken |
-| A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Open PR |
-| A-02 | P0 | Bestaande app | Rechten, geleende verbindingen en profielen | Bewijs afronden |
+| REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
+| A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Open PR; gepauzeerd t.g.v. Big P (5 okt) |
+| A-02 | P0 | Bestaande app | Rechten, geleende verbindingen en profielen | Bewijs afronden; enige onafhankelijke stroom naast Big P |
 | A-03 | P1 | Bestaande app | Bibliotheek-snelkiezer bewaart selectie | Open issue |
 | A-04 | P1 | Bestaande app | Verborgen Plex-bibliotheek op TV | Open issue |
 | A-05 | P1 | Bestaande app | iPhone-detail DEC-140 | Bewijs afronden |
 | A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Volgens register open |
 | A-07 | P1 | Bestaande app | Bronkeuze bij meerdere servers | Bewijs afronden |
 | A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Volgens register open |
-| A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open |
+| A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open; gepauzeerd t.g.v. Big P (5 okt) |
 | A-10 | P1 | Bestaande app | Live TV, Liquid Glass en mobiele speler | Bewijs afronden |
 | A-11 | P1 | Bestaande app | tvOS focus, Menu en shell-routes | Bewijs afronden |
 | A-12 | P1 | Bestaande app | Top Shelf, 4K en tvOS scrubbing | Bewijs afronden |
@@ -62,13 +62,13 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | A-15 | P1 | Bestaande app | Aanbevelingen, historie en Tautulli | Bewijs afronden |
 | A-16 | P1 | Bestaande app | Activiteit: ACT1 | Besluit nodig |
 | A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Status herijken; geen bewijs van volledige afronding |
-| A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | Gepland |
+| A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | Gepland; gepauzeerd t.g.v. Big P (5 okt) |
 | A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | Nieuw; spec vóór ontwerp |
 | A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | Na A-19; Opus; expliciet akkoord vóór bouw |
 | A-21 | P1 | Requests 2.0 | Implementatie en acceptatie van het goedgekeurde redesign | Na A-20; platform- en rolbewijs vereist |
 | C-01 | P1 | Server | S2.5 configuratiebibliotheken overnemen | Volgens register open |
 | C-02 | P1 | Server | S2.6 migratie en protocolvenster 2 sluiten | Volgens register open |
-| C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | Status herijken |
+| C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
 | C-04 | P1 | Server | Loudness D3-D5 en client-consumptie | Status herijken |
 | C-05 | P2 | Server | Volledige S0-S25-dekking, inclusief Web consumer, beheer-GUI en setup | Gepland; detailstatus in servermasterlijst |
 | D-01 | P2 | E-books/routes | Bestaande e-bookbranch en schermen | Status herijken |
@@ -78,7 +78,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | D-05 | P2 | Audioboeken | Northstar/mockups voor bestaande apps en Pleya Web | Na D-04; Opus; akkoord vóór bouw |
 | D-06 | P2 | Audioboeken | Pleya Server-, client- en webimplementatie plus acceptatie | Na D-05 en toepasselijke server/protocolpoorten |
 | E-01 | P1 | Commercieel/site | Free/Pro en prijsbesluit | Voorstel, niet besloten |
-| E-02 | P0 | Commercieel/site | Licenties en publicatiegereedheid | Status herijken |
+| E-02 | P0 | Commercieel/site | Licenties en publicatiegereedheid | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
 | E-03 | P2 | Commercieel/site | Aankoop, herstel en Pro-toegang | Gepland |
 | E-04 | P1 | Commercieel/site | Website, screenshots en release-informatie | Status herijken |
 | F-01 | P3 | Optioneel | Apple Intelligence: kleine zoekfilter-MVP | Gepland |
@@ -88,15 +88,21 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 Primaire stroom (Michel, 5 oktober 2026). Doel: Pleya stelt eerst vast wie, wat en welke data bedoeld is, verzamelt gecontroleerd de juiste gegevens, geeft het model alleen de juiste context, controleert de uitkomst en toont tekst en acties uit één waarheid.
 
-Volgorde: BP-00 (Michel keurt het contract goed) → BP-01 → BP-02 → BP-03 → BP-04 → BP-05 → build 1 → BP-06 → BP-07 → BP-08 → build 2. Elke fase is een eigen PR met gerichte tests, negatieve controle en onafhankelijke review (adversarieel voor BP-01, BP-02, BP-04, BP-07 en BP-08).
+Stromen (Michel, 5 oktober 2026): BP-00 t/m BP-09 tellen samen als één programma en vormen de enige primaire stroom. A-02 (rechten, geleende verbindingen en profielen) is de enige onafhankelijke parallelle stroom. Alle andere open P0-items (A-01, A-09, A-18, REG-01, REG-03, C-03, E-02) pauzeren tijdelijk, behalve hotfixes voor security, dataverlies of regressies; die onderbreken volgens de bestaande regel. Een gepauzeerd item verliest zijn prioriteit niet en hervat zodra Michel de pauze opheft.
 
-BP-09 is eigendom van de parallelle sessie; BP-05 wacht op haar `catalog_changed`-fix. Nieuwe tools uit BP-02 t/m BP-07 krijgen een stap-label via de volledigheidstest tegen `assistantTools` die BP-09 (fase 3 van de parallelle sessie) toevoegt.
+Uitvoeringsregel: twee BP-pakketten wijzigen niet parallel dezelfde codegebieden zonder uitdrukkelijke bestands- en scope-afbakening. BP-09 landt eerst, of wordt exact afgebakend, voordat BP-01 wijzigingen doet in overlappende assistantcode (`lib/assistant/`, `lib/screens/**/big_p*`).
+
+Volgorde: BP-00 (Michel keurt het contract goed) → BP-01 → BP-02 → BP-03 → BP-04 → BP-05 → build 1 → BP-06 → BP-07 → BP-08 → build 2. Elke fase is een eigen PR met gerichte tests, negatieve controle en onafhankelijke review (adversarieel voor BP-01, BP-02, BP-04, BP-07 en BP-08). Die review komt vóór de bundelreview van AGENTS.md en vervangt hem niet; build 1 en 2 krijgen daarna elk één bundelreview.
+
+BP-09 is onderdeel van het Big P-programma en wordt uitgevoerd door de parallelle sessie; BP-05 wacht op haar `catalog_changed`-fix. Nieuwe tools uit BP-02 t/m BP-07 krijgen een stap-label via de volledigheidstest tegen `assistantTools` die BP-09 (fase 3 van de parallelle sessie) toevoegt.
 
 Connected Knowledge: geen gekoppelde, relevante bron blijft onbereikbaar voor Big P alleen omdat er geen losse tool voor bestaat. De grens zijn de rechten van de gebruiker (per bron en per gegevenstype), wat de bron aanbiedt en de privacy van die verbinding. De inventaris staat in het contract.
 
 Uitgesteld (geen werkpakket tot Michel er een opent, verwijzing: `docs/big-p-behaviour-contract.md`): fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
 
 ## Execution phases
+
+Tot Michel de pauze opheft loopt alleen de Big P-stroom (primair) en A-02 (onafhankelijk); de fasen hieronder blijven de volgorde voor de gepauzeerde items.
 
 ### Phase 0 — Authority and current baseline
 
@@ -189,9 +195,9 @@ Payment entitlement never substitutes for media-server administration rights.
 | Window | Primary result | Limited parallel work |
 | --- | --- | --- |
 | 1-2 Oct | Roadmap authority, current baseline, per-platform/window coverage map, A-01/PR111 gates | decisions/status only |
-| 5-9 Oct | permissions/profiles, issue #112 bugs, valid UI remainder | at most one independent server package |
-| 12-16 Oct | real account/simulator/hardware acceptance | C-02 after C-01 or design/spec without shared code owner |
-| 19-23 Oct | release bundle and actual distribution if gates pass | website/release copy aligned to that build |
+| 5-9 Oct | Big P: BP-00, BP-09 landen, BP-01 (primair) | A-02 permissions/profiles (enige onafhankelijke stroom); issue #112 en de rest van de UI pauzeren |
+| 12-16 Oct | Big P: BP-02 t/m BP-04 (primair); acceptatie van de rest hervat zodra de pauze opgeheven is | A-02 |
+| 19-23 Oct | Big P: BP-05 en build 1; release bundle and actual distribution if gates pass, in overleg met Michel | website/release copy aligned to that build |
 | 26-30 Oct | choose and close one next product increment | one released Server/Web/e-book package; Requests A-19/A-20 or Audiobooks D-04/D-05 may run as design/spec work when they do not delay the primary stream |
 
 These are work windows, not guaranteed completion dates. Missing evidence or a regression moves the window; evidence is not planned away. They do not promise delivery of all 46 Web designs or the full Server completion scope within October.
