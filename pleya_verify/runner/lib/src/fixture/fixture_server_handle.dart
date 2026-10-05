@@ -27,6 +27,12 @@ class FixtureServerHandle {
   final int port;
   final String controlToken;
 
+  /// Default for [timeout]. 30s, not 10s: on the shared CI runner `reset_app`
+  /// (cold simulator boot) takes 200-476s, and the 10s deadline then tripped on
+  /// `/__verify/seed` in ~12% of first attempts. A real hang still surfaces,
+  /// only later.
+  static const defaultControlTimeout = Duration(seconds: 30);
+
   /// Deadline on every `/__verify/*` control call — see
   /// [FixtureControlTimeoutException]. [start]'s own 30s wait for the
   /// `{port, controlToken}` boot line is separate: that is process startup,
@@ -59,7 +65,7 @@ class FixtureServerHandle {
     required this.process,
     required this.port,
     required this.controlToken,
-    this.timeout = const Duration(seconds: 10),
+    this.timeout = defaultControlTimeout,
   }) {
     _record({'component': 'fixture-process', 'stage': 'started'});
     _exitDone = process.exitCode.then((code) {
@@ -132,7 +138,7 @@ class FixtureServerHandle {
     required Process process,
     required int port,
     required String controlToken,
-    Duration timeout = const Duration(seconds: 10),
+    Duration timeout = defaultControlTimeout,
   }) => FixtureServerHandle._(process: process, port: port, controlToken: controlToken, timeout: timeout);
 
   String get baseUrl => 'http://127.0.0.1:$port';
