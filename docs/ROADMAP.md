@@ -33,8 +33,8 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | ID | P | Track | Work package | Current state |
 | --- | --- | --- | --- | --- |
 | BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`, PR #175) | Akkoord Michel 5 okt; contract (PR #175) merget vóór BP-01 |
-| BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gepland |
-| BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Gepland |
+| BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gemerged (PR #178) |
+| BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Draft-PR; gaten genoemd in de PR-beschrijving |
 | BP-03 | P0 | Big P | Mediasleutel, titelkoppeling en kijkcijfers; historie tegenover ooit gezien | Gepland |
 | BP-04 | P0 | Big P | Intent, routing en minimale wedervraag | Gepland |
 | BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
