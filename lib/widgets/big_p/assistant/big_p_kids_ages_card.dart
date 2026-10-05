@@ -50,6 +50,42 @@ class _BigPKidsAgesCardState extends State<BigPKidsAgesCard> {
       automationInstance: 'save',
       onPressed: () => widget.onSave((_ages.toList()..sort())),
     );
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Image.asset(PleyaWordmark.markAsset, height: TvHig.caption1 * pt, filterQuality: FilterQuality.medium),
+            SizedBox(width: 12 * pt),
+            Expanded(child: Text(k.header, style: muted)),
+          ],
+        ),
+        SizedBox(height: 10 * pt),
+        Text(
+          k.title,
+          style: TextStyle(color: tk.text, fontSize: TvHig.title3 * pt * 0.8, fontWeight: FontWeight.w700),
+        ),
+        SizedBox(height: 8 * pt),
+        Text(k.body, style: muted.copyWith(height: 1.3)),
+        SizedBox(height: 24 * pt),
+        Wrap(
+          // The chips are 44 pt touch targets on a phone: no gap on top.
+          spacing: BigPScale.minTouch(context) > 0 ? 0 : 10 * pt,
+          runSpacing: BigPScale.minTouch(context) > 0 ? 0 : 10 * pt,
+          children: [
+            for (var age = 0; age <= 17; age++)
+              _AgeChip(
+                age: age,
+                selected: _ages.contains(age),
+                focusNode: age == 0 ? widget.firstNode : null,
+                onSelect: () => _toggle(age),
+              ),
+          ],
+        ),
+      ],
+    );
+
     return AutomationNode(
       id: AutomationIds.assistantKidsAges,
       role: 'sheet',
@@ -59,43 +95,26 @@ class _BigPKidsAgesCardState extends State<BigPKidsAgesCard> {
         decoration: widget.embedded
             ? null
             : BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Image.asset(PleyaWordmark.markAsset, height: TvHig.caption1 * pt, filterQuality: FilterQuality.medium),
-                SizedBox(width: 12 * pt),
-                Expanded(child: Text(k.header, style: muted)),
-              ],
-            ),
-            SizedBox(height: 10 * pt),
-            Text(
-              k.title,
-              style: TextStyle(color: tk.text, fontSize: TvHig.title3 * pt * 0.8, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: 8 * pt),
-            Text(k.body, style: muted.copyWith(height: 1.3)),
-            SizedBox(height: 24 * pt),
-            Wrap(
-              spacing: 10 * pt,
-              runSpacing: 10 * pt,
-              children: [
-                for (var age = 0; age <= 17; age++)
-                  _AgeChip(
-                    age: age,
-                    selected: _ages.contains(age),
-                    focusNode: age == 0 ? widget.firstNode : null,
-                    onSelect: () => _toggle(age),
-                  ),
-              ],
-            ),
-            SizedBox(height: 32 * pt),
-            // Full width in Big P's balloon, right-aligned on TV.
-            if (widget.embedded) save else Align(alignment: Alignment.centerRight, child: save),
-          ],
-        ),
+        child: widget.embedded
+            // In the balloon the ages scroll and Bewaar stays put (39 G).
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(child: SingleChildScrollView(child: body)),
+                  SizedBox(height: 32 * pt),
+                  save,
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  body,
+                  SizedBox(height: 32 * pt),
+                  Align(alignment: Alignment.centerRight, child: save),
+                ],
+              ),
       ),
     );
   }
@@ -137,31 +156,33 @@ class _AgeChipState extends State<_AgeChip> {
       // FocusableWrapper only answers keys; on a touch screen a tap is Select.
       onTap: widget.onSelect,
       behavior: HitTestBehavior.opaque,
-      child: FocusableWrapper(
-        focusNode: widget.focusNode,
-        borderRadius: size / 2,
-        disableScale: true,
-        semanticLabel: t.assistant.kids.age(age: widget.age),
-        automationId: AutomationIds.assistantKidsAgesButton,
-        automationInstance: 'age${widget.age}',
-        automationRole: 'button',
-        automationState: () => {'selected': widget.selected},
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        onSelect: () {
-          SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-          widget.onSelect();
-        },
-        child: Semantics(
-          selected: widget.selected,
-          child: AnimatedContainer(
-            duration: tk.fast,
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
-            child: Text(
-              '${widget.age}',
-              style: TextStyle(color: ink, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700),
+      child: BigPTouchTarget(
+        child: FocusableWrapper(
+          focusNode: widget.focusNode,
+          borderRadius: size / 2,
+          disableScale: true,
+          semanticLabel: t.assistant.kids.age(age: widget.age),
+          automationId: AutomationIds.assistantKidsAgesButton,
+          automationInstance: 'age${widget.age}',
+          automationRole: 'button',
+          automationState: () => {'selected': widget.selected},
+          onFocusChange: (focused) => setState(() => _focused = focused),
+          onSelect: () {
+            SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+            widget.onSelect();
+          },
+          child: Semantics(
+            selected: widget.selected,
+            child: AnimatedContainer(
+              duration: tk.fast,
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
+              child: Text(
+                '${widget.age}',
+                style: TextStyle(color: ink, fontSize: TvHig.callout * pt, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ),

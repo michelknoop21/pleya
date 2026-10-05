@@ -76,19 +76,30 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
     final valueStyle = TextStyle(color: tk.text, fontSize: TvHig.body * pt, fontWeight: FontWeight.w500);
     final divider = Divider(height: 1, thickness: 1, color: tk.outline);
 
-    Widget row(String label, Widget value) => Column(
+    // Beside the value on TV; over it in Big P's balloon, where a label
+    // like "Wachtwoord" would otherwise break inside the word.
+    Widget row(String label, Widget value, {bool stacked = false}) => Column(
       children: [
         Padding(
           padding: EdgeInsets.symmetric(vertical: 18 * pt),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 220 * pt,
-                child: Text(label, style: labelStyle),
-              ),
-              Expanded(child: value),
-            ],
-          ),
+          child: stacked && widget.embedded
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(label, style: labelStyle),
+                    SizedBox(height: 8 * pt),
+                    value,
+                  ],
+                )
+              : Row(
+                  children: [
+                    SizedBox(
+                      width: 220 * pt,
+                      child: Text(label, style: labelStyle),
+                    ),
+                    Expanded(child: value),
+                  ],
+                ),
         ),
         divider,
       ],
@@ -100,6 +111,59 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
     final smallPrint = [?note, if (a.password != AssistantPasswordMode.none) c.passwordNote];
     final approveLabel = a.kind == AssistantActionKind.createUser ? c.create : c.approve;
 
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Image.asset(PleyaWordmark.markAsset, height: TvHig.caption1 * pt, filterQuality: FilterQuality.medium),
+            SizedBox(width: 12 * pt),
+            Expanded(
+              child: Text(
+                c.header,
+                style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10 * pt),
+        Text(
+          assistantConfirmTitle(a.kind),
+          style: TextStyle(color: tk.text, fontSize: TvHig.title3 * pt * 0.8, fontWeight: FontWeight.w700),
+        ),
+        if (!_userKind && a.subject.isNotEmpty) ...[SizedBox(height: 6 * pt), Text(a.subject, style: valueStyle)],
+        SizedBox(height: 24 * pt),
+        divider,
+        if (_userKind && a.subject.isNotEmpty) row(c.user, text(a.subject)),
+        if (a.serverName.isNotEmpty) row(c.server, text(a.serverName)),
+        if (access.isNotEmpty) row(c.access, text(access)),
+        if (a.kind == AssistantActionKind.createUser) row(c.admin, text(c.no)),
+        if (a.items.isNotEmpty) row(c.titlesLabel, text(a.items.take(5).join(', '))),
+        if (a.password != AssistantPasswordMode.none && !widget.embedded) row(c.password, _passwordField(pt, tk)),
+        if (a.preview case final preview?) ...[
+          SizedBox(height: 16 * pt),
+          BigPDisplayView(display: preview, onPickOption: (_) {}),
+        ],
+        for (final line in smallPrint) ...[
+          SizedBox(height: 18 * pt),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Symbols.info_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6)),
+              SizedBox(width: 12 * pt),
+              Expanded(
+                child: Text(
+                  line,
+                  style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+
     return AutomationNode(
       id: AutomationIds.assistantConfirm,
       role: 'sheet',
@@ -109,66 +173,32 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
         decoration: widget.embedded
             ? null
             : BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
+        child: widget.embedded
+            // In the balloon the rows scroll and the buttons stay put (39 G):
+            // on a small phone or at a large text size Aanmaken is never
+            // below the fold.
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Image.asset(
-                    PleyaWordmark.markAsset,
-                    height: TvHig.caption1 * pt,
-                    filterQuality: FilterQuality.medium,
-                  ),
-                  SizedBox(width: 12 * pt),
-                  Expanded(
-                    child: Text(
-                      c.header,
-                      style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
-                    ),
-                  ),
+                  Flexible(child: SingleChildScrollView(child: body)),
+                  // The password the primary waits for stays with it.
+                  if (a.password != AssistantPasswordMode.none) row(c.password, _passwordField(pt, tk), stacked: true),
+                  SizedBox(height: 32 * pt),
+                  _buttons(pt, approveLabel),
                 ],
-              ),
-              SizedBox(height: 10 * pt),
-              Text(
-                assistantConfirmTitle(a.kind),
-                style: TextStyle(color: tk.text, fontSize: TvHig.title3 * pt * 0.8, fontWeight: FontWeight.w700),
-              ),
-              if (!_userKind && a.subject.isNotEmpty) ...[SizedBox(height: 6 * pt), Text(a.subject, style: valueStyle)],
-              SizedBox(height: 24 * pt),
-              divider,
-              if (_userKind && a.subject.isNotEmpty) row(c.user, text(a.subject)),
-              if (a.serverName.isNotEmpty) row(c.server, text(a.serverName)),
-              if (access.isNotEmpty) row(c.access, text(access)),
-              if (a.kind == AssistantActionKind.createUser) row(c.admin, text(c.no)),
-              if (a.items.isNotEmpty) row(c.titlesLabel, text(a.items.take(5).join(', '))),
-              if (a.password != AssistantPasswordMode.none) row(c.password, _passwordField(pt, tk)),
-              if (a.preview case final preview?) ...[
-                SizedBox(height: 16 * pt),
-                BigPDisplayView(display: preview, onPickOption: (_) {}),
-              ],
-              for (final line in smallPrint) ...[
-                SizedBox(height: 18 * pt),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Symbols.info_rounded, size: TvHig.caption1 * pt, color: tk.text.withValues(alpha: 0.6)),
-                    SizedBox(width: 12 * pt),
-                    Expanded(
-                      child: Text(
-                        line,
-                        style: TextStyle(color: tk.text.withValues(alpha: 0.6), fontSize: TvHig.caption1 * pt),
-                      ),
-                    ),
+                    body,
+                    SizedBox(height: 32 * pt),
+                    _buttons(pt, approveLabel),
                   ],
                 ),
-              ],
-              SizedBox(height: 32 * pt),
-              _buttons(pt, approveLabel),
-            ],
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -217,6 +247,8 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
       onTap: _enterPassword,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 22 * pt, vertical: 14 * pt),
+        constraints: BoxConstraints(minHeight: BigPScale.minTouch(context)),
+        alignment: Alignment.centerLeft,
         decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(14 * pt)),
         child: Row(
           children: [
