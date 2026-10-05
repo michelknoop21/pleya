@@ -1,6 +1,6 @@
 # Big P: gedragscontract
 
-Status: concept, wacht op akkoord van Michel. Roadmap: BP-00. Uitgangsstand: `github/main` 1b93c50d (5 oktober 2026).
+Status: akkoord van Michel op 5 oktober 2026, met de preciseringen hieronder verwerkt. Roadmap: BP-00. Uitgangsstand: `github/main` 1b93c50d (5 oktober 2026).
 Besluiten: `DEC-XXX` (intent-laag vóór de model-lus) en `DEC-XXX` (DEC-005 terugdraaien: Trakt inlezen komt terug via BP-07). Nummers volgen bij de merge.
 
 ## Doel
@@ -9,12 +9,22 @@ Pleya stelt eerst vast wie, wat en welke data bedoeld is, verzamelt gecontroleer
 
 ## Voorrang
 
-1. Veiligheidsregels (kinderprofiel, rechten, bevestiging van schrijfacties): hard.
-2. Een uitdrukkelijke keuze in de huidige vraag.
-3. Opgeslagen voorkeuren en geheugen.
-4. Algemene standaarden.
+Van hoog naar laag:
 
-Een onbekende identiteit of doelgroep wordt nooit opgelost met een gok of een verbreding. Pleya vraagt (maximaal drie wedervragen, een per keer, twee of drie knoppen plus vrije invoer) of antwoordt gedeeltelijk en zegt wat is weggelaten.
+1. Security en rechten (kinderprofiel, bevoegdheid per bron en gegevenstype, bevestiging van schrijfacties).
+2. Een uitdrukkelijke, actuele gebruikerskeuze in de huidige vraag.
+3. De vastgestelde intent (code-feiten, gesprek, knop).
+4. Persistent geheugen en voorkeuren.
+5. Defaults.
+6. Het model, dat alleen open velden vult.
+
+Een lager niveau overschrijft nooit een hoger niveau. Onbekend betekent wedervraag of gedeeltelijk antwoord, nooit stil verbreden. Een onbekende identiteit of doelgroep wordt nooit opgelost met een gok. Pleya vraagt (maximaal drie wedervragen, een per keer, twee of drie knoppen plus vrije invoer) of antwoordt gedeeltelijk en zegt wat is weggelaten.
+
+## Capaciteitsgaten en identiteit
+
+- Ontbrekende externe id's, beoordelingen of favorieten (bijvoorbeeld op Pleya Server) zijn een capaciteitsgat. Ze zijn onbekend, niet onwaar en niet negatief: een ontbrekende beoordeling telt niet als "laag", een ontbrekende favoriet niet als "geen favoriet".
+- Zonder sterk bewijs (extern id, gedeeld plex.tv-id, profielbinding) blijft identiteit bronlokaal. Een capaciteitsgat is nooit een reden om titels of accounts over servers toch samen te voegen.
+- Tests: onbekende beoordeling beïnvloedt de rangschikking niet; zonder extern id geen cross-server merge; ontbrekende favorieten leveren geen "niet favoriet" in een antwoord.
 
 ## Nultolerantie
 
@@ -70,8 +80,8 @@ Ongeveer 40 echte vragen, handmatige poort vóór elke build tegen twee modellen
 
 De nulmeting op de baseline (1b93c50d) volgt in BP-01 vóór de eerste codewijziging; ze staat in het fase-rapport, niet hier, zodat dit document geen statusadministratie wordt.
 
-## Open punten voor Michel
+## Besluiten van Michel (5 oktober 2026)
 
-1. Akkoord op de nultolerantielijst en de voorrang zoals hierboven.
-2. DEC-005 (Trakt inlezen uitstellen) terugdraaien: akkoord, onder voorbehoud van de Trakt-poort in BP-07 (apparaatcode, verversen zonder secret, tokenrotatie met het echte account).
-3. De PleyaServer-rij: geen externe id's of beoordelingen. Accepteren als beperking, of eerst een servercontract (valt buiten dit pakket)?
+1. Akkoord op nultolerantielijst en voorrang.
+2. DEC-005 is als architectuurbeslissing teruggedraaid. BP-07 blijft achter de echte Trakt-poort: geslaagde device activation, tokenuitgifte, verversen zonder secret en correcte tokenrotatie. Werkt dat niet betrouwbaar, dan PKCE.
+3. Pleya Server zonder externe id's en beoordelingen is voorlopig een capaciteitsgat (zie boven).
