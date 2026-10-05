@@ -6,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
+import 'package:pleya/assistant/assistant_account_key.dart';
+import 'package:pleya/assistant/current_user_binding.dart';
+import 'package:pleya/assistant/current_user_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/connection/connection.dart';
 import 'package:pleya/database/app_database.dart';
@@ -272,6 +275,7 @@ Future<AssistantToolContext> _plexCtx({
   List<_Ps> pleya = const [],
   TautulliClient? tautulli,
   List<String>? paths,
+  CurrentUserContext currentUser = CurrentUserContext.empty,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   PlexApiCache.initialize(db);
@@ -333,6 +337,7 @@ Future<AssistantToolContext> _plexCtx({
   );
   return AssistantToolContext(
     servers: m,
+    currentUser: currentUser,
     insights: AssistantInsightServices(tautulliFor: (id) => id.value == 'plex-1' ? tautulli : null),
   );
 }
@@ -1148,7 +1153,7 @@ void main() {
       expect(result.data, isNot(contains('unavailable')));
     });
 
-    test('the same title and person on Plex and Jellyfin are one entry, plays summed', () async {
+    test('the same title is one entry, plays summed; a same-named person on two servers stays two', () async {
       final now = DateTime.now();
       final jf = _Jf(
         'woon',
@@ -1170,10 +1175,89 @@ void main() {
       final titles = (result.data['top_titles']! as List).cast<Map<String, Object?>>();
       expect(titles.map((t) => (t['title'], t['plays'])), unorderedEquals([('Dune', 2), ('Severance', 2)]));
       final users = (result.data['top_users']! as List).cast<Map<String, Object?>>();
-      expect(users.single['plays'], 4, reason: 'Sam on Plex and sam on Jellyfin are one person');
+      expect(users.map((u) => u['plays']), [2, 2], reason: 'a name is not evidence: Sam on Plex and sam on Jellyfin');
       final display = result.display! as AssistantWatchStats;
       expect(display.titles, hasLength(2));
-      expect(display.users, hasLength(1));
+      expect(display.users, hasLength(2));
+    });
+
+    test('the session binding names me from the connection: Jellyfin by user id, Pleya Server unknown', () {
+      final jf = _Jf('woon', 'Woonkamer');
+      final ps = _Ps('zolder', 'Zolder');
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      m.debugRegisterJellyfinClientForTesting(jf);
+      m.debugRegisterClientForTesting(ps);
+      final me = currentUserContextFor(m, profileId: null, plexHome: const {}, traktAccountId: 'michel');
+      expect(
+        me.on('woon', AssistantAccountProvider.jellyfin).key,
+        const AssistantAccountKey(AssistantAccountProvider.jellyfin, 'u', serverId: 'woon'),
+      );
+      expect(me.on('zolder', AssistantAccountProvider.pleyaServer).unknown, AssistantSelfUnknown.notStored);
+      expect(me.trakt.key, const AssistantAccountKey(AssistantAccountProvider.trakt, 'michel'));
+    });
+
+    group('audience others', () {
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexOwner: true),
+        AssistantSelfSource(serverId: 'woon', backend: MediaBackend.jellyfin, userId: 'j7'),
+      ]);
+
+      Future<AssistantToolContext> ctxWith(CurrentUserContext currentUser) {
+        final now = DateTime.now();
+        final jf = _Jf(
+          'woon',
+          'Woonkamer',
+          users: const [
+            ServerUser(id: 'j7', name: 'michel', role: ServerUserRole.member, allLibraries: true),
+            ServerUser(id: 'j8', name: 'lee', role: ServerUserRole.member, allLibraries: true),
+          ],
+          played: {
+            'j7': [_played('x1', 'Dune', now)],
+            'j8': [_played('x1', 'Dune', now)],
+          },
+        );
+        return _plexCtx(
+          others: [jf],
+          currentUser: currentUser,
+          // Plex account 1 is the owner (me), 7 is Sam.
+          history: [_plexPlay(1, 'movie', 'Dune', now), _plexPlay(7, 'movie', 'Dune', now)],
+        );
+      }
+
+      Future<Map<String, Object?>> others(AssistantToolContext ctx) async =>
+          (await _tool('watch_stats').run(ctx, null, {'scope': 'period', 'audience': 'others'}) as AssistantToolResult)
+              .data;
+
+      test('the asker is removed on every server by account id; everybody else stays', () async {
+        final data = await others(await ctxWith(me));
+        expect(data['plays'], 2);
+        expect((data['top_users']! as List).map((u) => (u as Map)['user']), unorderedEquals(['Sam', 'lee']));
+        expect(data.containsKey('left_out'), isFalse);
+      });
+
+      test('a namesake with another account id is not removed', () async {
+        final data = await others(await ctxWith(me));
+        final names = (data['top_users']! as List).map((u) => (u as Map)['user']);
+        expect(names, isNot(contains('michel')), reason: 'j7 is me on Jellyfin');
+        expect(names, contains('lee'));
+      });
+
+      test('with "me" unknown nothing is counted as the others: it is left out and reported, never everyone', () async {
+        final data = await others(await ctxWith(CurrentUserContext.empty));
+        expect(data['plays'], 0);
+        expect(data['top_users'], isEmpty);
+        final leftOut = data['left_out']! as Map;
+        expect(leftOut['plays'], 4);
+        expect(leftOut['servers'], unorderedEquals(['Pleya', 'Woonkamer']));
+      });
+
+      test('current streams carry no account id, so "others" needs a period', () async {
+        await expectLater(
+          _tool('watch_stats').run(await ctxWith(me), null, {'scope': 'now', 'audience': 'others'}),
+          throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'audience_needs_period')),
+        );
+      });
     });
 
     test('a server without data is listed once, and a repeat call adds no second card', () async {

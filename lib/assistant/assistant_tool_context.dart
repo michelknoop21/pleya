@@ -1,4 +1,5 @@
 import 'assistant_spoiler_context.dart';
+import 'current_user_context.dart';
 import '../media/ids.dart';
 import '../media/media_library.dart';
 import '../media/media_server_client.dart';
@@ -63,6 +64,7 @@ class AssistantToolContext {
     this.region = assistantRegion,
     this.cancel,
     this.kidsProfile,
+    this.currentUser = CurrentUserContext.empty,
   });
 
   final MultiServerManager servers;
@@ -116,6 +118,7 @@ class AssistantToolContext {
     region: region,
     cancel: cancel ?? this.cancel,
     kidsProfile: kidsProfile,
+    currentUser: currentUser,
   );
 
   /// What this ask demands of recommendations; set by the run from the
@@ -165,6 +168,9 @@ class AssistantToolContext {
   /// (`assistantIsKidsProfile`); read at the start of every ask. Null is an
   /// adult profile.
   final Future<bool> Function()? kidsProfile;
+
+  /// Who "I" am on every source, by account key. Unknown stays unknown.
+  final CurrentUserContext currentUser;
 
   /// The region whose age ratings count (`NL`); the device's by default.
   final String Function() region;

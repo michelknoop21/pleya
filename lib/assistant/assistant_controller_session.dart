@@ -17,6 +17,10 @@ import '../screens/video_player_screen.dart' show VideoPlayerScreenState;
 import '../services/download_manager_service.dart';
 import '../services/recommendations/recommendation_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
+import '../models/plex/plex_home_user.dart' show PlexHomeUser;
+import '../providers/trakt_account_provider.dart';
+import '../profiles/plex_home_service.dart';
+import 'current_user_binding.dart';
 import 'assistant_spoiler_context.dart';
 import 'assistant_spoiler_progress.dart';
 import 'assistant_controller.dart';
@@ -80,10 +84,18 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   final profileConnections = context.read<ProfileConnectionRegistry?>();
   final recommendations = context.read<RecommendationService?>();
   final profileId = layout?.profileId ?? activeProfile.activeId;
+  final plexHome = context.read<PlexHomeService?>();
+  final trakt = context.read<TraktAccountProvider?>();
   final playback = context.read<PlaybackStateProvider?>()?.assistantPlayback;
   return AssistantToolContext(
     servers: manager,
     screen: screen,
+    currentUser: currentUserContextFor(
+      manager,
+      profileId: activeProfile.activeId,
+      plexHome: plexHome?.current ?? const <String, List<PlexHomeUser>>{},
+      traktAccountId: trakt?.username,
+    ),
     playback: playback ?? const AssistantPlaybackServices.unavailable(),
     spoilers: profileId == null || hidden == null
         ? null
