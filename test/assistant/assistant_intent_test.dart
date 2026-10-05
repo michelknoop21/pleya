@@ -191,10 +191,13 @@ void main() {
       expect(_i('Wat keken de anderen?').mixedAudience, isFalse);
     });
 
-    test('review: refused on every window and on my_watching; "in the last week" is the past 7 days', () {
+    test('review: refused on every window, my_watching stays open; "in the last week" is the past 7 days', () {
       final i = _i('Wat is er vorige week gekeken?');
       expect(i.constrain('watch_stats', {'scope': 'now'}).error, 'previous_week_not_supported');
-      expect(i.constrain('my_watching', {}).error, 'previous_week_not_supported');
+      // my_watching is also the tip tool: a history-plus-tip question must keep it.
+      expect(i.constrain('my_watching', {}).error, isNull);
+      expect(i.constrain('watch_stats', {'scope': 'period'}).error, 'previous_week_not_supported');
+      expect(_i('What was watched within the last week?').previousWeek, isFalse);
       expect(i.describe(), contains('calendar week'));
       expect(_i('What was watched in the last week?').previousWeek, isFalse);
       expect(_i('Wat keek ik een week geleden?').previousWeek, isFalse);

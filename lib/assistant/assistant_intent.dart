@@ -57,7 +57,7 @@ final _daysWord = RegExp(r'\b(\d{1,2})\s*(?:dagen|days)\b');
 final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 hours)\b');
 // "Last week" and "vorige week" are the week before, not the past seven days.
 final _week = RegExp(r'\b(deze week|afgelopen week|laatste week|this week|past week)\b');
-final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|over|during|for|of) the )last week)\b');
+final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
 /// What a question is about, fixed by code from what the user wrote, with the
@@ -163,8 +163,8 @@ class AssistantIntent {
         if (previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (days.explicit && out['scope'] == 'period') out['days'] = days.value;
       case 'my_watching':
-        // No window argument: an unwindowed list would pass as "last week".
-        if (previousWeek) return (args: out, error: 'previous_week_not_supported');
+        // Also the tip tool, so no refusal here: the describe() note stops its
+        // unwindowed history from passing as "last week".
         if (audience.explicit && audience.value != AssistantAudience.me) return (args: out, error: 'use_watch_stats');
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
     }
