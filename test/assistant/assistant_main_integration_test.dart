@@ -172,7 +172,20 @@ void main() {
   });
 
   test('the same item id on another server does not consume the lookup', () async {
+    manager.debugRegisterClientForTesting(find.FakeServer('s1'));
+    manager.debugRegisterClientForTesting(find.FakeServer('s2'));
     final grid = AssistantMediaGrid([(item: find.fakeItem('d', 'Dune').copyWith(serverId: 's1'), group: null)]);
+    final act = AssistantTool(
+      name: 'act',
+      description: 'act',
+      risk: AssistantToolRisk.read,
+      needsServer: true,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({
+        'done': true,
+      }, record: AssistantActionRecord(kind: AssistantActionKind.refreshMetadata, serverName: 'S', subject: 'Dune')),
+    );
     final c = controller(
       [
         _Model([
@@ -181,16 +194,7 @@ void main() {
           _say('done'),
         ]),
       ],
-      [
-        _tool('find_media', (_, _) async => AssistantToolResult(const {}, display: grid)),
-        _tool(
-          'act',
-          (_, _) async => const AssistantToolResult(
-            {'done': true},
-            record: AssistantActionRecord(kind: AssistantActionKind.refreshMetadata, serverName: 'S', subject: 'Dune'),
-          ),
-        ),
-      ],
+      [_tool('find_media', (_, _) async => AssistantToolResult(const {}, display: grid)), act],
     );
     await c.submit('act');
     expect(c.displays, [grid]);
