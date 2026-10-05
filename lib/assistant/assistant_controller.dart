@@ -9,6 +9,7 @@ import '../media/server_administration.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
+import 'assistant_intent.dart';
 import 'assistant_kids_ages_store.dart';
 import 'assistant_execution.dart';
 import 'assistant_task.dart';
@@ -280,6 +281,7 @@ class AssistantController extends ChangeNotifier {
     required int generation,
     required AssistantQuestionBudget budget,
     String? originalSpoilerPrompt,
+    AssistantIntent? parentIntent,
   }) => _AssistantTaskState(
     id: 'task-${++_nextTask}',
     title: title,
@@ -288,6 +290,7 @@ class AssistantController extends ChangeNotifier {
     generation: generation,
     budget: budget,
     originalSpoilerPrompt: originalSpoilerPrompt,
+    parentIntent: parentIntent,
   );
 
   bool _alive(_AssistantTaskState task) =>

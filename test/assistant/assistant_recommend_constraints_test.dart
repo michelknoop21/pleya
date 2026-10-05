@@ -109,7 +109,7 @@ void main() {
 
     test('negative control: a question about series is not films, a plain one is not constrained', () {
       expect(AssistantRecommendConstraints.fromPrompt('Een tip voor een serie of film?').kind, isNull);
-      expect(AssistantRecommendConstraints.fromPrompt('Welke series zijn er?').kind, isNull);
+      expect(AssistantRecommendConstraints.fromPrompt('Welke series zijn er?').kind, MediaKind.show);
       expect(AssistantRecommendConstraints.fromPrompt('Scan mijn bibliotheek').active, isFalse);
       // Kids named without dropping them is no constraint.
       expect(AssistantRecommendConstraints.fromPrompt('Welke kinderfilms heb ik?').excludeKids, isFalse);

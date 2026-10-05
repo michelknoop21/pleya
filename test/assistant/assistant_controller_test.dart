@@ -622,6 +622,45 @@ void main() {
     await done;
   });
 
+  test('tasks split off a question about others keep that audience in their own runs', () async {
+    var ownLogRead = 0;
+    final mine = AssistantTool(
+      name: 'my_watching',
+      description: 'own log',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        ownLogRead++;
+        return const AssistantToolResult({'watched_recently': []});
+      },
+    );
+    final models = [
+      _Model([
+        _call('split_tasks', {
+          'tasks': [
+            {'title': 'One', 'intent': 'search', 'prompt': 'toon de meest bekeken titels'},
+            {'title': 'Two', 'intent': 'search', 'prompt': 'en wat is er nieuw'},
+          ],
+        }),
+      ]),
+      _Model([_call('my_watching'), _say('een')]),
+      _Model([_say('twee')]),
+    ];
+    var next = 0;
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: servers),
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => models[next++],
+      tools: [mine],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijken de anderen deze week? En wat is er nieuw?');
+    expect(ownLogRead, 0, reason: 'the child prompt never says "others", the question did');
+  });
+
   test('tool failure survives a successful model answer', () async {
     final failing = AssistantTool(
       name: 'fail',

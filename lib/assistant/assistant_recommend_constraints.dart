@@ -1,5 +1,6 @@
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
+import 'assistant_intent.dart';
 import 'assistant_tools.dart';
 
 const _kidsGenres = {'kids', 'children', 'family', 'kinderen', 'familie', 'jeugd'};
@@ -8,8 +9,6 @@ const _kidsGenres = {'kids', 'children', 'family', 'kinderen', 'familie', 'jeugd
 const assistantKidsTasteGenres = {..._kidsGenres, 'animation'};
 const _kidsRatings = {'G', 'TV-Y', 'TV-Y7', 'TV-G', 'AL', '6'};
 
-final _movieWord = RegExp(r'\b(films?|movies?)\b');
-final _seriesWord = RegExp(r'\b(series?|shows?)\b');
 // A kids word right behind a drop word ("geen kinderfilms", "forget the kids"), not anywhere in the prompt.
 final _dropKids = RegExp(
   r'\b(vergeet|negeer|zonder|geen|forget|ignore|without)\s+(?:\w+\s+){0,2}(?:kinder|kids?\b|children)',
@@ -39,7 +38,7 @@ class AssistantRecommendConstraints {
   factory AssistantRecommendConstraints.fromPrompt(String prompt) {
     final p = prompt.toLowerCase();
     return AssistantRecommendConstraints(
-      kind: _movieWord.hasMatch(p) && !_seriesWord.hasMatch(p) ? MediaKind.movie : null,
+      kind: AssistantIntent.fromPrompt(prompt).kind.value,
       excludeKids: _dropKids.hasMatch(p) || (_kidsWord.hasMatch(p) && _sharedAccount.hasMatch(p)),
       excludeWatched: _adviceWord.hasMatch(p) && !_again.hasMatch(p),
     );
