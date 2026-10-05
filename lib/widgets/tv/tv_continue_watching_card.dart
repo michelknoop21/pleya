@@ -15,12 +15,13 @@ import '../../media/media_server_client.dart';
 import '../../media/unified/unified_media_group.dart';
 import '../../utils/continue_watching_labels.dart';
 import '../../utils/layout_constants.dart';
+import '../../utils/media_image_helper.dart' show ImageType;
 import '../../theme/mono_tokens.dart';
 import '../optimized_media_image.dart';
 import 'tv_catalog_card.dart';
-import 'tv_expandable_media_tile.dart' show discoveryWideArtPath;
+import 'tv_expandable_media_tile.dart' show discoveryPosterPath, discoveryWideArtPath;
 import 'tv_unified_layout.dart';
-import 'tv_unified_media_card.dart' show resumeFractionFor, semanticLabelFor, tvUnifiedMediaCardSourceBadgeKey;
+import 'tv_unified_media_card.dart' show resumeFractionFor, tvUnifiedMediaCardSourceBadgeKey;
 
 class TvContinueWatchingCard extends StatelessWidget {
   const TvContinueWatchingCard({
@@ -56,6 +57,10 @@ class TvContinueWatchingCard extends StatelessWidget {
     final tk = tokens(context);
     final item = group.representativeSource.item;
     final title = item.isEpisode ? (item.grandparentTitle ?? item.displayTitle) : item.displayTitle;
+    final status = continueWatchingStatusLine(item);
+    // A title with no wide artwork still gets its picture, not a grey tile.
+    final widePath = discoveryWideArtPath(item);
+    final artPath = widePath ?? discoveryPosterPath(item);
 
     return TvCatalogCard(
       width: width,
@@ -63,8 +68,9 @@ class TvContinueWatchingCard extends StatelessWidget {
       artwork: TvCatalogArtworkFill(
         child: OptimizedMediaImage(
           client: clientFor?.call(group.representativeSource.serverId.value),
-          imagePath: discoveryWideArtPath(item),
+          imagePath: artPath,
           fit: BoxFit.cover,
+          imageType: widePath == null ? ImageType.poster : (item.isEpisode ? ImageType.thumb : ImageType.art),
           fallbackIcon: Symbols.movie_rounded,
         ),
       ),
@@ -86,24 +92,29 @@ class TvContinueWatchingCard extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(14 * scale, 28 * scale, 14 * scale, 14 * scale),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w600, color: tk.text, height: 1.2),
-              ),
-              Text(
-                continueWatchingStatusLine(item),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 16 * scale, color: tk.text.withValues(alpha: 0.78), height: 1.25),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(14 * scale, 28 * scale, 14 * scale, 18 * scale),
+          // The overlay is not budgeted in the card height, so a large system
+          // text size must not grow it past the picture.
+          child: MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.15,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w600, color: tk.text, height: 1.2),
+                ),
+                Text(
+                  status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 16 * scale, color: tk.text.withValues(alpha: 0.78), height: 1.25),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -115,7 +126,12 @@ class TvContinueWatchingCard extends StatelessWidget {
       onNavigateLeft: onNavigateLeft,
       onNavigateRight: onNavigateRight,
       onFocusChange: onFocusChange,
-      semanticLabel: semanticLabelFor(group),
+      // What is drawn is what is read: the series title, then the status line.
+      semanticLabel: [
+        title,
+        status,
+        if (group.hasMultipleSources) t.unifiedCatalog.sources(count: group.sources.length),
+      ].where((p) => p.isNotEmpty).join(', '),
     );
   }
 }
