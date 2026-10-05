@@ -38,6 +38,14 @@ AssistantTitleMatch _match(String title, {bool inLibrary = false}) => AssistantT
 
 /// Films and series Big P names get a card from Pleya, not from the model.
 void main() {
+  test('"Bluey (2018)" on a card and «Bluey» (2018) in the answer are one title', () {
+    final card = (key: assistantTitleKey('Bluey (2018)'), year: 2018);
+    expect(assistantSameTitle(card, assistantTitleKey('Bluey'), 2018), isTrue);
+    expect(assistantTitleKey('Dune (1984)'), assistantTitleKey('Dune'));
+    // A title that is a number stays a number.
+    expect(assistantTitleKey('2012'), '2012');
+  });
+
   test('titles between « » come first; list items with a year when the marks are missing', () {
     expect(assistantNamedTitles('Kijk «Interstellar» (2014) of «Gravity».'), [
       (title: 'Interstellar', year: 2014),

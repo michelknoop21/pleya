@@ -224,6 +224,18 @@ void main() {
     ]) {
       expect(assistantNeedsSpoilerScope(phrase), isTrue, reason: phrase);
     }
+    for (final viewers in [
+      'Who is watching right now?',
+      'who is watching',
+      'Wie is er nu aan het kijken?',
+      'Who is streaming now?',
+    ]) {
+      expect(assistantNeedsSpoilerScope(viewers), isFalse, reason: viewers);
+    }
+    // Added clauses and character questions stay fenced.
+    for (final fenced in ['Who is watching Bluey and what happens next?', 'Who is Anna?']) {
+      expect(assistantNeedsSpoilerScope(fenced), isTrue, reason: fenced);
+    }
     expect(assistantNeedsSpoilerScope('scan library'), isFalse);
     expect(assistantNeedsSpoilerScope('download three episodes'), isFalse);
     expect(assistantNeedsSpoilerScope('Explain why playback buffers'), isFalse);
