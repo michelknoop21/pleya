@@ -259,9 +259,9 @@ void main() {
 
   Finder followUps() => find.byWidgetPredicate((w) => w is BigPChip && w.dense);
 
-  testWidgets('an iPhone SE with the keyboard up: every follow-up takes a tap', (tester) async {
+  testWidgets('a tall iPhone with the keyboard up: every follow-up takes a tap', (tester) async {
     answerTitles(c);
-    await pumpHost(tester, size: const Size(375, 667), safe: const EdgeInsets.only(top: 20), keyboard: 260);
+    await pumpHost(tester, size: const Size(402, 874), safe: const EdgeInsets.only(top: 54, bottom: 34), keyboard: 300);
     expect(followUps(), findsNWidgets(3));
     for (var i = 0; i < 3; i++) {
       expect(followUps().at(i).hitTestable(), findsOneWidget, reason: 'pill $i');
@@ -271,6 +271,17 @@ void main() {
     await tester.tap(followUps().first);
     await tester.pump();
     expect(c.submitted, [label]);
+  });
+
+  testWidgets('an iPhone SE with the keyboard up: the answer keeps room, the follow-ups give way', (tester) async {
+    answerTitles(c);
+    await pumpHost(tester, size: const Size(375, 667), safe: const EdgeInsets.only(top: 20), keyboard: 260);
+    // Three 44 pt pills would leave the answer ~140 pt; without them it keeps 200+.
+    expect(followUps(), findsNothing);
+    final viewport = tester.getSize(
+      find.descendant(of: find.byType(BigPMobileConversation), matching: find.byType(Scrollable)).first,
+    );
+    expect(viewport.height, greaterThan(200));
   });
 
   testWidgets('the field asks on after an answer, and plainly before one', (tester) async {
