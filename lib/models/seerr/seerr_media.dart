@@ -24,6 +24,9 @@ class SeerrMedia {
   final List<String>? originCountry;
   final int? voteCount;
 
+  /// TMDB's `popularity` score; null when the payload does not carry it.
+  final double? popularity;
+
   const SeerrMedia({
     required this.tmdbId,
     required this.mediaType,
@@ -36,6 +39,7 @@ class SeerrMedia {
     this.originalLanguage,
     this.originCountry,
     this.voteCount,
+    this.popularity,
   });
 
   /// TMDB votes a title needs to count as mainstream. American titles: 100
@@ -107,6 +111,7 @@ class SeerrMedia {
       originalLanguage: (json['originalLanguage'] ?? json['original_language'])?.toString(),
       originCountry: _countries(json),
       voteCount: _asInt(json['voteCount'] ?? json['vote_count']),
+      popularity: json['popularity'] is num ? (json['popularity'] as num).toDouble() : null,
     );
   }
 

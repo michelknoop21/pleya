@@ -5,19 +5,51 @@ part of 'assistant_tools.dart';
 
 const _discoverLimit = 12;
 
-SeerrMedia? _fromTmdb(Map<String, dynamic> r, TmdbKind kind) {
+/// A TMDB row as a candidate. [english] is the English title, read when the
+/// Dutch listing had none that Big P can show; no title it can show, no
+/// candidate.
+SeerrMedia? _fromTmdb(Map<String, dynamic> r, TmdbKind kind, {String? english}) {
   final id = r['id'];
   if (id is! int) return null;
+  final title = displayTitle(
+    nl: '${r['title'] ?? r['name'] ?? ''}',
+    en: english,
+    original: '${r['original_title'] ?? r['original_name'] ?? ''}',
+  );
+  if (title == null) return null;
   final date = '${r['release_date'] ?? r['first_air_date'] ?? ''}';
+  final countries = r['origin_country'];
   return SeerrMedia(
     tmdbId: id,
     mediaType: kind.path,
-    title: '${r['title'] ?? r['name'] ?? ''}',
+    title: title,
     year: date.length >= 4 ? date.substring(0, 4) : null,
     posterPath: r['poster_path'] as String?,
     overview: r['overview'] as String?,
     status: SeerrMediaStatus.unknown,
+    originalLanguage: r['original_language'] as String?,
+    originCountry: countries is List ? [for (final c in countries) '$c'] : null,
+    voteCount: r['vote_count'] is num ? (r['vote_count'] as num).toInt() : null,
+    popularity: r['popularity'] is num ? (r['popularity'] as num).toDouble() : null,
   );
+}
+
+/// TMDB's listing as candidates: titles in Dutch, and in English too when a
+/// Dutch title is in Han characters (TMDB then has no Dutch one). A second
+/// call only in that case.
+Future<List<SeerrMedia>> _tmdbMedia(
+  TmdbKind kind,
+  Future<List<Map<String, dynamic>>> Function(String language) fetch,
+) async {
+  final dutch = await fetch('nl-NL');
+  var english = const <int, String>{};
+  if (dutch.any((r) => hasHan('${r['title'] ?? r['name'] ?? ''}'))) {
+    english = {
+      for (final r in await fetch('en-US'))
+        if (r['id'] is int) r['id'] as int: '${r['title'] ?? r['name'] ?? ''}',
+    };
+  }
+  return [for (final r in dutch) ?_fromTmdb(r, kind, english: r['id'] is int ? english[r['id'] as int] : null)];
 }
 
 /// Seerr's answer as codes, TMDB's failure as an unavailable source. A
@@ -63,9 +95,10 @@ Future<AssistantToolResult> _discoverResult(
   Iterable<SeerrMedia> found,
   int? age, {
   int? skip,
+  bool niche = false,
 }) async {
   final unique = <String, SeerrMedia>{};
-  for (final m in found) {
+  for (final m in rankSuggestions(found, niche: niche)) {
     if (m.tmdbId != skip && m.title.isNotEmpty) unique.putIfAbsent('${m.mediaType}:${m.tmdbId}', () => m);
   }
   final matches = [
@@ -84,6 +117,17 @@ Future<AssistantToolResult> _discoverResult(
   return AssistantToolResult({'titles': cards.rows, ...cards.note}, display: AssistantTitleMatches(ctx, cards.display));
 }
 
+/// The user asked for obscure, arthouse or foreign titles: the prompt said so,
+/// or the model passed `niche`.
+bool _niche(AssistantToolContext ctx, Map<String, Object?> args) => ctx.recommend.niche || args['niche'] == true;
+
+const _nicheProperty = {
+  'type': 'boolean',
+  'description':
+      'Only when the user explicitly asks for obscure, arthouse, hidden-gem or foreign (e.g. Asian) cinema. '
+      'Without it the titles come well-known first.',
+};
+
 /// Offered wherever the facts service is wired, so a missing source is
 /// explained (`no_source`) instead of the tool being silently absent.
 bool _servesDiscover(AssistantToolContext ctx, ServerId _) => ctx.titleFacts != null || ctx.requests?.client() != null;
@@ -94,7 +138,7 @@ final List<AssistantTool> _discoverTools = [
     description:
         'What is popular right now: trending films and series, from the request service (Seerr) or, without it, '
         'from TMDB with the user\'s own key. Returns up to 12 titles, each in the library (item_id, server_id) or '
-        'with a seerr_id for request_title. When it fails with no_source, say the user can connect Seerr or '
+        'with a seerr_id for request_title. The titles come ranked, best first: well-known ones before less known, so give the first N the user asked for. When it fails with no_source, say the user can connect Seerr or '
         'enter a TMDB key under Settings > Big P; with tmdb_key_rejected, that TMDB turned down the key there.',
     risk: AssistantToolRisk.read,
     needsServer: false,
@@ -103,6 +147,7 @@ final List<AssistantTool> _discoverTools = [
         'type': 'string',
         'enum': ['movie', 'tv', 'all'],
       },
+      'niche': _nicheProperty,
     },
     required: const [],
     serves: _servesDiscover,
@@ -118,11 +163,10 @@ final List<AssistantTool> _discoverTools = [
         ],
         (tmdb) async => [
           for (final k in TmdbKind.values)
-            if (kind == 'all' || kind == k.path)
-              for (final r in await tmdb.trending(k)) ?_fromTmdb(r, k),
+            if (kind == 'all' || kind == k.path) ...await _tmdbMedia(k, (l) => tmdb.trending(k, language: l)),
         ],
       );
-      return _discoverResult(ctx, found, age);
+      return _discoverResult(ctx, found, age, niche: _niche(ctx, args));
     },
   ),
   AssistantTool(
@@ -130,7 +174,7 @@ final List<AssistantTool> _discoverTools = [
     description:
         'Titles like one the user names ("something like Dark"). Finds the title first, in the library or in '
         'Seerr or TMDB, then returns up to 12 similar and recommended titles, each in the library (item_id, '
-        'server_id) or with a seerr_id for request_title. Fails with title_not_found, no_source or '
+        'server_id) or with a seerr_id for request_title, ranked best first (well-known before less known; give the first N the user asked for). Fails with title_not_found, no_source or '
         'tmdb_key_rejected (TMDB turned down the key under Settings > Big P).',
     risk: AssistantToolRisk.read,
     needsServer: false,
@@ -141,6 +185,7 @@ final List<AssistantTool> _discoverTools = [
         'type': 'string',
         'enum': ['movie', 'show'],
       },
+      'niche': _nicheProperty,
     },
     required: const ['title'],
     serves: _servesDiscover,
@@ -159,12 +204,13 @@ final List<AssistantTool> _discoverTools = [
         ],
         (tmdb) async {
           final k = isMovie ? TmdbKind.movie : TmdbKind.tv;
-          return [
-            for (final r in [...await tmdb.recommendations(k, id), ...await tmdb.similar(k, id)]) ?_fromTmdb(r, k),
-          ];
+          return _tmdbMedia(
+            k,
+            (l) async => [...await tmdb.recommendations(k, id, language: l), ...await tmdb.similar(k, id, language: l)],
+          );
         },
       );
-      return _discoverResult(ctx, found, age, skip: id);
+      return _discoverResult(ctx, found, age, skip: id, niche: _niche(ctx, args));
     },
   ),
 ];

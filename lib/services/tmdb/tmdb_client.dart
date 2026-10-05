@@ -61,14 +61,14 @@ class TmdbClient {
   Future<Map<String, dynamic>> details(TmdbKind kind, int id, {String? language}) =>
       _get('/3/${kind.path}/$id', {'append_to_response': kind.appends, 'language': ?language});
 
-  Future<List<Map<String, dynamic>>> trending(TmdbKind kind) async =>
-      _results(await _get('/3/trending/${kind.path}/week'));
+  Future<List<Map<String, dynamic>>> trending(TmdbKind kind, {String? language}) async =>
+      _results(await _get('/3/trending/${kind.path}/week', {'language': ?language}));
 
-  Future<List<Map<String, dynamic>>> recommendations(TmdbKind kind, int id) async =>
-      _results(await _get('/3/${kind.path}/$id/recommendations'));
+  Future<List<Map<String, dynamic>>> recommendations(TmdbKind kind, int id, {String? language}) async =>
+      _results(await _get('/3/${kind.path}/$id/recommendations', {'language': ?language}));
 
-  Future<List<Map<String, dynamic>>> similar(TmdbKind kind, int id) async =>
-      _results(await _get('/3/${kind.path}/$id/similar'));
+  Future<List<Map<String, dynamic>>> similar(TmdbKind kind, int id, {String? language}) async =>
+      _results(await _get('/3/${kind.path}/$id/similar', {'language': ?language}));
 
   /// `/search/multi` has no year filter, so [year] filters on the
   /// release or first-air date client-side.

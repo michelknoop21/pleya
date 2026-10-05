@@ -110,6 +110,64 @@ void main() {
     expect(_titles(data).single['year'], 1999);
   });
 
+  test('trending without Seerr: well-known first, Dutch title first, a title only in Han is skipped', () async {
+    final languages = <String>[];
+    final net = MockClient((request) async {
+      languages.add(request.url.queryParameters['language'] ?? '');
+      final english = request.url.queryParameters['language'] == 'en-US';
+      return jsonResponse(
+        _tmdbList([
+          {'id': 1, 'title': 'Kleine Arthouse', 'original_language': 'en', 'vote_count': 14, 'popularity': 2.0},
+          {
+            'id': 2,
+            'title': english ? 'The Wandering Earth' : '流浪地球',
+            'original_title': '流浪地球',
+            'original_language': 'zh',
+            'vote_count': 6000,
+            'popularity': 300.0,
+            'release_date': '2019-02-05',
+          },
+          {'id': 3, 'title': '流浪的', 'original_title': '流浪的', 'original_language': 'zh', 'vote_count': 9000},
+          {
+            'id': 4,
+            'title': 'De Wolf van Wall Street',
+            'original_language': 'en',
+            'vote_count': 21000,
+            'popularity': 90.0,
+          },
+          {'id': 5, 'title': 'Dune', 'original_language': 'en', 'vote_count': 12000, 'popularity': 200.0},
+          {'id': 6, 'title': 'Joker', 'original_language': 'en', 'vote_count': 20000, 'popularity': 150.0},
+          {'id': 7, 'title': 'Inception', 'original_language': 'en', 'vote_count': 30000, 'popularity': 120.0},
+        ]),
+      );
+    });
+    final ctx = _ctx(tmdbKey: 'key', net: net);
+    final data = await _run(ctx, 'trending_titles', {'kind': 'movie'});
+    final titles = [for (final r in _titles(data)) r['title']];
+    // Dutch first; the English listing only because a Dutch title was Han.
+    expect(languages, ['nl-NL', 'en-US']);
+    expect(titles, isNot(contains('流浪的')), reason: 'no title without Han: skipped');
+    expect(titles, contains('The Wandering Earth'));
+    expect(titles, contains('De Wolf van Wall Street'));
+    // Five known titles are enough: the obscure one is left out.
+    expect(titles, hasLength(5));
+    expect(titles, isNot(contains('Kleine Arthouse')));
+  });
+
+  test('trending with niche keeps the source order', () async {
+    final net = MockClient(
+      (request) async => jsonResponse(
+        _tmdbList([
+          {'id': 1, 'title': 'Kleine Arthouse', 'original_language': 'en', 'vote_count': 14, 'popularity': 2.0},
+          {'id': 2, 'title': 'Inception', 'original_language': 'en', 'vote_count': 30000, 'popularity': 120.0},
+        ]),
+      ),
+    );
+    final ctx = _ctx(tmdbKey: 'key', net: net);
+    final data = await _run(ctx, 'trending_titles', {'kind': 'movie', 'niche': true});
+    expect([for (final r in _titles(data)) r['title']], ['Kleine Arthouse', 'Inception']);
+  });
+
   test('trending without Seerr and without a TMDB key is no_source', () async {
     for (final name in ['trending_titles', 'similar_titles']) {
       await expectLater(

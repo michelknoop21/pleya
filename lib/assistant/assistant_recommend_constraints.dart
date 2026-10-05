@@ -1,6 +1,7 @@
 import '../media/media_item.dart';
 import '../media/media_kind.dart';
 import 'assistant_intent.dart';
+import 'assistant_mainstream.dart';
 import 'assistant_tools.dart';
 
 const _kidsGenres = {'kids', 'children', 'family', 'kinderen', 'familie', 'jeugd'};
@@ -15,6 +16,10 @@ final _dropKids = RegExp(
 );
 final _kidsWord = RegExp(r'kinder|\bkids?\b|children');
 final _sharedAccount = RegExp(r'\b(deel|share)\b.*\baccount');
+// An explicit ask for the unknown: Big P then leaves its known-first order.
+final _niche = RegExp(
+  r'obscuur|obscure|art-?house|hidden gems?|verborgen parel|geheimtip|onbekende (films?|series?)|weinig bekend|\bniche\b|\bcult\b|festival|aziatisch|\basian\b',
+);
 final _adviceWord = RegExp(
   r'\bvoorstel\b|(?:twee|drie|vier|vijf|zes|paar|\d+)\s+voorstellen|\btips?\b|aanrader|recommend',
 );
@@ -25,11 +30,20 @@ final _again = RegExp(r'nog eens|opnieuw|herzien|\bagain\b|re-?watch');
 /// data the model reads and on the cards Pleya shows, so text and cards
 /// cannot disagree.
 class AssistantRecommendConstraints {
-  const AssistantRecommendConstraints({this.kind, this.excludeKids = false, this.excludeWatched = false});
+  const AssistantRecommendConstraints({
+    this.kind,
+    this.excludeKids = false,
+    this.excludeWatched = false,
+    this.niche = false,
+  });
 
   final MediaKind? kind;
   final bool excludeKids;
   final bool excludeWatched;
+
+  /// The user asked for obscure, arthouse or foreign titles, so suggestions
+  /// are not put in the well-known-first order.
+  final bool niche;
 
   bool get active => kind != null || excludeKids || excludeWatched;
 
@@ -41,6 +55,7 @@ class AssistantRecommendConstraints {
       kind: AssistantIntent.fromPrompt(prompt).kind.value,
       excludeKids: _dropKids.hasMatch(p) || (_kidsWord.hasMatch(p) && _sharedAccount.hasMatch(p)),
       excludeWatched: _adviceWord.hasMatch(p) && !_again.hasMatch(p),
+      niche: _niche.hasMatch(p),
     );
   }
 
@@ -48,6 +63,7 @@ class AssistantRecommendConstraints {
     kind: other.kind ?? kind,
     excludeKids: excludeKids || other.excludeKids,
     excludeWatched: excludeWatched || other.excludeWatched,
+    niche: niche || other.niche,
   );
 
   static bool isKids(MediaItem item) =>
@@ -57,7 +73,8 @@ class AssistantRecommendConstraints {
   bool admitsItem(MediaItem item) =>
       (kind == null || _kindOf(item.kind) == kind) &&
       !(excludeKids && isKids(item)) &&
-      !(excludeWatched && item.isWatched);
+      !(excludeWatched && item.isWatched) &&
+      !hasHan(item.title);
 
   static MediaKind _kindOf(MediaKind k) => k == MediaKind.episode ? MediaKind.show : k;
 
