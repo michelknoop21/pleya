@@ -3,7 +3,7 @@ part of 'assistant_tools.dart';
 /// After an await: the same administration, still granted, or nothing is
 /// published or started. A different client object means the connection was
 /// replaced meanwhile.
-void _stillAllowed(Object? now, Object before) {
+void _stillAllowed(Object? now, Object? before) {
   if (now == null || !identical(now, before)) throw const AssistantToolError('not_allowed');
 }
 
@@ -49,10 +49,12 @@ final List<AssistantTool> _adminTools = [
     run: (ctx, id, _) async {
       final sharing = ctx.plexSharing(id!);
       if (sharing != null) {
+        // The sharing service is rebuilt on every ask, so the server's own
+        // client is what must stay the same.
+        final client = ctx.adminClient(id);
         final shares = await sharing.listShares();
-        if (!_managesUsers(ctx, id) || !identical(ctx.plexSharing(id), sharing)) {
-          throw const AssistantToolError('not_allowed');
-        }
+        _stillAllowed(ctx.adminClient(id), client);
+        if (ctx.plexSharing(id) == null) throw const AssistantToolError('not_allowed');
         return AssistantToolResult({
           'users': [
             for (final s in shares)
@@ -250,8 +252,11 @@ final List<AssistantTool> _adminTools = [
     run: (ctx, id, args) async {
       final name = _userName(args);
       final all = _bool(args, 'all_libraries');
-      final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id!, _strings(args, 'library_ids'));
-      final sharing = ctx.plexSharing(id!);
+      final client = ctx.adminClient(id!);
+      final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id, _strings(args, 'library_ids'));
+      // The library lookup takes a round trip: no card under revoked rights.
+      _stillAllowed(ctx.adminClient(id), client);
+      final sharing = ctx.plexSharing(id);
       if (sharing != null) {
         return AssistantPendingAction(
           kind: AssistantActionKind.createUser,
@@ -324,7 +329,9 @@ final List<AssistantTool> _adminTools = [
       if (!user.accessKnown) throw const AssistantToolError('library_access_unknown');
       if (user.isAdmin) throw const AssistantToolError('user_is_admin');
       final all = _bool(args, 'all_libraries');
+      final client = ctx.adminClient(id);
       final libraries = all ? const <MediaLibrary>[] : await _resolveLibraries(ctx, id, _strings(args, 'library_ids'));
+      _stillAllowed(ctx.adminClient(id), client);
       final ids = [for (final l in libraries) l.id];
       final plex = ctx.plexSharing(id) != null;
       return AssistantPendingAction(

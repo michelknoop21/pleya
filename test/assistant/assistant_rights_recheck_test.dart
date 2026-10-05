@@ -9,8 +9,26 @@ import 'package:pleya/services/multi_server_manager.dart';
 
 import 'assistant_find_fakes.dart' as find;
 
+/// Like the real plex.tv sharing service: a new object on every ask.
+class _Sharing implements PlexSharingAdministration {
+  _Sharing(this.onRead);
+  final void Function()? onRead;
+  @override
+  Future<List<PlexShare>> listShares() async {
+    onRead?.call();
+    return const [];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
 class _Manager extends MultiServerManager {
   bool admin = true;
+  bool plex = false;
+  void Function()? onShares;
+  @override
+  PlexSharingAdministration? plexSharingFor(ServerId serverId) => plex && admin ? _Sharing(onShares) : null;
   @override
   bool canAdministerServer(ServerId id) => admin;
   @override
@@ -135,5 +153,42 @@ void main() {
       manager.debugRegisterClientForTesting(_Admin('srv'));
     };
     await expectLater(_tool('list_jobs').run(ctx, id, {}), _notAllowed);
+  });
+
+  group('users', () {
+    test('control: Plex list_users works although plex.tv hands out a new sharing service per ask', () async {
+      manager.plex = true;
+      final result = await _tool('list_users').run(ctx, id, {}) as AssistantToolResult;
+      expect(result.data['users'], isEmpty);
+    });
+
+    test('Plex list_users: rights revoked during the share read publish nothing', () async {
+      manager.plex = true;
+      manager.onShares = () => manager.admin = false;
+      await expectLater(_tool('list_users').run(ctx, id, {}), _notAllowed);
+    });
+
+    test('create_user: rights revoked during the library lookup prepare no card', () async {
+      revokeWhileReading();
+      await expectLater(
+        _tool('create_user').run(ctx, id, {
+          'name': 'Eva',
+          'library_ids': ['films'],
+        }),
+        _notAllowed,
+      );
+    });
+
+    test('set_user_library_access: rights revoked during the library lookup prepare no card', () async {
+      ctx.showUser(id, 'u1', const AssistantKnownUser(name: 'Anna'));
+      revokeWhileReading();
+      await expectLater(
+        _tool('set_user_library_access').run(ctx, id, {
+          'user_id': 'u1',
+          'library_ids': ['films'],
+        }),
+        _notAllowed,
+      );
+    });
   });
 }
