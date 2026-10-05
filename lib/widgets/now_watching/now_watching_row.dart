@@ -197,7 +197,7 @@ class _Status extends StatelessWidget {
         Text(
           remaining == null || session.isPaused
               ? '${session.progressPercent}%'
-              : t.nowWatching.remaining(time: formatDurationTextual(remaining * 1000)),
+              : t.nowWatching.remaining(time: formatDurationSpaced(remaining * 1000)),
           style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],

@@ -696,6 +696,52 @@ void main() {
       expect((result.display! as AssistantWatchStats).sessions.single.title, 'Severance');
     });
 
+    test('now: exclude_users drops that account, media and more than 10 names are refused', () async {
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        sessions: [
+          (
+            userName: 'Alex',
+            title: 'Dune',
+            episode: null,
+            progressPercent: 10,
+            paused: null,
+            transcoding: null,
+            device: null,
+          ),
+          (
+            userName: 'Sam',
+            title: 'Barbie',
+            episode: null,
+            progressPercent: 20,
+            paused: null,
+            transcoding: null,
+            device: null,
+          ),
+        ],
+      );
+      final tool = _tool('watch_stats');
+      final result =
+          await tool.run(_ctx([jf]), ServerId('woon'), {
+                'scope': 'now',
+                'exclude_users': [' ALEX '],
+              })
+              as AssistantToolResult;
+      expect(((result.data['sessions']! as List).single as Map<String, Object?>)['user'], 'Sam');
+      await expectLater(
+        tool.run(_ctx([jf]), ServerId('woon'), {'scope': 'now', 'media': 'movie'}),
+        throwsA(isA<AssistantToolError>().having((e) => e.toString(), 'code', contains('media_needs_period'))),
+      );
+      await expectLater(
+        tool.run(_ctx([jf]), ServerId('woon'), {
+          'scope': 'period',
+          'exclude_users': [for (var i = 0; i < 11; i++) 'u$i'],
+        }),
+        throwsA(isA<AssistantToolError>().having((e) => e.toString(), 'code', contains('invalid_exclude_users'))),
+      );
+    });
+
     test('administration revoked while the servers answer: nothing is published', () async {
       const session = (
         userName: 'Alex',
