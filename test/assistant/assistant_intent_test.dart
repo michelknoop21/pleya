@@ -190,5 +190,19 @@ void main() {
       expect(i.describe(), contains('more than one audience'));
       expect(_i('Wat keken de anderen?').mixedAudience, isFalse);
     });
+
+    test('review: refused on every window and on my_watching; "in the last week" is the past 7 days', () {
+      final i = _i('Wat is er vorige week gekeken?');
+      expect(i.constrain('watch_stats', {'scope': 'now'}).error, 'previous_week_not_supported');
+      expect(i.constrain('my_watching', {}).error, 'previous_week_not_supported');
+      expect(i.describe(), contains('calendar week'));
+      expect(_i('What was watched in the last week?').previousWeek, isFalse);
+      expect(_i('Wat keek ik een week geleden?').previousWeek, isFalse);
+    });
+
+    test('review: the mixed note survives a fixed kind', () {
+      final i = _i('Welke films heb ik gekeken en wat keken de anderen?');
+      expect(i.describe(), allOf(contains('only films'), contains('more than one audience')));
+    });
   });
 }

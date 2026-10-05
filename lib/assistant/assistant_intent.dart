@@ -57,7 +57,7 @@ final _daysWord = RegExp(r'\b(\d{1,2})\s*(?:dagen|days)\b');
 final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 hours)\b');
 // "Last week" and "vorige week" are the week before, not the past seven days.
 final _week = RegExp(r'\b(deze week|afgelopen week|laatste week|this week|past week)\b');
-final _previousWeek = RegExp(r'\b(vorige week|last week|week geleden)\b');
+final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|over|during|for|of) the )last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
 /// What a question is about, fixed by code from what the user wrote, with the
@@ -160,9 +160,11 @@ class AssistantIntent {
           if (out['scope'] == 'now') return (args: out, error: 'media_needs_period');
           out['media'] = kind.value == MediaKind.movie ? 'movie' : 'show';
         }
-        if (previousWeek && out['scope'] == 'period') return (args: out, error: 'previous_week_not_supported');
+        if (previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (days.explicit && out['scope'] == 'period') out['days'] = days.value;
       case 'my_watching':
+        // No window argument: an unwindowed list would pass as "last week".
+        if (previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (audience.explicit && audience.value != AssistantAudience.me) return (args: out, error: 'use_watch_stats');
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
     }
@@ -172,12 +174,20 @@ class AssistantIntent {
   /// A system note for the model: what is already fixed, so it neither asks nor
   /// widens. Null when nothing is.
   String? describe() {
-    if (!any && !mixedAudience) return null;
-    if (!any) {
-      return 'The question covers more than one audience (for example the asker and the others): '
-          'answer each part with its own tool call and say so, never only one part.';
-    }
-    return 'Fixed by Pleya from the user\'s words (do not change or ask again): '
-        '${[if (audience.explicit) 'audience ${audience.value!.name}', if (kind.explicit) 'only ${kind.value == MediaKind.movie ? 'films' : 'series'}', if (days.explicit) 'last ${days.value} days'].join(', ')}.';
+    final fixed = [
+      if (audience.explicit) 'audience ${audience.value!.name}',
+      if (kind.explicit) 'only ${kind.value == MediaKind.movie ? 'films' : 'series'}',
+      if (days.explicit) 'last ${days.value} days',
+    ];
+    final notes = [
+      if (fixed.isNotEmpty) 'Fixed by Pleya from the user\'s words (do not change or ask again): ${fixed.join(', ')}.',
+      if (mixedAudience)
+        'The question covers more than one audience (for example the asker and the others): '
+            'answer each part with its own tool call and say so, never only one part.',
+      if (previousWeek)
+        'The question is about the calendar week before this one, which the tools cannot give: '
+            'say so and offer the last 7 days instead; do not present another window as that week.',
+    ];
+    return notes.isEmpty ? null : notes.join(' ');
   }
 }
