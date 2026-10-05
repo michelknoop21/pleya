@@ -33,42 +33,31 @@ class BigPMobileFollowUps extends StatelessWidget {
     if (questions.isEmpty) return const SizedBox.shrink();
     final pills = [
       for (final (i, question) in questions.indexed)
-        _pill(
-          BigPChip(
-            label: question,
-            icon: Symbols.subdirectory_arrow_right_rounded,
-            dense: true,
-            fill: floating ? const Color(0xFF2A2E2E) : null,
-            automationId: AutomationIds.assistantFollowUp,
-            automationInstance: '$i',
-            onSelect: () => onAsk(question),
-          ),
+        BigPChip(
+          label: question,
+          icon: Symbols.subdirectory_arrow_right_rounded,
+          dense: true,
+          fill: floating ? const Color(0xFF2A2E2E) : null,
+          lift: floating ? _lift : null,
+          automationId: AutomationIds.assistantFollowUp,
+          automationInstance: '$i',
+          onSelect: () => onAsk(question),
         ),
     ];
-    // 14 pt pills, as `.fu .pill`.
+    // 14 pt pills, as `.fu .pill`. Each is a 44 pt touch target around the
+    // 34 pt pill, so no gap is added between them.
     return BigPScale(
       pt: 0.6,
       child: floating
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final (i, pill) in pills.indexed) ...[if (i > 0) const SizedBox(height: 8), pill],
-              ],
-            )
-          : Wrap(spacing: 8, runSpacing: 8, children: pills),
+          ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: pills)
+          : Wrap(spacing: 8, children: pills),
     );
   }
 
   /// `.fu.float`: a rim and a shadow lift the pill off the page.
-  Widget _pill(Widget chip) => !floating
-      ? chip
-      : DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: BigPBalloon.rim),
-            boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 20, offset: Offset(0, 8))],
-          ),
-          child: chip,
-        );
+  static const _lift = BoxDecoration(
+    borderRadius: BorderRadius.all(Radius.circular(24)),
+    border: Border.fromBorderSide(BorderSide(color: BigPBalloon.rim)),
+    boxShadow: [BoxShadow(color: Color(0x80000000), blurRadius: 20, offset: Offset(0, 8))],
+  );
 }

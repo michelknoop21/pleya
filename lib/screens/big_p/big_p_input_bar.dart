@@ -9,6 +9,7 @@ import '../../automation/automation_node.dart';
 import '../../focus/focusable_text_field.dart';
 import '../../i18n/strings.g.dart';
 import '../../theme/mono_tokens.dart';
+import '../../widgets/big_p/big_p_scale.dart';
 import 'big_p_mobile_session.dart';
 
 /// The question field under Big P (39 B, D). Focus starts listening, so his
@@ -77,7 +78,8 @@ class _BigPInputBarState extends State<BigPInputBar> {
     final style = Theme.of(context).textTheme.bodyMedium!.copyWith(color: tk.text, fontSize: 16);
     return Container(
       height: 46,
-      padding: const EdgeInsets.only(left: 16, right: 5),
+      // 1 + 4 around the 36 pt button: its 44 pt touch area ends 1 pt inside.
+      padding: const EdgeInsets.only(left: 16, right: 1),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
         borderRadius: BorderRadius.circular(23),
@@ -113,24 +115,32 @@ class _BigPInputBarState extends State<BigPInputBar> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           GestureDetector(
             onTap: _send,
+            behavior: HitTestBehavior.opaque,
             child: Semantics(
               button: true,
               label: t.assistant.idle.ask,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: ready ? Colors.white : const Color(0x24FFFFFF),
-                ),
-                child: Icon(
-                  Symbols.arrow_upward_rounded,
-                  size: 20,
-                  weight: 600,
-                  color: ready ? Colors.black : tk.text.withValues(alpha: 0.45),
+              // A 44 pt touch area around the 36 pt button.
+              child: SizedBox(
+                width: kBigPMinTouch,
+                height: kBigPMinTouch,
+                child: Center(
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: ready ? Colors.white : const Color(0x24FFFFFF),
+                    ),
+                    child: Icon(
+                      Symbols.arrow_upward_rounded,
+                      size: 20,
+                      weight: 600,
+                      color: ready ? Colors.black : tk.text.withValues(alpha: 0.45),
+                    ),
+                  ),
                 ),
               ),
             ),

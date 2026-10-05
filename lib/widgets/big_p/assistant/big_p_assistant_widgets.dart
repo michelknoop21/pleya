@@ -154,6 +154,7 @@ class BigPChip extends StatefulWidget {
     this.icon,
     this.dense = false,
     this.fill,
+    this.lift,
     this.focusNode,
     this.automationId,
     this.automationInstance,
@@ -165,6 +166,9 @@ class BigPChip extends StatefulWidget {
 
   /// The resting fill; a pill floating over the page (39 E) is opaque.
   final Color? fill;
+
+  /// A rim or shadow around the pill itself, outside the touch area.
+  final BoxDecoration? lift;
 
   /// A leading glyph, e.g. the follow-up arrow; examples go without.
   final IconData? icon;
@@ -190,57 +194,63 @@ class _BigPChipState extends State<BigPChip> {
       // FocusableWrapper only answers keys; on a touch screen a tap is Select.
       onTap: widget.onSelect,
       behavior: HitTestBehavior.opaque,
-      child: FocusableWrapper(
-        focusNode: widget.focusNode,
-        borderRadius: 40 * pt,
-        disableScale: true,
-        semanticLabel: widget.semanticLabel ?? widget.label,
-        automationId: widget.automationId,
-        automationInstance: widget.automationInstance,
-        automationRole: 'button',
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        onSelect: () {
-          SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
-          widget.onSelect();
-        },
-        child: AnimatedContainer(
-          duration: tokens(context).fast,
-          padding: widget.dense
-              ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 10 * pt)
-              : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
-          decoration: BoxDecoration(
-            color: _focused ? colors.inverseSurface : widget.fill ?? const Color(0x1FFFFFFF),
-            borderRadius: BorderRadius.circular(40 * pt),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.icon case final icon?) ...[
-                Icon(icon, size: 24 * pt, color: _focused ? colors.onInverseSurface : tokens(context).accent),
-                SizedBox(width: 10 * pt),
-              ],
-              Flexible(
-                // A fuller label speaks for the capsule; the short one is not read twice.
-                child: ExcludeSemantics(
-                  excluding: widget.semanticLabel != null,
-                  child: Text(
-                    widget.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _focused ? colors.onInverseSurface : tokens(context).text,
-                      fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
-                      height: 1.25,
+      child: BigPTouchTarget(
+        child: _lifted(
+          FocusableWrapper(
+            focusNode: widget.focusNode,
+            borderRadius: 40 * pt,
+            disableScale: true,
+            semanticLabel: widget.semanticLabel ?? widget.label,
+            automationId: widget.automationId,
+            automationInstance: widget.automationInstance,
+            automationRole: 'button',
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            onSelect: () {
+              SelectKeyUpSuppressor.suppressSelectUntilKeyUp();
+              widget.onSelect();
+            },
+            child: AnimatedContainer(
+              duration: tokens(context).fast,
+              padding: widget.dense
+                  ? EdgeInsets.symmetric(horizontal: 20 * pt, vertical: 10 * pt)
+                  : EdgeInsets.symmetric(horizontal: 26 * pt, vertical: 14 * pt),
+              decoration: BoxDecoration(
+                color: _focused ? colors.inverseSurface : widget.fill ?? const Color(0x1FFFFFFF),
+                borderRadius: BorderRadius.circular(40 * pt),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon case final icon?) ...[
+                    Icon(icon, size: 24 * pt, color: _focused ? colors.onInverseSurface : tokens(context).accent),
+                    SizedBox(width: 10 * pt),
+                  ],
+                  Flexible(
+                    // A fuller label speaks for the capsule; the short one is not read twice.
+                    child: ExcludeSemantics(
+                      excluding: widget.semanticLabel != null,
+                      child: Text(
+                        widget.label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _focused ? colors.onInverseSurface : tokens(context).text,
+                          fontSize: (widget.dense ? TvHig.caption2 : TvHig.caption1) * pt,
+                          height: 1.25,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _lifted(Widget child) => widget.lift == null ? child : DecoratedBox(decoration: widget.lift!, child: child);
 }
 
 /// Mockup 38's capsule button at the panel's own size (Caption 1, bold):

@@ -59,34 +59,69 @@ class BigPMobileConversation extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = controller;
     final pending = c.pending;
-    final children = pending != null
-        ? [..._asked(), BigPMobileConfirm(controller: c, pending: pending)]
-        : switch (c.availability) {
-            AssistantAvailability.locked => _locked(context),
-            AssistantAvailability.needsSetup => _setup(context),
-            _ => switch (c.state) {
-              AssistantSurfaceState.idle => _greet(context),
-              AssistantSurfaceState.listening => [
-                _status(t.assistant.mobile.listening, kSuccess),
-                const SizedBox(height: 8),
-                Text(t.assistant.mobile.listeningHint, style: _body(context)),
-              ],
-              AssistantSurfaceState.working => [
-                if (c.prompt case final prompt?) ...[
-                  BigPQuestion(prompt: prompt, maxLines: 1),
-                  const SizedBox(height: 12),
-                ],
-                _status(t.assistant.working.status, kAccentAlt),
-                const SizedBox(height: 10),
-                BigPStepList(steps: c.steps),
-              ],
-              AssistantSurfaceState.result => _result(context),
-            },
-          };
+    // A card with a primary action keeps it in view: the card scrolls its
+    // own rows and the buttons stay under them (F3), so no outer scroll.
+    if (pending != null) return _pinned([..._asked()], BigPMobileConfirm(controller: c, pending: pending));
+    if (c.kidsAgesPrompt case final prompt? when c.availability == AssistantAvailability.ready) {
+      return _pinned(
+        _resultAbove(context),
+        BigPKidsAgesCard(
+          key: ObjectKey(prompt),
+          embedded: true,
+          onSave: (ages) => unawaited(c.saveKidsAgesAndRetry(ages)),
+        ),
+      );
+    }
+    final children = switch (c.availability) {
+      AssistantAvailability.locked => _locked(context),
+      AssistantAvailability.needsSetup => _setup(context),
+      _ => switch (c.state) {
+        AssistantSurfaceState.idle => _greet(context),
+        AssistantSurfaceState.listening => [
+          _status(t.assistant.mobile.listening, kSuccess),
+          const SizedBox(height: 8),
+          Text(t.assistant.mobile.listeningHint, style: _body(context)),
+        ],
+        AssistantSurfaceState.working => [
+          if (c.prompt case final prompt?) ...[BigPQuestion(prompt: prompt, maxLines: 1), const SizedBox(height: 12)],
+          _status(t.assistant.working.status, kAccentAlt),
+          const SizedBox(height: 10),
+          BigPStepList(steps: c.steps),
+        ],
+        AssistantSurfaceState.result => _result(context),
+      },
+    };
     return SingleChildScrollView(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: children),
     );
   }
+
+  /// [above] over [card], which keeps its primary action in view: [above]
+  /// scrolls within two fifths of the balloon, the card takes the rest and
+  /// scrolls its own rows. Without a bounded height the old single scroll.
+  Widget _pinned(List<Widget> above, Widget card) => LayoutBuilder(
+    builder: (context, box) {
+      if (!box.hasBoundedHeight) {
+        return SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [...above, card]),
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (above.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: box.maxHeight * 0.4),
+              child: SingleChildScrollView(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: above),
+              ),
+            ),
+          Flexible(child: card),
+        ],
+      );
+    },
+  );
 
   List<Widget> _greet(BuildContext context) => [
     Text(assistantGreeting(name, greeting: t.assistant.mobile.greeting), style: _headline(context)),
@@ -97,7 +132,7 @@ class BigPMobileConversation extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final (i, example) in BigPSuggestions.of(controller).examples(t.assistant.mobile.examples).indexed) ...[
-            if (i > 0) const SizedBox(height: 8),
+            // Each chip is a 44 pt touch target: no gap on top of it.
             BigPChip(
               label: example,
               automationId: AutomationIds.assistantExample,
@@ -154,7 +189,16 @@ class BigPMobileConversation extends StatelessWidget {
 
   /// The answer (or why the run ended), then the run's cards. Above title
   /// cards only the lead: the cards are the list, as on TV.
-  List<Widget> _result(BuildContext context) {
+  List<Widget> _result(BuildContext context) => [
+    ..._resultAbove(context),
+    if (regular && controller.kidsAgesPrompt == null) ...[
+      const SizedBox(height: 12),
+      BigPMobileFollowUps(controller: controller, onAsk: onExample),
+    ],
+  ];
+
+  /// The question, the answer and the run's cards, without the follow-ups.
+  List<Widget> _resultAbove(BuildContext context) {
     final c = controller;
     final displays = c.displays.where((d) => !bigPDisplayIsEmpty(d)).toList();
     final cards =
@@ -189,15 +233,6 @@ class BigPMobileConversation extends StatelessWidget {
         const SizedBox(height: 12),
         BigPResultCard(error: c.resultIsError, actions: c.actions, time: resultTime),
       ],
-      if (c.kidsAgesPrompt case final prompt?) ...[
-        const SizedBox(height: 16),
-        BigPKidsAgesCard(
-          key: ObjectKey(prompt),
-          embedded: true,
-          onSave: (ages) => unawaited(c.saveKidsAgesAndRetry(ages)),
-        ),
-      ],
-      if (regular) ...[const SizedBox(height: 12), BigPMobileFollowUps(controller: c, onAsk: onExample)],
     ];
   }
 

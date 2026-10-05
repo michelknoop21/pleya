@@ -45,6 +45,9 @@ class BigPMobileHost extends StatefulWidget {
   static double avatarSize(double room, {required bool withBar, bool answer = false}) =>
       (room - 220 - (withBar ? 50 : 0)).clamp(60.0, answer ? 75.0 : 118.0);
 
+  /// With the keyboard up, the room under which the follow-ups step aside.
+  static const _keyboardRoomForFollowUps = 420.0;
+
   /// Big P beside the iPad balloon (39 I), halved like the iPhone one.
   static const regularAvatar = 156.0;
 
@@ -235,6 +238,11 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
   Widget _compact(BuildContext context, BigPMobileSession session, BoxConstraints box) {
     final c = session.controller;
     final asks = _asks(c);
+    // Typing on a small phone: the three 44 pt follow-ups would take over
+    // the balloon's room and leave the answer little more than its own
+    // question above the keyboard, so they give way until the keyboard goes.
+    final typing =
+        MediaQuery.viewInsetsOf(context).bottom > 0 && box.maxHeight < BigPMobileHost._keyboardRoomForFollowUps;
     final size = BigPMobileHost.avatarSize(
       box.maxHeight,
       withBar: asks,
@@ -255,18 +263,19 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
             // At the top of the row, right under the tail, also when the
             // follow-ups beside him are taller than he is.
             Align(alignment: Alignment.topRight, child: _figure(c, size)),
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: ConstrainedBox(
-                  // As far as his arm, as in 39 E; beside a smaller Big P
-                  // a little over it, so the pills keep their words.
-                  constraints: BoxConstraints(maxWidth: max(box.maxWidth * 0.66, box.maxWidth - size * 0.6)),
-                  child: BigPMobileFollowUps(controller: c, floating: true, onAsk: (q) => _ask(session, q)),
+            if (!typing)
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ConstrainedBox(
+                    // As far as his arm, as in 39 E; beside a smaller Big P
+                    // a little over it, so the pills keep their words.
+                    constraints: BoxConstraints(maxWidth: max(box.maxWidth * 0.66, box.maxWidth - size * 0.6)),
+                    child: BigPMobileFollowUps(controller: c, floating: true, onAsk: (q) => _ask(session, q)),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         // The tail tip hangs 13.6 pt under the balloon and he bobs 2 pt:
