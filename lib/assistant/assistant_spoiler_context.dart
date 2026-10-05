@@ -12,8 +12,17 @@ bool assistantIsMissingEpisodeDiagnosis(String prompt) => RegExp(
   r'(which|what) episodes are missing from season \d+)\s*[?.!]*$',
 ).hasMatch(foldText(prompt).trim());
 
+/// "Who is watching right now?": a question about people on the servers, not
+/// about a character. Bounded like the missing-episode diagnosis: an added
+/// clause ("who is watching Bluey and what happens next") stays fenced.
+bool assistantIsViewerQuestion(String prompt) => RegExp(
+  r'^(who is|who are|wie is|wie zijn)\s+(er\s+)?((currently|now|right now|nu|op dit moment|momenteel)\s+)*'
+  r'(watching|streaming|playing|aan het (kijken|streamen))(\s+(currently|now|right now|nu|op dit moment|momenteel))*\s*[?.!]*$',
+).hasMatch(foldText(prompt).trim());
+
 bool assistantNeedsSpoilerScope(String prompt) {
   final text = foldText(prompt);
+  if (assistantIsViewerQuestion(prompt)) return false;
   // Only this bounded factual question overlaps the broad episode/story
   // classifier. Added clauses, narrative and future-story requests stay fenced.
   if (assistantIsMissingEpisodeDiagnosis(prompt)) return false;

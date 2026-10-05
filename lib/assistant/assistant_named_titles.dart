@@ -4,8 +4,13 @@ library;
 
 import 'assistant_tools.dart';
 
-/// A title as the cards compare it: lower case, letters and digits only.
-String assistantTitleKey(String title) => title.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
+/// A title as the cards compare it: lower case, letters and digits only. A
+/// trailing "(2018)" is dropped: Plex names some shows "Bluey (2018)", and
+/// the model names the same show «Bluey» with the year apart.
+String assistantTitleKey(String title) => title
+    .toLowerCase()
+    .replaceAll(RegExp(r'\s*\(\d{4}\)\s*$'), '')
+    .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
 
 /// Accented letters and the plain letter they fold to.
 const _folds = {
