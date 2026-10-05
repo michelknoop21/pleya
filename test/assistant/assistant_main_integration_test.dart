@@ -509,6 +509,7 @@ void main() {
     final personal = AssistantPersonalServices(
       userName: 'Sam',
       recent: () async => [],
+      everSeen: () async => const {},
       taste: () async => throw StateError('not called'),
       picks: (_) async => [],
     );

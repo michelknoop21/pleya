@@ -217,6 +217,7 @@ void main() {
                 const RecommendationSeed(globalKey: 'nas:w1', completed: true, occurredAtMs: 0),
                 const RecommendationSeed(globalKey: 'nas:w2', completed: true, occurredAtMs: 0),
               ],
+              everSeen: () async => const {},
               taste: () async => AffinityVector.empty,
               picks: (_) async => [MediaHub(id: 'r', title: 'Voor jou', type: 'movie', items: picks)],
             ),

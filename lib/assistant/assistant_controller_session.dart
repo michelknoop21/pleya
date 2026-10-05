@@ -174,6 +174,7 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
         : AssistantPersonalServices(
             userName: activeProfile.active?.displayName ?? '',
             recent: () => recommendations.recentSeeds(limit: 12),
+            everSeen: recommendations.everSeenKeys,
             taste: recommendations.taste,
             picks: recommendations.buildRows,
           ),

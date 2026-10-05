@@ -38,7 +38,7 @@ import '../media/media_server_client.dart';
 import '../models/download_models.dart';
 import '../models/plex/plex_subtitle_search_result.dart';
 import '../services/plex_client.dart';
-import '../services/recommendations/recommendation_service.dart' show RecommendationSeed;
+import '../services/recommendations/recommendation_service.dart' show RecommendationSeed, kSeedWindow;
 import '../services/recommendations/taste_profile.dart' show AffinityVector;
 import '../media/media_hub.dart';
 import '../media/media_kind.dart';

@@ -36,7 +36,8 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gemerged (PR #178) |
 | BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Gemerged (PR #187); open gaten verdeeld, zie sectie Big P |
 | BP-03a | P0 | Big P | Mediasleutel en kijkcijfers: titels over servers alleen samenvoegen op bewijs en melden; Tautulli-"anderen" getest | Draft-PR |
-| BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster en kijklog-migratie (titel en externe id's in `MediaInteractions`) | Gepland |
+| BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster: ongevensterde kijklogsleutels in `my_watching` en het venster benoemd; kijklog-migratie (titel en externe id's in `MediaInteractions`) volgt als BP-03c | Draft-PR, gestapeld op BP-03a |
+| BP-03c | P0 | Big P | Kijklog-migratie: titel en externe id's in `MediaInteractions` zodat een kopie op een andere server herkend wordt; tweede Plex-nep, Pleya-eigen-id, Emby-test | Gepland |
 | BP-04 | P0 | Big P | Intent, routing en minimale wedervraag | Gepland |
 | BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
@@ -92,14 +93,16 @@ Primaire stroom (Michel, 5 oktober 2026). Doel: Pleya stelt eerst vast wie, wat 
 Stromen (Michel, 5 oktober 2026): BP-00 t/m BP-09 tellen samen als één programma en vormen de enige primaire stroom. A-02 (rechten, geleende verbindingen en profielen) is de enige onafhankelijke parallelle stroom. Alle andere open P0-items (A-01, A-09, A-18, REG-01, REG-03, C-03, E-02) pauzeren tijdelijk, behalve hotfixes voor security, dataverlies of regressies; die onderbreken volgens de bestaande regel. Een gepauzeerd item verliest zijn prioriteit niet en hervat zodra Michel de pauze opheft.
 
 Open gaten van BP-02 (Michel, 5 oktober 2026: per gat beslist waar het hoort):
-- Zelfde plex.tv-id over twee Plex-servers samenvoegen (test): BP-03b, samen met de kijklog-migratie. Het harnas heeft één Plex-server; een tweede nep is daar nodig.
+- Zelfde plex.tv-id over twee Plex-servers samenvoegen (test): BP-03c, samen met de kijklog-migratie. Het harnas heeft één Plex-server; een tweede nep is daar nodig.
 - Samenvoegen via een Pleya-profielbinding: A-02 (profielen), niet Big P. Zonder binding blijft identiteit bronlokaal.
-- Pleya Server slaat het eigen id uit `/users/me` niet op: BP-03b. Tot dan is "ik" daar `notStored` en valt de bron onder `leftOut`.
+- Pleya Server slaat het eigen id uit `/users/me` niet op: BP-03c. Tot dan is "ik" daar `notStored` en valt de bron onder `leftOut`.
 - Recht dat tijdens één leesactie wordt ingetrokken en teruggezet: BP-04, als run-brede rechtenstempel naast de bestaande controle voor en na het wachten.
 - Het model kiest `audience` nog niet zelf: BP-04 (intent).
-- Testgaten uit de review: Tautulli met `audience: others` is gedekt in BP-03a. Emby in `watch_stats`, randgevallen van `resolvePeople` en het Plex-eigenaar-id 1: BP-03b.
+- Testgaten uit de review: Tautulli met `audience: others` is gedekt in BP-03a. Emby in `watch_stats`, randgevallen van `resolvePeople` en het Plex-eigenaar-id 1: BP-03c.
 
-BP-03a: een titel over servers heen wordt alleen één regel op een gedeeld extern id (bewijs), op gelijke titel en jaar (gemarkeerd `titleYear`) of op titel alleen (gemarkeerd `titleOnly`, ranglijst dan niet volledig). Een ander jaar, een ander id of een andere soort (film of serie) is nooit dezelfde titel. Geen enkele historiebron levert nu jaar of id (Plex, Tautulli, Pleya Server) behalve Jellyfin/Emby voor films; tot BP-03b dat via de kijklog aanvult geldt voor Plex en Tautulli `titleOnly`.
+BP-03b: de kijklog zelf bewaart 365 dagen (`kInteractionRetentionDays`); "ooit gezien" reikt via de log dus een jaar terug, daarbuiten beslist alleen de eigen kijkstatus van de server (`item.isWatched`). Het resultaat van `my_watching` noemt het venster van de recente lijst (`watched_recently_window_days`).
+
+BP-03a: een titel over servers heen wordt alleen één regel op een gedeeld extern id (bewijs), op gelijke titel en jaar (gemarkeerd `titleYear`) of op titel alleen (gemarkeerd `titleOnly`, ranglijst dan niet volledig). Een ander jaar, een ander id of een andere soort (film of serie) is nooit dezelfde titel. Geen enkele historiebron levert nu jaar of id (Plex, Tautulli, Pleya Server) behalve Jellyfin/Emby voor films; tot BP-03c dat via de kijklog aanvult geldt voor Plex en Tautulli `titleOnly`.
 
 Uitvoeringsregel: twee BP-pakketten wijzigen niet parallel dezelfde codegebieden zonder uitdrukkelijke bestands- en scope-afbakening. BP-09 landt eerst, of wordt exact afgebakend, voordat BP-01 wijzigingen doet in overlappende assistantcode (`lib/assistant/`, `lib/screens/**/big_p*`).
 

@@ -11,6 +11,7 @@ class AssistantPersonalServices {
   const AssistantPersonalServices({
     required this.userName,
     required this.recent,
+    required this.everSeen,
     required this.taste,
     required this.picks,
   });
@@ -20,6 +21,10 @@ class AssistantPersonalServices {
 
   /// Newest titles this profile watched, newest first.
   final Future<List<RecommendationSeed>> Function() recent;
+
+  /// Global keys of every title in this profile's log, not just the newest few
+  /// of [recent]: a title seen months ago is still seen. The log keeps a year.
+  final Future<Set<String>> Function() everSeen;
   final Future<AffinityVector> Function() taste;
 
   /// Home's personal rows, built from [clients].
@@ -35,7 +40,7 @@ final List<AssistantTool> _personalTools = [
     name: 'my_watching',
     description:
         'The user\'s own watching on this Pleya profile, for anything about "I", "me" or "my": what they watched '
-        'lately, what they like (genres, actors, directors) and Pleya\'s personal picks for them from their own '
+        'lately (only the newest titles of the last weeks, see watched_recently_window_days; never say it is all they watched), what they like (genres, actors, directors) and Pleya\'s personal picks for them from their own '
         'libraries, each with the row it comes from ("Because you watched ..."). Use it for a tip for the user or '
         'a question about their history. watch_stats is everyone on the servers under server account names. '
         'Empty lists mean no history yet or personal recommendations switched off; say so. Pass kind when the '
@@ -65,8 +70,9 @@ final List<AssistantTool> _personalTools = [
         ),
       );
       final clients = {for (final id in ctx.userServers) id: ?ctx.userClient(id)};
-      final (seeds, taste, hubs) = await (
+      final (seeds, everSeen, taste, hubs) = await (
         personal.recent(),
+        personal.everSeen(),
         personal.taste(),
         personal.picks(clients.values.toList()),
       ).wait;
@@ -96,10 +102,12 @@ final List<AssistantTool> _personalTools = [
       final seenTitles = {for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?)};
       bool seenBefore(MediaItem item) =>
           c.excludeWatched &&
-          seenTitles.any(
-            (s) =>
-                s.$1 == assistantTitleKey(item.title ?? '') && (s.$2 == null || item.year == null || s.$2 == item.year),
-          );
+          (everSeen.contains(item.globalKey) ||
+              seenTitles.any(
+                (s) =>
+                    s.$1 == assistantTitleKey(item.title ?? '') &&
+                    (s.$2 == null || item.year == null || s.$2 == item.year),
+              ));
       final limit = c.active ? _picksShownConstrained : _picksShown;
       final picks = <MediaItem>[];
       final rows = <Map<String, Object?>>[];
@@ -132,6 +140,8 @@ final List<AssistantTool> _personalTools = [
           .toList();
       return AssistantToolResult({
         'watched_recently': watchedList,
+        // The list is the newest few of the last weeks, not the whole history: say so.
+        'watched_recently_window_days': kSeedWindow.inDays,
         'likes': {'genres': likes('genre', 4), 'actors': likes('actor', 3), 'directors': likes('director', 2)},
         'picks': rows,
       }, display: picks.isEmpty ? null : AssistantMediaGrid([for (final item in picks) (item: item, group: null)]));
