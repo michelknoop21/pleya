@@ -10,6 +10,7 @@ import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_execution.dart';
+import 'assistant_intent.dart';
 import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
 import 'assistant_recommend_constraints.dart';
@@ -221,6 +222,9 @@ class AssistantRun {
   /// call, so ids, queries and candidates shown in one ask never carry into
   /// the next, nor across a profile switch between two asks.
   late AssistantToolContext _ctx;
+
+  /// What the user's words fix about this ask; enforced on tool arguments.
+  AssistantIntent _intent = AssistantIntent.unknown;
   bool _busy = false;
 
   /// One ask at a time; a second call while one runs is refused.

@@ -38,7 +38,8 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | BP-03a | P0 | Big P | Mediasleutel en kijkcijfers: titels over servers alleen samenvoegen op bewijs en melden; Tautulli-"anderen" getest | Draft-PR |
 | BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster: ongevensterde kijklogsleutels in `my_watching` en het venster benoemd; kijklog-migratie (titel en externe id's in `MediaInteractions`) volgt als BP-03c | Draft-PR, gestapeld op BP-03a |
 | BP-03c | P0 | Big P | Kijklog-migratie: titel en externe id's in `MediaInteractions` zodat een kopie op een andere server herkend wordt; tweede Plex-nep, Pleya-eigen-id, Emby-test | Gepland |
-| BP-04 | P0 | Big P | Intent, routing en minimale wedervraag | Gepland |
+| BP-04a | P0 | Big P | Intent met herkomst per veld (publiek, soort, periode), parser NL/EN, afdwingen op tool-argumenten, `assistant_run.dart` gesplitst | Draft-PR, adversariële review open |
+| BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Gepland |
 | BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland |

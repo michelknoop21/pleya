@@ -16,6 +16,7 @@ extension _AssistantLoop on AssistantRun {
     // The profile decides, never the prompt or the model.
     _ctx.kidsMode = await _ctx.kidsProfile?.call() ?? false;
     _ctx.recommend = AssistantRecommendConstraints.fromPrompt(prompt);
+    _intent = AssistantIntent.fromPrompt(prompt);
     _pickGrids.clear();
     _history.clear();
     _personal = false;
@@ -37,6 +38,7 @@ extension _AssistantLoop on AssistantRun {
       {'role': 'system', 'content': _system},
       if (_screenNote() case final note?) {'role': 'system', 'content': note},
       if (_ctx.recommend.describe() case final note?) {'role': 'system', 'content': note},
+      if (_intent.describe() case final note?) {'role': 'system', 'content': note},
       {'role': 'user', 'content': prompt},
     ];
 

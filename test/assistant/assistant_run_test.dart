@@ -291,6 +291,41 @@ void main() {
     expect(model.toolNamesOffered(0), contains('my_watching'));
   });
 
+  test(
+    '"what do the others watch": my_watching is refused, the model cannot answer with the asker\'s own data',
+    () async {
+      final m = await _Server().manager();
+      final model = _Model(AssistantProviderKind.ollamaServer, [_call('my_watching', const {}), _say('Klaar')]);
+      var personalRead = false;
+      await AssistantRun(
+        model: model.client(),
+        context: AssistantToolContext(
+          servers: m,
+          personal: AssistantPersonalServices(
+            userName: 'Michel',
+            recent: () async {
+              personalRead = true;
+              return const [];
+            },
+            everSeen: () async => const {},
+            taste: () async => AffinityVector.empty,
+            picks: (_) async => const [],
+          ),
+        ),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+      ).ask('Wat kijken de anderen het meest?');
+
+      expect(model.toolResults.single, {'error': 'use_watch_stats'});
+      expect(personalRead, isFalse, reason: 'the asker\'s own log was never read');
+      final system = [
+        for (final msg in model.requests.first['messages'] as List)
+          if ((msg as Map)['role'] == 'system') msg['content'] as String,
+      ].join('\n');
+      expect(system, contains('audience others'));
+    },
+  );
+
   test('a model without tool support ends the run without touching a server', () async {
     final server = _Server();
     final m = await server.manager();

@@ -111,7 +111,11 @@ extension _AssistantExecute on AssistantRun {
     try {
       final decoded = jsonDecode(call.arguments.isEmpty ? '{}' : call.arguments);
       if (decoded is! Map<String, Object?>) return {'error': 'invalid_arguments'};
-      args = decoded;
+      // What the user said overrules what the model chose; a tool that does not
+      // fit the question is refused, so the model cannot widen the audience.
+      final fixed = _intent.constrain(tool.name, decoded);
+      if (fixed.error case final code?) return {'error': code};
+      args = fixed.args;
     } on FormatException {
       return {'error': 'invalid_arguments'};
     }
