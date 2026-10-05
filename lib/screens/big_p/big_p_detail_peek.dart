@@ -90,23 +90,22 @@ class BigPDetailPeek extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // 26 pt off the bottom, 14 pt, as the follow-ups.
+                        // 26 pt off the bottom, 14 pt, as the follow-ups; the
+                        // 44 pt touch area stays above the home indicator.
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 26),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: BigPBalloon.rim),
-                            ),
-                            child: BigPScale(
-                              pt: 0.6,
-                              child: BigPChip(
-                                label: t.assistant.mobile.moreTitles(n: remaining),
-                                icon: Symbols.subdirectory_arrow_right_rounded,
-                                dense: true,
-                                fill: const Color(0xF71F2323),
-                                onSelect: back,
+                          padding: EdgeInsets.only(bottom: max(21, MediaQuery.viewPaddingOf(context).bottom)),
+                          child: BigPScale(
+                            pt: 0.6,
+                            child: BigPChip(
+                              label: t.assistant.mobile.moreTitles(n: remaining),
+                              icon: Symbols.subdirectory_arrow_right_rounded,
+                              dense: true,
+                              fill: const Color(0xF71F2323),
+                              lift: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: BigPBalloon.rim),
                               ),
+                              onSelect: back,
                             ),
                           ),
                         ),

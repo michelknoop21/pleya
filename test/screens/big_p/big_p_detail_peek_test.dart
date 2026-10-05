@@ -40,7 +40,7 @@ void main() {
 
   /// The profile navigator as ProfileSessionScreen builds it: its observer
   /// in the scope, Home with the host as the first route.
-  Future<void> pump(WidgetTester tester, {bool withSession = true}) async {
+  Future<void> pump(WidgetTester tester, {bool withSession = true, EdgeInsets safe = EdgeInsets.zero}) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -49,7 +49,7 @@ void main() {
       theme: monoTheme(dark: true),
       home: Builder(
         builder: (context) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          data: MediaQuery.of(context).copyWith(disableAnimations: true, viewPadding: safe, padding: safe),
           child: ProfileNavigationScope(
             navigatorKey: nav,
             routeObserver: observer,
@@ -192,6 +192,20 @@ void main() {
     await settle(tester);
     expect(pageTaps, 1);
     expect(session.stage, BigPStage.peek);
+  });
+
+  testWidgets('the pill is a 44 pt touch target above the home indicator', (tester) async {
+    await pump(tester, safe: const EdgeInsets.only(top: 54, bottom: 34));
+    await openSintel(tester);
+    final tap = tester.getRect(
+      find.descendant(of: find.byType(BigPChip), matching: find.byType(GestureDetector)).first,
+    );
+    expect(tap.height, greaterThanOrEqualTo(44));
+    expect(tap.bottom, lessThanOrEqualTo(874 - 34), reason: 'not inside the home-indicator zone');
+    // The last point of the touch area still selects it.
+    await tester.tapAt(Offset(tap.center.dx, tap.bottom - 1));
+    await settle(tester);
+    expect(session.stage, BigPStage.out);
   });
 
   testWidgets('a route over the detail page (the player) hides the peek', (tester) async {
