@@ -128,6 +128,12 @@ Future<Map<String, Object?>> _tool(AssistantToolContext ctx, String name, Map<St
 void main() {
   const prompt = 'Is er een film voor de kinderen?';
 
+  test('an answer reaches the screen without em or en dashes', () async {
+    final m = _model(['Kijk «Toy Story» (1995) \u2014 een klassieker.']);
+    final result = await _ask(m.model, _ctx(), prompt);
+    expect(result.text, 'Kijk «Toy Story» (1995), een klassieker.');
+  });
+
   test('the iOS case: a title for 12+ named for an 8-year-old gets no card and one correction', () async {
     final m = _model(['Kijk «$_hp» (2011).', 'Kijk «Toy Story» (1995).']);
     final result = await _ask(m.model, _ctx(), prompt);

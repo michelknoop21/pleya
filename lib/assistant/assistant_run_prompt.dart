@@ -17,6 +17,7 @@ extension _AssistantPrompt on AssistantRun {
       '- Pleya shows tool results as cards. Do not repeat their lists: one or two sentences about what stands '
       'out is enough.\n'
       '- Plain text only: no Markdown, no asterisks, headings or tables.\n'
+      '- Never use em dashes or en dashes; use a comma, a colon or a new sentence.\n'
       '- Write every film or series title you name between « and », with the year when you know it: '
       '«Interstellar» (2014). Pleya turns each into a card to open or request. '
       'Mark only titles you recommend or answer with: a title you mention as a reason ("because you watched ...") '

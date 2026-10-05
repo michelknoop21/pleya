@@ -111,3 +111,19 @@ Set<({String key, int? year})> assistantShownTitles(Iterable<AssistantDisplay> d
 /// [namedYear]: the same title, and the same year when both are known.
 bool assistantSameTitle(({String key, int? year}) card, String key, int? namedYear) =>
     card.key == key && (namedYear == null || card.year == null || card.year == namedYear);
+
+/// Big P's words without em or en dashes: a spaced or run-on dash becomes a
+/// comma, one between digits or letters a hyphen ("2018\u20132020" is "2018-2020").
+/// The model is told so too; this is the net under it.
+String assistantPlainDashes(String text) => text
+    // A dash opening a line is a list bullet, not a pause.
+    .replaceAll(RegExp(r'^[ \t]*[–—―][ \t]*', multiLine: true), '- ')
+    // A spaced range between digits stays a range.
+    .replaceAllMapped(RegExp(r'(\d)[ \t]+–[ \t]+(\d)'), (m) => '${m[1]}-${m[2]}')
+    .replaceAll(RegExp(r'[ \t]*[—―]+[ \t]*'), ', ')
+    .replaceAll(RegExp(r'[ \t]+–[ \t]+'), ', ')
+    .replaceAll('–', '-')
+    .replaceAll(RegExp(r',(?:[ \t]*,)+'), ',')
+    .replaceAllMapped(RegExp(r'([:;]),'), (m) => m[1]!)
+    .replaceAllMapped(RegExp(r',[ \t]*([.!?])'), (m) => m[1]!)
+    .replaceAll(RegExp(r',[ \t]*$', multiLine: true), '');

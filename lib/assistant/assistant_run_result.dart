@@ -4,6 +4,7 @@ part of 'assistant_run.dart';
 
 extension _AssistantResult on AssistantRun {
   AssistantRunResult _end(AssistantRunEnd end, {String text = '', AssistantModelError? error, String? failure}) {
+    text = assistantPlainDashes(text);
     // A pick grid the answer never narrowed (cancelled, an action, a step
     // limit) names nothing: its picks were never shown.
     _displays.removeWhere(_pickGrids.contains);
@@ -103,8 +104,8 @@ extension _AssistantResult on AssistantRun {
         }
         result.add(
           AssistantTaskPlan(
-            title: clipText(task['title'] as String, 120),
-            intent: clipText(task['intent'] as String, 80),
+            title: clipText(assistantPlainDashes(task['title'] as String), 120),
+            intent: clipText(assistantPlainDashes(task['intent'] as String), 80),
             prompt: (task['prompt'] as String).trim(),
           ),
         );
