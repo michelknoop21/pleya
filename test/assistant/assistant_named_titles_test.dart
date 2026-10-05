@@ -45,6 +45,11 @@ void main() {
     expect(assistantPlainDashes('2018\u20132020'), '2018-2020');
     expect(assistantPlainDashes('Done \u2014.'), 'Done.');
     expect(assistantPlainDashes('Nothing to change.'), 'Nothing to change.');
+    // Bullets stay lines, ranges stay ranges, no stray commas.
+    expect(assistantPlainDashes('Picks:\n\u2014 A\n\u2014 B'), 'Picks:\n- A\n- B');
+    expect(assistantPlainDashes('(2019 \u2013 2021)'), '(2019-2021)');
+    expect(assistantPlainDashes('A\u2014\u2014B'), 'A, B');
+    expect(assistantPlainDashes('Note: \u2014 x'), 'Note: x');
   });
 
   test('"Bluey (2018)" on a card and «Bluey» (2018) in the answer are one title', () {

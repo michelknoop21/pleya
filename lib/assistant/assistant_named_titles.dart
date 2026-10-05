@@ -116,8 +116,14 @@ bool assistantSameTitle(({String key, int? year}) card, String key, int? namedYe
 /// comma, one between digits or letters a hyphen ("2018\u20132020" is "2018-2020").
 /// The model is told so too; this is the net under it.
 String assistantPlainDashes(String text) => text
-    .replaceAll(RegExp(r'\s*[\u2014\u2015]\s*'), ', ')
-    .replaceAll(RegExp(r'\s+\u2013\s+'), ', ')
-    .replaceAll('\u2013', '-')
-    .replaceAllMapped(RegExp(r',\s*([.!?])'), (m) => m[1]!)
-    .replaceAll(RegExp(r',\s*$'), '');
+    // A dash opening a line is a list bullet, not a pause.
+    .replaceAll(RegExp(r'^[ \t]*[–—―][ \t]*', multiLine: true), '- ')
+    // A spaced range between digits stays a range.
+    .replaceAllMapped(RegExp(r'(\d)[ \t]+–[ \t]+(\d)'), (m) => '${m[1]}-${m[2]}')
+    .replaceAll(RegExp(r'[ \t]*[—―]+[ \t]*'), ', ')
+    .replaceAll(RegExp(r'[ \t]+–[ \t]+'), ', ')
+    .replaceAll('–', '-')
+    .replaceAll(RegExp(r',(?:[ \t]*,)+'), ',')
+    .replaceAllMapped(RegExp(r'([:;]),'), (m) => m[1]!)
+    .replaceAllMapped(RegExp(r',[ \t]*([.!?])'), (m) => m[1]!)
+    .replaceAll(RegExp(r',[ \t]*$', multiLine: true), '');

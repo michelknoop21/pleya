@@ -104,8 +104,8 @@ extension _AssistantResult on AssistantRun {
         }
         result.add(
           AssistantTaskPlan(
-            title: clipText(task['title'] as String, 120),
-            intent: clipText(task['intent'] as String, 80),
+            title: clipText(assistantPlainDashes(task['title'] as String), 120),
+            intent: clipText(assistantPlainDashes(task['intent'] as String), 80),
             prompt: (task['prompt'] as String).trim(),
           ),
         );
