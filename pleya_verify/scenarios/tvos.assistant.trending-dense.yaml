@@ -1,0 +1,91 @@
+name: tvos.assistant.trending-dense
+target: tvos-sim
+# Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
+# BP-09: trending_titles without Seerr, answered by the fixture's TMDB stand-in
+# (TmdbClient.verifyBase, read off the Ollama fixture URL): eight titles as
+# match cards, so the full surface goes dense. Four of them are in the
+# catalog.mixed.v1 library, the rest are not. Real settings UI (provider, then
+# the TMDB key) and native idb input.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.field[assistant.url]", timeout: 10000}
+  - snapshot: 00-provider-form-before-url
+  - type: "{{fixture}}"
+  - settle: 1000
+  - snapshot: 00b-provider-form-url
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
+  - snapshot: 01-provider-model-loaded
+  - walk: {direction: down, steps: 8, stopAt: "settings.form.button[assistant.model.pleya-verify]", timeout: 80000, settle: 400}
+  - press: select
+  - assert: {id: "settings.form.button[assistant.model.pleya-verify]", state: {selected: true}}
+  - walk: {direction: down, steps: 4, stopAt: "settings.form.button[assistant.test]", timeout: 40000, settle: 400}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.save]", timeout: 15000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.change]", timeout: 10000}
+  - snapshot: 02-provider-saved
+  # The TMDB key sits under the saved provider; without Seerr it is what
+  # trending_titles asks.
+  # Five presses reach the key field (its text input takes the focus, so it
+  # has no id of its own to stop at), the sixth the save button.
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - settle: 600
+  - type: "verify-tmdb-key"
+  - settle: 800
+  - press: down
+  - wait_until: {focused: "settings.form.button[assistant.tmdbKeySave]", timeout: 5000}
+  - press: select
+  - settle: 800
+  - snapshot: 02c-tmdb-key-saved
+  - press: menu
+  - wait_until: {id: screen.assistant, state: {availability: ready}, timeout: 10000}
+  - wait_until: {focused: "assistant.button[ask]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.assistant, state: {state: listening}, timeout: 5000}
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - snapshot: 02b-assistant-native-editor
+  - type: "Wat is er trending?"
+  - press: select
+  - wait_until: {id: screen.assistant, state: {state: result, error: false, pending: false}, timeout: 30000}
+  - wait_until: {id: "assistant.match[7]", timeout: 15000}
+  # Eight match cards, one column, in order, none on top of another. Only the
+  # first three are visible at rest: the follow-up chips share the panel, so
+  # insideViewport (the screen, not the scroll area) is asserted for those.
+  - assert: {id: "assistant.match[0]", insideViewport: true}
+  - assert: {id: "assistant.match[2]", insideViewport: true, below: "assistant.match[1]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[1]"}
+  - assert: {id: "assistant.match[1]", below: "assistant.match[0]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[0]"}
+  - assert: {id: "assistant.match[2]", below: "assistant.match[1]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[1]"}
+  - assert: {id: "assistant.match[3]", below: "assistant.match[2]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[2]"}
+  - assert: {id: "assistant.match[4]", below: "assistant.match[3]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[3]"}
+  - assert: {id: "assistant.match[5]", below: "assistant.match[4]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[4]"}
+  - assert: {id: "assistant.match[6]", below: "assistant.match[5]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[5]"}
+  - assert: {id: "assistant.match[7]", below: "assistant.match[6]", sameColumn: "assistant.match[0]", notOverlapping: "assistant.match[6]"}
+  - settle: 800
+  - snapshot: 03-trending-eight-matches

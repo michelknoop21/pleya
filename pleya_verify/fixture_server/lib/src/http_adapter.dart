@@ -10,6 +10,7 @@ import 'ollama_fake_server.dart';
 import 'pleya_fake_server.dart';
 import 'seerr_fake_server.dart';
 import 'tautulli_fake_server.dart';
+import 'tmdb_fake_server.dart';
 
 /// A real, loopback-only `dart:io` HTTP server around a [PleyaFakeServer]:
 /// `/pleya/v1/*` goes straight to [PleyaFakeServer.handle], `/__verify/*` is
@@ -30,13 +31,16 @@ class FixtureHttpServer {
     required this.server,
     required this.controlToken,
     SeerrFakeServer? seerr,
+    TmdbFakeServer? tmdb,
     TautulliFakeServer? tautulli,
   }) : seerr = seerr ?? SeerrFakeServer(),
+       tmdb = tmdb ?? TmdbFakeServer(),
        tautulli = tautulli ?? TautulliFakeServer();
 
   final PleyaFakeServer server;
   final String controlToken;
   final SeerrFakeServer seerr;
+  final TmdbFakeServer tmdb;
   final TautulliFakeServer tautulli;
   final OllamaFakeServer _ollama = OllamaFakeServer();
   final _modelResponses = <Future<void>>{};
@@ -68,6 +72,8 @@ class FixtureHttpServer {
         await _handleControlPlane(request);
       } else if (request.uri.path.startsWith('/seerr')) {
         await _handleSeerrApi(request);
+      } else if (request.uri.path.startsWith('/tmdb')) {
+        await _handleTmdbApi(request);
       } else if (request.uri.path.startsWith('/tautulli')) {
         await _handleTautulliApi(request);
       } else if (request.uri.path.startsWith('/api/') || request.uri.path == '/v1/chat/completions') {
@@ -132,6 +138,18 @@ class FixtureHttpServer {
     });
 
     final response = await seerr.handle(outbound);
+    request.response.statusCode = response.statusCode;
+    response.headers.forEach((name, value) => request.response.headers.set(name, value));
+    request.response.add(response.bodyBytes);
+    await request.response.close();
+  }
+
+  Future<void> _handleTmdbApi(HttpRequest request) async {
+    final outbound = http.Request(request.method, request.requestedUri);
+    request.headers.forEach((name, values) {
+      if (values.isNotEmpty) outbound.headers[name] = values.first;
+    });
+    final response = await tmdb.handle(outbound);
     request.response.statusCode = response.statusCode;
     response.headers.forEach((name, value) => request.response.headers.set(name, value));
     request.response.add(response.bodyBytes);

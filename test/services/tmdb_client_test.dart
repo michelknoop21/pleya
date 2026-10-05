@@ -141,4 +141,35 @@ void main() {
     expect(c.requests.single.url.path, '/3/search/multi');
     expect(c.requests.single.url.queryParameters['query'], 'star wars');
   });
+  group('verifyBase (Pleya Verify fixture stand-in)', () {
+    test('is null outside a Verify build, whatever the URL', () {
+      expect(TmdbClient.verifyBase('http://127.0.0.1:5555', enabled: false), isNull);
+    });
+
+    test('maps a loopback http provider URL to the fixture /tmdb', () {
+      expect(TmdbClient.verifyBase('http://127.0.0.1:5555', enabled: true), Uri.parse('http://127.0.0.1:5555/tmdb'));
+    });
+
+    test('refuses a non-loopback or https provider URL', () {
+      expect(TmdbClient.verifyBase('https://ollama.example.com', enabled: true), isNull);
+      expect(TmdbClient.verifyBase('http://192.168.1.5:11434', enabled: true), isNull);
+      expect(TmdbClient.verifyBase(null, enabled: true), isNull);
+    });
+
+    test('a client with a base talks to it and keeps the path and key', () async {
+      final requests = <http.Request>[];
+      final client = TmdbClient(
+        _v3Key,
+        base: TmdbClient.verifyBase('http://127.0.0.1:5555', enabled: true),
+        httpClient: MockClient((req) async {
+          requests.add(req);
+          return http.Response(jsonEncode({'results': []}), 200);
+        }),
+      );
+      await client.trending(TmdbKind.movie);
+      final url = requests.single.url;
+      expect('${url.scheme}://${url.host}:${url.port}${url.path}', 'http://127.0.0.1:5555/tmdb/3/trending/movie/week');
+      expect(url.queryParameters['api_key'], _v3Key);
+    });
+  });
 }

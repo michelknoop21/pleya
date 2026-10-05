@@ -76,6 +76,30 @@ void main() {
     ]);
   });
 
+  test('the space prompts call one discovery tool, then answer in text', () async {
+    final discover = await chat('Ontdek ruimtefilms.', ['discover_request_titles']);
+    expect(discover['tool_calls'][0]['function']['name'], 'discover_request_titles');
+    final trending = await chat('Wat is er trending?', ['trending_titles']);
+    expect(trending['tool_calls'][0]['function']['name'], 'trending_titles');
+    expect(jsonDecode(trending['tool_calls'][0]['function']['arguments']), {'kind': 'all'});
+    final reply = await chat(
+      'Wat is er trending?',
+      ['trending_titles'],
+      replies: [
+        {'role': 'tool', 'content': '{}'},
+      ],
+    );
+    expect(reply['tool_calls'], isNull);
+    expect(reply['content'], 'Dit is er populair.');
+  });
+
+  test('the TMDB stand-in is served behind /tmdb on the fixture port', () async {
+    final url = Uri.parse('http://127.0.0.1:${adapter.port}/tmdb/3/trending/tv/week?api_key=verify-tmdb-key');
+    final response = await client.get(url);
+    expect(response.statusCode, 200);
+    expect(jsonDecode(response.body)['results'].first['name'], 'Driftwood');
+  });
+
   test('concurrent child transcripts remain independent and deterministic', () async {
     final messages = await Future.wait([
       chat('Zoek Basalt.', ['find_title']),

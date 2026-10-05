@@ -224,12 +224,14 @@ class TitleFactsService {
     this.clientFor,
     this.seerr,
     String? Function()? tmdbKey,
+    String? Function()? tmdbBase,
     bool Function()? online,
     String Function()? language,
     this.budget = 20,
     this.traktClientId = TraktConstants.clientId,
     http.Client? httpClient,
   }) : tmdbKey = tmdbKey ?? (() => null),
+       tmdbBase = tmdbBase ?? (() => null),
        online = online ?? (() => true),
        language = language ?? (() => 'en'),
        _http = httpClient ?? _sharedHttp;
@@ -238,6 +240,9 @@ class TitleFactsService {
   final MediaServerClient? Function(ServerId serverId)? clientFor;
   final SeerrClient? Function()? seerr;
   final String? Function() tmdbKey;
+
+  /// The provider URL, for [TmdbClient.verifyBase]; null outside Verify.
+  final String? Function() tmdbBase;
   final bool Function() online;
   final String Function() language;
 
@@ -263,7 +268,9 @@ class TitleFactsService {
   /// after the key was rejected.
   TmdbClient? tmdb() {
     final key = tmdbKey();
-    return online() && key != null && key.isNotEmpty && !_tmdbRejected ? TmdbClient(key, httpClient: _http) : null;
+    return online() && key != null && key.isNotEmpty && !_tmdbRejected
+        ? TmdbClient(key, httpClient: _http, base: TmdbClient.verifyBase(tmdbBase()))
+        : null;
   }
 
   /// Facts per ref, in order. Identical refs share one lookup.
@@ -335,7 +342,7 @@ class TitleFactsService {
     var tmdbDone = !hasKey;
     if (online) {
       if (hasKey && !_tmdbRejected) {
-        final tmdb = TmdbClient(key, httpClient: _http);
+        final tmdb = TmdbClient(key, httpClient: _http, base: TmdbClient.verifyBase(tmdbBase()));
         if (tmdbId == null && (imdb ?? tvdb) != null && _take()) {
           tmdbId = await _guard('tmdb find', () => tmdbFind(tmdb, ref.kind, imdb: imdb, tvdb: tvdb));
         }
