@@ -13,8 +13,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/michelknoop21/MPVKit",
       "state" : {
-        "revision" : "8c7025156570d982b5e9648a7ab31c49cce6791c",
-        "version" : "1.0.28"
+        "revision" : "dedb0624869d09e605eb61ac4e03f907a9ee9351",
+        "version" : "1.0.29"
       }
     },
     {
