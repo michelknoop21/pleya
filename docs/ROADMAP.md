@@ -41,7 +41,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland |
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
-| BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | Loopt in een andere sessie |
+| BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | PR #177 (review gedaan, wacht op merge); hardware- en tvOS-deviceronde open |
 | REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Gepauzeerd t.g.v. Big P (5 okt) |
 | REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
 | REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
