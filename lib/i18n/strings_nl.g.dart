@@ -3680,6 +3680,7 @@ class _TranslationsAssistantJobsScanLibraryNl extends TranslationsAssistantJobsS
 	@override String get done => 'Scan klaar';
 	@override String get failed => 'Scan mislukt';
 	@override String get background => 'Scan loopt nog op de achtergrond';
+	@override String get unknown => 'Scan: status niet meer vast te stellen';
 }
 
 // Path: assistant.jobs.retryJob
@@ -3693,6 +3694,7 @@ class _TranslationsAssistantJobsRetryJobNl extends TranslationsAssistantJobsRetr
 	@override String get done => 'Taak klaar';
 	@override String get failed => 'Taak mislukt';
 	@override String get background => 'Taak loopt nog op de achtergrond';
+	@override String get unknown => 'Taak: status niet meer vast te stellen';
 }
 
 // Path: assistant.confirm.titles
@@ -5919,10 +5921,12 @@ extension on TranslationsNl {
 			'assistant.jobs.scanLibrary.done' => 'Scan klaar',
 			'assistant.jobs.scanLibrary.failed' => 'Scan mislukt',
 			'assistant.jobs.scanLibrary.background' => 'Scan loopt nog op de achtergrond',
+			'assistant.jobs.scanLibrary.unknown' => 'Scan: status niet meer vast te stellen',
 			'assistant.jobs.retryJob.running' => 'Taak loopt',
 			'assistant.jobs.retryJob.done' => 'Taak klaar',
 			'assistant.jobs.retryJob.failed' => 'Taak mislukt',
 			'assistant.jobs.retryJob.background' => 'Taak loopt nog op de achtergrond',
+			'assistant.jobs.retryJob.unknown' => 'Taak: status niet meer vast te stellen',
 			'assistant.result.doneBy' => 'Uitgevoerd door Pleya',
 			'assistant.result.notDoneBy' => 'Niet uitgevoerd door Pleya',
 			'assistant.result.done' => 'Klaar',

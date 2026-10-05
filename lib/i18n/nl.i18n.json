@@ -2438,13 +2438,15 @@
         "running": "Scan loopt",
         "done": "Scan klaar",
         "failed": "Scan mislukt",
-        "background": "Scan loopt nog op de achtergrond"
+        "background": "Scan loopt nog op de achtergrond",
+        "unknown": "Scan: status niet meer vast te stellen"
       },
       "retryJob": {
         "running": "Taak loopt",
         "done": "Taak klaar",
         "failed": "Taak mislukt",
-        "background": "Taak loopt nog op de achtergrond"
+        "background": "Taak loopt nog op de achtergrond",
+        "unknown": "Taak: status niet meer vast te stellen"
       }
     },
     "result": {
