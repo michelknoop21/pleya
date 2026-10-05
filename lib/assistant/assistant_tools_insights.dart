@@ -306,7 +306,10 @@ final List<AssistantTool> _insightTools = [
         'last days (1-31). Call it once per question: one call covers all servers, a title or person on several '
         'servers is counted once with the plays summed, and "unavailable" names the servers that could not '
         'answer (with their backend). On Jellyfin, Emby and Pleya Server a period counts each finished title once '
-        'per user, at its last play (those servers keep no play log).',
+        'per user, at its last play (those servers keep no play log). For a question about films only or series '
+        'only pass media "movie" or "show" (period only): the answer and the card then hold just those titles. '
+        'To leave accounts out (the asker\'s own, when they say "my friends"), pass their server account names in '
+        'exclude_users; the asker\'s account name is not known unless they said it.',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
@@ -315,6 +318,15 @@ final List<AssistantTool> _insightTools = [
         'enum': ['now', 'period'],
       },
       'days': {'type': 'integer', 'minimum': 1, 'maximum': 31},
+      'media': {
+        'type': 'string',
+        'enum': ['movie', 'show'],
+      },
+      'exclude_users': {
+        'type': 'array',
+        'items': {'type': 'string'},
+        'maxItems': 10,
+      },
     },
     required: const ['scope'],
     serves: (ctx, _) => _watchServers(ctx).isNotEmpty,
@@ -326,7 +338,19 @@ final List<AssistantTool> _insightTools = [
         final int d when d >= 1 && d <= 31 => d,
         _ => throw const AssistantToolError('invalid_days'),
       };
-      return scope == 'now' ? _watchedNow(ctx) : _watchedPeriod(ctx, days);
+      final media = switch (args['media']) {
+        null => null,
+        'movie' || 'show' => args['media'] as String,
+        _ => throw const AssistantToolError('invalid_media'),
+      };
+      final excluded = switch (args['exclude_users']) {
+        null => const <String>{},
+        final List<Object?> l when l.every((e) => e is String) => {
+          for (final e in l) (e as String).trim().toLowerCase(),
+        },
+        _ => throw const AssistantToolError('invalid_exclude_users'),
+      };
+      return scope == 'now' ? _watchedNow(ctx) : _watchedPeriod(ctx, days, media: media, excluded: excluded);
     },
   ),
 ];
