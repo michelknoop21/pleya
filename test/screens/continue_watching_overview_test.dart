@@ -28,7 +28,8 @@ import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/external_ids.dart';
 import 'package:pleya/widgets/media_markers.dart';
-import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
+import 'package:pleya/widgets/tv/tv_catalog_card.dart';
+import 'package:pleya/widgets/tv/tv_continue_watching_card.dart';
 import 'package:pleya/widgets/tv/tv_view_all_action.dart';
 import 'package:provider/provider.dart';
 
@@ -293,9 +294,19 @@ void main() {
     for (final label in ['Resume series', 'Resume films', 'Next episodes', 'Started earlier']) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
-    expect(find.byType(TvUnifiedMediaCard), findsNWidgets(4));
+    expect(find.byType(TvContinueWatchingCard), findsNWidgets(4));
+    // Mockup 38 D: the picture of the thing you resume, 16:9, never a still
+    // cropped into a 2:3 poster slot.
+    for (final card in tester.widgetList<TvCatalogCard>(find.byType(TvCatalogCard))) {
+      expect(card.aspectRatio, closeTo(16 / 9, 0.001));
+      expect(card.overlay, isNotNull, reason: 'title and status sit on the picture');
+    }
+    await expectLater(
+      find.byType(TvContinueWatchingScreen),
+      matchesGoldenFile('../goldens/tv_continue_watching_overview.png'),
+    );
 
-    final first = tester.widget<TvUnifiedMediaCard>(find.byType(TvUnifiedMediaCard).first);
+    final first = tester.widget<TvContinueWatchingCard>(find.byType(TvContinueWatchingCard).first);
     first.focusNode!.requestFocus();
     await tester.pump();
     expect(first.focusNode!.hasFocus, isTrue);
@@ -303,7 +314,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    final second = tester.widget<TvUnifiedMediaCard>(find.byType(TvUnifiedMediaCard).at(1));
+    final second = tester.widget<TvContinueWatchingCard>(find.byType(TvContinueWatchingCard).at(1));
     expect(second.focusNode!.hasFocus, isTrue, reason: 'DOWN off Series hervatten lands on Films hervatten');
   });
 
@@ -354,10 +365,10 @@ void main() {
   testWidgets('TV: DOWN off the last band lands on Hidden items', (tester) async {
     await tester.runAsync(() => hidden.hide(_onDeck.last));
     await pump(tester, const Scaffold(body: TvContinueWatchingScreen()), size: const Size(1038, 584));
-    expect(find.byType(TvUnifiedMediaCard), findsNWidgets(3));
+    expect(find.byType(TvContinueWatchingCard), findsNWidgets(3));
     expect(find.text('Hidden items · 1'), findsOneWidget);
 
-    final last = tester.widget<TvUnifiedMediaCard>(find.byType(TvUnifiedMediaCard).last);
+    final last = tester.widget<TvContinueWatchingCard>(find.byType(TvContinueWatchingCard).last);
     last.focusNode!.requestFocus();
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
