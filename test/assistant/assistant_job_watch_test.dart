@@ -193,6 +193,17 @@ void main() {
       expect(c.tasks.single.status, AssistantTaskStatus.failed);
     });
 
+    test('a cancelled job shows failed but does not fail the question', () async {
+      answers = [
+        [_job(ServerJobState.cancelled, at: _start.add(const Duration(seconds: 5)))],
+      ];
+      final c = controller();
+      await c.submit('scan films');
+      await until(() => progress(c)?.settled ?? false);
+      expect(progress(c)!.phase, AssistantJobPhase.failed);
+      expect(c.tasks.single.status, isNot(AssistantTaskStatus.failed));
+    });
+
     test('seen running, then gone: unknown, not done and not failed', () async {
       answers = [
         [_job(ServerJobState.running, progress: 0.4)],

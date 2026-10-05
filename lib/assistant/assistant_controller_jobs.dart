@@ -100,7 +100,10 @@ extension _AssistantJobPolling on AssistantController {
         final index = indexOf(watch);
         if (next != null && index >= 0) task.actions[index] = task.actions[index].withProgress(next);
         // A job seen failing keeps the question failed, also once the job is gone.
-        if (next?.phase == AssistantJobPhase.failed && task.error == null) {
+        // A cancelled job is not a failure of the question.
+        if (next?.phase == AssistantJobPhase.failed &&
+            task.error == null &&
+            jobs?.any((j) => j.id == watch.jobId && j.state == ServerJobState.failed) == true) {
           task.error = 'job_failed';
           task.status = AssistantTaskStatus.failed;
         }
