@@ -26,7 +26,7 @@ class BigPGlassPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final pt = BigPScale.of(context);
     final radius = BorderRadius.circular(40 * pt);
-    final padding = EdgeInsets.all(40 * pt);
+    final padding = EdgeInsets.all(32 * pt);
     final legacy = ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(

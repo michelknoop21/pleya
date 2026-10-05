@@ -7644,6 +7644,30 @@ class TranslationsAssistantStepsEn {
 	/// en: 'Fetching watch statistics'
 	String get watchStats => 'Fetching watch statistics';
 
+	/// en: 'Checking what you watched'
+	String get myWatching => 'Checking what you watched';
+
+	/// en: 'Matching what you both like'
+	String get recommendTogether => 'Matching what you both like';
+
+	/// en: 'Checking request status'
+	String get requestStatus => 'Checking request status';
+
+	/// en: 'Diagnosing playback'
+	String get diagnosePlayback => 'Diagnosing playback';
+
+	/// en: 'Changing playback'
+	String get changePlayback => 'Changing playback';
+
+	/// en: 'Diagnosing the library'
+	String get diagnoseLibrary => 'Diagnosing the library';
+
+	/// en: 'Checking what is trending'
+	String get trendingTitles => 'Checking what is trending';
+
+	/// en: 'Finding similar titles'
+	String get similarTitles => 'Finding similar titles';
+
 	/// en: 'Downloading next episodes'
 	String get downloadNext => 'Downloading next episodes';
 
@@ -10622,6 +10646,14 @@ extension on Translations {
 			'assistant.steps.createCollection' => 'Creating collection',
 			'assistant.steps.compareServers' => 'Comparing servers',
 			'assistant.steps.watchStats' => 'Fetching watch statistics',
+			'assistant.steps.myWatching' => 'Checking what you watched',
+			'assistant.steps.recommendTogether' => 'Matching what you both like',
+			'assistant.steps.requestStatus' => 'Checking request status',
+			'assistant.steps.diagnosePlayback' => 'Diagnosing playback',
+			'assistant.steps.changePlayback' => 'Changing playback',
+			'assistant.steps.diagnoseLibrary' => 'Diagnosing the library',
+			'assistant.steps.trendingTitles' => 'Checking what is trending',
+			'assistant.steps.similarTitles' => 'Finding similar titles',
 			'assistant.steps.downloadNext' => 'Downloading next episodes',
 			'assistant.steps.findSubtitles' => 'Finding subtitles',
 			'assistant.steps.downloadSubtitle' => 'Downloading subtitle',

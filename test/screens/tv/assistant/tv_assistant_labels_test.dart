@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 
@@ -9,6 +10,19 @@ import 'tv_assistant_test_support.dart';
 void main() {
   setUp(() => LocaleSettings.setLocale(AppLocale.nl));
   tearDown(() => LocaleSettings.setLocale(AppLocale.en));
+
+  test('every registered tool has a step label, in both languages', () {
+    final missing = <String>[];
+    for (final tool in assistantTools) {
+      LocaleSettings.setLocaleSync(AppLocale.en);
+      final en = assistantToolLabel(tool.name);
+      final enFallback = t.assistant.steps.fallback;
+      LocaleSettings.setLocaleSync(AppLocale.nl);
+      final nl = assistantToolLabel(tool.name);
+      if (en == enFallback || nl == t.assistant.steps.fallback || en == nl) missing.add(tool.name);
+    }
+    expect(missing, isEmpty);
+  });
 
   test('the greeting leaves no gap where no profile name is', () {
     expect(assistantGreeting('Michel'), 'Hoi Michel, wat moet er gebeuren?');

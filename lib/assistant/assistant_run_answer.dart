@@ -127,7 +127,9 @@ extension _AssistantAnswer on AssistantRun {
   Future<({int index, AssistantDisplay? display, bool Function() current})?> _lookupNamedTitles(String answer) async {
     if (_actions.isNotEmpty || _cancelled || _spoilerQuestion != null || _ctx.libraryDoctorMode) return null;
     final evidenceContext = _ctx;
-    final clients = {for (final id in evidenceContext.userServers) id: evidenceContext.userClient(id)};
+    // The client object itself, online or not: a connectivity flip must not
+    // discard a valid answer, a replaced client or hidden server still does.
+    final clients = {for (final id in evidenceContext.userServers) id: evidenceContext.servers.getClient(id)};
     final requestClient = evidenceContext.requests?.client();
     final requestUser = requestClient?.session.userId;
     // Match findTitles' own source roots, read live from Home's loader. Client
@@ -136,7 +138,8 @@ extension _AssistantAnswer on AssistantRun {
       final CatalogHomeCustomRowLoader loader => {
         for (final kind in const [MediaKind.movie, MediaKind.show])
           for (final library in loader.librariesFor(kind))
-            if (evidenceContext.userClient(library.serverId) != null) (library.serverId, library.libraryId, kind),
+            if (evidenceContext.servers.getClient(library.serverId) != null)
+              (library.serverId, library.libraryId, kind),
       },
       _ => const {},
     };
@@ -160,7 +163,7 @@ extension _AssistantAnswer on AssistantRun {
         clients.entries.every(
           (entry) =>
               evidenceContext.userServers.contains(entry.key) &&
-              identical(evidenceContext.userClient(entry.key), entry.value),
+              identical(evidenceContext.servers.getClient(entry.key), entry.value),
         );
     if (!current()) return null;
     var all = assistantNamedTitles(answer);

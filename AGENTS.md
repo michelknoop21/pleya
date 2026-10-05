@@ -18,6 +18,15 @@ section's shape.
 - Keep decisions and verification results in the task context. Create a short handoff only when transferring work: changes, evidence and remaining work. Existing domain work registers remain required.
 - Preserve unrelated working-tree changes. Keep full verification logs/evidence outside tracked source; inspect summaries first and relevant details on failure. UI verification still requires reading the evidence bundle and relevant screenshots.
 
+## Roadmap authority
+
+- `docs/ROADMAP.md` owns cross-project priority and execution order for the existing Pleya product line: the current app, Pleya Server/Web, e-books/routes, commercial/release work and optional expansions. A ground-up client rebuild is explicitly outside that roadmap.
+- Before implementation starts, map the task to an existing roadmap work-package ID. PRs and handoffs state `Roadmap: <ID>`. If work fits no ID or changes priority/order/scope, stop and record a roadmap deviation first; product choices require Michel's decision.
+- Prioriteit, WIP-limiet en uitzonderingen staan in `docs/ROADMAP.md` (Roadmap rules); dit bestand herhaalt ze niet.
+- Security, data-loss, regression and release-blocking hotfixes may interrupt the order; reconcile the roadmap and owning register in the same PR or the next documentation commit.
+- Whoever changes a work package's status updates `docs/ROADMAP.md` in the same PR.
+- The roadmap owns order, not detailed item status. Existing registers and masterplans remain the status authority for their domains.
+
 ## Review and release bundling
 
 This is the default Pleya workflow for changes that head to a TestFlight build (owner decision, 25 September 2026). Goal: fewer agent turns, fewer tokens, less wall-clock time, without dropping evidence.
@@ -77,5 +86,5 @@ These references retain binding domain rules. Read the relevant sections before 
 - TV has D-pad/focus behavior under `lib/focus/`; do not assume touch-only interactions.
 - Keep pinned git forks and lockfiles consistent. Do not replace forks casually. Generate brand assets with `scripts/gen_brand_assets.py`; do not hand-edit generated platform PNGs.
 - Tests and tooling never touch real user data, credentials, the vault, HOME data outside the repo, `web.pleya.app` or the NAS. Pleya Verify installs under `nl.michelknoop.pleya.verify` on macOS, iOS and tvOS and aborts without that rewrite; widget tests use mocked `SharedPreferences`; server tests use `pleya_server/scripts/test-db.sh`.
-- **Never merge an authority file (`CLAUDE.md`, `docs/RELEASES.md`, `docs/DECISIONS.md`, `docs/CHANGELOG.md`, `STATUS.md`, `docs/PLEYA-SERVER-MASTERLIST.md`, `AGENTS.md`, see `check_authority_merge.sh`'s `FILES` list) with `--ours` or `--theirs`.** Those take the whole file from one side, not just the conflicting hunk, and silently drop the other side's changes. Resolve as a real three-way merge against the merge base (`git merge-file <file> <base> <other side>`) and compare the result with both parents. Regenerate generated files instead of hand-merging them (`scripts/codegen.sh`, `dart run slang`, `pleya_web/scripts/gen-api-types.sh`, `scripts/gen_release_notes.sh`). `scripts/check_authority_merge.sh` enforces this in CI.
+- **Never merge an authority file (`CLAUDE.md`, `docs/RELEASES.md`, `docs/DECISIONS.md`, `docs/CHANGELOG.md`, `STATUS.md`, `docs/PLEYA-SERVER-MASTERLIST.md`, `AGENTS.md`, `docs/ROADMAP.md`, see `check_authority_merge.sh`'s `FILES` list) with `--ours` or `--theirs`.** Those take the whole file from one side, not just the conflicting hunk, and silently drop the other side's changes. Resolve as a real three-way merge against the merge base (`git merge-file <file> <base> <other side>`) and compare the result with both parents. Regenerate generated files instead of hand-merging them (`scripts/codegen.sh`, `dart run slang`, `pleya_web/scripts/gen-api-types.sh`, `scripts/gen_release_notes.sh`). `scripts/check_authority_merge.sh` enforces this in CI.
 - Status (current phase, open protocol window, item state) lives in the registers and masterplans, never in instruction files.

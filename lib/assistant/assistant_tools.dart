@@ -191,6 +191,7 @@ class AssistantPendingAction extends AssistantToolOutcome {
     this.items = const [],
     this.preview,
     this.job,
+    this.jobAtRun,
   });
 
   final AssistantActionKind kind;
@@ -213,13 +214,17 @@ class AssistantPendingAction extends AssistantToolOutcome {
   /// Work to follow only after this action actually succeeds.
   final AssistantJobWatch? job;
 
+  /// Like [job], for a watch whose start must be taken when the action runs
+  /// (after the user confirms), not when its card is made.
+  final AssistantJobWatch? Function()? jobAtRun;
+
   /// Runs the action. [password] comes from Pleya's secure input, never
   /// from the model. A result with `done: false` means nothing changed, and
   /// the run then does not list the action as done.
   final Future<Map<String, Object?>> Function({String? password}) execute;
 
   AssistantActionRecord get record =>
-      AssistantActionRecord(kind: kind, serverName: serverName, subject: subject, job: job);
+      AssistantActionRecord(kind: kind, serverName: serverName, subject: subject, job: jobAtRun?.call() ?? job);
 }
 
 class AssistantTool {

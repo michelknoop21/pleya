@@ -217,11 +217,11 @@ void main() {
   String? focusedMatch() =>
       FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<BigPMatchCard>()?.match.matchId;
 
-  /// What the panel shows: the surface's glass panel minus its 40 pt
+  /// What the panel shows: the surface's glass panel minus its 32 pt
   /// padding, or the summoned balloon minus its own.
   Rect panelContent(WidgetTester tester) {
     final balloon = find.byType(BigPBalloon);
-    if (balloon.evaluate().isEmpty) return tester.getRect(find.byType(BigPGlassPanel)).deflate(40);
+    if (balloon.evaluate().isEmpty) return tester.getRect(find.byType(BigPGlassPanel)).deflate(32);
     return tester.widget<BigPBalloon>(balloon).padding.deflateRect(tester.getRect(balloon));
   }
 

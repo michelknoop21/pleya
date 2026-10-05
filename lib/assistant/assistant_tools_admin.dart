@@ -103,6 +103,8 @@ final List<AssistantTool> _adminTools = [
         return _doctorPending(ctx, id!, args, AssistantActionKind.scanLibrary);
       }
       final library = await ctx.library(id!, _string(args, 'library_id'));
+      // Before the request: a scan can end before its response arrives.
+      final startedAt = DateTime.now();
       await ctx.admin<LibraryScanClient>(id)!.scanLibrary(library.id);
       return AssistantToolResult(
         {'status': 'scan_started', 'library': clipText(library.title)},
@@ -110,7 +112,7 @@ final List<AssistantTool> _adminTools = [
           kind: AssistantActionKind.scanLibrary,
           serverName: ctx.serverName(id),
           subject: library.title,
-          job: AssistantJobWatch(serverId: id, startedAt: DateTime.now(), libraryId: library.id),
+          job: AssistantJobWatch(serverId: id, startedAt: startedAt, libraryId: library.id),
         ),
       );
     },
@@ -192,6 +194,7 @@ final List<AssistantTool> _adminTools = [
     run: (ctx, id, args) async {
       final jobId = _string(args, 'job_id');
       final title = ctx.requireShownJob(id!, jobId);
+      final startedAt = DateTime.now();
       await ctx.admin<RetryableJobsClient>(id)!.retryJob(jobId);
       return AssistantToolResult(
         {'status': 'retry_started'},
@@ -199,7 +202,7 @@ final List<AssistantTool> _adminTools = [
           kind: AssistantActionKind.retryJob,
           serverName: ctx.serverName(id),
           subject: clipText(title),
-          job: AssistantJobWatch(serverId: id, startedAt: DateTime.now(), jobId: jobId),
+          job: AssistantJobWatch(serverId: id, startedAt: startedAt, jobId: jobId),
         ),
       );
     },

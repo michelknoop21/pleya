@@ -319,7 +319,9 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     );
     return LayoutBuilder(
       builder: (context, box) => Padding(
-        padding: EdgeInsets.only(top: 30 * pt, right: 250 * pt, bottom: 80 * pt),
+        // tvOS title-safe edges (96 right, 60 bottom): the panel owns the space
+        // the mascot does not need.
+        padding: EdgeInsets.only(top: 30 * pt, right: 96 * pt, bottom: 60 * pt),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -344,9 +346,9 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
               ),
             ),
             SizedBox(
-              width: 800 * pt,
+              width: 960 * pt,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: box.maxHeight - 110 * pt),
+                constraints: BoxConstraints(maxHeight: box.maxHeight - 90 * pt),
                 child: BigPGlassPanel(
                   child: TvAssistantConversation(
                     controller: c,

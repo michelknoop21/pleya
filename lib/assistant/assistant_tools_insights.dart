@@ -351,9 +351,15 @@ final List<AssistantTool> _insightTools = [
         _ => throw const AssistantToolError('invalid_exclude_users'),
       };
       if (scope == 'now' && media != null) throw const AssistantToolError('media_needs_period');
-      return scope == 'now'
+      final before = _watchServers(ctx);
+      final result = await (scope == 'now'
           ? _watchedNow(ctx, excluded: excluded)
-          : _watchedPeriod(ctx, days, media: media, excluded: excluded);
+          : _watchedPeriod(ctx, days, media: media, excluded: excluded));
+      // The reads take seconds. Administration revoked or a server gone
+      // meanwhile: household viewing data must not be published.
+      final after = _watchServers(ctx);
+      if (!before.every(after.contains)) throw const AssistantToolError('not_allowed');
+      return result;
     },
   ),
 ];

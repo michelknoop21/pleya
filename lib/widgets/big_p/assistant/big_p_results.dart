@@ -297,7 +297,9 @@ class BigPDisplayView extends StatelessWidget {
           compact: compact || ranked,
           // More than three in the summoned panel: the list form, so
           // five show where three did.
-          dense: compact && !ranked && matches.length > 3,
+          // The summoned panel is dense from 4 matches; the full surface only from
+          // 6, once its wider panel no longer shows them all.
+          dense: !ranked && matches.length > (compact ? 3 : 5),
           rank: ranked ? i + 1 : null,
           focusNode: i == matches.indexWhere(_selectable) ? firstOptionNode : null,
           // Nothing to open and nothing to request: shown, never a dead

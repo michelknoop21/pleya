@@ -30,11 +30,13 @@ extension _AssistantExecute on AssistantRun {
     };
   }
 
-  void _consumeLookups(Map<String, Object?> args) {
+  void _consumeLookups(Map<String, Object?> args, ServerId? server) {
     final item = args['item_id'];
     if (item is! String) return;
     _lookups.removeWhere((grid, ids) {
-      if (!ids.contains(item)) return false;
+      // A side without a server (a tool that takes none, an item that
+      // names none) cannot tell servers apart and matches on the id alone.
+      if (!ids.any((e) => e.$2 == item && (server == null || e.$1 == null || e.$1 == server.value))) return false;
       _displays.remove(grid);
       return true;
     });
@@ -145,7 +147,7 @@ extension _AssistantExecute on AssistantRun {
           }
           if (record != null && _actionSucceeded(data)) {
             _actions.add(record);
-            _consumeLookups(args);
+            _consumeLookups(args, serverId);
           }
           final shown = display == null ? null : _ctx.recommend.admit(display);
           if (shown != null) _displays.add(shown);
@@ -157,14 +159,14 @@ extension _AssistantExecute on AssistantRun {
             }
           }
           if (tool.name == 'find_media' && shown is AssistantMediaGrid) {
-            _lookups[shown] = {for (final e in shown.entries) e.item.id};
+            _lookups[shown] = {for (final e in shown.entries) (e.item.serverId, e.item.id)};
           }
           return data;
         case final AssistantPendingAction action:
           final output = await _confirmAndRun(tool, action);
           // A declined or failed action leaves the lookup as the result.
           if (_actionSucceeded(output)) {
-            _consumeLookups(args);
+            _consumeLookups(args, action.serverId);
           }
           return output;
       }
