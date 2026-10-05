@@ -27,13 +27,14 @@ Nothing user-facing since the last published build.
 
 ### New
 
-- **Big P remembers everything you have watched, not only the last month.** A film you saw six
-  weeks ago is no longer suggested again. Pleya keeps your viewing log for a year; beyond that,
-  only the server's own watched mark counts.
+- **Big P checks your whole viewing log, not only the last month.** A film you saw weeks ago is
+  no longer suggested again. Pleya keeps that log for a year; beyond that, only the server's own
+  watched mark counts, and a copy of the film on another server may not be recognised.
 - **Asking what the others in your household watched now tells accounts apart.** Plays Big P
   cannot attribute to another person are named in the answer instead of being counted as theirs.
-- **Titles that share a name stay apart in watch statistics.** Dune (1984) and Dune (2021) are
-  two titles, and a match across servers on the title alone is marked as uncertain.
+- **Titles that share a name stay apart in watch statistics on Jellyfin and Emby.** Dune (1984)
+  and Dune (2021) are two titles there. Plex, Tautulli and Pleya Server do not report a year, so
+  a match across servers on the title alone is marked as uncertain.
 - **Liquid Glass surfaces behind a switch in Appearance.** The tab bar, player controls and
   movie page on iPhone and the top bar, player panel and search field on Apple TV can now be
   glass. The switch is off by default and does not apply on iPad.
@@ -97,8 +98,13 @@ Nothing user-facing since the last published build.
 
 - **Worth checking on Apple TV: switch between the TV speakers and AirPods during playback a
   few times.** A crash on that switch was fixed in the player engine, but it has not been
-  confirmed on a device. In a long Big P list, Up from Ask now goes to the list and Down to the
-  follow-up questions under it.
+  confirmed on a device.
+- **Worth checking on Apple TV: the focus order in a long Big P list.** Up from Ask now goes to
+  the list and Down to the follow-up questions under it. Five titles in view is measured in the
+  simulator, not on the television.
+- **Worth checking on iPhone and iPad: the Big P layout changes.** The larger touch areas, Create
+  and Save staying in view, the detail peek above the home indicator and the follow-ups hiding
+  behind the keyboard were tested at several sizes in code, not yet with a real keyboard.
 - **Hidden libraries and library order now sync over iCloud for Plex Home profiles.** The first
   device to sync after updating sets them for that profile on every device. If you arranged a
   profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
