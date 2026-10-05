@@ -26,6 +26,10 @@ void main() {
     await fixture.stop();
   });
 
+  test('control calls default to a 30s deadline (CI runner is slow around the simulator boot)', () {
+    expect(FixtureServerHandle.defaultControlTimeout, const Duration(seconds: 30));
+  });
+
   test('a seeded fixture publishes the ids it minted, keyed by readable slug', () async {
     await fixture.seed('catalog.shows.v1');
 
