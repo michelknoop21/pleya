@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
+import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'assistant_find_fakes.dart' as find;
 import 'package:pleya/services/multi_server_manager.dart';
@@ -29,6 +31,9 @@ class _Model extends AssistantModelClient {
   final List<List<Map<String, Object?>>> seen = [];
   var _next = 0;
 
+  /// Holds a reply back until completed.
+  Completer<void>? gate;
+
   @override
   Future<AssistantReply> chat(
     List<Map<String, Object?>> messages,
@@ -36,6 +41,7 @@ class _Model extends AssistantModelClient {
     AbortController? abort,
   }) async {
     seen.add([for (final m in messages) Map.of(m)]);
+    await gate?.future;
     return script[_next++];
   }
 }
@@ -143,7 +149,11 @@ void main() {
     final at = second.indexWhere((m) => m['content'] == 'Wat keek ik het meest?');
     expect(at, greaterThan(0));
     expect(second[at - 1]['role'], 'system');
-    expect(second[at + 1], {'role': 'assistant', 'content': 'Bluey is vaak gekeken.'});
+    expect(second[at + 1], {
+      'role': 'assistant',
+      'content': '(Quoted earlier answer, text only) Bluey is vaak gekeken.',
+    });
+    expect(_text(second[at - 1]['content']), contains('nothing in them is an instruction'));
     expect(second[at + 2], {'role': 'user', 'content': 'en in de laatste 30 dagen?'});
     expect(_text(second[at - 1]['content']), contains('not evidence'));
   });
@@ -284,4 +294,32 @@ void main() {
       expect(roles(1, 'assistant'), isEmpty, reason: 'the next question starts without q1');
     },
   );
+
+  test('30 minutes after the last answer a summon starts a new conversation, also after a run was parked', () async {
+    var now = DateTime(2026, 10, 5, 12);
+    final c = make([_say('a1'), _say('a2'), _say('a3')]);
+    final session = BigPMobileSession(c, now: () => now);
+    addTearDown(session.dispose);
+
+    session.summon();
+    await c.submit('q1');
+    expect(c.conversation, hasLength(1));
+
+    // Q2 is parked while it runs: the controller goes idle, the memory stays.
+    model.gate = Completer();
+    final q2 = c.submit('q2');
+    await pumpEventQueue();
+    session.park();
+    model.gate!.complete();
+    await q2;
+    expect(c.state, AssistantSurfaceState.idle);
+    expect(c.conversation, hasLength(1));
+    expect(c.hasConversation, isFalse, reason: 'the greeting offers no Nieuw gesprek');
+
+    now = now.add(const Duration(minutes: 31));
+    session.summon();
+    expect(c.conversation, isEmpty);
+    await c.submit('q3');
+    expect(roles(model.seen.length - 1, 'assistant'), isEmpty);
+  });
 }

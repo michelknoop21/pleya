@@ -96,7 +96,10 @@ class _BigPInputBarState extends State<BigPInputBar> {
             BigPNewConversationButton(session: widget.session, inline: true),
             const SizedBox(width: 8),
           ],
+          // Keyed: the pill comes and goes beside it, and the field (focus,
+          // keyboard) must keep its element when it does.
           Expanded(
+            key: const ValueKey('bigp.field'),
             child: AutomationNode(
               id: AutomationIds.bigpInput,
               role: 'field',
@@ -157,14 +160,15 @@ class _BigPInputBarState extends State<BigPInputBar> {
         ],
       ),
     );
-    if (!showNew || widget.inline) return field;
-    // iPhone: the pill and the field on one line, both 46 pt, centred.
+    if (widget.inline) return field;
+    // iPhone: the pill and the field on one line, both 46 pt, centred. One
+    // Row always, with the pill conditional: a different parent for the field
+    // would drop the keyboard when an answer arrives while typing.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        BigPNewConversationButton(session: widget.session),
-        const SizedBox(width: 8),
-        Expanded(child: field),
+        if (showNew) ...[BigPNewConversationButton(session: widget.session), const SizedBox(width: 8)],
+        Expanded(key: const ValueKey('bigp.fieldRow'), child: field),
       ],
     );
   }

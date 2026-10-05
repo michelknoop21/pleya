@@ -184,11 +184,10 @@ class AssistantController extends ChangeNotifier {
     _memoryEpoch++;
   }
 
-  /// There is something to start over from: an answer on screen or earlier
-  /// turns. Not while a run is going; "Nieuw gesprek" is offered between
-  /// questions only.
-  bool get hasConversation =>
-      !_asking && _state != AssistantSurfaceState.working && (_prompt != null || _conversation.isNotEmpty);
+  /// An answer (or a failed ask) is on screen to start over from. Not in
+  /// the greeting, even when memory is left behind a parked run, and not
+  /// while a run is going.
+  bool get hasConversation => !_asking && _state != AssistantSurfaceState.working && _prompt != null;
 
   /// The "Nieuw gesprek" button: forgets the memory and the answer on screen.
   /// No card, no undo.

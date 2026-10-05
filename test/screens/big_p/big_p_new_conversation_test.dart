@@ -167,6 +167,41 @@ void main() {
     });
   });
 
+  for (final inline in [false, true]) {
+    testWidgets('the keyboard stays up when the pill comes and goes while typing (${inline ? 'iPad' : 'iPhone'})', (
+      tester,
+    ) async {
+      answerTitles(c);
+      await pumpHost(tester, inline ? _matrix[3] : _matrix[1]);
+      await tester.tap(find.byType(FocusableTextField));
+      await tester.showKeyboard(find.byType(FocusableTextField));
+      await tester.enterText(find.byType(FocusableTextField), 'en de');
+      await settle(tester);
+      expect(button(), findsOneWidget);
+      tester.testTextInput.log.clear();
+
+      // An answer going out and coming in while the user types.
+      c
+        ..state = AssistantSurfaceState.working
+        ..emit();
+      await settle(tester);
+      expect(button(), findsNothing);
+      c
+        ..state = AssistantSurfaceState.result
+        ..emit();
+      await settle(tester);
+      expect(button(), findsOneWidget);
+
+      final textField = tester.widget<FocusableTextField>(find.byType(FocusableTextField));
+      expect(textField.focusNode!.hasFocus, isTrue);
+      expect(tester.testTextInput.isVisible, isTrue);
+      final dropped = tester.testTextInput.log.where(
+        (m) => m.method == 'TextInput.clearClient' || m.method == 'TextInput.hide',
+      );
+      expect(dropped, isEmpty);
+    });
+  }
+
   group('alignment over the audit matrix', () {
     for (final v in _matrix) {
       for (final scale in [1.0, 1.3]) {

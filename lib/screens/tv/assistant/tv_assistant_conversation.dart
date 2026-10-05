@@ -298,7 +298,9 @@ class TvAssistantConversation extends StatelessWidget {
               // second row in the summoned panel and in the 1038 pt surface,
               // which costs the answer its fifth card.
               label: t.assistant.mobile.newConversationShort,
-              icon: Symbols.edit_square_rounded,
+              // No icon in the 760 pt summoned panel: with it the three buttons
+              // wrap to a second row there.
+              icon: compact ? null : Symbols.edit_square_rounded,
               primary: false,
               automationId: AutomationIds.assistantButton,
               automationInstance: 'newConversation',

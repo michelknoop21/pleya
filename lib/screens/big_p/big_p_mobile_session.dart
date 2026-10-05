@@ -87,6 +87,7 @@ class BigPMobileSession extends ChangeNotifier {
       // Too long ago to be a follow-up: a new conversation.
       controller.clearConversation();
       if (controller.state == AssistantSurfaceState.result) controller.reset();
+      _resultAt = null;
     }
     // Short of ready it asks again: a keychain that failed may have recovered.
     if (controller.availability != AssistantAvailability.ready) {
@@ -145,7 +146,9 @@ class BigPMobileSession extends ChangeNotifier {
     if (state == AssistantSurfaceState.idle ||
         (state == AssistantSurfaceState.working && controller.displays.isEmpty)) {
       _opened.clear();
-      if (state == AssistantSurfaceState.idle) _resultAt = null;
+      // Memory left behind (a run parked before it answered) keeps the age of
+      // the last answer, so the 30 minutes still end that conversation.
+      if (state == AssistantSurfaceState.idle && controller.conversation.isEmpty) _resultAt = null;
     }
     _lastState = state;
   }

@@ -2,9 +2,12 @@
 /// elk scherm"): when he may come, what he opens, and how he leaves.
 library;
 
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
@@ -402,6 +405,45 @@ void main() {
       expect(focusedLabel(), isNot('assistant.results'), reason: 'at its end the key moves the focus on');
     });
 
+    testWidgets('Vraag Big P, Nieuw and Klaar stay on one row in the 760 pt panel, short and long answer', (
+      tester,
+    ) async {
+      await summoned(tester);
+      for (final (name, answer) in [
+        ('short', 'De scan van Films loopt.'),
+        ('long', List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')),
+      ]) {
+        c
+          ..state = AssistantSurfaceState.result
+          ..prompt = 'Hoeveel films staan er?'
+          ..answer = answer
+          ..emit();
+        await settle(tester);
+        final ask = tester.getRect(find.byWidgetPredicate((w) => w is BigPButton && w.automationInstance == 'ask'));
+        final fresh = tester.getRect(
+          find.byWidgetPredicate((w) => w is BigPButton && w.automationInstance == 'newConversation'),
+        );
+        final done = tester.getRect(find.byWidgetPredicate((w) => w is BigPButton && w.automationInstance == 'done'));
+        expect(fresh.center.dy, closeTo(ask.center.dy, 1), reason: '$name: Nieuw on the row of Vraag Big P');
+        expect(done.center.dy, closeTo(ask.center.dy, 1), reason: '$name: Klaar on the row of Vraag Big P');
+        expect(ask.right, lessThan(fresh.left));
+        expect(fresh.right, lessThan(done.left));
+        final balloon = tester.getRect(find.byType(BigPBalloon));
+        expect(done.right, lessThanOrEqualTo(balloon.right));
+        final dir = Platform.environment['NEWCONV_SHOT_DIR'];
+        if (dir != null) {
+          await tester.runAsync(() async {
+            final ro = tester.renderObject<RenderRepaintBoundary>(find.byType(RepaintBoundary).first);
+            final image = await ro.toImage();
+            final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+            File('$dir/new-conversation-tv-summon-760-$name.png')
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(bytes!.buffer.asUint8List());
+          });
+        }
+      }
+    });
+
     testWidgets('a short answer keeps the panel short', (tester) async {
       await summoned(tester);
       c
@@ -415,9 +457,8 @@ void main() {
         ..answer = List.filled(40, 'Ik heb veel films met Tom Cruise gevonden.').join(' ')
         ..emit();
       await settle(tester);
-      // The three follow-ups stand under both, each up to two lines. The
-      // three buttons wrap to a second row in this 760 pt panel.
-      expect(short, lessThan(tester.getRect(find.byType(BigPBalloon)).height * 0.85));
+      // The three follow-ups stand under both, each up to two lines.
+      expect(short, lessThan(tester.getRect(find.byType(BigPBalloon)).height * 0.75));
     });
 
     // Hardware, build 318: a long answer opened at its last lines, could not
