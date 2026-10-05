@@ -16,16 +16,20 @@ class AssistantAccountKey {
   final String? serverId;
   final String accountId;
 
+  /// Jellyfin and Emby write one GUID with or without dashes, in either case
+  /// (the same rule as `JellyfinClient.sameUserId`), so two spellings are one
+  /// account. Other providers compare exactly.
+  String get _id => provider == AssistantAccountProvider.jellyfin || provider == AssistantAccountProvider.emby
+      ? accountId.replaceAll('-', '').toLowerCase()
+      : accountId;
+
   @override
   bool operator ==(Object other) =>
-      other is AssistantAccountKey &&
-      other.provider == provider &&
-      other.serverId == serverId &&
-      other.accountId == accountId;
+      other is AssistantAccountKey && other.provider == provider && other.serverId == serverId && other._id == _id;
 
   @override
-  int get hashCode => Object.hash(provider, serverId, accountId);
+  int get hashCode => Object.hash(provider, serverId, _id);
 
   @override
-  String toString() => '${provider.name}|${serverId ?? ''}|$accountId';
+  String toString() => '${provider.name}|${serverId ?? ''}|$_id';
 }

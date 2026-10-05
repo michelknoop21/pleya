@@ -298,7 +298,8 @@ Future<AssistantToolResult> _watchedPeriod(
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
         days: days,
-        partial: partial,
+        // Plays left out of "the others" make the ranking incomplete too.
+        partial: partial || leftOut.isNotEmpty,
         titles: topTitles,
         users: topUsers,
         unavailable: [for (final id in unavailable) ctx.serverName(id)],

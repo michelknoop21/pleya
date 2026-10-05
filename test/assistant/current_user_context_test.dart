@@ -52,4 +52,32 @@ void main() {
     expect(a == b, isFalse);
     expect({a, b}, hasLength(2));
   });
+
+  test('a Jellyfin or Emby GUID is one account with or without dashes and in either case', () {
+    const dashed = AssistantAccountKey(
+      AssistantAccountProvider.jellyfin,
+      'A1B2C3D4-0000-1111-2222-333344445555',
+      serverId: 'jf',
+    );
+    const plain = AssistantAccountKey(
+      AssistantAccountProvider.jellyfin,
+      'a1b2c3d4000011112222333 344445555',
+      serverId: 'jf',
+    );
+    final compact = AssistantAccountKey(
+      AssistantAccountProvider.jellyfin,
+      'a1b2c3d4000011112222333344445555',
+      serverId: 'jf',
+    );
+    expect(dashed == compact, isTrue);
+    expect(dashed.hashCode, compact.hashCode);
+    expect(dashed.toString(), compact.toString());
+    expect(plain == compact, isFalse, reason: 'a space is not a dash');
+    // Other providers compare exactly.
+    expect(
+      const AssistantAccountKey(AssistantAccountProvider.pleyaServer, 'A-b', serverId: 's') ==
+          const AssistantAccountKey(AssistantAccountProvider.pleyaServer, 'ab', serverId: 's'),
+      isFalse,
+    );
+  });
 }

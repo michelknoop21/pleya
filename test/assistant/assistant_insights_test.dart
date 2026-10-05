@@ -1252,6 +1252,44 @@ void main() {
         expect(leftOut['servers'], unorderedEquals(['Pleya', 'Woonkamer']));
       });
 
+      test('plays left out make the card partial, and a complete read does not', () async {
+        final left = await ctxWith(CurrentUserContext.empty);
+        final partial =
+            (await _tool('watch_stats').run(left, null, {'scope': 'period', 'audience': 'others'}))
+                as AssistantToolResult;
+        expect((partial.display! as AssistantWatchStats).partial, isTrue);
+        final full =
+            (await _tool('watch_stats').run(await ctxWith(me), null, {'scope': 'period', 'audience': 'others'}))
+                as AssistantToolResult;
+        expect((full.display! as AssistantWatchStats).partial, isFalse);
+      });
+
+      test('the Jellyfin asker is removed although the server spells the id with other dashes and case', () async {
+        final spelled = CurrentUserContext.build(const [
+          AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexOwner: true),
+          AssistantSelfSource(serverId: 'woon', backend: MediaBackend.jellyfin, userId: 'AA-BB-J7'),
+        ]);
+        final now = DateTime.now();
+        final jf = _Jf(
+          'woon',
+          'Woonkamer',
+          users: const [
+            ServerUser(id: 'aabbj7', name: 'michel', role: ServerUserRole.member, allLibraries: true),
+            ServerUser(id: 'j8', name: 'lee', role: ServerUserRole.member, allLibraries: true),
+          ],
+          played: {
+            'aabbj7': [_played('x1', 'Dune', now)],
+            'j8': [_played('x1', 'Dune', now)],
+          },
+        );
+        final data = await others(
+          await _plexCtx(others: [jf], currentUser: spelled, history: [_plexPlay(7, 'movie', 'Dune', now)]),
+        );
+        final names = (data['top_users']! as List).map((u) => (u as Map)['user']);
+        expect(names, isNot(contains('michel')), reason: 'aabbj7 is AA-BB-J7');
+        expect(names, containsAll(['lee', 'Sam']));
+      });
+
       test('current streams carry no account id, so "others" needs a period', () async {
         await expectLater(
           _tool('watch_stats').run(await ctxWith(me), null, {'scope': 'now', 'audience': 'others'}),
