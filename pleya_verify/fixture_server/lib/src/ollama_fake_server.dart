@@ -60,6 +60,17 @@ class OllamaFakeServer {
             {'title': 'Basalt zoeken', 'intent': 'search', 'prompt': 'Zoek Basalt.'},
           ],
         });
+      } else if (prompt == 'Ontdek ruimtefilms.') {
+        // One Seerr discovery: six request cards in one display, past the point
+        // where the TV result list goes dense (BP-09). find_title is capped at
+        // five candidates, so discovery is the way to six or more matches.
+        if (replies.isNotEmpty) {
+          message = {'role': 'assistant', 'content': 'Dit zijn de beste kandidaten.'};
+        } else if (names.contains('discover_request_titles')) {
+          message = _call('discover-space', 'discover_request_titles', {'kind': 'movie'});
+        } else {
+          return _json({'error': 'discover tool not offered'}, status: 400);
+        }
       } else if (prompt == 'Zoek Aurora.' || prompt == 'Zoek Basalt.') {
         final title = prompt == 'Zoek Aurora.' ? 'Aurora' : 'Basalt';
         if (replies.isNotEmpty) {
