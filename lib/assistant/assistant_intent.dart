@@ -24,7 +24,7 @@ enum AssistantAudience { me, others, everyone }
 
 // A watch verb, the anchor for every audience word: "others" or "everyone" on
 // its own also appear in recommendation sentences ("a film everyone likes").
-const _watch = r'(?:kijk\w*|ke+k\w*|gekeken|gezien|watch\w*|seen)';
+const _watch = r'(?:kijk\w*|ke+k\w*|gekeken|bekeken|gezien|watch\w*|seen)';
 final _meWatch = RegExp(
   r'\b(heb ik|keek ik|zag ik|ik heb (?:\w+\s+){0,2}(?:gekeken|gezien)|ik (?:\w+\s+){0,2}(?:gekeken|gezien) heb|mijn (?:kijk|geschiedenis|historie|laatst)|'
   r'have i|did i watch|i (?:have )?watched|my (?:watch|history))',
@@ -35,7 +35,7 @@ final _othersWatch = RegExp(
 // Unmistakable without a verb: the asker is named out.
 final _othersFixed = RegExp(
   r'\b(zonder mij|behalve mij|iedereen behalve (?:mij|ik|me)\b|everyone else|everybody else|without me|except me|'
-  r'andere gebruikers|other users)\b',
+  r'andere gebruikers|other users|(?:everyone|everybody)\s+(?:but|besides|other than)\s+(?:me|myself|i))\b',
 );
 // "Not the others": the others are what the user does not want.
 final _notOthers = RegExp(r'\b(niet|geen|not)\s+(?:wat\s+)?(?:de\s+|the\s+)?(?:anderen|others)\b');
@@ -113,12 +113,14 @@ class AssistantIntent {
     );
   }
 
-  /// This intent, with every field the question did not state itself taken
-  /// from [parent]'s explicit ones: a task split off a question keeps what that
-  /// question fixed, however the model words the task.
+  /// This intent, with the audience and period the question did not state itself
+  /// taken from [parent]'s explicit ones: a task split off a question keeps whose
+  /// data and which period it was about, however the model words the task. The
+  /// kind is not inherited: in "what did I watch and tip a series" the kind word
+  /// belongs to the tip, and a child must not narrow the history with it.
   AssistantIntent inheriting(AssistantIntent parent) => AssistantIntent(
     audience: audience.known ? audience : (parent.audience.explicit ? parent.audience : audience),
-    kind: kind.known ? kind : (parent.kind.explicit ? parent.kind : kind),
+    kind: kind,
     days: days.known ? days : (parent.days.explicit ? parent.days : days),
   );
 

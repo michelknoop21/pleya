@@ -140,9 +140,32 @@ void main() {
       final child = _i('Toon de meest bekeken titels').inheriting(parent);
       expect(child.audience.value, AssistantAudience.others);
       expect(child.days.value, 7);
+      expect(child.kind.known, isFalse);
       final own = _i('Toon wat ik gekeken heb').inheriting(parent);
       expect(own.audience.value, AssistantAudience.me, reason: 'the child states its own audience');
       expect(AssistantIntent.unknown.inheriting(AssistantIntent.unknown).any, isFalse);
+    });
+
+    test('English "everyone but/besides me" is the others, never everyone', () {
+      for (final q in [
+        'What did everyone but me watch?',
+        'What did everybody besides me watch?',
+        'What did everyone other than me watch?',
+      ]) {
+        expect(_i(q).audience.value, AssistantAudience.others, reason: q);
+      }
+    });
+
+    test('a child never inherits the kind: it can belong to a tip in the parent question', () {
+      final parent = _i('Wat heb ik gekeken en tip een serie');
+      final child = _i('Toon mijn kijkgeschiedenis').inheriting(parent);
+      expect(child.kind.known, isFalse);
+      expect(child.constrain('my_watching', const {}).args, isNot(contains('kind')));
+      expect(child.audience.value, AssistantAudience.me);
+    });
+
+    test('"bekeken" is a watch verb', () {
+      expect(_i('Wat is er door anderen bekeken?').audience.value, AssistantAudience.others);
     });
   });
 }
