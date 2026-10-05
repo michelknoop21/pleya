@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'assistant_account_key.dart';
+import 'assistant_media_key.dart';
 import 'assistant_people.dart';
 import '../media/media_stream.dart';
 import '../services/unified_catalog/source_cursor.dart';

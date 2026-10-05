@@ -94,7 +94,8 @@ const _playsPerUser = 200;
 /// server stay two users. [named] is false for a fallback label ("User 7"),
 /// which is never matched across servers. [account] is the source's own key
 /// for the person (a plex.tv id from Tautulli is global; every other id is
-/// that server's), null when the source gives none.
+/// that server's), null when the source gives none. [year] and [ids] are the
+/// title's own, null where the source gives none (most history rows).
 typedef _Play = ({
   String server,
   String titleKey,
@@ -104,6 +105,8 @@ typedef _Play = ({
   int seconds,
   bool named,
   AssistantAccountKey? account,
+  int? year,
+  ExternalIds? ids,
 });
 
 /// The wall-clock budget of one tool call. [race] answers null once it is
@@ -325,7 +328,8 @@ final List<AssistantTool> _insightTools = [
         'What is being watched and by whom, across every server this profile administers, in one answer: '
         'scope "now" for current streams, "period" for the most watched titles and most active users over the '
         'last days (1-31). Call it once per question: one call covers all servers, a title or person on several '
-        'servers is counted once with the plays summed, and "unavailable" names the servers that could not '
+        'servers is counted once with the plays summed (a title joined across servers on its name alone is marked '
+        'merged_across_servers: titleOnly and merged_on_title_only counts them: say the ranking is not proven then), and "unavailable" names the servers that could not '
         'answer (with their backend). On Jellyfin, Emby and Pleya Server a period counts each finished title once '
         'per user, at its last play (those servers keep no play log). For a question about films only or series '
         'only pass media "movie" or "show" (period only, rejected with scope "now"): the answer and the card then hold just those titles. '

@@ -40,6 +40,8 @@ Future<_ServerPlays> _tautulliPlays(ServerId id, TautulliClient tautulli, int da
             named: true,
             // Tautulli reports plex.tv ids, global to the service.
             account: e.userId != null ? AssistantAccountKey(AssistantAccountProvider.plexTv, '${e.userId}') : null,
+            year: null,
+            ids: null,
           ),
     ],
     hours: true,
@@ -69,6 +71,8 @@ Future<_ServerPlays?> _plexPlays(ServerId id, PlexClient plex, String token, int
           named: p.userName != null,
           // The Plex server's own account numbering, valid on that server only.
           account: AssistantAccountKey(AssistantAccountProvider.plexServer, '${p.accountId}', serverId: id.value),
+          year: null,
+          ids: null,
         ),
     ],
     hours: false,
@@ -109,6 +113,8 @@ Future<_ServerPlays> _jellyfinPlays(ServerId id, JellyfinClient client, int days
           user.id,
           serverId: id.value,
         ),
+        year: item.year,
+        ids: item.ids,
       ));
     }
   }
@@ -149,6 +155,8 @@ Future<_ServerPlays?> _pleyaPlays(ServerId id, PleyaServerClient ps, int days) a
             seconds: 0,
             named: true,
             account: AssistantAccountKey(AssistantAccountProvider.pleyaServer, w.userId, serverId: id.value),
+            year: null,
+            ids: null,
           ),
     ],
     hours: false,

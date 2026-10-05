@@ -15,7 +15,17 @@ typedef JellyfinActiveSession = ({
 
 /// One finished film or episode of one user, with the server's single
 /// last-played date for it (a replay moves the date, it adds no row).
-typedef JellyfinPlayedItem = ({String id, String title, String? seriesId, String? seriesName, DateTime lastPlayed});
+/// [year] and [ids] describe a film; an episode's own year and ids are not
+/// its series', so they stay null there.
+typedef JellyfinPlayedItem = ({
+  String id,
+  String title,
+  String? seriesId,
+  String? seriesName,
+  DateTime lastPlayed,
+  int? year,
+  ExternalIds? ids,
+});
 
 /// Server administration ([ServerUserAdministration], [RetryableJobsClient],
 /// library scans, item refresh) for Jellyfin and Emby.
@@ -341,6 +351,7 @@ mixin _JellyfinAdminMethods {
         'SortBy': 'DatePlayed',
         'SortOrder': 'Descending',
         'Limit': limit.toString(),
+        'Fields': 'ProviderIds',
         'EnableUserData': 'true',
         'EnableImages': 'false',
       },
@@ -359,6 +370,10 @@ mixin _JellyfinAdminMethods {
                 seriesId: i['Type'] == 'Episode' ? i['SeriesId'] as String? : null,
                 seriesName: i['Type'] == 'Episode' ? i['SeriesName'] as String? : null,
                 lastPlayed: at,
+                year: i['Type'] == 'Movie' && i['ProductionYear'] is int ? i['ProductionYear'] as int : null,
+                ids: i['Type'] == 'Movie' && i['ProviderIds'] is Map<String, dynamic>
+                    ? ExternalIds.fromJellyfinProviderIds(i['ProviderIds'] as Map<String, dynamic>)
+                    : null,
               ),
     ];
   }

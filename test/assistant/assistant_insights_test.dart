@@ -237,8 +237,15 @@ PleyaWatchedTitle _watched(String user, String name, String item, String title, 
   updatedAt: at,
 );
 
-JellyfinPlayedItem _played(String id, String title, DateTime at, {String? series}) =>
-    (id: id, title: title, seriesId: series == null ? null : 'S-$series', seriesName: series, lastPlayed: at);
+JellyfinPlayedItem _played(String id, String title, DateTime at, {String? series, int? year, ExternalIds? ids}) => (
+  id: id,
+  title: title,
+  seriesId: series == null ? null : 'S-$series',
+  seriesName: series,
+  lastPlayed: at,
+  year: year,
+  ids: ids,
+);
 
 AssistantTool _tool(String name) => assistantTools.singleWhere((t) => t.name == name);
 
@@ -1142,6 +1149,32 @@ void main() {
       expect(paths, isNot(contains('/status/sessions/history/all')));
     });
 
+    test('Tautulli "others": the asker leaves by plex.tv id, a namesake with another id stays', () async {
+      Map<String, Object?> row(int userId, String name) => {
+        'user_id': userId,
+        'user': name,
+        'friendly_name': name,
+        'media_type': 'movie',
+        'full_title': 'Dune',
+        'rating_key': 1,
+        'play_duration': 600,
+      };
+      final tautulli = _tautulli(
+        [],
+        (_) => {
+          'data': [row(5, 'michel'), row(9, 'michel')],
+        },
+      );
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-1', backend: MediaBackend.plex, plexTvAccountId: 5),
+      ]);
+      final ctx = await _plexCtx(tautulli: tautulli, currentUser: me);
+      final result =
+          await _tool('watch_stats').run(ctx, null, {'scope': 'period', 'audience': 'others'}) as AssistantToolResult;
+      expect(result.data['plays'], 1, reason: 'only the account with another plex.tv id');
+      expect(result.data, isNot(contains('left_out')));
+    });
+
     test('a failing Tautulli falls back to Plex history', () async {
       final tautulli = TautulliClient(
         const TautulliSession(baseUrl: 'https://tautulli.test', authMode: TautulliAuthMode.apiKey, token: 'T'),
@@ -1181,6 +1214,98 @@ void main() {
       expect(display.users, hasLength(2));
     });
 
+    group('title identity across servers (BP-03)', () {
+      _Jf jf(String machine, List<JellyfinPlayedItem> items) => _Jf(
+        machine,
+        machine,
+        users: const [ServerUser(id: 'u', name: 'sam', role: ServerUserRole.member, allLibraries: true)],
+        played: {'u': items},
+      );
+
+      Future<AssistantToolResult> stats(AssistantToolContext ctx, {String? media}) async =>
+          await _tool('watch_stats').run(ctx, null, {'scope': 'period', 'media': ?media}) as AssistantToolResult;
+
+      List<Map<String, Object?>> top(AssistantToolResult r) => (r.data['top_titles']! as List).cast();
+
+      test('a title that matches on its name alone is merged, marked, and the ranking is not complete', () async {
+        final now = DateTime.now();
+        final ctx = await _plexCtx(
+          others: [
+            jf('woon', [_played('x1', 'Dune', now, year: 2021)]),
+          ],
+          history: [_plexPlay(7, 'movie', 'Dune', now)],
+        );
+        final r = await stats(ctx);
+        expect(top(r).single['plays'], 2);
+        expect(top(r).single['merged_across_servers'], 'titleOnly');
+        expect(r.data['merged_on_title_only'], 1);
+        expect((r.display! as AssistantWatchStats).partial, isTrue, reason: 'never shown as a complete ranking');
+      });
+
+      test('a shared external id is proof: merged, marked external, nothing guessed', () async {
+        final now = DateTime.now();
+        const ids = ExternalIds(tmdb: 438631);
+        final ctx = _ctx([
+          jf('a', [_played('x1', 'Dune', now, year: 2021, ids: ids)]),
+          jf('b', [_played('y1', 'Dune: Part One', now, year: 2021, ids: ids)]),
+        ]);
+        final r = await stats(ctx);
+        expect(top(r), hasLength(1));
+        expect(top(r).single['plays'], 2);
+        expect(top(r).single['merged_across_servers'], 'external');
+        expect(r.data, isNot(contains('merged_on_title_only')));
+        expect((r.display! as AssistantWatchStats).partial, isFalse);
+      });
+
+      test('equal title and year is merged and marked, not guessed', () async {
+        final now = DateTime.now();
+        final ctx = _ctx([
+          jf('a', [_played('x1', 'Dune', now, year: 2021)]),
+          jf('b', [_played('y1', 'Dune', now, year: 2021)]),
+        ]);
+        final r = await stats(ctx);
+        expect(top(r).single['merged_across_servers'], 'titleYear');
+        expect(r.data, isNot(contains('merged_on_title_only')));
+      });
+
+      test('Dune 1984 and Dune 2021 stay two titles, on one server and across servers', () async {
+        final now = DateTime.now();
+        final ctx = _ctx([
+          jf('a', [_played('x1', 'Dune', now, year: 1984), _played('x2', 'Dune', now, year: 2021)]),
+          jf('b', [_played('y1', 'Dune', now, year: 2021)]),
+        ]);
+        final r = await stats(ctx);
+        final plays = {for (final t in top(r)) t['plays']! as int: t};
+        expect(top(r), hasLength(2));
+        expect(plays.keys, unorderedEquals([1, 2]));
+        expect(plays[2]!['merged_across_servers'], 'titleYear', reason: '2021 on both servers');
+        expect(plays[1]!, isNot(contains('merged_across_servers')), reason: '1984 is on one server only');
+      });
+
+      test('a series and a film with one name are never one title', () async {
+        final now = DateTime.now();
+        final ctx = _ctx([
+          jf('a', [_played('x1', 'Dune', now, year: 2021)]),
+          jf('b', [_played('e1', 'Pilot', now, series: 'Dune')]),
+        ]);
+        final r = await stats(ctx);
+        expect(top(r), hasLength(2));
+        expect(top(r).every((t) => !t.containsKey('merged_across_servers')), isTrue);
+        expect((await stats(ctx, media: 'movie')).data['plays'], 1);
+      });
+
+      test('one server alone is never a merge, however many plays', () async {
+        final now = DateTime.now();
+        final ctx = _ctx([
+          jf('a', [_played('x1', 'Dune', now), _played('x2', 'Dune', now)]),
+        ]);
+        final r = await stats(ctx);
+        expect(top(r).single['plays'], 2);
+        expect(top(r).single, isNot(contains('merged_across_servers')));
+        expect(r.data, isNot(contains('merged_on_title_only')));
+      });
+    });
+
     test('the session binding names me from the connection: Jellyfin by user id, Pleya Server unknown', () {
       final jf = _Jf('woon', 'Woonkamer');
       final ps = _Ps('zolder', 'Zolder');
@@ -1203,7 +1328,7 @@ void main() {
         AssistantSelfSource(serverId: 'woon', backend: MediaBackend.jellyfin, userId: 'j7'),
       ]);
 
-      Future<AssistantToolContext> ctxWith(CurrentUserContext currentUser) {
+      Future<AssistantToolContext> ctxWith(CurrentUserContext currentUser, {String jellyfinTitle = 'Dune'}) {
         final now = DateTime.now();
         final jf = _Jf(
           'woon',
@@ -1213,8 +1338,8 @@ void main() {
             ServerUser(id: 'j8', name: 'lee', role: ServerUserRole.member, allLibraries: true),
           ],
           played: {
-            'j7': [_played('x1', 'Dune', now)],
-            'j8': [_played('x1', 'Dune', now)],
+            'j7': [_played('x1', jellyfinTitle, now)],
+            'j8': [_played('x1', jellyfinTitle, now)],
           },
         );
         return _plexCtx(
@@ -1258,8 +1383,11 @@ void main() {
             (await _tool('watch_stats').run(left, null, {'scope': 'period', 'audience': 'others'}))
                 as AssistantToolResult;
         expect((partial.display! as AssistantWatchStats).partial, isTrue);
+        // Another title on Jellyfin: one name on both servers would be a title-only merge, partial on its own.
         final full =
-            (await _tool('watch_stats').run(await ctxWith(me), null, {'scope': 'period', 'audience': 'others'}))
+            (await _tool(
+                  'watch_stats',
+                ).run(await ctxWith(me, jellyfinTitle: 'Arrival'), null, {'scope': 'period', 'audience': 'others'}))
                 as AssistantToolResult;
         expect((full.display! as AssistantWatchStats).partial, isFalse);
       });
