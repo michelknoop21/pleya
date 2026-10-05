@@ -89,7 +89,7 @@ Future<List<JellyfinActiveSession>?> _streamsOn(AssistantToolContext ctx, Server
 
 /// Streams on every server. Ids are positional: no server session id is
 /// passed on. Paused and transcoding are left out where a server does not say.
-Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx) async {
+Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx, {Set<String> excluded = const {}}) async {
   final read = await _perServer(ctx, (id) => _streamsOn(ctx, id));
   final answered = [
     for (final (id, s) in read)
@@ -101,7 +101,8 @@ Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx) async {
   ];
   final shown = [
     for (final (id, streams) in read)
-      for (final s in streams ?? const <JellyfinActiveSession>[]) (server: ctx.serverName(id), s: s),
+      for (final s in streams ?? const <JellyfinActiveSession>[])
+        if (!excluded.contains(s.userName.trim().toLowerCase())) (server: ctx.serverName(id), s: s),
   ].take(20).toList();
   return AssistantToolResult(
     {

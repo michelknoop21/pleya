@@ -307,9 +307,9 @@ final List<AssistantTool> _insightTools = [
         'servers is counted once with the plays summed, and "unavailable" names the servers that could not '
         'answer (with their backend). On Jellyfin, Emby and Pleya Server a period counts each finished title once '
         'per user, at its last play (those servers keep no play log). For a question about films only or series '
-        'only pass media "movie" or "show" (period only): the answer and the card then hold just those titles. '
-        'To leave accounts out (the asker\'s own, when they say "my friends"), pass their server account names in '
-        'exclude_users; the asker\'s account name is not known unless they said it.',
+        'only pass media "movie" or "show" (period only, rejected with scope "now"): the answer and the card then hold just those titles. '
+        'To leave accounts out (the asker\'s own, when they say "my friends"), pass up to 10 server account names in '
+        'exclude_users (both scopes); the asker\'s account name is not known unless they said it.',
     risk: AssistantToolRisk.read,
     needsServer: false,
     properties: const {
@@ -345,12 +345,15 @@ final List<AssistantTool> _insightTools = [
       };
       final excluded = switch (args['exclude_users']) {
         null => const <String>{},
-        final List<Object?> l when l.every((e) => e is String) => {
+        final List<Object?> l when l.length <= 10 && l.every((e) => e is String) => {
           for (final e in l) (e as String).trim().toLowerCase(),
         },
         _ => throw const AssistantToolError('invalid_exclude_users'),
       };
-      return scope == 'now' ? _watchedNow(ctx) : _watchedPeriod(ctx, days, media: media, excluded: excluded);
+      if (scope == 'now' && media != null) throw const AssistantToolError('media_needs_period');
+      return scope == 'now'
+          ? _watchedNow(ctx, excluded: excluded)
+          : _watchedPeriod(ctx, days, media: media, excluded: excluded);
     },
   ),
 ];

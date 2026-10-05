@@ -148,7 +148,7 @@ String? _episodeLabel(MediaItem item) {
   return t.unifiedCatalog.discovery.episodeLabel(season: season, episode: episode);
 }
 
-/// "18min left", the same [formatRemainingTime] every Verder kijken card and
+/// "18 min left", the same [formatRemainingTime] every Verder kijken card and
 /// the detail page use (DEC-144), and only when there is a real offset and a
 /// real runtime to subtract it from. A resumable row whose server reported no
 /// duration gets no line rather than a made-up one.
