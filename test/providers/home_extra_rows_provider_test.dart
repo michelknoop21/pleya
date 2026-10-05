@@ -65,6 +65,9 @@ class _Source implements WatchlistSource {
   @override
   Future<List<WatchlistEntry>> fetch() async {
     fetches++;
+    // A real source answers over the network; the tests must not rely on it
+    // answering within a fixed number of microtask turns.
+    await Future<void>.delayed(const Duration(milliseconds: 30));
     return entries;
   }
 
@@ -132,9 +135,12 @@ void main() {
     },
   );
 
+  /// Lets the source, the snapshot store (a database executor) and the
+  /// projection finish. Real timers: microtask turns are not enough once a
+  /// fetch or a database write is involved, and CI machines are slower.
   Future<void> settle() async {
-    for (var i = 0; i < 20; i++) {
-      await Future<void>.delayed(Duration.zero);
+    for (var i = 0; i < 15; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
     }
   }
 
@@ -222,6 +228,9 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     await tester.pump();
+    expect(tester.takeException(), isNull);
+    // Let the source's answer arrive, so no timer outlives the test.
+    await tester.pump(const Duration(milliseconds: 50));
     expect(tester.takeException(), isNull);
   });
 
