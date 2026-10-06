@@ -1,0 +1,41 @@
+name: ipados.viewport-density.navigation
+target: ios-sim
+# The tablet has Media and Search in its bottom bar, unlike the phone shell.
+# Capture each destination on the same simulator before judging density.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - settle: 3500
+  - configure_view: {orientation: portrait}
+  - assert_viewport: {orientation: portrait}
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: home
+
+  - tap: {id: nav.libraries}
+  - wait_until: {id: screen.libraries, timeout: 15000}
+  - settle: 1000
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: media
+
+  - tap: {id: nav.search}
+  - settle: 1000
+  # nav.search is attached to the icon (24x32), not NavigationDestination's
+  # full hit area; the successful tap above proves the actual destination.
+  - assert: {id: nav.search, insideViewport: true}
+  - snapshot: search
+
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "my_pleya.tile[libraries]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: my-pleya
+
+  - tap: {id: "my_pleya.tile[settings]"}
+  - wait_until: {id: screen.settings, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "settings.tile[appearance]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: settings-top

@@ -12,9 +12,18 @@ Before running anything against a real target, check whether the target can actu
   installed and whether it can inject HID input into the simulator. Without `idb`, tvOS input
   falls back to AppleScript, which requires an unlocked, awake screen and silently drops
   keystrokes if the screen is off. Do not run a tvOS scenario before this comes back clean.
+  Pleya Verify itself requires `idb`: its script calls are time-bounded and never fall back to
+  AppleScript. A temporarily wedged companion retries once, then fails the run explicitly.
+  Run only one Verify scenario at a time against a given simulator UDID, including runs from
+  other worktrees. Both runs install the same Verify bundle ID; another install can terminate
+  the first app mid-scenario. A connection-refused result after that is not UI evidence.
 - **macOS / iOS-simulator**: there is no separate readiness command. `dart run bin/verify.dart run
   <scenario.yaml>` builds and boots as part of the run; a missing toolchain or simulator surfaces
   as a `run`-time `ERROR`, not a silent skip.
+  For iPad landscape, `configure_view` first accepts an already-landscape live viewport; otherwise
+  it uses the Simulator rotation shortcut. macOS Accessibility permission and an unlocked screen
+  are required for that shortcut. A platform acknowledgement without a landscape viewport never
+  counts as PASS.
 
 Everything below assumes the working directory is `pleya_verify/runner/` (every subcommand resolves
 `../scenarios`, `../automation_ids.yaml`, and `../..` for the repo root relative to that directory),

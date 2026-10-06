@@ -1,0 +1,48 @@
+name: ios.viewport-density.navigation
+target: ios-sim
+# One install covers the main phone surfaces at a fixed logical width.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 20000}
+  - settle: 3500
+  - assert: {id: home.header, insideViewport: true}
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: home
+
+  - tap: {id: nav.series}
+  - wait_until: {id: screen.series, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "landing.header[series]", insideViewport: true}
+  - assert: {id: "landing.title[series]", insideViewport: true}
+  - assert: {id: "landing.rail[series.0]", insideViewport: true}
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: series
+
+  - tap: {id: nav.movies}
+  - wait_until: {id: screen.movies, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "landing.header[movies]", insideViewport: true}
+  - assert: {id: "landing.title[movies]", insideViewport: true}
+  - assert: {id: "landing.rail[movies.0]", insideViewport: true}
+  - assert: {id: nav.bar, insideViewport: true}
+  - snapshot: movies
+
+  - tap: {id: nav.discover}
+  - wait_until: {id: screen.discover, timeout: 15000}
+  - settle: 500
+  - tap: {id: nav.myPleya}
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "my_pleya.tile[downloads]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: "my_pleya.tile[libraries]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: my-pleya
+
+  - tap: {id: "my_pleya.tile[settings]"}
+  - wait_until: {id: screen.settings, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "settings.tile[appearance]", insideViewport: true, minimumTapTarget: 44}
+  - snapshot: settings-top

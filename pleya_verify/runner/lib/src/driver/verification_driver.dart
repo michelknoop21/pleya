@@ -29,6 +29,11 @@ abstract class VerificationDriver {
   /// The scenario `target:` value this driver handles, e.g. `'macos'`.
   String get target;
 
+  /// Stable, human-readable identity of the surface that produced the run.
+  /// This must distinguish device classes such as iPhone and iPad; [target]
+  /// alone is intentionally too broad for viewport-density evidence.
+  Map<String, Object?> get deviceDescriptor;
+
   /// The transport client bound to this driver's running instance. Only
   /// valid after [launch] — null before that or after [terminate].
   VerifyClient? get client;
@@ -58,6 +63,11 @@ abstract class VerificationDriver {
   Future<void> launch({Duration timeout = const Duration(seconds: 20)});
 
   Future<void> terminate();
+
+  /// Configures the measurable surface before assertions/snapshots.
+  /// Desktop drivers accept [width]/[height]; mobile drivers accept an
+  /// [orientation] of `portrait`, `landscapeLeft`, or `landscapeRight`.
+  Future<void> configureView({double? width, double? height, String? orientation});
 
   Future<Map<String, Object?>> uiTree();
 
@@ -109,6 +119,10 @@ abstract class VerificationDriver {
   /// callback. Supported wherever [tap] itself is (every driver but tvOS,
   /// which has no pointer route at all; [C2]).
   Future<void> tap(double x, double y, {Duration? hold});
+
+  /// Drags through the platform's real pointer gesture pipeline. Unsupported
+  /// on tvOS, which has no pointer input route.
+  Future<void> drag(double startX, double startY, double endX, double endY, {required Duration duration});
 
   /// The driver's own operational log (build/launch/terminate events,
   /// captured process stdout/stderr) — `driver.log` in the evidence

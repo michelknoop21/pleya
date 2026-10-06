@@ -96,6 +96,32 @@ void main() {
     expect(longPressed, isTrue, reason: 'held between down and up for at least kLongPressTimeout');
   });
 
+  testWidgets('a drag moves a scrollable through the gesture pipeline', (tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ListView.builder(
+          controller: controller,
+          itemCount: 30,
+          itemBuilder: (_, index) => SizedBox(height: 100, child: Text('Row $index')),
+        ),
+      ),
+    );
+
+    final future = dispatchAutomationPointerDrag(
+      const Offset(300, 550),
+      const Offset(300, 150),
+      duration: const Duration(milliseconds: 450),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    final result = await future;
+    await tester.pumpAndSettle();
+
+    expect(result, AutomationInputResult.dispatched);
+    expect(controller.offset, greaterThan(100));
+  });
+
   testWidgets('text inserts into the focused field through its own controller', (tester) async {
     final controller = TextEditingController();
     addTearDown(controller.dispose);

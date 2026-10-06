@@ -26,10 +26,9 @@
 #   scripts/tvos_sim.sh check-keyboard   # regressietest: Menu sluit het toetsenbord
 #   scripts/tvos_sim.sh check-select     # regressietest: select voert een letter in
 #
-# Eén randvoorwaarde: knoppen sturen vereist een ONTGRENDELD, WAKKER scherm.
-# Staat het scherm uit, dan heeft Simulator geen venster en verdwijnen
-# toetsaanslagen geruisloos — geen foutmelding, ze doen gewoon niets. `doctor`
-# zegt het expliciet. Screenshots en logs werken altijd.
+# Met idb kan invoer ook op een vergrendelde Mac. Alleen de interactieve
+# AppleScript-fallback vereist een ontgrendeld, wakker scherm; Pleya Verify
+# verbiedt die fallback en stopt met een expliciete fout bij idb-problemen.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -71,13 +70,41 @@ boot() {
 # op AppleScript, en dat stuurt naar de vóórste app — dus het Simulator-venster
 # moet dan zichtbaar zijn en je verliest je focus bij elke druk.
 IDB_READY=""
+bounded_idb() {
+  # idb occasionally wedges while connecting to a shared simulator host.
+  # Python's subprocess timeout kills and reaps that exact idb child; a shell
+  # timeout around this whole script could leave it running in the background.
+  local idb_path
+  idb_path="$(command -v idb)" || return 127
+  python3 - "$idb_path" "$@" <<'PY'
+import os
+import subprocess
+import sys
+
+try:
+    timeout = int(os.environ.get("TVOS_SIM_IDB_TIMEOUT_SEC", "10"))
+except ValueError:
+    timeout = 10
+timeout = min(max(timeout, 1), 60)
+try:
+    result = subprocess.run([sys.argv[1], *sys.argv[2:]], timeout=timeout)
+except subprocess.TimeoutExpired:
+    print(f"idb {' '.join(sys.argv[2:])} timed out after {timeout}s", file=sys.stderr)
+    sys.exit(124)
+sys.exit(result.returncode)
+PY
+}
+
 idb_available() {
   [[ -n "$IDB_READY" ]] && return "$IDB_READY"
-  if command -v idb >/dev/null 2>&1 && idb connect "$DEVICE" >/dev/null 2>&1; then
-    IDB_READY=0
-  else
-    IDB_READY=1
-  fi
+  IDB_READY=1
+  command -v idb >/dev/null 2>&1 || return 1
+  local attempt idb_error
+  for attempt in 1 2; do
+    if idb_error="$(bounded_idb connect "$DEVICE" 2>&1)"; then IDB_READY=0; break; fi
+    [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]] && echo "idb connect poging $attempt: $idb_error" >&2
+    [[ "$attempt" == 2 ]] || sleep 0.3
+  done
   return "$IDB_READY"
 }
 
@@ -113,10 +140,17 @@ window_input_available() {
   return 1
 }
 
-input_available() { idb_available || window_input_available; }
+input_available() {
+  if [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]]; then idb_available; else idb_available || window_input_available; fi
+}
 
 require_input() {
-  input_available || die "geen invoer mogelijk — installeer idb of ontgrendel het Mac-scherm. Zie: $0 doctor"
+  if ! input_available; then
+    if [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]]; then
+      die "idb niet bereikbaar voor $DEVICE; Pleya Verify gebruikt geen AppleScript-fallback. Zie: $0 doctor"
+    fi
+    die "geen invoer mogelijk — installeer idb of ontgrendel het Mac-scherm. Zie: $0 doctor"
+  fi
 }
 
 key_code_for() {
@@ -153,13 +187,14 @@ send_key() {
     idb_available || die "een lange druk vereist idb — AppleScript kan een toets niet vasthouden. Zie: $0 doctor"
     local seconds
     seconds="$(awk -v ms="$hold_ms" 'BEGIN { printf "%.3f", ms / 1000 }')"
-    IDB_UDID="$DEVICE" idb ui key "$(hid_code_for "$1")" --duration "$seconds" >/dev/null 2>&1 \
+    IDB_UDID="$DEVICE" bounded_idb ui key "$(hid_code_for "$1")" --duration "$seconds" >/dev/null 2>&1 \
       || die "idb ui key $1 --duration $seconds mislukt"
     return 0
   fi
   if idb_available; then
-    IDB_UDID="$DEVICE" idb ui key "$(hid_code_for "$1")" >/dev/null 2>&1 && return 0
+    IDB_UDID="$DEVICE" bounded_idb ui key "$(hid_code_for "$1")" >/dev/null 2>&1 && return 0
   fi
+  [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]] && die "idb-toetsinvoer mislukt; Verify valt niet terug op AppleScript"
   send_code "$(key_code_for "$1")"
 }
 
@@ -191,8 +226,9 @@ special_code_for() {
 type_text() {
   local text="$1" i ch run=""
   if idb_available; then
-    IDB_UDID="$DEVICE" idb ui text "$text" >/dev/null 2>&1 && return 0
+    IDB_UDID="$DEVICE" bounded_idb ui text "$text" >/dev/null 2>&1 && return 0
   fi
+  [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]] && die "idb-tekstinvoer mislukt; Verify valt niet terug op AppleScript"
   for ((i = 0; i < ${#text}; i++)); do
     ch="${text:i:1}"
     local code; code="$(special_code_for "$ch")"
@@ -473,7 +509,7 @@ case "${1:-}" in
     APP_BUILD_BOOL=false; [[ -d "$APP" ]] && APP_BUILD_BOOL=true
     if idb_available; then
       INPUT_KIND="idb"
-    elif window_input_available; then
+    elif [[ "${TVOS_SIM_REQUIRE_IDB:-}" != "1" ]] && window_input_available; then
       INPUT_KIND="applescript"
     else
       INPUT_KIND="none"
@@ -592,8 +628,10 @@ case "${1:-}" in
       for k in "${KEYS_EXPANDED[@]}"; do KEYS_CODES+=("$(hid_code_for "$k")"); done
       # One idb-companion round trip for the whole batch instead of one
       # process spawn (and its own connect cost) per key.
-      IDB_UDID="$DEVICE" idb ui key-sequence "${KEYS_CODES[@]}" >/dev/null 2>&1
+      IDB_UDID="$DEVICE" bounded_idb ui key-sequence "${KEYS_CODES[@]}" >/dev/null 2>&1 \
+        || die "idb key-sequence mislukt"
     else
+      [[ "${TVOS_SIM_REQUIRE_IDB:-}" == "1" ]] && die "idb-key-sequence niet beschikbaar; Verify valt niet terug op AppleScript"
       for k in "${KEYS_EXPANDED[@]}"; do send_key "$k"; sleep 0.6; done
     fi
     ;;

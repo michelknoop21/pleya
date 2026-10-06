@@ -54,6 +54,24 @@ List<ScenarioError> validateScenario(Scenario scenario, AutomationIdCatalog cata
         ),
       );
     }
+    if (step.verb == 'drag') {
+      if (_isTvosTarget(scenario.target)) {
+        errors.add(
+          ScenarioError(
+            sourcePath: scenario.sourcePath,
+            line: step.line,
+            message: "'drag' is not a valid step on tvOS — tvOS has no pointer input route",
+          ),
+        );
+      }
+      _validateDrag(step, scenario, errors);
+    }
+    if (step.verb == 'configure_view') {
+      _validateConfigureView(step, scenario, errors);
+    }
+    if (step.verb == 'assert_viewport') {
+      _validateAssertViewport(step, scenario, errors);
+    }
     if (step.verb == 'wait_until') {
       final args = step.args;
       if (args is! Map || !args.containsKey('timeout')) {
@@ -82,6 +100,120 @@ List<ScenarioError> validateScenario(Scenario scenario, AutomationIdCatalog cata
   }
 
   return errors;
+}
+
+void _validateAssertViewport(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  final args = step.args;
+  if (args is! Map || args.length != 1 || !const {'portrait', 'landscape'}.contains(args['orientation'])) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'assert_viewport needs exactly {orientation: portrait|landscape}',
+      ),
+    );
+  }
+}
+
+void _validateDrag(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  final args = step.args;
+  if (args is! Map) {
+    errors.add(ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: 'drag needs a map'));
+    return;
+  }
+  for (final key in const ['startX', 'startY', 'endX', 'endY']) {
+    if (args[key] is! num) {
+      errors.add(
+        ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: 'drag $key must be a number'),
+      );
+    }
+  }
+  final duration = args['durationMs'];
+  if (duration is! int || duration <= 0 || duration > 5000) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'drag durationMs must be a positive whole number at most 5000',
+      ),
+    );
+  }
+  const allowed = {'startX', 'startY', 'endX', 'endY', 'durationMs'};
+  for (final key in args.keys.where((key) => !allowed.contains(key))) {
+    errors.add(ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: "drag does not accept '$key'"));
+  }
+}
+
+void _validateConfigureView(ScenarioStep step, Scenario scenario, List<ScenarioError> errors) {
+  final args = step.args;
+  if (args is! Map) {
+    errors.add(ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: 'configure_view needs a map'));
+    return;
+  }
+  const allowed = {'width', 'height', 'orientation'};
+  for (final key in args.keys.where((key) => !allowed.contains(key))) {
+    errors.add(
+      ScenarioError(sourcePath: scenario.sourcePath, line: step.line, message: "configure_view does not accept '$key'"),
+    );
+  }
+  for (final key in const ['width', 'height']) {
+    final value = args[key];
+    if (value != null && (value is! num || value <= 0)) {
+      errors.add(
+        ScenarioError(
+          sourcePath: scenario.sourcePath,
+          line: step.line,
+          message: 'configure_view $key must be a positive number',
+        ),
+      );
+    }
+  }
+  final orientation = args['orientation'];
+  if (orientation != null && !const {'portrait', 'landscapeLeft', 'landscapeRight'}.contains(orientation)) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'configure_view orientation must be portrait, landscapeLeft, or landscapeRight',
+      ),
+    );
+  }
+  if (!args.containsKey('orientation') && !(args.containsKey('width') && args.containsKey('height'))) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'configure_view needs orientation or both width and height',
+      ),
+    );
+  }
+  if (scenario.target == 'macos' && args.containsKey('orientation')) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'configure_view on macOS accepts width and height, not orientation',
+      ),
+    );
+  }
+  if (scenario.target == 'ios-sim' && (args.containsKey('width') || args.containsKey('height'))) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'configure_view on iOS accepts orientation; select size through the simulator device class',
+      ),
+    );
+  }
+  if (_isTvosTarget(scenario.target)) {
+    errors.add(
+      ScenarioError(
+        sourcePath: scenario.sourcePath,
+        line: step.line,
+        message: 'configure_view is not valid on tvOS; select 1080p or 4K through the simulator display mode',
+      ),
+    );
+  }
 }
 
 void _validateVerb(

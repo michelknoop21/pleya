@@ -47,6 +47,32 @@ void main() {
     expect(errors.single.message, contains('requires a timeout field'));
   });
 
+  test('configure_view only accepts a positive size and known orientation', () {
+    final scenario = parseScenarioString(
+      'name: x\ntarget: macos\nsteps:\n  - configure_view: {width: 0, height: 800, orientation: diagonal}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final errors = validateScenario(scenario, catalog);
+    expect(errors.map((e) => e.message), containsAll([contains('width'), contains('orientation')]));
+  });
+
+  test('drag is rejected on tvOS and requires complete numeric coordinates', () {
+    final scenario = parseScenarioString(
+      'name: x\ntarget: tvos-sim\nsteps:\n  - drag: {startX: 1, startY: 2, endX: nope, durationMs: 0}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final messages = validateScenario(scenario, catalog).map((e) => e.message);
+    expect(messages, containsAll([contains('tvOS'), contains('endX'), contains('durationMs')]));
+  });
+
+  test('assert_viewport requires a supported orientation', () {
+    final scenario = parseScenarioString(
+      'name: x\ntarget: ios-sim\nsteps:\n  - assert_viewport: {orientation: diagonal}\n',
+      sourcePath: 'inline.yaml',
+    );
+    expect(validateScenario(scenario, catalog).map((e) => e.message), contains(contains('orientation')));
+  });
+
   test('an assert with a mistyped predicate name is rejected', () {
     // The false-PASS this guards: presence succeeds, no handler recognizes
     // `focussed`, so the step evaluates nothing and reports green. An assert

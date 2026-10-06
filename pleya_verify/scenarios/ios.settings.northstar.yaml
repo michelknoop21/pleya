@@ -22,11 +22,13 @@ steps:
   - tap: {id: "my_pleya.tile[settings]"}
   - wait_until: {id: screen.settings, timeout: 10000}
   - settle: 1000
-  # Only the first card's first tile is provably inside the viewport on a
-  # real device without scrolling (375x667 iPhone SE-class simulator):
-  # Koppelingen and Verbindingen render below the fold, and this DSL has no
-  # scroll/drag verb (see `pleya_verify/runner/lib/src/scenario/model.dart`'s
-  # `stepVerbs`), the same known, accepted transport gap the register
-  # already carries for I7-08's multi-server picker. Not built here.
   - assert: {id: "settings.tile[appearance]", insideViewport: true, minimumTapTarget: 44}
-  - snapshot: settings-northstar
+  - snapshot: settings-top
+  # Exercise the real gesture pipeline instead of stopping at the first
+  # viewport. The Servers row is near the bottom of this long settings list.
+  - drag: {startX: 187, startY: 580, endX: 187, endY: 160, durationMs: 450}
+  - settle: 500
+  - drag: {startX: 187, startY: 580, endX: 187, endY: 160, durationMs: 450}
+  - settle: 500
+  - snapshot: settings-bottom
+  - assert: {id: "settings.tile[servers]", insideViewport: true, minimumTapTarget: 44}
