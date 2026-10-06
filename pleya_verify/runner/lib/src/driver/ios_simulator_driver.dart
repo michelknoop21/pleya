@@ -515,7 +515,13 @@ class IosSimulatorDriver implements VerificationDriver {
   }
 
   Future<void> _rememberDeviceMetadata(String udid) async {
-    final result = await _run('xcrun', ['simctl', 'list', 'devices', 'available', '--json']);
+    // Device metadata only labels the evidence; hosts without simctl (Linux CI) still run.
+    final ProcessResult result;
+    try {
+      result = await _run('xcrun', ['simctl', 'list', 'devices', 'available', '--json']);
+    } on ProcessException {
+      return;
+    }
     if (result.exitCode != 0) return;
     final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
     final devicesByRuntime = decoded['devices'] as Map<String, Object?>;

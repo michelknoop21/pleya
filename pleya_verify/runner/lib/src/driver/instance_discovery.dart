@@ -60,13 +60,7 @@ class VerifyInstance {
   /// run says which channel identified the instance it drove.
   final String source;
 
-  const VerifyInstance({
-    required this.port,
-    required this.protocolVersion,
-    this.pid,
-    this.token,
-    required this.source,
-  });
+  const VerifyInstance({required this.port, required this.protocolVersion, this.pid, this.token, required this.source});
 
   Map<String, Object?> toJson() => {
     'port': port,
