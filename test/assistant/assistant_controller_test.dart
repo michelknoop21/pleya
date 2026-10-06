@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
+import 'package:pleya/assistant/assistant_execution.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
@@ -20,6 +21,7 @@ import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'assistant_find_fakes.dart' as find;
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/services/seerr/seerr_client.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
@@ -1169,14 +1171,68 @@ void main() {
 
   test('question model budget stops children while retaining completed tasks', () async {
     final children = [
-      for (var i = 0; i < 10; i++) _Model(i < 2 ? [_say('finished $i')] : [for (var j = 0; j < 6; j++) _call('ping')]),
+      for (var i = 0; i < AssistantQuestionBudget.splitTaskCap; i++)
+        _Model(i < 2 ? [_say('finished $i')] : [for (var j = 0; j < 6; j++) _call('ping')]),
     ];
     final c = splitController(children, [_ping]);
-    await c.submit('ten commands');
+    await c.submit('nine commands');
     expect(children.fold<int>(0, (sum, model) => sum + model.calls), 19);
     expect(c.tasks.take(2).map((t) => t.status), everyElement(AssistantTaskStatus.completed));
     expect(c.tasks.take(2).map((t) => t.answer), ['finished 0', 'finished 1']);
     expect(c.tasks.where((t) => t.error == 'budget_exhausted'), isNotEmpty);
+  });
+
+  test('a split of one-tool tasks at the cap fits the model budget: every task gets its closing call', () async {
+    final children = [
+      for (var i = 0; i < AssistantQuestionBudget.splitTaskCap; i++) _Model([_call('ping'), _say('finished $i')]),
+    ];
+    final c = splitController(children, [_ping]);
+    await c.submit('as many commands as fit');
+    expect(c.tasks.map((t) => t.status), everyElement(AssistantTaskStatus.completed));
+    expect(c.tasks.last.answer, 'finished ${AssistantQuestionBudget.splitTaskCap - 1}');
+  });
+
+  test('a task whose action ran ends as done when the budget refuses its closing call', () async {
+    final gate = Completer<void>();
+    final act = AssistantTool(
+      name: 'act',
+      description: 'act',
+      risk: AssistantToolRisk.mutation,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        await gate.future;
+        return const AssistantToolResult(
+          {'status': 'done'},
+          record: AssistantActionRecord(kind: AssistantActionKind.scanLibrary, serverName: 'Zolder', subject: 'Films'),
+        );
+      },
+    );
+    // Three tasks spend six calls each. With the routing call and the last
+    // task's own tool call that is the whole budget of twenty.
+    final burners = [
+      for (var i = 0; i < 3; i++) _Model([for (var j = 0; j < 6; j++) _call('ping')]),
+    ];
+    final last = _Model([_call('act'), _say('never said')]);
+    final c = splitController([...burners, last], [_ping, act]);
+    final done = c.submit('four commands');
+    while (burners.any((m) => m.calls < 6)) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    gate.complete();
+    await done;
+
+    expect(last.calls, 1, reason: 'the closing call was refused');
+    final task = c.tasks.last;
+    expect((task.status, task.error), (AssistantTaskStatus.completed, null));
+    expect(task.actions.map((a) => a.subject), ['Films']);
+    expect(c.actions.map((a) => a.subject), ['Films']);
+    // The card says what Pleya did, not that the task took too many steps.
+    expect(assistantTaskStatusLabel(task), (
+      status: assistantActionKindLabel(AssistantActionKind.scanLibrary),
+      detail: null,
+    ));
   });
 
   test('question tool budget is shared atomically across child runs', () async {
@@ -1200,11 +1256,11 @@ void main() {
     );
     final c = splitController(
       [
-        for (var i = 0; i < 10; i++) _Model([reply, _say('done')]),
+        for (var i = 0; i < AssistantQuestionBudget.splitTaskCap; i++) _Model([reply, _say('done')]),
       ],
       [tool],
     );
-    await c.submit('ten commands');
+    await c.submit('nine commands');
     expect(reads, 29); // the root routing call is also reserved
     expect(c.tasks.where((t) => t.error == 'budget_exhausted'), isNotEmpty);
   });

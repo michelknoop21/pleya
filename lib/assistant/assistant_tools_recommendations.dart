@@ -17,7 +17,7 @@ final List<AssistantTool> _recommendationTools = [
         'Strict cohort evidence is supported only for the current authorized Jellyfin administrator. '
         'Names resolve local Pleya profile labels to verified server identities, otherwise uniquely match server users; ambiguity returns authorized choices for conversational clarification: ask the user, a choice offered in this turn stays unresolved until they answer. '
         'The current server user is always included; me names that same identity. Explicit user_ids must be verified against the fresh authorized user list. '
-        'Unknown access, watch state or requested metadata excludes a title. Series completion aggregates cannot prove zero child progress, so strict unseen series are unavailable. Results are a bounded sample, ordered by rating then stable identity. '
+        'Unknown access, watch state or requested metadata excludes a title. A title with several copies on the server counts once and needs that proof for every copy. Series completion aggregates cannot prove zero child progress, so strict unseen series are unavailable. Results are a bounded sample, ordered by rating then stable identity. '
         'Explain coverage and facts as returned; never invent tastes, history overlap or unwatched status from absent history.',
     risk: AssistantToolRisk.read,
     properties: const {
@@ -138,9 +138,17 @@ Future<AssistantToolOutcome> _recommendTogether(
       if (unanswered.isNotEmpty) 'ask_the_user_which': unanswered,
       'results': <Object>[],
     });
+  // Proof is per title, not per copy: one film in "Films" and "Films 4K" is
+  // one title with two copies, and a copy someone watched, may not open or
+  // Pleya cannot read rules the title out. [titles] holds each title's copies.
   final candidates = <String, ({MediaItem item, String libraryId})>{};
+  final titles = <List<String>>[];
   var partial = false;
   var sampled = false;
+  var unknown = 0;
+  var denied = 0;
+  var watched = 0;
+  var filtered = 0;
   for (final kind in filters.kind == null ? [MediaKind.movie, MediaKind.show] : [filters.kind!]) {
     final content = await catalog.rowLoader.load(
       // The 40 slots go to this server's titles the requester has not
@@ -157,60 +165,81 @@ Future<AssistantToolOutcome> _recommendTogether(
     checkCurrent();
     partial |= content.isPartial;
     sampled |= !content.isExact;
+    final visible = switch (catalog.rowLoader) {
+      final CatalogHomeCustomRowLoader loader => {
+        for (final library in loader.librariesFor(kind))
+          if (library.serverId == id) library.libraryId,
+      },
+      _ => null,
+    };
     for (final group in content.groups) {
-      for (final source in group.sources) {
-        if (source.serverId != id || source.item.kind != kind || source.libraryId == null) continue;
-        if (catalog.rowLoader case final CatalogHomeCustomRowLoader loader) {
-          if (!loader
-              .librariesFor(kind)
-              .any((library) => library.serverId == id && library.libraryId == source.libraryId))
-            continue;
-        }
-        if (candidates.length == _cohortCandidateCap && !candidates.containsKey(source.item.id)) {
-          sampled = true;
-          continue;
-        }
-        candidateLibraries[source.libraryId!] = kind;
-        candidates[source.item.id] = (item: source.item, libraryId: source.libraryId!);
+      final copies = [
+        for (final source in group.sources)
+          if (source.serverId == id && source.item.kind == kind) source,
+      ];
+      if (copies.isEmpty) continue;
+      // A copy outside the visible libraries is never read, so nothing
+      // proves it unwatched: the title goes.
+      if (copies.any((c) => c.libraryId == null || !(visible?.contains(c.libraryId) ?? true))) {
+        unknown++;
+        continue;
       }
+      // A title is read with all its copies or not at all.
+      final fresh = {
+        for (final c in copies)
+          if (!candidates.containsKey(c.item.id)) c.item.id,
+      };
+      if (candidates.length + fresh.length > _cohortCandidateCap) {
+        sampled = true;
+        continue;
+      }
+      for (final c in copies) {
+        candidateLibraries[c.libraryId!] = kind;
+        candidates[c.item.id] = (item: c.item, libraryId: c.libraryId!);
+      }
+      titles.add([for (final c in copies) c.item.id]);
     }
   }
-  final libraries = {for (final entry in candidates.entries) entry.key: entry.value.libraryId};
-  final requesterEvidence = await client.readParticipantEvidence(
+  final titleCount = titles.length + unknown;
+  final evidence = <String, Map<String, ParticipantItemEvidence>>{};
+
+  /// True when [title] stays in: every copy allowed and unwatched for every
+  /// user in [users], and a copy that meets the filters. Counts why not.
+  bool proven(List<String> title, Iterable<ServerUser> users) {
+    final observations = [
+      for (final copy in title)
+        for (final user in users) evidence[user.id]?[copy] ?? const ParticipantItemEvidence(),
+    ];
+    if (observations.any((e) => e.access == ParticipantAccess.denied)) {
+      denied++;
+    } else if (observations.any((e) => e.watch == ParticipantWatchState.watched)) {
+      watched++;
+    } else if (observations.any(
+      (e) => e.access != ParticipantAccess.allowed || e.watch != ParticipantWatchState.unwatched,
+    )) {
+      unknown++;
+    } else if (_cohortCopy(title, evidence[requester.id], filters) == null) {
+      filtered++;
+    } else {
+      return true;
+    }
+    return false;
+  }
+
+  evidence[requester.id] = await client.readParticipantEvidence(
     requester.id,
-    libraries,
+    {for (final entry in candidates.entries) entry.key: entry.value.libraryId},
     abort: ctx.cancel,
     checkCurrent: checkCurrent,
   );
   checkCurrent();
-  final evidence = <String, Map<String, ParticipantItemEvidence>>{requester.id: requesterEvidence};
-  final candidateCount = candidates.length;
-  var unknown = 0;
-  var denied = 0;
-  var watched = 0;
-  var filtered = 0;
-  candidates.removeWhere((key, _) {
-    final observation = requesterEvidence[key] ?? const ParticipantItemEvidence();
-    if (observation.access == ParticipantAccess.denied) {
-      denied++;
-      return true;
-    }
-    if (observation.watch == ParticipantWatchState.watched) {
-      watched++;
-      return true;
-    }
-    if (observation.access != ParticipantAccess.allowed || observation.watch != ParticipantWatchState.unwatched) {
-      unknown++;
-      return true;
-    }
-    if (observation.item == null || !filters.matches(observation.item!)) {
-      filtered++;
-      return true;
-    }
-    return false;
-  });
-  final eligibleLibraries = {for (final entry in candidates.entries) entry.key: entry.value.libraryId};
-  for (final user in selected.values.where((u) => u.id != requester.id)) {
+  titles.retainWhere((title) => proven(title, [requester]));
+  final eligibleLibraries = {
+    for (final title in titles)
+      for (final copy in title) copy: candidates[copy]!.libraryId,
+  };
+  final others = selected.values.where((u) => u.id != requester.id).toList();
+  for (final user in others) {
     evidence[user.id] = await client.readParticipantEvidence(
       user.id,
       eligibleLibraries,
@@ -219,30 +248,11 @@ Future<AssistantToolOutcome> _recommendTogether(
     );
     checkCurrent();
   }
-  final matches = <MediaItem>[];
-  for (final entry in candidates.entries) {
-    final observations = [
-      for (final user in selected.values) evidence[user.id]?[entry.key] ?? const ParticipantItemEvidence(),
-    ];
-    if (observations.any((e) => e.access == ParticipantAccess.denied)) {
-      denied++;
-      continue;
-    }
-    if (observations.any((e) => e.watch == ParticipantWatchState.watched)) {
-      watched++;
-      continue;
-    }
-    if (observations.any((e) => e.access != ParticipantAccess.allowed || e.watch != ParticipantWatchState.unwatched)) {
-      unknown++;
-      continue;
-    }
-    final item = observations.first.item;
-    if (item == null || !filters.matches(item)) {
-      filtered++;
-      continue;
-    }
-    matches.add(item);
-  }
+  // One result per title, however many copies it has.
+  final matches = <MediaItem>[
+    for (final title in titles)
+      if (others.isEmpty || proven(title, others)) _cohortCopy(title, evidence[requester.id], filters)!,
+  ];
   matches.sort((a, b) {
     final rating = (b.rating ?? -1).compareTo(a.rating ?? -1);
     return rating != 0 ? rating : a.globalKey.compareTo(b.globalKey);
@@ -271,7 +281,8 @@ Future<AssistantToolOutcome> _recommendTogether(
       for (final u in selected.values) {'user_id': u.id, 'name': clipText(u.name, 64)},
     ],
     'coverage': {
-      'candidates_checked': candidateCount,
+      'candidates_checked': titleCount,
+      'copies_read': candidates.length,
       'candidate_cap': _cohortCandidateCap,
       'series_unseen_supported': false,
       'sampled': sampled,
@@ -298,3 +309,11 @@ Future<AssistantToolOutcome> _recommendTogether(
     ],
   }, display: AssistantMediaGrid([for (final match in shown) (item: match, group: null)]));
 }
+
+/// The copy of [title] the result names: the first whose metadata the
+/// requester's read returned and that meets [filters]. Null when none does.
+MediaItem? _cohortCopy(
+  List<String> title,
+  Map<String, ParticipantItemEvidence>? requesterEvidence,
+  AssistantStrictFilters filters,
+) => title.map((copy) => requesterEvidence?[copy]?.item).nonNulls.where(filters.matches).firstOrNull;
