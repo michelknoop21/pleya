@@ -182,7 +182,24 @@ class VerifyClient {
   Future<Map<String, Object?>> inputPointer(double x, double y, {int? holdMs}) =>
       _postJson('/v1/input/pointer', {'x': x, 'y': y, if (holdMs != null) 'hold_ms': holdMs});
 
+  Future<Map<String, Object?>> inputDrag(
+    double startX,
+    double startY,
+    double endX,
+    double endY, {
+    required int durationMs,
+  }) => _postJson('/v1/input/drag', {
+    'start_x': startX,
+    'start_y': startY,
+    'end_x': endX,
+    'end_y': endY,
+    'duration_ms': durationMs,
+  });
+
   Future<Map<String, Object?>> inputText(String text) => _postJson('/v1/input/text', {'text': text});
+
+  Future<Map<String, Object?>> configureWindow(double width, double height) =>
+      _postJson('/v1/window', {'width': width, 'height': height});
 
   Future<Map<String, Object?>> overlay({bool? enabled, bool? showIds, bool? showBounds}) => _postJson('/v1/overlay', {
     if (enabled != null) 'enabled': enabled,
@@ -263,6 +280,8 @@ class VerifyClient {
     (method: 'POST', path: '/v1/wait'),
     (method: 'POST', path: '/v1/input/key'),
     (method: 'POST', path: '/v1/input/pointer'),
+    (method: 'POST', path: '/v1/input/drag'),
+    (method: 'POST', path: '/v1/window'),
     (method: 'POST', path: '/v1/input/text'),
     (method: 'POST', path: '/v1/overlay'),
     (method: 'GET', path: '/v1/screenshot'),

@@ -47,6 +47,13 @@ class FakeDriver implements VerificationDriver {
   String get target => 'macos';
 
   @override
+  Map<String, Object?> get deviceDescriptor => const {
+    'name': 'Fake Retina Mac',
+    'id': 'fake-device',
+    'class': 'desktop',
+  };
+
+  @override
   VerifyClient? get client => null;
 
   @override
@@ -158,6 +165,17 @@ class FakeDriver implements VerificationDriver {
   /// Every tap this driver was asked for, in order — x/y plus the hold in
   /// milliseconds (null for an ordinary tap).
   final List<({double x, double y, int? holdMs})> tapPoints = [];
+
+  final List<({double? width, double? height, String? orientation})> viewConfigurations = [];
+  final List<({double startX, double startY, double endX, double endY, int durationMs})> drags = [];
+
+  @override
+  Future<void> configureView({double? width, double? height, String? orientation}) async =>
+      viewConfigurations.add((width: width, height: height, orientation: orientation));
+
+  @override
+  Future<void> drag(double startX, double startY, double endX, double endY, {required Duration duration}) async =>
+      drags.add((startX: startX, startY: startY, endX: endX, endY: endY, durationMs: duration.inMilliseconds));
 
   @override
   Future<void> tap(double x, double y, {Duration? hold}) async =>
@@ -286,8 +304,15 @@ void main() {
     expect(File('${result.bundleDir.path}/screenshots/boot.png').existsSync(), isTrue);
     expect(File('${result.bundleDir.path}/ui-tree/final.json').existsSync(), isTrue);
 
-    final manifest = File('${result.bundleDir.path}/manifest.json').readAsStringSync();
-    expect(manifest, contains('"result": "PASS"'));
+    final manifest =
+        jsonDecode(File('${result.bundleDir.path}/manifest.json').readAsStringSync()) as Map<String, Object?>;
+    expect(manifest['result'], 'PASS');
+    expect(manifest['device'], {'name': 'Fake Retina Mac', 'id': 'fake-device', 'class': 'desktop'});
+    final snapshot = (manifest['steps'] as List).cast<Map<String, Object?>>().firstWhere(
+      (step) => step['verb'] == 'snapshot',
+    );
+    expect(snapshot['viewport'], {'available': true, 'width': 1280.0, 'height': 800.0});
+    expect(snapshot['screenshot_pixels'], isNull, reason: 'the fake screenshot is deliberately not a PNG');
   });
 
   test('fixture seed diagnostics survive prelaunch teardown in the existing driver log', () async {
@@ -399,6 +424,47 @@ void main() {
 
     expect(result.passed, isTrue);
     expect(driver.tapPoints, [(x: 12.0, y: 34.0, holdMs: null)]);
+  });
+
+  test('configure_view reaches the driver before the evidence snapshot', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.configure_view\ntarget: macos\nsetup:\n  - launch\nsteps:\n  - configure_view: {width: 1280, height: 800}\n  - snapshot: compact\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver();
+
+    final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
+
+    expect(result.passed, isTrue);
+    expect(driver.viewConfigurations, [(width: 1280.0, height: 800.0, orientation: null)]);
+  });
+
+  test('assert_viewport rejects an orientation that does not match the live view', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.orientation\ntarget: ios-sim\nsetup:\n  - launch\nsteps:\n  - assert_viewport: {orientation: portrait}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final result = await runScenario(
+      scenario: scenario,
+      scenarioSource: 'source',
+      driver: FakeDriver(),
+      repoRoot: repoRoot,
+    );
+    expect(result.passed, isFalse);
+    expect(result.failureMessage, contains('portrait'));
+  });
+
+  test('drag reaches the driver with coordinates and duration', () async {
+    final scenario = parseScenarioString(
+      'name: fixture.drag\ntarget: ios-sim\nsetup:\n  - launch\nsteps:\n  - drag: {startX: 200, startY: 700, endX: 200, endY: 200, durationMs: 450}\n',
+      sourcePath: 'inline.yaml',
+    );
+    final driver = FakeDriver();
+
+    final result = await runScenario(scenario: scenario, scenarioSource: 'source', driver: driver, repoRoot: repoRoot);
+
+    expect(result.passed, isTrue);
+    expect(driver.drags, [(startX: 200.0, startY: 700.0, endX: 200.0, endY: 200.0, durationMs: 450)]);
   });
 
   test('tap: {x, y, holdMs} reaches the driver as a held tap and is recorded in the manifest', () async {

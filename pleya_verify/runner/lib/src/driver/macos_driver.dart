@@ -63,6 +63,13 @@ class MacosDriver implements VerificationDriver {
   String get target => 'macos';
 
   @override
+  Map<String, Object?> get deviceDescriptor => {
+    'name': Platform.localHostname,
+    'id': Platform.localHostname,
+    'class': 'desktop',
+  };
+
+  @override
   VerifyClient? get client => _client;
 
   @override
@@ -319,23 +326,37 @@ class MacosDriver implements VerificationDriver {
     return (result['entries'] as List).cast<Map<String, Object?>>();
   }
 
-  /// Source and cache location for the window-geometry helper.
+  /// Source and cache location for the window-geometry/activation helper.
   ///
   /// `System Events` was the first attempt and does not work here: it reads
   /// windows through the Accessibility API, so without that permission the
   /// process is found but `window 1` is an invalid index — the same answer
   /// it gives for an app that genuinely has no window. `CGWindowList` needs
   /// no such permission, so `tool/macos_window_bounds.swift` asks the window
-  /// server directly. Compiling it costs a few seconds, hence the cache.
+  /// server directly and activates through AppKit without Accessibility
+  /// permission. Compiling it costs a few seconds, hence the cache.
   File get _windowBoundsSource => File('${repoRoot.path}/pleya_verify/runner/tool/macos_window_bounds.swift');
 
-  /// Raising the app by pid. This one *is* AppleScript, and it is fine that
-  /// it can fail: it only affects what is on top of the window, and the
-  /// blank-capture check is the net underneath.
-  static String _activateScript(int pid) =>
-      'tell application "System Events" to set frontmost of (first process whose unix id is $pid) to true';
-
   File get _windowBoundsBinary => File('${repoRoot.path}/.build/pleya-verify/bin/macos_window_bounds');
+
+  File get _windowScreenshotSource => File('${repoRoot.path}/pleya_verify/runner/tool/macos_window_screenshot.swift');
+
+  File get _windowScreenshotBinary => File('${repoRoot.path}/.build/pleya-verify/bin/macos_window_screenshot');
+
+  Future<File?> _ensureWindowScreenshotBinary() async {
+    final binary = _windowScreenshotBinary;
+    final source = _windowScreenshotSource;
+    if (!source.existsSync()) return null;
+    if (binary.existsSync() && binary.lastModifiedSync().isAfter(source.lastModifiedSync())) return binary;
+    binary.parent.createSync(recursive: true);
+    _log('compiling ${source.path}');
+    final result = await _run('swiftc', ['-O', '-parse-as-library', source.path, '-o', binary.path]);
+    if (result.exitCode != 0) {
+      _log('screenshot helper compilation failed: ${result.stderr}');
+      return null;
+    }
+    return binary;
+  }
 
   Future<File?> _ensureWindowBoundsBinary() async {
     final binary = _windowBoundsBinary;
@@ -384,22 +405,13 @@ class MacosDriver implements VerificationDriver {
       '${Directory.systemTemp.path}/pleya-verify-macos-screenshot-${DateTime.now().microsecondsSinceEpoch}.png',
     );
 
-    // Bring the app forward first: `-R` captures a screen *region*, so
-    // anything sitting on top of the window would be captured instead of it.
-    final pid = _process?.pid;
-    if (pid != null) {
-      // `-R` captures a screen *region*, so anything sitting on top of the
-      // window would land in the bundle instead of it. Raising the app by
-      // pid keeps that from happening; if the raise fails the capture still
-      // proceeds and the blank/again-wrong-content check below is the net.
-      await _run('osascript', ['-e', _activateScript(pid)]);
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-    }
+    await _activateForScreenshot();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
 
     final rect = await _windowRect();
     if (rect == null) {
       throw StateError(
-        'could not locate the Pleya window via System Events, so there is nothing safe to capture. '
+        'could not locate the Pleya window through the window server, so there is nothing safe to capture. '
         'Falling back to the whole display is not an option: it would put whatever else is on screen into '
         'the evidence bundle, and it would prove nothing about the app.',
       );
@@ -417,26 +429,37 @@ class MacosDriver implements VerificationDriver {
     // PASS, because the geometry assertions read the transport and never look
     // at the image. A bundle has to contain a picture of the app and nothing
     // else, both to be evidence and to stay private.
-    // `-l<windowid>`, not `-R<rect>`: the window id names the window itself,
-    // so the capture is right regardless of which of the attached displays
-    // it sits on and of what overlaps it. `-R` has to reason about a
-    // coordinate space spanning every display and failed outright here with
-    // "could not create image from rect" on a three-display setup. `-o`
-    // drops the drop-shadow, so the image is the window and nothing else.
-    final result = await _run('screencapture', ['-x', '-o', '-l${rect.windowId}', tempFile.path]);
+    final helper = await _ensureWindowScreenshotBinary();
+    final pid = _process?.pid;
+    if (helper == null || pid == null) throw StateError('macOS window screenshot helper is unavailable');
+    final result = await _run(helper.path, ['$pid', tempFile.path]);
     if (result.exitCode != 0 || !tempFile.existsSync()) {
-      throw StateError('screencapture failed (exit ${result.exitCode}): ${result.stderr}');
+      throw StateError('ScreenCaptureKit failed (exit ${result.exitCode}): ${result.stderr}');
     }
     final bytes = tempFile.readAsBytesSync();
     tempFile.deleteSync();
     assertNotBlankScreenshot(
       bytes,
-      context: 'screencapture of Pleya window ${rect.windowId} (${rect.width}x${rect.height})',
+      context: 'ScreenCaptureKit capture of Pleya window ${rect.windowId} (${rect.width}x${rect.height})',
       hint:
           'Check that the display is awake and unlocked, and that this process has Screen Recording '
           'permission (System Settings > Privacy & Security > Screen Recording).',
     );
     return bytes;
+  }
+
+  Future<void> _activateForScreenshot() async {
+    final process = await Process.start('osascript', ['-e', 'tell application id "$verifyBundleId" to activate']);
+    final exitCode = await process.exitCode.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        process.kill();
+        return -1;
+      },
+    );
+    if (exitCode != 0) {
+      _log('direct app activation failed or timed out (exit $exitCode)');
+    }
   }
 
   @override
@@ -459,6 +482,19 @@ class MacosDriver implements VerificationDriver {
   @override
   Future<void> tap(double x, double y, {Duration? hold}) async {
     await _requireClient().inputPointer(x, y, holdMs: hold?.inMilliseconds);
+  }
+
+  @override
+  Future<void> drag(double startX, double startY, double endX, double endY, {required Duration duration}) async {
+    await _requireClient().inputDrag(startX, startY, endX, endY, durationMs: duration.inMilliseconds);
+  }
+
+  @override
+  Future<void> configureView({double? width, double? height, String? orientation}) async {
+    if (orientation != null) throw UnsupportedError('macOS configure_view does not accept orientation');
+    if (width == null || height == null) throw ArgumentError('macOS configure_view needs width and height');
+    final result = await _requireClient().configureWindow(width, height);
+    if (result['ok'] != true) throw StateError('window resize failed: $result');
   }
 
   VerifyClient _requireClient() {

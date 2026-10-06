@@ -30,9 +30,10 @@ steps:
   - press: select
   - wait_until: {id: screen.my_pleya, timeout: 15000}
 
-  # The hub enters on the profile switch control; DOWN lands on the first
-  # tile. Left/right then walks the flat page order, so RIGHT is the whole
-  # traversal for the rest of this scenario.
+  # The hub enters on the profile switch control; one DOWN lands on the first
+  # tile (Libraries), a second would skip to Settings. Left/right then walks
+  # the flat page order, so RIGHT is the whole traversal for the rest of this
+  # scenario.
   - snapshot: 00-hub
   - press: down
   - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}

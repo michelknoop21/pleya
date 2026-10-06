@@ -83,6 +83,45 @@ Future<AutomationInputResult> dispatchAutomationPointerTap(Offset position, {Dur
   return AutomationInputResult.dispatched;
 }
 
+/// Synthesizes a pointer drag as a down, a sequence of timed move events and
+/// an up. The intermediate events matter: scrollables use velocity and drag
+/// recognizers, so teleporting directly from start to end is not equivalent.
+Future<AutomationInputResult> dispatchAutomationPointerDrag(
+  Offset start,
+  Offset end, {
+  required Duration duration,
+}) async {
+  if (NativeInputSession.isActive) return AutomationInputResult.blockedByNativeSession;
+  AutomationInput.onPointerModeRequested?.call();
+  scheduleFrameIfIdle();
+
+  final pointer = _nextPointerId++;
+  final binding = GestureBinding.instance;
+  binding.handlePointerEvent(PointerAddedEvent(pointer: pointer, position: start));
+  binding.handlePointerEvent(PointerDownEvent(pointer: pointer, position: start));
+  const steps = 12;
+  var previous = start;
+  final delay = Duration(microseconds: duration.inMicroseconds ~/ steps);
+  for (var step = 1; step <= steps; step++) {
+    await Future<void>.delayed(delay);
+    final position = Offset.lerp(start, end, step / steps)!;
+    binding.handlePointerEvent(PointerMoveEvent(pointer: pointer, position: position, delta: position - previous));
+    previous = position;
+  }
+  binding.handlePointerEvent(PointerUpEvent(pointer: pointer, position: end));
+  binding.handlePointerEvent(PointerRemovedEvent(pointer: pointer, position: end));
+  AutomationEventLog.instance.emit('input.received', {
+    'source': 'transport',
+    'gesture': 'drag',
+    'start_x': start.dx,
+    'start_y': start.dy,
+    'end_x': end.dx,
+    'end_y': end.dy,
+    'duration_ms': duration.inMilliseconds,
+  });
+  return AutomationInputResult.dispatched;
+}
+
 /// `POST /v1/input/text`. Inserts [text] into the currently focused text
 /// field, on the model of `tv_virtual_keyboard.dart`'s `_insert`: a
 /// synthetic `KeyEvent` (the [dispatchAutomationKey] path) never reaches an

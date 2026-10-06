@@ -5,9 +5,10 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:flutter/gestures.dart' show Offset;
-import 'package:flutter/widgets.dart' show BuildContext, MediaQuery;
+import 'package:flutter/widgets.dart' show BuildContext, MediaQuery, Size;
 
 import '../main.dart' show rootNavigatorKey;
 import '../utils/app_logger.dart';
@@ -67,7 +68,9 @@ const Map<String, String> _kRouteMethods = {
   '/v1/wait': 'POST',
   '/v1/input/key': 'POST',
   '/v1/input/pointer': 'POST',
+  '/v1/input/drag': 'POST',
   '/v1/input/text': 'POST',
+  '/v1/window': 'POST',
   '/v1/overlay': 'POST',
   '/v1/screenshot': 'GET',
   '/v1/signin': 'POST',
@@ -272,9 +275,50 @@ class AutomationServer {
         }
         final hold = holdMsRaw == null ? null : Duration(milliseconds: holdMsRaw as int);
         await _respondInputResult(request, await dispatchAutomationPointerTap(Offset(x, y), hold: hold));
+      case '/v1/input/drag':
+        final body = await _readJsonBody(request);
+        final startX = (body['start_x'] as num?)?.toDouble();
+        final startY = (body['start_y'] as num?)?.toDouble();
+        final endX = (body['end_x'] as num?)?.toDouble();
+        final endY = (body['end_y'] as num?)?.toDouble();
+        final durationMs = body['duration_ms'];
+        if (startX == null ||
+            startY == null ||
+            endX == null ||
+            endY == null ||
+            durationMs is! int ||
+            durationMs <= 0 ||
+            durationMs > 5000) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await _respondJson(request, {'error': 'drag needs coordinates and duration_ms from 1 through 5000'});
+          return;
+        }
+        await _respondInputResult(
+          request,
+          await dispatchAutomationPointerDrag(
+            Offset(startX, startY),
+            Offset(endX, endY),
+            duration: Duration(milliseconds: durationMs),
+          ),
+        );
       case '/v1/input/text':
         final body = await _readJsonBody(request);
         await _respondInputResult(request, dispatchAutomationText(body['text'] as String? ?? ''));
+      case '/v1/window':
+        final body = await _readJsonBody(request);
+        final width = (body['width'] as num?)?.toDouble();
+        final height = (body['height'] as num?)?.toDouble();
+        if (defaultTargetPlatform != TargetPlatform.macOS ||
+            width == null ||
+            height == null ||
+            width <= 0 ||
+            height <= 0) {
+          request.response.statusCode = HttpStatus.badRequest;
+          await _respondJson(request, {'ok': false, 'error': 'window needs positive width/height on macOS'});
+          return;
+        }
+        await windowManager.setSize(Size(width, height));
+        await _respondJson(request, {'ok': true, 'width': width, 'height': height});
       case '/v1/overlay':
         final body = await _readJsonBody(request);
         final current = AutomationOverlayController.instance.value;

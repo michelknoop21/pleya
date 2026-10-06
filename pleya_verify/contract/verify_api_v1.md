@@ -36,6 +36,20 @@ route zelf draait. Een pad dat niet in deze spec staat geeft 404.
 
 ## Endpoints
 
+### `POST /v1/input/drag`
+
+Body bevat `start_x`, `start_y`, `end_x`, `end_y` in logische pixels en
+`duration_ms` (1–5000). Stuurt een echte pointer down/move/up-reeks door de
+Flutter gesture pipeline. 200 met de reguliere input-resultaatvorm; onvolledige
+of ongeldige invoer geeft 400.
+
+### `POST /v1/window`
+
+macOS-only verification endpoint. Body `{"width": 1280, "height": 800}`
+resizes the app window in logical pixels and returns the applied dimensions.
+Other targets and non-positive or missing dimensions return 400. Triggert geen
+events.
+
 ### `GET /v1/health`
 
 Geen parameters. 200 met JSON:

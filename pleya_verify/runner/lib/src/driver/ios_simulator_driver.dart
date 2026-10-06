@@ -58,6 +58,8 @@ class IosSimulatorDriver implements VerificationDriver {
   final String? deviceUdidOverride;
 
   String? _resolvedUdid;
+  String? _resolvedDeviceName;
+  String? _resolvedRuntime;
   final List<String> _driverLog = [];
   VerifyClient? _client;
   VerifyInstance? _instance;
@@ -76,6 +78,17 @@ class IosSimulatorDriver implements VerificationDriver {
 
   @override
   String get target => 'ios-sim';
+
+  @override
+  Map<String, Object?> get deviceDescriptor {
+    final name = _resolvedDeviceName ?? 'unresolved iOS simulator';
+    return {
+      'name': name,
+      'id': _resolvedUdid,
+      'class': name.startsWith('iPad') ? 'tablet' : 'phone',
+      if (_resolvedRuntime != null) 'runtime': _resolvedRuntime,
+    };
+  }
 
   @override
   VerifyClient? get client => _client;
@@ -125,6 +138,11 @@ class IosSimulatorDriver implements VerificationDriver {
 
   @override
   Future<void> build() async {
+    if (Platform.environment['PLEYA_VERIFY_REUSE_BUILD'] == '1' && isolatedAppDir.existsSync()) {
+      await _assertBundleId(File('${isolatedAppDir.path}/Info.plist'), expected: verifyBundleId);
+      _log('reusing explicitly requested isolated iOS app build: ${isolatedAppDir.path}');
+      return;
+    }
     // Buildmappen naar de externe SSD (no-op zonder SSD of op CI).
     final linkScript = File('${repoRoot.absolute.path}/scripts/link_build_dirs.sh');
     if (linkScript.existsSync()) await _run('bash', [linkScript.path]);
@@ -388,6 +406,62 @@ class IosSimulatorDriver implements VerificationDriver {
     await _requireClient().inputPointer(x, y, holdMs: hold?.inMilliseconds);
   }
 
+  @override
+  Future<void> drag(double startX, double startY, double endX, double endY, {required Duration duration}) async {
+    await _requireClient().inputDrag(startX, startY, endX, endY, durationMs: duration.inMilliseconds);
+  }
+
+  @override
+  Future<void> configureView({double? width, double? height, String? orientation}) async {
+    if (width != null || height != null) {
+      throw UnsupportedError('iOS configure_view uses simulator device classes, not arbitrary width/height');
+    }
+    if (orientation == null) throw ArgumentError('iOS configure_view needs orientation');
+    if (!const {'portrait', 'landscapeLeft', 'landscapeRight'}.contains(orientation)) {
+      throw ArgumentError('unsupported iOS orientation: $orientation');
+    }
+    if (viewportHasOrientation(await viewport(), orientation)) return;
+
+    // simctl has no orientation command. An already-rotated iPad needs no
+    // host input (and works while the Mac is locked). Otherwise the Simulator
+    // shortcut is the supported control surface, gated by macOS Accessibility.
+    for (var attempt = 0; attempt < 3 && !viewportHasOrientation(await viewport(), 'portrait'); attempt++) {
+      await _rotateSimulator(123);
+    }
+    if (!viewportHasOrientation(await viewport(), 'portrait')) {
+      throw StateError('Simulator did not return to portrait before rotating to $orientation');
+    }
+    if (orientation == 'landscapeLeft') await _rotateSimulator(123);
+    if (orientation == 'landscapeRight') await _rotateSimulator(124);
+
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (DateTime.now().isBefore(deadline)) {
+      if (viewportHasOrientation(await viewport(), orientation)) return;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    throw StateError(
+      'Simulator did not render $orientation after rotation; viewport: ${await viewport()}. '
+      'Rotate the named simulator manually and rerun, or grant Accessibility to the runner.',
+    );
+  }
+
+  Future<void> _rotateSimulator(int arrowKeyCode) async {
+    final result = await _run('osascript', [
+      '-e',
+      'tell application "Simulator" to activate',
+      '-e',
+      'tell application "System Events" to key code $arrowKeyCode using command down',
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'Simulator rotation needs an unlocked Mac and Accessibility permission for keyboard control '
+        '(osascript exit ${result.exitCode}: ${result.stderr}). '
+        'You can also rotate the named simulator manually before rerunning Pleya Verify.',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+  }
+
   VerifyClient _requireClient() {
     final c = _client;
     if (c == null) throw StateError('driver not launched — call launch() first');
@@ -404,6 +478,7 @@ class IosSimulatorDriver implements VerificationDriver {
 
     final override = deviceUdidOverride ?? Platform.environment['PLEYA_VERIFY_IOS_UDID'];
     if (override != null && override.isNotEmpty) {
+      await _rememberDeviceMetadata(override);
       _resolvedUdid = override;
       return override;
     }
@@ -415,8 +490,8 @@ class IosSimulatorDriver implements VerificationDriver {
     final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
     final devicesByRuntime = decoded['devices'] as Map<String, Object?>;
 
-    String? booted;
-    String? fallback;
+    ({String udid, String name, String runtime})? booted;
+    ({String udid, String name, String runtime})? fallback;
     for (final entry in devicesByRuntime.entries) {
       if (!entry.key.contains('iOS')) continue;
       for (final raw in entry.value as List) {
@@ -424,16 +499,43 @@ class IosSimulatorDriver implements VerificationDriver {
         final name = device['name'] as String;
         if (!name.startsWith('iPhone')) continue;
         final udid = device['udid'] as String;
-        if (device['state'] == 'Booted') booted = udid;
-        fallback = udid;
+        final candidate = (udid: udid, name: name, runtime: entry.key);
+        if (device['state'] == 'Booted') booted = candidate;
+        fallback = candidate;
       }
     }
-    final udid = booted ?? fallback;
-    if (udid == null) {
+    final device = booted ?? fallback;
+    if (device == null) {
       throw StateError('no iOS simulator found (xcrun simctl list devices available)');
     }
-    _resolvedUdid = udid;
-    return udid;
+    _resolvedUdid = device.udid;
+    _resolvedDeviceName = device.name;
+    _resolvedRuntime = device.runtime;
+    return device.udid;
+  }
+
+  Future<void> _rememberDeviceMetadata(String udid) async {
+    // Device metadata only labels the evidence; hosts without simctl (Linux CI) still run.
+    final ProcessResult result;
+    try {
+      result = await _run('xcrun', ['simctl', 'list', 'devices', 'available', '--json']);
+    } on ProcessException {
+      return;
+    }
+    if (result.exitCode != 0) return;
+    final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
+    final devicesByRuntime = decoded['devices'] as Map<String, Object?>;
+    for (final entry in devicesByRuntime.entries) {
+      if (!entry.key.contains('iOS')) continue;
+      for (final raw in entry.value as List) {
+        final device = raw as Map<String, Object?>;
+        if (device['udid'] == udid) {
+          _resolvedDeviceName = device['name'] as String?;
+          _resolvedRuntime = entry.key;
+          return;
+        }
+      }
+    }
   }
 
   Future<void> _boot(String udid) async {
@@ -453,4 +555,14 @@ class IosSimulatorDriver implements VerificationDriver {
     if (result.exitCode != 0) return null;
     return (result.stdout as String).trim();
   }
+}
+
+/// An orientation is evidence only when the app's measured viewport has the
+/// expected aspect ratio. The simulator may acknowledge a rotation request
+/// without changing the scene, especially for iPad multitasking windows.
+bool viewportHasOrientation(Map<String, Object?> viewport, String requested) {
+  final width = (viewport['width'] as num?)?.toDouble();
+  final height = (viewport['height'] as num?)?.toDouble();
+  if (width == null || height == null || width <= 0 || height <= 0) return false;
+  return requested == 'portrait' ? height > width : width > height;
 }

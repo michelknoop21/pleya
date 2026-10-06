@@ -71,6 +71,8 @@ class TvosSimulatorDriver implements VerificationDriver {
   static const String _realBundleId = 'nl.michelknoop.pleya';
 
   String? _resolvedUdid;
+  String? _resolvedDeviceName;
+  String? _resolvedRuntime;
   final List<String> _driverLog = [];
   VerifyClient? _client;
   VerifyInstance? _instance;
@@ -86,6 +88,14 @@ class TvosSimulatorDriver implements VerificationDriver {
 
   @override
   String get target => 'tvos-sim';
+
+  @override
+  Map<String, Object?> get deviceDescriptor => {
+    'name': _resolvedDeviceName ?? _deviceName,
+    'id': _resolvedUdid,
+    'class': 'tv',
+    if (_resolvedRuntime != null) 'runtime': _resolvedRuntime,
+  };
 
   @override
   VerifyClient? get client => _client;
@@ -152,6 +162,15 @@ class TvosSimulatorDriver implements VerificationDriver {
 
   @override
   Future<void> build() async {
+    if (Platform.environment['PLEYA_VERIFY_REUSE_BUILD'] == '1' && isolatedAppDir.existsSync()) {
+      final infoPlist = File('${isolatedAppDir.path}/Info.plist');
+      final read = await _run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', infoPlist.path]);
+      if (read.exitCode != 0 || (read.stdout as String).trim() != verifyBundleId) {
+        throw StateError('refusing to reuse a tvOS app without the isolated bundle id $verifyBundleId');
+      }
+      _log('reusing explicitly requested isolated tvOS app build: ${isolatedAppDir.path}');
+      return;
+    }
     await _resolveDevice();
     _log('PLEYA_VERIFY=true scripts/tvos_sim.sh build');
     final result = await _runTvosSim(['build'], extraEnv: {'PLEYA_VERIFY': 'true'});
@@ -472,6 +491,16 @@ class TvosSimulatorDriver implements VerificationDriver {
     throw UnsupportedError('tap: tvOS has no touch surface — the scenario validator already rejects "tap" here');
   }
 
+  @override
+  Future<void> drag(double startX, double startY, double endX, double endY, {required Duration duration}) {
+    throw UnsupportedError('drag: tvOS has no pointer input route');
+  }
+
+  @override
+  Future<void> configureView({double? width, double? height, String? orientation}) {
+    throw UnsupportedError('tvOS surface geometry is selected by its simulator display mode');
+  }
+
   // --- end [C2] boundary ---
 
   VerifyClient _requireClient() {
@@ -489,7 +518,7 @@ class TvosSimulatorDriver implements VerificationDriver {
       'scripts/tvos_sim.sh',
       args,
       workingDirectory: repoRoot.path,
-      extraEnv: {'TVOS_SIM_UDID': udid, ...?extraEnv},
+      extraEnv: {'TVOS_SIM_UDID': udid, 'TVOS_SIM_REQUIRE_IDB': '1', ...?extraEnv},
     );
   }
 
@@ -511,6 +540,7 @@ class TvosSimulatorDriver implements VerificationDriver {
 
     final override = deviceUdidOverride ?? Platform.environment['PLEYA_VERIFY_TVOS_UDID'];
     if (override != null && override.isNotEmpty) {
+      await _rememberDeviceMetadata(override);
       _resolvedUdid = override;
       return override;
     }
@@ -528,6 +558,8 @@ class TvosSimulatorDriver implements VerificationDriver {
         if (device['name'] == _deviceName) {
           final udid = device['udid'] as String;
           _resolvedUdid = udid;
+          _resolvedDeviceName = device['name'] as String;
+          _resolvedRuntime = entry.key;
           return udid;
         }
       }
@@ -541,7 +573,33 @@ class TvosSimulatorDriver implements VerificationDriver {
     }
     final udid = (createResult.stdout as String).trim();
     _resolvedUdid = udid;
+    _resolvedDeviceName = _deviceName;
+    _resolvedRuntime = runtime;
     return udid;
+  }
+
+  Future<void> _rememberDeviceMetadata(String udid) async {
+    // Device metadata only labels the evidence; hosts without simctl (Linux CI) still run.
+    final ProcessResult result;
+    try {
+      result = await _run('xcrun', ['simctl', 'list', 'devices', 'available', '--json']);
+    } on ProcessException {
+      return;
+    }
+    if (result.exitCode != 0) return;
+    final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
+    final devicesByRuntime = decoded['devices'] as Map<String, Object?>;
+    for (final entry in devicesByRuntime.entries) {
+      if (!entry.key.contains('tvOS')) continue;
+      for (final raw in entry.value as List) {
+        final device = raw as Map<String, Object?>;
+        if (device['udid'] == udid) {
+          _resolvedDeviceName = device['name'] as String?;
+          _resolvedRuntime = entry.key;
+          return;
+        }
+      }
+    }
   }
 
   Future<String> _resolveTvosRuntime() async {

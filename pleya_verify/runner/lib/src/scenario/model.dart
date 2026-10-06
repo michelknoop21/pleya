@@ -28,9 +28,12 @@ const Set<String> setupVerbs = {
 const Set<String> stepVerbs = {
   'press',
   'tap',
+  'drag',
+  'configure_view',
   'type',
   'wait_until',
   'assert',
+  'assert_viewport',
   'snapshot',
   'settle',
   'fixture_mutate',

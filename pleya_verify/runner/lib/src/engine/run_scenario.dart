@@ -16,6 +16,7 @@ import '../scenario/walk_args.dart';
 import 'evidence_bundle.dart';
 import 'geometry_assertions.dart';
 import 'node_assertions.dart';
+import 'screenshot_metadata.dart';
 
 class ScenarioRunResult {
   final bool passed;
@@ -135,6 +136,18 @@ Future<ScenarioRunResult> runScenario({
           // to name the instance this run actually drove.
           instance = driver.instance;
           record['instance'] = instance?.toJson();
+        case 'configure_view':
+          final args = step.args as Map<String, Object?>;
+          final width = (args['width'] as num?)?.toDouble();
+          final height = (args['height'] as num?)?.toDouble();
+          final orientation = args['orientation'] as String?;
+          await driver.configureView(width: width, height: height, orientation: orientation);
+          record['requested'] = {
+            if (width != null) 'width': width,
+            if (height != null) 'height': height,
+            if (orientation != null) 'orientation': orientation,
+          };
+          record['viewport'] = await driver.viewport();
         case 'sign_in':
           final setupCode = fixture == null ? null : (await fixture.verifyState())['setupCode'] as String?;
           final args = resolvePlaceholders(step.args, fixture, setupCode) as Map<String, Object?>;
@@ -222,6 +235,25 @@ Future<ScenarioRunResult> runScenario({
           final (:geometry, :node) = await _dispatchAssert(resolvedArgs, driver);
           if (geometry.isNotEmpty) record['geometry'] = [for (final g in geometry) g.toJson()];
           if (node.isNotEmpty) record['state'] = [for (final n in node) n.toJson()];
+        case 'assert_viewport':
+          final args = step.args as Map<String, Object?>;
+          final expected = args['orientation'] as String;
+          final view = await driver.viewport();
+          record['viewport'] = view;
+          final width = view['width'];
+          final height = view['height'];
+          if (width is! num || height is! num) {
+            throw StateError('assert_viewport cannot measure a live width and height: $view');
+          }
+          final actual = width > height
+              ? 'landscape'
+              : height > width
+              ? 'portrait'
+              : 'square';
+          record['orientation'] = actual;
+          if (actual != expected) {
+            throw StateError('assert_viewport expected $expected but measured $actual ($width×$height logical)');
+          }
         case 'overlay':
           // The diagnostic overlay draws ids and bounds *into the app's own
           // render tree*, so a screenshot taken while it is on shows what
@@ -246,6 +278,12 @@ Future<ScenarioRunResult> runScenario({
           // diagnostic-only and would happily agree with a broken layout
           // because it renders from the same tree the layout came from.
           record['screenshot_source'] = 'platform-compositor';
+          final viewport = await driver.viewport();
+          record['viewport'] = viewport;
+          final pixelSize = pngPixelSize(bytes);
+          if (pixelSize != null) {
+            record['screenshot_pixels'] = {'width': pixelSize.width, 'height': pixelSize.height};
+          }
           // A screenshot answers "what does it look like"; the audit question
           // "where exactly does the content edge sit" needs numbers, and the
           // only ui_tree a bundle used to keep was the one at teardown. So a
@@ -253,7 +291,7 @@ Future<ScenarioRunResult> runScenario({
           // under the same name: the tree the screenshot was taken of, plus
           // the viewport it was measured against. Additive — every existing
           // scenario gains the dump without changing what it asserts.
-          bundle.saveUiTree(name, {'viewport': await driver.viewport(), 'tree': await driver.uiTree()});
+          bundle.saveUiTree(name, {'viewport': viewport, 'tree': await driver.uiTree()});
           record['ui_tree'] = '$name.json';
         case 'settle':
           // Bare `- settle` keeps the old fixed 500ms; `- settle: 3000` lets
@@ -278,6 +316,18 @@ Future<ScenarioRunResult> runScenario({
           final holdMs = args['holdMs'] as int?;
           if (holdMs != null) record['hold_ms'] = holdMs;
           await driver.tap(x, y, hold: holdMs == null ? null : Duration(milliseconds: holdMs));
+        case 'drag':
+          record['input_route'] = driver.inputRoute;
+          final args = step.args as Map<String, Object?>;
+          final startX = (args['startX'] as num).toDouble();
+          final startY = (args['startY'] as num).toDouble();
+          final endX = (args['endX'] as num).toDouble();
+          final endY = (args['endY'] as num).toDouble();
+          final durationMs = args['durationMs'] as int;
+          record['from'] = {'x': startX, 'y': startY};
+          record['to'] = {'x': endX, 'y': endY};
+          record['duration_ms'] = durationMs;
+          await driver.drag(startX, startY, endX, endY, duration: Duration(milliseconds: durationMs));
         case 'type':
           record['input_route'] = driver.inputRoute;
           // `{{fixture}}`/`{{fixture_seerr}}` resolve here too: a scenario
@@ -378,7 +428,7 @@ Future<ScenarioRunResult> runScenario({
     'git_commit': await _gitCommit(repoRoot),
     'dirty': await _gitDirty(repoRoot),
     'target': driver.target,
-    'device': driver.target,
+    'device': driver.deviceDescriptor,
     'os': Platform.operatingSystemVersion,
     'scenario_hash': sha256.convert(utf8.encode(scenarioSource)).toString(),
     'snapshot_hash': snapshotHash,
