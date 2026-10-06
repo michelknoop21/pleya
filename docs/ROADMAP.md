@@ -42,7 +42,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Deels: periode "vorige week" geweigerd, gemengd publiek gemeld aan het model; rest gepland |
 | BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
-| BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland |
+| BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland; `recommend_together` bewijst "ongezien" al per titel in plaats van per kopie (PR #199, 6 okt) |
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
 | BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | Gelandeerd (5 okt); hardware- en tvOS-deviceronde open |
 | REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Gepauzeerd t.g.v. Big P (5 okt) |
