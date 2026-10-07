@@ -645,6 +645,8 @@ class DesktopVideoControlsState extends State<DesktopVideoControls> {
   void _confirmTimelineScrub() {
     if (!_timelineScrubMode) return;
     _flushTimelinePreviewSeek();
+    // Confirming a position on Apple TV is an explicit request to play.
+    if (PlatformDetector.isAppleTV()) _resumeAfterTimelineScrub = true;
     _exitTimelineScrubMode();
   }
 
