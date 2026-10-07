@@ -1365,6 +1365,31 @@ void main() {
         expect(touch.isScrubPanActive, isTrue);
       }
 
+      testWidgets('paused touchpad preview starts playback when confirmed', (tester) async {
+        await pumpControls(tester, playing: false);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        await slowPan(tester, [1000, 1200, 1360]);
+        final previewed = sliderPosition(tester);
+        expect(previewed, greaterThan(const Duration(minutes: 5)));
+        expect(player.commandLog, isNot(contains('play')));
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        expect(seekEnds, [previewed]);
+        expect(player.commandLog.last, 'play');
+      });
+
+      testWidgets('paused touchpad preview stays paused when cancelled', (tester) async {
+        await pumpControls(tester, playing: false);
+        await tester.sendKeyEvent(LogicalKeyboardKey.select);
+        await tester.pump();
+        await slowPan(tester, [1000, 1200, 1360]);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(seekEnds, isEmpty);
+        expect(player.commandLog, isNot(contains('play')));
+      });
+
       testWidgets('één veeg verplaatst de cursor evenredig, zonder seek', (tester) async {
         await enterScrub(tester);
 
