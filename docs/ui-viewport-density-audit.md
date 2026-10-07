@@ -11,7 +11,7 @@ Per snapshot bewaren we apparaat, logische rootviewport, DPR, safe area, Pleya-s
 | Platform | Klasses en modi | Stand |
 |---|---|---|
 | tvOS | Apple TV 4K 1080p en 2160p output; D-pad/focus, overscan; hardware voor touch-surface | beide shell-smokes, gevulde filmrail, app-focusrand en zes Mijn Pleya-subpagina's op beide outputs PASS; overige OPEN |
-| iPhone | SE, representatief Pro, grootste ondersteunde; Home portret, spelerlandschappen | SE, 15 Pro en 17 Pro Max Home portret PASS; overige OPEN |
+| iPhone | SE, representatief Pro, grootste ondersteunde; Home portret, spelerlandschappen | SE, 15 Pro en 17 Pro Max Home portret PASS; iPhone 17e, 17 Pro en 18 Pro Max vijf schermen incl. Home PASS (7 okt); overige OPEN |
 | iPadOS | mini en grote Pro; portret/landschap; full screen, ondersteunde Split View/Stage Manager-maten | mini en Pro portret Home, Media, Zoeken, Mijn Pleya en Instellingen-boven PASS; mini Home landschap gemeten; verdere audit uitgesteld tot redesign |
 | macOS | compact 900×600, 1280×800, 1440×900, 1920×1080 logisch; Retina | Discover-shell op alle vier PASS; overige schermen OPEN |
 
@@ -22,11 +22,11 @@ De iOS-app ondersteunt iPhone en iPad (`TARGETED_DEVICE_FAMILY = "1,2"`). Gedeel
 | Familie | tvOS | iPhone | iPadOS | macOS |
 |---|---|---|---|---|
 | Eerste start, auth, profielgate/-wissel | scenario's, matrix OPEN | OPEN | OPEN | OPEN |
-| Shell, Home, Series, Films | 1080p en 2160p shell en Films-rail PASS; overige OPEN | SE, 15 Pro en 17 Pro Max Home portret PASS; SE en 15 Pro Series/Films PASS | mini en Pro Home portret PASS; rest OPEN | Discover vier venstermaten PASS |
+| Shell, Home, Series, Films | 1080p en 2160p shell en Films-rail PASS; overige OPEN | SE, 15 Pro en 17 Pro Max Home portret PASS; SE en 15 Pro Series/Films PASS; 17e, 17 Pro en 18 Pro Max Home, Series en Films PASS | mini en Pro Home portret PASS; rest OPEN | Discover vier venstermaten PASS |
 | Catalogus, bibliotheken, zoeken | scenario's, matrix OPEN | 15 Pro filmcatalogus, filtervel en zoeken PASS; overige OPEN | mini en Pro Media/Zoeken portret PASS; overige OPEN | OPEN |
 | Media-, collectie-, persoons- en playlistdetail | deels scenario's, matrix OPEN | SE en 17 Pro Max filmdetail PASS met leesbaarheidsbevinding; overige OPEN | OPEN | OPEN |
-| Mijn Pleya, kijklijst, activiteit, downloads en bronnen | zes fixturebereikbare subpagina's op 1080p en 2160p PASS; conditionele tegels OPEN | SE en 15 Pro Mijn Pleya-hub PASS; subpagina's OPEN | mini en Pro Mijn Pleya-hub portret PASS; subpagina's OPEN | OPEN |
-| Instellingen en subpagina's | deels scenario's, matrix OPEN | SE Instellingen boven/onder, 15 Pro boven PASS; subpagina's OPEN | mini en Pro Instellingen-boven portret PASS; overige OPEN | OPEN |
+| Mijn Pleya, kijklijst, activiteit, downloads en bronnen | zes fixturebereikbare subpagina's op 1080p en 2160p PASS; conditionele tegels OPEN | SE, 15 Pro, 17e, 17 Pro en 18 Pro Max Mijn Pleya-hub PASS; subpagina's OPEN | mini en Pro Mijn Pleya-hub portret PASS; subpagina's OPEN | OPEN |
+| Instellingen en subpagina's | deels scenario's, matrix OPEN | SE Instellingen boven/onder, 15 Pro, 17e, 17 Pro en 18 Pro Max boven PASS; subpagina's OPEN | mini en Pro Instellingen-boven portret PASS; overige OPEN | OPEN |
 | Aanvragen/Seerr | deels scenario's, matrix OPEN | scenario's, matrix OPEN | OPEN | OPEN |
 | Live TV, gids, opnames en programmasheets | fixture zonder tuner; OPEN | OPEN | OPEN | OPEN |
 | Speler, controls, panelen en prompts | deels scenario's; hardware OPEN | OPEN | OPEN | OPEN |
@@ -111,6 +111,16 @@ Een afzonderlijke portret-only run van `ios.viewport-density.home` is inmiddels 
 - Na ontgrendeling en handmatige Simulator-rotatie is `ipados.viewport-density.landscape` PASS in `.build/pleya-verify/ipados-viewport-density-landscape-1790196261725/`: de app meldt 1133×744 logische punten, DPR 2 en safe area 32 boven / 20 onder. De Home-landmarks en navigatie vallen binnen de gemeten viewport.
 - Het `simctl`-compositorbeeld toont liggende app-inhoud in een staand opgeslagen PNG-raster van 1488×2266; de captureoriëntatie moet dus afzonderlijk van de app-viewport worden gelezen. Dit is geen bewijs voor overige iPad-schermen of Stage Manager.
 - Michel heeft verdere iPad-controle gestopt omdat de iPad-UI nog een redesign krijgt. De grote iPad-landschapsrun is tijdens de build afgebroken en telt niet als PASS; beide iPad-simulators zijn daarna afgesloten. De rest van de iPad-matrix blijft OPEN tot na de redesign.
+
+### iPhone 17e, 17 Pro en 18 Pro Max: Home en navigatie (iOS 27)
+
+- Scenario's `ios.viewport-density.home` en `ios.viewport-density.navigation`, beide PASS op commit `2e5e21d0` (dirty: lokale `ARCHS`-regel voor de Xcode 27-lipo-valkuil). Het manifest noemt nu het concrete toestel en de runtime (`iOS-27-0`).
+- iPhone 17e: 390×844 logisch @3, safe area boven 47, onder 34. Bundles `ios-viewport-density-home-1791382151187` en `ios-viewport-density-navigation-1791382245302`.
+- iPhone 17 Pro: 402×874 @3 (1206×2622 px), safe area boven 62, onder 34. Bundles `ios-viewport-density-home-1791381734986` en `ios-viewport-density-navigation-1791382032461`.
+- iPhone 18 Pro Max: 440×956 @3, safe area boven 62, onder 34. Bundles `ios-viewport-density-home-1791382285760` en `ios-viewport-density-navigation-1791382361522`.
+- Per toestel zijn Home, Series, Films, Mijn Pleya en de bovenkant van Instellingen vastgelegd. Gelezen: Mijn Pleya op de 17e en 17 Pro, Home op de 17 Pro, Instellingen-boven op de 18 Pro Max. Header, rails, tabbar en lijstrijen blijven binnen de viewport en zonder overlap.
+- Bevinding die terugkomt: in de twee halve-breedte kaarten op Mijn Pleya worden de ondertitels afgekapt (`Mediabibliotheken beh...`, `Verbindingen en lokal...` op de 17e; `Connections and local ...` op de 17 Pro). Titels en tap-doelen blijven bruikbaar. Het is een ontwerpbeslissing, geen layoutfout.
+- Begrenzing: dit sluit de vijf navigatieschermen (Home, Series, Films, Mijn Pleya, Instellingen-boven) op deze drie klassen. Landschap blijft OPEN, omdat de iPhone-shell in portret vergrendeld is. Een SE-klasse en 15 Pro zijn niet meer als simulator beschikbaar onder Xcode 27, de 17e is de kleinste beschikbare klasse.
 
 ### tvOS 4K shell
 
