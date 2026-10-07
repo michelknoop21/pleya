@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:logger/logger.dart';
 
 import 'log_redaction_manager.dart';
+import 'persistent_log_store.dart';
 
 /// Redacts sensitive information from log messages based on known values.
 String _redactSensitiveData(String message) {
@@ -72,6 +75,74 @@ class MemoryLogOutput extends LogOutput {
 
   static final _consoleOutput = ConsoleOutput();
 
+  static PersistentLogStore? _store;
+
+  static Future<void> initializePersistence(Directory directory) async {
+    final store = PersistentLogStore(directory);
+    try {
+      final saved = await store.read();
+      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+      final startup = _logs.toList();
+      _logs.clear();
+      _currentSize = 0;
+      for (final data in saved) {
+        try {
+          final timestamp = DateTime.parse(data['time'] as String);
+          if (timestamp.isBefore(cutoff)) continue;
+          _add(
+            LogEntry(
+              seq: _nextSeq++,
+              timestamp: timestamp,
+              level: Level.values.byName(data['level'] as String),
+              message: _redactSensitiveData(data['message'] as String),
+              error: data['error'] == null ? null : _redactSensitiveData(data['error'] as String),
+              stackTrace: data['stack'] == null
+                  ? null
+                  : StackTrace.fromString(_redactSensitiveData(data['stack'] as String)),
+            ),
+          );
+        } on Object {
+          // Ignore an incomplete or obsolete entry; preserve the remaining log.
+        }
+      }
+      for (final entry in startup) {
+        _add(
+          LogEntry(
+            seq: _nextSeq++,
+            timestamp: entry.timestamp,
+            level: entry.level,
+            message: entry.message,
+            error: entry.error,
+            stackTrace: entry.stackTrace,
+          ),
+        );
+        store.add(_serialize(entry));
+      }
+      _store = store;
+      await store.flush();
+    } on Object {
+      // Logging remains available in memory if local storage is unavailable.
+    }
+  }
+
+  static Future<void> flush() async => _store?.flush();
+
+  static Map<String, dynamic> _serialize(LogEntry entry) => {
+    'time': entry.timestamp.toIso8601String(),
+    'level': entry.level.name,
+    'message': entry.message,
+    if (entry.error != null) 'error': _redactSensitiveData(entry.error.toString()),
+    if (entry.stackTrace != null) 'stack': _redactSensitiveData(entry.stackTrace.toString()),
+  };
+
+  static void _add(LogEntry entry) {
+    _logs.add(entry);
+    _currentSize += entry.estimatedSize;
+    while (_currentSize > maxLogSizeBytes && _logs.isNotEmpty) {
+      _currentSize -= _logs.removeFirst().estimatedSize;
+    }
+  }
+
   static List<LogEntry> getLogs() => _logs.toList().reversed.toList();
 
   /// Chronological (oldest first), filtered to `entry.seq > since` — the
@@ -85,6 +156,7 @@ class MemoryLogOutput extends LogOutput {
   static void clearLogs() {
     _logs.clear();
     _currentSize = 0;
+    unawaited(_store?.clear());
   }
 
   static int getCurrentSize() => _currentSize;
@@ -119,14 +191,8 @@ class MemoryAwareLogPrinter extends LogPrinter {
       stackTrace: event.stackTrace,
     );
 
-    MemoryLogOutput._logs.add(logEntry);
-    MemoryLogOutput._currentSize += logEntry.estimatedSize;
-
-    // Maintain buffer size limit (remove oldest entries) — O(1) with ListQueue
-    while (MemoryLogOutput._currentSize > MemoryLogOutput.maxLogSizeBytes && MemoryLogOutput._logs.isNotEmpty) {
-      final removed = MemoryLogOutput._logs.removeFirst();
-      MemoryLogOutput._currentSize -= removed.estimatedSize;
-    }
+    MemoryLogOutput._add(logEntry);
+    MemoryLogOutput._store?.add(MemoryLogOutput._serialize(logEntry));
 
     return _wrappedPrinter.log(
       LogEvent(event.level, message, time: event.time, error: error, stackTrace: event.stackTrace),

@@ -173,6 +173,12 @@ Future<void> main() async {
 
 Future<void> _bootstrapApp() async {
   final settings = await SettingsService.getInstance();
+  try {
+    final support = await getApplicationSupportDirectory();
+    await MemoryLogOutput.initializePersistence(Directory('${support.path}/diagnostic_logs'));
+  } catch (_) {
+    // The in-memory logger remains available when the sandbox is unwritable.
+  }
   final savedLocale = settings.read(SettingsService.appLocale);
 
   unawaited(LocaleSettings.setLocale(savedLocale));
@@ -595,6 +601,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     ], eagerError: false);
     await ManagedHttpClient.closeAllGracefully();
     await _appDatabase.close();
+    await MemoryLogOutput.flush();
   }
 
   @override
@@ -758,6 +765,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           unawaited(_probeAndReconnectAfterResume());
         }
       case AppLifecycleState.paused:
+        unawaited(MemoryLogOutput.flush());
       case AppLifecycleState.detached:
         // Database is session-scoped and must survive suspend/resume.
         // Closing here would kill the Drift isolate channel while services
