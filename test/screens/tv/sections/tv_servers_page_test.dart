@@ -111,12 +111,12 @@ void main() {
       return coordinator.pushNested(destination, route).result;
     }
 
-    Future<void> pumpInShell(WidgetTester tester) async {
+    Future<void> pumpInShell(WidgetTester tester, {List<Connection> seed = const []}) async {
       tester.view.physicalSize = const Size(1280, 720);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
-      final registry = _SeededRegistry(db, const []);
+      final registry = _SeededRegistry(db, seed);
       tvContentRouteRegistry.attach(pushViaRegistry);
       addTearDown(() => tvContentRouteRegistry.detach(pushViaRegistry));
 
@@ -186,6 +186,79 @@ void main() {
       await activateByLabel(tester, t.pleyaShare.hostTitle);
 
       expect(find.byType(TvTopNavigation), findsOneWidget);
+    });
+
+    /// Whether the primary focus sits on the control that draws [label]. A
+    /// button's own inner `Focus` is not the node the remote lands on.
+    bool focusIsOn(Finder label) {
+      final focused = FocusManager.instance.primaryFocus!.context!;
+      return find.descendant(of: find.byElementPredicate((e) => e == focused), matching: label).evaluate().isNotEmpty;
+    }
+
+    // TVUX-56: a tile that reads as identity and status used to go straight
+    // to the remove confirmation on Select.
+    final server = PleyaServerConnection(
+      id: 'pleya-1',
+      baseUrl: 'http://nas.home.lan:8832',
+      serverId: 'srv-1',
+      serverName: 'Zolder',
+      userName: 'michel',
+      refreshToken: 'secret-refresh-token',
+      createdAt: DateTime(2026, 10, 8),
+    );
+    final folder = LocalFolderConnection(
+      id: 'local-1',
+      directoryUri: '/media/films',
+      displayName: 'Films',
+      createdAt: DateTime(2026, 10, 8),
+    );
+
+    testWidgets('Select on a Pleya Server tile opens its status, not the disconnect confirmation', (tester) async {
+      await pumpInShell(tester, seed: [server]);
+
+      await activateByLabel(tester, 'Zolder');
+
+      expect(find.text(t.connections.disconnectServerConfirm(name: 'Zolder')), findsNothing);
+      final dialog = find.byType(AlertDialog);
+      expect(dialog, findsOneWidget);
+      expect(find.descendant(of: dialog, matching: find.text('Zolder')), findsOneWidget);
+      expect(find.descendant(of: dialog, matching: find.textContaining(t.common.offline)), findsOneWidget);
+      expect(find.textContaining('secret-refresh-token'), findsNothing);
+      // Close holds the focus; disconnecting is the other, explicit button.
+      expect(focusIsOn(find.descendant(of: dialog, matching: find.text(t.common.close))), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(focusIsOn(find.text('Zolder')), isTrue);
+    });
+
+    testWidgets('disconnecting from the status surface still asks the existing confirmation', (tester) async {
+      await pumpInShell(tester, seed: [server]);
+
+      await activateByLabel(tester, 'Zolder');
+      await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text(t.connections.disconnectServer)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(t.connections.disconnectServerConfirm(name: 'Zolder')), findsOneWidget);
+    });
+
+    testWidgets('Select on a local source opens its status, with remove behind the same confirmation', (tester) async {
+      await pumpInShell(tester, seed: [folder]);
+
+      await activateByLabel(tester, 'Films');
+
+      expect(find.text(t.connections.removeSourceConfirm(name: 'Films')), findsNothing);
+      expect(find.byType(AlertDialog), findsOneWidget);
+
+      await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text(t.connections.removeSource)));
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.connections.removeSourceConfirm(name: 'Films')), findsOneWidget);
     });
   });
 }

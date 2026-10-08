@@ -2,6 +2,52 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/models/seerr/seerr_request.dart';
 
 void main() {
+  group('R4 stored-field evidence', () {
+    Map<String, dynamic> complete() => {
+      'id': 42,
+      'status': 1,
+      'type': 'tv',
+      'is4k': false,
+      'requestedBy': {'id': 7},
+      'seasons': [1],
+      'serverId': null,
+      'profileId': null,
+      'rootFolder': null,
+      'tags': null,
+      'languageProfileId': null,
+    };
+    test('explicit nullable values remain known and survive hydration', () {
+      final row = SeerrRequest.tryFromJson(complete())!;
+      expect(row.targetKnown, isTrue);
+      expect(row.advancedKnown, isTrue);
+      expect(row.withDisplayData(title: 'x').advancedKnown, isTrue);
+    });
+    for (final field in ['serverId', 'profileId', 'rootFolder', 'tags', 'languageProfileId']) {
+      test('R4 missing $field is not evidence of null', () {
+        final row = SeerrRequest.tryFromJson(complete()..remove(field))!;
+        expect(field == 'tags' || field == 'languageProfileId' ? row.advancedKnown : row.targetKnown, isFalse);
+      });
+    }
+    test('integer strings are valid but fractions and objects are not', () {
+      final valid = SeerrRequest.tryFromJson({
+        ...complete(),
+        'serverId': '2',
+        'profileId': 6.0,
+        'tags': ['9'],
+      })!;
+      expect(valid.targetKnown, isTrue);
+      expect(valid.advancedKnown, isTrue);
+      expect(valid.tags, [9]);
+      final bad = SeerrRequest.tryFromJson({
+        ...complete(),
+        'profileId': 6.5,
+        'tags': [9, {}],
+      })!;
+      expect(bad.targetKnown, isFalse);
+      expect(bad.advancedKnown, isFalse);
+    });
+  });
+
   group('SeerrRequest', () {
     test('parses embedded media display fields', () {
       final request = SeerrRequest.tryFromJson({

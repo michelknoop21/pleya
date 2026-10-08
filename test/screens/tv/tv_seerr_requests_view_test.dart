@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -40,6 +41,11 @@ SeerrRequest _request(
   requestedByName: by,
 );
 
+/// What `/request/count` can be shown for. Beschikbaar and Afgewezen have no
+/// entry: the count route's "available" is not the list route's, and it has no
+/// declined figure at all.
+const _counts = {TvSeerrRequestFilter.all: 389, TvSeerrRequestFilter.pending: 27, TvSeerrRequestFilter.approved: 108};
+
 void main() {
   setUp(() => TvDetectionService.debugSetAppleTVOverride(true));
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
@@ -50,7 +56,12 @@ void main() {
     WidgetTester tester,
     List<SeerrRequest> requests, {
     TvSeerrRequestFilter filter = TvSeerrRequestFilter.all,
-    TvSeerrRequestCounts? counts,
+    Map<TvSeerrRequestFilter, int>? counts,
+    TvSeerrCountsScope countsScope = TvSeerrCountsScope.all,
+    bool loadMoreFailed = false,
+    bool filterUnsupported = false,
+    VoidCallback? onDiscover,
+    VoidCallback? onLoadMore,
     bool isLoading = false,
     String? error,
   }) async {
@@ -67,11 +78,15 @@ void main() {
               onFilterChanged: (value) => picked = value,
               onActivate: (_) {},
               isLoading: isLoading,
-              hasMore: false,
+              hasMore: loadMoreFailed,
               isLoadingMore: false,
-              onLoadMore: () {},
+              loadMoreFailed: loadMoreFailed,
+              onLoadMore: onLoadMore ?? () {},
               onReload: () {},
-              counts: counts,
+              onDiscover: onDiscover,
+              countFor: counts == null ? null : (filter) => counts[filter],
+              countsScope: countsScope,
+              filterUnsupported: filterUnsupported,
               error: error,
             ),
           ),
@@ -121,13 +136,68 @@ void main() {
     // the last row loses its footer into the overscan band.
     await pumpView(tester, [_request(1, by: 'rapmadri')]);
 
-    expect(find.text(t.seerr.requestedBy(name: 'rapmadri')), findsOneWidget);
     final card = tester.widget<TvCatalogCard>(find.byType(TvCatalogCard));
-    expect(card.tertiary, t.seerr.requestedBy(name: 'rapmadri'));
+    expect(card.tertiary, 'rapmadri');
     expect(
       TvCatalogLayout.cardHeight(card.width, 1, extraMetaLines: 1),
       greaterThan(TvCatalogLayout.cardHeight(card.width, 1)),
     );
+  });
+
+  group('who asked is readable on the card, not only announced (UF2)', () {
+    // The names of the Verify fixture: the same first seven characters, and
+    // then the part that tells them apart.
+    const names = ['verify-admin', 'verify-guest'];
+
+    /// The requester line of one card as it was laid out, wherever its text
+    /// starts. Looked up by what it contains, so a line that buries the name
+    /// behind a prefix is found and judged too, instead of merely not found.
+    RenderParagraph requesterLine(WidgetTester tester, String name) =>
+        tester.renderObject<RenderParagraph>(find.textContaining(name));
+
+    void expectNamesWhole(WidgetTester tester, String when) {
+      for (final name in names) {
+        final line = requesterLine(tester, name);
+        expect(line.didExceedMaxLines, isFalse, reason: '"$name" is cut off $when');
+        final shown = line.text.toPlainText();
+        expect(shown.indexOf(name), 0, reason: 'the name leads the line $when, so a cut can only cost its tail');
+      }
+    }
+
+    Future<void> pumpTv(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await pumpView(tester, [for (var i = 0; i < names.length; i++) _request(i + 1, title: 'Title $i', by: names[i])]);
+    }
+
+    testWidgets('at rest, each card shows its whole requester name', (tester) async {
+      await pumpTv(tester);
+      expectNamesWhole(tester, 'at rest');
+    });
+
+    testWidgets('with a card focused', (tester) async {
+      await pumpTv(tester);
+      tester.widgetList<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard)).first.focusNode!.requestFocus();
+      await tester.pumpAndSettle();
+      expectNamesWhole(tester, 'with a card focused');
+    });
+
+    testWidgets('with the rail open, where the cards are at their narrowest', (tester) async {
+      await pumpTv(tester);
+      final before = tester.widget<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard).first).width;
+      await openRail(tester);
+      expect(tester.widget<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard).first).width, lessThanOrEqualTo(before));
+      expectNamesWhole(tester, 'with the rail open');
+    });
+
+    testWidgets('the full sentence is still what a screen reader hears', (tester) async {
+      await pumpTv(tester);
+      final labels = tester.widgetList<TvCatalogCard>(find.byType(TvCatalogCard)).map((c) => c.semanticLabel).toList();
+      for (var i = 0; i < names.length; i++) {
+        expect(labels[i], contains(t.seerr.requestedBy(name: names[i])));
+      }
+    });
   });
 
   group('the status capsule', () {
@@ -169,11 +239,7 @@ void main() {
     });
 
     testWidgets('Status opens a subview with the counts beside each answer (35 D)', (tester) async {
-      await pumpView(
-        tester,
-        [_request(1)],
-        counts: (total: 389, pending: 27, approved: 108, available: 35, processing: 4),
-      );
+      await pumpView(tester, [_request(1)], counts: _counts);
       await openRail(tester);
       await select(tester);
 
@@ -186,7 +252,7 @@ void main() {
         t.seerr.filterAvailable,
         t.seerr.filterDeclined,
       ]);
-      expect(subview.options.map((option) => option.count), [389, 27, 108, 35, null]);
+      expect(subview.options.map((option) => option.count), [389, 27, 108, null, null]);
       expect(find.text('389'), findsOneWidget);
       expect(find.text('27'), findsOneWidget);
     });
@@ -232,23 +298,14 @@ void main() {
 
   group('the heading', () {
     testWidgets('says how many requests there are when nothing is filtered', (tester) async {
-      await pumpView(
-        tester,
-        [_request(1)],
-        counts: (total: 389, pending: 27, approved: 108, available: 35, processing: 4),
-      );
+      await pumpView(tester, [_request(1)], counts: _counts);
 
       final strip = tester.widget<TvCatalogSelectionTagStrip>(find.byType(TvCatalogSelectionTagStrip));
       expect(strip.tags.map((tag) => tag.label), [t.seerr.requestCount(count: 389)]);
     });
 
     testWidgets('and names the status once one is chosen', (tester) async {
-      await pumpView(
-        tester,
-        [_request(1)],
-        filter: TvSeerrRequestFilter.pending,
-        counts: (total: 389, pending: 27, approved: 108, available: 35, processing: 4),
-      );
+      await pumpView(tester, [_request(1)], filter: TvSeerrRequestFilter.pending, counts: _counts);
 
       final strip = tester.widget<TvCatalogSelectionTagStrip>(find.byType(TvCatalogSelectionTagStrip));
       expect(strip.tags.map((tag) => tag.label), [t.seerr.filterPending]);
@@ -313,5 +370,106 @@ void main() {
       isTrue,
       reason: 'the ask made while the grid was a skeleton has to land once the cards are there',
     );
+  });
+
+  group('counts say no more than was counted', () {
+    testWidgets("the viewer's own list shows no numbers and says why", (tester) async {
+      await pumpView(tester, [_request(1)], counts: _counts, countsScope: TvSeerrCountsScope.own);
+      expect(find.text(t.seerr.requestCount(count: 389)), findsNothing, reason: 'no global total over an own list');
+
+      await openRail(tester);
+      await select(tester);
+      final subview = tester.widget<TvCatalogFilterRailSubview>(find.byKey(tvCatalogFilterRailSubviewKey));
+      expect(subview.options.every((option) => option.count == null && !option.countUnavailable), isTrue);
+      expect(find.text(t.seerr.countsOwnScopeNote), findsOneWidget);
+    });
+
+    testWidgets('a count that did not load is a dash, not a zero', (tester) async {
+      await pumpView(tester, [_request(1)], countsScope: TvSeerrCountsScope.failed);
+      await openRail(tester);
+      await select(tester);
+
+      expect(find.text('–'), findsNWidgets(TvSeerrRequestFilter.values.length));
+      expect(find.text('0'), findsNothing);
+      expect(find.text(t.seerr.countsNotLoaded), findsOneWidget);
+    });
+  });
+
+  testWidgets('an empty list is sent to Ontdekken instead of offered a retry (TVUX-36)', (tester) async {
+    var discovered = 0;
+    await pumpView(tester, const [], onDiscover: () => discovered++);
+
+    expect(find.text(t.common.retry), findsNothing);
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrStateAction');
+    await select(tester);
+    expect(discovered, 1);
+  });
+
+  testWidgets('a status the server did not filter on is named as that, with the way back', (tester) async {
+    await pumpView(tester, const [], filter: TvSeerrRequestFilter.declined, filterUnsupported: true);
+
+    expect(find.text(t.seerr.filterUnsupportedTitle(status: t.seerr.filterDeclined)), findsOneWidget);
+    await select(tester);
+    expect(picked, TvSeerrRequestFilter.all);
+  });
+
+  testWidgets('a page that failed to load leaves the cards and one retry under them', (tester) async {
+    var asked = 0;
+    await pumpView(
+      tester,
+      [for (var i = 0; i < 4; i++) _request(i, title: 'Title $i')],
+      loadMoreFailed: true,
+      onLoadMore: () => asked++,
+    );
+
+    expect(find.byType(TvSeerrRequestCard), findsNWidgets(4));
+    tester.widgetList<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard)).first.focusNode!.requestFocus();
+    await tester.pumpAndSettle();
+    expect(asked, 0, reason: 'a failed page is not asked for again by itself');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrLoadMoreRetry');
+    await select(tester);
+    expect(asked, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widgetList<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard)).any((card) => card.focusNode!.hasFocus),
+      isTrue,
+    );
+  });
+
+  testWidgets('a busy card says so in place of its status and has no menu', (tester) async {
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: TvSeerrRequestsView(
+              title: t.seerr.allRequests,
+              requests: [_request(1), _request(2)],
+              filter: TvSeerrRequestFilter.all,
+              onFilterChanged: (_) {},
+              onActivate: (_) {},
+              onContextMenu: (_) {},
+              busyIds: const {2},
+              isLoading: false,
+              hasMore: false,
+              isLoadingMore: false,
+              onLoadMore: () {},
+              onReload: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cards = tester.widgetList<TvSeerrRequestCard>(find.byType(TvSeerrRequestCard)).toList();
+    expect(cards[0].onContextMenu, isNotNull);
+    expect(cards[1].onContextMenu, isNull);
+    expect(find.text(t.seerr.actionBusy), findsOneWidget);
   });
 }

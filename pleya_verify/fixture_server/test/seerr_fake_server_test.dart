@@ -12,6 +12,8 @@ Future<http.Response> _get(SeerrFakeServer server, String path, {String? apiKey,
 }
 
 void main() {
+  group('request routes', requestRouteTests);
+
   test('a missing or wrong api key is rejected', () async {
     final server = SeerrFakeServer(apiKey: 'the-real-key');
 
@@ -125,5 +127,99 @@ void main() {
 
     expect(server.requests, isEmpty);
     expect(server.discover.values.every((bucket) => bucket.isEmpty), isTrue);
+  });
+}
+
+Future<http.Response> _send(SeerrFakeServer server, String method, String path, {Object? body}) {
+  final request = http.Request(method, Uri.parse('http://fixture/seerr/api/v1$path'));
+  request.headers['x-api-key'] = 'verify-key';
+  if (body != null) request.body = jsonEncode(body);
+  return server.handle(request);
+}
+
+/// The request routes mirror seerr-team/seerr `server/routes/request.ts`
+/// (develop at 53e45647). These hold the fixture to the parts of that source a
+/// scenario must not be able to pass around.
+void requestRouteTests() {
+  SeerrFakeServer seeded() => SeerrFakeServer(apiKey: 'verify-key')
+    ..addRequest(
+      id: 1,
+      mediaType: 'tv',
+      tmdbId: 201,
+      title: 'Fjord Line',
+      seasons: const [3, 4, 5],
+      seasonCount: 5,
+      serverId: 0,
+      profileId: 1,
+      rootFolder: '/media',
+    )
+    ..addRequest(id: 2, mediaType: 'movie', tmdbId: 202, title: 'Gantry Road', status: 3)
+    ..addRequest(id: 3, mediaType: 'movie', tmdbId: 203, title: 'Harbor Light', status: 2);
+
+  test('stored advanced fields are explicit even when unconfigured', () async {
+    final server = seeded();
+    final row = jsonDecode((await _send(server, 'GET', '/request/1')).body) as Map;
+    expect(row.containsKey('tags'), isTrue);
+    expect(row['tags'], isNull);
+    expect(row.containsKey('languageProfileId'), isTrue);
+    expect(row['languageProfileId'], isNull);
+    final created =
+        jsonDecode((await _send(server, 'POST', '/request', body: {'mediaType': 'movie', 'mediaId': 999})).body) as Map;
+    expect(created.containsKey('tags'), isTrue);
+    expect(created.containsKey('languageProfileId'), isTrue);
+  });
+
+  test('a declined filter is not a case in the route and answers with every status', () async {
+    final server = seeded();
+    final list = await _get(server, '/seerr/api/v1/request', apiKey: 'verify-key', query: const {'filter': 'declined'});
+    final statuses = (jsonDecode(list.body)['results'] as List).map((r) => r['status']).toSet();
+    expect(statuses, {1, 2, 3});
+  });
+
+  test('PUT without a mediaType saves nothing and still answers 200', () async {
+    final server = seeded();
+    final response = await _send(
+      server,
+      'PUT',
+      '/request/1',
+      body: {
+        'seasons': [1],
+      },
+    );
+    expect(response.statusCode, 200);
+    expect((jsonDecode(response.body)['seasons'] as List).map((s) => s['seasonNumber']), [3, 4, 5]);
+  });
+
+  test('PUT never reads is4k, and clears a target the body leaves out', () async {
+    final server = seeded();
+    final response = await _send(
+      server,
+      'PUT',
+      '/request/1',
+      body: {
+        'mediaType': 'tv',
+        'is4k': true,
+        'seasons': [3],
+      },
+    );
+    final row = jsonDecode(response.body) as Map;
+    expect(row['is4k'], isFalse);
+    expect(row['serverId'], isNull, reason: 'the route assigns req.body.serverId unconditionally');
+    expect((row['seasons'] as List).map((s) => s['seasonNumber']), [3]);
+  });
+
+  test('only a pending request can be changed or decided', () async {
+    final server = seeded();
+    expect((await _send(server, 'PUT', '/request/3', body: {'mediaType': 'movie'})).statusCode, 409);
+    expect((await _send(server, 'POST', '/request/3/approve')).statusCode, 409);
+    expect((await _send(server, 'POST', '/request/1/approve')).statusCode, 200);
+    expect(jsonDecode((await _send(server, 'GET', '/request/1')).body)['status'], 2);
+  });
+
+  test('DELETE removes the request, and a second request for the same title is a 409', () async {
+    final server = seeded();
+    expect((await _send(server, 'DELETE', '/request/1')).statusCode, 204);
+    expect((await _send(server, 'GET', '/request/1')).statusCode, 404);
+    expect((await _send(server, 'POST', '/request', body: {'mediaType': 'movie', 'mediaId': 203})).statusCode, 409);
   });
 }

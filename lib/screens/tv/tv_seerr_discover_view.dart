@@ -94,6 +94,7 @@ class TvSeerrGridPage {
     required this.hasMore,
     required this.isLoadingMore,
     required this.onLoadMore,
+    this.loadMoreFailed = false,
   });
 
   final String title;
@@ -101,6 +102,10 @@ class TvSeerrGridPage {
   final bool hasMore;
   final bool isLoadingMore;
   final VoidCallback onLoadMore;
+
+  /// The next page did not come. The loaded cards stay and a tile under them
+  /// offers the retry, so the grid does not ask again by itself.
+  final bool loadMoreFailed;
 }
 
 /// One streaming service the region reports.
@@ -189,6 +194,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
   final _providerFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailProvider');
   final _clearFocus = FocusNode(debugLabel: 'TvSeerrDiscoverRailClear');
   final _stateActionFocus = FocusNode(debugLabel: 'TvSeerrDiscoverStateAction');
+  final _loadMoreRetryFocus = FocusNode(debugLabel: 'TvSeerrDiscoverLoadMoreRetry');
   final _viewAllFocus = <String, FocusNode>{};
 
   bool _railExpanded = false;
@@ -201,6 +207,7 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
     _providerFocus.dispose();
     _clearFocus.dispose();
     _stateActionFocus.dispose();
+    _loadMoreRetryFocus.dispose();
     for (final node in _viewAllFocus.values) {
       node.dispose();
     }
@@ -695,9 +702,11 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
         TvCatalogEmptyState(
           icon: Symbols.search_off_rounded,
           title: t.seerr.noResults,
-          body: t.unifiedCatalog.states.filterEmptyBody,
-          actionLabel: t.common.retry,
-          onAction: widget.onReload,
+          // Empty is an answer, not a failure, so the way out is whatever
+          // narrowed the page: the filters, or the grid itself.
+          body: _hasFilters ? t.unifiedCatalog.states.filterEmptyBody : t.seerr.noResults,
+          actionLabel: _hasFilters ? t.unifiedCatalog.states.clearFilters : t.common.back,
+          onAction: _hasFilters ? _clearFilters : (widget.onLeaveGrid ?? widget.onReload),
           onActionFocusNode: _stateActionFocus,
           onActionNavigateLeft: _openRail,
         ),
@@ -712,9 +721,27 @@ class TvSeerrDiscoverViewState extends State<TvSeerrDiscoverView> {
         key: _gridKey,
         itemIds: [for (final media in page.items) '${media.mediaType}:${media.tmdbId}'],
         cardHeight: (cardWidth) => TvCatalogLayout.cardHeight(cardWidth, scale),
-        hasMore: page.hasMore,
+        hasMore: page.hasMore && !page.loadMoreFailed,
         isLoadingMore: page.isLoadingMore,
         onLoadMore: page.onLoadMore,
+        footer: page.loadMoreFailed
+            ? AutomationNode(
+                id: AutomationIds.tvCatalogState,
+                instance: '$tvSeerrDiscoverSurface.load_more_failed',
+                role: 'region',
+                focusNode: _loadMoreRetryFocus,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TvViewAllAction(
+                    label: '${t.seerr.loadMoreFailed} · ${t.common.retry}',
+                    semanticLabel: '${t.seerr.loadMoreFailed}, ${t.common.retry}',
+                    focusNode: _loadMoreRetryFocus,
+                    onSelect: page.onLoadMore,
+                    onNavigateUp: () => _gridKey.currentState?.focusGrid(),
+                  ),
+                ),
+              )
+            : null,
         onExitTop: widget.onExitTop,
         onExitLeft: _openRail,
         onBack: widget.onLeaveGrid,

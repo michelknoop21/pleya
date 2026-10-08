@@ -185,4 +185,23 @@ void main() {
 
     expect(overriddenSize / defaultSize, closeTo(80 / 64, 0.001));
   });
+
+  testWidgets('the action of a state answers a tap, not only the remote', (tester) async {
+    var pressed = 0;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: Center(
+              child: StateView.error(title: 'Something broke', onRetry: () => pressed++, retryLabel: 'Again'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Again'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(pressed, 1);
+  });
 }

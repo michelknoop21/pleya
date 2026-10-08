@@ -1,5 +1,6 @@
 import '../../services/seerr/seerr_constants.dart';
 import 'seerr_detail_facts.dart';
+import 'seerr_request.dart';
 
 /// A movie or TV result from a seerr search / discover / detail response.
 ///
@@ -68,6 +69,24 @@ class SeerrMedia {
   }
 
   bool get isMovie => mediaType == 'movie';
+
+  /// The same title with a newer availability, for a card that has to follow
+  /// what its detail page just learned.
+  SeerrMedia withStatus(SeerrMediaStatus status) => SeerrMedia(
+    tmdbId: tmdbId,
+    mediaType: mediaType,
+    title: title,
+    year: year,
+    posterPath: posterPath,
+    backdropPath: backdropPath,
+    overview: overview,
+    status: status,
+    originalLanguage: originalLanguage,
+    originCountry: originCountry,
+    voteCount: voteCount,
+    popularity: popularity,
+  );
+
   String get posterUrl => SeerrConstants.tmdbPosterUrl(posterPath);
   String get backdropUrl => SeerrConstants.tmdbBackdropUrl(backdropPath);
 
@@ -166,6 +185,16 @@ class SeerrMediaDetail {
   /// TMDB popularity score; null when absent.
   final double? popularity;
 
+  /// The requests Seerr lists under `mediaInfo.requests`. Empty when the
+  /// payload has none, which also covers a server that does not send them.
+  final List<SeerrRequest> requests;
+
+  /// Whether [requests] is the whole truth about this title: the payload is
+  /// for a title and either has no `mediaInfo` at all (never requested) or
+  /// carries a `requests` list. False for an unreadable or partial payload,
+  /// where an empty [requests] proves nothing.
+  final bool requestsKnown;
+
   const SeerrMediaDetail({
     required this.media,
     this.genres = const [],
@@ -175,6 +204,8 @@ class SeerrMediaDetail {
     this.certifications = const {},
     this.providers = const {},
     this.popularity,
+    this.requests = const [],
+    this.requestsKnown = false,
   });
 
   factory SeerrMediaDetail.fromJson(Map<String, dynamic> json, {required String mediaType}) {
@@ -220,7 +251,30 @@ class SeerrMediaDetail {
       certifications: parseSeerrCertifications(json),
       providers: parseSeerrFlatrateProviders(json),
       popularity: json['popularity'] is num ? (json['popularity'] as num).toDouble() : null,
+      requests: _requestsFrom(json['mediaInfo']),
+      requestsKnown: SeerrMedia._asInt(json['id']) != null && _requestsComplete(json),
     );
+  }
+
+  /// No `mediaInfo` at all (never requested), or a request list in which every
+  /// entry could be read. One entry that is not a request with an id makes the
+  /// list incomplete: that entry may be the very request someone is looking
+  /// for, and dropping it must not turn into "it is not there".
+  static bool _requestsComplete(Map<String, dynamic> json) {
+    if (!json.containsKey('mediaInfo') || json['mediaInfo'] == null) return true;
+    final mediaInfo = json['mediaInfo'];
+    final raw = mediaInfo is Map ? mediaInfo['requests'] : null;
+    if (raw is! List) return false;
+    return raw.every((r) => r is Map && SeerrRequest.tryFromJson(r.cast<String, dynamic>()) != null);
+  }
+
+  static List<SeerrRequest> _requestsFrom(Object? mediaInfo) {
+    final raw = mediaInfo is Map ? mediaInfo['requests'] : null;
+    if (raw is! List) return const [];
+    return [
+      for (final r in raw)
+        if (r is Map) ?SeerrRequest.tryFromJson(r.cast<String, dynamic>()),
+    ];
   }
 }
 
@@ -232,12 +286,29 @@ class SeerrSeason {
   final int episodeCount;
   final SeerrMediaStatus status;
 
+  /// Availability of the 4K version, which Seerr tracks on its own. Null when
+  /// the payload has no `status4k` for this season: not known, so not assumed
+  /// to be requestable.
+  final SeerrMediaStatus? status4k;
+
   const SeerrSeason({
     required this.seasonNumber,
     this.name,
     this.episodeCount = 0,
     this.status = SeerrMediaStatus.unknown,
+    this.status4k,
   });
+
+  /// What Seerr says about this season in the given quality, or null when it
+  /// says nothing. The HD status is never an answer about 4K: a season that is
+  /// there in HD has not been asked for, let alone delivered, in 4K.
+  SeerrMediaStatus? statusFor({required bool is4k}) => is4k ? status4k : status;
+
+  /// Whether the form may offer this season in the given quality. Only a
+  /// status that says "pending, processing or there" takes it away. No 4K
+  /// status at all leaves it on offer, and the server decides.
+  bool requestableIn({required bool is4k}) =>
+      (statusFor(is4k: is4k) ?? SeerrMediaStatus.unknown) == SeerrMediaStatus.unknown;
 
   static List<SeerrSeason> listFromDetail(Map<String, dynamic> detail) {
     final rawSeasons = detail['seasons'];
@@ -245,6 +316,7 @@ class SeerrSeason {
 
     // Per-season availability lives on mediaInfo.seasons keyed by seasonNumber.
     final statusBySeason = <int, SeerrMediaStatus>{};
+    final status4kBySeason = <int, SeerrMediaStatus>{};
     final mediaInfo = detail['mediaInfo'];
     if (mediaInfo is Map && mediaInfo['seasons'] is List) {
       for (final s in mediaInfo['seasons'] as List) {
@@ -252,6 +324,8 @@ class SeerrSeason {
         final n = SeerrMedia._asInt(s['seasonNumber']);
         if (n == null) continue;
         statusBySeason[n] = SeerrMediaStatus.fromValue(SeerrMedia._asInt(s['status']));
+        final status4k = SeerrMedia._asInt(s['status4k']);
+        if (status4k != null) status4kBySeason[n] = SeerrMediaStatus.fromValue(status4k);
       }
     }
 
@@ -266,6 +340,7 @@ class SeerrSeason {
           name: s['name']?.toString(),
           episodeCount: SeerrMedia._asInt(s['episodeCount']) ?? 0,
           status: statusBySeason[n] ?? SeerrMediaStatus.unknown,
+          status4k: status4kBySeason[n],
         ),
       );
     }

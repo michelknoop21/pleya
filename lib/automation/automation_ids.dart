@@ -177,6 +177,11 @@ class AutomationIds {
   /// with the ring here, and Menu from the detail rail comes back to it.
   static const String mediaDetailPlay = 'media-detail.play';
 
+  /// Visible preparation feedback; each concurrent notice has its own instance.
+  static const String noticeBusy = 'notice.busy';
+
+  static const String serverStatus = 'server.status';
+
   /// The restart button beside [mediaDetailPlay] on the iPhone detail, only
   /// while the item has progress (DEC-140).
   static const String mediaDetailPlayFromStart = 'media-detail.play-from-start';
@@ -454,6 +459,43 @@ class AutomationIds {
   /// One row of "Mijn aanvragen" on that page, by position (`requests.mine.item[0]`).
   static const String requestsMineItem = 'requests.mine.item';
 
+  /// The request form and the edit form (`requests.form[create]`,
+  /// `requests.form[edit]`). Its state names the phase the form is in.
+  static const String requestsForm = 'requests.form';
+
+  /// One choice in a form: `requests.form.option[season.3]`, `[fourK]`,
+  /// `[server.1]`, `[profile.4]`, `[folder.0]`, `[advanced]`.
+  static const String requestsFormOption = 'requests.form.option';
+
+  /// A form's buttons: `requests.form.button[submit]`, `[close]`, `[status]`,
+  /// `[mine]`.
+  static const String requestsFormButton = 'requests.form.button';
+
+  /// A message inside a form, by what it says: `requests.form.notice[quota]`,
+  /// `[uncertain]`, `[refused]`, `[forbidden]`, `[unsupported]`, `[target]`.
+  static const String requestsFormNotice = 'requests.form.notice';
+
+  /// The menu behind one request, and its rows (`requests.actions.item[approve]`).
+  static const String requestsActions = 'requests.actions';
+  static const String requestsActionsItem = 'requests.actions.item';
+
+  /// One request row off TV, by position (`requests.list.item[0]`). Its state
+  /// carries the request id, its status and whether an action is running.
+  static const String requestsListItem = 'requests.list.item';
+
+  /// The "more" button of one row, by the row's position
+  /// (`requests.list.more[0]`). It opens [requestsActions].
+  static const String requestsListMore = 'requests.list.more';
+
+  /// What the list shows instead of rows: `requests.list.state[empty]`,
+  /// `[filtered]`, `[error]`, `[unsupported]`.
+  static const String requestsListState = 'requests.list.state';
+
+  /// The primary and secondary action on a Seerr title page:
+  /// `requests.detail.action[request]`, `[mine]`, `[refresh]`, `[library]`,
+  /// `[search]`.
+  static const String requestsDetailAction = 'requests.detail.action';
+
   /// A landing's header, title line, "Alle series"/"Alle films" action and one
   /// of its rails. All four are instanceable and all four carry the landing's
   /// kind, because Home, Series and Films are children of the same
@@ -619,6 +661,15 @@ class AutomationIds {
     playerPanelTab,
     playerPanelRow,
     requestsMineItem,
+    requestsForm,
+    requestsFormOption,
+    requestsFormButton,
+    requestsFormNotice,
+    requestsActionsItem,
+    requestsListItem,
+    requestsListMore,
+    requestsListState,
+    requestsDetailAction,
     homeRail,
     homeRailItem,
     landingHeader,
@@ -697,6 +748,8 @@ class AutomationIds {
     {'id': mediaDetailSeasonChips, 'role': 'list', 'instanceable': false},
     {'id': mediaDetailSeasonChip, 'role': 'chip', 'instanceable': true},
     {'id': mediaDetailPlay, 'role': 'button', 'instanceable': false},
+    {'id': noticeBusy, 'role': 'status', 'instanceable': true},
+    {'id': serverStatus, 'role': 'dialog', 'instanceable': false},
     {'id': mediaDetailPlayFromStart, 'role': 'button', 'instanceable': false},
     {'id': mediaDetailAction, 'role': 'button', 'instanceable': true},
     {'id': mediaDetailSeasonPoster, 'role': 'grid.item', 'instanceable': true},
@@ -759,6 +812,16 @@ class AutomationIds {
     {'id': screenMovies, 'role': 'screen', 'instanceable': false},
     {'id': screenRequests, 'role': 'screen', 'instanceable': false},
     {'id': requestsMineItem, 'role': 'list.item', 'instanceable': true},
+    {'id': requestsForm, 'role': 'dialog', 'instanceable': true},
+    {'id': requestsFormOption, 'role': 'list.item', 'instanceable': true},
+    {'id': requestsFormButton, 'role': 'button', 'instanceable': true},
+    {'id': requestsFormNotice, 'role': 'status', 'instanceable': true},
+    {'id': requestsActions, 'role': 'dialog', 'instanceable': false},
+    {'id': requestsActionsItem, 'role': 'button', 'instanceable': true},
+    {'id': requestsListItem, 'role': 'list.item', 'instanceable': true},
+    {'id': requestsListMore, 'role': 'button', 'instanceable': true},
+    {'id': requestsListState, 'role': 'region', 'instanceable': true},
+    {'id': requestsDetailAction, 'role': 'button', 'instanceable': true},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
     {'id': landingHeaderAvatar, 'role': 'button', 'instanceable': true},

@@ -43,6 +43,10 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       if (seerr == null) return false;
       _applySeerrRequestsV1(seerr);
       return true;
+    case 'seerr.requests.manage.v1':
+      if (seerr == null) return false;
+      _applySeerrRequestsManageV1(seerr);
+      return true;
     case 'activity.active-session.v1':
       if (tautulli == null) return false;
       _applyActivityActiveSessionV1(tautulli);
@@ -394,6 +398,37 @@ void _applyCatalogSeasonsV1(PleyaFakeServer server) {
 /// seeds those into `/movie/{id}`/`/tv/{id}` instead — so this fixture only
 /// displays correctly when `SeerrClient.hydrateRequests`'s round-trip
 /// actually fires, the same as production.
+/// Three requests for the management scenarios: a pending series with a
+/// stored target and three of its five seasons (the one an edit can change), a
+/// pending film by someone else, and an approved film that offers nothing.
+/// Separate from `seerr.requests.v1` so the scenarios that count on that
+/// fixture's five rows keep counting five.
+void _applySeerrRequestsManageV1(SeerrFakeServer seerr) {
+  seerr.reset();
+  seerr.addRequest(
+    id: 1,
+    mediaType: 'tv',
+    tmdbId: 201,
+    title: 'Fjord Line',
+    year: 2024,
+    seasons: const [3, 4, 5],
+    seasonCount: 5,
+    serverId: 0,
+    profileId: 1,
+    rootFolder: '/media',
+  );
+  seerr.addRequest(
+    id: 2,
+    mediaType: 'movie',
+    tmdbId: 202,
+    title: 'Gantry Road',
+    year: 2023,
+    requestedByName: 'verify-guest',
+    requestedById: 2,
+  );
+  seerr.addRequest(id: 3, mediaType: 'movie', tmdbId: 203, title: 'Harbor Light', year: 2022, status: 2);
+}
+
 void _applySeerrRequestsV1(SeerrFakeServer seerr) {
   seerr.reset();
 

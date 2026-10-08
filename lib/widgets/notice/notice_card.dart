@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../automation/automation_ids.dart';
+import '../../automation/automation_node.dart';
 import '../../focus/focusable_button.dart';
 import '../../theme/mono_theme.dart';
 import '../../theme/mono_tokens.dart';
@@ -82,78 +84,95 @@ class NoticeCard extends StatelessWidget {
         ? FocusableButton(onPressed: onDismiss, shape: const CircleBorder(), child: closeButton)
         : Pressable(onTap: onDismiss, haptic: false, child: closeButton);
 
-    return Container(
-      padding: EdgeInsets.all(t.space * scale),
-      decoration: BoxDecoration(
-        color: t.surfaceElevated,
-        borderRadius: BorderRadius.circular(t.radiusSm),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.28), blurRadius: 16, offset: Offset(0, 4 * scale)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppIcon(icon, color: levelColor, size: 22 * scale, fill: 1, weight: 700),
-          SizedBox(width: t.space * scale),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        notice.title,
-                        style: TextStyle(color: t.text, fontWeight: FontWeight.w700, fontSize: 14 * scale),
-                      ),
-                    ),
-                    if (entry.count > 1) ...[
-                      SizedBox(width: 6 * scale),
-                      Text(
-                        '×${entry.count}',
-                        style: TextStyle(color: t.textMuted, fontSize: 12 * scale),
-                      ),
-                    ],
-                    if (notice.reportCode != null) ...[
-                      SizedBox(width: 6 * scale),
-                      Text(
-                        notice.reportCode!,
-                        style: TextStyle(
-                          color: t.textMuted,
-                          fontSize: 11 * scale,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+    return AutomationNode(
+      id: notice.busy ? AutomationIds.noticeBusy : null,
+      instance: notice.busy ? entry.id : null,
+      role: 'status',
+      label: notice.title,
+      state: () => {'busy': notice.busy},
+      child: Container(
+        padding: EdgeInsets.all(t.space * scale),
+        decoration: BoxDecoration(
+          color: t.surfaceElevated,
+          borderRadius: BorderRadius.circular(t.radiusSm),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.28), blurRadius: 16, offset: Offset(0, 4 * scale)),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (notice.busy)
+              SizedBox.square(
+                dimension: 22 * scale,
+                child: Padding(
+                  padding: EdgeInsets.all(2 * scale),
+                  child: CircularProgressIndicator(strokeWidth: 2.5 * scale, color: t.text),
+                ),
+              )
+            else
+              AppIcon(icon, color: levelColor, size: 22 * scale, fill: 1, weight: 700),
+            SizedBox(width: t.space * scale),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notice.title,
+                          style: TextStyle(color: t.text, fontWeight: FontWeight.w700, fontSize: 14 * scale),
                         ),
                       ),
+                      if (entry.count > 1) ...[
+                        SizedBox(width: 6 * scale),
+                        Text(
+                          '×${entry.count}',
+                          style: TextStyle(color: t.textMuted, fontSize: 12 * scale),
+                        ),
+                      ],
+                      if (notice.reportCode != null) ...[
+                        SizedBox(width: 6 * scale),
+                        Text(
+                          notice.reportCode!,
+                          style: TextStyle(
+                            color: t.textMuted,
+                            fontSize: 11 * scale,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
                     ],
+                  ),
+                  if (notice.body != null) ...[
+                    SizedBox(height: 2 * scale),
+                    Text(
+                      notice.body!,
+                      style: TextStyle(color: t.textMuted, fontSize: 13 * scale),
+                    ),
                   ],
-                ),
-                if (notice.body != null) ...[
-                  SizedBox(height: 2 * scale),
-                  Text(
-                    notice.body!,
-                    style: TextStyle(color: t.textMuted, fontSize: 13 * scale),
-                  ),
+                  if (notice.primary != null || notice.secondary != null) ...[
+                    SizedBox(height: t.space * 0.75 * scale),
+                    Row(
+                      children: [
+                        if (notice.primary != null)
+                          _actionButton(context, t, levelColor, notice.primary!, primary: true),
+                        if (notice.primary != null && notice.secondary != null) SizedBox(width: 8 * scale),
+                        if (notice.secondary != null)
+                          _actionButton(context, t, levelColor, notice.secondary!, primary: false),
+                      ],
+                    ),
+                  ],
                 ],
-                if (notice.primary != null || notice.secondary != null) ...[
-                  SizedBox(height: t.space * 0.75 * scale),
-                  Row(
-                    children: [
-                      if (notice.primary != null) _actionButton(context, t, levelColor, notice.primary!, primary: true),
-                      if (notice.primary != null && notice.secondary != null) SizedBox(width: 8 * scale),
-                      if (notice.secondary != null)
-                        _actionButton(context, t, levelColor, notice.secondary!, primary: false),
-                    ],
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-          SizedBox(width: 4 * scale),
-          closeTap,
-        ],
+            SizedBox(width: 4 * scale),
+            closeTap,
+          ],
+        ),
       ),
     );
   }

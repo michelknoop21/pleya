@@ -31,9 +31,22 @@ class SeerrException implements Exception {
     return SeerrException(msg != null && msg.isNotEmpty ? msg : 'HTTP $code', statusCode: code);
   }
 
+  /// A mutation that left the client without a readable server answer: no
+  /// answer at all, or one whose body could not be read. Either way the write
+  /// may have been applied, so the caller re-reads the state before offering a
+  /// retry instead of sending the same write twice.
+  bool get outcomeUnknown => isNetwork;
+
+  /// The server answered that the state no longer allows this (409).
+  bool get isConflict => statusCode == 409;
+
   @override
   String toString() => message;
 }
+
+/// Request counts as `/request/count` reports them. A field the payload lacks
+/// is null, never zero.
+typedef SeerrRequestCounts = ({int? total, int? pending, int? approved, int? available, int? processing});
 
 /// A page of discover/search results.
 typedef SeerrMediaPage = ({List<SeerrMedia> items, int page, int totalPages});
@@ -61,3 +74,6 @@ class SeerrWatchProvider {
     return SeerrWatchProvider(id: id, name: name, logoPath: logo is String && logo.isNotEmpty ? logo : null);
   }
 }
+
+/// The Radarr/Sonarr target of a request: server, quality profile, root folder.
+typedef SeerrRequestTarget = ({int? serverId, int? profileId, String? rootFolder});

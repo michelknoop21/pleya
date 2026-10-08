@@ -7,20 +7,23 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 ## Current direction
 
-0. Big P (BP-00 t/m BP-09) is de primaire stroom: eerst begrijpen wie, wat en welke data bedoeld is, dan gecontroleerd antwoorden. Volgorde en detail: sectie Big P (na Work packages); de Execution phases hieronder gelden voor de rest van het product.
-1. Reconcile the current source/release/status baseline. Items 1-6 resume when Michel lifts the Big P pause (section Big P).
-2. Close correctness, permission/profile and concrete library bugs in the existing app.
-3. Finish only the currently valid UI gaps; do not rebuild already-landed surfaces.
-4. Run real-account, simulator and physical-device acceptance for the chosen release scope.
-5. Release exactly the accepted SHA/archive.
-6. Then choose one next product increment; Pleya Server/Web/e-books continue only through their existing phase gates and dependency graph.
+Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepaalt de prioriteit. Dit besluit vervangt de automatische Big P-voorrang en de algemene pauze van 5 oktober; het verandert geen gedragscontract, rechten, ontwerpapproval of review-/releasegate.
+
+1. Herijk actuele `main`, audits, bestaande bugs, registers en lopende branches (REG-01/REG-02/REG-03). De 87 vensters van [AUDIT-TV-UX1](qa/2026-10-08-tvos-klantbeleving-audit.md) zijn een dekkingsmatrix, geen 87 implementatietaken.
+2. Onderzoek eerst één samenhangend P1-pakket voor tvOS playback en betrouwbaarheid (A-11/A-12), met RESUME-PLAY1 en TVUX-10/21/40 plus de relevante delen van TVUX-71/72. Alleen bewezen ernstige uitval escaleert naar P0. Aantoonbare security-, rechten-, dataverlies- en releaseblokkerende problemen gaan voor.
+3. Daarna concrete interactiecorrecties (A-07/A-10/A-11): TVUX-56/76/79; TVUX-77 alleen repareren bij bevestigd runtimeprobleem. Vergelijk bij elke pakketgrens de impact met open Big P-werk en bestaande bugs.
+4. Requests 2.0 blijft P1: A-19 → A-20 (volledige Northstar-set door Opus) → A-21. TVUX-14–20 en TVUX-34–39 zijn aanvullende auditinput, geen toestemming om spec of ontwerp over te slaan.
+5. Premium tvOS-afwerking is P2 en gebruikt bestaande pakketten en goedgekeurde Northstars: alleen aantoonbare problemen of expliciet goedgekeurde voorstellen; geen nieuwe shell, componentframework of herbouw.
+6. Sluit de gekozen scope af via bestaande registers, onafhankelijke reviews, gerichte tests, codegate, Pleya Verify met beoordeelde screenshots en toepasselijke fysieke acceptatie. Release exact de geaccepteerde SHA/archive. Pleya Server/Web/e-books behouden hun fase- en protocolpoorten.
 
 ## Roadmap rules
 
 - Every implementation task must name one roadmap work-package ID before code starts.
 - PRs and handoffs use `Roadmap: <ID>`.
 - Work that does not fit an ID does not silently become a new side track. First record `Roadmap deviation: <approved decision/proposal>`.
-- Open P0 work precedes P1/P2/P3 unless lower-priority work is demonstrably independent and does not delay review/release of the primary stream. Exception: Michel's decision of 5 October 2026 (section Big P) makes BP-00..BP-09 the single primary stream, whatever their P-level, and pauses the other open P0 items except hotfixes.
+- Prioriteer inhoudelijk op (1) gebruikersimpact, (2) betrouwbaarheid, veiligheid en correctheid, (3) productwaarde en onderscheidend vermogen, (4) implementatiekosten en regressierisico en (5) afhankelijkheden, lopend werk en onderbrekingskosten. Big P heeft geen automatische uitzondering.
+- Bewezen P0-problemen gaan voor. Historische P0-labels zijn geen bewijs van ernstige uitval: herijk hun actuele inhoud voordat ze de volgorde bepalen. Een nieuw P1-item kan lopende ontwikkeling verdringen bij aantoonbaar grotere productwaarde of gebruikersimpact; leg reden, afhankelijkheden en verdrongen werk vast in het bestaande register en deze roadmap.
+- Voorkom voortdurend wisselen: rond een logisch pakket af tot de review-/bewijspoort en vergelijk daar de volgende kandidaten. Onderbreek tussentijds alleen bij aantoonbare urgentie; een nieuwe auditkandidaat op zichzelf is geen reden.
 - WIP limit: one primary implementation stream plus at most one truly independent parallel implementation. Design/spec work may run ahead only if it does not create an unreviewed implementation pile.
 - Security, data-loss, regression and release-blocking hotfixes may interrupt the order. Reconcile this roadmap and the owning register in the same PR or the next documentation commit.
 - This roadmap owns order; domain registers own detailed state. Do not create a second detailed status administration here.
@@ -32,46 +35,46 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 | ID | P | Track | Work package | Current state |
 | --- | --- | --- | --- | --- |
-| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`, PR #175) | Akkoord Michel 5 okt; contract (PR #175) merget vóór BP-01 |
+| BP-00 | P0 | Big P | Gedragscontract en Connected Knowledge-inventaris (`docs/big-p-behaviour-contract.md`, PR #175) | Gemerged (PR #175, 5 okt); contract blijft bindend |
 | BP-01 | P0 | Big P | Invarianten: bevoegdheid na wachten, server-plus-item-paren, taakstatus onbekend, operatie-id | Gemerged (PR #178) |
 | BP-02 | P0 | Big P | Identiteit en personen: sleutel per bron, `CurrentUserContext`, "anderen" op account-id | Gemerged (PR #187); open gaten verdeeld, zie sectie Big P |
-| BP-03a | P0 | Big P | Mediasleutel en kijkcijfers: titels over servers alleen samenvoegen op bewijs en melden; Tautulli-"anderen" getest | Draft-PR |
-| BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster: ongevensterde kijklogsleutels in `my_watching` en het venster benoemd; kijklog-migratie (titel en externe id's in `MediaInteractions`) volgt als BP-03c | Draft-PR, gestapeld op BP-03a |
+| BP-03a | P0 | Big P | Mediasleutel en kijkcijfers: titels over servers alleen samenvoegen op bewijs en melden; Tautulli-"anderen" getest | Gemerged (PR #190, 5 okt) |
+| BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster: ongevensterde kijklogsleutels in `my_watching` en het venster benoemd; kijklog-migratie (titel en externe id's in `MediaInteractions`) volgt als BP-03c | Gemerged (PR #191, 5 okt) |
 | BP-03c | P0 | Big P | Kijklog-migratie: titel en externe id's in `MediaInteractions` zodat een kopie op een andere server herkend wordt; tweede Plex-nep, Pleya-eigen-id, Emby-test | Gepland |
-| BP-04a | P0 | Big P | Intent met herkomst per veld (publiek, soort, periode), parser NL/EN, afdwingen op tool-argumenten, `assistant_run.dart` gesplitst | PR #193, adversariële review en scoped re-review gedaan, bevindingen hersteld; wacht op CI |
+| BP-04a | P0 | Big P | Intent met herkomst per veld (publiek, soort, periode), parser NL/EN, afdwingen op tool-argumenten, `assistant_run.dart` gesplitst | Gemerged (PR #193, 5 okt); adversariële review en scoped re-review gedaan |
 | BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Deels: periode "vorige week" geweigerd, gemengd publiek gemeld aan het model; rest gepland |
 | BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
-| BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gepland |
+| BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gespreksgeheugen/Nieuw gesprek gemerged (PR #198, 5 okt); volledige pakketacceptatie herijken |
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland; `recommend_together` bewijst "ongezien" al per titel in plaats van per kopie (PR #199, 6 okt) |
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
 | BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | Gelandeerd (5 okt); hardware- en tvOS-deviceronde open |
-| REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Gepauzeerd t.g.v. Big P (5 okt) |
+| REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Herijking nodig; algemene Big P-pauze opgeheven (8 okt) |
 | REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
-| REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
-| A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Open PR; gepauzeerd t.g.v. Big P (5 okt) |
-| A-02 | P0 | Bestaande app | Rechten, geleende verbindingen en profielen | Bewijs afronden; enige onafhankelijke stroom naast Big P |
+| REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; algemene Big P-pauze opgeheven (8 okt) |
+| A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Open PR; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
+| A-02 | P0 | Bestaande app | Rechten, geleende verbindingen en profielen | Bewijs afronden; rechtenrisico inhoudelijk vergelijken, parallel alleen indien onafhankelijk |
 | A-03 | P1 | Bestaande app | Bibliotheek-snelkiezer bewaart selectie | Open issue |
 | A-04 | P1 | Bestaande app | Verborgen Plex-bibliotheek op TV | Open issue |
 | A-05 | P1 | Bestaande app | iPhone-detail DEC-140 | Bewijs afronden |
 | A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Volgens register open |
 | A-07 | P1 | Bestaande app | Bronkeuze bij meerdere servers | Bewijs afronden |
 | A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Volgens register open |
-| A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open; gepauzeerd t.g.v. Big P (5 okt) |
+| A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
 | A-10 | P1 | Bestaande app | Live TV, Liquid Glass en mobiele speler | Bewijs afronden |
-| A-11 | P1 | Bestaande app | tvOS focus, Menu en shell-routes | Bewijs afronden |
-| A-12 | P1 | Bestaande app | Top Shelf, 4K en tvOS scrubbing | Bewijs afronden |
+| A-11 | P1 | Bestaande app | tvOS focus, Menu en shell-routes; playbackstart en herstel | Discovery playback/betrouwbaarheid eerst (8 okt); status in tvOS-registers |
+| A-12 | P1 | Bestaande app | Top Shelf, 4K en tvOS scrubbing; resume en spelerbetrouwbaarheid | Discovery met A-11 (8 okt); fysieke resume-acceptatie open |
 | A-13 | P1 | Bestaande app | Zoeken en filtergedrag met echte servers | Bewijs afronden |
 | A-14 | P1 | Bestaande app | iCloud-voorkeurensync | Bewijs afronden |
 | A-15 | P1 | Bestaande app | Aanbevelingen, historie en Tautulli | Bewijs afronden |
 | A-16 | P1 | Bestaande app | Activiteit: ACT1 | Besluit nodig |
 | A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Status herijken; geen bewijs van volledige afronding |
-| A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | Gepland; gepauzeerd t.g.v. Big P (5 okt) |
-| A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | Nieuw; spec vóór ontwerp |
-| A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | Na A-19; Opus; expliciet akkoord vóór bouw |
-| A-21 | P1 | Requests 2.0 | Implementatie en acceptatie van het goedgekeurde redesign | Na A-20; platform- en rolbewijs vereist |
+| A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | Gepland; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
+| A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | [Broninventaris/spec](requests-2.0-spec.md) inhoudelijk gereviewd incl. countscope-fixreview; geen runtimeacceptatie |
+| A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | [Opus-Northstar-set](assets/requests-2.0/index.html):72 staten/170 beelden; Michel akkoord 8 oktober inclusief zeven keuzes, Impeccable polish en onafhankelijke review afgerond; ontwerpacceptatie; A-21 in uitvoering, nog niet geaccepteerd |
+| A-21 | P1 | Requests 2.0 | Implementatie en acceptatie van het goedgekeurde redesign | IN PROGRESS, 8 oktober; huidige codeset/gerichte tests en onafhankelijke fixreviews afgerond, TV-beheerscenario groen; verdere platform-/rol-, echte-server- en hardwareacceptatie open |
 | C-01 | P1 | Server | S2.5 configuratiebibliotheken overnemen | Volgens register open |
 | C-02 | P1 | Server | S2.6 migratie en protocolvenster 2 sluiten | Volgens register open |
-| C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
+| C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | Status herijken; algemene Big P-pauze opgeheven (8 okt) |
 | C-04 | P1 | Server | Loudness D3-D5 en client-consumptie | Status herijken |
 | C-05 | P2 | Server | Volledige S0-S25-dekking, inclusief Web consumer, beheer-GUI en setup | Gepland; detailstatus in servermasterlijst |
 | D-01 | P2 | E-books/routes | Bestaande e-bookbranch en schermen | Status herijken |
@@ -81,7 +84,7 @@ Detailed status and evidence remain in the existing domain registers and masterp
 | D-05 | P2 | Audioboeken | Northstar/mockups voor bestaande apps en Pleya Web | Na D-04; Opus; akkoord vóór bouw |
 | D-06 | P2 | Audioboeken | Pleya Server-, client- en webimplementatie plus acceptatie | Na D-05 en toepasselijke server/protocolpoorten |
 | E-01 | P1 | Commercieel/site | Free/Pro en prijsbesluit | Voorstel, niet besloten |
-| E-02 | P0 | Commercieel/site | Licenties en publicatiegereedheid | Status herijken; gepauzeerd t.g.v. Big P (5 okt) |
+| E-02 | P0 | Commercieel/site | Licenties en publicatiegereedheid | Status herijken; algemene Big P-pauze opgeheven (8 okt) |
 | E-03 | P2 | Commercieel/site | Aankoop, herstel en Pro-toegang | Gepland |
 | E-04 | P1 | Commercieel/site | Website, screenshots en release-informatie | Status herijken |
 | F-01 | P3 | Optioneel | Apple Intelligence: kleine zoekfilter-MVP | Gepland |
@@ -89,9 +92,9 @@ Detailed status and evidence remain in the existing domain registers and masterp
 
 ## Big P
 
-Primaire stroom (Michel, 5 oktober 2026). Doel: Pleya stelt eerst vast wie, wat en welke data bedoeld is, verzamelt gecontroleerd de juiste gegevens, geeft het model alleen de juiste context, controleert de uitkomst en toont tekst en acties uit één waarheid.
+Productprogramma; geen automatische primaire stroom (Michel, 8 oktober 2026). Doel: Pleya stelt eerst vast wie, wat en welke data bedoeld is, verzamelt gecontroleerd de juiste gegevens, geeft het model alleen de juiste context, controleert de uitkomst en toont tekst en acties uit één waarheid.
 
-Stromen (Michel, 5 oktober 2026): BP-00 t/m BP-09 tellen samen als één programma en vormen de enige primaire stroom. A-02 (rechten, geleende verbindingen en profielen) is de enige onafhankelijke parallelle stroom. Alle andere open P0-items (A-01, A-09, A-18, REG-01, REG-03, C-03, E-02) pauzeren tijdelijk, behalve hotfixes voor security, dataverlies of regressies; die onderbreken volgens de bestaande regel. Een gepauzeerd item verliest zijn prioriteit niet en hervat zodra Michel de pauze opheft.
+Het besluit van 8 oktober vervangt de exclusieve primaire stroom BP-00 t/m BP-09 en de uitzondering dat alleen A-02 parallel mag lopen. Big P blijft belangrijk; de interne afhankelijkheden hieronder blijven gelden, maar uitvoering wordt inhoudelijk vergeleken met bestaande bugs, tvOS-UX en Requests 2.0. De algemene pauze van A-01/A-09/A-18/REG-01/REG-03/C-03/E-02 is opgeheven; dat start deze pakketten niet gelijktijdig en verklaart ze niet afgerond. De bestaande WIP-limiet en alle review-/releasegates blijven gelden. Lopend uniek BP-werk wordt behouden; wisselen gebeurt bij pakketgrenzen of bewezen urgentie, met zichtbare onderbrekingskosten.
 
 Open gaten van BP-02 (Michel, 5 oktober 2026: per gat beslist waar het hoort):
 - Zelfde plex.tv-id over twee Plex-servers samenvoegen (test): BP-03c, samen met de kijklog-migratie. Het harnas heeft één Plex-server; een tweede nep is daar nodig.
@@ -119,16 +122,29 @@ Connected Knowledge: geen gekoppelde, relevante bron blijft onbereikbaar voor Bi
 
 Uitgesteld (geen werkpakket tot Michel er een opent, verwijzing: `docs/big-p-behaviour-contract.md`): fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
 
+## tvOS Customer Experience Improvement — 8 oktober 2026
+
+Roadmap: REG-01/REG-02/REG-03, A-07/A-10/A-11/A-12 en A-19/A-20/A-21; overige oppervlakken blijven bij hun bestaande A-pakket. Detailstatus blijft in [de fysieke correctieronde](tvos-fysieke-correctieronde.md) en [het redesignregister](tvos-redesign-register.md). Dit is de volgorde van de gerichte verbetering, geen tweede takenregister.
+
+- **Fase 0 — discovery.** Verifieer actuele implementaties, Select-events, gedeelde afspeelnavigatie, netwerkafhankelijkheden en spelerinitialisatie. Vergelijk open Big P, bugs, Requests en tvOS op de vijf criteria. Review de normatieve roadmapdiff onafhankelijk vóór merge.
+- **Fase 1 — playback/betrouwbaarheid (P1).** Direct herkenbare ontvangstfeedback, zichtbare lopende start, betrouwbare resume, geen dubbele start, passende herstelroute en behouden focus/context. Een deels onbereikbare server mag beschikbare content niet onnodig blokkeren. RESUME-PLAY1 blijft open tot reproductie, bewezen root cause/correctie en fysieke Apple TV-acceptatie; een generieke startfix sluit die niet automatisch.
+- **Fase 2 — concrete UX (P1/P2).** TVUX-56: Pleya Server/lokale bron eerst informatie/status, ontkoppelen/verwijderen expliciet secundair; bevestigingen en authority behouden. TVUX-76: bestaande vertalingen gebruiken. TVUX-79: positieve sessieactie eerst waar beschikbaar, exitbevestiging behouden. TVUX-77: uitsluitend na runtimebevestiging. Opus maakt alleen voor relevante visuele wijzigingen een kleine Northstar.
+- **Fase 3 — ontdekken/zoeken/Requests (P1).** A-19 → A-20 → A-21; beschikbaar versus aan te vragen, zoek-/lege staten, filters/sortering, aanvraagstatus/formulier/bevestiging en herstel/terugkeer. Alle rollen, geavanceerde opties en bestaande platformfuncties blijven behouden.
+- **Fase 4 — premium afwerking (P2).** TVUX-22/24/25/26/27/31/33/55/59/66/41/50 en overige vensters alleen na actuele screenshots en toetsing aan geldende Northstars/DEC's. De voorgestelde Home-beelden van 4 oktober zijn geen ontwerpapproval.
+- **Fase 5 — bewijs/afronding.** Per correctie reproductie/root cause, aantoonbaar rode negatieve controle, gerichte tests, codegate, onafhankelijke adversarial review en fixreview indien nodig. UI vereist Pleya Verify en beoordeelde screenshots; hardwareafhankelijk gedrag vereist fysieke Apple TV-acceptatie. Registreer code complete, tests complete, simulator verified en hardware verified afzonderlijk; CI/goldens sluiten geen volledige acceptatie.
+
+**Vergelijking bij aanvang.** De resume-melding raakt de kernhandeling kijken; impact potentieel hoog, oorzaak en hardwarefrequentie nog onbekend. Daarom eerst A-11/A-12-discovery, zonder P0-claim. Bestaande rechten-/correctheidsbugs behouden hun veiligheidsgewicht. Big P-fixes en resterende intent-/identiteitsgaten behouden hun contracten en interne afhankelijkheden; nieuwe assistantfunctionaliteit krijgt geen voorrang op betrouwbare playback. Requests heeft brede ontdek-/aanvraagwaarde maar vraagt eerst A-19 en volledige A-20; specwerk mag binnen de WIP-regel vooruitlopen. Visuele P2-voorstellen wachten op bewijs/approval. Deze keuze verdringt automatische Big P-voorrang, geen reeds bewezen securityhotfix of geaccepteerde releasegate.
+
 ## Execution phases
 
-Tot Michel de pauze opheft loopt alleen de Big P-stroom (primair) en A-02 (onafhankelijk); de fasen hieronder blijven de volgorde voor de gepauzeerde items.
+De uitvoeringsfasen hieronder zijn bewijs- en afhankelijkheidspoorten; pakketkeuze volgt het productbesluit van 8 oktober en de WIP-limiet. Big P en A-02 hebben geen exclusieve stroompositie.
 
 ### Phase 0 — Authority and current baseline
 
 - Make this roadmap the canonical cross-project ordering layer.
 - Reconcile STATUS and domain registers against current `main`.
 - Classify stale/open branches and PRs as unique work, already landed, or superseded.
-- Finish A-01 (PR #111) through current review and CI before relying on heavy Verify runs.
+- Herijk A-01 (PR #111) en de actuele Verify-toolchain voordat zware runs als bewijs worden gebruikt; status en blokkades blijven in het bestaande register.
 - Every next task must carry a roadmap ID.
 - REG-01 must establish the completeness map below before any whole-redesign completion claim. Already identified independent fixes need not wait for the entire inventory.
 
@@ -214,10 +230,10 @@ Payment entitlement never substitutes for media-server administration rights.
 | Window | Primary result | Limited parallel work |
 | --- | --- | --- |
 | 1-2 Oct | Roadmap authority, current baseline, per-platform/window coverage map, A-01/PR111 gates | decisions/status only |
-| 5-9 Oct | Big P: BP-00, BP-09 landen, BP-01 (primair) | A-02 permissions/profiles (enige onafhankelijke stroom); issue #112 en de rest van de UI pauzeren |
-| 12-16 Oct | Big P: BP-02 t/m BP-04 (primair); acceptatie van de rest hervat zodra de pauze opgeheven is | A-02 |
-| 19-23 Oct | Big P: BP-05 en build 1 (alleen wat erin zit) | A-02; A-18, REG-03 en E-02 blijven gepauzeerd |
-| 26-30 Oct | Big P: BP-06 t/m BP-08 en build 2; daarna beslist Michel of de pauze opgeheven wordt | A-02; Requests A-19/A-20, Audiobooks D-04/D-05 en overige increments wachten op het opheffen van de pauze |
+| 5-9 Oct | BP-00/01/02/03a/03b/04a en deelwerk 04b/06 zijn al gemerged; vanaf 8 okt REG-01-discovery en één A-11/A-12-playbackpakket volgens actuele impact | Hoogstens één aantoonbaar onafhankelijke stroom; geen vaste Big P/A-02-uitzondering |
+| 12-16 Oct | Gekozen playback-/herstelpakket bewijzen en concrete TVUX-56/76/79-correcties vergelijken met actuele bugs/Big P; TVUX-77 eerst runtimeonderzoek | A-19 audit/spec mag vooruit zonder parallelle implementatiestapel |
+| 19-23 Oct | Volgende logisch samenhangende pakket op de vijf criteria; Requests A-20 pas na A-19; toepasselijke acceptatie/releasegates | Alleen onafhankelijk werk binnen WIP; Server/Web behoudt fasepoorten |
+| 26-30 Oct | Review/acceptatie van gekozen scope; A-21 alleen na volledige ontwerpapproval; premium P2 alleen met bewijs of goedgekeurd voorstel | Volgende increments inhoudelijk kiezen; geen algemene Big P-pauze |
 
 These are work windows, not guaranteed completion dates. Missing evidence or a regression moves the window; evidence is not planned away. They do not promise delivery of all 46 Web designs or the full Server completion scope within October.
 

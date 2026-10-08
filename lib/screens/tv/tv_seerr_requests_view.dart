@@ -42,6 +42,7 @@ import '../../widgets/tv/tv_catalog_selection_tags.dart';
 import '../../widgets/tv/tv_catalog_skeleton_grid.dart';
 import '../../widgets/tv/tv_seerr_card.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
+import '../../widgets/tv/tv_view_all_action.dart';
 
 /// What this page is called in `tv.catalog.*` automation ids (REQ1).
 const String tvSeerrRequestsSurface = 'requests';
@@ -63,8 +64,26 @@ enum TvSeerrRequestFilter {
   final String wire;
 }
 
-/// How many requests are behind each answer, as Seerr reports them.
-typedef TvSeerrRequestCounts = ({int total, int pending, int approved, int available, int processing});
+/// What the counts beside the status answers can be about.
+enum TvSeerrCountsScope {
+  /// Every request, the same set the list shows: numbers where known.
+  all,
+
+  /// The viewer's own list. Seerr counts everyone's, so no numbers and a line
+  /// that says why.
+  own,
+
+  /// Every request, but the count did not come: a dash, never a zero.
+  failed,
+}
+
+String seerrRequestFilterLabel(TvSeerrRequestFilter filter) => switch (filter) {
+  TvSeerrRequestFilter.all => t.seerr.filterAll,
+  TvSeerrRequestFilter.pending => t.seerr.filterPending,
+  TvSeerrRequestFilter.approved => t.seerr.filterApproved,
+  TvSeerrRequestFilter.available => t.seerr.filterAvailable,
+  TvSeerrRequestFilter.declined => t.seerr.filterDeclined,
+};
 
 class TvSeerrRequestsView extends StatefulWidget {
   const TvSeerrRequestsView({
@@ -79,7 +98,18 @@ class TvSeerrRequestsView extends StatefulWidget {
     required this.isLoadingMore,
     required this.onLoadMore,
     required this.onReload,
-    this.counts,
+    this.onContextMenu,
+    this.onDiscover,
+    this.busyIds = const {},
+    this.unresolvedIds = const {},
+    this.filterUnsupportedBody,
+    this.loadMoreFailed = false,
+    this.countFor,
+    this.countsScope = TvSeerrCountsScope.all,
+    this.filterUnsupported = false,
+    this.ownScope = false,
+    this.onScopeChanged,
+    this.initialFocusedId,
     this.error,
     this.onExitTop,
   });
@@ -101,11 +131,51 @@ class TvSeerrRequestsView extends StatefulWidget {
   final VoidCallback onLoadMore;
   final VoidCallback onReload;
 
-  /// Null until the counts endpoint has answered. Null is drawn as no number
-  /// rather than as a zero: mockup 35 D shows counts because Seerr reports them,
-  /// and a zero would claim there is nothing behind a choice that has simply not
-  /// been counted yet.
-  final TvSeerrRequestCounts? counts;
+  /// Long press on a card: the menu with what this request allows. Null
+  /// leaves the card without one.
+  final ValueChanged<SeerrRequest>? onContextMenu;
+
+  /// The way out of an account with no requests at all: Ontdekken.
+  final VoidCallback? onDiscover;
+
+  /// Requests with an action on the wire. Their card says so and offers no
+  /// second action until the first has an answer.
+  final Set<int> busyIds;
+
+  /// The subset of [busyIds] whose outcome is open. Their menu callback still
+  /// fires: the owner answers it by reading the request again.
+  final Set<int> unresolvedIds;
+
+  /// Why the chosen status has no list. Null uses the "answered with other
+  /// rows" wording.
+  final String? filterUnsupportedBody;
+
+  /// The last page request failed. The loaded cards stay, and a tile under
+  /// them offers the retry instead of the grid asking again by itself.
+  final bool loadMoreFailed;
+
+  /// The number behind one status, or null when it is not known. Null is drawn
+  /// as no number rather than as a zero: a zero would claim there is nothing
+  /// behind a choice that has simply not been counted.
+  final int? Function(TvSeerrRequestFilter filter)? countFor;
+
+  final TvSeerrCountsScope countsScope;
+
+  /// The server answered the chosen status with requests of another one.
+  final bool filterUnsupported;
+
+  /// The list is the viewer's own, which changes what an empty one says.
+  final bool ownScope;
+
+  /// A manager's choice between everyone's requests and their own (true is
+  /// own). Null for a viewer who has no such choice: the rail then has no
+  /// Bereik row at all, so there is nothing to select that the server would
+  /// refuse.
+  final ValueChanged<bool>? onScopeChanged;
+
+  /// The request the page was opened for, as a card id. The grid opens with
+  /// the focus on it instead of on the first card.
+  final String? initialFocusedId;
 
   final String? error;
 
@@ -119,11 +189,14 @@ class TvSeerrRequestsView extends StatefulWidget {
 class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   final _gridKey = GlobalKey<TvCatalogCardGridState>();
   final _statusFocus = FocusNode(debugLabel: 'TvSeerrRailStatus');
+  final _scopeFocus = FocusNode(debugLabel: 'TvSeerrRailScope');
   final _clearFocus = FocusNode(debugLabel: 'TvSeerrRailClear');
   final _stateActionFocus = FocusNode(debugLabel: 'TvSeerrStateAction');
+  final _loadMoreRetryFocus = FocusNode(debugLabel: 'TvSeerrLoadMoreRetry');
 
   bool _railExpanded = false;
   bool _statusSubview = false;
+  bool _scopeSubview = false;
   bool _wantsEntryFocus = false;
 
   @override
@@ -137,14 +210,23 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   @override
   void dispose() {
     _statusFocus.dispose();
+    _scopeFocus.dispose();
     _clearFocus.dispose();
     _stateActionFocus.dispose();
+    _loadMoreRetryFocus.dispose();
     super.dispose();
   }
 
   // ---------------------------------------------------------------------------
   // Focus traversal — the same shape as every other catalog-language page
   // ---------------------------------------------------------------------------
+
+  /// Puts the focus on one request's card, when it is on the page.
+  void focusRequest(int id) {
+    if (!mounted || _railExpanded) return;
+    _wantsEntryFocus = false;
+    _gridKey.currentState?.focusItem('$id');
+  }
 
   void focusContent() {
     if (!mounted) return;
@@ -184,7 +266,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   /// callback would wait for.
   void _openRail() {
     if (_railExpanded) {
-      if (_statusSubview) {
+      if (_statusSubview || _scopeSubview) {
         _closeSubview();
       } else if (_statusFocus.canRequestFocus) {
         _statusFocus.requestFocus();
@@ -194,6 +276,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
     setState(() {
       _railExpanded = true;
       _statusSubview = false;
+      _scopeSubview = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_railExpanded) return;
@@ -206,6 +289,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
     setState(() {
       _railExpanded = false;
       _statusSubview = false;
+      _scopeSubview = false;
     });
     final grid = _gridKey.currentState;
     if (grid != null && grid.hasFocusableCard) {
@@ -232,6 +316,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
       setState(() {
         _railExpanded = false;
         _statusSubview = false;
+        _scopeSubview = false;
       });
     }
     widget.onExitTop?.call();
@@ -243,12 +328,23 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   void _railEdge() {}
 
   void _closeSubview() {
-    if (!_statusSubview) return;
-    setState(() => _statusSubview = false);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _statusSubview) return;
-      if (_statusFocus.canRequestFocus) _statusFocus.requestFocus();
+    if (!_statusSubview && !_scopeSubview) return;
+    // Back to the row the subview was opened from, so choosing a scope does
+    // not leave the remote on Status or the other way round.
+    final row = _scopeSubview ? _scopeFocus : _statusFocus;
+    setState(() {
+      _statusSubview = false;
+      _scopeSubview = false;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _statusSubview || _scopeSubview) return;
+      if (row.canRequestFocus) row.requestFocus();
+    });
+  }
+
+  void _pickScope(bool own) {
+    if (own != widget.ownScope) widget.onScopeChanged?.call(own);
+    _closeSubview();
   }
 
   void _pick(TvSeerrRequestFilter filter) {
@@ -291,36 +387,50 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   /// status when something is.
   List<TvCatalogSelectionTag> _tags() {
     if (widget.filter != TvSeerrRequestFilter.all) return [TvCatalogSelectionTag(_filterLabel(widget.filter))];
-    final total = widget.counts?.total;
+    final total = _countFor(TvSeerrRequestFilter.all);
     if (total == null) return const [];
     return [TvCatalogSelectionTag(total == 1 ? t.seerr.oneRequest : t.seerr.requestCount(count: total))];
   }
 
-  String _filterLabel(TvSeerrRequestFilter filter) => switch (filter) {
-    TvSeerrRequestFilter.all => t.seerr.filterAll,
-    TvSeerrRequestFilter.pending => t.seerr.filterPending,
-    TvSeerrRequestFilter.approved => t.seerr.filterApproved,
-    TvSeerrRequestFilter.available => t.seerr.filterAvailable,
-    TvSeerrRequestFilter.declined => t.seerr.filterDeclined,
-  };
+  String _filterLabel(TvSeerrRequestFilter filter) => seerrRequestFilterLabel(filter);
 
-  /// The number behind one answer, or null when it is not known.
-  ///
-  /// Declined has no count of its own in Seerr's `/request/count` payload, so it
-  /// gets none rather than a zero — the same rule the null counts follow.
-  int? _countFor(TvSeerrRequestFilter filter) {
-    final counts = widget.counts;
-    if (counts == null) return null;
-    return switch (filter) {
-      TvSeerrRequestFilter.all => counts.total,
-      TvSeerrRequestFilter.pending => counts.pending,
-      TvSeerrRequestFilter.approved => counts.approved,
-      TvSeerrRequestFilter.available => counts.available,
-      TvSeerrRequestFilter.declined => null,
-    };
-  }
+  /// The number behind one answer, or null when it is not known. Never one
+  /// beside the viewer's own list: the count route counts everyone's.
+  int? _countFor(TvSeerrRequestFilter filter) =>
+      widget.countsScope == TvSeerrCountsScope.all ? widget.countFor?.call(filter) : null;
 
   Widget _buildRail(double scale) {
+    final onScopeChanged = widget.onScopeChanged;
+    if (_scopeSubview && onScopeChanged != null) {
+      return AutomationNode(
+        id: AutomationIds.tvCatalogRail,
+        instance: '$tvSeerrRequestsSurface.scope',
+        role: 'region',
+        child: TvCatalogFilterRailSubview(
+          key: tvCatalogFilterRailSubviewKey,
+          scale: scale,
+          title: t.seerr.railScope,
+          options: [
+            TvCatalogRailOption(
+              label: t.seerr.allRequests,
+              isSelected: !widget.ownScope,
+              automationInstance: '$tvSeerrRequestsSurface.scope.all',
+              onPressed: () => _pickScope(false),
+            ),
+            TvCatalogRailOption(
+              label: t.seerr.myRequests,
+              isSelected: widget.ownScope,
+              automationInstance: '$tvSeerrRequestsSurface.scope.own',
+              onPressed: () => _pickScope(true),
+            ),
+          ],
+          onBack: _closeSubview,
+          onExitUp: _leaveRailUpwards,
+          onExitDown: _railEdge,
+          onExitRight: _closeRail,
+        ),
+      );
+    }
     if (_statusSubview) {
       return AutomationNode(
         id: AutomationIds.tvCatalogRail,
@@ -336,6 +446,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
                 label: _filterLabel(filter),
                 isSelected: widget.filter == filter,
                 count: _countFor(filter),
+                countUnavailable: widget.countsScope == TvSeerrCountsScope.failed,
                 automationInstance: '$tvSeerrRequestsSurface.status.${filter.name}',
                 onPressed: () => _pick(filter),
               ),
@@ -344,6 +455,11 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
           onExitUp: _leaveRailUpwards,
           onExitDown: _railEdge,
           onExitRight: _closeRail,
+          note: switch (widget.countsScope) {
+            TvSeerrCountsScope.own => t.seerr.countsOwnScopeNote,
+            TvSeerrCountsScope.failed => t.seerr.countsNotLoaded,
+            TvSeerrCountsScope.all => null,
+          },
         ),
       );
     }
@@ -356,6 +472,20 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
         key: tvCatalogFilterRailKey,
         scale: scale,
         rows: [
+          if (onScopeChanged != null)
+            TvCatalogFilterRailRow(
+              icon: Symbols.group_rounded,
+              label: t.seerr.railScope,
+              value: widget.ownScope ? t.seerr.myRequests : t.seerr.allRequests,
+              automationInstance: '$tvSeerrRequestsSurface.scope',
+              focusNode: _scopeFocus,
+              onPressed: () => setState(() => _scopeSubview = true),
+              onNavigateUp: _leaveRailUpwards,
+              onNavigateDown: () => _statusFocus.requestFocus(),
+              onNavigateLeft: _railEdge,
+              onNavigateRight: _closeRail,
+              onBack: _closeRail,
+            ),
           TvCatalogFilterRailRow(
             icon: Symbols.check_rounded,
             label: t.seerr.railStatus,
@@ -363,7 +493,7 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
             automationInstance: '$tvSeerrRequestsSurface.status',
             focusNode: _statusFocus,
             onPressed: () => setState(() => _statusSubview = true),
-            onNavigateUp: _leaveRailUpwards,
+            onNavigateUp: onScopeChanged == null ? _leaveRailUpwards : () => _scopeFocus.requestFocus(),
             onNavigateDown: widget.filter == TvSeerrRequestFilter.all ? _railEdge : () => _clearFocus.requestFocus(),
             onNavigateLeft: _railEdge,
             onNavigateRight: _closeRail,
@@ -392,6 +522,21 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   Widget _buildBody(double scale) {
     if (widget.isLoading && widget.requests.isEmpty) {
       return TvCatalogSkeletonGrid(key: tvCatalogSkeletonKey, reservedLeading: _railLeading());
+    }
+
+    if (widget.filterUnsupported) {
+      return _state(
+        'unsupported',
+        TvCatalogEmptyState(
+          icon: Symbols.filter_list_off_rounded,
+          title: t.seerr.filterUnsupportedTitle(status: _filterLabel(widget.filter)),
+          body: widget.filterUnsupportedBody ?? t.seerr.filterUnsupportedBody,
+          actionLabel: t.unifiedCatalog.states.clearFilters,
+          onAction: () => widget.onFilterChanged(TvSeerrRequestFilter.all),
+          onActionFocusNode: _stateActionFocus,
+          onActionNavigateLeft: _openRail,
+        ),
+      );
     }
 
     if (widget.requests.isEmpty) {
@@ -426,14 +571,17 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
           ),
         );
       }
+      // TVUX-36: an empty list loaded fine, so asking again is not a way out.
+      // Ontdekken is where a first request starts.
+      final onDiscover = widget.onDiscover;
       return _state(
         'empty',
         TvCatalogEmptyState(
           icon: Symbols.inbox_rounded,
           title: t.seerr.noResults,
-          body: t.seerr.noRequestsYet,
-          actionLabel: t.common.retry,
-          onAction: widget.onReload,
+          body: widget.ownScope ? t.seerr.noOwnRequestsYet : t.seerr.noRequestsYet,
+          actionLabel: onDiscover == null ? t.common.retry : t.seerr.discoverAction,
+          onAction: onDiscover ?? widget.onReload,
           onActionFocusNode: _stateActionFocus,
           onActionNavigateLeft: _openRail,
         ),
@@ -447,28 +595,39 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
       child: TvCatalogCardGrid(
         key: _gridKey,
         itemIds: [for (final request in widget.requests) '${request.id}'],
+        initialFocusedId: widget.initialFocusedId,
         cardHeight: _cardHeight(scale),
-        hasMore: widget.hasMore,
+        // A failed page stops the grid asking by itself. The tile under the
+        // last row is the retry, so the failure cannot loop.
+        hasMore: widget.hasMore && !widget.loadMoreFailed,
         isLoadingMore: widget.isLoadingMore,
         onLoadMore: widget.onLoadMore,
         onExitTop: widget.onExitTop,
         onExitLeft: _openRail,
         reservedLeading: _railLeading(),
+        footer: widget.loadMoreFailed ? _loadMoreFailedTile() : null,
         nodeDebugLabel: 'TvSeerrRequestCard',
         itemBuilder: (context, cell) {
           final request = widget.requests[cell.index];
+          final busy = widget.busyIds.contains(request.id);
+          final unresolved = widget.unresolvedIds.contains(request.id);
+          final onContextMenu = widget.onContextMenu;
           return AutomationNode(
             id: AutomationIds.tvCatalogGridItem,
             instance: '$tvSeerrRequestsSurface.${cell.index}',
             role: 'grid.item',
             label: request.mediaTitle,
             focusNode: cell.focusNode,
+            state: () => {'request': request.id, 'status': request.status.name, 'busy': busy, 'unresolved': unresolved},
             child: TvSeerrRequestCard(
               key: ValueKey(request.id),
               request: request,
               width: cell.width,
               focusNode: cell.focusNode,
+              busy: busy,
+              statusUnknown: unresolved,
               onSelect: () => widget.onActivate(request),
+              onContextMenu: onContextMenu == null || (busy && !unresolved) ? null : () => onContextMenu(request),
               onFocusChange: cell.onFocusChange,
               onNavigateUp: cell.onNavigateUp,
               onNavigateDown: cell.onNavigateDown,
@@ -480,6 +639,24 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
       ),
     );
   }
+
+  /// The page that did not come, as one action under the loaded cards.
+  Widget _loadMoreFailedTile() => AutomationNode(
+    id: AutomationIds.tvCatalogState,
+    instance: '$tvSeerrRequestsSurface.load_more_failed',
+    role: 'region',
+    focusNode: _loadMoreRetryFocus,
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: TvViewAllAction(
+        label: '${t.seerr.loadMoreFailed} · ${t.common.retry}',
+        semanticLabel: '${t.seerr.loadMoreFailed}, ${t.common.retry}',
+        focusNode: _loadMoreRetryFocus,
+        onSelect: widget.onLoadMore,
+        onNavigateUp: () => _gridKey.currentState?.focusGrid(),
+      ),
+    ),
+  );
 
   Widget _state(String which, Widget child) => AutomationNode(
     id: AutomationIds.tvCatalogState,

@@ -6,6 +6,7 @@ import '../i18n/strings.g.dart';
 import '../theme/mono_tokens.dart';
 import '../utils/layout_constants.dart';
 import '../utils/platform_detector.dart';
+import 'pressable.dart';
 
 /// Which named constructor produced this [StateView], so [build] can resolve a
 /// localized default title/message when the caller didn't supply one.
@@ -165,23 +166,28 @@ class StateView extends StatelessWidget {
           FocusableButton(
             onPressed: onRetry,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusSm)),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 20 * factor, vertical: 12 * factor),
-              decoration: BoxDecoration(color: surfaceElevated, borderRadius: BorderRadius.circular(radiusSm)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Symbols.refresh_rounded, size: 18 * factor, color: text),
-                  SizedBox(width: 8 * factor),
-                  Text(
-                    resolvedRetryLabel,
-                    style: TextStyle(
-                      color: text,
-                      fontWeight: FontWeight.w600,
-                      fontSize: (DefaultTextStyle.of(context).style.fontSize ?? 14.0) * factor,
+            // FocusableButton only answers the remote and the keyboard. Without
+            // this a touch or a click on the action did nothing at all.
+            child: Pressable(
+              onTap: onRetry,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 20 * factor, vertical: 12 * factor),
+                decoration: BoxDecoration(color: surfaceElevated, borderRadius: BorderRadius.circular(radiusSm)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Symbols.refresh_rounded, size: 18 * factor, color: text),
+                    SizedBox(width: 8 * factor),
+                    Text(
+                      resolvedRetryLabel,
+                      style: TextStyle(
+                        color: text,
+                        fontWeight: FontWeight.w600,
+                        fontSize: (DefaultTextStyle.of(context).style.fontSize ?? 14.0) * factor,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

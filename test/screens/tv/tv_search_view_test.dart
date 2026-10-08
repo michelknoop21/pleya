@@ -67,6 +67,8 @@ void main() {
     int serverCount = 3,
     VoidCallback? onExitTop,
     VoidCallback? onExitLeft,
+    bool requestsIncomplete = false,
+    VoidCallback? onRetryRequests,
   }) async {
     key = GlobalKey<TvSearchViewState>();
     await tester.pumpWidget(
@@ -85,6 +87,8 @@ void main() {
               onRetry: onRetry,
               onSearchOnRequests: onSearchOnRequests,
               serverCount: serverCount,
+              requestsIncomplete: requestsIncomplete,
+              onRetryRequests: onRetryRequests,
               onExitLeft: onExitLeft ?? () {},
               onExitTop: onExitTop ?? () {},
             ),
@@ -328,6 +332,56 @@ void main() {
       expect(firstCard, findsOneWidget);
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
       await tester.pumpAndSettle();
+    });
+  });
+
+  group('Requests 2.0, 2E: the requests server did not answer', () {
+    Future<void> select(WidgetTester tester) async {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'the library results stay, the page says the answer is half, and the retry sits between field and band',
+      (tester) async {
+        var retried = 0;
+        var leftTop = 0;
+        await pumpView(
+          tester,
+          sections: [_band('movies', 'Films', 4)],
+          requestsIncomplete: true,
+          onRetryRequests: () => retried++,
+          onExitTop: () => leftTop++,
+        );
+
+        expect(find.byType(TvCatalogCard), findsNWidgets(4));
+        expect(find.textContaining(t.seerr.searchIncompleteTitle), findsOneWidget);
+
+        expect(key.currentState!.focusFirstResult(), isTrue);
+        await tester.pumpAndSettle();
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        await tester.pumpAndSettle();
+        expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSearchRequestsRetry');
+        expect(leftTop, 0, reason: 'UP from the band reaches the retry before it reaches the field');
+
+        await select(tester);
+        expect(retried, 1);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        await tester.pumpAndSettle();
+        expect(leftTop, 1);
+      },
+    );
+
+    testWidgets('a complete answer shows no such line', (tester) async {
+      await pumpView(tester, sections: [_band('movies', 'Films', 4)], onRetryRequests: () {});
+      expect(find.textContaining(t.seerr.searchIncompleteTitle), findsNothing);
+    });
+
+    testWidgets('with no library match either, the empty state does not claim Requests has nothing', (tester) async {
+      await pumpView(tester, requestsIncomplete: true, onRetryRequests: () {}, onSearchOnRequests: () {});
+      expect(find.textContaining(t.seerr.searchIncomplete), findsOneWidget);
     });
   });
 }

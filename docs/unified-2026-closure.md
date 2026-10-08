@@ -2,12 +2,14 @@
 
 Vastgelegd op 11 september 2026 als UNI0, op `main` = `76492ec2` (build 269). tvOS fase 0 tot en
 met 10A en iOS fase 1 tot en met 3 staan op dat moment op `main`. Wat er nog moet gebeuren voordat
-de redesign naar TestFlight gaat, en in welke volgorde, staat hier en nergens anders.
+de redesign naar TestFlight gaat, staat hier. De productprioriteit en keuze van samenhangende
+werkpakketten volgen `docs/ROADMAP.md` (besluit Michel, 8 oktober 2026); de bewijs-,
+afhankelijkheids- en releasevolgorde binnen een gekozen pakket hieronder blijft gelden.
 
 Dit document bezit de werkvolgorde, de statusladder, de werkwijze per workitem, de releasegate,
 het protocol van de hardware-eindronde en de TestFlight-regel. De registers verwijzen hierheen en
-kopiëren die onderdelen niet. Staat er in een register iets anders over volgorde of gate, dan
-wint dit document.
+kopiëren die onderdelen niet. Staat er in een register iets anders over bewijs-/afhankelijkheidsvolgorde of gate, dan
+wint dit document; productprioriteit blijft bij de roadmap.
 
 **Uitgangspunt.** De fysieke hardwareronde is de allerlaatste testfase. Hij draait op één vaste
 SHA en één binary, en precies die goedgekeurde build gaat naar TestFlight. Er komt geen eerdere
@@ -198,3 +200,19 @@ Release-configuratie met de compile-time flags, en de archive.
 TestFlight is het versturen van exact de archive uit de hardware-eindronde naar App Store Connect.
 Tussen de hardwareacceptatie en de upload wordt er niets gecompileerd en niets vanaf source
 gebouwd.
+
+
+### Begrensde interne testdistributie — eigenaarbesluit 8 oktober 2026
+
+Michel vraagt expliciet: “Commit push merge en build naar testflight”, nadat de open fysieke
+Apple TV-, echte-server- en volledige rol-/platformacceptatie van de gerichte tvOS-/Requests
+wijzigingsset zijn gerapporteerd. Voor uitsluitend deze set (REG-01, A-07/A-10/A-11/A-12 en
+A-19/A-20/A-21) is daarmee interne TestFlight-testdistributie vóór volledige hardwareclosure
+geautoriseerd. Dit is een beperkte uitzondering op de uploadvolgorde hierboven, geen
+hardwareacceptatie, volledige redesignclosure of externe/store-release.
+
+Commit-/PR-review, negatieve controles, gerichte tests, codegate, verplichte groene GitHub-checks
+vóór merge, finale main-SHA en herleidbare Release-archives blijven vereist. Elke archive wordt
+van de gemergede bron gebouwd en met platform, buildnummer en bron-SHA geregistreerd. De
+resterende acceptatiepunten blijven open in hun bestaande registers; deze interne build
+vervangt die waarnemingen niet. Voor de volledige eindacceptatie blijven §7–§8 ongewijzigd gelden.

@@ -4,9 +4,12 @@ import 'dart:math' as math;
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/theme/mono_tokens.dart';
 import 'package:pleya/widgets/notice/notice.dart';
+import 'package:pleya/widgets/notice/notice_card.dart';
 import 'package:pleya/widgets/notice/notice_controller.dart';
 
 /// WCAG 2.1 relative luminance / contrast ratio, for opaque colours.
@@ -29,6 +32,29 @@ void main() {
   final dark = tokensOf(monoTheme(dark: true));
   final oled = tokensOf(monoTheme(dark: true, oled: true));
   final light = tokensOf(monoTheme(dark: false));
+
+  testWidgets('only busy notices declare an automation identity', (tester) async {
+    for (final busy in [false, true]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Scaffold(
+            body: NoticeCard(
+              entry: NoticeEntry(
+                id: 'notice-7',
+                notice: Notice(level: NoticeLevel.info, title: 'Preparing', groupKey: 'preparation', busy: busy),
+                count: 1,
+              ),
+              onDismiss: () {},
+            ),
+          ),
+        ),
+      );
+      final node = tester.widget<AutomationNode>(find.byType(AutomationNode).first);
+      expect(node.id, busy ? AutomationIds.noticeBusy : null);
+      expect(node.instance, busy ? 'notice-7' : null);
+    }
+  });
 
   group('notice level contrast', () {
     // Icon ink for each level, against the exact surface it renders on
@@ -66,6 +92,51 @@ void main() {
       expect(noticeDurationFor(NoticeLevel.success), isNotNull);
       expect(noticeDurationFor(NoticeLevel.info), isNotNull);
       expect(noticeDurationFor(NoticeLevel.warning), isNotNull);
+    });
+  });
+
+  group('busy notice', () {
+    test('never auto-dismisses, whatever its level or override says', () {
+      const notice = Notice(
+        level: NoticeLevel.info,
+        title: 'Starting playback',
+        groupKey: 'busy',
+        durationOverride: Duration(seconds: 1),
+        busy: true,
+      );
+      expect(notice.duration, isNull);
+    });
+
+    testWidgets('shows a spinner and leaves focus where it was', (tester) async {
+      final origin = FocusNode();
+      addTearDown(origin.dispose);
+      const entry = NoticeEntry(
+        id: 'n',
+        notice: Notice(
+          level: NoticeLevel.info,
+          title: 'Starting playback',
+          body: 'Movie 1',
+          groupKey: 'busy',
+          busy: true,
+        ),
+        count: 1,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: monoTheme(dark: true),
+          home: Column(
+            children: [
+              Focus(focusNode: origin, autofocus: true, child: const SizedBox(width: 10, height: 10)),
+              NoticeCard(entry: entry, onDismiss: () {}, tv: true),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Movie 1'), findsOneWidget);
+      expect(origin.hasPrimaryFocus, isTrue, reason: 'the card that started playback keeps focus');
     });
   });
 
@@ -196,6 +267,151 @@ void main() {
 
       expect(controller.visible, hasLength(3));
       expect(controller.visible.map((e) => e.notice.title), containsAll(['n1', 'n2', 'n3']));
+    });
+  });
+
+  group('NoticeController busy lifecycle', () {
+    const busy = Notice(level: NoticeLevel.info, title: 'Starting playback', groupKey: 'playback-start:x', busy: true);
+
+    NoticeController withStandingErrors() {
+      final controller = NoticeController();
+      for (var i = 0; i < NoticeController.maxVisible; i++) {
+        controller.show(Notice(level: NoticeLevel.error, title: 'e$i', groupKey: 'error-$i'));
+      }
+      return controller;
+    }
+
+    Iterable<String> titles(NoticeController controller) => controller.visible.map((e) => e.notice.title);
+
+    // Three errors nobody dismissed used to push the start notice into the
+    // queue, where it sat until the start was over and it was dismissed
+    // without ever rendering.
+    test('shows at once when three persistent notices already fill the screen', () {
+      final controller = withStandingErrors();
+
+      final id = controller.show(busy);
+
+      expect(controller.visible, hasLength(NoticeController.maxVisible));
+      expect(controller.visible.map((e) => e.id), contains(id));
+      expect(titles(controller), ['e0', 'e1', 'Starting playback']);
+    });
+
+    test('the notice it displaced comes back when the work ends', () {
+      final controller = withStandingErrors();
+      final id = controller.show(busy);
+
+      controller.dismiss(id);
+
+      expect(titles(controller), ['e0', 'e1', 'e2']);
+    });
+
+    test('a displaced notice comes back ahead of what was already waiting', () {
+      final controller = withStandingErrors();
+      controller.show(const Notice(level: NoticeLevel.error, title: 'waiting', groupKey: 'waiting'));
+      final id = controller.show(busy);
+
+      controller.dismiss(id);
+
+      expect(titles(controller), ['e0', 'e1', 'e2']);
+    });
+
+    test('two starts with the same groupKey keep their own card and their own lifetime', () {
+      final controller = NoticeController();
+
+      final first = controller.show(busy);
+      final second = controller.show(busy);
+
+      expect(first, isNot(second));
+      expect(controller.visible, hasLength(2));
+      expect(controller.visible.map((e) => e.count), everyElement(1));
+
+      controller.dismiss(first);
+
+      expect(controller.visible.single.id, second, reason: 'the other start is still preparing');
+    });
+
+    test('an ordinary notice with the same key does not fold into a busy one', () {
+      final controller = NoticeController();
+      final busyId = controller.show(busy);
+
+      final plainId = controller.show(
+        const Notice(level: NoticeLevel.info, title: 'Started', groupKey: 'playback-start:x'),
+      );
+
+      expect(plainId, isNot(busyId));
+      expect(controller.visible, hasLength(2));
+    });
+
+    test('a fourth busy notice waits for a busy one to end and displaces nothing more', () {
+      final controller = withStandingErrors();
+      final ids = [for (var i = 0; i < NoticeController.maxVisible + 1; i++) controller.show(busy)];
+      expect(controller.visible.map((e) => e.id), ids.take(NoticeController.maxVisible));
+
+      for (final id in ids) {
+        controller.dismiss(id);
+      }
+
+      expect(titles(controller), unorderedEquals(['e0', 'e1', 'e2']));
+    });
+
+    test('a displaced notice survives a full queue, and the queue stays bounded', () {
+      final controller = withStandingErrors();
+      for (var i = 0; i < NoticeController.maxQueued; i++) {
+        controller.show(Notice(level: NoticeLevel.error, title: 'q$i', groupKey: 'queued-$i'));
+      }
+      final id = controller.show(busy);
+      // One more ordinary notice against the full queue drops the oldest
+      // waiting one, which must not be the notice the spinner pushed aside.
+      controller.show(const Notice(level: NoticeLevel.error, title: 'late', groupKey: 'late'));
+
+      controller.dismiss(id);
+      expect(titles(controller), ['e0', 'e1', 'e2']);
+
+      var total = 0;
+      while (controller.visible.isNotEmpty) {
+        controller.dismiss(controller.visible.first.id);
+        total++;
+      }
+      // The displaced notice held one of the queue's places while it waited.
+      expect(total, NoticeController.maxVisible + NoticeController.maxQueued - 1);
+    });
+
+    test('a timed notice next to a busy one still leaves on its own timer', () {
+      fakeAsync((async) {
+        final controller = NoticeController();
+        controller.show(const Notice(level: NoticeLevel.success, title: 'Saved', groupKey: 'saved'));
+        controller.show(const Notice(level: NoticeLevel.error, title: 'e0', groupKey: 'error-0'));
+        controller.show(const Notice(level: NoticeLevel.error, title: 'e1', groupKey: 'error-1'));
+        async.elapse(const Duration(seconds: 1));
+        controller.show(busy);
+        expect(titles(controller), ['Saved', 'e0', 'Starting playback']);
+
+        async.elapse(noticeDurationFor(NoticeLevel.success)! - const Duration(milliseconds: 1500));
+        expect(titles(controller), contains('Saved'), reason: 'the busy notice did not restart its clock');
+        async.elapse(const Duration(seconds: 1));
+
+        expect(titles(controller), ['e0', 'Starting playback', 'e1']);
+      });
+    });
+
+    test('a displaced timed notice is not timed out off screen and gets its full stay back', () {
+      fakeAsync((async) {
+        final controller = NoticeController();
+        controller.show(const Notice(level: NoticeLevel.error, title: 'e0', groupKey: 'error-0'));
+        controller.show(const Notice(level: NoticeLevel.error, title: 'e1', groupKey: 'error-1'));
+        controller.show(const Notice(level: NoticeLevel.success, title: 'Saved', groupKey: 'saved'));
+        final id = controller.show(busy);
+        expect(titles(controller), ['e0', 'e1', 'Starting playback']);
+
+        async.elapse(const Duration(minutes: 1));
+        controller.dismiss(id);
+        expect(titles(controller), ['e0', 'e1', 'Saved']);
+
+        async.elapse(noticeDurationFor(NoticeLevel.success)! - const Duration(milliseconds: 100));
+        expect(titles(controller), contains('Saved'));
+        async.elapse(const Duration(seconds: 1));
+        expect(titles(controller), ['e0', 'e1']);
+      });
     });
   });
 

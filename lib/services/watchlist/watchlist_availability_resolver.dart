@@ -84,14 +84,17 @@ class WatchlistAvailabilityResolver {
   /// Returns the matching server item plus whether every eligible server was
   /// reached. A caller that gets `coverageComplete: false` with no match knows
   /// only that the servers it could reach do not have it.
-  Future<WatchlistMatchResult> resolve(WatchlistEntry entry) async {
-    final identity = identityOf(entry);
+  Future<WatchlistMatchResult> resolve(WatchlistEntry entry) => resolveIdentity(identityOf(entry), cacheKey: entry.key);
+
+  /// The same lookup for a title that is not a watchlist entry, such as one
+  /// Seerr reports as available. [cacheKey] names it in the answer cache.
+  Future<WatchlistMatchResult> resolveIdentity(MediaIdentity identity, {required String cacheKey}) async {
     if (!identity.isSearchable) return (match: null, coverageComplete: true);
 
     final servers = serversFor();
     final eligible = servers.where(_isEligible).toList();
 
-    final cached = await _readCache(entry.key, eligible);
+    final cached = await _readCache(cacheKey, eligible);
     if (cached != null) return cached;
 
     final reachable = eligible.where((s) => s.online && s.client != null).toList();
@@ -123,7 +126,7 @@ class WatchlistAvailabilityResolver {
     // Everything that was not reached is a hole in the coverage, whether it
     // was offline before the fan-out or errored during it.
     final complete = checked == eligible.length;
-    await _writeCache(entry.key, match: match, complete: complete);
+    await _writeCache(cacheKey, match: match, complete: complete);
     return (match: match, coverageComplete: complete);
   }
 

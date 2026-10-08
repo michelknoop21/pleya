@@ -19,11 +19,13 @@ import '../media/media_kind.dart';
 import '../models/seerr/seerr_media.dart';
 import '../providers/hidden_libraries_provider.dart';
 import '../providers/seerr_provider.dart';
+import '../services/seerr/seerr_client.dart';
 import '../widgets/focusable_filter_chip.dart';
 import '../widgets/focusable_list_tile.dart';
 import '../widgets/loading_indicator_box.dart';
 import '../widgets/optimized_media_image.dart';
 import '../widgets/seerr_poster_card.dart';
+import '../widgets/tv/tv_seerr_card.dart';
 import 'big_p/big_p_ask_row.dart';
 import 'seerr/seerr_media_detail_screen.dart';
 import '../mixins/controller_disposer_mixin.dart';
@@ -46,7 +48,6 @@ import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
 import '../utils/native_input_session.dart';
 import '../utils/platform_detector.dart';
-import '../utils/snackbar_helper.dart';
 import '../widgets/desktop_app_bar.dart';
 import '../widgets/pill_input_decoration.dart';
 import '../widgets/focusable_media_card.dart';
@@ -186,6 +187,10 @@ class _SearchScreenState extends State<SearchScreen>
   List<SeerrMedia> _seerrResults = const [];
   bool _seerrSearching = false;
   bool _seerrSearched = false;
+
+  /// The Seerr search was asked and did not answer. Not the same as no match:
+  /// the library results stand, and this half of the answer is missing.
+  bool _seerrIncomplete = false;
 
   @override
   void initState() {
@@ -411,6 +416,7 @@ class _SearchScreenState extends State<SearchScreen>
       _seerrResults = const [];
       _seerrSearched = false;
       _seerrSearching = false;
+      _seerrIncomplete = false;
     });
     // TV: the results/history area just became skeletons with zero focusables.
     // If primary focus lived there (result card, history chip), it unmounts and
@@ -506,6 +512,10 @@ class _SearchScreenState extends State<SearchScreen>
       });
       if (neutral.isNotEmpty) _addToHistory(query);
       _maybeFocusResultsAfterSubmit(query, neutral);
+      // On TV the requests server answers in its own band under the library
+      // results. Not while the native keyboard is up: every keystroke streams a
+      // search in there, and the band is for the query the viewer settled on.
+      if (PlatformDetector.isTV() && !NativeInputSession.isActive && !_seerrSearched) unawaited(_searchSeerr());
     } catch (e) {
       if (!mounted || isStale()) return;
       _focusResultsForQuery = null;
@@ -541,20 +551,28 @@ class _SearchScreenState extends State<SearchScreen>
     setStateIfMounted(() {
       _seerrSearching = true;
       _seerrSearched = true;
+      _seerrIncomplete = false;
     });
     try {
       final page = await client.search(query);
       // Drop the result if the query changed while the request was in flight,
-      // so stale Seerr results can't repaint under a newer query.
+      // so stale Seerr results can't repaint under a newer query. The same for
+      // an answer from another account's server: same words, different truth.
       if (!mounted || _searchController.text.trim() != query) return;
+      if (!_isSeerrClient(client)) return _dropSeerrSearch();
       setStateIfMounted(() {
         _seerrResults = page.items;
         _seerrSearching = false;
       });
     } catch (e) {
       if (!mounted || _searchController.text.trim() != query) return;
-      setStateIfMounted(() => _seerrSearching = false);
-      showErrorSnackBar(context, t.seerr.errorNetwork);
+      if (!_isSeerrClient(client)) return _dropSeerrSearch();
+      // Stays on screen, where the result would have been: a toast that fades
+      // leaves "no results" standing, which is a claim nobody checked.
+      setStateIfMounted(() {
+        _seerrSearching = false;
+        _seerrIncomplete = true;
+      });
     }
   }
 
@@ -575,7 +593,10 @@ class _SearchScreenState extends State<SearchScreen>
       if (_seerrSearched && !_seerrSearching && _seerrResults.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(t.seerr.noResults, style: theme.textTheme.bodyMedium),
+          child: Text(
+            _seerrIncomplete ? t.seerr.searchIncomplete : t.seerr.noResults,
+            style: theme.textTheme.bodyMedium,
+          ),
         ),
       if (_seerrResults.isNotEmpty)
         LayoutBuilder(
@@ -601,8 +622,53 @@ class _SearchScreenState extends State<SearchScreen>
     return SliverList(delegate: SliverChildListDelegate(children));
   }
 
+  /// An answer from the previous account's server: not shown, and not left
+  /// spinning either. The tile is back to "not asked yet".
+  void _dropSeerrSearch() => setStateIfMounted(() {
+    _seerrSearching = false;
+    _seerrSearched = false;
+    _seerrIncomplete = false;
+  });
+
+  /// The client whose answers the Seerr fields of this page hold.
+  SeerrClient? _seerrStateClient;
+
+  /// Called at the top of every build with the active client. When it is not
+  /// the one the results on this page came from, they go before anything is
+  /// drawn: cards, statuses, "no results" and "did not answer" are all
+  /// statements by a server, and after a profile or server switch they are
+  /// statements by the wrong one. A late answer is handled where it arrives;
+  /// this is for the answer that had already landed.
+  void _bindSeerrState(SeerrClient? client) {
+    if (identical(client, _seerrStateClient)) return;
+    _seerrStateClient = client;
+    _seerrResults = const [];
+    _seerrSearched = false;
+    _seerrSearching = false;
+    _seerrIncomplete = false;
+  }
+
+  bool _isSeerrClient(SeerrClient? client) =>
+      client != null && identical(context.read<SeerrProvider?>()?.client, client);
+
   void _openSeerrDetail(SeerrMedia media) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
+    final client = context.read<SeerrProvider?>()?.client;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SeerrMediaDetailScreen(
+          media: media,
+          // Back from the title, its card says what the title page learned,
+          // as long as it learned it from the account these results are from.
+          onStatusChanged: (status) => setStateIfMounted(() {
+            if (!_isSeerrClient(client)) return;
+            _seerrResults = [
+              for (final m in _seerrResults)
+                m.tmdbId == media.tmdbId && m.mediaType == media.mediaType ? m.withStatus(status) : m,
+            ];
+          }),
+        ),
+      ),
+    );
   }
 
   /// OSK "Search" / hardware Enter on TV: jump to results, or force the
@@ -748,7 +814,7 @@ class _SearchScreenState extends State<SearchScreen>
     final multiServer = context.watch<MultiServerProvider>();
     final seerrConfigured = context.watch<SeerrProvider?>()?.isConfigured ?? false;
     final sections = _tvSections(context, multiServer);
-    final total = _hasSearched ? _tvResultCount() : null;
+    final total = _hasSearched ? _tvResultCount() + _seerrResults.length : null;
     return Scaffold(
       body: SafeArea(
         child: TvSearchView(
@@ -764,6 +830,8 @@ class _SearchScreenState extends State<SearchScreen>
             _ => t.search.errorNetwork,
           },
           onRetry: _retrySearch,
+          requestsIncomplete: seerrConfigured && _seerrIncomplete,
+          onRetryRequests: () => unawaited(_searchSeerr()),
           // 36 C's way out, and only where it leads somewhere. It hands the
           // query to Ontdekken rather than running the old inline Seerr row:
           // that row is `seerrRowMetricsOf`'s phone-sized tile, which is the
@@ -876,6 +944,27 @@ class _SearchScreenState extends State<SearchScreen>
           ),
         );
 
+    // What the requests server knows about the same query, as a band of its
+    // own: these are titles to ask for or to follow, not library items, and the
+    // capsule on each card says which.
+    final requestable = _seerrResults;
+    final requests = TvSearchSection(
+      id: 'requests',
+      title: t.seerr.viaRequests,
+      itemIds: [for (final media in requestable) 'seerr:${media.mediaType}:${media.tmdbId}'],
+      cardBuilder: (context, cell) => TvSeerrMediaCard(
+        media: requestable[cell.index],
+        width: cell.width,
+        focusNode: cell.focusNode,
+        onSelect: () => _openSeerrDetail(requestable[cell.index]),
+        onFocusChange: cell.onFocusChange,
+        onNavigateUp: cell.onNavigateUp,
+        onNavigateDown: cell.onNavigateDown,
+        onNavigateLeft: cell.onNavigateLeft,
+        onNavigateRight: cell.onNavigateRight,
+      ),
+    );
+
     return [
       if (projection.movies.isNotEmpty) groups('movies', t.unifiedCatalog.moviesTitle, projection.movies),
       if (projection.shows.isNotEmpty) groups('shows', t.unifiedCatalog.seriesTitle, projection.shows),
@@ -885,6 +974,7 @@ class _SearchScreenState extends State<SearchScreen>
       if (projection.people.isNotEmpty)
         items('people', t.search.filters.people, projection.people, onSelect: _openPerson),
       if (projection.other.isNotEmpty) items('other', t.search.filters.other, projection.other),
+      if (requestable.isNotEmpty) requests,
     ];
   }
 
@@ -1351,6 +1441,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   @override
   Widget build(BuildContext context) {
+    _bindSeerrState(context.watch<SeerrProvider?>()?.client);
     if (PlatformDetector.isTV()) return _buildTv(context);
     final isPhone = PlatformDetector.isPhone(context);
     // "Vraag het Big P" over what was searched, results or not (iPhone and

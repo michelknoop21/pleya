@@ -36,7 +36,10 @@ import 'package:pleya/widgets/tv/tv_catalog_item_card.dart';
 import 'package:pleya/widgets/tv/tv_unified_media_card.dart';
 import 'package:provider/provider.dart';
 
+import 'package:pleya/providers/seerr_provider.dart';
+
 import '../test_helpers/prefs.dart';
+import '../test_helpers/seerr_fake.dart';
 import '../test_helpers/profile_navigation.dart';
 
 void main() {
@@ -890,6 +893,129 @@ void main() {
       await tester.tap(find.text('Eclipse'));
       await tester.pumpAndSettle();
     });
+  });
+
+  testWidgets("a requests search answered after a profile switch does not land under the new account's search", (
+    tester,
+  ) async {
+    // Same query, two accounts, two requests servers: the words match, the
+    // answer does not belong.
+    final fake = FakeSeerr();
+    final slow = fake.hold('GET /search');
+    final store = MemorySeerrStore()..sessions['user-2'] = seerrSession(userId: 9);
+    final seerr = await seerrProvider(fake, store: store);
+    addTearDown(seerr.dispose);
+
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 900);
+    addTearDown(tester.view.reset);
+    final manager = MultiServerManager()..debugRegisterClientForTesting(_FakeMediaServerClient(items: const []));
+    final servers = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(servers.dispose);
+    final hidden = HiddenLibrariesProvider();
+    addTearDown(hidden.dispose);
+    final key = GlobalKey<State<SearchScreen>>();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
+            ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
+          ],
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: SearchScreen(key: key),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    (key.currentState! as SearchInputFocusable).submitSearchQuery('kust');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(t.seerr.searchOnSeerr));
+    await tester.pump();
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    await seerr.onActiveProfileChanged('user-2');
+    await tester.pump();
+    slow.complete(
+      FakeSeerr.json({
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {'id': 901, 'mediaType': 'movie', 'title': 'Kustwacht van account A'},
+        ],
+      }),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kustwacht van account A'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("requests results that already landed do not stay on screen under another account (F-B3)", (
+    tester,
+  ) async {
+    final fake = FakeSeerr()
+      ..on('GET /search', {
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {
+            'id': 901,
+            'mediaType': 'movie',
+            'title': 'Kustwacht van account A',
+            'mediaInfo': {'status': 5},
+          },
+        ],
+      });
+    final store = MemorySeerrStore()..sessions['user-2'] = seerrSession(userId: 9);
+    final seerr = await seerrProvider(fake, store: store);
+    addTearDown(seerr.dispose);
+
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1280, 900);
+    addTearDown(tester.view.reset);
+    final manager = MultiServerManager()..debugRegisterClientForTesting(_FakeMediaServerClient(items: const []));
+    final servers = MultiServerProvider(manager, DataAggregationService(manager));
+    addTearDown(servers.dispose);
+    final hidden = HiddenLibrariesProvider();
+    addTearDown(hidden.dispose);
+    final key = GlobalKey<State<SearchScreen>>();
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider<MultiServerProvider>.value(value: servers),
+            ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hidden),
+            ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
+          ],
+          child: MaterialApp(
+            theme: monoTheme(dark: true),
+            home: SearchScreen(key: key),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    (key.currentState! as SearchInputFocusable).submitSearchQuery('kust');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.seerr.searchOnSeerr));
+    await tester.pumpAndSettle();
+    expect(find.text('Kustwacht van account A'), findsOneWidget, reason: "A's answer is on screen");
+
+    // Nothing is searched again. The account changes under a page that stays.
+    final searchesBefore = fake.sent('GET', '/search').length;
+    await seerr.onActiveProfileChanged('user-2');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kustwacht van account A'), findsNothing, reason: "B never said this title is available");
+    expect(find.text(t.seerr.noResults), findsNothing, reason: 'nor that there is nothing: B was not asked');
+    expect(find.text(t.seerr.searchIncomplete), findsNothing);
+    expect(fake.sent('GET', '/search').length, searchesBefore);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('a slow earlier search cannot overwrite a newer one', (tester) async {

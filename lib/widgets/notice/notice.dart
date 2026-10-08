@@ -61,6 +61,11 @@ class Notice {
   /// should not set this — let [level] decide.
   final Duration? durationOverride;
 
+  /// Work is still running: the card shows a spinner instead of the level
+  /// icon and stays until the caller dismisses it. The caller owns that
+  /// dismissal on every exit path, there is no timer behind it.
+  final bool busy;
+
   const Notice({
     required this.level,
     required this.title,
@@ -70,7 +75,8 @@ class Notice {
     this.reportCode,
     required this.groupKey,
     this.durationOverride,
+    this.busy = false,
   });
 
-  Duration? get duration => durationOverride ?? noticeDurationFor(level);
+  Duration? get duration => busy ? null : durationOverride ?? noticeDurationFor(level);
 }

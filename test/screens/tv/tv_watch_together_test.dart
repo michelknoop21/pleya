@@ -15,12 +15,14 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/services/settings_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/watch_together/models/watch_session.dart';
 import 'package:pleya/watch_together/providers/watch_together_provider.dart';
 import 'package:pleya/watch_together/screens/watch_together_screen.dart';
 import 'package:pleya/widgets/focused_scroll_scaffold.dart';
@@ -28,6 +30,32 @@ import 'package:pleya/widgets/tv/tv_menu_grid.dart';
 import 'package:pleya/widgets/tv/tv_page_surface.dart';
 
 import '../../test_helpers/prefs.dart';
+
+/// A provider that is simply in [session]: getting there for real takes a
+/// relay, and the page only reads the session back.
+class _InSession extends WatchTogetherProvider {
+  _InSession(this._fixed);
+
+  final WatchSession _fixed;
+
+  @override
+  WatchSession? get session => _fixed;
+
+  @override
+  bool get isInSession => true;
+
+  @override
+  bool get isHost => _fixed.isHost;
+
+  @override
+  String? get currentMediaRatingKey => _fixed.mediaRatingKey;
+
+  @override
+  String? get currentMediaServerId => _fixed.mediaServerId;
+
+  @override
+  String? get currentMediaTitle => _fixed.mediaTitle;
+}
 
 void main() {
   setUp(() async {
@@ -37,11 +65,15 @@ void main() {
 
   tearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
 
-  Future<void> pumpScreen(WidgetTester tester, {required bool tv}) async {
+  Future<void> pumpScreen(WidgetTester tester, {required bool tv, WatchSession? session}) async {
     TvDetectionService.debugSetAppleTVOverride(tv);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [ChangeNotifierProvider<WatchTogetherProvider>(create: (_) => WatchTogetherProvider())],
+        providers: [
+          ChangeNotifierProvider<WatchTogetherProvider>(
+            create: (_) => session == null ? WatchTogetherProvider() : _InSession(session),
+          ),
+        ],
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: monoTheme(dark: true),
@@ -145,5 +177,55 @@ void main() {
     expect(find.text('AAAAA'), findsNothing, reason: 'the tile is gone, which is the precondition for the trap');
     final onSomething = tester.widgetList<TvMenuTile>(find.byType(TvMenuTile)).any((t) => t.node.hasPrimaryFocus);
     expect(onSomething, isTrue, reason: 'the remote must still be on a tile that exists');
+  });
+
+  // TVUX-79: the remote used to land on Leave/End whenever there was nothing
+  // to join. The confirmation behind that button is unchanged.
+  group('an active session opens on something other than leaving it', () {
+    bool focusIsOn(Finder label) {
+      final focused = FocusManager.instance.primaryFocus!.context!;
+      return find.descendant(of: find.byElementPredicate((e) => e == focused), matching: label).evaluate().isNotEmpty;
+    }
+
+    const host = WatchSession(
+      sessionId: 'ABCDE',
+      role: SessionRole.host,
+      controlMode: ControlMode.hostOnly,
+      state: SessionState.connected,
+    );
+    final guest = host.copyWith(role: SessionRole.guest);
+
+    testWidgets('host: the session code holds the focus, End session still confirms', (tester) async {
+      await pumpScreen(tester, tv: true, session: host);
+
+      expect(focusIsOn(find.text(t.watchTogether.endSession)), isFalse);
+      expect(focusIsOn(find.textContaining('ABCDE')), isTrue);
+
+      // Still one press away, and still behind its confirmation.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(focusIsOn(find.text(t.watchTogether.endSession)), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      expect(find.text(t.watchTogether.endSessionConfirm), findsOneWidget);
+    });
+
+    testWidgets('guest with nothing playing: the session code, not Leave', (tester) async {
+      await pumpScreen(tester, tv: true, session: guest);
+
+      expect(focusIsOn(find.text(t.watchTogether.leaveSession)), isFalse);
+      expect(focusIsOn(find.textContaining('ABCDE')), isTrue);
+    });
+
+    testWidgets('guest with something playing: joining it keeps the focus', (tester) async {
+      await pumpScreen(
+        tester,
+        tv: true,
+        session: guest.copyWith(mediaRatingKey: '42', mediaServerId: 'nas', mediaTitle: 'Sintel'),
+      );
+
+      expect(focusIsOn(find.text(t.watchTogether.joinCurrentPlayback)), isTrue);
+    });
   });
 }

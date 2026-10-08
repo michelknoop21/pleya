@@ -36,25 +36,32 @@ extension SeerrClientRequests on SeerrClient {
     return resp.data is Map ? (resp.data as Map).cast<String, dynamic>() : const {};
   }
 
-  /// `GET /request/count`. Feeds the counts next to the filter tabs. Returns
-  /// zeros when the server does not answer, so the tabs degrade to plain labels
-  /// instead of the screen failing over a decoration.
-  Future<({int total, int pending, int approved, int available, int processing})> getRequestCounts() async {
-    const empty = (total: 0, pending: 0, approved: 0, available: 0, processing: 0);
+  /// `GET /request/count`. Null when the server does not answer or sends no
+  /// object, so a caller can tell "not counted" from "none".
+  ///
+  /// The route takes no `requestedBy`: these are every user's requests.
+  Future<SeerrRequestCounts?> getRequestCounts() async {
     try {
       final resp = await _send(() => _http.get('/request/count', headers: _authHeaders()));
       final data = resp.data;
-      if (data is! Map) return empty;
+      if (data is! Map) return null;
       return (
-        total: SeerrClient._int(data['total']) ?? 0,
-        pending: SeerrClient._int(data['pending']) ?? 0,
-        approved: SeerrClient._int(data['approved']) ?? 0,
-        available: SeerrClient._int(data['available']) ?? 0,
-        processing: SeerrClient._int(data['processing']) ?? 0,
+        total: SeerrClient._int(data['total']),
+        pending: SeerrClient._int(data['pending']),
+        approved: SeerrClient._int(data['approved']),
+        available: SeerrClient._int(data['available']),
+        processing: SeerrClient._int(data['processing']),
       );
     } catch (_) {
-      return empty;
+      return null;
     }
+  }
+
+  /// `GET /request/{id}`: one request as the server holds it now.
+  Future<SeerrRequest?> getRequest(int id) async {
+    final resp = await _send(() => _http.get('/request/$id', headers: _authHeaders()));
+    final data = resp.data;
+    return data is Map ? SeerrRequest.tryFromJson(data.cast<String, dynamic>()) : null;
   }
 
   /// `GET /request`. [filter] is one of all/pending/approved/processing/
@@ -79,19 +86,25 @@ extension SeerrClientRequests on SeerrClient {
       ),
     );
     final data = resp.data;
-    if (data is! Map) return (items: const <SeerrRequest>[], totalPages: 1);
-    final results = data['results'];
-    final items = <SeerrRequest>[];
-    if (results is List) {
-      for (final r in results) {
-        if (r is Map) {
-          final req = SeerrRequest.tryFromJson(r.cast<String, dynamic>());
-          if (req != null) items.add(req);
-        }
-      }
+    if (data is! Map || data['results'] is! List || data['pageInfo'] is! Map) {
+      throw const SeerrException('unreadable request list');
     }
-    final pageInfo = data['pageInfo'];
-    final totalPages = pageInfo is Map ? SeerrClient._int(pageInfo['pages']) ?? 1 : 1;
+    final results = data['results'] as List;
+    final rawPages = (data['pageInfo'] as Map)['pages'];
+    final totalPages = rawPages is int ? rawPages : null;
+    if (totalPages == null || totalPages < 0 || (totalPages == 0 && results.isNotEmpty)) {
+      throw const SeerrException('unreadable request pagination');
+    }
+    final items = <SeerrRequest>[];
+    final ids = <int>{};
+    for (final row in results) {
+      final request = row is Map ? SeerrRequest.tryFromJson(row.cast<String, dynamic>()) : null;
+      // Dropping an unreadable neighbour or collapsing a duplicate would make
+      // this list's apparent completeness false evidence of absence.
+      if (request == null || request.id <= 0 || !ids.add(request.id))
+        throw const SeerrException('unreadable request row');
+      items.add(request);
+    }
     return (items: items, totalPages: totalPages);
   }
 
@@ -171,10 +184,34 @@ extension SeerrClientRequests on SeerrClient {
     }
   }
 
-  Future<void> updateRequest(int id, {List<int>? seasons, bool? is4k}) async {
-    final body = <String, dynamic>{'seasons': ?seasons, 'is4k': ?is4k};
-    final resp = await _send(() => _http.put('/request/$id', body: body, headers: _authHeaders()));
+  /// `PUT /request/{id}`. Returns false when the server accepted the call but
+  /// saved nothing (202, no season left to request).
+  ///
+  /// The route only acts on a `mediaType` of movie or tv, and it assigns the
+  /// target fields from the body whether they are there or not. So every call
+  /// names the type and passes the target of [current] back, unless [target]
+  /// replaces it.
+  /// `is4k` and `userId` are deliberately absent: the route ignores the first,
+  /// and the second would move the request to another user.
+  Future<bool> updateRequest(SeerrRequest current, {List<int>? seasons, SeerrRequestTarget? target}) async {
+    if (!current.isReliableReadback || !current.targetKnown || !current.advancedKnown) {
+      throw const SeerrException('unreadable stored request');
+    }
+    final isTv = current.mediaType == 'tv';
+    final body = <String, dynamic>{
+      'mediaType': isTv ? 'tv' : 'movie',
+      // A given target replaces all three together: a profile or folder of the
+      // previous server means nothing on another one.
+      'serverId': ?(target == null ? current.serverId : target.serverId),
+      'profileId': ?(target == null ? current.profileId : target.profileId),
+      'rootFolder': ?(target == null ? current.rootFolder : target.rootFolder),
+      'tags': ?current.tags,
+      if (isTv) 'languageProfileId': ?current.languageProfileId,
+      if (isTv) 'seasons': [...(seasons ?? current.seasons)]..sort(),
+    };
+    final resp = await _send(() => _http.put('/request/${current.id}', body: body, headers: _authHeaders()));
     _throwIfError(resp);
+    return resp.statusCode != 202;
   }
 
   Future<void> deleteRequest(int id) async {

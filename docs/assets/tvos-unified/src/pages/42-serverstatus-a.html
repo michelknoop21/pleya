@@ -1,0 +1,37 @@
+<style>
+/* Mockup 42: Select op een Pleya Server-tegel opent de status van die verbinding.
+   De dialoog is de bestaande AlertDialog (kop, tekst, twee knoppen), geen nieuw paneel.
+   Sluiten heeft de focus; Ontkoppelen staat ernaast als tekstknop in de foutkleur en
+   leidt naar de bestaande bevestiging. */
+.status { width: 620px; }
+.status .lines { margin-top: 18px; font-size: 22px; line-height: 1.6; color: var(--ink-2); }
+.status .foot { justify-content: flex-end; gap: 16px; }
+.status .btn.danger { background: transparent; color: var(--accent); }
+</style>
+{{nav:Mijn Pleya|live}}
+<div class="page">
+  <div class="page-title">Servers</div>
+  <div class="group-label" style="margin-top:36px">Verbindingen</div>
+  <div class="tiles c2">
+    <div class="tile">{{icon:plus}}<div class="t">Verbinding toevoegen</div><div class="s">Voor het profiel Michel</div></div>
+    <div class="tile">{{icon:qr}}<div class="t">Pleya Share</div><div class="s">Deel een map vanaf dit apparaat</div></div>
+  </div>
+  <div class="group-label">Pleya-servers</div>
+  <div class="tiles c2">
+    <div class="tile">{{icon:server}}<div class="t">Zolder</div><div class="v">Pleya-servers · Online · 2 bibliotheken · michel</div></div>
+  </div>
+  <div class="group-label">Lokale bronnen</div>
+  <div class="tiles c2">
+    <div class="tile">{{icon:folder}}<div class="t">Films</div><div class="v">Local · Movies</div></div>
+  </div>
+</div>
+<div class="scrim"></div>
+<div class="modal status">
+  <h2>Zolder</h2>
+  <div class="lines">Pleya-servers<br>Online<br>2 bibliotheken<br>michel</div>
+  <div class="foot">
+    <div class="btn danger">Ontkoppelen</div>
+    <div class="btn primary focus">Sluiten</div>
+  </div>
+</div>
+<div class="note">VOORSTEL · MOCKUP 42 A · Select op een servertegel opent de status; Sluiten heeft de focus, Ontkoppelen vraagt daarna de bestaande bevestiging · niet beoordeeld</div>

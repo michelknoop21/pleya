@@ -37,6 +37,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
 import '../../i18n/strings.g.dart';
+import '../../theme/mono_tokens.dart';
 import '../../utils/layout_constants.dart';
 import '../../widgets/tv/tv_catalog_card_grid.dart';
 import '../../widgets/tv/tv_catalog_card_rail.dart';
@@ -108,7 +109,15 @@ class TvSearchView extends StatefulWidget {
     this.onRetry,
     this.onSearchOnRequests,
     this.serverCount = 0,
+    this.requestsIncomplete = false,
+    this.onRetryRequests,
   });
+
+  /// The requests server was asked about this query and did not answer. What
+  /// is on the page is then the library's half only, and the page says so
+  /// instead of letting a missing band read as "nothing to request".
+  final bool requestsIncomplete;
+  final VoidCallback? onRetryRequests;
 
   /// The pill (and, where the native path is broken, the inline keyboard) as
   /// `SearchScreen` builds it.
@@ -153,10 +162,14 @@ class TvSearchView extends StatefulWidget {
 class TvSearchViewState extends State<TvSearchView> {
   final _railKeys = <String, GlobalKey<TvCatalogCardRailState>>{};
   final _stateActionFocus = FocusNode(debugLabel: 'TvSearchStateAction');
+  final _incompleteFocus = FocusNode(debugLabel: 'TvSearchRequestsRetry');
+
+  bool get _showsIncomplete => widget.requestsIncomplete && widget.onRetryRequests != null;
 
   @override
   void dispose() {
     _stateActionFocus.dispose();
+    _incompleteFocus.dispose();
     super.dispose();
   }
 
@@ -263,9 +276,12 @@ class TvSearchViewState extends State<TvSearchView> {
           TvCatalogEmptyState(
             icon: Symbols.search_off_rounded,
             title: t.search.nothingOnServersTitle,
-            body: widget.serverCount == 1
-                ? t.search.nothingOnOneServerBody
-                : t.search.nothingOnServersBody(count: widget.serverCount),
+            body: [
+              widget.serverCount == 1
+                  ? t.search.nothingOnOneServerBody
+                  : t.search.nothingOnServersBody(count: widget.serverCount),
+              if (widget.requestsIncomplete) t.seerr.searchIncomplete,
+            ].join(' '),
             actionLabel: action == null ? null : (onRequests != null ? t.search.searchOnRequests : t.common.retry),
             onAction: action,
             onActionFocusNode: _stateActionFocus,
@@ -300,6 +316,39 @@ class TvSearchViewState extends State<TvSearchView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_showsIncomplete)
+            AutomationNode(
+              id: AutomationIds.tvCatalogState,
+              instance: '$tvSearchSurface.requests_incomplete',
+              role: 'region',
+              focusNode: _incompleteFocus,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${t.seerr.searchIncompleteTitle}. ${t.seerr.searchIncomplete}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: TvCatalogLayout.cardMetaFontSize * scale,
+                          color: tokens(context).text.withValues(alpha: TvCatalogLayout.inkSecondary),
+                        ),
+                      ),
+                    ),
+                    TvViewAllAction(
+                      label: t.common.retry,
+                      semanticLabel: t.common.retry,
+                      focusNode: _incompleteFocus,
+                      onSelect: widget.onRetryRequests!,
+                      onNavigateUp: widget.onExitTop,
+                      onNavigateDown: () => _restoreBand(0),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           for (var i = 0; i < widget.sections.length; i++) ...[
             Padding(
               padding: EdgeInsets.fromLTRB(headingInset, TvCatalogLayout.headerContentGap * scale, headingInset, 0),
@@ -366,7 +415,9 @@ class TvSearchViewState extends State<TvSearchView> {
         nodeDebugLabel: 'TvSearchCard(${section.id})',
         onExitUp: section.hasAction
             ? (_) => section.actionFocusNode?.requestFocus()
-            : (index == 0 ? (_) => widget.onExitTop() : (column) => _focusBand(index - 1, column)),
+            : (index == 0
+                  ? (_) => _showsIncomplete ? _incompleteFocus.requestFocus() : widget.onExitTop()
+                  : (column) => _focusBand(index - 1, column)),
         onExitDown: index == widget.sections.length - 1
             ? (isLast ? (_) => _stateActionFocus.requestFocus() : null)
             : (column) => _focusBand(index + 1, column),

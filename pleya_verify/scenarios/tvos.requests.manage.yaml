@@ -1,0 +1,185 @@
+name: tvos.requests.manage
+target: tvos-sim
+# Requests 2.0 (A-21), family 8 on TV: the actions of a request are behind the
+# card's context menu, an action marks only that card busy, and the focus is
+# back on the same card afterwards.
+#
+# `seerr.requests.manage.v1` seeds three requests: a pending series with three
+# of its five seasons and a stored target (request 1), someone else's pending
+# film (request 2), and an approved film (request 3). The fixture user is an
+# admin, so the menu carries Goedkeuren, Afwijzen and Bewerken.
+#
+# What this scenario does not prove: the fixture's PUT follows the Seerr source
+# (no `is4k`, target fields assigned from the body), not an installed server.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requests.manage.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - press: select
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2500
+
+  # Aanvragen opens with the search field focused. One DOWN into the content
+  # and one UP back proves the field is where UP lands (a second UP would go on
+  # to the top navigation), then RIGHT to the inbox, which opens Alle aanvragen
+  # for a manager.
+  - wait_until: {focused: seerr.search.field, timeout: 8000}
+  - press: down
+  - settle: 500
+  - assert: {id: seerr.search.field, focused: false}
+  - press: up
+  - wait_until: {focused: seerr.search.field, timeout: 5000}
+  - assert: {id: seerr.search.field, insideViewport: true}
+  - press: right
+  - wait_until: {focused: seerr.search.inbox, timeout: 5000}
+  - press: select
+  - wait_until: {id: "tv.catalog.grid[requests]", timeout: 15000}
+  - settle: 1500
+
+  # The page opens with a card focused, and the first one is the pending series.
+  - assert: {id: "tv.catalog.grid.item[requests.0]", focused: true, state: {request: 1, status: pending, busy: false}}
+  - snapshot: 00-list
+
+  # 7C/7D: a manager has Bereik in the rail, above Status. Open the rail, look,
+  # and come back to the same card without changing anything.
+  - press: left
+  - wait_until: {id: "tv.catalog.rail.row[requests.scope]", timeout: 8000}
+  - assert: {id: "tv.catalog.rail.row[requests.scope]", insideViewport: true}
+  - assert: {id: "tv.catalog.rail.row[requests.status]", insideViewport: true, below: "tv.catalog.rail.row[requests.scope]"}
+  - snapshot: 00b-rail-scope
+  - press: right
+  - wait_until: {focused: "tv.catalog.grid.item[requests.0]", timeout: 8000}
+
+  # 8A: the menu of a pending request, for a manager, opens on Goedkeuren.
+  - press: {key: select, holdMs: 900}
+  - wait_until: {id: requests.actions, timeout: 8000}
+  - settle: 600
+  - assert: {id: requests.actions, insideViewport: true, state: {request: 1, status: pending}}
+  - assert: {id: "requests.actions.item[approve]", focused: true, insideViewport: true}
+  - assert: {id: "requests.actions.item[decline]", insideViewport: true}
+  - assert: {id: "requests.actions.item[edit]", insideViewport: true}
+  - snapshot: 01-actions-manager
+  # Every retained lower action must scroll fully into view under remote focus.
+  - walk: {direction: down, steps: 3, stopAt: "requests.actions.item[cancel]", timeout: 30000, settle: 500}
+  - assert: {id: "requests.actions.item[cancel]", focused: true, insideViewport: true}
+  - snapshot: 01b-actions-cancel-visible
+  - press: down
+  - wait_until: {focused: "requests.actions.item[close]", timeout: 8000}
+  - assert: {id: "requests.actions.item[close]", insideViewport: true}
+  - snapshot: 01c-actions-close-visible
+
+  # 8E/8F: Bewerken. The form reads the request back before it shows anything,
+  # the quality row is a fact rather than a switch, and the seasons the request
+  # holds are the ones ticked.
+  - press: up
+  - press: up
+  - wait_until: {focused: "requests.actions.item[edit]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "requests.form[edit]", state: {phase: form}, timeout: 15000}
+  - settle: 600
+  - assert: {id: "requests.form[edit]", insideViewport: true, state: {is4k: false, canSubmit: false}}
+  - assert: {id: "requests.form.option[fourK]", state: {editable: false}}
+  - assert: {id: "requests.form.option[season.3]", state: {selected: true, selectable: true}}
+  - assert: {id: "requests.form.option[season.1]", state: {selected: false}}
+  # Nothing changed yet, so the safe button holds the focus.
+  - assert: {id: "requests.form.button[close]", focused: true, insideViewport: true}
+  - snapshot: 02-edit-form
+
+  # Closing without a change sends nothing and returns to the same card.
+  - press: select
+  - wait_until: {focused: "tv.catalog.grid.item[requests.0]", timeout: 8000}
+  # Focus returns before the outgoing sheet has finished its pop animation.
+  - settle: 600
+  - assert: {id: "tv.catalog.grid[requests]", insideViewport: true}
+  - assert: {id: "requests.form[edit]", present: false}
+  - assert: {id: "tv.catalog.grid.item[requests.0]", state: {request: 1, status: pending, busy: false}}
+
+  # 8E with a real change: add season 2, save, and prove the server holds it.
+  # The fixture's PUT follows the Seerr route (seasons stored, target assigned
+  # from the body, no `is4k`), and the form only closes as saved after it has
+  # read the request back and found exactly what it sent.
+  - press: {key: select, holdMs: 900}
+  - wait_until: {focused: "requests.actions.item[approve]", timeout: 8000}
+  - press: down
+  - press: down
+  - wait_until: {focused: "requests.actions.item[edit]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "requests.form[edit]", state: {phase: form}, timeout: 15000}
+  - settle: 600
+  - walk: {direction: up, steps: 8, stopAt: "requests.form.option[season.2]", timeout: 60000, settle: 500}
+  - assert: {id: "requests.form.option[season.2]", focused: true, insideViewport: true, state: {selected: false, selectable: true}}
+  - press: select
+  - wait_until: {id: "requests.form.option[season.2]", state: {selected: true}, timeout: 5000}
+  - assert: {id: "requests.form[edit]", state: {canSubmit: true}}
+  - snapshot: 03-edit-season-added
+  # Down to the button row, and RIGHT in case the row was entered on Annuleren.
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - press: down
+  - settle: 500
+  - press: right
+  - wait_until: {focused: "requests.form.button[submit]", timeout: 8000}
+  - assert: {id: "requests.form.button[submit]", insideViewport: true, state: {enabled: true, busy: false}}
+  - press: select
+  - wait_until: {focused: "tv.catalog.grid.item[requests.0]", timeout: 20000}
+  # Focus returns before the closing route animation removes its nodes.
+  - settle: 600
+  - assert: {id: "tv.catalog.grid[requests]", insideViewport: true}
+  - assert: {id: "requests.form[edit]", present: false}
+  - assert: {id: "tv.catalog.grid.item[requests.0]", state: {request: 1, status: pending, busy: false}}
+  - snapshot: 04-edit-saved-focus-kept
+
+  # Persisted proof: a fresh edit form reads the request from the server again
+  # and shows season 2 ticked.
+  - press: {key: select, holdMs: 900}
+  - wait_until: {focused: "requests.actions.item[approve]", timeout: 8000}
+  - press: down
+  - press: down
+  - press: select
+  - wait_until: {id: "requests.form[edit]", state: {phase: form}, timeout: 15000}
+  - settle: 600
+  - assert: {id: "requests.form.option[season.2]", state: {selected: true}}
+  - assert: {id: "requests.form.option[season.3]", state: {selected: true}}
+  - assert: {id: "requests.form.option[season.1]", state: {selected: false}}
+  - assert: {id: "requests.form.button[close]", focused: true}
+  - snapshot: 05-edit-persisted
+  - press: select
+  - wait_until: {focused: "tv.catalog.grid.item[requests.0]", timeout: 8000}
+
+  # 8K and 7K: approve from the menu. The card ends on its new status with the
+  # focus still on it.
+  - press: {key: select, holdMs: 900}
+  - wait_until: {focused: "requests.actions.item[approve]", timeout: 8000}
+  - press: select
+  - wait_until: {id: "tv.catalog.grid.item[requests.0]", state: {request: 1, status: approved, busy: false}, timeout: 15000}
+  - settle: 600
+  - assert: {id: "tv.catalog.grid.item[requests.0]", focused: true, insideViewport: true}
+  - snapshot: 06-approved-focus-kept
+
+  # 8C: a request that is no longer pending offers the title and nothing else.
+  - press: {key: select, holdMs: 900}
+  - wait_until: {id: requests.actions, timeout: 8000}
+  - settle: 600
+  - assert: {id: requests.actions, state: {request: 1, status: approved}}
+  - assert: {id: "requests.actions.item[open]", focused: true}
+  - assert: {id: "requests.actions.item[approve]", present: false}
+  - assert: {id: "requests.actions.item[edit]", present: false}
+  - snapshot: 07-actions-none

@@ -4,36 +4,62 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
-import '../focus/focusable_button.dart';
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
+import '../models/seerr/seerr_request.dart';
 import '../providers/seerr_provider.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
-import '../utils/app_logger.dart';
+import '../theme/mono_tokens.dart';
 import 'app_icon.dart';
 import 'bottom_sheet_page_scaffold.dart';
 import 'focusable_list_tile.dart';
 import 'loading_indicator_box.dart';
 import 'overlay_sheet.dart';
+import 'seerr_request_form_parts.dart';
+import 'seerr_request_target.dart';
+
+part 'seerr_request_sheet_rows.dart';
 
 /// Request a movie or show from the seerr server.
 ///
 /// Movie = single confirm. TV = per-season multi-select (already
-/// available/requested seasons disabled with their status). A 4K toggle shows
-/// when the user has the request-4k permission; admins get a collapsible
-/// advanced section to pick the target Radarr/Sonarr server. Remaining quota is
-/// shown when known. Returns `true` from [show] when a request was filed.
+/// available/requested seasons shown with their status, not selectable). The
+/// 4K switch shows when the user holds the 4K right for this media type, and a
+/// line says so when they do not. Admins get the target section (server,
+/// quality profile, root folder). Returns `true` from [show] when a request
+/// was filed.
+///
+/// What it never does is send the same request twice on a guess. A connection
+/// that drops after the POST leaves the outcome unknown, so the sheet reads the
+/// title's status back before it offers Aanvragen again; a 403 or 409 is the
+/// server's answer and is shown as one.
 class SeerrRequestSheet extends StatefulWidget {
   final SeerrMedia media;
 
-  const SeerrRequestSheet({super.key, required this.media});
+  /// Called the moment the server confirms the request, before the sheet is
+  /// closed. A caller that shows a status reloads here, so backing out of the
+  /// confirmation instead of pressing Sluiten still leaves it up to date.
+  final VoidCallback? onRequested;
 
-  static Future<bool?> show(BuildContext context, {required SeerrMedia media}) {
+  /// Opens the viewer's own requests. The sheet closes first. Null hides the
+  /// route, for a caller that has nowhere to send it.
+  final VoidCallback? onOpenMyRequests;
+
+  const SeerrRequestSheet({super.key, required this.media, this.onRequested, this.onOpenMyRequests});
+
+  static Future<bool?> show(
+    BuildContext context, {
+    required SeerrMedia media,
+    VoidCallback? onRequested,
+    VoidCallback? onOpenMyRequests,
+  }) {
     return OverlaySheetController.showAdaptive<bool>(
       context,
       isScrollControlled: true,
-      builder: (_) => SeerrRequestSheet(media: media),
+      builder: (_) => SeerrRequestSheet(media: media, onRequested: onRequested, onOpenMyRequests: onOpenMyRequests),
     );
   }
 
@@ -41,42 +67,86 @@ class SeerrRequestSheet extends StatefulWidget {
   State<SeerrRequestSheet> createState() => _SeerrRequestSheetState();
 }
 
+enum _Refusal { forbidden, duplicate }
+
 class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   bool _loading = true;
   bool _submitting = false;
+  bool _checking = false;
+  bool _done = false;
   String? _error;
+
+  /// The POST left without a readable answer. The form is locked on what was
+  /// sent until a read of the title proves it arrived or proves it did not.
+  bool _uncertain = false;
+
+  /// What the last POST asked for, frozen when it was sent. The status check
+  /// and the confirmation are about this, not about what the form shows later.
+  ({bool is4k, Set<int> seasons})? _sent;
+
+  /// The server said no. Cleared when a choice changes, because 4K and the
+  /// season selection are both things a refusal can be about.
+  _Refusal? _refusal;
 
   List<SeerrSeason> _seasons = const [];
   final Set<int> _selectedSeasons = {};
   bool _is4k = false;
-  bool _advancedOpen = false;
 
   SeerrQuota? _quota;
-  List<SeerrServiceServer> _servers = const [];
-  int? _serverId;
+  SeerrMediaStatus _status = SeerrMediaStatus.unknown;
+  late final SeerrTargetController _target = SeerrTargetController(isTv: _isTv);
 
-  /// Quality profiles and root folders for [_serverId]. Only the server list is
-  /// available up front; these come from a per-server call, so they are loaded
-  /// when a server is picked and cleared while that call is in flight.
-  List<SeerrQualityProfile> _profiles = const [];
-  List<SeerrRootFolder> _rootFolders = const [];
-  bool _loadingServerDetail = false;
-  int? _profileId;
-  String? _rootFolder;
+  /// The client this sheet loaded with. A profile switch swaps it, and from
+  /// then on nothing this sheet holds describes the active account.
+  SeerrClient? _boundClient;
+  bool _started = false;
 
   bool get _isTv => widget.media.mediaType == 'tv';
 
-  SeerrClient? get _client => context.read<SeerrProvider>().client;
+  SeerrClient? get _client {
+    final current = context.read<SeerrProvider>().client;
+    return identical(current, _boundClient) ? current : null;
+  }
+
+  /// Whether an answer that was asked through [client] still belongs here.
+  bool _live(SeerrClient client) => mounted && identical(context.read<SeerrProvider>().client, client);
+
+  bool get _locked => _submitting || _checking || _uncertain;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
+    _status = widget.media.status;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final client = Provider.of<SeerrProvider>(context).client;
+    if (!_started) {
+      _started = true;
+      _boundClient = client;
+      unawaited(_load());
+      return;
+    }
+    if (identical(client, _boundClient)) return;
+    // Another account is active. Quota, seasons, target and any request in
+    // flight belong to the previous one, so the form goes away with no result
+    // instead of confirming or reloading anything for the new account.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) OverlaySheetController.closeAdaptive(context);
+    });
+  }
+
+  @override
+  void dispose() {
+    _target.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
     final provider = context.read<SeerrProvider>();
-    final client = provider.client;
+    final client = _client;
     if (client == null) {
       setState(() {
         _loading = false;
@@ -84,63 +154,88 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       });
       return;
     }
+    if (!provider.canRequest) {
+      setState(() => _loading = false);
+      return;
+    }
     try {
       if (_isTv) {
         final detail = await client.getTv(widget.media.tmdbId);
+        if (!mounted || !_live(client)) return;
         _seasons = SeerrSeason.listFromDetail(detail);
-        // Pre-select every season that can still be requested.
-        for (final s in _seasons) {
-          if (_isSeasonRequestable(s)) _selectedSeasons.add(s.seasonNumber);
-        }
+        _selectAllRequestable();
       }
+      // The limit is a line of context, not a condition for requesting: the
+      // server enforces it either way, so a failed lookup reads as unknown.
       final userId = provider.session?.userId;
-      if (userId != null) _quota = await client.getQuota(userId);
+      if (userId != null) {
+        SeerrQuota? quota;
+        try {
+          quota = await client.getQuota(userId);
+        } catch (_) {
+          quota = null;
+        }
+        if (!mounted || !_live(client)) return;
+        _quota = quota;
+      }
       if (provider.isAdmin) {
-        _servers = _isTv ? await client.getSonarrServers() : await client.getRadarrServers();
-        // Open on the server Overseerr would have used, so the profile list has
-        // something to show without the user first having to pick a server.
-        _serverId = preferredSeerrServer(_servers, is4k: _is4k)?.id;
+        await _target.load(client, is4k: _is4k);
+        if (!mounted || !_live(client)) return;
       }
-      if (mounted) setState(() => _loading = false);
-      if (_serverId != null) unawaited(_loadServerDetail(_serverId!));
+      setState(() => _loading = false);
     } on SeerrException catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _mapError(e);
-        });
-      }
+      if (!mounted || !_live(client)) return;
+      setState(() {
+        _loading = false;
+        _error = _mapError(e);
+      });
     } catch (_) {
       // Never leave the sheet stuck on the spinner: a non-Seerr error (e.g. an
       // unexpected detail-payload shape) still resolves to a visible message.
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = t.seerr.errorGeneric;
-        });
-      }
+      if (!mounted || !_live(client)) return;
+      setState(() {
+        _loading = false;
+        _error = t.seerr.errorGeneric;
+      });
     }
   }
 
-  bool _isSeasonRequestable(SeerrSeason s) => s.status == SeerrMediaStatus.unknown; // not pending/processing/available
+  /// Not pending, processing or available in the quality being requested.
+  bool _isSeasonRequestable(SeerrSeason s) => s.requestableIn(is4k: _is4k);
+
+  List<SeerrSeason> get _requestable => _seasons.where(_isSeasonRequestable).toList();
+
+  void _selectAllRequestable() {
+    _selectedSeasons
+      ..clear()
+      ..addAll(_requestable.map((s) => s.seasonNumber));
+  }
 
   // Movies: block a duplicate request the server would reject with 409.
-  bool get _isMovieRequestable => !widget.media.status.isAvailable && !widget.media.status.isRequested;
+  bool get _isMovieRequestable => !_status.isAvailable && !_status.isRequested;
 
-  /// Quota exhausted → the server would reject the request anyway; disable
-  /// submit instead of surfacing a raw 403 after the fact.
-  bool get _quotaExhausted {
+  ({int? remaining, int? limit}) get _quotaForType {
     final q = _quota;
-    if (q == null) return false;
-    final limit = _isTv ? q.tvLimit : q.movieLimit;
-    if (limit == null || limit == 0) return false;
-    return ((_isTv ? q.tvRemaining : q.movieRemaining) ?? limit) <= 0;
+    if (q == null) return (remaining: null, limit: null);
+    return _isTv ? (remaining: q.tvRemaining, limit: q.tvLimit) : (remaining: q.movieRemaining, limit: q.movieLimit);
+  }
+
+  /// The server reports a limit and says none of it is left. A limit without a
+  /// remaining figure is not this: that is unknown, and unknown does not block.
+  bool get _quotaExhausted {
+    final q = _quotaForType;
+    final limit = q.limit;
+    final remaining = q.remaining;
+    return limit != null && limit > 0 && remaining != null && remaining <= 0;
   }
 
   bool get _canSubmit =>
-      !_submitting &&
+      !_locked &&
+      _refusal == null &&
       widget.media.tmdbId > 0 &&
       !_quotaExhausted &&
+      !_target.missingServerForQuality &&
+      !_target.detailLoading &&
       (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
 
   String _mapError(SeerrException e) {
@@ -149,80 +244,241 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     return t.seerr.errorGeneric;
   }
 
+  void _close([bool? result]) => OverlaySheetController.closeAdaptive(context, result ?? (_done ? true : null));
+
+  void _openMyRequests() {
+    final open = widget.onOpenMyRequests;
+    _close();
+    open?.call();
+  }
+
   Future<void> _submit() async {
     final client = _client;
-    if (client == null || _submitting) return;
-    if (_isTv && _selectedSeasons.isEmpty) return;
+    if (client == null || !_canSubmit) return;
+    final sent = (is4k: _is4k, seasons: _isTv ? _selectedSeasons.toSet() : const <int>{});
+    final target = _target.target;
     setState(() {
       _submitting = true;
+      _sent = sent;
       _error = null;
     });
     try {
       await client.createRequest(
         mediaType: widget.media.mediaType,
         tmdbId: widget.media.tmdbId,
-        seasons: _isTv ? (_selectedSeasons.toList()..sort()) : null,
-        is4k: _is4k,
-        serverId: _serverId,
-        profileId: _profileId,
-        rootFolder: _rootFolder,
+        seasons: _isTv ? (sent.seasons.toList()..sort()) : null,
+        is4k: sent.is4k,
+        serverId: target?.serverId,
+        profileId: target?.profileId,
+        rootFolder: target?.rootFolder,
       );
-      if (mounted) OverlaySheetController.closeAdaptive(context, true);
+      if (!mounted || !_live(client)) return;
+      _confirm();
     } on SeerrException catch (e) {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-          _error = e.isNetwork
-              ? t.seerr.errorNetwork
-              : e.isForbidden
-              ? t.seerr.errorForbidden
-              : (e.message.startsWith('HTTP') ? t.seerr.requestFailed : e.message);
-        });
-      }
+      if (!mounted || !_live(client)) return;
+      setState(() {
+        _submitting = false;
+        if (e.outcomeUnknown) {
+          _uncertain = true;
+        } else if (e.isForbidden || e.isAuth) {
+          _refusal = _Refusal.forbidden;
+        } else if (e.isConflict) {
+          _refusal = _Refusal.duplicate;
+        } else {
+          _error = e.message.startsWith('HTTP') ? t.seerr.requestFailed : e.message;
+        }
+      });
+    } catch (_) {
+      // Something broke after the request left. That is not proof it failed.
+      if (!mounted || !_live(client)) return;
+      setState(() {
+        _submitting = false;
+        _uncertain = true;
+      });
     }
+  }
+
+  void _confirm() {
+    setState(() {
+      _submitting = false;
+      _checking = false;
+      _uncertain = false;
+      _done = true;
+    });
+    widget.onRequested?.call();
+  }
+
+  /// Reads the title back after a request whose outcome is unknown.
+  ///
+  /// Only positive proof counts as arrived: Seerr lists a live request in the
+  /// quality that was sent, by this user where the user is known, holding
+  /// every season that was sent. A title that merely stopped being requestable
+  /// proves nothing (someone else's request, or the HD copy, does that too),
+  /// and neither does an answer without a request list. Then the form stays
+  /// locked, because sending again could be a second request.
+  Future<void> _checkStatus() async {
+    final client = _client;
+    final sent = _sent;
+    if (client == null || sent == null || _checking) return;
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+    final SeerrMediaDetail detail;
+    final List<SeerrSeason> seasons;
+    try {
+      final json = _isTv ? await client.getTv(widget.media.tmdbId) : await client.getMovie(widget.media.tmdbId);
+      detail = SeerrMediaDetail.fromJson(json, mediaType: widget.media.mediaType);
+      seasons = _isTv ? SeerrSeason.listFromDetail(json) : const [];
+    } catch (_) {
+      if (!mounted || !_live(client)) return;
+      return _stayUncertain(t.seerr.statusCheckFailed);
+    }
+    if (!mounted || !_live(client)) return;
+    if (detail.media.tmdbId != widget.media.tmdbId || !detail.requestsKnown) {
+      return _stayUncertain(t.seerr.statusNotProven);
+    }
+
+    // A listed request that does not say its status, its quality, whose it is
+    // or (for a series) its seasons could be the one that was sent, or not.
+    // It can neither confirm nor rule out, so the outcome stays open.
+    if (detail.requests.any((r) => !r.isReliableReadback)) return _stayUncertain(t.seerr.statusNotProven);
+
+    final ownId = context.read<SeerrProvider>().session?.userId;
+    final live = detail.requests.where(
+      (r) =>
+          r.is4k == sent.is4k &&
+          r.status != SeerrRequestStatus.declined &&
+          r.status != SeerrRequestStatus.failed &&
+          (ownId == null || r.requestedById == ownId),
+    );
+    final arrived = _isTv
+        ? sent.seasons.isNotEmpty && live.expand((r) => r.seasons).toSet().containsAll(sent.seasons)
+        : live.isNotEmpty;
+    if (arrived) return _confirm();
+
+    // The server answered with its full request list and this one is not on
+    // it. That is proof too, of the other outcome, and sending is back.
+    setState(() {
+      _checking = false;
+      _uncertain = false;
+      _sent = null;
+      _status = detail.media.status;
+      if (_isTv) {
+        _seasons = seasons;
+        _selectedSeasons.removeWhere((n) => !_requestable.any((s) => s.seasonNumber == n));
+      }
+      _error = t.seerr.requestStillAbsent;
+    });
+  }
+
+  void _stayUncertain(String message) => setState(() {
+    _checking = false;
+    _uncertain = true;
+    _error = message;
+  });
+
+  void _changed(VoidCallback change) {
+    if (_locked) return;
+    setState(() {
+      change();
+      _refusal = null;
+      _error = null;
+    });
+  }
+
+  /// Flip the 4K request and re-point the target at an instance of that kind.
+  ///
+  /// 4K lives on its own Radarr/Sonarr instance, so the flag and the server are
+  /// one choice, not two. Which seasons can still be asked for depends on the
+  /// quality as well, so the selection starts over.
+  void _setIs4k(bool value) {
+    if (_is4k == value || _locked) return;
+    _changed(() {
+      _is4k = value;
+      if (_isTv) _selectAllRequestable();
+    });
+    _target.setIs4k(value);
+  }
+
+  void _toggleSeason(int n) => _changed(() {
+    if (!_selectedSeasons.remove(n)) _selectedSeasons.add(n);
+  });
+
+  void _toggleAll() => _changed(() {
+    final requestable = _requestable;
+    if (_selectedSeasons.length == requestable.length) {
+      _selectedSeasons.clear();
+    } else {
+      _selectAllRequestable();
+    }
+  });
+
+  String _phase(SeerrProvider provider) {
+    if (_loading) return 'loading';
+    if (_done) return 'done';
+    if (!provider.canRequest) return 'forbidden';
+    if (_submitting) return 'submitting';
+    if (_checking) return 'checking';
+    if (_uncertain) return 'uncertain';
+    if (_refusal != null) return 'refused';
+    return 'form';
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SeerrProvider>();
-    return BottomSheetPageScaffold(
-      title: widget.media.title,
-      icon: Symbols.playlist_add_rounded,
-      shrinkWrap: true,
-      child: _loading
-          ? const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: LoadingIndicatorBox()),
-            )
-          : _buildBody(context, provider),
+    return AutomationNode(
+      id: AutomationIds.requestsForm,
+      instance: 'create',
+      role: 'dialog',
+      label: widget.media.title,
+      state: () => {
+        'phase': _phase(provider),
+        'is4k': _is4k,
+        'seasons': _selectedSeasons.toList()..sort(),
+        'canSubmit': _canSubmit,
+      },
+      child: BottomSheetPageScaffold(
+        title: widget.media.title,
+        icon: Symbols.playlist_add_rounded,
+        shrinkWrap: true,
+        child: _loading
+            ? const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: LoadingIndicatorBox()),
+              )
+            : ListenableBuilder(listenable: _target, builder: (context, _) => _buildBody(context, provider)),
+      ),
     );
   }
 
   Widget _buildBody(BuildContext context, SeerrProvider provider) {
-    final theme = Theme.of(context);
-    final muted = theme.colorScheme.onSurface.withValues(alpha: 0.7);
-    final quotaText = _quotaText();
-    // Nothing requestable (already available/requested): show a clear message
-    // instead of a dead-end sheet with a permanently disabled button.
-    final nothingRequestable = _isTv ? !_seasons.any(_isSeasonRequestable) : !_isMovieRequestable;
-    if (nothingRequestable) {
-      final label = widget.media.status.isAvailable ? t.seerr.available : t.seerr.alreadyRequested;
-      return Padding(
-        padding: const EdgeInsets.all(32),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AppIcon(widget.media.status.isAvailable ? Symbols.check_circle_rounded : Symbols.schedule_rounded, fill: 1),
-            const SizedBox(width: 12),
-            Flexible(child: Text(label, style: theme.textTheme.titleSmall)),
-          ],
-        ),
+    if (_done) return _buildDone();
+    if (!provider.canRequest) {
+      return _terminal(
+        SeerrFormNotice(kind: 'forbidden', title: t.seerr.noRequestRight, tone: SeerrFormNoticeTone.warning),
       );
     }
+    // Nothing requestable (already available/requested): show a clear message
+    // instead of a dead-end sheet with a permanently disabled button.
+    final nothingRequestable = _isTv
+        ? !_seasons.any(_isSeasonRequestable) && !_canOffer4k(provider)
+        : !_isMovieRequestable;
+    if (nothingRequestable && _error == null) {
+      final available = _status.isAvailable;
+      return _terminal(
+        SeerrFormNotice(kind: 'duplicate', title: available ? t.seerr.available : t.seerr.alreadyRequested),
+        offerMine: !available,
+      );
+    }
+
+    final theme = Theme.of(context);
     // Cap the sheet so a long season list (20+ seasons) scrolls inside the sheet
-    // instead of pushing the Request button off-screen. The button and error
-    // stay pinned below the scroll area so they're always reachable.
+    // instead of pushing the Request button off-screen. The messages and the
+    // buttons stay pinned below the scroll area so they're always reachable.
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
+    final locked = _locked;
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
       child: Column(
@@ -234,232 +490,51 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               children: [
-                if (quotaText != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Text(quotaText, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
-                  ),
-                if (_isTv) ..._buildSeasonList(theme),
-                if (provider.canRequest4kFor(isMovie: !_isTv))
-                  FocusableListTile(
-                    leading: const AppIcon(Symbols.high_quality_rounded, fill: 1),
-                    title: Text(t.seerr.fourK),
-                    trailing: Switch(value: _is4k, onChanged: _setIs4k),
-                    onTap: () => _setIs4k(!_is4k),
-                  ),
-                if (provider.isAdmin && _servers.isNotEmpty) ..._buildAdvanced(theme),
+                _quotaLine(theme),
+                if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
+                _fourKRow(provider, enabled: !locked),
+                if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
+                  SeerrTargetSection(controller: _target, enabled: !locked),
               ],
             ),
           ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+          if (_quotaExhausted)
+            SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
+          if (_uncertain)
+            SeerrFormNotice(
+              kind: 'uncertain',
+              title: t.seerr.requestUncertainTitle,
+              body: t.seerr.requestUncertainBody,
+              tone: SeerrFormNoticeTone.warning,
             ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: FocusableButton(
-              autofocus: true,
-              onPressed: _canSubmit ? _submit : null,
-              child: FilledButton.icon(
-                onPressed: _canSubmit ? _submit : null,
-                icon: _submitting ? const LoadingIndicatorBox() : const AppIcon(Symbols.download_rounded, fill: 1),
-                label: Text(_isTv ? t.seerr.request : t.seerr.requestMovie),
-              ),
+          if (_refusal case final refusal?)
+            SeerrFormNotice(
+              kind: 'refused',
+              title: t.seerr.requestRefusedTitle,
+              body: refusal == _Refusal.duplicate ? t.seerr.requestRefusedDuplicate : t.seerr.requestRefusedForbidden,
+              tone: SeerrFormNoticeTone.error,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildSeasonList(ThemeData theme) {
-    final requestable = _seasons.where(_isSeasonRequestable).toList();
-    return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: Text(t.seerr.selectSeasons, style: theme.textTheme.titleSmall),
-      ),
-      if (requestable.length > 1)
-        FocusableListTile(
-          leading: const AppIcon(Symbols.select_all_rounded, fill: 1),
-          title: Text(t.seerr.allSeasons),
-          trailing: Checkbox(
-            value: _selectedSeasons.length == requestable.length,
-            onChanged: (_) => _toggleAll(requestable),
-          ),
-          onTap: () => _toggleAll(requestable),
-        ),
-      for (final s in _seasons)
-        FocusableListTile(
-          enabled: _isSeasonRequestable(s),
-          title: Text(t.seerr.season(number: s.seasonNumber)),
-          subtitle: _isSeasonRequestable(s) ? null : Text(_seasonStatusLabel(s.status)),
-          trailing: _isSeasonRequestable(s)
-              ? Checkbox(
-                  value: _selectedSeasons.contains(s.seasonNumber),
-                  onChanged: (_) => _toggleSeason(s.seasonNumber),
+          if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
+          _uncertain
+              ? SeerrFormButtons(
+                  closeLabel: t.common.close,
+                  onClose: _close,
+                  primaryLabel: t.seerr.checkStatus,
+                  primaryIcon: Symbols.refresh_rounded,
+                  primaryInstance: 'status',
+                  onPrimary: _checkStatus,
+                  busy: _checking,
                 )
-              : const AppIcon(Symbols.check_circle_rounded, fill: 1, size: 20),
-          onTap: _isSeasonRequestable(s) ? () => _toggleSeason(s.seasonNumber) : null,
-        ),
-    ];
-  }
-
-  List<Widget> _buildAdvanced(ThemeData theme) {
-    return [
-      FocusableListTile(
-        leading: const AppIcon(Symbols.tune_rounded, fill: 1),
-        title: Text(t.seerr.advancedOptions),
-        trailing: AppIcon(_advancedOpen ? Symbols.expand_less_rounded : Symbols.expand_more_rounded, fill: 1),
-        onTap: () => setState(() => _advancedOpen = !_advancedOpen),
-      ),
-      if (_advancedOpen) ...[
-        _advancedHeader(theme, t.seerr.server),
-        for (final server in _servers)
-          FocusableListTile(
-            title: Text(server.name),
-            leading: const AppIcon(Symbols.dns_rounded, fill: 1),
-            selected: _serverId == server.id,
-            trailing: _serverId == server.id ? const AppIcon(Symbols.check_rounded, fill: 1) : null,
-            onTap: () => _selectServer(server),
-          ),
-        if (_loadingServerDetail)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-          ),
-        if (!_loadingServerDetail && _profiles.isNotEmpty) ...[
-          _advancedHeader(theme, t.seerr.qualityProfile),
-          for (final profile in _profiles)
-            FocusableListTile(
-              title: Text(profile.name),
-              leading: const AppIcon(Symbols.high_quality_rounded, fill: 1),
-              selected: _profileId == profile.id,
-              trailing: _profileId == profile.id ? const AppIcon(Symbols.check_rounded, fill: 1) : null,
-              onTap: () => setState(() => _profileId = profile.id),
-            ),
+              : SeerrFormButtons(
+                  closeLabel: t.common.cancel,
+                  onClose: _close,
+                  primaryLabel: _submitLabel,
+                  primaryIcon: Symbols.download_rounded,
+                  onPrimary: _canSubmit || _submitting ? _submit : null,
+                  busy: _submitting,
+                ),
         ],
-        if (!_loadingServerDetail && _rootFolders.isNotEmpty) ...[
-          _advancedHeader(theme, t.seerr.rootFolder),
-          for (final folder in _rootFolders)
-            FocusableListTile(
-              title: Text(folder.path),
-              leading: const AppIcon(Symbols.folder_rounded, fill: 1),
-              selected: _rootFolder == folder.path,
-              trailing: _rootFolder == folder.path ? const AppIcon(Symbols.check_rounded, fill: 1) : null,
-              onTap: () => setState(() => _rootFolder = folder.path),
-            ),
-        ],
-      ],
-    ];
-  }
-
-  Widget _advancedHeader(ThemeData theme, String label) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Text(
-        label,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
-  }
-
-  /// Flip the 4K request and re-point the target at an instance of that kind.
-  ///
-  /// 4K lives on its own Radarr/Sonarr instance, so the flag and the server are
-  /// one choice, not two. Leaving the server on what was picked while the flag
-  /// was still off submitted `is4k: true` with the SD instance's id, and an
-  /// explicit id overrides Overseerr's own (correct) default lookup outright.
-  void _setIs4k(bool value) {
-    if (_is4k == value) return;
-    setState(() => _is4k = value);
-    _bindServer(preferredSeerrServer(_servers, is4k: value)?.id);
-  }
-
-  void _selectServer(SeerrServiceServer server) => _bindServer(server.id);
-
-  /// Point the request at [serverId] and drop everything that described the
-  /// previous one. A null id means "no opinion": Overseerr then applies its own
-  /// default rule instead of being handed a server of the wrong kind.
-  void _bindServer(int? serverId) {
-    if (_serverId == serverId) return;
-    setState(() {
-      _serverId = serverId;
-      // The old server's profiles say nothing about the new one.
-      _profiles = const [];
-      _rootFolders = const [];
-      _profileId = null;
-      _rootFolder = null;
-      // A load still running for the previous server returns through the stale
-      // guard in [_loadServerDetail] without touching this flag, so binding to
-      // nothing has to clear it here or the spinner never stops. Binding to a
-      // server sets it again on the next line.
-      _loadingServerDetail = false;
-    });
-    if (serverId != null) unawaited(_loadServerDetail(serverId));
-  }
-
-  /// Loads one server's profiles and root folders, seeded on that server's own
-  /// defaults. Failure is quiet on purpose: these are optional refinements, and
-  /// losing them must not block the request itself.
-  Future<void> _loadServerDetail(int serverId) async {
-    final client = _client;
-    if (client == null) return;
-    setState(() => _loadingServerDetail = true);
-    try {
-      final detail = _isTv
-          ? await client.getSonarrServerDetail(serverId)
-          : await client.getRadarrServerDetail(serverId);
-      if (!mounted || _serverId != serverId) return;
-      final server = _servers.where((s) => s.id == serverId).firstOrNull;
-      setState(() {
-        _profiles = detail.profiles;
-        _rootFolders = detail.rootFolders;
-        _profileId = server?.activeProfileId;
-        _rootFolder = server?.activeDirectory;
-        _loadingServerDetail = false;
-      });
-    } catch (e) {
-      if (!mounted || _serverId != serverId) return;
-      appLogger.d('seerr: could not load server $serverId options: $e');
-      setState(() => _loadingServerDetail = false);
-    }
-  }
-
-  void _toggleSeason(int n) {
-    setState(() {
-      if (!_selectedSeasons.remove(n)) _selectedSeasons.add(n);
-    });
-  }
-
-  void _toggleAll(List<SeerrSeason> requestable) {
-    setState(() {
-      if (_selectedSeasons.length == requestable.length) {
-        _selectedSeasons.clear();
-      } else {
-        _selectedSeasons
-          ..clear()
-          ..addAll(requestable.map((s) => s.seasonNumber));
-      }
-    });
-  }
-
-  String _seasonStatusLabel(SeerrMediaStatus status) => switch (status) {
-    SeerrMediaStatus.available || SeerrMediaStatus.partiallyAvailable => t.seerr.available,
-    SeerrMediaStatus.processing => t.seerr.processing,
-    _ => t.seerr.pending,
-  };
-
-  String? _quotaText() {
-    final q = _quota;
-    if (q == null) return null;
-    final remaining = _isTv ? q.tvRemaining : q.movieRemaining;
-    final limit = _isTv ? q.tvLimit : q.movieLimit;
-    if (limit == null || limit == 0) return t.seerr.quotaUnlimited;
-    return t.seerr.quotaRemaining(remaining: '${remaining ?? 0}', limit: '$limit');
   }
 }

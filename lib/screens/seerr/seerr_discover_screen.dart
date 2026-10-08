@@ -19,6 +19,7 @@ import '../../navigation/main_screen_scope.dart';
 import '../../navigation/tv/tv_content_route_registry.dart';
 import '../../providers/seerr_provider.dart';
 import '../../services/seerr/seerr_client.dart';
+import '../../services/seerr/seerr_constants.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/debouncer.dart';
 import '../../utils/seerr_error_message.dart';
@@ -39,6 +40,7 @@ import '../../widgets/state_view.dart';
 import '../tv/tv_seerr_discover_view.dart';
 import 'seerr_discover_filter_bar.dart';
 import 'seerr_grid_sliver.dart';
+import '../settings/seerr_settings_screen.dart';
 import 'seerr_media_detail_screen.dart';
 import 'seerr_row_grid_screen.dart';
 import 'seerr_requests_screen.dart';
@@ -136,6 +138,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   bool _searchLoadMoreFailed = false;
   bool _searching = false;
   bool _searchErrored = false;
+  SeerrErrorKind _searchErrorKind = SeerrErrorKind.generic;
 
   // Filters.
   SeerrDiscoverType _type = SeerrDiscoverType.all;
@@ -217,6 +220,14 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // A profile switch swaps the Seerr client. Everything loaded through the
+    // old one belongs to another account, so the page starts over.
+    final client = Provider.of<SeerrProvider>(context).client;
+    if (_platformLoadsStarted && !identical(client, _client)) {
+      _client = client;
+      _resetForClient();
+      _platformLoadsStarted = false;
+    }
     if (_platformLoadsStarted) return;
     _platformLoadsStarted = true;
     if (PlatformDetector.isPhone(context)) {
@@ -240,6 +251,32 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _firstDiscoverItemFocusNode.dispose();
     super.dispose();
   }
+
+  void _resetForClient() {
+    _searchDebounce.cancel();
+    for (final row in _rows) {
+      row.reset();
+    }
+    _searchController.clear();
+    _query = '';
+    _searchResults = const [];
+    _searching = false;
+    _searchErrored = false;
+    _searchLoadMoreFailed = false;
+    _genreId = null;
+    _genreRow = null;
+    _expandedRow = null;
+    _provider = null;
+    _providerRow = null;
+    _providers = const [];
+    _movieGenres = const [];
+    _tvGenres = const [];
+    _phoneCatalogRow = null;
+  }
+
+  /// An answer that arrives after the client was swapped is for another
+  /// account and is dropped.
+  bool _isCurrent(SeerrClient client) => mounted && identical(_client, client);
 
   Future<void> _loadAll() async {
     final client = _client;
@@ -295,7 +332,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
   Future<void> _loadFirst(_SeerrRow row, SeerrClient client) async {
     try {
       final page = await row.fetch(client, 1);
-      if (!mounted) return;
+      if (!mounted || !_isCurrent(client)) return;
       setState(() {
         row.items = page.items;
         row.page = page.page;
@@ -309,7 +346,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       // this line a 401, a 403 and a 500 are indistinguishable after the fact,
       // and the screen shows the same "try again" for all three.
       appLogger.w('Seerr discover row "${row.title}" failed', error: e, stackTrace: st);
-      if (!mounted) return;
+      if (!mounted || !_isCurrent(client)) return;
       setState(() {
         row.loadingFirst = false;
         row.errored = true;
@@ -327,7 +364,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     });
     try {
       final page = await row.fetch(client, row.page + 1);
-      if (!mounted) return;
+      if (!mounted || !_isCurrent(client)) return;
       setState(() {
         row.items = [...row.items, ...page.items];
         row.page = page.page;
@@ -336,7 +373,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         row.loadMoreFailed = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || !_isCurrent(client)) return;
       setState(() {
         row.loadingMore = false;
         row.loadMoreFailed = true;
@@ -377,7 +414,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     try {
       final page = await client.search(query);
       // Drop the result if the query moved on while the request was in flight.
-      if (!mounted || _query != query) return;
+      if (!mounted || !_isCurrent(client) || _query != query) return;
       setState(() {
         _searchResults = page.items;
         _searchPage = page.page;
@@ -386,11 +423,12 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         _searchErrored = false;
         _searchLoadMoreFailed = false;
       });
-    } catch (_) {
-      if (!mounted || _query != query) return;
+    } catch (e) {
+      if (!mounted || !_isCurrent(client) || _query != query) return;
       setState(() {
         _searching = false;
         _searchErrored = true;
+        _searchErrorKind = seerrErrorKindOf(e);
       });
     }
   }
@@ -405,7 +443,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     });
     try {
       final page = await client.search(query, page: _searchPage + 1);
-      if (!mounted || _query != query) return;
+      if (!mounted || !_isCurrent(client) || _query != query) return;
       setState(() {
         _searchResults = [..._searchResults, ...page.items];
         _searchPage = page.page;
@@ -414,7 +452,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         _searchLoadMoreFailed = false;
       });
     } catch (_) {
-      if (!mounted || _query != query) return;
+      if (!mounted || !_isCurrent(client) || _query != query) return;
       setState(() {
         _searchLoadingMore = false;
         _searchLoadMoreFailed = true;
@@ -438,7 +476,34 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       dominantSeerrErrorKind(_visibleRows.where((r) => r.errored).map((r) => r.errorKind));
 
   Future<void> _openDetail(SeerrMedia media) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SeerrMediaDetailScreen(media: media)));
+    final client = _client;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SeerrMediaDetailScreen(
+          media: media,
+          // A status the title page learned from another account's server
+          // says nothing about the cards of this one.
+          onStatusChanged: (status) {
+            if (client != null && _isCurrent(client)) _applyStatus(media, status);
+          },
+        ),
+      ),
+    );
+  }
+
+  /// The title page learned a newer status for [media]. Every card for that
+  /// title follows, so coming back lands on the same card saying the new thing.
+  void _applyStatus(SeerrMedia media, SeerrMediaStatus status) {
+    if (!mounted) return;
+    bool same(SeerrMedia m) => m.tmdbId == media.tmdbId && m.mediaType == media.mediaType;
+    List<SeerrMedia> update(List<SeerrMedia> items) =>
+        items.any(same) ? [for (final m in items) same(m) ? m.withStatus(status) : m] : items;
+    setState(() {
+      for (final row in [..._rows, ?_genreRow, ?_providerRow, ?_phoneCatalogRow, ?_expandedRow]) {
+        row.items = update(row.items);
+      }
+      _searchResults = update(_searchResults);
+    });
   }
 
   /// [mineOnly]: the phone's "Mijn aanvragen" header, which opens the viewer's own list even
@@ -565,6 +630,15 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     );
     setState(() => _phoneCatalogRow = row);
     await _loadFirst(row, client);
+  }
+
+  void _clearPhoneFilters() {
+    setState(() {
+      _genreId = null;
+      _provider = null;
+      _phoneAvailability = MobileSeerrAvailability.all;
+    });
+    unawaited(_reloadPhoneCatalog());
   }
 
   List<SeerrMedia> get _phoneCatalogItems {
@@ -698,12 +772,20 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     // React to the session being torn down (disconnect / profile switch).
     final client = context.watch<SeerrProvider>().client;
     if (client == null) {
+      // Nothing to try again here: there is no server to ask. The one useful
+      // action is setting one up.
       return FocusedScrollScaffold(
         title: Text(t.seerr.discoverTitle),
         slivers: [
           SliverFillRemaining(
             hasScrollBody: false,
-            child: StateView.empty(title: t.seerr.noResults, icon: Symbols.movie_rounded),
+            child: StateView.empty(
+              title: t.seerr.notConfigured,
+              message: t.seerr.notConfiguredBody,
+              icon: Symbols.link_off_rounded,
+              onRetry: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SeerrSettingsScreen())),
+              retryLabel: t.seerr.setUp,
+            ),
           ),
         ],
       );
@@ -821,10 +903,18 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
     final items = _phoneCatalogItems;
     if (items.isEmpty && !row.hasMore) {
+      // Empty is not a failure: with a filter on, the way out is the filter.
+      final filtered = _phoneActiveFilterCount > 0;
       return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: StateView.empty(title: t.seerr.noResults, icon: Symbols.movie_rounded),
+          child: StateView.empty(
+            title: filtered ? t.unifiedCatalog.states.filterEmptyTitle : t.seerr.noResults,
+            message: filtered ? t.unifiedCatalog.states.filterEmptyBody : null,
+            icon: Symbols.movie_rounded,
+            onRetry: filtered ? _clearPhoneFilters : null,
+            retryLabel: t.unifiedCatalog.states.clearFilters,
+          ),
         ),
       ];
     }
@@ -916,6 +1006,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         items: _filteredSearchResults,
         hasMore: _searchPage < _searchTotalPages,
         isLoadingMore: _searchLoadingMore,
+        loadMoreFailed: _searchLoadMoreFailed,
         onLoadMore: () => unawaited(_loadMoreSearch()),
       );
     }
@@ -942,6 +1033,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     items: row.items,
     hasMore: row.hasMore,
     isLoadingMore: row.loadingMore,
+    loadMoreFailed: row.loadMoreFailed,
     onLoadMore: () => unawaited(_loadMore(row)),
   );
 
@@ -954,7 +1046,9 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
           id: row.title,
           title: row.title,
           items: row.items,
-          hasMore: row.hasMore,
+          // A shelf whose next page failed stops asking by itself; "Alles
+          // tonen" opens it as a grid, where the retry tile is.
+          hasMore: row.hasMore && !row.loadMoreFailed,
           isLoadingMore: row.loadingMore,
           onLoadMore: () => unawaited(_loadMore(row)),
           onShowAll: () => _openRowGrid(row),
@@ -963,7 +1057,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
   /// The message to show when the page has nothing at all, or null.
   String? _tvError() {
-    if (_query.isNotEmpty) return _searchErrored ? t.seerr.errorNetwork : null;
+    if (_query.isNotEmpty) return _searchErrored ? seerrErrorMessage(_searchErrorKind) : null;
     if (_expandedRow?.errored ?? false) return seerrErrorMessage(_expandedRow!.errorKind);
     if (_genreRow?.errored ?? false) return seerrErrorMessage(_genreRow!.errorKind);
     if (_providerRow?.errored ?? false) return seerrErrorMessage(_providerRow!.errorKind);
@@ -1128,7 +1222,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         SliverFillRemaining(
           hasScrollBody: false,
           child: StateView.error(
-            title: t.seerr.errorNetwork,
+            title: seerrErrorMessage(_searchErrorKind),
             icon: Symbols.cloud_off_rounded,
             onRetry: () => _runSearch(_query),
           ),
@@ -1322,7 +1416,13 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
       return [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: StateView.empty(title: t.seerr.noResults, icon: Symbols.movie_rounded),
+          child: StateView.empty(
+            title: t.unifiedCatalog.states.filterEmptyTitle,
+            message: t.unifiedCatalog.states.filterEmptyBody,
+            icon: Symbols.movie_rounded,
+            onRetry: () => _onGenreSelected(null),
+            retryLabel: t.unifiedCatalog.states.clearFilters,
+          ),
         ),
       ];
     }
@@ -1331,6 +1431,7 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
         row.items,
         hasMore: row.hasMore,
         loadingMore: row.loadingMore,
+        loadMoreFailed: row.loadMoreFailed,
         onLoadMore: () => _loadMore(row),
         firstItemFocusNode: _firstDiscoverItemFocusNode,
       ),

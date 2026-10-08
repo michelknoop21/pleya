@@ -417,6 +417,7 @@ class TvCatalogRailOption {
     required this.isSelected,
     required this.onPressed,
     this.count,
+    this.countUnavailable = false,
     this.automationInstance,
   });
 
@@ -434,6 +435,11 @@ class TvCatalogRailOption {
   /// zero would claim there is nothing behind a choice that has simply not
   /// been counted.
   final int? count;
+
+  /// The count was asked for and did not come. Drawn as a dash where the
+  /// number would stand, which is neither a number nor the silence of a choice
+  /// that is never counted.
+  final bool countUnavailable;
 }
 
 /// The rail opened onto one of its questions
@@ -470,7 +476,12 @@ class TvCatalogFilterRailSubview extends StatefulWidget {
     this.onExitUp,
     this.onExitDown,
     this.onExitRight,
+    this.note,
   });
+
+  /// One line under the answers, for something the list cannot say per row:
+  /// why none of them carries a count, for instance.
+  final String? note;
 
   /// The question this subview answers — "Soort", "Status", "Sortering".
   final String title;
@@ -613,6 +624,23 @@ class _TvCatalogFilterRailSubviewState extends State<TvCatalogFilterRailSubview>
                     onBack: widget.onBack,
                   ),
                 ),
+              if (widget.note case final note?)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    TvCatalogLayout.railRowPaddingHorizontal * scale,
+                    TvCatalogLayout.railDividerGap * scale,
+                    TvCatalogLayout.railRowPaddingHorizontal * scale,
+                    0,
+                  ),
+                  child: Text(
+                    note,
+                    style: TextStyle(
+                      fontSize: TvCatalogLayout.railOptionCountFontSize * scale,
+                      color: tk.text.withValues(alpha: TvCatalogLayout.railOptionCountInk),
+                      height: 1.25,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -737,6 +765,7 @@ class _RailOptionRowState extends State<_RailOptionRow> {
     final tk = tokens(context);
     final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(TvCatalogLayout.railRowRadius * scale));
     final count = option.count;
+    final countText = count != null ? '$count' : (option.countUnavailable ? '–' : null);
 
     return FocusableWrapper(
       focusNode: widget.focusNode,
@@ -790,10 +819,10 @@ class _RailOptionRowState extends State<_RailOptionRow> {
                 ),
               ),
             ),
-            if (count != null) ...[
+            if (countText != null) ...[
               SizedBox(width: TvCatalogLayout.railIconGap * scale),
               Text(
-                '$count',
+                countText,
                 maxLines: 1,
                 style: TextStyle(
                   fontSize: TvCatalogLayout.railOptionCountFontSize * scale,
