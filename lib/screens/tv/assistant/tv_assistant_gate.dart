@@ -42,7 +42,7 @@ class TvAssistantGate extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Calm on purpose (motion spec): no ticker, so no breathing.
+            // Setup and access gates keep their current static pose.
             TickerMode(
               enabled: false,
               child: BigPAvatar(mood: BigPMood.idle, size: 440 * pt, entrance: false),

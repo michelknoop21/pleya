@@ -2392,7 +2392,8 @@
     },
     "listening": {
       "title": "I'm listening…",
-      "body": "Speak your question."
+      "body": "Speak your question.",
+      "failed": "Text entry failed. Try again."
     },
     "working": {
       "status": "Let me check…",

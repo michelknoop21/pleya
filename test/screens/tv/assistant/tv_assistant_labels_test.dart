@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 
 import 'tv_assistant_test_support.dart';
@@ -28,6 +29,31 @@ void main() {
     expect(assistantGreeting('Michel'), 'Hoi Michel, wat moet er gebeuren?');
     expect(assistantGreeting(''), 'Hoi, wat moet er gebeuren?');
   });
+
+  for (final status in [AssistantTaskStatus.cancelled, AssistantTaskStatus.failed, AssistantTaskStatus.running]) {
+    test('task $status cannot project model success, even above title cards', () {
+      final c = FakeAssistantController()
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Gedaan: «Alien», «Aliens».'
+        ..tasks = [
+          AssistantTask(
+            id: '1',
+            title: 'Verwijder',
+            intent: 'command',
+            status: status,
+            answer: 'Gedaan: «Alien», «Aliens».',
+            displays: const [],
+            steps: const [],
+            actions: const [],
+            error: 'cancelled_by_user',
+          ),
+        ];
+      addTearDown(c.dispose);
+      expect(bigPMood(c), isNot(BigPMood.success));
+      expect(assistantHeadline(c), isNot(contains('Gedaan')));
+      expect(assistantCardsLead(c), isNot(contains('Gedaan')));
+    });
+  }
 
   group('the lead above title cards', () {
     String lead(String answer) {

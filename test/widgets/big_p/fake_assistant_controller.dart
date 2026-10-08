@@ -95,6 +95,7 @@ class FakeAssistantController extends AssistantController {
 
   @override
   void beginListening({AssistantScreenContext? context}) {
+    super.beginListening(context: context);
     listenContexts.add(context);
     _held = context ?? _held;
     state = AssistantSurfaceState.listening;
@@ -104,7 +105,14 @@ class FakeAssistantController extends AssistantController {
   @override
   void cancelListening() {
     cancelledListening++;
-    state = AssistantSurfaceState.idle;
+    state = prompt == null ? AssistantSurfaceState.idle : AssistantSurfaceState.result;
+    notifyListeners();
+  }
+
+  @override
+  void failListening() {
+    super.failListening();
+    state = prompt == null ? AssistantSurfaceState.idle : AssistantSurfaceState.result;
     notifyListeners();
   }
 

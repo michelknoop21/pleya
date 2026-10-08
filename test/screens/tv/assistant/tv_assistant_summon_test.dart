@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
@@ -102,6 +103,24 @@ void main() {
     await pumpHost(tester);
     await longPress(tester);
   }
+
+  testWidgets('technical entry failure stays visible and retry sends exactly one question', (tester) async {
+    var attempts = 0;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      attempts++;
+      if (attempts == 1) throw PlatformException(code: 'TEMPORARY');
+      return <String, dynamic>{'text': 'Probeer opnieuw', 'submitted': true};
+    });
+    await pumpHost(tester);
+    await longPress(tester);
+    expect(find.text(t.assistant.listening.failed), findsOneWidget);
+    expect(c.submitted, isEmpty);
+    expect(focusedLabel(), 'assistant.ask');
+    await press(tester, LogicalKeyboardKey.select);
+    expect(attempts, 2);
+    expect(c.submitted, ['Probeer opnieuw']);
+    expect(find.text(t.assistant.listening.failed), findsNothing);
+  });
 
   group('when he may come', () {
     testWidgets('a long press opens the system keyboard with a send key and this screen as context', (tester) async {

@@ -80,6 +80,24 @@ Ongeveer 40 echte vragen, handmatige poort vóór elke build tegen twee modellen
 
 De nulmeting op de baseline (1b93c50d) volgt in BP-01 vóór de eerste codewijziging; ze staat in het fase-rapport, niet hier, zodat dit document geen statusadministratie wordt.
 
+## Acceptatieaanvulling AUDIT-BIGP-UX1 (8 oktober 2026)
+
+Deze gevallen versterken bestaande pakketten; de herstelronde voltooit die pakketten niet.
+
+- **BP-04b:** “ik”, “anderen”, gemengde doelgroepen, onbekende personen en “vorige week”.
+  Onbekend blijft een wedervraag of expliciet gedeeltelijk antwoord; geen gegokte verbreding.
+  Bewezen bronrechten blijven ook bij een wijziging tijdens wachten gelden.
+- **BP-05:** tekst, kaarten en acties volgen dezelfde bewezen resultaatset en taakstatus.
+  Weigeren en verlopen bevestiging bewijzen nul mutaties; één geaccepteerde actie precies één.
+  Gedeeltelijke uitvoering behoudt eerdere acties; vroege resultaten heten nog niet volledig klaar.
+  “Recent toegevoegd” controleert bron, soort, bibliotheken en expliciet periodevenster.
+- **BP-06:** “die tweede”, een andere titelsoort en een andere periode wijzigen alleen expliciet
+  gekozen velden; laatst gekozen persoon, titel en periode blijven anders behouden. Nieuw gesprek
+  wist gespreksscope. Gestructureerd intentgeheugen krijgt pas acceptatie na implementatie en tests.
+
+Gebruik de bestaande controller/conversation state en de 28 audittoestanden per bestaande flow.
+Unit/widget, simulator, echte providers/bevoegdheden en fysieke Apple TV zijn afzonderlijke poorten.
+
 ## Besluiten van Michel (5 oktober 2026)
 
 1. Akkoord op nultolerantielijst en voorrang.

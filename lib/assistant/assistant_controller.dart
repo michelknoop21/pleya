@@ -212,6 +212,8 @@ class AssistantController extends ChangeNotifier {
   void onDispose(VoidCallback cleanup) => _onDispose.add(cleanup);
   AssistantSurfaceState get state => _state;
   bool get resultIsError => _resultIsError;
+  bool get resultIsSuccessful =>
+      !resultIsError && !inputError && tasks.every((task) => task.status == AssistantTaskStatus.completed);
   AssistantRunEnd? get lastEnd => _lastEnd;
   AssistantModelError? get lastProviderError => _lastProviderError;
 
@@ -256,8 +258,21 @@ class AssistantController extends ChangeNotifier {
   /// without one (iPhone and iPad) must not ask about the last library.
   void clearScreenContext() => _screenContext = null;
 
+  bool _inputError = false;
+  bool get inputError => _inputError;
+  String inputDraft = '';
+
+  /// A failed editor restores the previous conversation, with a retryable draft.
+  void failListening() {
+    if (_state != AssistantSurfaceState.listening) return;
+    _inputError = true;
+    _state = _prompt == null ? AssistantSurfaceState.idle : AssistantSurfaceState.result;
+    _notify();
+  }
+
   void beginListening({AssistantScreenContext? context}) {
     if (_busy || _pending != null) return;
+    _inputError = false;
     _screenContext = context ?? _screenContext;
     _state = AssistantSurfaceState.listening;
     _notify();
@@ -267,6 +282,7 @@ class AssistantController extends ChangeNotifier {
   /// Back to where listening started: the last result when there is one.
   void cancelListening() {
     if (_state != AssistantSurfaceState.listening) return;
+    inputDraft = '';
     _state = _prompt == null ? AssistantSurfaceState.idle : AssistantSurfaceState.result;
     _notify();
   }
@@ -438,6 +454,8 @@ class AssistantController extends ChangeNotifier {
   void reset() {
     abort();
     _tasks.clear();
+    _inputError = false;
+    inputDraft = '';
     _pending = null;
     _busy = false;
     _asking = false;

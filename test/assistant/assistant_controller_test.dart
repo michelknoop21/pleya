@@ -200,6 +200,7 @@ void main() {
     _Entitlement? entitlement,
     AssistantProviderConfig? config = _config,
     List<AssistantTool>? tools,
+    Duration confirmTimeout = const Duration(minutes: 2),
   }) {
     final c = AssistantController(
       buildContext: (screen) => AssistantToolContext(
@@ -208,6 +209,7 @@ void main() {
         requests: AssistantRequestServices(client: () => seerr),
       ),
       rolloutEnabled: rollout,
+      confirmTimeout: confirmTimeout,
       entitlement: entitlement ?? _Entitlement(),
       loadConfig: () async => config,
       modelFor: (_) => model ?? _Model(const []),
@@ -428,7 +430,51 @@ void main() {
       expect(c.steps.single.phase, confirm ? AssistantStepPhase.done : AssistantStepPhase.failed);
       expect(c.tasks.single.status, confirm ? AssistantTaskStatus.completed : AssistantTaskStatus.cancelled);
       expect(c.lastEnd, AssistantRunEnd.answered);
+      if (!confirm) {
+        expect(assistantHeadline(c), contains('Cancelled'));
+        expect(assistantHeadline(c), isNot('ok'));
+      }
     }
+  });
+
+  test('an expired confirmation projects failure and performs zero mutations', () {
+    fakeAsync((clock) {
+      final c = controller(
+        model: _Model([_call('wipe'), _say('ok')]),
+        tools: [_sensitive],
+        confirmTimeout: const Duration(seconds: 1),
+      );
+      c.submit('Verwijder Sam');
+      clock.flushMicrotasks();
+      expect(c.pending, isNotNull);
+      clock.elapse(const Duration(seconds: 2));
+      clock.flushMicrotasks();
+      expect(_executed, 0);
+      expect(c.tasks.single.status, AssistantTaskStatus.failed);
+      expect(c.tasks.single.error, 'not_confirmed');
+      expect(assistantHeadline(c), isNot('ok'));
+    });
+  });
+
+  test('editor failure retains conversation and draft; cancel and submit clear the draft', () async {
+    final c = controller(model: _Model([_say('Vorige antwoord')]), tools: [_sensitive]);
+    await c.submit('Vorige vraag');
+    c.beginListening();
+    c.inputDraft = 'Halve vraag';
+    c.failListening();
+    expect(c.inputError, isTrue);
+    expect(c.state, AssistantSurfaceState.result);
+    expect(c.answer, 'Vorige antwoord');
+    expect(c.inputDraft, 'Halve vraag');
+    c.beginListening();
+    expect(c.inputError, isFalse);
+    expect(c.inputDraft, 'Halve vraag');
+    c.cancelListening();
+    expect(c.inputDraft, isEmpty);
+    c.beginListening();
+    c.inputDraft = 'Nieuwe vraag';
+    await c.submit('Nieuwe vraag');
+    expect(c.inputDraft, isEmpty);
   });
 
   test('pickRequestOption builds a card only for a shown option', () async {
@@ -759,6 +805,76 @@ void main() {
     expect(c.tasks[0].lastEnd, AssistantRunEnd.answered);
     expect(c.tasks[1].status, AssistantTaskStatus.completed);
     expect(_executed, 0);
+  });
+
+  test('a failed second step keeps its one proven mutation, without model success', () async {
+    final refused = AssistantTool(
+      name: 'refused',
+      description: 'refused',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({'error': 'not_allowed'}),
+    );
+    final c = controller(
+      model: _Model([_call('wipe'), _call('refused'), _say('alles gedaan')]),
+      tools: [_sensitive, refused],
+    );
+    final done = c.submit('Verwijder Sam en lees');
+    while (c.pending == null) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    c.confirmPending(password: 'pw');
+    await done;
+    expect(_executed, 1);
+    expect(c.actions, hasLength(1));
+    expect(c.tasks.single.status, AssistantTaskStatus.failed);
+    expect(assistantHeadline(c), isNot(contains('alles gedaan')));
+  });
+
+  test('mixed commands preserve one proven mutation and suppress failed and declined model success', () async {
+    final refused = AssistantTool(
+      name: 'refused',
+      description: 'refused',
+      risk: AssistantToolRisk.read,
+      properties: const {},
+      needsServer: false,
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({'error': 'not_allowed'}),
+    );
+    final c = splitController(
+      [
+        _Model([_call('wipe'), _say('ok')]),
+        _Model([_call('wipe'), _say('ok')]),
+        _Model([_call('refused'), _say('ok')]),
+      ],
+      [_sensitive, refused],
+    );
+    final done = c.submit('three commands');
+    while (c.pendingConfirmation == null) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final first = c.pendingConfirmation!;
+    c.confirmTask(first.taskId, first.id);
+    while (c.pendingConfirmation == null) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final second = c.pendingConfirmation!;
+    c.cancelTaskConfirmation(second.taskId, second.id);
+    await done;
+    expect(_executed, 1);
+    expect(c.actions, hasLength(1));
+    expect(c.tasks.map((t) => t.status), [
+      AssistantTaskStatus.completed,
+      AssistantTaskStatus.cancelled,
+      AssistantTaskStatus.failed,
+    ]);
+    for (final task in c.tasks) {
+      expect(assistantTaskAnswer(task), isNot('ok'));
+    }
+    expect(c.tasks.first.actions, hasLength(1));
+    expect(c.tasks.skip(1).expand((t) => t.actions), isEmpty);
   });
 
   test('a concrete failure takes priority over an earlier declined action', () async {

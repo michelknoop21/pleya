@@ -13,6 +13,8 @@ class _Controller extends AssistantController {
 
   AssistantSurfaceState s = AssistantSurfaceState.idle;
   bool error = false;
+  @override
+  List<AssistantTask> tasks = [];
   AssistantPendingAction? card;
 
   @override
@@ -98,6 +100,28 @@ void main() {
     c.go(AssistantSurfaceState.result, isError: true);
     await pumpEventQueue();
     expect(played, ['assets/audio/bigp/en_result_1.m4a', 'assets/audio/bigp/en_error_1.m4a']);
+  });
+
+  test('cancelled and unsettled tasks do not play the success clip', () async {
+    voice();
+    for (final status in [AssistantTaskStatus.cancelled, AssistantTaskStatus.running]) {
+      c.tasks = [
+        AssistantTask(
+          id: '1',
+          title: 'actie',
+          intent: 'command',
+          status: status,
+          answer: 'ok',
+          displays: const [],
+          steps: const [],
+          actions: const [],
+        ),
+      ];
+      c.go(AssistantSurfaceState.working);
+      c.go(AssistantSurfaceState.result);
+      await pumpEventQueue();
+    }
+    expect(played, isEmpty);
   });
 
   test('backing out of a follow-up question does not say the old answer again', () async {

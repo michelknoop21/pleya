@@ -16,7 +16,6 @@ import '../../../assistant/assistant_tools.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../focus/key_event_utils.dart';
-import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../services/apple_tv_native_text_entry.dart';
@@ -184,10 +183,15 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (c.state != AssistantSurfaceState.listening) return;
     String? text;
     try {
-      final result = await _speech.capture(prompt: t.assistant.idle.ask, action: 'send', onPartial: _onPhrase);
-      text = result != null && result.submitted ? result.text : null;
+      text = await tvAssistantCaptureQuestion(this.context, _speech, c, _onPhrase);
     } catch (e) {
       appLogger.w('Big P: text entry failed', error: e);
+      if (!mounted || !identical(c, _c) || _leaving) return;
+      c.failListening();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_leaving) _askNode.requestFocus();
+      });
+      return;
     }
     if (!mounted || !identical(c, _c) || _leaving) return;
     final question = text?.trim() ?? '';
@@ -200,7 +204,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (c.state == AssistantSurfaceState.idle) _dismiss();
   }
 
-  void _onPhrase(String _) {
+  void _onPhrase(String text) {
     if (mounted) setState(() => _nod++);
   }
 
@@ -323,6 +327,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
                     'shown': _shown,
                     'state': c?.state.name,
                     'error': c?.resultIsError ?? false,
+                    'inputError': c?.inputError ?? false,
                     'pending': c?.pending != null,
                   },
                   child: _overlay(context, c),
