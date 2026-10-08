@@ -202,6 +202,17 @@ under `Notes`.
   profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
   after updating.
 
+## 2.8.1 · build 345 · 8 October 2026 · iOS
+
+<!-- commit: 1358eb0fa7af29f65c3ef8d4853cf048c0028435 -->
+
+### Fixed
+- Big P is enabled again in the iOS TestFlight build. The release lane now includes its rollout flag by default.
+
+### Worth checking
+- Open My Pleya and confirm that Big P is available with your existing profile. Check an ordinary question and returning to your content.
+- This corrects the release configuration of build 344; physical iPhone acceptance remains open.
+
 ## 2.8.1 · build 344 · 8 October 2026
 
 <!-- commit: b392a2e82f8f67e415e51e6c5434f53a98e8f351 -->
