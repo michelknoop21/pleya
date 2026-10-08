@@ -47,7 +47,12 @@ steps:
   - press: menu
   - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 8000}
   - press: {key: play_pause, holdMs: 900}
-  - wait_until: {id: assistant.summon, state: {shown: true, state: listening}, timeout: 10000}
+  - wait_until: {id: assistant.summon, state: {shown: true, state: idle}, timeout: 10000}
+  - wait_until: {focused: "assistant.button[ask]", timeout: 5000}
+  - assert: {id: tvos.native_text_entry, present: false}
+  - snapshot: 02a-summon-examples-first
+  - press: select
+  - wait_until: {id: assistant.summon, state: {state: listening}, timeout: 10000}
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
   - settle: 1000
   - snapshot: 02b-assistant-native-editor

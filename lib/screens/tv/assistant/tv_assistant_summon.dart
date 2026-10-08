@@ -1,7 +1,7 @@
 /// Big P summoned from any TV screen (mockup 38, "Oproepen vanaf elk
 /// scherm"): a long press on Play/Pause brings him in bottom right with a
 /// 760 pt speech balloon (39 J), the screen behind dims but stays the context, and the
-/// system keyboard opens right away. He stays until Menu or Klaar.
+/// examples appear first. Vraag Big P opens the system keyboard. He stays until Menu or Klaar.
 library;
 
 import 'dart:async';
@@ -54,7 +54,7 @@ class TvAssistantSummonHost extends StatefulWidget {
 
   final Widget child;
 
-  /// What the screen behind shows, read at the moment of the press.
+  /// What the screen behind shows, read when a question is chosen.
   final AssistantScreenContext? Function()? screenContext;
 
   /// Injected by tests; the app uses the shared instances.
@@ -170,9 +170,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_open) return;
       setState(() => _shown = true);
-      _panelNode.requestFocus();
+      _focusDefault();
     });
-    unawaited(_ask(context: widget.screenContext?.call()));
   }
 
   /// The system keyboard with dictation and a send key, as on the surface.
@@ -244,6 +243,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = _c;
     if (!mounted || c == null || _confirm.isOpen || _kids.open) return;
     final node = switch (c.state) {
+      AssistantSurfaceState.idle => _askNode,
       AssistantSurfaceState.working => _cancelNode,
       AssistantSurfaceState.result =>
         (c.tasks.length > 1
@@ -365,7 +365,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               firstOptionNode: _optionNode,
               taskOptionNodes: _taskOptionNodes,
               tasksNode: _tasksNode,
-              onAsk: () => unawaited(_ask()),
+              onAsk: () => unawaited(_ask(context: widget.screenContext?.call())),
               onDone: _dismiss,
               onNewConversation: () {
                 c.newConversation();
@@ -373,7 +373,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               },
               onCancelWork: _dismiss,
               onExample: (question) {
-                c.beginListening();
+                c.beginListening(context: widget.screenContext?.call());
                 unawaited(c.submit(question));
               },
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),
