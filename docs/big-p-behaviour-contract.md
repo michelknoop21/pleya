@@ -66,7 +66,7 @@ Wat vastligt in code, wat het model mag kiezen, en de terugval. Tools naar huidi
 |---|---|---|---|---|---|---|
 | Wat heb ik gekeken | ik | film/serie uit de vraag | kijkhistorie plus ooit-gezien | `my_watching` | alleen zachte filters | venster noemen; sleutel onbekend: wedervraag |
 | Kijkcijfers, wat kijken anderen | anderen op account-id, nooit iedereen | uit de vraag | historie per bron | `watch_stats` | periode binnen vaste lijst | publiek onbekend: wedervraag; geen bewijsde identiteit over servers: per server tonen |
-| Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (bestaat al; de rest van de BP-07-pijplijn is gepland) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
+| Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (bestaat al; solo alleen voor een Jellyfin-administrator, niet op Emby of andere backends; de rest van de BP-07-pijplijn is gepland) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
 | Aanbevelen samen | ik plus genoemde personen | uit de vraag | bibliotheek | `recommend_together` | persoonskeuze alleen uit treffers | meerdere treffers: knoppen |
 | Recent toegevoegd | ik (zichtbare bibliotheken) | uit de vraag | `fetchRecentlyAdded`, `addedAt` | `search_catalog` met `sort: added` | geen | bron die het venster niet haalt: als gedeeltelijk melden |
 | Titel zoeken, vergelijkbaar, trending | ik | uit de vraag | catalogus, TMDB | `search_catalog`, `find_title`, `similar_titles`, `trending_titles` | zoektermen | geen treffer: zeggen, niet raden |
