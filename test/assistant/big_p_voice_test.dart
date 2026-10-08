@@ -124,6 +124,41 @@ void main() {
     expect(played, isEmpty);
   });
 
+  test('unsettled server jobs do not play the success clip', () async {
+    voice();
+    for (final phase in [
+      AssistantJobPhase.started,
+      AssistantJobPhase.running,
+      AssistantJobPhase.unknown,
+      AssistantJobPhase.background,
+      AssistantJobPhase.failed,
+    ]) {
+      c.tasks = [
+        AssistantTask(
+          id: '1',
+          title: 'scan',
+          intent: 'command',
+          status: AssistantTaskStatus.completed,
+          answer: 'ok',
+          displays: const [],
+          steps: const [],
+          actions: [
+            AssistantActionRecord(
+              kind: AssistantActionKind.scanLibrary,
+              serverName: 'Zolder',
+              subject: 'Films',
+              progress: AssistantJobProgress(phase),
+            ),
+          ],
+        ),
+      ];
+      c.go(AssistantSurfaceState.working);
+      c.go(AssistantSurfaceState.result);
+      await pumpEventQueue();
+    }
+    expect(played, isEmpty);
+  });
+
   test('backing out of a follow-up question does not say the old answer again', () async {
     voice();
     c.go(AssistantSurfaceState.working);

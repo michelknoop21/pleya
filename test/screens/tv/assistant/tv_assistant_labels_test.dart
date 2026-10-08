@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/ids.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
 
@@ -54,6 +55,62 @@ void main() {
       expect(assistantCardsLead(c), isNot(contains('Gedaan')));
     });
   }
+
+  for (final phase in AssistantJobPhase.values) {
+    test('job $phase controls success presentation, independently of model task completion', () {
+      final action = AssistantActionRecord(
+        kind: AssistantActionKind.scanLibrary,
+        serverName: 'Zolder',
+        subject: 'Films',
+        progress: AssistantJobProgress(phase),
+      );
+      final c = FakeAssistantController()
+        ..state = AssistantSurfaceState.result
+        ..answer = 'Alles klaar'
+        ..tasks = [
+          AssistantTask(
+            id: '1',
+            title: 'scan',
+            intent: 'command',
+            status: AssistantTaskStatus.completed,
+            answer: 'Alles klaar',
+            displays: const [],
+            steps: const [],
+            actions: [action],
+          ),
+        ];
+      addTearDown(c.dispose);
+      expect(c.resultIsSuccessful, phase == AssistantJobPhase.done);
+      expect(bigPMood(c) == BigPMood.success, phase == AssistantJobPhase.done);
+      expect(assistantHeadline(c), assistantActionLabel(action));
+    });
+  }
+
+  test('a watched job before its first poll cannot project success', () {
+    final c = FakeAssistantController()..state = AssistantSurfaceState.result;
+    addTearDown(c.dispose);
+    c.tasks = [
+      AssistantTask(
+        id: '1',
+        title: 'scan',
+        intent: 'command',
+        status: AssistantTaskStatus.completed,
+        answer: 'klaar',
+        displays: const [],
+        steps: const [],
+        actions: [
+          AssistantActionRecord(
+            kind: AssistantActionKind.scanLibrary,
+            serverName: 'Zolder',
+            subject: 'Films',
+            job: AssistantJobWatch(serverId: ServerId('s'), startedAt: DateTime(2026), jobId: 'j'),
+          ),
+        ],
+      ),
+    ];
+    expect(c.resultIsSuccessful, isFalse);
+    expect(bigPMood(c), isNot(BigPMood.success));
+  });
 
   group('the lead above title cards', () {
     String lead(String answer) {

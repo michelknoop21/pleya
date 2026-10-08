@@ -213,7 +213,19 @@ class AssistantController extends ChangeNotifier {
   AssistantSurfaceState get state => _state;
   bool get resultIsError => _resultIsError;
   bool get resultIsSuccessful =>
-      !resultIsError && !inputError && tasks.every((task) => task.status == AssistantTaskStatus.completed);
+      !resultIsError &&
+      !inputError &&
+      tasks.every(
+        (task) =>
+            task.status == AssistantTaskStatus.completed &&
+            task.actions.every(
+              (action) => switch (action.progress?.phase) {
+                null => action.job == null,
+                AssistantJobPhase.done => true,
+                _ => false,
+              },
+            ),
+      );
   AssistantRunEnd? get lastEnd => _lastEnd;
   AssistantModelError? get lastProviderError => _lastProviderError;
 

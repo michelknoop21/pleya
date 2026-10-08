@@ -210,6 +210,31 @@ final Map<String, _Stand> _stands = {
     c.beginListening();
     c.failListening();
   },
+  'result-job-unknown': (c) {
+    const action = AssistantActionRecord(
+      kind: AssistantActionKind.scanLibrary,
+      serverName: 'Zolder',
+      subject: 'Films',
+      progress: AssistantJobProgress(AssistantJobPhase.unknown),
+    );
+    c
+      ..prompt = 'Scan Films'
+      ..state = AssistantSurfaceState.result
+      ..answer = 'Alles klaar'
+      ..actions = const [action]
+      ..tasks = const [
+        AssistantTask(
+          id: '1',
+          title: 'Scan Films',
+          intent: 'command',
+          status: AssistantTaskStatus.completed,
+          answer: 'Alles klaar',
+          displays: [],
+          steps: [],
+          actions: [action],
+        ),
+      ];
+  },
   'result-short': (c) => c
     ..prompt = 'Hoeveel films staan er op Zolder?'
     ..state = AssistantSurfaceState.result
@@ -425,6 +450,7 @@ void main() {
     'idle',
     'input-error',
     'result-cancelled',
+    'result-job-unknown',
     'result-long',
     'result-matches',
     'result-watch',
