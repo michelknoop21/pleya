@@ -3287,6 +3287,7 @@ class _TranslationsAssistantListeningNl extends TranslationsAssistantListeningEn
 	// Translations
 	@override String get title => 'Ik luister…';
 	@override String get body => 'Spreek je vraag in.';
+	@override String get failed => 'Tekstinvoer mislukt. Probeer opnieuw.';
 }
 
 // Path: assistant.working
@@ -5884,6 +5885,7 @@ extension on TranslationsNl {
 			'assistant.idle.examples.5.0' => 'Welke nieuwe films zijn populair die ik nog niet heb?',
 			'assistant.listening.title' => 'Ik luister…',
 			'assistant.listening.body' => 'Spreek je vraag in.',
+			'assistant.listening.failed' => 'Tekstinvoer mislukt. Probeer opnieuw.',
 			'assistant.working.status' => 'Even kijken…',
 			'assistant.working.busy' => 'Bezig met je vraag…',
 			'assistant.working.stillChecking' => 'Tot nu toe gevonden. Big P controleert nog…',

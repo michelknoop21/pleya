@@ -161,12 +161,27 @@ String? assistantEndLabel(AssistantRunEnd? end, AssistantModelError? providerErr
 /// else Pleya's reason the run ended. Several tasks get Pleya's own count.
 String assistantHeadline(AssistantController c) {
   if (c.tasks.length > 1) return assistantTasksHeadline(c.tasks);
-  if (assistantPlainAnswer(c.answer) case final answer when answer.isNotEmpty) return answer;
+  if (c.tasks.singleOrNull case final task?) return assistantTaskAnswer(task);
+  if (!c.resultIsError && assistantPlainAnswer(c.answer).isNotEmpty) return assistantPlainAnswer(c.answer);
   if (!c.resultIsError) return '';
   // The chosen model is gone from the server: say so, it is the one thing
   // the user can fix (in Big P instellen).
   if (c.modelMissing) return t.assistant.ends.modelMissing;
   return assistantEndLabel(c.lastEnd, c.lastProviderError) ?? t.assistant.ends.nothingChanged;
+}
+
+/// Execution status wins over model prose; confirmed actions keep their own cards.
+String assistantTaskAnswer(AssistantTask task) {
+  final label = assistantTaskStatusLabel(task);
+  if (task.status != AssistantTaskStatus.completed) {
+    final detail =
+        task.status == AssistantTaskStatus.cancelled && task.error == 'cancelled_by_user' && task.actions.isEmpty
+        ? t.assistant.ends.nothingChanged
+        : label.detail;
+    return detail == null ? label.status : '${label.status} · $detail';
+  }
+  if (task.actions.isNotEmpty) return task.actions.map(assistantActionLabel).join('\n');
+  return assistantPlainAnswer(task.answer);
 }
 
 bool assistantTaskCancellable(AssistantTask task) => switch (task.status) {
@@ -263,6 +278,12 @@ String assistantGreeting(String name, {String Function({required Object name})? 
 /// cards show, as a list on their own lines or as "kandidaten: «A», «B»".
 /// Cut to two lines, the inline list read "Interstellar en ...".
 String assistantCardsLead(AssistantController c) {
+  final task = c.tasks.singleOrNull;
+  if (c.resultIsError ||
+      c.tasks.length > 1 ||
+      task != null && (task.status != AssistantTaskStatus.completed || task.actions.isNotEmpty)) {
+    return assistantHeadline(c);
+  }
   final stripped = c.answer.replaceAll(_inlineList, '.');
   return assistantWithoutList(stripped == c.answer ? assistantHeadline(c) : assistantPlainAnswer(stripped));
 }
@@ -284,11 +305,17 @@ String assistantPlainAnswer(String answer) => answer
 
 /// Big P's mood for the controller's stand; a waiting card wins.
 BigPMood bigPMood(AssistantController c) {
+  if (c.inputError) return BigPMood.error;
   if (c.pending != null || c.kidsAgesPrompt != null) return BigPMood.attentive;
   return switch (c.state) {
     AssistantSurfaceState.idle => BigPMood.idle,
     AssistantSurfaceState.listening => BigPMood.listening,
     AssistantSurfaceState.working => BigPMood.working,
-    AssistantSurfaceState.result => c.resultIsError ? BigPMood.error : BigPMood.success,
+    AssistantSurfaceState.result =>
+      c.resultIsError
+          ? BigPMood.error
+          : c.resultIsSuccessful
+          ? BigPMood.success
+          : BigPMood.attentive,
   };
 }

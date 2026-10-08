@@ -46,6 +46,37 @@ import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 
+/// Both TV surfaces use the same native editor and unavailable-editor fallback.
+Future<String?> tvAssistantCaptureQuestion(
+  BuildContext context,
+  SpeechSearchService speech,
+  AssistantController c,
+  ValueChanged<String> onPartial,
+) async {
+  if (await speech.isSupported()) {
+    final result = await speech.capture(
+      prompt: t.assistant.idle.ask,
+      action: 'send',
+      initialText: c.inputDraft,
+      onPartial: (text) {
+        if (c.disposed) return;
+        c.inputDraft = text;
+        onPartial(text);
+      },
+    );
+    if (result == null && !await speech.isSupported()) throw StateError('Text entry unavailable');
+    return result != null && result.submitted ? result.text : null;
+  }
+  if (!context.mounted) return null;
+  return showTextInputDialog(
+    context,
+    title: t.assistant.idle.ask,
+    labelText: t.assistant.listening.body,
+    hintText: '',
+    initialValue: c.inputDraft,
+  );
+}
+
 class TvAssistantScreen extends StatefulWidget {
   const TvAssistantScreen({super.key, this.screenContext, this.speech, this.textEntry});
 
@@ -203,7 +234,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (mounted) focusActiveTabIfReady();
   });
 
-  void _onPhrase(String _) {
+  void _onPhrase(String text) {
     final now = DateTime.now();
     if (now.difference(_lastPhraseNod) < const Duration(seconds: 1)) return;
     _lastPhraseNod = now;
@@ -219,19 +250,15 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (c.state != AssistantSurfaceState.listening) return;
     String? text;
     try {
-      if (await _speech.isSupported()) {
-        final result = await _speech.capture(prompt: t.assistant.idle.ask, action: 'send', onPartial: _onPhrase);
-        text = result != null && result.submitted ? result.text : null;
-      } else if (mounted) {
-        text = await showTextInputDialog(
-          context,
-          title: t.assistant.idle.ask,
-          labelText: t.assistant.listening.body,
-          hintText: '',
-        );
-      }
+      text = await tvAssistantCaptureQuestion(context, _speech, c, _onPhrase);
     } catch (e) {
       appLogger.w('Big P: text entry failed', error: e);
+      if (!mounted || !identical(c, _c)) return;
+      c.failListening();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _askNode.requestFocus();
+      });
+      return;
     }
     if (!mounted || !identical(c, _c)) return;
     final question = text?.trim() ?? '';
@@ -313,6 +340,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
           'state': c.state.name,
           'mood': mood.name,
           'error': c.resultIsError,
+          'inputError': c.inputError,
           'pending': c.pending != null,
         },
         child: body,

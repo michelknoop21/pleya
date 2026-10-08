@@ -2392,7 +2392,8 @@
     },
     "listening": {
       "title": "Ik luister…",
-      "body": "Spreek je vraag in."
+      "body": "Spreek je vraag in.",
+      "failed": "Tekstinvoer mislukt. Probeer opnieuw."
     },
     "working": {
       "status": "Even kijken…",

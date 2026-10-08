@@ -2,12 +2,14 @@
 
 Vastgelegd op 11 september 2026 als UNI0, op `main` = `76492ec2` (build 269). tvOS fase 0 tot en
 met 10A en iOS fase 1 tot en met 3 staan op dat moment op `main`. Wat er nog moet gebeuren voordat
-de redesign naar TestFlight gaat, en in welke volgorde, staat hier en nergens anders.
+de redesign naar TestFlight gaat, staat hier. De productprioriteit en keuze van samenhangende
+werkpakketten volgen `docs/ROADMAP.md` (besluit Michel, 8 oktober 2026); de bewijs-,
+afhankelijkheids- en releasevolgorde binnen een gekozen pakket hieronder blijft gelden.
 
 Dit document bezit de werkvolgorde, de statusladder, de werkwijze per workitem, de releasegate,
 het protocol van de hardware-eindronde en de TestFlight-regel. De registers verwijzen hierheen en
-kopiëren die onderdelen niet. Staat er in een register iets anders over volgorde of gate, dan
-wint dit document.
+kopiëren die onderdelen niet. Staat er in een register iets anders over bewijs-/afhankelijkheidsvolgorde of gate, dan
+wint dit document; productprioriteit blijft bij de roadmap.
 
 **Uitgangspunt.** De fysieke hardwareronde is de allerlaatste testfase. Hij draait op één vaste
 SHA en één binary, en precies die goedgekeurde build gaat naar TestFlight. Er komt geen eerdere

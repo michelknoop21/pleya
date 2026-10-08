@@ -6,8 +6,9 @@ Read only when the task touches this domain. Inline code paths are relative to t
 Apple TV is gemeld en nog niet dicht is. Elke bevinding staat er met een status, een root cause
 voor zover bekend, en de SHA waarmee hij gesloten is.
 
-**Voordat je aan tvOS-werk begint, lees die lijst.** Werk de items er één voor één af, in de
-volgorde van de tabel, en houd je aan de zes stappen die er bovenaan staan: reproduceren, root
+**Voordat je aan tvOS-werk begint, lees die lijst.** Werk één samenhangend pakket tegelijk af in de
+productvolgorde van `docs/ROADMAP.md` (besluit Michel, 8 oktober 2026). De tabel bezit de
+itemstatus en het bewijs. Houd per correctie de zes stappen bovenaan aan: reproduceren, root
 cause bij de gedeelde eigenaar, negatieve controle die aantoonbaar rood was, fix, gerichte tests,
 en dan pas committen.
 

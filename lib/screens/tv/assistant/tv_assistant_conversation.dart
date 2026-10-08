@@ -70,6 +70,23 @@ class TvAssistantConversation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!controller.inputError) return _conversation(context);
+    final pt = TvHig.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          t.assistant.listening.failed,
+          style: TextStyle(color: tokens(context).text, fontSize: TvHig.callout * pt),
+        ),
+        SizedBox(height: 16 * pt),
+        Flexible(child: _conversation(context)),
+      ],
+    );
+  }
+
+  Widget _conversation(BuildContext context) {
     final pt = TvHig.of(context);
     final tk = tokens(context);
     final c = controller;
@@ -82,7 +99,7 @@ class TvAssistantConversation extends StatelessWidget {
     final gap = SizedBox(height: 16 * pt);
 
     Widget ask({bool primary = true}) => BigPButton(
-      label: t.assistant.idle.ask,
+      label: c.inputError ? t.common.retry : t.assistant.idle.ask,
       icon: Symbols.mic_rounded,
       primary: primary,
       focusNode: askNode,

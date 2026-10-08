@@ -130,7 +130,7 @@ class SpeechSearchService {
         // for one that never became usable. Let the caller fall back rather
         // than silently doing nothing — that is how the dead dialog used to
         // look like a hang.
-        _cachedSupport = false;
+        _cachedSupport = _nativeEntry.isUnavailable ? false : null;
         appLogger.w('Speech search: native edit failed', error: e);
         rethrow;
       }

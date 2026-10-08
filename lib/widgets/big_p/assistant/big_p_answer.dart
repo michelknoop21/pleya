@@ -172,7 +172,12 @@ class _BigPAnswerState extends State<BigPAnswer> {
       position.maxScrollExtent,
     );
     if (target == position.pixels) return KeyEventResult.ignored;
-    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic));
+    final duration = reduceMotion(context, const Duration(milliseconds: 240));
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(target);
+    } else {
+      unawaited(_scroll.animateTo(target, duration: duration, curve: Curves.easeOutCubic));
+    }
     return KeyEventResult.handled;
   }
 
@@ -339,7 +344,12 @@ class _BigPReadableListState extends State<BigPReadableList> {
     final step = position.viewportDimension * 0.6;
     final target = (position.pixels + (up ? -step : step)).clamp(0.0, position.maxScrollExtent);
     if ((target - position.pixels).abs() < 0.5) return KeyEventResult.ignored;
-    unawaited(_scroll.animateTo(target, duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic));
+    final duration = reduceMotion(context, const Duration(milliseconds: 240));
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(target);
+    } else {
+      unawaited(_scroll.animateTo(target, duration: duration, curve: Curves.easeOutCubic));
+    }
     return KeyEventResult.handled;
   }
 
