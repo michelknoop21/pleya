@@ -2,8 +2,8 @@
 
 What changed in each Pleya build, written for the people using it. Newest first.
 
-Pleya has shipped as a private TestFlight beta since 2 July 2026, so builds are numbered
-continuously while the version stays at 2.8.0. The internal engineering log lives in
+Pleya has shipped as a private TestFlight beta since 2 July 2026, with continuously
+numbered builds. The internal engineering log lives in
 `docs/CHANGELOG.md`; this file is the public one.
 
 Every published entry carries the commit it was cut at. `scripts/gen_release_notes.sh`
@@ -201,6 +201,25 @@ under `Notes`.
   device to sync after updating sets them for that profile on every device. If you arranged a
   profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
   after updating.
+
+## 2.8.1 · build 344 · 8 October 2026
+
+<!-- commit: b392a2e82f8f67e415e51e6c5434f53a98e8f351 -->
+
+### Improved
+- Search and discovery distinguish titles you can watch from titles you can request.
+- Requests show clearer statuses, filters and recovery after actions. Managers can edit season selections and access the actions allowed by their role.
+- Apple TV server tiles open connection information. Disconnect and remove remain separate, confirmed actions.
+
+### Fixed
+- Starting playback shows progress immediately and prevents a second start while the first is preparing.
+- Request forms preserve existing server options and handle uncertain saves without reporting a false success.
+- Changing request-service credentials clears the previous connection test before saving.
+- Live TV schedule labels follow the selected language. Shared-session screens prioritise the available positive action.
+
+### Worth checking
+- This is an internal test build. Please check playback and resume on Apple TV, request management with your server and account permissions, and returning to the same item after an action.
+- Physical Apple TV acceptance, real-server coverage and the complete Requests design matrix remain open. Passing simulator journeys cover selected states only.
 
 ## 2.8.0 · build 298 · 24 September 2026 · Apple TV
 

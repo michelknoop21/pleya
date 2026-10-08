@@ -43,11 +43,11 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | BP-03c | P0 | Big P | Kijklog-migratie: titel en externe id's in `MediaInteractions` zodat een kopie op een andere server herkend wordt; tweede Plex-nep, Pleya-eigen-id, Emby-test | Gepland |
 | BP-04a | P0 | Big P | Intent met herkomst per veld (publiek, soort, periode), parser NL/EN, afdwingen op tool-argumenten, `assistant_run.dart` gesplitst | Gemerged (PR #193, 5 okt); adversariële review en scoped re-review gedaan |
 | BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Deels: periode "vorige week" geweigerd, gemengd publiek gemeld aan het model; rest gepland |
-| BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland |
+| BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Gepland; begrensde statuscorrectie AUDIT-BIGP-UX1 in herstelronde, geen pakketacceptatie |
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gespreksgeheugen/Nieuw gesprek gemerged (PR #198, 5 okt); volledige pakketacceptatie herijken |
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland; `recommend_together` bewijst "ongezien" al per titel in plaats van per kopie (PR #199, 6 okt) |
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
-| BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte | Gelandeerd (5 okt); hardware- en tvOS-deviceronde open |
+| BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte, meerdere opdrachten (BIGP-USP1, `docs/tvos-fysieke-correctieronde.md`) | Gelandeerd (5 okt); budgetfix voor meerdere opdrachten in PR #199 (6 okt); hardware- en tvOS-deviceronde open |
 | REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Herijking nodig; algemene Big P-pauze opgeheven (8 okt) |
 | REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
 | REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; algemene Big P-pauze opgeheven (8 okt) |

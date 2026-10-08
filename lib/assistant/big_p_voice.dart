@@ -104,7 +104,11 @@ class BigPVoice {
         // Only a finished run: backing out of a follow-up question restores
         // the old answer, which was already said.
         if (previous == AssistantSurfaceState.working) {
-          unawaited(say(c.resultIsError ? BigPMoment.error : BigPMoment.result));
+          if (c.resultIsError) {
+            unawaited(say(BigPMoment.error));
+          } else if (c.resultIsSuccessful) {
+            unawaited(say(BigPMoment.result));
+          }
         }
       case AssistantSurfaceState.idle:
         break;

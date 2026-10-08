@@ -342,7 +342,9 @@ class _TvAssistantTaskListState extends State<TvAssistantTaskList> {
       anyChoices |= firstOptionTaken;
       // What the task said, above what it shows. Cards are the answer, and an
       // action is named on the task's own card: there the words stay out.
-      final answer = assistantPlainAnswer(task.answer);
+      final answer = task.status == AssistantTaskStatus.completed && task.actions.isEmpty
+          ? assistantTaskAnswer(task)
+          : '';
       if (!firstOptionTaken && task.actions.isEmpty && ended && answer.isNotEmpty) {
         results.insert(
           0,

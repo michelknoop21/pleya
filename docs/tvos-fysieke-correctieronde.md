@@ -4592,3 +4592,12 @@ Roadmap: A-21; één samenhangend implementatiepakket. Opus implementeerde de go
 beoordeelde set. De begrensde interne testdistributie is vastgelegd in §8 van
 `docs/unified-2026-closure.md`; geen hardware- of volledige pakketclosure. Merge-/buildidentiteit
 en uploadstatus worden na verificatie toegevoegd.
+
+## Big P audit-herstelronde — 8 oktober 2026
+
+Roadmap: BP-05/BP-09. Eén onafhankelijk begrensd pakket naast het bestaande A-11/A-12-playbackwerk; geen exclusieve Big P-prioriteit. Geen lopende BP-04b/05/06/09-PR aangetroffen. Bestaande branches blijven behouden.
+
+| ID | Bevinding | Status | SHA | Notitie |
+|---|---|---|---|---|
+| BIGP-AUDIT-FIX1 | Michel: F1 statusprojectie, F2 invoerherstel, F4 Reduce Motion herstellen; F3 native onderzoeken; F5/F6 autoriteit afwegen. | FIXED · REVIEW GREEN · NATIVE/HARDWARE OPEN | `ce92bde2`, `c6319ba5` | BP-05/BP-09; `docs/qa/2026-10-08-big-p-audit-herstel.md`. 215 TV/controller/voice/service en 83 gedeelde presentatie/geheugentests groen; negatieve controles rood; codegate inclusief unused groen. Review-I1 (succespose/geluid bij lopende/onbekende serverjob) hersteld met rode controles; onafhankelijke fixreview groen. F3 HID-blokkade, F5 behouden, F6 authorityvraag open. Geen volledige pakketacceptatie. |
+| BIGP-SUMMON-CHOICE1 | Michel 8 okt: sneltoets toont eerst de ballon met voorbeelden; native toetsenbord/dictatie pas na Vraag Big P. | FIXED · SIMULATOR PASS · HARDWARE OPEN | deze PR | BP-09; bestaande 39J-compositie. 104 gerichte tests groen, rode regressiecontrole; codegate inclusief unused en onafhankelijke codereview groen. Native multitask-summoned PASS, negen 3840×2160-screenshots; manifest `.build/reports/bigp-shortcut/manifest.json`. Fysieke Siri Remote en gesproken dictatie niet getest. Geen nieuwe avatar-/focusengine. |

@@ -189,6 +189,52 @@ final Map<String, _Stand> _stands = {
     ..steps = const [
       AssistantStep(index: 0, tool: 'find_title', serverName: 'Zolder', phase: AssistantStepPhase.started),
     ],
+  'result-cancelled': (c) => c
+    ..prompt = 'Verwijder Sam'
+    ..state = AssistantSurfaceState.result
+    ..answer = 'ok'
+    ..tasks = const [
+      AssistantTask(
+        id: '1',
+        title: 'Verwijder Sam',
+        intent: 'command',
+        status: AssistantTaskStatus.cancelled,
+        answer: 'ok',
+        displays: [],
+        steps: [],
+        actions: [],
+        error: 'cancelled_by_user',
+      ),
+    ],
+  'input-error': (c) {
+    c.beginListening();
+    c.failListening();
+  },
+  'result-job-unknown': (c) {
+    const action = AssistantActionRecord(
+      kind: AssistantActionKind.scanLibrary,
+      serverName: 'Zolder',
+      subject: 'Films',
+      progress: AssistantJobProgress(AssistantJobPhase.unknown),
+    );
+    c
+      ..prompt = 'Scan Films'
+      ..state = AssistantSurfaceState.result
+      ..answer = 'Alles klaar'
+      ..actions = const [action]
+      ..tasks = const [
+        AssistantTask(
+          id: '1',
+          title: 'Scan Films',
+          intent: 'command',
+          status: AssistantTaskStatus.completed,
+          answer: 'Alles klaar',
+          displays: [],
+          steps: [],
+          actions: [action],
+        ),
+      ];
+  },
   'result-short': (c) => c
     ..prompt = 'Hoeveel films staan er op Zolder?'
     ..state = AssistantSurfaceState.result
@@ -400,7 +446,17 @@ void main() {
     });
   }
 
-  for (final name in ['idle', 'result-long', 'result-matches', 'result-watch', 'confirm', 'kids-ages']) {
+  for (final name in [
+    'idle',
+    'input-error',
+    'result-cancelled',
+    'result-job-unknown',
+    'result-long',
+    'result-matches',
+    'result-watch',
+    'confirm',
+    'kids-ages',
+  ]) {
     testWidgets('surface $name', skip: _dir == null, (tester) async {
       final c = FakeAssistantController();
       addTearDown(c.dispose);

@@ -66,8 +66,8 @@ Wat vastligt in code, wat het model mag kiezen, en de terugval. Tools naar huidi
 |---|---|---|---|---|---|---|
 | Wat heb ik gekeken | ik | film/serie uit de vraag | kijkhistorie plus ooit-gezien | `my_watching` | alleen zachte filters | venster noemen; sleutel onbekend: wedervraag |
 | Kijkcijfers, wat kijken anderen | anderen op account-id, nooit iedereen | uit de vraag | historie per bron | `watch_stats` | periode binnen vaste lijst | publiek onbekend: wedervraag; geen bewijsde identiteit over servers: per server tonen |
-| Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (bestaat al; de rest van de BP-07-pijplijn is gepland) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
-| Aanbevelen samen | ik plus genoemde personen | uit de vraag | bibliotheek | `recommend_together` | persoonskeuze alleen uit treffers | meerdere treffers: knoppen |
+| Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (bestaat al; werkt nu alleen als de aanvrager Jellyfin-administrator is, niet op Emby of andere backends; geblokkeerd op kinderprofielen; de rest van de BP-07-pijplijn is gepland) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
+| Aanbevelen samen | ik plus genoemde personen | uit de vraag | bibliotheek | `recommend_together` (werkt nu alleen als de aanvrager Jellyfin-administrator is, niet op Emby of andere backends; geblokkeerd op kinderprofielen) | persoonskeuze alleen uit treffers | meerdere treffers: knoppen |
 | Recent toegevoegd | ik (zichtbare bibliotheken) | uit de vraag | `fetchRecentlyAdded`, `addedAt` | `search_catalog` met `sort: added` | geen | bron die het venster niet haalt: als gedeeltelijk melden |
 | Titel zoeken, vergelijkbaar, trending | ik | uit de vraag | catalogus, TMDB | `search_catalog`, `find_title`, `similar_titles`, `trending_titles` | zoektermen | geen treffer: zeggen, niet raden |
 | Aanvragen | ik | uit de vraag | Seerr | `find_request_title`, `request_title`, `request_status` | titelkeuze uit treffers | schrijfactie altijd met bevestiging |
@@ -79,6 +79,24 @@ Wat vastligt in code, wat het model mag kiezen, en de terugval. Tools naar huidi
 Ongeveer 40 echte vragen, handmatige poort vóór elke build tegen twee modellen; vaste gevallen lopen als gewone tests in CI. Eerste volledige route: "Wat is deze week aan mijn bibliotheken toegevoegd?" (BP-05). De set groeit per fase met de nultolerantiegevallen hierboven.
 
 De nulmeting op de baseline (1b93c50d) volgt in BP-01 vóór de eerste codewijziging; ze staat in het fase-rapport, niet hier, zodat dit document geen statusadministratie wordt.
+
+## Acceptatieaanvulling AUDIT-BIGP-UX1 (8 oktober 2026)
+
+Deze gevallen versterken bestaande pakketten; de herstelronde voltooit die pakketten niet.
+
+- **BP-04b:** “ik”, “anderen”, gemengde doelgroepen, onbekende personen en “vorige week”.
+  Onbekend blijft een wedervraag of expliciet gedeeltelijk antwoord; geen gegokte verbreding.
+  Bewezen bronrechten blijven ook bij een wijziging tijdens wachten gelden.
+- **BP-05:** tekst, kaarten en acties volgen dezelfde bewezen resultaatset en taakstatus.
+  Weigeren en verlopen bevestiging bewijzen nul mutaties; één geaccepteerde actie precies één.
+  Gedeeltelijke uitvoering behoudt eerdere acties; vroege resultaten heten nog niet volledig klaar.
+  “Recent toegevoegd” controleert bron, soort, bibliotheken en expliciet periodevenster.
+- **BP-06:** “die tweede”, een andere titelsoort en een andere periode wijzigen alleen expliciet
+  gekozen velden; laatst gekozen persoon, titel en periode blijven anders behouden. Nieuw gesprek
+  wist gespreksscope. Gestructureerd intentgeheugen krijgt pas acceptatie na implementatie en tests.
+
+Gebruik de bestaande controller/conversation state en de 28 audittoestanden per bestaande flow.
+Unit/widget, simulator, echte providers/bevoegdheden en fysieke Apple TV zijn afzonderlijke poorten.
 
 ## Besluiten van Michel (5 oktober 2026)
 

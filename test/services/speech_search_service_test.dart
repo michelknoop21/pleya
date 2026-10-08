@@ -126,6 +126,19 @@ void main() {
     expect(NativeInputSession.isActive, isFalse);
   });
 
+  test('Apple TV: a transient error permits an explicit retry', () async {
+    final service = buildAppleTvService();
+    var attempts = 0;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (++attempts == 1) throw PlatformException(code: 'TEMPORARY');
+      return <String, dynamic>{'text': 'retry', 'submitted': true};
+    });
+    await expectLater(service.capture(), throwsA(isA<PlatformException>()));
+    expect(await service.isSupported(), isTrue);
+    expect((await service.capture())?.text, 'retry');
+    expect(attempts, 2);
+  });
+
   test('Apple TV: a dead surface is reported to the caller and written off', () async {
     final entry = AppleTvNativeTextEntry(channel: channel);
     TvDetectionService.debugSetAppleTVOverride(true);

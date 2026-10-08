@@ -86,6 +86,24 @@ void main() {
     expect(c.aborts, before + 1);
   });
 
+  testWidgets('technical entry failure stays visible and retry sends exactly one question', (tester) async {
+    var attempts = 0;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      attempts++;
+      if (attempts == 1) throw PlatformException(code: 'TEMPORARY');
+      return <String, dynamic>{'text': 'Probeer opnieuw', 'submitted': true};
+    });
+    await pumpSurface(tester);
+    await press(tester, LogicalKeyboardKey.select);
+    expect(find.text(t.assistant.listening.failed), findsOneWidget);
+    expect(c.submitted, isEmpty);
+    expect(focusedLabel(), 'assistant.ask');
+    await press(tester, LogicalKeyboardKey.select);
+    expect(attempts, 2);
+    expect(c.submitted, ['Probeer opnieuw']);
+    expect(find.text(t.assistant.listening.failed), findsNothing);
+  });
+
   group('gates', () {
     testWidgets('locked shows 38 B with one way back and no ask button', (tester) async {
       c.availability = AssistantAvailability.locked;

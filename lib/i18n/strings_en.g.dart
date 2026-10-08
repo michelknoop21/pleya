@@ -7820,6 +7820,9 @@ class TranslationsAssistantListeningEn {
 
 	/// en: 'Speak your question.'
 	String get body => 'Speak your question.';
+
+	/// en: 'Text entry failed. Try again.'
+	String get failed => 'Text entry failed. Try again.';
 }
 
 // Path: assistant.working
@@ -10975,6 +10978,7 @@ extension on Translations {
 			'assistant.idle.examples.5.0' => 'Which popular new movies don\'t I have yet?',
 			'assistant.listening.title' => 'I\'m listening…',
 			'assistant.listening.body' => 'Speak your question.',
+			'assistant.listening.failed' => 'Text entry failed. Try again.',
 			'assistant.working.status' => 'Let me check…',
 			'assistant.working.busy' => 'Working on your question…',
 			'assistant.working.stillChecking' => 'Found so far. Big P is still checking…',

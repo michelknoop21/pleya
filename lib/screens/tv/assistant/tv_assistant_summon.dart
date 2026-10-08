@@ -1,7 +1,7 @@
 /// Big P summoned from any TV screen (mockup 38, "Oproepen vanaf elk
 /// scherm"): a long press on Play/Pause brings him in bottom right with a
 /// 760 pt speech balloon (39 J), the screen behind dims but stays the context, and the
-/// system keyboard opens right away. He stays until Menu or Klaar.
+/// examples appear first. Vraag Big P opens the system keyboard. He stays until Menu or Klaar.
 library;
 
 import 'dart:async';
@@ -16,7 +16,6 @@ import '../../../assistant/assistant_tools.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
 import '../../../focus/key_event_utils.dart';
-import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../services/apple_tv_native_text_entry.dart';
@@ -55,7 +54,7 @@ class TvAssistantSummonHost extends StatefulWidget {
 
   final Widget child;
 
-  /// What the screen behind shows, read at the moment of the press.
+  /// What the screen behind shows, read when a question is chosen.
   final AssistantScreenContext? Function()? screenContext;
 
   /// Injected by tests; the app uses the shared instances.
@@ -171,9 +170,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_open) return;
       setState(() => _shown = true);
-      _panelNode.requestFocus();
+      _focusDefault();
     });
-    unawaited(_ask(context: widget.screenContext?.call()));
   }
 
   /// The system keyboard with dictation and a send key, as on the surface.
@@ -184,10 +182,15 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (c.state != AssistantSurfaceState.listening) return;
     String? text;
     try {
-      final result = await _speech.capture(prompt: t.assistant.idle.ask, action: 'send', onPartial: _onPhrase);
-      text = result != null && result.submitted ? result.text : null;
+      text = await tvAssistantCaptureQuestion(this.context, _speech, c, _onPhrase);
     } catch (e) {
       appLogger.w('Big P: text entry failed', error: e);
+      if (!mounted || !identical(c, _c) || _leaving) return;
+      c.failListening();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_leaving) _askNode.requestFocus();
+      });
+      return;
     }
     if (!mounted || !identical(c, _c) || _leaving) return;
     final question = text?.trim() ?? '';
@@ -200,7 +203,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (c.state == AssistantSurfaceState.idle) _dismiss();
   }
 
-  void _onPhrase(String _) {
+  void _onPhrase(String text) {
     if (mounted) setState(() => _nod++);
   }
 
@@ -240,6 +243,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     final c = _c;
     if (!mounted || c == null || _confirm.isOpen || _kids.open) return;
     final node = switch (c.state) {
+      AssistantSurfaceState.idle => _askNode,
       AssistantSurfaceState.working => _cancelNode,
       AssistantSurfaceState.result =>
         (c.tasks.length > 1
@@ -323,6 +327,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
                     'shown': _shown,
                     'state': c?.state.name,
                     'error': c?.resultIsError ?? false,
+                    'inputError': c?.inputError ?? false,
                     'pending': c?.pending != null,
                   },
                   child: _overlay(context, c),
@@ -360,7 +365,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               firstOptionNode: _optionNode,
               taskOptionNodes: _taskOptionNodes,
               tasksNode: _tasksNode,
-              onAsk: () => unawaited(_ask()),
+              onAsk: () => unawaited(_ask(context: widget.screenContext?.call())),
               onDone: _dismiss,
               onNewConversation: () {
                 c.newConversation();
@@ -368,7 +373,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               },
               onCancelWork: _dismiss,
               onExample: (question) {
-                c.beginListening();
+                c.beginListening(context: widget.screenContext?.call());
                 unawaited(c.submit(question));
               },
               onPickOption: (option) => unawaited(c.pickRequestOption(option)),

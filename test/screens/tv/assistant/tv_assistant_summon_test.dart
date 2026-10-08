@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
@@ -101,10 +102,57 @@ void main() {
   Future<void> summoned(WidgetTester tester) async {
     await pumpHost(tester);
     await longPress(tester);
+    await press(tester, LogicalKeyboardKey.select);
   }
 
+  testWidgets('shortcut shows examples first without opening native input', (tester) async {
+    await pumpHost(tester);
+    await longPress(tester);
+    expect(bigP(), findsOneWidget);
+    expect(c.state, AssistantSurfaceState.idle);
+    expect(find.byType(BigPChip), findsNWidgets(3));
+    expect(focusedLabel(), 'assistant.ask');
+    expect(edits, isEmpty);
+    expect(c.listenContexts, isEmpty);
+    expect(c.submitted, isEmpty);
+    await press(tester, LogicalKeyboardKey.select);
+    expect(edits.single['action'], 'send');
+    expect(c.listenContexts.single, same(screen));
+    expect(c.submitted, ['Scan deze bibliotheek opnieuw']);
+  });
+
+  testWidgets('an example starts directly with screen context and no native input', (tester) async {
+    await pumpHost(tester);
+    await longPress(tester);
+    final example = tester.widget<BigPChip>(find.byType(BigPChip).first);
+    example.onSelect();
+    await settle(tester);
+    expect(c.submitted, [example.label]);
+    expect(c.listenContexts.single, same(screen));
+    expect(edits, isEmpty);
+  });
+
+  testWidgets('technical entry failure stays visible and retry sends exactly one question', (tester) async {
+    var attempts = 0;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      attempts++;
+      if (attempts == 1) throw PlatformException(code: 'TEMPORARY');
+      return <String, dynamic>{'text': 'Probeer opnieuw', 'submitted': true};
+    });
+    await pumpHost(tester);
+    await longPress(tester);
+    await press(tester, LogicalKeyboardKey.select);
+    expect(find.text(t.assistant.listening.failed), findsOneWidget);
+    expect(c.submitted, isEmpty);
+    expect(focusedLabel(), 'assistant.ask');
+    await press(tester, LogicalKeyboardKey.select);
+    expect(attempts, 2);
+    expect(c.submitted, ['Probeer opnieuw']);
+    expect(find.text(t.assistant.listening.failed), findsNothing);
+  });
+
   group('when he may come', () {
-    testWidgets('a long press opens the system keyboard with a send key and this screen as context', (tester) async {
+    testWidgets('Ask opens the system keyboard with a send key and this screen as context', (tester) async {
       await summoned(tester);
 
       expect(bigP(), findsOneWidget);
@@ -156,7 +204,8 @@ void main() {
 
       await longPress(tester);
 
-      expect(c.listenContexts.single, same(screen));
+      expect(c.listenContexts, isEmpty);
+      expect(focusedLabel(), 'assistant.ask');
     });
 
     testWidgets('never while the system keyboard is up', (tester) async {
@@ -191,7 +240,8 @@ void main() {
       expect(c.refreshes, 1);
       expect(find.byType(TvAssistantScreen), findsNothing);
       expect(bigP(), findsOneWidget);
-      expect(c.listenContexts.single, same(screen));
+      expect(c.listenContexts, isEmpty);
+      expect(focusedLabel(), 'assistant.ask');
     });
 
     testWidgets('locked opens the full surface with its gate instead', (tester) async {
