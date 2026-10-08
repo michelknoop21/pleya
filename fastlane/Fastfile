@@ -559,11 +559,10 @@ def git_commit_define
   " --dart-define=GIT_COMMIT=#{sha}"
 end
 
-# De Big P-rolloutvlag, zoals tvos/scripts/xcode_appletv.sh hem uit de
-# omgeving overneemt. --config-only schrijft de defines naar
-# Generated.xcconfig, waar build_app ze leest (zelfde pad als GIT_COMMIT).
+# Big P hoort standaard in de iOS-beta; expliciet false behoudt de rollout-stop.
+# --config-only schrijft de define naar Generated.xcconfig voor build_app.
 def assistant_define
-  ENV["PLEYA_ASSISTANT_ENABLED"] == "true" ? " --dart-define=PLEYA_ASSISTANT_ENABLED=true" : ""
+  ENV.fetch("PLEYA_ASSISTANT_ENABLED", "true") == "true" ? " --dart-define=PLEYA_ASSISTANT_ENABLED=true" : ""
 end
 
 # Publieke API-sleutels uit .env, nu alleen de Trakt-client-ID. Alleen gezette,
