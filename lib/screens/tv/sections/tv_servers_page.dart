@@ -17,15 +17,19 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
+import '../../../automation/automation_ids.dart';
+import '../../../automation/automation_node.dart';
 import '../../../connection/connection.dart';
 import '../../../connection/connection_registry.dart';
 import '../../../focus/focus_memory_tracker.dart';
+import '../../../focus/focusable_button.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../profiles/active_profile_provider.dart';
 import '../../../profiles/profile.dart';
 import '../../../providers/libraries_provider.dart';
 import '../../../providers/multi_server_provider.dart';
+import '../../../utils/dialogs.dart';
 import '../../../widgets/tv/tv_menu_grid.dart';
 import '../../../widgets/tv/tv_page_surface.dart';
 import '../../settings/add_connection_screen.dart';
@@ -107,24 +111,29 @@ class _TvServersPageState extends State<TvServersPage> {
                 if (pleyaServers.isNotEmpty)
                   TvMenuSection(
                     label: t.connections.pleyaServers,
-                    items: [
-                      for (final server in pleyaServers)
-                        TvMenuItem(
-                          key: 'servers_server_${server.serverId}',
-                          icon: Symbols.dns_rounded,
+                    items: pleyaServers.map((server) {
+                      // Backend identity, reachability and how much this
+                      // one is carrying, on the line the audit found
+                      // occupied by a host:port and nothing else.
+                      final status = _serverStatus(
+                        server: server,
+                        online: online.contains(server.serverId),
+                        needsReauth: authErrors.contains(server.serverId),
+                        libraryCount: libraries?.libraries.where((l) => l.serverId == server.serverId).length,
+                      );
+                      return TvMenuItem(
+                        key: 'servers_server_${server.serverId}',
+                        icon: Symbols.dns_rounded,
+                        title: server.displayLabel,
+                        value: status.join(' · '),
+                        onSelect: () => _openStatus(
                           title: server.displayLabel,
-                          // Backend identity, reachability and how much this
-                          // one is carrying, on the line the audit found
-                          // occupied by a host:port and nothing else.
-                          value: _serverStatus(
-                            server: server,
-                            online: online.contains(server.serverId),
-                            needsReauth: authErrors.contains(server.serverId),
-                            libraryCount: libraries?.libraries.where((l) => l.serverId == server.serverId).length,
-                          ),
-                          onSelect: () => _disconnect(server),
+                          lines: status,
+                          removeLabel: t.connections.disconnectServer,
+                          remove: () => _disconnect(server),
                         ),
-                    ],
+                      );
+                    }).toList(),
                   ),
                 if (localSources.isNotEmpty)
                   TvMenuSection(
@@ -136,7 +145,12 @@ class _TvServersPageState extends State<TvServersPage> {
                           icon: Symbols.folder_rounded,
                           title: source.displayLabel,
                           value: source.displaySubtitle,
-                          onSelect: () => _removeSource(source),
+                          onSelect: () => _openStatus(
+                            title: source.displayLabel,
+                            lines: [?source.displaySubtitle],
+                            removeLabel: t.connections.removeSource,
+                            remove: () => _removeSource(source),
+                          ),
                         ),
                     ],
                   ),
@@ -149,8 +163,9 @@ class _TvServersPageState extends State<TvServersPage> {
   }
 
   /// "Pleya-server · Online · 2 bibliotheken", trimmed of whatever this
-  /// connection cannot answer for.
-  String _serverStatus({
+  /// connection cannot answer for. The tile joins the parts on one line, the
+  /// status surface gives each its own.
+  List<String> _serverStatus({
     required PleyaServerConnection server,
     required bool online,
     required bool needsReauth,
@@ -160,7 +175,47 @@ class _TvServersPageState extends State<TvServersPage> {
     if (needsReauth) t.connections.reauthRequired else if (online) t.common.online else t.common.offline,
     if (libraryCount != null && libraryCount > 0) t.tvMyPleya.libraryCount(count: libraryCount),
     server.userName,
-  ].join(' · ');
+  ];
+
+  /// TVUX-56: Select on a tile that reads as identity and status opens exactly
+  /// that. Removing is the other button, never the focused one, and still
+  /// runs through [ConnectionsRemoval]'s own confirmation.
+  Future<void> _openStatus({
+    required String title,
+    required List<String> lines,
+    required String removeLabel,
+    required Future<void> Function() remove,
+  }) async {
+    final wantsRemove = await showScopedDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AutomationNode(
+        id: AutomationIds.serverStatus,
+        role: 'dialog',
+        label: title,
+        child: AlertDialog(
+          title: Text(title),
+          content: Text(lines.join('\n')),
+          actions: [
+            FocusableButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: TextButton.styleFrom(foregroundColor: Theme.of(dialogContext).colorScheme.error),
+                child: Text(removeLabel),
+              ),
+            ),
+            FocusableButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: FilledButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(t.common.close)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (wantsRemove != true || !mounted) return;
+    await remove();
+  }
 
   Future<void> _disconnect(PleyaServerConnection server) => ConnectionsRemoval.disconnectPleyaServer(context, server);
 

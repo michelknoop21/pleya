@@ -689,7 +689,12 @@ class _ActiveSessionContent extends StatelessWidget {
                             watchTogether.isHost ? t.watchTogether.hostingSession : t.watchTogether.inSession,
                             style: theme.textTheme.titleMedium,
                           ),
-                          _SessionCodeRow(sessionId: session.sessionId),
+                          // TVUX-79: with nothing to join, the remote starts on
+                          // the code to pass on, not on Leave/End below.
+                          _SessionCodeRow(
+                            sessionId: session.sessionId,
+                            autofocus: watchTogether.isHost || !watchTogether.hasCurrentPlayback,
+                          ),
                         ],
                       ),
                     ),
@@ -794,7 +799,6 @@ class _ActiveSessionContent extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FocusableButton(
-            autofocus: watchTogether.isHost || !watchTogether.hasCurrentPlayback,
             onPressed: () => _leaveSession(context),
             child: OutlinedButton.icon(
               onPressed: () => _leaveSession(context),
@@ -924,14 +928,16 @@ class _JoinCurrentPlaybackCardState extends State<_JoinCurrentPlaybackCard> {
 /// Tappable session code row with copy functionality
 class _SessionCodeRow extends StatelessWidget {
   final String sessionId;
+  final bool autofocus;
 
-  const _SessionCodeRow({required this.sessionId});
+  const _SessionCodeRow({required this.sessionId, this.autofocus = false});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return FocusableWrapper(
+      autofocus: autofocus,
       mode: FocusIndicatorMode.fill,
       disableScale: true,
       borderRadius: 4,

@@ -2756,6 +2756,9 @@ class TranslationsNoticesEn {
 	/// en: 'Sign-in failed'
 	String get authFailedTitle => 'Sign-in failed';
 
+	/// en: 'Starting playback'
+	String get playbackStartingTitle => 'Starting playback';
+
 	/// en: 'Playback stopped'
 	String get playbackStoppedTitle => 'Playback stopped';
 
@@ -3314,6 +3317,12 @@ class TranslationsLiveTvEn {
 
 	/// en: 'Tomorrow'
 	String get tomorrow => 'Tomorrow';
+
+	/// en: 'Starts in ${minutes} min'
+	String startsInMinutes({required Object minutes}) => 'Starts in ${minutes} min';
+
+	/// en: '${day} at ${time}'
+	String dayAtTime({required Object day, required Object time}) => '${day} at ${time}';
 
 	/// en: 'Midnight'
 	String get midnight => 'Midnight';
@@ -5015,6 +5024,249 @@ class TranslationsSeerrEn {
 
 	/// en: 'Nothing has been requested yet.'
 	String get noRequestsYet => 'Nothing has been requested yet.';
+
+	/// en: '4K is not allowed for movies on this account.'
+	String get fourKNotAllowedMovie => '4K is not allowed for movies on this account.';
+
+	/// en: '4K is not allowed for shows on this account.'
+	String get fourKNotAllowedShow => '4K is not allowed for shows on this account.';
+
+	/// en: 'Limit unknown. The server decides when you submit.'
+	String get quotaUnknown => 'Limit unknown. The server decides when you submit.';
+
+	/// en: 'You have reached your limit. The server will not take another request now.'
+	String get quotaReached => 'You have reached your limit. The server will not take another request now.';
+
+	/// en: 'This profile is not allowed to request.'
+	String get noRequestRight => 'This profile is not allowed to request.';
+
+	/// en: 'Check status'
+	String get checkStatus => 'Check status';
+
+	/// en: 'Not sure the request arrived'
+	String get requestUncertainTitle => 'Not sure the request arrived';
+
+	/// en: 'The connection dropped after the request was sent. Check the status first. Your choices stay as they are.'
+	String get requestUncertainBody => 'The connection dropped after the request was sent. Check the status first. Your choices stay as they are.';
+
+	/// en: 'The server does not have this request. You can submit again.'
+	String get requestStillAbsent => 'The server does not have this request. You can submit again.';
+
+	/// en: 'The status could not be read. Try again.'
+	String get statusCheckFailed => 'The status could not be read. Try again.';
+
+	/// en: 'The server refused the request'
+	String get requestRefusedTitle => 'The server refused the request';
+
+	/// en: 'You lack the rights for this, or your limit is reached. Nothing was requested.'
+	String get requestRefusedForbidden => 'You lack the rights for this, or your limit is reached. Nothing was requested.';
+
+	/// en: 'This title has already been requested. No second request was made.'
+	String get requestRefusedDuplicate => 'This title has already been requested. No second request was made.';
+
+	/// en: 'The request is in your requests and the status of the title has been reloaded.'
+	String get requestDoneBody => 'The request is in your requests and the status of the title has been reloaded.';
+
+	/// en: 'Requested: ${seasons}.'
+	String requestDoneSeasons({required Object seasons}) => 'Requested: ${seasons}.';
+
+	/// en: 'Request season ${number}'
+	String requestSeason({required Object number}) => 'Request season ${number}';
+
+	/// en: 'Request ${count} seasons'
+	String requestSeasons({required Object count}) => 'Request ${count} seasons';
+
+	/// en: '${count} of ${total} chosen'
+	String seasonsChosen({required Object count, required Object total}) => '${count} of ${total} chosen';
+
+	/// en: '${count} episodes'
+	String episodeCount({required Object count}) => '${count} episodes';
+
+	/// en: 'Server options not loaded'
+	String get targetUnavailableTitle => 'Server options not loaded';
+
+	/// en: 'Profile and root folder could not be fetched. You can still submit with the request server's defaults.'
+	String get targetUnavailableBody => 'Profile and root folder could not be fetched. You can still submit with the request server\'s defaults.';
+
+	/// en: 'Request with server default'
+	String get requestWithServerDefault => 'Request with server default';
+
+	/// en: 'No 4K server configured'
+	String get no4kServerTitle => 'No 4K server configured';
+
+	/// en: 'Turn 4K off to request in HD.'
+	String get no4kServerBody => 'Turn 4K off to request in HD.';
+
+	/// en: 'Server default'
+	String get serverDefault => 'Server default';
+
+	/// en: 'administrators only'
+	String get adminOnly => 'administrators only';
+
+	/// en: 'Edit request'
+	String get editRequest => 'Edit request';
+
+	/// en: 'Save change'
+	String get saveChange => 'Save change';
+
+	/// en: 'Saving...'
+	String get saving => 'Saving...';
+
+	/// en: 'Quality: 4K'
+	String get qualityFourK => 'Quality: 4K';
+
+	/// en: 'Quality: standard (HD)'
+	String get qualityHd => 'Quality: standard (HD)';
+
+	/// en: 'The quality is fixed once requested. Cancel the request and request again to switch.'
+	String get editQualityFixed => 'The quality is fixed once requested. Cancel the request and request again to switch.';
+
+	/// en: 'Editing is no longer possible'
+	String get editNotPendingTitle => 'Editing is no longer possible';
+
+	/// en: 'Only a pending request can be changed. After that the server decides.'
+	String get editNotPendingBody => 'Only a pending request can be changed. After that the server decides.';
+
+	/// en: 'There is nothing you can change on this request here.'
+	String get editNothingToEdit => 'There is nothing you can change on this request here.';
+
+	/// en: 'You don't have permission for that'
+	String get editForbiddenTitle => 'You don\'t have permission for that';
+
+	/// en: 'The server refused the change. The request is as it was.'
+	String get editForbiddenBody => 'The server refused the change. The request is as it was.';
+
+	/// en: 'Not sure the change was saved'
+	String get editUncertainTitle => 'Not sure the change was saved';
+
+	/// en: 'The connection dropped after the change was sent. Check the status first. Your choice stays as it is.'
+	String get editUncertainBody => 'The connection dropped after the change was sent. Check the status first. Your choice stays as it is.';
+
+	/// en: 'The server still has the old request. You can save again.'
+	String get editStillOld => 'The server still has the old request. You can save again.';
+
+	/// en: 'The server changed nothing: none of the chosen seasons can still be requested.'
+	String get editNothingSaved => 'The server changed nothing: none of the chosen seasons can still be requested.';
+
+	/// en: 'Choose at least one season. Cancel the request to drop it entirely.'
+	String get editKeepOneSeason => 'Choose at least one season. Cancel the request to drop it entirely.';
+
+	/// en: 'Change saved'
+	String get editSaved => 'Change saved';
+
+	/// en: 'The request could not be read.'
+	String get editLoadFailed => 'The request could not be read.';
+
+	/// en: 'In this request'
+	String get inThisRequest => 'In this request';
+
+	/// en: 'Open title'
+	String get openTitle => 'Open title';
+
+	/// en: 'More actions'
+	String get moreActions => 'More actions';
+
+	/// en: 'This request is no longer pending, so there is nothing to decide.'
+	String get actionsNotPending => 'This request is no longer pending, so there is nothing to decide.';
+
+	/// en: 'You have no rights to change this request.'
+	String get actionsNoRight => 'You have no rights to change this request.';
+
+	/// en: 'your request'
+	String get ownRequest => 'your request';
+
+	/// en: 'Working'
+	String get actionBusy => 'Working';
+
+	/// en: 'The action failed. The list has been reloaded.'
+	String get actionFailed => 'The action failed. The list has been reloaded.';
+
+	/// en: 'Not sure the action went through. The list has been reloaded.'
+	String get actionUncertain => 'Not sure the action went through. The list has been reloaded.';
+
+	/// en: 'Request cancelled'
+	String get requestCancelled => 'Request cancelled';
+
+	/// en: 'Counts are only known for all requests.'
+	String get countsOwnScopeNote => 'Counts are only known for all requests.';
+
+	/// en: 'Counts not loaded.'
+	String get countsNotLoaded => 'Counts not loaded.';
+
+	/// en: 'This server cannot filter on ${status}'
+	String filterUnsupportedTitle({required Object status}) => 'This server cannot filter on ${status}';
+
+	/// en: 'It answered with requests in another status. Choose a different filter.'
+	String get filterUnsupportedBody => 'It answered with requests in another status. Choose a different filter.';
+
+	/// en: 'Your requests account is not known. Reconnect Requests in settings.'
+	String get ownScopeUnknown => 'Your requests account is not known. Reconnect Requests in settings.';
+
+	/// en: 'You have not requested anything yet.'
+	String get noOwnRequestsYet => 'You have not requested anything yet.';
+
+	/// en: 'Discover'
+	String get discoverAction => 'Discover';
+
+	/// en: 'Loading more failed'
+	String get loadMoreFailed => 'Loading more failed';
+
+	/// en: 'My request'
+	String get myRequest => 'My request';
+
+	/// en: 'Refresh status'
+	String get refreshStatus => 'Refresh status';
+
+	/// en: 'Request more seasons'
+	String get requestMoreSeasons => 'Request more seasons';
+
+	/// en: 'Open in library'
+	String get openInLibrary => 'Open in library';
+
+	/// en: 'Search in library'
+	String get searchInLibrary => 'Search in library';
+
+	/// en: 'Status not refreshed. What you see may be out of date.'
+	String get statusNotRefreshed => 'Status not refreshed. What you see may be out of date.';
+
+	/// en: 'Your request was declined.'
+	String get requestDeclinedNote => 'Your request was declined.';
+
+	/// en: 'Connect a Jellyseerr or Overseerr server to request titles.'
+	String get notConfiguredBody => 'Connect a Jellyseerr or Overseerr server to request titles.';
+
+	/// en: 'Set up'
+	String get setUp => 'Set up';
+
+	/// en: 'Requests did not answer. Only your library was searched.'
+	String get searchIncomplete => 'Requests did not answer. Only your library was searched.';
+
+	/// en: 'Via Requests'
+	String get viaRequests => 'Via Requests';
+
+	/// en: 'Requests could not search'
+	String get searchIncompleteTitle => 'Requests could not search';
+
+	/// en: 'The server did not store the change as asked. Check your choice and save again.'
+	String get editNotAllSaved => 'The server did not store the change as asked. Check your choice and save again.';
+
+	/// en: 'The server's answer does not show whether it arrived. Nothing is sent again until it does.'
+	String get statusNotProven => 'The server\'s answer does not show whether it arrived. Nothing is sent again until it does.';
+
+	/// en: 'Status unknown'
+	String get statusUnknownBadge => 'Status unknown';
+
+	/// en: 'The stored target is no longer offered by the server. It stays as it is unless you choose another.'
+	String get storedTargetUnlisted => 'The stored target is no longer offered by the server. It stays as it is unless you choose another.';
+
+	/// en: 'Requests cannot filter on this status, so no list is shown under that name.'
+	String get filterUnsupportedBySource => 'Requests cannot filter on this status, so no list is shown under that name.';
+
+	/// en: 'Scope'
+	String get railScope => 'Scope';
+
+	/// en: 'That request is no longer in your own list. It may have been handled or removed.'
+	String get requestNotInOwnList => 'That request is no longer in your own list. It may have been handled or removed.';
 }
 
 // Path: tautulli
@@ -9371,6 +9623,7 @@ extension on Translations {
 			'notices.couldNotLoadTitle' => ({required Object context}) => 'Couldn\'t load ${context}',
 			'notices.genericErrorTitle' => 'Something went wrong',
 			'notices.authFailedTitle' => 'Sign-in failed',
+			'notices.playbackStartingTitle' => 'Starting playback',
 			'notices.playbackStoppedTitle' => 'Playback stopped',
 			'notices.playbackFileUnavailableTitle' => 'File not available',
 			'notices.playbackFileUnavailableBody' => 'The server can\'t reach the video file. Check that the drive or folder it\'s on is still connected.',
@@ -9512,9 +9765,9 @@ extension on Translations {
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
 			'navigation.libraries' => 'Libraries',
-			'navigation.downloads' => 'Downloads',
 			_ => null,
 		} ?? switch (path) {
+			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Watchlist',
 			'navigation.myPleya' => 'My Pleya',
@@ -9566,6 +9819,8 @@ extension on Translations {
 			'liveTv.now' => 'Now',
 			'liveTv.today' => 'Today',
 			'liveTv.tomorrow' => 'Tomorrow',
+			'liveTv.startsInMinutes' => ({required Object minutes}) => 'Starts in ${minutes} min',
+			'liveTv.dayAtTime' => ({required Object day, required Object time}) => '${day} at ${time}',
 			'liveTv.midnight' => 'Midnight',
 			'liveTv.overnight' => 'Overnight',
 			'liveTv.morning' => 'Morning',
@@ -10024,11 +10279,11 @@ extension on Translations {
 			'metadataEdit.afterADay' => 'After a day',
 			'metadataEdit.afterAWeek' => 'After a week',
 			'metadataEdit.afterAMonth' => 'After a month',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.onNextRefresh' => 'On next refresh',
 			'metadataEdit.seasons' => 'Seasons',
 			'metadataEdit.show' => 'Show',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.hide' => 'Hide',
 			'metadataEdit.episodeOrdering' => 'Episode Ordering',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Aired)',
@@ -10168,6 +10423,87 @@ extension on Translations {
 			'seerr.discoverNow' => 'Popular now',
 			'seerr.noRequestsInFilter' => ({required Object status}) => 'No requests are ${status} right now.',
 			'seerr.noRequestsYet' => 'Nothing has been requested yet.',
+			'seerr.fourKNotAllowedMovie' => '4K is not allowed for movies on this account.',
+			'seerr.fourKNotAllowedShow' => '4K is not allowed for shows on this account.',
+			'seerr.quotaUnknown' => 'Limit unknown. The server decides when you submit.',
+			'seerr.quotaReached' => 'You have reached your limit. The server will not take another request now.',
+			'seerr.noRequestRight' => 'This profile is not allowed to request.',
+			'seerr.checkStatus' => 'Check status',
+			'seerr.requestUncertainTitle' => 'Not sure the request arrived',
+			'seerr.requestUncertainBody' => 'The connection dropped after the request was sent. Check the status first. Your choices stay as they are.',
+			'seerr.requestStillAbsent' => 'The server does not have this request. You can submit again.',
+			'seerr.statusCheckFailed' => 'The status could not be read. Try again.',
+			'seerr.requestRefusedTitle' => 'The server refused the request',
+			'seerr.requestRefusedForbidden' => 'You lack the rights for this, or your limit is reached. Nothing was requested.',
+			'seerr.requestRefusedDuplicate' => 'This title has already been requested. No second request was made.',
+			'seerr.requestDoneBody' => 'The request is in your requests and the status of the title has been reloaded.',
+			'seerr.requestDoneSeasons' => ({required Object seasons}) => 'Requested: ${seasons}.',
+			'seerr.requestSeason' => ({required Object number}) => 'Request season ${number}',
+			'seerr.requestSeasons' => ({required Object count}) => 'Request ${count} seasons',
+			'seerr.seasonsChosen' => ({required Object count, required Object total}) => '${count} of ${total} chosen',
+			'seerr.episodeCount' => ({required Object count}) => '${count} episodes',
+			'seerr.targetUnavailableTitle' => 'Server options not loaded',
+			'seerr.targetUnavailableBody' => 'Profile and root folder could not be fetched. You can still submit with the request server\'s defaults.',
+			'seerr.requestWithServerDefault' => 'Request with server default',
+			'seerr.no4kServerTitle' => 'No 4K server configured',
+			'seerr.no4kServerBody' => 'Turn 4K off to request in HD.',
+			'seerr.serverDefault' => 'Server default',
+			'seerr.adminOnly' => 'administrators only',
+			'seerr.editRequest' => 'Edit request',
+			'seerr.saveChange' => 'Save change',
+			'seerr.saving' => 'Saving...',
+			'seerr.qualityFourK' => 'Quality: 4K',
+			'seerr.qualityHd' => 'Quality: standard (HD)',
+			'seerr.editQualityFixed' => 'The quality is fixed once requested. Cancel the request and request again to switch.',
+			'seerr.editNotPendingTitle' => 'Editing is no longer possible',
+			'seerr.editNotPendingBody' => 'Only a pending request can be changed. After that the server decides.',
+			'seerr.editNothingToEdit' => 'There is nothing you can change on this request here.',
+			'seerr.editForbiddenTitle' => 'You don\'t have permission for that',
+			'seerr.editForbiddenBody' => 'The server refused the change. The request is as it was.',
+			'seerr.editUncertainTitle' => 'Not sure the change was saved',
+			'seerr.editUncertainBody' => 'The connection dropped after the change was sent. Check the status first. Your choice stays as it is.',
+			'seerr.editStillOld' => 'The server still has the old request. You can save again.',
+			'seerr.editNothingSaved' => 'The server changed nothing: none of the chosen seasons can still be requested.',
+			'seerr.editKeepOneSeason' => 'Choose at least one season. Cancel the request to drop it entirely.',
+			'seerr.editSaved' => 'Change saved',
+			'seerr.editLoadFailed' => 'The request could not be read.',
+			'seerr.inThisRequest' => 'In this request',
+			'seerr.openTitle' => 'Open title',
+			'seerr.moreActions' => 'More actions',
+			'seerr.actionsNotPending' => 'This request is no longer pending, so there is nothing to decide.',
+			'seerr.actionsNoRight' => 'You have no rights to change this request.',
+			'seerr.ownRequest' => 'your request',
+			'seerr.actionBusy' => 'Working',
+			'seerr.actionFailed' => 'The action failed. The list has been reloaded.',
+			'seerr.actionUncertain' => 'Not sure the action went through. The list has been reloaded.',
+			'seerr.requestCancelled' => 'Request cancelled',
+			'seerr.countsOwnScopeNote' => 'Counts are only known for all requests.',
+			'seerr.countsNotLoaded' => 'Counts not loaded.',
+			'seerr.filterUnsupportedTitle' => ({required Object status}) => 'This server cannot filter on ${status}',
+			'seerr.filterUnsupportedBody' => 'It answered with requests in another status. Choose a different filter.',
+			'seerr.ownScopeUnknown' => 'Your requests account is not known. Reconnect Requests in settings.',
+			'seerr.noOwnRequestsYet' => 'You have not requested anything yet.',
+			'seerr.discoverAction' => 'Discover',
+			'seerr.loadMoreFailed' => 'Loading more failed',
+			'seerr.myRequest' => 'My request',
+			'seerr.refreshStatus' => 'Refresh status',
+			'seerr.requestMoreSeasons' => 'Request more seasons',
+			'seerr.openInLibrary' => 'Open in library',
+			'seerr.searchInLibrary' => 'Search in library',
+			'seerr.statusNotRefreshed' => 'Status not refreshed. What you see may be out of date.',
+			'seerr.requestDeclinedNote' => 'Your request was declined.',
+			'seerr.notConfiguredBody' => 'Connect a Jellyseerr or Overseerr server to request titles.',
+			'seerr.setUp' => 'Set up',
+			'seerr.searchIncomplete' => 'Requests did not answer. Only your library was searched.',
+			'seerr.viaRequests' => 'Via Requests',
+			'seerr.searchIncompleteTitle' => 'Requests could not search',
+			'seerr.editNotAllSaved' => 'The server did not store the change as asked. Check your choice and save again.',
+			'seerr.statusNotProven' => 'The server\'s answer does not show whether it arrived. Nothing is sent again until it does.',
+			'seerr.statusUnknownBadge' => 'Status unknown',
+			'seerr.storedTargetUnlisted' => 'The stored target is no longer offered by the server. It stays as it is unless you choose another.',
+			'seerr.filterUnsupportedBySource' => 'Requests cannot filter on this status, so no list is shown under that name.',
+			'seerr.railScope' => 'Scope',
+			'seerr.requestNotInOwnList' => 'That request is no longer in your own list. It may have been handled or removed.',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli tracks who watches what on your Plex server. Connect it to see viewers, statistics and live activity inside Pleya.',
 			'tautulli.adminOnlyNote' => 'Tautulli has one key that opens its whole admin API, so it stays on this device and only you see what it reports. The people you share your server with are not affected and need to set up nothing.',
@@ -10457,6 +10793,8 @@ extension on Translations {
 			'unifiedCatalog.homeRows.moveDown' => 'Move down',
 			'unifiedCatalog.homeRows.hide' => 'Hide',
 			'unifiedCatalog.homeRows.show' => 'Show',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.homeRows.edit' => 'Edit',
 			'unifiedCatalog.homeRows.remove' => 'Remove',
 			'unifiedCatalog.homeRows.hiddenNote' => 'hidden',
@@ -10541,8 +10879,6 @@ extension on Translations {
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya profile ${name} · applies to everything without a series preference of its own',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya profile · applies to everything without a series preference of its own',
 			'languageSettings.audio' => 'Audio',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.audioFallbackNote' => 'Without that language, the file\'s own default track',
 			'languageSettings.subtitles' => 'Subtitles',
 			'languageSettings.subtitlesNote' => 'Preferred language for everything',

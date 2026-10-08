@@ -610,4 +610,72 @@ void main() {
       expect(topnav.hasFocus, isFalse, reason: 'and does not jump to the top navigation instead');
     });
   });
+
+  group('empty is not an error, and a failed page does not loop (Requests 2.0, 1E and 1G)', () {
+    Future<void> select(WidgetTester tester) async {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+    }
+
+    TvSeerrGridPage page({List<SeerrMedia> items = const [], bool failed = false, VoidCallback? onLoadMore}) =>
+        TvSeerrGridPage(
+          title: 'Drama',
+          items: items,
+          hasMore: failed,
+          isLoadingMore: false,
+          loadMoreFailed: failed,
+          onLoadMore: onLoadMore ?? () {},
+        );
+
+    testWidgets('a filtered grid with nothing in it offers clearing the filters, not a retry', (tester) async {
+      int? genre = 18;
+      await pumpView(
+        tester,
+        grid: page(),
+        type: SeerrDiscoverType.movies,
+        genres: const [(id: 18, name: 'Drama')],
+        genreId: 18,
+        onGenreSelected: (id) => genre = id,
+      );
+
+      expect(find.text(t.common.retry), findsNothing);
+      expect(find.text(t.unifiedCatalog.states.clearFilters), findsOneWidget);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrDiscoverStateAction');
+      await select(tester);
+      expect(genre, isNull);
+    });
+
+    testWidgets('a search with no match goes back, and does not ask the same thing again', (tester) async {
+      var left = 0;
+      await pumpView(tester, grid: page(), onLeaveGrid: () => left++);
+
+      expect(find.text(t.common.retry), findsNothing);
+      await select(tester);
+      expect(left, 1);
+    });
+
+    testWidgets('a page that failed leaves the cards and one retry under them', (tester) async {
+      var asked = 0;
+      await pumpView(
+        tester,
+        grid: page(
+          items: [for (var i = 0; i < 4; i++) _media(i, title: 'Title $i')],
+          failed: true,
+          onLoadMore: () => asked++,
+        ),
+      );
+
+      expect(find.byType(TvSeerrMediaCard), findsNWidgets(4));
+      tester.widgetList<TvSeerrMediaCard>(find.byType(TvSeerrMediaCard)).first.focusNode!.requestFocus();
+      await tester.pumpAndSettle();
+      expect(asked, 0);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrDiscoverLoadMoreRetry');
+      await select(tester);
+      expect(asked, 1);
+    });
+  });
 }

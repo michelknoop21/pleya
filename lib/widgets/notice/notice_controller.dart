@@ -14,6 +14,10 @@ class _Slot {
   DateTime lastSeen;
   Timer? _timer;
 
+  /// Was on screen and had to step aside for a busy notice. Waits at the
+  /// front of the queue and is exempt from the queue-full drop.
+  bool displaced = false;
+
   _Slot({required this.id, required this.notice, required this.lastSeen}) : count = 1;
 
   String get dedupeKey => '${notice.level.name}:${notice.groupKey}';
@@ -72,7 +76,10 @@ class NoticeController extends ChangeNotifier {
     final now = DateTime.now();
     final key = '${notice.level.name}:${notice.groupKey}';
 
-    final foldTarget = _findFoldTarget(key, now);
+    // A busy notice is one caller's running work and that caller dismisses
+    // it by id. Folded, the first of two to finish would take the other's
+    // spinner down with it.
+    final foldTarget = notice.busy ? null : _findFoldTarget(key, now);
     if (foldTarget != null) {
       foldTarget.count++;
       foldTarget.lastSeen = now;
@@ -87,20 +94,41 @@ class NoticeController extends ChangeNotifier {
     }
 
     final slot = _Slot(id: 'notice-${_seq++}', notice: notice, lastSeen: now);
+    if (_visible.length >= maxVisible && notice.busy) _displaceForBusy();
     if (_visible.length < maxVisible) {
       _visible.add(slot);
       _restartTimer(slot);
     } else {
-      if (_queued.length >= maxQueued) {
-        final dropped = _queued.removeAt(0);
-        appLogger.w(
-          'NoticeController: queue full ($maxQueued), dropping oldest queued notice "${dropped.notice.title}"',
-        );
-      }
       _queued.add(slot);
+      _trimQueue();
     }
     notifyListeners();
     return slot.id;
+  }
+
+  /// Frees one visible place for a busy notice. Feedback on work that is
+  /// running now is worthless once it has waited behind three errors nobody
+  /// dismissed. The newest notice that is not itself busy steps aside to the
+  /// front of the queue, so it is the first one back when a place opens.
+  /// With only busy notices on screen nothing moves and the new one queues.
+  void _displaceForBusy() {
+    final index = _visible.lastIndexWhere((s) => !s.notice.busy);
+    if (index == -1) return;
+    final slot = _visible.removeAt(index)
+      ..cancelTimer()
+      ..displaced = true;
+    _queued.insert(0, slot);
+    _trimQueue();
+  }
+
+  /// Drops the oldest waiting notice past [maxQueued]. Displaced notices are
+  /// passed over: there are never more of them than busy notices on screen,
+  /// so they cannot fill the queue on their own.
+  void _trimQueue() {
+    if (_queued.length <= maxQueued) return;
+    final index = _queued.indexWhere((s) => !s.displaced);
+    final dropped = _queued.removeAt(index == -1 ? 0 : index);
+    appLogger.w('NoticeController: queue full ($maxQueued), dropping oldest queued notice "${dropped.notice.title}"');
   }
 
   /// A repeat folds into an earlier notice with the same key while that one
@@ -109,7 +137,7 @@ class NoticeController extends ChangeNotifier {
   /// "Playback stopped" cards in a column say nothing three times.
   _Slot? _findFoldTarget(String dedupeKey, DateTime now) {
     for (final slot in _visible.followedBy(_queued)) {
-      if (slot.dedupeKey != dedupeKey) continue;
+      if (slot.notice.busy || slot.dedupeKey != dedupeKey) continue;
       if (slot.notice.duration == null || now.difference(slot.lastSeen) < dedupeWindow) {
         return slot;
       }
@@ -156,7 +184,7 @@ class NoticeController extends ChangeNotifier {
 
   void _promoteFromQueue() {
     if (_queued.isEmpty || _visible.length >= maxVisible) return;
-    final next = _queued.removeAt(0);
+    final next = _queued.removeAt(0)..displaced = false;
     _visible.add(next);
     _restartTimer(next);
   }

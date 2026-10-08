@@ -109,11 +109,24 @@ class TvSeerrRequestCard extends StatelessWidget {
     this.onNavigateLeft,
     this.onNavigateRight,
     this.onFocusChange,
+    this.onContextMenu,
+    this.busy = false,
+    this.statusUnknown = false,
   });
 
   final SeerrRequest request;
   final double width;
   final VoidCallback onSelect;
+
+  /// Long press: what this request allows (DEC-108, PB-5).
+  final VoidCallback? onContextMenu;
+
+  /// An action for this request is on the wire. The capsule says so in place
+  /// of the status, which is about to change and is not known until it has.
+  final bool busy;
+
+  /// An action was sent and neither its answer nor the request could be read.
+  final bool statusUnknown;
   final FocusNode? focusNode;
   final VoidCallback? onNavigateUp;
   final VoidCallback? onNavigateDown;
@@ -123,7 +136,9 @@ class TvSeerrRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = tvSeerrRequestStatusLabel(request);
+    final status = statusUnknown
+        ? TvSeerrStatus(t.seerr.statusUnknownBadge, kAccentAlt)
+        : (busy ? TvSeerrStatus(t.seerr.actionBusy, kAccentAlt) : tvSeerrRequestStatusLabel(request));
     final by = request.requestedByName;
     final title = request.mediaTitle ?? '';
 
@@ -136,8 +151,13 @@ class TvSeerrRequestCard extends StatelessWidget {
       // The one thing the list form had that a 281-wide card cannot also carry
       // is the date ("3 dagen geleden"); DEC-108 gives that up deliberately and
       // keeps the requester, which is the half that says whose request this is.
-      tertiary: by == null ? null : t.seerr.requestedBy(name: by),
+      // The name on its own. "Aangevraagd door" in front of it used up the
+      // line: at card width every card read "Aangevraagd door v…" and no two
+      // requesters could be told apart. The full sentence stays in the
+      // semantic label below.
+      tertiary: by,
       onSelect: onSelect,
+      onContextMenu: onContextMenu,
       focusNode: focusNode,
       onNavigateUp: onNavigateUp,
       onNavigateDown: onNavigateDown,
@@ -202,6 +222,8 @@ TvSeerrStatus? tvSeerrMediaStatusLabel(SeerrMediaStatus status) => switch (statu
 /// can watch, and "Goedgekeurd" on a title that is already there is the sort of
 /// stale answer a request list is judged on.
 TvSeerrStatus tvSeerrRequestStatusLabel(SeerrRequest request) {
+  // No status in the payload is not "pending", which is what parsing fills in.
+  if (!request.statusKnown) return TvSeerrStatus(t.seerr.statusUnknownBadge, kAccentAlt);
   if (request.mediaStatus.isAvailable) return TvSeerrStatus(t.seerr.available, kSuccess, prominent: true);
   return switch (request.status) {
     SeerrRequestStatus.pending => TvSeerrStatus(t.seerr.pending, kAccentAlt),

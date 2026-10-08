@@ -147,6 +147,12 @@ ids:
   - id: media-detail.play
     role: button
     instanceable: false
+  - id: notice.busy
+    role: status
+    instanceable: true
+  - id: server.status
+    role: dialog
+    instanceable: false
   - id: media-detail.play-from-start
     role: button
     instanceable: false
@@ -332,6 +338,36 @@ ids:
     instanceable: false
   - id: requests.mine.item
     role: list.item
+    instanceable: true
+  - id: requests.form
+    role: dialog
+    instanceable: true
+  - id: requests.form.option
+    role: list.item
+    instanceable: true
+  - id: requests.form.button
+    role: button
+    instanceable: true
+  - id: requests.form.notice
+    role: status
+    instanceable: true
+  - id: requests.actions
+    role: dialog
+    instanceable: false
+  - id: requests.actions.item
+    role: button
+    instanceable: true
+  - id: requests.list.item
+    role: list.item
+    instanceable: true
+  - id: requests.list.more
+    role: button
+    instanceable: true
+  - id: requests.list.state
+    role: region
+    instanceable: true
+  - id: requests.detail.action
+    role: button
     instanceable: true
   - id: landing.header
     role: region

@@ -16,17 +16,26 @@ import '../screens/video_player_screen.dart';
 import '../services/external_player_service.dart';
 import '../services/offline_watch_sync_service.dart';
 import '../services/settings_service.dart';
+import '../i18n/strings.g.dart';
+import '../widgets/notice/notice.dart';
+import '../widgets/notice/notice_controller.dart';
 import 'app_logger.dart';
 import 'platform_detector.dart';
 
 const String kVideoPlayerRouteName = '/video_player';
 
+/// Drops a second start of the same title while the first is still on its
+/// way to the player.
+///
+/// `mediaIndex` is the version the caller asked for, null when it left the
+/// choice to the saved preference. The key is taken before that preference is
+/// read, so it has to describe the request, not what the request resolves to.
 class VideoPlayerNavigationInFlightGuard {
   final Set<String> _keys = <String>{};
 
   bool tryStart(
     MediaItem metadata, {
-    required int mediaIndex,
+    required int? mediaIndex,
     required String? selectedMediaSourceId,
     required TranscodeQualityPreset? selectedQualityPreset,
     required bool isOffline,
@@ -44,7 +53,7 @@ class VideoPlayerNavigationInFlightGuard {
 
   void finish(
     MediaItem metadata, {
-    required int mediaIndex,
+    required int? mediaIndex,
     required String? selectedMediaSourceId,
     required TranscodeQualityPreset? selectedQualityPreset,
     required bool isOffline,
@@ -62,14 +71,14 @@ class VideoPlayerNavigationInFlightGuard {
 
   String _keyFor(
     MediaItem metadata, {
-    required int mediaIndex,
+    required int? mediaIndex,
     required String? selectedMediaSourceId,
     required TranscodeQualityPreset? selectedQualityPreset,
     required bool isOffline,
   }) {
     return [
       metadata.globalKey,
-      mediaIndex,
+      mediaIndex ?? 'saved',
       selectedMediaSourceId ?? '',
       selectedQualityPreset?.name ?? 'auto',
       isOffline,
@@ -171,65 +180,94 @@ Future<bool?> navigateToVideoPlayer(
   bool resolveWatchState = true,
   VoidCallback? onPlaybackInitFailed,
 }) async {
-  if (resolveWatchState) {
-    metadata = context.readFreshWatchState(metadata);
-  }
-  final navigator = Navigator.of(context);
-  final downloadProvider = context.read<DownloadProvider>();
-  // Use the manager-routed lookup so Jellyfin items don't trip the
-  // Plex-only client. The player branches on the returned type internally.
-  final manager = context.read<MultiServerProvider>().serverManager;
-  final offlineWatchService = context.read<OfflineWatchSyncService>();
-  final serverId = serverIdOrNull(metadata.serverId);
-  final mediaClient = serverId != null && (!isOffline || manager.isClientOnline(serverId))
-      ? manager.getClient(serverId)
-      : null;
-
-  // Refetch so the resume position is the server's current one, not whatever
-  // the list or detail snapshot happened to carry. `fetchWithCacheFallback` is
-  // network-first, so this is a real read; it only falls back to the cache when
-  // the request fails, which is the behaviour we want anyway.
-  // Fetch failure → play what we have, flagged as not fresh.
-  var resumeProgressIsFresh = false;
-  if (shouldRefetchForFreshResume(
-    resolveWatchState: resolveWatchState,
-    isOffline: isOffline,
-    hasClient: mediaClient != null,
-    kind: metadata.kind,
-  )) {
-    try {
-      final fetched = await mediaClient!.fetchItem(metadata.id);
-      if (!context.mounted) return null;
-      if (fetched != null) {
-        metadata = fetched;
-        resumeProgressIsFresh = true;
-      }
-      metadata = context.readFreshWatchState(metadata);
-    } catch (_) {}
-  }
-  if (!context.mounted) return null;
-
-  final mediaIndex = selectedMediaIndex ?? await savedMediaVersionIndexFor(metadata) ?? 0;
-
+  // The item as the caller handed it over. The refetch below replaces
+  // [metadata], and a server may answer under another id, so the guard is
+  // taken and given back under this one.
+  final requested = metadata;
   var markedInFlight = false;
   if (!usePushReplacement) {
     markedInFlight = _videoPlayerNavigationInFlightGuard.tryStart(
-      metadata,
-      mediaIndex: mediaIndex,
+      requested,
+      mediaIndex: selectedMediaIndex,
       selectedMediaSourceId: selectedMediaSourceId,
       selectedQualityPreset: selectedQualityPreset,
       isOffline: isOffline,
     );
     if (!markedInFlight) {
-      appLogger.d(
-        'Video player navigation already in flight for ${metadata.id} (mediaIndex=$mediaIndex), '
-        'skipping duplicate navigation',
-      );
+      appLogger.d('Video player navigation already in flight for ${requested.id}, skipping duplicate navigation');
       return null;
     }
   }
+  var handedToPlayer = false;
+  void releaseInFlight() {
+    if (!markedInFlight) return;
+    markedInFlight = false;
+    _videoPlayerNavigationInFlightGuard.finish(
+      requested,
+      mediaIndex: selectedMediaIndex,
+      selectedMediaSourceId: selectedMediaSourceId,
+      selectedQualityPreset: selectedQualityPreset,
+      isOffline: isOffline,
+    );
+  }
+
+  // Answer Select before the first await. The notice lives in the app shell,
+  // takes no focus and pushes no route, so the card or button that started
+  // this keeps focus if the start is abandoned. TV only: there the refetch
+  // was the whole gap between the press and the player.
+  final startNoticeId = markedInFlight && PlatformDetector.isTV()
+      ? noticeController.show(
+          Notice(
+            level: NoticeLevel.info,
+            title: t.notices.playbackStartingTitle,
+            body: requested.displayTitle,
+            groupKey: 'playback-start:${requested.globalKey}',
+            busy: true,
+          ),
+        )
+      : null;
 
   try {
+    if (resolveWatchState) {
+      metadata = context.readFreshWatchState(metadata);
+    }
+    final navigator = Navigator.of(context);
+    final downloadProvider = context.read<DownloadProvider>();
+    // Use the manager-routed lookup so Jellyfin items don't trip the
+    // Plex-only client. The player branches on the returned type internally.
+    final manager = context.read<MultiServerProvider>().serverManager;
+    final offlineWatchService = context.read<OfflineWatchSyncService>();
+    final serverId = serverIdOrNull(metadata.serverId);
+    final mediaClient = serverId != null && (!isOffline || manager.isClientOnline(serverId))
+        ? manager.getClient(serverId)
+        : null;
+
+    // Refetch so the resume position is the server's current one, not whatever
+    // the list or detail snapshot happened to carry. `fetchWithCacheFallback` is
+    // network-first, so this is a real read; it only falls back to the cache when
+    // the request fails, which is the behaviour we want anyway.
+    // Fetch failure → play what we have, flagged as not fresh.
+    var resumeProgressIsFresh = false;
+    if (shouldRefetchForFreshResume(
+      resolveWatchState: resolveWatchState,
+      isOffline: isOffline,
+      hasClient: mediaClient != null,
+      kind: metadata.kind,
+    )) {
+      try {
+        final fetched = await mediaClient!.fetchItem(metadata.id);
+        if (!context.mounted) return null;
+        if (fetched != null) {
+          metadata = fetched;
+          resumeProgressIsFresh = true;
+        }
+        metadata = context.readFreshWatchState(metadata);
+      } catch (_) {}
+    }
+    if (!context.mounted) return null;
+
+    final mediaIndex = selectedMediaIndex ?? await savedMediaVersionIndexFor(metadata) ?? 0;
+
     // Check if external player is enabled
     try {
       final settingsService = await SettingsService.getInstance();
@@ -300,17 +338,19 @@ Future<bool?> navigateToVideoPlayer(
       reverseTransitionDuration: Duration.zero,
     );
 
-    return usePushReplacement ? navigator.pushReplacement<bool, bool>(route) : navigator.push<bool>(route);
-  } finally {
+    final result = usePushReplacement ? navigator.pushReplacement<bool, bool>(route) : navigator.push<bool>(route);
     if (markedInFlight) {
-      _videoPlayerNavigationInFlightGuard.finish(
-        metadata,
-        mediaIndex: mediaIndex,
-        selectedMediaSourceId: selectedMediaSourceId,
-        selectedQualityPreset: selectedQualityPreset,
-        isOffline: isOffline,
-      );
+      // The route is pushed but not built yet. Keep the guard through the
+      // frame that mounts the player: from then on `VideoPlayerScreenState`
+      // answers for duplicates through `activeId`, and it clears that in its
+      // own dispose, so no key can outlive a navigator that was torn down.
+      handedToPlayer = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => releaseInFlight());
     }
+    return result;
+  } finally {
+    if (startNoticeId != null) noticeController.dismiss(startNoticeId);
+    if (!handedToPlayer) releaseInFlight();
   }
 }
 

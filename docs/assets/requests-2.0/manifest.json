@@ -1,0 +1,3745 @@
+{
+ "set": "Requests 2.0 (A-20)",
+ "status": "Ontwerp goedgekeurd door Michel Knoop op 8 oktober 2026; Impeccable polish en onafhankelijke review afgerond",
+ "generated": "2026-10-08",
+ "images": [
+  {
+   "file": "tv/rq-tv-1A-geladen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1A"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1B-filters-open.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1C-niet-ingesteld.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1C"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1D-laden.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1E-leeg-na-filter.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1E"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1F-fout-met-opnieuw-proberen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1G-meer-laden-mislukt.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1G"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-1H-terugkeer-naar-gekozen-kaart.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Ontdekken",
+   "panels": [
+    "1H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-2A-invoer-met-systeemtoetsenbord.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Zoeken",
+   "panels": [
+    "2A"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-2B-resultaten-gemengd.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Zoeken",
+   "panels": [
+    "2B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-2C-geen-match-in-bibliotheek-door-naar-aanvrage.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Zoeken",
+   "panels": [
+    "2C"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-2D-nergens-een-match.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Zoeken",
+   "panels": [
+    "2D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-2E-onvolledig-aanvragen-antwoordde-niet.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Zoeken",
+   "panels": [
+    "2E"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3A-nog-niet-aangevraagd-unknown.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3A"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3B-in-afwachting-pending.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3C-bezig-processing.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3C"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3D-deels-beschikbaar-partial-serie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3E-beschikbaar-identiteit-bewezen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3E"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3F-beschikbaar-bron-onbekend.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3G-afgewezen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3G"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-3H-status-niet-ververst.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Detail film/serie",
+   "panels": [
+    "3H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-4A-4B-aanvraag-film.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag film",
+   "panels": [
+    "4A",
+    "4B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-4C-4D-aanvraag-film.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag film",
+   "panels": [
+    "4C",
+    "4D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-4E-4F-aanvraag-film.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag film",
+   "panels": [
+    "4E",
+    "4F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-4G-4H-aanvraag-film.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag film",
+   "panels": [
+    "4G",
+    "4H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-4I-4J-aanvraag-film.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag film",
+   "panels": [
+    "4I",
+    "4J"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-4K-4K-aanvraag-film.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag film",
+   "panels": [
+    "4K"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-5A-5B-aanvraag-serie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5A",
+    "5B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-5C-5D-aanvraag-serie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5C",
+    "5D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-5E-5F-aanvraag-serie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5E",
+    "5F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-5G-5H-aanvraag-serie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5G",
+    "5H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-5I-5I-aanvraag-serie.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5I"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-6A-6B-advanced-target.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Advanced target",
+   "panels": [
+    "6A",
+    "6B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-6C-6D-advanced-target.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Advanced target",
+   "panels": [
+    "6C",
+    "6D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-6E-6F-advanced-target.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Advanced target",
+   "panels": [
+    "6E",
+    "6F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-6G-6H-advanced-target.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Advanced target",
+   "panels": [
+    "6G",
+    "6H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7A-mijn-aanvragen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7A"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7B-alle-aanvragen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7C-statusfilter-met-aantallen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7C"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7D-aantallen-onbekend-bij-eigen-bereik.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7E-aantallen-niet-geladen.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7E"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7F-laden.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7G-leeg.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7G"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7H-gefilterd-leeg.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7I-fout.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7I"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7J-meer-laden-mislukt.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7J"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-7K-statusverandering-en-terugkeer-naar-kaart.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7K"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8K-actie-bezig-op-de-kaart.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8K"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8L-actie-mislukt-focus-terug-op-de-kaart.jpg",
+   "platform": "TV",
+   "pixels": "1920x1136",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8L"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8A-8B-aanvraagbeheer.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8A",
+    "8B"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8C-8D-aanvraagbeheer.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8C",
+    "8D"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8E-8F-aanvraagbeheer.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8E",
+    "8F"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8G-8H-aanvraagbeheer.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8G",
+    "8H"
+   ]
+  },
+  {
+   "file": "tv/rq-tv-8I-8J-aanvraagbeheer.jpg",
+   "platform": "TV",
+   "pixels": "1920x1080",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8I",
+    "8J"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-1A-1D-ontdekken.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Ontdekken",
+   "panels": [
+    "1A",
+    "1B",
+    "1C",
+    "1D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-1E-1H-ontdekken.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Ontdekken",
+   "panels": [
+    "1E",
+    "1F",
+    "1G",
+    "1H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-2A-2D-zoeken.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Zoeken",
+   "panels": [
+    "2A",
+    "2B",
+    "2C",
+    "2D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-2E-2E-zoeken.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Zoeken",
+   "panels": [
+    "2E"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-3A-3D-detail-film-serie.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Detail film/serie",
+   "panels": [
+    "3A",
+    "3B",
+    "3C",
+    "3D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-3E-3H-detail-film-serie.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Detail film/serie",
+   "panels": [
+    "3E",
+    "3F",
+    "3G",
+    "3H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-4A-4D-aanvraag-film.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraag film",
+   "panels": [
+    "4A",
+    "4B",
+    "4C",
+    "4D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-4E-4H-aanvraag-film.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraag film",
+   "panels": [
+    "4E",
+    "4F",
+    "4G",
+    "4H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-4I-4K-aanvraag-film.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraag film",
+   "panels": [
+    "4I",
+    "4J",
+    "4K"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-5A-5D-aanvraag-serie.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5A",
+    "5B",
+    "5C",
+    "5D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-5E-5H-aanvraag-serie.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5E",
+    "5F",
+    "5G",
+    "5H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-5I-5I-aanvraag-serie.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5I"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-6A-6D-advanced-target.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Advanced target",
+   "panels": [
+    "6A",
+    "6B",
+    "6C",
+    "6D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-6E-6H-advanced-target.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Advanced target",
+   "panels": [
+    "6E",
+    "6F",
+    "6G",
+    "6H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-7A-7D-aanvragenlijst.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7A",
+    "7B",
+    "7C",
+    "7D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-7E-7H-aanvragenlijst.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7E",
+    "7F",
+    "7G",
+    "7H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-7I-7K-aanvragenlijst.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7I",
+    "7J",
+    "7K"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-8A-8D-aanvraagbeheer.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8A",
+    "8B",
+    "8C",
+    "8D"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-8E-8H-aanvraagbeheer.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8E",
+    "8F",
+    "8G",
+    "8H"
+   ]
+  },
+  {
+   "file": "phone/rq-ph-8I-8L-aanvraagbeheer.jpg",
+   "platform": "Telefoon",
+   "pixels": "3456x1924",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8I",
+    "8J",
+    "8K",
+    "8L"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1A-geladen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1A"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1B-filters-open.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1B"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1C-niet-ingesteld.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1D-laden.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1D"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1E-leeg-na-filter.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1E"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1F-fout-met-opnieuw-proberen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1G-meer-laden-mislukt.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1G"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-1H-terugkeer-naar-gekozen-kaart.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Ontdekken",
+   "panels": [
+    "1H"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-2A-invoer-met-systeemtoetsenbord.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Zoeken",
+   "panels": [
+    "2A"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-2B-resultaten-gemengd.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Zoeken",
+   "panels": [
+    "2B"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-2C-geen-match-in-bibliotheek-door-naar-aanvrage.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Zoeken",
+   "panels": [
+    "2C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-2D-nergens-een-match.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Zoeken",
+   "panels": [
+    "2D"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-2E-onvolledig-aanvragen-antwoordde-niet.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Zoeken",
+   "panels": [
+    "2E"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3A-nog-niet-aangevraagd-unknown.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3A"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3B-in-afwachting-pending.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3B"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3C-bezig-processing.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3D-deels-beschikbaar-partial-serie.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3D"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3E-beschikbaar-identiteit-bewezen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3E"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3F-beschikbaar-bron-onbekend.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3G-afgewezen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3G"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-3H-status-niet-ververst.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Detail film/serie",
+   "panels": [
+    "3H"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-4A-4C-aanvraag-film.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag film",
+   "panels": [
+    "4A",
+    "4B",
+    "4C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-4D-4F-aanvraag-film.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag film",
+   "panels": [
+    "4D",
+    "4E",
+    "4F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-4G-4I-aanvraag-film.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag film",
+   "panels": [
+    "4G",
+    "4H",
+    "4I"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-4J-4K-aanvraag-film.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag film",
+   "panels": [
+    "4J",
+    "4K"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-5A-5C-aanvraag-serie.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5A",
+    "5B",
+    "5C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-5D-5F-aanvraag-serie.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5D",
+    "5E",
+    "5F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-5G-5I-aanvraag-serie.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5G",
+    "5H",
+    "5I"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-6A-6C-advanced-target.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Advanced target",
+   "panels": [
+    "6A",
+    "6B",
+    "6C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-6D-6F-advanced-target.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Advanced target",
+   "panels": [
+    "6D",
+    "6E",
+    "6F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-6G-6H-advanced-target.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Advanced target",
+   "panels": [
+    "6G",
+    "6H"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7A-mijn-aanvragen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7A"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7B-alle-aanvragen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7B"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7C-statusfilter-met-aantallen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7D-aantallen-onbekend-bij-eigen-bereik.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7D"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7E-aantallen-niet-geladen.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7E"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7F-laden.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7G-leeg.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7G"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7H-gefilterd-leeg.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7H"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7I-fout.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7I"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7J-meer-laden-mislukt.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7J"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-7K-statusverandering-en-terugkeer-naar-kaart.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7K"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-8K-actie-bezig-op-de-kaart.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8K"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-8L-actie-mislukt-focus-terug-op-de-kaart.jpg",
+   "platform": "Tablet",
+   "pixels": "1180x876",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8L"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-8A-8C-aanvraagbeheer.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8A",
+    "8B",
+    "8C"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-8D-8F-aanvraagbeheer.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8D",
+    "8E",
+    "8F"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-8G-8I-aanvraagbeheer.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8G",
+    "8H",
+    "8I"
+   ]
+  },
+  {
+   "file": "tablet/rq-tb-8J-8J-aanvraagbeheer.jpg",
+   "platform": "Tablet",
+   "pixels": "1720x820",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8J"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1A-geladen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1A"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1B-filters-open.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1B"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1C-niet-ingesteld.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1D-laden.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1D"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1E-leeg-na-filter.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1E"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1F-fout-met-opnieuw-proberen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1G-meer-laden-mislukt.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1G"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-1H-terugkeer-naar-gekozen-kaart.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Ontdekken",
+   "panels": [
+    "1H"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-2A-invoer-met-systeemtoetsenbord.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Zoeken",
+   "panels": [
+    "2A"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-2B-resultaten-gemengd.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Zoeken",
+   "panels": [
+    "2B"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-2C-geen-match-in-bibliotheek-door-naar-aanvrage.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Zoeken",
+   "panels": [
+    "2C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-2D-nergens-een-match.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Zoeken",
+   "panels": [
+    "2D"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-2E-onvolledig-aanvragen-antwoordde-niet.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Zoeken",
+   "panels": [
+    "2E"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3A-nog-niet-aangevraagd-unknown.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3A"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3B-in-afwachting-pending.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3B"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3C-bezig-processing.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3D-deels-beschikbaar-partial-serie.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3D"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3E-beschikbaar-identiteit-bewezen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3E"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3F-beschikbaar-bron-onbekend.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3G-afgewezen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3G"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-3H-status-niet-ververst.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Detail film/serie",
+   "panels": [
+    "3H"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-4A-4C-aanvraag-film.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag film",
+   "panels": [
+    "4A",
+    "4B",
+    "4C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-4D-4F-aanvraag-film.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag film",
+   "panels": [
+    "4D",
+    "4E",
+    "4F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-4G-4I-aanvraag-film.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag film",
+   "panels": [
+    "4G",
+    "4H",
+    "4I"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-4J-4K-aanvraag-film.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag film",
+   "panels": [
+    "4J",
+    "4K"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-5A-5C-aanvraag-serie.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5A",
+    "5B",
+    "5C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-5D-5F-aanvraag-serie.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5D",
+    "5E",
+    "5F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-5G-5I-aanvraag-serie.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraag serie",
+   "panels": [
+    "5G",
+    "5H",
+    "5I"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-6A-6C-advanced-target.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Advanced target",
+   "panels": [
+    "6A",
+    "6B",
+    "6C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-6D-6F-advanced-target.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Advanced target",
+   "panels": [
+    "6D",
+    "6E",
+    "6F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-6G-6H-advanced-target.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Advanced target",
+   "panels": [
+    "6G",
+    "6H"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7A-mijn-aanvragen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7A"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7B-alle-aanvragen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7B"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7C-statusfilter-met-aantallen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7D-aantallen-onbekend-bij-eigen-bereik.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7D"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7E-aantallen-niet-geladen.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7E"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7F-laden.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7G-leeg.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7G"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7H-gefilterd-leeg.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7H"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7I-fout.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7I"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7J-meer-laden-mislukt.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7J"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-7K-statusverandering-en-terugkeer-naar-kaart.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvragenlijst",
+   "panels": [
+    "7K"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-8K-actie-bezig-op-de-kaart.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8K"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-8L-actie-mislukt-focus-terug-op-de-kaart.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x956",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8L"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-8A-8C-aanvraagbeheer.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8A",
+    "8B",
+    "8C"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-8D-8F-aanvraagbeheer.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8D",
+    "8E",
+    "8F"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-8G-8I-aanvraagbeheer.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8G",
+    "8H",
+    "8I"
+   ]
+  },
+  {
+   "file": "desktop/rq-dk-8J-8J-aanvraagbeheer.jpg",
+   "platform": "Desktop",
+   "pixels": "1440x900",
+   "family": "Aanvraagbeheer",
+   "panels": [
+    "8J"
+   ]
+  }
+ ],
+ "states": [
+  {
+   "code": "1A",
+   "family": "Ontdekken",
+   "state": "Geladen",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Mockup 35 A met de profiel- en servercontext als tag erbij",
+   "TV": {
+    "file": "tv/rq-tv-1A-geladen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1A-1D-ontdekken.jpg",
+    "panel": "1A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1A-geladen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1A-geladen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1B",
+   "family": "Ontdekken",
+   "state": "Filters open",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "De bestaande ontdekfilters: soort, genre, streamingdienst (35 B)",
+   "TV": {
+    "file": "tv/rq-tv-1B-filters-open.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1A-1D-ontdekken.jpg",
+    "panel": "1B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1B-filters-open.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1B-filters-open.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1C",
+   "family": "Ontdekken",
+   "state": "Niet ingesteld",
+   "role": "geen koppeling",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Geen Opnieuw-knop: er is niets te herhalen, alleen iets in te stellen",
+   "TV": {
+    "file": "tv/rq-tv-1C-niet-ingesteld.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1A-1D-ontdekken.jpg",
+    "panel": "1C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1C-niet-ingesteld.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1C-niet-ingesteld.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1D",
+   "family": "Ontdekken",
+   "state": "Laden",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Skelet in de kaartmaat, kop en filters staan er al",
+   "TV": {
+    "file": "tv/rq-tv-1D-laden.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1A-1D-ontdekken.jpg",
+    "panel": "1D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1D-laden.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1D-laden.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1E",
+   "family": "Ontdekken",
+   "state": "Leeg na filter",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Leeg is geen fout: Filters wissen in plaats van Opnieuw",
+   "TV": {
+    "file": "tv/rq-tv-1E-leeg-na-filter.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1E-1H-ontdekken.jpg",
+    "panel": "1E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1E-leeg-na-filter.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1E-leeg-na-filter.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1F",
+   "family": "Ontdekken",
+   "state": "Fout met opnieuw proberen",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Echte fout houdt Opnieuw, filters blijven staan",
+   "TV": {
+    "file": "tv/rq-tv-1F-fout-met-opnieuw-proberen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1E-1H-ontdekken.jpg",
+    "panel": "1F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1F-fout-met-opnieuw-proberen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1F-fout-met-opnieuw-proberen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1G",
+   "family": "Ontdekken",
+   "state": "Meer laden mislukt",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Paginafout als tegel aan het eind; geladen kaarten blijven",
+   "TV": {
+    "file": "tv/rq-tv-1G-meer-laden-mislukt.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1E-1H-ontdekken.jpg",
+    "panel": "1G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1G-meer-laden-mislukt.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1G-meer-laden-mislukt.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "1H",
+   "family": "Ontdekken",
+   "state": "Terugkeer naar gekozen kaart",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Terug uit detail landt op dezelfde kaart, met de nieuwe status",
+   "TV": {
+    "file": "tv/rq-tv-1H-terugkeer-naar-gekozen-kaart.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-1E-1H-ontdekken.jpg",
+    "panel": "1H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-1H-terugkeer-naar-gekozen-kaart.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-1H-terugkeer-naar-gekozen-kaart.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "2A",
+   "family": "Zoeken",
+   "state": "Invoer met systeemtoetsenbord",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Native invoer per platform; Pleya tekent geen eigen toetsenbord",
+   "TV": {
+    "file": "tv/rq-tv-2A-invoer-met-systeemtoetsenbord.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-2A-2D-zoeken.jpg",
+    "panel": "2A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-2A-invoer-met-systeemtoetsenbord.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-2A-invoer-met-systeemtoetsenbord.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "2B",
+   "family": "Zoeken",
+   "state": "Resultaten gemengd",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Bibliotheek en Aanvragen als aparte koppen; capsule zegt beschikbaar, aangevraagd of deels",
+   "TV": {
+    "file": "tv/rq-tv-2B-resultaten-gemengd.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-2A-2D-zoeken.jpg",
+    "panel": "2B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-2B-resultaten-gemengd.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-2B-resultaten-gemengd.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "2C",
+   "family": "Zoeken",
+   "state": "Geen match in bibliotheek, door naar Aanvragen",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Mockup 36 C: de query gaat mee",
+   "TV": {
+    "file": "tv/rq-tv-2C-geen-match-in-bibliotheek-door-naar-aanvrage.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-2A-2D-zoeken.jpg",
+    "panel": "2C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-2C-geen-match-in-bibliotheek-door-naar-aanvrage.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-2C-geen-match-in-bibliotheek-door-naar-aanvrage.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "2D",
+   "family": "Zoeken",
+   "state": "Nergens een match",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Beide bronnen antwoordden; leeg, geen storing",
+   "TV": {
+    "file": "tv/rq-tv-2D-nergens-een-match.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-2A-2D-zoeken.jpg",
+    "panel": "2D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-2D-nergens-een-match.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-2D-nergens-een-match.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "2E",
+   "family": "Zoeken",
+   "state": "Onvolledig: Aanvragen antwoordde niet",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Alleen getoond als de fout bekend is; bibliotheekresultaten blijven",
+   "TV": {
+    "file": "tv/rq-tv-2E-onvolledig-aanvragen-antwoordde-niet.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-2E-2E-zoeken.jpg",
+    "panel": "2E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-2E-onvolledig-aanvragen-antwoordde-niet.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-2E-onvolledig-aanvragen-antwoordde-niet.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3A",
+   "family": "Detail film/serie",
+   "state": "Nog niet aangevraagd (unknown)",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Aanvragen is de primaire actie",
+   "TV": {
+    "file": "tv/rq-tv-3A-nog-niet-aangevraagd-unknown.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3A-3D-detail-film-serie.jpg",
+    "panel": "3A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3A-nog-niet-aangevraagd-unknown.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3A-nog-niet-aangevraagd-unknown.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3B",
+   "family": "Detail film/serie",
+   "state": "In afwachting (pending)",
+   "role": "aanvrager, eigen aanvraag",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Primaire actie opent de eigen aanvraag in plaats van een dode knop",
+   "TV": {
+    "file": "tv/rq-tv-3B-in-afwachting-pending.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3A-3D-detail-film-serie.jpg",
+    "panel": "3B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3B-in-afwachting-pending.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3B-in-afwachting-pending.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3C",
+   "family": "Detail film/serie",
+   "state": "Bezig (processing)",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Geen aanvraagknop; verversen is de zinvolle actie",
+   "TV": {
+    "file": "tv/rq-tv-3C-bezig-processing.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3A-3D-detail-film-serie.jpg",
+    "panel": "3C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3C-bezig-processing.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3C-bezig-processing.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3D",
+   "family": "Detail film/serie",
+   "state": "Deels beschikbaar (partial), serie",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Meer seizoenen aanvragen naast zoeken in de bibliotheek",
+   "TV": {
+    "file": "tv/rq-tv-3D-deels-beschikbaar-partial-serie.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3A-3D-detail-film-serie.jpg",
+    "panel": "3D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3D-deels-beschikbaar-partial-serie.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3D-deels-beschikbaar-partial-serie.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3E",
+   "family": "Detail film/serie",
+   "state": "Beschikbaar, identiteit bewezen",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Opent het bestaande Pleya-detail; noemt geen bron en speelt niet zelf af",
+   "TV": {
+    "file": "tv/rq-tv-3E-beschikbaar-identiteit-bewezen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3E-3H-detail-film-serie.jpg",
+    "panel": "3E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3E-beschikbaar-identiteit-bewezen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3E-beschikbaar-identiteit-bewezen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3F",
+   "family": "Detail film/serie",
+   "state": "Beschikbaar, bron onbekend",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Zoekroute met de titel als query; geen afspeelbelofte",
+   "TV": {
+    "file": "tv/rq-tv-3F-beschikbaar-bron-onbekend.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3E-3H-detail-film-serie.jpg",
+    "panel": "3F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3F-beschikbaar-bron-onbekend.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3F-beschikbaar-bron-onbekend.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3G",
+   "family": "Detail film/serie",
+   "state": "Afgewezen",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Afwijzing zichtbaar waar bekend; opnieuw aanvragen als het recht er is",
+   "TV": {
+    "file": "tv/rq-tv-3G-afgewezen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3E-3H-detail-film-serie.jpg",
+    "panel": "3G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3G-afgewezen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3G-afgewezen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "3H",
+   "family": "Detail film/serie",
+   "state": "Status niet ververst",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Onbekend is niet beschikbaar en niet aanvraagbaar",
+   "TV": {
+    "file": "tv/rq-tv-3H-status-niet-ververst.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-3E-3H-detail-film-serie.jpg",
+    "panel": "3H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-3H-status-niet-ververst.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-3H-status-niet-ververst.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "4A",
+   "family": "Aanvraag film",
+   "state": "Standaard: 4K toegestaan, limiet bekend",
+   "role": "aanvrager met 4K-film",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Titel, kwaliteit en limiet in één blik",
+   "TV": {
+    "file": "tv/rq-tv-4A-4B-aanvraag-film.jpg",
+    "panel": "4A",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4A-4D-aanvraag-film.jpg",
+    "panel": "4A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4A-4C-aanvraag-film.jpg",
+    "panel": "4A",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4A-4C-aanvraag-film.jpg",
+    "panel": "4A",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4B",
+   "family": "Aanvraag film",
+   "state": "4K niet toegestaan voor films, onbeperkt",
+   "role": "aanvrager zonder 4K-film",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "4K-recht is per soort; de regel legt uit waarom er geen schakelaar is",
+   "TV": {
+    "file": "tv/rq-tv-4A-4B-aanvraag-film.jpg",
+    "panel": "4B",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4A-4D-aanvraag-film.jpg",
+    "panel": "4B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4A-4C-aanvraag-film.jpg",
+    "panel": "4B",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4A-4C-aanvraag-film.jpg",
+    "panel": "4B",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4C",
+   "family": "Aanvraag film",
+   "state": "Limiet onbekend",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Onbekend is geen nul en geen onbeperkt",
+   "TV": {
+    "file": "tv/rq-tv-4C-4D-aanvraag-film.jpg",
+    "panel": "4C",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4A-4D-aanvraag-film.jpg",
+    "panel": "4C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4A-4C-aanvraag-film.jpg",
+    "panel": "4C",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4A-4C-aanvraag-film.jpg",
+    "panel": "4C",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4D",
+   "family": "Aanvraag film",
+   "state": "Limiet bereikt",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Indienen uit, focus op Sluiten",
+   "TV": {
+    "file": "tv/rq-tv-4C-4D-aanvraag-film.jpg",
+    "panel": "4D",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4A-4D-aanvraag-film.jpg",
+    "panel": "4D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4D-4F-aanvraag-film.jpg",
+    "panel": "4D",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4D-4F-aanvraag-film.jpg",
+    "panel": "4D",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4E",
+   "family": "Aanvraag film",
+   "state": "Al aangevraagd (duplicaat)",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Geen tweede aanvraag; wel de weg naar de bestaande",
+   "TV": {
+    "file": "tv/rq-tv-4E-4F-aanvraag-film.jpg",
+    "panel": "4E",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4E-4H-aanvraag-film.jpg",
+    "panel": "4E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4D-4F-aanvraag-film.jpg",
+    "panel": "4E",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4D-4F-aanvraag-film.jpg",
+    "panel": "4E",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4F",
+   "family": "Aanvraag film",
+   "state": "Geen aanvraagrecht",
+   "role": "profiel zonder recht",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Bestaande foutcopy, geen formulier",
+   "TV": {
+    "file": "tv/rq-tv-4E-4F-aanvraag-film.jpg",
+    "panel": "4F",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4E-4H-aanvraag-film.jpg",
+    "panel": "4F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4D-4F-aanvraag-film.jpg",
+    "panel": "4F",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4D-4F-aanvraag-film.jpg",
+    "panel": "4F",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4G",
+   "family": "Aanvraag film",
+   "state": "Bezig met indienen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Eén keer verstuurd; beide knoppen uit",
+   "TV": {
+    "file": "tv/rq-tv-4G-4H-aanvraag-film.jpg",
+    "panel": "4G",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4E-4H-aanvraag-film.jpg",
+    "panel": "4G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4G-4I-aanvraag-film.jpg",
+    "panel": "4G",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4G-4I-aanvraag-film.jpg",
+    "panel": "4G",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4H",
+   "family": "Aanvraag film",
+   "state": "Fout, keuzes behouden",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "4K-keuze blijft staan, herstel is één knop",
+   "TV": {
+    "file": "tv/rq-tv-4G-4H-aanvraag-film.jpg",
+    "panel": "4H",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4E-4H-aanvraag-film.jpg",
+    "panel": "4H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4G-4I-aanvraag-film.jpg",
+    "panel": "4H",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4G-4I-aanvraag-film.jpg",
+    "panel": "4H",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4I",
+   "family": "Aanvraag film",
+   "state": "Onzeker of het aankwam",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Eerst status herlezen, dan pas eventueel opnieuw",
+   "TV": {
+    "file": "tv/rq-tv-4I-4J-aanvraag-film.jpg",
+    "panel": "4I",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4I-4K-aanvraag-film.jpg",
+    "panel": "4I",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4G-4I-aanvraag-film.jpg",
+    "panel": "4I",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4G-4I-aanvraag-film.jpg",
+    "panel": "4I",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4J",
+   "family": "Aanvraag film",
+   "state": "Door de server geweigerd (403/409)",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Geen blind opnieuw indienen, geen verruimde rechten",
+   "TV": {
+    "file": "tv/rq-tv-4I-4J-aanvraag-film.jpg",
+    "panel": "4J",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4I-4K-aanvraag-film.jpg",
+    "panel": "4J",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4J-4K-aanvraag-film.jpg",
+    "panel": "4J",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4J-4K-aanvraag-film.jpg",
+    "panel": "4J",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "4K",
+   "family": "Aanvraag film",
+   "state": "Bevestigd resultaat",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Zegt wat er herladen is en waar je naartoe kunt",
+   "TV": {
+    "file": "tv/rq-tv-4K-4K-aanvraag-film.jpg",
+    "panel": "4K",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-4I-4K-aanvraag-film.jpg",
+    "panel": "4K",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-4J-4K-aanvraag-film.jpg",
+    "panel": "4K",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-4J-4K-aanvraag-film.jpg",
+    "panel": "4K",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5A",
+   "family": "Aanvraag serie",
+   "state": "Alle aanvraagbare seizoenen vooraf gekozen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Beschikbaar en aangevraagd zijn zichtbaar maar niet te kiezen",
+   "TV": {
+    "file": "tv/rq-tv-5A-5B-aanvraag-serie.jpg",
+    "panel": "5A",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5A-5D-aanvraag-serie.jpg",
+    "panel": "5A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5A-5C-aanvraag-serie.jpg",
+    "panel": "5A",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5A-5C-aanvraag-serie.jpg",
+    "panel": "5A",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5B",
+   "family": "Aanvraag serie",
+   "state": "Eén seizoen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "De knop noemt wat er verstuurd wordt",
+   "TV": {
+    "file": "tv/rq-tv-5A-5B-aanvraag-serie.jpg",
+    "panel": "5B",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5A-5D-aanvraag-serie.jpg",
+    "panel": "5B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5A-5C-aanvraag-serie.jpg",
+    "panel": "5B",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5A-5C-aanvraag-serie.jpg",
+    "panel": "5B",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5C",
+   "family": "Aanvraag serie",
+   "state": "Meerdere seizoenen, selecteer alles gemengd",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Alle seizoenen toont de tussenstand",
+   "TV": {
+    "file": "tv/rq-tv-5C-5D-aanvraag-serie.jpg",
+    "panel": "5C",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5A-5D-aanvraag-serie.jpg",
+    "panel": "5C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5A-5C-aanvraag-serie.jpg",
+    "panel": "5C",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5A-5C-aanvraag-serie.jpg",
+    "panel": "5C",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5D",
+   "family": "Aanvraag serie",
+   "state": "Lange scrolllijst (14 seizoenen)",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Kop en knoppen blijven staan; alleen de lijst schuift",
+   "TV": {
+    "file": "tv/rq-tv-5C-5D-aanvraag-serie.jpg",
+    "panel": "5D",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5A-5D-aanvraag-serie.jpg",
+    "panel": "5D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5D-5F-aanvraag-serie.jpg",
+    "panel": "5D",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5D-5F-aanvraag-serie.jpg",
+    "panel": "5D",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5E",
+   "family": "Aanvraag serie",
+   "state": "Geen aanvraagbaar seizoen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Uitleg in plaats van een leeg formulier",
+   "TV": {
+    "file": "tv/rq-tv-5E-5F-aanvraag-serie.jpg",
+    "panel": "5E",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5E-5H-aanvraag-serie.jpg",
+    "panel": "5E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5D-5F-aanvraag-serie.jpg",
+    "panel": "5E",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5D-5F-aanvraag-serie.jpg",
+    "panel": "5E",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5F",
+   "family": "Aanvraag serie",
+   "state": "4K voor series, limiet krap",
+   "role": "aanvrager met 4K-serie",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Pleya rekent de limiet niet zelf uit; de server beslist",
+   "TV": {
+    "file": "tv/rq-tv-5E-5F-aanvraag-serie.jpg",
+    "panel": "5F",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5E-5H-aanvraag-serie.jpg",
+    "panel": "5F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5D-5F-aanvraag-serie.jpg",
+    "panel": "5F",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5D-5F-aanvraag-serie.jpg",
+    "panel": "5F",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5G",
+   "family": "Aanvraag serie",
+   "state": "Bezig met indienen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Zelfde guard als bij film",
+   "TV": {
+    "file": "tv/rq-tv-5G-5H-aanvraag-serie.jpg",
+    "panel": "5G",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5E-5H-aanvraag-serie.jpg",
+    "panel": "5G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5G-5I-aanvraag-serie.jpg",
+    "panel": "5G",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5G-5I-aanvraag-serie.jpg",
+    "panel": "5G",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5H",
+   "family": "Aanvraag serie",
+   "state": "Fout, selectie behouden",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "De gekozen seizoenen staan er nog",
+   "TV": {
+    "file": "tv/rq-tv-5G-5H-aanvraag-serie.jpg",
+    "panel": "5H",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5E-5H-aanvraag-serie.jpg",
+    "panel": "5H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5G-5I-aanvraag-serie.jpg",
+    "panel": "5H",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5G-5I-aanvraag-serie.jpg",
+    "panel": "5H",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "5I",
+   "family": "Aanvraag serie",
+   "state": "Bevestigd resultaat",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Noemt de seizoenen en de nieuwe detailstatus",
+   "TV": {
+    "file": "tv/rq-tv-5I-5I-aanvraag-serie.jpg",
+    "panel": "5I",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-5I-5I-aanvraag-serie.jpg",
+    "panel": "5I",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-5G-5I-aanvraag-serie.jpg",
+    "panel": "5I",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-5G-5I-aanvraag-serie.jpg",
+    "panel": "5I",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6A",
+   "family": "Advanced target",
+   "state": "Beheerder: server, profiel, hoofdmap (film)",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "De drie bestaande keuzes, onder de 4K-schakelaar",
+   "TV": {
+    "file": "tv/rq-tv-6A-6B-advanced-target.jpg",
+    "panel": "6A",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6A-6D-advanced-target.jpg",
+    "panel": "6A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6A-6C-advanced-target.jpg",
+    "panel": "6A",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6A-6C-advanced-target.jpg",
+    "panel": "6A",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6B",
+   "family": "Advanced target",
+   "state": "Geen beheerder: sectie afwezig",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Niet uitgegrijsd maar weg: het formulier is dat van 4A, de aanvraagserver kiest het doel",
+   "TV": {
+    "file": "tv/rq-tv-6A-6B-advanced-target.jpg",
+    "panel": "6B",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6A-6D-advanced-target.jpg",
+    "panel": "6B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6A-6C-advanced-target.jpg",
+    "panel": "6B",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6A-6C-advanced-target.jpg",
+    "panel": "6B",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6C",
+   "family": "Advanced target",
+   "state": "Beheerder: Sonarr-doel bij een serie",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Zelfde sectie onder de seizoenkeuze",
+   "TV": {
+    "file": "tv/rq-tv-6C-6D-advanced-target.jpg",
+    "panel": "6C",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6A-6D-advanced-target.jpg",
+    "panel": "6C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6A-6C-advanced-target.jpg",
+    "panel": "6C",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6A-6C-advanced-target.jpg",
+    "panel": "6C",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6D",
+   "family": "Advanced target",
+   "state": "Serverkeuze bij 4K: alleen 4K-servers",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Geen SD/4K-mix mogelijk",
+   "TV": {
+    "file": "tv/rq-tv-6C-6D-advanced-target.jpg",
+    "panel": "6D",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6A-6D-advanced-target.jpg",
+    "panel": "6D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6D-6F-advanced-target.jpg",
+    "panel": "6D",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6D-6F-advanced-target.jpg",
+    "panel": "6D",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6E",
+   "family": "Advanced target",
+   "state": "Na serverwissel: afhankelijke keuzes gewist en aan het laden",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Indienen uit tot profiel en hoofdmap er zijn",
+   "TV": {
+    "file": "tv/rq-tv-6E-6F-advanced-target.jpg",
+    "panel": "6E",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6E-6H-advanced-target.jpg",
+    "panel": "6E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6D-6F-advanced-target.jpg",
+    "panel": "6E",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6D-6F-advanced-target.jpg",
+    "panel": "6E",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6F",
+   "family": "Advanced target",
+   "state": "Herladen: standaard van de nieuwe server",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Geen stil behoud van het oude doel",
+   "TV": {
+    "file": "tv/rq-tv-6E-6F-advanced-target.jpg",
+    "panel": "6F",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6E-6H-advanced-target.jpg",
+    "panel": "6F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6D-6F-advanced-target.jpg",
+    "panel": "6F",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6D-6F-advanced-target.jpg",
+    "panel": "6F",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6G",
+   "family": "Advanced target",
+   "state": "Opties niet geladen",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Productkeuze: indienen met serverstandaard blijft mogelijk (zie README)",
+   "TV": {
+    "file": "tv/rq-tv-6G-6H-advanced-target.jpg",
+    "panel": "6G",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6E-6H-advanced-target.jpg",
+    "panel": "6G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6G-6H-advanced-target.jpg",
+    "panel": "6G",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6G-6H-advanced-target.jpg",
+    "panel": "6G",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "6H",
+   "family": "Advanced target",
+   "state": "Geen 4K-server ingesteld",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Indienen in 4K uit; HD blijft de uitweg",
+   "TV": {
+    "file": "tv/rq-tv-6G-6H-advanced-target.jpg",
+    "panel": "6H",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-6E-6H-advanced-target.jpg",
+    "panel": "6H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-6G-6H-advanced-target.jpg",
+    "panel": "6H",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-6G-6H-advanced-target.jpg",
+    "panel": "6H",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "7A",
+   "family": "Aanvragenlijst",
+   "state": "Mijn aanvragen",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "35 C1 voor de eigen lijst; zonder totaal, want dat is niet bewezen",
+   "TV": {
+    "file": "tv/rq-tv-7A-mijn-aanvragen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7A-7D-aanvragenlijst.jpg",
+    "panel": "7A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7A-mijn-aanvragen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7A-mijn-aanvragen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7B",
+   "family": "Aanvragenlijst",
+   "state": "Alle aanvragen",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "35 C1 met het bereik als tag",
+   "TV": {
+    "file": "tv/rq-tv-7B-alle-aanvragen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7A-7D-aanvragenlijst.jpg",
+    "panel": "7B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7B-alle-aanvragen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7B-alle-aanvragen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7C",
+   "family": "Aanvragenlijst",
+   "state": "Statusfilter met aantallen",
+   "role": "beheerder, bereik alle",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "35 D; aantallen horen bij hetzelfde bereik als de lijst",
+   "TV": {
+    "file": "tv/rq-tv-7C-statusfilter-met-aantallen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7A-7D-aanvragenlijst.jpg",
+    "panel": "7C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7C-statusfilter-met-aantallen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7C-statusfilter-met-aantallen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7D",
+   "family": "Aanvragenlijst",
+   "state": "Aantallen onbekend bij eigen bereik",
+   "role": "beheerder, bereik mijn",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Geen globale aantallen naast een eigen lijst",
+   "TV": {
+    "file": "tv/rq-tv-7D-aantallen-onbekend-bij-eigen-bereik.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7A-7D-aanvragenlijst.jpg",
+    "panel": "7D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7D-aantallen-onbekend-bij-eigen-bereik.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7D-aantallen-onbekend-bij-eigen-bereik.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7E",
+   "family": "Aanvragenlijst",
+   "state": "Aantallen niet geladen",
+   "role": "beheerder, bereik alle",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Streepje in plaats van nul",
+   "TV": {
+    "file": "tv/rq-tv-7E-aantallen-niet-geladen.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7E-7H-aanvragenlijst.jpg",
+    "panel": "7E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7E-aantallen-niet-geladen.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7E-aantallen-niet-geladen.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7F",
+   "family": "Aanvragenlijst",
+   "state": "Laden",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Skelet in kaart- of rijmaat",
+   "TV": {
+    "file": "tv/rq-tv-7F-laden.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7E-7H-aanvragenlijst.jpg",
+    "panel": "7F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7F-laden.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7F-laden.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7G",
+   "family": "Aanvragenlijst",
+   "state": "Leeg",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "TVUX-36: Ontdekken en Zoeken in plaats van Opnieuw",
+   "TV": {
+    "file": "tv/rq-tv-7G-leeg.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7E-7H-aanvragenlijst.jpg",
+    "panel": "7G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7G-leeg.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7G-leeg.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7H",
+   "family": "Aanvragenlijst",
+   "state": "Gefilterd leeg",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Filters wissen blijft de actie; het aantal op het gekozen filter is de bekende 0 uit hetzelfde bereik",
+   "TV": {
+    "file": "tv/rq-tv-7H-gefilterd-leeg.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7E-7H-aanvragenlijst.jpg",
+    "panel": "7H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7H-gefilterd-leeg.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7H-gefilterd-leeg.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7I",
+   "family": "Aanvragenlijst",
+   "state": "Fout",
+   "role": "aanvrager",
+   "kind": "scherm",
+   "versusSource": "bestaand gedrag",
+   "intent": "Alleen een echte fout krijgt Opnieuw proberen",
+   "TV": {
+    "file": "tv/rq-tv-7I-fout.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7I-7K-aanvragenlijst.jpg",
+    "panel": "7I",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7I-fout.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7I-fout.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7J",
+   "family": "Aanvragenlijst",
+   "state": "Meer laden mislukt",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Fouttegel aan het eind; de geladen pagina blijft",
+   "TV": {
+    "file": "tv/rq-tv-7J-meer-laden-mislukt.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7I-7K-aanvragenlijst.jpg",
+    "panel": "7J",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7J-meer-laden-mislukt.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7J-meer-laden-mislukt.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "7K",
+   "family": "Aanvragenlijst",
+   "state": "Statusverandering en terugkeer naar kaart",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Zelfde kaart houdt de focus, capsule en aantallen zijn nieuw",
+   "TV": {
+    "file": "tv/rq-tv-7K-statusverandering-en-terugkeer-naar-kaart.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-7I-7K-aanvragenlijst.jpg",
+    "panel": "7K",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-7K-statusverandering-en-terugkeer-naar-kaart.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-7K-statusverandering-en-terugkeer-naar-kaart.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "8A",
+   "family": "Aanvraagbeheer",
+   "state": "Acties voor beheerder op een aanvraag in afwachting",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "TV: via het contextmenu, niet gebouwd. Touch en desktop: bestaande rijknoppen, hier als menu",
+   "TV": {
+    "file": "tv/rq-tv-8A-8B-aanvraagbeheer.jpg",
+    "panel": "8A",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8A-8D-aanvraagbeheer.jpg",
+    "panel": "8A",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8A-8C-aanvraagbeheer.jpg",
+    "panel": "8A",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8A-8C-aanvraagbeheer.jpg",
+    "panel": "8A",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8B",
+   "family": "Aanvraagbeheer",
+   "state": "Acties op een eigen aanvraag in afwachting",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Annuleren bestaat op touch; Bewerken is nieuw",
+   "TV": {
+    "file": "tv/rq-tv-8A-8B-aanvraagbeheer.jpg",
+    "panel": "8B",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8A-8D-aanvraagbeheer.jpg",
+    "panel": "8B",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8A-8C-aanvraagbeheer.jpg",
+    "panel": "8B",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8A-8C-aanvraagbeheer.jpg",
+    "panel": "8B",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8C",
+   "family": "Aanvraagbeheer",
+   "state": "Geen acties: niet meer in afwachting of geen recht",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Het menu legt uit waarom er niets te doen is",
+   "TV": {
+    "file": "tv/rq-tv-8C-8D-aanvraagbeheer.jpg",
+    "panel": "8C",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8A-8D-aanvraagbeheer.jpg",
+    "panel": "8C",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8A-8C-aanvraagbeheer.jpg",
+    "panel": "8C",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8A-8C-aanvraagbeheer.jpg",
+    "panel": "8C",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8D",
+   "family": "Aanvraagbeheer",
+   "state": "Annuleren bevestigen",
+   "role": "aanvrager, eigen aanvraag",
+   "kind": "overlay",
+   "versusSource": "bestaand gedrag",
+   "intent": "Bestaande bevestiging; focus op de veilige knop",
+   "TV": {
+    "file": "tv/rq-tv-8C-8D-aanvraagbeheer.jpg",
+    "panel": "8D",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8A-8D-aanvraagbeheer.jpg",
+    "panel": "8D",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8D-8F-aanvraagbeheer.jpg",
+    "panel": "8D",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8D-8F-aanvraagbeheer.jpg",
+    "panel": "8D",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8E",
+   "family": "Aanvraagbeheer",
+   "state": "Bewerken: seizoenen",
+   "role": "aanvrager, eigen aanvraag",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "updateRequest heeft nog geen scherm; dit is het voorstel",
+   "TV": {
+    "file": "tv/rq-tv-8E-8F-aanvraagbeheer.jpg",
+    "panel": "8E",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8E-8H-aanvraagbeheer.jpg",
+    "panel": "8E",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8D-8F-aanvraagbeheer.jpg",
+    "panel": "8E",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8D-8F-aanvraagbeheer.jpg",
+    "panel": "8E",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8F",
+   "family": "Aanvraagbeheer",
+   "state": "Bewerken: 4K en doel",
+   "role": "beheerder",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Zelfde afhankelijkheden als bij aanvragen",
+   "TV": {
+    "file": "tv/rq-tv-8E-8F-aanvraagbeheer.jpg",
+    "panel": "8F",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8E-8H-aanvraagbeheer.jpg",
+    "panel": "8F",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8D-8F-aanvraagbeheer.jpg",
+    "panel": "8F",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8D-8F-aanvraagbeheer.jpg",
+    "panel": "8F",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8G",
+   "family": "Aanvraagbeheer",
+   "state": "Bewerken geweigerd (403)",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Bekende weigering: de server antwoordde, de aanvraag blijft zoals hij stond",
+   "TV": {
+    "file": "tv/rq-tv-8G-8H-aanvraagbeheer.jpg",
+    "panel": "8G",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8E-8H-aanvraagbeheer.jpg",
+    "panel": "8G",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8G-8I-aanvraagbeheer.jpg",
+    "panel": "8G",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8G-8I-aanvraagbeheer.jpg",
+    "panel": "8G",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8H",
+   "family": "Aanvraagbeheer",
+   "state": "Bewerken niet mogelijk",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Alleen een aanvraag in afwachting is aan te passen",
+   "TV": {
+    "file": "tv/rq-tv-8G-8H-aanvraagbeheer.jpg",
+    "panel": "8H",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8E-8H-aanvraagbeheer.jpg",
+    "panel": "8H",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8G-8I-aanvraagbeheer.jpg",
+    "panel": "8H",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8G-8I-aanvraagbeheer.jpg",
+    "panel": "8H",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8I",
+   "family": "Aanvraagbeheer",
+   "state": "Bewerken: bezig met opslaan",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Eén keer verstuurd",
+   "TV": {
+    "file": "tv/rq-tv-8I-8J-aanvraagbeheer.jpg",
+    "panel": "8I",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8I-8L-aanvraagbeheer.jpg",
+    "panel": "8I",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8G-8I-aanvraagbeheer.jpg",
+    "panel": "8I",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8G-8I-aanvraagbeheer.jpg",
+    "panel": "8I",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8J",
+   "family": "Aanvraagbeheer",
+   "state": "Bewerken: onzeker of het is opgeslagen",
+   "role": "aanvrager",
+   "kind": "overlay",
+   "versusSource": "nieuw, niet gebouwd",
+   "intent": "Uitkomst onbekend na verzenden: keuze blijft staan, eerst de aanvraag herlezen, dan pas eventueel opnieuw",
+   "TV": {
+    "file": "tv/rq-tv-8I-8J-aanvraagbeheer.jpg",
+    "panel": "8J",
+    "px": "1920x1080"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8I-8L-aanvraagbeheer.jpg",
+    "panel": "8J",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8J-8J-aanvraagbeheer.jpg",
+    "panel": "8J",
+    "px": "1720x820"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8J-8J-aanvraagbeheer.jpg",
+    "panel": "8J",
+    "px": "1440x900"
+   }
+  },
+  {
+   "code": "8K",
+   "family": "Aanvraagbeheer",
+   "state": "Actie bezig op de kaart",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "De kaart toont Bezig; geen tweede actie mogelijk",
+   "TV": {
+    "file": "tv/rq-tv-8K-actie-bezig-op-de-kaart.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8I-8L-aanvraagbeheer.jpg",
+    "panel": "8K",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8K-actie-bezig-op-de-kaart.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8K-actie-bezig-op-de-kaart.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  },
+  {
+   "code": "8L",
+   "family": "Aanvraagbeheer",
+   "state": "Actie mislukt, focus terug op de kaart",
+   "role": "beheerder",
+   "kind": "scherm",
+   "versusSource": "gewijzigd gedrag",
+   "intent": "Melding plus herlaadde lijst; status ongewijzigd",
+   "TV": {
+    "file": "tv/rq-tv-8L-actie-mislukt-focus-terug-op-de-kaart.jpg",
+    "panel": null,
+    "px": "1920x1136"
+   },
+   "Telefoon": {
+    "file": "phone/rq-ph-8I-8L-aanvraagbeheer.jpg",
+    "panel": "8L",
+    "px": "3456x1924"
+   },
+   "Tablet": {
+    "file": "tablet/rq-tb-8L-actie-mislukt-focus-terug-op-de-kaart.jpg",
+    "panel": null,
+    "px": "1180x876"
+   },
+   "Desktop": {
+    "file": "desktop/rq-dk-8L-actie-mislukt-focus-terug-op-de-kaart.jpg",
+    "panel": null,
+    "px": "1440x956"
+   }
+  }
+ ]
+}

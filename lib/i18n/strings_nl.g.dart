@@ -1156,6 +1156,7 @@ class _TranslationsNoticesNl extends TranslationsNoticesEn {
 	@override String couldNotLoadTitle({required Object context}) => 'Kon ${context} niet laden';
 	@override String get genericErrorTitle => 'Er ging iets mis';
 	@override String get authFailedTitle => 'Aanmelden mislukt';
+	@override String get playbackStartingTitle => 'Afspelen starten';
 	@override String get playbackStoppedTitle => 'Afspelen gestopt';
 	@override String get playbackFileUnavailableTitle => 'Bestand niet beschikbaar';
 	@override String get playbackFileUnavailableBody => 'De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.';
@@ -1407,6 +1408,8 @@ class _TranslationsLiveTvNl extends TranslationsLiveTvEn {
 	@override String get now => 'Nu';
 	@override String get today => 'Vandaag';
 	@override String get tomorrow => 'Morgen';
+	@override String startsInMinutes({required Object minutes}) => 'Begint over ${minutes} min';
+	@override String dayAtTime({required Object day, required Object time}) => '${day} om ${time}';
 	@override String get midnight => 'Middernacht';
 	@override String get overnight => 'Nacht';
 	@override String get morning => 'Ochtend';
@@ -2223,6 +2226,87 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get discoverNow => 'Populair nu';
 	@override String noRequestsInFilter({required Object status}) => 'Er staat op dit moment niets op ${status}.';
 	@override String get noRequestsYet => 'Er is nog niets aangevraagd.';
+	@override String get fourKNotAllowedMovie => '4K is voor films niet toegestaan op dit account.';
+	@override String get fourKNotAllowedShow => '4K is voor series niet toegestaan op dit account.';
+	@override String get quotaUnknown => 'Limiet onbekend. De server beslist bij het indienen.';
+	@override String get quotaReached => 'Je limiet is bereikt. De server neemt nu geen nieuwe aanvraag aan.';
+	@override String get noRequestRight => 'Dit profiel mag geen aanvragen indienen.';
+	@override String get checkStatus => 'Status controleren';
+	@override String get requestUncertainTitle => 'Niet zeker of de aanvraag is aangekomen';
+	@override String get requestUncertainBody => 'De verbinding viel weg nadat de aanvraag was verstuurd. Controleer eerst de status. Je keuzes blijven staan.';
+	@override String get requestStillAbsent => 'De server heeft deze aanvraag niet. Je kunt opnieuw indienen.';
+	@override String get statusCheckFailed => 'De status kon niet worden gelezen. Probeer het opnieuw.';
+	@override String get requestRefusedTitle => 'De server weigerde de aanvraag';
+	@override String get requestRefusedForbidden => 'Je hebt hier geen rechten voor, of je limiet is bereikt. Er is niets aangevraagd.';
+	@override String get requestRefusedDuplicate => 'Deze titel is al aangevraagd. Er is geen tweede aanvraag gemaakt.';
+	@override String get requestDoneBody => 'De aanvraag staat bij je aanvragen en de status van de titel is opnieuw geladen.';
+	@override String requestDoneSeasons({required Object seasons}) => 'Aangevraagd: ${seasons}.';
+	@override String requestSeason({required Object number}) => 'Seizoen ${number} aanvragen';
+	@override String requestSeasons({required Object count}) => '${count} seizoenen aanvragen';
+	@override String seasonsChosen({required Object count, required Object total}) => '${count} van ${total} gekozen';
+	@override String episodeCount({required Object count}) => '${count} afleveringen';
+	@override String get targetUnavailableTitle => 'Serveropties niet geladen';
+	@override String get targetUnavailableBody => 'Profiel en hoofdmap konden niet worden opgehaald. Indienen kan met de standaard van de aanvraagserver.';
+	@override String get requestWithServerDefault => 'Aanvragen met serverstandaard';
+	@override String get no4kServerTitle => 'Geen 4K-server ingesteld';
+	@override String get no4kServerBody => 'Zet 4K uit om in HD aan te vragen.';
+	@override String get serverDefault => 'Standaard van de server';
+	@override String get adminOnly => 'alleen beheerder';
+	@override String get editRequest => 'Aanvraag bewerken';
+	@override String get saveChange => 'Wijziging opslaan';
+	@override String get saving => 'Opslaan...';
+	@override String get qualityFourK => 'Kwaliteit: 4K';
+	@override String get qualityHd => 'Kwaliteit: standaard (HD)';
+	@override String get editQualityFixed => 'De kwaliteit ligt vast na het aanvragen. Annuleer de aanvraag en vraag opnieuw aan om te wisselen.';
+	@override String get editNotPendingTitle => 'Bewerken kan niet meer';
+	@override String get editNotPendingBody => 'Alleen een aanvraag in afwachting is aan te passen. Daarna beslist de server.';
+	@override String get editNothingToEdit => 'Aan deze aanvraag kun je hier niets wijzigen.';
+	@override String get editForbiddenTitle => 'Je hebt hier geen rechten voor';
+	@override String get editForbiddenBody => 'De server weigerde de wijziging. De aanvraag staat nog zoals hij stond.';
+	@override String get editUncertainTitle => 'Niet zeker of de wijziging is opgeslagen';
+	@override String get editUncertainBody => 'De verbinding viel weg nadat de wijziging was verstuurd. Controleer eerst de status. Je keuze blijft staan.';
+	@override String get editStillOld => 'De server heeft nog de oude aanvraag. Je kunt opnieuw opslaan.';
+	@override String get editNothingSaved => 'De server heeft niets gewijzigd: geen van de gekozen seizoenen is nog aan te vragen.';
+	@override String get editKeepOneSeason => 'Kies minstens één seizoen. Annuleer de aanvraag om alles te laten vervallen.';
+	@override String get editSaved => 'Wijziging opgeslagen';
+	@override String get editLoadFailed => 'De aanvraag kon niet worden gelezen.';
+	@override String get inThisRequest => 'In deze aanvraag';
+	@override String get openTitle => 'Titel openen';
+	@override String get moreActions => 'Meer acties';
+	@override String get actionsNotPending => 'Deze aanvraag is niet meer in afwachting, dus er valt niets te beslissen.';
+	@override String get actionsNoRight => 'Je hebt geen rechten om deze aanvraag te wijzigen.';
+	@override String get ownRequest => 'jouw aanvraag';
+	@override String get actionBusy => 'Bezig';
+	@override String get actionFailed => 'De actie is mislukt. De lijst is opnieuw geladen.';
+	@override String get actionUncertain => 'Niet zeker of de actie is uitgevoerd. De lijst is opnieuw geladen.';
+	@override String get requestCancelled => 'Aanvraag geannuleerd';
+	@override String get countsOwnScopeNote => 'Aantallen zijn alleen bekend voor alle aanvragen.';
+	@override String get countsNotLoaded => 'Aantallen niet geladen.';
+	@override String filterUnsupportedTitle({required Object status}) => 'Deze server kan niet filteren op ${status}';
+	@override String get filterUnsupportedBody => 'Hij antwoordde met aanvragen in een andere status. Kies een ander filter.';
+	@override String get ownScopeUnknown => 'Je aanvraagaccount is niet bekend. Verbind Aanvragen opnieuw in de instellingen.';
+	@override String get noOwnRequestsYet => 'Je hebt nog niets aangevraagd.';
+	@override String get discoverAction => 'Ontdekken';
+	@override String get loadMoreFailed => 'Meer laden mislukt';
+	@override String get myRequest => 'Mijn aanvraag';
+	@override String get refreshStatus => 'Status verversen';
+	@override String get requestMoreSeasons => 'Meer seizoenen aanvragen';
+	@override String get openInLibrary => 'Openen in bibliotheek';
+	@override String get searchInLibrary => 'Zoeken in bibliotheek';
+	@override String get statusNotRefreshed => 'Status niet ververst. Wat je ziet kan verouderd zijn.';
+	@override String get requestDeclinedNote => 'Je aanvraag is afgewezen.';
+	@override String get notConfiguredBody => 'Koppel een Jellyseerr- of Overseerr-server om titels aan te vragen.';
+	@override String get setUp => 'Instellen';
+	@override String get searchIncomplete => 'Aanvragen antwoordde niet. Alleen je bibliotheek is doorzocht.';
+	@override String get viaRequests => 'Via Aanvragen';
+	@override String get searchIncompleteTitle => 'Aanvragen kon niet zoeken';
+	@override String get editNotAllSaved => 'De server heeft de wijziging niet opgeslagen zoals gevraagd. Controleer je keuze en sla opnieuw op.';
+	@override String get statusNotProven => 'Het antwoord van de server laat niet zien of het is aangekomen. Er wordt niets opnieuw verstuurd tot dat duidelijk is.';
+	@override String get statusUnknownBadge => 'Status onbekend';
+	@override String get storedTargetUnlisted => 'Het opgeslagen doel wordt niet meer door de server aangeboden. Het blijft zoals het is, tenzij je een ander kiest.';
+	@override String get filterUnsupportedBySource => 'Aanvragen kan niet op deze status filteren. Daarom staat er geen lijst onder die naam.';
+	@override String get railScope => 'Bereik';
+	@override String get requestNotInOwnList => 'Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd.';
 }
 
 // Path: tautulli
@@ -4614,6 +4698,7 @@ extension on TranslationsNl {
 			'notices.couldNotLoadTitle' => ({required Object context}) => 'Kon ${context} niet laden',
 			'notices.genericErrorTitle' => 'Er ging iets mis',
 			'notices.authFailedTitle' => 'Aanmelden mislukt',
+			'notices.playbackStartingTitle' => 'Afspelen starten',
 			'notices.playbackStoppedTitle' => 'Afspelen gestopt',
 			'notices.playbackFileUnavailableTitle' => 'Bestand niet beschikbaar',
 			'notices.playbackFileUnavailableBody' => 'De server kan niet bij het videobestand. Kijk of de schijf of map waar het op staat nog aangesloten is.',
@@ -4755,9 +4840,9 @@ extension on TranslationsNl {
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
 			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
 			'navigation.libraries' => 'Media',
-			'navigation.downloads' => 'Downloads',
 			_ => null,
 		} ?? switch (path) {
+			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Kijklijst',
 			'navigation.myPleya' => 'Mijn Pleya',
@@ -4809,6 +4894,8 @@ extension on TranslationsNl {
 			'liveTv.now' => 'Nu',
 			'liveTv.today' => 'Vandaag',
 			'liveTv.tomorrow' => 'Morgen',
+			'liveTv.startsInMinutes' => ({required Object minutes}) => 'Begint over ${minutes} min',
+			'liveTv.dayAtTime' => ({required Object day, required Object time}) => '${day} om ${time}',
 			'liveTv.midnight' => 'Middernacht',
 			'liveTv.overnight' => 'Nacht',
 			'liveTv.morning' => 'Ochtend',
@@ -5267,11 +5354,11 @@ extension on TranslationsNl {
 			'metadataEdit.afterADay' => 'Na een dag',
 			'metadataEdit.afterAWeek' => 'Na een week',
 			'metadataEdit.afterAMonth' => 'Na een maand',
+			_ => null,
+		} ?? switch (path) {
 			'metadataEdit.onNextRefresh' => 'Bij volgende verversing',
 			'metadataEdit.seasons' => 'Seizoenen',
 			'metadataEdit.show' => 'Tonen',
-			_ => null,
-		} ?? switch (path) {
 			'metadataEdit.hide' => 'Verbergen',
 			'metadataEdit.episodeOrdering' => 'Afleveringsvolgorde',
 			'metadataEdit.tmdbAiring' => 'The Movie Database (Uitgezonden)',
@@ -5552,6 +5639,87 @@ extension on TranslationsNl {
 			'seerr.discoverNow' => 'Populair nu',
 			'seerr.noRequestsInFilter' => ({required Object status}) => 'Er staat op dit moment niets op ${status}.',
 			'seerr.noRequestsYet' => 'Er is nog niets aangevraagd.',
+			'seerr.fourKNotAllowedMovie' => '4K is voor films niet toegestaan op dit account.',
+			'seerr.fourKNotAllowedShow' => '4K is voor series niet toegestaan op dit account.',
+			'seerr.quotaUnknown' => 'Limiet onbekend. De server beslist bij het indienen.',
+			'seerr.quotaReached' => 'Je limiet is bereikt. De server neemt nu geen nieuwe aanvraag aan.',
+			'seerr.noRequestRight' => 'Dit profiel mag geen aanvragen indienen.',
+			'seerr.checkStatus' => 'Status controleren',
+			'seerr.requestUncertainTitle' => 'Niet zeker of de aanvraag is aangekomen',
+			'seerr.requestUncertainBody' => 'De verbinding viel weg nadat de aanvraag was verstuurd. Controleer eerst de status. Je keuzes blijven staan.',
+			'seerr.requestStillAbsent' => 'De server heeft deze aanvraag niet. Je kunt opnieuw indienen.',
+			'seerr.statusCheckFailed' => 'De status kon niet worden gelezen. Probeer het opnieuw.',
+			'seerr.requestRefusedTitle' => 'De server weigerde de aanvraag',
+			'seerr.requestRefusedForbidden' => 'Je hebt hier geen rechten voor, of je limiet is bereikt. Er is niets aangevraagd.',
+			'seerr.requestRefusedDuplicate' => 'Deze titel is al aangevraagd. Er is geen tweede aanvraag gemaakt.',
+			'seerr.requestDoneBody' => 'De aanvraag staat bij je aanvragen en de status van de titel is opnieuw geladen.',
+			'seerr.requestDoneSeasons' => ({required Object seasons}) => 'Aangevraagd: ${seasons}.',
+			'seerr.requestSeason' => ({required Object number}) => 'Seizoen ${number} aanvragen',
+			'seerr.requestSeasons' => ({required Object count}) => '${count} seizoenen aanvragen',
+			'seerr.seasonsChosen' => ({required Object count, required Object total}) => '${count} van ${total} gekozen',
+			'seerr.episodeCount' => ({required Object count}) => '${count} afleveringen',
+			'seerr.targetUnavailableTitle' => 'Serveropties niet geladen',
+			'seerr.targetUnavailableBody' => 'Profiel en hoofdmap konden niet worden opgehaald. Indienen kan met de standaard van de aanvraagserver.',
+			'seerr.requestWithServerDefault' => 'Aanvragen met serverstandaard',
+			'seerr.no4kServerTitle' => 'Geen 4K-server ingesteld',
+			'seerr.no4kServerBody' => 'Zet 4K uit om in HD aan te vragen.',
+			'seerr.serverDefault' => 'Standaard van de server',
+			'seerr.adminOnly' => 'alleen beheerder',
+			'seerr.editRequest' => 'Aanvraag bewerken',
+			'seerr.saveChange' => 'Wijziging opslaan',
+			'seerr.saving' => 'Opslaan...',
+			'seerr.qualityFourK' => 'Kwaliteit: 4K',
+			'seerr.qualityHd' => 'Kwaliteit: standaard (HD)',
+			'seerr.editQualityFixed' => 'De kwaliteit ligt vast na het aanvragen. Annuleer de aanvraag en vraag opnieuw aan om te wisselen.',
+			'seerr.editNotPendingTitle' => 'Bewerken kan niet meer',
+			'seerr.editNotPendingBody' => 'Alleen een aanvraag in afwachting is aan te passen. Daarna beslist de server.',
+			'seerr.editNothingToEdit' => 'Aan deze aanvraag kun je hier niets wijzigen.',
+			'seerr.editForbiddenTitle' => 'Je hebt hier geen rechten voor',
+			'seerr.editForbiddenBody' => 'De server weigerde de wijziging. De aanvraag staat nog zoals hij stond.',
+			'seerr.editUncertainTitle' => 'Niet zeker of de wijziging is opgeslagen',
+			'seerr.editUncertainBody' => 'De verbinding viel weg nadat de wijziging was verstuurd. Controleer eerst de status. Je keuze blijft staan.',
+			'seerr.editStillOld' => 'De server heeft nog de oude aanvraag. Je kunt opnieuw opslaan.',
+			'seerr.editNothingSaved' => 'De server heeft niets gewijzigd: geen van de gekozen seizoenen is nog aan te vragen.',
+			'seerr.editKeepOneSeason' => 'Kies minstens één seizoen. Annuleer de aanvraag om alles te laten vervallen.',
+			'seerr.editSaved' => 'Wijziging opgeslagen',
+			'seerr.editLoadFailed' => 'De aanvraag kon niet worden gelezen.',
+			'seerr.inThisRequest' => 'In deze aanvraag',
+			'seerr.openTitle' => 'Titel openen',
+			'seerr.moreActions' => 'Meer acties',
+			'seerr.actionsNotPending' => 'Deze aanvraag is niet meer in afwachting, dus er valt niets te beslissen.',
+			'seerr.actionsNoRight' => 'Je hebt geen rechten om deze aanvraag te wijzigen.',
+			'seerr.ownRequest' => 'jouw aanvraag',
+			'seerr.actionBusy' => 'Bezig',
+			'seerr.actionFailed' => 'De actie is mislukt. De lijst is opnieuw geladen.',
+			'seerr.actionUncertain' => 'Niet zeker of de actie is uitgevoerd. De lijst is opnieuw geladen.',
+			'seerr.requestCancelled' => 'Aanvraag geannuleerd',
+			'seerr.countsOwnScopeNote' => 'Aantallen zijn alleen bekend voor alle aanvragen.',
+			'seerr.countsNotLoaded' => 'Aantallen niet geladen.',
+			'seerr.filterUnsupportedTitle' => ({required Object status}) => 'Deze server kan niet filteren op ${status}',
+			'seerr.filterUnsupportedBody' => 'Hij antwoordde met aanvragen in een andere status. Kies een ander filter.',
+			'seerr.ownScopeUnknown' => 'Je aanvraagaccount is niet bekend. Verbind Aanvragen opnieuw in de instellingen.',
+			'seerr.noOwnRequestsYet' => 'Je hebt nog niets aangevraagd.',
+			'seerr.discoverAction' => 'Ontdekken',
+			'seerr.loadMoreFailed' => 'Meer laden mislukt',
+			'seerr.myRequest' => 'Mijn aanvraag',
+			'seerr.refreshStatus' => 'Status verversen',
+			'seerr.requestMoreSeasons' => 'Meer seizoenen aanvragen',
+			'seerr.openInLibrary' => 'Openen in bibliotheek',
+			'seerr.searchInLibrary' => 'Zoeken in bibliotheek',
+			'seerr.statusNotRefreshed' => 'Status niet ververst. Wat je ziet kan verouderd zijn.',
+			'seerr.requestDeclinedNote' => 'Je aanvraag is afgewezen.',
+			'seerr.notConfiguredBody' => 'Koppel een Jellyseerr- of Overseerr-server om titels aan te vragen.',
+			'seerr.setUp' => 'Instellen',
+			'seerr.searchIncomplete' => 'Aanvragen antwoordde niet. Alleen je bibliotheek is doorzocht.',
+			'seerr.viaRequests' => 'Via Aanvragen',
+			'seerr.searchIncompleteTitle' => 'Aanvragen kon niet zoeken',
+			'seerr.editNotAllSaved' => 'De server heeft de wijziging niet opgeslagen zoals gevraagd. Controleer je keuze en sla opnieuw op.',
+			'seerr.statusNotProven' => 'Het antwoord van de server laat niet zien of het is aangekomen. Er wordt niets opnieuw verstuurd tot dat duidelijk is.',
+			'seerr.statusUnknownBadge' => 'Status onbekend',
+			'seerr.storedTargetUnlisted' => 'Het opgeslagen doel wordt niet meer door de server aangeboden. Het blijft zoals het is, tenzij je een ander kiest.',
+			'seerr.filterUnsupportedBySource' => 'Aanvragen kan niet op deze status filteren. Daarom staat er geen lijst onder die naam.',
+			'seerr.railScope' => 'Bereik',
+			'seerr.requestNotInOwnList' => 'Die aanvraag staat niet meer in je eigen lijst. Hij is mogelijk afgehandeld of verwijderd.',
 			'tautulli.title' => 'Tautulli',
 			'tautulli.subtitle' => 'Tautulli houdt bij wie wat kijkt op je Plex-server. Koppel hem om kijkers, statistieken en live activiteit in Pleya te zien.',
 			'tautulli.adminOnlyNote' => 'Tautulli heeft één sleutel die zijn hele beheer-API opent, dus die blijft op dit toestel en alleen jij ziet wat hij meldt. De mensen met wie je je server deelt merken er niets van en hoeven niets in te stellen.',
@@ -5700,6 +5868,8 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.moveDown' => 'Omlaag',
 			'unifiedCatalog.homeRows.hide' => 'Verbergen',
 			'unifiedCatalog.homeRows.show' => 'Tonen',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.homeRows.edit' => 'Bewerken',
 			'unifiedCatalog.homeRows.remove' => 'Verwijderen',
 			'unifiedCatalog.homeRows.hiddenNote' => 'verborgen',
@@ -5784,8 +5954,6 @@ extension on TranslationsNl {
 			'languageSettings.globalOwner' => ({required Object name}) => 'Pleya-profiel ${name} · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.globalOwnerNoProfile' => 'Pleya-profiel · geldt voor alle content zonder eigen serievoorkeur',
 			'languageSettings.audio' => 'Audio',
-			_ => null,
-		} ?? switch (path) {
 			'languageSettings.audioFallbackNote' => 'Ontbreekt de taal, dan de standaardtrack van het bestand',
 			'languageSettings.subtitles' => 'Ondertitels',
 			'languageSettings.subtitlesNote' => 'Voorkeurstaal voor alle content',

@@ -397,6 +397,9 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
         return [
           FocusableTextFormField(
             controller: _emailController,
+            onChanged: (_) {
+              if (_testResult != null) setState(() => _testResult = null);
+            },
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             enableSuggestions: false,
@@ -410,6 +413,9 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
           const SizedBox(height: 12),
           FocusableTextFormField(
             controller: _passwordController,
+            onChanged: (_) {
+              if (_testResult != null) setState(() => _testResult = null);
+            },
             obscureText: true,
             enabled: !busy,
             decoration: InputDecoration(
@@ -428,6 +434,9 @@ class _SeerrSettingsScreenState extends State<SeerrSettingsScreen> with AsyncFor
             focusNode: _apiKeyFocus,
             child: FocusableTextFormField(
               controller: _apiKeyController,
+              onChanged: (_) {
+                if (_testResult != null) setState(() => _testResult = null);
+              },
               focusNode: _apiKeyFocus,
               obscureText: true,
               autocorrect: false,

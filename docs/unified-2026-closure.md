@@ -200,3 +200,19 @@ Release-configuratie met de compile-time flags, en de archive.
 TestFlight is het versturen van exact de archive uit de hardware-eindronde naar App Store Connect.
 Tussen de hardwareacceptatie en de upload wordt er niets gecompileerd en niets vanaf source
 gebouwd.
+
+
+### Begrensde interne testdistributie — eigenaarbesluit 8 oktober 2026
+
+Michel vraagt expliciet: “Commit push merge en build naar testflight”, nadat de open fysieke
+Apple TV-, echte-server- en volledige rol-/platformacceptatie van de gerichte tvOS-/Requests
+wijzigingsset zijn gerapporteerd. Voor uitsluitend deze set (REG-01, A-07/A-10/A-11/A-12 en
+A-19/A-20/A-21) is daarmee interne TestFlight-testdistributie vóór volledige hardwareclosure
+geautoriseerd. Dit is een beperkte uitzondering op de uploadvolgorde hierboven, geen
+hardwareacceptatie, volledige redesignclosure of externe/store-release.
+
+Commit-/PR-review, negatieve controles, gerichte tests, codegate, verplichte groene GitHub-checks
+vóór merge, finale main-SHA en herleidbare Release-archives blijven vereist. Elke archive wordt
+van de gemergede bron gebouwd en met platform, buildnummer en bron-SHA geregistreerd. De
+resterende acceptatiepunten blijven open in hun bestaande registers; deze interne build
+vervangt die waarnemingen niet. Voor de volledige eindacceptatie blijven §7–§8 ongewijzigd gelden.
