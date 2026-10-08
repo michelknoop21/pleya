@@ -1,6 +1,6 @@
 # Big P audit-herstel — 8 oktober 2026
 
-Roadmap: BP-05/BP-09. Basis `bdedec38`; branch `fix/bigp-audit-status-input-motion`.
+Roadmap: BP-05/BP-09. Basis `bdedec38`; branch `fix/bigp-audit-status-input-motion`; implementatie `ce92bde2`, reviewfix `c6319ba5`.
 
 **Prioriteit:** één begrensd onafhankelijk pakket naast A-11/A-12-playback; dat werk blijft primair.
 De open PR-inventaris bevat geen BP-04b/05/06/09-PR. Bestaande worktrees zijn behouden.
@@ -18,11 +18,11 @@ De authoritydiff neemt het actuele besluit van 8 oktober over, zonder Big P-excl
 
 **Tests:** negatieve controles rood voor oude F1/F2; F4 alleen Reduce Motion rood, gewone animatie groen.
 Extra negatieve controle: annulering/onafgeronde taak gaf nog succespose/-clip; vier controles rood vóór correctie.
-Gerichte controller/voice/service/TV-tests: 207 PASS. Gedeelde mobiele presentatie/geheugen: 83 PASS (gedeelde code, geen iOS-build).
+Gerichte controller/voice/service/TV-tests: 215 PASS. Gedeelde mobiele presentatie/geheugen: 83 PASS (gedeelde code, geen iOS-build).
 Geen volledige lokale suite; geen live model/provider of echte servermutaties. Nul/één mutaties zijn tellers van de gemockte uitvoeringslaag, inclusief accepteren, weigeren, verlopen, gedeeltelijke uitvoering en gemengde taken.
 
-**UI/Verify:** 26 widgetrenders op 1920×1080, gemockte invoer en historische Home-achtergrond;
-vier gewijzigde beelden opnieuw gerenderd/bekeken. Manifest: `.build/audits/bigp-fixes-2026-10-08/manifest.json`.
+**UI/Verify:** 28 widgetrenders (26 oorspronkelijke plus twee jobstatusbeelden) op 1920×1080, gemockte invoer en historische Home-achtergrond;
+vier gewijzigde beelden opnieuw gerenderd/bekeken; beide nieuwe onbekende-jobbeelden ook bekeken. Manifest: `.build/audits/bigp-fixes-2026-10-08/manifest.json`.
 Witte focus op Retry/Ask, geen overflow in gewijzigde toestanden. Entry-scenario validatie PASS;
 geen native Verify-PASS of runtimebundel vanwege bewezen HID-blokkade. Doel blijft 38/39J; geen redesign.
 
@@ -33,6 +33,6 @@ provider 21 en identiteit/geheugen 27–28: contract/gedeeltelijke bestaande tes
 remote 02/25 en audio 26: gemockt, fysieke remote/klank open. Geen 28 implementatietaken.
 Acceptatiescenario’s voor BP-04b/05/06 staan in het bestaande gedragscontract; geen tweede geheugen.
 
-**Gates/review:** codegate inclusief unused PASS; onafhankelijke exact-diff/authority/visual review volgt vóór PR.
+**Gates/review:** eerste codegate inclusief unused PASS; onafhankelijke review vond I1: completed modeltaak kon bij onbekende/lopende serverscan succespose/geluid geven. Gedeelde guard hersteld, acht extra controles groen (zeven rood vóór de fix). Herhaalde codegate inclusief unused PASS; onafhankelijke fixreview GREEN, geen resterende verplichte bevindingen. Reviewverslagen: `.build/reports/bigp-independent-review.md` en `.build/reports/bigp-fix-review.md`.
 **Hardware:** geen echte Apple TV, Siri Remote, dictatie, provideraccounts of cross-device keychain geverifieerd.
 **Restpunten:** F3 en F6 blijven open; BP-04b/05/06 niet als voltooid markeren. Geen merge/build/TestFlight in deze opdracht.
