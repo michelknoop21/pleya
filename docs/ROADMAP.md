@@ -71,7 +71,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | Gepland; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
 | A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | [Broninventaris/spec](requests-2.0-spec.md) inhoudelijk gereviewd incl. countscope-fixreview; geen runtimeacceptatie |
 | A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | [Opus-Northstar-set](assets/requests-2.0/index.html):72 staten/170 beelden; Michel akkoord 8 oktober inclusief zeven keuzes, Impeccable polish en onafhankelijke review afgerond; ontwerpacceptatie; A-21 in uitvoering, nog niet geaccepteerd |
-| A-21 | P1 | Requests 2.0 | Implementatie en acceptatie van het goedgekeurde redesign | IN PROGRESS, 8 oktober; huidige codeset/gerichte tests en onafhankelijke fixreviews afgerond, TV-beheerscenario groen; verdere platform-/rol-, echte-server- en hardwareacceptatie open |
+| A-21 | P1 | Requests 2.0 | Implementatie en acceptatie van het goedgekeurde redesign | IN PROGRESS, 8 oktober; huidige codeset gemerged (PR #210), interne TestFlight 2.8.1 (344) op iOS/tvOS/macOS VALID / IN_BETA_TESTING; gerichte tests/fixreviews en begrensde TV-/telefoonscenario's groen; verdere platform-/rol-, echte-server- en hardwareacceptatie open |
 | C-01 | P1 | Server | S2.5 configuratiebibliotheken overnemen | Volgens register open |
 | C-02 | P1 | Server | S2.6 migratie en protocolvenster 2 sluiten | Volgens register open |
 | C-03 | P0 | Server | Beheerfase PS-11A en vrijgave PS-14 | Status herijken; algemene Big P-pauze opgeheven (8 okt) |

@@ -4601,3 +4601,24 @@ Roadmap: BP-05/BP-09. Eén onafhankelijk begrensd pakket naast het bestaande A-1
 |---|---|---|---|---|
 | BIGP-AUDIT-FIX1 | Michel: F1 statusprojectie, F2 invoerherstel, F4 Reduce Motion herstellen; F3 native onderzoeken; F5/F6 autoriteit afwegen. | FIXED · REVIEW GREEN · NATIVE/HARDWARE OPEN | `ce92bde2`, `c6319ba5` | BP-05/BP-09; `docs/qa/2026-10-08-big-p-audit-herstel.md`. 215 TV/controller/voice/service en 83 gedeelde presentatie/geheugentests groen; negatieve controles rood; codegate inclusief unused groen. Review-I1 (succespose/geluid bij lopende/onbekende serverjob) hersteld met rode controles; onafhankelijke fixreview groen. F3 HID-blokkade, F5 behouden, F6 authorityvraag open. Geen volledige pakketacceptatie. |
 | BIGP-SUMMON-CHOICE1 | Michel 8 okt: sneltoets toont eerst de ballon met voorbeelden; native toetsenbord/dictatie pas na Vraag Big P. | FIXED · SIMULATOR PASS · HARDWARE OPEN | deze PR | BP-09; bestaande 39J-compositie. 104 gerichte tests groen, rode regressiecontrole; codegate inclusief unused en onafhankelijke codereview groen. Native multitask-summoned PASS, negen 3840×2160-screenshots; manifest `.build/reports/bigp-shortcut/manifest.json`. Fysieke Siri Remote en gesproken dictatie niet getest. Geen nieuwe avatar-/focusengine. |
+
+
+### Interne TestFlight-distributie 344 — 8 oktober 2026
+
+Roadmap: REG-01, A-07/A-10/A-11/A-12, A-19/A-20/A-21. Eigen implementatiecommit `b392a2e8`, gereviewde integratiecommit `3bbe12ff`; [PR #210](https://github.com/michelknoop21/pleya/pull/210) gemerged als `3b9f18e0a64917f199a5d25d47a689880e6a5989`. De finale bronboom is identiek aan de gereviewde integratieboom. Alle verplichte PR-checks waren groen vóór merge; ook de volledige [CI-run op finale main](https://github.com/michelknoop21/pleya/actions/runs/37813615338) is groen. Integratie: codegate inclusief harde lintregels/unused groen; 701 gerichte tests geslaagd, 28 bestaande skips niet als passes geteld. Dit vervangt het eerdere per-fix-/simulatorbewijs niet.
+
+**Distributie geverifieerd via App Store Connect, 8 oktober 17:30 UTC:** Pleya **2.8.1 (344)** staat op **iOS, tvOS en macOS** als **VALID / IN_BETA_TESTING**, niet verlopen. `fastlane notes build:344` is groen; alle drie teruggelezen localevelden zijn gelijk aan de bronnotities (992 tekens). Interne testdistributie volgens de begrensde eigenaaropdracht in `unified-2026-closure.md` §8; geen externe beta-/App Store-publicatie of volledige pakketacceptatie. A-21 blijft IN PROGRESS.
+
+Releasebron, bundle-ID `nl.michelknoop.pleya`, versie/build en archive-identiteit gecontroleerd. Archive-SHA-256 over gesorteerde relatieve bestandspaden en bestandsinhoud, volgens de bestaande releasehelper:
+
+| Platform | Archive content SHA-256 |
+|---|---|
+| iOS | `2cce163d13be55230dcef607f47b37e846d13fd7dc554f989837d9350e0da6fc` |
+| tvOS | `43dfdca87f4912ee023a2964dbcbd8cf69572a27480341b7ada3d9799ce387ba` |
+| macOS | `992659dc87e079bb794a3ff372ef55b8f3da505a1c6db4b6566518e13d2a37c7` |
+
+De eerste macOS-installer werd afgewezen (90255): de afgeschermde buildomgeving schreef `embedded.provisionprofile` en `_CodeSignature/CodeResources` met 0600. Alleen deze twee payloadrechten zijn naar leesbaar gecorrigeerd en hetzelfde ondertekende apppakket is opnieuw verpakt/geüpload als 344. Alle 348 bestanden en symlinkdoelen zijn inhoudelijk gelijk; app- en installersignaturecontrole groen, ASC daarna VALID / IN_BETA_TESTING. Geen codewijziging, nieuw buildnummer of hardwareacceptatie door deze verpakkingscorrectie. Broncheckout bleef schoon tijdens alle builds/uploads.
+
+**Aanvullende CI-bewijsgrens:** de bestaande niet-blokkerende Apple-job in [PR-run 37811023052](https://github.com/michelknoop21/pleya/actions/runs/37811023052) heeft macOS-bootbewijs, maar iOS `discover.layout` faalde op een 10s-timeout van `GET /v1/screens` vóór layoutassertions/screenshots. Een latere tree gaf Home/HTTP200; geen concreet appdefect of bewezen root cause. Onafhankelijke evidence-review bevestigt deze grens. De CI-synthetische merge `26f83f2` heeft dezelfde committed bronboom als finale main; `dirty:true` blijft een runtime-attributiegrens en is geen bewijs van identieke releasebytes. Deze job is niet groen en levert geen discovery-layoutacceptatie.
+
+Fysieke Apple TV, RESUME-PLAY1, volledige ontwerp-/rol-/platformdekking en echte-serveracceptatie blijven open. De archive-identiteiten zijn geen hardwareacceptatie. Definitief releasebewijs, archivepaden, ASC-snapshot, verpakkingvergelijking, notities en reviews: `/tmp/pleya-tvux-20261008/release/`; hoofdoverzicht `/tmp/pleya-tvux-20261008/report.md`.
