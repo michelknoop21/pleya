@@ -171,6 +171,64 @@ void main() {
       expect(_button('submit'), findsNothing);
     });
 
+    group('a film that is there in HD', () {
+      const fourK = SeerrPermission.request | SeerrPermission.request4kMovie;
+
+      testWidgets('can still be asked for in 4K by a profile that holds the 4K right', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.available),
+          permissions: fourK,
+        );
+
+        expect(find.byType(Switch), findsOneWidget, reason: 'the 4K choice is offered, not replaced by an end state');
+        expect(_notice('duplicate'), findsOneWidget, reason: 'the form says why HD cannot be sent');
+        expect(_enabled(tester, 'submit'), isFalse);
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        expect(_notice('duplicate'), findsNothing);
+        expect(_enabled(tester, 'submit'), isTrue);
+
+        await tester.tap(find.text(t.seerr.requestMovie));
+        await _settle(tester);
+        expect(fake.sent('POST', '/request').single.body, containsPair('is4k', true));
+        expect(_notice('done'), findsOneWidget);
+      });
+
+      testWidgets('and in 4K as well has nothing left to ask for', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(
+            tmdbId: 603,
+            mediaType: 'movie',
+            title: 'x',
+            status: SeerrMediaStatus.available,
+            status4k: SeerrMediaStatus.available,
+          ),
+          permissions: fourK,
+        );
+
+        expect(find.text(t.seerr.available), findsOneWidget);
+        expect(_button('submit'), findsNothing);
+        expect(find.byType(Switch), findsNothing);
+      });
+
+      testWidgets('with a 4K request already running offers 4K as taken, not as open', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status4k: SeerrMediaStatus.pending),
+          permissions: fourK,
+        );
+        expect(_enabled(tester, 'submit'), isTrue, reason: 'HD is open');
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(_enabled(tester, 'submit'), isFalse);
+      });
+    });
+
     Map<String, dynamic> ownRequest({bool is4k = false, int by = 7, int status = 1, List<int> seasons = const []}) =>
         seerrRequestJson(3, is4k: is4k, requestedBy: by, status: status, seasons: seasons)..remove('media');
 

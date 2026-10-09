@@ -18,6 +18,10 @@ class SeerrMedia {
   final String? overview;
   final SeerrMediaStatus status;
 
+  /// `mediaInfo.status4k`, which Seerr tracks apart from [status]. Null when
+  /// the payload does not carry it: not known, so not assumed to be anything.
+  final SeerrMediaStatus? status4k;
+
   /// TMDB's `originalLanguage` (ISO 639-1), `originCountry` (ISO 3166-1; a
   /// movie detail gives `productionCountries` instead) and `voteCount`. Null
   /// when the payload does not carry them.
@@ -37,6 +41,7 @@ class SeerrMedia {
     this.backdropPath,
     this.overview,
     this.status = SeerrMediaStatus.unknown,
+    this.status4k,
     this.originalLanguage,
     this.originCountry,
     this.voteCount,
@@ -81,6 +86,7 @@ class SeerrMedia {
     backdropPath: backdropPath,
     overview: overview,
     status: status,
+    status4k: status4k,
     originalLanguage: originalLanguage,
     originCountry: originCountry,
     voteCount: voteCount,
@@ -117,6 +123,7 @@ class SeerrMedia {
 
     final mediaInfo = json['mediaInfo'];
     final statusVal = mediaInfo is Map ? _asInt(mediaInfo['status']) : null;
+    final status4kVal = mediaInfo is Map ? _asInt(mediaInfo['status4k']) : null;
 
     return SeerrMedia(
       tmdbId: tmdbId,
@@ -127,6 +134,7 @@ class SeerrMedia {
       backdropPath: json['backdropPath']?.toString(),
       overview: json['overview']?.toString(),
       status: SeerrMediaStatus.fromValue(statusVal),
+      status4k: status4kVal == null ? null : SeerrMediaStatus.fromValue(status4kVal),
       originalLanguage: (json['originalLanguage'] ?? json['original_language'])?.toString(),
       originCountry: _countries(json),
       voteCount: _asInt(json['voteCount'] ?? json['vote_count']),
@@ -139,6 +147,7 @@ class SeerrMedia {
   factory SeerrMedia.fromDetail(Map<String, dynamic> json, {required String mediaType}) {
     final mediaInfo = json['mediaInfo'];
     final statusVal = mediaInfo is Map ? _asInt(mediaInfo['status']) : null;
+    final status4kVal = mediaInfo is Map ? _asInt(mediaInfo['status4k']) : null;
     return SeerrMedia(
       tmdbId: _asInt(json['id']) ?? 0,
       mediaType: mediaType,
@@ -148,6 +157,7 @@ class SeerrMedia {
       backdropPath: json['backdropPath']?.toString(),
       overview: json['overview']?.toString(),
       status: SeerrMediaStatus.fromValue(statusVal),
+      status4k: status4kVal == null ? null : SeerrMediaStatus.fromValue(status4kVal),
       originalLanguage: (json['originalLanguage'] ?? json['original_language'])?.toString(),
       originCountry: _countries(json),
       voteCount: _asInt(json['voteCount'] ?? json['vote_count']),

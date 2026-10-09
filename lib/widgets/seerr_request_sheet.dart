@@ -94,6 +94,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
 
   SeerrQuota? _quota;
   SeerrMediaStatus _status = SeerrMediaStatus.unknown;
+
+  /// The title's 4K status, null while Seerr has not said what it is.
+  SeerrMediaStatus? _status4k;
   late final SeerrTargetController _target = SeerrTargetController(isTv: _isTv);
 
   /// The client this sheet loaded with. A profile switch swaps it, and from
@@ -117,6 +120,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   void initState() {
     super.initState();
     _status = widget.media.status;
+    _status4k = widget.media.status4k;
   }
 
   @override
@@ -211,8 +215,15 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       ..addAll(_requestable.map((s) => s.seasonNumber));
   }
 
-  // Movies: block a duplicate request the server would reject with 409.
-  bool get _isMovieRequestable => !_status.isAvailable && !_status.isRequested;
+  // Movies: block a duplicate request the server would reject with 409. HD and
+  // 4K are separate requests, so each is judged on its own status. No 4K
+  // status at all leaves 4K on offer, and the server decides.
+  bool _isMovieRequestableIn({required bool is4k}) {
+    final status = is4k ? _status4k : _status;
+    return status == null || (!status.isAvailable && !status.isRequested);
+  }
+
+  bool get _isMovieRequestable => _isMovieRequestableIn(is4k: _is4k);
 
   ({int? remaining, int? limit}) get _quotaForType {
     final q = _quota;
@@ -364,6 +375,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       _uncertain = false;
       _sent = null;
       _status = detail.media.status;
+      _status4k = detail.media.status4k;
       if (_isTv) {
         _seasons = seasons;
         _selectedSeasons.removeWhere((n) => !_requestable.any((s) => s.seasonNumber == n));
@@ -464,7 +476,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     // instead of a dead-end sheet with a permanently disabled button.
     final nothingRequestable = _isTv
         ? !_seasons.any(_isSeasonRequestable) && !_canOffer4k(provider)
-        : !_isMovieRequestable;
+        : !_isMovieRequestableIn(is4k: false) && !(_canOffer4k(provider) && _isMovieRequestableIn(is4k: true));
     if (nothingRequestable && _error == null) {
       final available = _status.isAvailable;
       return _terminal(
@@ -500,6 +512,13 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
           ),
           if (_quotaExhausted)
             SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
+          // A film whose chosen quality is taken while the other one is open:
+          // the form stays for the 4K switch, and says why it cannot send yet.
+          if (!_isTv && !_isMovieRequestable && _refusal == null && !_uncertain)
+            SeerrFormNotice(
+              kind: 'duplicate',
+              title: (_is4k ? _status4k : _status)?.isAvailable ?? false ? t.seerr.available : t.seerr.alreadyRequested,
+            ),
           if (_uncertain)
             SeerrFormNotice(
               kind: 'uncertain',
