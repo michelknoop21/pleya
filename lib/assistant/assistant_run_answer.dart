@@ -172,7 +172,8 @@ extension _AssistantAnswer on AssistantRun {
       // A title named as the reason ("omdat je Reacher keek") is history, not a pick.
       all = [
         for (final t in all)
-          if (!_history.contains(assistantTitleKey(t.title))) t,
+          // Dune (2021) is not the Dune (1984) the user watched.
+          if (!_history.any((h) => assistantSameTitle(h, assistantTitleKey(t.title), t.year))) t,
       ];
       kept = _narrowPicks(all);
     }

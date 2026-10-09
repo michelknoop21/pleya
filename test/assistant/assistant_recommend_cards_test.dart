@@ -184,6 +184,18 @@ void main() {
     expect(asked, isEmpty, reason: 'Reacher is history, not a pick');
   });
 
+  test('a title named only as the reason is history for that year alone: Dune 2021 is not Dune 1984', () async {
+    final (_, asked) = await _recommend(
+      'Doe een voorstel voor vanavond',
+      'Omdat je «Dune» (1984) keek: «Dune» (2021).',
+      picks: picks,
+      watched: {
+        'w': _item('w', 'Dune', MediaKind.movie, genres: ['Drama'], year: 1984),
+      },
+    );
+    expect(asked, ['Dune'], reason: 'the 2021 film is a pick; only the 1984 one is history');
+  });
+
   test('an answer that names no pick shows no pick cards, whatever the question was', () async {
     final (r, _) = await _recommend('Wat zal ik kijken?', 'Zie hieronder.', picks: picks);
     expect(_cards(r), isEmpty);
