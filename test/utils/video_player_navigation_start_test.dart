@@ -275,6 +275,40 @@ void main() {
     expect(startNotices(), isEmpty);
   });
 
+  for (final savedFirst in [true, false]) {
+    testWidgets(
+      'the saved version and that same version by number are one start (${savedFirst ? 'saved' : 'numbered'} first)',
+      (tester) async {
+        final (context, client, spy) = await pumpHost(tester);
+
+        // No preference is stored, so "saved" resolves to version 0.
+        unawaited(navigateToVideoPlayer(context, metadata: movie, selectedMediaIndex: savedFirst ? null : 0));
+        await tester.pump();
+        unawaited(navigateToVideoPlayer(context, metadata: movie, selectedMediaIndex: savedFirst ? 0 : null));
+        await tester.pump();
+
+        // Both answers land before a frame is built. No player state exists
+        // yet to answer for duplicates through `activeId`, so the guard is
+        // all there is between these two starts.
+        client.release(movie);
+        client.release(movie);
+        await tester.pump();
+        await tester.pump();
+
+        expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(1));
+        expect(startNotices(), isEmpty);
+
+        // Both keys are given back: the title can be started again.
+        unawaited(navigateToVideoPlayer(context, metadata: movie));
+        await tester.pump();
+        client.release(movie);
+        await tester.pump();
+        await tester.pump();
+        expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(2));
+      },
+    );
+  }
+
   testWidgets('an explicit restart skips the refetch and still pushes once', (tester) async {
     final (context, client, spy) = await pumpHost(tester);
 
