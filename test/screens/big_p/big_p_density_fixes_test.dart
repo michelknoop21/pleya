@@ -192,6 +192,24 @@ void main() {
       expect(find.text(t.assistant.confirm.passwordPlaceholder).hitTestable(), findsOneWidget);
     });
 
+    testWidgets('the confirm card with the keyboard up on an iPhone SE does not overflow and keeps its buttons', (
+      tester,
+    ) async {
+      c
+        ..prompt = 'Maak Sam aan en geef hem alleen Kids.'
+        ..state = AssistantSurfaceState.working
+        ..pending = createSam(password: AssistantPasswordMode.required);
+      await pumpHost(tester, size: se, safe: safeTop20, textScale: 1.3, keyboard: 260);
+      expect(tester.takeException(), isNull, reason: 'no RenderFlex overflow above the keyboard');
+      final buttons = find.byType(BigPButton);
+      expect(buttons, findsNWidgets(2));
+      for (var i = 0; i < 2; i++) {
+        expect(buttons.at(i).hitTestable(), findsOneWidget, reason: 'button $i above the keyboard');
+      }
+      // The password Aanmaken waits for is reachable too.
+      expect(find.text(t.assistant.confirm.passwordPlaceholder).hitTestable(), findsOneWidget);
+    });
+
     testWidgets('Bewaar with the ages card on an iPhone SE at text scale 1.3', (tester) async {
       answerKidsAges(c);
       await pumpHost(tester, size: se, safe: safeTop20, textScale: 1.3);

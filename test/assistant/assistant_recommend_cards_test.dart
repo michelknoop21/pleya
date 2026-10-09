@@ -184,6 +184,61 @@ void main() {
     expect(asked, isEmpty, reason: 'Reacher is history, not a pick');
   });
 
+  test('a title named only as the reason is history for that year alone: Dune 2021 is not Dune 1984', () async {
+    final (_, asked) = await _recommend(
+      'Doe een voorstel voor vanavond',
+      'Omdat je «Dune» (1984) keek: «Dune» (2021).',
+      picks: picks,
+      watched: {
+        'w': _item('w', 'Dune', MediaKind.movie, genres: ['Drama'], year: 1984),
+      },
+    );
+    expect(asked, ['Dune'], reason: 'the 2021 film is a pick; only the 1984 one is history');
+  });
+
+  test('a year written inside the marks counts too: «Dune (2021)» is not the watched Dune 1984', () async {
+    final (_, asked) = await _recommend(
+      'Doe een voorstel voor vanavond',
+      'Omdat je «Dune» (1984) keek: «Dune (2021)».',
+      picks: picks,
+      watched: {
+        'w': _item('w', 'Dune', MediaKind.movie, genres: ['Drama'], year: 1984),
+      },
+    );
+    expect(asked, ['Dune']);
+  });
+
+  test('a watched series does not hide a film of the same name: Fargo the series, Fargo (1996) the pick', () async {
+    final (r, asked) = await _recommend(
+      'Doe een voorstel voor vanavond',
+      'Omdat je «Fargo» keek: «Fargo» (1996).',
+      picks: [
+        ...picks,
+        _item('f', 'Fargo', MediaKind.movie, genres: ['Crime'], year: 1996),
+      ],
+      watched: {
+        'w': _item('w', 'Fargo', MediaKind.show, genres: ['Crime']),
+      },
+    );
+    expect(_cards(r), ['Fargo'], reason: 'the film is a pick; the series is the reason');
+    expect(asked, isEmpty);
+  });
+
+  test('a watched title named with its year as the reason stays the reason, also when it sits in the picks', () async {
+    final (r, _) = await _recommend(
+      'Zoek een film voor vanavond',
+      'Omdat je «Dune» (2021) keek: «The Order».',
+      picks: [
+        ...picks,
+        _item('d', 'Dune', MediaKind.movie, genres: ['Crime'], year: 2021),
+      ],
+      watched: {
+        'w': _item('w', 'Dune', MediaKind.movie, genres: ['Crime'], year: 2021),
+      },
+    );
+    expect(_cards(r), ['The Order']);
+  });
+
   test('an answer that names no pick shows no pick cards, whatever the question was', () async {
     final (r, _) = await _recommend('Wat zal ik kijken?', 'Zie hieronder.', picks: picks);
     expect(_cards(r), isEmpty);

@@ -180,6 +180,41 @@ void main() {
     );
   });
 
+  test(
+    'seen is per title and per kind: a watched series keeps a film of that name, a watched clip drops its film',
+    () async {
+      const crime = ['Crime'];
+      final watched = {
+        'w1': _item('w1', 'Fargo', MediaKind.show, genres: crime),
+        // Another server names the same film a clip.
+        'w2': _item('w2', 'Heat', MediaKind.clip, year: 1995, genres: crime),
+      };
+      final picks = [
+        _item('p1', 'Fargo', MediaKind.movie, year: 1996, genres: crime),
+        _item('p2', 'Heat', MediaKind.movie, year: 1995, genres: crime),
+      ];
+      final ctx = _ctx(
+        items: watched,
+        seeds: [for (final id in watched.keys) _seed('nas:$id')],
+        taste: const AffinityVector({
+          'genre': {'crime': 1.0},
+        }, eventCount: 2),
+        hubs: [MediaHub(id: 'rows', title: 'Voor jou', type: 'movie', items: picks)],
+      );
+      ctx.recommend = const AssistantRecommendConstraints(excludeWatched: true);
+
+      final result = await _tool().run(ctx, null, const {'kind': 'movie'}) as AssistantToolResult;
+
+      expect(
+        [
+          for (final row in result.data['picks']! as List)
+            for (final t in (row as Map)['titles'] as List) (t as Map)['title'],
+        ],
+        ['Fargo'],
+      );
+    },
+  );
+
   test('the recent list names its window, so it is never taken for the whole history', () async {
     final result = await _tool().run(_ctx(), null, const {}) as AssistantToolResult;
     expect(result.data['watched_recently_window_days'], 30);

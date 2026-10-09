@@ -97,8 +97,10 @@ class BigPMobileConversation extends StatelessWidget {
   }
 
   /// [above] over [card], which keeps its primary action in view: [above]
-  /// scrolls within two fifths of the balloon, the card takes the rest and
-  /// scrolls its own rows. Without a bounded height the old single scroll.
+  /// scrolls within two fifths of the balloon (a fifth while the keyboard is
+  /// up, so the card's password row and buttons still fit above it), the card
+  /// takes the rest and scrolls its own rows. Without a bounded height the old
+  /// single scroll.
   Widget _pinned(List<Widget> above, Widget card) => LayoutBuilder(
     builder: (context, box) {
       if (!box.hasBoundedHeight) {
@@ -112,7 +114,9 @@ class BigPMobileConversation extends StatelessWidget {
         children: [
           if (above.isNotEmpty)
             ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: box.maxHeight * 0.4),
+              constraints: BoxConstraints(
+                maxHeight: box.maxHeight * (MediaQuery.viewInsetsOf(context).bottom > 0 ? 0.2 : 0.4),
+              ),
               child: SingleChildScrollView(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: above),
               ),

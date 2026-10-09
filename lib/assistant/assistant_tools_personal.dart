@@ -89,7 +89,7 @@ final List<AssistantTool> _personalTools = [
                           'title': clipText(
                             item!.kind == MediaKind.episode ? item.grandparentTitle ?? item.title : item.title,
                           ),
-                          'kind': (item.kind == MediaKind.episode ? MediaKind.show : item.kind).name,
+                          'kind': (item.kind.isShowRelated ? MediaKind.show : item.kind).name,
                           if (item.year != null && item.kind != MediaKind.episode) 'year': item.year,
                           'finished': seed.completed,
                         },
@@ -99,13 +99,18 @@ final List<AssistantTool> _personalTools = [
 
       final watchedList = watched.nonNulls.toList();
       // Another server's copy of a watched title is as seen as this one.
-      final seenTitles = {for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?)};
+      // A watched episode without a series key carries no year, and no year
+      // matches any: the kind tells the series from a film of the same name.
+      final seenTitles = {
+        for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?, w['kind'] as String),
+      };
       bool seenBefore(MediaItem item) =>
           c.excludeWatched &&
           (everSeen.contains(item.globalKey) ||
               seenTitles.any(
                 (s) =>
                     s.$1 == assistantTitleKey(item.title ?? '') &&
+                    (s.$3 == MediaKind.show.name) == item.kind.isShowRelated &&
                     (s.$2 == null || item.year == null || s.$2 == item.year),
               ));
       final limit = c.active ? _picksShownConstrained : _picksShown;
