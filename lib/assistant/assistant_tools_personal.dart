@@ -99,13 +99,18 @@ final List<AssistantTool> _personalTools = [
 
       final watchedList = watched.nonNulls.toList();
       // Another server's copy of a watched title is as seen as this one.
-      final seenTitles = {for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?)};
+      // A watched series carries no year here, so the kind tells it from a
+      // film of the same name: Fargo the series is not Fargo (1996).
+      final seenTitles = {
+        for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?, w['kind'] as String),
+      };
       bool seenBefore(MediaItem item) =>
           c.excludeWatched &&
           (everSeen.contains(item.globalKey) ||
               seenTitles.any(
                 (s) =>
                     s.$1 == assistantTitleKey(item.title ?? '') &&
+                    s.$3 == (item.kind == MediaKind.episode ? MediaKind.show : item.kind).name &&
                     (s.$2 == null || item.year == null || s.$2 == item.year),
               ));
       final limit = c.active ? _picksShownConstrained : _picksShown;

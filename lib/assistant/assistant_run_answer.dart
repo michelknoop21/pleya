@@ -113,6 +113,14 @@ extension _AssistantAnswer on AssistantRun {
     ];
   }
 
+  bool _isPick(({String title, int? year}) named) =>
+      named.year != null &&
+      _pickGrids.any(
+        (g) => g.entries.any(
+          (e) => e.item.year == named.year && assistantTitleKey(e.item.title ?? '') == assistantTitleKey(named.title),
+        ),
+      );
+
   /// Whether a closing answer names titles the way Pleya can tell: in « »,
   /// or followed by a year, also on a list line.
   bool _namesTitles(String answer) => answer.contains('«') || RegExp(r'\((?:18|19|20)\d{2}\)').hasMatch(answer);
@@ -173,7 +181,9 @@ extension _AssistantAnswer on AssistantRun {
       all = [
         for (final t in all)
           // Dune (2021) is not the Dune (1984) the user watched.
-          if (!_history.any((h) => assistantSameTitle(h, assistantTitleKey(t.title), t.year))) t,
+          // A pick named with its year is a pick, whatever shares its name
+          // in the history (the series Fargo next to the film from 1996).
+          if (_isPick(t) || !_history.any((h) => assistantSameTitle(h, assistantTitleKey(t.title), t.year))) t,
       ];
       kept = _narrowPicks(all);
     }

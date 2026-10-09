@@ -208,6 +208,22 @@ void main() {
     expect(asked, ['Dune']);
   });
 
+  test('a watched series does not hide a film of the same name: Fargo the series, Fargo (1996) the pick', () async {
+    final (r, asked) = await _recommend(
+      'Doe een voorstel voor vanavond',
+      'Omdat je «Fargo» keek: «Fargo» (1996).',
+      picks: [
+        ...picks,
+        _item('f', 'Fargo', MediaKind.movie, genres: ['Crime'], year: 1996),
+      ],
+      watched: {
+        'w': _item('w', 'Fargo', MediaKind.show, genres: ['Crime']),
+      },
+    );
+    expect(_cards(r), ['Fargo'], reason: 'the film is a pick; the series is the reason');
+    expect(asked, isEmpty);
+  });
+
   test('an answer that names no pick shows no pick cards, whatever the question was', () async {
     final (r, _) = await _recommend('Wat zal ik kijken?', 'Zie hieronder.', picks: picks);
     expect(_cards(r), isEmpty);
