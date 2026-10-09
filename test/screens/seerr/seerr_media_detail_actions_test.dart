@@ -3,6 +3,7 @@
 /// it could not refresh is not acted on, and "available" is not a play button.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -47,10 +48,11 @@ void main() {
     Map<String, dynamic> detail, {
     SeerrMediaStatus cardStatus = SeerrMediaStatus.unknown,
     String mediaType = 'movie',
+    int permissions = seerrPermRequest,
   }) async {
     fake.on('GET /$mediaType/603', detail);
     fake.on('GET /$mediaType/603/recommendations', {'results': []});
-    provider = await seerrProvider(fake);
+    provider = await seerrProvider(fake, permissions: permissions);
     addTearDown(provider.dispose);
     await pumpSeerr(
       tester,
@@ -139,6 +141,62 @@ void main() {
     await tester.tap(find.text(t.seerr.searchInLibrary));
     await tester.pump();
     expect(searched, 'Charge');
+  });
+
+  group('a film whose HD copy is taken, for a profile with the 4K right', () {
+    const fourK = SeerrPermission.request | SeerrPermission.request4kMovie;
+
+    Map<String, dynamic> withFourK(Map<String, dynamic> detail, int status4k) =>
+        detail..['mediaInfo'] = {...detail['mediaInfo'] as Map<String, dynamic>, 'status4k': status4k};
+
+    testWidgets('that is available can be asked for in 4K, and the form opens on 4K', (tester) async {
+      fake.on('POST /request', {'id': 9});
+      await open(tester, movie(5), permissions: fourK);
+
+      expect(_action('request'), findsNothing, reason: 'HD is there');
+      expect(find.text(t.seerr.fourK), findsOneWidget);
+
+      await tester.tap(_action('request4k'));
+      await seerrSettle(tester);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue, reason: 'the button said 4K');
+
+      await tester.tap(find.text(t.seerr.requestMovie));
+      await seerrSettle(tester);
+      expect(fake.sent('POST', '/request').single.body, containsPair('is4k', true));
+    });
+
+    testWidgets('that is pending keeps Mijn aanvraag and adds the 4K request', (tester) async {
+      await open(tester, movie(2, requests: [ownRequest()]), permissions: fourK);
+
+      expect(seerrHasFocus(tester, _action('mine')), isTrue, reason: 'the own request stays the first action');
+      expect(_action('request4k'), findsOneWidget);
+    });
+
+    testWidgets('that is being processed adds the 4K request', (tester) async {
+      await open(tester, movie(3), permissions: fourK);
+      expect(_action('request4k'), findsOneWidget);
+    });
+
+    for (final taken in [2, 3, 5]) {
+      testWidgets('offers no 4K request when the 4K status is $taken', (tester) async {
+        await open(tester, withFourK(movie(5), taken), permissions: fourK);
+        expect(_action('request4k'), findsNothing);
+      });
+    }
+
+    testWidgets('a profile without the 4K right sees what it saw before', (tester) async {
+      await open(tester, movie(5));
+      expect(_action('request4k'), findsNothing);
+      expect(_action('request'), findsNothing);
+    });
+
+    testWidgets('a status that could not be refreshed offers no 4K request either', (tester) async {
+      await open(tester, movie(5), permissions: fourK);
+      fake.on('GET /movie/603', {'message': 'boom'}, 500);
+      await tester.tap(find.text(t.seerr.refreshStatus));
+      await seerrSettle(tester);
+      expect(_action('request4k'), findsNothing);
+    });
   });
 
   testWidgets('a declined own request is said, and asking again stays possible', (tester) async {

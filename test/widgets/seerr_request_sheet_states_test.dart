@@ -68,7 +68,15 @@ void main() {
     },
   };
 
-  Future<void> open(WidgetTester tester, SeerrMedia media, {int permissions = seerrPermRequest}) async {
+  var openedMine = 0;
+
+  Future<void> open(
+    WidgetTester tester,
+    SeerrMedia media, {
+    int permissions = seerrPermRequest,
+    VoidCallback? onRequested,
+    bool offerMine = false,
+  }) async {
     // Tall enough that a five-season form is laid out whole: the list is lazy.
     tester.view.physicalSize = const Size(900, 2400);
     tester.view.devicePixelRatio = 1.0;
@@ -76,7 +84,16 @@ void main() {
     provider = await seerrProvider(fake, permissions: permissions);
     addTearDown(provider.dispose);
     requested = 0;
-    await pumpSeerr(tester, provider, SeerrRequestSheet(media: media, onRequested: () => requested++));
+    openedMine = 0;
+    await pumpSeerr(
+      tester,
+      provider,
+      SeerrRequestSheet(
+        media: media,
+        onRequested: onRequested ?? () => requested++,
+        onOpenMyRequests: offerMine ? () => openedMine++ : null,
+      ),
+    );
     await _settle(tester);
   }
 
@@ -171,8 +188,54 @@ void main() {
       expect(_button('submit'), findsNothing);
     });
 
+    testWidgets('a caller whose confirmation callback throws does not turn a confirmed request into an open one', (
+      tester,
+    ) async {
+      Object? formState() => tester.widget<AutomationNode>(_node(AutomationIds.requestsForm, 'create')).state!();
+
+      await open(tester, _movie);
+      await tester.tap(find.text(t.seerr.requestMovie));
+      await _settle(tester);
+      final confirmed = formState();
+      expect(confirmed, containsPair('phase', 'done'));
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      await open(tester, _movie, onRequested: () => throw StateError('caller broke'));
+      await tester.tap(find.text(t.seerr.requestMovie));
+      await _settle(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(_notice('done'), findsOneWidget);
+      expect(_notice('uncertain'), findsNothing);
+      expect(formState(), confirmed, reason: 'the same confirmed form, with no open outcome set beside it');
+    });
+
     group('a film that is there in HD', () {
       const fourK = SeerrPermission.request | SeerrPermission.request4kMovie;
+
+      testWidgets('or pending in HD keeps the way to Mijn aanvragen beside the 4K choice', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.pending),
+          permissions: fourK,
+          offerMine: true,
+        );
+
+        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(_button('mine'), findsOneWidget, reason: 'the request that exists stays one press away');
+        expect(_button('submit'), findsNothing);
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        expect(_button('mine'), findsNothing);
+        expect(_enabled(tester, 'submit'), isTrue);
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        await tester.tap(find.text(t.seerr.myRequests));
+        await _settle(tester);
+        expect(openedMine, 1);
+      });
 
       testWidgets('can still be asked for in 4K by a profile that holds the 4K right', (tester) async {
         await open(

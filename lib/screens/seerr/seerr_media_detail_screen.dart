@@ -193,15 +193,28 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     }
   }
 
-  Future<void> _openRequest() async {
+  Future<void> _openRequest({bool in4k = false}) async {
     // The reload runs the moment the server confirms, so backing out of the
     // confirmation leaves the status as fresh as pressing Sluiten does.
     await SeerrRequestSheet.show(
       context,
       media: _base,
+      initialIs4k: in4k,
       onRequested: () => unawaited(_load()),
       onOpenMyRequests: _openMyRequests,
     );
+  }
+
+  /// Whether a 4K request is still something this viewer can make while the
+  /// HD copy is taken. Seerr keeps the two apart, so a title that is there or
+  /// on its way in HD has not been asked for in 4K. No 4K status at all counts
+  /// as open, and the server decides.
+  bool _fourKOpen(SeerrProvider provider) {
+    if (!provider.canRequest || !provider.canRequest4kFor(isMovie: _base.isMovie)) return false;
+    final status4k = _base.status4k;
+    return status4k == null ||
+        status4k == SeerrMediaStatus.unknown ||
+        (!_base.isMovie && status4k == SeerrMediaStatus.partiallyAvailable);
   }
 
   /// The viewer's own request for this title, as the current account's server
@@ -285,6 +298,15 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     final requests = _detail?.requests ?? const [];
     final hasOwn = ownId != null && requests.any((r) => r.requestedById == ownId);
     final request = _DetailAction('request', t.seerr.request, Symbols.playlist_add_rounded, _openRequest);
+    // Beside what the HD status offers, never instead of it.
+    final request4k = _fourKOpen(provider)
+        ? _DetailAction(
+            'request4k',
+            t.seerr.fourK,
+            Symbols.high_quality_rounded,
+            () => unawaited(_openRequest(in4k: true)),
+          )
+        : null;
     final mine = _DetailAction('mine', t.seerr.myRequest, Symbols.inbox_rounded, _openMyRequests);
     final match = _libraryMatch;
     final library = match != null
@@ -295,15 +317,18 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
 
     return switch (status) {
       SeerrMediaStatus.unknown => [request],
-      SeerrMediaStatus.pending => [if (hasOwn) mine, refresh],
-      SeerrMediaStatus.processing => [refresh, if (hasOwn) mine],
+      SeerrMediaStatus.pending => [if (hasOwn) mine, refresh, ?request4k],
+      SeerrMediaStatus.processing => [refresh, if (hasOwn) mine, ?request4k],
       SeerrMediaStatus.partiallyAvailable => [
         if (!_base.isMovie)
           _DetailAction('request', t.seerr.requestMoreSeasons, Symbols.playlist_add_rounded, _openRequest),
         ?library,
         refresh,
+        // A series already gets its form, with the 4K switch, from the button
+        // above.
+        if (_base.isMovie) ?request4k,
       ],
-      SeerrMediaStatus.available => [?library, refresh],
+      SeerrMediaStatus.available => [?library, refresh, ?request4k],
     };
   }
 
