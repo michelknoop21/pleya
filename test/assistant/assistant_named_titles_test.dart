@@ -40,7 +40,10 @@ AssistantTitleMatch _match(String title, {bool inLibrary = false}) => AssistantT
 void main() {
   test('Big P\'s words carry no em or en dashes', () {
     expect(assistantPlainDashes('Bluey \u2014 20 plays'), 'Bluey, 20 plays');
-    expect(assistantPlainDashes('Bluey\u2014the show'), 'Bluey, the show');
+    expect(assistantPlainDashes('Bluey \u2014 the show'), 'Bluey, the show');
+    // Without spaces between letters it is a compound or a title.
+    expect(assistantPlainDashes('\u00abSpider\u2014Man\u00bb'), '\u00abSpider-Man\u00bb');
+    expect(assistantPlainDashes('Jean\u2014Luc kijkt'), 'Jean-Luc kijkt');
     expect(assistantPlainDashes('Gideuh \u2013 34 plays'), 'Gideuh, 34 plays');
     expect(assistantPlainDashes('2018\u20132020'), '2018-2020');
     expect(assistantPlainDashes('Done \u2014.'), 'Done.');

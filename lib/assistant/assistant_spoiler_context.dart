@@ -20,6 +20,44 @@ bool assistantIsViewerQuestion(String prompt) => RegExp(
   r'(watching|streaming|playing|aan het (kijken|streamen))(\s+(currently|now|right now|nu|op dit moment|momenteel))*\s*[?.!]*$',
 ).hasMatch(foldText(prompt).trim());
 
+/// A short follow-up that points back with a pronoun and asks about the
+/// story ("what about him?", "waarom gebeurde dat?"). It names no title, so
+/// [assistantNeedsSpoilerScope] cannot fence it, yet the memory it leans on
+/// holds earlier talk about that title: such a question gets no memory.
+bool assistantIsDeicticStoryFollowUp(String prompt) {
+  final words = foldText(prompt).split(RegExp(r'[^\p{L}\p{N}]+', unicode: true)).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty || words.length > 12) return false;
+  const pointers = {
+    'he',
+    'him',
+    'his',
+    'she',
+    'her',
+    'they',
+    'them',
+    'that',
+    'those',
+    'it',
+    'this',
+    'hij',
+    'hem',
+    'zij',
+    'haar',
+    'hen',
+    'ze',
+    'dat',
+    'die',
+    'dit',
+    'daar',
+    'erin',
+  };
+  final asksStory = RegExp(
+    r'what about|what happen|what became|what is going|why did|why was|why is|how did|how does it end|'
+    r'wat gebeur|wat met|wat is er|waarom|hoe zit|hoe loopt|hoe ging|hoe eindigt|wat doet',
+  ).hasMatch(foldText(prompt));
+  return asksStory && words.any(pointers.contains);
+}
+
 bool assistantNeedsSpoilerScope(String prompt) {
   final text = foldText(prompt);
   if (assistantIsViewerQuestion(prompt)) return false;

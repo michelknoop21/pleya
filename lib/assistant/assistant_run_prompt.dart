@@ -18,10 +18,11 @@ const _quotedAnswer = '(Quoted earlier answer, text only) ';
 
 extension _AssistantPrompt on AssistantRun {
   /// Earlier turns as chat messages. A fenced (spoiler) question gets none:
-  /// it is answered from source data alone, and a kids turn is only replayed
+  /// it is answered from source data alone, and so is a pronoun-only story
+  /// follow-up the fence could not see, and a kids turn is only replayed
   /// on a kids profile, so a changed profile stand drops the memory.
   List<Map<String, Object?>> _memoryMessages() {
-    final turns = _spoilerQuestion != null
+    final turns = _spoilerQuestion != null || assistantIsDeicticStoryFollowUp(_prompt)
         ? const <AssistantTurn>[]
         : conversation.where((t) => t.kids == _ctx.kidsMode);
     if (turns.isEmpty) return const [];

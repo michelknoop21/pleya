@@ -252,6 +252,15 @@ void main() {
     expect(c.conversation.map((t) => t.question), ['Wat keek ik het meest?']);
   });
 
+  test('a pronoun-only story follow-up gets no memory, a plain follow-up keeps it', () async {
+    final c = make([_say('Bluey kijk je veel.'), _say('over zijn lot'), _say('ook kinderen')]);
+    await c.submit('Wat keek ik het meest?');
+    await c.submit('what about him?');
+    expect(roles(1, 'assistant'), isEmpty, reason: 'no title in the prompt, so the fence cannot see it');
+    await c.submit('en voor de kinderen?');
+    expect(roles(2, 'assistant'), isNotEmpty);
+  });
+
   test('a confirmation from an earlier turn confirms nothing new', () async {
     final c = make([_call('wipe'), _say('Verwijderd.'), _call('wipe'), _say('nee')]);
     var done = c.submit('Verwijder Sam');
