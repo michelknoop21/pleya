@@ -202,6 +202,17 @@ class TvSeerrRequestsViewState extends State<TvSeerrRequestsView> {
   @override
   void didUpdateWidget(TvSeerrRequestsView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // The manage right went away under an open Bereik subview (a profile
+    // switch). The rail falls back to its rows, without the Bereik row, and the
+    // option that held the focus is gone with the subview. Left set, the flag
+    // would send the next close to that unmounted row and the remote nowhere.
+    if (_scopeSubview && widget.onScopeChanged == null) {
+      _scopeSubview = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_railExpanded || _statusSubview || _scopeSubview) return;
+        if (_statusFocus.canRequestFocus) _statusFocus.requestFocus();
+      });
+    }
     if (_wantsEntryFocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _tryEntryFocus());
     }
