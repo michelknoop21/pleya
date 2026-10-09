@@ -72,10 +72,14 @@ import 'seerr_tv_search_row.dart';
 @visibleForTesting
 List<Widget> seerrDiscoverAppBarActions({required VoidCallback onOpenRequests}) => [
   if (!PlatformDetector.isTV())
-    IconButton(
-      tooltip: t.seerr.myRequests,
-      icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
-      onPressed: onOpenRequests,
+    AutomationNode(
+      id: AutomationIds.seerrSearchInbox,
+      role: 'button',
+      child: IconButton(
+        tooltip: t.seerr.myRequests,
+        icon: const AppIcon(Symbols.inbox_rounded, fill: 1),
+        onPressed: onOpenRequests,
+      ),
     ),
 ];
 
@@ -794,14 +798,20 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     if (PlatformDetector.isTV()) return _buildTv();
     if (PlatformDetector.isPhone(context)) return _buildPhone();
 
-    return FocusedScrollScaffold(
-      title: Text(t.seerr.discoverTitle),
-      actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
-      slivers: [
-        SliverToBoxAdapter(child: _buildSearchField()),
-        SliverToBoxAdapter(child: _buildFilterBar()),
-        ..._query.isEmpty ? _buildDiscoverSlivers() : _buildSearchSlivers(),
-      ],
+    return AutomationScreen(
+      id: AutomationIds.screenRequests,
+      readiness: () => (_query.isEmpty ? !_allLoaded : _searching)
+          ? const AutomationReadiness.loading('requests')
+          : const AutomationReadiness.ready(),
+      child: FocusedScrollScaffold(
+        title: Text(t.seerr.discoverTitle),
+        actions: seerrDiscoverAppBarActions(onOpenRequests: _openRequests),
+        slivers: [
+          SliverToBoxAdapter(child: _buildSearchField()),
+          SliverToBoxAdapter(child: _buildFilterBar()),
+          ..._query.isEmpty ? _buildDiscoverSlivers() : _buildSearchSlivers(),
+        ],
+      ),
     );
   }
 

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/screens/seerr/seerr_requests_screen.dart';
@@ -455,6 +456,25 @@ void main() {
   });
 
   group('a manager chooses between all requests and their own (7C, 7D)', () {
+    testWidgets('automation scope buttons reflect the permitted selection', (tester) async {
+      await open(tester, permissions: seerrPermManage);
+      final own = seerrNode(AutomationIds.requestsListScope, 'own');
+      final all = seerrNode(AutomationIds.requestsListScope, 'all');
+      expect(own, findsOneWidget);
+      expect(all, findsOneWidget);
+      expect(tester.widget<AutomationNode>(own).state!(), {'selected': false});
+      expect(tester.widget<AutomationNode>(all).state!(), {'selected': true});
+      await tester.tap(own);
+      await seerrSettle(tester);
+      expect(_state('scope'), findsOneWidget);
+      expect(tester.widget<AutomationNode>(own).state!(), {'selected': true});
+      expect(tester.widget<AutomationNode>(all).state!(), {'selected': false});
+      expect(fake.sent('GET', '/request').last.query['requestedBy'], '7');
+      await tester.tap(all);
+      await seerrSettle(tester);
+      expect(fake.sent('GET', '/request').last.query.containsKey('requestedBy'), isFalse);
+    });
+
     Finder scopeChip(String label) =>
         find.descendant(of: seerrNode(AutomationIds.requestsListState, 'scope'), matching: find.text(label));
 
@@ -482,6 +502,8 @@ void main() {
       await open(tester);
 
       expect(seerrNode(AutomationIds.requestsListState, 'scope'), findsNothing);
+      expect(seerrNode(AutomationIds.requestsListScope, 'own'), findsNothing);
+      expect(seerrNode(AutomationIds.requestsListScope, 'all'), findsNothing);
       expect(fake.sent('GET', '/request').every((c) => c.query['requestedBy'] == '7'), isTrue);
     });
 

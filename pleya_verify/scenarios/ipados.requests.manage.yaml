@@ -1,0 +1,55 @@
+name: ipados.requests.manage
+target: ios-sim
+# Requests 2.0 (A-21), families 7 and 8 on iPad landscape. Use the tablet inbox
+# and the manager's explicit own-scope control, not the phone-only entry.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.requests.manage.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+  - open: screen.requests
+steps:
+  - configure_view: {orientation: landscapeLeft}
+  - wait_until: {id: screen.requests, timeout: 15000}
+  - settle: 2000
+  - tap: {id: seerr.search.inbox}
+  - wait_until: {id: "requests.list.scope[own]", timeout: 15000}
+  - settle: 600
+  - tap: {id: "requests.list.scope[own]"}
+  - wait_until: {id: "requests.list.scope[own]", state: {selected: true}, timeout: 8000}
+  # The fixture user filed requests 1 and 3; request 2 is someone else's and
+  # must not be in an own-scope list.
+  - wait_until: {id: "requests.list.item[0]", state: {request: 1, status: pending, busy: false}, timeout: 15000}
+  - settle: 1000
+  - assert: {id: "requests.list.item[1]", state: {request: 3, status: approved}}
+  - assert: {id: "requests.list.item[2]", present: false}
+  - assert: {id: "requests.list.item[0]", insideViewport: true}
+  - snapshot: 00-my-requests
+
+  # 7C/7D: this user manages requests, so the list offers both scopes, and the
+  # own list explains why its chips carry no numbers.
+  - assert: {id: "requests.list.state[scope]", insideViewport: true, state: {own: true}}
+
+  # 8A/8B on iPad landscape: the row keeps its actions inside the screen, and
+  # the menu behind "more" carries everything this request allows.
+  - assert: {id: "requests.list.more[0]", insideViewport: true, minimumTapTarget: 44}
+  - tap: {id: "requests.list.more[0]"}
+  - wait_until: {id: requests.actions, timeout: 8000}
+  - settle: 600
+  - assert: {id: requests.actions, insideViewport: true, state: {request: 1, status: pending}}
+  - assert: {id: "requests.actions.item[open]", insideViewport: true}
+  - assert: {id: "requests.actions.item[approve]", insideViewport: true}
+  - assert: {id: "requests.actions.item[decline]", insideViewport: true}
+  - assert: {id: "requests.actions.item[edit]", insideViewport: true}
+  - assert: {id: "requests.actions.item[cancel]", insideViewport: true}
+  - snapshot: 01-row-menu
+
+  # Sluiten returns to the same request, unchanged.
+  - tap: {id: "requests.actions.item[close]"}
+  - wait_until: {id: "requests.list.item[0]", state: {request: 1, status: pending, busy: false}, timeout: 8000}
+  - settle: 600
+  - assert: {id: "requests.list.item[0]", insideViewport: true}
+  - assert: {id: requests.actions, present: false}
+  - snapshot: 02-back-on-request

@@ -4,6 +4,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/automation/automation_ids.dart';
+import 'package:pleya/automation/automation_screen.dart';
+import 'package:pleya/screens/seerr/seerr_requests_screen.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/screens/seerr/seerr_discover_screen.dart';
 import 'package:pleya/screens/seerr/seerr_media_detail_screen.dart';
@@ -96,5 +99,22 @@ void main() {
 
     expect(card(tester).media.tmdbId, 777);
     expect(find.text('Title 603'), findsNothing);
+  });
+  testWidgets('desktop requests automation follows actual loading and opens the inbox', (tester) async {
+    final slow = fake.hold('GET /discover/trending');
+    await open(tester);
+    final screen = find.byWidgetPredicate(
+      (widget) => widget is AutomationScreen && widget.id == AutomationIds.screenRequests,
+    );
+    expect(screen, findsOneWidget);
+    expect(tester.widget<AutomationScreen>(screen).readiness().state, AutomationReadinessState.loading);
+    slow.complete(FakeSeerr.json(page([603])));
+    await seerrSettle(tester);
+    expect(tester.widget<AutomationScreen>(screen).readiness().isReady, isTrue);
+    final inbox = seerrNode(AutomationIds.seerrSearchInbox);
+    expect(inbox, findsOneWidget);
+    await tester.tap(inbox);
+    await seerrSettle(tester);
+    expect(find.byType(SeerrRequestsScreen), findsOneWidget);
   });
 }

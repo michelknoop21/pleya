@@ -366,6 +366,9 @@ ids:
   - id: requests.list.state
     role: region
     instanceable: true
+  - id: requests.list.scope
+    role: button
+    instanceable: true
   - id: requests.detail.action
     role: button
     instanceable: true

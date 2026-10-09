@@ -491,6 +491,9 @@ class AutomationIds {
   /// `[filtered]`, `[error]`, `[unsupported]`.
   static const String requestsListState = 'requests.list.state';
 
+  /// A manager's scope choices: `requests.list.scope[all]` and `[own]`.
+  static const String requestsListScope = 'requests.list.scope';
+
   /// The primary and secondary action on a Seerr title page:
   /// `requests.detail.action[request]`, `[mine]`, `[refresh]`, `[library]`,
   /// `[search]`.
@@ -821,6 +824,7 @@ class AutomationIds {
     {'id': requestsListItem, 'role': 'list.item', 'instanceable': true},
     {'id': requestsListMore, 'role': 'button', 'instanceable': true},
     {'id': requestsListState, 'role': 'region', 'instanceable': true},
+    {'id': requestsListScope, 'role': 'button', 'instanceable': true},
     {'id': requestsDetailAction, 'role': 'button', 'instanceable': true},
     {'id': landingHeader, 'role': 'region', 'instanceable': true},
     {'id': landingHeaderSearch, 'role': 'button', 'instanceable': true},
