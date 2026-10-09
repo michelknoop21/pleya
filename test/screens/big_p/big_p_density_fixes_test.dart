@@ -201,7 +201,11 @@ void main() {
         ..pending = createSam(password: AssistantPasswordMode.required);
       await pumpHost(tester, size: se, safe: safeTop20, textScale: 1.3, keyboard: 260);
       expect(tester.takeException(), isNull, reason: 'no RenderFlex overflow above the keyboard');
-      expect(find.byType(BigPButton), findsNWidgets(2));
+      final buttons = find.byType(BigPButton);
+      expect(buttons, findsNWidgets(2));
+      for (var i = 0; i < 2; i++) {
+        expect(buttons.at(i).hitTestable(), findsOneWidget, reason: 'button $i above the keyboard');
+      }
     });
 
     testWidgets('Bewaar with the ages card on an iPhone SE at text scale 1.3', (tester) async {
