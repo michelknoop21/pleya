@@ -188,9 +188,12 @@ class _SearchScreenState extends State<SearchScreen>
   bool _seerrSearching = false;
   bool _seerrSearched = false;
 
-  /// The query the viewer settled on: submitted, picked from history or handed
-  /// in from outside. The TV requests band is searched for this one only, never
-  /// for what the debounce picks up while a keyboard is still being typed on.
+  /// The query the viewer settled on: submitted, picked from history, handed
+  /// in from outside, or left behind by moving from the keyboard down to the
+  /// results. The TV requests band is searched for this one only, never for
+  /// what the debounce picks up while a keyboard is still being typed on. It is
+  /// kept while the text moves away and comes back, so the band of a settled
+  /// query does not depend on a letter typed and deleted in between.
   String? _settledQuery;
 
   /// The Seerr search was asked and did not answer. Not the same as no match:
@@ -349,8 +352,6 @@ class _SearchScreenState extends State<SearchScreen>
     if (!mounted) return;
 
     final query = _searchController.text;
-    // Typing on moves away from what was settled on.
-    if (query.trim() != _settledQuery) _settledQuery = null;
 
     if (query.trim().isEmpty) {
       _searchDebounce.cancel();
@@ -811,6 +812,14 @@ class _SearchScreenState extends State<SearchScreen>
     // moving down would silently drop focus and strand the user. Keep focus on
     // the keyboard until there is something real to land on.
     if (_isSearching) return;
+    // Leaving the keyboard for the results is a choice for this query, as much
+    // as the search key is. The requests band is asked now when the library
+    // answer is already there, and otherwise when that answer lands.
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      _settledQuery = query;
+      if (query == _lastSearchedQuery.trim()) _maybeSearchSeerrForSettledQuery(query);
+    }
     // Apple TV's pill has nothing under it but the results (no mic, and the
     // inline keyboard only on fallback), and a directional search from a
     // full-width pill lands on the card nearest its centre, the second or

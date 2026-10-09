@@ -193,6 +193,68 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('TV: DOWN from the inline keyboard to the results asks the requests server, once per query', (
+    tester,
+  ) async {
+    final fake = FakeSeerr()
+      ..on('GET /search', {
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {'id': 901, 'mediaType': 'movie', 'title': 'Aan te vragen film'},
+        ],
+      });
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (client, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+
+    final state = key.currentState!;
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(find.text('Movie 1'), findsOneWidget);
+    expect(fake.sent('GET', '/search'), isEmpty, reason: 'still typing');
+
+    // The inline keyboard is driven with the focus on the input, so "below the
+    // keyboard" is any control of the results area.
+    bool belowKeyboard() => FocusManager.instance.primaryFocus?.debugLabel != 'SearchInput';
+    Future<void> downToResults() async {
+      for (var i = 0; i < 8 && !belowKeyboard(); i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      expect(belowKeyboard(), isTrue, reason: 'the remote reaches the results without the search key');
+    }
+
+    expect(belowKeyboard(), isFalse, reason: 'the focus starts on the keyboard');
+    await downToResults();
+    expect(fake.sent('GET', '/search').map((c) => c.query['query']), ['movie']);
+    expect(find.text('Aan te vragen film'), findsWidgets, reason: 'the requests band is there');
+
+    // Back up to the keyboard and down again: the same query is not asked twice.
+    for (var i = 0; i < 8 && belowKeyboard(); i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+    }
+    expect(belowKeyboard(), isFalse);
+    await downToResults();
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    // A letter typed and deleted again leaves the band of the settled query.
+    (state as SearchInputFocusable).setSearchQuery('movies');
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    await tester.pumpAndSettle();
+    expect(find.text('Aan te vragen film'), findsWidgets);
+    // The same library search again (a metadata refresh) brings the band back.
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(2));
+    expect(find.text('Aan te vragen film'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('the row at rest is the titles that were opened, not the queries that were typed (36 A)', (tester) async {
     // Mockup 36 A. `search_history` still holds the query strings, and desktop
     // and mobile still draw them as chips; TV draws what those queries were
