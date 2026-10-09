@@ -89,7 +89,7 @@ final List<AssistantTool> _personalTools = [
                           'title': clipText(
                             item!.kind == MediaKind.episode ? item.grandparentTitle ?? item.title : item.title,
                           ),
-                          'kind': (item.kind == MediaKind.episode ? MediaKind.show : item.kind).name,
+                          'kind': (item.kind.isShowRelated ? MediaKind.show : item.kind).name,
                           if (item.year != null && item.kind != MediaKind.episode) 'year': item.year,
                           'finished': seed.completed,
                         },
