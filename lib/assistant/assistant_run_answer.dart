@@ -113,13 +113,26 @@ extension _AssistantAnswer on AssistantRun {
     ];
   }
 
-  bool _isPick(({String title, int? year}) named) =>
-      named.year != null &&
-      _pickGrids.any(
-        (g) => g.entries.any(
-          (e) => e.item.year == named.year && assistantTitleKey(e.item.title ?? '') == assistantTitleKey(named.title),
-        ),
-      );
+  /// Whether [named] is a pick the user has not watched: in a pick grid under
+  /// that title and year, and not the watched title itself. A watched series
+  /// and a film of that name are two titles; the same film or series is not.
+  bool _isPick(({String title, int? year}) named) {
+    final key = assistantTitleKey(named.title);
+    return named.year != null &&
+        _pickGrids.any(
+          (g) => g.entries.any(
+            (e) =>
+                e.item.year == named.year &&
+                assistantTitleKey(e.item.title ?? '') == key &&
+                !_history.any(
+                  (h) =>
+                      h.key == key &&
+                      h.series == e.item.kind.isShowRelated &&
+                      (h.year == null || h.year == e.item.year),
+                ),
+          ),
+        );
+  }
 
   /// Whether a closing answer names titles the way Pleya can tell: in « »,
   /// or followed by a year, also on a list line.
@@ -183,7 +196,9 @@ extension _AssistantAnswer on AssistantRun {
           // Dune (2021) is not the Dune (1984) the user watched.
           // A pick named with its year is a pick, whatever shares its name
           // in the history (the series Fargo next to the film from 1996).
-          if (_isPick(t) || !_history.any((h) => assistantSameTitle(h, assistantTitleKey(t.title), t.year))) t,
+          if (_isPick(t) ||
+              !_history.any((h) => assistantSameTitle((key: h.key, year: h.year), assistantTitleKey(t.title), t.year)))
+            t,
       ];
       kept = _narrowPicks(all);
     }

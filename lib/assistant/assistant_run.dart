@@ -277,7 +277,7 @@ class AssistantRun {
   /// returned. The picks are material for the model, not an answer: only what
   /// the answer names stays a card, in the order the answer names it.
   final Set<AssistantMediaGrid> _pickGrids = {};
-  final Set<({String key, int? year})> _history = {};
+  final Set<({String key, int? year, bool series})> _history = {};
   int? _wanted;
   bool _personal = false;
 

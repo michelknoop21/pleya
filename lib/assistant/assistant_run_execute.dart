@@ -159,7 +159,11 @@ extension _AssistantExecute on AssistantRun {
             _personal = true;
             if (shown is AssistantMediaGrid) _pickGrids.add(shown);
             for (final w in (data['watched_recently'] as List?) ?? const []) {
-              _history.add((key: assistantTitleKey((w as Map)['title'] as String), year: w['year'] as int?));
+              _history.add((
+                key: assistantTitleKey((w as Map)['title'] as String),
+                year: w['year'] as int?,
+                series: w['kind'] == MediaKind.show.name,
+              ));
             }
           }
           if (tool.name == 'find_media' && shown is AssistantMediaGrid) {

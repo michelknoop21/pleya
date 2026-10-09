@@ -224,6 +224,21 @@ void main() {
     expect(asked, isEmpty);
   });
 
+  test('a watched title named with its year as the reason stays the reason, also when it sits in the picks', () async {
+    final (r, _) = await _recommend(
+      'Zoek een film voor vanavond',
+      'Omdat je «Dune» (2021) keek: «The Order».',
+      picks: [
+        ...picks,
+        _item('d', 'Dune', MediaKind.movie, genres: ['Crime'], year: 2021),
+      ],
+      watched: {
+        'w': _item('w', 'Dune', MediaKind.movie, genres: ['Crime'], year: 2021),
+      },
+    );
+    expect(_cards(r), ['The Order']);
+  });
+
   test('an answer that names no pick shows no pick cards, whatever the question was', () async {
     final (r, _) = await _recommend('Wat zal ik kijken?', 'Zie hieronder.', picks: picks);
     expect(_cards(r), isEmpty);
