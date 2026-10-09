@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_entitlement.dart';
 import 'package:pleya/assistant/assistant_provider.dart';
+import 'package:pleya/assistant/assistant_spoiler_context.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/ids.dart';
@@ -250,6 +251,38 @@ void main() {
     expect(roles(1, 'assistant'), isEmpty);
     expect(roles(1, 'user').map((m) => m['content']), ['wie is dat?']);
     expect(c.conversation.map((t) => t.question), ['Wat keek ik het meest?']);
+  });
+
+  test('only a person or event story follow-up counts as deictic', () {
+    for (final q in [
+      'what about him?',
+      'Waaróm deed hij dat?',
+      'wat gebeurde er met haar?',
+      'what happened?',
+      'wat gebeurde er toen?',
+    ]) {
+      expect(assistantIsDeicticStoryFollowUp(q), isTrue, reason: q);
+    }
+    for (final q in [
+      'what about that one?',
+      'waarom die?',
+      'why is it buffering?',
+      'hoe zit dat met mijn downloads?',
+      'wat meten ze?',
+      'en voor de kinderen?',
+      'wat doet dat?',
+    ]) {
+      expect(assistantIsDeicticStoryFollowUp(q), isFalse, reason: q);
+    }
+  });
+
+  test('a pronoun-only story follow-up gets no memory, a plain follow-up keeps it', () async {
+    final c = make([_say('Bluey kijk je veel.'), _say('over zijn lot'), _say('ook kinderen')]);
+    await c.submit('Wat keek ik het meest?');
+    await c.submit('what about him?');
+    expect(roles(1, 'assistant'), isEmpty, reason: 'no title in the prompt, so the fence cannot see it');
+    await c.submit('en voor de kinderen?');
+    expect(roles(2, 'assistant'), isNotEmpty);
   });
 
   test('a confirmation from an earlier turn confirms nothing new', () async {

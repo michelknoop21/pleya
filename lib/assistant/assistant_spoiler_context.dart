@@ -20,6 +20,26 @@ bool assistantIsViewerQuestion(String prompt) => RegExp(
   r'(watching|streaming|playing|aan het (kijken|streamen))(\s+(currently|now|right now|nu|op dit moment|momenteel))*\s*[?.!]*$',
 ).hasMatch(foldText(prompt).trim());
 
+/// A short follow-up that points back at a person or an event and asks about
+/// the story ("what about him?", "wat gebeurde er toen?"). It names no title,
+/// so [assistantNeedsSpoilerScope] cannot fence it, yet the memory it leans on
+/// holds earlier talk about that title: such a question gets no memory. Plain
+/// pointers ("that one", "die") stay out: they are how a follow-up on a list
+/// of tips resolves, and a technical "why is it buffering" has no plot.
+bool assistantIsDeicticStoryFollowUp(String prompt) {
+  final text = foldText(prompt);
+  final words = text.split(RegExp(r'[^\p{L}\p{N}]+', unicode: true)).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty || words.length > 12) return false;
+  const people = {'he', 'him', 'she', 'her', 'they', 'them', 'hij', 'hem', 'zij', 'haar', 'hen', 'ze'};
+  final aboutPerson = RegExp(
+    r'\b(what about|what happened to|what became of|why did|why was|how did|wat gebeurde er met|wat is er met|wat met|waarom deed|hoe ging het met)\b',
+  ).hasMatch(text);
+  final aboutEvent = RegExp(
+    r'\b(what happened|what happens|how (does|did) (it|that) end|hoe eindigt (het|dat)|hoe (loopt|liep) (het|dat) af|why did that happen|wat gebeurde|wat gebeurt|waarom gebeurde)\b',
+  ).hasMatch(text);
+  return (aboutPerson && words.any(people.contains)) || aboutEvent;
+}
+
 bool assistantNeedsSpoilerScope(String prompt) {
   final text = foldText(prompt);
   if (assistantIsViewerQuestion(prompt)) return false;
