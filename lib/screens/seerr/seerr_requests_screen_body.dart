@@ -20,18 +20,30 @@ extension _SeerrRequestsBody on _SeerrRequestsScreenState {
           state: () => {'own': ownOnly},
           child: SegmentedTabGroup(
             children: [
-              FocusableTabChip(
-                style: TabChipStyle.segmented,
-                label: t.seerr.allRequests,
-                isSelected: !ownOnly,
-                onSelect: () => _setScope(false),
+              AutomationNode(
+                id: AutomationIds.requestsListScope,
+                instance: 'all',
+                role: 'button',
+                state: () => {'selected': !ownOnly},
+                child: FocusableTabChip(
+                  style: TabChipStyle.segmented,
+                  label: t.seerr.allRequests,
+                  isSelected: !ownOnly,
+                  onSelect: () => _setScope(false),
+                ),
               ),
               const SizedBox(width: 2),
-              FocusableTabChip(
-                style: TabChipStyle.segmented,
-                label: t.seerr.myRequests,
-                isSelected: ownOnly,
-                onSelect: () => _setScope(true),
+              AutomationNode(
+                id: AutomationIds.requestsListScope,
+                instance: 'own',
+                role: 'button',
+                state: () => {'selected': ownOnly},
+                child: FocusableTabChip(
+                  style: TabChipStyle.segmented,
+                  label: t.seerr.myRequests,
+                  isSelected: ownOnly,
+                  onSelect: () => _setScope(true),
+                ),
               ),
             ],
           ),
