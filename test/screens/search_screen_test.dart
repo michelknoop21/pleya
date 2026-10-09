@@ -151,6 +151,48 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvSearchCard(movies)'));
   });
 
+  testWidgets('TV: the requests server is asked for the query that was submitted, not for typing in progress', (
+    tester,
+  ) async {
+    final fake = FakeSeerr()
+      ..on('GET /search', {
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {'id': 901, 'mediaType': 'movie', 'title': 'Aan te vragen film'},
+        ],
+      });
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (client, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget, reason: 'the inline keyboard is up');
+
+    // What the debounce does after a pause in typing. rate_limiter's Debounce
+    // never fires under FakeAsync, so the same `_performSearch` is reached
+    // through refresh(), as in the tests above.
+    final state = key.currentState!;
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(client.queries, ['movie']);
+    expect(find.text('Movie 1'), findsOneWidget, reason: 'the library answers while typing');
+    expect(fake.sent('GET', '/search'), isEmpty, reason: 'nothing was submitted, so the requests server is not asked');
+
+    await tester.tap(_keyboardDoneKey());
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search').map((c) => c.query['query']), ['movie']);
+    expect(find.text('Aan te vragen film'), findsWidgets, reason: 'the band answers the submitted query');
+
+    // Typing on leaves the submitted query behind.
+    (state as SearchInputFocusable).setSearchQuery('movies');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('the row at rest is the titles that were opened, not the queries that were typed (36 A)', (tester) async {
     // Mockup 36 A. `search_history` still holds the query strings, and desktop
     // and mobile still draw them as chips; TV draws what those queries were
@@ -1294,7 +1336,10 @@ class _ProgrammableClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchScreen(WidgetTester tester) async {
+Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchScreen(
+  WidgetTester tester, {
+  SeerrProvider? seerr,
+}) async {
   TvDetectionService.debugSetAppleTVOverride(null);
   await TvDetectionService.getInstance(forceTv: true);
   TvDetectionService.setForceTVSync(true);
@@ -1330,6 +1375,7 @@ Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchSc
         providers: [
           ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
           ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+          if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
         ],
         child: MaterialApp(
           theme: monoTheme(dark: true),

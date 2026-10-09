@@ -188,6 +188,11 @@ class _SearchScreenState extends State<SearchScreen>
   bool _seerrSearching = false;
   bool _seerrSearched = false;
 
+  /// The query the viewer settled on: submitted, picked from history or handed
+  /// in from outside. The TV requests band is searched for this one only, never
+  /// for what the debounce picks up while a keyboard is still being typed on.
+  String? _settledQuery;
+
   /// The Seerr search was asked and did not answer. Not the same as no match:
   /// the library results stand, and this half of the answer is missing.
   bool _seerrIncomplete = false;
@@ -309,6 +314,7 @@ class _SearchScreenState extends State<SearchScreen>
     _searchController.text = query;
     _searchController.selection = TextSelection.collapsed(offset: query.length);
     _searchDebounce.cancel();
+    _settledQuery = query.trim();
     _performSearch(query);
   }
 
@@ -343,6 +349,8 @@ class _SearchScreenState extends State<SearchScreen>
     if (!mounted) return;
 
     final query = _searchController.text;
+    // Typing on moves away from what was settled on.
+    if (query.trim() != _settledQuery) _settledQuery = null;
 
     if (query.trim().isEmpty) {
       _searchDebounce.cancel();
@@ -513,9 +521,10 @@ class _SearchScreenState extends State<SearchScreen>
       if (neutral.isNotEmpty) _addToHistory(query);
       _maybeFocusResultsAfterSubmit(query, neutral);
       // On TV the requests server answers in its own band under the library
-      // results. Not while the native keyboard is up: every keystroke streams a
-      // search in there, and the band is for the query the viewer settled on.
-      if (PlatformDetector.isTV() && !NativeInputSession.isActive && !_seerrSearched) unawaited(_searchSeerr());
+      // results, for the query the viewer settled on. A search the debounce
+      // started is typing in progress, on the native keyboard and on the inline
+      // one alike, and asks the requests server nothing.
+      _maybeSearchSeerrForSettledQuery(query);
     } catch (e) {
       if (!mounted || isStale()) return;
       _focusResultsForQuery = null;
@@ -540,6 +549,11 @@ class _SearchScreenState extends State<SearchScreen>
   /// Re-run the last query after an error-state retry.
   void _retrySearch() {
     _performSearch(_searchController.text);
+  }
+
+  void _maybeSearchSeerrForSettledQuery(String query) {
+    if (!PlatformDetector.isTV() || query != _settledQuery || _seerrSearched) return;
+    unawaited(_searchSeerr());
   }
 
   /// One-shot Jellyseerr/Overseerr search for the current query. Explicit
@@ -676,8 +690,12 @@ class _SearchScreenState extends State<SearchScreen>
   void _handleSearchSubmit() {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
+    _settledQuery = query;
 
     if (_searchResults.isNotEmpty && !_isSearching && query == _lastSearchedQuery.trim()) {
+      // The library answer was already streamed in while typing. The requests
+      // band was not asked then, so it is asked now.
+      _maybeSearchSeerrForSettledQuery(query);
       _focusFirstResult();
       return;
     }
@@ -737,6 +755,7 @@ class _SearchScreenState extends State<SearchScreen>
     _searchController.selection = TextSelection.collapsed(offset: trimmed.length);
     _searchDebounce.cancel();
     if (trimmed.isEmpty) return;
+    _settledQuery = trimmed;
     _performSearch(trimmed);
   }
 
