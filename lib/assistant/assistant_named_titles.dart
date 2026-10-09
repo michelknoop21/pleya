@@ -60,7 +60,10 @@ List<({String title, int? year})> assistantNamedTitles(String answer) {
   final found = <({String title, int? year})>[];
   final seen = <String>{};
   void add(String raw, String? rawYear) {
-    final title = raw.trim();
+    // «Dune (2021)»: a year written inside the marks is still that title's year.
+    final inside = rawYear == null ? RegExp(r'^(.+?)\s*\((\d{4})\)$').firstMatch(raw.trim()) : null;
+    final title = inside?[1] ?? raw.trim();
+    rawYear ??= inside?[2];
     // A year find_title would refuse drops the year, not every title.
     final year = switch (int.tryParse(rawYear ?? '')) {
       final y? when y >= 1870 && y <= 2100 => y,

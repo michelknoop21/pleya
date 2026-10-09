@@ -206,6 +206,8 @@ void main() {
       for (var i = 0; i < 2; i++) {
         expect(buttons.at(i).hitTestable(), findsOneWidget, reason: 'button $i above the keyboard');
       }
+      // The password Aanmaken waits for is reachable too.
+      expect(find.text(t.assistant.confirm.passwordPlaceholder).hitTestable(), findsOneWidget);
     });
 
     testWidgets('Bewaar with the ages card on an iPhone SE at text scale 1.3', (tester) async {
