@@ -20,42 +20,24 @@ bool assistantIsViewerQuestion(String prompt) => RegExp(
   r'(watching|streaming|playing|aan het (kijken|streamen))(\s+(currently|now|right now|nu|op dit moment|momenteel))*\s*[?.!]*$',
 ).hasMatch(foldText(prompt).trim());
 
-/// A short follow-up that points back with a pronoun and asks about the
-/// story ("what about him?", "waarom gebeurde dat?"). It names no title, so
-/// [assistantNeedsSpoilerScope] cannot fence it, yet the memory it leans on
-/// holds earlier talk about that title: such a question gets no memory.
+/// A short follow-up that points back at a person or an event and asks about
+/// the story ("what about him?", "wat gebeurde er toen?"). It names no title,
+/// so [assistantNeedsSpoilerScope] cannot fence it, yet the memory it leans on
+/// holds earlier talk about that title: such a question gets no memory. Plain
+/// pointers ("that one", "die") stay out: they are how a follow-up on a list
+/// of tips resolves, and a technical "why is it buffering" has no plot.
 bool assistantIsDeicticStoryFollowUp(String prompt) {
-  final words = foldText(prompt).split(RegExp(r'[^\p{L}\p{N}]+', unicode: true)).where((w) => w.isNotEmpty).toList();
+  final text = foldText(prompt);
+  final words = text.split(RegExp(r'[^\p{L}\p{N}]+', unicode: true)).where((w) => w.isNotEmpty).toList();
   if (words.isEmpty || words.length > 12) return false;
-  const pointers = {
-    'he',
-    'him',
-    'his',
-    'she',
-    'her',
-    'they',
-    'them',
-    'that',
-    'those',
-    'it',
-    'this',
-    'hij',
-    'hem',
-    'zij',
-    'haar',
-    'hen',
-    'ze',
-    'dat',
-    'die',
-    'dit',
-    'daar',
-    'erin',
-  };
-  final asksStory = RegExp(
-    r'what about|what happen|what became|what is going|why did|why was|why is|how did|how does it end|'
-    r'wat gebeur|wat met|wat is er|waarom|hoe zit|hoe loopt|hoe ging|hoe eindigt|wat doet',
-  ).hasMatch(foldText(prompt));
-  return asksStory && words.any(pointers.contains);
+  const people = {'he', 'him', 'she', 'her', 'they', 'them', 'hij', 'hem', 'zij', 'haar', 'hen', 'ze'};
+  final aboutPerson = RegExp(
+    r'\b(what about|what happened to|what became of|why did|why was|how did|wat gebeurde er met|wat is er met|wat met|waarom deed|hoe ging het met)\b',
+  ).hasMatch(text);
+  final aboutEvent = RegExp(
+    r'\b(what happened|what happens|how does it end|how did it end|why did that happen|wat gebeurde|wat gebeurt|hoe loopt het af|hoe liep het af|waarom gebeurde)\b',
+  ).hasMatch(text);
+  return (aboutPerson && words.any(people.contains)) || aboutEvent;
 }
 
 bool assistantNeedsSpoilerScope(String prompt) {
