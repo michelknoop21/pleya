@@ -35,7 +35,7 @@ bool assistantIsDeicticStoryFollowUp(String prompt) {
     r'\b(what about|what happened to|what became of|why did|why was|how did|wat gebeurde er met|wat is er met|wat met|waarom deed|hoe ging het met)\b',
   ).hasMatch(text);
   final aboutEvent = RegExp(
-    r'\b(what happened|what happens|how does it end|how did it end|why did that happen|wat gebeurde|wat gebeurt|hoe loopt het af|hoe liep het af|waarom gebeurde)\b',
+    r'\b(what happened|what happens|how (does|did) (it|that) end|hoe eindigt (het|dat)|hoe (loopt|liep) (het|dat) af|why did that happen|wat gebeurde|wat gebeurt|waarom gebeurde)\b',
   ).hasMatch(text);
   return (aboutPerson && words.any(people.contains)) || aboutEvent;
 }
