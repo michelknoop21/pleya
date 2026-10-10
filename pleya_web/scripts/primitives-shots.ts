@@ -11,7 +11,7 @@
  * het skelet naast die van een artworkvlak zonder beeld.
  */
 import { chromium, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 
 import { SECTIONS as GALLERY_SECTIONS } from '../src/routes/dev/primitives/sections';
 
@@ -142,6 +142,98 @@ async function railStates(name: string): Promise<void> {
   }));
   console.log(`${name}: ${JSON.stringify(overflow)}`);
   await clipSection('rail', name, true);
+}
+
+/** Heroes met beeld: eerst laden en decoderen, dan de uitsnede. */
+async function heroShot(name: string): Promise<void> {
+  await page.waitForFunction(() => document.querySelectorAll('#hero img').length >= 3);
+  await page.evaluate(() =>
+    Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('#hero img'), (img) => img.decode()))
+  );
+  await page.waitForTimeout(400);
+  await clipSection('hero', name);
+}
+
+/**
+ * Commitgrens 4: kaart, hero en rail naast de northstar. PLEYA_SHOTS_ROUND=c4
+ * maakt alleen deze opnamen: hover en focus los, de thema's van kaarten en
+ * hero, de skeletonhome, en de vergelijkingsbeelden (northstar rechts).
+ */
+const NORTHSTAR = '../docs/assets/pleya-web-northstar';
+async function compare(name: string, mine: string, northstarFile: string, width: number): Promise<void> {
+  const b64 = (p: string) => readFileSync(p).toString('base64');
+  const html = `<body style="margin:0;background:#000;color:#aaa;font:12px sans-serif">
+    <div style="display:flex;gap:16px;padding:12px;align-items:flex-start">
+      <figure style="margin:0;flex:1 1 0;min-width:0"><figcaption style="padding:0 0 6px">galerij (pleya_web)</figcaption>
+        <img style="width:100%" src="data:image/png;base64,${b64(mine)}"></figure>
+      <figure style="margin:0;flex:1 1 0;min-width:0"><figcaption style="padding:0 0 6px">northstar ${northstarFile}</figcaption>
+        <img style="width:100%" src="data:image/jpeg;base64,${b64(`${NORTHSTAR}/${northstarFile}`)}"></figure>
+    </div></body>`;
+  const cmp = await context.newPage();
+  await cmp.setViewportSize({ width: Math.max(width * 2 + 56, 900), height: 800 });
+  await cmp.setContent(html);
+  await cmp.waitForFunction(() => Array.from(document.images).every((i) => i.complete));
+  const path = `${OUT}/${name}-vs-northstar@${width}.png`;
+  await cmp.screenshot({ path, fullPage: true });
+  await cmp.close();
+  console.log(path);
+}
+
+if (process.env['PLEYA_SHOTS_ROUND'] === 'c4') {
+  const NS: Record<string, (w: number) => string> = {
+    kaarten: () => '16-kaartstaten@1600.jpg',
+    hero: (w) => `01-home@${w}.jpg`,
+    rail: (w) => `01-home@${w}.jpg`,
+    skeleton: (w) => `15-skeleton@${w === 393 ? 393 : 1600}.jpg`
+  };
+  for (const width of WIDTHS) {
+    await open(GALLERY, width);
+    await cardStates(`kaarten@${width}`);
+    // Hover los: de muis boven de tweede kaart, de focus op de pagina.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.mouse.move(2, 2);
+    await page.locator('#kaarten [data-demo="hover"] .card').hover();
+    await page.waitForTimeout(400);
+    const hover = await page.evaluate(() => {
+      const c = document.querySelector('#kaarten [data-demo="hover"] .card')!;
+      return { hover: c.matches(':hover'), focusWithin: document.querySelector('#kaarten :focus-visible') !== null };
+    });
+    console.log(`kaarten-hover@${width}: ${JSON.stringify(hover)}`);
+    await clipSection('kaarten', `kaarten-hover@${width}`);
+    // Focus los: toetsenbord naar de derde kaart, de muis uit de sectie.
+    await page.mouse.move(2, 2);
+    await page.keyboard.press('Shift');
+    await page.locator('#kaarten [data-demo="focus"] a').focus();
+    await page.waitForTimeout(400);
+    const focus = await page.evaluate(() => {
+      const a = document.querySelector('#kaarten [data-demo="focus"] a')!;
+      const c = getComputedStyle(a);
+      return { focusVisible: a.matches(':focus-visible'), outline: `${c.outlineWidth} ${c.outlineStyle} ${c.outlineColor}` };
+    });
+    console.log(`kaarten-focus@${width}: ${JSON.stringify(focus)}`);
+    await clipSection('kaarten', `kaarten-focus@${width}`);
+    await heroShot(`hero@${width}`);
+    await railStates(`rail@${width}`);
+    for (const n of ['kaarten', 'hero', 'rail']) {
+      await compare(n, `${OUT}/${n}@${width}.png`, NS[n]!(width), width);
+    }
+  }
+  for (const theme of ['oled', 'light']) {
+    for (const width of [393, 1600]) {
+      await open(GALLERY, width, theme);
+      await cardStates(`kaarten-${theme}@${width}`);
+      await heroShot(`hero-${theme}@${width}`);
+    }
+  }
+  for (const width of SKELETON_WIDTHS) {
+    await open(`${GALLERY}?skeleton=home`, width);
+    await shot(page, `skeleton-home@${width}`);
+    if (width === 393 || width === 1600) {
+      await compare('skeleton-home', `${OUT}/skeleton-home@${width}.png`, NS['skeleton']!(width), width);
+    }
+  }
+  await browser.close();
+  process.exit(0);
 }
 
 if (!ONLY || ONLY === 'dark') {
