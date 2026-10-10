@@ -83,7 +83,7 @@
     font-weight: 600;
     letter-spacing: var(--text-caps-track);
     text-transform: uppercase;
-    color: var(--ink-4);
+    color: var(--ink-3);
   }
 
   .gi__list {

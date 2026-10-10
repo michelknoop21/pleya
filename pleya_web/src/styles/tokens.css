@@ -122,6 +122,8 @@
   --text-card-line: 1.1; /* MediaCardGridLayout.lineHeightFactor */
 
   /* --- Thema: dark. De standaard op web (zie de kop van dit bestand). --- */
+  /* Native onderdelen (select-lijst, scrollbalk) volgen het thema, niet het OS. */
+  color-scheme: dark;
   --bg: #141414;
   --surface: #1f1f1f;
   --surface-elevated: #2f2f2f;
@@ -174,6 +176,13 @@
   --elevated: var(--surface-elevated);
   --ink: var(--text);
   --ink-2: var(--text-muted);
+  /*
+   * --ink-3 is tekst (hints, tabelkoppen, bijschriften). Op dark en OLED haalt
+   * wit op 50 procent 5,05 tot 5,34:1 (dark: paneel 5,20, paneel-2 5,05, inset
+   * 5,34; OLED: paneel 5,26, paneel-2 5,15, inset 5,30). Light zet een vaste
+   * waarde, want #111 op 50 procent haalde daar 3,54 / 3,49 / 3,45.
+   * --ink-4 is alleen nog grafisch (stip, rand), nooit tekst: 2,5 tot 2,7:1.
+   */
   --ink-3: color-mix(in srgb, var(--text) 50%, transparent);
   --ink-4: color-mix(in srgb, var(--text) 30%, transparent);
   --fill: color-mix(in srgb, var(--text) 8%, transparent);
@@ -203,6 +212,7 @@
  * dus de ring van inkt doet het werk.
  */
 [data-theme='oled'] {
+  color-scheme: dark;
   --bg: #000000;
   --surface: #141414;
   --surface-elevated: #2f2f2f;
@@ -223,6 +233,7 @@
 }
 
 [data-theme='light'] {
+  color-scheme: light;
   --bg: #f7f7f8;
   --surface: #ffffff;
   --surface-elevated: #ededed;
@@ -256,6 +267,12 @@
   --danger-ink: #a81d18;
   --warn-ink: #7a4f00;
   --ok-ink: #0c6b3c;
+  /*
+   * Secundaire tekst. #6b6b70 haalt 5,30 op wit, 4,95 op de pagina #f7f7f8,
+   * 5,08 op paneel-2 #fafafa en 4,70 op de inset #f1f1f3. --ink-2 (#111 op
+   * 60 procent) haalt 4,95 / 4,83 / 4,72 en blijft zoals hij is.
+   */
+  --ink-3: #6b6b70;
   /* Grafiek: #3d72e0 haalt 4,49 op wit en 4,19 op de pagina, #c27c00 3,40 en 3,18. */
   --blue: #3d72e0;
   --amber-graphic: #c27c00;

@@ -250,7 +250,7 @@
     .tbl--stack .tbl__label {
       display: inline;
       margin-right: 6px;
-      color: var(--ink-4);
+      color: var(--ink-3);
     }
   }
 </style>
