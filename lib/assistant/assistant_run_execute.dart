@@ -42,6 +42,20 @@ extension _AssistantExecute on AssistantRun {
     });
   }
 
+  /// The rights epoch a read begins under. When it differs from the one the
+  /// previous read began under, what that read left in the context (shown ids,
+  /// cached library lists) was gathered under the old rights and is dropped.
+  /// Every read path calls this first, the model's tool calls and Pleya's own
+  /// named-titles lookup alike.
+  int? _beginRead() {
+    final stamp = rightsEpoch?.call();
+    if (stamp != null) {
+      if (_rightsSeenEpoch != null && stamp != _rightsSeenEpoch) _ctx.forgetReads();
+      _rightsSeenEpoch = stamp;
+    }
+    return stamp;
+  }
+
   Future<Map<String, Object?>> _execute(AssistantToolCall call) async {
     if (_cancelled) return {'error': 'cancelled'};
     final index = _stepIndex++;
@@ -60,13 +74,7 @@ extension _AssistantExecute on AssistantRun {
       AssistantStep(index: index, tool: call.name, serverName: serverName, phase: AssistantStepPhase.started),
     );
     final shown = _displays.length;
-    final stamp = rightsEpoch?.call();
-    // Rights moved since the previous call: its shown ids and cached library
-    // lists were gathered under the old ones.
-    if (stamp != null) {
-      if (_rightsSeenEpoch != null && stamp != _rightsSeenEpoch) _ctx.forgetReads();
-      _rightsSeenEpoch = stamp;
-    }
+    final stamp = _beginRead();
     final output = await _executeCall(call);
     // A read publishes household or library data: if the rights moved while it
     // ran, even if they are back, none of it is shown or handed to the model.

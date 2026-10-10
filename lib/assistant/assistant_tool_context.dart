@@ -257,8 +257,9 @@ class AssistantToolContext {
   }
 
   /// Drops what earlier reads left behind (shown ids, user and job lists, the
-  /// library cache): called when the rights moved, so nothing gathered under
-  /// the old rights serves a later action or read of the same ask.
+  /// library cache): called when the rights moved, so those do not serve a later
+  /// read or action of the same ask. Every write still re-checks authority live;
+  /// what the model already read stays in its conversation.
   void forgetReads() {
     _jobs.clear();
     _items.clear();

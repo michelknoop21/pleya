@@ -1,9 +1,9 @@
-import 'package:http/http.dart' as http;
 import 'dart:async';
 import '../media/ids.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../connection/connection.dart';
 import '../media/media_backend.dart';
@@ -879,6 +879,10 @@ class MultiServerManager {
     }
   }
 
+  /// Test seam: the HTTP client every Pleya Server connection added here uses.
+  @visibleForTesting
+  http.Client Function()? debugPleyaServerHttpClientFactory;
+
   /// Add a Pleya Server connection as a media source.
   ///
   /// One endpoint, one identity, so this is closer to the Jellyfin path than to
@@ -888,10 +892,6 @@ class MultiServerManager {
   /// The health probe runs before the client counts as added, so a server that
   /// is up with a dead session lands on [HealthStatus.authError] and gets the
   /// re-auth banner rather than being hidden as offline.
-  /// Test seam: the HTTP client every Pleya Server connection added here uses.
-  @visibleForTesting
-  http.Client Function()? debugPleyaServerHttpClientFactory;
-
   Future<bool> addPleyaServerConnection(PleyaServerConnection connection) async {
     try {
       final client = PleyaServerClient.create(

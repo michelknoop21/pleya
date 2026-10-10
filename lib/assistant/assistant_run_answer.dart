@@ -220,7 +220,7 @@ extension _AssistantAnswer on AssistantRun {
       final titles = {for (final t in named) t.title}.toList();
       // The same stamp as every other read: rights that moved while it ran
       // leave no card.
-      final stamp = rightsEpoch?.call();
+      final stamp = _beginRead();
       final operation = _operation(() async {
         if (!current() || !tool.serves(_ctx, AssistantRun._noServer)) throw const AssistantToolError('cancelled');
         return tool.run(_ctx, null, {
