@@ -149,33 +149,41 @@ void main() {
   });
 
   test('the named-titles lookup starts from empty caches when the rights moved before it', () async {
-    var epoch = 0;
     String? seen;
-    final first = _read('first', (ctx) async {
-      ctx.showItem(ServerId('a'), 'i1');
-      return const AssistantToolResult({'ok': true});
-    });
-    final findTitle = _read('find_title', (ctx) async {
-      try {
-        ctx.requireShownItem(ServerId('a'), 'i1');
-        seen = 'still shown';
-      } on AssistantToolError catch (e) {
-        seen = e.code;
-      }
-      return AssistantToolResult(const {}, display: _card(ctx));
-    });
-    await AssistantRun(
-      // The rights move while the final answer is written, before the lookup.
-      model: _model([
-        {'call': 'first'},
-        {'say': 'Probeer «Interstellar» (2014).'},
-      ], onTurn: (turn) => epoch = turn == 1 ? 1 : 0),
-      context: AssistantToolContext(servers: MultiServerManager()),
-      confirm: (_) async => null,
-      entitlement: const _Entitled(),
-      tools: [first, findTitle],
-      rightsEpoch: () => epoch,
-    ).ask('Een goede ruimtefilm?');
+    Future<AssistantRunResult> ask({required bool move}) {
+      var epoch = 0;
+      seen = null;
+      final first = _read('first', (ctx) async {
+        ctx.showItem(ServerId('a'), 'i1');
+        return const AssistantToolResult({'ok': true});
+      });
+      final findTitle = _read('find_title', (ctx) async {
+        try {
+          ctx.requireShownItem(ServerId('a'), 'i1');
+          seen = 'still shown';
+        } on AssistantToolError catch (e) {
+          seen = e.code;
+        }
+        return AssistantToolResult(const {}, display: _card(ctx));
+      });
+      return AssistantRun(
+        // The rights move while the final answer is written, before the lookup.
+        model: _model([
+          {'call': 'first'},
+          {'say': 'Probeer «Interstellar» (2014).'},
+        ], onTurn: (turn) => epoch = move && turn == 1 ? 1 : 0),
+        context: AssistantToolContext(servers: MultiServerManager()),
+        confirm: (_) async => null,
+        entitlement: const _Entitled(),
+        tools: [first, findTitle],
+        rightsEpoch: () => epoch,
+      ).ask('Een goede ruimtefilm?');
+    }
+
+    var result = await ask(move: false);
+    expect(seen, 'still shown', reason: 'unchanged rights: no false clear');
+    result = await ask(move: true);
     expect(seen, 'unknown_item_id');
+    expect(result.displays, isNotEmpty, reason: 'the forget does not cost the card the lookup builds');
   });
 }

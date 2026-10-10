@@ -188,7 +188,7 @@ class AssistantRun {
   /// same before and after, but the data was gathered under other rights.
   final int Function()? rightsEpoch;
 
-  /// The epoch the last tool call began under; a later call under another one
+  /// The epoch the last read (a tool call or the named-titles lookup) began under; a later call under another one
   /// starts from empty read caches.
   int? _rightsSeenEpoch;
 
