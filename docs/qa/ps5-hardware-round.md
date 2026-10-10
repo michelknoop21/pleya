@@ -56,8 +56,8 @@ tekst van 4 september en dit blok verschillen, gaat dit blok voor.
   momenten die niet gepasseerd zijn gelden nog: geen publieke release van de client met PS-5- of
   PS-9-gedrag en geen indiening naar App Review of Beta App Review van een build met dat gedrag,
   zonder geslaagde hardwareacceptatie. Een gedraaide ronde met een FAIL haalt die grens niet. Build
-  315 wordt dus niet ingediend zolang niet is vastgesteld of hij dat gedrag draagt en de acceptatie
-  niet is geslaagd. Bovenop DEC-118 moet
+  315 wordt dus niet ingediend voordat is vastgesteld of hij dat gedrag draagt; draagt hij het, dan
+  pas na een geslaagde acceptatie. Bovenop DEC-118 moet
   PS-5 volledig gevalideerd zijn vóór de eerste publieke release van Pleya Server. Een release van
   onderdelen die aantoonbaar onafhankelijk zijn van PS-5 valt er niet onder. De status hoort in
   `docs/PLEYA-SERVER-MASTERLIST.md`; zegt die nog "uitgesteld", dan loopt de masterlijst achter op
@@ -73,7 +73,7 @@ De poort uit
 [DEC-118](../DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
 blijft staan: de hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of
 PS-9-gedrag bevat alsnog gedraaid zijn. Dat geldt nog, net als de grens voor een indiening naar
-App Review, en sinds 10 oktober moet de ronde ook geslaagd zijn. De merge naar `main` uit
+App Review of Beta App Review, en sinds 10 oktober moet de ronde ook geslaagd zijn. De merge naar `main` uit
 dat besluit is sindsdien gepasseerd, zie *Stand op `main`*; de ronde is daarmee achterstallig. Dat PS-9
 op 4 september gesloten is, bewijst niets over dit criterium.
 
