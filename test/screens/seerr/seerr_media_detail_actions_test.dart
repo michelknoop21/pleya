@@ -188,6 +188,25 @@ void main() {
       expect(_action('request4k'), findsOneWidget);
     });
 
+    for (final (whose, by, mine) in [('the viewer', 7, findsOneWidget), ('someone else', 9, findsNothing)]) {
+      testWidgets('that is pending for $whose: the form back on HD ${by == 7 ? 'leads to' : 'does not offer'} '
+          'Mijn aanvragen', (tester) async {
+        await open(
+          tester,
+          movie(2, requests: [ownRequest(by: by)]),
+          permissions: fourK,
+          serversAre4k: [false, true],
+        );
+        await tester.tap(_action('request4k'));
+        await seerrSettle(tester);
+        await tester.tap(find.byType(Switch));
+        await seerrSettle(tester);
+
+        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(seerrNode(AutomationIds.requestsFormButton, 'mine'), mine);
+      });
+    }
+
     testWidgets('that is being processed adds the 4K request', (tester) async {
       await open(tester, movie(3), permissions: fourK, serversAre4k: [false, true]);
       expect(_action('request4k'), findsOneWidget);

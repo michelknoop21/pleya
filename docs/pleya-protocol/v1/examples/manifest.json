@@ -334,6 +334,11 @@
       "note": "Een config-managed bibliotheek kan niet via PATCH of DELETE worden gewijzigd"
     },
     {
+      "file": "error_library_not_config_managed.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.5: POST /libraries/{id}/adopt op een bibliotheek die al van de database is"
+    },
+    {
       "file": "error_library_confirm_mismatch.json",
       "schema": "ErrorEnvelope",
       "note": "S2.2: DELETE /libraries/{id} zonder de juiste titel als confirm"
