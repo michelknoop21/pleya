@@ -1,6 +1,7 @@
 <!--
   Een aan/uit-schakelaar (`.toggle` in web.css): spoor van 46 bij 28 op
-  --elevated, groen (--ok) als hij aan staat, met een witte knop.
+  --elevated, groen (--ok-ink, in light donkerder) als hij aan staat, met een
+  witte knop.
 
   Het is een button met role="switch" en aria-checked, geen checkbox: een
   schakelaar werkt direct, een checkbox wacht op een formulier. Spatie en Enter
@@ -127,7 +128,7 @@
   /*
    * --ok-ink en niet --ok: op donker is dat dezelfde groen, in light een
    * donkerder groen, want de witte knop haalt op #3dd68c maar 1,9:1 en op
-   * #0f7a45 5,4:1 (WCAG 1.4.11, de staat moet zichtbaar zijn).
+   * #0c6b3c 6,6:1 (WCAG 1.4.11, de staat moet zichtbaar zijn).
    */
   .tgl__track--on {
     background: var(--ok-ink);

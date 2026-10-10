@@ -230,16 +230,24 @@
   --bar-backdrop: rgba(247, 247, 248, 0.92);
   --skeleton: rgba(17, 17, 17, 0.07);
   /*
-   * Toonkleuren als tekst, donker genoeg voor 4,5:1. Gemeten (WCAG 2.x):
-   * --danger-ink #c4211c: 5,86 op #fff, 5,20 op --inset-bg #f1f1f3, 5,48 op
-   * #f7f7f8, 4,66 op de err-pill (14 procent tint op wit). #ff6a63 haalde
-   * hier 2,4 tot 2,8. --warn-ink #8a5a00: 5,93 op wit, 5,25 op de inset,
-   * 5,44 op de warn-pill. --ok-ink #0f7a45: 5,40 op wit, 4,79 op de inset,
-   * 4,91 op de ok-pill. Dark en OLED houden #ff6a63 (6,1 tot 7,5:1).
+   * Toonkleuren als tekst, donker genoeg voor 4,5:1 op elk vlak waar ze in
+   * light op staan. Berekend met WCAG 2.x-luminantie, telkens op wit, op de
+   * pagina #f7f7f8 en op de inset #f1f1f3:
+   *   --danger-ink #a81d18: vlak 7,36 / 6,87 / 6,52; err-pill (eigen tint
+   *     14 procent) 5,77 / 5,41 / 5,15; gekozen outline-chip (merkrood 18
+   *     procent) 5,44 / 5,11 / 4,87; err-melding (7 procent) 6,53 / 6,11 / 5,81.
+   *   --warn-ink #7a4f00: vlak 7,13 / 6,66 / 6,32; warn-pill (amber 14
+   *     procent) 6,54 / 6,15 / 5,87; op een tint van zichzelf 5,76 / 5,40 /
+   *     5,15; warn-melding (amber 7 procent) 6,83 / 6,40 / 6,09.
+   *   --ok-ink #0c6b3c: vlak 6,60 / 6,16 / 5,85; ok-pill (groen 14 procent)
+   *     6,01 / 5,65 / 5,40; op een tint van zichzelf 5,34 / 5,01 / 4,77; de
+   *     witte toggleknop erop 6,60.
+   * De merkkleuren zelf haalden op wit 1,8 (amber, groen) en 2,8 (#ff6a63).
+   * Dark en OLED houden #ff6a63, amber en groen (6,1 tot 7,5:1 voor rood).
    */
-  --danger-ink: #c4211c;
-  --warn-ink: #8a5a00;
-  --ok-ink: #0f7a45;
+  --danger-ink: #a81d18;
+  --warn-ink: #7a4f00;
+  --ok-ink: #0c6b3c;
   /* Wit paneel op #f7f7f8; invoer een tikje dieper dan de pagina. */
   --panel: #ffffff;
   --panel-2: #fafafa;

@@ -43,6 +43,10 @@ async function shot(target: Page | ReturnType<Page['locator']>, name: string, fu
   console.log(path);
 }
 
+// PLEYA_SHOTS_THEME=light (of oled) maakt alleen de themaopnamen van dat
+// thema opnieuw, voor een gerichte herronde zonder alle dark-opnamen.
+const ONLY = process.env['PLEYA_SHOTS_THEME'];
+if (!ONLY) {
 for (const width of WIDTHS) {
   await open(GALLERY, width);
   await shot(page, `galerij@${width}`, true);
@@ -89,10 +93,11 @@ for (const width of [393, 1600]) {
   }
 }
 
+}
 // Dezelfde secties in OLED en light, om contrast en scheiding per thema te zien.
 // Dark staat hierboven al; die opnamen houden hun naam zonder themasuffix.
 const THEMED = ['velden', 'panelen', 'meldingen', 'pillen', 'chips', 'tabel'];
-for (const theme of ['oled', 'light']) {
+for (const theme of ONLY ? [ONLY] : ['oled', 'light']) {
   for (const width of [393, 1600]) {
     await open(GALLERY, width, theme);
     for (const id of THEMED) await shot(page.locator(`#${id}`), `${id}-${theme}@${width}`);
@@ -124,6 +129,7 @@ for (const theme of ['oled', 'light']) {
   }
 }
 
+if (!ONLY) {
 for (const width of SKELETON_WIDTHS) {
   for (const variant of ['home', 'grid', 'detail']) {
     await open(`${GALLERY}?skeleton=${variant}`, width);
@@ -145,4 +151,5 @@ for (const theme of ['oled', 'light']) {
   console.log(`kleuren ${theme}: ${JSON.stringify(colours)}`);
 }
 
+}
 await browser.close();
