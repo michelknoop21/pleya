@@ -70,6 +70,8 @@ describe('DataTable', () => {
     const cells = within(screen.getAllByRole('row')[1]!).getAllByRole('cell');
     expect(cells[0]!.querySelector('.tbl__label')).toBeNull();
     expect(cells[1]!.querySelector('.tbl__label')).toHaveTextContent('Kind');
+    // Standaard alleen voor de schermlezer, niet weg uit de DOM.
+    expect(cells[1]!.querySelector('.tbl__label')).toHaveClass('visually-hidden');
     expect(cells[2]!.querySelector('.tbl__label')).toBeNull();
     const strip = container.querySelector('.tbl__scroll--stack');
     expect(strip).not.toHaveAttribute('tabindex');
@@ -93,5 +95,20 @@ describe('DataTable', () => {
     const title = createRawSnippet(() => ({ render: () => '<span>All libraries</span>' }));
     render(DataTable<Lib>, { props: { columns, rows, label: 'Libraries', cell, title } });
     expect(screen.getByRole('region', { name: 'All libraries' })).toHaveClass('panel--flush');
+  });
+
+  it('toont de kolomnaam gestapeld alleen bij showLabel', () => {
+    const shown: Column[] = [
+      { key: 'name', label: 'Library' },
+      { key: 'kind', label: 'Kind', showLabel: true },
+      { key: 'actions', label: 'Actions', align: 'end', hideLabel: true }
+    ];
+    render(DataTable<Lib>, {
+      props: { columns: shown, rows, label: 'Libraries', cell, stack: true }
+    });
+    const cells = within(screen.getAllByRole('row')[1]!).getAllByRole('cell');
+    const label = cells[1]!.querySelector('.tbl__label');
+    expect(label).toHaveTextContent('Kind');
+    expect(label).not.toHaveClass('visually-hidden');
   });
 });

@@ -26,6 +26,8 @@
     { key: 'name', label: 'Naam' },
     { key: 'kind', label: 'Soort' },
     { key: 'path', label: 'Pad' },
+    // Een kaal getal zegt gestapeld niets; deze kolom toont zijn naam wel.
+    { key: 'items', label: 'Titels', showLabel: true },
     { key: 'status', label: 'Acties', align: 'end', hideLabel: true }
   ];
 

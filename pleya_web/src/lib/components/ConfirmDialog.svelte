@@ -22,6 +22,7 @@
 
   import { t } from '../i18n';
   import Field from './Field.svelte';
+  import { lockScroll } from '../util/scrollLock';
 
   interface Props {
     open?: boolean;
@@ -71,6 +72,14 @@
 
   const FOCUSABLE =
     'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+  // Eigen effect, los van de focus: de pagina erachter scrolt niet mee zolang
+  // de dialoog open is, ook niet met een veeg op de scrim. De cleanup draait bij
+  // sluiten én bij unmount.
+  $effect(() => {
+    if (!open) return;
+    return lockScroll();
+  });
 
   $effect(() => {
     if (!open) return;

@@ -110,6 +110,24 @@ ol {
  * met een wash plus een rode balk; op web is de ring het idioom, in dezelfde
  * merkkleur.
  */
+/*
+ * Zolang een modale laag open is (lib/util/scrollLock.ts). De overflow staat op
+ * body en niet op <html>: body heeft al overflow-x en height 100%, en zodra
+ * <html> zelf een overflow krijgt, propageert die van body niet meer naar het
+ * venster. Body wordt dan een eigen scrollvlak van één schermhoogte en de
+ * pagina achter de dialoog valt weg. Op body propageert hij wél, dus het
+ * venster stopt met scrollen en de positie blijft staan. De goot blijft
+ * staan, anders schuift de pagina op desktop opzij als de scrollbalk wegvalt.
+ */
+:root.scroll-locked {
+  scrollbar-gutter: stable;
+}
+
+:root.scroll-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 :focus {
   outline: none;
 }

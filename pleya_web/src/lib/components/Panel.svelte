@@ -20,10 +20,26 @@
     children: Snippet;
     level?: 2 | 3 | 4;
     flush?: boolean;
+    /**
+     * Gekleurde rand en titel: `danger` voor een onomkeerbare actie (mockup 22,
+     * 27, 31), `warn` voor iets dat de dienst raakt maar terug kan (35).
+     */
+    tone?: 'danger' | 'warn';
+    /** Oude vorm van `tone="danger"`; blijft werken. */
     danger?: boolean;
   }
 
-  let { title, actions, children, level = 3, flush = false, danger = false }: Props = $props();
+  let {
+    title,
+    actions,
+    children,
+    level = 3,
+    flush = false,
+    tone,
+    danger = false
+  }: Props = $props();
+
+  const resolvedTone = $derived(tone ?? (danger ? 'danger' : undefined));
 
   const uid = $props.id();
   const titleId = `${uid}-title`;
@@ -32,7 +48,8 @@
 <section
   class="panel"
   class:panel--flush={flush}
-  class:panel--danger={danger}
+  class:panel--danger={resolvedTone === 'danger'}
+  class:panel--warn={resolvedTone === 'warn'}
   aria-labelledby={title ? titleId : undefined}
 >
   {#if title || actions}
@@ -67,6 +84,11 @@
     border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   }
 
+  /* rgba(255,176,32,.35) in mockup 35: amber op 35 procent. */
+  .panel--warn {
+    border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  }
+
   .panel__head {
     display: flex;
     align-items: center;
@@ -86,6 +108,15 @@
     font-weight: 700;
     line-height: 1.3;
     color: var(--ink);
+  }
+
+  /* #FF6A63 in mockup 22, 27 en 31; dat is --danger-ink. */
+  .panel--danger .panel__title {
+    color: var(--danger-ink);
+  }
+
+  .panel--warn .panel__title {
+    color: var(--amber);
   }
 
   .panel__actions {

@@ -44,7 +44,12 @@
       {/snippet}
       <p class="t-body">Flush: smalle binnenrand, voor een tabel of lijst.</p>
     </Panel>
-    <Panel danger>
+    <Panel tone="warn">
+      {#snippet title()}Onderhoudsmodus{/snippet}
+      <p class="t-body">Weigert nieuwe streams en scans; lopende sessies blijven geldig.</p>
+      <button type="button" class="btn btn--ghost btn--sm">Onderhoudsmodus aan</button>
+    </Panel>
+    <Panel tone="danger">
       {#snippet title()}Gevarenzone{/snippet}
       <p class="t-body">Bibliotheek verwijderen haalt alle kijkstatus weg.</p>
       <button type="button" class="btn btn--danger btn--sm">Verwijderen</button>
