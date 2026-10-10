@@ -4,6 +4,7 @@
   import Artwork from '$lib/components/Artwork.svelte';
   import MediaGrid from '$lib/components/MediaGrid.svelte';
   import StateView from '$lib/components/StateView.svelte';
+  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
   import type { Item } from '$lib/api/types';
@@ -77,7 +78,7 @@
 <svelte:head><title>{item?.title ?? t('loading')} · {t('app.name')}</title></svelte:head>
 
 {#if loading}
-  <StateView kind="loading" />
+  <SkeletonPage variant="detail" />
 {:else if error}
   <StateView
     kind="error"

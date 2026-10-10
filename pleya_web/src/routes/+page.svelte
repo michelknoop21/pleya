@@ -2,6 +2,7 @@
   import HubRail from '$lib/components/HubRail.svelte';
   import Hero from '$lib/components/Hero.svelte';
   import StateView from '$lib/components/StateView.svelte';
+  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
   import type { Item } from '$lib/api/types';
@@ -46,7 +47,7 @@
 <svelte:head><title>{t('home.title')} · {t('app.name')}</title></svelte:head>
 
 {#if loading}
-  <StateView kind="loading" />
+  <SkeletonPage variant="home" />
 {:else if error}
   <StateView
     kind="error"

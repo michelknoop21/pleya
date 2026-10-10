@@ -5,6 +5,7 @@
 
   import MediaGrid from '$lib/components/MediaGrid.svelte';
   import StateView from '$lib/components/StateView.svelte';
+  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
   import { SORT_OPTIONS, isSortOption, type SortOption } from '$lib/api/types';
@@ -139,8 +140,13 @@
         void fetchMore(new AbortController().signal);
       }}
     />
-  {:else if pager.loading && pager.items.length === 0}
-    <StateView kind="loading" />
+  {:else if pager.items.length === 0 && !pager.done}
+    <!--
+      Niet op `pager.loading`: loadNext geeft de ladende toestand pas terug als
+      het antwoord er al is, dus tijdens de eerste aanvraag stond hier "niets
+      hier". Leeg en nog niet klaar is laden; leeg en klaar is echt leeg.
+    -->
+    <SkeletonPage variant="grid" />
   {:else if pager.items.length === 0}
     <StateView title={t('states.emptyTitle')} />
   {:else}
