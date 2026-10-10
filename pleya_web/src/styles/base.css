@@ -38,7 +38,8 @@
   font-display: swap;
 }
 /* Alleen voor de hero-titel en de detailtitel op breed (DESIGN.md hoofdstuk 2).
-   Geen preload: het hoort bij één element per pagina. */
+   Wel een preload in app.html: de titel staat boven de vouw op Home, en zonder
+   preload brak hij bij het binnenkomen van de letter naar een extra regel. */
 @font-face {
   font-family: 'ArchivoBlack';
   src: url('/fonts/ArchivoBlack-Regular.woff2') format('woff2');
