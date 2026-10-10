@@ -60,9 +60,11 @@ steps:
   - settle: 1000
   - snapshot: 01-after-down-requests-band
 
-  # And the ring reaches it.
+  # And the ring reaches it. The focus scroll runs 200 ms (easeInOut) after
+  # `focused` turns true, so the card is measured only after a settle: read
+  # straight after `focused` it is still mid-animation.
   - press: down
   - wait_until: {focused: "tv.catalog.grid.item[search.requests.0]", timeout: 5000}
-  - assert: {id: "tv.catalog.grid.item[search.requests.0]", insideViewport: true}
   - settle: 1000
+  - assert: {id: "tv.catalog.grid.item[search.requests.0]", insideViewport: true}
   - snapshot: 02-requests-card-focused
