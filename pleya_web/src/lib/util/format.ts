@@ -89,6 +89,27 @@ export function itemProgress(
 }
 
 /**
+ * De onderregel van een kaart. Wie halverwege is wil weten hoeveel er nog
+ * over is, niet het jaartal; zonder voortgang de gewone onderregel.
+ */
+export function cardSubtitle(item: Item): string | null {
+  const progress = itemProgress(item);
+  const left = progress ? formatDuration(progress.remainingMs) : null;
+  if (left) return t('card.remaining', { duration: left });
+  return itemSubtitle(item);
+}
+
+/**
+ * Het beeld van een kaart: een brede kaart neemt de backdrop en valt terug op
+ * de poster, een posterkaart alleen de poster.
+ */
+export function cardArtworkId(item: Item, shape: 'poster' | 'wide'): string | null | undefined {
+  return shape === 'wide'
+    ? (item.artwork?.backdrop_id ?? item.artwork?.poster_id)
+    : item.artwork?.poster_id;
+}
+
+/**
  * Gezien. Een film of aflevering draagt het in `user_state`; een serie of
  * seizoen is gezien als elke aflevering het is. Nul afleveringen is niet
  * gezien: een lege serie zou anders een vinkje krijgen.
