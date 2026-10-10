@@ -146,7 +146,8 @@ De bouwstenen staan in `src/lib/components/`, elk met een eigen test. Eén regel
 - `DataTable`: tabel die onder de breekpunt stapelt; `columns`, `rows`, `cell`, `empty`, `stack`.
 - `Steps`: voortgang in stappen; `steps`, `current`.
 - `ConfirmDialog`: bevestiging van een ingrijpende actie, met `requirePhrase` om een zin over te typen en `busy`.
-- `Skeleton` en `SkeletonPage`: wachtvlakken in de vorm van de inhoud (`variant` home, grid, detail of compact).
+- `Skeleton`: één wachtvlak; `kind` (block, line, title, card of hero), `shape`, `width`, `height`.
+- `SkeletonPage`: een hele pagina aan wachtvlakken; `variant` (home, grid, detail of compact).
 - `StorageMeter`: gesegmenteerde balk met legenda; `segments`, `total`, `format`, `empty`.
 - `StateView`: alleen nog leeg en fout. Laden is `Skeleton` of `SkeletonPage`.
 
