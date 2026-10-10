@@ -1,6 +1,7 @@
-/// 4K on the request form for a request that names no server. The request
-/// server routes that one to the default instance of the quality, so a 4K
-/// request without a default 4K instance is approved and then goes nowhere.
+/// The request form for a request that names no server. The request server
+/// routes that one to the default instance of the quality, so without such an
+/// instance the request is approved and then goes nowhere. 4K needs the
+/// default to be known; HD is only held back when the list says there is none.
 /// `seerr_request_sheet_states_test.dart` covers what the form sends when the
 /// default 4K instance is there.
 library;
@@ -40,9 +41,11 @@ void main() {
   late FakeSeerr fake;
   late SeerrProvider provider;
 
-  /// One HD instance, and a 4K one when [fourK] says whether it is the default.
-  void servers(String service, {bool? fourK}) => fake.on('GET /service/$service', [
-    {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': true, 'activeProfileId': 4, 'activeDirectory': '/hd'},
+  /// An HD and a 4K instance, each present when its flag says whether it is
+  /// the default.
+  void servers(String service, {bool? fourK, bool? hd = true}) => fake.on('GET /service/$service', [
+    if (hd != null)
+      {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': hd, 'activeProfileId': 4, 'activeDirectory': '/hd'},
     if (fourK != null)
       {'id': 2, 'name': '4K', 'is4k': true, 'isDefault': fourK, 'activeProfileId': 8, 'activeDirectory': '/4k'},
   ]);
@@ -237,6 +240,7 @@ void main() {
       await tester.tap(find.byType(Switch));
       await seerrSettle(tester);
       expect(_enabled(tester, 'submit'), isFalse, reason: 'no server goes along, and no default 4K takes it');
+      expect(seerrNode(AutomationIds.requestsFormNotice, 'route'), findsOneWidget, reason: 'and the form says why');
 
       await tester.tap(find.byType(Switch));
       await seerrSettle(tester);
@@ -302,5 +306,179 @@ void main() {
       expect(seerrHasFocus(tester, _option('fourK')), isTrue);
       expect(_form(tester)['seasons'], [1, 2, 3]);
     });
+  });
+
+  Finder notice(String kind) => seerrNode(AutomationIds.requestsFormNotice, kind);
+
+  group('HD without a default HD instance', () {
+    for (final (media, service, label) in [(_movie, 'radarr', 'film'), (_show, 'sonarr', 'series')]) {
+      testWidgets('$label: an HD instance that is not the default is said, and nothing can be sent', (tester) async {
+        servers(service, hd: false);
+        await open(tester, media, permissions: seerrPermRequest);
+
+        expect(notice('route'), findsOneWidget);
+        expect(find.text(t.seerr.noDefaultServerTitle), findsOneWidget);
+        expect(_enabled(tester, 'submit'), isFalse);
+        expect(fake.sent('GET', '/service/$service'), hasLength(1));
+        expect(fake.sent('GET', '/service/$service/1'), isEmpty);
+      });
+
+      testWidgets('$label: with a default HD instance the request goes out, with no word about servers', (
+        tester,
+      ) async {
+        servers(service);
+        await open(tester, media, permissions: seerrPermRequest);
+
+        expect(notice('route'), findsNothing);
+        await tester.tap(find.descendant(of: _button('submit'), matching: find.byType(FilledButton)));
+        await seerrSettle(tester);
+        final body = fake.sent('POST', '/request').single.body as Map;
+        expect(body, containsPair('is4k', false));
+        expect(body.containsKey('serverId'), isFalse);
+      });
+
+      testWidgets('$label: no HD instance and a default 4K one leaves 4K open for a profile with the 4K right', (
+        tester,
+      ) async {
+        servers(service, hd: null, fourK: true);
+        await open(tester, media, permissions: _fourKMovie | _fourKTv);
+
+        expect(notice('route'), findsOneWidget, reason: 'HD has nowhere to go');
+        expect(find.text(t.seerr.no4kServerTitle), findsNothing, reason: 'that line is about an admin and 4K');
+        expect(_enabled(tester, 'submit'), isFalse);
+
+        await tester.tap(find.byType(Switch));
+        await seerrSettle(tester);
+        expect(notice('route'), findsNothing);
+        await tester.tap(find.descendant(of: _button('submit'), matching: find.byType(FilledButton)));
+        await seerrSettle(tester);
+        expect(fake.sent('POST', '/request').single.body, containsPair('is4k', true));
+      });
+
+      for (final (why, answer) in <(String, void Function(String))>[
+        ('refuses the list', (route) => fake.on(route, {'message': 'no'}, 403)),
+        ('drops the connection', (route) => fake.fail(route)),
+        ('answers with something that is not a list', (route) => fake.on(route, {'unexpected': true})),
+        ('lists no instances', (route) => fake.on(route, <Object>[])),
+      ]) {
+        testWidgets('$label: a server that $why does not hold HD back, and offers no 4K', (tester) async {
+          answer('GET /service/$service');
+          await open(tester, media, permissions: _fourKMovie | _fourKTv);
+
+          expect(find.byType(Switch), findsNothing);
+          expect(notice('route'), findsNothing);
+          await tester.tap(find.descendant(of: _button('submit'), matching: find.byType(FilledButton)));
+          await seerrSettle(tester);
+          expect(fake.sent('POST', '/request').single.body, containsPair('is4k', false));
+        });
+      }
+    }
+  });
+
+  group('while the instance list is on its way', () {
+    testWidgets('nothing can be sent, and the answer decides', (tester) async {
+      final list = fake.hold('GET /service/radarr');
+      await open(tester, _movie, permissions: seerrPermRequest);
+      expect(_button('submit'), findsNothing, reason: 'the form is not there yet');
+
+      list.complete(
+        FakeSeerr.json([
+          {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': false},
+        ]),
+      );
+      await seerrSettle(tester);
+      expect(_enabled(tester, 'submit'), isFalse);
+      expect(notice('route'), findsOneWidget);
+    });
+
+    testWidgets('it is asked beside the series detail, not after it', (tester) async {
+      final detail = fake.hold('GET /tv/1399');
+      servers('sonarr');
+      await open(tester, _show, permissions: seerrPermRequest);
+      expect(fake.sent('GET', '/service/sonarr'), hasLength(1));
+      detail.complete(FakeSeerr.json({'id': 1399, 'seasons': <Object>[]}));
+      await seerrSettle(tester);
+    });
+
+    testWidgets('a list that takes too long frees HD, keeps 4K shut, and a late answer changes nothing', (
+      tester,
+    ) async {
+      final list = fake.hold('GET /service/radarr');
+      await open(tester, _movie, permissions: _fourKMovie);
+      await tester.pump(const Duration(seconds: 2));
+      expect(_button('submit'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 1, milliseconds: 100));
+      await seerrSettle(tester);
+      expect(_enabled(tester, 'submit'), isTrue);
+      expect(find.byType(Switch), findsNothing);
+
+      list.complete(
+        FakeSeerr.json([
+          {'id': 2, 'name': '4K', 'is4k': true, 'isDefault': true},
+        ]),
+      );
+      await seerrSettle(tester);
+      expect(find.byType(Switch), findsNothing, reason: 'the form does not change under the viewer');
+      expect(notice('route'), findsNothing);
+      expect(_enabled(tester, 'submit'), isTrue);
+    });
+  });
+
+  group('an admin with nothing to choose from', () {
+    testWidgets('an empty instance list: no 4K switch, and HD goes out', (tester) async {
+      fake.on('GET /service/radarr', <Object>[]);
+      await open(tester, _movie, permissions: seerrPermAdmin, initialIs4k: true);
+
+      expect(find.byType(Switch), findsNothing);
+      expect(_form(tester)['is4k'], isFalse);
+      expect(_enabled(tester, 'submit'), isTrue);
+    });
+
+    testWidgets('a list that cannot be read: no 4K switch, and HD goes out on the server default', (tester) async {
+      fake.on('GET /service/radarr', {'message': 'boom'}, 500);
+      await open(tester, _movie, permissions: seerrPermAdmin, initialIs4k: true);
+
+      expect(find.byType(Switch), findsNothing);
+      await tester.tap(find.text(t.seerr.requestWithServerDefault));
+      await seerrSettle(tester);
+      expect(fake.sent('POST', '/request').single.body, containsPair('is4k', false));
+    });
+
+    testWidgets('an HD instance that is not the default is still his to choose, and the request names it', (
+      tester,
+    ) async {
+      servers('radarr', hd: false);
+      fake.on('GET /service/radarr/1', {'profiles': <Object>[], 'rootFolders': <Object>[]});
+      await open(tester, _movie, permissions: seerrPermAdmin);
+
+      expect(notice('route'), findsNothing);
+      await tester.tap(find.text(t.seerr.requestMovie));
+      await seerrSettle(tester);
+      expect(fake.sent('POST', '/request').single.body, containsPair('serverId', 1));
+    });
+  });
+
+  testWidgets('with the remote: Select on the switch brings and takes the line about the server, and keeps the focus', (
+    tester,
+  ) async {
+    servers('sonarr', hd: null, fourK: true);
+    await open(tester, _show, permissions: _fourKTv);
+    expect(notice('route'), findsOneWidget);
+
+    // Whatever holds the focus on a form that cannot send, UP ends on the switch.
+    for (var i = 0; i < 4 && !seerrHasFocus(tester, _option('fourK')); i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await seerrSettle(tester);
+    }
+    expect(seerrHasFocus(tester, _option('fourK')), isTrue);
+
+    for (final shown in [false, true]) {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await seerrSettle(tester);
+      expect(notice('route'), shown ? findsOneWidget : findsNothing);
+      expect(seerrHasFocus(tester, _option('fourK')), isTrue);
+    }
   });
 }

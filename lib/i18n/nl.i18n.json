@@ -2010,6 +2010,8 @@
     "requestWithServerDefault": "Aanvragen met serverstandaard",
     "no4kServerTitle": "Geen 4K-server ingesteld",
     "no4kServerBody": "Zet 4K uit om in HD aan te vragen.",
+    "noDefaultServerTitle": "Geen standaardserver voor deze kwaliteit",
+    "noDefaultServerBody": "De aanvraagserver heeft geen standaardinstantie waar deze aanvraag heen kan. Vraag de beheerder van de server om er een in te stellen.",
     "serverDefault": "Standaard van de server",
     "adminOnly": "alleen beheerder",
     "editRequest": "Aanvraag bewerken",

@@ -723,7 +723,8 @@ void main() {
     testWidgets('a requester never sees the target section', (tester) async {
       await open(tester, _movie);
       expect(find.text(t.seerr.advancedOptions), findsNothing);
-      expect(fake.sent('GET', '/service/radarr'), isEmpty);
+      expect(fake.sent('GET', '/service/radarr'), hasLength(1), reason: 'read once, to know where HD would go');
+      expect(fake.sent('GET', '/service/radarr/1'), isEmpty, reason: 'and nothing is bound');
     });
   });
 

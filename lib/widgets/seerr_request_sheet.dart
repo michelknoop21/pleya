@@ -181,6 +181,11 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       return;
     }
     _is4k = widget.initialIs4k && provider.canRequest4kFor(isMovie: !_isTv);
+    // An admin chooses the server. Anyone else sends the request without one,
+    // so the list is read to know where it would go. It loads beside the rest
+    // and never throws; the form stays on the spinner until it is in, so
+    // nothing can be sent before the answer.
+    final targetLoaded = _target.load(client, is4k: _is4k, listOnly: !provider.isAdmin);
     try {
       if (_isTv) {
         final detail = await client.getTv(widget.media.tmdbId);
@@ -201,12 +206,8 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         if (!mounted || !_live(client)) return;
         _quota = quota;
       }
-      // An admin chooses the server. Anyone else who may ask for 4K sends the
-      // request without one, so the list is read to know where it would go.
-      if (provider.isAdmin || provider.canRequest4kFor(isMovie: !_isTv)) {
-        await _target.load(client, is4k: _is4k, listOnly: !provider.isAdmin);
-        if (!mounted || !_live(client)) return;
-      }
+      await targetLoaded;
+      if (!mounted || !_live(client)) return;
       // Opened on 4K by a caller, with no default 4K instance to take it.
       if (_is4k && !_canOffer4k(provider)) {
         _is4k = false;
@@ -283,10 +284,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       !_quotaExhausted &&
       !_target.missingServerForQuality &&
       !_target.detailLoading &&
-      // No server goes along, so the request server routes it to the default
-      // instance of the quality. For 4K that one has to be known to exist.
-      !(_is4k && _target.target == null && !_target.hasDefault4k) &&
+      !_hasNowhereToGo &&
       (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
+
+  /// No server goes along and the request server has no default instance of
+  /// this quality to route to: approved, the request would stay where it is.
+  bool get _hasNowhereToGo => _target.target == null && !_target.routesWithoutServer(is4k: _is4k);
 
   String _mapError(SeerrException e) {
     if (e.isForbidden) return t.seerr.errorForbidden;
@@ -558,6 +561,14 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               ],
             ),
           ),
+          // An admin's 4K without any 4K server is said by the target section.
+          if (_hasNowhereToGo && !_target.detailLoading && !_target.missingServerForQuality)
+            SeerrFormNotice(
+              kind: 'route',
+              title: t.seerr.noDefaultServerTitle,
+              body: t.seerr.noDefaultServerBody,
+              tone: SeerrFormNoticeTone.warning,
+            ),
           if (_quotaExhausted)
             SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
           // A film whose chosen quality is taken while the other one is open:
