@@ -79,7 +79,9 @@ De Flutter-app is de enige designbron. `src/styles/tokens.css` neemt letterlijk 
 | zijbalk 80/220, rode balk op het actieve item | `lib/widgets/side_navigation_rail.dart` |
 | bottom bar met indicator van 18×3 | `lib/screens/main_screen.dart` |
 
-OLED is de standaard, net als in de app (`ThemeProvider` start op `ThemeMode.oled`).
+Het donkere thema (`dark`) is de standaard. De app start op OLED, maar de northstar van het web
+tekent donkergrijs, en OLED zet het paneel zo dicht bij de achtergrond dat de diepte verdwijnt.
+OLED blijft kiesbaar (zie "Thema's" hieronder).
 
 Wat web-eigen is: `prefers-reduced-motion`, `:focus-visible`, CSS Grid, `aspect-ratio`,
 browser-eigen schuiven, en een hero die met de breedte meebeweegt. Hover staat overal achter
@@ -127,6 +129,67 @@ handmatig recept te hebben.
 
 De navigatieglyphs staan inline in `src/lib/components/NavIcon.svelte`, met de paden letterlijk uit
 `assets/icons/nav/`. Wijzigt daar een glyph, dan hoort hij hier mee te wijzigen.
+
+### Primitieven
+
+De bouwstenen staan in `src/lib/components/`, elk met een eigen test. Eén regel per component:
+
+- `Field`: tekstveld met label, hint en foutregel; `label`, `error`, `hint`, `type`, `mono`, `hideLabel`, en een `children`-snippet voor een eigen invoer.
+- `Select`: keuzelijst in dezelfde omhulling als `Field`; `options`, `placeholder`, `error`.
+- `Toggle`: schakelaar met `role="switch"`; `label`, `description`, `checked`, `onchange`.
+- `Choice`: één keuze uit tegels of een lijst (radiogroep); `legend`, `options`, `layout`, `columns`.
+- `Panel`: kaart met kop en acties; `title`, `actions`, `flush`, `tone` (`danger` of `warn`).
+- `StatTile`: getal met label en optioneel een lijntje; `label`, `value`, `unit`, `sub`, `spark`.
+- `StatusPill`: korte status als capsule of stip; `label`, `tone`, `size`, `variant`.
+- `Alert`: melding in toon `warn`, `err` of `info`; `title`, `children`, `actions`, `live`.
+- `Chips`: filterchips als groep; `options`, `selected`, `multiple`, `variant`.
+- `DataTable`: tabel die onder de breekpunt stapelt; `columns`, `rows`, `cell`, `empty`, `stack`.
+- `Steps`: voortgang in stappen; `steps`, `current`.
+- `ConfirmDialog`: bevestiging van een ingrijpende actie, met `requirePhrase` om een zin over te typen en `busy`.
+- `Skeleton` en `SkeletonPage`: wachtvlakken in de vorm van de inhoud (`variant` home, grid, detail of compact).
+- `StorageMeter`: gesegmenteerde balk met legenda; `segments`, `total`, `format`, `empty`.
+- `StateView`: alleen nog leeg en fout. Laden is `Skeleton` of `SkeletonPage`.
+
+### Diepte en kleurgebruik
+
+Diepte komt uit lagen, niet uit schaduwen. Een vlak is `--panel`, een verzonken veld erin is
+`--inset-bg`, een verhoogd element binnen een paneel is `--panel-2`, en `--hairline` is de
+randlijn. `--ring-shadow` is de ring voor focus en selectie.
+
+Tekst die een toestand draagt gebruikt een `ink`-token (`--danger-ink`, `--warn-ink`,
+`--ok-ink`). Grafische vlakken, zoals een segment van de opslagbalk of de lijn van een sparkline,
+gebruiken een `graphic`-token (`--amber-graphic`, `--blue`). De twee groepen vallen in het donker
+samen, maar niet in het lichte thema: tekst moet daar 4,5:1 halen op wit, een vlak 3:1. Een amber dat
+als vlak 3:1 haalt, haalt als tekst geen 4,5:1, dus er zijn er twee. Gebruik nooit `--amber` of `--ok`
+voor tekst.
+
+### Thema's
+
+`dark` is de standaard (`data-theme="dark"` in `src/app.html`). `oled`, `light` en `system` zijn
+kiesbaar in Mijn Pleya (`ThemePicker`); de keuze staat in `localStorage` en valt bij geweigerde
+opslag terug op `dark`. Een eigen kleur hoort in `tokens.css` onder elk van de drie paletten, niet
+in het component.
+
+### Galerij en opnamen
+
+`/dev/primitives` toont alle primitieven in alle staten en bestaat alleen onder `bun run dev`: in
+een build geeft hij 404 (`+page.ts`, bewaakt door `guard.test.ts`). De opnamen in
+`docs/qa/s7-primitives/` komen uit `scripts/primitives-shots.ts`:
+
+```sh
+bun run dev
+PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
+PLEYA_SHOTS_THEME=light PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
+```
+
+`PLEYA_SHOTS_THEME` (`light` of `oled`) maakt alleen de opnamen van dat thema opnieuw.
+
+### Geen inline stijl
+
+De CSP laat geen `style`-attribuut toe (zie "Content Security Policy"). Variatie loopt via klassen
+en tokens. Voor een waarde die per instantie verschilt, zoals de breedte van een segment in
+`StorageMeter`, gebruik je een Svelte-`style:`-directive: die zet de eigenschap via de CSSOM en
+valt niet onder de regel.
 
 ## Het contract
 
