@@ -2775,7 +2775,9 @@ gemeten proef dekt (1) en (3) nog niet, en de hoorbaarheid op de Apple TV is HAR
 
 **Consequences:** Een verloren rotatie-antwoord herstelt zichzelf in plaats van een herlogin op elk apparaat te kosten. De aanvalsruimte die erbij komt is smal en benoemd: een dief van het oude token moet binnen twee minuten na de rotatie toeslaan én de echte client mag het antwoord dan net niet ontvangen hebben; daarbuiten verandert er niets aan de detectie. De bestaande api-test kon niet blijven staan zoals hij was, want het scenario dat hij als hergebruik bestempelde ís het verloren-antwoord-scenario; hij toetst nu beide kanten, inclusief dat het aanbieden van de vervangen opvolger de keten alsnog omlegt.
 
-## DEC-118: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
+## DEC-147: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
+
+Voorheen DEC-118. De commits 2723ad72 en 4f9c69f2 (PR #55) noemen dit besluit nog DEC-118. Dit besluit schoof op en niet het PS-5-besluit, omdat acht ankerlinks en de lopende PS-5-stukken het serverbesluit onder dat nummer aanhalen; zie "Hernummering van de dubbele DEC-118 en DEC-119" verderop.
 
 **Date:** 2026-09-22
 **Status:** accepted
@@ -2860,7 +2862,9 @@ Voor PS-5 concreet: acceptatiecriterium 4 blijft **open** en **niet gehaald**. P
 
 **Consequences:** PS-9 kan starten zonder op de deviceronde te wachten. `docs/pleya-server-architecture.md` en `STATUS.md` blijven PS-5's status tonen als "opgeleverd, niet gesloten" met criterium 4 expliciet open, en verwijzen hiernaartoe. Wie de PS-5-hardwareronde later draait en hem laat slagen, sluit PS-5 formeel af zoals elke andere fase: met een Roadmap Drift Check. Faalt de ronde, dan is dat een regressie op bestaand afspeelgedrag en gaat de reparatie voor PS-9-werk, ongeacht hoever PS-9 dan gevorderd is.
 
-## DEC-119: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight
+## DEC-148: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight
+
+Voorheen DEC-119. De commits 20cf7eac en 53756b16 (PR #63) noemen dit besluit nog DEC-119. Dit besluit schoof op en niet het rollenmodel, omdat migratie `0007_users_sessions.sql`, `openapi.yaml` en de daaruit gegenereerde code het rollenmodel als DEC-119 aanhalen en de checksum van een toegepaste migratie niet mag veranderen; zie "Hernummering van de dubbele DEC-118 en DEC-119" verderop.
 
 **Date:** 2026-09-24
 **Status:** accepted
@@ -4091,6 +4095,25 @@ periode ook nummers uitgaf. Bij de eerste main-sync werden ze DEC-133 tot en met
 door naar DEC-135 tot en met DEC-138. De tabel toont de huidige nummers. Een verwijzing naar
 DEC-133 of DEC-134 van vóór die tweede sync die over een protocolvenster of foutdomeinen gaat, bedoelt
 dus DEC-135 of DEC-136.
+
+### Hernummering van de dubbele DEC-118 en DEC-119
+
+De tabel hierboven gaf de serverlijn op 20 september 2026 DEC-118 en DEC-119. `main` kende die
+toewijzing nog niet en gaf dezelfde twee nummers op 22 en 24 september zelf uit, voordat PR #94 de
+serverlijn op 25 september naar `main` bracht. Sindsdien stonden er vier besluiten onder twee
+nummers. De serverbesluiten houden hun nummer: hun ankerlinks staan in `STATUS.md`,
+`docs/CHANGELOG.md` en de serverdocumenten, en migratie `0007_users_sessions.sql` noemt DEC-119 in
+tekst waarvan de checksum vastligt. De twee app-besluiten zijn verplaatst:
+
+| Oude DEC | Nieuwe DEC | Onderwerp | Commits met het oude nummer |
+| --- | --- | --- | --- |
+| 118 | 147 | `background_downloader`-pin naar een eigen spiegel | 2723ad72, 4f9c69f2 |
+| 119 | 148 | tvOS vóór de iOS-stappen I7 tot en met I10 naar TestFlight | 20cf7eac, 53756b16 |
+
+DEC-118 is nu alleen nog het open PS-5-hardwarecriterium en DEC-119 alleen nog het rollen- en
+rechtenmodel voor PS-9. Een kale "DEC-118" in tekst van vóór deze wijziging die over de
+`background_downloader`-spiegel gaat, bedoelt DEC-147. Een kale "DEC-119" over tvOS vóór I7 tot en
+met I10 bedoelt DEC-148. DEC-146 is overgeslagen omdat PR #220 dat nummer al draagt.
 
 ## DEC-139: Apple TV blijft op 1,85; te grote vlakken worden gericht verdicht via `TvHig`
 

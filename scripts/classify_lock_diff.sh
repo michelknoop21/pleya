@@ -317,7 +317,7 @@ classify_pair() {
 
   if [ "$from" = "$to" ]; then
     # identity_of kijkt voor git alleen naar resolved-ref, nooit naar url. Dat
-    # liet de pin-fix van DEC-118 (dezelfde commit, andere host) hier
+    # liet de pin-fix van DEC-147 (dezelfde commit, andere host) hier
     # onzichtbaar: from == to, dus dit script zag "niets gewijzigd" over
     # precies de regel die de PR wijzigde. Eerst dus checken of de bron zelf
     # hetzelfde bleef, maar alleen voor git: bij een hosted pakket zijn
