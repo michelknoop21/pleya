@@ -7,6 +7,7 @@ import '../transport/verify_client.dart';
 import 'instance_discovery.dart';
 import 'screenshot_probe.dart';
 import 'verification_driver.dart';
+import 'bounded_process.dart';
 
 /// Drives a local iOS-simulator build of Pleya via `xcrun simctl`.
 ///
@@ -143,21 +144,29 @@ class IosSimulatorDriver implements VerificationDriver {
       _log('reusing explicitly requested isolated iOS app build: ${isolatedAppDir.path}');
       return;
     }
+    // Resolve the simulator first: an ambiguous device choice should fail in
+    // seconds, not after a build of up to [buildProcessTimeout].
+    await _resolveDevice();
     // Buildmappen naar de externe SSD (no-op zonder SSD of op CI).
     final linkScript = File('${repoRoot.absolute.path}/scripts/link_build_dirs.sh');
     if (linkScript.existsSync()) await _run('bash', [linkScript.path]);
     _log('flutter build ios --simulator --debug --dart-define=PLEYA_VERIFY=true');
     final gitCommit = await _gitCommit();
-    final result = await _run('flutter', [
-      'build',
-      'ios',
-      '--simulator',
-      '--debug',
-      '--dart-define=PLEYA_VERIFY=true',
-      if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
-      // The Big P rollout gate, passed through as tvos/scripts/xcode_appletv.sh does.
-      if (Platform.environment['PLEYA_ASSISTANT_ENABLED'] == 'true') '--dart-define=PLEYA_ASSISTANT_ENABLED=true',
-    ], workingDirectory: repoRoot.path);
+    final result = await _run(
+      'flutter',
+      [
+        'build',
+        'ios',
+        '--simulator',
+        '--debug',
+        '--dart-define=PLEYA_VERIFY=true',
+        if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
+        // The Big P rollout gate, passed through as tvos/scripts/xcode_appletv.sh does.
+        if (Platform.environment['PLEYA_ASSISTANT_ENABLED'] == 'true') '--dart-define=PLEYA_ASSISTANT_ENABLED=true',
+      ],
+      workingDirectory: repoRoot.path,
+      timeout: buildProcessTimeout,
+    );
     _log(result.stdout.toString());
     if (result.exitCode != 0) {
       _log(result.stderr.toString());
@@ -490,28 +499,10 @@ class IosSimulatorDriver implements VerificationDriver {
     final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
     final devicesByRuntime = decoded['devices'] as Map<String, Object?>;
 
-    ({String udid, String name, String runtime})? booted;
-    ({String udid, String name, String runtime})? fallback;
-    for (final entry in devicesByRuntime.entries) {
-      if (!entry.key.contains('iOS')) continue;
-      for (final raw in entry.value as List) {
-        final device = raw as Map<String, Object?>;
-        final name = device['name'] as String;
-        if (!name.startsWith('iPhone')) continue;
-        final udid = device['udid'] as String;
-        final candidate = (udid: udid, name: name, runtime: entry.key);
-        if (device['state'] == 'Booted') booted = candidate;
-        fallback = candidate;
-      }
-    }
-    final device = booted ?? fallback;
-    if (device == null) {
-      throw StateError('no iOS simulator found (xcrun simctl list devices available)');
-    }
-    _resolvedUdid = device.udid;
-    _resolvedDeviceName = device.name;
-    _resolvedRuntime = device.runtime;
-    return device.udid;
+    final udid = pickIosSimulator(devicesByRuntime);
+    _rememberDeviceMetadataFrom(devicesByRuntime, udid);
+    _resolvedUdid = udid;
+    return udid;
   }
 
   Future<void> _rememberDeviceMetadata(String udid) async {
@@ -524,7 +515,10 @@ class IosSimulatorDriver implements VerificationDriver {
     }
     if (result.exitCode != 0) return;
     final decoded = jsonDecode(result.stdout as String) as Map<String, Object?>;
-    final devicesByRuntime = decoded['devices'] as Map<String, Object?>;
+    _rememberDeviceMetadataFrom(decoded['devices'] as Map<String, Object?>, udid);
+  }
+
+  void _rememberDeviceMetadataFrom(Map<String, Object?> devicesByRuntime, String udid) {
     for (final entry in devicesByRuntime.entries) {
       if (!entry.key.contains('iOS')) continue;
       for (final raw in entry.value as List) {
@@ -544,11 +538,15 @@ class IosSimulatorDriver implements VerificationDriver {
     if (alreadyBooted) return;
     _log('booting $udid');
     await _run('xcrun', ['simctl', 'boot', udid]);
-    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b']);
+    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b'], timeout: bootProcessTimeout);
   }
 
-  Future<ProcessResult> _run(String executable, List<String> args, {String? workingDirectory}) =>
-      Process.run(executable, args, workingDirectory: workingDirectory);
+  Future<ProcessResult> _run(
+    String executable,
+    List<String> args, {
+    String? workingDirectory,
+    Duration timeout = defaultProcessTimeout,
+  }) => runBounded(executable, args, workingDirectory: workingDirectory, timeout: timeout);
 
   Future<String?> _gitCommit() async {
     final result = await _run('git', ['rev-parse', 'HEAD'], workingDirectory: repoRoot.path);
@@ -565,4 +563,36 @@ bool viewportHasOrientation(Map<String, Object?> viewport, String requested) {
   final height = (viewport['height'] as num?)?.toDouble();
   if (width == null || height == null || width <= 0 || height <= 0) return false;
   return requested == 'portrait' ? height > width : width > height;
+}
+
+/// Which iPhone simulator a run uses when no UDID is given, from the
+/// `devices` map of `xcrun simctl list devices available --json`.
+///
+/// One booted iPhone is used; none booted falls back to an available one.
+/// More than one booted used to mean "whichever came last in the list", so
+/// another session's simulator could be picked, and on 27 September 2026 a run
+/// on such a machine hung after the build. That case is refused instead.
+String pickIosSimulator(Map<String, Object?> devicesByRuntime) {
+  final booted = <({String name, String udid})>[];
+  String? fallback;
+  for (final entry in devicesByRuntime.entries) {
+    if (!entry.key.contains('iOS')) continue;
+    for (final raw in entry.value as List) {
+      final device = raw as Map<String, Object?>;
+      final name = device['name'] as String;
+      if (!name.startsWith('iPhone')) continue;
+      final udid = device['udid'] as String;
+      if (device['state'] == 'Booted') booted.add((name: name, udid: udid));
+      fallback = udid;
+    }
+  }
+  if (booted.length > 1) {
+    throw StateError(
+      'more than one iPhone simulator is booted (${booted.map((d) => '${d.name} ${d.udid}').join(', ')}); '
+      'set PLEYA_VERIFY_IOS_UDID to the one this run should use',
+    );
+  }
+  final udid = booted.isEmpty ? fallback : booted.single.udid;
+  if (udid == null) throw StateError('no iOS simulator found (xcrun simctl list devices available)');
+  return udid;
 }

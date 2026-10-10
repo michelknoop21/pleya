@@ -207,5 +207,129 @@ void main() {
       final i = _i('Welke films heb ik gekeken en wat keken de anderen?');
       expect(i.describe(), allOf(contains('only films'), contains('more than one audience')));
     });
+
+    test('"toegevoegd" routes to the catalog with the period; the wrong tools are refused', () {
+      final i = _i('Wat is deze week aan mijn bibliotheken toegevoegd?');
+      expect(i.addedToLibraries, isTrue);
+      expect(i.constrain('search_catalog', {'sort': 'added', 'limit': 20}).args['added_within_days'], 7);
+      expect(i.constrain('list_servers', {}).error, 'use_search_catalog');
+      expect(i.constrain('watch_stats', {'scope': 'period'}).error, 'use_search_catalog');
+      expect(i.describe(), contains('added_within_days'));
+    });
+
+    test('added-to-libraries: the model\'s own window is overruled, kind is enforced, last week refused', () {
+      final i = _i('Welke films zijn de laatste 14 dagen toegevoegd?');
+      final c = i.constrain('search_catalog', {'added_within_days': 3});
+      expect(c.args['added_within_days'], 14);
+      expect(c.args['kind'], 'movie');
+      expect(
+        _i('Wat is er vorige week toegevoegd?').constrain('search_catalog', {}).error,
+        'previous_week_not_supported',
+      );
+    });
+
+    test('added to a list, or a watch question beside it, is not an additions question', () {
+      expect(_i('Wat heb ik aan mijn kijklijst toegevoegd?').addedToLibraries, isFalse);
+      final mixed = _i('Wat is toegevoegd en wat keken de anderen?');
+      expect(mixed.constrain('watch_stats', {'scope': 'period'}).error, isNull);
+      expect(_i('Een tip').inheriting(_i('Wat is er toegevoegd en geef me een tip')).addedToLibraries, isFalse);
+    });
+
+    test('review: a period that may belong to another clause or that days cannot hold is not forced', () {
+      final mixed = _i('Wat is er toegevoegd en wat keken de anderen afgelopen week?');
+      expect(mixed.constrain('search_catalog', {}).args, isNot(contains('added_within_days')));
+      expect(
+        _i('Wat is er de laatste 3 maanden toegevoegd?').constrain('search_catalog', {}).error,
+        'window_not_supported',
+      );
+      expect(_i('Wat is er toegevoegde films deze week?').addedToLibraries, isTrue);
+      expect(_i('Zet het op mijn afspeellijst toegevoegd').addedToLibraries, isFalse);
+    });
+
+    test('review: kind is only enforced on search_catalog for an additions question', () {
+      final i = _i('Zoek een film met Tom Hanks');
+      expect(i.constrain('search_catalog', {}).args, isNot(contains('kind')));
+    });
+
+    test('review: requests, added value and a watch clause beside a long period are not additions-only', () {
+      expect(_i('I added this movie to Radarr').addedToLibraries, isFalse);
+      expect(_i('Dat is een toegevoegde waarde').addedToLibraries, isFalse);
+      final mixed = _i('Wat is er toegevoegd en wat keken de anderen de laatste 2 weken?');
+      expect(mixed.constrain('search_catalog', {}).error, isNull);
+    });
+  });
+
+  group('splitMixedAudience (BP-04b)', () {
+    test('me and the others in one sentence are two questions, each with its own audience', () {
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken en wat keken de anderen?'), [
+        'Wat heb ik gekeken',
+        'wat keken de anderen?',
+      ]);
+      expect(AssistantIntent.splitMixedAudience('What did the others watch, and what did I watch?'), [
+        'What did the others watch',
+        'what did I watch?',
+      ]);
+    });
+
+    test('anything not plainly two audiences is left to the model', () {
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('Wat keken de anderen?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Wat heb ik gekeken wat keken de anderen'),
+        isNull,
+        reason: 'no joiner',
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat keek iedereen behalve Sam en wat heb ik gekeken?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken, niet wat de anderen keken'), isNull);
+    });
+
+    test('review: an overlapping audience span is no cut and no crash', () {
+      expect(AssistantIntent.splitMixedAudience('What did I watch with the others?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('What did I watch with others'), isNull);
+    });
+
+    test('review: a kind named in one half only is not cut, a kind in both is', () {
+      expect(AssistantIntent.splitMixedAudience('Welke films heb ik gezien en wat keken de anderen?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Welke films heb ik gezien en welke films keken de anderen?'),
+        hasLength(2),
+      );
+    });
+
+    test('review: relational, comparative and verbless halves stay one question', () {
+      expect(
+        AssistantIntent.splitMixedAudience('Welke series heb ik gezien en hebben de anderen nog niet gezien'),
+        isNull,
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik en de anderen samen gezien'), isNull);
+      expect(AssistantIntent.splitMixedAudience('What did I watch and the others did not'), isNull);
+    });
+
+    test('review: a third clause or a title joiner is left to the model', () {
+      expect(
+        AssistantIntent.splitMixedAudience(
+          'Wat heb ik gekeken en wat keken de anderen, en verwijder Romeo en Julia uit mijn lijst',
+        ),
+        isNull,
+      );
+      expect(AssistantIntent.splitMixedAudience('Tip een film en wat heb ik gekeken en wat keken de anderen'), isNull);
+    });
+
+    test('review: a verb-bearing "everyone else" is a clause, a second sentence is not folded in', () {
+      expect(
+        AssistantIntent.splitMixedAudience('What have I watched and what has everyone else watched?'),
+        hasLength(2),
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken en wat keken de anderen. Wat is nieuw?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Which movies did I watch and which movies did the others watch?'),
+        hasLength(2),
+      );
+    });
+
+    test('review: refersBack sees anaphors', () {
+      expect(AssistantIntent.refersBack('Wat heb ik daarvan gekeken?'), isTrue);
+      expect(AssistantIntent.refersBack('Wat heb ik gekeken en wat keken de anderen?'), isFalse);
+    });
   });
 }

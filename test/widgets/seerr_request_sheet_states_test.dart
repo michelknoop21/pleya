@@ -68,7 +68,16 @@ void main() {
     },
   };
 
-  Future<void> open(WidgetTester tester, SeerrMedia media, {int permissions = seerrPermRequest}) async {
+  var openedMine = 0;
+
+  Future<void> open(
+    WidgetTester tester,
+    SeerrMedia media, {
+    int permissions = seerrPermRequest,
+    VoidCallback? onRequested,
+    bool offerMine = false,
+    bool initialIs4k = false,
+  }) async {
     // Tall enough that a five-season form is laid out whole: the list is lazy.
     tester.view.physicalSize = const Size(900, 2400);
     tester.view.devicePixelRatio = 1.0;
@@ -76,7 +85,17 @@ void main() {
     provider = await seerrProvider(fake, permissions: permissions);
     addTearDown(provider.dispose);
     requested = 0;
-    await pumpSeerr(tester, provider, SeerrRequestSheet(media: media, onRequested: () => requested++));
+    openedMine = 0;
+    await pumpSeerr(
+      tester,
+      provider,
+      SeerrRequestSheet(
+        media: media,
+        onRequested: onRequested ?? () => requested++,
+        onOpenMyRequests: offerMine ? () => openedMine++ : null,
+        initialIs4k: initialIs4k,
+      ),
+    );
     await _settle(tester);
   }
 
@@ -88,6 +107,14 @@ void main() {
       })
       ..on('GET /tv/1399', tvDetail())
       ..on('POST /request', {'id': 1});
+    // A requester's 4K goes to the default 4K instance, so there is one here.
+    // `seerr_request_sheet_default_4k_test.dart` covers the server without.
+    for (final service in ['radarr', 'sonarr']) {
+      fake.on('GET /service/$service', [
+        {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': true},
+        {'id': 2, 'name': '4K', 'is4k': true, 'isDefault': true},
+      ]);
+    }
   });
 
   group('film', () {
@@ -169,6 +196,110 @@ void main() {
 
       expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
       expect(_button('submit'), findsNothing);
+    });
+
+    testWidgets('a caller whose confirmation callback throws does not turn a confirmed request into an open one', (
+      tester,
+    ) async {
+      Object? formState() => tester.widget<AutomationNode>(_node(AutomationIds.requestsForm, 'create')).state!();
+
+      await open(tester, _movie);
+      await tester.tap(find.text(t.seerr.requestMovie));
+      await _settle(tester);
+      final confirmed = formState();
+      expect(confirmed, containsPair('phase', 'done'));
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      await open(tester, _movie, onRequested: () => throw StateError('caller broke'));
+      await tester.tap(find.text(t.seerr.requestMovie));
+      await _settle(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(_notice('done'), findsOneWidget);
+      expect(_notice('uncertain'), findsNothing);
+      expect(formState(), confirmed, reason: 'the same confirmed form, with no open outcome set beside it');
+    });
+
+    group('a film that is there in HD', () {
+      const fourK = SeerrPermission.request | SeerrPermission.request4kMovie;
+
+      testWidgets('or pending in HD keeps the way to Mijn aanvragen beside the 4K choice', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.pending),
+          permissions: fourK,
+          offerMine: true,
+        );
+
+        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(_button('mine'), findsOneWidget, reason: 'the request that exists stays one press away');
+        expect(_button('submit'), findsNothing);
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        expect(_button('mine'), findsNothing);
+        expect(_enabled(tester, 'submit'), isTrue);
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        await tester.tap(find.text(t.seerr.myRequests));
+        await _settle(tester);
+        expect(openedMine, 1);
+      });
+
+      testWidgets('can still be asked for in 4K by a profile that holds the 4K right', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.available),
+          permissions: fourK,
+        );
+
+        expect(find.byType(Switch), findsOneWidget, reason: 'the 4K choice is offered, not replaced by an end state');
+        expect(_notice('duplicate'), findsOneWidget, reason: 'the form says why HD cannot be sent');
+        expect(_enabled(tester, 'submit'), isFalse);
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        expect(_notice('duplicate'), findsNothing);
+        expect(_enabled(tester, 'submit'), isTrue);
+
+        await tester.tap(find.text(t.seerr.requestMovie));
+        await _settle(tester);
+        expect(fake.sent('POST', '/request').single.body, containsPair('is4k', true));
+        expect(_notice('done'), findsOneWidget);
+      });
+
+      testWidgets('and in 4K as well has nothing left to ask for', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(
+            tmdbId: 603,
+            mediaType: 'movie',
+            title: 'x',
+            status: SeerrMediaStatus.available,
+            status4k: SeerrMediaStatus.available,
+          ),
+          permissions: fourK,
+        );
+
+        expect(find.text(t.seerr.available), findsOneWidget);
+        expect(_button('submit'), findsNothing);
+        expect(find.byType(Switch), findsNothing);
+      });
+
+      testWidgets('with a 4K request already running offers 4K as taken, not as open', (tester) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status4k: SeerrMediaStatus.pending),
+          permissions: fourK,
+        );
+        expect(_enabled(tester, 'submit'), isTrue, reason: 'HD is open');
+
+        await tester.tap(find.byType(Switch));
+        await _settle(tester);
+        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(_enabled(tester, 'submit'), isFalse);
+      });
     });
 
     Map<String, dynamic> ownRequest({bool is4k = false, int by = 7, int status = 1, List<int> seasons = const []}) =>
@@ -592,8 +723,33 @@ void main() {
     testWidgets('a requester never sees the target section', (tester) async {
       await open(tester, _movie);
       expect(find.text(t.seerr.advancedOptions), findsNothing);
-      expect(fake.sent('GET', '/service/radarr'), isEmpty);
+      expect(fake.sent('GET', '/service/radarr'), hasLength(1), reason: 'read once, to know where HD would go');
+      expect(fake.sent('GET', '/service/radarr/1'), isEmpty, reason: 'and nothing is bound');
     });
+  });
+
+  testWidgets('a series form opened on 4K judges the seasons on their 4K status from the start', (tester) async {
+    // Season 1 is there in HD and open in 4K; season 2 is taken in both.
+    fake.on(
+      'GET /tv/1399',
+      tvDetail(
+        statuses: {
+          1: [5, 1],
+          2: [5, 5],
+        },
+      ),
+    );
+    await open(tester, _show, permissions: SeerrPermission.request | SeerrPermission.request4kTv, initialIs4k: true);
+
+    final form = tester.widget<AutomationNode>(_node(AutomationIds.requestsForm, 'create')).state!() as Map;
+    expect(form['is4k'], isTrue);
+    expect(form['seasons'], [1, 3, 4, 5], reason: 'season 1 is open in 4K, season 2 is not');
+  });
+
+  testWidgets('a form asked to open on 4K stays on HD for a profile without the 4K right', (tester) async {
+    await open(tester, _movie, initialIs4k: true);
+    final form = tester.widget<AutomationNode>(_node(AutomationIds.requestsForm, 'create')).state!() as Map;
+    expect(form['is4k'], isFalse);
   });
 
   testWidgets('a season that is there in HD, with no 4K status at all, can still be asked for in 4K (B02)', (

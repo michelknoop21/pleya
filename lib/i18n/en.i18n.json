@@ -1851,6 +1851,8 @@
     "requestWithServerDefault": "Request with server default",
     "no4kServerTitle": "No 4K server configured",
     "no4kServerBody": "Turn 4K off to request in HD.",
+    "noDefaultServerTitle": "No default server for this quality",
+    "noDefaultServerBody": "The request server has no default instance to send this request to. Ask the admin of the server to set one.",
     "serverDefault": "Server default",
     "adminOnly": "administrators only",
     "editRequest": "Edit request",

@@ -36,6 +36,7 @@ import '../../widgets/pressable.dart';
 import '../../widgets/seerr_poster_card.dart';
 import '../../widgets/seerr_request_form_parts.dart';
 import '../../widgets/seerr_request_sheet.dart';
+import '../../widgets/seerr_request_target.dart';
 import '../../widgets/seerr_status_badge.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/state_view.dart';
@@ -84,6 +85,11 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
   /// profile's servers has it. Null is "not proven", never "not there".
   MediaItem? _libraryMatch;
 
+  /// The server lists a 4K instance for this media type. False until that is
+  /// known, and after a lookup that failed: a 4K request with nowhere to go is
+  /// a form that cannot send, so the page does not offer it on a guess.
+  bool _fourKServerKnown = false;
+
   late SeerrMediaStatus _reportedStatus = widget.media.status;
   bool _reportsStatus = true;
   int _loadGen = 0;
@@ -107,6 +113,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
       _libraryMatch = null;
       _recommendations = const [];
       _stale = false;
+      _fourKServerKnown = false;
       // The card this page was opened from belongs to the previous account's
       // list, so nothing learned from here on is reported back to it.
       _reportsStatus = false;
@@ -147,6 +154,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
       }
       unawaited(_loadRecommendations(client, gen));
       unawaited(_resolveLibraryMatch(status, gen));
+      unawaited(_loadFourKServer(client, gen));
     } catch (e) {
       if (!mounted || !current()) return;
       setState(() {
@@ -156,6 +164,22 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
         _network = e is SeerrException && e.isNetwork;
       });
     }
+  }
+
+  /// Asks whether a default 4K instance exists, for a profile that could
+  /// request 4K: the one the server sends a 4K request to on its own.
+  Future<void> _loadFourKServer(SeerrClient client, int gen) async {
+    final isMovie = widget.media.isMovie;
+    if (!context.read<SeerrProvider>().canRequest4kFor(isMovie: isMovie)) return;
+    var known = false;
+    try {
+      final servers = isMovie ? await client.getRadarrServers() : await client.getSonarrServers();
+      known = seerrHasServerOfQuality(servers, is4k: true, defaultOnly: true);
+    } catch (_) {
+      // Not known is not offered.
+    }
+    if (!mounted || gen != _loadGen || !identical(context.read<SeerrProvider>().client, client)) return;
+    if (known != _fourKServerKnown) setState(() => _fourKServerKnown = known);
   }
 
   Future<void> _loadRecommendations(SeerrClient client, int gen) async {
@@ -193,15 +217,30 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     }
   }
 
-  Future<void> _openRequest() async {
+  Future<void> _openRequest({bool in4k = false}) async {
     // The reload runs the moment the server confirms, so backing out of the
     // confirmation leaves the status as fresh as pressing Sluiten does.
     await SeerrRequestSheet.show(
       context,
       media: _base,
+      initialIs4k: in4k,
       onRequested: () => unawaited(_load()),
       onOpenMyRequests: _openMyRequests,
     );
+  }
+
+  /// Whether a 4K request is still something this viewer can make while the
+  /// HD copy is taken. Seerr keeps the two apart, so a title that is there or
+  /// on its way in HD has not been asked for in 4K. No 4K status at all counts
+  /// as open, and the server decides. Only with a 4K instance to send it to:
+  /// the admin bit grants the 4K right on a server that has none.
+  bool _fourKOpen(SeerrProvider provider) {
+    if (!_fourKServerKnown) return false;
+    if (!provider.canRequest || !provider.canRequest4kFor(isMovie: _base.isMovie)) return false;
+    final status4k = _base.status4k;
+    return status4k == null ||
+        status4k == SeerrMediaStatus.unknown ||
+        (!_base.isMovie && status4k == SeerrMediaStatus.partiallyAvailable);
   }
 
   /// The viewer's own request for this title, as the current account's server
@@ -285,6 +324,15 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     final requests = _detail?.requests ?? const [];
     final hasOwn = ownId != null && requests.any((r) => r.requestedById == ownId);
     final request = _DetailAction('request', t.seerr.request, Symbols.playlist_add_rounded, _openRequest);
+    // Beside what the HD status offers, never instead of it.
+    final request4k = _fourKOpen(provider)
+        ? _DetailAction(
+            'request4k',
+            t.seerr.fourK,
+            Symbols.high_quality_rounded,
+            () => unawaited(_openRequest(in4k: true)),
+          )
+        : null;
     final mine = _DetailAction('mine', t.seerr.myRequest, Symbols.inbox_rounded, _openMyRequests);
     final match = _libraryMatch;
     final library = match != null
@@ -295,15 +343,18 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
 
     return switch (status) {
       SeerrMediaStatus.unknown => [request],
-      SeerrMediaStatus.pending => [if (hasOwn) mine, refresh],
-      SeerrMediaStatus.processing => [refresh, if (hasOwn) mine],
+      SeerrMediaStatus.pending => [if (hasOwn) mine, refresh, ?request4k],
+      SeerrMediaStatus.processing => [refresh, if (hasOwn) mine, ?request4k],
       SeerrMediaStatus.partiallyAvailable => [
         if (!_base.isMovie)
           _DetailAction('request', t.seerr.requestMoreSeasons, Symbols.playlist_add_rounded, _openRequest),
         ?library,
         refresh,
+        // A series already gets its form, with the 4K switch, from the button
+        // above.
+        if (_base.isMovie) ?request4k,
       ],
-      SeerrMediaStatus.available => [?library, refresh],
+      SeerrMediaStatus.available => [?library, refresh, ?request4k],
     };
   }
 

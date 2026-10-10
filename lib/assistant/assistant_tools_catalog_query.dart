@@ -15,6 +15,9 @@ class _CatalogQuery {
     this.rowUnavailableReason = 'This query cannot be replayed by a saved Home row.',
     this.coverage,
     this.checkCurrent,
+    this.addedWithinDays,
+    this.totalMatches,
+    this.addedUnknown = 0,
   });
   final List<UnifiedMediaGroup> groups;
 
@@ -25,6 +28,13 @@ class _CatalogQuery {
   final String rowUnavailableReason;
   final Map<String, Object?>? coverage;
   final void Function()? checkCurrent;
+
+  /// The window of an "added in the last N days" question, and how many titles
+  /// matched it before [groups] was cut to the limit. [addedUnknown] titles
+  /// carry no added date and are in neither count.
+  final int? addedWithinDays;
+  final int? totalMatches;
+  final int addedUnknown;
 
   /// A server or library did not answer, or could not run this search.
   final bool partial;
@@ -89,6 +99,21 @@ const _rowSorts = {
   'released': UnifiedCatalogSort.newestRelease,
   'title': UnifiedCatalogSort.titleAsc,
 };
+
+/// A title's added date (epoch seconds) is its newest source's: a copy added
+/// this week is new this week, whatever the older copy says. A local folder has
+/// none to give: its client stamps scan time, which is not an add date.
+int? _groupAddedAt(UnifiedMediaGroup g) => g.sources
+    .where((s) => s.item.backend != MediaBackend.local)
+    .map((s) => s.item.addedAt)
+    .whereType<int>()
+    .fold<int?>(null, (a, b) => a == null || b > a ? b : a);
+
+/// The loader's own newest-first key: every source, local scan stamps included.
+/// Order and the end-of-page test follow the loader, the window follows
+/// [_groupAddedAt].
+int? _groupRawAddedAt(UnifiedMediaGroup g) =>
+    g.sources.map((s) => s.item.addedAt).whereType<int>().fold<int?>(null, (a, b) => a == null || b > a ? b : a);
 
 Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> args) async {
   final catalog = ctx.catalog!;
@@ -156,8 +181,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   final unwatched = _bool(args, 'unwatched');
   final inProgress = _bool(args, 'in_progress');
   if (unwatched && inProgress) throw const AssistantToolError('invalid_in_progress');
+  final addedWithin = _int(args, 'added_within_days', 1, 31);
   final askedSort = args['sort'];
-  final sort = askedSort ?? 'title';
+  final sort = askedSort ?? (addedWithin != null ? 'added' : 'title');
   if (sort is! String || !{..._rowSorts.keys, 'rating', 'random'}.contains(sort)) {
     throw const AssistantToolError('invalid_sort');
   }
@@ -168,13 +194,30 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       person == null &&
       minRating == null &&
       _rowSorts.containsKey(sort) &&
+      addedWithin == null &&
       !temporaryFilters &&
       !openYears;
   final unavailableReason = temporaryFilters
       ? 'Runtime, exclusions, subtitles and required multiple audio languages cannot be replayed by a Home row.'
       : openYears
       ? 'An open year window cannot be replayed exactly by a Home row.'
+      : addedWithin != null
+      ? 'A window of days since added cannot be replayed by a Home row.'
       : 'Text, person, minimum rating, sampled sort or mixed kinds cannot be replayed by a Home row.';
+
+  final cutoff = addedWithin == null
+      ? null
+      : DateTime.now().millisecondsSinceEpoch ~/ 1000 - addedWithin * Duration.secondsPerDay;
+  var windowCapped = false;
+  var addedUnknown = 0;
+  int? total;
+  final addedOf = _groupAddedAt;
+  void applyWindow(List<UnifiedMediaGroup> groups) {
+    if (cutoff == null) return;
+    addedUnknown = groups.where((g) => addedOf(g) == null).length;
+    groups.removeWhere((g) => (addedOf(g) ?? -1) < cutoff);
+    total = groups.length;
+  }
 
   if (text == null && person == null) {
     // The Home-row path: the row's own filter model, loader and merge.
@@ -209,7 +252,10 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
         id: '',
         kind: k,
         preferences: UnifiedCatalogPreferences(
-          sort: _rowSorts[sort] ?? UnifiedCatalogSort.titleAsc,
+          // A window needs newest first, whatever order the listing is shown in.
+          sort: addedWithin != null
+              ? UnifiedCatalogSort.recentlyAdded
+              : (_rowSorts[sort] ?? UnifiedCatalogSort.titleAsc),
           filters: UnifiedCatalogFilterSelection(
             genres: genres,
             audioLanguages: audioLanguages.length > 1 ? const {} : audioLanguages,
@@ -236,7 +282,14 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       final content = await ctx.catalog!.rowLoader.load(row, limit: rowShaped ? limit : 100);
       checkCurrent();
       partial |= content.isPartial;
-      sampled |= !rowShaped && !content.isExact;
+      // In a window the question is whether the newest-first page reached its
+      // end (below); otherwise an inexact page is a sample.
+      if (cutoff == null) sampled |= !rowShaped && !content.isExact;
+      // Newest first and capped at 100: if the oldest loaded title is still in
+      // the window, older matches were never seen.
+      if (cutoff != null && content.groups.length >= 100 && (_groupRawAddedAt(content.groups.last) ?? -1) >= cutoff) {
+        windowCapped = true;
+      }
       groups.addAll(content.groups);
     }
     Map<String, Object?>? coverage;
@@ -251,17 +304,21 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     }
     checkCurrent();
     if (minRating != null) groups.removeWhere((g) => (g.representativeSource.item.rating ?? -1) < minRating);
+    applyWindow(groups);
     // A single kind keeps the catalog's order; two kinds need one order.
     if (!rowShaped || kind == null) _order(groups, sort);
     return _CatalogQuery(
       groups.take(limit).toList(),
       rowShaped && kind != null ? row : null,
       partial: partial,
-      sampled: sampled,
+      sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
       rowUnavailableReason: unavailableReason,
       coverage: coverage,
       checkCurrent: checkCurrent,
+      addedWithinDays: addedWithin,
+      totalMatches: total,
+      addedUnknown: addedUnknown,
     );
   }
 
@@ -333,8 +390,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     coverage = filtered.coverage;
     partial |= filtered.failed;
   }
+  applyWindow(groups);
   // No sort asked: the servers' relevance order stands.
-  if (askedSort != null) _order(groups, sort);
+  if (askedSort != null || addedWithin != null) _order(groups, sort);
   final kept = groups.take(limit).toList();
   return _CatalogQuery(
     kept,
@@ -344,6 +402,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     rowUnavailableReason: unavailableReason,
     coverage: coverage,
     checkCurrent: checkCurrent,
+    addedWithinDays: addedWithin,
+    totalMatches: total,
+    addedUnknown: addedUnknown,
     genreUnverified: genres.isEmpty || coverage != null
         ? const {}
         : {
@@ -501,7 +562,7 @@ void _order(List<UnifiedMediaGroup> groups, String sort) {
     case 'rating':
       groups.sort((a, b) => (rep(b).rating ?? -1).compareTo(rep(a).rating ?? -1));
     case 'added':
-      groups.sort((a, b) => (rep(b).addedAt ?? -1).compareTo(rep(a).addedAt ?? -1));
+      groups.sort((a, b) => (_groupRawAddedAt(b) ?? -1).compareTo(_groupRawAddedAt(a) ?? -1));
     case 'released':
       groups.sort((a, b) => releaseKey(rep(b)).compareTo(releaseKey(rep(a))));
     default:
