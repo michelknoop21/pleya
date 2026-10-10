@@ -23,4 +23,11 @@ describe('StatTile', () => {
     render(StatTile, { props: { label: 'Scan', value: 'running', icon } });
     expect(screen.getByTestId('ic').parentElement).toHaveAttribute('aria-hidden', 'true');
   });
+
+  it('zet de eenheid in de waarde en houdt de sparkline buiten de boom', () => {
+    const spark = createRawSnippet(() => ({ render: () => '<svg data-testid="sp"></svg>' }));
+    render(StatTile, { props: { label: 'Storage', value: '3.2', unit: 'TB free', spark } });
+    expect(screen.getByRole('definition')).toHaveTextContent('3.2 TB free');
+    expect(screen.getByTestId('sp').parentElement).toHaveAttribute('aria-hidden', 'true');
+  });
 });

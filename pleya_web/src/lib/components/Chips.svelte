@@ -78,6 +78,9 @@
      * dat op, verticaal doet de 44 px hoge button het al.
      */
     padding-inline: 4px;
+    /* Dezelfde 4 px terug naar buiten, zodat de eerste chip op de rand van
+       de sectie begint en niet 4 px ingesprongen. */
+    margin-inline: -4px;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -134,6 +137,7 @@
   .chip--outline {
     border-color: color-mix(in srgb, var(--text) 25%, transparent);
   }
+
 
   .chip--outline.chip--on {
     border-color: var(--accent);
