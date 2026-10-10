@@ -49,13 +49,17 @@
     </Panel>
     <Panel tone="warn">
       {#snippet title()}Onderhoudsmodus{/snippet}
-      <p class="t-body">Weigert nieuwe streams en scans; lopende sessies blijven geldig.</p>
-      <button type="button" class="btn btn--ghost btn--sm">Onderhoudsmodus aan</button>
+      <div class="gal-body">
+        <p class="t-body">Weigert nieuwe streams en scans; lopende sessies blijven geldig.</p>
+        <button type="button" class="btn btn--ghost btn--sm">Onderhoudsmodus aan</button>
+      </div>
     </Panel>
     <Panel tone="danger">
       {#snippet title()}Gevarenzone{/snippet}
-      <p class="t-body">Bibliotheek verwijderen haalt alle kijkstatus weg.</p>
-      <button type="button" class="btn btn--danger btn--sm">Verwijderen</button>
+      <div class="gal-body">
+        <p class="t-body">Bibliotheek verwijderen haalt alle kijkstatus weg.</p>
+        <button type="button" class="btn btn--danger btn--sm">Verwijderen</button>
+      </div>
     </Panel>
   </div>
 
@@ -155,6 +159,14 @@
 </GallerySection>
 
 <style>
+  /* Paneelinhoud regelt zijn eigen ritme; Panel legt geen tussenruimte op. */
+  .gal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space);
+  }
+
   /* Een lijst die zelf tot de rand van een flush paneel loopt, zoals een tabel. */
   .gal-list li {
     display: flex;
