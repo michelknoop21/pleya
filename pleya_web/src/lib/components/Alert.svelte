@@ -77,7 +77,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    color: var(--amber);
+    color: var(--warn-ink);
   }
 
   .alert--err {

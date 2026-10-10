@@ -124,8 +124,13 @@
     transition: background var(--dur-fast) var(--ease);
   }
 
+  /*
+   * --ok-ink en niet --ok: op donker is dat dezelfde groen, in light een
+   * donkerder groen, want de witte knop haalt op #3dd68c maar 1,9:1 en op
+   * #0f7a45 5,4:1 (WCAG 1.4.11, de staat moet zichtbaar zijn).
+   */
   .tgl__track--on {
-    background: var(--ok);
+    background: var(--ok-ink);
   }
 
   .tgl__knob {

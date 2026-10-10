@@ -58,4 +58,18 @@ describe("StatusPill", () => {
     expect(pill).not.toHaveClass("pill--sm");
     expect(container.querySelector(".pill__dot")).toHaveAttribute("aria-hidden", "true");
   });
+
+  it("tekent run als stip met de pulsklasse en als capsule zonder stip", () => {
+    const { container } = render(StatusPill, {
+      props: { label: "busy", tone: "run", variant: "dot" },
+    });
+    const status = screen.getByText("busy");
+    expect(status).toHaveClass("pill--status", "pill--run");
+    expect(container.querySelector(".pill__dot")).not.toBeNull();
+
+    render(StatusPill, { props: { label: "session", tone: "run" } });
+    const pill = screen.getByText("session");
+    expect(pill).toHaveClass("pill--run");
+    expect(pill).not.toHaveClass("pill--status");
+  });
 });
