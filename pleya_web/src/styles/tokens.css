@@ -95,6 +95,8 @@
          monoTheme(); de kaartregels uit MediaCardGridLayout. -------------- */
   --font-sans:
     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Hero-titel en detailtitel op breed; zie @font-face in base.css. */
+  --font-display: 'ArchivoBlack', var(--font-sans);
   /* Paden, slugs en sleutels: alles wat iemand letterlijk overtypt. */
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --text-mono-size: 13px;

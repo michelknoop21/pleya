@@ -25,6 +25,8 @@
   import { onDestroy, untrack } from 'svelte';
   import { session } from '../stores/session.svelte';
   import { t } from '../i18n';
+  import { requestWidth, type ArtworkRole } from '../util/srcset';
+  import { getArtworkLoader, type ArtworkLoader } from './artworkLoader';
 
   interface Props {
     artworkId: string | null | undefined;
@@ -37,6 +39,8 @@
     eager?: boolean;
     /** Vlak zonder ronde hoeken, voor beeld dat de volle breedte vult. */
     flat?: boolean;
+    /** Welke artworkladder geldt; standaard volgt dat uit `shape`. */
+    role?: ArtworkRole;
   }
 
   let {
@@ -45,7 +49,8 @@
     shape = 'poster',
     rootMargin = '400px',
     eager = false,
-    flat = false
+    flat = false,
+    role
   }: Props = $props();
 
   let host = $state<HTMLDivElement | null>(null);
@@ -54,6 +59,13 @@
   // `eager` is een prop en verandert niet gedurende het leven van deze
   // component; de beginwaarde is dus de juiste startwaarde.
   let visible = $state(untrack(() => eager));
+
+  // De loader komt uit de context (galerij, tests) of is de echte client.
+  const contextLoader = getArtworkLoader();
+  // `shape` en `role` veranderen niet gedurende het leven van de component.
+  const ladderRole: ArtworkRole = untrack(() =>
+    role ?? (shape === 'poster' ? 'poster' : 'backdrop')
+  );
 
   let controller: AbortController | null = null;
   let currentUrl: string | null = null;
@@ -78,7 +90,12 @@
     const own = new AbortController();
     controller = own;
     try {
-      const blob = await session.client.artworkBlob(id, own.signal);
+      // Het getekende vlak bepaalt de trede; onmeetbaar of geen formaten op
+      // de server betekent geen breedte en dus het origineel.
+      const width = requestWidth(host?.clientWidth ?? 0, window.devicePixelRatio || 1, ladderRole);
+      const load = contextLoader ?? ((...args: Parameters<ArtworkLoader>) =>
+        session.client.artworkBlob(...args));
+      const blob = await (width === undefined ? load(id, own.signal) : load(id, own.signal, width));
       if (own.signal.aborted) return;
       const url = URL.createObjectURL(blob);
       currentUrl = url;
