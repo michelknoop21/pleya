@@ -77,8 +77,9 @@ extension _AssistantTaskRunning on AssistantController {
         rightsEpoch: () {
           try {
             _noteRights(_buildContext(null));
-          } catch (_) {
+          } catch (e) {
             // Rights that cannot be read are rights that moved: fail closed.
+            appLogger.w('Assistant rights stamp could not be read', error: e.runtimeType);
             _rightsEpoch++;
           }
           return _rightsEpoch;
