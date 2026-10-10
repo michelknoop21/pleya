@@ -259,6 +259,10 @@ void main() {
       expect(_i('zoek iets met de acteur uit de serie Friends').kind.known, isFalse, reason: 'only a reference');
       expect(_i('Welke acteur uit die serie speelt in films?').kind.value, MediaKind.movie);
       expect(_i('films van de regisseur van die serie').kind.value, MediaKind.movie);
+      expect(_i('Zoek een Bond filmserie').kind.known, isFalse, reason: 'a series of films is neither');
+      // A kind word that is the category asked for stays one, also after van/als.
+      expect(_i('Wat heb ik van de series gekeken?').kind.value, MediaKind.show);
+      expect(_i('Ik wil iets als een serie').kind.value, MediaKind.show);
       expect(_i('Zoek een kerstfilm').kind.value, MediaKind.movie);
       expect(_i('Zoek een docuserie').kind.value, MediaKind.show);
     });
