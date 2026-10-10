@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -242,25 +244,50 @@ class SeerrFormButtons extends StatelessWidget {
 
   /// A muted line above the buttons, two lines at most and cut off after
   /// that: what a save will do, who it is for, or why the form cannot send.
+  /// Not drawn when the screen is short for its text size, see
+  /// [hintLinesFor].
   final String? hint;
+
+  /// How many lines the hint gets, by the height left for the form (the
+  /// screen minus the keyboard) measured in text sizes: two, or none below
+  /// [_noLineHeight], and below [_enlargedNoLineHeight] once the text is
+  /// enlarged past 1.3. The buttons wrap and grow with the text size, and a
+  /// line there took the choices up to 72 px and overflowed the form from
+  /// 568x320 at 1.65 on; even one line was too much from 2.0. With none the
+  /// reasons stay in the messages at the top of the list, which a short list
+  /// has not scrolled away. Television, tablets and a phone upright at normal
+  /// size keep two.
+  static int hintLinesFor(double availableHeight, TextScaler scaler) {
+    final scale = math.max(1.0, scaler.scale(14) / 14);
+    final height = availableHeight / scale;
+    if (height < _noLineHeight || (scale > 1.3 && height < _enlargedNoLineHeight)) return 0;
+    return 2;
+  }
+
+  static const double _noLineHeight = 200;
+  static const double _enlargedNoLineHeight = 250;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = primaryLabel;
     final primaryEnabled = onPrimary != null;
+    final hintLines = hintLinesFor(
+      MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom,
+      MediaQuery.textScalerOf(context),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hint != null)
+          if (hint != null && hintLines > 0)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 hint!,
-                maxLines: 2,
+                maxLines: hintLines,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
               ),
