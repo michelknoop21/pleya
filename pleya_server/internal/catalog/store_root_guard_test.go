@@ -117,3 +117,52 @@ func TestEnvSyncStillMovesRootBetweenConfigLibraries(t *testing.T) {
 		t.Fatalf("de meting van de nieuwe regel is niet geschreven: %+v", roots)
 	}
 }
+
+// TestEnvSyncTwoRulesNamingTheSameRoot legt vast wat er gebeurt als twee
+// .env-regels dezelfde root noemen. Een root van een config-bibliotheek
+// verhuist per regel, dus de laatste regel wint; een root van een
+// db-bibliotheek wordt door beide regels overgeslagen.
+func TestEnvSyncTwoRulesNamingTheSameRoot(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	owned, err := store.CreateLibrary(ctx, "Archief", "movies", []string{"/media/archief"})
+	if err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+
+	root := func(path string) catalog.RootSpec {
+		return catalog.RootSpec{Path: path, FSType: "ext4", InodeTrusted: true, TrustSource: "fstype_default"}
+	}
+	specs := []catalog.LibrarySpec{
+		{Slug: "eerste", Title: "Eerste", Kind: "movies",
+			Roots: []catalog.RootSpec{root("/media/gedeeld"), root("/media/archief")}},
+		{Slug: "tweede", Title: "Tweede", Kind: "movies",
+			Roots: []catalog.RootSpec{root("/media/gedeeld"), root("/media/archief")}},
+	}
+
+	for round := 1; round <= 2; round++ {
+		synced, err := store.SyncLibraries(ctx, specs)
+		if err != nil {
+			t.Fatalf("ronde %d: sync: %v", round, err)
+		}
+		owners := rootOwners(t, ctx, store)
+		if owners["/media/gedeeld"] != "tweede" {
+			t.Fatalf("ronde %d: /media/gedeeld is van %q, verwacht tweede (de laatste regel)",
+				round, owners["/media/gedeeld"])
+		}
+		if owners["/media/archief"] != owned.Slug {
+			t.Fatalf("ronde %d: /media/archief is van %q, verwacht de db-bibliotheek %q",
+				round, owners["/media/archief"], owned.Slug)
+		}
+		for _, l := range synced {
+			if len(l.SkippedRoots) != 1 || l.SkippedRoots[0] != "/media/archief" {
+				t.Fatalf("ronde %d: %s sloeg %v over, verwacht [/media/archief]", round, l.Slug, l.SkippedRoots)
+			}
+		}
+	}
+}
