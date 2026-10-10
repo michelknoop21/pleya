@@ -218,6 +218,9 @@ extension _AssistantAnswer on AssistantRun {
     AssistantDisplay? display;
     try {
       final titles = {for (final t in named) t.title}.toList();
+      // The same stamp as every other read: rights that moved while it ran
+      // leave no card.
+      final stamp = rightsEpoch?.call();
       final operation = _operation(() async {
         if (!current() || !tool.serves(_ctx, AssistantRun._noServer)) throw const AssistantToolError('cancelled');
         return tool.run(_ctx, null, {
@@ -233,7 +236,10 @@ extension _AssistantAnswer on AssistantRun {
           cancel!.trigger.then<AssistantToolOutcome>((_) => throw const AssistantToolError('cancelled')),
       ]);
       if (!current()) return null;
-      if (outcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
+      final rightsMoved = stamp != null && rightsEpoch!() != stamp;
+      if (rightsMoved) _ctx.forgetReads();
+      final readOutcome = rightsMoved ? null : outcome;
+      if (readOutcome case AssistantToolResult(display: AssistantTitleMatches(:final context, :final matches))) {
         final exact = [
           for (final m in matches)
             if ((m.targets.isNotEmpty || m.request != null) &&

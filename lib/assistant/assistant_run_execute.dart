@@ -61,6 +61,12 @@ extension _AssistantExecute on AssistantRun {
     );
     final shown = _displays.length;
     final stamp = rightsEpoch?.call();
+    // Rights moved since the previous call: its shown ids and cached library
+    // lists were gathered under the old ones.
+    if (stamp != null) {
+      if (_rightsSeenEpoch != null && stamp != _rightsSeenEpoch) _ctx.forgetReads();
+      _rightsSeenEpoch = stamp;
+    }
     final output = await _executeCall(call);
     // A read publishes household or library data: if the rights moved while it
     // ran, even if they are back, none of it is shown or handed to the model.
@@ -69,6 +75,7 @@ extension _AssistantExecute on AssistantRun {
         rightsEpoch!() != stamp &&
         (tools ?? assistantTools).any((t) => t.name == call.name && t.risk == AssistantToolRisk.read)) {
       if (_displays.length > shown) _displays.removeRange(shown, _displays.length);
+      _ctx.forgetReads();
       onStep?.call(
         AssistantStep(index: index, tool: call.name, serverName: serverName, phase: AssistantStepPhase.failed),
       );

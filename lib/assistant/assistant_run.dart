@@ -188,6 +188,10 @@ class AssistantRun {
   /// same before and after, but the data was gathered under other rights.
   final int Function()? rightsEpoch;
 
+  /// The epoch the last tool call began under; a later call under another one
+  /// starts from empty read caches.
+  int? _rightsSeenEpoch;
+
   /// The earlier turns of this conversation, oldest first: context for a
   /// follow-up, never evidence. See [_memoryMessages].
   final List<AssistantTurn> conversation;
