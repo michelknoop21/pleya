@@ -146,9 +146,11 @@ ol {
 
 /*
  * SvelteKit zet zelf een aankondigingsvlak in de pagina dat na elke
- * clientnavigatie de nieuwe paginatitel voorleest. Het stijlt dat inline via
- * JavaScript; de CSP laat die ene stijltekst toe met een hash (svelte.config.js,
- * #219). Deze regel houdt het element ook zonder die hash verborgen.
+ * clientnavigatie de nieuwe paginatitel voorleest, met een inline style. Op
+ * deze branch staat style-src in svelte.config.js nog op 'self', dus de CSP
+ * blokkeert die stijl en deze regel houdt het element verborgen. De hash die
+ * de stijl toelaat (#219) komt pas binnen met de merge naar feat/pleyaserver
+ * (2e9f2aa2); daarna blijft deze regel als vangnet staan.
  */
 #svelte-announcer {
   position: absolute;
