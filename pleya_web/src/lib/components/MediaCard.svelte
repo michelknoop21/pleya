@@ -60,6 +60,8 @@
     actions
   }: Props = $props();
 
+  // De linknaam begint bij de titel; de tekens op het beeld zijn beschrijving.
+  const uid = $props.id();
   const shape = $derived(shapeOverride ?? artworkAspect(item.kind));
   const artworkId = $derived(
     artworkOverride !== undefined ? artworkOverride : cardArtworkId(item, shape)
@@ -70,7 +72,12 @@
 </script>
 
 <div class="card" data-kind={item.kind} data-shape={shape}>
-  <a class="card__link" href="/items/{item.id}">
+  <a
+    class="card__link"
+    href="/items/{item.id}"
+    aria-labelledby="{uid}-title {uid}-meta"
+    aria-describedby="{uid}-badges"
+  >
     <div class="card__art">
       <Artwork {artworkId} alt="" {shape} {eager}>
         {#snippet fallback()}
@@ -88,6 +95,7 @@
         {/snippet}
       </Artwork>
       <MediaCardBadges
+        id="{uid}-badges"
         versions={item.versions?.length ?? 0}
         {watched}
         {isNew}
@@ -95,8 +103,8 @@
       />
     </div>
     <div class="card__caption">
-      <span class="card__title">{item.title}</span>
-      <span class="card__meta">{subtitle ?? ''}</span>
+      <span class="card__title" id="{uid}-title">{item.title}</span>
+      <span class="card__meta" id="{uid}-meta">{subtitle ?? ''}</span>
     </div>
   </a>
   {#if actions}

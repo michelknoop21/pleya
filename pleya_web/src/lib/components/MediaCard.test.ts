@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 
 import MediaCard from './MediaCard.svelte';
@@ -28,6 +28,30 @@ describe('MediaCard', () => {
     render(MediaCard, { props: { item: item() } });
     const link = screen.getByRole('link', { name: /Grease/ });
     expect(link).toHaveAttribute('href', '/items/i1');
+  });
+
+  it('begint de linknaam bij de titel en zet de tekens in de beschrijving', () => {
+    const version = { id: 'v' } as NonNullable<Item['versions']>[number];
+    render(MediaCard, {
+      props: {
+        item: item({
+          title: 'Dune',
+          year: 2024,
+          versions: [version, { ...version, id: 'w' }],
+          user_state: userState(0, true)
+        })
+      }
+    });
+    const link = screen.getByRole('link');
+    // Zonder labelledby las een schermlezer "2 versions, Watched, Dune, 2024".
+    expect(link).toHaveAccessibleName('Dune 2024');
+    // jsdom neemt het aria-label van het vinkje niet mee in de beschrijving
+    // (Chromium wel, zie het fixrapport), dus het vinkje toetsen we via de
+    // verwijzing zelf.
+    expect(link).toHaveAccessibleDescription(/^2 versions/);
+    const described = document.getElementById(link.getAttribute('aria-describedby') ?? '');
+    expect(described).not.toBeNull();
+    expect(within(described!).getByRole('img', { name: 'Watched' })).toBeInTheDocument();
   });
 
   it('toont de titel en het jaar', () => {

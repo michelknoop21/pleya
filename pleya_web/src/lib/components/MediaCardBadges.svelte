@@ -11,6 +11,8 @@
   import { plural, t } from '../i18n';
 
   interface Props {
+    /** Id van de omhulling, zodat de kaartlink de tekens als beschrijving kan noemen. */
+    id?: string;
     /** Aantal versies; de pil verschijnt pas boven één. */
     versions: number;
     watched: boolean;
@@ -19,30 +21,40 @@
     progress: number | null;
   }
 
-  let { versions, watched, isNew, progress }: Props = $props();
+  let { id, versions, watched, isNew, progress }: Props = $props();
 </script>
 
-{#if versions > 1}
-  <span class="badge-src">{plural('card.versions', versions)}</span>
-{/if}
+<!--
+  display: contents: de omhulling tekent geen eigen vak, dus de tekens blijven
+  absoluut gepositioneerd ten opzichte van het beeld.
+-->
+<span class="badges" {id}>
+  {#if versions > 1}
+    <span class="badge-src">{plural('card.versions', versions)}</span>
+  {/if}
 
-<!-- Gezien wint van nieuw: een titel die je al zag is niet nieuw voor jou. -->
-{#if watched}
-  <span class="seen" role="img" aria-label={t('card.watched')}>
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  </span>
-{:else if isNew}
-  <span class="dot-new" role="img" aria-label={t('card.new')}></span>
-{/if}
+  <!-- Gezien wint van nieuw: een titel die je al zag is niet nieuw voor jou. -->
+  {#if watched}
+    <span class="seen" role="img" aria-label={t('card.watched')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    </span>
+  {:else if isNew}
+    <span class="dot-new" role="img" aria-label={t('card.new')}></span>
+  {/if}
 
-{#if progress !== null}
-  <!-- De resterende tijd staat als tekst in het bijschrift; de balk is beeld. -->
-  <span class="prog" aria-hidden="true"><i style:width="{progress * 100}%"></i></span>
-{/if}
+  {#if progress !== null}
+    <!-- De resterende tijd staat als tekst in het bijschrift; de balk is beeld. -->
+    <span class="prog" aria-hidden="true"><i style:width="{progress * 100}%"></i></span>
+  {/if}
+</span>
 
 <style>
+  .badges {
+    display: contents;
+  }
+
   .badge-src {
     position: absolute;
     left: 8px;
