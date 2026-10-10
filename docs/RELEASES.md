@@ -122,8 +122,9 @@ under `Notes`.
   request form has the same gap, for 4K and for HD: a request sent without choosing a server
   goes nowhere when the requests server has no default instance for that quality. A correction
   follows in a later build.
-- Known in this build: starting a title and then picking a version from the version menu right
-  away can still open the player twice. A correction follows in a later build.
+- Known in this build: a start from the version menu together with an ordinary start of the
+  same title, such as a double press, can still open the player twice. A correction follows in
+  a later build.
 
 ### Worth checking
 - Passed in the Apple TV simulator: "Request in 4K" being there when it should and absent when
@@ -161,8 +162,9 @@ under `Notes`.
   request form has the same gap, for 4K and for HD: a request sent without choosing a server
   goes nowhere when the requests server has no default instance for that quality. A correction
   follows in a later build.
-- Known in this build: starting a title and then picking a version from the version menu right
-  away can still open the player twice. A correction follows in a later build.
+- Known in this build: a start from the version menu together with an ordinary start of the
+  same title, such as a double press, can still open the player twice. A correction follows in
+  a later build.
 - Known in this build: Big P's confirmation card can still run below the edge on a small
   iPhone with the keyboard up. In the iPhone SE simulator Cancel and Create stick out about
   4 points on the card with a password field. Not fixed in this build.
@@ -174,8 +176,8 @@ under `Notes`.
 - Request in 4K: open a film you have in HD with an account that may request 4K. Check that
   the action is there and that the form opens on 4K.
 - Big P on a small iPhone: ask for something Big P has to confirm, keep the keyboard up, and
-  check that the whole card is visible. Keyboard height and safe area differ per device, and
-  the test does not cover that.
+  report how far the card runs below the edge on your device. Keyboard height and safe area
+  differ per device.
 - Big P suggestions: if you watched an older film that shares its title with a newer one, ask
   for the newer one and check that it shows up.
 
