@@ -1,0 +1,68 @@
+name: tvos.search.requests-settle
+target: tvos-sim
+# REQ-SEARCH-SETTLE (docs/tvos-fysieke-correctieronde.md): on TV every
+# debounced library search also asked the requests server, so during typing.
+# The band "Via aanvragen" now belongs to the query the viewer chose: the
+# search key, a history chip, an external submit, or DOWN from the input to
+# the results.
+#
+# This proves the DOWN route. "as" is typed and the keyboard is closed with
+# Menu, which is not a submit (`finish submitted=false`): the library answers
+# with Basalt and Cascade and the requests band stays away. One DOWN to the
+# results brings the band in, with the two titles `seerr.search.v1` holds for
+# "as" (Ashfall and Glass Harbor).
+#
+# What this does not prove: the inline D-pad keyboard itself. On Apple TV the
+# input is the pill with the system keyboard, and the inline keyboard only
+# renders after the native entry has failed, which a simulator run cannot
+# provoke. Both inputs hand DOWN to the same handler
+# (`_handleTvKeyboardNavigateDown`); the inline keyboard's own key path is
+# covered by test/screens/search_screen_test.dart.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.search.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: left
+  - wait_until: {focused: nav.search, timeout: 5000}
+  - press: select
+  - settle: 2000
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 8000}
+  - settle: 1000
+  - type: "as"
+  - settle: 2500
+  - press: menu
+  - wait_until: {id: "tv.catalog.grid[search.movies]", timeout: 10000}
+
+  # The library answer is in. Long enough for a requests search to have come
+  # back as well, had one been sent: the fixture answers within the same
+  # second the band takes after DOWN below.
+  - settle: 4000
+  - assert: {id: "tv.catalog.grid.item[search.movies.0]"}
+  - assert: {id: tv.search.pill, state: {count: "2 resultaten"}}
+  - assert: {id: "tv.catalog.grid[search.requests]", present: false}
+  - snapshot: 00-library-results-no-requests-band
+
+  # DOWN to the results, no search key: the query is settled and the band comes.
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.movies.0]", timeout: 5000}
+  - wait_until: {id: "tv.catalog.grid[search.requests]", timeout: 10000}
+  - wait_until: {id: "tv.catalog.grid.item[search.requests.1]", timeout: 5000}
+  - assert: {id: "tv.catalog.grid.item[search.requests.0]"}
+  - assert: {id: tv.search.pill, state: {count: "4 resultaten"}}
+  - assert: {id: "tv.catalog.grid[search.requests]", below: "tv.catalog.grid[search.movies]"}
+  - settle: 1000
+  - snapshot: 01-after-down-requests-band
+
+  # And the ring reaches it.
+  - press: down
+  - wait_until: {focused: "tv.catalog.grid.item[search.requests.0]", timeout: 5000}
+  - assert: {id: "tv.catalog.grid.item[search.requests.0]", insideViewport: true}
+  - settle: 1000
+  - snapshot: 02-requests-card-focused

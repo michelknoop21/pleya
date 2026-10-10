@@ -42,6 +42,15 @@ class SeerrFakeServer {
   final List<Map<String, dynamic>> movieGenres = [];
   final List<Map<String, dynamic>> tvGenres = [];
 
+  /// What `/search` can answer. A row is returned when its title contains the
+  /// query, whatever the case; real Seerr asks TMDB, this asks the seed.
+  final List<Map<String, dynamic>> searchItems = [];
+
+  /// Whether Radarr and Sonarr each list a second, 4K instance beside the HD
+  /// one. Off by default: the fixture is a server without 4K unless a named
+  /// fixture says otherwise.
+  bool fourKServers = false;
+
   /// What `/movie/{id}` and `/tv/{id}` answer, keyed by `'$mediaType:$tmdbId'`.
   final Map<String, Map<String, dynamic>> _details = {};
 
@@ -52,6 +61,8 @@ class SeerrFakeServer {
     }
     movieGenres.clear();
     tvGenres.clear();
+    searchItems.clear();
+    fourKServers = false;
     _details.clear();
   }
 
@@ -90,6 +101,15 @@ class SeerrFakeServer {
     }
     if (path.endsWith('/request')) {
       return _json(_requestPage(query));
+    }
+    if (path.endsWith('/search')) {
+      final wanted = (query['query'] ?? '').toLowerCase();
+      return _json(
+        _discoverPage([
+          for (final item in searchItems)
+            if (wanted.isNotEmpty && (item['title'] ?? item['name']).toString().toLowerCase().contains(wanted)) item,
+        ], query),
+      );
     }
     if (path.endsWith('/discover/trending')) {
       return _json(_discoverPage(discover['trending']!, query));
@@ -216,13 +236,34 @@ class SeerrFakeServer {
     return _json(row, status: 201);
   }
 
-  /// One HD instance per service, enough for the admin target section.
+  /// One HD instance per service, enough for the admin target section, and
+  /// with [fourKServers] a 4K instance (id 1) beside it.
   http.Response _serviceRoute(String kind, String? id) {
     final name = kind == 'radarr' ? 'Radarr' : 'Sonarr';
     if (id == null) {
       return _json([
         {'id': 0, 'name': name, 'is4k': false, 'isDefault': true, 'activeProfileId': 1, 'activeDirectory': '/media'},
+        if (fourKServers)
+          {
+            'id': 1,
+            'name': '$name 4K',
+            'is4k': true,
+            'isDefault': true,
+            'activeProfileId': 2,
+            'activeDirectory': '/media-4k',
+          },
       ]);
+    }
+    if (id == '1') {
+      if (!fourKServers) return _json({'message': 'not found'}, status: 404);
+      return _json({
+        'profiles': [
+          {'id': 2, 'name': 'Ultra-HD'},
+        ],
+        'rootFolders': [
+          {'path': '/media-4k'},
+        ],
+      });
     }
     return _json({
       'profiles': [
@@ -354,6 +395,45 @@ class SeerrFakeServer {
         ],
       },
     };
+  }
+
+  /// Registers what `/movie/{tmdbId}` or `/tv/{tmdbId}` answers for a title
+  /// nobody requested through this fixture. [status] and [status4k] are
+  /// `SeerrMediaStatus`'s encoding (1 unknown, 2 pending, 3 processing,
+  /// 4 partially available, 5 available); a null [status] leaves `mediaInfo`
+  /// out, as Seerr does for a title it has never seen.
+  void addTitle({
+    required String mediaType,
+    required int tmdbId,
+    required String title,
+    int? year,
+    String? overview,
+    int? status,
+    int? status4k,
+  }) {
+    _details['$mediaType:$tmdbId'] = {
+      'id': tmdbId,
+      if (mediaType == 'tv') 'name': title else 'title': title,
+      if (mediaType == 'tv') 'firstAirDate': year == null ? null : '$year-01-01',
+      if (mediaType != 'tv') 'releaseDate': year == null ? null : '$year-01-01',
+      'overview': overview,
+      'posterPath': null,
+      'seasons': const <Object>[],
+      if (status != null) 'mediaInfo': {'status': status, 'status4k': ?status4k, 'requests': const <Object>[]},
+    };
+  }
+
+  /// Registers one `/search` result, in the shape of a discover row.
+  void addSearchItem({required int tmdbId, required String mediaType, required String title, int? year, int? status}) {
+    searchItems.add({
+      'id': tmdbId,
+      'mediaType': mediaType,
+      if (mediaType == 'tv') 'name': title else 'title': title,
+      if (mediaType == 'tv') 'firstAirDate': year == null ? null : '$year-01-01',
+      if (mediaType != 'tv') 'releaseDate': year == null ? null : '$year-01-01',
+      'posterPath': null,
+      if (status != null) 'mediaInfo': {'status': status},
+    });
   }
 
   /// Registers one discover-bucket result. `bucket` is one of the keys in

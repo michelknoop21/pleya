@@ -47,6 +47,21 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       if (seerr == null) return false;
       _applySeerrRequestsManageV1(seerr);
       return true;
+    case 'seerr.detail.4k.v1':
+      if (seerr == null) return false;
+      _applySeerrDetailV1(seerr, fourK: true);
+      return true;
+    case 'seerr.detail.hd-only.v1':
+      if (seerr == null) return false;
+      _applySeerrDetailV1(seerr, fourK: false);
+      return true;
+    case 'seerr.search.v1':
+      if (seerr == null) return false;
+      _applySeerrSearchV1(seerr);
+      return true;
+    case 'server.owner.v1':
+      server.usersCapability = true;
+      return true;
     case 'activity.active-session.v1':
       if (tautulli == null) return false;
       _applyActivityActiveSessionV1(tautulli);
@@ -427,6 +442,41 @@ void _applySeerrRequestsManageV1(SeerrFakeServer seerr) {
     requestedById: 2,
   );
   seerr.addRequest(id: 3, mediaType: 'movie', tmdbId: 203, title: 'Harbor Light', year: 2022, status: 2);
+}
+
+/// One film Seerr reports as available in HD and not asked for in 4K
+/// (`status` 5, `status4k` 1), the only title on Aanvragen, so the first card
+/// a remote or a finger reaches is this one. [fourK] decides whether Radarr
+/// and Sonarr list a 4K instance beside the HD one: with it the title page
+/// offers "In 4K aanvragen" (REQ-DETAIL-4K), without it the same title, the
+/// same admin and the same statuses must not.
+void _applySeerrDetailV1(SeerrFakeServer seerr, {required bool fourK}) {
+  seerr.reset();
+  seerr.fourKServers = fourK;
+  seerr.addTitle(
+    mediaType: 'movie',
+    tmdbId: 301,
+    title: 'Glacier Run',
+    year: 2024,
+    overview: 'A courier crosses the ice field before the thaw.',
+    status: 5,
+    status4k: 1,
+  );
+  for (final bucket in const ['trending', 'movies']) {
+    seerr.addDiscoverItem(bucket, tmdbId: 301, mediaType: 'movie', title: 'Glacier Run', year: 2024);
+  }
+}
+
+/// Two titles the requests server finds for the query "as", the query
+/// `tvos.search.results` already uses against `catalog.mixed.v1` (Basalt and
+/// Cascade in the library). Neither is in the library, so the band "Via
+/// aanvragen" is the only place they can show up (REQ-SEARCH-SETTLE).
+void _applySeerrSearchV1(SeerrFakeServer seerr) {
+  seerr.reset();
+  seerr.addSearchItem(tmdbId: 401, mediaType: 'movie', title: 'Ashfall', year: 2023);
+  seerr.addSearchItem(tmdbId: 402, mediaType: 'tv', title: 'Glass Harbor', year: 2022);
+  seerr.addTitle(mediaType: 'movie', tmdbId: 401, title: 'Ashfall', year: 2023);
+  seerr.addTitle(mediaType: 'tv', tmdbId: 402, title: 'Glass Harbor', year: 2022);
 }
 
 void _applySeerrRequestsV1(SeerrFakeServer seerr) {

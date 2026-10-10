@@ -81,6 +81,26 @@ class OllamaFakeServer {
         } else {
           return _json({'error': 'trending tool not offered'}, status: 400);
         }
+      } else if (prompt == 'Maak gebruiker Robin aan.') {
+        // The sensitive path: the model only names the user, Pleya builds the
+        // confirmation card and reads the password itself. The server id is
+        // the one the offered tool allows; the fixture never invents one.
+        final tool = (body['tools'] as List? ?? const []).firstWhere(
+          (tool) => tool['function']['name'] == 'create_user',
+          orElse: () => null,
+        );
+        if (replies.isNotEmpty) {
+          message = {'role': 'assistant', 'content': 'Klaar.'};
+        } else if (tool != null) {
+          final allowed = tool['function']['parameters']['properties']['server_id']?['enum'] as List?;
+          message = _call('create-robin', 'create_user', {
+            'server_id': ?allowed?.firstOrNull,
+            'name': 'Robin',
+            'all_libraries': true,
+          });
+        } else {
+          return _json({'error': 'create_user tool not offered'}, status: 400);
+        }
       } else if (prompt == 'Zoek Aurora.' || prompt == 'Zoek Basalt.') {
         final title = prompt == 'Zoek Aurora.' ? 'Aurora' : 'Basalt';
         if (replies.isNotEmpty) {
