@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -438,65 +439,90 @@ class _SeerrRequestEditSheetState extends State<SeerrRequestEditSheet> {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
     final locked = _locked;
     final fresh = _fresh!;
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              children: [
-                if (_editsSeasons) ..._seasonRows(theme, enabled: !locked),
-                AutomationNode(
-                  id: AutomationIds.requestsFormOption,
-                  instance: 'fourK',
-                  role: 'list.item',
-                  state: () => {'editable': false, 'selected': fresh.is4k},
-                  child: ListTile(
-                    dense: true,
-                    leading: const AppIcon(Symbols.lock_rounded, size: 20),
-                    title: Text(fresh.is4k ? t.seerr.qualityFourK : t.seerr.qualityHd),
-                    subtitle: Text(t.seerr.editQualityFixed),
-                  ),
+    final keepOne = _editsSeasons && _selected.isEmpty ? t.seerr.editKeepOneSeason : null;
+    return LayoutBuilder(
+      builder: (context, sheet) {
+        // The reason stays beside the button, as it always was, until that line
+        // is what overflows the form on a short screen with very large text;
+        // then it is the first message of the list instead.
+        final room = math.min(maxHeight, sheet.maxHeight);
+        final keepOneInList =
+            keepOne != null &&
+            SeerrFormButtons.hintLinesFor(
+                  room,
+                  MediaQuery.textScalerOf(context),
+                  noLine: _noHintRoom,
+                  enlargedNoLine: 0,
+                ) ==
+                0;
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    if (keepOneInList) SeerrFormNotice(kind: 'keepOne', title: keepOne),
+                    if (_editsSeasons) ..._seasonRows(theme, enabled: !locked),
+                    AutomationNode(
+                      id: AutomationIds.requestsFormOption,
+                      instance: 'fourK',
+                      role: 'list.item',
+                      state: () => {'editable': false, 'selected': fresh.is4k},
+                      child: ListTile(
+                        dense: true,
+                        leading: const AppIcon(Symbols.lock_rounded, size: 20),
+                        title: Text(fresh.is4k ? t.seerr.qualityFourK : t.seerr.qualityHd),
+                        subtitle: Text(t.seerr.editQualityFixed),
+                      ),
+                    ),
+                    if ((_rights?.canEditTarget ?? false) && (_target.hasAnyServer || _target.serversFailed))
+                      SeerrTargetSection(controller: _target, enabled: !locked, initiallyOpen: !_editsSeasons),
+                  ],
                 ),
-                if ((_rights?.canEditTarget ?? false) && (_target.hasAnyServer || _target.serversFailed))
-                  SeerrTargetSection(controller: _target, enabled: !locked, initiallyOpen: !_editsSeasons),
-              ],
-            ),
+              ),
+              if (_uncertain)
+                SeerrFormNotice(
+                  kind: 'uncertain',
+                  title: t.seerr.editUncertainTitle,
+                  body: t.seerr.editUncertainBody,
+                  tone: SeerrFormNoticeTone.warning,
+                ),
+              if (_error case final error?)
+                SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
+              _uncertain
+                  ? SeerrFormButtons(
+                      closeLabel: t.common.close,
+                      onClose: _close,
+                      primaryLabel: t.seerr.checkStatus,
+                      primaryIcon: Symbols.refresh_rounded,
+                      primaryInstance: 'status',
+                      onPrimary: _checkStatus,
+                      busy: _checking,
+                    )
+                  : SeerrFormButtons(
+                      closeLabel: t.common.cancel,
+                      onClose: _close,
+                      primaryLabel: _saving ? t.seerr.saving : t.seerr.saveChange,
+                      onPrimary: _canSave || _saving ? _save : null,
+                      busy: _saving,
+                      hint: keepOneInList ? null : keepOne,
+                    ),
+            ],
           ),
-          if (_uncertain)
-            SeerrFormNotice(
-              kind: 'uncertain',
-              title: t.seerr.editUncertainTitle,
-              body: t.seerr.editUncertainBody,
-              tone: SeerrFormNoticeTone.warning,
-            ),
-          if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
-          _uncertain
-              ? SeerrFormButtons(
-                  closeLabel: t.common.close,
-                  onClose: _close,
-                  primaryLabel: t.seerr.checkStatus,
-                  primaryIcon: Symbols.refresh_rounded,
-                  primaryInstance: 'status',
-                  onPrimary: _checkStatus,
-                  busy: _checking,
-                )
-              : SeerrFormButtons(
-                  closeLabel: t.common.cancel,
-                  onClose: _close,
-                  primaryLabel: _saving ? t.seerr.saving : t.seerr.saveChange,
-                  onPrimary: _canSave || _saving ? _save : null,
-                  busy: _saving,
-                  hint: _editsSeasons && _selected.isEmpty ? t.seerr.editKeepOneSeason : null,
-                ),
-        ],
-      ),
+        );
+      },
     );
   }
+
+  /// The form height per text size below which the reason leaves the buttons.
+  /// Measured on the form as it was: 568x320 fits down to 2.0 (115) and
+  /// overflows at 2.35 (98), 667x375 fits at 2.35 (115).
+  static const double _noHintRoom = 105;
 
   List<Widget> _seasonRows(ThemeData theme, {required bool enabled}) {
     final selectable = _seasons.where(_selectable).toList();

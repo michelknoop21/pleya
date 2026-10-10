@@ -359,7 +359,9 @@ void main() {
         await open(tester, media, permissions: seerrPermRequest);
 
         expect(notice('route'), findsOneWidget);
-        expect(find.text(t.seerr.noDefaultServerTitle), findsOneWidget);
+        expect(find.descendant(of: notice('route'), matching: find.text(t.seerr.noDefaultServerTitle)), findsOneWidget);
+        expect(seerrFormHint(t.seerr.noDefaultServerTitle), findsOneWidget, reason: 'and once more beside the button');
+        expect(find.text(t.seerr.noDefaultServerTitle), findsNWidgets(2), reason: 'and nowhere else');
         expect(_enabled(tester, 'submit'), isFalse);
         expect(fake.sent('GET', '/service/$service'), hasLength(1));
         expect(fake.sent('GET', '/service/$service/1'), isEmpty);

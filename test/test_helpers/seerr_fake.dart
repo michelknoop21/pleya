@@ -14,6 +14,7 @@ import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/services/seerr/seerr_session.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
+import 'package:pleya/widgets/seerr_request_form_parts.dart';
 import 'package:provider/provider.dart';
 
 import 'notice_layer.dart';
@@ -160,6 +161,10 @@ Map<String, dynamic> seerrPage(List<Map<String, dynamic>> results, {int pages = 
 /// The automation node with this id and instance.
 Finder seerrNode(String id, [String? instance]) =>
     find.byWidgetPredicate((w) => w is AutomationNode && w.id == id && w.instance == instance);
+
+/// The line beside the buttons of the request form, when it reads [text]. The
+/// same words stand in a notice at the top of the list; this is not that one.
+Finder seerrFormHint(String text) => find.descendant(of: find.byType(SeerrFormButtons), matching: find.text(text));
 
 /// Whether the primary focus is inside [within].
 bool seerrHasFocus(WidgetTester tester, Finder within) {
