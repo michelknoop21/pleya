@@ -128,6 +128,26 @@ void main() {
     });
   });
 
+  group('users capability', () {
+    test('off by default: /info says no and /users/me is not served', () async {
+      final server = _serverWithOneLibrary();
+      final info = jsonDecode((await _get(server, '/pleya/v1/info')).body) as Map;
+      expect(info['capabilities']['users'], isFalse);
+      expect(info['capabilities']['administration'], isFalse);
+      expect((await _get(server, '/pleya/v1/users/me')).statusCode, isNot(200));
+    });
+
+    test('opted in: /info says yes and /users/me is the owner', () async {
+      final server = _serverWithOneLibrary()..usersCapability = true;
+      final info = jsonDecode((await _get(server, '/pleya/v1/info')).body) as Map;
+      expect(info['capabilities']['users'], isTrue);
+      expect(info['capabilities']['administration'], isTrue);
+      final me = jsonDecode((await _get(server, '/pleya/v1/users/me')).body) as Map;
+      expect(me['role'], 'owner');
+      expect(me.keys, containsAll(['id', 'username', 'role']));
+    });
+  });
+
   group('auth: login and setup', () {
     test('POST /auth/setup creates the owner, mints tokens, and flips setup_required off', () async {
       final server = PleyaFakeServer(setupRequired: true);

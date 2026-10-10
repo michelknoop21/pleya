@@ -48,6 +48,44 @@ void main() {
     return (jsonDecode(response.body)['choices'][0]['message'] as Map).cast<String, dynamic>();
   }
 
+  test('create_user is called with the server id the offered tool allows, never a password', () async {
+    final response = await post('/v1/chat/completions', {
+      'model': 'pleya-verify',
+      'messages': [
+        {'role': 'user', 'content': 'Maak gebruiker Robin aan.'},
+      ],
+      'tools': [
+        {
+          'type': 'function',
+          'function': {
+            'name': 'create_user',
+            'parameters': {
+              'properties': {
+                'server_id': {
+                  'type': 'string',
+                  'enum': ['srv-1'],
+                },
+              },
+            },
+          },
+        },
+      ],
+    });
+    expect(response.statusCode, 200);
+    final call = jsonDecode(response.body)['choices'][0]['message']['tool_calls'][0]['function'] as Map;
+    expect(call['name'], 'create_user');
+    expect(jsonDecode(call['arguments'] as String), {'server_id': 'srv-1', 'name': 'Robin', 'all_libraries': true});
+
+    final withoutTool = await post('/v1/chat/completions', {
+      'model': 'pleya-verify',
+      'messages': [
+        {'role': 'user', 'content': 'Maak gebruiker Robin aan.'},
+      ],
+      'tools': const <Object>[],
+    });
+    expect(withoutTool.statusCode, 400);
+  });
+
   test('existing local settings and preload endpoints serve the fake model', () async {
     final tags = await client.get(Uri.parse('http://127.0.0.1:${adapter.port}/api/tags'));
     expect(tags.statusCode, 200);
