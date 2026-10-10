@@ -160,7 +160,8 @@ De releasevoorwaarden (besluit Michel, 10 oktober 2026). De momenten uit DEC-118
 zijn blijven gelden: geen publieke release van de client met PS-5- of PS-9-gedrag en geen indiening
 naar App Review of Beta App Review van een build met dat gedrag, zonder geslaagde
 hardwareacceptatie. Een gedraaide ronde met een FAIL haalt die grens niet. Build 315 wordt dus niet
-ingediend zolang niet is vastgesteld of hij dat gedrag draagt en de acceptatie niet is geslaagd. Bovenop DEC-118: PS-5 is volledig gevalideerd vóór de
+ingediend voordat is vastgesteld of hij dat gedrag draagt; draagt hij het, dan pas na een geslaagde
+acceptatie. Bovenop DEC-118: PS-5 is volledig gevalideerd vóór de
 eerste publieke release van Pleya Server. P7 blokkeert alle drie. Een release van onderdelen die
 aantoonbaar onafhankelijk zijn van PS-5 valt er niet onder. Geïmplementeerd en gemerged, CI groen en
 hardwareacceptatie zijn drie verschillende statussen; PS-5 heeft alleen de eerste twee.
@@ -350,7 +351,7 @@ laatste golf.
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
 | S15.5 | `PLEX_OFFLINE_REPLACEMENT_GATE` groen (migratie als keuze) | `[ ]` | | |
-| S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease en de App Review-indiening met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
+| S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease en de indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
 
@@ -483,7 +484,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P4 | Branch merget schoon met `main` | `[x]` 4 sep 2026 | merge-commit `4e78b16` op `integration/pleya-server-rebaseline` vanaf `a21b43c`; veertien conflicten opgelost, codegen sluitend, geen testregressie. De twee stille mergefouten (`app_database.g.dart`, `schema.d.ts`) en de `--ours`-fout op `CLAUDE.md` en `docs/RELEASES.md` zijn apart gerepareerd en worden nu bewaakt door `scripts/check_authority_merge.sh` in CI De dagelijkse merge van dezelfde avond staat als `a1734ead` (`main` op `9b181ff5`, vier conflicten, LANG1 hernummerd naar DEC-109); hoofdstuk 7 van `merge-log.md` |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | |
-| P7 | PS-5-hardwareronde | `[!]` OVERDUE / HARDWARE VALIDATION OPEN | DEC-118-grens (merge van `feat/pleyaserver` naar `main`) gepasseerd op 25 sep 2026 met `638e7524` (PR #94), ronde niet gedraaid; DEC-118 ongewijzigd, de grenzen voor een publieke clientrelease en voor een App Review-indiening met PS-5- of PS-9-gedrag blijven gelden. Blokkeert die clientrelease, die indiening en de eerste publieke release van Pleya Server, tot een geslaagde hardwareacceptatie (besluit Michel, 10 okt 2026). Open in `docs/qa/ps5-hardware-round.md`: Jellyfin-blokkade opnieuw meten, T1 tot en met T4, R1, R2, opstartregel op tvOS en opnieuw op macOS. macOS-opstartregel build 246: historische PASS, artefact niet teruggevonden, geen actueel hardwarebewijs |
+| P7 | PS-5-hardwareronde | `[!]` OVERDUE / HARDWARE VALIDATION OPEN | DEC-118-grens (merge van `feat/pleyaserver` naar `main`) gepasseerd op 25 sep 2026 met `638e7524` (PR #94), ronde niet gedraaid; DEC-118 ongewijzigd, de grenzen voor een publieke clientrelease en voor een indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag blijven gelden. Blokkeert die clientrelease, die indiening en de eerste publieke release van Pleya Server, tot een geslaagde hardwareacceptatie (besluit Michel, 10 okt 2026). Open in `docs/qa/ps5-hardware-round.md`: Jellyfin-blokkade opnieuw meten, T1 tot en met T4, R1, R2, opstartregel op tvOS en opnieuw op macOS. macOS-opstartregel build 246: historische PASS, artefact niet teruggevonden, geen actueel hardwarebewijs |
 | P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
 | P9 | Contractdekking compleet: de dekkingslijst in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[x]` 4 sep 2026 | **De dekkingslijst.** `scripts/check_server_responses.py` leidt hem nu af uit `openapi.yaml`: elk schema dat het contract als JSON-antwoordlichaam noemt, met de `components/responses`-indirectie opgelost en niet-JSON-lichamen (artwork, ondertitels, stream) eruit. Dat brengt de eis van 8 naar 15 en dekt `UserList`, `SessionList` en `LibraryPermissionList`. Uit de vangst afleiden zou de poort tautologisch maken; uit het contract afleiden laat hem vanzelf meegroeien. Echte vangst van 32 antwoorden lokaal gedraaid met `GO_IMAGE=pleya-server-test:go-ffmpeg` en `PLEYA_RESPONSE_DIR=/src/.responses` (het containerpad binnen de mount, daar ging het eerder mis): alle 15 gedekt, alle 32 valide. Negatieve controle: met `UserList`, `SessionList` en `LibraryPermissionList` uit de vangst geeft de oude poort exit 0 met "de server houdt zich aan het contract" en de nieuwe exit 1 met de drie endpoints erbij. De afleiding heeft zes eigen controles op een verzonnen contract (`bijt de afleiding`). |
 
