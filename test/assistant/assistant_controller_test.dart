@@ -183,6 +183,31 @@ class _AvailableServer extends find.FakeServer {
   }
 }
 
+/// A registered server that answers its health probe.
+class _HealthyServer extends find.FakeServer {
+  _HealthyServer(super.id);
+
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.online;
+}
+
+/// A context whose administered servers are whatever [admins] holds right now.
+class _RightsContext extends AssistantToolContext {
+  _RightsContext(MultiServerManager servers, this.admins, {this.online = const {'a'}}) : super(servers: servers);
+  final Set<String> admins;
+
+  /// Servers that answer right now; being offline is no change of rights.
+  final Set<String> online;
+  static final _client = find.FakeServer('a');
+
+  @override
+  List<ServerId> get administeredServers => [for (final id in admins) ServerId(id)];
+
+  @override
+  MediaServerClient? adminClient(ServerId serverId) =>
+      admins.contains(serverId.value) && online.contains(serverId.value) ? _client : null;
+}
+
 void main() {
   late MultiServerManager servers;
   SeerrClient? seerr;
@@ -707,6 +732,209 @@ void main() {
     addTearDown(c.dispose);
     await c.submit('Wat kijken de anderen deze week? En wat is er nieuw?');
     expect(ownLogRead, 0, reason: 'the child prompt never says "others", the question did');
+  });
+
+  test('a question about me and the others is cut in code: no model call decides it, each half runs', () async {
+    final seen = <String>[];
+    final mine = AssistantTool(
+      name: 'my_watching',
+      description: 'own log',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        seen.add('mine');
+        return const AssistantToolResult({'watched_recently': []});
+      },
+    );
+    final models = [
+      _Model([_call('my_watching'), _say('ik')]),
+      _Model([_say('anderen')]),
+    ];
+    var made = 0;
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: servers),
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => made < models.length ? models[made++] : throw StateError('a third model'),
+      tools: [mine],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    expect(made, 2, reason: 'one model per half, none for the whole');
+    expect(c.tasks, hasLength(2));
+    expect([for (final t in c.tasks) t.answer], containsAll(['ik', 'anderen']));
+  });
+
+  test('a question reset while the profile is read is not resurrected as two children', () async {
+    final gate = Completer<bool>();
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: servers, kidsProfile: () => gate.future),
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_say('x')]),
+      tools: const [],
+    );
+    addTearDown(c.dispose);
+    final asked = c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    await Future<void>.delayed(Duration.zero);
+    c.reset();
+    gate.complete(false);
+    await asked;
+    expect(c.tasks, isEmpty);
+  });
+
+  test('a read that spans a revoked and restored right publishes nothing', () async {
+    final admins = {'a'};
+    final changes = ChangeNotifier();
+    addTearDown(changes.dispose);
+    final read = AssistantTool(
+      name: 'household',
+      description: 'household data',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        admins.clear();
+        changes.notifyListeners();
+        admins.add('a');
+        changes.notifyListeners();
+        return AssistantToolResult(const {'viewers': 'Sam kijkt Bluey'}, display: AssistantMediaGrid(const []));
+      },
+    );
+    final models = [
+      _Model([_call('household'), _say('klaar')]),
+    ];
+    final c = AssistantController(
+      buildContext: (_) => _RightsContext(servers, admins),
+      rolloutEnabled: true,
+      serverChanges: changes,
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => models.first,
+      tools: [read],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijkt iedereen?');
+    final steps = c.tasks.single.steps;
+    expect(steps.last.phase, AssistantStepPhase.failed);
+    expect(c.tasks.single.displays, isEmpty);
+  });
+
+  test('a server dropping offline during a read is no change of rights', () async {
+    final admins = {'a'};
+    final online = {'a'};
+    final changes = ChangeNotifier();
+    addTearDown(changes.dispose);
+    final read = AssistantTool(
+      name: 'household',
+      description: 'household data',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        online.clear();
+        changes.notifyListeners();
+        online.add('a');
+        changes.notifyListeners();
+        return const AssistantToolResult({'viewers': 'Sam'});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => _RightsContext(servers, admins, online: online),
+      rolloutEnabled: true,
+      serverChanges: changes,
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_call('household'), _say('klaar')]),
+      tools: [read],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijkt iedereen?');
+    expect(c.tasks.single.steps.last.phase, AssistantStepPhase.done);
+  });
+
+  test('a connection replaced during a read counts as a change', () async {
+    final admins = {'a'};
+    servers.debugRegisterClientForTesting(_HealthyServer('a'));
+    final read = AssistantTool(
+      name: 'household',
+      description: 'household data',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        servers.debugRegisterClientForTesting(_HealthyServer('a'));
+        return const AssistantToolResult({'viewers': 'Sam'});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => _RightsContext(servers, admins),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_call('household'), _say('klaar')]),
+      tools: [read],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijkt iedereen?');
+    expect(c.tasks.single.steps.last.phase, AssistantStepPhase.failed);
+  });
+
+  test('rights that cannot be read fail the read closed', () async {
+    final admins = {'a'};
+    var armed = false;
+    final read = AssistantTool(
+      name: 'household',
+      description: 'household data',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        armed = true;
+        return const AssistantToolResult({'viewers': 'Sam'});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => armed ? throw StateError('provider gone') : _RightsContext(servers, admins),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_call('household'), _say('klaar')]),
+      tools: [read],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijkt iedereen?');
+    expect(c.tasks.single.steps.last.phase, AssistantStepPhase.failed);
+  });
+
+  test('a read with unchanged rights is published', () async {
+    final admins = {'a'};
+    final read = AssistantTool(
+      name: 'household',
+      description: 'household data',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({'viewers': 'Sam'}),
+    );
+    final c = AssistantController(
+      buildContext: (_) => _RightsContext(servers, admins),
+      rolloutEnabled: true,
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_call('household'), _say('klaar')]),
+      tools: [read],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijkt iedereen?');
+    expect(c.tasks.single.steps.last.phase, AssistantStepPhase.done);
   });
 
   test('tool failure survives a successful model answer', () async {

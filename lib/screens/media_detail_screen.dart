@@ -33,6 +33,7 @@ import '../focus/focusable_wrapper.dart';
 import '../focus/focus_theme.dart';
 import '../focus/key_event_utils.dart';
 import '../focus/input_mode_tracker.dart';
+import '../utils/detail_header_layout.dart';
 import '../utils/media_server_timeouts.dart';
 import '../media/item_watcher.dart';
 import '../profiles/active_profile_provider.dart';
@@ -3709,9 +3710,14 @@ class _MediaDetailScreenState extends State<MediaDetailScreen>
       );
     }
 
-    // Determine header height based on screen size
+    // TV fills the viewport. Desktop and tablet each get a capped header
+    // (F-D1) instead of a flat 60% that kept growing with the window.
     final size = MediaQuery.sizeOf(context);
-    final headerHeight = size.height * (isTv ? 1.0 : 0.6);
+    final headerHeight = isTv
+        ? size.height
+        : PlatformDetector.isDesktop(context)
+        ? desktopDetailHeaderHeight(size.width, size.height)
+        : tabletDetailHeaderHeight(size.width, size.height);
 
     if (isTv) {
       return _buildTvDetailScreen(context, metadata, _handleMediaDetailBackKey);

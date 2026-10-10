@@ -261,6 +261,20 @@ void main() {
       expect(disk!.role, 'admin');
     });
 
+    test('a role change is announced, also the way back; the same role is not', () async {
+      final session = PleyaServerSession(
+        connection: connectionWith('rt-0'),
+        auth: PleyaServerAuthService(httpClientFactory: () => MockClient((_) async => json(tokenPair('a', 'b')))),
+      );
+      var told = 0;
+      session.onRoleChanged = () => told++;
+      await session.adoptRole('admin');
+      await session.adoptRole('admin');
+      await session.adoptRole('member');
+      await session.adoptRole('admin');
+      expect(told, 3);
+    });
+
     test('a valid access token is reused instead of spending a rotation', () async {
       var refreshCalls = 0;
       final service = PleyaServerAuthService(

@@ -53,10 +53,12 @@ void main() {
     String mediaType = 'movie',
     int permissions = seerrPermRequest,
     List<bool>? serversAre4k,
+    bool fourKDefault = true,
   }) async {
     if (serversAre4k != null) {
       fake.on('GET /service/${mediaType == 'movie' ? 'radarr' : 'sonarr'}', [
-        for (final (i, is4k) in serversAre4k.indexed) {'id': i + 1, 'name': 'Server ${i + 1}', 'is4k': is4k},
+        for (final (i, is4k) in serversAre4k.indexed)
+          {'id': i + 1, 'name': 'Server ${i + 1}', 'is4k': is4k, 'isDefault': !is4k || fourKDefault},
       ]);
     }
     fake.on('GET /$mediaType/603', detail);
@@ -207,6 +209,45 @@ void main() {
       testWidgets('an admin on a server with one gets it', (tester) async {
         await open(tester, movie(5), permissions: seerrPermAdmin, serversAre4k: [false, true]);
         expect(_action('request4k'), findsOneWidget);
+      });
+
+      testWidgets('a 4K instance that is not the default gets none: the server would send the request nowhere', (
+        tester,
+      ) async {
+        await open(tester, movie(5), permissions: fourK, serversAre4k: [false, true], fourKDefault: false);
+        expect(_action('request4k'), findsNothing);
+      });
+
+      testWidgets('a series reads the Sonarr instances: the default 4K one offers it, another does not', (
+        tester,
+      ) async {
+        const fourKTv = SeerrPermission.request | SeerrPermission.request4kTv;
+        Map<String, dynamic> series() => {
+          'id': 603,
+          'name': 'Charge',
+          'mediaInfo': {'status': 5, 'requests': <Object>[]},
+        };
+        await open(tester, series(), mediaType: 'tv', permissions: fourKTv, serversAre4k: [false, true]);
+        expect(_action('request4k'), findsOneWidget);
+        expect(fake.sent('GET', '/service/sonarr'), hasLength(1));
+        expect(fake.sent('GET', '/service/radarr'), isEmpty);
+      });
+
+      testWidgets('a series with a 4K Sonarr that is not the default gets none', (tester) async {
+        const fourKTv = SeerrPermission.request | SeerrPermission.request4kTv;
+        await open(
+          tester,
+          {
+            'id': 603,
+            'name': 'Charge',
+            'mediaInfo': {'status': 5, 'requests': <Object>[]},
+          },
+          mediaType: 'tv',
+          permissions: fourKTv,
+          serversAre4k: [false, true],
+          fourKDefault: false,
+        );
+        expect(_action('request4k'), findsNothing);
       });
 
       testWidgets('a requester with the 4K right and no instance gets none', (tester) async {

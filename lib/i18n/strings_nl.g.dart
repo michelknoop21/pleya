@@ -2250,6 +2250,8 @@ class _TranslationsSeerrNl extends TranslationsSeerrEn {
 	@override String get requestWithServerDefault => 'Aanvragen met serverstandaard';
 	@override String get no4kServerTitle => 'Geen 4K-server ingesteld';
 	@override String get no4kServerBody => 'Zet 4K uit om in HD aan te vragen.';
+	@override String get noDefaultServerTitle => 'Geen standaardserver voor deze kwaliteit';
+	@override String get noDefaultServerBody => 'De aanvraagserver heeft geen standaardinstantie waar deze aanvraag heen kan. Vraag de beheerder van de server om er een in te stellen.';
 	@override String get serverDefault => 'Standaard van de server';
 	@override String get adminOnly => 'alleen beheerder';
 	@override String get editRequest => 'Aanvraag bewerken';
@@ -5663,6 +5665,8 @@ extension on TranslationsNl {
 			'seerr.requestWithServerDefault' => 'Aanvragen met serverstandaard',
 			'seerr.no4kServerTitle' => 'Geen 4K-server ingesteld',
 			'seerr.no4kServerBody' => 'Zet 4K uit om in HD aan te vragen.',
+			'seerr.noDefaultServerTitle' => 'Geen standaardserver voor deze kwaliteit',
+			'seerr.noDefaultServerBody' => 'De aanvraagserver heeft geen standaardinstantie waar deze aanvraag heen kan. Vraag de beheerder van de server om er een in te stellen.',
 			'seerr.serverDefault' => 'Standaard van de server',
 			'seerr.adminOnly' => 'alleen beheerder',
 			'seerr.editRequest' => 'Aanvraag bewerken',
@@ -5866,10 +5870,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.done' => 'Klaar',
 			'unifiedCatalog.homeRows.moveUp' => 'Omhoog',
 			'unifiedCatalog.homeRows.moveDown' => 'Omlaag',
-			'unifiedCatalog.homeRows.hide' => 'Verbergen',
-			'unifiedCatalog.homeRows.show' => 'Tonen',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.hide' => 'Verbergen',
+			'unifiedCatalog.homeRows.show' => 'Tonen',
 			'unifiedCatalog.homeRows.edit' => 'Bewerken',
 			'unifiedCatalog.homeRows.remove' => 'Verwijderen',
 			'unifiedCatalog.homeRows.hiddenNote' => 'verborgen',

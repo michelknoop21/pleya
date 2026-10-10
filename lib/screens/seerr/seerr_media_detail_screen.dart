@@ -166,14 +166,15 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     }
   }
 
-  /// Asks whether a 4K instance exists, for a profile that could request 4K.
+  /// Asks whether a default 4K instance exists, for a profile that could
+  /// request 4K: the one the server sends a 4K request to on its own.
   Future<void> _loadFourKServer(SeerrClient client, int gen) async {
     final isMovie = widget.media.isMovie;
     if (!context.read<SeerrProvider>().canRequest4kFor(isMovie: isMovie)) return;
     var known = false;
     try {
       final servers = isMovie ? await client.getRadarrServers() : await client.getSonarrServers();
-      known = seerrHasServerOfQuality(servers, is4k: true);
+      known = seerrHasServerOfQuality(servers, is4k: true, defaultOnly: true);
     } catch (_) {
       // Not known is not offered.
     }

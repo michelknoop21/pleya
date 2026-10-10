@@ -157,7 +157,7 @@ class BigPResultCard extends StatelessWidget {
 }
 
 /// A media grid draws at most this many titles.
-const _gridCap = 12;
+const _gridCap = kAssistantListedTitles;
 
 /// The watched titles shown as cards: the ones watch_stats resolved.
 const _watchTitles = 5;

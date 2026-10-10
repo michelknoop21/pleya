@@ -107,6 +107,14 @@ void main() {
       })
       ..on('GET /tv/1399', tvDetail())
       ..on('POST /request', {'id': 1});
+    // A requester's 4K goes to the default 4K instance, so there is one here.
+    // `seerr_request_sheet_default_4k_test.dart` covers the server without.
+    for (final service in ['radarr', 'sonarr']) {
+      fake.on('GET /service/$service', [
+        {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': true},
+        {'id': 2, 'name': '4K', 'is4k': true, 'isDefault': true},
+      ]);
+    }
   });
 
   group('film', () {
@@ -715,7 +723,8 @@ void main() {
     testWidgets('a requester never sees the target section', (tester) async {
       await open(tester, _movie);
       expect(find.text(t.seerr.advancedOptions), findsNothing);
-      expect(fake.sent('GET', '/service/radarr'), isEmpty);
+      expect(fake.sent('GET', '/service/radarr'), hasLength(1), reason: 'read once, to know where HD would go');
+      expect(fake.sent('GET', '/service/radarr/1'), isEmpty, reason: 'and nothing is bound');
     });
   });
 

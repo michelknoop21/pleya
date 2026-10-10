@@ -24,6 +24,16 @@ Before running anything against a real target, check whether the target can actu
   it uses the Simulator rotation shortcut. macOS Accessibility permission and an unlocked screen
   are required for that shortcut. A platform acknowledgement without a landscape viewport never
   counts as PASS.
+- **iOS with more than one booted iPhone simulator**: set `PLEYA_VERIFY_IOS_UDID`. Without it the
+  run stops before the build, reported as `FAILED` with a `failure_message` that lists the booted
+  devices, instead of picking one.
+
+Every external tool call a driver makes (`simctl`, `plutil`, `codesign`, the build) goes through
+`runBounded` (`pleya_verify/runner/lib/src/driver/bounded_process.dart`): 3 minutes by default,
+30 for a build, 5 for `simctl bootstatus`. A call that outlives its limit is killed with its child
+processes and the run ends as `FAILED` with a `ProcessTimeoutException` naming the command in
+`failure_message` (not `ERROR`: the engine reports every exception during a run as a scenario
+failure). A run that shows no progress is therefore a defect to report, not something to wait out.
 
 Everything below assumes the working directory is `pleya_verify/runner/` (every subcommand resolves
 `../scenarios`, `../automation_ids.yaml`, and `../..` for the repo root relative to that directory),

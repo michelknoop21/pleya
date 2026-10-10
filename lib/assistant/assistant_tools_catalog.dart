@@ -51,6 +51,10 @@ class AssistantMediaGrid extends AssistantDisplay {
       e.group == null ? e.item.globalKey : buildGlobalKey(e.group!.representativeSource.serverId, e.item.id);
 }
 
+/// Titles one answer lists and draws: the text, the cards and the actions are
+/// the same set, so the UI's grid cap is this number.
+const kAssistantListedTitles = 12;
+
 final List<AssistantTool> _catalogTools = [
   AssistantTool(
     name: 'search_catalog',
@@ -60,6 +64,8 @@ final List<AssistantTool> _catalogTools = [
         'genre exclusions and subtitle languages use strict metadata evidence in a bounded temporary result. '
         'text matches titles, not themes or plots: use find_title for those. '
         'Genres are OR for native rows, ALL when combined with temporary strict filters; multiple audio languages require ALL. '
+        'For what was added to the libraries in a period ("this week", "last 14 days") pass added_within_days (1-31): '
+        'results then carry added_at; total_matches is the whole window (or everything the search found), count what is listed, added_unknown the titles without a date. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
         'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
     risk: AssistantToolRisk.read,
@@ -67,6 +73,7 @@ final List<AssistantTool> _catalogTools = [
       ...AssistantStrictFilters.properties,
       'text': {'type': 'string'},
       'person': {'type': 'string'},
+      'added_within_days': {'type': 'integer', 'minimum': 1, 'maximum': 31},
       'unwatched': {'type': 'boolean'},
       'in_progress': {'type': 'boolean'},
       'sort': {
@@ -87,7 +94,7 @@ final List<AssistantTool> _catalogTools = [
       final results = <Map<String, Object?>>[];
       final gated = await _gateTitles(
         ctx,
-        query.groups.take(15).toList(),
+        query.groups.take(kAssistantListedTitles).toList(),
         (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
         age,
       );
@@ -106,25 +113,39 @@ final List<AssistantTool> _catalogTools = [
           'kind': item.kind.name,
           'server_id': serverId.value,
           if (query.genreUnverified.contains(g.groupId)) 'genre_unverified': true,
+          if (query.addedWithinDays != null && _groupAddedAt(g) != null)
+            'added_at': DateTime.fromMillisecondsSinceEpoch(
+              _groupAddedAt(g)! * 1000,
+              isUtc: true,
+            ).toIso8601String().substring(0, 10),
           ..._factsField(f, gated.region),
         });
       }
-      // For children only the titles that passed; the rest of the grid is unchecked.
+      // The cards are the titles listed in `results`, no more and no fewer: one
+      // result set for the text and the grid. For children that is what passed.
       final kept = {
         for (final (g, _) in gated.kept)
           buildGlobalKey(g.representativeSource.serverId, g.representativeSource.item.id),
       };
-      final entries = age == null
-          ? query.entries
-          : query.entries.where((e) => kept.contains(AssistantMediaGrid.keyOf(e))).toList();
+      final entries = query.entries.where((e) => kept.contains(AssistantMediaGrid.keyOf(e))).toList();
       return AssistantToolResult({
         'query_id': queryId,
         // For children only what passed counts.
-        'count': age == null ? query.groups.length : entries.length,
+        // What is listed and drawn; total_matches is what the query found.
+        'count': entries.length,
+        // The kids gate only sees the listed titles: no whole-set figure then,
+        // and no count of titles that were never checked.
+        if (age == null) 'total_matches': query.totalMatches ?? query.groups.length,
+        if (query.addedWithinDays != null) ...{
+          'window_days': query.addedWithinDays,
+          if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
+          if (age != null && query.totalMatches != null && query.totalMatches! > entries.length) 'sampled': true,
+        },
         'can_become_home_row': query.row != null,
         if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,
-        if (query.partial) 'partial': true,
+        // A bare flag for a child: titles without a date are left out, nothing more.
+        if (query.partial || query.addedUnknown > 0) 'partial': true,
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,
