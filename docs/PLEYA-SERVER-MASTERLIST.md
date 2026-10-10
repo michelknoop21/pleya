@@ -230,7 +230,7 @@ niet de bouw.
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
 | S7.1 | Tokens, capsuleknop, base.css | `[~]` | tokens.css en base.css op de northstar-waarden (capsuleknop, `--inset`/`--poster-w`/`--rail-gap` per breekpunt, ink- en fill-aliassen); `svelte-check` 0 fouten, 115 vitest groen, `bun run build` groen. Visuele controle op vijf breedtes volgt met de shell (S7.2), omdat tokens zonder shell geen beeld geven. | |
-| S7.2 | Layouts, topnav, mobiele kop, tabbalk met capability-slot | `[~]` | | |
+| S7.2 | Layouts, topnav, mobiele kop, tabbalk met capability-slot | `[~]` | `TopNav` (≥900), `MobileHeader` en `TabBar` (<900) vervangen `NavRail` en `BottomBar`; vijf slots Home, Series, Films, Boeken (alleen met boekenbibliotheek), Mijn Pleya uit capabilities en bibliotheken (`navItems.ts`), zoeken als actie in de kop; themakeuze verhuisd naar Mijn Pleya. 124 vitest, `svelte-check` 0 fouten, 27 e2e groen op de lokale stack, geen horizontale overloop op 393, 768, 1024, 1280 en 1600. Beeldvergelijking in `docs/qa/s7-shell/`. **Open voor `[x]`**: Beheer-pil (wacht op `/admin`, S10), avatar (geen bron), wordmark als afbeelding, standaardthema OLED tegenover het donkergrijs van de northstar, en de staten 12, 14 en 15 die nog de oude schermen zijn (zie S7.3 en S7.6). | |
 | S7.3 | Primitieven (chips, skelet, veld, paneel, tabel, tegel, alert, dialoog, stappen) | `[~]` | | |
 | S7.4 | `MediaCard` met alle staten uit scherm 16, hero, rail, `srcset` | `[~]` | | |
 | S7.5 | Nederlandse locale | `[~]` | | |

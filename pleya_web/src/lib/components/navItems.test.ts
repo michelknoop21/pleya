@@ -23,51 +23,89 @@ const all: Capabilities = {
   mcp: false
 };
 
-describe('capabilities bepalen de navigatie', () => {
-  it('toont home, zoeken, bibliotheken en server wanneer alles kan', () => {
-    expect(navItems(all, 3).map((i) => i.id)).toEqual(['home', 'search', 'libraries', 'server']);
+const films = { id: 'lib-films', kind: 'movies' };
+const kids = { id: 'lib-kids', kind: 'movies' };
+const series = { id: 'lib-series', kind: 'shows' };
+const books = { id: 'lib-books', kind: 'books' };
+
+const ids = (libraries: { id: string; kind: string }[], caps: Capabilities | null = all) =>
+  navItems(caps, libraries).map((i) => i.id);
+
+describe('de vijf slots volgen capabilities en bibliotheken', () => {
+  it('toont home, films, series en mijn pleya met films en series, zonder boeken', () => {
+    expect(ids([films, series])).toEqual(['home', 'series', 'films', 'my']);
   });
 
-  it('laat zoeken weg wanneer de server het niet aanbiedt', () => {
-    expect(navItems({ ...all, search: false }, 3).map((i) => i.id)).not.toContain('search');
+  it('toont boeken alleen met een boekenbibliotheek', () => {
+    expect(ids([films, series])).not.toContain('books');
+    expect(ids([films, series, books])).toEqual(['home', 'series', 'films', 'books', 'my']);
   });
 
-  it('laat bibliotheken weg wanneer er geen zijn, in plaats van een leeg scherm', () => {
-    expect(navItems(all, 0).map((i) => i.id)).not.toContain('libraries');
+  it('laat films en series weg wanneer de soort er niet is, in plaats van een leeg scherm', () => {
+    expect(ids([series])).toEqual(['home', 'series', 'my']);
+    expect(ids([])).toEqual(['home', 'my']);
   });
 
-  it('laat home en bibliotheken weg wanneer bladeren niet kan', () => {
-    const ids = navItems({ ...all, browse: false }, 3).map((i) => i.id);
-    expect(ids).not.toContain('home');
-    expect(ids).not.toContain('libraries');
+  it('laat alles behalve mijn pleya weg wanneer bladeren niet kan', () => {
+    expect(ids([films, series, books], { ...all, browse: false })).toEqual(['my']);
   });
 
-  it('toont niets van kijkstatus, afspelen of beheer, want daar is geen endpoint voor', () => {
-    const ids = navItems(all, 3).map((i) => i.id);
-    for (const forbidden of ['continue', 'watchlist', 'downloads', 'livetv', 'scans', 'jobs', 'users']) {
-      expect(ids).not.toContain(forbidden);
+  it('kent geen navigatie zonder info, behalve mijn pleya', () => {
+    expect(ids([], null)).toEqual(['my']);
+  });
+
+  it('zet zoeken niet in de slots: dat is een actie in de kop', () => {
+    expect(ids([films, series])).not.toContain('search');
+  });
+
+  it('toont niets van kijkstatus, afspelen of beheer, want daar is geen route voor', () => {
+    const all5 = ids([films, series, books]) as string[];
+    for (const forbidden of ['continue', 'watchlist', 'downloads', 'livetv', 'admin', 'libraries']) {
+      expect(all5).not.toContain(forbidden);
     }
-  });
-
-  it('kent geen navigatie zonder info', () => {
-    expect(navItems(null, 0).map((i) => i.id)).toEqual(['server']);
   });
 });
 
-describe('welk item actief is', () => {
-  const items = navItems(all, 2);
+describe('waar een slot heen wijst', () => {
+  it('wijst naar de enige bibliotheek van de soort', () => {
+    const items = navItems(all, [films, series]);
+    expect(items.find((i) => i.id === 'films')?.href).toBe('/libraries/lib-films');
+    expect(items.find((i) => i.id === 'series')?.href).toBe('/libraries/lib-series');
+  });
+
+  it('wijst naar het overzicht bij meer dan één bibliotheek van de soort', () => {
+    const items = navItems(all, [films, kids, series]);
+    expect(items.find((i) => i.id === 'films')?.href).toBe('/libraries');
+  });
+
+  it('wijst mijn pleya naar het serveroverzicht, tot S8 een eigen landing geeft', () => {
+    expect(navItems(all, []).find((i) => i.id === 'my')?.href).toBe('/server');
+  });
+});
+
+describe('welk slot actief is', () => {
+  const libs = [films, kids, series];
+  const items = navItems(all, libs);
 
   it('kiest home alleen op de wortel', () => {
-    expect(activeItemId(items, '/')).toBe('home');
+    expect(activeItemId(items, '/', libs)).toBe('home');
   });
 
-  it('kiest de langste treffer', () => {
-    expect(activeItemId(items, '/libraries/abc')).toBe('libraries');
-    expect(activeItemId(items, '/search?q=x')).toBe('search');
-    expect(activeItemId(items, '/server')).toBe('server');
+  it('kiest het slot van de soort van de bibliotheek, ook als het slot naar het overzicht wijst', () => {
+    expect(activeItemId(items, '/libraries/lib-kids', libs)).toBe('films');
+    expect(activeItemId(items, '/libraries/lib-series', libs)).toBe('series');
   });
 
-  it('kiest niets op een pad dat bij geen item hoort', () => {
-    expect(activeItemId(items, '/items/abc')).toBeNull();
+  it('kiest films op het overzicht wanneer films daar naartoe wijst', () => {
+    expect(activeItemId(items, '/libraries', libs)).toBe('films');
+  });
+
+  it('kiest mijn pleya op het serveroverzicht', () => {
+    expect(activeItemId(items, '/server', libs)).toBe('my');
+  });
+
+  it('kiest niets op een pad dat bij geen slot hoort', () => {
+    expect(activeItemId(items, '/items/abc', libs)).toBeNull();
+    expect(activeItemId(items, '/search', libs)).toBeNull();
   });
 });

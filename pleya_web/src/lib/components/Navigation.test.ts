@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 
-import NavRail from './NavRail.svelte';
-import BottomBar from './BottomBar.svelte';
+import TopNav from './TopNav.svelte';
+import MobileHeader from './MobileHeader.svelte';
+import TabBar from './TabBar.svelte';
 import { navItems } from './navItems';
 import type { Capabilities } from '../api/types';
 
@@ -26,55 +27,81 @@ const caps: Capabilities = {
   administration: false,
   mcp: false
 };
-const items = navItems(caps, 2);
+const items = navItems(caps, [
+  { id: 'f', kind: 'movies' },
+  { id: 's', kind: 'shows' }
+]);
 
-describe('de zijbalk', () => {
-  it('draagt een naam en één link per item', () => {
-    render(NavRail, { props: { items, activeId: 'home' } });
-    const nav = screen.getByRole('navigation', { name: 'Primary' });
-    expect(nav).toBeInTheDocument();
-    // De merklink staat er ook in, vandaar één meer dan het aantal items.
+describe('de bovenbalk', () => {
+  it('draagt een naam, het merk en één link per slot', () => {
+    render(TopNav, { props: { items, activeId: 'home' } });
+    expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
+    // Het merk staat er ook in, vandaar één meer dan het aantal slots.
     expect(screen.getAllByRole('link')).toHaveLength(items.length + 1);
   });
 
-  it('markeert het actieve item met aria-current', () => {
-    render(NavRail, { props: { items, activeId: 'libraries' } });
-    const current = screen.getByRole('link', { current: 'page' });
-    expect(current).toHaveAttribute('href', '/libraries');
+  it('markeert het actieve slot met aria-current', () => {
+    render(TopNav, { props: { items, activeId: 'films' } });
+    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/libraries/f');
+  });
+
+  it('toont zoeken als actie, alleen wanneer de server het aanbiedt', () => {
+    const { unmount } = render(TopNav, { props: { items, activeId: 'home', showSearch: true } });
+    expect(screen.getByRole('link', { name: 'Search' })).toHaveAttribute('href', '/search');
+    unmount();
+
+    render(TopNav, { props: { items, activeId: 'home', showSearch: false } });
+    expect(screen.queryByRole('link', { name: 'Search' })).toBeNull();
   });
 
   it('is volledig met het toetsenbord te doorlopen', async () => {
-    render(NavRail, { props: { items, activeId: 'home' } });
+    render(TopNav, { props: { items, activeId: 'home', showSearch: true } });
     const user = userEvent.setup();
-
-    const links = screen.getAllByRole('link');
-    for (const link of links) {
+    for (const link of screen.getAllByRole('link')) {
       await user.tab();
       expect(link).toHaveFocus();
     }
   });
+});
 
-  it('klapt uit zodra de focus erin valt, zodat labels leesbaar worden', async () => {
-    const { container } = render(NavRail, { props: { items, activeId: 'home' } });
-    const nav = container.querySelector('.rail');
-    expect(nav?.classList.contains('rail--open')).toBe(false);
+describe('de mobiele kop', () => {
+  it('draagt het merk en, met zoeken, een zoekactie', () => {
+    render(MobileHeader, { props: { showSearch: true } });
+    expect(screen.getByRole('link', { name: 'Search' })).toHaveAttribute('href', '/search');
+  });
 
-    await userEvent.setup().tab();
-    expect(nav?.classList.contains('rail--open')).toBe(true);
+  it('laat de zoekactie weg zonder zoeken', () => {
+    render(MobileHeader, { props: { showSearch: false } });
+    expect(screen.queryByRole('link', { name: 'Search' })).toBeNull();
   });
 });
 
-describe('de bottom bar', () => {
-  it('draagt dezelfde items als de zijbalk', () => {
-    render(BottomBar, { props: { items, activeId: 'search' } });
+describe('de tabbalk', () => {
+  it('draagt dezelfde slots als de bovenbalk', () => {
+    render(TabBar, { props: { items, activeId: 'series' } });
     expect(screen.getAllByRole('link')).toHaveLength(items.length);
-    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/search');
+    expect(screen.getByRole('link', { current: 'page' })).toHaveAttribute('href', '/libraries/s');
   });
 
   it('toont een leesbaar label naast het icoon', () => {
-    render(BottomBar, { props: { items, activeId: 'home' } });
+    render(TabBar, { props: { items, activeId: 'home' } });
     for (const item of items) {
       expect(screen.getByText(item.label)).toBeInTheDocument();
     }
+  });
+
+  it('toont Boeken alleen met een boekenbibliotheek', () => {
+    const without = navItems(caps, [{ id: 'f', kind: 'movies' }]);
+    const withBooks = navItems(caps, [
+      { id: 'f', kind: 'movies' },
+      { id: 'b', kind: 'books' }
+    ]);
+
+    const first = render(TabBar, { props: { items: without, activeId: 'home' } });
+    expect(screen.queryByText('Books')).toBeNull();
+    first.unmount();
+
+    render(TabBar, { props: { items: withBooks, activeId: 'home' } });
+    expect(screen.getByText('Books')).toBeInTheDocument();
   });
 });
