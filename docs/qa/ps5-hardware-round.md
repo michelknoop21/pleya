@@ -10,8 +10,9 @@ Aangemaakt: 2026-09-04, op `5eebb83` (feat/pleyaserver).
 
 Dit dossier is op 10 oktober 2026 van `feat/pleyaserver` naar `main` overgenomen. Er is sinds
 4 september geen test bijgekomen: de ronde is niet gedraaid en elke rij hieronder die open stond,
-staat nog open. Vijf dingen zijn sindsdien veranderd. De eerste is in de tekst hieronder verwerkt;
-de tekst van 4 september is verder blijven staan en dit blok gaat voor waar de twee verschillen.
+staat nog open. Zeven dingen zijn sindsdien veranderd of vastgesteld. De eerste is in de tekst
+hieronder verwerkt; bij de andere staat waar dat nodig is een verwijzing naar dit blok. Waar de
+tekst van 4 september en dit blok verschillen, gaat dit blok voor.
 
 - Het besluit heet op `main` DEC-118. Op `feat/pleyaserver` droeg het nummer DEC-064, dat op `main`
   een ander besluit is; de hernummeringstabel onderaan `docs/DECISIONS.md` voert het als oud
@@ -26,16 +27,27 @@ de tekst van 4 september is verder blijven staan en dit blok gaat voor waar de t
   `feat/pleyaserver` (`build/macos` ontbreekt). De PASS van stap 1 rust op de opstartregel die
   hieronder is overgenomen, niet op een bewaard artefact.
 - De blokkade "geen Jellyfin-account" is op 4 september gemeten en daarna niet opnieuw gemeten.
-- De ronde is achterstallig. DEC-118 noemt drie uiterste momenten, wat zich het eerst voordoet: de
-  eerstvolgende publieke release met PS-5- of PS-9-gedrag, een TestFlight-indiening naar App Review,
-  of een merge van `feat/pleyaserver` naar `main`. De PS-5-code kwam op 25 september 2026 op `main`
-  via PR #94 (`638e7524`, branch `integration/pleya-server-completion`), zonder dat de ronde was
-  gedraaid. DEC-118 blijft ongewijzigd staan, dus ook het eerste moment geldt nog: geen publieke
-  release van de client met PS-5- of PS-9-gedrag zonder gedraaide ronde. Besluit van 10 oktober
-  2026: de ronde geldt als achterstallig, en bovenop DEC-118 moet ze volledig gevalideerd zijn vóór
-  de eerste publieke release van Pleya Server. De status hoort in
-  `docs/PLEYA-SERVER-MASTERLIST.md`; zegt die nog "uitgesteld", dan loopt de masterlijst achter op
-  dit blok.
+- De ronde is achterstallig sinds 25 september 2026. DEC-118 noemt drie uiterste momenten, wat zich
+  het eerst voordoet: de eerstvolgende publieke release met PS-5- of PS-9-gedrag, een
+  TestFlight-indiening naar App Review, of een merge van `feat/pleyaserver` naar `main`. De
+  PS-5-code kwam op 25 september 2026 op `main` via PR #94 (`638e7524`, branch
+  `integration/pleya-server-completion`), zonder dat de ronde was gedraaid. Dat is het eerste van de
+  drie momenten dat is gepasseerd.
+- De andere twee momenten zijn op 10 oktober 2026 nagelezen in App Store Connect, over de builds die
+  sinds 20 augustus zijn geüpload. iOS-build 296 (`5b937630`) en tvOS-build 298 (`53e2704a`) zijn op
+  24 september 2026 naar App Review gestuurd en staan in de App Store. Eén build ging langs Beta App
+  Review: tvOS-build 259 (`740c78b6`, geüpload op 5 september). Geen van die drie commits heeft
+  `dc06bf3` of `f0b5bc7` als voorouder, dus er is geen PS-5-gedrag publiek uitgebracht of ter review
+  aangeboden. Sinds 25 september is er niets ingediend. Het macOS-versierecord 2.8.0 is niet
+  ingediend; build 315 (geüpload op 1 oktober) hangt eraan, en van welke commit die komt is hier
+  niet vastgesteld.
+- De releasevoorwaarden (besluit van 10 oktober 2026). DEC-118 blijft ongewijzigd staan en het
+  eerste moment geldt dus nog: geen publieke release van de client met PS-5- of PS-9-gedrag zonder
+  geslaagde hardwareacceptatie. Een gedraaide ronde met een FAIL haalt die grens niet. Bovenop
+  DEC-118 moet PS-5 volledig gevalideerd zijn vóór de eerste publieke release van Pleya Server. Een
+  release van onderdelen die aantoonbaar onafhankelijk zijn van PS-5 valt er niet onder. De status
+  hoort in `docs/PLEYA-SERVER-MASTERLIST.md`; zegt die nog "uitgesteld", dan loopt de masterlijst
+  achter op dit blok.
 
 ## Status op 4 september: uitgesteld, met een startvoorwaarde
 
@@ -46,8 +58,8 @@ stilzwijgend meelift naar een release.
 De poort uit
 [DEC-118](../DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
 blijft staan: de hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of
-PS-9-gedrag bevat alsnog gedraaid zijn. Dat geldt nog. Minstens één van de andere momenten uit dat
-besluit is sindsdien gepasseerd, zie *Stand op `main`*; de ronde is daarmee achterstallig. Dat PS-9
+PS-9-gedrag bevat alsnog gedraaid zijn. Dat geldt nog. De merge naar `main` uit
+dat besluit is sindsdien gepasseerd, zie *Stand op `main`*; de ronde is daarmee achterstallig. Dat PS-9
 op 4 september gesloten is, bewijst niets over dit criterium.
 
 Drie voorwaarden gelden vóór de ronde mag starten:
