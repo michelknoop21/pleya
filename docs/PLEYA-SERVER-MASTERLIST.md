@@ -18,7 +18,7 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-10-10 (S2 gesloten, masterlijst gereconcilieerd met `main`). S2.5 (overname van
+Laatst bijgewerkt: 2026-10-11 (S7.4 gereed; daarvoor 2026-10-10: S2 gesloten, masterlijst gereconcilieerd met `main`). S2.5 (overname van
 `.env`-bibliotheken) en S2.6 (migratietest op de NAS-vangst, venster 2 dicht) zijn gereed, en daarmee
 S2 en golf 1. Drie stukken werk waren sinds 24 september op `main` geland zonder regel (loudness,
 migratie `0011`; `GET /watch-history`, DEC-143; de NAS-start na de bewerkte migraties `0006` en `0007`,
@@ -38,14 +38,14 @@ Bron voor de scope:
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
 | Backend basis | S1 tot S6 | 2 | 0 | 4 |
-| Web | S7 tot S13 | 0 | 0 | 7 |
+| Web | S7 tot S13 | 0 | 1 | 6 |
 | Clients en agents | S14, S16 | 0 | 0 | 2 |
 | Uitgebreide scope | S17 tot S25 | 0 | 0 | 9 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **3** | **0** | **23** |
+| **Totaal** | **26** | **3** | **1** | **22** |
 
-Per taak, en dat is de maat die telt: **155 taken, 25 gereed, 1 bezig, 129 open.** S0, S1 en S2 zijn
-dicht (acht van acht, acht van acht, zeven van acht). S2.8 telt als open taak mee, maar houdt S2 niet open: net als S2.7 is het vervolgwerk buiten venster 2 en geen sluitcriterium van de slice. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
+Per taak, en dat is de maat die telt: **155 taken, 27 gereed, 3 bezig, 125 open.** S0, S1 en S2 zijn
+dicht (acht van acht, acht van acht, zeven van acht). S2.8 telt als open taak mee, maar houdt S2 niet open: net als S2.7 is het vervolgwerk buiten venster 2 en geen sluitcriterium van de slice. S7 is bezig: S7.3 en S7.4 zijn gereed, S7.1 en S7.2 staan op bezig en S7.5 en S7.6 zijn open. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
@@ -84,7 +84,7 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | 1, gesloten | S1, S2 | 0 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
 | 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S1 voor S2; poort P5 vóór S6 |
 | 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
-| 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
+| 4 | S7, S8, S9, S10, S11, S12, S13 | 30 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
 | 5 | S17, S18, S23 | 16 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
 | 6 | S19, S20, S21 | 15 | verzamelingen en afspeellijsten, persoonlijke laag, realtime | S1, S6, S2 |
 | 7 | S22 | 9 | metadata-providers met automatisch matchen en artwork | S4 |
@@ -114,8 +114,8 @@ Vertraging op deze lijn schuift de release op; vertraging op de rest niet, zolan
 is. Deel I noemt een kortere lijn zonder de vrijgavepoort, met S22 als zwaarste slice ernaast; die
 lezing is hiermee achterhaald.
 
-De web-tak (S7 tot S13) hangt er in zijn geheel naast en is qua taken de grootste van allemaal: 32
-van de 128 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee, en S2.8 is vervolgwerk buiten venster 2. Hij blokkeert alleen S15.
+De web-tak (S7 tot S13) hangt er in zijn geheel naast en is qua taken de grootste van allemaal: 30
+van de 126 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee, en S2.8 is vervolgwerk buiten venster 2. Hij blokkeert alleen S15.
 
 ### 2.3 Wat op een besluit wacht en niet op code
 
@@ -268,7 +268,7 @@ sluit het); S6 blijft wachten op P5.
 | S7.1 | Tokens, capsuleknop, base.css | `[~]` | tokens.css en base.css op de northstar-waarden (capsuleknop, `--inset`/`--poster-w`/`--rail-gap` per breekpunt, ink- en fill-aliassen); `svelte-check` 0 fouten, 115 vitest groen, `bun run build` groen. Visuele controle op vijf breedtes volgt met de shell (S7.2), omdat tokens zonder shell geen beeld geven. | |
 | S7.2 | Layouts, topnav, mobiele kop, tabbalk met capability-slot | `[~]` | `TopNav` (≥900), `MobileHeader` en `TabBar` (<900) vervangen `NavRail` en `BottomBar`; vijf slots Home, Series, Films, Boeken (alleen met boekenbibliotheek), Mijn Pleya uit capabilities en bibliotheken (`navItems.ts`), zoeken als actie in de kop; themakeuze verhuisd naar Mijn Pleya. 124 vitest, `svelte-check` 0 fouten, 27 e2e groen op de lokale stack, geen horizontale overloop op 393, 768, 1024, 1280 en 1600. Beeldvergelijking in `docs/qa/s7-shell/`. **Open voor `[x]`**: Beheer-pil (wacht op `/admin`, S10), avatar (geen bron), wordmark als afbeelding (standaardthema is sinds S7.3 `dark`, dat punt is dicht), en de staten 12, 14 en 15 die nog de oude schermen zijn (zie S7.6). | |
 | S7.3 | Primitieven (chips, skelet, veld, paneel, tabel, tegel, alert, dialoog, stappen) | `[x]` | Vijftien primitieven in `pleya_web/src/lib/components/`: `Field`, `Select`, `Toggle`, `Choice`, `Panel`, `StatTile`, `StatusPill`, `Alert`, `Chips`, `DataTable`, `Steps`, `ConfirmDialog` (met overtypzin), `Skeleton`, `SkeletonPage` en `StorageMeter`, elk met een eigen test. Designsysteem v2 in `tokens.css`: dieptelagen `--panel`, `--panel-2`, `--inset-bg`, `--hairline`, `--ring-shadow`, tekst in ink-tokens en grafische vlakken in graphic-tokens (`--amber-graphic`, `--blue`). Standaardthema is nu `dark`; OLED en light blijven kiesbaar. Secundaire tekst (`--ink-3`) staat in light op `#6b6b70` en haalt gemeten 5,30 op wit, 4,95 op de pagina `#f7f7f8` en 4,70 op de inset `#f1f1f3`; in dark en OLED haalt hij 5,05 tot 5,34 op paneel, paneel-2 en inset. De globale focusring volgt DESIGN.md: `--ring` (3 px) in `--ink` op een gap van 3 px, tekstvakken houden hun rand van 1 px (eindreview 2026-10-10, `.superpowers/sdd/2026-10-10-pleya-web-s7-primitieven/final-fix-report.md`). `StateView` kent alleen nog leeg en fout, laden is `Skeleton` of `SkeletonPage`. Galerij op `/dev/primitives`, alleen onder `vite dev` (404 in de bundel, bewaakt door `guard.test.ts`). `svelte-check` 596 bestanden 0 fouten, 225 vitest in 33 bestanden groen, `bun run build` groen. Visueel bewijs in `docs/qa/s7-primitives/` (README erbij): in drie breedten en in dark, OLED en light; de visuele poort gaf PASS na vier hernemingen, zonder open Critical of Important. Bewuste afwijkingen van de northstar: het skeletheld loopt van rand tot rand tot de Hero/HubRail-herschrijving; de gestapelde tabel toont standaard geen kolomlabels onder 900; standaardthema `dark` in plaats van OLED. Open minors, niet blokkerend: `StorageMeter` heeft geen zichtbaar "bijna vol"-signaal, Inter 600 rendert als 700 (de app levert 400, 500 en 700), `StorageMeter` toont de vrije rest alleen met een expliciet vrij-segment, login en setup gebruiken nog de oude `.field`-stijl in plaats van `Field`, `SkeletonPage` volgt de huidige grid en detailpagina, en een thema-flits voor hydratie bij opgeslagen OLED of light. | 2026-10-10 |
-| S7.4 | `MediaCard` met alle staten uit scherm 16, hero, rail, `srcset` | `[ ]` | | |
+| S7.4 | `MediaCard` met alle staten uit scherm 16, hero, rail, `srcset` | `[x]` | `MediaCard` (rust, hover met acties, toetsenbordfocus, voortgang, gezien, nieuw, aflevering in Verder kijken, volgende aflevering als wide, geen artwork, versies), `Hero` op de geometrie van beeld 01, `HubRail` met bleed, fade en pijlen vanaf 900, plus de artworkladder (`util/srcset.ts`: RB-7, 240 tot 1920 voor poster, 480 tot 3840 voor backdrop) en een loader-context (`artworkLoader.ts`) voor galerij en tests. De ladder vraagt nog het origineel (`ARTWORK_SIZES_AVAILABLE` is false tot S4.4): een echt `srcset` kan niet, want artwork komt via `fetch` met Authorization-header binnen. ArchivoBlack (woff2, OFL) voor de herotitel, vooraf geladen. Commits: `b201b403` fundament (ArchivoBlack, ladder, loader-context), `1bfa364d` MediaCard, `e3e23bb5` Hero, `d609c6b2` HubRail, `57cec280` laatste opnamen. `bun run check` 605 bestanden 0 fouten, `bun run test` 34 bestanden 287 groen. Visuele poort `.superpowers/sdd/2026-10-10-pleya-web-s7-commitgrens4/task-6-gate.md`: GATE PASS na re-gate 1, 0 Critical en 0 Important open, axe (wcag2a/aa, 21a/aa, 22aa, best-practice) 0 overtredingen op kaarten, hero en rail op 393 en 1280 in dark, light en OLED. Specimen v3 akkoord van Michel op 2026-10-10; bewuste afwijkingen van de northstar in `docs/qa/s7-primitives/v3-specimen/README.md` (volgende aflevering 1,78 keer poster, geen segmentindicator en rotatie, geen-artwork op `--panel` met haarlijn, railpijlen met toetsenbord bereikbaar, herotitel schaalt onder 900, hover-acties 34 en 30 op smal, gewichten 400, 500 en 700). Opnamen naast de northstar in `docs/qa/s7-primitives/`. **Gatepunt voor PS-7N**: de synopsis in licht op egaal zwart artwork haalt op 900 3,79:1 (doel 4,5:1); geen route geeft nog een `summary`, dus het raakt geen gebruiker. Oplossing is geometrisch: de transparante stop van het linkerverloop van 75 naar ongeveer 85 procent. Open minors M-1 tot en met M-3 en M-5 tot en met M-8 (niet blokkerend). | 2026-10-11 |
 | S7.5 | Nederlandse locale | `[ ]` | | |
 | S7.6 | Bestaande zeven routes gemigreerd, axe groen op vijf breedtes | `[ ]` | | |
 
