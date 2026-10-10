@@ -132,9 +132,10 @@ losse foutcode in, en zonder die regel zou S1.4 een nieuwe code hebben moeten ui
 er gewoon was.
 
 **De hardwareronde.** P7 is uitgesteld en niet vervallen: `docs/qa/ps5-hardware-round.md` noemt drie
-startvoorwaarden. Hij moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag
-bevat, en hij staat als S15.6 in de laatste golf. Blijft hij daar liggen, dan schuift de release en
-niet de bouw.
+startvoorwaarden. Dat bewijsdossier staat alleen op `feat/pleyaserver` (commit `2b0b893e`) en bestaat
+nog niet op `main`; het moet hier nog landen. De ronde moet uiterlijk vóór de eerstvolgende
+publieke release die PS-5- of PS-9-gedrag bevat, en hij staat als S15.6 in de laatste golf. Blijft hij
+daar liggen, dan schuift de release en niet de bouw.
 
 ---
 
@@ -447,7 +448,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P4 | Branch merget schoon met `main` | `[x]` 4 sep 2026 | merge-commit `4e78b16` op `integration/pleya-server-rebaseline` vanaf `a21b43c`; veertien conflicten opgelost, codegen sluitend, geen testregressie. De twee stille mergefouten (`app_database.g.dart`, `schema.d.ts`) en de `--ours`-fout op `CLAUDE.md` en `docs/RELEASES.md` zijn apart gerepareerd en worden nu bewaakt door `scripts/check_authority_merge.sh` in CI De dagelijkse merge van dezelfde avond staat als `a1734ead` (`main` op `9b181ff5`, vier conflicten, LANG1 hernummerd naar DEC-109); hoofdstuk 7 van `merge-log.md` |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | |
-| P7 | PS-5-hardwareronde | `[!]` uitgesteld | `docs/qa/ps5-hardware-round.md`, drie startvoorwaarden |
+| P7 | PS-5-hardwareronde | `[!]` uitgesteld | `docs/qa/ps5-hardware-round.md` (alleen op `feat/pleyaserver`, commit `2b0b893e`; nog niet op `main`), drie startvoorwaarden |
 | P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
 | P9 | Contractdekking compleet: de dekkingslijst in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[x]` 4 sep 2026 | **De dekkingslijst.** `scripts/check_server_responses.py` leidt hem nu af uit `openapi.yaml`: elk schema dat het contract als JSON-antwoordlichaam noemt, met de `components/responses`-indirectie opgelost en niet-JSON-lichamen (artwork, ondertitels, stream) eruit. Dat brengt de eis van 8 naar 15 en dekt `UserList`, `SessionList` en `LibraryPermissionList`. Uit de vangst afleiden zou de poort tautologisch maken; uit het contract afleiden laat hem vanzelf meegroeien. Echte vangst van 32 antwoorden lokaal gedraaid met `GO_IMAGE=pleya-server-test:go-ffmpeg` en `PLEYA_RESPONSE_DIR=/src/.responses` (het containerpad binnen de mount, daar ging het eerder mis): alle 15 gedekt, alle 32 valide. Negatieve controle: met `UserList`, `SessionList` en `LibraryPermissionList` uit de vangst geeft de oude poort exit 0 met "de server houdt zich aan het contract" en de nieuwe exit 1 met de drie endpoints erbij. De afleiding heeft zes eigen controles op een verzonnen contract (`bijt de afleiding`). |
 
