@@ -136,10 +136,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
   String _query = '';
 
-  /// Counts the searches: every new term and every client swap starts one.
-  /// An answer carries the number it was asked under and is dropped when the
-  /// count has moved on. The text alone cannot tell: typing "kust", "duin" and
-  /// "kust" again makes a late page of the first search look current.
+  /// Counts the searches: every new term, every request for a first page
+  /// (a retry and a reload too) and every client swap starts one. An answer
+  /// carries the number it was asked under and is dropped when the count has
+  /// moved on. The text alone cannot tell: typing "kust", "duin" and "kust"
+  /// again makes a late page of the first search look current.
   int _searchGeneration = 0;
   List<SeerrMedia> _searchResults = const [];
   int _searchPage = 1;
@@ -269,16 +270,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     }
     _searchController.clear();
     _query = '';
-    _searchGeneration++;
+    _startSearchGeneration();
     _searchResults = const [];
     _searching = false;
     _searchErrored = false;
     _searchLoadMoreFailed = false;
-    // A next page asked through the old client is dropped when it lands, so
-    // nothing else would ever clear these, and search would stop paginating.
-    _searchLoadingMore = false;
-    _searchPage = 1;
-    _searchTotalPages = 1;
     _searchErrorKind = SeerrErrorKind.generic;
     _genreId = null;
     _genreRow = null;
@@ -407,16 +403,24 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     await _loadAll();
   }
 
+  /// Starts a new search and returns its number.
+  ///
+  /// A next page still on its way belongs to the search before and is dropped
+  /// when it lands, so it can no longer clear its own flag: that happens here.
+  /// The page count goes back to one as well, so no next page is asked before
+  /// the new first page has landed.
+  int _startSearchGeneration() {
+    _searchLoadingMore = false;
+    _searchPage = 1;
+    _searchTotalPages = 1;
+    return ++_searchGeneration;
+  }
+
   void _onSearchChanged(String value) {
     final query = value.trim();
     if (query == _query) return;
     _query = query;
-    _searchGeneration++;
-    // A next page still on its way is for the previous query and is dropped
-    // when it lands, so it can no longer clear its own flag.
-    _searchLoadingMore = false;
-    _searchPage = 1;
-    _searchTotalPages = 1;
+    _startSearchGeneration();
     if (query.isEmpty) {
       _searchDebounce.cancel();
       setState(() {
@@ -433,8 +437,8 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
 
   Future<void> _runSearch(String query) async {
     final client = _client;
-    final generation = _searchGeneration;
     if (client == null) return;
+    final generation = _startSearchGeneration();
     try {
       final page = await client.search(query);
       // Drop the result if the search moved on while the request was in flight.
