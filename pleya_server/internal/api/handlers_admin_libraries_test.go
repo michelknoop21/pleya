@@ -509,6 +509,71 @@ func TestAdoptLibraryTwiceIsRejected(t *testing.T) {
 	e.recordVariant("ErrorEnvelope", "not_config_managed", http.MethodPost, "/pleya/v1/libraries/{library_id}/adopt", rec)
 }
 
+// adoptAudit leest de auditregels van adoptLibrary op één bibliotheek, met de
+// reden uit detail. AuditEntry op de lijn draagt geen detail, dus de reden
+// komt uit de tabel.
+func (e *env) adoptAudit(libraryID string) []string {
+	e.t.Helper()
+	rows, err := e.pool.Query(context.Background(), `
+		SELECT outcome || ':' || coalesce(detail->>'reason', '')
+		  FROM admin_audit
+		 WHERE operation = 'adoptLibrary' AND target = $1
+		 ORDER BY at, id`, libraryID)
+	if err != nil {
+		e.t.Fatalf("auditregels lezen: %v", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			e.t.Fatal(err)
+		}
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		e.t.Fatal(err)
+	}
+	return out
+}
+
+// TestAdoptIsAuditedBothWays: een geslaagde overname schrijft een regel met
+// uitkomst ok, en een geweigerde (409) een regel met uitkomst denied en reden
+// not_config_managed, zoals DELETE met de verkeerde bevestiging dat doet.
+// Zonder die tweede regel ziet wie het log leest een poging op een al
+// overgenomen bibliotheek niet.
+func TestAdoptIsAuditedBothWays(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	films := e.libs[0].ID.String()
+	if got := e.adoptAudit(films); len(got) != 0 {
+		t.Fatalf("vóór de overname staan er al auditregels: %v", got)
+	}
+
+	path := "/pleya/v1/libraries/" + films + "/adopt"
+	if rec := e.do(http.MethodPost, path, nil); rec.Code != http.StatusOK {
+		t.Fatalf("overname gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := e.adoptAudit(films); len(got) != 1 || got[0] != "ok:" {
+		t.Fatalf("na de overname: auditregels %v, verwacht [ok:]", got)
+	}
+
+	if rec := e.do(http.MethodPost, path, nil); rec.Code != http.StatusConflict {
+		t.Fatalf("tweede overname gaf %d, verwacht 409: %s", rec.Code, rec.Body.String())
+	}
+	if got := e.adoptAudit(films); len(got) != 2 || got[1] != "denied:not_config_managed" {
+		t.Fatalf("na de weigering: auditregels %v, verwacht [ok: denied:not_config_managed]", got)
+	}
+
+	// En via GET /audit, de route waarlangs een beheerder het ziet.
+	ops := operations(e.auditPage(auditPath, http.StatusOK))
+	if ops["adoptLibrary:ok"] != 1 || ops["adoptLibrary:denied"] != 1 {
+		t.Fatalf("GET /audit telt adoptLibrary ok=%d denied=%d, verwacht 1 en 1",
+			ops["adoptLibrary:ok"], ops["adoptLibrary:denied"])
+	}
+}
+
 func TestAdoptUnknownLibraryIsNotFound(t *testing.T) {
 	e := newEnv(t)
 	e.setup(e.putSetupCode())
