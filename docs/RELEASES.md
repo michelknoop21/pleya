@@ -24,11 +24,16 @@ under `Notes`.
 
 ### Fixed
 - CSP toestaan voor Kits eigen route-announcer (#219)
+- cap the desktop and iPad header height per size class (F-D1)
+- keep poster grid spacing fixed off TV (F-D2)
+- scale the shared option picker dialog on TV (F-TV1)
+- read the first-page fetch estimate and top padding from spacingFor
 - reviewbevindingen BP-05: lokale map zonder toevoegdatum, kinderprofiel zonder venstertotaal, kaarten gelijk aan de lijst van 12, venster alleen bij eigen zin (BP-05)
 - 4K op de titelpagina alleen bij een standaard-4K-instantie (#222)
 - scoped re-review BP-05: totaal bij gewone zoekopdracht, einde-van-pagina op de ruwe datum, kindvlag bij onbekende datum, regex en lange periode (BP-05)
 - splitsing van gemengde vragen strenger na adversariële review (BP-04b)
 - split na scoped re-review: herstart-race bij het lezen van het profiel, verwijzing terug in plaats van elke vervolgvraag, 'everyone else' met werkwoord, tweede zin buiten de helft (BP-04b)
+- aanvraag zonder server alleen met een standaardinstantie van die kwaliteit (#225)
 <!-- END GENERATED -->
 
 ### New
@@ -162,11 +167,11 @@ under `Notes`.
   follows in a later build.
 - Known in this build: Big P's confirmation card with a password field can still run below the
   edge on a small iPhone with the keyboard up. In the iPhone SE simulator Cancel and Create
-  stick out about 4 points. A fix is on its way.
+  stick out about 4 points. Not fixed in this build.
 
 ### Worth checking
-- Passed in the iPhone simulator: "Request in 4K" being there when it should and absent when it
-  should not. The other items are covered by automated tests only. Nothing in this build has
+- Passed in the iPhone simulator: "Request in 4K" being there and the form opening on 4K. The
+  other items are covered by automated tests only. Nothing in this build has
   been checked on an iPhone or iPad yet.
 - Request in 4K: open a film you have in HD with an account that may request 4K. Check that
   the action is there and that the form opens on 4K.
