@@ -59,6 +59,20 @@ fi
 # vervangt de losse MPVKit-aanroep — check_updates.sh roept die zelf aan en zet
 # hem naast de engine, de Android-binaries, de git-forks en de Actions.
 scripts/check_updates.sh || true
+# Zelfde regel: waarschuwen, niet tegenhouden. Een week niet gedraaid of rood
+# betekent dat er onderhoud ligt (ring-1-PR of het issue Dependency-onderhoud).
+# Alleen de job onderhoud telt: de rapportjob blijft bewust rood zolang er
+# ring-1-achterstand is, ook als onderhoud die net heeft weggewerkt.
+DEPS_ID="$(gh run list --workflow dependency-health.yml --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
+DEPS_RUN=""
+[[ -n "$DEPS_ID" ]] && DEPS_RUN="$(gh run view "$DEPS_ID" --json jobs,createdAt \
+  -q '"\((.jobs[] | select(.name == "onderhoud") | .conclusion) // "missing") \(.createdAt)"' 2>/dev/null || true)"
+if [[ -z "$DEPS_RUN" ]]; then
+  echo "$LOG_PREFIX LET OP: status van dependency-health onbekend (gh offline of niet ingelogd)"
+elif [[ "${DEPS_RUN%% *}" != "success" ]] ||
+  (($(date +%s) - $(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "${DEPS_RUN#* }" +%s 2>/dev/null || echo 0) > 8 * 86400)); then
+  echo "$LOG_PREFIX LET OP: dependency-onderhoud achter ($DEPS_RUN); zie het issue Dependency-onderhoud"
+fi
 
 # De iOS-lane besteedde tot vandaag ruim een uur aan twee recursieve
 # xattr-passes over de hele repo voordat xcodebuild ook maar begon. Zie
