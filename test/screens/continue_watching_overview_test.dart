@@ -278,7 +278,11 @@ void main() {
         ),
         isInContinueWatching: true,
       ),
-      size: const Size(1200, 800),
+      // Tall enough that the fourth band is built: off TV the poster spacing is
+      // a fixed 12pt (F-D2), so the sections no longer shrink with the window
+      // height and a shorter window leaves the last band beyond the lazily
+      // built extent.
+      size: const Size(1200, 1000),
     );
     for (final label in ['Resume series', 'Resume films', 'Next episodes', 'Started earlier']) {
       expect(find.text(label), findsOneWidget, reason: label);

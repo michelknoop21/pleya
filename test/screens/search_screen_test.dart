@@ -151,6 +151,110 @@ void main() {
     expect(FocusManager.instance.primaryFocus?.debugLabel, startsWith('TvSearchCard(movies)'));
   });
 
+  testWidgets('TV: the requests server is asked for the query that was submitted, not for typing in progress', (
+    tester,
+  ) async {
+    final fake = FakeSeerr()
+      ..on('GET /search', {
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {'id': 901, 'mediaType': 'movie', 'title': 'Aan te vragen film'},
+        ],
+      });
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (client, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tv_virtual_keyboard_panel')), findsOneWidget, reason: 'the inline keyboard is up');
+
+    // What the debounce does after a pause in typing. rate_limiter's Debounce
+    // never fires under FakeAsync, so the same `_performSearch` is reached
+    // through refresh(), as in the tests above.
+    final state = key.currentState!;
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(client.queries, ['movie']);
+    expect(find.text('Movie 1'), findsOneWidget, reason: 'the library answers while typing');
+    expect(fake.sent('GET', '/search'), isEmpty, reason: 'nothing was submitted, so the requests server is not asked');
+
+    await tester.tap(_keyboardDoneKey());
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search').map((c) => c.query['query']), ['movie']);
+    expect(find.text('Aan te vragen film'), findsWidgets, reason: 'the band answers the submitted query');
+
+    // Typing on leaves the submitted query behind.
+    (state as SearchInputFocusable).setSearchQuery('movies');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('TV: DOWN from the inline keyboard to the results asks the requests server, once per query', (
+    tester,
+  ) async {
+    final fake = FakeSeerr()
+      ..on('GET /search', {
+        'page': 1,
+        'totalPages': 1,
+        'results': [
+          {'id': 901, 'mediaType': 'movie', 'title': 'Aan te vragen film'},
+        ],
+      });
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (client, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+
+    final state = key.currentState!;
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(find.text('Movie 1'), findsOneWidget);
+    expect(fake.sent('GET', '/search'), isEmpty, reason: 'still typing');
+
+    // The inline keyboard is driven with the focus on the input, so "below the
+    // keyboard" is any control of the results area.
+    bool belowKeyboard() => FocusManager.instance.primaryFocus?.debugLabel != 'SearchInput';
+    Future<void> downToResults() async {
+      for (var i = 0; i < 8 && !belowKeyboard(); i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        await tester.pumpAndSettle();
+      }
+      expect(belowKeyboard(), isTrue, reason: 'the remote reaches the results without the search key');
+    }
+
+    expect(belowKeyboard(), isFalse, reason: 'the focus starts on the keyboard');
+    await downToResults();
+    expect(fake.sent('GET', '/search').map((c) => c.query['query']), ['movie']);
+    expect(find.text('Aan te vragen film'), findsWidgets, reason: 'the requests band is there');
+
+    // Back up to the keyboard and down again: the same query is not asked twice.
+    for (var i = 0; i < 8 && belowKeyboard(); i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+    }
+    expect(belowKeyboard(), isFalse);
+    await downToResults();
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    // A letter typed and deleted again leaves the band of the settled query.
+    (state as SearchInputFocusable).setSearchQuery('movies');
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    await tester.pumpAndSettle();
+    expect(find.text('Aan te vragen film'), findsWidgets);
+    // The same library search again (a metadata refresh) brings the band back.
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(2));
+    expect(find.text('Aan te vragen film'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('the row at rest is the titles that were opened, not the queries that were typed (36 A)', (tester) async {
     // Mockup 36 A. `search_history` still holds the query strings, and desktop
     // and mobile still draw them as chips; TV draws what those queries were
@@ -246,6 +350,30 @@ void main() {
     (key.currentState! as FullRefreshable).fullRefresh();
     await tester.pumpAndSettle();
     expect(find.text('Andor'), findsOneWidget, reason: 'the parent gets its own row back');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("TV: a profile switch drops the query the previous profile settled on", (tester) async {
+    final fake = FakeSeerr()..on('GET /search', {'page': 1, 'totalPages': 1, 'results': const []});
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (_, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+
+    final state = key.currentState!;
+    (state as SearchInputFocusable).submitSearchQuery('movie');
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(1), reason: 'the first profile submitted it');
+
+    (state as FullRefreshable).fullRefresh();
+    await tester.pumpAndSettle();
+
+    // The next profile types the same word and has not chosen anything yet.
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(1));
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -1294,7 +1422,10 @@ class _ProgrammableClient implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchScreen(WidgetTester tester) async {
+Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchScreen(
+  WidgetTester tester, {
+  SeerrProvider? seerr,
+}) async {
   TvDetectionService.debugSetAppleTVOverride(null);
   await TvDetectionService.getInstance(forceTv: true);
   TvDetectionService.setForceTVSync(true);
@@ -1330,6 +1461,7 @@ Future<(_FakeMediaServerClient, GlobalKey<State<SearchScreen>>)> _pumpTvSearchSc
         providers: [
           ChangeNotifierProvider<MultiServerProvider>.value(value: provider),
           ChangeNotifierProvider<HiddenLibrariesProvider>.value(value: hiddenLibraries),
+          if (seerr != null) ChangeNotifierProvider<SeerrProvider>.value(value: seerr),
         ],
         child: MaterialApp(
           theme: monoTheme(dark: true),

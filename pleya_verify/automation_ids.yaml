@@ -249,6 +249,12 @@ ids:
   - id: bigp.input
     role: field
     instanceable: false
+  - id: bigp.send
+    role: button
+    instanceable: false
+  - id: dialog.input.button
+    role: button
+    instanceable: true
   - id: bigp.newConversation
     role: button
     instanceable: false

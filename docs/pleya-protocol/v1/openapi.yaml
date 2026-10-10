@@ -1026,6 +1026,35 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500": { $ref: "#/components/responses/InternalError" }
 
+  /libraries/{library_id}/adopt:
+    post:
+      tags: [administration]
+      operationId: adoptLibrary
+      summary: Neem een bibliotheek uit de omgevingsvariabele over in de database.
+      description: |
+        Klasse `admin`. Zet `managed` van `config` naar `db`, met dezelfde id
+        en dezelfde slug; items, kijkstatus en roots blijven wat ze waren.
+        Daarna negeert de server de regel in `PLEYA_SERVER_LIBRARIES` voor
+        deze bibliotheek en meldt dat bij het opstarten in de logs.
+
+        Geen aanvraagbody. Raakt het bestandssysteem niet.
+      parameters:
+        - $ref: "#/components/parameters/LibraryId"
+      responses:
+        "200":
+          description: De overgenomen bibliotheek, nu met managed db.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Library" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409":
+          description: library.not_config_managed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
   /libraries/{library_id}/scan:
     post:
       tags: [administration]

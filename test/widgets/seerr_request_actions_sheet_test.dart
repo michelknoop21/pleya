@@ -224,6 +224,60 @@ void main() {
     });
   });
 
+  testWidgets('without an overlay host, the opening control keeps its focus node until the menu has left', (
+    tester,
+  ) async {
+    // A hostless screen shows the menu as a route. Its future completes at the
+    // pop, while the closing animation still builds the controls.
+    tester.view.physicalSize = _screen;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: monoTheme(dark: true),
+          home: InputModeTracker(
+            child: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showSeerrRequestActionsSheet(
+                    context,
+                    request: _request,
+                    rights: SeerrRequestRights.of(_request, ownUserId: 7, canManage: true, isAdmin: true),
+                    isOwn: true,
+                  ),
+                  child: const Text('card'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('card'));
+    await tester.pumpAndSettle();
+    final node = tester.widget<SeerrRequestActionsSheet>(find.byType(SeerrRequestActionsSheet)).initialFocusNode!;
+    bool disposed() {
+      try {
+        ChangeNotifier.debugAssertNotDisposed(node);
+        return false;
+      } on FlutterError {
+        return true;
+      }
+    }
+
+    await tester.tap(find.text(t.common.close));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byType(SeerrRequestActionsSheet), findsOneWidget, reason: 'the menu is still animating out');
+    expect(disposed(), isFalse, reason: 'a control that is still built must not hold a disposed node');
+
+    await tester.pumpAndSettle();
+    expect(find.byType(SeerrRequestActionsSheet), findsNothing);
+    expect(disposed(), isTrue, reason: 'and it is not left behind once the menu is gone');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Menu closes it without a choice', (tester) async {
     final result = await openMenu(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);

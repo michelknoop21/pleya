@@ -1,8 +1,10 @@
 # Ontwerpvoorstel PS-14: e-bookcatalogus en inhoud
 
-**Status:** **goedgekeurd 3 september 2026 met zeven bindende beslissingen.** De implementatie is
-**geblokkeerd op PS-9**: PS-14 is niet actief en er komt geen PS-14-productiecode voordat PS-9
-formeel gesloten is. "Goedgekeurd" is hier uitdrukkelijk niet "vrijgegeven voor uitvoering"
+**Status:** **vrijgegeven voor uitvoering op 10 oktober 2026**, zie
+[DEC-149](DECISIONS.md#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet).
+Het ontwerp is goedgekeurd op 3 september 2026 met zeven bindende beslissingen; de tekst hieronder is
+dat ontwerp zoals het toen werd vastgelegd, ook waar hij zegt dat PS-14 geblokkeerd is op PS-9 en niet
+is vrijgegeven.
 **Datum:** 3 september 2026
 **Auteur:** Michel Knoop
 **Betreft:** vrijgave van **PS-14**, vastgelegd als fase in
@@ -33,7 +35,8 @@ openliet, staat nu het besluit.
 Het legt het ontwerp van PS-14 vast, en dat ontwerp is goedgekeurd. Wat het niet doet is de fase
 openen. PS-14 is goedgekeurd en geblokkeerd op PS-9, en die twee woorden horen bij elkaar te blijven
 staan: een fase die "goedgekeurd" heet en waarvan de blokkade in een voetnoot verdwijnt, is precies
-de gate-erosie waarvoor de fasestructuur bestaat.
+de gate-erosie waarvoor de fasestructuur bestaat. *(Bijgesteld 10 oktober 2026 door
+[DEC-149](DECISIONS.md): PS-14 is vrijgegeven.)*
 
 Eén stuk werk mag wél nu al, en het is geen PS-14-werk: de defectfix uit
 [beslissing 1](#14-de-zeven-bindende-beslissingen).
@@ -714,6 +717,7 @@ schermafbeeldingen blijven het bewijs; de proxy is het instrument. Uitwerking in
 **6. PS-14 is goedgekeurd en niet actief.** De status is "goedgekeurd, geblokkeerd op PS-9" en
 uitdrukkelijk niet "vrijgegeven voor uitvoering". Geen PS-14-productiecode totdat PS-9 formeel
 gesloten is. Dat voorkomt de parallelle gate-erosie waarvoor de fasestructuur bestaat.
+*(Bijgesteld 10 oktober 2026 door [DEC-149](DECISIONS.md): PS-14 is vrijgegeven.)*
 
 **7. Acceptatiecriteria 5, 6 en 7 worden canoniek onderdeel van de PS-14-fasetabel.** Geen ffprobe
 op boeken, een correcte `item_count` voor `books`, en `check_protocol.sh` volledig groen met het

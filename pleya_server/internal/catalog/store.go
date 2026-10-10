@@ -65,22 +65,46 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 
 		// managed is expliciet 'config' en niet de kolomdefault: dit is het pad
 		// dat de omgeving synct, en de default bestaat voor een rij die buiten dit
-		// pad om wordt ingevoegd. S2.5 moet deze ON CONFLICT DO UPDATE nog een
-		// guard geven zodat een via de API geadopteerde ('db') bibliotheek hier niet
-		// weer wordt overschreven; vandaag bestaat dat pad nog niet, dus die guard
-		// zou vooruitbouwen zonder een aanroeper.
+		// pad om wordt ingevoegd. De WHERE-guard laat een via POST
+		// /libraries/{id}/adopt overgenomen ('db') bibliotheek met rust. De
+		// overname zelf vraagt geen .env-bewerking, maar de regel moet daarna uit
+		// de .env worden verwijderd: anders blijft hij genegeerd, en bij DELETE
+		// plus herstart komt de bibliotheek met een nieuwe id terug. De rij,
+		// titel, soort en roots zijn van de database.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO libraries (id, slug, title, kind, managed)
 			VALUES ($1, $2, $3, $4, 'config')
 			ON CONFLICT (slug) DO UPDATE
 			SET title = EXCLUDED.title, kind = EXCLUDED.kind, updated_at = now()
+			WHERE libraries.managed = 'config'
 			RETURNING id`, id.New(), spec.Slug, spec.Title, spec.Kind).Scan(&lib.ID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// De guard sloeg toe: de bibliotheek is overgenomen. Zelfde id en slug
+			// terug, zonder iets te schrijven, en de roots van de .env-regel worden
+			// niet opnieuw geclaimd. Titel, soort en scaninstellingen komen uit de
+			// database: de .env-regel wordt genegeerd, dus zijn waarden ook.
+			if err := tx.QueryRow(ctx, `
+				SELECT id, title, kind, managed, scan_interval_seconds, scan_on_start
+				FROM libraries WHERE slug = $1`, spec.Slug).
+				Scan(&lib.ID, &lib.Title, &lib.Kind, &lib.Managed,
+					&lib.ScanIntervalSeconds, &lib.ScanOnStart); err != nil {
+				return nil, fmt.Errorf("bibliotheek %q lezen: %w", spec.Slug, err)
+			}
+			out = append(out, lib)
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("bibliotheek %q vastleggen: %w", spec.Slug, err)
 		}
 
+		// Een root wisselt alleen van eigenaar als de huidige eigenaar zelf een
+		// config-bibliotheek is (S2.7). Is hij van een db-bibliotheek, dan slaat
+		// de WHERE-guard de update over, geeft RETURNING geen rij, en blijft de
+		// root waar hij was, inclusief zijn laatste meting. Een root zonder
+		// eigenaar heeft geen conflict en wordt gewoon ingevoegd.
 		for _, root := range spec.Roots {
-			if _, err := tx.Exec(ctx, `
+			var rootID id.ID
+			err := tx.QueryRow(ctx, `
 				INSERT INTO storage_locations (id, library_id, root_path, fs_type, inode_trusted, inode_trust_source, last_seen_at)
 				VALUES ($1, $2, $3, $4, $5, $6, now())
 				ON CONFLICT (root_path) DO UPDATE
@@ -88,9 +112,17 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 				    fs_type = EXCLUDED.fs_type,
 				    inode_trusted = EXCLUDED.inode_trusted,
 				    inode_trust_source = EXCLUDED.inode_trust_source,
-				    last_seen_at = now()`,
+				    last_seen_at = now()
+				WHERE (SELECT l.managed FROM libraries l
+				        WHERE l.id = storage_locations.library_id) = 'config'
+				RETURNING id`,
 				id.New(), lib.ID, root.Path, nullString(root.FSType),
-				root.InodeTrusted, root.TrustSource); err != nil {
+				root.InodeTrusted, root.TrustSource).Scan(&rootID)
+			if errors.Is(err, pgx.ErrNoRows) {
+				lib.SkippedRoots = append(lib.SkippedRoots, root.Path)
+				continue
+			}
+			if err != nil {
 				return nil, fmt.Errorf("root %s vastleggen: %w", root.Path, err)
 			}
 		}

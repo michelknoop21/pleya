@@ -125,6 +125,7 @@ ernaast.
 | `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
 | `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd; voor een admin drie velden erbij (S2.2) |
 | `POST /pleya/v1/libraries`, `PATCH`/`DELETE /libraries/{id}` | admin |
+| `POST /pleya/v1/libraries/{id}/adopt` | admin; neemt een bibliotheek uit `PLEYA_SERVER_LIBRARIES` over in de database, zelfde id en slug (S2.5); haal de regel daarna uit `.env` (zie stap 3) |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
@@ -159,11 +160,11 @@ Zijn bereik (`read`, `maintenance`, `admin`) kan nooit boven de rol van de eigen
 adminklasse ook wanneer de rol hem wel haalt.
 
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
-afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (S2.5 en S2.6). Die geven een 404, en
+afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer die nog niet gebouwd is. Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
-capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
-venster 1 sluit.
+`watch_state_ownership`, `stream_sessions`, `users`, `sessions`, `api_tokens`, `cookie_auth` en
+`administration` staan op `true`, en capabilities is leidend. `administration` staat aan sinds S1.6,
+voor het beheeroppervlak van S1.2 tot en met S1.5; `cookie_auth` sinds S1.8.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
 `206`; **meerdere bereiken leveren het hele bestand als `200`**, want `multipart/byteranges` wordt
@@ -231,6 +232,17 @@ Een eigen titel kan ertussen: `films="Onze films"=movies:/media/library/Films`.
 **De slug is de matchsleutel**, niet de titel en niet het pad. Daarom overleeft een bibliotheek een
 hernoeming en een verplaatste root met zijn ids intact. Een nieuwe slug is een nieuwe bibliotheek,
 met nieuwe ids voor alles eronder.
+
+**Na een overname hoort de regel weg.** `POST /libraries/{id}/adopt` (S2.5) zet een bibliotheek uit
+deze lijst in de database, met dezelfde id en slug. Daarna slaat de server de regel met die slug bij
+elke herstart over, maar de rest van de lijst niet. Geeft u de regel een andere slug, of noemt een
+andere regel een root van de overgenomen bibliotheek, dan blijft die root waar hij is: de sync laat
+een root alleen van eigenaar wisselen als die eigenaar zelf uit `.env` komt (S2.7). In de startlog
+staat dan per root een regel met de slug en het pad, zodat u ziet welke `.env`-regel u nog kunt
+opruimen. Verwijdert u de
+overgenomen bibliotheek terwijl de regel er nog staat, dan komt ze bij de volgende herstart leeg
+terug, met een nieuwe id. Terug van database naar `.env` gaat alleen via `DELETE` plus een herstart
+met de regel, en dan bent u items, kijkstatus en scanrondes van die bibliotheek kwijt.
 
 **Wat `.env` wel en niet doet.** Het houdt de credential uit Git. Het verbergt hem niet voor een
 Docker-beheerder: `docker inspect pleya-server` toont de environment van de container. Voor een

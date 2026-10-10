@@ -57,6 +57,32 @@ final _daysWord = RegExp(r'\b(\d{1,2})\s*(?:dagen|days)\b');
 final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 hours)\b');
 // "Last week" and "vorige week" are the week before, not the past seven days.
 final _week = RegExp(r'\b(deze week|afgelopen week|laatste week|this week|past week)\b');
+// "What was added to the libraries", not "what I added to my list".
+final _added = RegExp(
+  r'\b(toegevoegde?|(?:er\s?)?bij\s?gekomen|nieuwe toevoegingen|(?:newly|recently|just) added|added (?:this|last|in the)|new additions|recent additions|was added|got added|been added)\b',
+);
+final _addedElsewhere = RegExp(
+  r'\b(radarr|sonarr|requests?|aanvragen?|verzoeken|toegevoegde waarde|added value|kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?|afspeellijst|playlist|collectie|collection|wachtrij|queue|downloads?)\b',
+);
+// A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
+final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
+// "everyone else watched": a named group with its own verb, a clause of its own.
+final _othersElseWatch = RegExp(
+  r'\b(?:everyone else|everybody else|other users|andere gebruikers)\s+(?:\w+\s+){0,2}' + _watch,
+);
+// Words that make the two halves one relational question, not two lists.
+final _relational = RegExp(
+  r'\b(samen|together|both|allebei|beiden|ook|also|niet|not|nog niet|never|nooit|geen|but|except|behalve|same|zelfde|'
+  r'die|dat|that|waar|where)\b',
+);
+// A second sentence inside one half.
+final _sentenceBreak = RegExp(r'[.?!]\s*\S');
+// A pronoun or demonstrative that points back at an earlier turn.
+final _refersBack = RegExp(
+  r'\b(daarvan|daarvoor|daarbij|daarin|hiervan|ervan|die|dat|deze|dit|ze|zij|hij|hun|that|those|these|them|they|their|it|its|this)\b',
+);
+// The word between two clauses of one sentence.
+final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?:en|and|maar|but|plus)\b)\s*');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -70,6 +96,8 @@ class AssistantIntent {
     this.days = const IntentField.unknown(),
     this.previousWeek = false,
     this.mixedAudience = false,
+    this.addedToLibraries = false,
+    this.longPeriodAsked = false,
   });
 
   final IntentField<AssistantAudience> audience;
@@ -85,6 +113,14 @@ class AssistantIntent {
   /// The question asks about more than one audience at once; neither is fixed,
   /// and the model must not answer only one of them.
   final bool mixedAudience;
+
+  /// The question is about what was added to the libraries, so watch history
+  /// and server lists are the wrong tools and the period belongs to the catalog.
+  /// Not inherited: a child task decides by its own words.
+  final bool addedToLibraries;
+
+  /// A period in weeks or months that days cannot express.
+  final bool longPeriodAsked;
 
   static const unknown = AssistantIntent();
 
@@ -118,12 +154,69 @@ class AssistantIntent {
     return AssistantIntent(
       previousWeek: _previousWeek.hasMatch(p),
       mixedAudience: readings.length > 1,
+      addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
+      longPeriodAsked: _longPeriod.hasMatch(p),
       audience: audience == null ? const IntentField.unknown() : IntentField(audience, AssistantFieldSource.explicit),
       kind: kind == null ? const IntentField.unknown() : IntentField(kind, AssistantFieldSource.explicit),
       days: days == null || days < 1 || days > 31
           ? const IntentField.unknown()
           : IntentField(days, AssistantFieldSource.explicit),
     );
+  }
+
+  /// The two clauses of a question that asks about two audiences at once ("what
+  /// did I watch and what did the others"), or null. Cut only when it is plainly
+  /// two separate questions: two different audiences, each clause with its own
+  /// watch verb, one joiner between them and none left inside a clause, no
+  /// relational or negating word ("together", "not yet seen"), and a stated kind
+  /// that both clauses carry. Anything less is left to the model, never cut by a
+  /// guess.
+  /// True when [prompt] points back at an earlier answer ("daarvan", "those").
+  static bool refersBack(String prompt) => _refersBack.hasMatch(prompt.toLowerCase());
+
+  static List<String>? splitMixedAudience(String prompt) {
+    final p = prompt.toLowerCase();
+    // Offsets are used on [prompt]: a lowercase that changed the length is no cut.
+    if (p.length != prompt.length || _relational.hasMatch(p)) return null;
+    final spans = <(int, int, AssistantAudience)>[];
+    void add(RegExp re, AssistantAudience a) {
+      final m = re.firstMatch(p);
+      if (m != null) spans.add((m.start, m.end, a));
+    }
+
+    // A verbless "others" ("everyone else", "without me") is no clause of its own.
+    if (_notOthers.hasMatch(p) || _exceptName.hasMatch(p)) return null;
+    final elseWatch = _othersElseWatch.firstMatch(p);
+    if (_othersFixed.hasMatch(p) && elseWatch == null) return null;
+    add(_othersWatch, AssistantAudience.others);
+    if (elseWatch != null && spans.isEmpty) spans.add((elseWatch.start, elseWatch.end, AssistantAudience.others));
+    add(_meWatch, AssistantAudience.me);
+    if (elseWatch == null) add(_everyoneWatch, AssistantAudience.everyone);
+    if (spans.length != 2 || spans[0].$3 == spans[1].$3) return null;
+    spans.sort((a, b) => a.$1.compareTo(b.$1));
+    if (spans[1].$1 < spans[0].$2) return null;
+    final gap = p.substring(spans[0].$2, spans[1].$1);
+    final joins = _clauseJoin.allMatches(gap).toList();
+    if (joins.length != 1) return null;
+    final cut = joins.single;
+    String tidy(String s) => s.replaceAll(RegExp(r'^[\s,;]+|[\s,;]+$'), '');
+    final first = tidy(prompt.substring(0, spans[0].$2 + cut.start));
+    final second = tidy(prompt.substring(spans[0].$2 + cut.end));
+    if (first.isEmpty || second.isEmpty) return null;
+    // Both halves are one question each: a verb of their own, no joiner inside,
+    // and the same kind (a kind named in one half only would widen the other).
+    for (final clause in [first, second]) {
+      final lower = clause.toLowerCase();
+      if (!RegExp(_watch).hasMatch(lower) || _clauseJoin.hasMatch(lower) || _sentenceBreak.hasMatch(lower)) {
+        return null;
+      }
+    }
+    final whole = AssistantIntent.fromPrompt(prompt).kind;
+    if (whole.explicit &&
+        !(AssistantIntent.fromPrompt(first).kind.explicit && AssistantIntent.fromPrompt(second).kind.explicit)) {
+      return null;
+    }
+    return [first, second];
   }
 
   /// This intent, with the audience and period the question did not state itself
@@ -137,6 +230,8 @@ class AssistantIntent {
     days: days.known ? days : (parent.days.explicit ? parent.days : days),
     previousWeek: previousWeek || parent.previousWeek,
     mixedAudience: mixedAudience,
+    addedToLibraries: addedToLibraries,
+    longPeriodAsked: longPeriodAsked,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -147,7 +242,19 @@ class AssistantIntent {
   ({Map<String, Object?> args, String? error}) constrain(String tool, Map<String, Object?> args) {
     final out = {...args};
     switch (tool) {
+      case 'list_servers':
+        if (addedToLibraries) return (args: out, error: 'use_search_catalog');
+      case 'search_catalog':
+        if (addedToLibraries && previousWeek) return (args: out, error: 'previous_week_not_supported');
+        if (addedToLibraries) {
+          if (longPeriodAsked && !mixedAudience && !audience.known) return (args: out, error: 'window_not_supported');
+          // The period is the additions' only when no other clause (a watch
+          // question) could own it.
+          if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
+        }
+        if (addedToLibraries && kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
       case 'watch_stats':
+        if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.
         if (audience.explicit && audience.value == AssistantAudience.me) {
           return (args: out, error: 'use_my_watching');
@@ -184,6 +291,9 @@ class AssistantIntent {
       if (mixedAudience)
         'The question covers more than one audience (for example the asker and the others): '
             'answer each part with its own tool call and say so, never only one part.',
+      if (addedToLibraries)
+        'The question is about what was added to the libraries: use search_catalog with added_within_days, '
+            'never watch history or the server list.',
       if (previousWeek)
         'The question is about the calendar week before this one, which the tools cannot give: '
             'say so and offer the last 7 days instead; do not present another window as that week.',

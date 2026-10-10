@@ -1,8 +1,8 @@
 # Requests 2.0, voorstelset A-20
 
 **Status: ONTWERP GOEDGEKEURD, 8 oktober 2026.** Michel Knoop heeft de volledige set met
-alle zeven keuzes hieronder goedgekeurd, onder voorwaarde van Impeccable polish. Opus heeft
-de polish uitgevoerd; de onafhankelijke review en documentfixreview zijn akkoord. Daarmee
+alle zeven keuzes hieronder goedgekeurd, onder voorwaarde van Impeccable polish. De polish
+is uitgevoerd; de onafhankelijke review en documentfixreview zijn akkoord. Daarmee
 is de ontwerpvoorwaarde vervuld en kan A-21 binnen de bestaande WIP- en reviewgates starten.
 Niets in deze map is appimplementatie, simulatoracceptatie of hardwareacceptatie.
 

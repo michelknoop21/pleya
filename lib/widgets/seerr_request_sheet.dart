@@ -13,6 +13,7 @@ import '../providers/seerr_provider.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
 import '../theme/mono_tokens.dart';
+import '../utils/app_logger.dart';
 import 'app_icon.dart';
 import 'bottom_sheet_page_scaffold.dart';
 import 'focusable_list_tile.dart';
@@ -28,7 +29,8 @@ part 'seerr_request_sheet_rows.dart';
 /// Movie = single confirm. TV = per-season multi-select (already
 /// available/requested seasons shown with their status, not selectable). The
 /// 4K switch shows when the user holds the 4K right for this media type, and a
-/// line says so when they do not. Admins get the target section (server,
+/// line says so when they do not. A requester sends no server along, so the
+/// switch also needs a default 4K instance to exist. Admins get the target section (server,
 /// quality profile, root folder). Returns `true` from [show] when a request
 /// was filed.
 ///
@@ -48,18 +50,42 @@ class SeerrRequestSheet extends StatefulWidget {
   /// route, for a caller that has nowhere to send it.
   final VoidCallback? onOpenMyRequests;
 
-  const SeerrRequestSheet({super.key, required this.media, this.onRequested, this.onOpenMyRequests});
+  /// The requests the caller's page lists for this title. The way to the
+  /// viewer's own requests is only offered for a request that is in here under
+  /// the viewer's own id: a title someone else asked for is not in that list.
+  final List<SeerrRequest> requests;
+
+  /// Opens the form on 4K, for a caller whose button said so. Ignored for a
+  /// profile without the 4K right for this media type.
+  final bool initialIs4k;
+
+  const SeerrRequestSheet({
+    super.key,
+    required this.media,
+    this.onRequested,
+    this.onOpenMyRequests,
+    this.initialIs4k = false,
+    this.requests = const [],
+  });
 
   static Future<bool?> show(
     BuildContext context, {
     required SeerrMedia media,
     VoidCallback? onRequested,
     VoidCallback? onOpenMyRequests,
+    bool initialIs4k = false,
+    List<SeerrRequest> requests = const [],
   }) {
     return OverlaySheetController.showAdaptive<bool>(
       context,
       isScrollControlled: true,
-      builder: (_) => SeerrRequestSheet(media: media, onRequested: onRequested, onOpenMyRequests: onOpenMyRequests),
+      builder: (_) => SeerrRequestSheet(
+        media: media,
+        onRequested: onRequested,
+        onOpenMyRequests: onOpenMyRequests,
+        initialIs4k: initialIs4k,
+        requests: requests,
+      ),
     );
   }
 
@@ -94,6 +120,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
 
   SeerrQuota? _quota;
   SeerrMediaStatus _status = SeerrMediaStatus.unknown;
+
+  /// The title's 4K status, null while Seerr has not said what it is.
+  SeerrMediaStatus? _status4k;
   late final SeerrTargetController _target = SeerrTargetController(isTv: _isTv);
 
   /// The client this sheet loaded with. A profile switch swaps it, and from
@@ -117,6 +146,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   void initState() {
     super.initState();
     _status = widget.media.status;
+    _status4k = widget.media.status4k;
   }
 
   @override
@@ -158,6 +188,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       setState(() => _loading = false);
       return;
     }
+    _is4k = widget.initialIs4k && provider.canRequest4kFor(isMovie: !_isTv);
+    // An admin chooses the server. Anyone else sends the request without one,
+    // so the list is read to know where it would go. It loads beside the rest
+    // and never throws; the form stays on the spinner until it is in, so
+    // nothing can be sent before the answer.
+    final targetLoaded = _target.load(client, is4k: _is4k, listOnly: !provider.isAdmin);
     try {
       if (_isTv) {
         final detail = await client.getTv(widget.media.tmdbId);
@@ -178,9 +214,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         if (!mounted || !_live(client)) return;
         _quota = quota;
       }
-      if (provider.isAdmin) {
-        await _target.load(client, is4k: _is4k);
-        if (!mounted || !_live(client)) return;
+      await targetLoaded;
+      if (!mounted || !_live(client)) return;
+      // Opened on 4K by a caller, with no default 4K instance to take it.
+      if (_is4k && !_canOffer4k(provider)) {
+        _is4k = false;
+        if (_isTv) _selectAllRequestable();
       }
       setState(() => _loading = false);
     } on SeerrException catch (e) {
@@ -211,8 +250,33 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       ..addAll(_requestable.map((s) => s.seasonNumber));
   }
 
-  // Movies: block a duplicate request the server would reject with 409.
-  bool get _isMovieRequestable => !_status.isAvailable && !_status.isRequested;
+  // Movies: block a duplicate request the server would reject with 409. HD and
+  // 4K are separate requests, so each is judged on its own status. No 4K
+  // status at all leaves 4K on offer, and the server decides.
+  bool _isMovieRequestableIn({required bool is4k}) {
+    final status = is4k ? _status4k : _status;
+    return status == null || (!status.isAvailable && !status.isRequested);
+  }
+
+  bool get _isMovieRequestable => _isMovieRequestableIn(is4k: _is4k);
+
+  /// The viewer's own request for this title, in [is4k] when a quality is
+  /// named. The same rule as the title page: only then is there something in
+  /// the viewer's own list to open.
+  bool _hasOwnRequest({bool? is4k}) =>
+      SeerrRequest.anyOwn(widget.requests, context.read<SeerrProvider>().session?.userId, is4k: is4k);
+
+  /// A film whose chosen quality the viewer already asked for, on a form that
+  /// only stands for the other quality: the button that could not send anyway
+  /// is the way to that request, as it is on the end state. Someone else's
+  /// request leaves the disabled button and the line that says why.
+  bool get _offersMineInsteadOfSubmit =>
+      !_isTv &&
+      !_locked &&
+      _refusal == null &&
+      widget.onOpenMyRequests != null &&
+      ((_is4k ? _status4k : _status)?.isRequested ?? false) &&
+      _hasOwnRequest(is4k: _is4k);
 
   ({int? remaining, int? limit}) get _quotaForType {
     final q = _quota;
@@ -236,7 +300,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       !_quotaExhausted &&
       !_target.missingServerForQuality &&
       !_target.detailLoading &&
+      !_hasNowhereToGo &&
       (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
+
+  /// No server goes along and the request server has no default instance of
+  /// this quality to route to: approved, the request would stay where it is.
+  bool get _hasNowhereToGo => _target.target == null && !_target.routesWithoutServer(is4k: _is4k);
 
   String _mapError(SeerrException e) {
     if (e.isForbidden) return t.seerr.errorForbidden;
@@ -273,7 +342,6 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         rootFolder: target?.rootFolder,
       );
       if (!mounted || !_live(client)) return;
-      _confirm();
     } on SeerrException catch (e) {
       if (!mounted || !_live(client)) return;
       setState(() {
@@ -288,6 +356,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
           _error = e.message.startsWith('HTTP') ? t.seerr.requestFailed : e.message;
         }
       });
+      return;
     } catch (_) {
       // Something broke after the request left. That is not proof it failed.
       if (!mounted || !_live(client)) return;
@@ -295,7 +364,11 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         _submitting = false;
         _uncertain = true;
       });
+      return;
     }
+    // Outside the try: the server has confirmed, and a caller whose callback
+    // throws must not turn that into an open outcome.
+    _confirm();
   }
 
   void _confirm() {
@@ -305,7 +378,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       _uncertain = false;
       _done = true;
     });
-    widget.onRequested?.call();
+    // The request is confirmed whatever the caller does with the news.
+    try {
+      widget.onRequested?.call();
+    } catch (e, stack) {
+      appLogger.w('Seerr request confirmed, but the onRequested callback threw', error: e, stackTrace: stack);
+    }
   }
 
   /// Reads the title back after a request whose outcome is unknown.
@@ -364,6 +442,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       _uncertain = false;
       _sent = null;
       _status = detail.media.status;
+      _status4k = detail.media.status4k;
       if (_isTv) {
         _seasons = seasons;
         _selectedSeasons.removeWhere((n) => !_requestable.any((s) => s.seasonNumber == n));
@@ -464,21 +543,62 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     // instead of a dead-end sheet with a permanently disabled button.
     final nothingRequestable = _isTv
         ? !_seasons.any(_isSeasonRequestable) && !_canOffer4k(provider)
-        : !_isMovieRequestable;
+        : !_isMovieRequestableIn(is4k: false) && !(_canOffer4k(provider) && _isMovieRequestableIn(is4k: true));
     if (nothingRequestable && _error == null) {
       final available = _status.isAvailable;
       return _terminal(
         SeerrFormNotice(kind: 'duplicate', title: available ? t.seerr.available : t.seerr.alreadyRequested),
-        offerMine: !available,
+        offerMine: !available && _hasOwnRequest(),
       );
     }
 
     final theme = Theme.of(context);
     // Cap the sheet so a long season list (20+ seasons) scrolls inside the sheet
-    // instead of pushing the Request button off-screen. The messages and the
-    // buttons stay pinned below the scroll area so they're always reachable.
+    // instead of pushing the Request button off-screen. The buttons stay
+    // pinned below the scroll area so they're always reachable.
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
     final locked = _locked;
+    // Why the form cannot send as it stands. These open the scroll area, so
+    // they are read before the choices and never take room from the buttons
+    // on a small screen with large text.
+    final standing = [
+      // An admin's 4K without any 4K server is said by the target section.
+      if (_hasNowhereToGo && !_target.detailLoading && !_target.missingServerForQuality)
+        SeerrFormNotice(
+          kind: 'route',
+          title: t.seerr.noDefaultServerTitle,
+          body: t.seerr.noDefaultServerBody,
+          tone: SeerrFormNoticeTone.warning,
+        ),
+      if (_quotaExhausted)
+        SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
+      // A film whose chosen quality is taken while the other one is open:
+      // the form stays for the 4K switch, and says why it cannot send yet.
+      if (!_isTv && !_isMovieRequestable && _refusal == null && !_uncertain)
+        SeerrFormNotice(
+          kind: 'duplicate',
+          title: (_is4k ? _status4k : _status)?.isAvailable ?? false ? t.seerr.available : t.seerr.alreadyRequested,
+        ),
+    ];
+    // What the server said about a request that was sent. Pinned above the
+    // buttons, and scrolling on its own when it outgrows its share.
+    final outcome = [
+      if (_uncertain)
+        SeerrFormNotice(
+          kind: 'uncertain',
+          title: t.seerr.requestUncertainTitle,
+          body: t.seerr.requestUncertainBody,
+          tone: SeerrFormNoticeTone.warning,
+        ),
+      if (_refusal case final refusal?)
+        SeerrFormNotice(
+          kind: 'refused',
+          title: t.seerr.requestRefusedTitle,
+          body: refusal == _Refusal.duplicate ? t.seerr.requestRefusedDuplicate : t.seerr.requestRefusedForbidden,
+          tone: SeerrFormNoticeTone.error,
+        ),
+      if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
+    ];
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
       child: Column(
@@ -491,6 +611,10 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               padding: EdgeInsets.zero,
               children: [
                 _quotaLine(theme),
+                // One slot whether it holds a message or not: a row that comes
+                // and goes would renumber the rows below it, and the row that
+                // holds the focus would be rebuilt without it.
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: standing),
                 if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
                 _fourKRow(provider, enabled: !locked),
                 if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
@@ -498,23 +622,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               ],
             ),
           ),
-          if (_quotaExhausted)
-            SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
-          if (_uncertain)
-            SeerrFormNotice(
-              kind: 'uncertain',
-              title: t.seerr.requestUncertainTitle,
-              body: t.seerr.requestUncertainBody,
-              tone: SeerrFormNoticeTone.warning,
+          if (outcome.isNotEmpty)
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: outcome),
+              ),
             ),
-          if (_refusal case final refusal?)
-            SeerrFormNotice(
-              kind: 'refused',
-              title: t.seerr.requestRefusedTitle,
-              body: refusal == _Refusal.duplicate ? t.seerr.requestRefusedDuplicate : t.seerr.requestRefusedForbidden,
-              tone: SeerrFormNoticeTone.error,
-            ),
-          if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
           _uncertain
               ? SeerrFormButtons(
                   closeLabel: t.common.close,
@@ -524,6 +637,15 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
                   primaryInstance: 'status',
                   onPrimary: _checkStatus,
                   busy: _checking,
+                )
+              : _offersMineInsteadOfSubmit
+              ? SeerrFormButtons(
+                  closeLabel: t.common.close,
+                  onClose: _close,
+                  primaryLabel: t.seerr.myRequests,
+                  primaryIcon: Symbols.inbox_rounded,
+                  primaryInstance: 'mine',
+                  onPrimary: _openMyRequests,
                 )
               : SeerrFormButtons(
                   closeLabel: t.common.cancel,

@@ -1,5 +1,23 @@
 # STATUS · Pleya
 
+## Stand 10 oktober 2026
+
+**S2 is gesloten en daarmee golf 1.** S2.5 (`POST /libraries/{id}/adopt`, `SyncLibraries` laat een
+overgenomen bibliotheek met rust, het opstarten logt dat de `.env`-regel wordt genegeerd) en S2.6
+(migratietest op de NAS-vangst, protocolvenster 2 dicht met DEC-146) zijn gereed op
+`feat/pleya-server-s2-sluiten`, vanaf `origin/main` `347ef589`. Bewijs: volledige Go-suite groen in de
+gepinde image, `verify-protocol.sh` (30 schema's gedekt), `check_protocol.sh` (acht foutdomeinen),
+`check-api-types.sh`, `svelte-check` 0 fouten en 115 webtests. De Dart-contracttest en `ci_checks.sh`
+zijn niet lokaal gedraaid (geen gepinde Flutter-SDK in deze sessie); CI beslist.
+
+De masterlijst is gereconcilieerd: loudness (`0011`), `GET /watch-history` (DEC-143) en de
+migratiereparatie `0012` staan in hoofdstuk 3a. De CSP-fix voor Kits route-announcer lag sinds 7
+september alleen op `feat/pleyaserver` en is als PR #219 naar `main` gegaan.
+
+Volgende stap: S7 (webshell en designsysteem) of S4 (sidecars en artworkladder), de twee slices die
+geen vrijgave vragen. S3 (boeken) wacht op PS-11A geïntegreerd (S7, S10, S11) en een vrijgavebesluit
+(DEC-129); S5 hangt aan S3 en wacht dus mee.
+
 ## Stand 24 september 2026
 
 S2.4 is gereed op `integration/pleya-server-completion`: scans en jobs over HTTP (zes endpoints), annuleren
@@ -151,7 +169,7 @@ is dicht en er staat er nu geen open.
 
 **S0 is gesloten (4 september, avond).** De acht taken van de eerste slice staan alle op gereed en
 poort P9 is groen. Daarmee is de voorwaarde uit [DEC-108](docs/DECISIONS.md) gehaald en mag PS-11A
-starten; PS-14 blijft gesloten.
+starten; PS-14 blijft gesloten. *(Bijgesteld 10 oktober 2026: PS-14 is vrijgegeven, S3 is vrij en S6 wacht op P5, zie [DEC-149](docs/DECISIONS.md).)*
 
 Drie dingen die de dag opleverde en die de volgende sessie moet weten.
 
@@ -191,7 +209,7 @@ vanaf `0008` pas dat een migratie ze overleeft. Dat staat in de code en in
 geschreven, geen tabellen ontworpen, geen endpoints toegevoegd en is `openapi.yaml` niet aangeraakt.
 
 Klopt de volgende fase nog? Ja. PS-11A is de eerstvolgende, precies zoals DEC-108 hem vastlegt, en
-S0 heeft er geen afhankelijkheid bij gemaakt. PS-14 blijft gesloten en loopt er niet naast.
+S0 heeft er geen afhankelijkheid bij gemaakt. PS-14 blijft gesloten en loopt er niet naast. *(Bijgesteld 10 oktober 2026: PS-14 is vrijgegeven, S3 is vrij en S6 wacht op P5, zie [DEC-149](docs/DECISIONS.md).)*
 
 
 **Correctieronde na een adversariële review (4 september, laat).** Codex kreeg de merge voorgelegd

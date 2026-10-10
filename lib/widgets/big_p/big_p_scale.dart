@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 
 import '../../utils/tv_hig.dart';
@@ -20,6 +22,15 @@ class BigPScale extends InheritedWidget {
 
   @override
   bool updateShouldNotify(BigPScale oldWidget) => oldWidget.pt != pt;
+}
+
+/// The keyboard's height as the platform reports it. An ancestor Scaffold
+/// that already shrank for the keyboard hands on a `MediaQuery` without the
+/// inset (the app's root Scaffold does), so `viewInsets` alone reads 0 with
+/// the keyboard up; the view still knows.
+double bigPKeyboardInset(BuildContext context) {
+  final view = View.of(context);
+  return max(MediaQuery.viewInsetsOf(context).bottom, view.viewInsets.bottom / view.devicePixelRatio);
 }
 
 /// 44 pt, Apple's minimum for a touch target.

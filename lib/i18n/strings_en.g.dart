@@ -5097,6 +5097,12 @@ class TranslationsSeerrEn {
 	/// en: 'Turn 4K off to request in HD.'
 	String get no4kServerBody => 'Turn 4K off to request in HD.';
 
+	/// en: 'No default server for this quality'
+	String get noDefaultServerTitle => 'No default server for this quality';
+
+	/// en: 'The request server has no default instance to send this request to. Ask the admin of the server to set one.'
+	String get noDefaultServerBody => 'The request server has no default instance to send this request to. Ask the admin of the server to set one.';
+
 	/// en: 'Server default'
 	String get serverDefault => 'Server default';
 
@@ -10447,6 +10453,8 @@ extension on Translations {
 			'seerr.requestWithServerDefault' => 'Request with server default',
 			'seerr.no4kServerTitle' => 'No 4K server configured',
 			'seerr.no4kServerBody' => 'Turn 4K off to request in HD.',
+			'seerr.noDefaultServerTitle' => 'No default server for this quality',
+			'seerr.noDefaultServerBody' => 'The request server has no default instance to send this request to. Ask the admin of the server to set one.',
 			'seerr.serverDefault' => 'Server default',
 			'seerr.adminOnly' => 'administrators only',
 			'seerr.editRequest' => 'Edit request',
@@ -10791,10 +10799,10 @@ extension on Translations {
 			'unifiedCatalog.homeRows.done' => 'Done',
 			'unifiedCatalog.homeRows.moveUp' => 'Move up',
 			'unifiedCatalog.homeRows.moveDown' => 'Move down',
-			'unifiedCatalog.homeRows.hide' => 'Hide',
-			'unifiedCatalog.homeRows.show' => 'Show',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.hide' => 'Hide',
+			'unifiedCatalog.homeRows.show' => 'Show',
 			'unifiedCatalog.homeRows.edit' => 'Edit',
 			'unifiedCatalog.homeRows.remove' => 'Remove',
 			'unifiedCatalog.homeRows.hiddenNote' => 'hidden',

@@ -189,6 +189,30 @@ void main() {
     expect(users, isNot(contains('q1')));
   });
 
+  test('a follow-up about me and the others is not cut in code: one run keeps the earlier turn', () async {
+    final c = make([_say('Bluey.'), _say('Samen.')]);
+    await c.submit('Wat is een goede kinderserie?');
+    await c.submit('Wat heb ik daarvan gekeken en wat keken de anderen?');
+    expect(c.tasks, hasLength(1));
+    expect(c.conversation, hasLength(2));
+    expect(model.seen.last.map((m) => _text(m['content'])).join(' '), contains('Bluey.'));
+  });
+
+  test('a fresh headline question after an unrelated turn is still cut in code', () async {
+    final c = make([_say('Bluey.'), _say('Ik.'), _say('Anderen.')]);
+    await c.submit('Wat is een goede kinderserie?');
+    await c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    expect(c.tasks, hasLength(2));
+  });
+
+  test('a children profile is not cut in code: its ages card would resubmit one half', () async {
+    kids = true;
+    addTearDown(() => kids = false);
+    final c = make([_say('Een.'), _say('Twee.')]);
+    await c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    expect(c.tasks, hasLength(1));
+  });
+
   test('clearConversation, config change and dispose forget the turns', () async {
     final c = make([_say('a1'), _say('a2'), _say('a3')], autoDispose: false);
     await c.submit('q1');

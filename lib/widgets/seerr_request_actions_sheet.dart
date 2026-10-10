@@ -33,13 +33,46 @@ Future<SeerrRequestAction?> showSeerrRequestActionsSheet(
   // host focuses whichever control attached first, and now that the rows sit
   // in a scrolling list they attach a frame after Sluiten does.
   final initialFocus = FocusNode(debugLabel: 'SeerrRequestActionsInitial');
+  // The menu owns the node from the moment it is built. The future completes
+  // when the menu is told to close, and on a screen without an overlay host
+  // that is before the closing animation has finished with the controls.
+  var handedOver = false;
   return OverlaySheetController.showAdaptive<SeerrRequestAction>(
     context,
     restoreLauncherFocus: true,
     initialFocusNode: initialFocus,
-    builder: (_) =>
-        SeerrRequestActionsSheet(request: request, rights: rights, isOwn: isOwn, initialFocusNode: initialFocus),
-  ).whenComplete(initialFocus.dispose);
+    builder: (_) {
+      handedOver = true;
+      return _OwnedFocusNode(
+        node: initialFocus,
+        child: SeerrRequestActionsSheet(request: request, rights: rights, isOwn: isOwn, initialFocusNode: initialFocus),
+      );
+    },
+  ).whenComplete(() {
+    if (!handedOver) initialFocus.dispose();
+  });
+}
+
+/// Disposes [node] when [child] leaves the tree, and not a frame earlier.
+class _OwnedFocusNode extends StatefulWidget {
+  const _OwnedFocusNode({required this.node, required this.child});
+
+  final FocusNode node;
+  final Widget child;
+
+  @override
+  State<_OwnedFocusNode> createState() => _OwnedFocusNodeState();
+}
+
+class _OwnedFocusNodeState extends State<_OwnedFocusNode> {
+  @override
+  void dispose() {
+    widget.node.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class SeerrRequestActionsSheet extends StatelessWidget {

@@ -2775,7 +2775,9 @@ gemeten proef dekt (1) en (3) nog niet, en de hoorbaarheid op de Apple TV is HAR
 
 **Consequences:** Een verloren rotatie-antwoord herstelt zichzelf in plaats van een herlogin op elk apparaat te kosten. De aanvalsruimte die erbij komt is smal en benoemd: een dief van het oude token moet binnen twee minuten na de rotatie toeslaan én de echte client mag het antwoord dan net niet ontvangen hebben; daarbuiten verandert er niets aan de detectie. De bestaande api-test kon niet blijven staan zoals hij was, want het scenario dat hij als hergebruik bestempelde ís het verloren-antwoord-scenario; hij toetst nu beide kanten, inclusief dat het aanbieden van de vervangen opvolger de keten alsnog omlegt.
 
-## DEC-118: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
+## DEC-147: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
+
+Voorheen DEC-118. De commit 2723ad72 en de squash van PR #55 (4f9c69f2) noemen dit besluit nog DEC-118. Dit besluit schoof op en niet het PS-5-besluit, omdat acht ankerlinks en de lopende PS-5-stukken het serverbesluit onder dat nummer aanhalen; zie "Hernummering van de dubbele DEC-118 en DEC-119" verderop.
 
 **Date:** 2026-09-22
 **Status:** accepted
@@ -2860,7 +2862,9 @@ Voor PS-5 concreet: acceptatiecriterium 4 blijft **open** en **niet gehaald**. P
 
 **Consequences:** PS-9 kan starten zonder op de deviceronde te wachten. `docs/pleya-server-architecture.md` en `STATUS.md` blijven PS-5's status tonen als "opgeleverd, niet gesloten" met criterium 4 expliciet open, en verwijzen hiernaartoe. Wie de PS-5-hardwareronde later draait en hem laat slagen, sluit PS-5 formeel af zoals elke andere fase: met een Roadmap Drift Check. Faalt de ronde, dan is dat een regressie op bestaand afspeelgedrag en gaat de reparatie voor PS-9-werk, ongeacht hoever PS-9 dan gevorderd is.
 
-## DEC-119: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight
+## DEC-148: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight
+
+Voorheen DEC-119. De commits 20cf7eac en 53756b16 (PR #63) noemen dit besluit nog DEC-119. Dit besluit schoof op en niet het rollenmodel, omdat migratie `0007_users_sessions.sql`, `openapi.yaml` en de daaruit gegenereerde code het rollenmodel als DEC-119 aanhalen en de checksum van een toegepaste migratie niet mag veranderen; zie "Hernummering van de dubbele DEC-118 en DEC-119" verderop.
 
 **Date:** 2026-09-24
 **Status:** accepted
@@ -3472,6 +3476,10 @@ tegelijk openzetten zou diezelfde waarheid meteen weer vertroebelen, deze keer m
 blokkerende S0-poorten groen zijn. PS-14 blijft gesloten en mag niet parallel aan PS-11A worden
 gestart. Na afronding en integratievalidatie van PS-11A volgt een afzonderlijk vrijgavebesluit voor
 PS-14.
+
+> **Bijgesteld op 10 oktober 2026 door [DEC-149](#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet).**
+> Michel heeft PS-14 vrijgegeven; de bepaling dat PS-14 gesloten blijft en niet naast PS-11A mag
+> lopen vervalt. De rest van dit besluit, inclusief de vrijgave van PS-11A, blijft staan.
 
 De volgorde die daaruit volgt, en die bindend is:
 
@@ -4092,6 +4100,27 @@ door naar DEC-135 tot en met DEC-138. De tabel toont de huidige nummers. Een ver
 DEC-133 of DEC-134 van vóór die tweede sync die over een protocolvenster of foutdomeinen gaat, bedoelt
 dus DEC-135 of DEC-136.
 
+### Hernummering van de dubbele DEC-118 en DEC-119
+
+De tabel hierboven gaf de serverlijn op 20 september 2026 DEC-118 en DEC-119. `main` kende die
+toewijzing nog niet en gaf dezelfde twee nummers op 22 en 24 september zelf uit, voordat PR #94 de
+serverlijn op 25 september naar `main` bracht. Sindsdien stonden er vier besluiten onder twee
+nummers. De serverbesluiten houden hun nummer: hun ankerlinks staan in `STATUS.md`,
+`docs/CHANGELOG.md` en de serverdocumenten, en migratie `0007_users_sessions.sql` noemt DEC-119 in
+tekst waarvan de checksum vastligt. De twee app-besluiten zijn verplaatst:
+
+| Oude DEC | Nieuwe DEC | Onderwerp | Commits met het oude nummer |
+| --- | --- | --- | --- |
+| 118 | 147 | `background_downloader`-pin naar een eigen spiegel | 2723ad72, 4f9c69f2 |
+| 119 | 148 | tvOS vóór de iOS-stappen I7 tot en met I10 naar TestFlight | 20cf7eac, 53756b16 |
+
+DEC-118 is nu alleen nog het open PS-5-hardwarecriterium en DEC-119 alleen nog het rollen- en
+rechtenmodel voor PS-9. Een kale "DEC-118" in tekst van vóór deze wijziging die over de
+`background_downloader`-spiegel gaat, bedoelt DEC-147. Een kale "DEC-119" over tvOS vóór I7 tot en
+met I10 bedoelt DEC-148, en een kale "DEC-119" over Home en Verder kijken bedoelt DEC-144 (zie de
+regel onder die kop). DEC-146 is overgeslagen: het besluit over het sluiten van S2 stond onder dat
+nummer klaar toen deze nummers werden toegekend.
+
 ## DEC-139: Apple TV blijft op 1,85; te grote vlakken worden gericht verdicht via `TvHig`
 
 **Date:** 2026-09-25
@@ -4535,3 +4564,80 @@ alleen het wisselen naar AirPods.
 **Open.** Het bewijs is een stress-run met `ao-reload` in een lus op de tvOS-simulator en tien keer wisselen
 tussen luidsprekers en AirPods op de Apple TV. Dat de 1.0.28-libmpv patch 0026 echt bevat is alleen via zo'n
 run aan te tonen. De patch heeft geen reproduceerbare regressietest, want het is een timingrace.
+
+## DEC-146: protocolvenster 2 gaat dicht, met de overname als tiende wijziging
+
+**Date:** 2026-10-10
+**Status:** accepted. Voltooit [DEC-138](#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein); S2.5 en S2.6.
+
+DEC-138 opende venster 2 voor precies de tien wijzigingen uit J.3 en zei dat het sluit zodra de
+laatste erin staat en `scripts/check_protocol.sh` slaagt. De tiende is `POST /libraries/{id}/adopt`
+(S2.5): `managed` gaat van `config` naar `db`, met dezelfde id en slug, en `library.not_config_managed`
+is de enige foutcode erbij. Die code valt in het bestaande domein `library`, dus de acht foutdomeinen
+uit DEC-138 veranderen niet.
+
+**De toetsing.** Nieuw endpoint, geen aanvraagbody, achter de bestaande capability `administration`
+(regel 1, 4 en 5); geen veld hernoemd of van betekenis veranderd (regel 2 en 3), geen enum uitgebreid
+(regel 6). Matrixrij 40 (klasse `admin`, `404` voor de rest) staat in hoofdstuk 16.4.
+
+**Wat de overname bewaakt.** `SyncLibraries` heeft een `WHERE managed = 'config'`-guard op de
+upsert en slaat de roots van een overgenomen bibliotheek over. Een herstart met de oude regel in
+`PLEYA_SERVER_LIBRARIES` levert dus dezelfde id, titel, soort en roots op, en het opstarten meldt in
+de log welke bibliotheek wordt genegeerd. Bewijs: `TestAdoptedLibrarySurvivesEnvSync` en, op de
+NAS-vangst (schema 7, drie bibliotheken), `TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity`:
+na migratie nog steeds `config`, na overname en herstart dezelfde ids, slugs, kijkstatus en roots.
+
+**Decision:** venster 2 is gesloten met tien van tien wijzigingen. `openapi.yaml` is weer bevroren.
+Het volgende venster is venster 3 (S3, boeken) en vraagt een eigen besluit. `GET /watch-history`
+(DEC-143) en de loudness-migratie `0011` zaten buiten dit venster en blijven dat.
+
+## DEC-149: PS-14 is vrijgegeven voor uitvoering, en geeft S3 vrij en S6 niet
+
+**Date:** 2026-10-10
+**Status:** accepted. Productbesluit van Michel op 10 oktober 2026; vervult het aparte vrijgavebesluit dat [DEC-128](#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15) en [DEC-129](#dec-129-ps-11a-is-de-eerstvolgende-fase-ps-14-blijft-gesloten-en-loopt-er-niet-naast) voorbehielden, en stelt DEC-129 bij voor wat PS-14 betreft.
+
+**Context:** PS-14 (e-bookcatalogus en inhoud) staat sinds 3 september 2026 als fase in de roadmap en
+heeft een goedgekeurd ontwerp in `docs/pleya-server-ps14-proposal.md`. DEC-128 zei dat vrijgeven een
+apart besluit is. DEC-129 voegde eraan toe dat PS-14 gesloten blijft tot PS-11A geïntegreerd bewezen
+is en er niet naast mag lopen, en de masterlijst leidde daaruit af dat S3 pas na S7, S10 en S11
+begint. Die volgorde was een gevolg van het besluit dat PS-14 dicht stond, niet van een technische
+afhankelijkheid: in de fasetabel hangt PS-14 aan PS-2 en PS-9, en beide zijn gesloten.
+
+Michel heeft PS-14 op 10 oktober 2026 per direct vrijgegeven, met drie voorwaarden. De vrijgave
+raakt twee dingen die open blijven: het locatorbesluit (P5, taak S6.1) is niet genomen, en het
+protocolvenster voor boeken is niet geopend.
+
+**Decision:**
+
+1. PS-14 is vrijgegeven voor uitvoering. De bepaling uit DEC-129 dat PS-14 gesloten blijft en niet
+   naast PS-11A mag lopen vervalt. De afhankelijkheden uit de fasetabel (PS-2 en PS-9) en de
+   uitvoeringsvolgorde binnen de slices blijven bindend.
+2. De vrijgave komt met drie voorwaarden, die voor alle PS-14-werk gelden:
+   - PS-14 gebruikt de bestaande architectuur en de Unified Library. Er komt geen tweede
+     bibliotheekmodel, geen tweede scanner en geen tweede toegangslaag naast wat er is, in lijn met
+     DEC-128 punt 3.
+   - De functionaliteit moet later aansluiten op de Pleya-clients en op de webclient. Reader-integratie
+     hoort bij het productscope; dit besluit legt de grens vast waarlangs PS-14 wordt gebouwd en
+     verplaatst hem niet. Wat PS-15 en PS-16 inhoudelijk afbakenen blijft zoals in DEC-128.
+   - Er komt geen nieuwe DRM-, winkel- of abonnementsfunctionaliteit zonder afzonderlijk besluit.
+3. De vrijgave van PS-14 geeft slice S3 vrij en S6 niet. S6 (leesvoortgang, het servergedeelte
+   van PS-15) hangt aan het locatorbesluit P5 en aan de vrijgave van PS-15, en beide staan open.
+   P5 blijft open en S6 blijft ervan afhankelijk.
+4. PS-15 en PS-16 zijn ongewijzigd: niet vrijgegeven. Dit besluit vervangt DEC-128 niet; alle acht
+   punten daarvan blijven van kracht, inclusief de poort van punt 7 (aantoonbaar vaststellen hoe
+   bestaande clients een nieuwe unknown-safe `LibraryKind` behandelen) en de regel van punt 8 (geen
+   vooruitgebouwde onderlaag voor PS-15 of PS-16).
+5. Het contractvenster voor S3 tot en met S6 wordt gebundeld ontworpen, met onafhankelijk
+   vrijgeefbare onderdelen: het ontwerp mag S3 tot en met S6 in één keer beschrijven, zodat de
+   wijzigingen niet per slice botsen, maar een onderdeel dat nergens van afhangt (S3) wordt niet
+   vastgehouden door een onderdeel dat wel wacht (S6 op P5). Dit besluit opent het venster niet.
+   `openapi.yaml` blijft bevroren tot een eigen DEC het venster opent, en `scripts/check_protocol.sh`
+   blijft de poortwachter.
+
+**Consequences:** S3 (taken S3.1 tot en met S3.6) is toegestaan en kan na S2 beginnen, zonder te
+wachten op S7, S10 en S11. S5 hangt volgens de graaf aan S3 en S4 en volgt dus S3. S6 en alles wat
+via S6 aan P5 hangt (S9, S12, S14, S16, S20 en S21) wacht op het locatorbesluit.
+De masterlijst, `docs/agents/server.md`, de fasetabel in de architectuurbaseline en het PS-14-voorstel
+zijn in dezelfde commit bijgewerkt; de taakstatus en de tellers staan niet anders dan voorheen, want
+een vrijgave maakt geen taak af. De volgorde is vast: eerst het ontwerp van het contractvenster
+voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.

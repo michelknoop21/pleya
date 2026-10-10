@@ -30,6 +30,9 @@ const String kVideoPlayerRouteName = '/video_player';
 /// `mediaIndex` is the version the caller asked for, null when it left the
 /// choice to the saved preference. The key is taken before that preference is
 /// read, so it has to describe the request, not what the request resolves to.
+/// A start that left the choice open takes a second key once the preference
+/// is read, under the version it resolved to: otherwise "the saved version"
+/// and that same version asked for by number would both get through.
 class VideoPlayerNavigationInFlightGuard {
   final Set<String> _keys = <String>{};
 
@@ -199,12 +202,25 @@ Future<bool?> navigateToVideoPlayer(
     }
   }
   var handedToPlayer = false;
+  // The version a start without one resolved to, while this start holds the
+  // guard under it as well.
+  int? resolvedIndexInFlight;
   void releaseInFlight() {
     if (!markedInFlight) return;
     markedInFlight = false;
     _videoPlayerNavigationInFlightGuard.finish(
       requested,
       mediaIndex: selectedMediaIndex,
+      selectedMediaSourceId: selectedMediaSourceId,
+      selectedQualityPreset: selectedQualityPreset,
+      isOffline: isOffline,
+    );
+    final resolved = resolvedIndexInFlight;
+    if (resolved == null) return;
+    resolvedIndexInFlight = null;
+    _videoPlayerNavigationInFlightGuard.finish(
+      requested,
+      mediaIndex: resolved,
       selectedMediaSourceId: selectedMediaSourceId,
       selectedQualityPreset: selectedQualityPreset,
       isOffline: isOffline,
@@ -267,6 +283,22 @@ Future<bool?> navigateToVideoPlayer(
     if (!context.mounted) return null;
 
     final mediaIndex = selectedMediaIndex ?? await savedMediaVersionIndexFor(metadata) ?? 0;
+    if (markedInFlight && selectedMediaIndex == null) {
+      final free = _videoPlayerNavigationInFlightGuard.tryStart(
+        requested,
+        mediaIndex: mediaIndex,
+        selectedMediaSourceId: selectedMediaSourceId,
+        selectedQualityPreset: selectedQualityPreset,
+        isOffline: isOffline,
+      );
+      if (!free) {
+        appLogger.d(
+          'Video player navigation already in flight for ${requested.id} (mediaIndex=$mediaIndex), skipping duplicate navigation',
+        );
+        return null;
+      }
+      resolvedIndexInFlight = mediaIndex;
+    }
 
     // Check if external player is enabled
     try {

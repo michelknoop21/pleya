@@ -21,6 +21,15 @@ Een bevinding die alleen op hardware te toetsen is krijgt `HARDWARE ONLY` en bli
 device-run is geweest. De simulator heeft geen aanraakvlak, dus invoer die over de touch-surface van
 de Siri Remote loopt is daar principieel niet te reproduceren.
 
+**De UI-ontwerpronde** (in het Engels: the UI design round) is de uitvoerder van UI-wijzigingen:
+northstars en mockups, en ook het bouwen, testen en herstellen van wat daaruit volgt, inclusief
+layout, focusgedrag en visuele correcties. `docs/ROADMAP.md` en het register hierboven verwijzen
+naar deze term. Het is een rol, geen hulpmiddel: Michel wijst per opdracht aan wie de ronde
+uitvoert, en die toewijzing staat niet in deze repo. Wijst de opdracht je niet aan als uitvoerder
+en geeft de roadmap het werk aan de ronde, vraag het Michel voordat je begint; een directe UI-opdracht van Michel geldt als aanwijzing. De ronde beoordeelt
+haar eigen werk niet: de visuele review tegen de geldende northstar of DEC (`docs/ROADMAP.md`,
+Roadmap rules) komt van een andere reviewerstoel, volgens de reviewregels in `AGENTS.md`.
+
 `docs/unified-2026-closure.md` bezit de werkvolgorde en de releasegate voor de Pleya Unified
 2026-afronding op iOS en tvOS; `docs/ios-unified-implementation-register.md` is daarbij de
 iOS-werklijst, naast het bestaande `docs/tvos-redesign-register.md` voor tvOS.

@@ -102,13 +102,19 @@ Future<SeerrProvider> seerrProvider(
 
 /// Pumps [child] under the Seerr provider, the translations and an overlay
 /// host, which is what every Requests surface stands in.
-Future<void> pumpSeerr(WidgetTester tester, SeerrProvider provider, Widget child, {bool host = true}) async {
+Future<void> pumpSeerr(
+  WidgetTester tester,
+  SeerrProvider provider,
+  Widget child, {
+  bool host = true,
+  ThemeData? theme,
+}) async {
   await tester.pumpWidget(
     TranslationProvider(
       child: ChangeNotifierProvider<SeerrProvider>.value(
         value: provider,
         child: MaterialApp(
-          theme: monoTheme(dark: true),
+          theme: theme ?? monoTheme(dark: true),
           // Outcomes of an action are notices, and those render in this layer.
           builder: noticeLayer,
           home: InputModeTracker(

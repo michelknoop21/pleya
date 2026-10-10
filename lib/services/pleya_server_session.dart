@@ -59,6 +59,9 @@ class PleyaServerSession {
   /// server has already retired, and the next launch spends it on a revocation.
   final Future<void> Function(PleyaServerConnection connection)? onTokensRotated;
 
+  /// Told when the signed-in role changed (promotion, demotion, account gone).
+  void Function()? onRoleChanged;
+
   PleyaServerConnection _connection;
   PleyaServerConnection get connection => _connection;
 
@@ -218,6 +221,9 @@ class PleyaServerSession {
   Future<void> adoptRole(String role) async {
     if (role == _connection.role) return;
     _connection = _connection.copyWith(role: role);
+    // The authority checks read the role live: whoever tracks rights must hear
+    // that it moved, also when it moves back.
+    onRoleChanged?.call();
     try {
       await _persist();
     } catch (_) {
