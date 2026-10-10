@@ -1,5 +1,22 @@
 # STATUS · Pleya
 
+## Stand 10 oktober 2026
+
+**S2 is gesloten en daarmee golf 1.** S2.5 (`POST /libraries/{id}/adopt`, `SyncLibraries` laat een
+overgenomen bibliotheek met rust, het opstarten logt dat de `.env`-regel wordt genegeerd) en S2.6
+(migratietest op de NAS-vangst, protocolvenster 2 dicht met DEC-146) zijn gereed op
+`feat/pleya-server-s2-sluiten`, vanaf `origin/main` `347ef589`. Bewijs: volledige Go-suite groen in de
+gepinde image, `verify-protocol.sh` (30 schema's gedekt), `check_protocol.sh` (acht foutdomeinen),
+`check-api-types.sh`, `svelte-check` 0 fouten en 115 webtests. De Dart-contracttest en `ci_checks.sh`
+zijn niet lokaal gedraaid (geen gepinde Flutter-SDK in deze sessie); CI beslist.
+
+De masterlijst is gereconcilieerd: loudness (`0011`), `GET /watch-history` (DEC-143) en de
+migratiereparatie `0012` staan in hoofdstuk 3a. De CSP-fix voor Kits route-announcer lag sinds 7
+september alleen op `feat/pleyaserver` en is als PR #219 naar `main` gegaan.
+
+Volgende stap: S7 (webshell en designsysteem) of S4 en S5 (sidecars, filters), die geen vrijgave
+vragen. S3 (boeken) wacht op PS-11A geïntegreerd en op een vrijgavebesluit (DEC-129).
+
 ## Stand 24 september 2026
 
 S2.4 is gereed op `integration/pleya-server-completion`: scans en jobs over HTTP (zes endpoints), annuleren
