@@ -58,14 +58,20 @@
 
   .st {
     display: flex;
+    flex: 0 1 auto;
     align-items: center;
     gap: 8px;
+    min-width: 0;
   }
 
   /* De lijn tussen twee stappen (`.ln`); een li kan alleen li-kinderen hebben. */
+  /* De lijn krimpt mee, anders duwt vijf stappen met een label de laatste
+     cirkel op 393 over de rand. */
   .st + .st::before {
     content: '';
+    flex: 0 1 auto;
     width: 28px;
+    min-width: 12px;
     height: 1px;
     background: var(--ink-4);
   }
