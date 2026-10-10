@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
@@ -51,6 +53,17 @@ describe('MediaCard', () => {
 
     const movie = render(MediaCard, { props: { item: item() } });
     expect(movie.container.querySelector('.artwork--poster')).not.toBeNull();
+  });
+
+  it('houdt een focusring in forced colors, waar box-shadow wegvalt', () => {
+    // jsdom past geen componentstijl toe en kent geen forced colors, dus dit
+    // contract leest de bron: een outline in CanvasText om het beeld.
+    const source = readFileSync(resolve(import.meta.dirname, 'MediaCard.svelte'), 'utf8');
+    const block = source.match(/@media \(forced-colors: active\) \{([\s\S]*?)\n {2}\}/);
+    expect(block, 'forced-colors-blok').not.toBeNull();
+    expect(block![1]).toContain('.card__link:focus-visible .card__art');
+    expect(block![1]).toContain('outline: var(--ring) solid CanvasText');
+    expect(block![1]).toContain('outline-offset: 3px');
   });
 
   it('houdt de metaregel gereserveerd, ook als er niets in staat', () => {

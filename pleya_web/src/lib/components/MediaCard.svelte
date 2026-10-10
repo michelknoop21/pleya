@@ -205,6 +205,14 @@
       0 0 0 calc(3px + var(--ring)) var(--ink);
   }
 
+  /* Forced colors gooit box-shadow weg; zonder outline verdwijnt de ring. */
+  @media (forced-colors: active) {
+    .card__link:focus-visible .card__art {
+      outline: var(--ring) solid CanvasText;
+      outline-offset: 3px;
+    }
+  }
+
   /* De overlay ligt precies over het beeld: zelfde start, breedte en verhouding. */
   .card__over {
     position: absolute;
