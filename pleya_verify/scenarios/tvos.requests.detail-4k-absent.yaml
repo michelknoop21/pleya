@@ -44,7 +44,7 @@ steps:
   - assert: {id: "requests.detail.action[request4k]", present: false}
   - snapshot: 00-title-page-no-4k
 
-  # RIGHT to the end of the row: the ring stops on Status vernieuwen.
+  # RIGHT to the end of the row: the ring stops on Status verversen.
   - press: right
   - settle: 400
   - press: right
