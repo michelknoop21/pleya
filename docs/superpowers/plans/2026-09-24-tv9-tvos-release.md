@@ -20,7 +20,8 @@ archive naar TestFlight (§8).
 
 ## Fase 0: administratie (docs, één commit)
 
-1. DEC-119: tvOS gaat vóór de iOS-stappen I7 tot en met I10 naar TestFlight. De releasegate van §6
+1. DEC-148 (bij het schrijven van dit plan DEC-119): tvOS gaat vóór de iOS-stappen I7 tot en met I10
+   naar TestFlight. De releasegate van §6
    geldt voor deze release alleen in de tvOS-kolom plus de gedeelde regels. §5 krijgt een
    verwijzing, het iOS-register een regel dat I7 tot en met I10 het volgende spoor zijn.
 2. DEC-120: de DEC-081-gate gaat over op `tvos.nav.walk` en `tvos.nav.focus-switches-destination`.
@@ -162,7 +163,7 @@ zichtbaar in TestFlight) en de release-notes onder het gegenereerde blok in `doc
 
 ## Buiten deze release
 
-- iOS I7 (11, 12, 13), I8, I9a, I9b, IOS-HOME-AB en I10: het volgende spoor, volgens DEC-119.
+- iOS I7 (11, 12, 13), I8, I9a, I9b, IOS-HOME-AB en I10: het volgende spoor, volgens DEC-148.
 - Acceptance gaps zonder productbesluit: ACT1 (wacht op PS-9), WL2, LIVE2, MOC-14, MOC-16 en LAND7.
 - REV1-MERGE: gedocumenteerd gevolg, geen melding van een gebruiker. Oppakken bij de volgende
   wijziging aan cross-server mergen.
