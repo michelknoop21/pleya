@@ -44,8 +44,8 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | BP-03b | P0 | Big P | "Ooit gezien" los van het historievenster: ongevensterde kijklogsleutels in `my_watching` en het venster benoemd; kijklog-migratie (titel en externe id's in `MediaInteractions`) volgt als BP-03c | Gemerged (PR #191, 5 okt) |
 | BP-03c | P0 | Big P | Kijklog-migratie: titel en externe id's in `MediaInteractions` zodat een kopie op een andere server herkend wordt; tweede Plex-nep, Pleya-eigen-id, Emby-test | Gepland |
 | BP-04a | P0 | Big P | Intent met herkomst per veld (publiek, soort, periode), parser NL/EN, afdwingen op tool-argumenten, `assistant_run.dart` gesplitst | Gemerged (PR #193, 5 okt); adversariële review en scoped re-review gedaan |
-| BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Deels: periode "vorige week" geweigerd, gemengd publiek gemeld aan het model; rest gepland |
-| BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Route "recent toegevoegd" en één resultaatset voor tekst en kaarten: in review (PR volgt); begrensde statuscorrectie AUDIT-BIGP-UX1 in herstelronde, geen pakketacceptatie; build 1 wacht op de rest |
+| BP-04b | P0 | Big P | Korte classifier voor wat de parser mist, routing, minimale wedervraag (max 3, knoppen plus vrije invoer, UI), prompt uit werkelijk aangeboden tools, run-brede rechtenstempel, nulmeting op glm-5.3-flash en gemma4:31b | Deels: periode "vorige week" geweigerd (PR #196); gemengd publiek in code gesplitst in twee taken (in review); rest gepland |
+| BP-05 | P0 | Big P | Eén waarheid (resultaatset) en de route "recent toegevoegd"; build 1 | Route "recent toegevoegd" en één resultaatset voor tekst en kaarten gemerged (PR #223, 10 okt); begrensde statuscorrectie AUDIT-BIGP-UX1 in herstelronde, geen pakketacceptatie; build 1 wacht op de rest |
 | BP-06 | P1 | Big P | Gesprek: laatste intent, resultaat en persoon | Gespreksgeheugen/Nieuw gesprek gemerged (PR #198, 5 okt); volledige pakketacceptatie herijken |
 | BP-07 | P1 | Big P | Aanbevelingspijplijn en Trakt inlezen (Trakt-poort vóór de bouw) | Gepland; `recommend_together` bewijst "ongezien" al per titel in plaats van per kopie (PR #199, 6 okt) |
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
@@ -107,6 +107,8 @@ Open gaten van BP-02 (Michel, 5 oktober 2026: per gat beslist waar het hoort):
 - Testgaten uit de review: Tautulli met `audience: others` is gedekt in BP-03a. Emby in `watch_stats`, randgevallen van `resolvePeople` en het Plex-eigenaar-id 1: BP-03c.
 
 BP-04b nulmeting (14 vragen, eerste toolaanroep, beide modellen): 9 gelijk en goed; gaten: gemengde vraag verdween stil tot `my_watching`, "vorige week" werd `days: 7`, "mijn bibliotheken deze week" kreeg geen route (BP-05), "films nu" kreeg geen terugval. Eerste twee gedicht in de intent; wedervraag-UI, run-brede rechtenstempel en terugval voor soort bij `now` open.
+
+Nulmeting BP-05 (10 okt, beide modellen): de toevoegroute werkt met venster en soort; "recent" zonder periode krijgt van beide modellen een zelfgekozen venster van 7 dagen (zichtbaar in `window_days`); de gemengde vraag werd ondanks de notitie in het prompt nog steeds tot `my_watching` versmald, vandaar de splitsing in code.
 
 BP-04a: bekend en bewust laten staan: een gemengde vraag in vreemde zinsbouw ("wat hebben de anderen en ik gekeken") geeft "anderen" in plaats van onbekend (de smallere richting); een kindtaak erft publiek en periode van de vraag, nooit de soort; `search_catalog` en `recommend_together` hebben een eigen `kind` en vallen onder het vangnet `ctx.recommend`, niet onder `constrain` (BP-04b).
 

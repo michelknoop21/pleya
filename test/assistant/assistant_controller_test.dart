@@ -709,6 +709,39 @@ void main() {
     expect(ownLogRead, 0, reason: 'the child prompt never says "others", the question did');
   });
 
+  test('a question about me and the others is cut in code: no model call decides it, each half runs', () async {
+    final seen = <String>[];
+    final mine = AssistantTool(
+      name: 'my_watching',
+      description: 'own log',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        seen.add('mine');
+        return const AssistantToolResult({'watched_recently': []});
+      },
+    );
+    final models = [
+      _Model([_call('my_watching'), _say('ik')]),
+      _Model([_say('anderen')]),
+    ];
+    var made = 0;
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: servers),
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => made < models.length ? models[made++] : throw StateError('a third model'),
+      tools: [mine],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    expect(made, 2, reason: 'one model per half, none for the whole');
+    expect(c.tasks, hasLength(2));
+    expect([for (final t in c.tasks) t.answer], containsAll(['ik', 'anderen']));
+  });
+
   test('tool failure survives a successful model answer', () async {
     final failing = AssistantTool(
       name: 'fail',

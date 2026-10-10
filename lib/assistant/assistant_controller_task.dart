@@ -14,6 +14,33 @@ extension _AssistantTaskRunning on AssistantController {
     AssistantModelClient? model;
     try {
       if (!_alive(task)) return;
+      // A question about two audiences at once is cut in code, before the
+      // model can answer only one half of it.
+      if (allowSplit && task.originalSpoilerPrompt == null) {
+        final parts = AssistantIntent.splitMixedAudience(task.prompt);
+        if (parts != null) {
+          final children = [
+            for (final part in parts)
+              _newTask(
+                title: clipText(part, 80),
+                intent: clipText(part, 80),
+                prompt: part,
+                parentIntent: AssistantIntent.fromPrompt(task.prompt),
+                generation: task.generation,
+                budget: task.budget,
+              ),
+          ];
+          _tasks
+            ..remove(task)
+            ..addAll(children);
+          _update();
+          final doctorScope = libraryDoctorScope || assistantNeedsLibraryDoctorScope(task.prompt);
+          await Future.wait([
+            for (final child in children) _runTask(child, config, refreshHealth, libraryDoctorScope: doctorScope),
+          ]);
+          return;
+        }
+      }
       task.status = AssistantTaskStatus.running;
       _update();
       model = _modelFor(config);

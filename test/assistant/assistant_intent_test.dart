@@ -258,4 +258,29 @@ void main() {
       expect(mixed.constrain('search_catalog', {}).error, isNull);
     });
   });
+
+  group('splitMixedAudience (BP-04b)', () {
+    test('me and the others in one sentence are two questions, each with its own audience', () {
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken en wat keken de anderen?'), [
+        'Wat heb ik gekeken',
+        'wat keken de anderen?',
+      ]);
+      expect(AssistantIntent.splitMixedAudience('What did the others watch, and what did I watch?'), [
+        'What did the others watch,',
+        'what did I watch?',
+      ]);
+    });
+
+    test('anything not plainly two audiences is left to the model', () {
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('Wat keken de anderen?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Wat heb ik gekeken wat keken de anderen'),
+        isNull,
+        reason: 'no joiner',
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat keek iedereen behalve Sam en wat heb ik gekeken?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken, niet wat de anderen keken'), isNull);
+    });
+  });
 }

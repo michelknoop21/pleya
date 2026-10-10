@@ -66,6 +66,8 @@ final _addedElsewhere = RegExp(
 );
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
+// The word between two clauses of one sentence.
+final _clauseJoin = RegExp(r'\s*(?:,|;|\b(?:en|and|maar|but|plus)\b)\s*');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -145,6 +147,35 @@ class AssistantIntent {
           ? const IntentField.unknown()
           : IntentField(days, AssistantFieldSource.explicit),
     );
+  }
+
+  /// The two clauses of a question that asks about two audiences at once ("what
+  /// did I watch and what did the others"), or null. Only when exactly two
+  /// different audiences are named and a joiner (en, and, comma) sits between
+  /// them: anything less is left to the model, never cut by a guess.
+  static List<String>? splitMixedAudience(String prompt) {
+    final p = prompt.toLowerCase();
+    final spans = <(int, int, AssistantAudience)>[];
+    void add(RegExp re, AssistantAudience a, {bool unless = false}) {
+      if (unless) return;
+      final m = re.firstMatch(p);
+      if (m != null) spans.add((m.start, m.end, a));
+    }
+
+    add(_othersWatch, AssistantAudience.others, unless: _notOthers.hasMatch(p));
+    if (spans.isEmpty) add(_othersFixed, AssistantAudience.others, unless: _notOthers.hasMatch(p));
+    add(_meWatch, AssistantAudience.me);
+    if (!_exceptName.hasMatch(p) && !_othersFixed.hasMatch(p)) add(_everyoneWatch, AssistantAudience.everyone);
+    if (spans.length != 2 || spans[0].$3 == spans[1].$3) return null;
+    spans.sort((a, b) => a.$1.compareTo(b.$1));
+    final gap = p.substring(spans[0].$2, spans[1].$1);
+    final joins = _clauseJoin.allMatches(gap).toList();
+    if (joins.isEmpty) return null;
+    final cut = joins.last;
+    final first = prompt.substring(0, spans[0].$2 + cut.start).trim();
+    final second = prompt.substring(spans[0].$2 + cut.end).trim();
+    if (first.isEmpty || second.isEmpty) return null;
+    return [first, second];
   }
 
   /// This intent, with the audience and period the question did not state itself
