@@ -2921,7 +2921,7 @@ Terugdraaien.
 
 | Phase ID | PS-14 |
 | --- | --- |
-| Status | **ontwerp goedgekeurd 3 september 2026, uitvoering niet vrijgegeven.** Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. De formulering hing eerst aan het sluiten van PS-9, en dat is op 4 september 2026 gebeurd; dat sluiten haalt de afhankelijkheid weg en is uitdrukkelijk geen vrijgave. Vrijgeven is een apart besluit dat niet genomen is, dus er komt tot dat besluit geen PS-14-productiecode |
+| Status | **vrijgegeven voor uitvoering op 10 oktober 2026, [DEC-149](DECISIONS.md), met drie voorwaarden: bestaande architectuur en Unified Library, aansluiting op de Pleya-clients en de webclient, en geen nieuwe DRM-, winkel- of abonnementsfunctionaliteit zonder afzonderlijk besluit. Het protocolvenster is niet geopend en het locatorbesluit (S6) blijft open.** Daarvoor gold: ontwerp goedgekeurd 3 september 2026, uitvoering niet vrijgegeven. Het ontwerp staat in [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), met zeven bindende beslissingen. De formulering hing eerst aan het sluiten van PS-9, en dat is op 4 september 2026 gebeurd; dat sluiten haalt de afhankelijkheid weg en is uitdrukkelijk geen vrijgave. Vrijgeven is een apart besluit dat niet genomen is, dus er komt tot dat besluit geen PS-14-productiecode |
 | Doel | een `books`-bibliotheek wordt gescand, gecatalogiseerd en via het protocol ontsloten, inclusief cover en het EPUB-bestand zelf |
 | Bijdrage aan einddoel | e-books horen sinds [DEC-128](DECISIONS.md) tot de productscope; zonder servercatalogus is er geen bron waar een lezer boeken vandaan haalt |
 | Afhankelijkheden | PS-2, PS-9 |

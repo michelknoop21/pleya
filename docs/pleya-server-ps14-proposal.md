@@ -1,8 +1,10 @@
 # Ontwerpvoorstel PS-14: e-bookcatalogus en inhoud
 
-**Status:** **goedgekeurd 3 september 2026 met zeven bindende beslissingen.** De implementatie is
-**geblokkeerd op PS-9**: PS-14 is niet actief en er komt geen PS-14-productiecode voordat PS-9
-formeel gesloten is. "Goedgekeurd" is hier uitdrukkelijk niet "vrijgegeven voor uitvoering"
+**Status:** **vrijgegeven voor uitvoering op 10 oktober 2026**, zie
+[DEC-149](DECISIONS.md#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet).
+Het ontwerp is goedgekeurd op 3 september 2026 met zeven bindende beslissingen; de tekst hieronder is
+dat ontwerp zoals het toen werd vastgelegd, ook waar hij zegt dat PS-14 geblokkeerd is op PS-9 en niet
+is vrijgegeven.
 **Datum:** 3 september 2026
 **Auteur:** Michel Knoop
 **Betreft:** vrijgave van **PS-14**, vastgelegd als fase in
