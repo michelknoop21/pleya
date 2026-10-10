@@ -17,6 +17,8 @@ export function formatDuration(ms: number | null | undefined): string | null {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (hours === 0) return `${minutes}m`;
+  // "3h 0m" leest als een meting tot op de minuut; een rond uur is "3h".
+  if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
 }
 

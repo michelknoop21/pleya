@@ -28,6 +28,12 @@ describe('duur', () => {
     expect(formatDuration(2_700_000)).toBe('45m');
   });
 
+  it('laat nul minuten weg bij een rond uur', () => {
+    expect(formatDuration(10_800_000)).toBe('3h');
+    expect(formatDuration(3_600_000)).toBe('1h');
+    expect(formatDuration(3_660_000)).toBe('1h 1m');
+  });
+
   it('toont seconden onder de minuut, want "0m" leest als onbekend', () => {
     expect(formatDuration(2_000)).toBe('2s');
     expect(formatDuration(59_000)).toBe('59s');
