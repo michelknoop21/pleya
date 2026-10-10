@@ -38,6 +38,13 @@ export const web = {
   'home.emptyTitle': 'Nothing has been added yet',
   'home.emptyBody': 'Once the server has scanned your media, new titles show up here.',
 
+  'hero.play': 'Play',
+  'hero.moreInfo': 'More info',
+  'hero.kind.movie': 'Movie',
+  'hero.kind.show': 'Series',
+  'hero.kind.season': 'Season',
+  'hero.kind.episode': 'Episode',
+
   'libraries.title': 'Libraries',
   'libraries.emptyTitle': 'No libraries configured',
   'libraries.emptyBody': 'Add a library to the server configuration and restart it.',

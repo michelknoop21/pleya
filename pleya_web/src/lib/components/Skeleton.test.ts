@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/svelte';
 
@@ -37,5 +39,23 @@ describe('Skeleton', () => {
   it('heeft geen tekst, dus niets dat een schermlezer zou voorlezen', () => {
     const { container } = render(Skeleton, { props: { kind: 'card' } });
     expect(container.textContent?.trim()).toBe('');
+  });
+
+  /*
+   * jsdom past de componentstijl niet toe (getComputedStyle geeft daar geen
+   * radius of verhouding), dus de vorm zelf staat in de opnamen. Wat hier wel
+   * vast te leggen is: skelet en Hero lezen dezelfde tokens, en de oude
+   * rand-tot-randvorm met --hero-min-h en 62dvh is uit allebei weg.
+   */
+  it('geeft het skeletheld de vorm van Hero, uit dezelfde tokens', () => {
+    for (const file of ['Skeleton.svelte', 'Hero.svelte']) {
+      const source = readFileSync(resolve(import.meta.dirname, file), 'utf8');
+      expect(source, file).toContain('aspect-ratio: var(--hero-aspect)');
+      expect(source, file).toContain('height: var(--hero-h-narrow)');
+      expect(source, file).toContain('border-radius: var(--radius-hero)');
+      expect(source, file).toContain('margin: 4px var(--inset) 0');
+      expect(source, file).not.toContain('--hero-min-h');
+      expect(source, file).not.toContain('62dvh');
+    }
   });
 });

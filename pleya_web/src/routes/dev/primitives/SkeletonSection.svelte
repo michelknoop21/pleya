@@ -47,7 +47,9 @@
   </div>
   <div>
     <p class="gs__caption">Hero</p>
-    <Skeleton kind="hero" />
+    <!-- Het skeletheld springt zelf in op --inset, net als Hero; de galerij
+         heeft die inzet al, dus hier heft een negatieve marge hem op. -->
+    <div class="sk__bleed"><Skeleton kind="hero" /></div>
   </div>
 
   {#each variants as variant (variant)}
@@ -91,6 +93,10 @@
     display: grid;
     gap: 10px;
     align-content: center;
+  }
+
+  .sk__bleed {
+    margin-inline: calc(-1 * var(--inset));
   }
 
   .sk__frame {
