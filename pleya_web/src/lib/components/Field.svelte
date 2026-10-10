@@ -1,7 +1,8 @@
 <!--
   Een formulierveld zoals web.css het tekent: label van 13 px erboven, een vak
-  van 44 px op het oppervlak, en eronder hulptekst of een fout (`.field`,
-  `.label`, `.help`).
+  van 44 px, en eronder hulptekst of een fout (`.field`, `.label`, `.help`).
+  Designsysteem v2: het vak ligt dieper dan het paneel (--inset-bg) met een
+  haarlijn, als een uitsparing; `mono` zet een pad of slug in de monoletter.
 
   Zonder children tekent Field zelf een tekstinvoer. Met children levert het
   alleen de bedrading: de snippet krijgt het id, de aria-describedby en de
@@ -36,6 +37,8 @@
     required?: boolean;
     /** Label alleen voor een schermlezer, waar de context het al zegt. */
     hideLabel?: boolean;
+    /** Monoletter, voor paden, slugs en sleutels die iemand letterlijk overtypt. */
+    mono?: boolean;
     oninput?: (value: string) => void;
     children?: Snippet<[FieldControl]>;
   }
@@ -52,6 +55,7 @@
     disabled = false,
     required = false,
     hideLabel = false,
+    mono = false,
     oninput,
     children
   }: Props = $props();
@@ -76,7 +80,7 @@
   });
 </script>
 
-<div class="fld" class:fld--err={invalid} class:fld--dis={disabled}>
+<div class="fld" class:fld--err={invalid} class:fld--dis={disabled} class:fld--mono={mono}>
   <label class="fld__label" class:visually-hidden={hideLabel} for={controlId}>{label}</label>
 
   <div class="fld__control">
@@ -114,8 +118,9 @@
 
   .fld__label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 7px;
     font-size: 13px;
+    font-weight: 500;
     color: var(--ink-2);
   }
 
@@ -130,12 +135,20 @@
     min-height: var(--touch-target);
     padding: 0 14px;
     border-radius: var(--radius-md);
-    border: 1px solid transparent;
-    background: var(--surface);
+    border: 1px solid var(--hairline);
+    background: var(--inset-bg);
     color: var(--ink);
     font: inherit;
     font-size: 15px;
-    transition: border-color var(--dur-fast) var(--ease);
+    transition:
+      border-color var(--dur-fast) var(--ease),
+      box-shadow var(--dur-fast) var(--ease);
+  }
+
+  /* Dezelfde :not-keten als de vakstijl, anders wint die de lettermaat. */
+  .fld--mono .fld__control :global(input:not([type='checkbox']):not([type='radio'])) {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-size);
   }
 
   .fld__control :global(textarea) {
@@ -162,7 +175,7 @@
    * blijft de rand van een fout of focus doorzichtig.
    */
   .fld--err .fld__control :global(:is(input:not([type='checkbox']):not([type='radio']), select, textarea)) {
-    border-color: var(--accent);
+    border-color: var(--danger-ink);
   }
 
   /*
@@ -172,7 +185,7 @@
    * niet; .field.err in web.css kent alleen de rode rand.
    */
   .fld--err .fld__control :global(:is(input:not([type='checkbox']):not([type='radio']), select, textarea):focus) {
-    box-shadow: 0 0 0 1px var(--accent);
+    box-shadow: 0 0 0 1px var(--danger-ink);
   }
 
   .fld__control :global(:is(input, select, textarea):disabled) {
@@ -181,7 +194,7 @@
   }
 
   .fld__help {
-    margin-top: 6px;
+    margin-top: 7px;
     font-size: 12px;
     line-height: 1.4;
     color: var(--ink-3);
