@@ -29,7 +29,8 @@ part 'seerr_request_sheet_rows.dart';
 /// Movie = single confirm. TV = per-season multi-select (already
 /// available/requested seasons shown with their status, not selectable). The
 /// 4K switch shows when the user holds the 4K right for this media type, and a
-/// line says so when they do not. Admins get the target section (server,
+/// line says so when they do not. A requester sends no server along, so the
+/// switch also needs a default 4K instance to exist. Admins get the target section (server,
 /// quality profile, root folder). Returns `true` from [show] when a request
 /// was filed.
 ///
@@ -200,9 +201,16 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         if (!mounted || !_live(client)) return;
         _quota = quota;
       }
-      if (provider.isAdmin) {
-        await _target.load(client, is4k: _is4k);
+      // An admin chooses the server. Anyone else who may ask for 4K sends the
+      // request without one, so the list is read to know where it would go.
+      if (provider.isAdmin || provider.canRequest4kFor(isMovie: !_isTv)) {
+        await _target.load(client, is4k: _is4k, listOnly: !provider.isAdmin);
         if (!mounted || !_live(client)) return;
+      }
+      // Opened on 4K by a caller, with no default 4K instance to take it.
+      if (_is4k && !_canOffer4k(provider)) {
+        _is4k = false;
+        if (_isTv) _selectAllRequestable();
       }
       setState(() => _loading = false);
     } on SeerrException catch (e) {
@@ -275,6 +283,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       !_quotaExhausted &&
       !_target.missingServerForQuality &&
       !_target.detailLoading &&
+      // No server goes along, so the request server routes it to the default
+      // instance of the quality. For 4K that one has to be known to exist.
+      !(_is4k && _target.target == null && !_target.hasDefault4k) &&
       (_isTv ? _selectedSeasons.isNotEmpty : _isMovieRequestable);
 
   String _mapError(SeerrException e) {

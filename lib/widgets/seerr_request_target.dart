@@ -47,6 +47,10 @@ class SeerrTargetController extends ChangeNotifier {
   SeerrClient? _client;
   bool _disposed = false;
 
+  /// Only the server list is read and nothing is bound: the form of a
+  /// requester, who has no server to choose and must never send one.
+  bool _listOnly = false;
+
   /// Edit mode: the request already has a target, and it stays exactly as
   /// stored until the admin picks something else. Nothing the option lists
   /// leave out is replaced by a default.
@@ -70,7 +74,12 @@ class SeerrTargetController extends ChangeNotifier {
   bool get hasAnyServer => _all.isNotEmpty;
 
   /// A 4K request with no 4K instance to send it to.
-  bool get missingServerForQuality => !serversFailed && _all.isNotEmpty && !seerrHasServerOfQuality(_all, is4k: _is4k);
+  bool get missingServerForQuality =>
+      !_listOnly && !serversFailed && _all.isNotEmpty && !seerrHasServerOfQuality(_all, is4k: _is4k);
+
+  /// Whether a 4K request sent without a chosen server has somewhere to go.
+  /// A list that could not be read is empty, so not known reads as no.
+  bool get hasDefault4k => seerrHasServerOfQuality(_all, is4k: true, defaultOnly: true);
 
   /// Whether profile and folder are known for the bound server. False while
   /// they load and after they failed, and then [target] carries no server at
@@ -85,24 +94,32 @@ class SeerrTargetController extends ChangeNotifier {
   ///
   /// With [keepStored], [initial] is a target a request already holds: it is
   /// bound as it is, whether or not the lists that come back mention it.
+  ///
+  /// With [listOnly] the list is all that is read: [hasDefault4k] answers, and
+  /// [target] stays null whatever quality is chosen afterwards.
   Future<void> load(
     SeerrClient client, {
     required bool is4k,
     SeerrRequestTarget? initial,
     bool keepStored = false,
+    bool listOnly = false,
   }) async {
     _client = client;
     _is4k = is4k;
     _keepStored = keepStored;
+    _listOnly = listOnly;
     try {
       _all = isTv ? await client.getSonarrServers() : await client.getRadarrServers();
       serversFailed = false;
     } catch (e) {
       appLogger.d('seerr: could not load the target servers: $e');
       _all = const [];
-      serversFailed = true;
+      // Nobody chose a server on a list-only form, so there is no failed
+      // choice to report: the empty list already answers [hasDefault4k].
+      serversFailed = !listOnly;
     }
     if (_disposed) return;
+    if (listOnly) return _notify();
     final wanted = initial?.serverId;
     if (keepStored) {
       serverId = wanted;
@@ -122,6 +139,7 @@ class SeerrTargetController extends ChangeNotifier {
   void setIs4k(bool value) {
     if (_is4k == value) return;
     _is4k = value;
+    if (_listOnly) return _notify();
     bind(preferredSeerrServer(_all, is4k: value)?.id, force: true);
   }
 
