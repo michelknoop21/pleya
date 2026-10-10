@@ -38,7 +38,16 @@ uitsnede van 01 staat ook Verder lezen; die boekrij is S9 en hoort niet bij deze
   kleurverschil loskomt. Dezelfde keuze bij hero C.
 - **Pijlen in de rail.** De northstar tekent ze niet. Het specimen zet ze als ronde knop van 44 op de
   helft van de posterhoogte, half over de inzet, alleen vanaf 900 en alleen met een muis. De linker is
-  aan het begin uitgeschakeld.
+  aan het begin uitgeschakeld. In de bouw zijn ze ook met het toetsenbord bereikbaar: ze staan in de DOM tussen
+  "View all" en de eerste kaart, met `aria-disabled` in plaats van `disabled`, zodat een pijl die aan
+  het eind van de rij uitvalt de focus niet aan de body verliest. Een uitgeschakelde pijl blijft
+  gedimd, behalve met toetsenbordfocus: dan staat hij vol, want de dimming gold ook voor de ring.
+- **Herotitel onder 900 schaalt mee.** Het specimen zet de titel op 393 vast op 32 px met 0,2em
+  spatiëring. Daarmee brak OPPENHEIMER in de bouw midden in het woord. Onder 900 is de titel nu
+  `clamp(22px, 7vw, 32px)`: 27,5 px op 393 en 25,2 px op 360, waar OPPENHEIMER en INTERSTELLAR op één
+  regel passen. `overflow-wrap: break-word` blijft als vangrail voor langere woorden, en
+  `padding-inline-start: 0.2em` vangt de spatiëring na de laatste letter op, zodat de gecentreerde
+  titel niet naar links hangt.
 - **Hover-acties op smal.** Een kaart van 110 breed kan 40 + 34 + 34 plus tussenruimte niet dragen, dus
   onder 900 worden de knoppen 34 en 30. Op een touchscherm verschijnt de overlay niet; dit geldt voor
   een smal venster met een muis.
