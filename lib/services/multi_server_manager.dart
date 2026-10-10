@@ -903,6 +903,12 @@ class MultiServerManager {
       );
       final serverId = connection.serverId;
       _wireServerAuthority(client, ServerId(serverId));
+      // A role change moves what the profile may administer without any
+      // connection or health event: say so, so the assistant's rights stamp
+      // sees it (and the way back).
+      client.onRoleChanged = () {
+        if (identical(_clients[serverId], client)) _statusController.add(Map.from(_serverStatus));
+      };
       final oldClient = _clients[serverId];
       if (oldClient != null) _closeClient(oldClient);
       _clients[serverId] = client;
