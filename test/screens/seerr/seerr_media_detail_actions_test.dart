@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/i18n/strings.g.dart';
@@ -14,6 +15,8 @@ import 'package:pleya/screens/seerr/seerr_requests_screen.dart';
 import 'package:pleya/services/companion_remote/companion_remote_receiver.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/utils/platform_detector.dart';
+import 'package:pleya/widgets/seerr_request_sheet.dart';
 
 import '../../test_helpers/prefs.dart';
 import '../../test_helpers/seerr_fake.dart';
@@ -49,7 +52,13 @@ void main() {
     SeerrMediaStatus cardStatus = SeerrMediaStatus.unknown,
     String mediaType = 'movie',
     int permissions = seerrPermRequest,
+    List<bool>? serversAre4k,
   }) async {
+    if (serversAre4k != null) {
+      fake.on('GET /service/${mediaType == 'movie' ? 'radarr' : 'sonarr'}', [
+        for (final (i, is4k) in serversAre4k.indexed) {'id': i + 1, 'name': 'Server ${i + 1}', 'is4k': is4k},
+      ]);
+    }
     fake.on('GET /$mediaType/603', detail);
     fake.on('GET /$mediaType/603/recommendations', {'results': []});
     provider = await seerrProvider(fake, permissions: permissions);
@@ -151,7 +160,7 @@ void main() {
 
     testWidgets('that is available can be asked for in 4K, and the form opens on 4K', (tester) async {
       fake.on('POST /request', {'id': 9});
-      await open(tester, movie(5), permissions: fourK);
+      await open(tester, movie(5), permissions: fourK, serversAre4k: [false, true]);
 
       expect(_action('request'), findsNothing, reason: 'HD is there');
       expect(find.text(t.seerr.fourK), findsOneWidget);
@@ -166,32 +175,82 @@ void main() {
     });
 
     testWidgets('that is pending keeps Mijn aanvraag and adds the 4K request', (tester) async {
-      await open(tester, movie(2, requests: [ownRequest()]), permissions: fourK);
+      await open(
+        tester,
+        movie(2, requests: [ownRequest()]),
+        permissions: fourK,
+        serversAre4k: [false, true],
+      );
 
       expect(seerrHasFocus(tester, _action('mine')), isTrue, reason: 'the own request stays the first action');
       expect(_action('request4k'), findsOneWidget);
     });
 
     testWidgets('that is being processed adds the 4K request', (tester) async {
-      await open(tester, movie(3), permissions: fourK);
+      await open(tester, movie(3), permissions: fourK, serversAre4k: [false, true]);
       expect(_action('request4k'), findsOneWidget);
     });
 
     for (final taken in [2, 3, 5]) {
       testWidgets('offers no 4K request when the 4K status is $taken', (tester) async {
-        await open(tester, withFourK(movie(5), taken), permissions: fourK);
+        await open(tester, withFourK(movie(5), taken), permissions: fourK, serversAre4k: [false, true]);
         expect(_action('request4k'), findsNothing);
       });
     }
 
+    group('and only with a 4K instance to send it to', () {
+      testWidgets('an admin on a server without one gets no 4K request', (tester) async {
+        await open(tester, movie(5), permissions: seerrPermAdmin, serversAre4k: [false]);
+        expect(_action('request4k'), findsNothing, reason: 'the admin bit is not a 4K instance');
+      });
+
+      testWidgets('an admin on a server with one gets it', (tester) async {
+        await open(tester, movie(5), permissions: seerrPermAdmin, serversAre4k: [false, true]);
+        expect(_action('request4k'), findsOneWidget);
+      });
+
+      testWidgets('a requester with the 4K right and no instance gets none', (tester) async {
+        await open(tester, movie(5), permissions: fourK, serversAre4k: [false]);
+        expect(_action('request4k'), findsNothing);
+      });
+
+      testWidgets('an instance list that could not be read offers nothing', (tester) async {
+        await open(tester, movie(5), permissions: fourK);
+        expect(_action('request4k'), findsNothing);
+      });
+    });
+
+    testWidgets('on TV the remote reaches the 4K request with the D-pad and opens the form with it', (tester) async {
+      TvDetectionService.debugSetAppleTVOverride(true);
+      addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await open(tester, movie(5), permissions: fourK, serversAre4k: [false, true]);
+      await tester.pumpAndSettle();
+
+      expect(seerrHasFocus(tester, _action('refresh')), isTrue, reason: 'the page opens on its first action');
+      for (var i = 0; i < 4 && !seerrHasFocus(tester, _action('request4k')); i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.pumpAndSettle();
+      }
+      expect(seerrHasFocus(tester, _action('request4k')), isTrue);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await seerrSettle(tester);
+      expect(find.byType(SeerrRequestSheet), findsOneWidget);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    });
+
     testWidgets('a profile without the 4K right sees what it saw before', (tester) async {
-      await open(tester, movie(5));
+      await open(tester, movie(5), serversAre4k: [false, true]);
       expect(_action('request4k'), findsNothing);
       expect(_action('request'), findsNothing);
     });
 
     testWidgets('a status that could not be refreshed offers no 4K request either', (tester) async {
-      await open(tester, movie(5), permissions: fourK);
+      await open(tester, movie(5), permissions: fourK, serversAre4k: [false, true]);
       fake.on('GET /movie/603', {'message': 'boom'}, 500);
       await tester.tap(find.text(t.seerr.refreshStatus));
       await seerrSettle(tester);

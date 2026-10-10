@@ -76,6 +76,7 @@ void main() {
     int permissions = seerrPermRequest,
     VoidCallback? onRequested,
     bool offerMine = false,
+    bool initialIs4k = false,
   }) async {
     // Tall enough that a five-season form is laid out whole: the list is lazy.
     tester.view.physicalSize = const Size(900, 2400);
@@ -92,6 +93,7 @@ void main() {
         media: media,
         onRequested: onRequested ?? () => requested++,
         onOpenMyRequests: offerMine ? () => openedMine++ : null,
+        initialIs4k: initialIs4k,
       ),
     );
     await _settle(tester);
@@ -715,6 +717,30 @@ void main() {
       expect(find.text(t.seerr.advancedOptions), findsNothing);
       expect(fake.sent('GET', '/service/radarr'), isEmpty);
     });
+  });
+
+  testWidgets('a series form opened on 4K judges the seasons on their 4K status from the start', (tester) async {
+    // Season 1 is there in HD and open in 4K; season 2 is taken in both.
+    fake.on(
+      'GET /tv/1399',
+      tvDetail(
+        statuses: {
+          1: [5, 1],
+          2: [5, 5],
+        },
+      ),
+    );
+    await open(tester, _show, permissions: SeerrPermission.request | SeerrPermission.request4kTv, initialIs4k: true);
+
+    final form = tester.widget<AutomationNode>(_node(AutomationIds.requestsForm, 'create')).state!() as Map;
+    expect(form['is4k'], isTrue);
+    expect(form['seasons'], [1, 3, 4, 5], reason: 'season 1 is open in 4K, season 2 is not');
+  });
+
+  testWidgets('a form asked to open on 4K stays on HD for a profile without the 4K right', (tester) async {
+    await open(tester, _movie, initialIs4k: true);
+    final form = tester.widget<AutomationNode>(_node(AutomationIds.requestsForm, 'create')).state!() as Map;
+    expect(form['is4k'], isFalse);
   });
 
   testWidgets('a season that is there in HD, with no 4K status at all, can still be asked for in 4K (B02)', (
