@@ -95,6 +95,21 @@ Twee kleuren uit de app staan bewust niet in de tokens: het teal `#54B9C5` in
 `#E5140F` zit. Ze staan als design debt in hoofdstuk 24.3 van de architectuur en worden in app en
 web samen rechtgetrokken, niet eenzijdig hier.
 
+### Kaart, hero en rail
+
+`MediaCard` is één item in een raster of rij, met de staten van northstar-scherm 16: rust, hover
+met acties, toetsenbordfocus, voortgang, gezien, nieuw, aflevering in Verder kijken, volgende
+aflevering (`shape="wide"`), geen artwork en versies. `Hero` staat bovenaan Home op de geometrie
+van beeld 01 (21:9 vanaf 1200, 16:9 vanaf 900, daaronder een portret); Afspelen verschijnt alleen
+met een `playHref`, synopsis alleen met een `summary`. `HubRail` is een horizontale rij met kop,
+"View all", een fade rechts en pijlen vanaf 900 met een muis, en tekent zich niet zonder items.
+
+`Artwork.svelte` vraagt per vlak een trede van de artworkladder (`src/lib/util/srcset.ts`: 240 tot
+1920 voor poster, 480 tot 3840 voor backdrop). Zolang `ARTWORK_SIZES_AVAILABLE` false is, gaat er
+geen `?width=` over de lijn en komt het origineel terug. Een vervangbare loader loopt via de
+Svelte-context in `artworkLoader.ts`; de galerij en de tests gebruiken hem om zonder server beeld
+te hebben, productie zet hem nergens.
+
 ### Letters
 
 De app levert Inter in 400, 500 en 700 (`pubspec.yaml`) en gebruikt daarnaast op tientallen
