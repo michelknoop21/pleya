@@ -66,9 +66,11 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 		// managed is expliciet 'config' en niet de kolomdefault: dit is het pad
 		// dat de omgeving synct, en de default bestaat voor een rij die buiten dit
 		// pad om wordt ingevoegd. De WHERE-guard laat een via POST
-		// /libraries/{id}/adopt overgenomen ('db') bibliotheek met rust: de
-		// .env-regel blijft dan in de configuratie staan (de beheerder hoeft niets
-		// te bewerken) en de rij, titel, soort en roots zijn van de database.
+		// /libraries/{id}/adopt overgenomen ('db') bibliotheek met rust. De
+		// overname zelf vraagt geen .env-bewerking, maar de regel moet daarna uit
+		// de .env worden verwijderd: anders blijft hij genegeerd, en bij DELETE
+		// plus herstart komt de bibliotheek met een nieuwe id terug (root-steal-
+		// gap, S2.7). De rij, titel, soort en roots zijn van de database.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO libraries (id, slug, title, kind, managed)
 			VALUES ($1, $2, $3, $4, 'config')

@@ -1822,8 +1822,8 @@ loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 ### 17e.5 Een `.env`-bibliotheek overnemen
 
 `POST /libraries/{id}/adopt` zet `managed` van `config` naar `db` en verandert niets anders: id, slug,
-titel, roots, items en kijkstatus blijven staan, zodat een bestaande installatie zonder bewerking van
-de `.env` naar beheer in de browser kan. Een regel in `PLEYA_SERVER_LIBRARIES` met dezelfde slug
+titel, roots, items en kijkstatus blijven staan, zodat een bestaande installatie naar beheer in de
+browser kan zonder eerst de `.env` te bewerken. Een regel in `PLEYA_SERVER_LIBRARIES` met dezelfde slug
 slaat de server daarna over bij het synchroniseren, en bij het opstarten meldt hij welke bibliotheek
 dat betreft. Een bibliotheek die al `db` is geeft `library.not_config_managed`.
 
