@@ -1,6 +1,6 @@
 <!--
-  Dezelfde vier standen als de app: OLED, dark, light en system, met OLED als
-  standaard. Een select en geen eigen menu: een browser levert er al een die
+  Dezelfde vier standen als de app: OLED, dark, light en system. Op web is
+  dark de standaard (stores/theme.svelte.ts zegt waarom). Een select en geen eigen menu: een browser levert er al een die
   met toetsenbord en schermlezer werkt.
 -->
 <script lang="ts">
@@ -36,8 +36,8 @@
     min-height: var(--touch-target);
     padding: var(--space-half) var(--space);
     border-radius: var(--radius-md);
-    border: 1px solid var(--outline);
-    background: var(--surface);
+    border: 1px solid var(--hairline);
+    background: var(--inset-bg);
     color: var(--text);
   }
 </style>
