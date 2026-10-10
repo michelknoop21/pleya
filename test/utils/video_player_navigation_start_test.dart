@@ -11,6 +11,7 @@ import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
 import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/media/server_capabilities.dart';
+import 'package:pleya/models/transcode_quality_preset.dart';
 import 'package:pleya/providers/download_provider.dart';
 import 'package:pleya/providers/multi_server_provider.dart';
 import 'package:pleya/providers/watch_state_store.dart';
@@ -309,12 +310,13 @@ void main() {
     );
   }
 
-  // The version menu of Jellyfin and Emby passes the number together with the
-  // stable source id; a plain play passes neither. Nothing in the guard looks
-  // at the backend, so every backend runs the same two orders.
+  // The version menu (`_handlePlayVersion`) always passes the number, the
+  // stable source id and a quality, Original unless the viewer picked another;
+  // a plain play passes none of them. Nothing in the guard looks at the
+  // backend, so every backend runs the same two orders.
   for (final backend in MediaBackend.values) {
     for (final plainFirst in [true, false]) {
-      testWidgets('a plain start and version 0 by number and source id are one start '
+      testWidgets('a plain start and version 0 from the version menu are one start '
           '(${backend.id}, ${plainFirst ? 'plain' : 'source id'} first)', (tester) async {
         final (context, client, spy) = await pumpHost(tester);
         final item = MediaItem(
@@ -326,7 +328,13 @@ void main() {
         );
         Future<bool?> start({required bool plain}) => plain
             ? navigateToVideoPlayer(context, metadata: item)
-            : navigateToVideoPlayer(context, metadata: item, selectedMediaIndex: 0, selectedMediaSourceId: 'source_a');
+            : navigateToVideoPlayer(
+                context,
+                metadata: item,
+                selectedMediaIndex: 0,
+                selectedMediaSourceId: 'source_a',
+                selectedQualityPreset: TranscodeQualityPreset.original,
+              );
 
         // No preference is stored, so the plain start resolves to version 0.
         unawaited(start(plain: plainFirst));

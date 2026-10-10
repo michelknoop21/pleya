@@ -34,42 +34,31 @@ const String kVideoPlayerRouteName = '/video_player';
 /// is read, under the version it resolved to: otherwise "the saved version"
 /// and that same version asked for by number would both get through.
 ///
-/// The number is the whole version: the source id a version menu passes along
-/// names the entry at that number, and a start without it would otherwise
-/// never meet a start with it. The mounted player answers for duplicates by
-/// number as well, through `activeMediaIndex`.
+/// The key holds the title, the version number and offline, the same things
+/// the mounted player answers for duplicates with (`activeId`,
+/// `activeMediaIndex`). The source id a version menu passes along is left
+/// out: it names the entry at that number, and a start without it would
+/// otherwise never meet a start with it. On Jellyfin and Emby the source id
+/// does win over the number when the stream is fetched, so two starts with
+/// one number and different source ids count as one start here.
+///
+/// The quality is left out as well. A plain start passes none and the version
+/// menu always passes one, so keying on it let both through; the mounted
+/// player refuses a second start of the same version whatever its quality, so
+/// the guard refuses nothing the player would have let in a frame later.
 class VideoPlayerNavigationInFlightGuard {
   final Set<String> _keys = <String>{};
 
-  bool tryStart(
-    MediaItem metadata, {
-    required int? mediaIndex,
-    required TranscodeQualityPreset? selectedQualityPreset,
-    required bool isOffline,
-  }) {
-    return _keys.add(
-      _keyFor(metadata, mediaIndex: mediaIndex, selectedQualityPreset: selectedQualityPreset, isOffline: isOffline),
-    );
+  bool tryStart(MediaItem metadata, {required int? mediaIndex, required bool isOffline}) {
+    return _keys.add(_keyFor(metadata, mediaIndex: mediaIndex, isOffline: isOffline));
   }
 
-  void finish(
-    MediaItem metadata, {
-    required int? mediaIndex,
-    required TranscodeQualityPreset? selectedQualityPreset,
-    required bool isOffline,
-  }) {
-    _keys.remove(
-      _keyFor(metadata, mediaIndex: mediaIndex, selectedQualityPreset: selectedQualityPreset, isOffline: isOffline),
-    );
+  void finish(MediaItem metadata, {required int? mediaIndex, required bool isOffline}) {
+    _keys.remove(_keyFor(metadata, mediaIndex: mediaIndex, isOffline: isOffline));
   }
 
-  String _keyFor(
-    MediaItem metadata, {
-    required int? mediaIndex,
-    required TranscodeQualityPreset? selectedQualityPreset,
-    required bool isOffline,
-  }) {
-    return [metadata.globalKey, mediaIndex ?? 'saved', selectedQualityPreset?.name ?? 'auto', isOffline].join('|');
+  String _keyFor(MediaItem metadata, {required int? mediaIndex, required bool isOffline}) {
+    return [metadata.globalKey, mediaIndex ?? 'saved', isOffline].join('|');
   }
 }
 
@@ -176,7 +165,6 @@ Future<bool?> navigateToVideoPlayer(
     markedInFlight = _videoPlayerNavigationInFlightGuard.tryStart(
       requested,
       mediaIndex: selectedMediaIndex,
-      selectedQualityPreset: selectedQualityPreset,
       isOffline: isOffline,
     );
     if (!markedInFlight) {
@@ -191,21 +179,11 @@ Future<bool?> navigateToVideoPlayer(
   void releaseInFlight() {
     if (!markedInFlight) return;
     markedInFlight = false;
-    _videoPlayerNavigationInFlightGuard.finish(
-      requested,
-      mediaIndex: selectedMediaIndex,
-      selectedQualityPreset: selectedQualityPreset,
-      isOffline: isOffline,
-    );
+    _videoPlayerNavigationInFlightGuard.finish(requested, mediaIndex: selectedMediaIndex, isOffline: isOffline);
     final resolved = resolvedIndexInFlight;
     if (resolved == null) return;
     resolvedIndexInFlight = null;
-    _videoPlayerNavigationInFlightGuard.finish(
-      requested,
-      mediaIndex: resolved,
-      selectedQualityPreset: selectedQualityPreset,
-      isOffline: isOffline,
-    );
+    _videoPlayerNavigationInFlightGuard.finish(requested, mediaIndex: resolved, isOffline: isOffline);
   }
 
   // Answer Select before the first await. The notice lives in the app shell,
@@ -268,7 +246,6 @@ Future<bool?> navigateToVideoPlayer(
       final free = _videoPlayerNavigationInFlightGuard.tryStart(
         requested,
         mediaIndex: mediaIndex,
-        selectedQualityPreset: selectedQualityPreset,
         isOffline: isOffline,
       );
       if (!free) {
