@@ -1552,14 +1552,13 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
       final maxExtent = GridSizeCalculator.getMaxCrossAxisExtent(context, density);
       final columnCount = GridSizeCalculator.getColumnCount(screenSize.width, maxExtent);
       final itemWidth = screenSize.width / columnCount;
-      final scale = TvLayoutConstants.scaleForSize(screenSize);
       final rowHeight =
           MediaCardGridLayout.cellHeightFor(
             context,
             itemWidth,
             imageAspectRatio: GridLayoutConstants.fullCardPosterAspectRatio,
           ) +
-          GridLayoutConstants.posterGridSpacingForScale(scale);
+          MediaGridDelegate.spacingFor(context: context);
       if (rowHeight <= 0) return _activeFetchSize;
       final visibleRows = (screenSize.height / rowHeight).ceil() + 1;
       final visibleCount = visibleRows * columnCount;
@@ -1804,8 +1803,10 @@ class _LibraryBrowseTabState extends BaseLibraryTabState<MediaItem, LibraryBrows
   /// The grid's own row gap, so the first row breathes the same as every row
   /// after it. It used to be a flat 6, which put the posters right under the
   /// line and made the header and the grid read as one block.
-  double _gridTopPadding(BuildContext context) =>
-      GridLayoutConstants.posterGridSpacingForScale(TvLayoutConstants.scaleOf(context));
+  ///
+  /// Read from `MediaGridDelegate.spacingFor`, the one owner of the poster
+  /// spacing, so it follows the grid off TV as well (F-D2).
+  double _gridTopPadding(BuildContext context) => MediaGridDelegate.spacingFor(context: context);
 
   /// Width of the alpha jump bar widget
   static const double _alphaJumpBarWidth = 20.0;
