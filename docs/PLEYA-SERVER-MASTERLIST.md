@@ -38,11 +38,11 @@ Bron voor de scope:
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
 | Backend basis | S1 tot S6 | 1 | 1 | 4 |
-| Web | S7 tot S13 | 0 | 0 | 7 |
+| Web | S7 tot S13 | 0 | 1 | 6 |
 | Clients en agents | S14, S16 | 0 | 0 | 2 |
 | Uitgebreide scope | S17 tot S25 | 0 | 0 | 9 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **2** | **1** | **23** |
+| **Totaal** | **26** | **2** | **2** | **22** |
 
 Per taak, en dat is de maat die telt: **149 taken, 23 gereed, 6 bezig, 120 open.** S0 en S1 zijn
 allebei dicht, met acht van acht. Verder zijn S2.1 tot en met S2.4 en S7.3 gereed, en de twee
