@@ -10,6 +10,7 @@
   import MobileHeader from '$lib/components/MobileHeader.svelte';
   import TabBar from '$lib/components/TabBar.svelte';
   import StateView from '$lib/components/StateView.svelte';
+  import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import { activeItemId, navItems } from '$lib/components/navItems';
   import { session } from '$lib/stores/session.svelte';
   import { theme } from '$lib/stores/theme.svelte';
@@ -84,7 +85,7 @@
 <a class="skip-link" href="#main">{t('nav.skipToContent')}</a>
 
 {#if session.phase === 'starting'}
-  <StateView kind="loading" />
+  <SkeletonPage variant="compact" />
 {:else if session.phase === 'unreachable'}
   <StateView
     kind="error"
@@ -97,11 +98,11 @@
     {#if page.url.pathname === expectedPath}
       {@render children()}
     {:else}
-      <StateView kind="loading" />
+      <SkeletonPage variant="compact" />
     {/if}
   </main>
 {:else if !routeMatchesPhase}
-  <StateView kind="loading" />
+  <SkeletonPage variant="compact" />
 {:else}
   <div class="shell" class:shell--wide={viewport.wide}>
     {#if viewport.wide}

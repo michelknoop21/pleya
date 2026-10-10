@@ -10,6 +10,14 @@ describe('StateView', () => {
     expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
   });
 
+  it('kent alleen leeg en fout; laden is een skelet en geen spinner meer', () => {
+    const { container } = render(StateView);
+    expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
+    expect(container.querySelector('.state__icon')).not.toBeNull();
+    expect(container.querySelector('.state__spinner')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
   it('meldt een fout als alert, zodat een schermlezer hem meteen hoort', () => {
     render(StateView, { props: { kind: 'error', message: 'De server antwoordde niet.' } });
     const alert = screen.getByRole('alert');
