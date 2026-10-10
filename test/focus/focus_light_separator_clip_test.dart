@@ -180,7 +180,7 @@ void main() {
     await _settle(tester);
     // The rail's viewport leaves `cardFocusRingGap * scale` (4.25 px on the
     // Apple TV canvas) between a focused tile's artwork and its top and bottom
-    // clip. The ring takes 2.5 of that, so 1.75 px of band shows there: full
+    // clip. The ring takes 2.5 of that, so about 1.6 px of band shows there (3 device pixels at 1080p): full
     // ink, where the old line was 1 px at 55%. Growing the rail's band height
     // for the rest would move every rail on the landing, so it is left alone.
     const railClip = {AxisDirection.up: 1.5, AxisDirection.down: 1.5};
