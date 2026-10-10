@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 
 import Artwork from './Artwork.svelte';
 import { ApiError } from '../api/errors';
+import { ARTWORK_LOADER_KEY } from './artworkLoader';
 
 const artworkBlob = vi.fn();
 vi.mock('../stores/session.svelte', () => ({
@@ -107,5 +108,25 @@ describe('Artwork', () => {
 
     expect(revoked).toContain(created[0]);
     expect(revoked).not.toContain(created[1]);
+  });
+
+  it('gebruikt een loader uit de context en laat de client dan met rust', async () => {
+    const loader = vi.fn().mockResolvedValue(new Blob(['bytes']));
+    render(Artwork, {
+      props: { artworkId: 'a1', alt: 'Poster', eager: true },
+      context: new Map([[ARTWORK_LOADER_KEY, loader]])
+    });
+
+    await screen.findByAltText('Poster');
+    expect(loader).toHaveBeenCalledWith('a1', expect.any(AbortSignal));
+    expect(artworkBlob).not.toHaveBeenCalled();
+  });
+
+  it('valt zonder context terug op de client', async () => {
+    artworkBlob.mockResolvedValue(new Blob(['bytes']));
+    render(Artwork, { props: { artworkId: 'a1', alt: 'Poster', eager: true } });
+
+    await screen.findByAltText('Poster');
+    expect(artworkBlob).toHaveBeenCalledTimes(1);
   });
 });

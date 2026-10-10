@@ -375,6 +375,21 @@ describe('artwork', () => {
     expect(url).not.toContain('token');
   });
 
+  it('zet ?width= alleen wanneer er een breedte is meegegeven', async () => {
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      urls.push(String(input));
+      return new Response('b', { status: 200 });
+    }) as unknown as FetchLike;
+
+    const { client } = clientWith(fetchImpl);
+    client.tokens.set({ access_token: 'A1', refresh_token: 'R1', expires_in_ms: 900_000 });
+    await client.artworkBlob('art-1', undefined, 480);
+    await client.artworkBlob('art-1');
+
+    expect(urls).toEqual([`${BASE}/artwork/art-1?width=480`, `${BASE}/artwork/art-1`]);
+  });
+
   it('geeft een 404 door als ApiError, want dat is een normale toestand', async () => {
     const fetchImpl = vi.fn(async () =>
       json({ error: { code: 'library.not_found', message: 'x', retryable: false } }, 404)
