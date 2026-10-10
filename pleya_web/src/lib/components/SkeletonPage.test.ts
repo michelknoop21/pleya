@@ -9,9 +9,11 @@ describe('SkeletonPage', () => {
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('Loading…');
     expect(status).toHaveClass('visually-hidden');
-    // De statusregel zelf is niet bezig: dat zou de aankondiging inhouden.
-    expect(status).not.toHaveAttribute('aria-busy');
-    expect(status.parentElement).toHaveAttribute('aria-busy', 'true');
+    // De statusregel staat buiten de bezige container: een aria-busy-voorouder
+    // zou de aankondiging inhouden.
+    expect(status.closest('[aria-busy="true"]')).toBeNull();
+    const busy = status.parentElement?.querySelector('.skp__body');
+    expect(busy).toHaveAttribute('aria-busy', 'true');
   });
 
   it('houdt de blokken buiten de toegankelijkheidsboom', () => {
