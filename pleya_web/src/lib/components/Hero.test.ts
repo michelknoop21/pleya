@@ -151,4 +151,13 @@ describe('Hero', () => {
     const light = tokens.slice(tokens.indexOf("[data-theme='light']"));
     expect(light.slice(0, light.indexOf('}'))).toMatch(/--on-artwork-ink: 0\.9;/);
   });
+
+  it('laat app.html de displayletter van de titel vooraf laden, na de CSP-meta', () => {
+    const html = readFileSync(resolve(import.meta.dirname, '../../app.html'), 'utf8');
+    const link = html.match(/<link\s+rel="preload"[^>]*ArchivoBlack-Regular\.woff2"[^>]*>/);
+    expect(link, 'preload voor ArchivoBlack').not.toBeNull();
+    expect(link![0]).toContain('as="font"');
+    expect(link![0]).toContain('crossorigin');
+    expect(html.indexOf('%sveltekit.head%')).toBeLessThan(html.indexOf(link![0]));
+  });
 });
