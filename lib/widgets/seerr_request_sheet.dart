@@ -565,7 +565,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         ),
     ];
     // What the server said about a request that was sent. Pinned above the
-    // buttons at the height it needs, so the choices keep the rest.
+    // buttons at the height it needs, so the choices keep the rest. Its
+    // ceiling is half of what the buttons leave: the buttons wrap and grow
+    // with the text size, and the choices never get less than the message.
     final outcome = [
       if (_uncertain)
         SeerrFormNotice(
@@ -590,23 +592,33 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              children: [
-                _quotaLine(theme),
-                // One slot whether it holds a message or not: a row that comes
-                // and goes would renumber the rows below it, and the row that
-                // holds the focus would be rebuilt without it.
-                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: standing),
-                if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
-                _fourKRow(provider, enabled: !locked),
-                if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
-                  SeerrTargetSection(controller: _target, enabled: !locked),
-              ],
+            child: LayoutBuilder(
+              builder: (context, room) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        _quotaLine(theme),
+                        // One slot whether it holds a message or not: a row that
+                        // comes and goes would renumber the rows below it, and
+                        // the row that holds the focus would be rebuilt without it.
+                        Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: standing),
+                        if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
+                        _fourKRow(provider, enabled: !locked),
+                        if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
+                          SeerrTargetSection(controller: _target, enabled: !locked),
+                      ],
+                    ),
+                  ),
+                  if (outcome.isNotEmpty) SeerrFormNoticeScroller(maxHeight: room.maxHeight / 2, children: outcome),
+                ],
+              ),
             ),
           ),
-          if (outcome.isNotEmpty) SeerrFormNoticeScroller(maxHeight: maxHeight * 0.4, children: outcome),
           _uncertain
               ? SeerrFormButtons(
                   closeLabel: t.common.close,

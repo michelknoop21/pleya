@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_ids.dart';
@@ -11,6 +12,7 @@ import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/models/seerr/seerr_media.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
+import 'package:pleya/widgets/seerr_request_form_parts.dart';
 import 'package:pleya/widgets/seerr_request_sheet.dart';
 
 import '../test_helpers/seerr_fake.dart';
@@ -50,6 +52,12 @@ bool _onMessages() => FocusManager.instance.primaryFocus?.debugLabel == 'request
 
 /// The scroll view of the pinned messages, not the list of choices.
 Finder get _pinned => find.byType(SingleChildScrollView);
+
+/// How far the list of choices can still scroll: zero when it shows all it has.
+double _listScrolls(WidgetTester tester) => tester
+    .state<ScrollableState>(find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)))
+    .position
+    .maxScrollExtent;
 
 void main() {
   late FakeSeerr fake;
@@ -176,7 +184,8 @@ void main() {
         .state<ScrollableState>(find.descendant(of: _pinned, matching: find.byType(Scrollable)))
         .position;
     expect(position.maxScrollExtent, greaterThan(0), reason: 'two messages do not fit the share on this screen');
-    expect(tester.getSize(_pinned).height, closeTo(568 * 0.72 * 0.4, 1));
+    final room = 568 * 0.72 - tester.getSize(find.byType(SeerrFormButtons)).height;
+    expect(tester.getSize(_pinned).height, closeTo(room / 2, 1), reason: 'half of what the buttons leave');
     expect(_inView(tester, find.text(t.seerr.statusCheckFailed)), isFalse);
 
     // The two buttons stand above each other on a screen this narrow.
@@ -194,25 +203,120 @@ void main() {
     expect(seerrHasFocus(tester, _button('close')), isTrue, reason: 'past the end DOWN is a move again');
   });
 
-  for (final scale in [1.0, 1.3]) {
-    for (final size in [const Size(320, 568), const Size(375, 667), const Size(568, 320), const Size(667, 375)]) {
-      testWidgets('${size.width.toInt()}x${size.height.toInt()} at $scale: a reached limit and no default instance '
-          'are both named beside the button', (tester) async {
-        quota(reached: true);
-        instances(hdDefault: false);
-        await open(tester, _movie, size: size, textScale: scale);
+  group('an answer of the server on a small screen', () {
+    tearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
 
-        expect(tester.takeException(), isNull);
-        // The notice with the limit is under the fold on the smallest of these.
-        final both = find.byWidgetPredicate(
-          (w) =>
-              w is Text &&
-              (w.data?.startsWith(t.seerr.noDefaultServerTitle) ?? false) &&
-              w.data!.contains(t.seerr.quotaReached),
-        );
-        expect(both.hitTestable(), findsOneWidget);
-        expect(find.descendant(of: _button('close'), matching: find.byType(TextButton)).hitTestable(), findsOneWidget);
-      });
+    /// The buttons are whole on the screen, and the choices keep at least as
+    /// much as the message, unless they show all they have in less.
+    void expectRoomForAll(WidgetTester tester, Size size) {
+      expect(tester.takeException(), isNull);
+      final list = tester.getSize(find.byType(ListView)).height;
+      final message = tester.getSize(_pinned).height;
+      // 43 on the tightest of these: 568x320 at 1.3 in Dutch, where the two
+      // buttons stand above each other.
+      expect(list, greaterThan(40));
+      if (_listScrolls(tester) > 0) expect(list, greaterThanOrEqualTo(message - 1));
+      final buttons = tester.getRect(find.byType(SeerrFormButtons));
+      expect(buttons.top, greaterThanOrEqualTo(0));
+      expect(buttons.bottom, lessThanOrEqualTo(size.height));
+      expect(find.descendant(of: _button('close'), matching: find.byType(TextButton)).hitTestable(), findsOneWidget);
     }
-  }
+
+    for (final locale in [AppLocale.nl, AppLocale.en]) {
+      for (final portrait in [const Size(320, 568), const Size(375, 667)]) {
+        for (final size in [portrait, portrait.flipped]) {
+          for (final scale in [1.0, 1.3]) {
+            final name = '${locale.languageCode} ${size.width.toInt()}x${size.height.toInt()} at $scale';
+
+            testWidgets('$name: a refused series leaves the seasons and both buttons in reach', (tester) async {
+              await tester.runAsync(() => LocaleSettings.setLocale(locale));
+              show(6);
+              fake.on('POST /request', {'message': 'no'}, 409);
+              await open(tester, _show, size: size, textScale: scale);
+              await tester.tap(find.byType(FilledButton));
+              await seerrSettle(tester);
+
+              expect(_notice('refused'), findsOneWidget);
+              expectRoomForAll(tester, size);
+              expect(
+                find.descendant(of: _button('submit'), matching: find.byType(FilledButton)).hitTestable(),
+                findsOneWidget,
+              );
+            });
+
+            testWidgets('$name: a film with an unknown outcome keeps its buttons, before and after a failed check', (
+              tester,
+            ) async {
+              await tester.runAsync(() => LocaleSettings.setLocale(locale));
+              fake
+                ..fail('POST /request')
+                ..fail('GET /movie/603');
+              await open(tester, _movie, size: size, textScale: scale);
+              await tester.tap(find.byType(FilledButton));
+              await seerrSettle(tester);
+
+              expect(_notice('uncertain'), findsOneWidget);
+              expectRoomForAll(tester, size);
+
+              await tester.tap(find.descendant(of: _button('status'), matching: find.byType(FilledButton)));
+              await seerrSettle(tester);
+
+              expect(_notice('error'), findsOneWidget);
+              expectRoomForAll(tester, size);
+            });
+          }
+        }
+      }
+    }
+  });
+
+  group('a reached limit and no default instance', () {
+    tearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
+
+    // The line takes two lines and no more. Measured with the font of the
+    // widget tests, in which every character is as wide as it is high, the
+    // second reason does not begin inside them on these.
+    final secondCutOff = {
+      (AppLocale.nl, const Size(320, 568), 1.0),
+      (AppLocale.nl, const Size(320, 568), 1.3),
+      (AppLocale.nl, const Size(375, 667), 1.3),
+      (AppLocale.en, const Size(320, 568), 1.3),
+    };
+
+    for (final locale in [AppLocale.nl, AppLocale.en]) {
+      for (final scale in [1.0, 1.3]) {
+        for (final size in [const Size(320, 568), const Size(375, 667), const Size(568, 320), const Size(667, 375)]) {
+          final cutOff = secondCutOff.contains((locale, size, scale));
+          testWidgets(
+            '${locale.languageCode} ${size.width.toInt()}x${size.height.toInt()} at $scale: the line beside '
+            'the button holds both reasons, and ${cutOff ? 'is cut before the second' : 'draws the start of the second'}',
+            (tester) async {
+              await tester.runAsync(() => LocaleSettings.setLocale(locale));
+              quota(reached: true);
+              instances(hdDefault: false);
+              await open(tester, _movie, size: size, textScale: scale);
+
+              expect(tester.takeException(), isNull);
+              // The notice with the limit is under the fold on the smallest of these.
+              final line = seerrFormHint('${t.seerr.noDefaultServerTitle} · ${t.seerr.quotaReached}');
+              expect(line.hitTestable(), findsOneWidget);
+              final drawn = tester.renderObject<RenderParagraph>(
+                find.descendant(of: line, matching: find.byType(RichText)),
+              );
+              final second = t.seerr.noDefaultServerTitle.length + 3;
+              expect(drawn.getBoxesForSelection(TextSelection(baseOffset: 0, extentOffset: 1)), isNotEmpty);
+              expect(
+                drawn.getBoxesForSelection(TextSelection(baseOffset: second, extentOffset: second + 1)),
+                cutOff ? isEmpty : isNotEmpty,
+              );
+              expect(
+                find.descendant(of: _button('close'), matching: find.byType(TextButton)).hitTestable(),
+                findsOneWidget,
+              );
+            },
+          );
+        }
+      }
+    }
+  });
 }

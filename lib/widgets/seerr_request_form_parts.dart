@@ -240,7 +240,8 @@ class SeerrFormButtons extends StatelessWidget {
   final VoidCallback? onPrimary;
   final bool busy;
 
-  /// One line left of the buttons: what a save will do, or who it is for.
+  /// A muted line above the buttons, two lines at most and cut off after
+  /// that: what a save will do, who it is for, or why the form cannot send.
   final String? hint;
 
   @override
