@@ -307,7 +307,7 @@ FORKS=(
   "os_media_controls|https://github.com/edde746/media_controls|refs/heads/main|3|native mediasessie-integratie"
   "wakelock_plus|https://github.com/edde746/wakelock_plus|refs/heads/main|3|platformcode voor schermwaak"
   # Bewust upstream en niet de mirror uit pubspec.yaml: nieuw werk landt bij
-  # edde746, de mirror draagt alleen de gepinde commit. Zie DEC-118.
+  # edde746, de mirror draagt alleen de gepinde commit. Zie DEC-147.
   "background_downloader|https://github.com/edde746/background_downloader|refs/heads/main|3|achtergronddownloads, iOS 14-eis"
   "sentry_flutter|https://github.com/edde746/sentry-dart|refs/heads/build/fetch-native-zip|3|fork-branch die de native zip ophaalt in plaats van meebouwt; sentry (pure Dart) beweegt hier atomair mee"
   "auto_updater|https://github.com/edde746/auto_updater|refs/heads/main|3|Sparkle/WinSparkle-integratie op desktop"
@@ -317,7 +317,7 @@ FORKS=(
 # Bewijst iets anders dan check_forks hierboven: niet "lopen we achter op wat
 # we volgen", maar "bestaat de gepinde commit nog op de plek waar
 # pubspec.yaml hem zoekt". Precies dat gat liet de background_downloader-pin
-# vier weken onopgemerkt rot staan (DEC-118): de fork rebasede zijn main, de
+# vier weken onopgemerkt rot staan (DEC-147): de fork rebasede zijn main, de
 # gepinde SHA werd onbereikbaar vanaf elke branch of tag, en `pub get` faalde
 # keihard — maar niets in dit rapport keek naar bereikbaarheid, alleen naar
 # "is de HEAD van de gevolgde ref gelijk aan wat we pinnen". Pub fetcht een
@@ -377,7 +377,7 @@ check_pin_reachability() {
     IFS='|' read -r pkg _ _ _ _ <<<"$entry"
     # De eigen url uit de lock, niet de gevolgde ref uit FORKS hierboven: dat
     # zijn voor background_downloader met opzet twee verschillende repo's
-    # (DEC-118), en reachability gaat over waar pubspec.yaml daadwerkelijk
+    # (DEC-147), en reachability gaat over waar pubspec.yaml daadwerkelijk
     # naartoe wijst.
     url="$(awk -v n="  $pkg:" '$0==n{f=1; next} f&&/^ {2,3}[a-z]/{f=0} f&&/^ {4,8}url:/{gsub(/[",]/,"");print $2; exit}' "$lock")"
     pinned="$(awk -v n="  $pkg:" '$0==n{f=1; next} f&&/^ {2,3}[a-z]/{f=0} f&&/resolved-ref:/{gsub(/[",]/,"");print $2; exit}' "$lock")"

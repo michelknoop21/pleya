@@ -99,6 +99,12 @@ func syncLibraries(ctx context.Context, store *catalog.Store, cfg *config.Config
 		return nil, err
 	}
 	for _, l := range libs {
+		if l.Managed == catalog.ManagedDB {
+			log.Info("bibliotheek overgenomen in de database; de .env-regel wordt genegeerd",
+				slog.String("slug", l.Slug),
+				slog.String("id", l.ID.String()))
+			continue
+		}
 		log.Info("bibliotheek gereed",
 			slog.String("slug", l.Slug),
 			slog.String("id", l.ID.String()),

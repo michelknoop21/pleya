@@ -285,6 +285,13 @@ func matrixProbes() []matrixProbe {
 		{row: 38, name: "POST /jobs/{id}/retry", method: http.MethodPost,
 			path: func(f *matrixFixture) string { return "/pleya/v1/jobs/" + f.pendingJobID + "/retry" },
 			body: noBody, ok: http.StatusOK, expect: adminSurface()},
+		// Adopt op de fixturebibliotheek: die is db-beheerd (row 29 patcht hem), dus
+		// elke rol met toegang krijgt hier dezelfde herhaalbare 409, en de probe
+		// verandert niets aan de fixture. Het functionele pad staat in
+		// handlers_admin_libraries_test.go.
+		{row: 40, name: "POST /libraries/{id}/adopt", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/adopt" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
 	}
