@@ -153,9 +153,12 @@ De bouwstenen staan in `src/lib/components/`, elk met een eigen test. Eén regel
 
 ### Diepte en kleurgebruik
 
-Diepte komt uit lagen, niet uit schaduwen. Een vlak is `--panel`, een verzonken veld erin is
-`--inset-bg`, een verhoogd element binnen een paneel is `--panel-2`, en `--hairline` is de
-randlijn. `--ring-shadow` is de ring voor focus en selectie.
+Diepte komt vooral uit lagen in één neutrale tint. Een vlak is `--panel`, een verzonken veld erin
+is `--inset-bg`, een verhoogd element binnen een paneel is `--panel-2`, en `--hairline` is de
+randlijn. `--ring-shadow` legt daar een ring van 1 px plus een zachte schaduw onder, op `Panel`,
+`StatTile` en de dialoog; op OLED valt de schaduw weg en doet de ring het werk. Focus heeft er niets
+mee te maken: dat is de globale `:focus-visible` in `src/styles/base.css`, 3 px (`--ring`) in
+`--ink` op een gap van 3 px.
 
 Tekst die een toestand draagt gebruikt een `ink`-token (`--danger-ink`, `--warn-ink`,
 `--ok-ink`). Grafische vlakken, zoals een segment van de opslagbalk of de lijn van een sparkline,
