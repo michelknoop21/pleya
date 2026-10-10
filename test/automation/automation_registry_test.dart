@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/automation/automation_registry.dart';
@@ -238,6 +240,56 @@ void main() {
 
     expect(rootSpaceScaleOf(scaled), closeTo(1.85, 1e-9));
     expect(rootSpaceScaleOf(plain), closeTo(1.0, 1e-9));
+  });
+
+  // `/v1/ui_tree` answered 500 on the iPad library grid with "Converting object
+  // to an encodable object failed: NaN". A box whose paint transform is the
+  // zero matrix (a FittedBox over an empty child, or a kept-alive TabBarView
+  // page) is still attached and still has a size, so its rect came back as NaN
+  // and `jsonEncode` of the whole snapshot threw. One such node must cost its
+  // own bounds, not the whole tree.
+  testWidgets('a node under a zero paint transform reports no bounds and the snapshot still encodes', (tester) async {
+    late BuildContext collapsed;
+    late BuildContext plain;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            FittedBox(
+              child: Builder(
+                builder: (context) {
+                  collapsed = context;
+                  return const SizedBox(width: 10, height: 0);
+                },
+              ),
+            ),
+            Builder(
+              builder: (context) {
+                plain = context;
+                return const SizedBox(width: 10, height: 10);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+    final collapsedToken = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: 'collapsed-probe', role: 'box', contextGetter: () => collapsed),
+    );
+    final plainToken = AutomationRegistry.instance.register(
+      AutomationDeclaredNode(id: 'plain-after-collapsed', role: 'box', contextGetter: () => plain),
+    );
+    addTearDown(() {
+      AutomationRegistry.instance.unregister(collapsedToken);
+      AutomationRegistry.instance.unregister(plainToken);
+    });
+
+    final snapshot = AutomationRegistry.instance.snapshot();
+    expect(() => jsonEncode(snapshot), returnsNormally);
+
+    final declared = (snapshot['declared'] as List).cast<Map<String, Object?>>();
+    expect(declared.firstWhere((n) => n['id'] == 'collapsed-probe').containsKey('bounds'), isFalse);
+    expect(declared.firstWhere((n) => n['id'] == 'plain-after-collapsed')['bounds'], isNotNull);
   });
 
   // The stale-state regression the top-nav scenario surfaced: a node registers

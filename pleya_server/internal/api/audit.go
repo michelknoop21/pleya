@@ -44,6 +44,7 @@ const (
 	auditCreateLibrary    = "createLibrary"
 	auditUpdateLibrary    = "updateLibrary"
 	auditDeleteLibrary    = "deleteLibrary"
+	auditAdoptLibrary     = "adoptLibrary"
 
 	// auditRecheckStorageRoots hoort bij POST /storage/roots/recheck (S2.3).
 	// GET /storage/roots schrijft niets weg: het is een leesoperatie zoals

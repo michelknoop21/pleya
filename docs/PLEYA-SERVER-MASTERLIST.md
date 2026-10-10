@@ -18,13 +18,13 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-09-24 (S2.4 gereed). De reviewronde op de completionbasis is gesloten, de
-rescue-commits zijn geland en S2.4 (scans en jobs over HTTP, annuleren, retry, backoff) is klaar met
-bewijs in de tabel. S2.5 (`.env`-overname) en S2.6 (migratietest op de NAS-fixture, sluiting van
-protocolvenster 2) zijn open. De telling hieronder is op 2026-09-24 gemeten met `awk` over sectie 3.
-Twee zaken staan bewust buiten dit werk en zijn open: 3 Flutter-testfouten die al op `main` zaten en
-77 goldens die niet op macOS beoordeeld zijn, en de authority-gate die tot een driewegmerge in een
-latere main-sync rood blijft. Zie
+Laatst bijgewerkt: 2026-10-10 (S2 gesloten, masterlijst gereconcilieerd met `main`). S2.5 (overname van
+`.env`-bibliotheken) en S2.6 (migratietest op de NAS-vangst, venster 2 dicht) zijn gereed, en daarmee
+S2 en golf 1. Twee stukken werk waren sinds 24 september op `main` geland zonder regel (loudness,
+migratie `0011`; `GET /watch-history`, DEC-143) en staan nu in hoofdstuk 3a. Later die dag kwam S2.7
+erbij: een vervolgregel buiten venster 2 voor een root-gat in `SyncLibraries` dat ouder is dan S2.5.
+De telling is op 2026-10-10 opnieuw gemeten met `awk` over hoofdstuk 3. Twee zaken staan bewust buiten dit werk en zijn open: 3 Flutter-testfouten
+die al op `main` zaten en 77 goldens die niet op macOS beoordeeld zijn. Zie
 [`P-review-recovery-2026-09-20.md`](pleya-server-rebaseline/P-review-recovery-2026-09-20.md).
 Bron voor de scope:
 `docs/pleya-server-rebaseline/` deel I (slices) en deel O (Definition of Done).
@@ -36,30 +36,29 @@ Bron voor de scope:
 | Blok | Slices | Gereed | Bezig | Open |
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
-| Backend basis | S1 tot S6 | 1 | 1 | 4 |
+| Backend basis | S1 tot S6 | 2 | 0 | 4 |
 | Web | S7 tot S13 | 0 | 0 | 7 |
 | Clients en agents | S14, S16 | 0 | 0 | 2 |
 | Uitgebreide scope | S17 tot S25 | 0 | 0 | 9 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **2** | **1** | **23** |
+| **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **149 taken, 22 gereed, 1 bezig, 126 open.** S0 en S1 zijn
-allebei dicht, met acht van acht; de twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
+Per taak, en dat is de maat die telt: **154 taken, 24 gereed, 1 bezig, 129 open.** S0, S1 en S2 zijn
+dicht (acht van acht, acht van acht, zes van zes). S2.7 telt als open taak mee, maar houdt S2 niet
+open: het is vervolgwerk buiten venster 2 en geen sluitcriterium van de slice. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
 Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
 
-**Waar het nu op wacht.** S0 is dicht en de Roadmap Drift Check erop staat in `STATUS.md`. **PS-11A
-loopt**, en **S1 is dicht**: S1.7 sloot de drie-rollen-ronde plus K rij 1, en S1.6 landde de laatste
-drie rijen van venster 1 en sloot het venster. **S2** (bibliotheken, opslag, scans) loopt: S2.1
-landde de migratie en de `managed`-kolom, S2.2 opende protocolvenster 2 met [DEC-138](DECISIONS.md)
-en landde de CRUD op `/libraries`, en S2.3 landde `GET /storage/roots` en de recheck (samen vijf van
-de tien wijzigingen uit J.3). Venster 2 sluit pas met S2.6. Het venster voor S1 ging open met
-[DEC-135](DECISIONS.md), werd op één punt gecorrigeerd door
-[DEC-136](DECISIONS.md) (venster 1 voegt twee foutdomeinen toe en niet één) en is met S1.6 gesloten
-met [DEC-137](DECISIONS.md); `openapi.yaml` is daarmee weer bevroren. PS-14 blijft gesloten tot
-PS-11A af en geïntegreerd bewezen is; dat is een volgorde, geen voorkeur.
+**Waar het nu op wacht.** S0, S1 en S2 zijn dicht en daarmee de beheer-backend van PS-11A: instellingen,
+diagnostiek, tokens, audit, bibliotheken, opslag, scans, jobs en de overname van `.env`-bibliotheken.
+Protocolvensters 1 en 2 zijn gesloten ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
+[DEC-137](DECISIONS.md); [DEC-138](DECISIONS.md), [DEC-146](DECISIONS.md)) en `openapi.yaml` is weer
+bevroren. De volgende backendslice is S3, en die wacht niet op code maar op een besluit: PS-14 blijft
+gesloten tot PS-11A af en geïntegreerd bewezen is ([DEC-129](DECISIONS.md)), en PS-11A heeft nog zijn
+webkant (S10 en S11) nodig. De weg ernaartoe is S7 (webshell), dus die is de eerstvolgende slice die
+Michel niets hoeft te besluiten.
 
 
 ---
@@ -79,15 +78,15 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 
 | Golf | Slices | Taken | Wat het oplevert | Wacht op |
 | --- | --- | --- | --- | --- |
-| 1, loopt | S1, S2 | 4 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
+| 1, gesloten | S1, S2 | 0 | beheer-backend compleet: instellingen, diagnostiek, tokens, audit, bibliotheken, opslag, scans | niets |
 | 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S1 voor S2; poort P5 vóór S6 |
 | 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
 | 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
-| 5 | S17, S18, S23 | 15 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
+| 5 | S17, S18, S23 | 16 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
 | 6 | S19, S20, S21 | 15 | verzamelingen en afspeellijsten, persoonlijke laag, realtime | S1, S6, S2 |
 | 7 | S22 | 9 | metadata-providers met automatisch matchen en artwork | S4 |
-| 8 | S24, S25 | 11 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
-| slot | S15 | 8 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
+| 8 | S24, S25 | 13 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
+| slot | S15 | 9 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
 | keuze | PS-12 | 0 | Plex-migratie, met een eigen vrijgave na S15 | Michel |
 
 **S22 staat laat en hoeft dat niet.** Hij kan starten zodra S4 staat, en hij is de zwaarste losse
@@ -96,18 +95,28 @@ wachten; wie ruimte heeft trekt hem naar voren.
 
 ### 2.2 De kritieke lijn
 
-`S1 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`. Vertraging daarop schuift de release op;
-vertraging op de rest niet, zolang alles vóór S15 klaar is. Deel I noemt dezelfde lijn, met S22 als
-zwaarste slice ernaast.
+`S7 → S10 → S11 → vrijgave PS-14 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`.
+
+Dit is bijgesteld op 10 oktober 2026. De eerdere lijn begon bij `S1 → S3`, maar
+[DEC-129](DECISIONS.md) houdt PS-14 gesloten tot PS-11A geïntegreerd bewezen is, en PS-11A heeft zijn
+webkant (S10 beheer, S11 wizard, beide op S7) nodig. S3 kan dus niet beginnen voordat de webshell en
+het beheer staan en Michel de vrijgave heeft gegeven. Alleen S4 (en S7) is vrij van die poort en kan er vóór of naast lopen; S5 hangt aan S3 en S4
+(deel I, graaf), en S6 aan S3.
+
+Vertraging op deze lijn schuift de release op; vertraging op de rest niet, zolang alles vóór S15 klaar
+is. Deel I noemt een kortere lijn zonder de vrijgavepoort, met S22 als zwaarste slice ernaast; die
+lezing is hiermee achterhaald.
 
 De web-tak (S7 tot S13) hangt er in zijn geheel naast en is qua taken de grootste van allemaal: 32
-van de 130 resterende. Hij blokkeert alleen S15.
+van de 128 resterende. Hij blokkeert alleen S15.
 
 ### 2.3 Wat op een besluit wacht en niet op code
 
 | Wat | Blokkeert | Stand |
 | --- | --- | --- |
 | **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | open; RB-12 is bijgesteld in deel E, het besluit zelf moet nog als DEC |
+| **Vrijgave van PS-14 (S3)** | S3, en via S3 S6, S9, S12, S14 | wacht op S7, S10 en S11 (PS-11A geïntegreerd, DEC-129); een eigen besluit van Michel |
+| **PS-12 voor of na Plex uit (S15.9)** | S15.5 | open; zonder migratie begint het huishouden met een lege kijkstatus |
 | **Pushen naar `origin`** | niets technisch, wel elk verlies bij een schijfstoring | de branch bestaat op `origin` maar loopt er dertien commits op voor; pushen vraagt Michels go |
 | **PS-12 vrijgeven** | niets; het is een keuzefase | pas ná S15, met een eigen besluit |
 | Mockups 50, 51 en 36 | S12.1, S13.1, deel van S22.6 | goedgekeurd met poort P3 op 4 september; S12.1 en S13.1 zijn daarmee gesloten, S22.6 houdt de bouw van scherm 29 en 36 over |
@@ -115,9 +124,10 @@ van de 130 resterende. Hij blokkeert alleen S15.
 ### 2.4 De poorten die nog dicht staan
 
 P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, uitgesteld),
-P8 (Plex-off gate). Van de acht protocolvensters is er één geopend én weer gesloten: venster 1, bij
+P8 (Plex-off gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
-[DEC-137](DECISIONS.md)). Er staat er nu geen open. De volledige stand staat in hoofdstuk 4.
+[DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
+[DEC-146](DECISIONS.md)). Er staat er nu geen open. De volledige stand staat in hoofdstuk 4.
 
 ### 2.5 Twee dingen die deze planning kunnen omgooien
 
@@ -180,8 +190,21 @@ niet de bouw.
 | S2.2 | CRUD op `/libraries` met `confirm` bij verwijderen | `[x]` | **Venster 2 open.** [DEC-138](DECISIONS.md) opent het protocolvenster voor de tien wijzigingen van J.3 in één keer, net als DEC-135 voor venster 1; deze commit landt er drie van (`POST`/`PATCH`/`DELETE /libraries`) plus de `Library`-uitbreiding met `managed`, `scan_interval_seconds` en `scan_on_start`, alle drie alleen voor klasse admin. Geen nieuw foutdomein: `library.slug_taken`, `library.not_empty` en `library.confirm_mismatch` vallen in het bestaande domein `library`, `storage.root_not_offered` in het bestaande `storage`. Het achtste domein (`job`) komt pas met S2.4. **Geen bestand aangeraakt.** `root_paths` worden uitsluitend structureel gevalideerd (absoluut pad, geen overlap met een bestaande root of binnen dezelfde aanvraag): `CreateLibrary`/`UpdateLibrary` in `internal/catalog/store_write.go` roepen `mounts.Inspect` nergens aan, want die doet ook een schrijfprobe (`os.CreateTemp`), en die op een door de client verzonnen pad loslaten zou K rij 10 juist schenden vóórdat S2.3 de echte mount-opsomming bouwt. `fs_type`/`inode_trusted` blijven op hun kolomdefault tot een latere scan of S2.3 ze meet. **Slug wordt afgeleid.** `slugify` in de catalog-laag maakt van de titel een slug (kleine letters, cijfers, koppeltekens, terugval op `library` als er niets bruikbaars overblijft); een botsing, ook met een `config`-beheerde bibliotheek, geeft `library.slug_taken`. **Een gotcha die de eerste testronde ving.** `UpdateLibraryRequest.ScanIntervalSeconds` moest `json.RawMessage` zijn en niet `*json.RawMessage`: encoding/json zet een pointer-naar-Unmarshaler bij het JSON-literaal `null` zelf al op nil, vóórdat `RawMessage`s eigen `UnmarshalJSON` ooit wordt aangeroepen, en dan zijn "niet meegestuurd" en "meegestuurd met null" niet meer te onderscheiden, hetzelfde ongeval als bij een kale `*int`. Een niet-pointer `json.RawMessage` bewaart bij `null` de letterlijke bytes en laat het veld bij afwezigheid op zijn Go-zero (nil slice) staan, en dat onderscheid is precies waarom `scan_interval_seconds` driewaardig moet zijn (afwezig, `null`, een getal). **Autorisatiematrix.** Van zevenentwintig naar dertig regels (28, 29, 30), tabelgedreven in `matrixProbes()`; regel 30 (DELETE) blijft op de bevestigingsfout staan, hetzelfde patroon als regel 21 (`rotate-signing-key`), zodat de probe voor owner én admin herhaalbaar is zonder de fixturebibliotheek leeg te trekken. **Bewijs.** `go-tool.sh vet ./...` schoon; `test ./...` groen met de wegwerp-Postgres, nul `--- SKIP` (acht nieuwe tests in `internal/catalog`, negen in `internal/api/handlers_admin_libraries_test.go`, drie nieuwe matrixregels); `check_protocol.sh` groen (33 paden, 88 componenten, 20 enums, 7 foutdomeinen); echte vangst van 52 antwoorden via `check_server_responses.py`: 24 van 24 schema's gedekt, met `Library`, `CreateLibraryRequest` en de nieuwe foutcodes erbij; `pleya_web` `api:generate` plus `api:check` sluitend, `check` 0/0, `test` 114 groen, `build` groen; `flutter test test/pleya_server/` 255 groen (`Library` kreeg een parser naast `LibraryList`, de drie requestschema's zijn uitgesteld net als `SetupRequest`, manifest van 64 naar 72 fixtures); `ci_checks.sh` twee keer groen. **Naverificatie (2026-09-07).** Een reviewronde op dit venster vond vijf bevindingen, alle vijf bevestigd tegen de code en gefixt in een eigen commit vóór S2.3: `rootsOverlap` toetste alleen root_paths binnen dezelfde aanvraag, nooit tegen storage_locations van een andere bibliotheek (nieuw `existingRootConflicts` in `internal/catalog/store_write.go`, zowel bij `CreateLibrary` als bij `UpdateLibrary`'s `root_paths`); een `PATCH` met `root_paths` op een niet-bestaand id gaf een kale 500 in plaats van `ErrNotFound` (de DELETE op storage_locations raakte 0 rijen zonder fout, de INSERT erna knalde op de foreign key: nu een expliciete existence-check vóór elke mutatie); `GET /libraries` toetste `req.isAdmin()` maar niet `req.scopeReachesAdmin()`, dus een read-scoped API-token van een admin zag toch de adminvelden; een `PATCH` met een ongewijzigde `kind` triggerde de not-empty-check op de enkele aanwezigheid van het veld in plaats van op een echt verschil met de huidige waarde; en `{"title": null}` was een stille no-op omdat een kale `*string` "afwezig" en "null" niet uit elkaar houdt (Title en Kind kregen dezelfde `json.RawMessage`-behandeling als scan_interval_seconds al had). Elke fix heeft een negatieve-controletest; `test ./...` en `check_protocol.sh` groen erna, `check_server_responses.py` opnieuw 52 van 52. | 2026-09-06, naverificatie 2026-09-07 |
 | S2.3 | `GET /storage/roots` uit de mounts, recheck | `[x]` | **De opsomming is `PLEYA_SERVER_MEDIA_DIRS`, niet mountinfo.** Er bestond al een enumeratievraag ("de mounts") en al een instelling die precies dat declareert (`cfg.MediaDirs`, sinds PS-0); de goedgekeurde northstar-mockup (`docs/assets/pleya-web-northstar/src/pages/24-admin-opslag.html`) zegt het letterlijk: "de roots komen uit de mounts van de container (`PLEYA_SERVER_MEDIA_DIRS`) en zijn hier alleen te kiezen, niet te typen." Een `/proc/self/mountinfo`-opsomming was dus een tweede, overbodige bron van waarheid naast een instelling die er al lag. `api.Options.MediaRoots` draagt hem nu door naar de HTTP-laag. **`rootOffered` is een pad- en prefixcontrole, geen gelijkheid.** De NAS-fixture (`testsupport/fixtures/nas-schema7.sql`) hangt drie bibliotheken onder één mount (`/media/library/Films`, `/media/library/Kids`, `/media/library/Series`), dus een offered root moet zichzelf én elke submap eronder dekken. K rij 10 ("geen normalisatie, geen bestandsbrowser") wordt gehaald zonder één bestandssysteemaanroep: `filepath.Clean(root) != root` verwerpt `../`, een dubbele slash en een spatie in één regel, en de vergelijking daarna is zuiver tekstueel tegen `s.opts.MediaRoots`. Een symlink die de client instuurt komt hierdoor nooit door: er wordt nooit naar het bestandssysteem gekeken om te weten waar hij naartoe wijst. `CreateLibrary`/`UpdateLibrary` in `internal/catalog` zijn hierdoor **niet aangeraakt**, zoals de S2.2-commit al aankondigde: de controle staat ervóór, in de handler. **GET /storage/roots is een unie.** Elke kandidaat uit `MediaRoots` plus elke geclaimde root uit `storage_locations` (nieuw `Store.AllStorageLocations`, een join met `libraries` voor de titel); een root die uit de instelling is verdwenen blijft zichtbaar met `mounted: false` in plaats van stilzwijgend te verdwijnen, dezelfde regel als de "losgekoppelde schijf" in de mockup. Voor een geclaimde root komt `fs_type`/`inode_trusted`/`inode_trust_source` uit de laatste meting in de database en niet uit een live gok; voor een kandidaat is dat de live soort-standaard. `mounted`, `free_bytes` en `total_bytes` zijn altijd live (`mounts.Inspect`, die hiervoor een `TotalBytes`-veld erbij kreeg, `st.Blocks * uint64(st.Bsize)`). **Recheck is asynchroon en gededupliceerd.** `POST /storage/roots/recheck` antwoordt `202` en enqueuet `storage_recheck_roots` op de bestaande jobwachtrij (`internal/jobs`, al sinds `0003_work.sql`); de uitvoering (`cmd/pleya-server/storagework.go`) meet elke geclaimde root opnieuw met dezelfde logica als `syncLibraries` bij het opstarten (`mounts.Inspect` plus `PLEYA_SERVER_INODE_TRUST`-overrule) en schrijft `fs_type`/`inode_trusted`/`inode_trust_source = 'measured'` terug. Synchroon zou een write-probe op een trage of tijdelijk onbereikbare NAS- of USB-mount de aanvrager laten wachten; de dedupe-sleutel houdt een tweede tik uit de wachtrij zolang de eerste nog loopt, hetzelfde patroon als een scanronde. **Autorisatiematrix.** Van dertig naar tweeëndertig regels (31, 32), tabelgedreven in `matrixProbes()`. **Bewijs.** `go-tool.sh vet ./...` schoon; `test ./...` groen met de wegwerp-Postgres en het ffmpeg-image, nul `--- SKIP` (drie nieuwe tests in `internal/catalog`, vijf in `internal/api/handlers_admin_storage_test.go` inclusief een tabelgedreven K-rij-10-ronde, twee in `cmd/pleya-server/storagework_test.go`, twee nieuwe matrixregels, plus een `TotalBytes`-assertie in `internal/mounts`); `check_protocol.sh` groen (35 paden, 92 componenten, 21 enums, 7 foutdomeinen); echte vangst van 53 antwoorden via `check_server_responses.py`: alle schema's gedekt, met `StorageRootList` erbij; `pleya_web` `api:generate` plus `api:check` sluitend, `check` 0 fouten, `test` 114 groen, `build` groen; `flutter test test/pleya_server/` 255 groen, ongewijzigd: geen client consumeert dit endpoint vóór de webbeheerfase (S9/S10), dus geen nieuwe fixture of parser nodig; `ci_checks.sh` twee keer groen. | 2026-09-07 |
 | S2.4 | Scans en jobs over HTTP, annuleren, retry, backoff op `probe_attempts` | `[x]` | Migratie 0010; `Runner.Cancel/Retry/List`; scanner stopt binnen één walk-stap (`TestCancelStopsTheScanWithinOneWalkStep`); zes endpoints met matrixrijen 33-38; `job.not_cancellable` als achtste domein; backoff `probeBackoff`; `verify-protocol.sh` groen. | 2026-09-24 |
-| S2.5 | `.env`-overname met dezelfde id en slug | `[ ]` | | |
-| S2.6 | Migratietest op de NAS-fixture, protocolvenster 2 dicht | `[ ]` | | |
+| S2.5 | `.env`-overname met dezelfde id en slug | `[x]` | `POST /libraries/{id}/adopt` (`AdoptLibrary`, `handleAdoptLibrary`), `library.not_config_managed`, matrixrij 40; `SyncLibraries` slaat een `db`-bibliotheek over (`WHERE managed = 'config'`) en het opstarten logt dat de `.env`-regel wordt genegeerd. Tests: `TestAdoptedLibrarySurvivesEnvSync` (één bibliotheek na overname en herstart, titel en roots ongemoeid), `TestAdoptLibraryTakesOverConfigLibraryKeepingIdentity`, `TestAdoptLibraryTwiceIsRejected`, `TestAdoptLibraryErrors`. **Nagekomen.** Een geweigerde overname (409) schrijft ook een auditregel, uitkomst `denied` met reden `not_config_managed`, zoals `DELETE` met de verkeerde bevestiging; `TestAdoptIsAuditedBothWays` dekt de `ok`- en de `denied`-regel via de tabel en via `GET /audit`, en is rood zonder de regel in `handleAdoptLibrary`. | 2026-10-10 |
+| S2.6 | Migratietest op de NAS-fixture, protocolvenster 2 dicht | `[x]` | `TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity` naast `TestNASFixtureSurvivesMigrationToHead`: na migratie 0009 tot en met 0012 alle drie de bibliotheken nog `config`, een sync met de NAS-`.env` maakt er geen aan, en na overname en herstart zijn ids, slugs, kijkstatus en `storage_locations` gelijk. Venster dicht met [DEC-146](DECISIONS.md#dec-146-protocolvenster-2-gaat-dicht-met-de-overname-als-tiende-wijziging); `check_protocol.sh`, `verify-protocol.sh` (30 schema's gedekt) en de volledige Go-suite groen; webclient opnieuw gegenereerd (`check-api-types.sh` groen). | 2026-10-10 |
+| S2.7 | Vervolg, buiten venster 2: een root van een `db`-bibliotheek blijft bij een herstart van die bibliotheek | `[ ]` | **Bekend gat, nog niet gerepareerd.** Noemt een regel in `PLEYA_SERVER_LIBRARIES` een root van een overgenomen (of een andere `db`-)bibliotheek, dan verplaatst `SyncLibraries` (`internal/catalog/store.go`) die root bij de volgende herstart naar de config-bibliotheek van die regel: de root-upsert `ON CONFLICT (root_path) DO UPDATE SET library_id = EXCLUDED.library_id` kijkt niet naar `managed`. Dat gedrag bestaat sinds S2.2 (de eerste `db`-bibliotheken) en is ouder dan S2.5; de overname maakt het waarschijnlijker, want een oude regel met een andere slug, of een tweede regel, kan dezelfde root noemen. Beschreven in hoofdstuk 17e.5 van de specificatie en in `pleya_server/README.md` (stap 3). **Schets van de fix.** De root-upsert beperken tot roots waarvan de huidige eigenaar een `config`-bibliotheek is (een `WHERE` op de `DO UPDATE` met een subquery op `libraries.managed`, dezelfde vorm als de guard op de bibliotheek-upsert), en de overgeslagen root loggen zoals `syncLibraries` in `cmd/pleya-server/bootstrap.go` dat al doet voor een genegeerde regel. Geen contractwijziging, dus geen protocolvenster nodig. | |
+
+### 3a Op `main` geland zonder taakregel
+
+Twee wijzigingen kwamen tussen 24 september en 3 oktober op `main` zonder regel in deze lijst. Ze zijn
+geen scope creep, want beide hebben een eigen besluit of voorstel, maar de lijst eist dat werk er
+staat. Ze tellen niet mee in de 154 taken.
+
+| # | Wat | Status | Bewijs | Datum |
+| --- | --- | --- | --- | --- |
+| X1 | Loudnessmeting per audiostroom: tabel `stream_loudness` (migratie `0011`) en `internal/loudness` | `[x]` | `docs/pleya-server-loudness-measurement-proposal.md`; merge `8d32d4a5`, migratie `064536ea`; `go test ./internal/loudness` groen | 2026-09-24 |
+| X2 | `GET /watch-history` voor beheerders, zodat Big P een periode kan optellen | `[x]` | [DEC-143](DECISIONS.md); `5520efbe`, webclient `4fedf1a1`; matrixrij 39, `watch_history_test.go` | 2026-10-03 |
+| X3 | NAS-start na de bewerkte migraties `0006` en `0007`: `earlierChecksums` en migratie `0012` | `[x]` | `efb2b6bb`, `37888009`; live op de NAS op 3 oktober | 2026-10-03 |
 
 ### S3 Boekencatalogus (PS-14)
 
@@ -317,6 +340,7 @@ niet de bouw.
 | S15.6 | PS-5-hardwareronde afgerond | `[ ]` | | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
+| S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest een Plex-uit-gate de bestaande kijkstatus | `[ ]` | | |
 
 ### S16 MCP-beheerlaag
 
@@ -346,6 +370,7 @@ niet de bouw.
 | S18.2 | ffmpeg-supervisie met vaste argumenten en time-out | `[ ]` | | |
 | S18.3 | fMP4 en HLS, browserspeler met hls.js | `[ ]` | | |
 | S18.4 | Hardwareversnelling gedetecteerd en zichtbaar | `[ ]` | | |
+| S18.7 | Image met VAAPI/QSV-driver (nu alleen `ca-certificates` en ffmpeg 5.1), `/dev/dri` en `group_add 937` in compose, gemeten op de DS920+ (renderD128 bestaat); image op de Mac gebouwd en via het Gitea-register naar de NAS, niet op de Celeron | `[ ]` | | |
 | S18.5 | Beheer: sessies zien en stoppen, instellingen; scherm 37 gebouwd | `[ ]` | | |
 | S18.6 | Capability `transcode`, venster 5 deel 2, journey 9 | `[ ]` | | |
 
@@ -412,6 +437,7 @@ niet de bouw.
 | S24.3 | Prometheus-metrics op loopback | `[ ]` | | |
 | S24.4 | Range-testset door twee proxy-opstellingen | `[ ]` | | |
 | S24.5 | Deploymentrecepten in de operatordoc | `[ ]` | | |
+| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet (nu handmatig `docker network connect`) | `[ ]` | | |
 
 ### S25 Back-up, restore, upgrade, faalpaden (PS-11B)
 
@@ -423,6 +449,7 @@ niet de bouw.
 | S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[ ]` | | |
 | S25.5 | Vier faalpaden met foutcodes en settest | `[ ]` | | |
 | S25.6 | Scherm 35 gebouwd, journey 13 | `[ ]` | | |
+| S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[ ]` | | |
 
 ### PS-12 Plex-migratie (keuzefase)
 
@@ -446,7 +473,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P3 | Zes mockups in één ronde: 11b downloads, 36 metadata-match en overrides, 37 transcode-sessies, 38 realtime-status, 50 speler, 51 reader; daarna APPROVED met SHA256SUMS | `[x]` 4 sep 2026 | zes gebouwd en zelf gereviewd (C.7, 6 bevindingen, alle gecorrigeerd); akkoord Michel 4 sep; set op APPROVED met `SHA256SUMS` over 46 schermen, 91 beelden, de bronnen, `web.css` en `build.mjs` |
 | P4 | Branch merget schoon met `main` | `[x]` 4 sep 2026 | merge-commit `4e78b16` op `integration/pleya-server-rebaseline` vanaf `a21b43c`; veertien conflicten opgelost, codegen sluitend, geen testregressie. De twee stille mergefouten (`app_database.g.dart`, `schema.d.ts`) en de `--ours`-fout op `CLAUDE.md` en `docs/RELEASES.md` zijn apart gerepareerd en worden nu bewaakt door `scripts/check_authority_merge.sh` in CI De dagelijkse merge van dezelfde avond staat als `a1734ead` (`main` op `9b181ff5`, vier conflicten, LANG1 hernummerd naar DEC-109); hoofdstuk 7 van `merge-log.md` |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
-| P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | |
+| P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | twee van acht: venster 1 (S1.6, DEC-137) en venster 2 (S2.6, DEC-146) |
 | P7 | PS-5-hardwareronde | `[!]` uitgesteld | `docs/qa/ps5-hardware-round.md`, drie startvoorwaarden |
 | P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
 | P9 | Contractdekking compleet: de dekkingslijst in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[x]` 4 sep 2026 | **De dekkingslijst.** `scripts/check_server_responses.py` leidt hem nu af uit `openapi.yaml`: elk schema dat het contract als JSON-antwoordlichaam noemt, met de `components/responses`-indirectie opgelost en niet-JSON-lichamen (artwork, ondertitels, stream) eruit. Dat brengt de eis van 8 naar 15 en dekt `UserList`, `SessionList` en `LibraryPermissionList`. Uit de vangst afleiden zou de poort tautologisch maken; uit het contract afleiden laat hem vanzelf meegroeien. Echte vangst van 32 antwoorden lokaal gedraaid met `GO_IMAGE=pleya-server-test:go-ffmpeg` en `PLEYA_RESPONSE_DIR=/src/.responses` (het containerpad binnen de mount, daar ging het eerder mis): alle 15 gedekt, alle 32 valide. Negatieve controle: met `UserList`, `SessionList` en `LibraryPermissionList` uit de vangst geeft de oude poort exit 0 met "de server houdt zich aan het contract" en de nieuwe exit 1 met de drie endpoints erbij. De afleiding heeft zes eigen controles op een verzonnen contract (`bijt de afleiding`). |

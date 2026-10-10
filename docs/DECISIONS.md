@@ -4535,3 +4535,29 @@ alleen het wisselen naar AirPods.
 **Open.** Het bewijs is een stress-run met `ao-reload` in een lus op de tvOS-simulator en tien keer wisselen
 tussen luidsprekers en AirPods op de Apple TV. Dat de 1.0.28-libmpv patch 0026 echt bevat is alleen via zo'n
 run aan te tonen. De patch heeft geen reproduceerbare regressietest, want het is een timingrace.
+
+## DEC-146: protocolvenster 2 gaat dicht, met de overname als tiende wijziging
+
+**Date:** 2026-10-10
+**Status:** accepted. Voltooit [DEC-138](#dec-138-het-protocolvenster-gaat-open-voor-s2-en-job-wordt-het-achtste-foutdomein); S2.5 en S2.6.
+
+DEC-138 opende venster 2 voor precies de tien wijzigingen uit J.3 en zei dat het sluit zodra de
+laatste erin staat en `scripts/check_protocol.sh` slaagt. De tiende is `POST /libraries/{id}/adopt`
+(S2.5): `managed` gaat van `config` naar `db`, met dezelfde id en slug, en `library.not_config_managed`
+is de enige foutcode erbij. Die code valt in het bestaande domein `library`, dus de acht foutdomeinen
+uit DEC-138 veranderen niet.
+
+**De toetsing.** Nieuw endpoint, geen aanvraagbody, achter de bestaande capability `administration`
+(regel 1, 4 en 5); geen veld hernoemd of van betekenis veranderd (regel 2 en 3), geen enum uitgebreid
+(regel 6). Matrixrij 40 (klasse `admin`, `404` voor de rest) staat in hoofdstuk 16.4.
+
+**Wat de overname bewaakt.** `SyncLibraries` heeft een `WHERE managed = 'config'`-guard op de
+upsert en slaat de roots van een overgenomen bibliotheek over. Een herstart met de oude regel in
+`PLEYA_SERVER_LIBRARIES` levert dus dezelfde id, titel, soort en roots op, en het opstarten meldt in
+de log welke bibliotheek wordt genegeerd. Bewijs: `TestAdoptedLibrarySurvivesEnvSync` en, op de
+NAS-vangst (schema 7, drie bibliotheken), `TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity`:
+na migratie nog steeds `config`, na overname en herstart dezelfde ids, slugs, kijkstatus en roots.
+
+**Decision:** venster 2 is gesloten met tien van tien wijzigingen. `openapi.yaml` is weer bevroren.
+Het volgende venster is venster 3 (S3, boeken) en vraagt een eigen besluit. `GET /watch-history`
+(DEC-143) en de loudness-migratie `0011` zaten buiten dit venster en blijven dat.

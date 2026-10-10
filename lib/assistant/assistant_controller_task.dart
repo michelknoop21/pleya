@@ -72,6 +72,18 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        // Sampled at both ends of a read as well as on every server change:
+        // a change nobody announced still moves it, and so does the way back.
+        rightsEpoch: () {
+          try {
+            _noteRights(_buildContext(null));
+          } catch (e) {
+            // Rights that cannot be read are rights that moved: fail closed.
+            appLogger.w('Assistant rights stamp could not be read', error: e.runtimeType);
+            _rightsEpoch++;
+          }
+          return _rightsEpoch;
+        },
         // Only the question itself follows on; a split child is standalone.
         conversation: allowSplit ? List.of(_conversation) : const [],
         budget: task.budget,

@@ -6,6 +6,7 @@ import '../transport/verify_client.dart';
 import 'instance_discovery.dart';
 import 'screenshot_probe.dart';
 import 'verification_driver.dart';
+import 'bounded_process.dart';
 
 /// Drives a local macOS build of Pleya.
 ///
@@ -120,13 +121,18 @@ class MacosDriver implements VerificationDriver {
     if (linkScript.existsSync()) await _run('bash', [linkScript.path]);
     _log('flutter build macos --debug --dart-define=PLEYA_VERIFY=true');
     final gitCommit = await _gitCommit();
-    final result = await _run('flutter', [
-      'build',
-      'macos',
-      '--debug',
-      '--dart-define=PLEYA_VERIFY=true',
-      if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
-    ], workingDirectory: repoRoot.path);
+    final result = await _run(
+      'flutter',
+      [
+        'build',
+        'macos',
+        '--debug',
+        '--dart-define=PLEYA_VERIFY=true',
+        if (gitCommit != null) '--dart-define=GIT_COMMIT=$gitCommit',
+      ],
+      workingDirectory: repoRoot.path,
+      timeout: buildProcessTimeout,
+    );
     _log(result.stdout.toString());
     if (result.exitCode != 0) {
       _log(result.stderr.toString());
@@ -503,8 +509,12 @@ class MacosDriver implements VerificationDriver {
     return c;
   }
 
-  Future<ProcessResult> _run(String executable, List<String> args, {String? workingDirectory}) =>
-      Process.run(executable, args, workingDirectory: workingDirectory);
+  Future<ProcessResult> _run(
+    String executable,
+    List<String> args, {
+    String? workingDirectory,
+    Duration timeout = defaultProcessTimeout,
+  }) => runBounded(executable, args, workingDirectory: workingDirectory, timeout: timeout);
 
   Future<String?> _gitCommit() async {
     final result = await _run('git', ['rev-parse', 'HEAD'], workingDirectory: repoRoot.path);

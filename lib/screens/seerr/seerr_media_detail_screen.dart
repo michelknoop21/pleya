@@ -226,6 +226,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
       initialIs4k: in4k,
       onRequested: () => unawaited(_load()),
       onOpenMyRequests: _openMyRequests,
+      requests: _detail?.requests ?? const [],
     );
   }
 
@@ -322,7 +323,7 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
     final status = _base.status;
     final ownId = provider.session?.userId;
     final requests = _detail?.requests ?? const [];
-    final hasOwn = ownId != null && requests.any((r) => r.requestedById == ownId);
+    final hasOwn = SeerrRequest.anyOwn(requests, ownId);
     final request = _DetailAction('request', t.seerr.request, Symbols.playlist_add_rounded, _openRequest);
     // Beside what the HD status offers, never instead of it.
     final request4k = _fourKOpen(provider)

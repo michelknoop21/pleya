@@ -19,131 +19,21 @@ under `Notes`.
 
 <!-- BEGIN GENERATED -->
 ### New
-- DeviceCapabilities-model met vier lagen en een expliciete confidence
-- detectie per laag, met de host als injecteerbaar argument
-- overrides op het model, plus display_max_resolution
-- Jellyfin-DeviceProfile uit het model, gedragsneutraal
-- Plex-transcoderequest uit het model, gedragsneutraal
-- TrueHD in de Jellyfin direct-play-lijst op mpv-platforms
-- de resolutiecap van de gebruiker bereikt de Jellyfin-profielcondities
-- respijtvenster op refreshtokenrotatie (DEC-063)
-- token bucket op de relay, en meldingen die vouwen in plaats van stapelen
-- compacte sessieregel, en de commit-sha in elke TestFlight-build
-- migratie 0007, sessie-scoped tokenketen en begrensde loginlimiter (PS-9-stap 2)
-- scope watch state to authenticated users
-- PS-9 AC2, volledige autorisatiematrix en DEC-065-alignment
-- PS-9 stap 4 en 6, gebruikersbeheer en sessie-intrekking
-- PS-9-clientkant, een eigen profielsoort voor Pleya Server
-- S0.6, de NAS-migratiefixture op schema 7
-- S0.7 en poort P9, de contractdekking wordt afgeleid in plaats van bijgehouden
-- venster 1 verruimt het foutdomein, en de controle meet twee kanten op
-- S1.1, recovery, lichaamslimiet en securityheaders op de API
-- S1.2, serverinstellingen met een grens en hot reload
-- S1.3, serverdiagnostiek met een ringbuffer en één doel
-- S1.4, lopende streams, de eigen gebruiker en een code die uitlegt
-- S1.5, API-tokens als sessies en een auditlog dat verder kijkt dan mutaties
-- S1.8, de refreshcookie buiten het bereik van JavaScript en een origin dat vastligt
-- S1.6, de laatste drie rijen van venster 1, en het venster dicht
-- S2.1, managed en scaninstellingen op libraries
-- S2.2, CRUD op libraries en protocolvenster 2 open
-- S2.3, GET /storage/roots uit de mounts en de recheck
-- D0 goedgekeurd, D1 canoniek loudnessbewijs per audiostroom
-- D2, package internal/loudness
-- rescue-migraties geland als 0010 (S2.4) en 0011 (loudness), docs hernummerd
-- jobs annuleren, opnieuw proberen en lezen in de runner (S2.4)
-- scanner stopt binnen één walk-stap en neemt een queued scan_runs-rij over (S2.4)
-- scans en jobs in venster 2, job als achtste foutdomein (S2.4)
-- scans en jobs over HTTP, annuleren en retry (S2.4)
-- backoff op probe_attempts na een mislukte probe (S2.4)
-- de revisie-envelop reist mee en beslist bij het toepassen (B3)
-- seeds voor Omdat je X keek uit het eigen kijklog (D2, D3)
-- film- en seriedetail in één scroll, zonder tabs (DEC-131)
-- partieel signaal bij een eindstop, importer vergelijkt gewichten
-- related hubs van seeds vier tot zes voeden de kandidatenpool
-- Jellyfin-kijkgeschiedenis als tweede adapter op het interactielog
-- rij Meer met acteur of Meer van regisseur bij warme smaak
-- tvOS-icoon zonder cirkel, P + LEYA groter, warme onderrand
-
-### Improved
-- semantische bronaudit op codec- en containerlijsten
-- seedrijen in een eigen loader, gedrag ongewijzigd
-- revisieopslag in een eigen bestand, gedrag ongewijzigd
-- reconcile en remote-apply in eigen bestanden, gedrag ongewijzigd
-- sleutelmapping en scope in een eigen bestand, gedrag ongewijzigd
-- discover-provider opgesplitst in eigen laders, gedrag ongewijzigd
+- route 'wat is er toegevoegd' met venster, toevoegdatum en één resultaatset voor tekst en kaarten (BP-05)
+- vraag over mij en de anderen in code splitsen in twee taken (BP-04b)
 
 ### Fixed
-- "Opnieuw aanmelden" probeert eerst één echte refresh
-- Nederlands compleet tegen Engels, met een test die dat afdwingt
-- cloudflared blijvend op het netwerk van de Pleya Server
-- verify-local.sh's drift check kende PS-9's eigen tabellen niet
-- schema.d.ts liep achter op de PS-9-protocoltoevoegingen
-- continue_watching en next_up leverden onvoorwaardelijk niets
-- de merge liet twee capability-fixtures en de gegenereerde client achter
-- drie bevindingen uit de codex-challenge op de merge
-- vijf codex-bevindingen op /libraries vóór S2.3
-- harden completion integration after review
-- offline-melding noemt de server die echt onbereikbaar was (L26)
-- dubbele common.timedOut uit nl verwijderd, parser bewaakt dubbele sleutels (L27)
-- git_commit_define stopt de lane bij een mislukte of lege git-aanroep (L29)
-- profile.freezed.dart opnieuw gegenereerd na de doc-wijziging uit 3734e399
-- schema.d.ts opnieuw gegenereerd na de contractwijziging uit 3734e399
-- annulering tussen claim en registratie gaat niet meer verloren (S2.4)
-- shutdown geeft failed in plaats van cancelled en een herstarte scan krijgt een verse rij (S2.4)
-- retry laat geen wees-scanronde achter bij een gelijktijdige retry (S2.4)
-- tvos_beta draait pod install op een verse worktree
-- queued scanrondes annuleren via één methode, stale scan_id, limiet naar contract
-- DENS1, instellingen en detail in Apple's tvOS-punten
-- detail en Nu aan het kijken volgen de gemonitorde server (D1)
-- luister echt naar de KVS-notificaties en laat de status niet liegen (B1, B6, B7, B8)
-- uitschakelen wist de quotamelding, status klopt vanaf de start (B6, B8)
-- verwijderen reset de stempel, startbedrading via de coordinator, randgevallen getest (B3)
-- reconcile vergelijkt met de store, verwijderingen reizen als tombstone en de prune verdwijnt onder v2 (B2, B4, B5, B13)
-- seedtitel volgt de serie, zes seeds parallel, randgevallen getest (D2, D3)
-- import krijgt een stempel, families respecteren tombstones, geen blinde push na een mislukte lezing (B2, B4)
-- seizoenpil altijd, informatieblok voor series, delen verankerd
-- hervatten geeft een nieuwe eindstop, dedup volgt de scoringsscope (REC-4)
-- een hangende reconcile blokkeert de sessie niet meer (B2)
-- nieuwe series tellen als getoond, afleveringidentiteit expliciet (REC-5)
-- accountwissel leest eerst en duwt niet terug, en de eerste download krijgt een reconcile (B9, A2)
-- lokale map kan zijn scan laten verversen
-- stille herlaad van Home als de rijen verouderd zijn
-- grens van opnieuw inloggen vastgelegd en getest (B9)
-- Home ververst bij terugkeer, resume en elke vijf minuten
-- kaart blijft op zijn plek als vooraan een rij een titel bijkomt
-- taalvoorkeuren reizen als profiel-gesleutelde map, acht stille sleutels geregistreerd en de scopetabel bijgewerkt (B10, B11)
-- geleende Jellyfin-verbindingen importeren niets, afspeeltijd als stempel, sync hooguit elk kwartier (REC-6)
-- echte Plex Home-scopes en samenvoegen per regel met tombstones (B10)
-- DEC-132 noemt beide richtingen, klok terug remt de sync niet (REC-6)
-- de cap schrijft tombstones zodat hij over toestellen heen blijft gelden (B10)
-- KVS-notificaties bereiken Dart via de platformthread (A1)
-- periodieke tik vraagt met de terugkeerdrempel
-- rail verplaatst een kaart in plaats van hem opnieuw te bouwen
-- seriekaart blijft ook bij alleen ontvangen binnen de cap (B10)
-- persoonsrij met eigen id per naam en een bewijsdrempel (REC-7)
-- groottegrens telt UTF-8-bytes, de seriekaart is ook uitgaand begrensd (B10)
-- importer ziet alleen de Tautulli-fout, sessietest krijgt de verbindingsregistry (REC-9)
-- stempel per profiel voor profielgebonden sleutels (I1)
-- kale remove van de vorige build wist geen gestempelde waarde (I2)
-- profielkaart in canonieke volgorde, geen schrijfpingpong meer (I3)
-- tombstones ouder dan 180 dagen verdwijnen uit de store (I4)
-- profielgebonden sleutels reizen voor echte Plex Home-profielen (I5)
-- mislukte Jellyfin-sync houdt de kwartierrem aan, een falende serie stopt de rest niet
-- Jellyfin-pool en Similar vragen Genres en Studios, persoonsrijen op Jellyfin uitgesteld
-- zeven kleine bevindingen uit de eindreview
-- seeds alleen van geschikte bronnen, afgewezen titels seeden niet, aanvullen tot drie
-- accountwissel weer strikt read-first, heuristiek minor 4 teruggedraaid (N2)
-- beurtgeneratie vóór de eerste await, v1-import onder de proceed-check (N3)
-- cloudsleutels binnen de 64 bytes van KVS (N1)
-- geleende status telt niet, tijdelijke fouten schuiven de watermark niet op, cap telt alleen positieven (REC-6)
-- accountwissel blijft staan tot hij echt verwerkt is (B9)
-- onleesbare submap haalt bij een herscan geen titels weg
-- volledige load alleen als elke client elk oppervlak gaf
-- timer loopt door bij focusverlies, terugkeer herscant lokale map
-- terugkeer uit een detail ververst Home en houdt de kaart op zijn plek
-- avatar in de header opent de profielwisselaar (DEC-132)
-- onvolledige herscan wacht de terugkeerdrempel af
-- bestemmingswissel toont Home niet onder een open detail
+- CSP toestaan voor Kits eigen route-announcer (#219)
+- cap the desktop and iPad header height per size class (F-D1)
+- keep poster grid spacing fixed off TV (F-D2)
+- scale the shared option picker dialog on TV (F-TV1)
+- read the first-page fetch estimate and top padding from spacingFor
+- reviewbevindingen BP-05: lokale map zonder toevoegdatum, kinderprofiel zonder venstertotaal, kaarten gelijk aan de lijst van 12, venster alleen bij eigen zin (BP-05)
+- 4K op de titelpagina alleen bij een standaard-4K-instantie (#222)
+- scoped re-review BP-05: totaal bij gewone zoekopdracht, einde-van-pagina op de ruwe datum, kindvlag bij onbekende datum, regex en lange periode (BP-05)
+- splitsing van gemengde vragen strenger na adversariële review (BP-04b)
+- split na scoped re-review: herstart-race bij het lezen van het profiel, verwijzing terug in plaats van elke vervolgvraag, 'everyone else' met werkwoord, tweede zin buiten de helft (BP-04b)
+- aanvraag zonder server alleen met een standaardinstantie van die kwaliteit (#225)
 <!-- END GENERATED -->
 
 ### New
@@ -201,6 +91,129 @@ under `Notes`.
   device to sync after updating sets them for that profile on every device. If you arranged a
   profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
   after updating.
+
+## 2.8.1 · build 349 · 10 October 2026 · Apple TV
+
+<!-- commit: 5a31f6c8d60f77c7c2d4391c812c8c2a88ea83ac -->
+
+### New
+- A title page in Requests can now offer "Request in 4K" next to the actions that were already
+  there. It shows when your account may request 4K, the title has no 4K copy or 4K request yet,
+  and the requests server has a 4K instance. The form opens with 4K selected.
+
+### Fixed
+- A film you already have in HD can be requested in 4K. The request form used to stay closed
+  for a film that was available, requested or processing in HD. When the quality you picked
+  cannot be requested the form says why, and when it was requested before you get "My requests"
+  in place of a button that could not send anything.
+- Search asks the requests server only for a query you chose. That is a submitted search, an
+  entry from your search history, or moving down from the keyboard to the results. Typing alone
+  no longer triggers it, and a profile switch or an emptied field drops the chosen query.
+- Search in Discover keeps loading further results after a profile switch or a new search term.
+- Losing the right to manage requests while the Scope panel is open closes that panel. Focus
+  moves to the Status row.
+- Big P no longer leaves a film out of its suggestions because you watched something else with
+  the same title. A watched Dune from 1984 used to hide Dune from 2021, and a watched series
+  used to hide a film of the same name.
+
+### Notes
+- Known in this build: "Request in 4K" also shows when the 4K instance is not the default one
+  on the requests server. Such a request is created and goes nowhere after approval. The
+  request form has the same gap, for 4K and for HD: a request sent without choosing a server
+  goes nowhere when the requests server has no default instance for that quality. A correction
+  follows in a later build.
+- Known in this build: a start from the version menu together with an ordinary start of the
+  same title, such as a double press, can still open the player twice. A correction follows in
+  a later build.
+
+### Worth checking
+- Passed in the Apple TV simulator: "Request in 4K" being there when it should and absent when
+  it should not, and moving down from the keyboard to the search results. The other items are
+  covered by automated tests only. Nothing in this build has been checked on an Apple TV yet.
+- Request in 4K: open a film you have in HD with an account that may request 4K. Check that
+  the action is there, that you can reach it with the remote, and that the form opens on 4K.
+- Search: type a title and watch the requests row. It should fill after you submit or move down
+  to the results, not while you type.
+- This build was made with Big P switched on. That has not been confirmed on a device, so
+  please check that you can open it on your Apple TV.
+
+## 2.8.1 · build 348 · 10 October 2026 · iPhone and iPad
+
+<!-- commit: 5a31f6c8d60f77c7c2d4391c812c8c2a88ea83ac -->
+
+### New
+- A title page in Requests can now offer "Request in 4K" next to the actions that were already
+  there. It shows when your account may request 4K, the title has no 4K copy or 4K request yet,
+  and the requests server has a 4K instance. The form opens with 4K selected.
+
+### Fixed
+- A film you already have in HD can be requested in 4K. The request form used to stay closed
+  for a film that was available, requested or processing in HD. When the quality you picked
+  cannot be requested the form says why, and when it was requested before you get "My requests"
+  in place of a button that could not send anything.
+- Search in Discover keeps loading further results after a profile switch or a new search term.
+- Big P no longer leaves a film out of its suggestions because you watched something else with
+  the same title. A watched Dune from 1984 used to hide Dune from 2021, and a watched series
+  used to hide a film of the same name.
+
+### Notes
+- Known in this build: "Request in 4K" also shows when the 4K instance is not the default one
+  on the requests server. Such a request is created and goes nowhere after approval. The
+  request form has the same gap, for 4K and for HD: a request sent without choosing a server
+  goes nowhere when the requests server has no default instance for that quality. A correction
+  follows in a later build.
+- Known in this build: a start from the version menu together with an ordinary start of the
+  same title, such as a double press, can still open the player twice. A correction follows in
+  a later build.
+- Known in this build: Big P's confirmation card can still run below the edge on a small
+  iPhone with the keyboard up. In the iPhone SE simulator Cancel and Create stick out about
+  4 points on the card with a password field. Not fixed in this build.
+
+### Worth checking
+- Passed in the iPhone simulator: "Request in 4K" being there and the form opening on 4K. The
+  other items are covered by automated tests only. Nothing in this build has been checked on
+  an iPhone or iPad yet.
+- Request in 4K: open a film you have in HD with an account that may request 4K. Check that
+  the action is there and that the form opens on 4K.
+- Big P on a small iPhone: ask for something Big P has to confirm, keep the keyboard up, and
+  report how far the card runs below the edge on your device. Keyboard height and safe area
+  differ per device.
+- Big P suggestions: if you watched an older film that shares its title with a newer one, ask
+  for the newer one and check that it shows up.
+
+## 2.8.1 · build 347 · 9 October 2026 · Apple TV
+
+<!-- commit: 055844ce11d2ee43a087a32639b62d464cb6d25b -->
+
+### Fixed
+- Big P writes a name such as Spider-Man with a hyphen when its answer joined the two parts
+  with a long dash.
+- Big P answers a short story question that names no title, such as "what about him", without
+  the earlier conversation. The spoiler filter cannot see a question like that, so the earlier
+  conversation could carry a spoiler into the answer.
+
+### Worth checking
+- This build was made with Big P switched on. That has not been confirmed on a device, so
+  please check that you can open it on your Apple TV.
+- Still to be checked on an Apple TV: both fixes. They are covered by automated tests only.
+
+## 2.8.1 · build 346 · 9 October 2026 · iPhone and iPad
+
+<!-- commit: 055844ce11d2ee43a087a32639b62d464cb6d25b -->
+
+### Fixed
+- Big P writes a name such as Spider-Man with a hyphen when its answer joined the two parts
+  with a long dash.
+- Big P answers a short story question that names no title, such as "what about him", without
+  the earlier conversation. The spoiler filter cannot see a question like that, so the earlier
+  conversation could carry a spoiler into the answer.
+
+### Worth checking
+- Ask Big P about a title with a hyphen in its name and read how the name is written.
+- Talk with Big P about a series you have not finished, then ask a short follow-up without the
+  title in it. The answer should not give away what happens later.
+- Still to be checked on an iPhone or iPad: both fixes. They are covered by automated tests
+  only.
 
 ## 2.8.1 · build 345 · 8 October 2026 · iOS
 

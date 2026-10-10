@@ -174,20 +174,12 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
             ? null
             : BoxDecoration(color: tk.surface, borderRadius: BorderRadius.circular(28 * pt)),
         child: widget.embedded
-            // In the balloon the rows scroll and the buttons stay put (39 G):
-            // on a small phone or at a large text size Aanmaken is never
-            // below the fold.
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Flexible(child: SingleChildScrollView(child: body)),
-                  // The password the primary waits for stays with it.
-                  if (a.password != AssistantPasswordMode.none) row(c.password, _passwordField(pt, tk), stacked: true),
-                  SizedBox(height: 32 * pt),
-                  _buttons(pt, approveLabel),
-                ],
-              )
+            ? _embedded(body, [
+                // The password the primary waits for stays with it.
+                if (a.password != AssistantPasswordMode.none) row(c.password, _passwordField(pt, tk), stacked: true),
+                SizedBox(height: 32 * pt),
+                _buttons(pt, approveLabel),
+              ])
             : SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -201,6 +193,27 @@ class _BigPConfirmCardState extends State<BigPConfirmCard> {
               ),
       ),
     );
+  }
+
+  /// In the balloon the rows scroll and [pinned] stays put (39 G): on a small
+  /// phone or at a large text size Aanmaken is never below the fold.
+  ///
+  /// With the keyboard up the whole card is one scroll, anchored at its end.
+  /// Only Pleya's own password dialog brings the keyboard up here. What is
+  /// left of the balloon on a small phone can be less than [pinned] needs,
+  /// and a pinned part that does not fit ran over (BIGP-IOS1-KB). Anchored at
+  /// the end, the password row and the buttons are what stays in the balloon.
+  Widget _embedded(Widget body, List<Widget> pinned) {
+    final keyboard = bigPKeyboardInset(context) > 0;
+    final card = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        keyboard ? body : Flexible(child: SingleChildScrollView(child: body)),
+        ...pinned,
+      ],
+    );
+    return keyboard ? SingleChildScrollView(reverse: true, child: card) : card;
   }
 
   /// Right-aligned on TV; in Big P's balloon two halves of the width (39 G).

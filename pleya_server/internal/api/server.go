@@ -277,6 +277,7 @@ func (s *Server) routeTable() []route {
 		{"POST " + p + "/libraries", s.authenticated(s.handleCreateLibrary)},
 		{"PATCH " + p + "/libraries/{library_id}", s.authenticated(s.handleUpdateLibrary)},
 		{"DELETE " + p + "/libraries/{library_id}", s.authenticated(s.handleDeleteLibrary)},
+		{"POST " + p + "/libraries/{library_id}/adopt", s.authenticated(s.handleAdoptLibrary)},
 
 		// Opslag (S2.3, J.3 venster 2, matrixregels 31 en 32). Klasse admin,
 		// zelfde vorm als hierboven.

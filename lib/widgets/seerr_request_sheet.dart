@@ -51,6 +51,11 @@ class SeerrRequestSheet extends StatefulWidget {
   /// route, for a caller that has nowhere to send it.
   final VoidCallback? onOpenMyRequests;
 
+  /// The requests the caller's page lists for this title. The way to the
+  /// viewer's own requests is only offered for a request that is in here under
+  /// the viewer's own id: a title someone else asked for is not in that list.
+  final List<SeerrRequest> requests;
+
   /// Opens the form on 4K, for a caller whose button said so. Ignored for a
   /// profile without the 4K right for this media type.
   final bool initialIs4k;
@@ -61,6 +66,7 @@ class SeerrRequestSheet extends StatefulWidget {
     this.onRequested,
     this.onOpenMyRequests,
     this.initialIs4k = false,
+    this.requests = const [],
   });
 
   static Future<bool?> show(
@@ -69,6 +75,7 @@ class SeerrRequestSheet extends StatefulWidget {
     VoidCallback? onRequested,
     VoidCallback? onOpenMyRequests,
     bool initialIs4k = false,
+    List<SeerrRequest> requests = const [],
   }) {
     return OverlaySheetController.showAdaptive<bool>(
       context,
@@ -78,6 +85,7 @@ class SeerrRequestSheet extends StatefulWidget {
         onRequested: onRequested,
         onOpenMyRequests: onOpenMyRequests,
         initialIs4k: initialIs4k,
+        requests: requests,
       ),
     );
   }
@@ -253,15 +261,23 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
 
   bool get _isMovieRequestable => _isMovieRequestableIn(is4k: _is4k);
 
-  /// A film whose chosen quality is already asked for, on a form that only
-  /// stands for the other quality: the button that could not send anyway is
-  /// the way to the request that exists, as it is on the end state.
+  /// The viewer's own request for this title, in [is4k] when a quality is
+  /// named. The same rule as the title page: only then is there something in
+  /// the viewer's own list to open.
+  bool _hasOwnRequest({bool? is4k}) =>
+      SeerrRequest.anyOwn(widget.requests, context.read<SeerrProvider>().session?.userId, is4k: is4k);
+
+  /// A film whose chosen quality the viewer already asked for, on a form that
+  /// only stands for the other quality: the button that could not send anyway
+  /// is the way to that request, as it is on the end state. Someone else's
+  /// request leaves the disabled button and the line that says why.
   bool get _offersMineInsteadOfSubmit =>
       !_isTv &&
       !_locked &&
       _refusal == null &&
       widget.onOpenMyRequests != null &&
-      ((_is4k ? _status4k : _status)?.isRequested ?? false);
+      ((_is4k ? _status4k : _status)?.isRequested ?? false) &&
+      _hasOwnRequest(is4k: _is4k);
 
   ({int? remaining, int? limit}) get _quotaForType {
     final q = _quota;
@@ -533,7 +549,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       final available = _status.isAvailable;
       return _terminal(
         SeerrFormNotice(kind: 'duplicate', title: available ? t.seerr.available : t.seerr.alreadyRequested),
-        offerMine: !available,
+        offerMine: !available && _hasOwnRequest(),
       );
     }
 

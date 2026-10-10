@@ -29,6 +29,7 @@ flowchart LR
   S2 --> S10
   S10 --> S11["S11 Setup-wizard"]
   S2 --> S11
+  S11 -. "vrijgave PS-14, DEC-129" .-> S3
   S9 --> S12["S12 Webreader<br/>PS-15W"]
   S6 --> S12
   S8 --> S13["S13 Browserspeler<br/>PS-4W"]
@@ -44,11 +45,19 @@ flowchart LR
   S14 --> S15
 ```
 
-Parallel mogelijk na S0: {S1, S3, S4, S7}. Na S1: S2. Na S3 en S4: S5, S6. Na S7 plus de
+Parallel mogelijk na S0: {S1, S4, S7}. S3 staat er niet meer bij: [DEC-129](../DECISIONS.md)
+houdt PS-14 gesloten tot PS-11A geïntegreerd bewezen is, dus S3 begint pas na S11 en een eigen
+vrijgave van Michel (de stippellijn in de graaf). Na S1: S2. Na S3 en S4: S5, S6. Na S7 plus de
 backend-slices: S8, S9, S10. S16 kan starten zodra S1 en S2 staan en groeit mee met S3, S5 en
-S6. De kritieke lijn is S0 → S1 → S14 → S17 → S18 → S23 → S15; S22 (providers) is de
-zwaarste losse slice en start zodra S4 staat. PS-12 (Plex-migratie) staat niet in de graaf: het
-is een keuzefase na S15, met een eigen vrijgave.
+S6.
+
+**De kritieke lijn** (bijgesteld op 10 oktober 2026) is
+S7 → S10 → S11 → vrijgave PS-14 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15. De eerdere lijn
+S0 → S1 → S14 → … → S15 negeerde dat S14 aan S3, S5 en S6 hangt en dat S3 achter de vrijgave
+zit. Vrij van de poort zijn S4 en S7; S22 (providers, de zwaarste losse slice) start zodra S4 staat.
+PS-12 (Plex-migratie) staat niet in de graaf: het is een keuzefase na S15, met een eigen
+vrijgave. Het besluit of het huishouden zijn kijkgeschiedenis migreert valt wél vóór de
+Plex-uit-gate (S15.9).
 
 ## I.2 Slices
 
@@ -385,7 +394,10 @@ artwork, (6) Verify.
 
 **Scope.** RB-17 (refresh-limiter, stream-session-opruiming), de golden journeys 1 tot 14 uit deel L
 als geautomatiseerde runs, securityacceptatie uit deel K, documentatie uit deel M, de
-PS-5-hardwareronde als releasevoorwaarde, release volgens deel N.
+PS-5-hardwareronde als releasevoorwaarde, release volgens deel N. Vóór de Plex-uit-gate
+(S15.5) legt Michel vast of de kijkgeschiedenis van het huishouden via PS-12 mee migreert of dat
+het met een lege staat begint (S15.9); zonder dat besluit is de gate technisch groen en inhoudelijk
+een verlies.
 **Afhankelijk van.** Alles.
 **Acceptatie.** Deel O.
 
@@ -433,12 +445,16 @@ gedrag van vóór PS-5. **Acceptatie.** PS-6 criteria uit hoofdstuk 23.
 **Scope.** Remux en transcode als sessie (start, heartbeat, stop, opruimen), fMP4 en HLS,
 hwaccel-detectie bij opstarten voor VAAPI, QSV en NVENC, kwaliteitsladder, maximum en quotum uit settings met grenzen, ondertitelmatrix (bitmap en niet-vertaalbare ASS ingebrand, tekst als WebVTT), `/transcode-sessions`
 voor beheer, browserspeler met hls.js, scherm 28 en 20 uitgebreid; capability `transcode`.
+De image draagt nu alleen `ca-certificates` en ffmpeg 5.1, dus de slice voegt de VAAPI/QSV-driver
+toe, zet `/dev/dri` en `group_add 937` in `compose.yaml` aan (renderD128 bestaat op de DS920+) en
+meet het op de NAS (S18.7). Die image wordt op de Mac gebouwd en via het Gitea-register naar de
+NAS gehaald; een ffmpeg- of driverbouw op de Celeron J4125 is geen route.
 **Afhankelijk van.** S17. **Migraties.** `0017_transcode_sessions.sql`. **API.** Venster 5.
 **Tests.** Een MKV/HEVC-fixture speelt in Chromium via HLS; sessie ruimt op na een gesimuleerde
 crash van de client; een derde sessie krijgt `playback.transcode_busy`; ffmpeg-argumenten zijn
 een vaste lijst (test op afwezigheid van invoer in argv).
 **Acceptatie.** PS-8 criteria. **Commitgrens.** (1) sessiemodel, (2) ffmpeg-supervisie, (3) HLS,
-(4) hwaccel, (5) web, (6) beheer, (7) venster.
+(4) hwaccel, (4b) image met driver en compose-devices, (5) web, (6) beheer, (7) venster.
 
 ### S19 Verzamelingen en afspeellijsten (PS-9C)
 
@@ -501,7 +517,9 @@ gelijke digest; offline kijkstatus komt terug via `backlog`. **Acceptatie.** PS-
 
 **Scope.** Vertrouwde proxy's, `public_url` in gegenereerde URL's, subpad-montage, rate limits,
 Prometheus op een configureerbare private bind (default loopback), aparte instellingen voor web-origin, externe base-URL en trusted proxies, CORS-beleid, publieke-endpointlijst als test, deploymentrecepten (tunnel, mesh-VPN,
-eigen proxy). **Afhankelijk van.** S1. **Migraties.** Geen. **API.** Geen. **Tests.** Range-testset
+eigen proxy). De koppeling van de tunnel met de server is nu handwerk (`docker network connect`,
+en een relay-deploy zet `web.pleya.app` op 502); S24.6 maakt haar een vast netwerk in `compose.yaml`.
+**Afhankelijk van.** S1. **Migraties.** Geen. **API.** Geen. **Tests.** Range-testset
 door twee proxy-opstellingen; brute-force afgeremd zonder een geldige gebruiker uit te sluiten;
 metric `delivery_mode` klopt met een gecontroleerde sessie. **Acceptatie.** PS-11 criteria 1 tot 4.
 
@@ -509,7 +527,9 @@ metric `delivery_mode` klopt met een gecontroleerde sessie. **Acceptatie.** PS-1
 
 **Scope.** `internal/backup/`, back-updoel, tijdstip en retentie als instellingen (default `/backups`, 03:30, 14), failure-domain-waarschuwing, geplande en handmatige back-up inclusief config- en sleutelstate met verpakte secrets, hersteltest in een geïsoleerde tijdelijke database die migraties en kernqueries draait, restore met onderhoudsmodus en bevestiging, upgrade-guard (back-up vóór de
 eerste migratie, weigering op een nieuwere database), de vier faalpaden met foutcodes en één
-settest, scherm 35. **Afhankelijk van.** S2. **Migraties.** `0022_backups.sql` (registratie van
+settest, scherm 35. Een back-up die op dezelfde NAS blijft staan overleeft een schijf- of NAS-storing niet, dus S25.7
+voegt een kopie van de dump en `/config` buiten de NAS toe, met een hersteltest vanaf die kopie.
+**Afhankelijk van.** S2. **Migraties.** `0022_backups.sql` (registratie van
 back-ups en hersteltests). **API.** Venster 7. **Tests.** Back-up terugzetten op een lege server
 geeft dezelfde catalogus en kijkstatus; upgrade over twee schemaversies slaagt; terugrollen
 weigert luid; elk faalpad geeft zijn code. **Acceptatie.** Matrix 5.13 rijen back-up, restore,

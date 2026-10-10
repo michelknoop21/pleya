@@ -130,6 +130,9 @@ class PleyaServerClient
     return client;
   }
 
+  /// Told when the signed-in role changed, so authority watchers see it.
+  set onRoleChanged(void Function()? listener) => _session.onRoleChanged = listener;
+
   @override
   final PleyaServerSession _session;
   @override

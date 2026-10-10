@@ -7,6 +7,7 @@ import '../transport/verify_client.dart';
 import 'instance_discovery.dart';
 import 'screenshot_probe.dart';
 import 'verification_driver.dart';
+import 'bounded_process.dart';
 
 /// Drives a tvOS-simulator build of Pleya through `scripts/tvos_sim.sh` —
 /// the fundament stays unmodified in shape (this driver is an additive
@@ -173,7 +174,7 @@ class TvosSimulatorDriver implements VerificationDriver {
     }
     await _resolveDevice();
     _log('PLEYA_VERIFY=true scripts/tvos_sim.sh build');
-    final result = await _runTvosSim(['build'], extraEnv: {'PLEYA_VERIFY': 'true'});
+    final result = await _runTvosSim(['build'], extraEnv: {'PLEYA_VERIFY': 'true'}, timeout: buildProcessTimeout);
     _log(result.stdout.toString());
     if (result.exitCode != 0) {
       _log(result.stderr.toString());
@@ -512,13 +513,18 @@ class TvosSimulatorDriver implements VerificationDriver {
   /// Runs `scripts/tvos_sim.sh <args>` from [repoRoot], with `TVOS_SIM_UDID`
   /// pinned to this driver's dedicated device so the script never falls back
   /// to whatever the developer happens to have booted.
-  Future<ProcessResult> _runTvosSim(List<String> args, {Map<String, String>? extraEnv}) async {
+  Future<ProcessResult> _runTvosSim(
+    List<String> args, {
+    Map<String, String>? extraEnv,
+    Duration timeout = defaultProcessTimeout,
+  }) async {
     final udid = await _resolveDevice();
     return _run(
       'scripts/tvos_sim.sh',
       args,
       workingDirectory: repoRoot.path,
       extraEnv: {'TVOS_SIM_UDID': udid, 'TVOS_SIM_REQUIRE_IDB': '1', ...?extraEnv},
+      timeout: timeout,
     );
   }
 
@@ -528,7 +534,7 @@ class TvosSimulatorDriver implements VerificationDriver {
     if (alreadyBooted) return;
     _log('booting $udid');
     await _run('xcrun', ['simctl', 'boot', udid]);
-    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b']);
+    await _run('xcrun', ['simctl', 'bootstatus', udid, '-b'], timeout: bootProcessTimeout);
   }
 
   /// This driver's own dedicated simulator, created once and reused across
@@ -619,11 +625,6 @@ class TvosSimulatorDriver implements VerificationDriver {
     List<String> args, {
     String? workingDirectory,
     Map<String, String>? extraEnv,
-  }) => Process.run(
-    executable,
-    args,
-    workingDirectory: workingDirectory,
-    environment: extraEnv,
-    includeParentEnvironment: true,
-  );
+    Duration timeout = defaultProcessTimeout,
+  }) => runBounded(executable, args, workingDirectory: workingDirectory, environment: extraEnv, timeout: timeout);
 }

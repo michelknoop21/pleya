@@ -281,11 +281,18 @@ class AutomationRegistry {
   /// bound are finally the same kind of number. [_viewportSnapshot] reports the
   /// viewport in that space too, or the pair would just be inconsistent the
   /// other way round.
+  ///
+  /// A box that is attached and sized can still sit under a zero paint
+  /// transform (a `FittedBox` over an empty child, a page kept alive by a
+  /// `TabBarView`). Its rect comes back as NaN, which `jsonEncode` rejects, so
+  /// one such node would turn the whole `/v1/ui_tree` answer into a 500. It
+  /// reports no bounds instead.
   Rect? _boundsOf(BuildContext? context) {
     if (context == null || !context.mounted) return null;
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.attached || !renderObject.hasSize) return null;
-    return MatrixUtils.transformRect(renderObject.getTransformTo(null), Offset.zero & renderObject.size);
+    final bounds = MatrixUtils.transformRect(renderObject.getTransformTo(null), Offset.zero & renderObject.size);
+    return bounds.isFinite ? bounds : null;
   }
 
   Map<String, Object?> _boundsToJson(Rect bounds) => {
