@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 
@@ -117,5 +119,19 @@ describe('Hero', () => {
     expect(container.querySelector('.hero__scrim')).toBeNull();
     // De tekst en Meer info staan er gewoon.
     expect(screen.getByRole('link', { name: 'More info' })).toBeInTheDocument();
+  });
+
+  it('laat waas en tekstinkt de themawaarden volgen', () => {
+    // jsdom rekent geen color-mix uit; het contrast zelf staat in het
+    // fixrapport (pixelmeting in licht, donker en OLED). Dit contract houdt
+    // vast dat de dekkingen uit de thematokens komen en niet vast staan.
+    const source = readFileSync(resolve(import.meta.dirname, 'Hero.svelte'), 'utf8');
+    const style = source.slice(source.indexOf('<style>'));
+    expect(style).toContain('calc(var(--scrim-strong) * 102%)');
+    expect(style).toContain('calc(var(--scrim-mid) * 89%)');
+    expect(style).toContain('min(100%, var(--scrim-strong) * 104%)');
+    expect(style).not.toMatch(/var\(--scrim\) \d+%/);
+    expect(style).toContain('var(--on-artwork) calc(var(--on-artwork-ink) * 100%)');
+    expect(style.match(/color: var\(--hero-ink\)/g)).toHaveLength(2);
   });
 });

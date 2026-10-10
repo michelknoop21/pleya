@@ -175,9 +175,7 @@
   --scrim: var(--bg);
   --scrim-strong: 0.9;
   --scrim-mid: 0.62;
-  --scrim-mid-alpha: 0;
   --on-artwork: var(--text);
-  --on-artwork-ink-strong: 0.9;
   --on-artwork-ink: 0.66;
   --nav-focus-wash: rgba(255, 255, 255, 0.12);
   --nav-selected-wash: rgba(255, 255, 255, 0.06);
@@ -267,7 +265,6 @@
   --text-muted: rgba(17, 17, 17, 0.6); /* 0x99111111 */
   --scrim-strong: 0.97;
   --scrim-mid: 0.62;
-  --on-artwork-ink-strong: 0.95;
   --on-artwork-ink: 0.8;
   --nav-focus-wash: rgba(17, 17, 17, 0.22);
   --nav-selected-wash: rgba(17, 17, 17, 0.13);
