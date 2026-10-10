@@ -1823,9 +1823,19 @@ loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 
 `POST /libraries/{id}/adopt` zet `managed` van `config` naar `db` en verandert niets anders: id, slug,
 titel, roots, items en kijkstatus blijven staan, zodat een bestaande installatie zonder bewerking van
-de `.env` naar beheer in de browser kan. De regel in `PLEYA_SERVER_LIBRARIES` mag blijven staan;
-de server slaat hem daarna over bij het synchroniseren en meldt bij het opstarten welke bibliotheek
+de `.env` naar beheer in de browser kan. Een regel in `PLEYA_SERVER_LIBRARIES` met dezelfde slug
+slaat de server daarna over bij het synchroniseren, en bij het opstarten meldt hij welke bibliotheek
 dat betreft. Een bibliotheek die al `db` is geeft `library.not_config_managed`.
+
+Dat overslaan geldt voor die ene regel en niet voor de omgeving als geheel, en daarom hoort de regel
+na de overname uit `PLEYA_SERVER_LIBRARIES` weg. Krijgt hij een andere slug, of noemt een andere
+regel een root van de overgenomen bibliotheek, dan verplaatst de volgende herstart die root naar een
+config-bibliotheek: de root-upsert (`ON CONFLICT (root_path) DO UPDATE`) kijkt niet naar `managed`.
+Dat gat bestaat sinds S2.2 en staat als vervolgregel S2.7 in de masterlijst. Wordt een overgenomen
+bibliotheek verwijderd terwijl haar regel er nog staat, dan maakt de volgende herstart haar opnieuw
+aan, leeg en met een nieuwe id. Een weg terug van `db` naar `config` bestaat niet als endpoint; de
+enige route is `DELETE` gevolgd door een herstart met de regel, en dan zijn items, kijkstatus en
+scanrondes van de oude bibliotheek weg.
 
 ### 17f. Scans en jobs
 

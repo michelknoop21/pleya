@@ -125,7 +125,7 @@ ernaast.
 | `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
 | `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd; voor een admin drie velden erbij (S2.2) |
 | `POST /pleya/v1/libraries`, `PATCH`/`DELETE /libraries/{id}` | admin |
-| `POST /pleya/v1/libraries/{id}/adopt` | admin; neemt een bibliotheek uit `PLEYA_SERVER_LIBRARIES` over in de database, zelfde id en slug (S2.5) |
+| `POST /pleya/v1/libraries/{id}/adopt` | admin; neemt een bibliotheek uit `PLEYA_SERVER_LIBRARIES` over in de database, zelfde id en slug (S2.5); haal de regel daarna uit `.env` (zie stap 3) |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
@@ -232,6 +232,15 @@ Een eigen titel kan ertussen: `films="Onze films"=movies:/media/library/Films`.
 **De slug is de matchsleutel**, niet de titel en niet het pad. Daarom overleeft een bibliotheek een
 hernoeming en een verplaatste root met zijn ids intact. Een nieuwe slug is een nieuwe bibliotheek,
 met nieuwe ids voor alles eronder.
+
+**Na een overname hoort de regel weg.** `POST /libraries/{id}/adopt` (S2.5) zet een bibliotheek uit
+deze lijst in de database, met dezelfde id en slug. Daarna slaat de server de regel met die slug bij
+elke herstart over, maar de rest van de lijst niet. Geeft u de regel een andere slug, of noemt een
+andere regel een root van de overgenomen bibliotheek, dan verhuist die root bij de volgende herstart
+naar een config-bibliotheek; dat is een bekend gat (S2.7 in de masterlijst). Verwijdert u de
+overgenomen bibliotheek terwijl de regel er nog staat, dan komt ze bij de volgende herstart leeg
+terug, met een nieuwe id. Terug van database naar `.env` gaat alleen via `DELETE` plus een herstart
+met de regel, en dan bent u items, kijkstatus en scanrondes van die bibliotheek kwijt.
 
 **Wat `.env` wel en niet doet.** Het houdt de credential uit Git. Het verbergt hem niet voor een
 Docker-beheerder: `docker inspect pleya-server` toont de environment van de container. Voor een
