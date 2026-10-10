@@ -162,6 +162,44 @@ void main() {
 
       expect(pagesAsked('duin'), containsAll(['1', '2']), reason: 'the dropped page of "kust" must not block "duin"');
     });
+
+    testWidgets('and a page of an earlier search for the same text is not added twice', (tester) async {
+      Map<String, dynamic> shortPage(int number) => {
+        'page': number,
+        'totalPages': 2,
+        'results': [
+          for (var i = 0; i < 3; i++) {'id': number * 1000 + i, 'mediaType': 'movie', 'title': 'Hit $number-$i'},
+        ],
+      };
+      // Only the first request for page 2 of "kust" is slow: the second search
+      // for the same text gets its page 2 at once.
+      final firstSecondPage = Completer<http.Response>();
+      var secondPagesAsked = 0;
+      fake.routes['GET /search'] = (request) {
+        final number = int.parse(request.url.queryParameters['page']!);
+        if (request.url.queryParameters['query'] != 'kust')
+          return FakeSeerr.json(shortPage(number)..['totalPages'] = 1);
+        if (number == 2 && secondPagesAsked++ == 0) return firstSecondPage.future;
+        return FakeSeerr.json(shortPage(number));
+      };
+      await open(tester);
+
+      await type(tester, 'kust');
+      expect(pagesAsked('kust'), ['1', '2'], reason: 'the next page is on its way');
+
+      await type(tester, 'duin');
+      await type(tester, 'kust');
+      expect(pagesAsked('kust'), ['1', '2', '1', '2'], reason: 'the second search loaded both pages itself');
+
+      firstSecondPage.complete(FakeSeerr.json(shortPage(2)));
+      await seerrSettle(tester);
+
+      expect(
+        tester.widgetList<SeerrPosterCard>(find.byType(SeerrPosterCard)).map((c) => c.media.tmdbId),
+        [1000, 1001, 1002, 2000, 2001, 2002],
+        reason: 'the late page 2 belongs to the first search for "kust"',
+      );
+    });
   });
 
   testWidgets('desktop requests automation follows actual loading and opens the inbox', (tester) async {
