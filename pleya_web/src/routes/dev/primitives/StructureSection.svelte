@@ -17,15 +17,15 @@
   const columns: Column[] = [
     { key: 'name', label: 'Naam' },
     { key: 'kind', label: 'Soort' },
-    { key: 'path', label: 'Pad' },
+    { key: 'path', label: 'Pad', mono: true },
     { key: 'items', label: 'Titels', align: 'end' },
-    { key: 'status', label: 'Status', align: 'end' }
+    { key: 'status', label: 'Laatste scan' }
   ];
 
   const stackColumns: Column[] = [
     { key: 'name', label: 'Naam' },
     { key: 'kind', label: 'Soort' },
-    { key: 'path', label: 'Pad' },
+    { key: 'path', label: 'Pad', mono: true },
     // Een kaal getal zegt gestapeld niets; deze kolom toont zijn naam wel.
     { key: 'items', label: 'Titels', showLabel: true },
     { key: 'status', label: 'Acties', align: 'end', hideLabel: true }
@@ -46,9 +46,9 @@
 {#snippet statusCell(row: Row, column: Column)}
   {#if column.key === 'status'}
     <StatusPill
-      size="sm"
+      variant="dot"
       tone={row.status === 'ok' ? 'ok' : row.status === 'run' ? 'run' : 'err'}
-      label={row.status === 'ok' ? 'Klaar' : row.status === 'run' ? 'Scant' : 'Fout'}
+      label={row.status === 'ok' ? 'vandaag 08:12' : row.status === 'run' ? 'bezig' : 'overgeslagen 07:12'}
     />
   {:else}
     {row[column.key as keyof Row]}
