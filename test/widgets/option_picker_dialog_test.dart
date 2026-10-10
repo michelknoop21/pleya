@@ -120,8 +120,8 @@ void main() {
     final dialog = tester.widget<SimpleDialog>(find.byType(SimpleDialog));
     expect(dialog.insetPadding, EdgeInsets.symmetric(horizontal: 8 * scale, vertical: 24 * scale));
     expect(dialog.constraints, BoxConstraints(minWidth: 304 * scale));
-    // Finding 5: the panel's own contentPadding
-    // was the one dimension in this dialog still on the raw 1.85x-only path.
+    // The panel's own contentPadding was the one dimension in this dialog
+    // still on the raw 1.85x-only path.
     expect(dialog.contentPadding, EdgeInsets.symmetric(vertical: 8 * scale));
 
     // The toggle row is the first FocusableListTile (children[0], wrapped in
@@ -132,9 +132,9 @@ void main() {
     expect(optionRow.horizontalTitleGap, 8.0 * scale);
     expect(optionRow.minLeadingWidth, 24.0 * scale);
 
-    // Finding 5: the toggle row's icon and the option row's icon were the
-    // other raw-literal survivors, fixed size 24 while the padding around
-    // them shrank, which changed the icon:padding proportion on TV.
+    // The toggle row's icon and the option row's icon were the other
+    // raw-literal survivors: fixed size 24 while the padding around them
+    // shrank, which changed the icon:padding proportion on TV.
     final icons = tester.widgetList<AppIcon>(
       find.descendant(of: find.byType(SimpleDialog), matching: find.byType(AppIcon)),
     );

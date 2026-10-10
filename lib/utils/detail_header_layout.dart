@@ -18,8 +18,8 @@ const double _maxHeaderViewportFraction = 0.7;
 /// [ceiling] bounds the height and [floor] keeps a usable backdrop on a short
 /// window. The header is also capped at the height a 16:9 backdrop takes at
 /// the window's width: past that it stretches the same image instead of
-/// showing more of it. `home_hero_layout.dart` holds the same shape with its
-/// own numbers for the Home hero.
+/// showing more of it. The Home hero in `home_hero_layout.dart` bounds its
+/// height in a similar way, with its own numbers.
 double detailHeaderHeight({
   required double screenWidth,
   required double screenHeight,

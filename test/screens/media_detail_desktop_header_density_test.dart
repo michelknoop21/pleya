@@ -49,67 +49,70 @@ void main() {
 
   Future<double> pumpAndMeasureHeaderHeight(WidgetTester tester, Size viewSize, TargetPlatform platform) async {
     debugDefaultTargetPlatformOverride = platform;
-    tester.view.physicalSize = viewSize;
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    // Reset in a finally, synchronously: `debugAssertAllFoundationVarsUnset`
+    // runs right after the test body returns, ahead of any addTearDown
+    // callback, and a throwing pump must not leave the override behind.
+    try {
+      tester.view.physicalSize = viewSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await SettingsService.getInstance();
+      await SettingsService.getInstance();
 
-    // The desktop/iPad action row reaches a Consumer<DownloadProvider> that
-    // the TV harness in media_detail_ovr1a_scale_test.dart never does, same
-    // trimmed provider stack media_detail_screen_test.dart's
-    // pumpDetailUnderPushableRoot uses for the phone build.
-    final db = AppDatabase.forTesting(NativeDatabase.memory());
-    final downloadManager = DownloadManagerService(
-      database: db,
-      storageService: DownloadStorageService.instance,
-      clientResolver: (serverId, {clientScopeId}) => null,
-    );
-    downloadManager.recoveryFuture = Future<void>.value();
-    final downloadProvider = DownloadProvider.forTesting(downloadManager: downloadManager, database: db);
-    await downloadProvider.ensureInitialized();
-    final manager = MultiServerManager();
-    final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
-    addTearDown(() async {
-      downloadProvider.dispose();
-      downloadManager.dispose();
-      multiServerProvider.dispose();
-      await db.close();
-    });
+      // The desktop/iPad action row reaches a Consumer<DownloadProvider> that
+      // the TV harness in media_detail_ovr1a_scale_test.dart never does, same
+      // trimmed provider stack media_detail_screen_test.dart's
+      // pumpDetailUnderPushableRoot uses for the phone build.
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final downloadManager = DownloadManagerService(
+        database: db,
+        storageService: DownloadStorageService.instance,
+        clientResolver: (serverId, {clientScopeId}) => null,
+      );
+      downloadManager.recoveryFuture = Future<void>.value();
+      final downloadProvider = DownloadProvider.forTesting(downloadManager: downloadManager, database: db);
+      await downloadProvider.ensureInitialized();
+      final manager = MultiServerManager();
+      final multiServerProvider = MultiServerProvider(manager, DataAggregationService(manager));
+      addTearDown(() async {
+        downloadProvider.dispose();
+        downloadManager.dispose();
+        multiServerProvider.dispose();
+        await db.close();
+      });
 
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MultiProvider(
-          providers: [
-            ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
-            ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
-          ],
-          child: MaterialApp(
-            builder: withNoticeLayer(),
-            theme: monoTheme(dark: true),
-            home: InputModeTracker(
-              child: OverlaySheetHost(
-                child: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie())),
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<MultiServerProvider>.value(value: multiServerProvider),
+              ChangeNotifierProvider<DownloadProvider>.value(value: downloadProvider),
+            ],
+            child: MaterialApp(
+              builder: withNoticeLayer(),
+              theme: monoTheme(dark: true),
+              home: InputModeTracker(
+                child: OverlaySheetHost(
+                  child: withProfileNavigationScope(child: MediaDetailScreen(metadata: movie())),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
+      );
+      await tester.pump();
+      await tester.pump();
 
-    // No artwork on `movie`, so the hero backdrop renders as a plain
-    // PlaceholderContainer sized by the header's own SizedBox, reading its
-    // rendered height is reading the header height without needing an
-    // automation id on the header itself.
-    final height = tester.getSize(find.byType(PlaceholderContainer).first).height;
-    // Reset synchronously, before the test completes: `debugAssertAll
-    // FoundationVarsUnset` runs right after the test body returns, ahead of
-    // any addTearDown callback, so this can't be a teardown.
-    debugDefaultTargetPlatformOverride = null;
-    return height;
+      // No artwork on `movie`, so the hero backdrop renders as a plain
+      // PlaceholderContainer sized by the header's own SizedBox, reading its
+      // rendered height is reading the header height without needing an
+      // automation id on the header itself.
+      final height = tester.getSize(find.byType(PlaceholderContainer).first).height;
+      return height;
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   }
 
   group('desktop tier (PlatformDetector.isDesktop)', () {
@@ -148,14 +151,13 @@ void main() {
     });
   });
 
-  group('Reviewronde finding 1: F-D1s cap verschuift welk art-type de header wint', () {
+  group('F-D1: de cap verschuift welk art-type de header wint', () {
     test('1032x1376 iPad: de gecapte header duwt containerAspect over de 1,39-grens naar backdrop art', () {
       final headerHeight = tabletDetailHeaderHeight(1032, 1376);
       final containerAspect = 1032 / headerHeight;
 
-      // Bevestigt de aspect uit het reviewrapport zelf (Finding 1,
-      // de dichtheidsaudit van september 2026): 580,5pt -> aspect 1,78, over de
-      // billboardNarrowAspectRatioThreshold van 1,39.
+      // 580,5pt geeft aspect 1,78, over de billboardNarrowAspectRatioThreshold
+      // van 1,39.
       expect(headerHeight, closeTo(580.5, 0.5));
       expect(containerAspect, greaterThanOrEqualTo(billboardNarrowAspectRatioThreshold));
 
@@ -167,11 +169,9 @@ void main() {
         artPath: '/art',
         backgroundSquarePath: '/square',
       );
-      // Michel heeft dit op 15 september 2026 visueel beoordeeld tegen een
-      // echte iPad-simulator (Jellyfin-demo-content, film "Elephants Dream")
-      // en behouden: dit is bedoeld gedrag, geen bug in `heroArtCandidates`
-      // zelf (die was al los getest, zie media_item_test.dart). De vergrote
-      // container kiest terecht backdrop-art boven vierkant art.
+      // Gevolg van de cap, geen fout in `heroArtCandidates` zelf (die is los
+      // getest in media_item_test.dart): de bredere container kiest backdrop-art
+      // boven vierkant art. Dit pint het gedrag vast, het is geen beeldbeoordeling.
       expect(withBoth.heroArtCandidates(containerAspectRatio: containerAspect), ['/art', '/square']);
     });
   });

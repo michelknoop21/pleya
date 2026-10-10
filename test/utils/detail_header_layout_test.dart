@@ -1,14 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/utils/detail_header_layout.dart';
 
-/// Finding 2: F-D1's floor
-/// (400 desktop / 360 tablet) guaranteed a usable backdrop on a short window,
-/// but nothing bounded how far it could push past the window's own 60%
-/// baseline, on a short enough window the floor could dominate the
-/// viewport, and on one shorter than the floor itself the header could
-/// literally exceed the window. No app-wide minimum window height exists
-/// (grepped for `setMinimumSize` in `lib/`, `macos/`, `windows/`, `linux/`:
-/// no hits), so an arbitrarily short desktop window is reachable.
+/// F-D1's floor (400 desktop, 360 tablet) keeps a usable backdrop on a short
+/// window, but unbounded it could dominate the viewport, and on a window
+/// shorter than the floor itself the header would exceed the window. No
+/// minimum window height is set anywhere in the app, so an arbitrarily short
+/// desktop window is reachable.
 void main() {
   group('detailHeaderHeight: the header never exceeds the viewport', () {
     test('invariant: headerHeight < screenHeight, across a sweep down to a near-zero window', () {
@@ -69,7 +66,7 @@ void main() {
     });
   });
 
-  group('detailHeaderHeight: the review-requested short-window matrix', () {
+  group('detailHeaderHeight: the short-window matrix', () {
     test('desktop 1200x667: floor does not trigger (base already exceeds it)', () {
       final result = desktopDetailHeaderHeight(1200, 667);
       expect(result, closeTo(667 * 0.6, 0.5));
