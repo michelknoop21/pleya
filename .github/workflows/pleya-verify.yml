@@ -14,6 +14,15 @@ on:
     # enough that a weekly re-check costs nothing extra.
     - cron: "17 4 * * 1"
 
+# Een nieuwe push op een PR maakt de runs op de vorige commit van diezelfde PR
+# overbodig; zonder deze groep bleven ze doorlopen en hielden ze de wachtrij vol.
+# De groep is per workflow en per PR. Elke andere trigger (push op main of een
+# integratiebranch, handmatig, schema) krijgt een eigen groep per run en wordt
+# dus nooit geannuleerd en wacht nooit op een andere run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Levert één antwoord waar de Apple-gate hieronder op stuurt. Bewust een
   # eigen job en geen `on.pull_request.paths`: zodra die gate required wordt,
