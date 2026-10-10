@@ -1,6 +1,9 @@
 <!--
   De tabbalk onder 900 px (web.css `.tabbar`): vast onderaan, doorschijnend met
-  een blur, labels van 11 px, het actieve tabblad in het merkrood.
+  een blur, labels van 11 px. Op het actieve tabblad staat het icoon in het
+  merkrood en het label in inkt: #e5140f haalt als tekst van 11 px op de balk
+  maar 4,02 (dark), 4,08 (OLED) en 4,42 (light), inkt 19,0 / 19,3 / 17,6.
+  --danger-ink zou 4,5 halen, maar rood als tekst betekent hier gevaar.
 
   Het aantal tabs volgt de slots uit navItems: Boeken verschijnt alleen met een
   boekenbibliotheek, en dan is er plek voor vijf in plaats van vier.
@@ -76,6 +79,10 @@
   .tab--on {
     color: var(--accent);
     font-weight: 600;
+  }
+
+  .tab--on .label {
+    color: var(--ink);
   }
 
   .label {
