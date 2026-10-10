@@ -310,6 +310,11 @@ func (s *Server) handleAdoptLibrary(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.opts.Catalog.AdoptLibrary(r.Context(), libraryID)
 	switch {
 	case errors.Is(err, catalog.ErrNotConfigManaged):
+		// Een geweigerde beheerhandeling krijgt een regel, net als een
+		// DELETE met de verkeerde bevestiging: wie het log leest, ziet ook
+		// de poging die niets veranderde.
+		s.auditEvent(r, auditAdoptLibrary, libraryID.String(), audit.OutcomeDenied,
+			map[string]any{"reason": "not_config_managed"})
 		writeError(w, s.log, CodeLibraryNotConfigManaged, "library is already managed through the API", nil)
 		return
 	case err != nil:

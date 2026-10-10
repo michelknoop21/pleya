@@ -21,7 +21,9 @@ Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" i
 Laatst bijgewerkt: 2026-10-10 (S2.5 gereed). De reviewronde op de completionbasis is gesloten, de
 rescue-commits zijn geland, S2.4 (scans en jobs over HTTP, annuleren, retry, backoff) en S2.5
 (`.env`-overname via `POST /libraries/{id}/adopt`) zijn klaar met bewijs in de tabel. S2.6
-(migratietest op de NAS-fixture, sluiting van protocolvenster 2) is open. De telling hieronder is op 2026-09-24 gemeten met `awk` over sectie 3.
+(migratietest op de NAS-fixture, sluiting van protocolvenster 2) is open. S2.7 is een vervolgregel
+voor een bekend gat dat ouder is dan S2.5 en buiten venster 2 valt. De telling hieronder is op
+2026-10-10 gemeten met `awk` over sectie 3.
 Twee zaken staan bewust buiten dit werk en zijn open: 3 Flutter-testfouten die al op `main` zaten en
 77 goldens die niet op macOS beoordeeld zijn, en de authority-gate die tot een driewegmerge in een
 latere main-sync rood blijft. Zie
@@ -37,15 +39,16 @@ Bron voor de scope:
 | --- | --- | --- | --- | --- |
 | Fundament en integratie | S0 | 1 | 0 | 0 |
 | Backend basis | S1 tot S6 | 1 | 1 | 4 |
-| Web | S7 tot S13 | 0 | 0 | 7 |
+| Web | S7 tot S13 | 0 | 1 | 6 |
 | Clients en agents | S14, S16 | 0 | 0 | 2 |
 | Uitgebreide scope | S17 tot S25 | 0 | 0 | 9 |
 | Afronding | S15 | 0 | 0 | 1 |
-| **Totaal** | **26** | **2** | **1** | **23** |
+| **Totaal** | **26** | **2** | **2** | **22** |
 
-Per taak, en dat is de maat die telt: **149 taken, 22 gereed, 1 bezig, 126 open.** S0 en S1 zijn
-allebei dicht, met acht van acht; de twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
-poort P3 al binnen waren (S12.1 en S13.1).
+Per taak, en dat is de maat die telt: **150 taken, 23 gereed, 7 bezig, 120 open.** S0 en S1 zijn
+allebei dicht, met acht van acht; S2 staat op vijf van zes plus de vervolgregel S2.7, die als taak
+meetelt. Twee gereed-vinkjes zijn mockupgoedkeuringen die met poort P3 al binnen waren (S12.1 en
+S13.1). De zeven bezig zijn S7.1 tot en met S7.6 (de webbaan) en S22.6.
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
 Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
@@ -183,6 +186,7 @@ niet de bouw.
 | S2.4 | Scans en jobs over HTTP, annuleren, retry, backoff op `probe_attempts` | `[x]` | Migratie 0010; `Runner.Cancel/Retry/List`; scanner stopt binnen één walk-stap (`TestCancelStopsTheScanWithinOneWalkStep`); zes endpoints met matrixrijen 33-38; `job.not_cancellable` als achtste domein; backoff `probeBackoff`; `verify-protocol.sh` groen. | 2026-09-24 |
 | S2.5 | `.env`-overname met dezelfde id en slug | `[x]` | **Route.** `POST /libraries/{id}/adopt` (`handleAdoptLibrary` in `internal/api/handlers_admin_libraries.go`), klasse admin, geen body; `Store.AdoptLibrary` (`internal/catalog/store_adopt.go`) is één `UPDATE ... WHERE managed = 'config' RETURNING`, zodat twee gelijktijdige overnames niet allebei slagen. Nul rijen geeft `ErrNotFound` (404) of `ErrNotConfigManaged` (409 `library.not_config_managed`). Audit `adoptLibrary`. **Herstart.** `SyncLibraries` (`internal/catalog/store.go`) kreeg de guard die S2.1 aankondigde: `ON CONFLICT (slug) DO UPDATE ... WHERE libraries.managed = 'config'`. Raakt de upsert niets (Postgres geeft dan geen rij via `RETURNING`, PostgreSQL 18 docs `sql-insert`), dan slaat de sync ook de roots over, zodat een root die de beheerder na de overname weghaalde niet terugkomt; `syncLibraries` in `cmd/pleya-server/bootstrap.go` logt de genegeerde regel. **Tests.** `TestRestartAfterAdoptKeepsOneLibrary` (`cmd/pleya-server/bootstrap_test.go`, langs `config.ParseLibraries` en `syncLibraries`: één bibliotheek, zelfde id, `db`, titel en roots van de beheerder); `TestAdoptLibrarySurvivesARestartWithTheOldEnvLine` (items, `watch_states` en `scan_runs` voor en na gelijk, één rij met slug `films`, PATCH mag na de overname); `TestAdoptOfADBLibraryIsRejected`, `TestAdoptOfAnUnknownLibraryIsNotFound`, `TestAdoptByAMemberIsRefusedAndChangesNothing`; matrixregel 40 in `matrixProbes()` (owner en admin 409, member en restricted canonieke 404, zonder token 401). **Negatieve controles.** Guard uit de upsert: beide herstarttests rood; regel 40 in de probes zonder regel in 16.4: `TestAuthorizationMatrixCoversEveryRowFromSixteen` rood. **Contract** (`7024b5d0`): pad en `adoptLibrary` in `openapi.yaml`, `library.not_config_managed` in 7.1, regel 40 in 16.4, overname in 17e.1, vijftigste operatie in 18, fixture `error_library_not_config_managed.json`; `55afc95c` regenereert `schema.d.ts` en zet de Dart-fixturetelling op 78. **Bewijs.** `go-tool.sh vet ./...` schoon; `test ./...` met de wegwerp-Postgres en de ffmpeg-image: 19 pakketten ok, 449 tests op het hoogste niveau, nul `--- FAIL`, nul `--- SKIP`; `verify-protocol.sh`: 65 antwoorden, adopt 200 (`Library`) en 409 (`ErrorEnvelope`) PASS, 30 van 30 schema's gedekt; `check_protocol.sh` groen (43 paden, 103 componenten, 24 enums, 78 fixtures, 8 foutdomeinen); `pleya_web` `check-api-types.sh` groen; `flutter test test/pleya_server/pleya_wire_contract_test.dart` 89 groen. | 2026-10-10 |
 | S2.6 | Migratietest op de NAS-fixture, protocolvenster 2 dicht | `[ ]` | | |
+| S2.7 | Vervolg, buiten venster 2 en buiten J.3: een root van een `db`-bibliotheek blijft van die bibliotheek bij een herstart | `[ ]` | **Bekend gat, nog niet gerepareerd.** Noemt een regel in `PLEYA_SERVER_LIBRARIES` een root die bij een overgenomen (of een andere `db`-)bibliotheek hoort, dan verhuist `SyncLibraries` (`internal/catalog/store.go`) die root bij de volgende herstart naar de config-bibliotheek: de root-upsert `ON CONFLICT (root_path) DO UPDATE SET library_id = EXCLUDED.library_id` kijkt niet naar `managed`. Dat gedrag bestaat sinds S2.2 (de eerste `db`-bibliotheken) en is dus ouder dan S2.5; de overname maakt het alleen waarschijnlijker, want de oude regel kan na een andere slug of een tweede regel dezelfde root noemen. Gezien bij de review van S2.5, gedocumenteerd in `pleya_server/README.md` en hoofdstuk 17e.1. **Schets van de fix.** De root-upsert alleen laten werken op roots waarvan de huidige eigenaar een `config`-bibliotheek is (een `WHERE` op de `DO UPDATE` met een subquery op `libraries.managed`, dezelfde vorm als de guard op de bibliotheek-upsert), en de overgeslagen root loggen zoals `syncLibraries` dat al doet voor een genegeerde regel. Geen contractwijziging, dus geen venster nodig. | |
 
 ### S3 Boekencatalogus (PS-14)
 

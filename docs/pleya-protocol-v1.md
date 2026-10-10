@@ -1767,7 +1767,17 @@ na afloop nog precies zo aan. Daarna laat de sync de bibliotheek met rust, ook a
 die een beheerder heeft weggehaald hangt de omgeving er bij een herstart niet weer aan. Een tweede
 bibliotheek met dezelfde slug kan er niet bij komen, want de slug is uniek. Een bibliotheek die al
 `db` is geeft `409 library.not_config_managed`. Een weg terug, van `db` naar `config`, bestaat niet
-als endpoint: J.3 kent alleen de overname.
+als endpoint: J.3 kent alleen de overname. De enige route terug is `DELETE` gevolgd door een
+herstart met de regel, en die levert een nieuwe, lege config-bibliotheek op: items, kijkstatus en
+scanrondes van de oude zijn dan weg.
+
+"De sync laat de bibliotheek met rust" geldt voor de regel met dezelfde slug, en niet voor de
+omgeving als geheel. De regel hoort na de overname weg, om twee redenen. Een regel met een andere
+slug, of een andere regel die een root van de overgenomen bibliotheek noemt, verhuist die root bij
+de volgende herstart naar een config-bibliotheek: de root-upsert (`ON CONFLICT (root_path) DO
+UPDATE`) kijkt niet naar `managed`. Dat gat bestaat sinds S2.2 en staat als vervolgregel S2.7 in de
+masterlijst. En een overgenomen bibliotheek die wordt verwijderd terwijl haar regel nog in de
+omgeving staat, komt bij de volgende herstart terug als nieuwe, lege config-bibliotheek.
 
 `managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee voor klasse `admin` (matrixregel
 1 blijft ongewijzigd: elke rol met recht op de bibliotheek ziet hem in de lijst, alleen deze drie

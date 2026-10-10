@@ -239,7 +239,16 @@ met nieuwe ids voor alles eronder.
 (S2.5). De id en de slug blijven, en items, kijkstatus en scanrondes hangen er daarna nog precies zo
 aan. Vanaf dat moment wijzigt u titel, soort en roots via de API, en negeert de server de regel in
 `PLEYA_SERVER_LIBRARIES` bij elke herstart; de log zegt dat met "regel in PLEYA_SERVER_LIBRARIES
-genegeerd". U hoeft de regel dus niet meteen weg te halen, maar een wijziging erin doet niets meer.
+genegeerd". Haal de regel na de overname toch weg, want hij is niet helemaal onschuldig:
+
+- Geeft u de regel een andere slug, of noemt een andere regel in `.env` een root van de
+  overgenomen bibliotheek, dan verhuist die root bij de volgende herstart naar een
+  config-bibliotheek. Dat is een bekend gat, met een eigen regel in de masterlijst.
+- Verwijdert u de overgenomen bibliotheek terwijl de regel er nog staat, dan maakt de volgende
+  herstart haar opnieuw aan, leeg en als nieuwe config-bibliotheek met een nieuwe id.
+
+Terug van `db` naar `config` gaat alleen via `DELETE` plus een herstart met de regel, en dan bent u
+items, kijkstatus en scanrondes van die bibliotheek kwijt.
 
 **Wat `.env` wel en niet doet.** Het houdt de credential uit Git. Het verbergt hem niet voor een
 Docker-beheerder: `docker inspect pleya-server` toont de environment van de container. Voor een
