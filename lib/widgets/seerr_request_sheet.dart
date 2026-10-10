@@ -538,10 +538,51 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
 
     final theme = Theme.of(context);
     // Cap the sheet so a long season list (20+ seasons) scrolls inside the sheet
-    // instead of pushing the Request button off-screen. The messages and the
-    // buttons stay pinned below the scroll area so they're always reachable.
+    // instead of pushing the Request button off-screen. The buttons stay
+    // pinned below the scroll area so they're always reachable.
     final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
     final locked = _locked;
+    // Why the form cannot send as it stands. These open the scroll area, so
+    // they are read before the choices and never take room from the buttons
+    // on a small screen with large text.
+    final standing = [
+      // An admin's 4K without any 4K server is said by the target section.
+      if (_hasNowhereToGo && !_target.detailLoading && !_target.missingServerForQuality)
+        SeerrFormNotice(
+          kind: 'route',
+          title: t.seerr.noDefaultServerTitle,
+          body: t.seerr.noDefaultServerBody,
+          tone: SeerrFormNoticeTone.warning,
+        ),
+      if (_quotaExhausted)
+        SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
+      // A film whose chosen quality is taken while the other one is open:
+      // the form stays for the 4K switch, and says why it cannot send yet.
+      if (!_isTv && !_isMovieRequestable && _refusal == null && !_uncertain)
+        SeerrFormNotice(
+          kind: 'duplicate',
+          title: (_is4k ? _status4k : _status)?.isAvailable ?? false ? t.seerr.available : t.seerr.alreadyRequested,
+        ),
+    ];
+    // What the server said about a request that was sent. Pinned above the
+    // buttons, and scrolling on its own when it outgrows its share.
+    final outcome = [
+      if (_uncertain)
+        SeerrFormNotice(
+          kind: 'uncertain',
+          title: t.seerr.requestUncertainTitle,
+          body: t.seerr.requestUncertainBody,
+          tone: SeerrFormNoticeTone.warning,
+        ),
+      if (_refusal case final refusal?)
+        SeerrFormNotice(
+          kind: 'refused',
+          title: t.seerr.requestRefusedTitle,
+          body: refusal == _Refusal.duplicate ? t.seerr.requestRefusedDuplicate : t.seerr.requestRefusedForbidden,
+          tone: SeerrFormNoticeTone.error,
+        ),
+      if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
+    ];
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
       child: Column(
@@ -554,6 +595,10 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               padding: EdgeInsets.zero,
               children: [
                 _quotaLine(theme),
+                // One slot whether it holds a message or not: a row that comes
+                // and goes would renumber the rows below it, and the row that
+                // holds the focus would be rebuilt without it.
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: standing),
                 if (_isTv) ..._buildSeasonList(theme, enabled: !locked),
                 _fourKRow(provider, enabled: !locked),
                 if (provider.isAdmin && (_target.hasAnyServer || _target.serversFailed))
@@ -561,38 +606,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               ],
             ),
           ),
-          // An admin's 4K without any 4K server is said by the target section.
-          if (_hasNowhereToGo && !_target.detailLoading && !_target.missingServerForQuality)
-            SeerrFormNotice(
-              kind: 'route',
-              title: t.seerr.noDefaultServerTitle,
-              body: t.seerr.noDefaultServerBody,
-              tone: SeerrFormNoticeTone.warning,
+          if (outcome.isNotEmpty)
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: outcome),
+              ),
             ),
-          if (_quotaExhausted)
-            SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
-          // A film whose chosen quality is taken while the other one is open:
-          // the form stays for the 4K switch, and says why it cannot send yet.
-          if (!_isTv && !_isMovieRequestable && _refusal == null && !_uncertain)
-            SeerrFormNotice(
-              kind: 'duplicate',
-              title: (_is4k ? _status4k : _status)?.isAvailable ?? false ? t.seerr.available : t.seerr.alreadyRequested,
-            ),
-          if (_uncertain)
-            SeerrFormNotice(
-              kind: 'uncertain',
-              title: t.seerr.requestUncertainTitle,
-              body: t.seerr.requestUncertainBody,
-              tone: SeerrFormNoticeTone.warning,
-            ),
-          if (_refusal case final refusal?)
-            SeerrFormNotice(
-              kind: 'refused',
-              title: t.seerr.requestRefusedTitle,
-              body: refusal == _Refusal.duplicate ? t.seerr.requestRefusedDuplicate : t.seerr.requestRefusedForbidden,
-              tone: SeerrFormNoticeTone.error,
-            ),
-          if (_error case final error?) SeerrFormNotice(kind: 'error', title: error, tone: SeerrFormNoticeTone.error),
           _uncertain
               ? SeerrFormButtons(
                   closeLabel: t.common.close,

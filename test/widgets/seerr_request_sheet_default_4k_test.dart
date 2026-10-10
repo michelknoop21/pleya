@@ -425,6 +425,29 @@ void main() {
     });
   });
 
+  testWidgets('a late answer that says there is no default HD instance does not shut a form that was opened', (
+    tester,
+  ) async {
+    final list = fake.hold('GET /service/radarr');
+    await open(tester, _movie, permissions: seerrPermRequest);
+    await tester.pump(const Duration(seconds: 3, milliseconds: 100));
+    await seerrSettle(tester);
+    expect(_enabled(tester, 'submit'), isTrue);
+
+    list.complete(
+      FakeSeerr.json([
+        {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': false},
+      ]),
+    );
+    await seerrSettle(tester);
+    expect(notice('route'), findsNothing);
+    expect(_enabled(tester, 'submit'), isTrue, reason: 'past the bound the instances count as not known');
+
+    await tester.tap(find.text(t.seerr.requestMovie));
+    await seerrSettle(tester);
+    expect(fake.sent('POST', '/request').single.body, containsPair('is4k', false));
+  });
+
   group('an admin with nothing to choose from', () {
     testWidgets('an empty instance list: no 4K switch, and HD goes out', (tester) async {
       fake.on('GET /service/radarr', <Object>[]);
