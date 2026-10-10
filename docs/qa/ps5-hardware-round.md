@@ -11,7 +11,7 @@ Aangemaakt: 2026-09-04, op `5eebb83` (feat/pleyaserver).
 Dit dossier is op 10 oktober 2026 van `feat/pleyaserver` naar `main` overgenomen. Er is sinds
 4 september geen test bijgekomen: de ronde is niet gedraaid en elke rij hieronder die open stond,
 staat nog open. Vijf dingen zijn sindsdien veranderd. De eerste is in de tekst hieronder verwerkt;
-bij de andere staat op de betreffende plek een verwijzing naar dit blok.
+de tekst van 4 september is verder blijven staan en dit blok gaat voor waar de twee verschillen.
 
 - Het besluit heet op `main` DEC-118. Op `feat/pleyaserver` droeg het nummer DEC-064, dat op `main`
   een ander besluit is; de hernummeringstabel onderaan `docs/DECISIONS.md` voert het als oud
@@ -30,11 +30,14 @@ bij de andere staat op de betreffende plek een verwijzing naar dit blok.
   eerstvolgende publieke release met PS-5- of PS-9-gedrag, een TestFlight-indiening naar App Review,
   of een merge van `feat/pleyaserver` naar `main`. De PS-5-code kwam op 25 september 2026 op `main`
   via PR #94 (`638e7524`, branch `integration/pleya-server-completion`), zonder dat de ronde was
-  gedraaid. DEC-118 blijft ongewijzigd staan. Besluit van 10 oktober 2026: de ronde geldt als
-  achterstallig en moet volledig gevalideerd zijn vóór de eerste publieke release van Pleya Server.
-  De status staat in `docs/PLEYA-SERVER-MASTERLIST.md`.
+  gedraaid. DEC-118 blijft ongewijzigd staan, dus ook het eerste moment geldt nog: geen publieke
+  release van de client met PS-5- of PS-9-gedrag zonder gedraaide ronde. Besluit van 10 oktober
+  2026: de ronde geldt als achterstallig, en bovenop DEC-118 moet ze volledig gevalideerd zijn vóór
+  de eerste publieke release van Pleya Server. De status hoort in
+  `docs/PLEYA-SERVER-MASTERLIST.md`; zegt die nog "uitgesteld", dan loopt de masterlijst achter op
+  dit blok.
 
-## Status: uitgesteld, met een startvoorwaarde
+## Status op 4 september: uitgesteld, met een startvoorwaarde
 
 Besloten op 4 september 2026. PS-5 blijft **code complete**; acceptatiecriterium 4 is **expliciet
 niet gehaald** en de ronde is uitgesteld. Dat is een vastgelegde stand, geen open eindje dat
@@ -42,10 +45,10 @@ stilzwijgend meelift naar een release.
 
 De poort uit
 [DEC-118](../DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
-blijft staan. Op 4 september luidde de stand: de hardwaretest moet uiterlijk vóór de eerstvolgende
-publieke release die PS-5- of PS-9-gedrag bevat alsnog gedraaid zijn. Een van de andere momenten uit
-dat besluit is sindsdien gepasseerd, zie *Stand op `main`*. Dat PS-9 op 4 september gesloten is,
-bewijst niets over dit criterium.
+blijft staan: de hardwaretest moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of
+PS-9-gedrag bevat alsnog gedraaid zijn. Dat geldt nog. Minstens één van de andere momenten uit dat
+besluit is sindsdien gepasseerd, zie *Stand op `main`*; de ronde is daarmee achterstallig. Dat PS-9
+op 4 september gesloten is, bewijst niets over dit criterium.
 
 Drie voorwaarden gelden vóór de ronde mag starten:
 
@@ -128,7 +131,7 @@ delta-nul is.
 
 | Platform | Build | Status | Bewijs |
 |---|---|---|---|
-| macOS | 246 | **PASS** (4 sep 2026) | zie hieronder |
+| macOS | 246 | **PASS** (4 sep 2026); historisch, opnieuw te doen op de rondebuild | zie hieronder |
 | tvOS | 247 | open | Dart-log niet vanaf de CLI leesbaar, zie *Wat niet meetbaar bleek* |
 
 De macOS-regel:
