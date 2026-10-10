@@ -30,7 +30,7 @@ jobs:
   # en wacht GitHub eindeloos op iets dat nooit komt. Zo bestaat de checknaam
   # altijd, en bepaalt de inhoud of er werk te doen is.
   #
-  # De gate hieronder draait met `if: always()` en valt open: alleen een
+  # De gate hieronder draait met `if: !cancelled()` en valt open: alleen een
   # succesvolle run van deze job mét expliciet "false" slaat het echte werk
   # over. Faalt deze job, of levert hij niets op, dan draait de simulatorrun
   # gewoon door — anders zou GitHub de check "skipped" zien en dat als groen
@@ -156,7 +156,7 @@ jobs:
   macos-verify:
     name: Verify - macOS + iOS simulator
     needs: changes
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: macos-26
     permissions:
       contents: read
