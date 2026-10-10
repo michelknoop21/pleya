@@ -79,13 +79,14 @@
 
   .tgl__label {
     display: block;
-    font-size: 15px;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--ink);
     cursor: pointer;
   }
 
   .tgl__desc {
-    margin-top: 2px;
+    margin-top: 3px;
     font-size: 13px;
     line-height: 1.4;
     color: var(--ink-3);
@@ -134,12 +135,19 @@
     width: 22px;
     height: 22px;
     border-radius: var(--radius-pill);
-    /* De knop is wit in elk thema, ook in licht (web.css `.toggle i`). */
-    background: #fff;
-    transition: transform var(--dur-fast) var(--ease);
+    /*
+     * Uit is de knop gedimde inkt op het verhoogde spoor (specimen v2), zodat
+     * uit en aan ook zonder groen verschillen. Aan is hij wit in elk thema,
+     * ook in licht (web.css `.toggle i`).
+     */
+    background: color-mix(in srgb, var(--ink) 72%, var(--bg));
+    transition:
+      transform var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
   }
 
   .tgl__track--on .tgl__knob {
+    background: #fff;
     transform: translateX(18px);
   }
 

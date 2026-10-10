@@ -4,6 +4,7 @@
   import Select from '$lib/components/Select.svelte';
   import Toggle from '$lib/components/Toggle.svelte';
   import Choice from '$lib/components/Choice.svelte';
+  import Panel from '$lib/components/Panel.svelte';
   import GallerySection from './GallerySection.svelte';
 
   const roles = [
@@ -27,35 +28,42 @@
 </script>
 
 <GallerySection id="velden" title="Velden">
-  <div class="gs__grid">
-    <Field label="Naam" bind:value={name} />
-    <Field
-      id="veld-hint"
-      label="Pad"
-      placeholder="/media/films"
-      hint="Het pad zoals de server het ziet, niet zoals jouw computer het ziet."
-    />
-    <Field label="Poort" value="80800" error="Een poort ligt tussen 1 en 65535." />
-    <Field id="veld-fout-focus" label="Poort (fout, focus)" value="0" error="Een poort ligt tussen 1 en 65535." />
-    <Field label="Server-id" value="pleya-nas-01" disabled />
-  </div>
+  <!-- Velden horen in een paneel: daar leest de uitsparing (--inset-bg) als bedoeld. -->
+  <Panel>
+    {#snippet title()}Bibliotheek bewerken{/snippet}
+    <div class="gs__stack">
+      <div class="gs__grid">
+        <Field label="Naam" bind:value={name} />
+        <Field
+          id="veld-hint"
+          label="Pad"
+          mono
+          placeholder="/media/films"
+          hint="Het pad zoals de server het ziet, niet zoals jouw computer het ziet."
+        />
+        <Field label="Poort" value="80800" error="Een poort ligt tussen 1 en 65535." />
+        <Field id="veld-fout-focus" label="Poort (fout, focus)" value="0" error="Een poort ligt tussen 1 en 65535." />
+        <Field label="Server-id" value="pleya-nas-01" disabled />
+      </div>
 
-  <div class="gs__grid">
-    <Select label="Rol" options={roles} bind:value={role} />
-    <Select
-      label="Taal"
-      options={[{ value: 'nl', label: 'Nederlands' }]}
-      placeholder="Kies een taal"
-      error="Kies een taal."
-    />
-    <Select label="Rol (vast)" options={roles} value="viewer" disabled />
-  </div>
+      <div class="gs__grid">
+        <Select label="Rol" options={roles} bind:value={role} />
+        <Select
+          label="Taal"
+          options={[{ value: 'nl', label: 'Nederlands' }]}
+          placeholder="Kies een taal"
+          error="Kies een taal."
+        />
+        <Select label="Rol (vast)" options={roles} value="viewer" disabled />
+      </div>
 
-  <div class="gs__grid">
-    <Toggle label="Automatisch scannen" description="Nieuwe bestanden binnen een minuut." bind:checked={on} />
-    <Toggle label="Ondertitels downloaden" bind:checked={off} />
-    <Toggle label="Transcoderen" description="Komt in PS-8." checked disabled />
-  </div>
+      <div class="gs__grid">
+        <Toggle label="Automatisch scannen" description="Nieuwe bestanden binnen een minuut." bind:checked={on} />
+        <Toggle label="Ondertitels downloaden" bind:checked={off} />
+        <Toggle label="Transcoderen" description="Komt in PS-8." checked disabled />
+      </div>
+    </div>
+  </Panel>
 
   <div class="gs__grid">
     <Choice legend="Soort bibliotheek" options={kinds} bind:value={kind} hint="Bepaalt hoe de scanner bestanden leest." />

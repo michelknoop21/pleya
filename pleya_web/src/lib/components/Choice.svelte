@@ -131,8 +131,9 @@
 
   .cho__legend {
     padding: 0;
-    margin-bottom: 6px;
+    margin-bottom: 7px;
     font-size: 13px;
+    font-weight: 500;
     color: var(--ink-2);
   }
 
@@ -155,10 +156,14 @@
     min-height: var(--touch-target);
     padding: 14px 16px;
     border-radius: var(--radius-md);
-    border: 1px solid transparent;
-    background: var(--surface);
+    /* Een keuzekaart is iets om aan te wijzen, geen invoer: een tree hoger dan
+       het paneel (--panel-2) in plaats van erin gesneden zoals een veld. */
+    border: 1px solid var(--hairline);
+    background: var(--panel-2);
     cursor: pointer;
-    transition: border-color var(--dur-fast) var(--ease);
+    transition:
+      border-color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
   }
 
   .cho--grid .cho__card {
@@ -189,7 +194,7 @@
   }
 
   .cho--err .cho__card {
-    border-color: var(--accent);
+    border-color: var(--danger-ink);
   }
 
   .cho--err .cho__card--on {
@@ -208,7 +213,8 @@
 
   @media (hover: hover) {
     .cho__card:not(.cho__card--dis):not(.cho__card--on):hover {
-      border-color: var(--ink-4);
+      border-color: var(--hairline-strong);
+      background: color-mix(in srgb, var(--panel-2), var(--ink) 3%);
     }
   }
 
@@ -252,7 +258,7 @@
   }
 
   .cho__help {
-    margin-top: 6px;
+    margin-top: 7px;
     font-size: 12px;
     line-height: 1.4;
     color: var(--ink-3);
