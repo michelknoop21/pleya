@@ -219,5 +219,18 @@ describe('MediaCard, staten van scherm 16', () => {
     });
     expect(container.querySelector('.card')).toHaveAttribute('data-shape', 'wide');
     expect(container.querySelector('.artwork--wide')).not.toBeNull();
+    // De overlay zelf draagt de 16:9-klasse; die zet aspect-ratio op --aspect-episode.
+    expect(container.querySelector('.card__over')).toHaveClass('card__over--wide');
+  });
+
+  it('geeft een posteroverlay geen 16:9-klasse', () => {
+    const { container } = render(MediaCard, { props: { item: item(), actions } });
+    expect(container.querySelector('.card__over')).not.toBeNull();
+    expect(container.querySelector('.card__over')).not.toHaveClass('card__over--wide');
+  });
+
+  it('koppelt de 16:9-klasse in de stijl aan de verhouding van een aflevering', () => {
+    const source = readFileSync(resolve(import.meta.dirname, 'MediaCard.svelte'), 'utf8');
+    expect(source).toMatch(/\.card__over--wide \{\s*aspect-ratio: var\(--aspect-episode\);/);
   });
 });

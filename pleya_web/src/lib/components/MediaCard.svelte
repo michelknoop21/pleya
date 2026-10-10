@@ -100,7 +100,7 @@
     </div>
   </a>
   {#if actions}
-    <div class="card__over">
+    <div class="card__over" class:card__over--wide={shape === 'wide'}>
       <div class="card__actions">{@render actions()}</div>
     </div>
   {/if}
@@ -238,7 +238,7 @@
       transform var(--dur-normal) var(--ease);
   }
 
-  .card[data-shape='wide'] .card__over {
+  .card__over--wide {
     aspect-ratio: var(--aspect-episode);
   }
 
