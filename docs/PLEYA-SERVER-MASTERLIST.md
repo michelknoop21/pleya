@@ -98,8 +98,8 @@ wachten; wie ruimte heeft trekt hem naar voren.
 Dit is bijgesteld op 10 oktober 2026. De eerdere lijn begon bij `S1 → S3`, maar
 [DEC-129](DECISIONS.md) houdt PS-14 gesloten tot PS-11A geïntegreerd bewezen is, en PS-11A heeft zijn
 webkant (S10 beheer, S11 wizard, beide op S7) nodig. S3 kan dus niet beginnen voordat de webshell en
-het beheer staan en Michel de vrijgave heeft gegeven. S4 en S5 hebben die vrijgave niet nodig en
-kunnen er vóór of naast lopen; S6 hangt wel aan S3.
+het beheer staan en Michel de vrijgave heeft gegeven. Alleen S4 (en S7) is vrij van die poort en kan er vóór of naast lopen; S5 hangt aan S3 en S4
+(deel I, graaf), en S6 aan S3.
 
 Vertraging op deze lijn schuift de release op; vertraging op de rest niet, zolang alles vóór S15 klaar
 is. Deel I noemt een kortere lijn zonder de vrijgavepoort, met S22 als zwaarste slice ernaast; die

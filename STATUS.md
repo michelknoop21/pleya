@@ -14,8 +14,9 @@ De masterlijst is gereconcilieerd: loudness (`0011`), `GET /watch-history` (DEC-
 migratiereparatie `0012` staan in hoofdstuk 3a. De CSP-fix voor Kits route-announcer lag sinds 7
 september alleen op `feat/pleyaserver` en is als PR #219 naar `main` gegaan.
 
-Volgende stap: S7 (webshell en designsysteem) of S4 en S5 (sidecars, filters), die geen vrijgave
-vragen. S3 (boeken) wacht op PS-11A geïntegreerd en op een vrijgavebesluit (DEC-129).
+Volgende stap: S7 (webshell en designsysteem) of S4 (sidecars en artworkladder), de twee slices die
+geen vrijgave vragen. S5 en S3 (boeken) hangen aan S3 en dus aan PS-11A geïntegreerd (S7, S10, S11)
+en een vrijgavebesluit (DEC-129).
 
 ## Stand 24 september 2026
 
