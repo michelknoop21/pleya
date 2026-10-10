@@ -511,6 +511,24 @@ void main() {
       },
     );
 
+    test('a plain search says how many it found beyond the 12 listed', () async {
+      final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 30; i++) _group('m$i', 'T$i')]);
+      final data = await search(ctx, {'kind': 'movie', 'limit': 30});
+      expect(data['count'], kAssistantListedTitles);
+      expect(data['total_matches'], 30);
+    });
+
+    test('a page whose newest-first tail is a local title with a fresh scan stamp is not called complete', () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [
+          for (var i = 0; i < 99; i++) _group('m$i', 'T$i', added: ago(1)),
+          _group('l', 'Local', added: ago(0), backend: MediaBackend.local),
+        ],
+      );
+      final data = await search(ctx, {'kind': 'movie', 'added_within_days': 7});
+      expect(data['sampled'], isTrue);
+    });
+
     test('an invalid window is refused', () async {
       final (ctx, _, _, _) = await setUpCtx();
       expect(search(ctx, {'added_within_days': 0}), throwsA(isA<AssistantToolError>()));

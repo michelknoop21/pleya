@@ -65,7 +65,7 @@ final List<AssistantTool> _catalogTools = [
         'text matches titles, not themes or plots: use find_title for those. '
         'Genres are OR for native rows, ALL when combined with temporary strict filters; multiple audio languages require ALL. '
         'For what was added to the libraries in a period ("this week", "last 14 days") pass added_within_days (1-31): '
-        'results then carry added_at; total_matches is the whole window, count what is listed, added_unknown the titles without a date. '
+        'results then carry added_at; total_matches is the whole window (or everything the search found), count what is listed, added_unknown the titles without a date. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
         'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
     risk: AssistantToolRisk.read,
@@ -133,18 +133,19 @@ final List<AssistantTool> _catalogTools = [
         // For children only what passed counts.
         // What is listed and drawn; total_matches is what the query found.
         'count': entries.length,
-        // The kids gate only sees the listed titles: no whole-window figure then,
+        // The kids gate only sees the listed titles: no whole-set figure then,
         // and no count of titles that were never checked.
+        if (age == null) 'total_matches': query.totalMatches ?? query.groups.length,
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
-          if (age == null) 'total_matches': query.totalMatches,
           if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
           if (age != null && query.totalMatches != null && query.totalMatches! > entries.length) 'sampled': true,
         },
         'can_become_home_row': query.row != null,
         if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,
-        if (query.partial || (age == null && query.addedUnknown > 0)) 'partial': true,
+        // A bare flag for a child: titles without a date are left out, nothing more.
+        if (query.partial || query.addedUnknown > 0) 'partial': true,
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,

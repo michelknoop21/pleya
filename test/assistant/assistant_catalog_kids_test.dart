@@ -131,7 +131,7 @@ void main() {
     final kids = await _tool('search_catalog').run(ctx(true), null, args) as AssistantToolResult;
     expect(kids.data.containsKey('total_matches'), isFalse);
     expect(kids.data.containsKey('added_unknown'), isFalse);
-    expect(kids.data.containsKey('partial'), isFalse, reason: 'no hint at titles that were never checked');
+    expect(kids.data['partial'], isTrue, reason: 'an undated title was left out; a bare flag, no count');
     final adult = await _tool('search_catalog').run(ctx(false), null, args) as AssistantToolResult;
     expect(adult.data['total_matches'], 2);
     expect(adult.data['added_unknown'], 1);

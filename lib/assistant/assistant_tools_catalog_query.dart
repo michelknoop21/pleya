@@ -109,6 +109,12 @@ int? _groupAddedAt(UnifiedMediaGroup g) => g.sources
     .whereType<int>()
     .fold<int?>(null, (a, b) => a == null || b > a ? b : a);
 
+/// The loader's own newest-first key: every source, local scan stamps included.
+/// Order and the end-of-page test follow the loader, the window follows
+/// [_groupAddedAt].
+int? _groupRawAddedAt(UnifiedMediaGroup g) =>
+    g.sources.map((s) => s.item.addedAt).whereType<int>().fold<int?>(null, (a, b) => a == null || b > a ? b : a);
+
 Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> args) async {
   final catalog = ctx.catalog!;
   final clients = {for (final id in ctx.userServers) id: ctx.servers.getClient(id)};
@@ -281,7 +287,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       if (cutoff == null) sampled |= !rowShaped && !content.isExact;
       // Newest first and capped at 100: if the oldest loaded title is still in
       // the window, older matches were never seen.
-      if (cutoff != null && content.groups.length >= 100 && (addedOf(content.groups.last) ?? -1) >= cutoff) {
+      if (cutoff != null && content.groups.length >= 100 && (_groupRawAddedAt(content.groups.last) ?? -1) >= cutoff) {
         windowCapped = true;
       }
       groups.addAll(content.groups);
@@ -556,7 +562,7 @@ void _order(List<UnifiedMediaGroup> groups, String sort) {
     case 'rating':
       groups.sort((a, b) => (rep(b).rating ?? -1).compareTo(rep(a).rating ?? -1));
     case 'added':
-      groups.sort((a, b) => (_groupAddedAt(b) ?? -1).compareTo(_groupAddedAt(a) ?? -1));
+      groups.sort((a, b) => (_groupRawAddedAt(b) ?? -1).compareTo(_groupRawAddedAt(a) ?? -1));
     case 'released':
       groups.sort((a, b) => releaseKey(rep(b)).compareTo(releaseKey(rep(a))));
     default:

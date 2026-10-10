@@ -250,5 +250,12 @@ void main() {
       final i = _i('Zoek een film met Tom Hanks');
       expect(i.constrain('search_catalog', {}).args, isNot(contains('kind')));
     });
+
+    test('review: requests, added value and a watch clause beside a long period are not additions-only', () {
+      expect(_i('I added this movie to Radarr').addedToLibraries, isFalse);
+      expect(_i('Dat is een toegevoegde waarde').addedToLibraries, isFalse);
+      final mixed = _i('Wat is er toegevoegd en wat keken de anderen de laatste 2 weken?');
+      expect(mixed.constrain('search_catalog', {}).error, isNull);
+    });
   });
 }

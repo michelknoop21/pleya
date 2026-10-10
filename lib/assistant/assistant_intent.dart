@@ -62,7 +62,7 @@ final _added = RegExp(
   r'\b(toegevoegde?|(?:er\s?)?bij\s?gekomen|nieuwe toevoegingen|(?:newly|recently|just) added|added (?:this|last|in the)|new additions|recent additions|was added|got added|been added)\b',
 );
 final _addedElsewhere = RegExp(
-  r'\b(kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?|afspeellijst|playlist|collectie|collection|wachtrij|queue|downloads?)\b',
+  r'\b(radarr|sonarr|requests?|aanvragen?|verzoeken|toegevoegde waarde|added value|kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?|afspeellijst|playlist|collectie|collection|wachtrij|queue|downloads?)\b',
 );
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
@@ -175,7 +175,7 @@ class AssistantIntent {
       case 'search_catalog':
         if (addedToLibraries && previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (addedToLibraries) {
-          if (longPeriodAsked) return (args: out, error: 'window_not_supported');
+          if (longPeriodAsked && !mixedAudience && !audience.known) return (args: out, error: 'window_not_supported');
           // The period is the additions' only when no other clause (a watch
           // question) could own it.
           if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
