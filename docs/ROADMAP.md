@@ -31,6 +31,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 - This roadmap owns order; domain registers own detailed state. Do not create a second detailed status administration here.
 - Changing priority, order, scope, or milestones is an authority change and requires an explicit roadmap diff plus independent substantive review before merge.
 - Code on `main`, simulator evidence, hardware evidence and publication are separate states.
+- Geïmplementeerd en gemerged, CI en automatische tests geslaagd, en hardwareacceptatie geslaagd zijn drie verschillende statussen (Michel, 10 oktober 2026). Een hardwareafhankelijk werkpakket, en zeker een P0 of releaseblokker, heet pas afgerond als het vereiste hardwarebewijs er is. Tot dan noemt de kolom Current state welke van de drie bereikt is, in de woorden die er al zijn: Gemerged hier, en `CODE`, `VERIFY/SIM` en `HARDWARE` uit [de bewijsregel](unified-2026-closure.md#3-bewijsregel) in de registers. Welke regels op hardware openstaan blijft in de registers staan.
 - UI changes are executed by the UI design round (de UI-ontwerpronde, see [UI and TV rules](agents/ui-and-tv.md)) and get a separate visual review against the current northstar/DEC.
 
 ## Work packages
