@@ -82,6 +82,12 @@ class SeerrRequest {
     this.advancedKnown = true,
   });
 
+  /// Whether [ownId] filed one of [requests], in the quality [is4k] names when
+  /// it names one. "Mijn aanvraag" is only a way to a request that is in the
+  /// viewer's own list; someone else's request for the same title is not.
+  static bool anyOwn(Iterable<SeerrRequest> requests, int? ownId, {bool? is4k}) =>
+      ownId != null && requests.any((r) => r.requestedById == ownId && (is4k == null || r.is4k == is4k));
+
   /// Pending because the server said so, not because it said nothing.
   bool get isPending => statusKnown && status == SeerrRequestStatus.pending;
 

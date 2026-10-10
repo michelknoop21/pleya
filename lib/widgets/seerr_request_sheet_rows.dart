@@ -123,13 +123,19 @@ extension _SeerrRequestSheetRows on _SeerrRequestSheetState {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
         child: Text(t.seerr.selectSeasons, style: theme.textTheme.titleSmall),
       ),
+      // One slot whether the row is there or not. Flipping 4K changes how many
+      // seasons can be asked for, and a row that comes and goes would renumber
+      // the rows below it: the 4K switch would be rebuilt without its focus,
+      // and the next Select would land on the submit button.
       if (requestable.length > 1)
         SeerrAllSeasonsTile(
           chosen: _selectedSeasons.length,
           total: requestable.length,
           onToggle: _toggleAll,
           enabled: enabled,
-        ),
+        )
+      else
+        const SizedBox.shrink(),
       for (final s in _seasons)
         SeerrSeasonTile(
           season: s,

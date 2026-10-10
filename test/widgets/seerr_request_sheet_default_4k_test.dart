@@ -50,8 +50,14 @@ void main() {
       {'id': 2, 'name': '4K', 'is4k': true, 'isDefault': fourK, 'activeProfileId': 8, 'activeDirectory': '/4k'},
   ]);
 
-  Future<void> open(WidgetTester tester, SeerrMedia media, {required int permissions, bool initialIs4k = false}) async {
-    tester.view.physicalSize = const Size(900, 2400);
+  Future<void> open(
+    WidgetTester tester,
+    SeerrMedia media, {
+    required int permissions,
+    bool initialIs4k = false,
+    Size size = const Size(900, 2400),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     provider = await seerrProvider(fake, permissions: permissions);
@@ -305,6 +311,42 @@ void main() {
       expect(_form(tester)['is4k'], isTrue);
       expect(seerrHasFocus(tester, _option('fourK')), isTrue);
       expect(_form(tester)['seasons'], [1, 2, 3]);
+    });
+
+    testWidgets('Select on the switch brings the row for all seasons, keeps the focus, and a second Select sends '
+        'nothing', (tester) async {
+      // Seasons 1 and 2 are there in HD and open in 4K: HD leaves one season
+      // to ask for, 4K three, so the row for all seasons comes with 4K.
+      fake.on('GET /tv/1399', {
+        'id': 1399,
+        'name': 'Wadlopers',
+        'seasons': [
+          for (var n = 1; n <= 3; n++) {'seasonNumber': n, 'episodeCount': 8},
+        ],
+        'mediaInfo': {
+          'status': 4,
+          'seasons': [
+            for (final n in [1, 2]) {'seasonNumber': n, 'status': 5, 'status4k': 1},
+          ],
+        },
+      });
+      servers('sonarr', fourK: true);
+      await open(tester, _show, permissions: _fourKTv, size: const Size(1920, 1080));
+      expect(_option('season.all'), findsNothing);
+
+      await press(tester, LogicalKeyboardKey.arrowUp);
+      expect(seerrHasFocus(tester, _option('fourK')), isTrue);
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(_form(tester)['is4k'], isTrue);
+      expect(_option('season.all'), findsOneWidget);
+      expect(seerrHasFocus(tester, _option('fourK')), isTrue, reason: 'the row that came did not take the focus away');
+
+      await press(tester, LogicalKeyboardKey.select);
+      expect(_form(tester)['is4k'], isFalse, reason: 'the second Select is for the switch');
+      expect(_option('season.all'), findsNothing);
+      expect(seerrHasFocus(tester, _option('fourK')), isTrue);
+      expect(fake.sent('POST', '/request'), isEmpty);
     });
   });
 
