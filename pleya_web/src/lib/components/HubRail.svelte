@@ -22,6 +22,7 @@
   import MediaCard from './MediaCard.svelte';
   import type { Item } from '../api/types';
   import { t } from '../i18n';
+  import { RailScroll } from './railScroll.svelte';
 
   interface Props {
     title: string;
@@ -49,59 +50,12 @@
   );
 
   let track = $state<HTMLUListElement | null>(null);
-  // Aan het begin staat de rij altijd op 0; of er rechts nog iets is weten we
-  // pas na de eerste meting, en tot dan tonen we geen fade.
-  let atStart = $state(true);
-  let atEnd = $state(true);
-  let frame = 0;
-
-  // Eén pixel speling: met een zoomfactor eindigt scrollLeft op een breuk en
-  // haalt hij scrollWidth - clientWidth net niet.
-  function measure(): void {
-    frame = 0;
-    if (!track) return;
-    const max = track.scrollWidth - track.clientWidth;
-    atStart = track.scrollLeft <= 1;
-    atEnd = track.scrollLeft >= max - 1;
-  }
-
-  // Een scroll-event komt tientallen keren per seconde; per frame één keer
-  // meten is genoeg en houdt het schuiven soepel.
-  function schedule(): void {
-    if (frame) return;
-    frame = requestAnimationFrame(measure);
-  }
+  const rail = new RailScroll();
 
   $effect(() => {
     if (!track) return;
-    measure();
-    // De breedte verandert met het venster en wanneer de kaarten binnenkomen;
-    // dan kan de fade verschijnen of verdwijnen zonder dat er gescrold is.
-    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
-    observer?.observe(track);
-    return () => {
-      observer?.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
-    };
+    return rail.attach(track);
   });
-
-  function prefersReducedMotion(): boolean {
-    return (
-      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
-  }
-
-  function scrollBy(direction: -1 | 1): void {
-    if (!track) return;
-    if (direction === -1 ? atStart : atEnd) return;
-    // Een JS-scroll met `smooth` negeert de CSS-regel uit base.css, dus de
-    // voorkeur voor minder beweging moet hier zelf gelezen worden.
-    track.scrollBy({
-      left: direction * track.clientWidth * 0.8,
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth'
-    });
-  }
 </script>
 
 {#if items.length > 0}
@@ -133,8 +87,8 @@
         class="rail__arrow rail__arrow--left"
         aria-label={t('rail.scrollLeft')}
         aria-controls={trackId}
-        aria-disabled={atStart}
-        onclick={() => scrollBy(-1)}
+        aria-disabled={rail.atStart}
+        onclick={() => rail.scrollBy(-1)}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
       </button>
@@ -143,8 +97,8 @@
         class="rail__arrow rail__arrow--right"
         aria-label={t('rail.scrollRight')}
         aria-controls={trackId}
-        aria-disabled={atEnd}
-        onclick={() => scrollBy(1)}
+        aria-disabled={rail.atEnd}
+        onclick={() => rail.scrollBy(1)}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
       </button>
@@ -154,7 +108,7 @@
         id={trackId}
         bind:this={track}
         aria-labelledby={headingId}
-        onscroll={schedule}
+        onscroll={rail.schedule}
       >
         {#each items as item, index (item.id)}
           <li class="rail__cell">
@@ -167,7 +121,7 @@
         {/each}
       </ul>
 
-      <div class="rail__fade" class:rail__fade--on={!atEnd} aria-hidden="true"></div>
+      <div class="rail__fade" class:rail__fade--on={!rail.atEnd} aria-hidden="true"></div>
     </div>
   </section>
 {/if}
