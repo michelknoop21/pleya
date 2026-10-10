@@ -370,7 +370,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
       expect(cards[2].focusNode!.hasFocus, isTrue);
-      expect(tester.getRect(secondBand).bottom, greaterThan(1080), reason: 'mid-flight, 60 ms into the 200 ms scroll');
+      expect(
+        tester.getRect(secondBand).bottom,
+        greaterThan(1080),
+        reason: 'focused, but the 200 ms scroll has barely started',
+      );
 
       await tester.pumpAndSettle();
       final settled = tester.getRect(secondBand);
