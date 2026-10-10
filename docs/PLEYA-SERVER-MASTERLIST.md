@@ -21,8 +21,9 @@ Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" i
 Laatst bijgewerkt: 2026-10-10 (S2 gesloten, masterlijst gereconcilieerd met `main`). S2.5 (overname van
 `.env`-bibliotheken) en S2.6 (migratietest op de NAS-vangst, venster 2 dicht) zijn gereed, en daarmee
 S2 en golf 1. Twee stukken werk waren sinds 24 september op `main` geland zonder regel (loudness,
-migratie `0011`; `GET /watch-history`, DEC-143) en staan nu in hoofdstuk 3a. De telling is gemeten
-met `awk` over hoofdstuk 3. Twee zaken staan bewust buiten dit werk en zijn open: 3 Flutter-testfouten
+migratie `0011`; `GET /watch-history`, DEC-143) en staan nu in hoofdstuk 3a. Later die dag kwam S2.7
+erbij: een vervolgregel buiten venster 2 voor een root-gat in `SyncLibraries` dat ouder is dan S2.5.
+De telling is op 2026-10-10 opnieuw gemeten met `awk` over hoofdstuk 3. Twee zaken staan bewust buiten dit werk en zijn open: 3 Flutter-testfouten
 die al op `main` zaten en 77 goldens die niet op macOS beoordeeld zijn. Zie
 [`P-review-recovery-2026-09-20.md`](pleya-server-rebaseline/P-review-recovery-2026-09-20.md).
 Bron voor de scope:
@@ -42,8 +43,9 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **153 taken, 24 gereed, 1 bezig, 128 open.** S0, S1 en S2 zijn
-dicht (acht van acht, acht van acht, zes van zes); de twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
+Per taak, en dat is de maat die telt: **154 taken, 24 gereed, 1 bezig, 129 open.** S0, S1 en S2 zijn
+dicht (acht van acht, acht van acht, zes van zes). S2.7 telt als open taak mee, maar houdt S2 niet
+open: het is vervolgwerk buiten venster 2 en geen sluitcriterium van de slice. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
@@ -190,12 +192,13 @@ niet de bouw.
 | S2.4 | Scans en jobs over HTTP, annuleren, retry, backoff op `probe_attempts` | `[x]` | Migratie 0010; `Runner.Cancel/Retry/List`; scanner stopt binnen één walk-stap (`TestCancelStopsTheScanWithinOneWalkStep`); zes endpoints met matrixrijen 33-38; `job.not_cancellable` als achtste domein; backoff `probeBackoff`; `verify-protocol.sh` groen. | 2026-09-24 |
 | S2.5 | `.env`-overname met dezelfde id en slug | `[x]` | `POST /libraries/{id}/adopt` (`AdoptLibrary`, `handleAdoptLibrary`), `library.not_config_managed`, matrixrij 40; `SyncLibraries` slaat een `db`-bibliotheek over (`WHERE managed = 'config'`) en het opstarten logt dat de `.env`-regel wordt genegeerd. Tests: `TestAdoptedLibrarySurvivesEnvSync` (één bibliotheek na overname en herstart, titel en roots ongemoeid), `TestAdoptLibraryTakesOverConfigLibraryKeepingIdentity`, `TestAdoptLibraryTwiceIsRejected`, `TestAdoptLibraryErrors`. **Nagekomen.** Een geweigerde overname (409) schrijft ook een auditregel, uitkomst `denied` met reden `not_config_managed`, zoals `DELETE` met de verkeerde bevestiging; `TestAdoptIsAuditedBothWays` dekt de `ok`- en de `denied`-regel via de tabel en via `GET /audit`, en is rood zonder de regel in `handleAdoptLibrary`. | 2026-10-10 |
 | S2.6 | Migratietest op de NAS-fixture, protocolvenster 2 dicht | `[x]` | `TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity` naast `TestNASFixtureSurvivesMigrationToHead`: na migratie 0009 tot en met 0012 alle drie de bibliotheken nog `config`, een sync met de NAS-`.env` maakt er geen aan, en na overname en herstart zijn ids, slugs, kijkstatus en `storage_locations` gelijk. Venster dicht met [DEC-146](DECISIONS.md#dec-146-protocolvenster-2-gaat-dicht-met-de-overname-als-tiende-wijziging); `check_protocol.sh`, `verify-protocol.sh` (30 schema's gedekt) en de volledige Go-suite groen; webclient opnieuw gegenereerd (`check-api-types.sh` groen). | 2026-10-10 |
+| S2.7 | Vervolg, buiten venster 2: een root van een `db`-bibliotheek blijft bij een herstart van die bibliotheek | `[ ]` | **Bekend gat, nog niet gerepareerd.** Noemt een regel in `PLEYA_SERVER_LIBRARIES` een root van een overgenomen (of een andere `db`-)bibliotheek, dan verplaatst `SyncLibraries` (`internal/catalog/store.go`) die root bij de volgende herstart naar de config-bibliotheek van die regel: de root-upsert `ON CONFLICT (root_path) DO UPDATE SET library_id = EXCLUDED.library_id` kijkt niet naar `managed`. Dat gedrag bestaat sinds S2.2 (de eerste `db`-bibliotheken) en is ouder dan S2.5; de overname maakt het waarschijnlijker, want een oude regel met een andere slug, of een tweede regel, kan dezelfde root noemen. Beschreven in hoofdstuk 17e.5 van de specificatie en in `pleya_server/README.md` (stap 3). **Schets van de fix.** De root-upsert beperken tot roots waarvan de huidige eigenaar een `config`-bibliotheek is (een `WHERE` op de `DO UPDATE` met een subquery op `libraries.managed`, dezelfde vorm als de guard op de bibliotheek-upsert), en de overgeslagen root loggen zoals `syncLibraries` in `cmd/pleya-server/bootstrap.go` dat al doet voor een genegeerde regel. Geen contractwijziging, dus geen protocolvenster nodig. | |
 
 ### 3a Op `main` geland zonder taakregel
 
 Twee wijzigingen kwamen tussen 24 september en 3 oktober op `main` zonder regel in deze lijst. Ze zijn
 geen scope creep, want beide hebben een eigen besluit of voorstel, maar de lijst eist dat werk er
-staat. Ze tellen niet mee in de 153 taken.
+staat. Ze tellen niet mee in de 154 taken.
 
 | # | Wat | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
