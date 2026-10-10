@@ -35,12 +35,13 @@ sectie-ids staan in `pleya_web/src/routes/dev/primitives/sections.ts`; het scrip
 | `pillen@{393,1024,1600}` | 21, 25, 26, 34 | vijf tonen, met en zonder stip, statusvorm (`variant="dot"`), klein als tag |
 | `meldingen@{393,1024,1600}` | 21, 24, 31, 35 | waarschuwing, fout met actie, info zonder titel, info met twee acties |
 | `chips@*`, `chips-focus@*` | 02, 05, 16 | outline enkel en meervoudig, quiet; focusring op de eerste chip |
+| `focus-knop@{393,1024,1600}`, `focus-knop-light@{393,1600}` | DESIGN.md `--ring` | de globale focusring op een gewone knop in een paneel: 3 px in `--ink` op een gap van 3 px. Gemeten met `getComputedStyle`: `3px solid rgb(255, 255, 255)` in dark, `3px solid rgb(17, 17, 17)` in light, offset `3px` |
 | `tabel@{393,1024,1600}` | 21, 25, 26, 35 | scrollende tabel met mono-padkolom en statuscel als stip plus tekst, gestapelde tabel (kale regels, alleen "Titels" met `showLabel`), lege tabel |
 | `stappen@{393,1024,1600}` | 40 t/m 44 | stap 1, stap 3, laatste stap, alles af |
 | `dialoog-plain@{393,1600}` | 23 | dialoog zonder overtypzin; op 393 als sheet onderaan |
 | `dialoog-phrase@{393,1600}` | 23 | dialoog met overtypzin, opsomming en prullenbakicoon |
 | `dialoog-phrase-gescrold@393` | 23 | dezelfde sheet na 600 px wielscroll erachter; de pagina staat stil |
-| `{velden,velden-foutfocus,panelen,meldingen,pillen,chips,tabel}-{oled,light}@{393,1600}` | als de dark-opname | dezelfde sectie in OLED en light: scheiding van paneel en pagina, haarlijn, inset, en leesbaarheid van fout-, waarschuwings- en oktekst |
+| `{velden,velden-foutfocus,panelen,meldingen,pillen,chips,tabel}-{oled,light}@{393,1600}`, `stappen-light@{393,1600}` | als de dark-opname | dezelfde sectie in OLED en light: scheiding van paneel en pagina, haarlijn, inset, en leesbaarheid van fout-, waarschuwings- en oktekst |
 | `dialoog-phrase-{oled,light}@{393,1600}` | 23 | dialoog met overtypzin in OLED en light |
 | `skelet@{393,1024,1600}` | 15, 16 | losse vormen, artworkvlak zonder beeld, de vier SkeletonPage-varianten |
 | `skelet-oled@1024`, `skelet-light@1024` | 15, 16 | skeletvulling naast artworkplaatshouder, en een skelet in een paneel, in OLED en light |
@@ -108,3 +109,19 @@ sectie-ids staan in `pleya_web/src/routes/dev/primitives/sections.ts`; het scrip
   Een IntersectionObserver gaf na een ankersprong de vorige sectie aan.
 - Opnamen van secties zijn elementopnamen: de buitenste ring en schaduw van een paneel vallen op
   de rand van het beeld deels weg. Dat is de uitsnede, niet het paneel.
+
+## Eindreview van de branch (2026-10-10)
+
+- `--ink-3` staat in light op `#6b6b70`. Gemeten met WCAG 2.x: 5,30 op wit, 4,95 op de pagina
+  `#f7f7f8`, 5,08 op paneel-2 `#fafafa` en 4,70 op de inset `#f1f1f3`. Daarvoor was het `#111`
+  op 50 procent, 3,54 / 3,49 / 3,45. In dark en OLED blijft het wit op 50 procent, 5,05 tot 5,34
+  op paneel, paneel-2 en inset. Het stapellabel van de tabel (`showLabel`) stond op `--ink-4`
+  (2,5 tot 2,7:1) en staat nu op `--ink-3`.
+- De globale focusring volgt DESIGN.md: 3 px in `--ink` op een gap van 3 px (`focus-knop@*`).
+  Tekstvakken houden alleen de rand van 1 px (`velden@*`, het padveld met focus).
+- Opnieuw gemaakt, met `PLEYA_SHOTS_SECTIONS=velden,tabel,stappen,panelen,chips` en
+  `PLEYA_SHOTS_THEME=dark` en daarna `light`: `{velden,velden-foutfocus,panelen,chips,chips-focus,tabel,stappen,focus-knop}@{393,1024,1600}`
+  en `{velden,panelen,chips,tabel,stappen,focus-knop}-light@{393,1600}`. In dark kwamen velden,
+  panelen, chips, chips-focus, stappen en velden-foutfocus byte-gelijk terug; alleen `tabel@*`
+  veranderde (het stapellabel). De overige opnamen, ook `velden-foutfocus-light` en alles in OLED,
+  zijn van de vorige ronde.
