@@ -1829,9 +1829,13 @@ dat betreft. Een bibliotheek die al `db` is geeft `library.not_config_managed`.
 
 Dat overslaan geldt voor die ene regel en niet voor de omgeving als geheel, en daarom hoort de regel
 na de overname uit `PLEYA_SERVER_LIBRARIES` weg. Krijgt hij een andere slug, of noemt een andere
-regel een root van de overgenomen bibliotheek, dan verplaatst de volgende herstart die root naar een
-config-bibliotheek: de root-upsert (`ON CONFLICT (root_path) DO UPDATE`) kijkt niet naar `managed`.
-Dat gat bestaat sinds S2.2 en staat als vervolgregel S2.7 in de masterlijst. Wordt een overgenomen
+regel een root van de overgenomen bibliotheek, dan blijft die root van de overgenomen bibliotheek. De
+root-upsert (`ON CONFLICT (root_path) DO UPDATE`) heeft een `WHERE` die de `managed` van de huidige
+eigenaar leest: alleen een root van een `config`-bibliotheek wisselt van eigenaar, en een root van een
+`db`-bibliotheek houdt eigenaar en laatste meting. Bij het opstarten meldt de server per overgeslagen
+root de slug van de regel en het pad. Een root zonder eigenaar wordt gewoon toegevoegd. Tot S2.7 keek
+de upsert niet naar `managed` en verhuisde zo'n root bij de volgende herstart naar de
+config-bibliotheek van de regel; dat gat bestond sinds S2.2. Wordt een overgenomen
 bibliotheek verwijderd terwijl haar regel er nog staat, dan maakt de volgende herstart haar opnieuw
 aan, leeg en met een nieuwe id. Een weg terug van `db` naar `config` bestaat niet als endpoint; de
 enige route is `DELETE` gevolgd door een herstart met de regel, en dan zijn items, kijkstatus en

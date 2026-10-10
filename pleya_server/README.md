@@ -162,9 +162,9 @@ adminklasse ook wanneer de rol hem wel haalt.
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
 afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer die nog niet gebouwd is. Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
-`watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
-capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
-venster 1 sluit.
+`watch_state_ownership`, `stream_sessions`, `users`, `sessions`, `api_tokens`, `cookie_auth` en
+`administration` staan op `true`, en capabilities is leidend. `administration` staat aan sinds S1.6,
+voor het beheeroppervlak van S1.2 tot en met S1.5; `cookie_auth` sinds S1.8.
 
 Drie dingen aan `/stream` verrassen als je ze niet verwacht. Eén bereik per aanvraag levert een
 `206`; **meerdere bereiken leveren het hele bestand als `200`**, want `multipart/byteranges` wordt
@@ -236,8 +236,10 @@ met nieuwe ids voor alles eronder.
 **Na een overname hoort de regel weg.** `POST /libraries/{id}/adopt` (S2.5) zet een bibliotheek uit
 deze lijst in de database, met dezelfde id en slug. Daarna slaat de server de regel met die slug bij
 elke herstart over, maar de rest van de lijst niet. Geeft u de regel een andere slug, of noemt een
-andere regel een root van de overgenomen bibliotheek, dan verhuist die root bij de volgende herstart
-naar een config-bibliotheek; dat is een bekend gat (S2.7 in de masterlijst). Verwijdert u de
+andere regel een root van de overgenomen bibliotheek, dan blijft die root waar hij is: de sync laat
+een root alleen van eigenaar wisselen als die eigenaar zelf uit `.env` komt (S2.7). In de startlog
+staat dan per root een regel met de slug en het pad, zodat u ziet welke `.env`-regel u nog kunt
+opruimen. Verwijdert u de
 overgenomen bibliotheek terwijl de regel er nog staat, dan komt ze bij de volgende herstart leeg
 terug, met een nieuwe id. Terug van database naar `.env` gaat alleen via `DELETE` plus een herstart
 met de regel, en dan bent u items, kijkstatus en scanrondes van die bibliotheek kwijt.
