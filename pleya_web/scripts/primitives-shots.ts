@@ -98,14 +98,50 @@ async function cardStates(name: string): Promise<void> {
  * een elementopname. Die zou scrollen en de muis van de kaart halen, en bij
  * de hero tekende hij het beeld onder de waas niet mee.
  */
-async function clipSection(id: string, name: string): Promise<void> {
-  const box = await page.evaluate((sectionId) => {
-    const r = document.getElementById(sectionId)!.getBoundingClientRect();
-    return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height };
-  }, id);
+async function clipSection(id: string, name: string, bleed = false): Promise<void> {
+  // Met `bleed` gaat de uitsnede aan beide kanten --inset breder: de rail
+  // loopt via een negatieve marge buiten zijn sectie door tot de rand.
+  const box = await page.evaluate(
+    ([sectionId, wide]) => {
+      const el = document.getElementById(sectionId)!;
+      const r = el.getBoundingClientRect();
+      const inset = wide ? parseFloat(getComputedStyle(el).getPropertyValue('--inset')) : 0;
+      return { x: r.left + scrollX - inset, y: r.top + scrollY, width: r.width + 2 * inset, height: r.height };
+    },
+    [id, bleed] as const
+  );
   const path = `${OUT}/${name}.png`;
   await page.screenshot({ path, fullPage: true, clip: box });
   console.log(path);
+}
+
+/**
+ * Rails: de muis boven de derde rij, zodat de pijlen verschijnen zoals in
+ * specimen v3, en eerst het beeld in de rijen laden en decoderen. Kaarten
+ * verder naar rechts zijn lazy en staan buiten beeld; die tellen niet mee.
+ * Daarnaast een meting die de opname niet laat zien: loopt de pagina zelf
+ * horizontaal over, of schuift alleen de rail?
+ */
+async function railStates(name: string): Promise<void> {
+  await page.evaluate(() => {
+    const top = document.getElementById('rail')!.getBoundingClientRect().top + scrollY;
+    scrollTo(0, top - 72);
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#rail img').length >= 12);
+  await page.evaluate(() =>
+    Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('#rail img'), (img) => img.decode()))
+  );
+  await page.locator('#rail .rail').nth(2).locator('h2').hover();
+  await page.waitForTimeout(400);
+  const overflow = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    tracks: Array.from(document.querySelectorAll<HTMLElement>('#rail .rail__track'), (el) => ({
+      overflow: el.scrollWidth - el.clientWidth,
+      fade: el.parentElement!.querySelector('.rail__fade--on') !== null
+    }))
+  }));
+  console.log(`${name}: ${JSON.stringify(overflow)}`);
+  await clipSection('rail', name, true);
 }
 
 if (!ONLY || ONLY === 'dark') {
@@ -132,6 +168,10 @@ for (const width of WIDTHS) {
       );
       await page.waitForTimeout(400); // inloop van het beeld over --dur-normal
       await clipSection(id, `${id}@${width}`);
+      continue;
+    }
+    if (id === 'rail') {
+      await railStates(`${id}@${width}`);
       continue;
     }
     await shot(page.locator(`#${id}`), `${id}@${width}`);

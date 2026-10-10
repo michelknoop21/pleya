@@ -24,6 +24,7 @@ export const SECTIONS: readonly GallerySectionInfo[] = [
   { id: 'dialoog', title: 'Bevestigdialoog' },
   { id: 'skelet', title: 'Skelet' },
   { id: 'kaarten', title: 'Kaarten' },
-  { id: 'hero', title: 'Hero' }
+  { id: 'hero', title: 'Hero' },
+  { id: 'rail', title: 'Rail' }
 ];
 

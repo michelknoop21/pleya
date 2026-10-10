@@ -1,29 +1,46 @@
 <!--
-  Een horizontale rij, zoals `hub_section.dart` er een tekent: kop links, de
-  kaarten daaronder in één schuivende rij.
+  Een horizontale rij zoals beeld 01 en specimen v3 hem tekenen: kop met de
+  titel links en "View all" rechts, daaronder een spoor dat tot de rand van
+  het venster doorloopt. De eerste kaart lijnt uit op --inset, de rest loopt
+  onder de rand door en een verloop rechts laat zien dat er meer is.
+
+  De rail wordt zonder paginapadding geplaatst (Home zet hem direct onder de
+  hero), dus de bleed is de breedte van de container zelf en de inzet zit in
+  de padding van kop en spoor. Wie hem in een ingesprongen container zet, heft
+  die inzet daar op met een negatieve marge, zoals de galerij doet.
 
   Het schuiven is browser-eigen (`overflow-x`, `scroll-snap`) en niet
-  nagebouwd. De pijlknoppen bestaan alleen waar een aanwijzer is; op een
-  aanraakscherm veegt de gebruiker, en op een toetsenbord loopt de tabvolgorde
-  door de kaarten heen, waarbij de browser zelf meeschuift.
+  nagebouwd. Op een aanraakscherm veegt de gebruiker; op een toetsenbord loopt
+  de tabvolgorde door de kaarten en schuift de browser zelf mee. De pijlen zijn
+  een extra voor de muis en bestaan alleen vanaf 900 met hover.
 
-  Een rij zonder inhoud tekent zichzelf niet. `continue_watching` en `next_up`
-  leveren vandaag een lege lijst omdat er nog geen kijkstatus is; een lege rij
-  met een kop erboven zou beloven dat daar ooit iets staat zonder dat de
-  server dat zegt.
+  Een rij zonder inhoud tekent zichzelf niet. Een lege rij met een kop erboven
+  zou beloven dat daar ooit iets staat zonder dat de server dat zegt.
 -->
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import MediaCard from './MediaCard.svelte';
   import type { Item } from '../api/types';
+  import { t } from '../i18n';
 
   interface Props {
     title: string;
     items: Item[];
     href?: string | undefined;
+    /** Tekst van de doorkliklink; standaard "View all". */
     viewAllLabel?: string;
+    /**
+     * Tekent één cel. Zo geeft een aanroeper zijn eigen MediaCard-props mee
+     * (bijvoorbeeld `isNew`); zonder snippet tekent de rail de standaardkaart.
+     */
+    card?: Snippet<[Item, number]>;
   }
 
-  let { title, items, href, viewAllLabel }: Props = $props();
+  let { title, items, href, viewAllLabel, card }: Props = $props();
+
+  const uid = $props.id();
+  const headingId = `${uid}-title`;
+  const trackId = `${uid}-track`;
 
   // Dezelfde regel als in MediaGrid: één vorm voor de hele rij, anders staan er
   // twee hoogtes naast elkaar.
@@ -32,157 +49,324 @@
   );
 
   let track = $state<HTMLUListElement | null>(null);
+  // Aan het begin staat de rij altijd op 0; of er rechts nog iets is weten we
+  // pas na de eerste meting, en tot dan tonen we geen fade.
+  let atStart = $state(true);
+  let atEnd = $state(true);
+  let frame = 0;
+
+  // Eén pixel speling: met een zoomfactor eindigt scrollLeft op een breuk en
+  // haalt hij scrollWidth - clientWidth net niet.
+  function measure(): void {
+    frame = 0;
+    if (!track) return;
+    const max = track.scrollWidth - track.clientWidth;
+    atStart = track.scrollLeft <= 1;
+    atEnd = track.scrollLeft >= max - 1;
+  }
+
+  // Een scroll-event komt tientallen keren per seconde; per frame één keer
+  // meten is genoeg en houdt het schuiven soepel.
+  function schedule(): void {
+    if (frame) return;
+    frame = requestAnimationFrame(measure);
+  }
+
+  $effect(() => {
+    if (!track) return;
+    measure();
+    // De breedte verandert met het venster en wanneer de kaarten binnenkomen;
+    // dan kan de fade verschijnen of verdwijnen zonder dat er gescrold is.
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
+    observer?.observe(track);
+    return () => {
+      observer?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+    };
+  });
+
+  function prefersReducedMotion(): boolean {
+    return (
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
 
   function scrollBy(direction: -1 | 1): void {
     if (!track) return;
-    track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: 'smooth' });
+    if (direction === -1 ? atStart : atEnd) return;
+    // Een JS-scroll met `smooth` negeert de CSS-regel uit base.css, dus de
+    // voorkeur voor minder beweging moet hier zelf gelezen worden.
+    track.scrollBy({
+      left: direction * track.clientWidth * 0.8,
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth'
+    });
   }
 </script>
 
 {#if items.length > 0}
-  <section class="rail">
-    <div class="rail__header">
+  <section class="rail" class:rail--wide={shape === 'wide'}>
+    <div class="rail__head">
+      <h2 class="rail__title" id={headingId}>{title}</h2>
       {#if href}
-        <a class="rail__title t-title-lg" {href}>
-          {title}
-          {#if viewAllLabel}<span class="rail__more">{viewAllLabel}</span>{/if}
-          <span class="rail__chevron" aria-hidden="true">›</span>
+        <!-- "View all" alleen is op een pagina met vijf rijen vijf keer
+             hetzelfde; aria-describedby koppelt hem aan zijn rij. -->
+        <a class="rail__all" {href} aria-describedby={headingId}>
+          {viewAllLabel ?? t('rail.viewAll')}
+          <svg class="rail__chev" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
         </a>
-      {:else}
-        <h2 class="rail__title t-title-lg">{title}</h2>
       {/if}
-
-      <div class="rail__controls">
-        <button type="button" class="rail__arrow" onclick={() => scrollBy(-1)} aria-label="Scroll left">
-          ‹
-        </button>
-        <button type="button" class="rail__arrow" onclick={() => scrollBy(1)} aria-label="Scroll right">
-          ›
-        </button>
-      </div>
     </div>
 
-    <ul class="rail__track scroll-x" bind:this={track} aria-label={title}>
-      {#each items as item, index (item.id)}
-        <li class="rail__cell" data-wide={shape === 'wide' ? 'true' : undefined}>
-          <MediaCard {item} {shape} eager={index < 8} />
-        </li>
-      {/each}
-    </ul>
+    <div class="rail__wrap">
+      <!--
+        De pijlen staan in de DOM vóór het spoor, zodat een toetsenbord er na
+        de kop langskomt en niet pas na de laatste kaart. Uitgeschakeld via
+        aria-disabled en niet via `disabled`: een knop die onder de focus
+        uitgeschakeld raakt (aan het eind van de rij) verliest anders de
+        focus aan de body.
+      -->
+      <button
+        type="button"
+        class="rail__arrow rail__arrow--left"
+        aria-label={t('rail.scrollLeft')}
+        aria-controls={trackId}
+        aria-disabled={atStart}
+        onclick={() => scrollBy(-1)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      </button>
+      <button
+        type="button"
+        class="rail__arrow rail__arrow--right"
+        aria-label={t('rail.scrollRight')}
+        aria-controls={trackId}
+        aria-disabled={atEnd}
+        onclick={() => scrollBy(1)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </button>
+
+      <ul
+        class="rail__track"
+        id={trackId}
+        bind:this={track}
+        aria-labelledby={headingId}
+        onscroll={schedule}
+      >
+        {#each items as item, index (item.id)}
+          <li class="rail__cell">
+            {#if card}
+              {@render card(item, index)}
+            {:else}
+              <MediaCard {item} {shape} eager={index < 8} />
+            {/if}
+          </li>
+        {/each}
+      </ul>
+
+      <div class="rail__fade" class:rail__fade--on={!atEnd} aria-hidden="true"></div>
+    </div>
   </section>
 {/if}
 
 <style>
+  /*
+   * Celbreedte en beeldhoogte uit --poster-w: een poster is 2:3, een
+   * wide-kaart 1,78 keer zo breed en 16:9 (web.css .card.wide). De hoogte is
+   * er voor de verticale plek van de pijlen.
+   */
   .rail {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-half);
+    --rail-cell: var(--poster-w);
+    --rail-art-h: calc(var(--poster-w) * 1.5);
   }
 
-  .rail__header {
+  .rail--wide {
+    --rail-cell: calc(var(--poster-w) * 1.78);
+    --rail-art-h: calc(var(--poster-w) * 1.78 * 9 / 16);
+  }
+
+  /* Kop, web.css .section-h: 20/700, 18 onder 900; link 14/500 in --ink-2. */
+  .rail__head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space);
-    padding-inline: var(--page-inset, var(--space));
+    gap: 12px;
+    margin-bottom: 4px;
+    padding-inline: var(--inset);
   }
 
   .rail__title {
-    color: var(--text);
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: var(--space-half);
     min-height: var(--touch-target);
-  }
-
-  .rail__more {
-    font-size: var(--text-small-size);
-    font-weight: 600;
-    color: var(--text-muted);
-    opacity: 0;
-    transition: opacity var(--dur-fast) var(--ease);
-  }
-
-  .rail__chevron {
-    font-size: 1.2em;
-    line-height: 1;
-    color: var(--text-muted);
-  }
-
-  @media (hover: hover) {
-    .rail__title:hover .rail__more {
-      opacity: 1;
-    }
-  }
-
-  .rail__title:focus-visible .rail__more {
-    opacity: 1;
-  }
-
-  .rail__controls {
-    display: none;
-    gap: var(--space-quarter);
-  }
-
-  @media (hover: hover) and (min-width: 900px) {
-    .rail__controls {
-      display: flex;
-    }
-  }
-
-  .rail__arrow {
-    width: var(--touch-target);
-    height: var(--touch-target);
-    border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--text) 8%, transparent);
-    color: var(--text);
+    margin: 0;
     font-size: 20px;
-    line-height: 1;
-    transition: background var(--dur-fast) var(--ease);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .rail__all {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    min-height: var(--touch-target);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-2);
+    text-decoration: none;
+    white-space: nowrap;
   }
 
   @media (hover: hover) {
-    .rail__arrow:hover {
-      background: color-mix(in srgb, var(--text) 16%, transparent);
+    .rail__all:hover {
+      color: var(--ink);
     }
   }
 
+  .rail__chev {
+    width: 14px;
+    height: 14px;
+  }
+
+  .rail__chev path,
+  .rail__arrow path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @media (max-width: 899px) {
+    .rail__title {
+      font-size: 18px;
+    }
+
+    .rail__all {
+      font-size: 13px;
+    }
+  }
+
+  .rail__wrap {
+    position: relative;
+  }
+
+  /*
+   * Het spoor: 6 boven voor de lift en de ring van een kaart onder de muis,
+   * 4 onder. Geen zichtbare schuifbalk, zoals het specimen; schuiven gaat met
+   * vegen, de pijlen, het wiel of de tabtoets.
+   */
   .rail__track {
     display: flex;
-    gap: var(--space);
-    padding-inline: var(--page-inset, var(--space));
-    padding-block: var(--space-quarter);
+    gap: var(--rail-gap);
+    margin: 0;
+    padding: 6px var(--inset) 4px;
+    list-style: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
     scroll-snap-type: x proximity;
     /*
      * Zonder scroll-padding lijnt scroll-snap-align: start de eerste kaart uit
      * op de rand van het schuifvlak en niet op de padding, waarna de rij bij
-     * het openen al 16 px verschoven staat en de eerste poster de zijkant
-     * raakt terwijl de kop netjes inspringt.
+     * het openen al verschoven staat terwijl de kop netjes inspringt.
      */
-    scroll-padding-inline: var(--page-inset, var(--space));
-    scrollbar-width: thin;
+    scroll-padding-inline: var(--inset);
   }
 
-  /* De posterbreedte komt uit tokens.css, zodat het skelet dezelfde maat leest. */
+  .rail__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* SkeletonPage leest dezelfde tokens, zodat skelet en rail even breed zijn. */
   .rail__cell {
-    flex: 0 0 auto;
-    width: var(--rail-cell-w);
+    flex: 0 0 var(--rail-cell);
+    width: var(--rail-cell);
     scroll-snap-align: start;
   }
 
-  .rail__cell[data-wide='true'] {
-    width: 236px;
+  .rail__fade {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 90px;
+    background: linear-gradient(90deg, transparent, var(--bg));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease);
   }
 
-  @media (min-width: 900px) {
-    .rail__cell[data-wide='true'] {
-      width: 268px;
+  .rail__fade--on {
+    opacity: 1;
+  }
+
+  /*
+   * Pijlen, specimen v3: rond, 44, op de helft van het beeld en half over de
+   * inzet. De achtergrond is --bg op 78 procent; in dark is dat precies de
+   * rgba(20, 20, 20, .78) van het specimen, en in light blijft hij licht onder
+   * een donkere pijl.
+   */
+  .rail__arrow {
+    position: absolute;
+    top: calc(6px + var(--rail-art-h) / 2 - var(--touch-target) / 2);
+    z-index: 2;
+    display: none;
+    place-items: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    padding: 0;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    color: var(--ink);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-fast) var(--ease);
+  }
+
+  .rail__arrow svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .rail__arrow--left {
+    left: calc(var(--inset) - var(--touch-target) / 2);
+  }
+
+  .rail__arrow--right {
+    right: calc(var(--inset) - var(--touch-target) / 2);
+  }
+
+  .rail__arrow[aria-disabled='true'] {
+    cursor: default;
+  }
+
+  @media (hover: hover) and (min-width: 900px) {
+    .rail__arrow {
+      display: grid;
     }
-  }
 
-  @media (min-width: 1200px) {
-    .rail__cell[data-wide='true'] {
-      width: 300px;
+    /* Een pijl die nergens heen kan blijft zichtbaar maar gedimd, zoals in
+       het specimen. */
+    .rail:hover .rail__arrow,
+    .rail:focus-within .rail__arrow {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .rail:hover .rail__arrow[aria-disabled='true'],
+    .rail:focus-within .rail__arrow[aria-disabled='true'] {
+      opacity: 0.35;
+    }
+
+    .rail__arrow[aria-disabled='false']:hover {
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
     }
   }
 </style>

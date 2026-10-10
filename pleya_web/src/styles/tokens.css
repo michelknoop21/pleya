@@ -75,7 +75,7 @@
   /* --- Paginamaat. DESIGN.md hoofdstuk 2; verschuift op de vier ----------
          breekpunten onderaan dit bestand. ------------------------------- */
   --inset: 48px; /* pagina-inset */
-  --poster-w: 190px; /* railposter */
+  --poster-w: 190px; /* railposter; HubRail en de skeletrail lezen hem allebei */
   --rail-gap: 20px;
   /*
    * Maten van de kaarten en de hero zoals ze vandaag getekend worden. Ze staan
@@ -83,7 +83,6 @@
    * dezelfde ruimte moet innemen als de inhoud die erna komt; twee kopieën van
    * dezelfde getallen lopen vroeg of laat uit elkaar en dan springt de pagina.
    */
-  --rail-cell-w: 168px; /* HubRail: postercel vanaf 1200 */
   --card-caption-gap: 7px; /* MediaCard: beeld tot titel, web.css .card .cap */
   --card-caption-line-gap: 2px; /* MediaCard: titel tot onderregel, web.css .card .s */
   --grid-cell-min: 180px; /* MediaGrid: minimale kolom vanaf 1600 */
@@ -330,7 +329,6 @@
     --inset: 32px;
     --poster-w: 150px;
     --rail-gap: 16px;
-    --rail-cell-w: 150px;
     --grid-cell-min: 150px;
     --hero-aspect: 16 / 9;
   }
@@ -341,7 +339,6 @@
     --poster-w: 110px;
     --rail-gap: 12px;
     --radius-hero: 16px;
-    --rail-cell-w: 132px;
     --grid-cell-min: 132px;
     --hero-aspect: auto;
     --text-card-title-size: 13px;
