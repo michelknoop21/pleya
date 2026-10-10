@@ -2,6 +2,7 @@
   import { onMount, type Snippet } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
+  import { dev } from '$app/environment';
 
   import '../styles/tokens.css';
   import '../styles/base.css';
@@ -23,6 +24,9 @@
   const activeId = $derived(activeItemId(items, page.url.pathname, session.libraries));
   const showSearch = $derived(session.capabilities?.search === true);
   const searchActive = $derived(page.url.pathname.startsWith('/search'));
+  // De primitievengalerij heeft geen server nodig en hoort niet achter de
+  // sessiepoort; buiten `vite dev` is `dev` onwaar en valt deze tak weg.
+  const isDevGallery = $derived(dev && page.url.pathname.startsWith('/dev/'));
   const isAuthRoute = $derived(
     page.url.pathname === '/login' || page.url.pathname === '/setup'
   );
@@ -44,6 +48,7 @@
    * `null` betekent: hier is niets mis mee, blijf staan.
    */
   const expectedPath = $derived.by(() => {
+    if (isDevGallery) return null;
     if (session.phase === 'setup') return '/setup';
     if (session.phase === 'signed-out') return '/login';
     if (session.phase === 'ready' && isAuthRoute) return '/';
@@ -84,7 +89,11 @@
 
 <a class="skip-link" href="#main">{t('nav.skipToContent')}</a>
 
-{#if session.phase === 'starting'}
+{#if isDevGallery}
+  <main id="main" class="dev-shell">
+    {@render children()}
+  </main>
+{:else if session.phase === 'starting'}
   <SkeletonPage variant="compact" />
 {:else if session.phase === 'unreachable'}
   <StateView
@@ -139,6 +148,10 @@
     padding-bottom: calc(
       var(--bottom-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2)
     );
+  }
+
+  .dev-shell {
+    min-height: 100dvh;
   }
 
   .auth-shell {
