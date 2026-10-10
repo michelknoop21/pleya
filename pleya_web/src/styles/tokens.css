@@ -74,6 +74,15 @@
   --inset: 48px; /* pagina-inset */
   --poster-w: 190px; /* railposter */
   --rail-gap: 20px;
+  /*
+   * Maten van de kaarten en de hero zoals ze vandaag getekend worden. Ze staan
+   * hier en niet in de componenten zelf omdat het skelet (SkeletonPage) exact
+   * dezelfde ruimte moet innemen als de inhoud die erna komt; twee kopieën van
+   * dezelfde getallen lopen vroeg of laat uit elkaar en dan springt de pagina.
+   */
+  --rail-cell-w: 168px; /* HubRail: postercel vanaf 1200 */
+  --grid-cell-min: 180px; /* MediaGrid: minimale kolom vanaf 1600 */
+  --hero-min-h: 520px; /* Hero: minimale hoogte vanaf 1600 */
   --page-inset: var(--inset); /* oude naam, tot elke route hem niet meer noemt */
 
   /* --- Raakvlak. Web-eigen: 44px is de ondergrens op aanraakschermen. ---- */
@@ -179,6 +188,8 @@
 @media (max-width: 1599px) {
   :root {
     --poster-w: 170px;
+    --grid-cell-min: 168px;
+    --hero-min-h: 420px;
   }
 }
 @media (max-width: 1199px) {
@@ -186,6 +197,8 @@
     --inset: 32px;
     --poster-w: 150px;
     --rail-gap: 16px;
+    --rail-cell-w: 150px;
+    --grid-cell-min: 150px;
   }
 }
 @media (max-width: 899px) {
@@ -194,5 +207,13 @@
     --poster-w: 110px;
     --rail-gap: 12px;
     --radius-hero: 16px;
+    --rail-cell-w: 132px;
+    --grid-cell-min: 132px;
+    --hero-min-h: 46vw;
+  }
+}
+@media (max-width: 599px) {
+  :root {
+    --grid-cell-min: 110px;
   }
 }

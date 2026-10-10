@@ -163,9 +163,10 @@
     scrollbar-width: thin;
   }
 
+  /* De posterbreedte komt uit tokens.css, zodat het skelet dezelfde maat leest. */
   .rail__cell {
     flex: 0 0 auto;
-    width: 132px;
+    width: var(--rail-cell-w);
     scroll-snap-align: start;
   }
 
@@ -174,18 +175,12 @@
   }
 
   @media (min-width: 900px) {
-    .rail__cell {
-      width: 150px;
-    }
     .rail__cell[data-wide='true'] {
       width: 268px;
     }
   }
 
   @media (min-width: 1200px) {
-    .rail__cell {
-      width: 168px;
-    }
     .rail__cell[data-wide='true'] {
       width: 300px;
     }
