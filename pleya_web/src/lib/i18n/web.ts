@@ -34,7 +34,6 @@ export const web = {
 
   'home.title': 'Home',
   'home.recentlyAdded': 'Recently added',
-  'home.heroAction': 'More info',
   'home.emptyTitle': 'Nothing has been added yet',
   'home.emptyBody': 'Once the server has scanned your media, new titles show up here.',
 
