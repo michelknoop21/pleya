@@ -53,7 +53,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Herijking nodig; algemene Big P-pauze opgeheven (8 okt) |
 | REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
 | REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; algemene Big P-pauze opgeheven (8 okt) |
-| A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Open PR; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
+| A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Bounded processes en simulatorselectie gemerged (PR #111, 10 okt); `/v1/ui_tree` geeft geen 500 meer bij niet-eindige bounds (PR #232). Herijking van de Verify-toolchain voor zware runs blijft open |
 | A-02 | P0 | Bestaande app | Rechten, geleende verbindingen en profielen | Bewijs afronden; rechtenrisico inhoudelijk vergelijken, parallel alleen indien onafhankelijk |
 | A-03 | P1 | Bestaande app | Bibliotheek-snelkiezer bewaart selectie | Open issue |
 | A-04 | P1 | Bestaande app | Verborgen Plex-bibliotheek op TV | Open issue |
@@ -69,7 +69,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | A-14 | P1 | Bestaande app | iCloud-voorkeurensync | Bewijs afronden |
 | A-15 | P1 | Bestaande app | Aanbevelingen, historie en Tautulli | Bewijs afronden |
 | A-16 | P1 | Bestaande app | Activiteit: ACT1 | Besluit nodig |
-| A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Status herijken; geen bewijs van volledige afronding |
+| A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Detailkop, rasterspatiëring en keuzedialoog gemerged (PR #224, 10 okt). Open: iPad landscape, iPhone en desktop zonder bewijs; hero-groepen onbewezen omdat geen fixture ze levert zonder DEC-097 te schenden. Geen bewijs van volledige afronding |
 | A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | iOS-releasecorrectie in uitvoering (8 okt): build 344 miste Big P-rolloutdefine; overige eindacceptatie open |
 | A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | [Broninventaris/spec](requests-2.0-spec.md) inhoudelijk gereviewd incl. countscope-fixreview; geen runtimeacceptatie |
 | A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | [Northstar-set van de UI-ontwerpronde](assets/requests-2.0/index.html):72 staten/170 beelden; Michel akkoord 8 oktober inclusief zeven keuzes, Impeccable polish en onafhankelijke review afgerond; ontwerpacceptatie; A-21 in uitvoering, nog niet geaccepteerd |
