@@ -6,7 +6,7 @@
 # nagebootste server bewijst niets over het contract, en juist daar zit wat deze
 # tests horen te meten.
 #
-#   scripts/e2e-stack.sh up      # bouwen, starten, setupcode afdrukken
+#   scripts/e2e-stack.sh up      # bundel bouwen, media-image, starten, setupcode afdrukken
 #   scripts/e2e-stack.sh down    # stack en volume weg
 #   scripts/e2e-stack.sh code    # de huidige setupcode
 set -euo pipefail
@@ -17,8 +17,20 @@ PORT="$(grep -E '^PLEYA_SERVER_HOST_PORT=' .env 2>/dev/null | cut -d= -f2 || tru
 PORT="${PORT:-8832}"
 BASE="http://127.0.0.1:${PORT}"
 
+# De releasebuild van de server eist de bundel in internal/web/dist, en elke
+# `docker build` hieronder compileert die server. Dus eerst de bundel, ook voor
+# het media-image. Eén keer per run: het script bouwt hem anders dubbel.
+BUNDLED=0
+bundle() {
+  [ "$BUNDLED" = 1 ] && return 0
+  echo "→ Pleya Web bouwen en in de binary zetten" >&2
+  ../pleya_web/scripts/build-into-server.sh >&2
+  BUNDLED=1
+}
+
 media() {
   [ -f "testdata/media/films/Grease (1978)/Grease (1978).mkv" ] && return 0
+  bundle
   docker build -q -t pleya-server:e2e-media . >/dev/null
   docker run --rm --entrypoint sh -v "$PWD/testdata/media:/out" pleya-server:e2e-media -c '
     set -e
@@ -40,10 +52,8 @@ case "${1:-up}" in
       chmod 600 .env
     fi
     mkdir -p testdata/media data/config data/cache data/transcode
+    bundle
     media
-
-    echo "→ Pleya Web bouwen en in de binary zetten" >&2
-    ../pleya_web/scripts/build-into-server.sh >&2
 
     echo "→ stack starten" >&2
     PLEYA_SERVER_LIBRARIES="${PLEYA_E2E_LIBRARIES:-films=movies:/media/library/films;series=shows:/media/library/series}" \
@@ -74,6 +84,7 @@ case "${1:-up}" in
     # is 1000x1500 ruis, want een JPEG van een paar honderd kilobyte meet iets
     # anders dan een van tweehonderd byte.
     media
+    bundle
     docker build -q -t pleya-server:e2e-media . >/dev/null
     docker run --rm --entrypoint sh -v "$PWD/testdata/media:/out" pleya-server:e2e-media -c '
       set -e
