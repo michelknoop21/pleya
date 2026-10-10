@@ -268,4 +268,15 @@ describe('HubRail', () => {
     const tokens = readFileSync(resolve(import.meta.dirname, '../../styles/tokens.css'), 'utf8');
     expect(tokens).not.toContain('--rail-cell-w');
   });
+
+  it('zet een pijl met toetsenbordfocus op volle dekking, ook als hij uit staat', () => {
+    // jsdom past geen componentstijl toe; de regel moet na de dimregel staan
+    // en minstens even specifiek zijn, anders blijft de ring op 0,35.
+    const source = readFileSync(resolve(import.meta.dirname, 'HubRail.svelte'), 'utf8');
+    const dim = source.indexOf(".rail:focus-within .rail__arrow[aria-disabled='true'] {");
+    const focus = source.indexOf('.rail:focus-within .rail__arrow:focus-visible {');
+    expect(dim).toBeGreaterThan(-1);
+    expect(focus).toBeGreaterThan(dim);
+    expect(source.slice(focus, source.indexOf('}', focus))).toContain('opacity: 1;');
+  });
 });

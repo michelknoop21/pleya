@@ -347,6 +347,12 @@
       opacity: 0.35;
     }
 
+    /* De dekking geldt ook voor de outline; een gedimde pijl met focus zou
+       een ring van 2,3:1 geven. Met focus staat de pijl dus altijd vol. */
+    .rail:focus-within .rail__arrow:focus-visible {
+      opacity: 1;
+    }
+
     .rail__arrow[aria-disabled='false']:hover {
       background: color-mix(in srgb, var(--bg) 92%, transparent);
     }
