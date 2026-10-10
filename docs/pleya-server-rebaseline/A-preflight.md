@@ -101,7 +101,7 @@ Waar code en documentatie botsen geldt in dit pakket de code plus de goedgekeurd
 | PS-5 criterium 4 (hardware) | open, uitgesteld met startvoorwaarden | `docs/qa/ps5-hardware-round.md` (ongecommit), DEC-118 |
 | PS-9 | gesloten 4 september | `STATUS.md` "Volgende stap", NAS-ronde met `POST /users`, `PUT /users/{id}/permissions`, `DELETE /sessions/{id}` |
 | Protocolvenster | dicht | laatste opening DEC-122 voor PS-9; `scripts/check_protocol.sh` is de poortwachter |
-| PS-14 | goedgekeurd, niet vrijgegeven | DEC-128 en ps14-proposal beslissing 6; nul Go-code |
+| PS-14 | goedgekeurd, niet vrijgegeven | DEC-128 en ps14-proposal beslissing 6; nul Go-code (bijgesteld 10 oktober 2026: vrijgegeven, DEC-149) |
 | CI voor `pleya_server` en `pleya_web` | afwezig | geen workflow in `.github/workflows/` noemt een van beide; alle verificatie is `scripts/verify-local.sh` (72 controles) en handmatig |
 
 ## A.6 Wat een volgende sessie niet opnieuw hoeft te meten

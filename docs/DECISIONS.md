@@ -3477,6 +3477,10 @@ blokkerende S0-poorten groen zijn. PS-14 blijft gesloten en mag niet parallel aa
 gestart. Na afronding en integratievalidatie van PS-11A volgt een afzonderlijk vrijgavebesluit voor
 PS-14.
 
+> **Bijgesteld op 10 oktober 2026 door [DEC-149](#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet).**
+> Michel heeft PS-14 vrijgegeven; de bepaling dat PS-14 gesloten blijft en niet naast PS-11A mag
+> lopen vervalt. De rest van dit besluit, inclusief de vrijgave van PS-11A, blijft staan.
+
 De volgorde die daaruit volgt, en die bindend is:
 
 1. S0.6, de NAS-migratiefixture.
@@ -4586,3 +4590,54 @@ na migratie nog steeds `config`, na overname en herstart dezelfde ids, slugs, ki
 **Decision:** venster 2 is gesloten met tien van tien wijzigingen. `openapi.yaml` is weer bevroren.
 Het volgende venster is venster 3 (S3, boeken) en vraagt een eigen besluit. `GET /watch-history`
 (DEC-143) en de loudness-migratie `0011` zaten buiten dit venster en blijven dat.
+
+## DEC-149: PS-14 is vrijgegeven voor uitvoering, en geeft S3 vrij en S6 niet
+
+**Date:** 2026-10-10
+**Status:** accepted. Productbesluit van Michel op 10 oktober 2026; vervult het aparte vrijgavebesluit dat [DEC-128](#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15) en [DEC-129](#dec-129-ps-11a-is-de-eerstvolgende-fase-ps-14-blijft-gesloten-en-loopt-er-niet-naast) voorbehielden, en stelt DEC-129 bij voor wat PS-14 betreft.
+
+**Context:** PS-14 (e-bookcatalogus en inhoud) staat sinds 3 september 2026 als fase in de roadmap en
+heeft een goedgekeurd ontwerp in `docs/pleya-server-ps14-proposal.md`. DEC-128 zei dat vrijgeven een
+apart besluit is. DEC-129 voegde eraan toe dat PS-14 gesloten blijft tot PS-11A geïntegreerd bewezen
+is en er niet naast mag lopen, en de masterlijst leidde daaruit af dat S3 pas na S7, S10 en S11
+begint. Die volgorde was een gevolg van het besluit dat PS-14 dicht stond, niet van een technische
+afhankelijkheid: in de fasetabel hangt PS-14 aan PS-2 en PS-9, en beide zijn gesloten.
+
+Michel heeft PS-14 op 10 oktober 2026 per direct vrijgegeven, met drie voorwaarden. De vrijgave
+raakt twee dingen die open blijven: het locatorbesluit (P5, taak S6.1) is niet genomen, en het
+protocolvenster voor boeken is niet geopend.
+
+**Decision:**
+
+1. PS-14 is vrijgegeven voor uitvoering. De bepaling uit DEC-129 dat PS-14 gesloten blijft en niet
+   naast PS-11A mag lopen vervalt. De afhankelijkheden uit de fasetabel (PS-2 en PS-9) en de
+   uitvoeringsvolgorde binnen de slices blijven bindend.
+2. De vrijgave komt met drie voorwaarden, die voor alle PS-14-werk gelden:
+   - PS-14 gebruikt de bestaande architectuur en de Unified Library. Er komt geen tweede
+     bibliotheekmodel, geen tweede scanner en geen tweede toegangslaag naast wat er is, in lijn met
+     DEC-128 punt 3.
+   - De functionaliteit moet later aansluiten op de Pleya-clients en op de webclient. Reader-integratie
+     hoort bij het productscope; dit besluit legt de grens vast waarlangs PS-14 wordt gebouwd en
+     verplaatst hem niet. Wat PS-15 en PS-16 inhoudelijk afbakenen blijft zoals in DEC-128.
+   - Er komt geen nieuwe DRM-, winkel- of abonnementsfunctionaliteit zonder afzonderlijk besluit.
+3. De vrijgave van PS-14 geeft slice S3 vrij en S6 niet. S6 (leesvoortgang, het servergedeelte
+   van PS-15) hangt aan het locatorbesluit P5 en aan de vrijgave van PS-15, en beide staan open.
+   P5 blijft open en S6 blijft ervan afhankelijk.
+4. PS-15 en PS-16 zijn ongewijzigd: niet vrijgegeven. Dit besluit vervangt DEC-128 niet; alle acht
+   punten daarvan blijven van kracht, inclusief de poort van punt 7 (aantoonbaar vaststellen hoe
+   bestaande clients een nieuwe unknown-safe `LibraryKind` behandelen) en de regel van punt 8 (geen
+   vooruitgebouwde onderlaag voor PS-15 of PS-16).
+5. Het contractvenster voor S3 tot en met S6 wordt gebundeld ontworpen, met onafhankelijk
+   vrijgeefbare onderdelen: het ontwerp mag S3 tot en met S6 in één keer beschrijven, zodat de
+   wijzigingen niet per slice botsen, maar een onderdeel dat nergens van afhangt (S3) wordt niet
+   vastgehouden door een onderdeel dat wel wacht (S6 op P5). Dit besluit opent het venster niet.
+   `openapi.yaml` blijft bevroren tot een eigen DEC het venster opent, en `scripts/check_protocol.sh`
+   blijft de poortwachter.
+
+**Consequences:** S3 (taken S3.1 tot en met S3.6) is toegestaan en kan na S2 beginnen, zonder te
+wachten op S7, S10 en S11. S5 hangt volgens de graaf aan S3 en S4 en volgt dus S3. S6 en alles wat
+via S6 aan P5 hangt (S9, S12, S14, S16, S20 en S21) wacht op het locatorbesluit.
+De masterlijst, `docs/agents/server.md`, de fasetabel in de architectuurbaseline en het PS-14-voorstel
+zijn in dezelfde commit bijgewerkt; de taakstatus en de tellers staan niet anders dan voorheen, want
+een vrijgave maakt geen taak af. De volgorde is vast: eerst het ontwerp van het contractvenster
+voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
