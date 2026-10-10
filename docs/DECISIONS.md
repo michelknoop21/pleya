@@ -2777,7 +2777,7 @@ gemeten proef dekt (1) en (3) nog niet, en de hoorbaarheid op de Apple TV is HAR
 
 ## DEC-147: De `background_downloader`-pin wijst naar een eigen spiegel van dezelfde commit, niet naar een nieuwe revisie
 
-Voorheen DEC-118. De commits 2723ad72 en 4f9c69f2 (PR #55) noemen dit besluit nog DEC-118. Dit besluit schoof op en niet het PS-5-besluit, omdat acht ankerlinks en de lopende PS-5-stukken het serverbesluit onder dat nummer aanhalen; zie "Hernummering van de dubbele DEC-118 en DEC-119" verderop.
+Voorheen DEC-118. De commit 2723ad72 en de squash van PR #55 (4f9c69f2) noemen dit besluit nog DEC-118. Dit besluit schoof op en niet het PS-5-besluit, omdat acht ankerlinks en de lopende PS-5-stukken het serverbesluit onder dat nummer aanhalen; zie "Hernummering van de dubbele DEC-118 en DEC-119" verderop.
 
 **Date:** 2026-09-22
 **Status:** accepted
@@ -4113,7 +4113,9 @@ tekst waarvan de checksum vastligt. De twee app-besluiten zijn verplaatst:
 DEC-118 is nu alleen nog het open PS-5-hardwarecriterium en DEC-119 alleen nog het rollen- en
 rechtenmodel voor PS-9. Een kale "DEC-118" in tekst van vóór deze wijziging die over de
 `background_downloader`-spiegel gaat, bedoelt DEC-147. Een kale "DEC-119" over tvOS vóór I7 tot en
-met I10 bedoelt DEC-148. DEC-146 is overgeslagen omdat PR #220 dat nummer al draagt.
+met I10 bedoelt DEC-148, en een kale "DEC-119" over Home en Verder kijken bedoelt DEC-144 (zie de
+regel onder die kop). DEC-146 is overgeslagen: het besluit over het sluiten van S2 stond onder dat
+nummer klaar toen deze nummers werden toegekend.
 
 ## DEC-139: Apple TV blijft op 1,85; te grote vlakken worden gericht verdicht via `TvHig`
 
