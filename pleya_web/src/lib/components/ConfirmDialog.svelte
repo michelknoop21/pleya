@@ -95,7 +95,11 @@
     if (canConfirm) onconfirm();
   }
 
+  // Luistert op document en niet op de kaart: zet `busy` het gefocuste veld of
+  // de bevestigknop uit, dan valt de focus naar body en zou een handler op de
+  // kaart Tab en Escape niet meer zien.
   function keydown(event: KeyboardEvent): void {
+    if (!open) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
@@ -118,6 +122,8 @@
   }
 </script>
 
+<svelte:document onkeydown={keydown} />
+
 {#if open}
   <div class="cd__scrim" aria-hidden="true" onclick={cancel}></div>
   <div
@@ -128,7 +134,6 @@
     aria-describedby={message ? messageId : undefined}
     tabindex="-1"
     bind:this={card}
-    onkeydown={keydown}
   >
     <h2 class="cd__title" id={titleId}>{title}</h2>
     {#if message}

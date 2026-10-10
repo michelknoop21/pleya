@@ -142,4 +142,44 @@ describe('ConfirmDialog', () => {
     await userEvent.click(container.querySelector('.cd__scrim')!);
     expect(oncancel).toHaveBeenCalledOnce();
   });
+
+  it('houdt de focusval vast als bezig het gefocuste veld uitschakelt', async () => {
+    trigger();
+    const oncancel = vi.fn();
+    const { rerender } = render(ConfirmDialog, {
+      props: { ...base, open: true, requirePhrase: 'Films', onconfirm: vi.fn(), oncancel }
+    });
+    await settle();
+    const input = screen.getByRole('textbox', { name: 'Type Films to confirm' });
+    expect(input).toHaveFocus();
+
+    // Een browser verplaatst de focus van een uitgeschakeld element naar body.
+    // jsdom doet dat niet en blur() op een uitgeschakeld veld is daar een no-op,
+    // dus de focus gaat met de hand naar body vlak voordat bezig aangaat.
+    input.blur();
+    await rerender({ busy: true });
+    expect(document.body).toHaveFocus();
+    expect(input).toBeDisabled();
+
+    const dialog = screen.getByRole('dialog');
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    await userEvent.tab();
+    expect(cancel).toHaveFocus();
+    await userEvent.tab();
+    expect(cancel).toHaveFocus();
+
+    cancel.blur();
+    await userEvent.tab({ shift: true });
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+
+    // Escape annuleert tijdens bezig nog steeds niet, ook niet vanaf body.
+    (document.activeElement as HTMLElement).blur();
+    await userEvent.keyboard('{Escape}');
+    expect(oncancel).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await rerender({ busy: false });
+    await userEvent.keyboard('{Escape}');
+    expect(oncancel).toHaveBeenCalledOnce();
+  });
 });
