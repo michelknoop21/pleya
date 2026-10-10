@@ -10,8 +10,8 @@ Aangemaakt: 2026-09-04, op `5eebb83` (feat/pleyaserver).
 
 Dit dossier is op 10 oktober 2026 van `feat/pleyaserver` naar `main` overgenomen. Er is sinds
 4 september geen test bijgekomen: de ronde is niet gedraaid en elke rij hieronder die open stond,
-staat nog open. Vier dingen zijn sindsdien veranderd, en alleen de eerste is in de tekst hieronder
-verwerkt.
+staat nog open. Vijf dingen zijn sindsdien veranderd. De eerste is in de tekst hieronder verwerkt;
+bij de andere staat op de betreffende plek een verwijzing naar dit blok.
 
 - Het besluit heet op `main` DEC-118. Op `feat/pleyaserver` droeg het nummer DEC-064, dat op `main`
   een ander besluit is; de hernummeringstabel onderaan `docs/DECISIONS.md` voert het als oud
@@ -26,6 +26,13 @@ verwerkt.
   `feat/pleyaserver` (`build/macos` ontbreekt). De PASS van stap 1 rust op de opstartregel die
   hieronder is overgenomen, niet op een bewaard artefact.
 - De blokkade "geen Jellyfin-account" is op 4 september gemeten en daarna niet opnieuw gemeten.
+- De ronde is achterstallig. DEC-118 noemt drie uiterste momenten, wat zich het eerst voordoet: de
+  eerstvolgende publieke release met PS-5- of PS-9-gedrag, een TestFlight-indiening naar App Review,
+  of een merge van `feat/pleyaserver` naar `main`. De PS-5-code kwam op 25 september 2026 op `main`
+  via PR #94 (`638e7524`, branch `integration/pleya-server-completion`), zonder dat de ronde was
+  gedraaid. DEC-118 blijft ongewijzigd staan. Besluit van 10 oktober 2026: de ronde geldt als
+  achterstallig en moet volledig gevalideerd zijn vóór de eerste publieke release van Pleya Server.
+  De status staat in `docs/PLEYA-SERVER-MASTERLIST.md`.
 
 ## Status: uitgesteld, met een startvoorwaarde
 
@@ -35,9 +42,10 @@ stilzwijgend meelift naar een release.
 
 De poort uit
 [DEC-118](../DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
-blijft onverkort staan: de hardwaretest moet uiterlijk vóór
-de eerstvolgende publieke release die PS-5- of PS-9-gedrag bevat alsnog gedraaid zijn. Dat PS-9 op
-4 september gesloten is, bewijst niets over dit criterium.
+blijft staan. Op 4 september luidde de stand: de hardwaretest moet uiterlijk vóór de eerstvolgende
+publieke release die PS-5- of PS-9-gedrag bevat alsnog gedraaid zijn. Een van de andere momenten uit
+dat besluit is sindsdien gepasseerd, zie *Stand op `main`*. Dat PS-9 op 4 september gesloten is,
+bewijst niets over dit criterium.
 
 Drie voorwaarden gelden vóór de ronde mag starten:
 
@@ -55,13 +63,16 @@ Zodra die drie staan, is dit document het startpunt en verandert er verder niets
 hieronder als historisch bewijs, maar `build/tvbuild/` bestaat niet meer. Reden: die build is op de
 gedeelde Apple TV geïnstalleerd en verdrong daar het werk van een andere sessie, zonder dat de
 verdrongen build terug te zetten was. Hij is opnieuw te bouwen en zijn bewijswaarde staat hier al
-vastgelegd. Het macOS-artefact van 246 is bewaard: geen gedeeld toestel, en het is het enige
-artefact achter de enige PASS die er op dit moment is.
+vastgelegd. Het macOS-artefact van 246 was op 4 september bewaard: geen gedeeld toestel, en het was
+het enige artefact achter de enige PASS. Op 10 oktober is het niet teruggevonden, zie *Stand op
+`main`*; de PASS van stap 1 is daarmee historisch en geen actueel hardwarebewijs.
 
 ## Poort 0: draagt de build de wijziging?
 
-Deze stap gaat vóór elke test. `origin/main` bevat PS-5 niet, dus een build uit main levert overal
-"geen regressie" op zonder iets te bewijzen. Tel eerst de markers in de binary.
+Deze stap gaat vóór elke test. Op 4 september bevatte `origin/main` PS-5 niet, dus een build uit
+main leverde overal "geen regressie" op zonder iets te bewijzen. Sinds 25 september draagt `main`
+PS-5 wel (zie *Stand op `main`*); een oudere build kan nog steeds zonder zijn. Tel eerst de markers
+in de binary.
 
 ```bash
 BIN=<app>/Contents/Frameworks/App.framework/App     # macOS
@@ -132,7 +143,8 @@ Pleya v2.8.0+246 (5eebb83) [effects: full]
  connection(local=?(unknown), maxKbps=?(unknown))]
 ```
 
-Daarmee is delta A live bevestigd en delta B aantoonbaar uit, want `display` is unknown. Er staat
+Daarmee is bevestigd dat het profiel `truehd` declareert (delta A staat aan; of TrueHD afspeelt
+toetst T1, en die staat open) en is delta B aantoonbaar uit, want `display` is unknown. Er staat
 geen `override of` bij bitstream, dus de audioprioriteit staat al op originele Dolby.
 
 Op tvOS bevestigt de prefs-uitlezing dezelfde uitgangspositie: `audio_priority = originalDolby`,
