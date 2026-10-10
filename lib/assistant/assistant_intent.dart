@@ -252,7 +252,11 @@ class AssistantIntent {
           // question) could own it.
           if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
         }
-        if (addedToLibraries && kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+      case 'recommend_together':
+        // The cohort query has its own kind: a question for films gets films,
+        // whatever the model passed.
+        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
       case 'watch_stats':
         if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.

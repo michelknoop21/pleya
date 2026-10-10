@@ -292,6 +292,38 @@ void main() {
     expect(model.toolNamesOffered(0), contains('my_watching'));
   });
 
+  test('a question for films reaches recommend_together as films, whatever kind the model chose', () async {
+    final m = await _Server().manager();
+    Map<String, Object?>? seen;
+    final tool = AssistantTool(
+      name: 'recommend_together',
+      description: 'cohort',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, args) async {
+        seen = args;
+        return const AssistantToolResult({'results': <Object>[]});
+      },
+    );
+    final model = _Model(AssistantProviderKind.ollamaServer, [
+      _call('recommend_together', const {
+        'kind': 'show',
+        'participants': ['Sam'],
+      }),
+      _say('Klaar'),
+    ]);
+    await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      tools: [tool],
+    ).ask('Welke films kunnen Sam en ik samen kijken?');
+    expect(seen?['kind'], 'movie');
+  });
+
   test(
     '"what do the others watch": my_watching is refused, the model cannot answer with the asker\'s own data',
     () async {
