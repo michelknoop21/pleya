@@ -101,6 +101,12 @@ export const web = {
   'theme.light': 'Light',
   'theme.system': 'System',
 
+  'table.empty': 'Nothing here yet.',
+  'steps.label': 'Progress',
+  'steps.done': 'done',
+  'dialog.cancel': 'Cancel',
+  'dialog.typeToConfirm': 'Type {phrase} to confirm',
+
   'artwork.none': 'No artwork',
   'unreachable.title': 'Cannot reach the server',
   'signedOut.title': 'Signed out',
