@@ -4,8 +4,9 @@
  * Geen TMDb-materiaal in git en geen server nodig; de kaart doorloopt toch
  * het echte pad van Artwork (laden, object-URL, vrijgeven).
  *
- * Een id is `<sleutel>` voor een poster of `<sleutel>@wide` voor een 16:9-
- * beeld. Een onbekende sleutel faalt, zodat de galerij ook de staat "laden
+ * Een id is `<sleutel>` voor een poster, `<sleutel>@wide` voor een 16:9-
+ * beeld of `<sleutel>@hero` voor een backdrop zonder tekst, want over een
+ * hero staat de titel al in de displayletter. Een onbekende sleutel faalt, zodat de galerij ook de staat "laden
  * mislukt" kan tonen. De kleuren volgen specimen v3.
  */
 import type { ArtworkLoader } from '$lib/components/artworkLoader';
@@ -29,11 +30,39 @@ const ART: Record<string, DemoArt> = {
   sev: { title: 'Severance', top: '#4aa6d6', bottom: '#0d2a3a', sun: '#d8f1ff', sunRadius: 0, credit: 'Apple TV+' },
   fallout: { title: 'Fallout', top: '#6b5a3c', bottom: '#121410', sun: '#e8d29a', sunRadius: 0.18, credit: 'S1 · E7' },
   opp: { title: 'Oppenheimer', top: '#e2541c', bottom: '#2a0b05', sun: '#ffc070', sunRadius: 0.16, credit: 'Christopher Nolan' },
-  civil: { title: 'Civil War', top: '#3a4630', bottom: '#0d0f0b', sun: '#b9f23a', sunRadius: 0, credit: 'Alex Garland' }
+  civil: { title: 'Civil War', top: '#3a4630', bottom: '#0d0f0b', sun: '#b9f23a', sunRadius: 0, credit: 'Alex Garland' },
+  rotk: { title: 'The Return of the King', top: '#1b2440', bottom: '#120d16', sun: '#f2c26b', sunRadius: 0.14, credit: 'Peter Jackson' }
 };
 
 const POSTER = { w: 400, h: 600 };
 const WIDE = { w: 712, h: 400 };
+const HERO = { w: 1344, h: 576 };
+
+/**
+ * Een backdrop voor de hero: het verloop schuin van donker links naar licht
+ * rechts en de zon rechts van het midden, zoals hero A en B in specimen v3.
+ * Links blijft het donker, daar staat de tekst.
+ */
+export function drawDemoBackdrop(canvas: HTMLCanvasElement, art: DemoArt): void {
+  const { w, h } = HERO;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const gradient = ctx.createLinearGradient(0, h, w, 0);
+  gradient.addColorStop(0, art.bottom);
+  gradient.addColorStop(1, art.top);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+  if (art.sunRadius > 0) {
+    ctx.fillStyle = art.sun;
+    ctx.beginPath();
+    // Op de hoogte en niet op de diagonaal: een brede backdrop gaf anders
+    // een zon die het halve beeld vulde.
+    ctx.arc(w * 0.7, h * 0.32, art.sunRadius * h, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
 /** Tekent één beeld. Exporteerbaar voor wie het canvas zelf wil hebben. */
 export function drawDemoArt(canvas: HTMLCanvasElement, art: DemoArt, wide: boolean): void {
@@ -84,7 +113,7 @@ export function drawDemoArt(canvas: HTMLCanvasElement, art: DemoArt, wide: boole
   }
 }
 
-/** De loader die CardSection in de context zet. */
+/** De loader die CardSection en HeroSection in de context zetten. */
 export const demoArtworkLoader: ArtworkLoader = async (id) => {
   const [key, variant] = id.split('@');
   const art = key ? ART[key] : undefined;
@@ -92,7 +121,8 @@ export const demoArtworkLoader: ArtworkLoader = async (id) => {
   // Inter moet geladen zijn, anders tekent het canvas in de systeemletter.
   await document.fonts?.ready;
   const canvas = document.createElement('canvas');
-  drawDemoArt(canvas, art, variant === 'wide');
+  if (variant === 'hero') drawDemoBackdrop(canvas, art);
+  else drawDemoArt(canvas, art, variant === 'wide');
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob'))), 'image/png');
   });

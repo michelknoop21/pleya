@@ -87,7 +87,13 @@
   --card-caption-gap: 7px; /* MediaCard: beeld tot titel, web.css .card .cap */
   --card-caption-line-gap: 2px; /* MediaCard: titel tot onderregel, web.css .card .s */
   --grid-cell-min: 180px; /* MediaGrid: minimale kolom vanaf 1600 */
-  --hero-min-h: 520px; /* Hero: minimale hoogte vanaf 1600 */
+  /*
+   * Hero, web.css .hero: 21:9 vanaf 1200, 16:9 tussen 900 en 1199, en
+   * daaronder geen verhouding maar een portret van 520 hoog. Skelet en Hero
+   * lezen allebei deze twee, zodat de pagina niet verspringt.
+   */
+  --hero-aspect: 21 / 9;
+  --hero-h-narrow: 520px;
   --page-inset: var(--inset); /* oude naam, tot elke route hem niet meer noemt */
 
   /* --- Raakvlak. Web-eigen: 44px is de ondergrens op aanraakschermen. ---- */
@@ -317,7 +323,6 @@
   :root {
     --poster-w: 170px;
     --grid-cell-min: 168px;
-    --hero-min-h: 420px;
   }
 }
 @media (max-width: 1199px) {
@@ -327,6 +332,7 @@
     --rail-gap: 16px;
     --rail-cell-w: 150px;
     --grid-cell-min: 150px;
+    --hero-aspect: 16 / 9;
   }
 }
 @media (max-width: 899px) {
@@ -337,7 +343,7 @@
     --radius-hero: 16px;
     --rail-cell-w: 132px;
     --grid-cell-min: 132px;
-    --hero-min-h: 46vw;
+    --hero-aspect: auto;
     --text-card-title-size: 13px;
     --text-card-sub-size: 11px;
   }

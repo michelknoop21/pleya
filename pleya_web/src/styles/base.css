@@ -207,6 +207,15 @@ ol {
   font-weight: 700;
   letter-spacing: -0.5px;
 }
+/* De displayletter (ArchivoBlack) in kapitalen, voor de herotitel en later de
+   detailtitel op breed (DESIGN.md hoofdstuk 2). Maat en spatiëring zet het
+   element zelf, want die verschillen per plek en per breekpunt. */
+.t-display-face {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1;
+}
 .t-headline {
   font-size: var(--text-headline-size);
   line-height: var(--text-headline-line);

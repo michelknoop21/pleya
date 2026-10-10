@@ -90,12 +90,19 @@ async function cardStates(name: string): Promise<void> {
   await page.locator('#kaarten [data-demo="focus"] a').focus();
   await page.locator('#kaarten [data-demo="hover"] .card').hover();
   await page.waitForTimeout(400); // lift en overlay lopen over --dur-normal
-  // Een sectie hoger dan het venster: knippen uit de hele pagina in plaats van
-  // een elementopname, die zou scrollen en de muis van de kaart halen.
-  const box = await page.evaluate(() => {
-    const r = document.getElementById('kaarten')!.getBoundingClientRect();
+  await clipSection('kaarten', name);
+}
+
+/**
+ * Een sectie hoger dan het venster: knippen uit de hele pagina in plaats van
+ * een elementopname. Die zou scrollen en de muis van de kaart halen, en bij
+ * de hero tekende hij het beeld onder de waas niet mee.
+ */
+async function clipSection(id: string, name: string): Promise<void> {
+  const box = await page.evaluate((sectionId) => {
+    const r = document.getElementById(sectionId)!.getBoundingClientRect();
     return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height };
-  });
+  }, id);
   const path = `${OUT}/${name}.png`;
   await page.screenshot({ path, fullPage: true, clip: box });
   console.log(path);
@@ -112,6 +119,19 @@ for (const width of WIDTHS) {
     }
     if (id === 'kaarten') {
       await cardStates(`${id}@${width}`);
+      continue;
+    }
+    if (id === 'hero') {
+      // Drie heroes met gegenereerd beeld; de vierde heeft bewust geen artwork.
+      await page.waitForFunction(() => document.querySelectorAll('#hero img').length >= 3);
+      // Beeld buiten het venster met decoding="async" is nog niet gedecodeerd,
+      // en een opname van de hele pagina wacht daar niet op: dan staat er
+      // alleen de waas. Dus eerst expliciet decoderen.
+      await page.evaluate(() =>
+        Promise.all(Array.from(document.querySelectorAll<HTMLImageElement>('#hero img'), (img) => img.decode()))
+      );
+      await page.waitForTimeout(400); // inloop van het beeld over --dur-normal
+      await clipSection(id, `${id}@${width}`);
       continue;
     }
     await shot(page.locator(`#${id}`), `${id}@${width}`);

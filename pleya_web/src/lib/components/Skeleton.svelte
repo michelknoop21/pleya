@@ -84,13 +84,19 @@
     border-radius: var(--radius-sm);
   }
 
-  /* De hero van vandaag loopt van rand tot rand, zonder ronde hoeken; zijn
-     hoogte komt uit dezelfde tokens als Hero.svelte. */
+  /* Dezelfde vorm als Hero.svelte (beeld 01, mockup 15): ingesprongen op de
+     pagina-inzet met de heroradius, 21:9, 16:9 of een portret van 520, uit
+     dezelfde tokens. Zo verspringt de pagina niet als de hero binnenkomt. */
   .skel--hero {
-    width: 100%;
-    min-height: var(--hero-min-h);
-    max-height: 62dvh;
-    border-radius: 0;
+    margin: 4px var(--inset) 0;
+    aspect-ratio: var(--hero-aspect);
+    border-radius: var(--radius-hero);
+  }
+
+  @media (max-width: 899px) {
+    .skel--hero {
+      height: var(--hero-h-narrow);
+    }
   }
 
   /* Kaart: dezelfde opbouw als MediaCard (padding, tussenruimte, regels). */
