@@ -44,6 +44,7 @@ sectie-ids staan in `pleya_web/src/routes/dev/primitives/sections.ts`; het scrip
 | `{velden,velden-foutfocus,panelen,meldingen,pillen,chips,tabel}-{oled,light}@{393,1600}`, `stappen-light@{393,1600}` | als de dark-opname | dezelfde sectie in OLED en light: scheiding van paneel en pagina, haarlijn, inset, en leesbaarheid van fout-, waarschuwings- en oktekst |
 | `dialoog-phrase-{oled,light}@{393,1600}` | 23 | dialoog met overtypzin in OLED en light |
 | `skelet@{393,1024,1600}` | 15, 16 | losse vormen, artworkvlak zonder beeld, de vier SkeletonPage-varianten |
+| `kaarten@{393,1024,1600}` | 16; `v3-specimen/kaarten@*` | MediaCard in elf staten, volgorde van specimen v3. Hover en toetsenbordfocus zijn echt: het script zet de muis op de tweede kaart en de focus op de derde. De onderregel toont alleen het jaar, want `Item` draagt nog geen genre (PS-7N); de galerij heeft links een index, dus op 1600 passen er zes kaarten per rij en geen zeven |
 | `skelet-oled@1024`, `skelet-light@1024` | 15, 16 | skeletvulling naast artworkplaatshouder, en een skelet in een paneel, in OLED en light |
 | `skeleton-home@{393,768,1024,1280,1600}` | 15 | hero plus twee rails |
 | `skeleton-grid@{393,768,1024,1280,1600}` | 15, 05 | raster zoals op een bibliotheekpagina |

@@ -108,6 +108,18 @@ export const web = {
   'dialog.typeToConfirm': 'Type {phrase} to confirm',
 
   'artwork.none': 'No artwork',
+  'card.remaining': '{duration} left',
+  'card.watched': 'Watched',
+  'card.new': 'New',
+  'card.versions.one': '{count} version',
+  'card.versions.other': '{count} versions',
+
+  // Alleen de galerij (/dev/primitives) gebruikt deze: daar staan demoknoppen
+  // op de hover-kaart, in de app geeft de aanroeper zijn eigen acties mee.
+  'dev.play': 'Play',
+  'dev.myList': 'My list',
+  'dev.more': 'More',
+
   'unreachable.title': 'Cannot reach the server',
   'signedOut.title': 'Signed out',
   'loading': 'Loading…'
