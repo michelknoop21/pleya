@@ -309,6 +309,73 @@ void main() {
     );
   }
 
+  // The version menu of Jellyfin and Emby passes the number together with the
+  // stable source id; a plain play passes neither. Nothing in the guard looks
+  // at the backend, so every backend runs the same two orders.
+  for (final backend in MediaBackend.values) {
+    for (final plainFirst in [true, false]) {
+      testWidgets('a plain start and version 0 by number and source id are one start '
+          '(${backend.id}, ${plainFirst ? 'plain' : 'source id'} first)', (tester) async {
+        final (context, client, spy) = await pumpHost(tester);
+        final item = MediaItem(
+          id: 'movie_1',
+          backend: backend,
+          kind: MediaKind.movie,
+          title: 'Movie 1',
+          serverId: 'server_1',
+        );
+        Future<bool?> start({required bool plain}) => plain
+            ? navigateToVideoPlayer(context, metadata: item)
+            : navigateToVideoPlayer(context, metadata: item, selectedMediaIndex: 0, selectedMediaSourceId: 'source_a');
+
+        // No preference is stored, so the plain start resolves to version 0.
+        unawaited(start(plain: plainFirst));
+        await tester.pump();
+        unawaited(start(plain: !plainFirst));
+        await tester.pump();
+
+        client.release(item);
+        client.release(item);
+        await tester.pump();
+        await tester.pump();
+
+        expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(1));
+        expect(startNotices(), isEmpty);
+
+        // Every key is given back: the title can be started again.
+        unawaited(start(plain: false));
+        await tester.pump();
+        client.release(item);
+        await tester.pump();
+        await tester.pump();
+        expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(2));
+      });
+    }
+  }
+
+  testWidgets('two versions picked by number and source id both start', (tester) async {
+    final (context, client, spy) = await pumpHost(tester);
+
+    unawaited(
+      navigateToVideoPlayer(context, metadata: movie, selectedMediaIndex: 0, selectedMediaSourceId: 'source_a'),
+    );
+    await tester.pump();
+    unawaited(
+      navigateToVideoPlayer(context, metadata: movie, selectedMediaIndex: 1, selectedMediaSourceId: 'source_b'),
+    );
+    await tester.pump();
+
+    expect(client.fetchCalls, 2);
+
+    client.release(movie);
+    client.release(movie);
+    await tester.pump();
+    await tester.pump();
+
+    expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(2));
+    expect(startNotices(), isEmpty);
+  });
+
   testWidgets('an explicit restart skips the refetch and still pushes once', (tester) async {
     final (context, client, spy) = await pumpHost(tester);
 

@@ -15,24 +15,12 @@ void main() {
       serverId: 'server_1',
     );
 
-    expect(
-      guard.tryStart(item, mediaIndex: 0, selectedMediaSourceId: null, selectedQualityPreset: null, isOffline: false),
-      isTrue,
-    );
-    expect(
-      guard.tryStart(item, mediaIndex: 0, selectedMediaSourceId: null, selectedQualityPreset: null, isOffline: false),
-      isFalse,
-    );
-    expect(
-      guard.tryStart(item, mediaIndex: 1, selectedMediaSourceId: null, selectedQualityPreset: null, isOffline: false),
-      isTrue,
-    );
+    expect(guard.tryStart(item, mediaIndex: 0, selectedQualityPreset: null, isOffline: false), isTrue);
+    expect(guard.tryStart(item, mediaIndex: 0, selectedQualityPreset: null, isOffline: false), isFalse);
+    expect(guard.tryStart(item, mediaIndex: 1, selectedQualityPreset: null, isOffline: false), isTrue);
 
-    guard.finish(item, mediaIndex: 0, selectedMediaSourceId: null, selectedQualityPreset: null, isOffline: false);
+    guard.finish(item, mediaIndex: 0, selectedQualityPreset: null, isOffline: false);
 
-    expect(
-      guard.tryStart(item, mediaIndex: 0, selectedMediaSourceId: null, selectedQualityPreset: null, isOffline: false),
-      isTrue,
-    );
+    expect(guard.tryStart(item, mediaIndex: 0, selectedQualityPreset: null, isOffline: false), isTrue);
   });
 }

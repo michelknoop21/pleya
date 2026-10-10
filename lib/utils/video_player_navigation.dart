@@ -33,59 +33,43 @@ const String kVideoPlayerRouteName = '/video_player';
 /// A start that left the choice open takes a second key once the preference
 /// is read, under the version it resolved to: otherwise "the saved version"
 /// and that same version asked for by number would both get through.
+///
+/// The number is the whole version: the source id a version menu passes along
+/// names the entry at that number, and a start without it would otherwise
+/// never meet a start with it. The mounted player answers for duplicates by
+/// number as well, through `activeMediaIndex`.
 class VideoPlayerNavigationInFlightGuard {
   final Set<String> _keys = <String>{};
 
   bool tryStart(
     MediaItem metadata, {
     required int? mediaIndex,
-    required String? selectedMediaSourceId,
     required TranscodeQualityPreset? selectedQualityPreset,
     required bool isOffline,
   }) {
     return _keys.add(
-      _keyFor(
-        metadata,
-        mediaIndex: mediaIndex,
-        selectedMediaSourceId: selectedMediaSourceId,
-        selectedQualityPreset: selectedQualityPreset,
-        isOffline: isOffline,
-      ),
+      _keyFor(metadata, mediaIndex: mediaIndex, selectedQualityPreset: selectedQualityPreset, isOffline: isOffline),
     );
   }
 
   void finish(
     MediaItem metadata, {
     required int? mediaIndex,
-    required String? selectedMediaSourceId,
     required TranscodeQualityPreset? selectedQualityPreset,
     required bool isOffline,
   }) {
     _keys.remove(
-      _keyFor(
-        metadata,
-        mediaIndex: mediaIndex,
-        selectedMediaSourceId: selectedMediaSourceId,
-        selectedQualityPreset: selectedQualityPreset,
-        isOffline: isOffline,
-      ),
+      _keyFor(metadata, mediaIndex: mediaIndex, selectedQualityPreset: selectedQualityPreset, isOffline: isOffline),
     );
   }
 
   String _keyFor(
     MediaItem metadata, {
     required int? mediaIndex,
-    required String? selectedMediaSourceId,
     required TranscodeQualityPreset? selectedQualityPreset,
     required bool isOffline,
   }) {
-    return [
-      metadata.globalKey,
-      mediaIndex ?? 'saved',
-      selectedMediaSourceId ?? '',
-      selectedQualityPreset?.name ?? 'auto',
-      isOffline,
-    ].join('|');
+    return [metadata.globalKey, mediaIndex ?? 'saved', selectedQualityPreset?.name ?? 'auto', isOffline].join('|');
   }
 }
 
@@ -192,7 +176,6 @@ Future<bool?> navigateToVideoPlayer(
     markedInFlight = _videoPlayerNavigationInFlightGuard.tryStart(
       requested,
       mediaIndex: selectedMediaIndex,
-      selectedMediaSourceId: selectedMediaSourceId,
       selectedQualityPreset: selectedQualityPreset,
       isOffline: isOffline,
     );
@@ -211,7 +194,6 @@ Future<bool?> navigateToVideoPlayer(
     _videoPlayerNavigationInFlightGuard.finish(
       requested,
       mediaIndex: selectedMediaIndex,
-      selectedMediaSourceId: selectedMediaSourceId,
       selectedQualityPreset: selectedQualityPreset,
       isOffline: isOffline,
     );
@@ -221,7 +203,6 @@ Future<bool?> navigateToVideoPlayer(
     _videoPlayerNavigationInFlightGuard.finish(
       requested,
       mediaIndex: resolved,
-      selectedMediaSourceId: selectedMediaSourceId,
       selectedQualityPreset: selectedQualityPreset,
       isOffline: isOffline,
     );
@@ -287,7 +268,6 @@ Future<bool?> navigateToVideoPlayer(
       final free = _videoPlayerNavigationInFlightGuard.tryStart(
         requested,
         mediaIndex: mediaIndex,
-        selectedMediaSourceId: selectedMediaSourceId,
         selectedQualityPreset: selectedQualityPreset,
         isOffline: isOffline,
       );
