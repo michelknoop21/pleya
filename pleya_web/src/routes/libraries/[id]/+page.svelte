@@ -140,17 +140,22 @@
         void fetchMore(new AbortController().signal);
       }}
     />
-  {:else if pager.items.length === 0 && !pager.done}
+  {:else if pager.items.length === 0 && pager.cursor === null && !pager.done}
     <!--
       Niet op `pager.loading`: loadNext geeft de ladende toestand pas terug als
       het antwoord er al is, dus tijdens de eerste aanvraag stond hier "niets
-      hier". Leeg en nog niet klaar is laden; leeg en klaar is echt leeg.
+      hier". Leeg zonder cursor en nog niet klaar is de eerste aanvraag; leeg en
+      klaar is echt leeg. Een eerste pagina met nul items en een next_cursor
+      valt door naar de lijst, want alleen daar staat de waarnemer die verder
+      bladert; anders bleef het skelet staan.
     -->
     <SkeletonPage variant="grid" />
-  {:else if pager.items.length === 0}
+  {:else if pager.items.length === 0 && pager.done}
     <StateView title={t('states.emptyTitle')} />
   {:else}
-    <MediaGrid items={pager.items} label={library?.title ?? t('libraries.title')} />
+    {#if pager.items.length > 0}
+      <MediaGrid items={pager.items} label={library?.title ?? t('libraries.title')} />
+    {/if}
 
     <div bind:this={sentinel} class="page__more">
       {#if pager.loading}
