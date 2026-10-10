@@ -354,6 +354,30 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("TV: a profile switch drops the query the previous profile settled on", (tester) async {
+    final fake = FakeSeerr()..on('GET /search', {'page': 1, 'totalPages': 1, 'results': const []});
+    final seerr = await seerrProvider(fake);
+    addTearDown(seerr.dispose);
+    final (_, key) = await _pumpTvSearchScreen(tester, seerr: seerr);
+    await tester.pumpAndSettle();
+
+    final state = key.currentState!;
+    (state as SearchInputFocusable).submitSearchQuery('movie');
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(1), reason: 'the first profile submitted it');
+
+    (state as FullRefreshable).fullRefresh();
+    await tester.pumpAndSettle();
+
+    // The next profile types the same word and has not chosen anything yet.
+    (state as SearchInputFocusable).setSearchQuery('movie');
+    (state as Refreshable).refresh();
+    await tester.pumpAndSettle();
+    expect(fake.sent('GET', '/search'), hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('desktop: a profile switch drops the previous profile\'s query chips and never writes them over', (
     tester,
   ) async {

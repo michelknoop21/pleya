@@ -356,6 +356,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.trim().isEmpty) {
       _searchDebounce.cancel();
       _focusResultsForQuery = null;
+      _settledQuery = null;
       _searchGeneration++;
       setStateIfMounted(() {
         _searchResults = [];
@@ -768,6 +769,8 @@ class _SearchScreenState extends State<SearchScreen>
     // Clear search results and search text for new profile
     _searchController.clear();
     _focusResultsForQuery = null;
+    // What the previous profile settled on is not this profile's choice.
+    _settledQuery = null;
     setStateIfMounted(() {
       _searchResults.clear();
       _isSearching = false;
