@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/edde746/plezy/pleya_server/internal/api"
+	"github.com/edde746/plezy/pleya_server/internal/id"
 )
 
 // De CRUD-API van S2.2 (J.3 venster 2). De drie-rollen-ronde staat
@@ -453,5 +454,67 @@ func (e *env) markDBManaged(t *testing.T, libraryID string) {
 	if _, err := e.pool.Exec(context.Background(),
 		`UPDATE libraries SET managed = 'db' WHERE id = $1`, libraryID); err != nil {
 		t.Fatalf("bibliotheek %s op db-beheer zetten: %v", libraryID, err)
+	}
+}
+
+// De overname van S2.5 (J.3 rij 6, PS-11A criterium 7). De drie-rollen-ronde
+// staat in authorize_matrix_test.go (regel 40); hier staat wat een overname
+// oplevert en wat ze niet mag aanraken.
+
+func TestAdoptLibraryTakesOverConfigLibraryKeepingIdentity(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	lib := e.libs[0]
+	rec := e.do(http.MethodPost, "/pleya/v1/libraries/"+lib.ID.String()+"/adopt", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("adopt gaf %d, verwacht 200: %s", rec.Code, rec.Body.String())
+	}
+	e.record("Library", http.MethodPost, "/pleya/v1/libraries/{library_id}/adopt", rec)
+
+	var got api.Library
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != lib.ID.String() || got.Title != lib.Title || got.Kind != lib.Kind {
+		t.Fatalf("adopt veranderde de identiteit: %+v tegenover %+v", got, lib)
+	}
+	if got.Managed == nil || *got.Managed != "db" {
+		t.Fatalf("adopt gaf managed %v, verwacht \"db\"", got.Managed)
+	}
+
+	// De overgenomen bibliotheek is nu wijzigbaar via PATCH, en dat was de
+	// reden dat een beheerder hem wilde overnemen.
+	patch := e.do(http.MethodPatch, "/pleya/v1/libraries/"+lib.ID.String(), map[string]any{"title": "Hernoemd"})
+	if patch.Code != http.StatusOK {
+		t.Fatalf("PATCH na adopt gaf %d, verwacht 200: %s", patch.Code, patch.Body.String())
+	}
+}
+
+func TestAdoptLibraryTwiceIsRejected(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	path := "/pleya/v1/libraries/" + e.libs[0].ID.String() + "/adopt"
+	if rec := e.do(http.MethodPost, path, nil); rec.Code != http.StatusOK {
+		t.Fatalf("eerste adopt gaf %d: %s", rec.Code, rec.Body.String())
+	}
+	rec := e.do(http.MethodPost, path, nil)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("tweede adopt gaf %d, verwacht 409: %s", rec.Code, rec.Body.String())
+	}
+	if code := errorCode(t, rec); code != "library.not_config_managed" {
+		t.Fatalf("tweede adopt gaf code %q, verwacht library.not_config_managed", code)
+	}
+	e.recordVariant("ErrorEnvelope", "not_config_managed", http.MethodPost, "/pleya/v1/libraries/{library_id}/adopt", rec)
+}
+
+func TestAdoptUnknownLibraryIsNotFound(t *testing.T) {
+	e := newEnv(t)
+	e.setup(e.putSetupCode())
+
+	rec := e.do(http.MethodPost, "/pleya/v1/libraries/"+id.New().String()+"/adopt", nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("adopt van een onbekend id gaf %d, verwacht 404: %s", rec.Code, rec.Body.String())
 	}
 }

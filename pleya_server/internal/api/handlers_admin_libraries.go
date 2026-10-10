@@ -293,6 +293,37 @@ func (s *Server) handleDeleteLibrary(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleAdoptLibrary neemt een bibliotheek uit PLEYA_SERVER_LIBRARIES over in
+// de database (S2.5, J.3 rij 6, PS-11A criterium 7). Zelfde id en slug; daarna
+// negeert de server de .env-regel voor die bibliotheek en meldt dat bij het
+// opstarten. Geen body, en niets aan het bestandssysteem.
+func (s *Server) handleAdoptLibrary(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	libraryID, ok := s.pathID(w, r, "library_id")
+	if !ok {
+		return
+	}
+
+	lib, err := s.opts.Catalog.AdoptLibrary(r.Context(), libraryID)
+	switch {
+	case errors.Is(err, catalog.ErrNotFound):
+		writeError(w, s.log, CodeNotFound, "not found", nil)
+		return
+	case errors.Is(err, catalog.ErrNotConfigManaged):
+		writeError(w, s.log, CodeLibraryNotConfigManaged, "library is not config-managed", nil)
+		return
+	case err != nil:
+		writeInternal(w, s.log, err)
+		return
+	}
+
+	s.auditEvent(r, auditAdoptLibrary, lib.ID.String(), audit.OutcomeOK,
+		map[string]any{"title": lib.Title, "slug": lib.Slug})
+	writeJSON(w, http.StatusOK, adminLibraryWire(lib))
+}
+
 // adminLibraryWire is Library met de velden die alleen klasse admin ziet
 // (J.3): de aanroeper heeft requireAdmin al gehaald, dus dit is de volledige
 // vorm en niet een keuze die de handler nog moet maken.

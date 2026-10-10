@@ -554,6 +554,7 @@ contract keurt ze af.
 | `library.slug_taken` | 409 | nee | `POST /libraries`: de titel vereenvoudigt tot een slug die al bestaat, van een andere aanvraag of van een bibliotheek uit `PLEYA_SERVER_LIBRARIES` (S2.2) |
 | `library.not_empty` | 409 | nee | `PATCH /libraries/{id}`: `kind` mag alleen wisselen als de bibliotheek geen enkel item draagt (S2.2) |
 | `library.config_managed` | 409 | nee | `PATCH` of `DELETE /libraries/{id}`: de bibliotheek komt uit `PLEYA_SERVER_LIBRARIES` en moet via die configuratie worden gewijzigd; de API mag haar catalogusdata niet losmaken of wissen |
+| `library.not_config_managed` | 409 | nee | `POST /libraries/{id}/adopt` op een bibliotheek die al van de database is; er is niets over te nemen en niets te herstellen (S2.5) |
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 | `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
@@ -1177,6 +1178,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 37 | `POST /jobs/{id}/cancel` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 | 38 | `POST /jobs/{id}/retry` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 | 39 | `GET /watch-history` | wat huisgenoten de laatste dagen hebben afgekeken | klasse `admin`, `404` voor de rest; `GET /watch-state` blijft de eigen lijst van iedere gebruiker (DEC-143) |
+| 40 | `POST /libraries/{id}/adopt` | direct id, en het stilleggen van de `.env`-regel voor een bibliotheek | klasse `admin`, `404` voor de rest; geen body, en de overname verandert uitsluitend `managed` (S2.5) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1817,6 +1819,14 @@ schrijft de uitkomst in `storage_locations`. Dat gebeurt via de bestaande jobwac
 of USB-mount hoort de aanvrager niet te laten wachten. Een tweede rechecktik terwijl de eerste nog
 loopt wordt gededupliceerd, dezelfde regel als bij een scanronde.
 
+### 17e.5 Een `.env`-bibliotheek overnemen
+
+`POST /libraries/{id}/adopt` zet `managed` van `config` naar `db` en verandert niets anders: id, slug,
+titel, roots, items en kijkstatus blijven staan, zodat een bestaande installatie zonder bewerking van
+de `.env` naar beheer in de browser kan. De regel in `PLEYA_SERVER_LIBRARIES` mag blijven staan;
+de server slaat hem daarna over bij het synchroniseren en meldt bij het opstarten welke bibliotheek
+dat betreft. Een bibliotheek die al `db` is geeft `library.not_config_managed`.
+
 ### 17f. Scans en jobs
 
 Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries/{id}/scan` hem aanmaakt, `running` wordt wanneer de job hem claimt en eindigt op `done`, `failed` of `cancelled`. Annuleren gaat via de job (`Job.scan_id` wijst terug): de scanner stopt binnen één walk-stap en laat de tellers staan. Een retry zet `attempts` op nul en, voor een scanjob, ook `probe_attempts` van die bibliotheek. Een bestand waarvan de probe faalde wacht `min(2^(pogingen-1), 24)` uur voordat een volgende ronde het opnieuw analyseert, tenzij het bestand zelf veranderde. `current_path` is afgekort tot de bestandsnaam met een ellipsis ervoor en is nooit het volledige pad.
@@ -1839,6 +1849,7 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `POST /pleya/v1/libraries` | `admin` | nee |
 | `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
 | `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/adopt` | `admin` | nee |
 | `GET /pleya/v1/storage/roots` | `admin` | nee |
 | `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
@@ -1877,15 +1888,16 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/audit` | `admin` | ja |
 | `GET /pleya/v1/watch-history` | `admin` | nee |
 
-Negenenveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Vijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
 17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), de drie daarna de
 bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /storage/roots/recheck`
 van S2.3 (samen J.3, venster 2, rijen 7 en 8), en de zes van S2.4: starten van een scan, de
-scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). De laatste
-is `GET /watch-history` (17b.7), buiten venster 2 toegevoegd door DEC-143.
+scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). De overname
+`POST /libraries/{id}/adopt` van S2.5 (hoofdstuk 17e.5) is de tiende en laatste wijziging van venster 2.
+De laatste in de tabel is `GET /watch-history` (17b.7), buiten venster 2 toegevoegd door DEC-143.
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.

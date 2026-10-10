@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.not_config_managed",
+    "message": "library is not config-managed",
+    "retryable": false
+  }
+}

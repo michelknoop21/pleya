@@ -771,6 +771,41 @@ func (s *Store) UpdateLibrary(ctx context.Context, libraryID id.ID, patch Librar
 	return lib, nil
 }
 
+// ErrNotConfigManaged is het antwoord van AdoptLibrary op een bibliotheek die
+// al van de database is.
+var ErrNotConfigManaged = errors.New("bibliotheek is niet config-beheerd")
+
+// AdoptLibrary neemt een config-beheerde bibliotheek over in de database
+// (S2.5, PS-11A criterium 7): managed gaat van 'config' naar 'db', en niets
+// anders verandert. Id, slug, titel, roots, items en kijkstatus blijven wat
+// ze waren; dat is het hele punt van een overname boven weggooien en opnieuw
+// aanmaken. Daarna slaat SyncLibraries de .env-regel over.
+//
+// Een tweede aanroep geeft ErrNotConfigManaged en raakt de rij niet.
+func (s *Store) AdoptLibrary(ctx context.Context, libraryID id.ID) (Library, error) {
+	var lib Library
+	err := s.pool.QueryRow(ctx, `
+		UPDATE libraries SET managed = 'db', updated_at = now()
+		WHERE id = $1 AND managed = 'config'
+		RETURNING id, slug, title, kind, managed, scan_interval_seconds, scan_on_start`, libraryID).
+		Scan(&lib.ID, &lib.Slug, &lib.Title, &lib.Kind, &lib.Managed, &lib.ScanIntervalSeconds, &lib.ScanOnStart)
+	if errors.Is(err, pgx.ErrNoRows) {
+		var exists bool
+		if err := s.pool.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM libraries WHERE id = $1)`, libraryID).Scan(&exists); err != nil {
+			return Library{}, err
+		}
+		if !exists {
+			return Library{}, ErrNotFound
+		}
+		return Library{}, ErrNotConfigManaged
+	}
+	if err != nil {
+		return Library{}, fmt.Errorf("bibliotheek overnemen: %w", err)
+	}
+	return lib, nil
+}
+
 // LibraryIsEmpty zegt of een bibliotheek nog enig media_items-item draagt, op
 // elk niveau. Dit is de voorwaarde voor S2.2's kind-wissel en geen telling
 // voor de UI; die blijft item_count.

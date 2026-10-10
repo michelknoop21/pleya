@@ -125,6 +125,7 @@ ernaast.
 | `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
 | `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd; voor een admin drie velden erbij (S2.2) |
 | `POST /pleya/v1/libraries`, `PATCH`/`DELETE /libraries/{id}` | admin |
+| `POST /pleya/v1/libraries/{id}/adopt` | admin; neemt een bibliotheek uit `PLEYA_SERVER_LIBRARIES` over in de database, zelfde id en slug (S2.5) |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
@@ -159,7 +160,7 @@ Zijn bereik (`read`, `maintenance`, `admin`) kan nooit boven de rol van de eigen
 adminklasse ook wanneer de rol hem wel haalt.
 
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
-afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (S2.5 en S2.6). Die geven een 404, en
+afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer die nog niet gebouwd is. Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
 `watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
 capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
