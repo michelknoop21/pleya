@@ -84,6 +84,8 @@
    * dezelfde getallen lopen vroeg of laat uit elkaar en dan springt de pagina.
    */
   --rail-cell-w: 168px; /* HubRail: postercel vanaf 1200 */
+  --card-caption-gap: 7px; /* MediaCard: beeld tot titel, web.css .card .cap */
+  --card-caption-line-gap: 2px; /* MediaCard: titel tot onderregel, web.css .card .s */
   --grid-cell-min: 180px; /* MediaGrid: minimale kolom vanaf 1600 */
   --hero-min-h: 520px; /* Hero: minimale hoogte vanaf 1600 */
   --page-inset: var(--inset); /* oude naam, tot elke route hem niet meer noemt */
@@ -119,9 +121,15 @@
   --text-small-line: 16px;
   --text-label-size: 11px;
   --text-label-line: 16px;
-  --text-card-title-size: 13px; /* MediaCardGridLayout.titleFontSize */
-  --text-card-sub-size: 11px; /* MediaCardGridLayout.subtitleFontSize */
-  --text-card-line: 1.1; /* MediaCardGridLayout.lineHeightFactor */
+  /*
+   * Kaartbijschrift volgens northstar web.css (.card .t en .s) en specimen v3:
+   * titel 14, onderregel 12, onder 900 een stap kleiner (media query onderaan).
+   * De app tekent 13/11 op 1,1; op een webraster las dat te krap. Het skelet
+   * leest dezelfde tokens, dus het reserveert precies deze hoogte.
+   */
+  --text-card-title-size: 14px;
+  --text-card-sub-size: 12px;
+  --text-card-line: 1.2;
 
   /* --- Thema: dark. De standaard op web (zie de kop van dit bestand). --- */
   /* Native onderdelen (select-lijst, scrollbalk) volgen het thema, niet het OS. */
@@ -205,6 +213,16 @@
    */
   --blue: #7aa7ff;
   --amber-graphic: var(--amber);
+
+  /*
+   * Inkt en schaduw óp artwork: badges, het vinkje, de voortgangsbaan en de
+   * actieknoppen op een kaart. Artwork draait niet mee met het thema, dus
+   * deze twee zijn in dark, OLED en light bewust gelijk (wit en zwart, zoals
+   * .seen, .prog en .over in northstar web.css). --ink zou in light een
+   * donkere schijf op een donkere poster geven.
+   */
+  --art-ink: #ffffff;
+  --art-shade: #000000;
 }
 
 /*
@@ -292,7 +310,8 @@
 
 /*
  * De vier breekpunten uit ScreenBreakpoints (600 / 900 / 1200 / 1600). Wat hier
- * verschuift is alleen paginamaat; kleur en typografie doen dat niet.
+ * verschuift is paginamaat, plus het kaartbijschrift onder 900; kleur
+ * verschuift niet.
  */
 @media (max-width: 1599px) {
   :root {
@@ -319,6 +338,8 @@
     --rail-cell-w: 132px;
     --grid-cell-min: 132px;
     --hero-min-h: 46vw;
+    --text-card-title-size: 13px;
+    --text-card-sub-size: 11px;
   }
 }
 @media (max-width: 599px) {

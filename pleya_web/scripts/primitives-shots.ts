@@ -73,6 +73,34 @@ async function focusButton(name: string): Promise<void> {
   await shot(page.locator('#panelen .panel').first(), name);
 }
 
+/**
+ * Kaarten: hover en toetsenbordfocus zijn echte staten, dus de muis gaat over
+ * de tweede kaart terwijl de derde de focus heeft, zoals specimen v3 ze naast
+ * elkaar toont. Eerst wachten tot het gegenereerde artwork er staat.
+ */
+async function cardStates(name: string): Promise<void> {
+  // Sectiekop net onder de indexstrook (64 hoog onder 900), zodat de hover-
+  // kaart in beeld staat en de strook niet over de opname valt.
+  await page.evaluate(() => {
+    const top = document.getElementById('kaarten')!.getBoundingClientRect().top + scrollY;
+    scrollTo(0, top - 72);
+  });
+  await page.waitForFunction(() => document.querySelectorAll('#kaarten img').length >= 9);
+  await page.keyboard.press('Shift');
+  await page.locator('#kaarten [data-demo="focus"] a').focus();
+  await page.locator('#kaarten [data-demo="hover"] .card').hover();
+  await page.waitForTimeout(400); // lift en overlay lopen over --dur-normal
+  // Een sectie hoger dan het venster: knippen uit de hele pagina in plaats van
+  // een elementopname, die zou scrollen en de muis van de kaart halen.
+  const box = await page.evaluate(() => {
+    const r = document.getElementById('kaarten')!.getBoundingClientRect();
+    return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height };
+  });
+  const path = `${OUT}/${name}.png`;
+  await page.screenshot({ path, fullPage: true, clip: box });
+  console.log(path);
+}
+
 if (!ONLY || ONLY === 'dark') {
 for (const width of WIDTHS) {
   await open(GALLERY, width);
@@ -81,6 +109,10 @@ for (const width of WIDTHS) {
     if (id === 'velden') {
       await page.locator('#veld-hint').focus();
       await page.waitForTimeout(300); // randovergang van --dur-fast
+    }
+    if (id === 'kaarten') {
+      await cardStates(`${id}@${width}`);
+      continue;
     }
     await shot(page.locator(`#${id}`), `${id}@${width}`);
   }

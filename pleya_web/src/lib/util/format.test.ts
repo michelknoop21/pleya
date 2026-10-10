@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { artworkAspect, formatDate, formatDuration, itemSubtitle } from './format';
+import {
+  artworkAspect,
+  formatDate,
+  formatDuration,
+  isWatched,
+  itemProgress,
+  itemSubtitle
+} from './format';
 import type { Item } from '../api/types';
 
 function item(patch: Partial<Item>): Item {
@@ -75,5 +82,40 @@ describe('verhouding van het beeld', () => {
     expect(artworkAspect('movie')).toBe('poster');
     expect(artworkAspect('show')).toBe('poster');
     expect(artworkAspect('season')).toBe('poster');
+  });
+});
+
+function state(position_ms: number, watched = false): Item['user_state'] {
+  return { position_ms, watched, play_count: 0, updated_at: '2026-01-01T00:00:00Z' };
+}
+
+describe('voortgang', () => {
+  it('geeft fractie en resterende tijd uit positie en duur', () => {
+    const p = itemProgress(item({ duration_ms: 10_000_000, user_state: state(2_500_000) }));
+    expect(p).toEqual({ fraction: 0.25, remainingMs: 7_500_000 });
+  });
+
+  it('heeft geen voortgang zonder positie, zonder duur of als het item gezien is', () => {
+    expect(itemProgress(item({ duration_ms: 10_000 }))).toBeNull();
+    expect(itemProgress(item({ duration_ms: 10_000, user_state: state(0) }))).toBeNull();
+    expect(itemProgress(item({ user_state: state(5_000) }))).toBeNull();
+    expect(itemProgress(item({ duration_ms: 10_000, user_state: state(5_000, true) }))).toBeNull();
+  });
+
+  it('klemt een positie voorbij het einde op de duur', () => {
+    expect(itemProgress(item({ duration_ms: 1_000, user_state: state(5_000) }))?.fraction).toBe(1);
+  });
+});
+
+describe('gezien', () => {
+  it('leest user_state bij een film', () => {
+    expect(isWatched(item({ user_state: state(0, true) }))).toBe(true);
+    expect(isWatched(item({ user_state: state(100) }))).toBe(false);
+  });
+
+  it('noemt een serie gezien als elke aflevering gezien is, en een lege serie niet', () => {
+    expect(isWatched(item({ kind: 'show', episode_count: 8, watched_episode_count: 8 }))).toBe(true);
+    expect(isWatched(item({ kind: 'show', episode_count: 8, watched_episode_count: 7 }))).toBe(false);
+    expect(isWatched(item({ kind: 'show', episode_count: 0, watched_episode_count: 0 }))).toBe(false);
   });
 });

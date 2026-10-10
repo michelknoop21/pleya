@@ -66,3 +66,39 @@ export function itemSubtitle(item: Item): string | null {
 export function artworkAspect(kind: Item['kind']): 'poster' | 'wide' {
   return kind === 'episode' ? 'wide' : 'poster';
 }
+
+/**
+ * Hoe ver iemand in een item zit, voor de voortgangsbalk op de kaart en
+ * straks op de detailpagina. Eén regel op één plek, zodat raster, rail en
+ * detail hetzelfde zeggen.
+ *
+ * Geen voortgang als het item gezien is (dan wint het vinkje), als de positie
+ * nul is, of als de duur ontbreekt: een balk zonder noemer is een gok.
+ */
+export function itemProgress(
+  item: Item
+): { fraction: number; remainingMs: number } | null {
+  const state = item.user_state;
+  const duration = item.duration_ms;
+  if (!state || state.watched) return null;
+  if (typeof duration !== 'number' || duration <= 0) return null;
+  const position = state.position_ms;
+  if (typeof position !== 'number' || position <= 0) return null;
+  const clamped = Math.min(position, duration);
+  return { fraction: clamped / duration, remainingMs: duration - clamped };
+}
+
+/**
+ * Gezien. Een film of aflevering draagt het in `user_state`; een serie of
+ * seizoen is gezien als elke aflevering het is. Nul afleveringen is niet
+ * gezien: een lege serie zou anders een vinkje krijgen.
+ */
+export function isWatched(item: Item): boolean {
+  if (item.user_state?.watched) return true;
+  const total = item.episode_count;
+  return (
+    typeof total === 'number' &&
+    total > 0 &&
+    item.watched_episode_count === total
+  );
+}

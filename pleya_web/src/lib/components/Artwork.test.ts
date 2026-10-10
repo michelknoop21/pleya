@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
+import { createRawSnippet } from 'svelte';
 
 import Artwork from './Artwork.svelte';
 import { ApiError } from '../api/errors';
@@ -128,5 +129,15 @@ describe('Artwork', () => {
 
     await screen.findByAltText('Poster');
     expect(artworkBlob).toHaveBeenCalledTimes(1);
+  });
+  it('zet een meegegeven terugval in de plaats van het pictogram', async () => {
+    artworkBlob.mockRejectedValue(new Error('404'));
+    const fallback = createRawSnippet(() => ({ render: () => '<div class="own">Eigen</div>' }));
+    const { container } = render(Artwork, {
+      props: { artworkId: 'a1', alt: 'Poster', eager: true, fallback }
+    });
+
+    await waitFor(() => expect(container.querySelector('.own')).not.toBeNull());
+    expect(container.querySelector('.artwork__fallback')).toBeNull();
   });
 });

@@ -97,7 +97,7 @@
   .skc {
     display: flex;
     flex-direction: column;
-    gap: var(--space-quarter);
+    gap: var(--card-caption-gap);
     padding: var(--space-quarter) 0;
   }
 
@@ -109,10 +109,11 @@
     aspect-ratio: var(--aspect-episode);
   }
 
-  /* Titel en metaregel staan in MediaCard zonder tussenruimte onder elkaar. */
+  /* Titel en metaregel staan in MediaCard met dezelfde kleine tussenruimte. */
   .skc__caption {
     display: flex;
     flex-direction: column;
+    gap: var(--card-caption-line-gap);
   }
 
   .skc__title {
