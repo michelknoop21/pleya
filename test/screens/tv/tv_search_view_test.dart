@@ -69,6 +69,7 @@ void main() {
     VoidCallback? onExitLeft,
     bool requestsIncomplete = false,
     VoidCallback? onRetryRequests,
+    double fieldHeight = 60,
   }) async {
     key = GlobalKey<TvSearchViewState>();
     await tester.pumpWidget(
@@ -78,7 +79,7 @@ void main() {
           home: Scaffold(
             body: TvSearchView(
               key: key,
-              searchField: const SizedBox(height: 60, key: Key('field')),
+              searchField: SizedBox(height: fieldHeight, key: const Key('field')),
               sections: sections,
               hasQuery: hasQuery,
               isSearching: isSearching,
@@ -332,6 +333,49 @@ void main() {
       expect(firstCard, findsOneWidget);
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
       await tester.pumpAndSettle();
+    });
+  });
+
+  // REQ-SEARCH-SETTLE: the focus ring reaches a card in the second band by a
+  // 200 ms scroll (`FocusableWrapper._scrollIntoView`). Verify read the card's
+  // rect right after `focused` turned true and found it 59 px under the
+  // screen, mid-flight; the settled tree has it inside. Both halves are pinned
+  // so the next red `insideViewport` can be told apart: a scroll that never
+  // arrives fails the second expectation, a measurement taken too early only
+  // the first.
+  group('REQ-SEARCH-SETTLE, scrolling to the first card of the second band', () {
+    testWidgets('the card is below the screen while the scroll runs and inside once it has settled', (tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // 339 is where the results viewport starts on the Apple TV search page:
+      // pill, field and their gaps. Two bands of two cards, as the fixture has.
+      await pumpView(
+        tester,
+        sections: [_band('movies', 'Films', 2), _band('requests', 'Via Aanvragen', 2)],
+        fieldHeight: 339,
+      );
+
+      final cards = tester.widgetList<TvCatalogCard>(find.byType(TvCatalogCard)).toList();
+      final secondBand = find.byWidget(cards[2]);
+      expect(key.currentState!.focusFirstResult(), isTrue);
+      await tester.pumpAndSettle();
+
+      // Before the move the second band's card sits below the fold, which is
+      // what makes the scroll necessary at all.
+      expect(tester.getRect(secondBand).bottom, greaterThan(1080));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(cards[2].focusNode!.hasFocus, isTrue);
+      expect(tester.getRect(secondBand).bottom, greaterThan(1080), reason: 'mid-flight, 60 ms into the 200 ms scroll');
+
+      await tester.pumpAndSettle();
+      final settled = tester.getRect(secondBand);
+      expect(settled.top, greaterThanOrEqualTo(0));
+      expect(settled.bottom, lessThanOrEqualTo(1080), reason: 'the scroll brought the focused card on screen');
     });
   });
 
