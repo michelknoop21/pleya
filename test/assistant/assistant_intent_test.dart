@@ -246,6 +246,23 @@ void main() {
       expect(_i('Zet het op mijn afspeellijst toegevoegd').addedToLibraries, isFalse);
     });
 
+    test('review: a kind word in another role or half a kind never narrows', () {
+      for (final q in [
+        'zoek een kerstfilm of serie',
+        'zoek een film of een kinderserie',
+        'een docuserie of film over haaien',
+        'een serie als Dark maar dan een film',
+      ]) {
+        expect(_i(q).kind.known, isFalse, reason: q);
+      }
+      // A reference names something else; the other kind is what is asked.
+      expect(_i('zoek iets met de acteur uit de serie Friends').kind.known, isFalse, reason: 'only a reference');
+      expect(_i('Welke acteur uit die serie speelt in films?').kind.value, MediaKind.movie);
+      expect(_i('films van de regisseur van die serie').kind.value, MediaKind.movie);
+      expect(_i('Zoek een kerstfilm').kind.value, MediaKind.movie);
+      expect(_i('Zoek een docuserie').kind.value, MediaKind.show);
+    });
+
     test('a stated kind is enforced on both catalog tools; no kind word leaves the model free', () {
       final films = _i('Zoek een film met Tom Hanks');
       expect(films.constrain('search_catalog', {'kind': 'show'}).args['kind'], 'movie');

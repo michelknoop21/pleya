@@ -280,6 +280,9 @@ Future<AssistantToolOutcome> _recommendTogether(
     'participants': [
       for (final u in selected.values) {'user_id': u.id, 'name': clipText(u.name, 64)},
     ],
+    // Asked for series: the strict "nobody watched it" proof does not exist for
+    // them, so an empty list is the tool's limit and not a lack of titles.
+    if (filters.kind == MediaKind.show) 'series_unsupported': true,
     'coverage': {
       'candidates_checked': titleCount,
       'copies_read': candidates.length,

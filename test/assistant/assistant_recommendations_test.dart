@@ -1152,6 +1152,7 @@ void main() {
       expect(result.data['results'], isEmpty);
       expect((result.data['coverage'] as Map)['excluded_unknown'], 1);
       expect((result.data['coverage'] as Map)['series_unseen_supported'], isFalse);
+      expect(result.data['series_unsupported'], isTrue, reason: 'an empty series list is the tool\'s limit, said so');
     }
   });
   test('fix I2 exact-only hidden top library blocks companion reads and shown authority', () async {
