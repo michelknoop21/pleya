@@ -34,6 +34,8 @@
     error?: string;
     disabled?: boolean;
     required?: boolean;
+    /** Kolommen in de tegelvorm vanaf 900 px; eronder altijd één. */
+    columns?: number;
     /** Icoon per optie; alleen getekend in de tegelvorm. */
     icon?: Snippet<[ChoiceOption]>;
     onchange?: (value: string) => void;
@@ -45,6 +47,7 @@
     value = $bindable(''),
     name,
     layout = 'list',
+    columns = 3,
     hint,
     error,
     disabled = false,
@@ -65,6 +68,7 @@
 <fieldset
   class="cho"
   class:cho--grid={layout === 'grid'}
+  style:--cho-cols={layout === 'grid' ? columns : undefined}
   class:cho--err={Boolean(error)}
   role="radiogroup"
   aria-describedby={describedby}
@@ -140,7 +144,7 @@
 
   .cho--grid .cho__options {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(var(--cho-cols, 3), minmax(0, 1fr));
     gap: 10px;
   }
 
@@ -162,6 +166,22 @@
     align-items: flex-start;
     gap: 10px;
     padding: 16px;
+  }
+
+  /*
+   * Onder 900 zakt de tegelvorm naar één kolom en wordt elke tegel weer een rij
+   * met het icoon links (42-setup-bibliotheek, `.kinds` op smal).
+   */
+  @media (max-width: 899px) {
+    .cho--grid .cho__options {
+      grid-template-columns: 1fr;
+    }
+
+    .cho--grid .cho__card {
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+    }
   }
 
   .cho__card--on {
@@ -207,8 +227,8 @@
 
   .cho__icon {
     display: inline-flex;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     color: var(--ink);
   }
 

@@ -61,6 +61,15 @@ describe('Choice', () => {
     expect(group).toHaveAccessibleDescription('Pick a kind Fixed later');
   });
 
+  it('geeft de tegelvorm drie kolommen, of het gevraagde aantal', () => {
+    const { unmount } = render(Choice, { props: { legend: 'Kind', options, layout: 'grid' } });
+    expect(screen.getByRole('radiogroup').style.getPropertyValue('--cho-cols')).toBe('3');
+    unmount();
+
+    render(Choice, { props: { legend: 'Kind', options, layout: 'grid', columns: 2 } });
+    expect(screen.getByRole('radiogroup').style.getPropertyValue('--cho-cols')).toBe('2');
+  });
+
   it('tekent in de tegelvorm een icoon per optie, verborgen voor een schermlezer', () => {
     const icon = createRawSnippet((o: () => ChoiceOption) => ({
       render: () => `<svg data-testid="icon-${o().value}"></svg>`
