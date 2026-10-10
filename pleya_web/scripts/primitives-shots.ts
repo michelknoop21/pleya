@@ -13,13 +13,16 @@
 import { chromium, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
+import { SECTIONS as GALLERY_SECTIONS } from '../src/routes/dev/primitives/sections';
+
 const BASE = process.env['PLEYA_DEV_URL'] ?? 'http://localhost:5173';
 const OUT = process.argv[2] ?? '../docs/qa/s7-primitives';
 const GALLERY = `${BASE}/dev/primitives`;
 
 const WIDTHS = [393, 1024, 1600];
 const SKELETON_WIDTHS = [393, 768, 1024, 1280, 1600];
-const SECTIONS = ['velden', 'panelen', 'pillen', 'meldingen', 'chips', 'tabel', 'stappen', 'skelet'];
+// Elke sectie uit de index, behalve de dialoog: die opent hieronder apart.
+const SECTIONS = GALLERY_SECTIONS.map((s) => s.id).filter((id) => id !== 'dialoog');
 
 mkdirSync(OUT, { recursive: true });
 
@@ -96,7 +99,7 @@ for (const width of [393, 1600]) {
 }
 // Dezelfde secties in OLED en light, om contrast en scheiding per thema te zien.
 // Dark staat hierboven al; die opnamen houden hun naam zonder themasuffix.
-const THEMED = ['velden', 'panelen', 'meldingen', 'pillen', 'chips', 'tabel'];
+const THEMED = ['overzicht', 'opslagmeter', 'velden', 'panelen', 'meldingen', 'pillen', 'chips', 'tabel'];
 for (const theme of ONLY ? [ONLY] : ['oled', 'light']) {
   for (const width of [393, 1600]) {
     await open(GALLERY, width, theme);

@@ -63,7 +63,7 @@
     </Panel>
   </div>
 
-  <div class="gs__grid">
+  <div class="gs__grid gs__grid--stretch">
     <StatTile label="Titels" value="1.284" sub="+12 deze week">
       {#snippet spark()}
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">

@@ -4,6 +4,9 @@
   bestaat alleen in ontwikkeling (+page.ts geeft daarbuiten een 404), en
   daarom zijn de galerijlabels gewone Nederlandse tekst en geen t()-sleutels.
 
+  Een index links (sections.ts) en bovenaan het Overzicht: specimen v2
+  nagebouwd met de echte componenten. Daaronder elke primitief per staat.
+
   `?skeleton=<variant>` toont één SkeletonPage over de hele breedte, zonder
   galerij eromheen, zodat hij naast mockup 15 gelegd kan worden.
 -->
@@ -16,6 +19,9 @@
   import DisplaySection from './DisplaySection.svelte';
   import StructureSection from './StructureSection.svelte';
   import SkeletonSection from './SkeletonSection.svelte';
+  import StorageSection from './StorageSection.svelte';
+  import OverviewSection from './OverviewSection.svelte';
+  import GalleryIndex from './GalleryIndex.svelte';
 
   const VARIANTS = ['home', 'grid', 'detail', 'compact'] as const;
   type Variant = (typeof VARIANTS)[number];
@@ -36,24 +42,52 @@
 {:else if only}
   <SkeletonPage variant={only} />
 {:else}
-  <header class="gal__head">
-    <h1 class="t-headline gal__title">Primitieven</h1>
-    <ThemePicker />
-  </header>
-  <FormSection />
-  <DisplaySection />
-  <StructureSection />
-  <SkeletonSection />
+  <div class="gal">
+    <GalleryIndex />
+    <div class="gal__body">
+      <header class="gal__head">
+        <h1 class="gal__title">Primitieven</h1>
+        <ThemePicker />
+      </header>
+      <OverviewSection />
+      <FormSection />
+      <DisplaySection />
+      <StorageSection />
+      <StructureSection />
+      <SkeletonSection />
+    </div>
+  </div>
 {/if}
 
 <style>
+  /* Specimen v2: zijkolom van 220 met een haarlijn, de inhoud ernaast. */
+  .gal {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+
+  .gal__body {
+    min-width: 0;
+    max-width: 1376px;
+    padding: 0 var(--inset) var(--space-4);
+  }
+
   .gal__head {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space);
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-2) var(--inset);
+    padding: 28px 0 var(--space);
+  }
+
+  /* Onder 900 wordt de index een strook bovenaan; die is 62 hoog. */
+  @media (max-width: 899px) {
+    .gal {
+      grid-template-columns: minmax(0, 1fr);
+      --gal-sticky: 64px;
+    }
   }
 
   .gal__library {
@@ -62,5 +96,8 @@
 
   .gal__title {
     margin: 0;
+    font-size: var(--text-headline-size);
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 </style>
