@@ -31,7 +31,23 @@ const ART: Record<string, DemoArt> = {
   fallout: { title: 'Fallout', top: '#6b5a3c', bottom: '#121410', sun: '#e8d29a', sunRadius: 0.18, credit: 'S1 · E7' },
   opp: { title: 'Oppenheimer', top: '#e2541c', bottom: '#2a0b05', sun: '#ffc070', sunRadius: 0.16, credit: 'Christopher Nolan' },
   civil: { title: 'Civil War', top: '#3a4630', bottom: '#0d0f0b', sun: '#b9f23a', sunRadius: 0, credit: 'Alex Garland' },
-  rotk: { title: 'The Return of the King', top: '#1b2440', bottom: '#120d16', sun: '#f2c26b', sunRadius: 0.14, credit: 'Peter Jackson' }
+  rotk: { title: 'The Return of the King', top: '#1b2440', bottom: '#120d16', sun: '#f2c26b', sunRadius: 0.14, credit: 'Peter Jackson' },
+  // De rails van specimen v3 (RailSection), met dezelfde kleuren.
+  bear: { title: 'The Bear', top: '#5b6670', bottom: '#16191c', sun: '#f2e3c4', sunRadius: 0, credit: 'FX' },
+  slow: { title: 'Slow Horses', top: '#d9d4c8', bottom: '#2c2a26', sun: '#c8241a', sunRadius: 0, credit: 'Apple TV+' },
+  poor: { title: 'Poor Things', top: '#9fb3c4', bottom: '#2c3a46', sun: '#f4ece0', sunRadius: 0.12, credit: 'Yorgos Lanthimos' },
+  andor: { title: 'Andor', top: '#7a6a52', bottom: '#1b1712', sun: '#e9d3a2', sunRadius: 0, credit: 'Lucasfilm' },
+  hold: { title: 'The Holdovers', top: '#c9b79a', bottom: '#3a2b1f', sun: '#7a1d14', sunRadius: 0, credit: 'Alexander Payne' },
+  shogun: { title: 'Shogun', top: '#2b3b36', bottom: '#0c1210', sun: '#e7c86b', sunRadius: 0.2, credit: 'FX' },
+  arcane: { title: 'Arcane', top: '#2e3f7a', bottom: '#170b26', sun: '#c04fd9', sunRadius: 0.1, credit: 'Fortiche' },
+  tlou: { title: 'The Last of Us', top: '#4b5a3a', bottom: '#121510', sun: '#cfd9a6', sunRadius: 0, credit: 'HBO' },
+  penguin: { title: 'The Penguin', top: '#3b3530', bottom: '#0f0d0b', sun: '#d02a2a', sunRadius: 0, credit: 'HBO' },
+  conclave: { title: 'Conclave', top: '#a3221c', bottom: '#1c0a08', sun: '#f2e2d0', sunRadius: 0, credit: 'Edward Berger' },
+  nosf: { title: 'Nosferatu', top: '#7d8590', bottom: '#14161a', sun: '#e8ecf2', sunRadius: 0.08, credit: 'Robert Eggers' },
+  glad: { title: 'Gladiator II', top: '#8a6a44', bottom: '#1d140c', sun: '#f0d08a', sunRadius: 0, credit: 'Ridley Scott' },
+  furiosa: { title: 'Furiosa', top: '#e3902a', bottom: '#3a1608', sun: '#ffe08a', sunRadius: 0.22, credit: 'George Miller' },
+  wicked: { title: 'Wicked', top: '#3f8a4c', bottom: '#e07ab8', sun: '#f9e6f0', sunRadius: 0, credit: 'Jon M. Chu' },
+  subst: { title: 'The Substance', top: '#e9e9e9', bottom: '#9a9a9a', sun: '#d8d8d8', sunRadius: 0, credit: 'Coralie Fargeat' }
 };
 
 const POSTER = { w: 400, h: 600 };

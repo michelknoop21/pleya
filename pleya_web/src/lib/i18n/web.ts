@@ -45,6 +45,10 @@ export const web = {
   'hero.kind.season': 'Season',
   'hero.kind.episode': 'Episode',
 
+  'rail.viewAll': 'View all',
+  'rail.scrollLeft': 'Scroll left',
+  'rail.scrollRight': 'Scroll right',
+
   'libraries.title': 'Libraries',
   'libraries.emptyTitle': 'No libraries configured',
   'libraries.emptyBody': 'Add a library to the server configuration and restart it.',

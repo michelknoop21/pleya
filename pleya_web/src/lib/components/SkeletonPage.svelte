@@ -87,32 +87,28 @@
     padding-top: var(--space-2);
   }
 
-  /* De rail volgt HubRail: kop van één raakvlak hoog, spoor met dezelfde
-     inzet, tussenruimte en celbreedte. */
-  .skp__rail {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-half);
-  }
-
+  /* De rail volgt HubRail maat voor maat: kop van één raakvlak hoog met 4
+     eronder, spoor tot de rand met 6 boven en 4 onder, inzet --inset,
+     tussenruimte --rail-gap en een cel van --poster-w. Verandert er daar iets,
+     dan hier ook, anders verspringt Home zodra de rij binnenkomt. */
   .skp__rail-head {
     display: flex;
     align-items: center;
     min-height: var(--touch-target);
-    padding-inline: var(--page-inset, var(--space));
+    margin-bottom: 4px;
+    padding-inline: var(--inset);
   }
 
   .skp__track {
     display: flex;
-    gap: var(--space);
-    padding-inline: var(--page-inset, var(--space));
-    padding-block: var(--space-quarter);
+    gap: var(--rail-gap);
+    padding: 6px var(--inset) 4px;
     overflow: hidden;
   }
 
   .skp__cell {
-    flex: 0 0 auto;
-    width: var(--rail-cell-w);
+    flex: 0 0 var(--poster-w);
+    width: var(--poster-w);
   }
 
   /* Het raster volgt MediaGrid. */
