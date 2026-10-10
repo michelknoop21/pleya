@@ -69,7 +69,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | A-14 | P1 | Bestaande app | iCloud-voorkeurensync | Bewijs afronden |
 | A-15 | P1 | Bestaande app | Aanbevelingen, historie en Tautulli | Bewijs afronden |
 | A-16 | P1 | Bestaande app | Activiteit: ACT1 | Besluit nodig |
-| A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Detailkop, rasterspatiëring en keuzedialoog gemerged (PR #224, 10 okt). Open: iPad landscape, iPhone en desktop zonder bewijs; hero-groepen onbewezen omdat geen fixture ze levert zonder DEC-097 te schenden. Geen bewijs van volledige afronding |
+| A-17 | P1 | Bestaande app | Desktop/iPad unified afronding en afzonderlijke platformdekking | Detailkop en rasterspatiëring gemerged (PR #224, 10 okt; de keuzedialoog F-TV1 valt onder A-11). Open: iPad landscape, iPhone en desktop zonder bewijs; hero-groepen onbewezen omdat geen fixture ze levert zonder DEC-097 te schenden. Geen bewijs van volledige afronding |
 | A-18 | P0 | Bestaande app | Eindacceptatie en releasebundel | iOS-releasecorrectie in uitvoering (8 okt): build 344 miste Big P-rolloutdefine; overige eindacceptatie open |
 | A-19 | P1 | Requests 2.0 | Functionele audit en productspec van de volledige aanvraagflow | [Broninventaris/spec](requests-2.0-spec.md) inhoudelijk gereviewd incl. countscope-fixreview; geen runtimeacceptatie |
 | A-20 | P1 | Requests 2.0 | Northstar/mockups voor alle aanvraagvensters, rollen en toestanden | [Northstar-set van de UI-ontwerpronde](assets/requests-2.0/index.html):72 staten/170 beelden; Michel akkoord 8 oktober inclusief zeven keuzes, Impeccable polish en onafhankelijke review afgerond; ontwerpacceptatie; A-21 in uitvoering, nog niet geaccepteerd |
