@@ -274,9 +274,16 @@
       max-width: none;
       text-align: center;
     }
+    /*
+     * Meeschalen tussen 22 en 32, zodat een woord als OPPENHEIMER op 360 nog
+     * op één regel past; break-word blijft de vangrail voor langere woorden.
+     * De spatiëring staat ook ná de laatste letter, dus een gecentreerde
+     * titel zou 0,2em naar links hangen; de inzet links compenseert dat.
+     */
     .hero__title {
-      font-size: 32px;
+      font-size: clamp(22px, 7vw, 32px);
       letter-spacing: 0.2em;
+      padding-inline-start: 0.2em;
     }
     .hero__meta {
       justify-content: center;

@@ -134,4 +134,13 @@ describe('Hero', () => {
     expect(style).toContain('var(--on-artwork) calc(var(--on-artwork-ink) * 100%)');
     expect(style.match(/color: var\(--hero-ink\)/g)).toHaveLength(2);
   });
+
+  it('schaalt de titel onder 900 mee en compenseert de spatiëring', () => {
+    const source = readFileSync(resolve(import.meta.dirname, 'Hero.svelte'), 'utf8');
+    const narrow = source.slice(source.indexOf('@media (max-width: 899px)'));
+    expect(narrow).toContain('font-size: clamp(22px, 7vw, 32px)');
+    expect(narrow).toContain('padding-inline-start: 0.2em');
+    // De vangrail tegen overlopen blijft op de basisregel staan.
+    expect(source).toContain('overflow-wrap: break-word');
+  });
 });
