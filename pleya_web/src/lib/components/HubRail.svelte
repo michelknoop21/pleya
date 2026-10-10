@@ -31,13 +31,21 @@
     /** Tekst van de doorkliklink; standaard "View all". */
     viewAllLabel?: string;
     /**
+     * De vorm van de hele rij. Blijft hij leeg, dan volgt hij de inhoud: alleen
+     * afleveringen is wide, de rest poster. Een aanroeper die afleveringen als
+     * serieposter toont, zet hier `poster`, anders krijgt zijn kaart een
+     * brede cel.
+     */
+    shape?: 'poster' | 'wide';
+    /**
      * Tekent één cel. Zo geeft een aanroeper zijn eigen MediaCard-props mee
      * (bijvoorbeeld `isNew`); zonder snippet tekent de rail de standaardkaart.
+     * Het derde argument is de vorm van de rij, voor de `shape` van de kaart.
      */
-    card?: Snippet<[Item, number]>;
+    card?: Snippet<[Item, number, 'poster' | 'wide']>;
   }
 
-  let { title, items, href, viewAllLabel, card }: Props = $props();
+  let { title, items, href, viewAllLabel, shape: shapeOverride, card }: Props = $props();
 
   const uid = $props.id();
   const headingId = `${uid}-title`;
@@ -45,8 +53,9 @@
 
   // Dezelfde regel als in MediaGrid: één vorm voor de hele rij, anders staan er
   // twee hoogtes naast elkaar.
-  const shape = $derived(
-    items.length > 0 && items.every((item) => item.kind === 'episode') ? 'wide' : 'poster'
+  const shape = $derived<'poster' | 'wide'>(
+    shapeOverride ??
+      (items.length > 0 && items.every((item) => item.kind === 'episode') ? 'wide' : 'poster')
   );
 
   let track = $state<HTMLUListElement | null>(null);
@@ -113,7 +122,7 @@
         {#each items as item, index (item.id)}
           <li class="rail__cell">
             {#if card}
-              {@render card(item, index)}
+              {@render card(item, index, shape)}
             {:else}
               <MediaCard {item} {shape} eager={index < 8} />
             {/if}
