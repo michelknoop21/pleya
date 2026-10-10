@@ -128,29 +128,33 @@ class _BigPInputBarState extends State<BigPInputBar> {
             ),
           ),
           const SizedBox(width: 6),
-          GestureDetector(
-            onTap: _send,
-            behavior: HitTestBehavior.opaque,
-            child: Semantics(
-              button: true,
-              label: t.assistant.idle.ask,
-              // A 44 pt touch area around the 36 pt button.
-              child: SizedBox(
-                width: kBigPMinTouch,
-                height: kBigPMinTouch,
-                child: Center(
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: ready ? Colors.white : const Color(0x24FFFFFF),
-                    ),
-                    child: Icon(
-                      Symbols.arrow_upward_rounded,
-                      size: 20,
-                      weight: 600,
-                      color: ready ? Colors.black : tk.text.withValues(alpha: 0.45),
+          AutomationNode(
+            id: AutomationIds.bigpSend,
+            role: 'button',
+            child: GestureDetector(
+              onTap: _send,
+              behavior: HitTestBehavior.opaque,
+              child: Semantics(
+                button: true,
+                label: t.assistant.idle.ask,
+                // A 44 pt touch area around the 36 pt button.
+                child: SizedBox(
+                  width: kBigPMinTouch,
+                  height: kBigPMinTouch,
+                  child: Center(
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ready ? Colors.white : const Color(0x24FFFFFF),
+                      ),
+                      child: Icon(
+                        Symbols.arrow_upward_rounded,
+                        size: 20,
+                        weight: 600,
+                        color: ready ? Colors.black : tk.text.withValues(alpha: 0.45),
+                      ),
                     ),
                   ),
                 ),
