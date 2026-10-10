@@ -138,9 +138,14 @@ PS-9-gedrag, een TestFlight-indiening naar App Review, of een merge van `feat/pl
 `main`. Het derde moment is op 25 september 2026 gepasseerd: merge-commit `638e7524` (PR #94,
 `integration/pleya-server-completion`) bracht de PS-5-commits `dc06bf3` en `f0b5bc7` op `main`, via
 de merge van `feat/pleyaserver` in `4e78b16` (S0.2), zonder dat de ronde gedraaid was. Daarmee is
-PS-5 uiterlijk sinds die datum achterstallig. Of er een indiening naar App Review met PS-5-gedrag
-is geweest, is niet vastgesteld; er wordt er hier geen aangenomen. DEC-118 blijft ongewijzigd, de
-gemiste deadline staat er voor de audittrail.
+PS-5 sinds die datum achterstallig. De andere twee momenten zijn op 10 oktober 2026 nagelezen in
+App Store Connect, over de builds die sinds 20 augustus zijn geüpload: iOS-build 296 (`5b937630`)
+en tvOS-build 298 (`53e2704a`) zijn op 24 september naar App Review gestuurd en staan in de App
+Store, en tvOS-build 259 (`740c78b6`) ging langs Beta App Review. Geen van die commits heeft
+`dc06bf3` of `f0b5bc7` als voorouder, dus er is geen PS-5-gedrag publiek uitgebracht of ter review
+aangeboden, en sinds 25 september is er niets ingediend. Het macOS-versierecord 2.8.0 is niet
+ingediend; build 315 hangt eraan en de herkomstcommit daarvan is hier niet vastgesteld. DEC-118
+blijft ongewijzigd, de gemiste deadline staat er voor de audittrail.
 
 De releasevoorwaarden (besluit Michel, 10 oktober 2026). Het eerste moment uit DEC-118 blijft
 gelden: geen publieke release van de client met PS-5- of PS-9-gedrag zonder geslaagde
@@ -151,7 +156,8 @@ verschillende statussen; PS-5 heeft alleen de eerste twee.
 
 `docs/qa/ps5-hardware-round.md` is een open rondeplan en geen bewezen acceptatie. Open staan: de
 Jellyfin-blokkade opnieuw meten (laatst gemeten op 4 september), T1 tot en met T4 (op macOS en op
-tvOS), R1, R2 en de tvOS-opstartregel. De macOS-opstartregel van build 246 is een historische PASS van 4 september; het
+tvOS), R1, R2 en de tvOS-opstartregel. De macOS-opstartregel van build 246 is een historische PASS
+van 4 september; het
 artefact is niet teruggevonden, dus die regel telt niet als actueel hardwarebewijs. De ronde staat
 als S15.6 in de laatste golf.
 
@@ -333,7 +339,7 @@ als S15.6 in de laatste golf.
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
 | S15.5 | `PLEX_OFFLINE_REPLACEMENT_GATE` groen (migratie als keuze) | `[ ]` | | |
-| S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE uiterlijk sinds 25 sep 2026 en blokkeert de publieke clientrelease met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
+| S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
 
