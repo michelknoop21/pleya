@@ -186,6 +186,14 @@
    */
   --warn-ink: var(--amber);
   --ok-ink: var(--ok);
+  /*
+   * Grafiekkleuren voor StorageMeter: een balksegment en zijn legendastip.
+   * --blue is #7aa7ff uit specimen v2 (7,1:1 op het paneel). Light zet beide
+   * donkerder, zodat een segment op het witte paneel 3:1 haalt (WCAG 1.4.11):
+   * #7aa7ff haalde daar 2,4 en amber 1,8. Tekst gebruikt deze tokens niet.
+   */
+  --blue: #7aa7ff;
+  --amber-graphic: var(--amber);
 }
 
 /*
@@ -248,6 +256,9 @@
   --danger-ink: #a81d18;
   --warn-ink: #7a4f00;
   --ok-ink: #0c6b3c;
+  /* Grafiek: #3d72e0 haalt 4,49 op wit en 4,19 op de pagina, #c27c00 3,40 en 3,18. */
+  --blue: #3d72e0;
+  --amber-graphic: #c27c00;
   /* Wit paneel op #f7f7f8; invoer een tikje dieper dan de pagina. */
   --panel: #ffffff;
   --panel-2: #fafafa;
