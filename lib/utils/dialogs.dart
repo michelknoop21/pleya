@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../automation/automation_ids.dart';
+import '../automation/automation_node.dart';
 import '../focus/focusable_button.dart';
 import '../focus/focusable_text_field.dart';
 import '../focus/input_mode_tracker.dart';
@@ -451,17 +453,29 @@ class _TextInputDialogState extends State<_TextInputDialog>
         onSubmitted: (_) => _saveFocusNode.requestFocus(),
       ),
       actions: [
-        DialogActionButton(
+        AutomationNode(
+          id: AutomationIds.dialogInputButton,
+          instance: 'cancel',
+          role: 'button',
           focusNode: _cancelFocusNode,
-          onPressed: () => Navigator.pop(context),
-          onNavigateRight: _saveFocusNode.requestFocus,
-          label: t.common.cancel,
+          child: DialogActionButton(
+            focusNode: _cancelFocusNode,
+            onPressed: () => Navigator.pop(context),
+            onNavigateRight: _saveFocusNode.requestFocus,
+            label: t.common.cancel,
+          ),
         ),
-        DialogActionButton(
-          onPressed: _submit,
-          label: widget.confirmText ?? t.common.save,
+        AutomationNode(
+          id: AutomationIds.dialogInputButton,
+          instance: 'confirm',
+          role: 'button',
           focusNode: _saveFocusNode,
-          onNavigateLeft: _cancelFocusNode.requestFocus,
+          child: DialogActionButton(
+            onPressed: _submit,
+            label: widget.confirmText ?? t.common.save,
+            focusNode: _saveFocusNode,
+            onNavigateLeft: _cancelFocusNode.requestFocus,
+          ),
         ),
       ],
     );
