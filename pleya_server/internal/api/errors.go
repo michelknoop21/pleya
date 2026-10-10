@@ -110,6 +110,11 @@ const (
 	// kan ondertussen gekoppelde catalogusdata verwijderen.
 	CodeLibraryConfigManaged = "library.config_managed"
 
+	// CodeLibraryNotConfigManaged is het antwoord van POST /libraries/{id}/adopt
+	// op een bibliotheek die al van de database is (J.3, S2.5): er is niets meer
+	// over te nemen, en de aanroeper hoeft niets te herstellen.
+	CodeLibraryNotConfigManaged = "library.not_config_managed"
+
 	// CodeJobNotCancellable is het antwoord van POST /jobs/{id}/cancel op een job
 	// die al klaar is, en van POST /jobs/{id}/retry als dezelfde dedupe-sleutel al
 	// in de wachtrij staat. Opent het achtste foutdomein (J.3, S2.4, DEC-138).
@@ -206,16 +211,17 @@ var errorTable = map[string]struct {
 	CodeScopeExceedsRole:     {http.StatusBadRequest, false},
 	CodeOriginRejected:       {http.StatusForbidden, false},
 
-	CodeNotFound:               {http.StatusNotFound, false},
-	CodeScanInProgress:         {http.StatusConflict, true},
-	CodeCursorInvalid:          {http.StatusBadRequest, false},
-	CodeSearchQueryEmpty:       {http.StatusBadRequest, false},
-	CodeVersionMultifile:       {http.StatusConflict, false},
-	CodeSlugTaken:              {http.StatusConflict, false},
-	CodeLibraryNotEmpty:        {http.StatusConflict, false},
-	CodeLibraryConfigManaged:   {http.StatusConflict, false},
-	CodeLibraryConfirmMismatch: {http.StatusConflict, false},
-	CodeJobNotCancellable:      {http.StatusConflict, false},
+	CodeNotFound:                {http.StatusNotFound, false},
+	CodeScanInProgress:          {http.StatusConflict, true},
+	CodeCursorInvalid:           {http.StatusBadRequest, false},
+	CodeSearchQueryEmpty:        {http.StatusBadRequest, false},
+	CodeVersionMultifile:        {http.StatusConflict, false},
+	CodeSlugTaken:               {http.StatusConflict, false},
+	CodeLibraryNotEmpty:         {http.StatusConflict, false},
+	CodeLibraryConfigManaged:    {http.StatusConflict, false},
+	CodeLibraryNotConfigManaged: {http.StatusConflict, false},
+	CodeLibraryConfirmMismatch:  {http.StatusConflict, false},
+	CodeJobNotCancellable:       {http.StatusConflict, false},
 
 	CodeVersionUnavailable:  {http.StatusConflict, true},
 	CodeRangeNotSatisfiable: {http.StatusRequestedRangeNotSatisfiable, false},

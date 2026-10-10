@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/edde746/plezy/pleya_server/internal/catalog"
 	"github.com/edde746/plezy/pleya_server/internal/migrate"
 	"github.com/edde746/plezy/pleya_server/internal/testsupport"
 )
@@ -239,5 +240,93 @@ func TestNASFixtureCoversTheShapesItWasSampledFor(t *testing.T) {
 		if n < c.min {
 			t.Errorf("%s: %d gevonden, minstens %d verwacht", c.naam, n, c.min)
 		}
+	}
+}
+
+// S2.6: de NAS-opstelling is een .env-opstelling. Na 0009 en verder moet elke
+// bibliotheek uit de vangst nog steeds config-beheerd zijn (PS-11A criterium 2),
+// en een herstart met dezelfde .env-regels moet dezelfde ids terugvinden in
+// plaats van nieuwe bibliotheken aan te maken. Daarna bewijst de overname dat
+// de .env-regel genegeerd wordt zonder dat een id, slug of kijkstatus verschuift.
+func TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+
+	if _, err := migrate.RunTo(ctx, pool, nil, testsupport.NASFixtureSchema); err != nil {
+		t.Fatalf("naar schema %d migreren: %v", testsupport.NASFixtureSchema, err)
+	}
+	testsupport.LoadNASFixture(t, pool)
+	before := take(t, ctx, pool)
+
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+
+	var notConfig int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM libraries WHERE managed <> 'config'`).Scan(&notConfig); err != nil {
+		t.Fatalf("managed lezen: %v", err)
+	}
+	if notConfig != 0 {
+		t.Fatalf("%d bibliotheken uit de NAS-vangst zijn na de migratie niet config-beheerd", notConfig)
+	}
+
+	// De .env van de NAS, zoals hij in de vangst staat: dezelfde slugs en roots.
+	specs := []catalog.LibrarySpec{
+		{Slug: "films", Title: "Films", Kind: "movies", Roots: []catalog.RootSpec{
+			{Path: "/media/library/Films", FSType: "btrfs", InodeTrusted: true, TrustSource: "fstype_default"},
+			{Path: "/media/library2/Films", FSType: "fuseblk.ntfs", InodeTrusted: false, TrustSource: "fstype_default"}}},
+		{Slug: "kids", Title: "Kids", Kind: "movies", Roots: []catalog.RootSpec{
+			{Path: "/media/library/Kids", FSType: "btrfs", InodeTrusted: true, TrustSource: "fstype_default"}}},
+		{Slug: "series", Title: "Series", Kind: "shows", Roots: []catalog.RootSpec{
+			{Path: "/media/library2/Series", FSType: "fuseblk.ntfs", InodeTrusted: false, TrustSource: "fstype_default"}}},
+	}
+	store := catalog.NewStore(pool)
+
+	synced, err := store.SyncLibraries(ctx, specs)
+	if err != nil {
+		t.Fatalf("sync met de NAS-.env: %v", err)
+	}
+	for _, l := range synced {
+		if before.libraries[l.ID.String()] != l.Slug {
+			t.Errorf("sync gaf %s/%s, en de vangst kende die combinatie niet", l.ID, l.Slug)
+		}
+	}
+	if got := take(t, ctx, pool); len(got.libraries) != len(before.libraries) {
+		t.Fatalf("sync maakte bibliotheken aan: %d naar %d", len(before.libraries), len(got.libraries))
+	}
+
+	// Overnemen, en herstarten met de oude regels.
+	for _, l := range synced {
+		if _, err := store.AdoptLibrary(ctx, l.ID); err != nil {
+			t.Fatalf("overname van %s: %v", l.Slug, err)
+		}
+	}
+	again, err := store.SyncLibraries(ctx, specs)
+	if err != nil {
+		t.Fatalf("sync na overname: %v", err)
+	}
+	for _, l := range again {
+		if l.Managed != catalog.ManagedDB {
+			t.Errorf("%s is na overname en herstart %q, verwacht db", l.Slug, l.Managed)
+		}
+	}
+
+	after := take(t, ctx, pool)
+	if len(after.libraries) != len(before.libraries) {
+		t.Fatalf("overname en herstart veranderden het aantal bibliotheken: %d naar %d",
+			len(before.libraries), len(after.libraries))
+	}
+	for id, slug := range before.libraries {
+		if after.libraries[id] != slug {
+			t.Errorf("bibliotheek %s: slug %q werd %q", id, slug, after.libraries[id])
+		}
+	}
+	for id, pos := range before.watch {
+		if after.watch[id] != pos {
+			t.Errorf("kijkstatus %s verschoof van %d naar %d", id, pos, after.watch[id])
+		}
+	}
+	if after.counts["storage_locations"] != before.counts["storage_locations"] {
+		t.Errorf("storage_locations ging van %d naar %d", before.counts["storage_locations"], after.counts["storage_locations"])
 	}
 }
