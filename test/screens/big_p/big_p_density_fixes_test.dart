@@ -12,13 +12,17 @@ import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_host.dart';
 import 'package:pleya/screens/big_p/big_p_mobile_session.dart';
+import 'package:pleya/screens/main/mobile_main_scaffold.dart';
+import 'package:pleya/services/settings_service.dart';
+import 'package:pleya/services/storage_service.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import 'package:pleya/widgets/big_p/big_p_balloon.dart';
 import 'package:pleya/widgets/big_p/big_p_scale.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_helpers/golden.dart';
+import '../../test_helpers/prefs.dart';
 import '../../widgets/big_p/fake_assistant_controller.dart';
 import '../tv/assistant/tv_assistant_test_support.dart' show settle;
 import 'big_p_mobile_fixtures.dart';
@@ -32,8 +36,12 @@ void main() {
     await LocaleSettings.setLocale(AppLocale.nl);
   });
 
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
+  setUp(() async {
+    resetSharedPreferencesForTest();
+    // The shell reads the Liquid Glass setting.
+    SettingsService.resetForTesting();
+    await StorageService.getInstance();
+    await SettingsService.getInstance();
     c = FakeAssistantController();
     session = BigPMobileSession(c);
     addTearDown(() {
@@ -72,6 +80,41 @@ void main() {
                 ),
                 child: const Stack(fit: StackFit.expand, children: [Scaffold(), BigPMobileHost()]),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+  }
+
+  /// The host where the app puts it: over the shell with its tab bar, under
+  /// the root Scaffold of `main.dart`. That Scaffold shrinks its body for the
+  /// keyboard and hands on a `MediaQuery` without the inset, so [keyboard]
+  /// goes on the view, the way the platform reports it.
+  Future<void> pumpShell(WidgetTester tester, {required Size size, double textScale = 1, double keyboard = 0}) async {
+    tester.view.physicalSize = size * 2;
+    tester.view.devicePixelRatio = 2;
+    tester.view.padding = const FakeViewPadding(top: 40);
+    tester.view.viewPadding = const FakeViewPadding(top: 40);
+    tester.view.viewInsets = FakeViewPadding(bottom: keyboard * 2);
+    addTearDown(tester.view.reset);
+    session.summon();
+    final theme = monoTheme(dark: true);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: ChangeNotifierProvider<BigPMobileSession>.value(
+          value: session,
+          child: MaterialApp(
+            theme: theme.copyWith(textTheme: theme.textTheme.apply(fontFamily: 'Inter')),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true, textScaler: TextScaler.linear(textScale)),
+              child: Scaffold(backgroundColor: Colors.transparent, body: child),
+            ),
+            home: const MobileMainScaffold(
+              body: SizedBox.expand(),
+              tabBar: SizedBox(height: 80),
+              overlay: BigPMobileHost(),
             ),
           ),
         ),
@@ -209,6 +252,55 @@ void main() {
       // The password Aanmaken waits for is reachable too.
       expect(find.text(t.assistant.confirm.passwordPlaceholder).hitTestable(), findsOneWidget);
     });
+
+    // BIGP-IOS1-KB, measured on the iPhone SE simulator: the keyboard is
+    // 260 pt, the shell shrinks to 407 pt and the host sees no inset at all.
+    for (final (name, size, scale) in [
+      ('an iPhone SE', se, 1.0),
+      ('an iPhone SE at text scale 1.3', se, 1.3),
+      ('a 320 x 568 phone', const Size(320, 568), 1.0),
+    ]) {
+      testWidgets('the confirm card inside the shell with the keyboard up on $name stays in its balloon', (
+        tester,
+      ) async {
+        c
+          ..prompt = 'Maak gebruiker Robin aan.'
+          ..state = AssistantSurfaceState.working
+          ..pending = createSam(password: AssistantPasswordMode.required);
+        await pumpShell(tester, size: size, textScale: scale);
+        // The password dialog brings the keyboard up.
+        await tester.tap(find.text(t.assistant.confirm.passwordPlaceholder));
+        tester.view.viewInsets = const FakeViewPadding(bottom: 520);
+        await settle(tester);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'no RenderFlex overflow behind the dialog');
+        final balloon = tester.getRect(find.byType(BigPBalloon));
+        final buttons = find.byType(BigPButton);
+        expect(buttons, findsNWidgets(2));
+        for (var i = 0; i < 2; i++) {
+          final rect = tester.getRect(buttons.at(i));
+          expect(rect.bottom, lessThanOrEqualTo(balloon.bottom), reason: 'button $i ends inside the balloon');
+        }
+        // On the measured SE the password row is in the balloon as well.
+        if (size == se && scale == 1.0) {
+          final field = tester.getRect(find.text(t.assistant.confirm.passwordPlaceholder).first);
+          expect(field.top, greaterThanOrEqualTo(balloon.top));
+          expect(field.bottom, lessThanOrEqualTo(balloon.bottom));
+        }
+        // Without a tab bar reserve the balloon reaches down to the keyboard.
+        expect(balloon.bottom, greaterThan(size.height - 260 - 8 - 118 - 16 - 1));
+
+        // The password is in: the keyboard goes and Aanmaken is in reach.
+        await tester.enterText(find.byType(EditableText), 'verify-pass-1');
+        await tester.tap(find.text(t.common.save));
+        tester.view.viewInsets = FakeViewPadding.zero;
+        await settle(tester);
+        expect(tester.takeException(), isNull);
+        for (var i = 0; i < 2; i++) {
+          expect(buttons.at(i).hitTestable(), findsOneWidget, reason: 'button $i after the dialog');
+        }
+      });
+    }
 
     testWidgets('Bewaar with the ages card on an iPhone SE at text scale 1.3', (tester) async {
       answerKidsAges(c);
