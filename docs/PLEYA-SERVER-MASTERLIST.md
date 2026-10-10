@@ -142,13 +142,14 @@ PS-5 sinds die datum achterstallig. DEC-118 blijft ongewijzigd, de gemiste deadl
 audittrail.
 
 De andere twee momenten zijn op 10 oktober 2026 nagelezen in App Store Connect, over de builds die
-sinds 20 augustus zijn geüpload. Het tweede moment is daarbij gelezen als een indiening van een
-build met PS-5- of PS-9-gedrag (besluit Michel, 10 oktober: het gaat om relevante indieningen);
-DEC-118 zelf schrijft die beperking niet uit. Ingediend zijn iOS-build 296 en tvOS-build 298 (naar
+sinds 20 augustus zijn geüpload. Het tweede moment geldt functioneel: het gaat om een indiening,
+bij App Review of bij Beta App Review, van een build met PS-5- of het daaraan gekoppelde
+PS-9-gedrag. Die afbakening is een verduidelijking van Michel van 10 oktober 2026 en staat niet
+letterlijk in DEC-118, dat ongewijzigd blijft. Ingediend zijn iOS-build 296 en tvOS-build 298 (naar
 App Review op 24 september 2026, nu in de App Store) en tvOS-build 259 (langs Beta App Review,
-geüpload op 5 september; App Store Connect geeft voor die indiening geen datum terug). Hun commits
-volgens de markers in `docs/RELEASES.md`, `5b937630`, `53e2704a` en `740c78b6`, staan op `main` vóór
-`638e7524` en hebben `dc06bf3`, `f0b5bc7` en `5eebb83` niet als voorouder. Build 242, die PS-5 wel
+geüpload op 5 september; App Store Connect geeft voor die indiening geen datum terug). De commits
+`5b937630` (296) en `53e2704a` (298), volgens de markers in `docs/RELEASES.md`, en `740c78b6` (de
+buildcommit van 259, die geen marker heeft) staan op `main` vóór `638e7524` en hebben `dc06bf3`, `f0b5bc7` en `5eebb83` niet als voorouder. Build 242, die PS-5 wel
 draagt, ging alleen naar interne testers en heeft geen review-indiening. Er is dus geen PS-5- of
 PS-9-gedrag publiek uitgebracht of ter review aangeboden, en sinds 25 september is er niets
 ingediend. Build 315 (1 oktober) is niet ingediend en hangt aan het macOS-versierecord 2.8.0; de
@@ -157,8 +158,9 @@ PS-5.
 
 De releasevoorwaarden (besluit Michel, 10 oktober 2026). De momenten uit DEC-118 die niet gepasseerd
 zijn blijven gelden: geen publieke release van de client met PS-5- of PS-9-gedrag en geen indiening
-naar App Review van een build met dat gedrag, zonder geslaagde hardwareacceptatie. Een gedraaide
-ronde met een FAIL haalt die grens niet. Bovenop DEC-118: PS-5 is volledig gevalideerd vóór de
+naar App Review of Beta App Review van een build met dat gedrag, zonder geslaagde
+hardwareacceptatie. Een gedraaide ronde met een FAIL haalt die grens niet. Build 315 wordt dus niet
+ingediend zolang niet is vastgesteld of hij dat gedrag draagt en de acceptatie niet is geslaagd. Bovenop DEC-118: PS-5 is volledig gevalideerd vóór de
 eerste publieke release van Pleya Server. P7 blokkeert alle drie. Een release van onderdelen die
 aantoonbaar onafhankelijk zijn van PS-5 valt er niet onder. Geïmplementeerd en gemerged, CI groen en
 hardwareacceptatie zijn drie verschillende statussen; PS-5 heeft alleen de eerste twee.
