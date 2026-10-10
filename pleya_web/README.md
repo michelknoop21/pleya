@@ -104,16 +104,23 @@ zou web juist van de referentie laten afwijken.
 
 De drie bestanden zijn wel omgezet naar woff2: samen 1,8 MB aan OTF is over een LAN de eerste
 seconde van elk bezoek, en 548 kB is dat niet. Dat is een hercodering en geen andere letter.
-Opnieuw maken uit `assets/fonts/`:
+ArchivoBlack, de displayletter van de hero-titel, komt op dezelfde manier uit
+`assets/fonts/ArchivoBlack-Regular.ttf`. Opnieuw maken uit `assets/fonts/`:
 
 ```sh
-docker run --rm -v "$PWD/static/fonts:/f" -w /f python:3.12-slim sh -c \
-  "pip install --quiet fonttools brotli && python3 -c \"
+docker run --rm -v "$PWD/static/fonts:/f" -v "$PWD/../assets/fonts:/src:ro" -w /f \
+  python:3.12-slim sh -c "pip install --quiet fonttools brotli && python3 -c \"
 from fontTools.ttLib import TTFont
-for n in ['Inter-Regular','Inter-Medium','Inter-Bold']:
-    f = TTFont(f'/f/{n}.otf'); f.flavor = 'woff2'; f.save(f'/f/{n}.woff2')
+for n, ext in [('Inter-Regular','otf'),('Inter-Medium','otf'),('Inter-Bold','otf'),('ArchivoBlack-Regular','ttf')]:
+    f = TTFont(f'/src/{n}.{ext}'); f.flavor = 'woff2'; f.save(f'/f/{n}.woff2')
 \""
 ```
+
+Beide families vallen onder de SIL Open Font License 1.1, zo staat het in de naamtabel van de
+bronbestanden: Inter van The Inter Project Authors (Rasmus Andersson), ArchivoBlack van The
+Archivo Black Project Authors (Omnibus-Type). De OFL staat omzetten naar woff2 en herverdelen
+toe, op voorwaarde dat de licentietekst meegaat (https://openfontlicense.org). `static/fonts/`
+bevat die tekst nog niet; dat is een open punt vóór een publieke release.
 
 De merkmarkeringen in `static/brand/` komen uit `scripts/gen_brand_assets.py`, net als elk ander
 afgeleid merkbeeld:
