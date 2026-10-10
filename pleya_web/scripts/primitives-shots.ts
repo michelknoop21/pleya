@@ -89,6 +89,41 @@ for (const width of [393, 1600]) {
   }
 }
 
+// Dezelfde secties in OLED en light, om contrast en scheiding per thema te zien.
+// Dark staat hierboven al; die opnamen houden hun naam zonder themasuffix.
+const THEMED = ['velden', 'panelen', 'meldingen', 'pillen', 'chips', 'tabel'];
+for (const theme of ['oled', 'light']) {
+  for (const width of [393, 1600]) {
+    await open(GALLERY, width, theme);
+    for (const id of THEMED) await shot(page.locator(`#${id}`), `${id}-${theme}@${width}`);
+    await page.locator('#veld-fout-focus').focus();
+    await page.waitForTimeout(300);
+    await shot(page.locator('#velden'), `velden-foutfocus-${theme}@${width}`);
+    const colours = await page.evaluate(() => {
+      const css = (sel: string, prop: 'color' | 'backgroundColor' | 'borderTopColor') => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el)[prop] : null;
+      };
+      return {
+        foutrand: css('#veld-fout-focus', 'borderTopColor'),
+        fouttekst: css('#velden .fld__help--err', 'color'),
+        errPill: css('#pillen .pill--err', 'color'),
+        runStip: css('#pillen .pill--status.pill--run .pill__dot', 'backgroundColor'),
+        runPill: css('#pillen .pill--run:not(.pill--status)', 'color'),
+        inset: css('#veld-hint', 'backgroundColor'),
+        paneel: css('#panelen .panel', 'backgroundColor')
+      };
+    });
+    console.log(`kleuren ${theme}@${width}: ${JSON.stringify(colours)}`);
+    const trigger = page.locator('[data-open="phrase"]');
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+    await page.getByRole('dialog').waitFor();
+    await page.waitForTimeout(300);
+    await shot(page, `dialoog-phrase-${theme}@${width}`);
+  }
+}
+
 for (const width of SKELETON_WIDTHS) {
   for (const variant of ['home', 'grid', 'detail']) {
     await open(`${GALLERY}?skeleton=${variant}`, width);
