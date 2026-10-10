@@ -252,8 +252,7 @@ naar het item; synopsis alleen met `summary`; titel heeft de display-klasse.
 `Skeleton.test.ts` en `SkeletonPage.test.ts` blijven groen of krijgen een assertie op de nieuwe
 vorm.
 
-i18n: `hero.play`, `hero.moreInfo` (vervangt `home.heroAction` niet; die blijft tot commitgrens
-6 in gebruik).
+i18n: `hero.play`, `hero.moreInfo`.
 
 Acceptatie: drie commando's groen; screenshots van `#hero` en `#skelet` op 393, 1024 en 1600 in
 het rapport naast `01-home` en `15-skeleton` op dezelfde breedtes; `routes/+page.svelte` toont de
