@@ -33,6 +33,8 @@ met de mockup, niet de omlijsting.
 | `dialoog-plain@{393,1600}` | 23 | dialoog zonder overtypzin; op 393 als sheet onderaan |
 | `dialoog-phrase@{393,1600}` | 23 | dialoog met overtypzin, opsomming en prullenbakicoon |
 | `dialoog-phrase-gescrold@393` | 23 | dezelfde sheet na 600 px wielscroll erachter; de pagina staat stil |
+| `{velden,velden-foutfocus,panelen,meldingen,pillen,chips,tabel}-{oled,light}@{393,1600}` | als de dark-opname | dezelfde sectie in OLED en light: scheiding van paneel en pagina, haarlijn, inset, en leesbaarheid van fout-, waarschuwings- en oktekst |
+| `dialoog-phrase-{oled,light}@{393,1600}` | 23 | dialoog met overtypzin in OLED en light |
 | `skelet@{393,1024,1600}` | 15, 16 | losse vormen, artworkvlak zonder beeld, de vier SkeletonPage-varianten |
 | `skelet-oled@1024`, `skelet-light@1024` | 15, 16 | skeletvulling naast artworkplaatshouder, en een skelet in een paneel, in OLED en light |
 | `skeleton-home@{393,768,1024,1280,1600}` | 15 | hero plus twee rails |
@@ -63,8 +65,6 @@ met de mockup, niet de omlijsting.
 - Scrollvergrendeling is alleen met het muiswiel gemeten. Vegen op een touchscherm en het
   vasthouden van de scrollbalkgoot op desktop zijn niet bewezen: headless Chromium tekent
   overlay-scrollbalken, dus de breedte van de pagina verandert daar hoe dan ook niet.
-- Statuscel: `run` houdt in de stipvorm de inktkleur van de bestaande toon (lopend). Het specimen
-  tekent "bezig" amber; wie dat wil geeft `tone="warn"` mee.
 - Inter heeft in de bundel alleen 400, 500 en 700. De gewichten 600, 750 en 800 uit het specimen
   vallen terug op 700, dus titels en tegelwaarden zijn iets lichter dan in `v2@1600.png`.
 
@@ -74,3 +74,9 @@ met de mockup, niet de omlijsting.
   naast elkaar (`tabel@393`).
 - Skelet en artworkvlak delen `--skeleton`; gemeten in OLED en light identiek
   (`rgba(255,255,255,.07)` en `rgba(17,17,17,.07)`).
+- Statuscel (`variant="dot"`): `run` is een amber stip die pulseert, zoals "bezig" in 21 en het
+  specimen; de capsule `run` blijft inkt (25).
+- Light kreeg eigen tekstkleuren voor de tonen (`--danger-ink` #c4211c, `--warn-ink` #8a5a00,
+  `--ok-ink` #0f7a45): de merkkleuren haalden op wit 1,8 tot 2,8:1. Gemeten minimaal 4,66:1
+  (fouttekst op de err-pill) en 4,79:1 (ok op de inset). Ook het aan-spoor van Toggle gebruikt in
+  light het donkere groen (witte knop 5,4:1). Dark en OLED zijn ongewijzigd.

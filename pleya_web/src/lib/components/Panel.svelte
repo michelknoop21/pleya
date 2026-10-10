@@ -125,7 +125,7 @@
   }
 
   .panel--warn .panel__title {
-    color: var(--amber);
+    color: var(--warn-ink);
   }
 
   .panel__actions {

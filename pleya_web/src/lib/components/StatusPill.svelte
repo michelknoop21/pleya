@@ -11,7 +11,7 @@
 
   Designsysteem v2 voegt `variant="dot"` toe: geen capsule, alleen een stip van
   8 px in de toonkleur met de tekst in gedimde inkt, zoals de statuskolom van
-  een beheertabel. Bij `run` pulseert de stip. De kleine maat (`size="sm"`) is
+  een beheertabel. Bij `run` is de stip amber en pulseert hij. De kleine maat (`size="sm"`) is
   in v2 een tag met hoeken van 6 px in plaats van een capsule.
 -->
 <script lang="ts" module>
@@ -83,12 +83,12 @@
   /* Achtergronden zijn de rgba's uit specimen v2 als mengsel van de toonkleur. */
   .pill--ok {
     background: color-mix(in srgb, var(--ok) 14%, transparent);
-    color: var(--ok);
+    color: var(--ok-ink);
   }
 
   .pill--warn {
     background: color-mix(in srgb, var(--amber) 14%, transparent);
-    color: var(--amber);
+    color: var(--warn-ink);
   }
 
   .pill--err {
@@ -137,19 +137,23 @@
   }
 
   .pill--status.pill--ok .pill__dot {
-    background: var(--ok);
+    background: var(--ok-ink);
   }
 
   .pill--status.pill--warn .pill__dot {
-    background: var(--amber);
+    background: var(--warn-ink);
   }
 
   .pill--status.pill--err .pill__dot {
     background: var(--danger-ink);
   }
 
+  /*
+   * In de statusvorm is `run` amber en pulseert hij: "bezig" in northstar 21 en
+   * het specimen. De capsule `run` blijft inkt, zoals een lopende sessie in 25.
+   */
   .pill--status.pill--run .pill__dot {
-    background: var(--ink);
+    background: var(--warn-ink);
     animation: pill-pulse 1.6s ease-in-out infinite;
   }
 
