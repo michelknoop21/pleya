@@ -143,4 +143,12 @@ describe('Hero', () => {
     // De vangrail tegen overlopen blijft op de basisregel staan.
     expect(source).toContain('overflow-wrap: break-word');
   });
+
+  it('zet de artworkinkt in light op 0,9', () => {
+    // Met 0,8 haalde de synopsis op 16:9 rond 900 over donker artwork 3,93:1
+    // (pixelmeting in het fixrapport); 0,9 brengt hem op 4,52.
+    const tokens = readFileSync(resolve(import.meta.dirname, '../../styles/tokens.css'), 'utf8');
+    const light = tokens.slice(tokens.indexOf("[data-theme='light']"));
+    expect(light.slice(0, light.indexOf('}'))).toMatch(/--on-artwork-ink: 0\.9;/);
+  });
 });

@@ -265,7 +265,9 @@
   --text-muted: rgba(17, 17, 17, 0.6); /* 0x99111111 */
   --scrim-strong: 0.97;
   --scrim-mid: 0.62;
-  --on-artwork-ink: 0.8;
+  /* 0,9 en niet 0,8: de synopsis loopt op 16:9 rond 900 voorbij de
+     middenstop van de waas en haalde daar met 0,8 maar 3,93:1. */
+  --on-artwork-ink: 0.9;
   --nav-focus-wash: rgba(17, 17, 17, 0.22);
   --nav-selected-wash: rgba(17, 17, 17, 0.13);
   --bar-backdrop: rgba(247, 247, 248, 0.92);
