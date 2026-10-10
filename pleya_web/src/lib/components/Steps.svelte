@@ -73,7 +73,7 @@
     width: 28px;
     min-width: 12px;
     height: 1px;
-    background: var(--ink-4);
+    background: var(--hairline-strong);
   }
 
   .st__n {
@@ -86,6 +86,7 @@
     border-radius: var(--radius-pill);
     font-size: 12px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
   .st--done .st__n {

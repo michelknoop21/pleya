@@ -1,7 +1,10 @@
 <!--
   Een beheertabel (`.table` in web.css) in een flush Panel, zoals mockup 21,
-  25 en 26 hem tekenen: kop in kleine hoofdletters, rijen van 12 px binnenrand,
-  en een rechts uitgelijnde kolom voor acties.
+  25 en 26 hem tekenen: kop in kleine hoofdletters, en een rechts uitgelijnde
+  kolom voor acties. Designsysteem v2: cellen op 14 bij 20 zodat ze op de
+  paneelkop uitlijnen, haarlijnen tussen de rijen, een lichte tint onder de
+  muis, tabulaire cijfers, en `mono` voor een kolom met paden of slugs. Een
+  statuscel gebruikt StatusPill met `variant="dot"`.
 
   Onder 900 zijn er twee gedragingen. Standaard scrolt de tabel binnen het
   paneel (min. 640 breed), en dan is de scrollstrook een benoemde regio met
@@ -29,6 +32,8 @@
      * regels. Voor een waarde die zonder naam niets zegt, zoals een getal.
      */
     showLabel?: boolean;
+    /** Paden, slugs en sleutels: monoletter in gedimde inkt. */
+    mono?: boolean;
   }
 </script>
 
@@ -101,7 +106,7 @@
           {#each rows as row, index (rowKey(row, index))}
             <tr>
               {#each columns as column, ci (column.key)}
-                <td class:tbl__end={column.align === 'end'}>
+                <td class:tbl__end={column.align === 'end'} class:tbl__mono={column.mono}>
                   {#if ci > 0 && column.align !== 'end' && !column.hideLabel}
                     <span class="tbl__label" class:visually-hidden={!column.showLabel}
                       >{column.label}</span
@@ -123,26 +128,32 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
+    font-variant-numeric: tabular-nums;
   }
 
   th {
-    padding: 8px 12px;
-    /* rgba(255,255,255,.1) in de mockup: inkt op 10 procent, draait mee met het thema. */
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid var(--hairline);
     text-align: left;
-    font-size: 12px;
+    font-size: var(--text-caps-size);
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--text-caps-track);
     text-transform: uppercase;
     white-space: nowrap;
     color: var(--ink-3);
   }
 
   td {
-    padding: 12px;
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 6%, transparent);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--hairline);
     vertical-align: middle;
     color: var(--ink);
+  }
+
+  .tbl__mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-size);
+    color: var(--ink-2);
   }
 
   tbody tr:last-child td {
@@ -158,7 +169,7 @@
   }
 
   .tbl__empty {
-    padding: 24px 12px;
+    padding: 24px 20px;
     font-size: 14px;
     color: var(--ink-3);
   }
@@ -171,7 +182,7 @@
 
   @media (hover: hover) {
     tbody tr:hover td {
-      background: var(--fill);
+      background: var(--row-hover);
     }
   }
 
@@ -204,10 +215,10 @@
     .tbl--stack tr {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 2px 10px;
+      gap: 3px 10px;
       align-items: center;
-      padding: 12px;
-      border-bottom: 1px solid color-mix(in srgb, var(--text) 6%, transparent);
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--hairline);
     }
 
     .tbl--stack tr:last-child {
@@ -222,7 +233,7 @@
     }
 
     .tbl--stack td:first-child {
-      font-weight: 500;
+      font-weight: 600;
     }
 
     .tbl--stack td:not(:first-child):not(.tbl__end) {

@@ -211,9 +211,14 @@
     max-height: calc(100dvh - 32px);
     overflow-y: auto;
     padding: 26px 28px;
-    border-radius: var(--radius-hero);
-    background: var(--surface);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+    /* Designsysteem v2: het paneelvlak met haarlijn, plus de diepe schaduw
+       van een laag die boven de pagina zweeft. */
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-panel);
+    background: var(--panel);
+    box-shadow:
+      var(--ring-shadow),
+      0 30px 80px rgba(0, 0, 0, 0.6);
     transform: translate(-50%, -50%);
   }
 
@@ -263,6 +268,7 @@
     .cd {
       top: auto;
       bottom: 0;
+      border-bottom: 0;
       left: 0;
       width: 100%;
       max-height: 90dvh;
