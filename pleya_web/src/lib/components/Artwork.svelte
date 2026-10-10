@@ -100,9 +100,12 @@
       // Het getekende vlak bepaalt de trede; onmeetbaar of geen formaten op
       // de server betekent geen breedte en dus het origineel.
       const width = requestWidth(host?.clientWidth ?? 0, window.devicePixelRatio || 1, ladderRole);
-      const load = contextLoader ?? ((...args: Parameters<ArtworkLoader>) =>
-        session.client.artworkBlob(...args));
-      const blob = await (width === undefined ? load(id, own.signal) : load(id, own.signal, width));
+      const fetchArtwork =
+        contextLoader ??
+        ((...args: Parameters<ArtworkLoader>) => session.client.artworkBlob(...args));
+      const blob = await (width === undefined
+        ? fetchArtwork(id, own.signal)
+        : fetchArtwork(id, own.signal, width));
       if (own.signal.aborted) return;
       const url = URL.createObjectURL(blob);
       currentUrl = url;
