@@ -35,7 +35,8 @@ openliet, staat nu het besluit.
 Het legt het ontwerp van PS-14 vast, en dat ontwerp is goedgekeurd. Wat het niet doet is de fase
 openen. PS-14 is goedgekeurd en geblokkeerd op PS-9, en die twee woorden horen bij elkaar te blijven
 staan: een fase die "goedgekeurd" heet en waarvan de blokkade in een voetnoot verdwijnt, is precies
-de gate-erosie waarvoor de fasestructuur bestaat.
+de gate-erosie waarvoor de fasestructuur bestaat. *(Bijgesteld 10 oktober 2026 door
+[DEC-149](DECISIONS.md): PS-14 is vrijgegeven.)*
 
 Eén stuk werk mag wél nu al, en het is geen PS-14-werk: de defectfix uit
 [beslissing 1](#14-de-zeven-bindende-beslissingen).
@@ -716,6 +717,7 @@ schermafbeeldingen blijven het bewijs; de proxy is het instrument. Uitwerking in
 **6. PS-14 is goedgekeurd en niet actief.** De status is "goedgekeurd, geblokkeerd op PS-9" en
 uitdrukkelijk niet "vrijgegeven voor uitvoering". Geen PS-14-productiecode totdat PS-9 formeel
 gesloten is. Dat voorkomt de parallelle gate-erosie waarvoor de fasestructuur bestaat.
+*(Bijgesteld 10 oktober 2026 door [DEC-149](DECISIONS.md): PS-14 is vrijgegeven.)*
 
 **7. Acceptatiecriteria 5, 6 en 7 worden canoniek onderdeel van de PS-14-fasetabel.** Geen ffprobe
 op boeken, een correcte `item_count` voor `books`, en `check_protocol.sh` volledig groen met het

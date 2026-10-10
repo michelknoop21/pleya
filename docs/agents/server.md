@@ -15,12 +15,17 @@ verwijst (`docs/pleya-server-*-proposal.md`, `docs/pleya-server-*-deviation.md`)
 
 **E-books zijn productscope. PS-14 (catalogus en inhoud) is vrijgegeven op 10 oktober 2026**
 ([DEC-149](../DECISIONS.md#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet),
-op basis van [DEC-128](../DECISIONS.md#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15)),
-met drie voorwaarden: de bestaande architectuur en de Unified Library, aansluiting op de Pleya-clients
-en de webclient (reader-integratie hoort bij het productscope), en geen nieuwe DRM-, winkel- of
-abonnementsfunctionaliteit zonder afzonderlijk besluit. De vrijgave geeft slice S3 vrij en S6 niet:
-het locatorbesluit P5 blijft open en S6 hangt ervan af. **PS-15 en PS-16 blijven niet vrijgegeven**, en
-het protocolvenster voor boeken is niet geopend; dat vraagt een eigen besluit. Twee grenzen gelden: de `media_*`-tabellen blijven audiovisueel, en de mobiele beperking is
+op basis van
+[DEC-128](../DECISIONS.md#dec-128-e-books-worden-een-contentdomein-van-pleya-server-als-ps-14-en-ps-15)),
+met drie voorwaarden: de bestaande architectuur en de Unified Library, aansluiting op de
+Pleya-clients en de webclient (reader-integratie hoort bij het productscope), en geen nieuwe DRM-,
+winkel- of abonnementsfunctionaliteit zonder afzonderlijk besluit.
+
+De vrijgave geeft slice S3 vrij en S6 niet: het locatorbesluit P5 blijft open en S6 hangt ervan af.
+**PS-15 en PS-16 blijven niet vrijgegeven**, en het protocolvenster voor boeken is niet geopend; dat
+vraagt een eigen besluit.
+
+Twee grenzen gelden: de `media_*`-tabellen blijven audiovisueel, en de mobiele beperking is
 clientgedrag, dus er komt geen platform- of readerveld aan login of `sessions`. Deze regels staan in
 hoofdstuk 11 van `docs/PLEYA-SERVER-REPLACEMENT-MATRIX.md` en blokkeren de Plex-off gate niet.
 

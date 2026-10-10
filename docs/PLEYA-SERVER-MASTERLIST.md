@@ -100,6 +100,9 @@ wachten; wie ruimte heeft trekt hem naar voren.
 
 `S7 → S10 → S11 → vrijgave PS-14 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`.
 
+*Noot van 10 oktober 2026: de schakel "vrijgave PS-14" en zijn voorgangers S10 en S11 zijn als poort
+vervallen door [DEC-149](DECISIONS.md). De keten hierboven staat zoals hij was en is niet herschreven.*
+
 Dit is bijgesteld op 10 oktober 2026. De eerdere lijn begon bij `S1 → S3`; daarna legde
 [DEC-129](DECISIONS.md) PS-14 achter de integratie van PS-11A (S10 beheer, S11 wizard, beide op S7)
 en achter een vrijgave van Michel. Die vrijgave is er sinds [DEC-149](DECISIONS.md) van 10 oktober

@@ -169,7 +169,7 @@ is dicht en er staat er nu geen open.
 
 **S0 is gesloten (4 september, avond).** De acht taken van de eerste slice staan alle op gereed en
 poort P9 is groen. Daarmee is de voorwaarde uit [DEC-108](docs/DECISIONS.md) gehaald en mag PS-11A
-starten; PS-14 blijft gesloten.
+starten; PS-14 blijft gesloten. *(Bijgesteld 10 oktober 2026: PS-14 is vrijgegeven, S3 is vrij en S6 wacht op P5, zie [DEC-149](docs/DECISIONS.md).)*
 
 Drie dingen die de dag opleverde en die de volgende sessie moet weten.
 
@@ -209,7 +209,7 @@ vanaf `0008` pas dat een migratie ze overleeft. Dat staat in de code en in
 geschreven, geen tabellen ontworpen, geen endpoints toegevoegd en is `openapi.yaml` niet aangeraakt.
 
 Klopt de volgende fase nog? Ja. PS-11A is de eerstvolgende, precies zoals DEC-108 hem vastlegt, en
-S0 heeft er geen afhankelijkheid bij gemaakt. PS-14 blijft gesloten en loopt er niet naast.
+S0 heeft er geen afhankelijkheid bij gemaakt. PS-14 blijft gesloten en loopt er niet naast. *(Bijgesteld 10 oktober 2026: PS-14 is vrijgegeven, S3 is vrij en S6 wacht op P5, zie [DEC-149](docs/DECISIONS.md).)*
 
 
 **Correctieronde na een adversariële review (4 september, laat).** Codex kreeg de merge voorgelegd

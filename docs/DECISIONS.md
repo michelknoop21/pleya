@@ -4614,5 +4614,5 @@ wachten op S7, S10 en S11. S5 hangt volgens de graaf aan S3 en S4 en volgt dus S
 via S6 aan P5 hangt (S9, S12, S14, S16, S20 en S21) wacht op het locatorbesluit.
 De masterlijst, `docs/agents/server.md`, de fasetabel in de architectuurbaseline en het PS-14-voorstel
 zijn in dezelfde commit bijgewerkt; de taakstatus en de tellers staan niet anders dan voorheen, want
-een vrijgave maakt geen taak af. Het eerste werk dat hierna volgt is het ontwerp van het
-contractvenster voor S3 tot en met S6, met een eigen DEC, en daarna S3.1.
+een vrijgave maakt geen taak af. De volgorde is vast: eerst het ontwerp van het contractvenster
+voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
