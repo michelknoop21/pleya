@@ -38,7 +38,7 @@ http.Response _json(Object? body, {int status = 200}) =>
 MediaItem _movie(String id, String title, {String server = _server, MediaBackend backend = MediaBackend.jellyfin}) =>
     MediaItem(id: id, backend: backend, kind: MediaKind.movie, title: title, year: 2001, serverId: server);
 
-UnifiedMediaGroup _group(String id, String title, {String library = 'lib-films', String server = _server}) {
+UnifiedMediaGroup _group(String id, String title, {String library = 'lib-films', String server = _server, int? added}) {
   final source = UnifiedMediaSource.fromItem(
     MediaItem(
       id: id,
@@ -48,6 +48,7 @@ UnifiedMediaGroup _group(String id, String title, {String library = 'lib-films',
       year: 2001,
       serverId: server,
       libraryId: library,
+      addedAt: added,
     ),
   );
   return UnifiedMediaGroup(
@@ -420,6 +421,66 @@ void main() {
     expect((await search(ctx, {'kind': 'movie', 'sort': 'title'}))['sampled'], isNull, reason: 'the row order itself');
     loader.isPartial = true;
     expect((await search(ctx, {'kind': 'movie'}))['partial'], isTrue);
+  });
+
+  group('added in a window (BP-05)', () {
+    int ago(int days) => DateTime.now().millisecondsSinceEpoch ~/ 1000 - days * 86400;
+
+    test('only titles added inside the window, newest first, with their date and the whole count', () async {
+      final (ctx, loader, _, _) = await setUpCtx(
+        groups: [
+          _group('old', 'Old', added: ago(20)),
+          _group('a', 'Alien', added: ago(5)),
+          _group('b', 'Brazil', added: ago(1)),
+        ],
+      );
+      final data = await search(ctx, {'kind': 'movie', 'added_within_days': 7});
+      expect([for (final r in (data['results'] as List).cast<Map>()) r['title']], ['Brazil', 'Alien']);
+      expect(data['window_days'], 7);
+      expect(data['total_matches'], 2);
+      expect((data['results'] as List).cast<Map>().first['added_at'], isA<String>());
+      expect(data['can_become_home_row'], isFalse);
+      expect(loader.calls.single.sort, UnifiedCatalogSort.recentlyAdded);
+    });
+
+    test('a title without an added date is counted, not guessed in, and makes the answer partial', () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [
+          _group('a', 'Alien', added: ago(2)),
+          _group('u', 'Undated'),
+        ],
+      );
+      final data = await search(ctx, {'kind': 'movie', 'added_within_days': 7});
+      expect(data['count'], 1);
+      expect(data['added_unknown'], 1);
+      expect(data['partial'], isTrue);
+    });
+
+    test('a full page that is still inside the window says older matches were not seen', () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [for (var i = 0; i < 100; i++) _group('m$i', 'T$i', added: ago(1))],
+      );
+      final data = await search(ctx, {'kind': 'movie', 'added_within_days': 7, 'limit': 5});
+      expect(data['sampled'], isTrue);
+    });
+
+    test('the cards are exactly the listed titles; total_matches keeps the rest', () async {
+      final (ctx, _, _, _) = await setUpCtx(groups: [for (var i = 0; i < 30; i++) _group('m$i', 'T$i', added: ago(1))]);
+      final outcome =
+          await _tool('search_catalog').run(ctx, null, {'kind': 'movie', 'added_within_days': 7, 'limit': 30})
+              as AssistantToolResult;
+      final listed = {for (final r in (outcome.data['results'] as List).cast<Map>()) r['item_id']};
+      final drawn = {for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.id};
+      expect(drawn, listed);
+      expect(outcome.data['count'], listed.length);
+      expect(outcome.data['total_matches'], 30);
+    });
+
+    test('an invalid window is refused', () async {
+      final (ctx, _, _, _) = await setUpCtx();
+      expect(search(ctx, {'added_within_days': 0}), throwsA(isA<AssistantToolError>()));
+      expect(search(ctx, {'added_within_days': 90}), throwsA(isA<AssistantToolError>()));
+    });
   });
 
   test('text search: hits without genres stay in as unverified, a failing server makes it partial', () async {

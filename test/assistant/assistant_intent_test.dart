@@ -207,5 +207,32 @@ void main() {
       final i = _i('Welke films heb ik gekeken en wat keken de anderen?');
       expect(i.describe(), allOf(contains('only films'), contains('more than one audience')));
     });
+
+    test('"toegevoegd" routes to the catalog with the period; the wrong tools are refused', () {
+      final i = _i('Wat is deze week aan mijn bibliotheken toegevoegd?');
+      expect(i.addedToLibraries, isTrue);
+      expect(i.constrain('search_catalog', {'sort': 'added', 'limit': 20}).args['added_within_days'], 7);
+      expect(i.constrain('list_servers', {}).error, 'use_search_catalog');
+      expect(i.constrain('watch_stats', {'scope': 'period'}).error, 'use_search_catalog');
+      expect(i.describe(), contains('added_within_days'));
+    });
+
+    test('added-to-libraries: the model\'s own window is overruled, kind is enforced, last week refused', () {
+      final i = _i('Welke films zijn de laatste 14 dagen toegevoegd?');
+      final c = i.constrain('search_catalog', {'added_within_days': 3});
+      expect(c.args['added_within_days'], 14);
+      expect(c.args['kind'], 'movie');
+      expect(
+        _i('Wat is er vorige week toegevoegd?').constrain('search_catalog', {}).error,
+        'previous_week_not_supported',
+      );
+    });
+
+    test('added to a list, or a watch question beside it, is not an additions question', () {
+      expect(_i('Wat heb ik aan mijn kijklijst toegevoegd?').addedToLibraries, isFalse);
+      final mixed = _i('Wat is toegevoegd en wat keken de anderen?');
+      expect(mixed.constrain('watch_stats', {'scope': 'period'}).error, isNull);
+      expect(_i('Een tip').inheriting(_i('Wat is er toegevoegd en geef me een tip')).addedToLibraries, isFalse);
+    });
   });
 }
