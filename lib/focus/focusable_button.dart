@@ -74,6 +74,7 @@ class _FocusableButtonState extends State<FocusableButton> {
     final duration = FocusTheme.getAnimationDuration(context);
     // In dpad mode: focused = full opacity, unfocused = dimmed
     final opacity = widget.dimWhenUnfocused && isKeyboard && !_isFocused ? 0.6 : 1.0;
+    final theme = Theme.of(context);
 
     return FocusableWrapper(
       autofocus: widget.autofocus,
@@ -90,7 +91,30 @@ class _FocusableButtonState extends State<FocusableButton> {
       onNavigateLeft: widget.onNavigateLeft,
       onNavigateRight: widget.onNavigateRight,
       onBack: widget.onBack,
-      child: AnimatedOpacity(opacity: showFocus ? 1.0 : opacity, duration: duration, child: widget.child),
+      child: AnimatedOpacity(
+        opacity: showFocus ? 1.0 : opacity,
+        duration: duration,
+        child: Theme(data: opacity < 1 ? _restingTheme(theme) : theme, child: widget.child),
+      ),
     );
   }
+}
+
+/// The theme a dimmed, unfocused button paints with.
+///
+/// An outlined or text button without a colour of its own takes Material's
+/// default label colour, `colorScheme.primary`, which here is the brand red.
+/// That red reaches 4.4:1 on black at full strength and about 2:1 once the
+/// resting dim above multiplies it by 0.6. At rest the label therefore uses
+/// the text colour; the focused button keeps what it had. A button that sets
+/// its own `foregroundColor` (an error action) still wins over this theme.
+ThemeData _restingTheme(ThemeData theme) {
+  final ink = WidgetStateProperty.resolveWith<Color?>(
+    (states) => states.contains(WidgetState.disabled) ? null : theme.colorScheme.onSurface,
+  );
+  ButtonStyle resting(ButtonStyle? style) => (style ?? const ButtonStyle()).copyWith(foregroundColor: ink);
+  return theme.copyWith(
+    outlinedButtonTheme: OutlinedButtonThemeData(style: resting(theme.outlinedButtonTheme.style)),
+    textButtonTheme: TextButtonThemeData(style: resting(theme.textButtonTheme.style)),
+  );
 }
