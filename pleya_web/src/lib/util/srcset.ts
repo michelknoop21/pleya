@@ -3,7 +3,7 @@
  *
  * Een echt `srcset`-attribuut is hier onmogelijk. Artwork komt binnen via
  * `fetch` met een Authorization-header en hangt als object-URL aan het
- * element (README "Artwork"), dus de browser kan zelf geen bron kiezen. Deze
+ * element (README 'Artwork'), dus de browser kan zelf geen bron kiezen. Deze
  * helper doet het werk van `srcset` en `sizes` aan de clientkant: één trede
  * per vlak, gemeten aan de getekende breedte.
  *
@@ -17,7 +17,7 @@ export const POSTER_LADDER = [240, 480, 960, 1920] as const;
 /** RB-7, backdrop en hero. */
 export const BACKDROP_LADDER = [480, 960, 1920, 3840] as const;
 
-export type ArtworkRole = "poster" | "backdrop";
+export type ArtworkRole = 'poster' | 'backdrop';
 
 /** Of de server afgeleide formaten levert. Vandaag altijd false: S4.4 zet hem aan. */
 export const ARTWORK_SIZES_AVAILABLE = false;
@@ -28,7 +28,7 @@ export function ladderStep(
   dpr: number,
   role: ArtworkRole,
 ): number {
-  const ladder = role === "poster" ? POSTER_LADDER : BACKDROP_LADDER;
+  const ladder = role === 'poster' ? POSTER_LADDER : BACKDROP_LADDER;
   const needed = cssWidth * dpr;
   for (const step of ladder as readonly number[]) {
     if (step >= needed) return step;

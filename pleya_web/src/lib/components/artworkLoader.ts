@@ -6,7 +6,7 @@
  * kaart: productie zet de context nergens, dus daar is het gedrag ongewijzigd
  * en geldt `session.client.artworkBlob`.
  */
-import { getContext, setContext } from "svelte";
+import { getContext, setContext } from 'svelte';
 
 export type ArtworkLoader = (
   id: string,
@@ -14,7 +14,7 @@ export type ArtworkLoader = (
   width?: number,
 ) => Promise<Blob>;
 
-export const ARTWORK_LOADER_KEY = Symbol("pleya.artworkLoader");
+export const ARTWORK_LOADER_KEY = Symbol('pleya.artworkLoader');
 
 /** Aanroepen tijdens de initialisatie van een ouder-component. */
 export function setArtworkLoader(loader: ArtworkLoader): void {
