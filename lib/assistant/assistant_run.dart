@@ -179,7 +179,14 @@ class AssistantRun {
     this.originalLibraryDoctorScope = false,
     this.inheritedIntent,
     this.conversation = const [],
+    this.rightsEpoch,
   });
+
+  /// A counter that moves whenever what this profile may administer changes
+  /// (rights granted, revoked, a connection replaced). A read that spans a
+  /// change publishes nothing: revoked and restored within one call looks the
+  /// same before and after, but the data was gathered under other rights.
+  final int Function()? rightsEpoch;
 
   /// The earlier turns of this conversation, oldest first: context for a
   /// follow-up, never evidence. See [_memoryMessages].

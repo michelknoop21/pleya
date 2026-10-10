@@ -80,12 +80,28 @@ class AssistantController extends ChangeNotifier {
   /// and answer hidden. Their arrival (none to some) reads once more, so the
   /// face button and the Discover slot show up without a visit to Mijn Pleya.
   final Listenable? _serverChanges;
+
+  /// Moves each time what the profile may administer differs from the last
+  /// look: every change counts, including the way back, so a right revoked and
+  /// restored during one read still leaves a different number.
+  int _rightsEpoch = 0;
+  String? _rightsSeen;
+  void _noteRights(AssistantToolContext ctx) {
+    final seen = ([
+      for (final id in ctx.administeredServers) '${id.value}:${identityHashCode(ctx.adminClient(id))}',
+    ]..sort()).join('|');
+    if (_rightsSeen != null && seen != _rightsSeen) _rightsEpoch++;
+    _rightsSeen = seen;
+  }
+
   bool _hadServers = false;
   void _onServersChanged() {
     // Every MultiServerProvider notify lands here; with the flag off nothing
     // can become visible, so no tool context gets built.
     if (!_rolloutEnabled || _disposed) return;
-    final hasServers = _buildContext(null).userServers.isNotEmpty;
+    final ctx = _buildContext(null);
+    _noteRights(ctx);
+    final hasServers = ctx.userServers.isNotEmpty;
     final arrived = hasServers && !_hadServers;
     _hadServers = hasServers;
     if (arrived && _availability == AssistantAvailability.hidden) unawaited(refreshAvailability());

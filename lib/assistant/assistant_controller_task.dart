@@ -72,6 +72,12 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        // Sampled at both ends of a read as well as on every server change:
+        // a change nobody announced still moves it, and so does the way back.
+        rightsEpoch: () {
+          _noteRights(_buildContext(null));
+          return _rightsEpoch;
+        },
         // Only the question itself follows on; a split child is standalone.
         conversation: allowSplit ? List.of(_conversation) : const [],
         budget: task.budget,

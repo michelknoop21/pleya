@@ -60,7 +60,19 @@ extension _AssistantExecute on AssistantRun {
       AssistantStep(index: index, tool: call.name, serverName: serverName, phase: AssistantStepPhase.started),
     );
     final shown = _displays.length;
+    final stamp = rightsEpoch?.call();
     final output = await _executeCall(call);
+    // A read publishes household or library data: if the rights moved while it
+    // ran, even if they are back, none of it is shown or handed to the model.
+    if (stamp != null &&
+        rightsEpoch!() != stamp &&
+        (tools ?? assistantTools).any((t) => t.name == call.name && t.risk == AssistantToolRisk.read)) {
+      if (_displays.length > shown) _displays.removeRange(shown, _displays.length);
+      onStep?.call(
+        AssistantStep(index: index, tool: call.name, serverName: serverName, phase: AssistantStepPhase.failed),
+      );
+      return {'error': 'rights_changed'};
+    }
     final evidenceContext = _ctx;
     if (evidenceContext.recommendationError case final recommendationError?) return {'error': recommendationError};
     if (_ctx.libraryDoctorError case final doctorError?) return {'error': doctorError};
