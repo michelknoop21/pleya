@@ -132,9 +132,15 @@ ol {
   outline: none;
 }
 
+/*
+ * De focusring uit DESIGN.md: --ring (3 px) in inkt op een gap van 3 px. Inkt
+ * is wit op dark en OLED en #111 op light, dus de ring staat op elk thema
+ * tegen de pagina af. Tekstvakken in Field tonen in plaats daarvan een rand
+ * van 1 px (Field.svelte).
+ */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: var(--ring) solid var(--ink);
+  outline-offset: 3px;
   border-radius: var(--radius-focus);
 }
 
