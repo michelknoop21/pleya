@@ -742,6 +742,24 @@ void main() {
     expect([for (final t in c.tasks) t.answer], containsAll(['ik', 'anderen']));
   });
 
+  test('a question reset while the profile is read is not resurrected as two children', () async {
+    final gate = Completer<bool>();
+    final c = AssistantController(
+      buildContext: (_) => AssistantToolContext(servers: servers, kidsProfile: () => gate.future),
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_say('x')]),
+      tools: const [],
+    );
+    addTearDown(c.dispose);
+    final asked = c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    await Future<void>.delayed(Duration.zero);
+    c.reset();
+    gate.complete(false);
+    await asked;
+    expect(c.tasks, isEmpty);
+  });
+
   test('tool failure survives a successful model answer', () async {
     final failing = AssistantTool(
       name: 'fail',

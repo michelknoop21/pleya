@@ -66,10 +66,20 @@ final _addedElsewhere = RegExp(
 );
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
+// "everyone else watched": a named group with its own verb, a clause of its own.
+final _othersElseWatch = RegExp(
+  r'\b(?:everyone else|everybody else|other users|andere gebruikers)\s+(?:\w+\s+){0,2}' + _watch,
+);
 // Words that make the two halves one relational question, not two lists.
 final _relational = RegExp(
   r'\b(samen|together|both|allebei|beiden|ook|also|niet|not|nog niet|never|nooit|geen|but|except|behalve|same|zelfde|'
-  r'die|dat|that|which|waar|where)\b',
+  r'die|dat|that|waar|where)\b',
+);
+// A second sentence inside one half.
+final _sentenceBreak = RegExp(r'[.?!]\s*\S');
+// A pronoun or demonstrative that points back at an earlier turn.
+final _refersBack = RegExp(
+  r'\b(daarvan|daarvoor|daarbij|daarin|hiervan|ervan|die|dat|deze|dit|ze|zij|hij|hun|that|those|these|them|they|their|it|its|this)\b',
 );
 // The word between two clauses of one sentence.
 final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?:en|and|maar|but|plus)\b)\s*');
@@ -161,6 +171,9 @@ class AssistantIntent {
   /// relational or negating word ("together", "not yet seen"), and a stated kind
   /// that both clauses carry. Anything less is left to the model, never cut by a
   /// guess.
+  /// True when [prompt] points back at an earlier answer ("daarvan", "those").
+  static bool refersBack(String prompt) => _refersBack.hasMatch(prompt.toLowerCase());
+
   static List<String>? splitMixedAudience(String prompt) {
     final p = prompt.toLowerCase();
     // Offsets are used on [prompt]: a lowercase that changed the length is no cut.
@@ -172,10 +185,13 @@ class AssistantIntent {
     }
 
     // A verbless "others" ("everyone else", "without me") is no clause of its own.
-    if (_notOthers.hasMatch(p) || _exceptName.hasMatch(p) || _othersFixed.hasMatch(p)) return null;
+    if (_notOthers.hasMatch(p) || _exceptName.hasMatch(p)) return null;
+    final elseWatch = _othersElseWatch.firstMatch(p);
+    if (_othersFixed.hasMatch(p) && elseWatch == null) return null;
     add(_othersWatch, AssistantAudience.others);
+    if (elseWatch != null && spans.isEmpty) spans.add((elseWatch.start, elseWatch.end, AssistantAudience.others));
     add(_meWatch, AssistantAudience.me);
-    add(_everyoneWatch, AssistantAudience.everyone);
+    if (elseWatch == null) add(_everyoneWatch, AssistantAudience.everyone);
     if (spans.length != 2 || spans[0].$3 == spans[1].$3) return null;
     spans.sort((a, b) => a.$1.compareTo(b.$1));
     if (spans[1].$1 < spans[0].$2) return null;
@@ -191,7 +207,9 @@ class AssistantIntent {
     // and the same kind (a kind named in one half only would widen the other).
     for (final clause in [first, second]) {
       final lower = clause.toLowerCase();
-      if (!RegExp(_watch).hasMatch(lower) || _clauseJoin.hasMatch(lower)) return null;
+      if (!RegExp(_watch).hasMatch(lower) || _clauseJoin.hasMatch(lower) || _sentenceBreak.hasMatch(lower)) {
+        return null;
+      }
     }
     final whole = AssistantIntent.fromPrompt(prompt).kind;
     if (whole.explicit &&

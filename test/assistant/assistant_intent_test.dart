@@ -314,5 +314,22 @@ void main() {
       );
       expect(AssistantIntent.splitMixedAudience('Tip een film en wat heb ik gekeken en wat keken de anderen'), isNull);
     });
+
+    test('review: a verb-bearing "everyone else" is a clause, a second sentence is not folded in', () {
+      expect(
+        AssistantIntent.splitMixedAudience('What have I watched and what has everyone else watched?'),
+        hasLength(2),
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken en wat keken de anderen. Wat is nieuw?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Which movies did I watch and which movies did the others watch?'),
+        hasLength(2),
+      );
+    });
+
+    test('review: refersBack sees anaphors', () {
+      expect(AssistantIntent.refersBack('Wat heb ik daarvan gekeken?'), isTrue);
+      expect(AssistantIntent.refersBack('Wat heb ik gekeken en wat keken de anderen?'), isFalse);
+    });
   });
 }

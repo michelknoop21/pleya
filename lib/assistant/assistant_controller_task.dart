@@ -16,16 +16,23 @@ extension _AssistantTaskRunning on AssistantController {
       if (!_alive(task)) return;
       // A question about two audiences at once is cut in code, before the
       // model can answer only one half of it.
-      // Not on a follow-up (the clauses would lose "daarvan"), a library-doctor
-      // question or a children's profile (whose ages card resubmits one clause).
-      if (allowSplit &&
-          task.originalSpoilerPrompt == null &&
-          _conversation.isEmpty &&
-          !libraryDoctorScope &&
-          !assistantNeedsLibraryDoctorScope(task.prompt) &&
-          !(await _buildContext(_screenContext).kidsProfile?.call() ?? false)) {
-        final parts = AssistantIntent.splitMixedAudience(task.prompt);
-        if (parts != null) {
+      // Not on a follow-up that points back ("daarvan" would lose its referent),
+      // a library-doctor question or a children's profile (whose ages card
+      // resubmits one clause). The cut is computed first so the profile read is
+      // only paid for a question that would be cut.
+      final parts =
+          allowSplit &&
+              task.originalSpoilerPrompt == null &&
+              !(_conversation.isNotEmpty && AssistantIntent.refersBack(task.prompt)) &&
+              !libraryDoctorScope &&
+              !assistantNeedsLibraryDoctorScope(task.prompt)
+          ? AssistantIntent.splitMixedAudience(task.prompt)
+          : null;
+      if (parts != null) {
+        final kids = await _buildContext(_screenContext).kidsProfile?.call() ?? false;
+        // The question may have been superseded or cancelled while the profile was read.
+        if (!_alive(task)) return;
+        if (!kids) {
           final children = [
             for (final part in parts)
               _newTask(

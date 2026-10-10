@@ -198,6 +198,13 @@ void main() {
     expect(model.seen.last.map((m) => _text(m['content'])).join(' '), contains('Bluey.'));
   });
 
+  test('a fresh headline question after an unrelated turn is still cut in code', () async {
+    final c = make([_say('Bluey.'), _say('Ik.'), _say('Anderen.')]);
+    await c.submit('Wat is een goede kinderserie?');
+    await c.submit('Wat heb ik gekeken en wat keken de anderen?');
+    expect(c.tasks, hasLength(2));
+  });
+
   test('a children profile is not cut in code: its ages card would resubmit one half', () async {
     kids = true;
     addTearDown(() => kids = false);
