@@ -15,8 +15,12 @@ import 'seerr_request_form_parts.dart';
 /// Whether [all] holds an instance for the given quality. The one rule behind
 /// both the form's "no 4K server" state and a caller's decision to offer 4K
 /// at all: 4K lives on its own Radarr or Sonarr instance, or nowhere.
-bool seerrHasServerOfQuality(Iterable<SeerrServiceServer> all, {required bool is4k}) =>
-    all.any((server) => server.is4k == is4k);
+///
+/// [defaultOnly] is for a request sent without a chosen server: the server
+/// routes that one to the default instance of the quality, so an instance
+/// that is not the default would take the request and send it nowhere.
+bool seerrHasServerOfQuality(Iterable<SeerrServiceServer> all, {required bool is4k, bool defaultOnly = false}) =>
+    all.any((server) => server.is4k == is4k && (!defaultOnly || server.isDefault));
 
 /// The admin-only target of a request: server, quality profile, root folder.
 ///
