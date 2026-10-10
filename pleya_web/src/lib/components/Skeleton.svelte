@@ -1,6 +1,8 @@
 <!--
   Eén vlak van een laadskelet, naar `.skel` uit de northstar (web.css,
-  pagina 15): een vulling in `--fill` met een zachte glans die erover loopt.
+  pagina 15): een vulling in `--skeleton` met een zachte glans die erover
+  loopt. Dat is hetzelfde token als een artworkvlak zonder beeld, zodat een
+  kaart niet van tint wisselt als het skelet voor de echte kaart wijkt.
 
   Een skelet is decoratie. Het staat altijd buiten de toegankelijkheidsboom;
   wat een schermlezer hoort ("bezig met laden") zegt de container eromheen,
@@ -46,7 +48,7 @@
   .skel {
     position: relative;
     overflow: hidden;
-    background: var(--fill);
+    background: var(--skeleton);
     border-radius: var(--radius-sm);
   }
 
@@ -57,7 +59,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      color-mix(in srgb, var(--text) 6%, transparent),
+      color-mix(in srgb, var(--text) 5%, transparent),
       transparent
     );
     animation: skel-shimmer 1.2s infinite;

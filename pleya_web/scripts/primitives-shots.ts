@@ -27,7 +27,7 @@ const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
 
-async function open(url: string, width: number, theme = 'oled'): Promise<void> {
+async function open(url: string, width: number, theme = 'dark'): Promise<void> {
   await page.setViewportSize({ width, height: width < 600 ? 852 : 900 });
   await page.goto(GALLERY);
   await page.evaluate((t) => localStorage.setItem('pleya.theme', t), theme);

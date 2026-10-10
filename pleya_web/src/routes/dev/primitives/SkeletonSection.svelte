@@ -3,6 +3,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SkeletonPage from '$lib/components/SkeletonPage.svelte';
   import Artwork from '$lib/components/Artwork.svelte';
+  import Panel from '$lib/components/Panel.svelte';
   import GallerySection from './GallerySection.svelte';
 
   const variants = ['home', 'grid', 'detail', 'compact'] as const;
@@ -23,13 +24,26 @@
     </div>
     <div class="sk__cell">
       <p class="gs__caption">Artwork zonder beeld</p>
-      <!-- Naast de posterkaart, om --fill (skelet) en --skeleton (artwork) te vergelijken. -->
+      <!-- Naast de posterkaart: skelet en artwork delen nu --skeleton. -->
       <Artwork artworkId={null} alt="" eager />
     </div>
     <div class="sk__cell sk__cell--wide">
       <p class="gs__caption">Kaart, breed</p>
       <Skeleton kind="card" shape="wide" />
     </div>
+  </div>
+  <div class="sk__cell sk__cell--panel">
+    <p class="gs__caption">In een paneel</p>
+    <Panel>
+      <div class="sk__media">
+        <Skeleton kind="block" />
+        <div class="sk__lines">
+          <Skeleton kind="line" width="70%" />
+          <Skeleton kind="line" width="92%" />
+          <Skeleton kind="line" width="48%" />
+        </div>
+      </div>
+    </Panel>
   </div>
   <div>
     <p class="gs__caption">Hero</p>
@@ -58,10 +72,31 @@
     width: 280px;
   }
 
+  .sk__cell--panel {
+    width: min(100%, 420px);
+  }
+
+  /* Specimen v2: poster van 64 breed in 2:3 met drie regels ernaast. */
+  .sk__media {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 14px;
+  }
+
+  .sk__media > :global(.skel) {
+    aspect-ratio: var(--aspect-poster);
+  }
+
+  .sk__lines {
+    display: grid;
+    gap: 10px;
+    align-content: center;
+  }
+
   .sk__frame {
     max-height: 520px;
     overflow: hidden;
-    border: 1px solid var(--fill);
+    border: 1px solid var(--hairline);
     border-radius: var(--radius-card);
   }
 </style>
