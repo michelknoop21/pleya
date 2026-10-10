@@ -4,9 +4,10 @@
   opt-in met `dot`. In een tabelcel (mockup 21) is hij 20 hoog; dat is
   `size="sm"`.
 
-  De toonkleuren zijn dezelfde als die van Alert en Chips: groen (--ok) voor
-  klaar, amber (--amber) voor overgeslagen of bezig, --danger-ink voor een
-  fout, inkt voor een lopende sessie en gedimde inkt voor niets aan de hand.
+  De toonkleuren zijn dezelfde als die van Alert en Chips: tekst in --ok-ink
+  voor klaar, --warn-ink voor overgeslagen of bezig, --danger-ink voor een
+  fout (op donker de merkkleuren, in light donkerder; tokens.css), de tint
+  eronder in --ok, --amber en --danger-ink, inkt voor een lopende sessie en gedimde inkt voor niets aan de hand.
   Kleur draagt nooit de betekenis alleen: het label zegt het altijd ook.
 
   Designsysteem v2 voegt `variant="dot"` toe: geen capsule, alleen een stip van
@@ -157,9 +158,10 @@
     animation: pill-pulse 1.6s ease-in-out infinite;
   }
 
+  /* Bodem 0,6 en niet lager: op wit verdween de stip anders halverwege. */
   @keyframes pill-pulse {
     50% {
-      opacity: 0.35;
+      opacity: 0.6;
     }
   }
 

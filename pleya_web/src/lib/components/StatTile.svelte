@@ -117,7 +117,8 @@
     bottom: 0;
     width: 46%;
     height: 46px;
-    color: var(--ok);
+    /* --ok-ink: in light haalt het merkgroen op wit maar 1,8:1. */
+    color: var(--ok-ink);
     pointer-events: none;
   }
 

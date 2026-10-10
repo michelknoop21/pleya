@@ -76,7 +76,10 @@ met de mockup, niet de omlijsting.
   (`rgba(255,255,255,.07)` en `rgba(17,17,17,.07)`).
 - Statuscel (`variant="dot"`): `run` is een amber stip die pulseert, zoals "bezig" in 21 en het
   specimen; de capsule `run` blijft inkt (25).
-- Light kreeg eigen tekstkleuren voor de tonen (`--danger-ink` #c4211c, `--warn-ink` #8a5a00,
-  `--ok-ink` #0f7a45): de merkkleuren haalden op wit 1,8 tot 2,8:1. Gemeten minimaal 4,66:1
-  (fouttekst op de err-pill) en 4,79:1 (ok op de inset). Ook het aan-spoor van Toggle gebruikt in
-  light het donkere groen (witte knop 5,4:1). Dark en OLED zijn ongewijzigd.
+- Light kreeg eigen tekstkleuren voor de tonen (`--danger-ink` #a81d18, `--warn-ink` #7a4f00,
+  `--ok-ink` #0c6b3c): de merkkleuren haalden op wit 1,8 tot 2,8:1. Berekend (WCAG 2.x) op wit,
+  pagina #f7f7f8 en inset #f1f1f3, de laagste waarde per geval: err-pill 5,15, warn-pill 5,87,
+  ok-pill 5,40, gekozen outline-chip 4,87, ok-tekst op een tint van zichzelf 4,77. Het aan-spoor
+  van Toggle en de sparkline gebruiken in light ook het donkere groen (witte knop 6,6:1). De
+  statusstip `run` pulseert tot 0,6 in plaats van 0,35, anders verdween hij op wit. Dark en OLED
+  zijn ongewijzigd. Hertest in light met `PLEYA_SHOTS_THEME=light`.
