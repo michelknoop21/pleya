@@ -81,14 +81,15 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 		if errors.Is(err, pgx.ErrNoRows) {
 			// De guard sloeg toe: de bibliotheek is overgenomen. Zelfde id en slug
 			// terug, zonder iets te schrijven, en de roots van de .env-regel worden
-			// niet opnieuw geclaimd.
-			var managed LibraryManaged
-			if err := tx.QueryRow(ctx,
-				`SELECT id, managed FROM libraries WHERE slug = $1`, spec.Slug).
-				Scan(&lib.ID, &managed); err != nil {
+			// niet opnieuw geclaimd. Titel, soort en scaninstellingen komen uit de
+			// database: de .env-regel wordt genegeerd, dus zijn waarden ook.
+			if err := tx.QueryRow(ctx, `
+				SELECT id, title, kind, managed, scan_interval_seconds, scan_on_start
+				FROM libraries WHERE slug = $1`, spec.Slug).
+				Scan(&lib.ID, &lib.Title, &lib.Kind, &lib.Managed,
+					&lib.ScanIntervalSeconds, &lib.ScanOnStart); err != nil {
 				return nil, fmt.Errorf("bibliotheek %q lezen: %w", spec.Slug, err)
 			}
-			lib.Managed = managed
 			out = append(out, lib)
 			continue
 		}
