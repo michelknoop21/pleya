@@ -98,6 +98,19 @@ func syncLibraries(ctx context.Context, store *catalog.Store, cfg *config.Config
 	if err != nil {
 		return nil, err
 	}
+	// Een regel die de sync oversloeg hoort bij een bibliotheek die via de API
+	// is overgenomen (S2.5). Dat is geen fout, maar een beheerder die de regel
+	// nog aanpast en geen effect ziet, moet in de log kunnen lezen waarom.
+	synced := make(map[string]bool, len(libs))
+	for _, l := range libs {
+		synced[l.Slug] = true
+	}
+	for _, spec := range specs {
+		if !synced[spec.Slug] {
+			log.Info("bibliotheek wordt via de API beheerd; regel in PLEYA_SERVER_LIBRARIES genegeerd",
+				slog.String("slug", spec.Slug))
+		}
+	}
 	for _, l := range libs {
 		log.Info("bibliotheek gereed",
 			slog.String("slug", l.Slug),

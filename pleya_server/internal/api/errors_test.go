@@ -51,6 +51,7 @@ func TestErrorRegisterMatchesTheSpecification(t *testing.T) {
 		"library.slug_taken":             {409, false},
 		"library.not_empty":              {409, false},
 		"library.config_managed":         {409, false},
+		"library.not_config_managed":     {409, false},
 		"library.confirm_mismatch":       {409, false},
 		"storage.root_not_offered":       {400, false},
 		"job.not_cancellable":            {409, false},

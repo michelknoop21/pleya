@@ -293,6 +293,35 @@ func (s *Server) handleDeleteLibrary(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleAdoptLibrary neemt een bibliotheek uit PLEYA_SERVER_LIBRARIES over in
+// API-beheer (S2.5). Zelfde id en slug, geen body: er valt niets te kiezen,
+// alleen wie de bibliotheek voortaan onderhoudt. Daarna gelden PATCH en DELETE
+// zoals voor elke bibliotheek die POST /libraries aanmaakte, en laat de
+// config-sync haar bij een herstart met rust.
+func (s *Server) handleAdoptLibrary(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	libraryID, ok := s.pathID(w, r, "library_id")
+	if !ok {
+		return
+	}
+
+	lib, err := s.opts.Catalog.AdoptLibrary(r.Context(), libraryID)
+	switch {
+	case errors.Is(err, catalog.ErrNotConfigManaged):
+		writeError(w, s.log, CodeLibraryNotConfigManaged, "library is already managed through the API", nil)
+		return
+	case err != nil:
+		s.writeStoreError(w, err)
+		return
+	}
+
+	s.auditEvent(r, auditAdoptLibrary, lib.ID.String(), audit.OutcomeOK,
+		map[string]any{"title": lib.Title})
+	writeJSON(w, http.StatusOK, adminLibraryWire(lib))
+}
+
 // adminLibraryWire is Library met de velden die alleen klasse admin ziet
 // (J.3): de aanroeper heeft requireAdmin al gehaald, dus dit is de volledige
 // vorm en niet een keuze die de handler nog moet maken.

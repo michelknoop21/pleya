@@ -287,6 +287,14 @@ func matrixProbes() []matrixProbe {
 			body: noBody, ok: http.StatusOK, expect: adminSurface()},
 		{row: 39, name: "GET /watch-history", method: http.MethodGet,
 			path: fixedPath("/pleya/v1/watch-history"), body: noBody, ok: http.StatusOK, expect: adminSurface()},
+
+		// Regel 40 is S2.5. De fixturebibliotheek is al 'db', dus de probe staat
+		// op library.not_config_managed, hetzelfde patroon als regel 30: een
+		// geslaagde overname bij de owner zou de admin daarna een andere uitkomst
+		// geven, en de geslaagde weg toetst handlers_admin_library_adopt_test.go.
+		{row: 40, name: "POST /libraries/{id}/adopt", method: http.MethodPost,
+			path: func(f *matrixFixture) string { return "/pleya/v1/libraries/" + f.libraryID + "/adopt" },
+			body: noBody, ok: http.StatusConflict, expect: adminSurface()},
 	}
 }
 

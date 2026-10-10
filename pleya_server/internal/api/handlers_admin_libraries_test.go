@@ -447,7 +447,8 @@ func (e *env) createLibraryViaAPI(t *testing.T, title, kind string, rootPaths []
 // markDBManaged zet een door newEnv gesyncte (en dus gevulde) bibliotheek op
 // managed 'db'. Een config-beheerde bibliotheek weigert PATCH en DELETE met
 // library.config_managed; tests die de db-paden op een gevulde bibliotheek
-// bewijzen hebben een db-beheerde nodig, en adopt komt pas met S2.5.
+// bewijzen hebben een db-beheerde nodig. De echte overname (S2.5) toetst
+// handlers_admin_library_adopt_test.go; hier gaat het alleen om de opstelling.
 func (e *env) markDBManaged(t *testing.T, libraryID string) {
 	t.Helper()
 	if _, err := e.pool.Exec(context.Background(),

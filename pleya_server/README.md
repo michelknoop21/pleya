@@ -110,11 +110,12 @@ een geweigerd event wordt beantwoord met de actuele toestand en gelogd, en verde
 
 ## Wat er op de lijn zit
 
-Achtenveertig operaties op eenenveertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
+Vijftig operaties op drieënveertig paden. De eerste achttien zijn PS-2 tot en met PS-4, de acht
 daarna PS-9, de twee daarna de serverinstellingen van S1.2, de vier daarna de serverdiagnostiek
 van S1.3, de twee daarna `GET /users/me` en het overzicht van lopende streams uit S1.4, de
 drie daarna de API-tokens en het auditlog van S1.5, de drie daarna de bibliotheek-CRUD van
-S2.2, de twee daarna de opslagroots van S2.3 en de laatste zes scans en jobs van S2.4. S1.8 komt er niet bij: de refreshcookie is een modus op login en refresh en geen endpoint
+S2.2, de twee daarna de opslagroots van S2.3, de zes daarna scans en jobs van S2.4, dan
+`GET /watch-history` (DEC-143) en als laatste de overname van S2.5. S1.8 komt er niet bij: de refreshcookie is een modus op login en refresh en geen endpoint
 ernaast.
 
 | Endpoint | Klasse |
@@ -125,6 +126,7 @@ ernaast.
 | `GET /pleya/v1/server` | geauthenticeerd; voor een admin acht velden erbij |
 | `GET /pleya/v1/libraries`, `/libraries/{id}/items` | geauthenticeerd; voor een admin drie velden erbij (S2.2) |
 | `POST /pleya/v1/libraries`, `PATCH`/`DELETE /libraries/{id}` | admin |
+| `POST /pleya/v1/libraries/{id}/adopt` | admin; `config` naar `db`, zelfde id en slug (S2.5) |
 | `GET /pleya/v1/items/{id}`, `/items/{id}/children` | geauthenticeerd |
 | `GET /pleya/v1/search`, `/hubs/{hub_id}` | geauthenticeerd |
 | `GET /pleya/v1/artwork/{id}` | geauthenticeerd |
@@ -142,6 +144,7 @@ ernaast.
 | `GET /pleya/v1/stream-sessions` | admin |
 | `POST`/`GET /pleya/v1/auth/api-tokens` | geauthenticeerd op zichzelf, admin met `user_id` |
 | `GET /pleya/v1/audit` | admin |
+| `GET /pleya/v1/watch-history` | admin (DEC-143) |
 | `GET /pleya/v1/storage/roots`, `POST /pleya/v1/storage/roots/recheck` | admin |
 | `POST /pleya/v1/libraries/{id}/scan` | admin; geeft 202 met de scan |
 | `GET /pleya/v1/scans`, `/scans/{id}`, `GET /pleya/v1/jobs` | admin |
@@ -159,7 +162,7 @@ Zijn bereik (`read`, `maintenance`, `admin`) kan nooit boven de rol van de eigen
 adminklasse ook wanneer de rol hem wel haalt.
 
 Wat er nog niet is: `POST /playback/plan` (PS-6), transcode-sessies (PS-8), verzamelingen en
-afspeellijsten (PS-9C), geschiedenis (PS-9P) en de rest van beheer (S2.5 en S2.6). Die geven een 404, en
+afspeellijsten (PS-9C), geschiedenis (PS-9P). Die geven een 404, en
 `capabilities` in `/info` zegt hetzelfde: `browse`, `search`, `artwork`, `watch_state`,
 `watch_state_ownership`, `stream_sessions`, `users`, `sessions` en `api_tokens` staan op `true`, en
 capabilities is leidend. `administration` staat er nog niet bij: die vlag hoort bij S1.6, wanneer
@@ -231,6 +234,12 @@ Een eigen titel kan ertussen: `films="Onze films"=movies:/media/library/Films`.
 **De slug is de matchsleutel**, niet de titel en niet het pad. Daarom overleeft een bibliotheek een
 hernoeming en een verplaatste root met zijn ids intact. Een nieuwe slug is een nieuwe bibliotheek,
 met nieuwe ids voor alles eronder.
+
+**Een bibliotheek uit `.env` kan naar de API verhuizen**, met `POST /pleya/v1/libraries/{id}/adopt`
+(S2.5). De id en de slug blijven, en items, kijkstatus en scanrondes hangen er daarna nog precies zo
+aan. Vanaf dat moment wijzigt u titel, soort en roots via de API, en negeert de server de regel in
+`PLEYA_SERVER_LIBRARIES` bij elke herstart; de log zegt dat met "regel in PLEYA_SERVER_LIBRARIES
+genegeerd". U hoeft de regel dus niet meteen weg te halen, maar een wijziging erin doet niets meer.
 
 **Wat `.env` wel en niet doet.** Het houdt de credential uit Git. Het verbergt hem niet voor een
 Docker-beheerder: `docker inspect pleya-server` toont de environment van de container. Voor een

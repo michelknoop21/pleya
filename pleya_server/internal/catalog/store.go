@@ -50,6 +50,10 @@ type RootSpec struct {
 // een id een hernoemde bibliotheek en een verplaatste root. Wat uit de
 // configuratie verdwijnt wordt niet verwijderd; een root die er even niet is
 // mag geen bibliotheek opruimen.
+//
+// Het resultaat bevat alleen de bibliotheken die deze sync werkelijk
+// vastlegde. Een regel waarvan de slug inmiddels bij een overgenomen ('db')
+// bibliotheek hoort, valt eruit (S2.5); de aanroeper kan dat aan de slugs zien.
 func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Library, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -65,16 +69,26 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 
 		// managed is expliciet 'config' en niet de kolomdefault: dit is het pad
 		// dat de omgeving synct, en de default bestaat voor een rij die buiten dit
-		// pad om wordt ingevoegd. S2.5 moet deze ON CONFLICT DO UPDATE nog een
-		// guard geven zodat een via de API geadopteerde ('db') bibliotheek hier niet
-		// weer wordt overschreven; vandaag bestaat dat pad nog niet, dus die guard
-		// zou vooruitbouwen zonder een aanroeper.
+		// pad om wordt ingevoegd.
+		//
+		// De WHERE op de DO UPDATE is de guard van S2.5: een bibliotheek die via
+		// POST /libraries/{id}/adopt is overgenomen ('db') blijft van de API, ook
+		// als de oude regel nog in PLEYA_SERVER_LIBRARIES staat. Zonder die guard
+		// zou de herstart titel en soort terugzetten; een tweede rij kan er door
+		// de unieke slug toch al niet komen. Raakt de upsert niets, dan komt er
+		// geen id terug en slaan we ook de roots over: die zijn sinds de
+		// overname eveneens van de API, en een root die een beheerder heeft
+		// weggehaald mag de omgeving er niet weer aan hangen.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO libraries (id, slug, title, kind, managed)
 			VALUES ($1, $2, $3, $4, 'config')
 			ON CONFLICT (slug) DO UPDATE
 			SET title = EXCLUDED.title, kind = EXCLUDED.kind, updated_at = now()
+			WHERE libraries.managed = 'config'
 			RETURNING id`, id.New(), spec.Slug, spec.Title, spec.Kind).Scan(&lib.ID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("bibliotheek %q vastleggen: %w", spec.Slug, err)
 		}
