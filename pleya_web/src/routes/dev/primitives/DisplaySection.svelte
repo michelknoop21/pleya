@@ -42,7 +42,10 @@
       {#snippet actions()}
         <button type="button" class="btn btn--ghost btn--sm">Alles</button>
       {/snippet}
-      <p class="t-body">Flush: smalle binnenrand, voor een tabel of lijst.</p>
+      <ul class="gal-list">
+        <li>Films <span class="mono">/volume1/media/Films</span></li>
+        <li>Series <span class="mono">/volume1/media/Series</span></li>
+      </ul>
     </Panel>
     <Panel tone="warn">
       {#snippet title()}Onderhoudsmodus{/snippet}
@@ -57,8 +60,26 @@
   </div>
 
   <div class="gs__grid">
-    <StatTile label="Titels" value="1.284" sub="+12 deze week" />
-    <StatTile label="Opslag" value="3,4 TB" sub="van 8 TB" />
+    <StatTile label="Titels" value="1.284" sub="+12 deze week">
+      {#snippet spark()}
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+          <path
+            d="M0 34 L15 30 L30 31 L45 22 L60 24 L75 14 L100 8 L100 40 L0 40Z"
+            fill="currentColor"
+            fill-opacity="0.12"
+          />
+          <path
+            d="M0 34 L15 30 L30 31 L45 22 L60 24 L75 14 L100 8"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            vector-effect="non-scaling-stroke"
+          />
+        </svg>
+      {/snippet}
+    </StatTile>
+    <StatTile label="Opslag" value="3,2" unit="TB vrij" sub="van 16 TB · 1 root niet gemount" />
+    <StatTile label="Scan" value="62" unit="%" sub="Series · 3.104 van 5.012" />
     <StatTile label="Actieve sessies" value="2" />
     <StatTile label="Laatste scan" value="09:41">
       {#snippet icon()}
@@ -85,7 +106,13 @@
     </div>
   </div>
   <div>
-    <p class="gs__caption">Klein</p>
+    <p class="gs__caption">Status, stip en tekst (tabelcel)</p>
+    <div class="gs__row">
+      {#each tones as item (item.tone)}<StatusPill tone={item.tone} label={item.label} variant="dot" />{/each}
+    </div>
+  </div>
+  <div>
+    <p class="gs__caption">Klein, als tag</p>
     <div class="gs__row">
       {#each tones as item (item.tone)}<StatusPill tone={item.tone} label={item.label} size="sm" />{/each}
     </div>
@@ -126,3 +153,19 @@
     <Chips label="Genre (quiet)" options={genres} variant="quiet" bind:selected={quiet} />
   </div>
 </GallerySection>
+
+<style>
+  /* Een lijst die zelf tot de rand van een flush paneel loopt, zoals een tabel. */
+  .gal-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space);
+    padding: 12px 20px;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink);
+  }
+
+  .gal-list .mono {
+    color: var(--ink-2);
+  }
+</style>

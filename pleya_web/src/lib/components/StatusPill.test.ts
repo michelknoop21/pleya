@@ -48,4 +48,14 @@ describe("StatusPill", () => {
     });
     expect(screen.getByText("not mounted")).toHaveClass("pill--sm");
   });
+
+  it("tekent als statuscel een stip zonder capsule, ook zonder dot", () => {
+    const { container } = render(StatusPill, {
+      props: { label: "today 08:12", tone: "ok", variant: "dot", size: "sm" },
+    });
+    const pill = screen.getByText("today 08:12");
+    expect(pill).toHaveClass("pill--status");
+    expect(pill).not.toHaveClass("pill--sm");
+    expect(container.querySelector(".pill__dot")).toHaveAttribute("aria-hidden", "true");
+  });
 });

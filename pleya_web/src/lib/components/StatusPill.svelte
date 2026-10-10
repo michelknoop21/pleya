@@ -8,6 +8,11 @@
   klaar, amber (--amber) voor overgeslagen of bezig, --danger-ink voor een
   fout, inkt voor een lopende sessie en gedimde inkt voor niets aan de hand.
   Kleur draagt nooit de betekenis alleen: het label zegt het altijd ook.
+
+  Designsysteem v2 voegt `variant="dot"` toe: geen capsule, alleen een stip van
+  8 px in de toonkleur met de tekst in gedimde inkt, zoals de statuskolom van
+  een beheertabel. Bij `run` pulseert de stip. De kleine maat (`size="sm"`) is
+  in v2 een tag met hoeken van 6 px in plaats van een capsule.
 -->
 <script lang="ts" module>
   export type PillTone = 'ok' | 'warn' | 'err' | 'run' | 'idle';
@@ -21,16 +26,29 @@
     tone?: PillTone;
     dot?: boolean;
     size?: 'md' | 'sm';
+    /** `dot`: stip plus tekst zonder capsule, voor een statuscel in een tabel. */
+    variant?: 'pill' | 'dot';
     icon?: Snippet;
   }
 
-  let { label, tone = 'idle', dot = false, size = 'md', icon }: Props = $props();
+  let {
+    label,
+    tone = 'idle',
+    dot = false,
+    size = 'md',
+    variant = 'pill',
+    icon
+  }: Props = $props();
 </script>
 
-<span class="pill pill--{tone}" class:pill--sm={size === 'sm'}>
+<span
+  class="pill pill--{tone}"
+  class:pill--sm={size === 'sm' && variant === 'pill'}
+  class:pill--status={variant === 'dot'}
+>
   {#if icon}
     <span class="pill__icon" aria-hidden="true">{@render icon()}</span>
-  {:else if dot}
+  {:else if dot || variant === 'dot'}
     <span class="pill__dot" aria-hidden="true"></span>
   {/if}
   {label}
@@ -53,24 +71,28 @@
     vertical-align: middle;
   }
 
+  /* `.tag` in specimen v2: 20 hoog, hoeken van 6, 11 px. */
   .pill--sm {
     height: 20px;
     padding: 0 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    letter-spacing: 0.01em;
   }
 
-  /* Achtergronden zijn de mockup-rgba's als mengsel van de toonkleur. */
+  /* Achtergronden zijn de rgba's uit specimen v2 als mengsel van de toonkleur. */
   .pill--ok {
-    background: color-mix(in srgb, var(--ok) 15%, transparent);
+    background: color-mix(in srgb, var(--ok) 14%, transparent);
     color: var(--ok);
   }
 
   .pill--warn {
-    background: color-mix(in srgb, var(--amber) 15%, transparent);
+    background: color-mix(in srgb, var(--amber) 14%, transparent);
     color: var(--amber);
   }
 
   .pill--err {
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    background: color-mix(in srgb, var(--danger-ink) 14%, transparent);
     color: var(--danger-ink);
   }
 
@@ -90,6 +112,58 @@
   /* De stip van "niets aan de hand" is stiller dan de tekst (`.dot.idle`). */
   .pill--idle .pill__dot {
     background: var(--ink-4);
+  }
+
+  /*
+   * Statusvorm (`.st` in specimen v2). Na de toonregels, zodat de capsule en
+   * de getinte tekst wegvallen; de toonkleur zit alleen nog in de stip.
+   */
+  .pill--status {
+    gap: 8px;
+    height: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    font-size: 13.5px;
+    font-weight: 400;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  .pill--status .pill__dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .pill--status.pill--ok .pill__dot {
+    background: var(--ok);
+  }
+
+  .pill--status.pill--warn .pill__dot {
+    background: var(--amber);
+  }
+
+  .pill--status.pill--err .pill__dot {
+    background: var(--danger-ink);
+  }
+
+  .pill--status.pill--run .pill__dot {
+    background: var(--ink);
+    animation: pill-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes pill-pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  /* base.css zet animaties bij minder beweging al op nul; dit is expliciet. */
+  @media (prefers-reduced-motion: reduce) {
+    .pill--status.pill--run .pill__dot {
+      animation: none;
+    }
   }
 
   .pill__icon {

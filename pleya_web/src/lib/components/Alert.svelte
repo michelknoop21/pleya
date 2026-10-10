@@ -8,6 +8,10 @@
   schermlezer, een waarschuwing en een toelichting zijn role="status" en
   wachten hun beurt af. Een melding die al bij het laden vaststaat en niet
   verandert kan `live={false}` krijgen, dan is het gewoon tekst.
+
+  Designsysteem v2: de melding staat op het paneelvlak met een vleug van de
+  toonkleur erover (7 procent), zodat hij in elk thema dezelfde diepte heeft
+  als de panelen eromheen; de tekst is gedimde inkt, de titel volle inkt.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -58,28 +62,27 @@
 <style>
   .alert {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    gap: 14px;
     padding: 14px 16px;
-    border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+    border: 1px solid color-mix(in srgb, var(--amber) 34%, transparent);
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--amber) 10%, transparent);
+    background: color-mix(in srgb, var(--amber) 7%, var(--panel));
     font-size: 14px;
-    line-height: 1.4;
-    color: var(--ink);
+    line-height: 1.45;
+    color: var(--ink-2);
   }
 
   .alert__icon {
     flex: none;
-    width: 20px;
-    height: 20px;
-    margin-top: 1px;
+    width: 18px;
+    height: 18px;
     color: var(--amber);
   }
 
   .alert--err {
-    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--danger-ink) 34%, transparent);
+    background: color-mix(in srgb, var(--danger-ink) 7%, var(--panel));
   }
 
   .alert--err .alert__icon {
@@ -87,8 +90,8 @@
   }
 
   .alert--info {
-    border-color: color-mix(in srgb, var(--text) 12%, transparent);
-    background: var(--fill);
+    border-color: var(--hairline-strong);
+    background: var(--panel);
   }
 
   .alert--info .alert__icon {
@@ -101,7 +104,8 @@
   }
 
   .alert__title {
-    font-weight: 700;
+    font-weight: 600;
+    color: var(--ink);
   }
 
   .alert__actions {
@@ -117,11 +121,19 @@
       flex-wrap: wrap;
     }
 
+    .alert {
+      align-items: flex-start;
+    }
+
     .alert__body {
       flex-basis: calc(100% - 32px);
     }
 
-    /* 32 = icoon 20 plus gat 12: de actie lijnt uit met de tekst. */
+    .alert__icon {
+      margin-top: 2px;
+    }
+
+    /* 32 = icoon 18 plus gat 14: de actie lijnt uit met de tekst. */
     .alert__actions {
       margin-left: 32px;
     }

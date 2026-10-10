@@ -309,6 +309,12 @@ ol {
   border-radius: var(--radius-card);
 }
 
+/* Paden, slugs en sleutels: wat iemand letterlijk overtypt staat in mono. */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+}
+
 /* Brede inhoud schuift in zijn eigen container, nooit met de pagina mee. */
 .scroll-x {
   overflow-x: auto;

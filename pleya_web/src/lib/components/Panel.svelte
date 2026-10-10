@@ -1,14 +1,17 @@
 <!--
-  Een paneel (`.panel` in web.css): vlak op --surface met kaartradius, waar
-  beheerschermen hun blokken in zetten. Kop en acties staan op één regel; onder
-  900 schuiven de acties naar een eigen regel onder de titel.
+  Een paneel (`.panel` in web.css): het vlak waar beheerschermen hun blokken in
+  zetten. Designsysteem v2: --panel boven de pagina, met een haarlijn en een
+  zachte ring en schaduw, zodat het ook in OLED loskomt van zwart. Kop en
+  acties staan op één regel; past dat niet, dan breekt de rij af en blijven de
+  acties rechts.
 
   De acties staan bewust naast de kop en niet erin: een link in een <h3> wordt
   deel van de kopnaam, en dan leest een schermlezer "Recente taken Alles
   bekijken" als titel. De sectie krijgt de kop als naam via aria-labelledby.
 
-  `flush` is de smalle binnenrand van 6 bij 8 die de mockups (21, 27) bij een
-  tabel gebruiken; `danger` is de rode rand van een gevarenzone (22, 27). Beide
+  `flush` haalt de binnenrand weg voor een tabel of lijst die zelf tot de rand
+  loopt (21, 27); de kop houdt de gewone inzet van 20, en de inhoud doet dat
+  ook (DataTable zet zijn cellen op 20), zodat alles op één lijn staat; `danger` is de rode rand van een gevarenzone (22, 27). Beide
   stonden in de mockup als inline style, en dat laat de CSP hier niet toe.
 -->
 <script lang="ts">
@@ -70,43 +73,49 @@
 <style>
   .panel {
     min-width: 0;
-    padding: 18px 20px;
-    border-radius: var(--radius-card);
-    background: var(--surface);
+    padding: 18px 20px 20px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-panel);
+    background: var(--panel);
+    box-shadow: var(--ring-shadow);
   }
 
   .panel--flush {
-    padding: 6px 8px;
+    padding: 0 0 8px;
   }
 
+  /* rgba(255,106,99,.34) in specimen v2: de gevareninkt op 34 procent. */
   .panel--danger {
-    /* rgba(229,20,15,.35) in de mockup: de merkrode rand op 35 procent. */
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-color: color-mix(in srgb, var(--danger-ink) 34%, transparent);
   }
 
   /* rgba(255,176,32,.35) in mockup 35: amber op 35 procent. */
   .panel--warn {
-    border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+    border-color: color-mix(in srgb, var(--amber) 35%, transparent);
   }
 
   .panel__head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 8px 10px;
+    min-height: 32px;
+    margin-bottom: 14px;
   }
 
   /* Een flush paneel houdt zijn kop op dezelfde lijn als een gewoon paneel. */
   .panel--flush .panel__head {
-    padding: 12px 12px 0;
+    margin-bottom: 4px;
+    padding: 18px 20px 0;
   }
 
   .panel__title {
     min-width: 0;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.3;
+    letter-spacing: -0.01em;
     color: var(--ink);
   }
 
@@ -126,17 +135,6 @@
     margin-left: auto;
     font-size: 13px;
     font-weight: 500;
-    color: var(--ink-2);
-  }
-
-  @media (max-width: 899px) {
-    .panel__head {
-      flex-wrap: wrap;
-    }
-
-    .panel__actions {
-      width: 100%;
-      margin-left: 0;
-    }
+    color: var(--ink-3);
   }
 </style>
