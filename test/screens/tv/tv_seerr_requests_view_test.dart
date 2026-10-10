@@ -64,6 +64,7 @@ void main() {
     VoidCallback? onLoadMore,
     bool isLoading = false,
     String? error,
+    ValueChanged<bool>? onScopeChanged,
   }) async {
     picked = filter;
     await tester.pumpWidget(
@@ -88,6 +89,7 @@ void main() {
               countsScope: countsScope,
               filterUnsupported: filterUnsupported,
               error: error,
+              onScopeChanged: onScopeChanged,
             ),
           ),
         ),
@@ -294,6 +296,35 @@ void main() {
       expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
       expect(picked, TvSeerrRequestFilter.all, reason: 'backing out changes nothing');
     });
+  });
+
+  testWidgets('losing the manage right under an open Bereik subview leaves the remote on the rail', (tester) async {
+    await pumpView(tester, [_request(1)], onScopeChanged: (_) {});
+    await openRail(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrRailScope');
+    await select(tester);
+    expect(find.byKey(tvCatalogFilterRailSubviewKey), findsOneWidget, reason: 'the Bereik subview is open');
+
+    // A profile switch: the same page, now for a viewer without the choice.
+    await pumpView(tester, [_request(1)]);
+
+    final rows = tester.widget<TvCatalogFilterRailPanel>(find.byKey(tvCatalogFilterRailKey)).rows;
+    expect(rows.map((row) => row.label), [t.seerr.railStatus]);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'TvSeerrRailStatus',
+      reason: 'the remote is not left on nothing',
+    );
+
+    // And the next round trip comes back to a row that exists.
+    await select(tester);
+    expect(find.byKey(tvCatalogFilterRailSubviewKey), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byKey(tvCatalogFilterRailKey), findsOneWidget);
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'TvSeerrRailStatus');
   });
 
   group('the heading', () {

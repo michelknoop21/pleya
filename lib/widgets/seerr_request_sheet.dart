@@ -13,6 +13,7 @@ import '../providers/seerr_provider.dart';
 import '../services/seerr/seerr_client.dart';
 import '../services/seerr/seerr_constants.dart';
 import '../theme/mono_tokens.dart';
+import '../utils/app_logger.dart';
 import 'app_icon.dart';
 import 'bottom_sheet_page_scaffold.dart';
 import 'focusable_list_tile.dart';
@@ -48,18 +49,34 @@ class SeerrRequestSheet extends StatefulWidget {
   /// route, for a caller that has nowhere to send it.
   final VoidCallback? onOpenMyRequests;
 
-  const SeerrRequestSheet({super.key, required this.media, this.onRequested, this.onOpenMyRequests});
+  /// Opens the form on 4K, for a caller whose button said so. Ignored for a
+  /// profile without the 4K right for this media type.
+  final bool initialIs4k;
+
+  const SeerrRequestSheet({
+    super.key,
+    required this.media,
+    this.onRequested,
+    this.onOpenMyRequests,
+    this.initialIs4k = false,
+  });
 
   static Future<bool?> show(
     BuildContext context, {
     required SeerrMedia media,
     VoidCallback? onRequested,
     VoidCallback? onOpenMyRequests,
+    bool initialIs4k = false,
   }) {
     return OverlaySheetController.showAdaptive<bool>(
       context,
       isScrollControlled: true,
-      builder: (_) => SeerrRequestSheet(media: media, onRequested: onRequested, onOpenMyRequests: onOpenMyRequests),
+      builder: (_) => SeerrRequestSheet(
+        media: media,
+        onRequested: onRequested,
+        onOpenMyRequests: onOpenMyRequests,
+        initialIs4k: initialIs4k,
+      ),
     );
   }
 
@@ -94,6 +111,9 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
 
   SeerrQuota? _quota;
   SeerrMediaStatus _status = SeerrMediaStatus.unknown;
+
+  /// The title's 4K status, null while Seerr has not said what it is.
+  SeerrMediaStatus? _status4k;
   late final SeerrTargetController _target = SeerrTargetController(isTv: _isTv);
 
   /// The client this sheet loaded with. A profile switch swaps it, and from
@@ -117,6 +137,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
   void initState() {
     super.initState();
     _status = widget.media.status;
+    _status4k = widget.media.status4k;
   }
 
   @override
@@ -158,6 +179,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       setState(() => _loading = false);
       return;
     }
+    _is4k = widget.initialIs4k && provider.canRequest4kFor(isMovie: !_isTv);
     try {
       if (_isTv) {
         final detail = await client.getTv(widget.media.tmdbId);
@@ -211,8 +233,25 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       ..addAll(_requestable.map((s) => s.seasonNumber));
   }
 
-  // Movies: block a duplicate request the server would reject with 409.
-  bool get _isMovieRequestable => !_status.isAvailable && !_status.isRequested;
+  // Movies: block a duplicate request the server would reject with 409. HD and
+  // 4K are separate requests, so each is judged on its own status. No 4K
+  // status at all leaves 4K on offer, and the server decides.
+  bool _isMovieRequestableIn({required bool is4k}) {
+    final status = is4k ? _status4k : _status;
+    return status == null || (!status.isAvailable && !status.isRequested);
+  }
+
+  bool get _isMovieRequestable => _isMovieRequestableIn(is4k: _is4k);
+
+  /// A film whose chosen quality is already asked for, on a form that only
+  /// stands for the other quality: the button that could not send anyway is
+  /// the way to the request that exists, as it is on the end state.
+  bool get _offersMineInsteadOfSubmit =>
+      !_isTv &&
+      !_locked &&
+      _refusal == null &&
+      widget.onOpenMyRequests != null &&
+      ((_is4k ? _status4k : _status)?.isRequested ?? false);
 
   ({int? remaining, int? limit}) get _quotaForType {
     final q = _quota;
@@ -273,7 +312,6 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         rootFolder: target?.rootFolder,
       );
       if (!mounted || !_live(client)) return;
-      _confirm();
     } on SeerrException catch (e) {
       if (!mounted || !_live(client)) return;
       setState(() {
@@ -288,6 +326,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
           _error = e.message.startsWith('HTTP') ? t.seerr.requestFailed : e.message;
         }
       });
+      return;
     } catch (_) {
       // Something broke after the request left. That is not proof it failed.
       if (!mounted || !_live(client)) return;
@@ -295,7 +334,11 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         _submitting = false;
         _uncertain = true;
       });
+      return;
     }
+    // Outside the try: the server has confirmed, and a caller whose callback
+    // throws must not turn that into an open outcome.
+    _confirm();
   }
 
   void _confirm() {
@@ -305,7 +348,12 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       _uncertain = false;
       _done = true;
     });
-    widget.onRequested?.call();
+    // The request is confirmed whatever the caller does with the news.
+    try {
+      widget.onRequested?.call();
+    } catch (e, stack) {
+      appLogger.w('Seerr request confirmed, but the onRequested callback threw', error: e, stackTrace: stack);
+    }
   }
 
   /// Reads the title back after a request whose outcome is unknown.
@@ -364,6 +412,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
       _uncertain = false;
       _sent = null;
       _status = detail.media.status;
+      _status4k = detail.media.status4k;
       if (_isTv) {
         _seasons = seasons;
         _selectedSeasons.removeWhere((n) => !_requestable.any((s) => s.seasonNumber == n));
@@ -464,7 +513,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
     // instead of a dead-end sheet with a permanently disabled button.
     final nothingRequestable = _isTv
         ? !_seasons.any(_isSeasonRequestable) && !_canOffer4k(provider)
-        : !_isMovieRequestable;
+        : !_isMovieRequestableIn(is4k: false) && !(_canOffer4k(provider) && _isMovieRequestableIn(is4k: true));
     if (nothingRequestable && _error == null) {
       final available = _status.isAvailable;
       return _terminal(
@@ -500,6 +549,13 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
           ),
           if (_quotaExhausted)
             SeerrFormNotice(kind: 'quota', title: t.seerr.quotaReached, tone: SeerrFormNoticeTone.warning),
+          // A film whose chosen quality is taken while the other one is open:
+          // the form stays for the 4K switch, and says why it cannot send yet.
+          if (!_isTv && !_isMovieRequestable && _refusal == null && !_uncertain)
+            SeerrFormNotice(
+              kind: 'duplicate',
+              title: (_is4k ? _status4k : _status)?.isAvailable ?? false ? t.seerr.available : t.seerr.alreadyRequested,
+            ),
           if (_uncertain)
             SeerrFormNotice(
               kind: 'uncertain',
@@ -524,6 +580,15 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
                   primaryInstance: 'status',
                   onPrimary: _checkStatus,
                   busy: _checking,
+                )
+              : _offersMineInsteadOfSubmit
+              ? SeerrFormButtons(
+                  closeLabel: t.common.close,
+                  onClose: _close,
+                  primaryLabel: t.seerr.myRequests,
+                  primaryIcon: Symbols.inbox_rounded,
+                  primaryInstance: 'mine',
+                  onPrimary: _openMyRequests,
                 )
               : SeerrFormButtons(
                   closeLabel: t.common.cancel,

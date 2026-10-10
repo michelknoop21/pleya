@@ -1,8 +1,11 @@
 /// Ontdekken mounted whole against a scripted Seerr (Requests 2.0, family 1).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_screen.dart';
@@ -100,6 +103,67 @@ void main() {
     expect(card(tester).media.tmdbId, 777);
     expect(find.text('Title 603'), findsNothing);
   });
+
+  group('search keeps paginating after a next page was dropped', () {
+    Map<String, dynamic> searchPage(int number, {required int of}) => {
+      'page': number,
+      'totalPages': of,
+      'results': [
+        for (var i = 0; i < 20; i++) {'id': number * 1000 + i, 'mediaType': 'movie', 'title': 'Hit $number-$i'},
+      ],
+    };
+
+    Iterable<String?> pagesAsked(String query) =>
+        fake.sent('GET', '/search').where((c) => c.query['query'] == query).map((c) => c.query['page']);
+
+    Future<void> type(WidgetTester tester, String query) async {
+      await tester.enterText(find.byType(TextField), query);
+      await tester.pump(const Duration(milliseconds: 450));
+      await seerrSettle(tester);
+    }
+
+    testWidgets('by a profile switch', (tester) async {
+      final store = MemorySeerrStore()..sessions['user-2'] = seerrSession(userId: 9);
+      final secondPage = Completer<http.Response>();
+      fake.routes['GET /search'] = (request) =>
+          request.url.queryParameters['page'] == '1' ? FakeSeerr.json(searchPage(1, of: 3)) : secondPage.future;
+      await open(tester, store: store);
+
+      await type(tester, 'kust');
+      expect(pagesAsked('kust'), ['1', '2'], reason: 'the next page is on its way');
+
+      await provider.onActiveProfileChanged('user-2');
+      await seerrSettle(tester);
+      secondPage.complete(FakeSeerr.json(searchPage(2, of: 3)));
+      await seerrSettle(tester);
+      expect(find.text('Hit 2-0'), findsNothing, reason: "the old account's page is dropped");
+
+      fake.on('GET /search', searchPage(1, of: 3));
+      await type(tester, 'duin');
+
+      expect(find.text('Hit 1-0'), findsWidgets);
+      expect(pagesAsked('duin'), contains('2'), reason: 'the new account can still ask for a next page');
+    });
+
+    testWidgets('by a new query', (tester) async {
+      final secondPage = Completer<http.Response>();
+      fake.routes['GET /search'] = (request) =>
+          request.url.queryParameters['page'] == '1' || request.url.queryParameters['query'] != 'kust'
+          ? FakeSeerr.json(searchPage(int.parse(request.url.queryParameters['page']!), of: 3))
+          : secondPage.future;
+      await open(tester);
+
+      await type(tester, 'kust');
+      expect(pagesAsked('kust'), ['1', '2']);
+
+      await type(tester, 'duin');
+      secondPage.complete(FakeSeerr.json(searchPage(2, of: 3)));
+      await seerrSettle(tester);
+
+      expect(pagesAsked('duin'), containsAll(['1', '2']), reason: 'the dropped page of "kust" must not block "duin"');
+    });
+  });
+
   testWidgets('desktop requests automation follows actual loading and opens the inbox', (tester) async {
     final slow = fake.hold('GET /discover/trending');
     await open(tester);

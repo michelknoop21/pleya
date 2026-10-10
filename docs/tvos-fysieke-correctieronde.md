@@ -4449,7 +4449,7 @@ gevonden probleem.
 
 **Status.** RAIL2: **FIXED**, `3408f061` (fix) / `444fb0ee` (build 282, hardware-bewijs).
 
-## UX23 — ontwerpaudit van 23 september
+## UX23: ontwerpaudit van 23 september
 
 Deze ronde onderzoekt de actuele app; mockups zijn voorstellen, geen bewijs van de huidige status. Geen bestaande werkitems worden hierdoor gesloten of vervangen.
 
@@ -4512,8 +4512,12 @@ Deze ronde onderzoekt de actuele app; mockups zijn voorstellen, geen bewijs van 
 | TVUX-56 | Pleya Server/lokale bron: Select opent informatie/status; ontkoppelen/verwijderen expliciet secundair. | CODE/TESTS COMPLETE · SERVERSTATUS SIMULATOR VERIFIED · HARDWARE OPEN | werkboom | Roadmap A-07/A-11; Opus hergebruikt scoped statusdialog, Close eerst; secundaire Disconnect/Remove blijft bestaande confirmation/removal. 3 rode controles, 5 tests groen; adversarial review akkoord. Serverstatus-Verify PASS met beoordeelde fixturebeelden en returnfocus; local-source/removal/hardware open; geen generalisatie naar Plex/Jellyfin. |
 | TVUX-76/77 | Live TV-schema: relatieve tijden vertalen; foutloader uitsluitend na runtimebevestiging herstellen. | TVUX-76 CODE/TESTS COMPLETE · TVUX-77 NOT REPRODUCED (gesimuleerde transportfout) | werkboom | Roadmap A-10; minuten-over bestaande vertaling, starts-in/day-at en/nl gegenereerd, clockprefs behouden. Rode taaltest daarna 3 groen. Productiescherm + echte Plex/Jellyfin-clients met geweigerde mocktransportrequests: loader eindigt, beide clients geven lege lijst terug. Geen TVUX-77-fix; parsing/echte backend/hardware open. |
 | TVUX-79 | Samen kijken: positieve sessieactie eerst waar beschikbaar, exitbevestiging behouden. | CODE/TESTS COMPLETE · VERIFY/HARDWARE OPEN | werkboom | Roadmap A-10/A-11; host/guest-zonder-playback focus op bestaande sessiecodeactie; guest-met-playback houdt Join; exit/confirmation behouden. 2 rood, 7 groen; adversarial review akkoord. Nut van delen/clipboard op TV nog hardwareacceptatie. |
+| REQ-SEARCH-SETTLE | Review PR #217 op `b392a2e8`: op TV vroeg elke gedebouncete bibliotheekzoekopdracht ook de aanvraagserver, op het inline toetsenbord dus tijdens het typen. | CODE/TESTS COMPLETE · VERIFY/HARDWARE OPEN | `d67eb7b9`, `60e86210`, `10b433c0` | Roadmap A-21. De aanvraagband wordt alleen gevraagd voor de zoekterm waar de kijker voor koos: zoektoets, geschiedenis, externe submit, of OMLAAG van het toetsenbord naar de resultaten; één keer per bibliotheekantwoord voor de gekozen term. De gekozen term vervalt bij een profielwissel en bij een leeg veld. Rode controles: `Expected: empty` zonder de eerste fix, `Expected: ['movie']` zonder de OMLAAG-regel. Widgettests met echte toetsen in `test/screens/search_screen_test.dart`. Geen Verify-scenario, geen screenshot, niet op Apple TV of Android TV bekeken. |
+| REQ-RAIL-SCOPE | Review PR #217: verliest het profiel het beheerrecht terwijl de Bereik-subview openstaat, dan bleef `_scopeSubview` staan en viel de ring op een kaart terwijl de rail open stond. | CODE/TESTS COMPLETE · VERIFY/HARDWARE OPEN | `a3c5bbc4` | Roadmap A-21. `didUpdateWidget` wist de vlag en zet de focus op de Status-rij. Rode controle: `Expected: 'TvSeerrRailStatus', Actual: 'TvSeerrRequestCard(1)'`. Widgettest met echte toetsen in `test/screens/tv/tv_seerr_requests_view_test.dart`; de profielwissel zelf is daar een herbouw zonder `onScopeChanged`, niet een echte wissel. Geen Verify-scenario, niet op hardware. |
+| PLAY-GUARD-INDEX | Review PR #217: de in-flight-guard van `navigateToVideoPlayer` gaf een start zonder versie (opgeslagen voorkeur) en een start met het nummer van diezelfde versie twee sleutels, dus twee spelerroutes. | CODE/TESTS COMPLETE · VERIFY/HARDWARE OPEN | `ba8d1310` | Roadmap A-11/A-12. Een start zonder versie neemt na het lezen van de voorkeur ook de sleutel van de opgeloste versie; de eerste, synchrone sleutel is ongewijzigd. Rode controle in beide volgordes: `Actual: ['/video_player', '/video_player']`. Open: de bron-id zit niet in de tweede sleutel, en het pakket A-11/A-12 is door Michel uitgesteld, dus geen simulator- of hardwarebewijs. RESUME-PLAY1 wordt hier niet door gesloten. |
+| REQ-DETAIL-4K | Review PR #217: een film die in HD beschikbaar, aangevraagd of in verwerking is, opende het aanvraagformulier nooit, dus 4K was vanaf de titelpagina onbereikbaar. | CODE/TESTS COMPLETE · VERIFY/BEELD/HARDWARE OPEN | `68d98770`, `78f34b78`, `b7b5a30d` | Roadmap A-21. Nieuwe focusbare actie 'Aanvragen in 4K' op de Seerr-titelpagina, naast de bestaande acties en nooit in plaats daarvan. Ze verschijnt alleen met 4K-recht voor die mediasoort, een open 4K-status en een 4K-instantie in de instantielijst; onbekend of onleesbaar betekent geen actie. Het formulier opent dan op 4K. Rode controles: `Found 0 widgets with text "Request in 4K"` zonder de actie, `Found 1 widget ... none were expected` zonder de instantieregel. Widgettest op 1920x1080 met echte toetsen: RECHTS bereikt de actie, Select opent het formulier. Geen Verify-scenario, geen screenshot van de actierij met de extra knop, niet op Apple TV bekeken. |
 
-## AUDIT-TV-UX1 — discovery verbetertraject, 8 oktober 2026
+## AUDIT-TV-UX1: discovery verbetertraject, 8 oktober 2026
 
 Roadmap: REG-01/REG-02/REG-03, A-07/A-10/A-11/A-12, A-19/A-20/A-21. De 87 TVUX-vensters blijven de dekkingsmatrix in het [auditrapport](qa/2026-10-08-tvos-klantbeleving-audit.md); geen tweede implementatielijst. Dit vervolg verandert de historische audituitspraken niet in runtimebewijs.
 
@@ -4523,13 +4527,13 @@ Roadmap: REG-01/REG-02/REG-03, A-07/A-10/A-11/A-12, A-19/A-20/A-21. De 87 TVUX-v
 
 **Bestaande contracten behouden.** `PlaybackResumeResolver` onderscheidt expliciet herstarten, verse servervoortgang, gedateerde lokale override en fallback. De speler heeft al loading-spinner, Retry/Back/lagere-kwaliteit bij initfout, vaste focus over loading/initialized en geclassificeerde foutmeldingen (`video_player/parts/build.dart`, `errors.dart`, `video_player_screen.dart`). TVUX-40/72 zijn dus geen bewezen ontbrekende voorzieningen. `_probeAndReconnectAfterResume` bestaat; health probes zijn per-server/concurrent en offline mode ziet iedere online bron. TVUX-71 bewijst geen globale blokkade door één offline server. Select heeft bestaande paired/one-shot-afhandeling; native engine/input en lifecycle eerst tracen, geen timing/debounce op hypothese.
 
-**Vervolg binnen bestaande pakketten.** TVUX-56 blijft beperkt tot Pleya Server/lokale bron (A-07/A-11); TVUX-76/79 zijn bronbevestigde kandidaten (A-10/A-11); TVUX-77 blijft runtimeonderzoek (A-10). TVUX-14–20/34–39 gaan als auditinput naar bestaande A-19, daarna volledige Opus-set A-20 en goedgekeurde A-21. Overige premium vensters horen bij A-06/A-07/A-08/A-10/A-11; actuele beelden vóór stylingclaims. Geen shell/herbouw of verlies van rollen/geavanceerde opties.
+**Vervolg binnen bestaande pakketten.** TVUX-56 blijft beperkt tot Pleya Server/lokale bron (A-07/A-11); TVUX-76/79 zijn bronbevestigde kandidaten (A-10/A-11); TVUX-77 blijft runtimeonderzoek (A-10). TVUX-14–20/34–39 gaan als auditinput naar bestaande A-19, daarna volledige ontwerpset A-20 en goedgekeurde A-21. Overige premium vensters horen bij A-06/A-07/A-08/A-10/A-11; actuele beelden vóór stylingclaims. Geen shell/herbouw of verlies van rollen/geavanceerde opties.
 
 **Ontwerpautoriteit.** `docs/assets/tvos-unified/README.md` en approval-manifests bepalen scope; paneel33/DEC-101 vervangt19, detail37/DEC-109 corrigeert09/10. DEC-144 en latere besluiten/implementaties moeten tegen Home38/39 worden herijkt; een als proposed beschreven oude manifesttekst is op zichzelf geen nieuw bouwmandaat. Kleine visuele correcties door Opus; Requests volledige set pas na A-19.
 
 **Bewijsgrens.** Discovery is bronanalyse, geen codefix of acceptatie; implementatiebewijs voor TVUX-10/21 volgt afzonderlijk hieronder. Bestaande navigation-guard/refetch-predicate/resumeresolver-tests zijn aanwezig; blocked-fetch-integratie, actuele focus-/hersteljourney en fysieke resume ontbreken. `scripts/tvos_sim.sh doctor --json` geeft nu idb-input, app_build en demo_login bruikbaar terug; dit bewijst nog geen geslaagde build/scenario of oplossing van eerdere MoltenVK-/SimulatorKit-blokkades. Code complete, tests complete, simulator verified en hardware verified blijven afzonderlijke staten.
 
-### TVUX-10/21 — eerste playbackcorrectie, 8 oktober 2026
+### TVUX-10/21: eerste playbackcorrectie, 8 oktober 2026
 
 Roadmap: A-11/A-12. Opus hergebruikt de bestaande guard vóór asynchrone voorbereiding en de bestaande NoticeHost voor een niet-focusnemende startmelding. De oorspronkelijke requestidentiteit blijft eigenaar van opruimen; guardhandover houdt de push-tot-mount-overgang gedekt. Geen RESUME-PLAY1-closure.
 
@@ -4537,19 +4541,19 @@ Eerste bewijs: baseline26 navigatie/resumetests groen. Opus meldt twee rode bloc
 
 Eerste Verify-run `tvos.player.osd`, bundel `.build/pleya-verify/tvos-player-osd-1791449125440`: build/start/fixturelogin/routeankers uitgevoerd, eerste Down-input mislukt vóór playback. Rapport/manifest/driverlog gelezen; geen screenshots in de bundel. Op de gekozen Verify-simulator (`965AF638-10DC-4A0C-9722-2DC1B5D06D0D`) geeft doctor idb terug, maar een afzonderlijke HID-aanroep bevestigt ontbrekend `/Applications/Xcode.app/Contents/Developer/Library/PrivateFrameworks/SimulatorKit.framework`. Die run geeft geen simulator-/visuele-/hardwareacceptatie. De eerdere MoltenVK-linkerfout is in deze run niet de blokkade.
 
-Kleine Opus-Northstarbron: `docs/assets/tvos-unified/src/pages/41-afspelen-starten-a.html` (proposed). Proefrender1920×1080: `/tmp/pleya-mockup-41/out/41-afspelen-starten-a.png`; bekeken als componentvoorstel, artwork ontbreekt en de rest is geen actuele appopname. Geen nieuwe ontwerpapproval of screenshotacceptatie op basis van dit beeld.
+Kleine Northstarbron: `docs/assets/tvos-unified/src/pages/41-afspelen-starten-a.html` (proposed). Proefrender1920×1080: `/tmp/pleya-mockup-41/out/41-afspelen-starten-a.png`; bekeken als componentvoorstel, artwork ontbreekt en de rest is geen actuele appopname. Geen nieuwe ontwerpapproval of screenshotacceptatie op basis van dit beeld.
 
 **Expliciete open grenzen.** De nieuwe startmelding is hieronder op de Pleya Server-fixture in de simulator bewezen; de oorspronkelijke geblokkeerde OSD-run bewijst haar niet. De blocked-fetch-widgettests gebruiken een synthetische Plex-vormige MediaServerClient. Echte Plex/Jellyfin/Emby/lokale/Pleya Server-backends en externe speler zijn niet afzonderlijk runtime-geaccepteerd. De bestaande backendlookup en resume-/restartcontracten zijn behouden, maar bronanalyse is geen runtimebewijs. Bij drie gelijktijdige busy-meldingen blijft een vierde volgens de bestaande zichtbare cap wachten; meerdere niet-identieke starts vormen dus geen onbeperkte visuele dekking. De fase2-correcties staan hieronder; fase3 heeft een gereviewde A-19-spec en een goedgekeurde A-20-set; A-21-implementatie en acceptatie blijven open. Fase4 is nog niet geïmplementeerd en fase5 heeft voor dit pakket code-/testbewijs; producttraject blijft open.
 
-### Fase 2 — concrete correcties
+### Fase 2: concrete correcties
 
-Opus implementeerde TVUX-56/76/79 binnen bestaande eigenaars; TVUX-77 blijft NOT REPRODUCED voor de gesimuleerde geweigerde transportrequests, zonder fix of algemeen runtime-closure. Gecombineerde gerichte tests32 groen; onafhankelijke adversarial review zonder bevindingen. Raw logs/report in `/tmp/pleya-tvux-20261008/phase2-*`. Nieuwe source-statusdialog maakt geen nieuwe healthprobe of autoriteitsclaim; Close is primaire focus, Disconnect/Remove volgt bestaande bevestiging. Menu-return en definitieve removal niet afzonderlijk getest. De sessiecode is de bestaande niet-destructieve focusactie, geen nieuwe host-playbackfunctie. UI-/fysieke acceptatie van de Live TV-teksten en actieve sessiefocus blijft open; de HID-blokkade is hieronder tijdelijk opgelost. Klein Opus-voorstel42 is ontwerp, geen actuele screenshot.
+Opus implementeerde TVUX-56/76/79 binnen bestaande eigenaars; TVUX-77 blijft NOT REPRODUCED voor de gesimuleerde geweigerde transportrequests, zonder fix of algemeen runtime-closure. Gecombineerde gerichte tests32 groen; onafhankelijke adversarial review zonder bevindingen. Raw logs/report in `/tmp/pleya-tvux-20261008/phase2-*`. Nieuwe source-statusdialog maakt geen nieuwe healthprobe of autoriteitsclaim; Close is primaire focus, Disconnect/Remove volgt bestaande bevestiging. Menu-return en definitieve removal niet afzonderlijk getest. De sessiecode is de bestaande niet-destructieve focusactie, geen nieuwe host-playbackfunctie. UI-/fysieke acceptatie van de Live TV-teksten en actieve sessiefocus blijft open; de HID-blokkade is hieronder tijdelijk opgelost. Klein ontwerpvoorstel42 is ontwerp, geen actuele screenshot.
 
-### A-19 — Requests-bronaudit/spec
+### A-19: Requests-bronaudit/spec
 
 De bestaande A-19 wijst nu naar `docs/requests-2.0-spec.md`: volledige huidige flow/rollen/advanced, auditinput TVUX-14–20/34–39 en A-20-ontwerpdekking. Bronparity-gaten zijn expliciet: TVmanageracties niet gekoppeld, editAPI zonder UIcaller, available zonder bewezen kijkroute en countscope/unknown niet bewezen. Onafhankelijke specreview vond één Important-countcontractgat; root verduidelijkte matching scope en geen false-zero. Dit is geen Requestsimplementatie of runtimeacceptatie; A-20/A-21 blijven hun volgorde/approval volgen.
 
-### Verify-vervolg — geïsoleerde simulatorinvoer
+### Verify-vervolg: geïsoleerde simulatorinvoer
 
 De geïnstalleerde idb-companion1.1.8 zoekt de frameworklocatie van oude Xcode. Officiële facebook/idb-release v1.6.5 is alleen in `/tmp/pleya-tvux-20261008/idb-1.6.5` uitgepakt (release-digest gecontroleerd); tijdelijke companionpoort10987 en PATH-wrapper gebruiken uitsluitend de Verify-UDID. Geen wijziging aan Xcode, globale installatie of echte appdata. HID-aanroep bevestigd, daarna bestaande `tvos.player.osd` PASS: `.build/pleya-verify/tvos-player-osd-1791452393100`. Rapport/manifest en beide OSD-beelden gelezen; controls, pauze, Menu/up en behoud van de speler zijn fixturebewijs.
 
@@ -4561,7 +4565,7 @@ Nieuw `tvos.server.status` PASS: `.build/pleya-verify/tvos-server-status-1791453
 
 A-20: Opus leverde72 voorgestelde staten in acht families, elk TV/telefoon/tablet/desktop (170 beelden), `docs/assets/requests-2.0/index.html`, manifest en README. Onafhankelijke review vond drie Important-bevindingen. Onzekere edits en conflicterende counts zijn met rode/groene ontwerpcontroles hersteld; huidige TV-profiel/servercontext past, de clippingmelding is niet opnieuw gereproduceerd. Opus voegde wrappingbescherming toe zonder aparte negatieve langelabelcontrole. Fresh fixreview akkoord, geen open Critical/Important; een hashclaim in het bewijsrapport is feitelijk gecorrigeerd. Michel keurde de volledige set inclusief zeven keuzes op 8 oktober 2026 goed onder voorwaarde van Impeccable polish. Opus herstelde afsnijdingen, formulierregels, focus-/herstelzichtbaarheid en scheidde ontwerpannotaties van de appviewport; rode/groene ontwerpcontroles, 72 staten/170 beelden en onafhankelijke polishreview/documentfixreview akkoord. De voorwaarde is vervuld: A-20 is ontwerp-goedgekeurd. Laden/verzenden heeft nog geen getekende TV-focusbestemming: A-21 moet veilige focus behouden en verifiëren. A-21 is inmiddels in uitvoering (zie hieronder); runtime-/hardwareacceptatie blijft open.
 
-### Requests 2.0 A-21 — gestart 8 oktober 2026
+### Requests 2.0 A-21, gestart 8 oktober 2026
 
 Na Michels expliciete akkoord is A-21 het huidige samenhangende implementatiepakket binnen de bestaande WIP-limiet. De goedgekeurde A-20-set en zeven keuzes zijn leidend. Verifieer bestaande Seerr-edit-/count-/permissioncontracts vóór wijzigingen; behoud platformfuncties, rollen, quota, server-authority en terugkeerfocus. Status: IN PROGRESS; code/test/simulator/hardwareacceptatie nog niet afgerond. Detailbewijs komt in deze bestaande correctieronde en MOC-15, geen tweede register.
 
@@ -4569,13 +4573,13 @@ Na Michels expliciete akkoord is A-21 het huidige samenhangende implementatiepak
 
 **Simulatorgrens.** De eerste `tvos.requests.manage`-run stopte vóór de aanvraagacties: het scenario stuurde één extra Up vanaf het zoekveld naar de topnavigatie. Focus-trace en actuele UI-tree bevestigen een scenariofout; behouden verborgen schermen met dubbele IDs zijn hier geen bewezen appdefect. Dit is geen simulatoracceptatie van beheer of bewerken. Fysieke Apple TV- en echte Seerr-serveracceptatie blijven open.
 
-### Gerichte premium-UX-discovery — 8 oktober 2026
+### Gerichte premium-UX-discovery, 8 oktober 2026
 
 TVUX-22/24/25/26/27/31/33 en TVUX-41/50/55/59/66 zijn naast huidige broncode, gerichte bestaande tests en geldende Northstars gelegd. Veel voorgestelde interacties zijn al geïmplementeerd: seizoenscontext en focusterugkeer, bronkeuze met gedeeltelijk bereikbare servers, kijklijstfilters, bibliotheekacties met bevestiging, TV-instellingengrid en spelerwaarden/timers. Dit is bron- en referentiecontrole, geen nieuwe runtime-/hardwareacceptatie en geen goedkeuring voor herontwerp. A-21 blijft het enige primaire implementatiepakket.
 
 Twee begrensde kandidaten vragen eerst reproductie binnen hun bestaande eigenaars: TVUX-24 kan bij een onvolledig eerste seizoen E1 noemen terwijl de eerste aanwezige aflevering E2/E5 is; TVUX-27/CTX2 berekent hervatstatus en resterende tijd uit onafhankelijk gekozen representatieve bronnen (het bestaande tijdcontract moet daarbij expliciet worden gecontroleerd). TVUX-66 is afzonderlijk gereproduceerd met de echte instellingenwidget/provider en synthetische transport/store: na Test A en gewijzigde API-key/e-mail/wachtwoord B slaat Save nog A op (drie observaties groen, drie vereiste invalidatiecontroles rood; URL-/authmoduscontroles groen). De kleine correctie hergebruikt bestaande invalidatie bij alle drie credentialvelden binnen A-21; gerichte tests en onafhankelijke review zijn afgerond (zie de A-21-code-/simulatorgrens hieronder). Geen P0/P1-escalatie, pixelacceptatie of hardwareclosure is hiermee geclaimd. Geen nieuwe shell/componentlaag of tweede register.
 
-### A-21 — code- en gerichte simulatorgrens, 8 oktober 2026
+### A-21: code- en gerichte simulatorgrens, 8 oktober 2026
 
 Roadmap: A-21; één samenhangend implementatiepakket. Opus implementeerde de goedgekeurde aanvraag-/beheer-/edit-/zoek-/detailflows en visuele correcties. Alle geverifieerde Critical/Important uit backend-, UI- en opeenvolgende fixreviews zijn hersteld en onafhankelijk opnieuw gecontroleerd. Herstel na onzekere writes vereist betrouwbare bewijsvelden of bewezen volledige afwezigheid binnen het bevoegde bereik; onleesbare pagina's/rijen/IDs geven geen vals afwezigheidsbewijs. Edits behouden geldige doelen, tags en taalprofielen; onvolledige of ongeldige readbacks vervangen die niet. De bestaande menu-layout scrolt zodat Annuleren en Sluiten bereikbaar blijven. TVUX-66 hergebruikt credential-invalidation, met drie rode regressies zonder fix en vijf groene settings-tests inclusief opnieuw testen en opslaan van B. Geen rollen, geavanceerde functies of server-authority verwijderd.
 
@@ -4593,7 +4597,7 @@ beoordeelde set. De begrensde interne testdistributie is vastgelegd in §8 van
 `docs/unified-2026-closure.md`; geen hardware- of volledige pakketclosure. Merge-/buildidentiteit
 en uploadstatus worden na verificatie toegevoegd.
 
-## Big P audit-herstelronde — 8 oktober 2026
+## Big P audit-herstelronde, 8 oktober 2026
 
 Roadmap: BP-05/BP-09. Eén onafhankelijk begrensd pakket naast het bestaande A-11/A-12-playbackwerk; geen exclusieve Big P-prioriteit. Geen lopende BP-04b/05/06/09-PR aangetroffen. Bestaande branches blijven behouden.
 
@@ -4603,7 +4607,7 @@ Roadmap: BP-05/BP-09. Eén onafhankelijk begrensd pakket naast het bestaande A-1
 | BIGP-SUMMON-CHOICE1 | Michel 8 okt: sneltoets toont eerst de ballon met voorbeelden; native toetsenbord/dictatie pas na Vraag Big P. | FIXED · SIMULATOR PASS · HARDWARE OPEN | deze PR | BP-09; bestaande 39J-compositie. 104 gerichte tests groen, rode regressiecontrole; codegate inclusief unused en onafhankelijke codereview groen. Native multitask-summoned PASS, negen 3840×2160-screenshots; manifest `.build/reports/bigp-shortcut/manifest.json`. Fysieke Siri Remote en gesproken dictatie niet getest. Geen nieuwe avatar-/focusengine. |
 
 
-### Interne TestFlight-distributie 344 — 8 oktober 2026
+### Interne TestFlight-distributie 344, 8 oktober 2026
 
 Roadmap: REG-01, A-07/A-10/A-11/A-12, A-19/A-20/A-21. Eigen implementatiecommit `b392a2e8`, gereviewde integratiecommit `3bbe12ff`; [PR #210](https://github.com/michelknoop21/pleya/pull/210) gemerged als `3b9f18e0a64917f199a5d25d47a689880e6a5989`. De finale bronboom is identiek aan de gereviewde integratieboom. Alle verplichte PR-checks waren groen vóór merge; ook de volledige [CI-run op finale main](https://github.com/michelknoop21/pleya/actions/runs/37813615338) is groen. Integratie: codegate inclusief harde lintregels/unused groen; 701 gerichte tests geslaagd, 28 bestaande skips niet als passes geteld. Dit vervangt het eerdere per-fix-/simulatorbewijs niet.
 
@@ -4624,12 +4628,12 @@ De eerste macOS-installer werd afgewezen (90255): de afgeschermde buildomgeving 
 Fysieke Apple TV, RESUME-PLAY1, volledige ontwerp-/rol-/platformdekking en echte-serveracceptatie blijven open. De archive-identiteiten zijn geen hardwareacceptatie. Definitief releasebewijs, archivepaden, ASC-snapshot, verpakkingvergelijking, notities en reviews: `/tmp/pleya-tvux-20261008/release/`; hoofdoverzicht `/tmp/pleya-tvux-20261008/report.md`.
 
 
-### Uitstel playback-/hervatpakket — eigenaarbesluit 9 oktober 2026
+### Uitstel playback-/hervatpakket: eigenaarbesluit 9 oktober 2026
 
 Roadmap: A-11/A-12 en A-21. Michel slaat het huidige playback-/hervatpakket voorlopig over: RESUME-PLAY1 is nog niet reproduceerbaar. Er wordt hiervoor nu geen nieuwe onderzoek-/implementatiestroom gestart. RESUME-PLAY1 blijft OPEN; reproductie of nieuw bewijs is het moment om dit pakket opnieuw op te pakken. Bestaande startfixes, tests en simulatorresultaten blijven behouden; fysieke acceptatie wordt hiermee niet gesloten of vrijgesteld. A-21 (Requests 2.0-acceptatie) is de eerstvolgende primaire stroom, binnen de bestaande WIP-limiet en review-/releasegates. Dit is uitstel van het gekozen pakket, geen afwijzing van toekomstige bewezen urgente regressies.
 
 
-### A-21 — aanvullende Requests-acceptatie, 9 oktober 2026
+### A-21: aanvullende Requests-acceptatie, 9 oktober 2026
 
 Roadmap: A-21. Requests-acceptatie is na het eigenaarbesluit de primaire stroom. Ontbrekende Verify-identiteiten voor de bestaande desktop/tablet-ontdekpagina, inbox en managerbereik zijn toegevoegd; bestaande UI, callbacks en rechten behouden. Twee negatieve controles falen zonder de markers, 89 gerichte tests en codegate inclusief unused zijn groen. Onafhankelijke code-/authorityreview: geen bevindingen. Dit is testondersteuning, geen nieuw ontwerp of functionele releasefix.
 
@@ -4642,14 +4646,14 @@ Roadmap: A-21. Requests-acceptatie is na het eigenaarbesluit de primaire stroom.
 **Acceptatie blijft open:** echte Seerr/Plex/Jellyfin, overige rollen/platformen, alle 72 ontwerpstaten en fysieke Apple TV/native toetsenbord-/dictatiebediening. Geen volledige A-21- of hardwareclosure. De controles gebruiken uitsluitend geïsoleerde bundle-ID's en synthetische data. Rapport, negatieve controles, codegate en onafhankelijke reviews: `/tmp/pleya-a21-acceptance-20261009/`. Playback-/hervatpakket blijft uitgesteld; geen tweede register of nieuwe releaseclaim.
 
 
-### A-21 — desktop Requests-controle, 9 oktober 2026
+### A-21: desktop Requests-controle, 9 oktober 2026
 
 Roadmap: A-21. `macos.requests.manage` PASS op schone actuele `main` `50143c34` (`dirty:false`): 39 stappen en drie native 2560×1600-beelden. Bundle `.build/pleya-verify/macos-requests-manage-1791540867335`. Inbox opent de managerlijst; eigen bereik toont aanvragen 1 en 3 en sluit aanvraag 2 van een ander uit. Alle vijf toegestane menuacties en Sluiten zijn zichtbaar binnen het venster; Sluiten keert terug naar dezelfde ongewijzigde aanvraag. Geen mutaties uitgevoerd. Native window capture is in deze run beschikbaar; de eerdere timeout/capturefout is niet opnieuw gezien. Daarmee is geen root cause of productfix voor die eerdere run bewezen. Geen nieuwe code- of scenariowijziging; alleen de bestaande acceptatiecontrole uitgevoerd.
 
 Dit voegt begrensd desktopbewijs toe aan de eerdere TV-/telefoon-/iPad-portretruns; alle drie native beelden onafhankelijk beoordeeld; geen bevindingen binnen deze staten. De isolatie blijft `nl.michelknoop.pleya.verify`, uitsluitend bestaande synthetische adminfixtures. Geen volledige A-21-/rol-/ontwerpacceptatie, echte Seerr/Plex/Jellyfin of fysieke Apple TV/native toetsenbord-/dictatieacceptatie. Geen nieuwe TestFlight. Rapport/evidence: `/tmp/pleya-a21-desktop-20261009/`.
 
 
-### A-21 — iPad landscape Requests-controle, 9 oktober 2026
+### A-21: iPad landscape Requests-controle, 9 oktober 2026
 
 Roadmap: A-21. `ipados.requests.manage` PASS op schone `main` `50143c34` (`dirty:false`): 39 stappen, drie native 2752×2064-beelden. Bundle `.build/pleya-verify/ipados-requests-manage-1791541279756`. Dezelfde begrensde managerroute als op desktop: eigen aanvragen, uitsluiting van andermans aanvraag, alle vijf toegestane menuacties binnen het viewport en Sluiten terug naar dezelfde ongewijzigde aanvraag. Geen mutaties. Alle drie native beelden onafhankelijk beoordeeld; geen bevindingen binnen deze staten.
 

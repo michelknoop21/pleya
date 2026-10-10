@@ -12,6 +12,12 @@ import 'app_icon.dart';
 import 'focusable_list_tile.dart';
 import 'seerr_request_form_parts.dart';
 
+/// Whether [all] holds an instance for the given quality. The one rule behind
+/// both the form's "no 4K server" state and a caller's decision to offer 4K
+/// at all: 4K lives on its own Radarr or Sonarr instance, or nowhere.
+bool seerrHasServerOfQuality(Iterable<SeerrServiceServer> all, {required bool is4k}) =>
+    all.any((server) => server.is4k == is4k);
+
 /// The admin-only target of a request: server, quality profile, root folder.
 ///
 /// One owner for the dependency between the three, because the request form
@@ -60,7 +66,7 @@ class SeerrTargetController extends ChangeNotifier {
   bool get hasAnyServer => _all.isNotEmpty;
 
   /// A 4K request with no 4K instance to send it to.
-  bool get missingServerForQuality => !serversFailed && _all.isNotEmpty && servers.isEmpty;
+  bool get missingServerForQuality => !serversFailed && _all.isNotEmpty && !seerrHasServerOfQuality(_all, is4k: _is4k);
 
   /// Whether profile and folder are known for the bound server. False while
   /// they load and after they failed, and then [target] carries no server at

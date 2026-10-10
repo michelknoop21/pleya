@@ -124,16 +124,16 @@ Connected Knowledge: geen gekoppelde, relevante bron blijft onbereikbaar voor Bi
 
 Uitgesteld (geen werkpakket tot Michel er een opent, verwijzing: `docs/big-p-behaviour-contract.md`): fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
 
-## tvOS Customer Experience Improvement — 8 oktober 2026
+## tvOS Customer Experience Improvement, 8 oktober 2026
 
 Roadmap: REG-01/REG-02/REG-03, A-07/A-10/A-11/A-12 en A-19/A-20/A-21; overige oppervlakken blijven bij hun bestaande A-pakket. Detailstatus blijft in [de fysieke correctieronde](tvos-fysieke-correctieronde.md) en [het redesignregister](tvos-redesign-register.md). Dit is de volgorde van de gerichte verbetering, geen tweede takenregister.
 
-- **Fase 0 — discovery.** Verifieer actuele implementaties, Select-events, gedeelde afspeelnavigatie, netwerkafhankelijkheden en spelerinitialisatie. Vergelijk open Big P, bugs, Requests en tvOS op de vijf criteria. Review de normatieve roadmapdiff onafhankelijk vóór merge.
-- **Fase 1 — playback/betrouwbaarheid (P1), voorlopig uitgesteld door Michel op 9 oktober; hervatten bij reproductie/nieuw bewijs.** Direct herkenbare ontvangstfeedback, zichtbare lopende start, betrouwbare resume, geen dubbele start, passende herstelroute en behouden focus/context. Een deels onbereikbare server mag beschikbare content niet onnodig blokkeren. RESUME-PLAY1 blijft open tot reproductie, bewezen root cause/correctie en fysieke Apple TV-acceptatie; een generieke startfix sluit die niet automatisch.
-- **Fase 2 — concrete UX (P1/P2).** TVUX-56: Pleya Server/lokale bron eerst informatie/status, ontkoppelen/verwijderen expliciet secundair; bevestigingen en authority behouden. TVUX-76: bestaande vertalingen gebruiken. TVUX-79: positieve sessieactie eerst waar beschikbaar, exitbevestiging behouden. TVUX-77: uitsluitend na runtimebevestiging. Opus maakt alleen voor relevante visuele wijzigingen een kleine Northstar.
-- **Fase 3 — ontdekken/zoeken/Requests (P1).** A-19 → A-20 → A-21; beschikbaar versus aan te vragen, zoek-/lege staten, filters/sortering, aanvraagstatus/formulier/bevestiging en herstel/terugkeer. Alle rollen, geavanceerde opties en bestaande platformfuncties blijven behouden.
-- **Fase 4 — premium afwerking (P2).** TVUX-22/24/25/26/27/31/33/55/59/66/41/50 en overige vensters alleen na actuele screenshots en toetsing aan geldende Northstars/DEC's. De voorgestelde Home-beelden van 4 oktober zijn geen ontwerpapproval.
-- **Fase 5 — bewijs/afronding.** Per correctie reproductie/root cause, aantoonbaar rode negatieve controle, gerichte tests, codegate, onafhankelijke adversarial review en fixreview indien nodig. UI vereist Pleya Verify en beoordeelde screenshots; hardwareafhankelijk gedrag vereist fysieke Apple TV-acceptatie. Registreer code complete, tests complete, simulator verified en hardware verified afzonderlijk; CI/goldens sluiten geen volledige acceptatie.
+- **Fase 0: discovery.** Verifieer actuele implementaties, Select-events, gedeelde afspeelnavigatie, netwerkafhankelijkheden en spelerinitialisatie. Vergelijk open Big P, bugs, Requests en tvOS op de vijf criteria. Review de normatieve roadmapdiff onafhankelijk vóór merge.
+- **Fase 1: playback/betrouwbaarheid (P1), voorlopig uitgesteld door Michel op 9 oktober; hervatten bij reproductie/nieuw bewijs.** Direct herkenbare ontvangstfeedback, zichtbare lopende start, betrouwbare resume, geen dubbele start, passende herstelroute en behouden focus/context. Een deels onbereikbare server mag beschikbare content niet onnodig blokkeren. RESUME-PLAY1 blijft open tot reproductie, bewezen root cause/correctie en fysieke Apple TV-acceptatie; een generieke startfix sluit die niet automatisch.
+- **Fase 2: concrete UX (P1/P2).** TVUX-56: Pleya Server/lokale bron eerst informatie/status, ontkoppelen/verwijderen expliciet secundair; bevestigingen en authority behouden. TVUX-76: bestaande vertalingen gebruiken. TVUX-79: positieve sessieactie eerst waar beschikbaar, exitbevestiging behouden. TVUX-77: uitsluitend na runtimebevestiging. Opus maakt alleen voor relevante visuele wijzigingen een kleine Northstar.
+- **Fase 3: ontdekken/zoeken/Requests (P1).** A-19 → A-20 → A-21; beschikbaar versus aan te vragen, zoek-/lege staten, filters/sortering, aanvraagstatus/formulier/bevestiging en herstel/terugkeer. Alle rollen, geavanceerde opties en bestaande platformfuncties blijven behouden.
+- **Fase 4: premium afwerking (P2).** TVUX-22/24/25/26/27/31/33/55/59/66/41/50 en overige vensters alleen na actuele screenshots en toetsing aan geldende Northstars/DEC's. De voorgestelde Home-beelden van 4 oktober zijn geen ontwerpapproval.
+- **Fase 5: bewijs/afronding.** Per correctie reproductie/root cause, aantoonbaar rode negatieve controle, gerichte tests, codegate, onafhankelijke adversarial review en fixreview indien nodig. UI vereist Pleya Verify en beoordeelde screenshots; hardwareafhankelijk gedrag vereist fysieke Apple TV-acceptatie. Registreer code complete, tests complete, simulator verified en hardware verified afzonderlijk; CI/goldens sluiten geen volledige acceptatie.
 
 **Vergelijking bij aanvang.** De resume-melding raakt de kernhandeling kijken; impact potentieel hoog, oorzaak en hardwarefrequentie nog onbekend. Daarom eerst A-11/A-12-discovery, zonder P0-claim. Bestaande rechten-/correctheidsbugs behouden hun veiligheidsgewicht. Big P-fixes en resterende intent-/identiteitsgaten behouden hun contracten en interne afhankelijkheden; nieuwe assistantfunctionaliteit krijgt geen voorrang op betrouwbare playback. Requests heeft brede ontdek-/aanvraagwaarde maar vraagt eerst A-19 en volledige A-20; specwerk mag binnen de WIP-regel vooruitlopen. Visuele P2-voorstellen wachten op bewijs/approval. Deze keuze verdringt automatische Big P-voorrang, geen reeds bewezen securityhotfix of geaccepteerde releasegate.
 
@@ -141,7 +141,7 @@ Roadmap: REG-01/REG-02/REG-03, A-07/A-10/A-11/A-12 en A-19/A-20/A-21; overige op
 
 De uitvoeringsfasen hieronder zijn bewijs- en afhankelijkheidspoorten; pakketkeuze volgt het productbesluit van 8 oktober en de WIP-limiet. Big P en A-02 hebben geen exclusieve stroompositie.
 
-### Phase 0 — Authority and current baseline
+### Phase 0: Authority and current baseline
 
 - Make this roadmap the canonical cross-project ordering layer.
 - Reconcile STATUS and domain registers against current `main`.
@@ -150,22 +150,22 @@ De uitvoeringsfasen hieronder zijn bewijs- en afhankelijkheidspoorten; pakketkeu
 - Every next task must carry a roadmap ID.
 - REG-01 must establish the completeness map below before any whole-redesign completion claim. Already identified independent fixes need not wait for the entire inventory.
 
-### Phase 1 — Correctness and blockers
+### Phase 1: Correctness and blockers
 
 - A-02 permissions/profiles/borrowed connections.
 - A-03 and A-04 from issue #112.
 - A-09 login/profile/PIN where still open.
 - A-16 only through correct authorization semantics or a protocol-faithful test identity; never weaken production checks to make a test pass.
 
-### Phase 2 — Valid UI remainder
+### Phase 2: Valid UI remainder
 
 Finish the currently valid app surfaces and evidence only: Home/landings/catalog/filters, source picker, context menus, Mijn Pleya, lists/downloads/notifications, Live TV/player, Liquid Glass, desktop/iPad unified work, tvOS focus/Menu/routes/scrubbing/Top Shelf/4K/overscan, and the explicitly gated Requests 2.0 flow. Check every applicable existing platform separately; a shared widget or an iPhone screenshot does not prove iPad, Android, Android TV, macOS, Windows or Linux completion. Preserve explicitly excluded platform presentations until their own design decision changes. The latest approved DEC/northstar wins.
 
-### Phase 3 — Real-world acceptance
+### Phase 3: Real-world acceptance
 
 Bundle real-server/account and physical-device evidence for the release targets. Include the applicable iCloud, recommendation/history/Tautulli and hardware-open cases. Do not upgrade status based only on old or fixture-limited runs.
 
-### Phase 4 — Exact release bundle
+### Phase 4: Exact release bundle
 
 Select final SHA and archive, record build/config/archive identity, close applicable review/release gates, and distribute exactly that accepted candidate. A release may contain an explicitly bounded subset; do not call that completion of all app redesigns or of the full Server/Web product.
 
@@ -197,9 +197,9 @@ Loudness D5 gets its own protocol window only after D1-D4 are proven; it does no
 Requests is an existing product surface, not a new blank feature. The current implementation already spans discovery/search, a Seerr media detail page, movie/show request submission, per-season selection for shows, 4K when permitted, remaining quota, admin target selection (Radarr/Sonarr server, quality profile and root folder), request lists and manager/user actions such as approve, decline, edit and cancel. The redesign must preserve valid existing capability unless a later approved product decision changes it.
 
 Order is strict:
-1. **A-19 — audit/spec.** Inventory the complete current flow, roles, permissions, API behavior and states across applicable existing platforms. Decide what Requests 2.0 adds or changes before drawing it. Cover at least discovery/search, detail, request creation, season selection, 4K, quotas, advanced targeting, own/all requests, filters/counts, approve/decline/edit/cancel, pending/processing/available/declined states, loading/empty/error/retry, pagination, permissions and post-request refresh.
-2. **A-20 — design.** Opus produces a coherent approved northstar set for every required window/state and the responsive/TV variants. Do not treat today's single iPhone or TV image as complete coverage. Include dialogs/sheets and manager-only states, not only the landing screen.
-3. **A-21 — implementation.** Only after explicit design approval: implement through shared behavior owners where appropriate, preserve D-pad/focus/touch/keyboard contracts, add automation IDs/fixtures/tests, run independent code review plus separate visual review, then simulator/browser and applicable hardware acceptance.
+1. **A-19: audit/spec.** Inventory the complete current flow, roles, permissions, API behavior and states across applicable existing platforms. Decide what Requests 2.0 adds or changes before drawing it. Cover at least discovery/search, detail, request creation, season selection, 4K, quotas, advanced targeting, own/all requests, filters/counts, approve/decline/edit/cancel, pending/processing/available/declined states, loading/empty/error/retry, pagination, permissions and post-request refresh.
+2. **A-20: design.** Opus produces a coherent approved northstar set for every required window/state and the responsive/TV variants. Do not treat today's single iPhone or TV image as complete coverage. Include dialogs/sheets and manager-only states, not only the landing screen.
+3. **A-21: implementation.** Only after explicit design approval: implement through shared behavior owners where appropriate, preserve D-pad/focus/touch/keyboard contracts, add automation IDs/fixtures/tests, run independent code review plus separate visual review, then simulator/browser and applicable hardware acceptance.
 
 REG-01 must map each current Requests route/window to A-19/A-20/A-21 so no old behavior is silently lost. If Pleya Web is later chosen as a Requests surface, add it to the same product spec and create explicit Web implementation tasks rather than assuming the mobile/TV design transfers directly.
 ## E-books and other routes
@@ -211,9 +211,9 @@ Do not rebuild the existing e-book work. Reconcile the branch against current `m
 Audiobooks is a new first-class content domain and is not folded silently into the existing e-book implementation. Current repository search found no established audiobook domain, so the roadmap starts with product/protocol design rather than code.
 
 Order is strict:
-1. **D-04 — product/protocol spec.** Decide supported source model and ingestion path, library kind and permissions, media/container baseline, metadata and artwork, author/narrator/series semantics, chapter model, playback and resume semantics, speed, sleep timer/bookmarks if included, search/filter/facet behavior, downloads/offline, multi-user progress and compatibility with existing player/backends. Explicitly decide whether integration with an external audiobook server is in scope; do not assume one.
-2. **D-05 — design.** Opus creates and reviews the complete audiobook northstar for each applicable existing app and Pleya Web. At minimum evaluate Home/landing, all audiobooks, search/filter, audiobook detail, player/now playing, chapters/queue, resume/progress, downloads/offline and empty/loading/error states; only include surfaces approved by D-04.
-3. **D-06 — implementation.** After design approval and applicable Server/API window decisions: build Pleya Server storage/catalog/search/progress/playback support, then client/Web support in dependency order. Reuse shared media/player infrastructure only where its contract genuinely fits audiobooks; do not distort video or e-book semantics to avoid a proper boundary.
+1. **D-04: product/protocol spec.** Decide supported source model and ingestion path, library kind and permissions, media/container baseline, metadata and artwork, author/narrator/series semantics, chapter model, playback and resume semantics, speed, sleep timer/bookmarks if included, search/filter/facet behavior, downloads/offline, multi-user progress and compatibility with existing player/backends. Explicitly decide whether integration with an external audiobook server is in scope; do not assume one.
+2. **D-05: design.** Opus creates and reviews the complete audiobook northstar for each applicable existing app and Pleya Web. At minimum evaluate Home/landing, all audiobooks, search/filter, audiobook detail, player/now playing, chapters/queue, resume/progress, downloads/offline and empty/loading/error states; only include surfaces approved by D-04.
+3. **D-06: implementation.** After design approval and applicable Server/API window decisions: build Pleya Server storage/catalog/search/progress/playback support, then client/Web support in dependency order. Reuse shared media/player infrastructure only where its contract genuinely fits audiobooks; do not distort video or e-book semantics to avoid a proper boundary.
 
 Audiobooks must receive the same completion evidence as other domains: server contract/tests, migration safety where applicable, client/Web tests, visual comparison to approved mockups, real playback/progress evidence and release identity. It may be developed as an independent later increment but may not bypass the WIP limit or server phase gates.
 ## Commercial/site order

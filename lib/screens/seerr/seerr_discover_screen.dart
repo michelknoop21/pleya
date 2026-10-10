@@ -267,6 +267,12 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     _searching = false;
     _searchErrored = false;
     _searchLoadMoreFailed = false;
+    // A next page asked through the old client is dropped when it lands, so
+    // nothing else would ever clear these, and search would stop paginating.
+    _searchLoadingMore = false;
+    _searchPage = 1;
+    _searchTotalPages = 1;
+    _searchErrorKind = SeerrErrorKind.generic;
     _genreId = null;
     _genreRow = null;
     _expandedRow = null;
@@ -398,6 +404,11 @@ class _SeerrDiscoverScreenState extends State<SeerrDiscoverScreen> with Controll
     final query = value.trim();
     if (query == _query) return;
     _query = query;
+    // A next page still on its way is for the previous query and is dropped
+    // when it lands, so it can no longer clear its own flag.
+    _searchLoadingMore = false;
+    _searchPage = 1;
+    _searchTotalPages = 1;
     if (query.isEmpty) {
       _searchDebounce.cancel();
       setState(() {
