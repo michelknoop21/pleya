@@ -45,26 +45,9 @@
 <style>
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--grid-min, 110px), 1fr));
+    /* De kolommaat komt uit tokens.css, zodat het skelet hetzelfde raster tekent. */
+    grid-template-columns: repeat(auto-fill, minmax(var(--grid-cell-min), 1fr));
     gap: var(--space);
-  }
-
-  @media (min-width: 600px) {
-    .grid {
-      --grid-min: 132px;
-    }
-  }
-
-  @media (min-width: 900px) {
-    .grid {
-      --grid-min: 150px;
-    }
-  }
-
-  @media (min-width: 1200px) {
-    .grid {
-      --grid-min: 168px;
-    }
   }
 
   /*
@@ -74,8 +57,7 @@
    */
   @media (min-width: 1600px) {
     .grid {
-      --grid-min: 180px;
-      grid-template-columns: repeat(auto-fill, minmax(var(--grid-min), 220px));
+      grid-template-columns: repeat(auto-fill, minmax(var(--grid-cell-min), 220px));
       justify-content: start;
     }
   }

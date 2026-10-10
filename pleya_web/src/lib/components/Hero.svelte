@@ -46,7 +46,8 @@
   .hero {
     position: relative;
     isolation: isolate;
-    min-height: 46vw;
+    /* Uit tokens.css, zodat het skelet dezelfde hoogte reserveert. */
+    min-height: var(--hero-min-h);
     max-height: 62dvh;
     display: flex;
     align-items: flex-end;
@@ -112,15 +113,4 @@
     margin-top: var(--space-half);
   }
 
-  @media (min-width: 900px) {
-    .hero {
-      min-height: 420px;
-    }
-  }
-
-  @media (min-width: 1600px) {
-    .hero {
-      min-height: 520px;
-    }
-  }
 </style>
