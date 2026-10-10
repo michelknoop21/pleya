@@ -22,6 +22,7 @@ met de mockup, niet de omlijsting.
 | `galerij@{393,1024,1600}` | geen één-op-één | het geheel, voor regressie tussen rondes |
 | `velden@{393,1024,1600}` | 22, 40, 41, 42 | veld met hint en focus (1 px inktrand, geen ring), fout, uitgeschakeld; select; toggle; keuzelijst en tegels |
 | `panelen@{393,1024,1600}` | 20, 21, 22, 24, 35 | paneel met titel en actie, flush, `tone="warn"` (35), `tone="danger"` (22); stattegels uit 20 |
+| `velden-foutfocus@{393,1024,1600}` | 22, 40 | foutveld met focus: rode rand van 2 px (rand plus schaduw van 1 px); de northstar tekent deze staat niet |
 | `pillen@{393,1024,1600}` | 21, 25, 26, 34 | vijf tonen, met en zonder stip, klein |
 | `meldingen@{393,1024,1600}` | 21, 24, 31, 35 | waarschuwing, fout met actie, info zonder titel, info met twee acties |
 | `chips@*`, `chips-focus@*` | 02, 05, 16 | outline enkel en meervoudig, quiet; focusring op de eerste chip |
@@ -40,7 +41,8 @@ met de mockup, niet de omlijsting.
 
 - Focus op Field en Select is een rand van 1 px in `--ink`, zonder ring, ook na een muisklik
   (23, 40, 42). Knoppen, chips, keuzes en schakelaars houden de ring. Daarbij bleek de foutrand
-  op een tekstveld nooit zichtbaar: de vakstijl won op specificiteit. Beide hersteld.
+  op een tekstveld nooit zichtbaar: de vakstijl won op specificiteit. Beide hersteld. Een foutveld
+  met focus wordt 2 px rood (ronde 2), zodat ook dat veld een zichtbaar focusverschil heeft.
 - Panel kreeg `tone="danger" | "warn"`: rode titel in `--danger-ink` (#FF6A63, 22) en de
   amberkleurige tweeling met rand en titel in `--amber` (35). `danger` werkt nog.
 - Gestapelde DataTable toont de kolomnamen alleen voor een schermlezer; zichtbaar per kolom met

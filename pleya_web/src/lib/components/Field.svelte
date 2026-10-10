@@ -165,6 +165,16 @@
     border-color: var(--accent);
   }
 
+  /*
+   * Een foutveld met focus houdt zijn rode rand en wordt 2 px dik, anders is er
+   * op juist het veld dat aandacht vraagt geen focusverschil. De tweede pixel is
+   * een schaduw, zodat het vak niet verschuift. De northstar tekent deze staat
+   * niet; .field.err in web.css kent alleen de rode rand.
+   */
+  .fld--err .fld__control :global(:is(input:not([type='checkbox']):not([type='radio']), select, textarea):focus) {
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
   .fld__control :global(:is(input, select, textarea):disabled) {
     opacity: 0.5;
     cursor: not-allowed;
