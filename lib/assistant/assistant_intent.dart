@@ -59,9 +59,13 @@ final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 ho
 final _week = RegExp(r'\b(deze week|afgelopen week|laatste week|this week|past week)\b');
 // "What was added to the libraries", not "what I added to my list".
 final _added = RegExp(
-  r'\b(toegevoegd|erbij gekomen|nieuwe toevoegingen|(?:newly|recently|just) added|new additions|was added|got added|been added)\b',
+  r'\b(toegevoegde?|(?:er\s?)?bij\s?gekomen|nieuwe toevoegingen|(?:newly|recently|just) added|added (?:this|last|in the)|new additions|recent additions|was added|got added|been added)\b',
 );
-final _addedElsewhere = RegExp(r'\b(kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?)\b');
+final _addedElsewhere = RegExp(
+  r'\b(kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?|afspeellijst|playlist|collectie|collection|wachtrij|queue|downloads?)\b',
+);
+// A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
+final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -76,6 +80,7 @@ class AssistantIntent {
     this.previousWeek = false,
     this.mixedAudience = false,
     this.addedToLibraries = false,
+    this.longPeriodAsked = false,
   });
 
   final IntentField<AssistantAudience> audience;
@@ -96,6 +101,9 @@ class AssistantIntent {
   /// and server lists are the wrong tools and the period belongs to the catalog.
   /// Not inherited: a child task decides by its own words.
   final bool addedToLibraries;
+
+  /// A period in weeks or months that days cannot express.
+  final bool longPeriodAsked;
 
   static const unknown = AssistantIntent();
 
@@ -130,6 +138,7 @@ class AssistantIntent {
       previousWeek: _previousWeek.hasMatch(p),
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
+      longPeriodAsked: _longPeriod.hasMatch(p),
       audience: audience == null ? const IntentField.unknown() : IntentField(audience, AssistantFieldSource.explicit),
       kind: kind == null ? const IntentField.unknown() : IntentField(kind, AssistantFieldSource.explicit),
       days: days == null || days < 1 || days > 31
@@ -150,6 +159,7 @@ class AssistantIntent {
     previousWeek: previousWeek || parent.previousWeek,
     mixedAudience: mixedAudience,
     addedToLibraries: addedToLibraries,
+    longPeriodAsked: longPeriodAsked,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -164,8 +174,13 @@ class AssistantIntent {
         if (addedToLibraries) return (args: out, error: 'use_search_catalog');
       case 'search_catalog':
         if (addedToLibraries && previousWeek) return (args: out, error: 'previous_week_not_supported');
-        if (addedToLibraries && days.explicit) out['added_within_days'] = days.value;
-        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        if (addedToLibraries) {
+          if (longPeriodAsked) return (args: out, error: 'window_not_supported');
+          // The period is the additions' only when no other clause (a watch
+          // question) could own it.
+          if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
+        }
+        if (addedToLibraries && kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
       case 'watch_stats':
         if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.

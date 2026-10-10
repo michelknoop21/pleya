@@ -234,5 +234,21 @@ void main() {
       expect(mixed.constrain('watch_stats', {'scope': 'period'}).error, isNull);
       expect(_i('Een tip').inheriting(_i('Wat is er toegevoegd en geef me een tip')).addedToLibraries, isFalse);
     });
+
+    test('review: a period that may belong to another clause or that days cannot hold is not forced', () {
+      final mixed = _i('Wat is er toegevoegd en wat keken de anderen afgelopen week?');
+      expect(mixed.constrain('search_catalog', {}).args, isNot(contains('added_within_days')));
+      expect(
+        _i('Wat is er de laatste 3 maanden toegevoegd?').constrain('search_catalog', {}).error,
+        'window_not_supported',
+      );
+      expect(_i('Wat is er toegevoegde films deze week?').addedToLibraries, isTrue);
+      expect(_i('Zet het op mijn afspeellijst toegevoegd').addedToLibraries, isFalse);
+    });
+
+    test('review: kind is only enforced on search_catalog for an additions question', () {
+      final i = _i('Zoek een film met Tom Hanks');
+      expect(i.constrain('search_catalog', {}).args, isNot(contains('kind')));
+    });
   });
 }

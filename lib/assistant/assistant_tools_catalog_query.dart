@@ -101,9 +101,13 @@ const _rowSorts = {
 };
 
 /// A title's added date (epoch seconds) is its newest source's: a copy added
-/// this week is new this week, whatever the older copy says.
-int? _groupAddedAt(UnifiedMediaGroup g) =>
-    g.sources.map((s) => s.item.addedAt).whereType<int>().fold<int?>(null, (a, b) => a == null || b > a ? b : a);
+/// this week is new this week, whatever the older copy says. A local folder has
+/// none to give: its client stamps scan time, which is not an add date.
+int? _groupAddedAt(UnifiedMediaGroup g) => g.sources
+    .where((s) => s.item.backend != MediaBackend.local)
+    .map((s) => s.item.addedAt)
+    .whereType<int>()
+    .fold<int?>(null, (a, b) => a == null || b > a ? b : a);
 
 Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> args) async {
   final catalog = ctx.catalog!;
@@ -242,7 +246,10 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
         id: '',
         kind: k,
         preferences: UnifiedCatalogPreferences(
-          sort: _rowSorts[sort] ?? UnifiedCatalogSort.titleAsc,
+          // A window needs newest first, whatever order the listing is shown in.
+          sort: addedWithin != null
+              ? UnifiedCatalogSort.recentlyAdded
+              : (_rowSorts[sort] ?? UnifiedCatalogSort.titleAsc),
           filters: UnifiedCatalogFilterSelection(
             genres: genres,
             audioLanguages: audioLanguages.length > 1 ? const {} : audioLanguages,
@@ -269,7 +276,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       final content = await ctx.catalog!.rowLoader.load(row, limit: rowShaped ? limit : 100);
       checkCurrent();
       partial |= content.isPartial;
-      sampled |= !rowShaped && !content.isExact;
+      // In a window the question is whether the newest-first page reached its
+      // end (below); otherwise an inexact page is a sample.
+      if (cutoff == null) sampled |= !rowShaped && !content.isExact;
       // Newest first and capped at 100: if the oldest loaded title is still in
       // the window, older matches were never seen.
       if (cutoff != null && content.groups.length >= 100 && (addedOf(content.groups.last) ?? -1) >= cutoff) {
@@ -295,7 +304,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     return _CatalogQuery(
       groups.take(limit).toList(),
       rowShaped && kind != null ? row : null,
-      partial: partial || addedUnknown > 0,
+      partial: partial,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
       rowUnavailableReason: unavailableReason,
@@ -382,7 +391,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   return _CatalogQuery(
     kept,
     null,
-    partial: partial || addedUnknown > 0,
+    partial: partial,
     sampled: coverage != null,
     rowUnavailableReason: unavailableReason,
     coverage: coverage,
@@ -547,7 +556,7 @@ void _order(List<UnifiedMediaGroup> groups, String sort) {
     case 'rating':
       groups.sort((a, b) => (rep(b).rating ?? -1).compareTo(rep(a).rating ?? -1));
     case 'added':
-      groups.sort((a, b) => (rep(b).addedAt ?? -1).compareTo(rep(a).addedAt ?? -1));
+      groups.sort((a, b) => (_groupAddedAt(b) ?? -1).compareTo(_groupAddedAt(a) ?? -1));
     case 'released':
       groups.sort((a, b) => releaseKey(rep(b)).compareTo(releaseKey(rep(a))));
     default:

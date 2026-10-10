@@ -42,7 +42,7 @@ class _Loader implements HomeCustomRowLoader {
 }
 
 /// Item 1 on [server]: the same item id on every server.
-UnifiedMediaGroup _on(String server, String title) {
+UnifiedMediaGroup _on(String server, String title, {int? added}) {
   final source = UnifiedMediaSource.fromItem(
     MediaItem(
       id: '1',
@@ -52,6 +52,7 @@ UnifiedMediaGroup _on(String server, String title) {
       year: 2001,
       serverId: server,
       libraryId: 'lib-films',
+      addedAt: added,
     ),
   );
   return UnifiedMediaGroup(
@@ -99,5 +100,40 @@ void main() {
       {for (final c in cards) c.title: c.facts?.certifications['NL']},
       {'Toy Story': 'AL', 'Deathly Hallows': '12'},
     );
+  });
+
+  test('added window on a children profile: no whole-window figure and no count of unchecked titles', () async {
+    final servers = MultiServerManager();
+    addTearDown(servers.dispose);
+    servers
+      ..debugRegisterClientForTesting(FakeServer('a'))
+      ..debugRegisterClientForTesting(FakeServer('b'))
+      ..debugRegisterClientForTesting(FakeServer('c'))
+      ..setVisibleServerIds(null);
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final catalog = AssistantCatalogServices(
+      rowLoader: _Loader([
+        _on('a', 'Toy Story', added: now - 86400),
+        _on('b', 'Deathly Hallows', added: now - 86400),
+        _on('c', 'Undated'),
+      ]),
+      profileId: 'p1',
+      activeProfileId: () => 'p1',
+    );
+    AssistantToolContext ctx(bool kids) => AssistantToolContext(
+      servers: servers,
+      catalog: catalog,
+      titleFacts: _Facts(),
+      kidsAges: () async => [8],
+      region: () => 'NL',
+    )..kidsMode = kids;
+    final args = {'kind': 'movie', 'added_within_days': 7};
+    final kids = await _tool('search_catalog').run(ctx(true), null, args) as AssistantToolResult;
+    expect(kids.data.containsKey('total_matches'), isFalse);
+    expect(kids.data.containsKey('added_unknown'), isFalse);
+    expect(kids.data.containsKey('partial'), isFalse, reason: 'no hint at titles that were never checked');
+    final adult = await _tool('search_catalog').run(ctx(false), null, args) as AssistantToolResult;
+    expect(adult.data['total_matches'], 2);
+    expect(adult.data['added_unknown'], 1);
   });
 }

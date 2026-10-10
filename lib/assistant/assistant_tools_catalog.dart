@@ -51,6 +51,10 @@ class AssistantMediaGrid extends AssistantDisplay {
       e.group == null ? e.item.globalKey : buildGlobalKey(e.group!.representativeSource.serverId, e.item.id);
 }
 
+/// Titles one answer lists and draws: the text, the cards and the actions are
+/// the same set, so the UI's grid cap is this number.
+const kAssistantListedTitles = 12;
+
 final List<AssistantTool> _catalogTools = [
   AssistantTool(
     name: 'search_catalog',
@@ -90,7 +94,7 @@ final List<AssistantTool> _catalogTools = [
       final results = <Map<String, Object?>>[];
       final gated = await _gateTitles(
         ctx,
-        query.groups.take(15).toList(),
+        query.groups.take(kAssistantListedTitles).toList(),
         (g) => _itemRef(g.representativeSource.item.copyWith(serverId: g.representativeSource.serverId.value)),
         age,
       );
@@ -129,15 +133,18 @@ final List<AssistantTool> _catalogTools = [
         // For children only what passed counts.
         // What is listed and drawn; total_matches is what the query found.
         'count': entries.length,
-        'total_matches': age == null ? (query.totalMatches ?? query.groups.length) : entries.length,
+        // The kids gate only sees the listed titles: no whole-window figure then,
+        // and no count of titles that were never checked.
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
-          if (query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
+          if (age == null) 'total_matches': query.totalMatches,
+          if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
+          if (age != null && query.totalMatches != null && query.totalMatches! > entries.length) 'sampled': true,
         },
         'can_become_home_row': query.row != null,
         if (query.row == null) 'home_row_unavailable_reason': query.rowUnavailableReason,
         if (query.coverage != null) 'coverage': query.coverage,
-        if (query.partial) 'partial': true,
+        if (query.partial || (age == null && query.addedUnknown > 0)) 'partial': true,
         if (query.sampled) 'sampled': true,
         if (query.serversLeftOut.isNotEmpty) 'servers_left_out': query.serversLeftOut,
         if (query.genreUnverified.isNotEmpty) 'genre_unverified': query.genreUnverified.length,

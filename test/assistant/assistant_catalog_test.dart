@@ -38,11 +38,18 @@ http.Response _json(Object? body, {int status = 200}) =>
 MediaItem _movie(String id, String title, {String server = _server, MediaBackend backend = MediaBackend.jellyfin}) =>
     MediaItem(id: id, backend: backend, kind: MediaKind.movie, title: title, year: 2001, serverId: server);
 
-UnifiedMediaGroup _group(String id, String title, {String library = 'lib-films', String server = _server, int? added}) {
+UnifiedMediaGroup _group(
+  String id,
+  String title, {
+  String library = 'lib-films',
+  String server = _server,
+  int? added,
+  MediaBackend backend = MediaBackend.jellyfin,
+}) {
   final source = UnifiedMediaSource.fromItem(
     MediaItem(
       id: id,
-      backend: MediaBackend.jellyfin,
+      backend: backend,
       kind: MediaKind.movie,
       title: title,
       year: 2001,
@@ -472,9 +479,37 @@ void main() {
       final listed = {for (final r in (outcome.data['results'] as List).cast<Map>()) r['item_id']};
       final drawn = {for (final e in (outcome.display! as AssistantMediaGrid).entries) e.item.id};
       expect(drawn, listed);
+      expect(listed, hasLength(kAssistantListedTitles));
       expect(outcome.data['count'], listed.length);
       expect(outcome.data['total_matches'], 30);
     });
+
+    test('a local folder has no add date to give: its titles are unknown, never "added now"', () async {
+      final (ctx, _, _, _) = await setUpCtx(
+        groups: [
+          _group('l', 'Local', added: ago(0), backend: MediaBackend.local),
+          _group('a', 'Alien', added: ago(2)),
+        ],
+      );
+      final data = await search(ctx, {'kind': 'movie', 'added_within_days': 7});
+      expect([for (final r in (data['results'] as List).cast<Map>()) r['title']], ['Alien']);
+      expect(data['added_unknown'], 1);
+    });
+
+    test(
+      'a window that reached the end of the library is not called a sample; a sort other than added still loads newest first',
+      () async {
+        final (ctx, loader, _, _) = await setUpCtx(
+          groups: [
+            _group('a', 'Alien', added: ago(2)),
+            _group('o', 'Old', added: ago(60)),
+          ],
+        );
+        final data = await search(ctx, {'kind': 'movie', 'added_within_days': 7, 'sort': 'title'});
+        expect(data['sampled'], isNull);
+        expect(loader.calls.single.sort, UnifiedCatalogSort.recentlyAdded);
+      },
+    );
 
     test('an invalid window is refused', () async {
       final (ctx, _, _, _) = await setUpCtx();
