@@ -310,10 +310,11 @@ void main() {
     );
   }
 
-  // The version menu (`_handlePlayVersion`) always passes the number, the
-  // stable source id and a quality, Original unless the viewer picked another;
-  // a plain play passes none of them. Nothing in the guard looks at the
-  // backend, so every backend runs the same two orders.
+  // The version menu (`_handlePlayVersion`) always passes the number and a
+  // quality, Original unless the viewer picked another, plus the source id of
+  // the picked version when there is one (an empty version list leaves it
+  // null); a plain play passes none of them. Nothing in the guard looks at
+  // the backend, so every backend runs the same two orders.
   for (final backend in MediaBackend.values) {
     for (final plainFirst in [true, false]) {
       testWidgets('a plain start and version 0 from the version menu are one start '
@@ -360,6 +361,86 @@ void main() {
       });
     }
   }
+
+  for (final plainFirst in [true, false]) {
+    testWidgets('a plain start and version 0 from the version menu with a lower quality are one start '
+        '(${plainFirst ? 'plain' : 'menu'} first)', (tester) async {
+      final (context, client, spy) = await pumpHost(tester);
+      Future<bool?> start({required bool plain}) => plain
+          ? navigateToVideoPlayer(context, metadata: movie)
+          : navigateToVideoPlayer(
+              context,
+              metadata: movie,
+              selectedMediaIndex: 0,
+              selectedMediaSourceId: 'source_a',
+              selectedQualityPreset: TranscodeQualityPreset.p720_4mbps,
+            );
+
+      // No preference is stored, so the plain start resolves to version 0.
+      unawaited(start(plain: plainFirst));
+      await tester.pump();
+      unawaited(start(plain: !plainFirst));
+      await tester.pump();
+
+      client.release(movie);
+      client.release(movie);
+      await tester.pump();
+      await tester.pump();
+
+      expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(1));
+      expect(startNotices(), isEmpty);
+    });
+  }
+
+  // The chosen limit: within the guard window the first quality wins and a
+  // second menu start for the same version is dropped without a message.
+  testWidgets('the version menu at Original and at a lower quality for the same version are one start', (tester) async {
+    final (context, client, spy) = await pumpHost(tester);
+    Future<bool?> menuStart(TranscodeQualityPreset quality) => navigateToVideoPlayer(
+      context,
+      metadata: movie,
+      selectedMediaIndex: 0,
+      selectedMediaSourceId: 'source_a',
+      selectedQualityPreset: quality,
+    );
+
+    unawaited(menuStart(TranscodeQualityPreset.original));
+    await tester.pump();
+    final second = menuStart(TranscodeQualityPreset.p720_4mbps);
+    await tester.pump();
+
+    // Counted before the await: a start that got through would still be
+    // waiting on the server here.
+    expect(client.fetchCalls, 1, reason: 'the second quality never reaches the server');
+    expect(await second, isNull);
+
+    client.release(movie);
+    await tester.pump();
+    await tester.pump();
+
+    expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(1));
+    expect(startNotices(), isEmpty);
+  });
+
+  testWidgets('two titles both start', (tester) async {
+    final (context, client, spy) = await pumpHost(tester);
+    final other = movie.copyWith(id: 'movie_2');
+
+    unawaited(navigateToVideoPlayer(context, metadata: movie));
+    await tester.pump();
+    unawaited(navigateToVideoPlayer(context, metadata: other));
+    await tester.pump();
+
+    expect(client.fetchCalls, 2, reason: 'another title is another start');
+
+    client.release(movie);
+    client.release(other);
+    await tester.pump();
+    await tester.pump();
+
+    expect(spy.names.where((name) => name == kVideoPlayerRouteName), hasLength(2));
+    expect(startNotices(), isEmpty);
+  });
 
   testWidgets('two versions picked by number and source id both start', (tester) async {
     final (context, client, spy) = await pumpHost(tester);

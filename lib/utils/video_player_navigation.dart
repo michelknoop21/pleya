@@ -34,11 +34,11 @@ const String kVideoPlayerRouteName = '/video_player';
 /// is read, under the version it resolved to: otherwise "the saved version"
 /// and that same version asked for by number would both get through.
 ///
-/// The key holds the title, the version number and offline, the same things
-/// the mounted player answers for duplicates with (`activeId`,
-/// `activeMediaIndex`). The source id a version menu passes along is left
-/// out: it names the entry at that number, and a start without it would
-/// otherwise never meet a start with it. On Jellyfin and Emby the source id
+/// The key holds the `globalKey` of the requested title, the version number
+/// and `isOffline`. The check for a mounted player further down compares
+/// `activeId` and `activeMediaIndex`. The source id a version menu passes
+/// along is left out: it names the entry at that number, and a start without
+/// it would otherwise never meet a start with it. On Jellyfin and Emby the source id
 /// does win over the number when the stream is fetched, so two starts with
 /// one number and different source ids count as one start here.
 ///
