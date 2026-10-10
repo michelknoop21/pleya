@@ -157,6 +157,27 @@ describe('HubRail', () => {
     expect(container.querySelector('.card')).toBeNull();
   });
 
+  it('geeft het spoor alleen een tabstop als de kaarten niets focusbaars hebben', async () => {
+    const plain = createRawSnippet((item: () => Item) => ({
+      render: () => `<span class="own">${item().title}</span>`
+    }));
+    const bare = render(HubRail, { props: { title: 'Plain', items: items(3), card: plain } });
+    const track = screen.getByRole('list', { name: 'Plain' });
+    await vi.waitFor(() => expect(track).toHaveAttribute('tabindex', '0'));
+    bare.unmount();
+
+    // Negatieve kant: met kaartlinks loopt de tab door de kaarten.
+    render(HubRail, { props: { title: 'Linked', items: items(3) } });
+    expect(screen.getByRole('list', { name: 'Linked' })).not.toHaveAttribute('tabindex');
+  });
+
+  it('zet de pijlen op de helft van het beeld, onder spoor- en kaartpadding', () => {
+    const source = readFileSync(resolve(import.meta.dirname, 'HubRail.svelte'), 'utf8');
+    expect(source).toContain(
+      'top: calc(6px + var(--space-quarter) + var(--rail-art-h) / 2 - var(--touch-target) / 2)'
+    );
+  });
+
   it('tekent zonder snippet de standaardkaart', () => {
     const { container } = render(HubRail, { props: { title: 'Films', items: items(3) } });
     expect(container.querySelectorAll('.card')).toHaveLength(3);
