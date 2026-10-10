@@ -15,15 +15,22 @@ PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
 ```
 
 De galerij draait zonder app-schil (geen topnavigatie of tabbalk), dus vergelijk de componenten
-met de mockup, niet de omlijsting.
+met de mockup, niet de omlijsting. Sinds taak 9b heeft hij een eigen index: links vanaf 900, als
+strook chips bovenaan daaronder. Elke sectie heeft een kop van 11 px in kapitalen met een
+haarlijn, en bovenaan staat het Overzicht: specimen v2 nagebouwd met de echte componenten. De
+sectie-ids staan in `pleya_web/src/routes/dev/primitives/sections.ts`; het script leest ze daar.
 
 ## Waar je elke opname naast legt
 
 | Opname | Northstar | Wat je vergelijkt |
 | --- | --- | --- |
-| `galerij@{393,1024,1600}` | geen één-op-één | het geheel, voor regressie tussen rondes |
+| `galerij@{393,1024,1600}` | geen één-op-één | de hele pagina met index (links, of als chipstrook op 393), voor regressie tussen rondes |
+| `overzicht@{393,1024,1600}` | specimen `v2@1600`, `v2@393`; 20, 21, 24 | het specimen met echte componenten: kop met statusstip, melding, vier even hoge tegels (sparkline op Titels), opslagmeter, bibliotheektabel met tags, statuscel en voortgang (gestapeld op 393), formulierpaneel, gevarenzone en een laadkaart. De zijbalk van het specimen hoort bij de app-schil en ontbreekt |
+| `overzicht-{oled,light}@{393,1600}` | als hierboven | hetzelfde in OLED en light: segmentkleuren, tags en statusstippen op het witte paneel |
+| `opslagmeter@{393,1024,1600}` | specimen "Opslag per bibliotheek"; 20, 24 | StorageMeter normaal (vijf segmenten, vrij gedempt), bijna vol (Kids rood, 0,3 TB vrij) en leeg of onbekend (gedempt spoor met uitleg in plaats van legenda) |
+| `opslagmeter-{oled,light}@{393,1600}` | als hierboven | dezelfde drie staten in OLED en light |
 | `velden@{393,1024,1600}` | 22, 40, 41, 42 | velden in een paneel: invoer dieper dan het paneel (`--inset-bg`), pad in mono met focus (1 px inktrand, geen ring), fout, uitgeschakeld; select; toggle (uit met gedimde knop); keuzelijst en tegels |
-| `panelen@{393,1024,1600}` | 20, 21, 22, 24, 35 | paneel met titel en actie, flush met een lijst tot de rand, `tone="warn"` (35), `tone="danger"` (22); stattegels uit 20 met sparkline en eenheid in grijs |
+| `panelen@{393,1024,1600}` | 20, 21, 22, 24, 35 | paneel met titel en actie, flush met een lijst tot de rand, `tone="warn"` (35), `tone="danger"` (22); stattegels uit 20 met sparkline en eenheid in grijs, per rij even hoog |
 | `velden-foutfocus@{393,1024,1600}` | 22, 40 | foutveld met focus: rode rand van 2 px (rand plus schaduw van 1 px); de northstar tekent deze staat niet |
 | `pillen@{393,1024,1600}` | 21, 25, 26, 34 | vijf tonen, met en zonder stip, statusvorm (`variant="dot"`), klein als tag |
 | `meldingen@{393,1024,1600}` | 21, 24, 31, 35 | waarschuwing, fout met actie, info zonder titel, info met twee acties |
@@ -83,3 +90,21 @@ met de mockup, niet de omlijsting.
   van Toggle en de sparkline gebruiken in light ook het donkere groen (witte knop 6,6:1). De
   statusstip `run` pulseert tot 0,6 in plaats van 0,35, anders verdween hij op wit. Dark en OLED
   zijn ongewijzigd. Hertest in light met `PLEYA_SHOTS_THEME=light`.
+
+## Taak 9b: opslagmeter en galerij als pagina
+
+- `StorageMeter` (`pleya_web/src/lib/components/StorageMeter.svelte`): breedtes via
+  `style:flex-grow` in procenten van het totaal, een segment van 0 alleen in de legenda, een
+  piepklein segment minstens 1 procent (plus 4 px als vangnet in CSS), en een `total` groter dan
+  de som tekent de rest als gedempt vrij vlak. De legenda is een lijst met `aria-label`; de balk
+  staat `aria-hidden`, want hij herhaalt alleen wat de legenda zegt.
+- Twee grafiektokens in `tokens.css`: `--blue` (#7aa7ff in dark en OLED, #3d72e0 in light, 4,49:1
+  op wit) en `--amber-graphic` (amber in dark en OLED, #c27c00 in light, 3,40:1 op wit). Amber
+  haalde als balksegment op het witte paneel maar 1,8:1; `--warn-ink` is als vlak bruin en leest
+  niet meer als amber. De legendatekst gebruikt `--ink-2` en `--ink-3`.
+- Stattegels in één rij strekken nu tot dezelfde hoogte (`gs__grid--stretch` in de galerij,
+  `align-items: stretch` in het Overzicht).
+- De index markeert de huidige sectie met een scrollmeting (kop boven een kwart van het venster).
+  Een IntersectionObserver gaf na een ankersprong de vorige sectie aan.
+- Opnamen van secties zijn elementopnamen: de buitenste ring en schaduw van een paneel vallen op
+  de rand van het beeld deels weg. Dat is de uitsnede, niet het paneel.
