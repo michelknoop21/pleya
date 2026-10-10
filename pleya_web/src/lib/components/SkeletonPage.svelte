@@ -9,11 +9,11 @@
   - `compact`: een titel en een paar regels, voor de schil zolang nog niet
     vaststaat of er een navigatie, een inlogformulier of een setup volgt.
 
-  Toegankelijkheid: de blokken zijn decoratie en hangen buiten de boom. De
-  container meldt `aria-busy`, en een verborgen statusregel zegt wat de
-  spinner in StateView zei, zodat een schermlezer nog steeds hoort dat er
-  geladen wordt. De statusregel draagt zelf geen `aria-busy`: een live region
-  die bezig is, houdt zijn aankondiging juist in.
+  Toegankelijkheid: de blokken zijn decoratie en hangen buiten de boom. Hun
+  container meldt `aria-busy`, en een verborgen statusregel ernaast zegt wat
+  de spinner in StateView zei, zodat een schermlezer nog steeds hoort dat er
+  geladen wordt. De statusregel staat bewust buiten de bezige container: een
+  live region binnen een `aria-busy`-voorouder houdt zijn aankondiging in.
 -->
 <script lang="ts">
   import Skeleton from './Skeleton.svelte';
@@ -34,10 +34,10 @@
   const railTitles = ['220px', '160px'];
 </script>
 
-<div class="skp skp--{variant}" aria-busy="true">
+<div class="skp skp--{variant}">
   <p class="visually-hidden" role="status">{label}</p>
 
-  <div class="skp__body" aria-hidden="true">
+  <div class="skp__body" aria-busy="true" aria-hidden="true">
     {#if variant === 'home'}
       <Skeleton kind="hero" />
       <div class="skp__rails">
