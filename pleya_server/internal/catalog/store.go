@@ -65,16 +65,33 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 
 		// managed is expliciet 'config' en niet de kolomdefault: dit is het pad
 		// dat de omgeving synct, en de default bestaat voor een rij die buiten dit
-		// pad om wordt ingevoegd. S2.5 moet deze ON CONFLICT DO UPDATE nog een
-		// guard geven zodat een via de API geadopteerde ('db') bibliotheek hier niet
-		// weer wordt overschreven; vandaag bestaat dat pad nog niet, dus die guard
-		// zou vooruitbouwen zonder een aanroeper.
+		// pad om wordt ingevoegd. De WHERE-guard laat een via POST
+		// /libraries/{id}/adopt overgenomen ('db') bibliotheek met rust. De
+		// overname zelf vraagt geen .env-bewerking, maar de regel moet daarna uit
+		// de .env worden verwijderd: anders blijft hij genegeerd, en bij DELETE
+		// plus herstart komt de bibliotheek met een nieuwe id terug (root-steal-
+		// gap, S2.7). De rij, titel, soort en roots zijn van de database.
 		err := tx.QueryRow(ctx, `
 			INSERT INTO libraries (id, slug, title, kind, managed)
 			VALUES ($1, $2, $3, $4, 'config')
 			ON CONFLICT (slug) DO UPDATE
 			SET title = EXCLUDED.title, kind = EXCLUDED.kind, updated_at = now()
+			WHERE libraries.managed = 'config'
 			RETURNING id`, id.New(), spec.Slug, spec.Title, spec.Kind).Scan(&lib.ID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// De guard sloeg toe: de bibliotheek is overgenomen. Zelfde id en slug
+			// terug, zonder iets te schrijven, en de roots van de .env-regel worden
+			// niet opnieuw geclaimd.
+			var managed LibraryManaged
+			if err := tx.QueryRow(ctx,
+				`SELECT id, managed FROM libraries WHERE slug = $1`, spec.Slug).
+				Scan(&lib.ID, &managed); err != nil {
+				return nil, fmt.Errorf("bibliotheek %q lezen: %w", spec.Slug, err)
+			}
+			lib.Managed = managed
+			out = append(out, lib)
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("bibliotheek %q vastleggen: %w", spec.Slug, err)
 		}

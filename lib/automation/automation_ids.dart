@@ -325,6 +325,13 @@ class AutomationIds {
   /// The question field under the balloon.
   static const String bigpInput = 'bigp.input';
 
+  /// The round send button at the end of the question field.
+  static const String bigpSend = 'bigp.send';
+
+  /// A button of the text input dialog (`showTextInputDialog`):
+  /// `dialog.input.button[cancel]`, `[confirm]`.
+  static const String dialogInputButton = 'dialog.input.button';
+
   /// "Nieuw gesprek" beside the question field; only once there is a conversation.
   static const String bigpNewConversation = 'bigp.newConversation';
 
@@ -785,6 +792,8 @@ class AutomationIds {
     {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
     {'id': bigpBalloon, 'role': 'region', 'instanceable': false},
     {'id': bigpInput, 'role': 'field', 'instanceable': false},
+    {'id': bigpSend, 'role': 'button', 'instanceable': false},
+    {'id': dialogInputButton, 'role': 'button', 'instanceable': true},
     {'id': bigpNewConversation, 'role': 'button', 'instanceable': false},
     {'id': bigpFollowUp, 'role': 'button', 'instanceable': true},
     {'id': bigpPeek, 'role': 'button', 'instanceable': false},

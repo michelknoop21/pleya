@@ -88,6 +88,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   'auth.rate_limited': 'Too many attempts. Wait a moment and try again.',
   'library.not_found': 'That item is not on this server.',
   'library.scan_in_progress': 'A scan is running. Try again in a moment.',
+  'library.not_config_managed': 'This library is already managed in Pleya.',
   'library.cursor_invalid': 'The list moved on. Reloading from the start.',
   'library.search_query_empty': 'Type something to search for.',
   'library.version_multifile': 'This version is split across several files.',

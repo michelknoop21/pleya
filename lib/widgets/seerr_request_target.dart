@@ -47,6 +47,10 @@ class SeerrTargetController extends ChangeNotifier {
   SeerrClient? _client;
   bool _disposed = false;
 
+  /// Only the server list is read and nothing is bound: the form of a
+  /// requester, who has no server to choose and must never send one.
+  bool _listOnly = false;
+
   /// Edit mode: the request already has a target, and it stays exactly as
   /// stored until the admin picks something else. Nothing the option lists
   /// leave out is replaced by a default.
@@ -70,7 +74,25 @@ class SeerrTargetController extends ChangeNotifier {
   bool get hasAnyServer => _all.isNotEmpty;
 
   /// A 4K request with no 4K instance to send it to.
-  bool get missingServerForQuality => !serversFailed && _all.isNotEmpty && !seerrHasServerOfQuality(_all, is4k: _is4k);
+  bool get missingServerForQuality =>
+      !_listOnly && !serversFailed && _all.isNotEmpty && !seerrHasServerOfQuality(_all, is4k: _is4k);
+
+  /// How long a list-only load waits for the instances.
+  static const listOnlyPatience = Duration(seconds: 3);
+
+  /// What a request without a server does while the instances are not known:
+  /// HD goes out, as it did before the list was read at all, so a server that
+  /// will not show its instances does not stop every request. Set to false to
+  /// hold HD back as well. 4K is never sent on a guess.
+  static const hdOpenWhenInstancesUnknown = true;
+
+  /// Whether a request sent without a chosen server has somewhere to go: the
+  /// request server routes it to the default instance of its quality.
+  ///
+  /// An empty list is not knowledge. It is what a failed read, an answer that
+  /// is not a list and a server without instances all leave behind.
+  bool routesWithoutServer({required bool is4k}) =>
+      _all.isEmpty ? !is4k && hdOpenWhenInstancesUnknown : seerrHasServerOfQuality(_all, is4k: is4k, defaultOnly: true);
 
   /// Whether profile and folder are known for the bound server. False while
   /// they load and after they failed, and then [target] carries no server at
@@ -85,24 +107,35 @@ class SeerrTargetController extends ChangeNotifier {
   ///
   /// With [keepStored], [initial] is a target a request already holds: it is
   /// bound as it is, whether or not the lists that come back mention it.
+  ///
+  /// With [listOnly] the list is all that is read: [routesWithoutServer] answers, and
+  /// [target] stays null whatever quality is chosen afterwards.
   Future<void> load(
     SeerrClient client, {
     required bool is4k,
     SeerrRequestTarget? initial,
     bool keepStored = false,
+    bool listOnly = false,
   }) async {
     _client = client;
     _is4k = is4k;
     _keepStored = keepStored;
+    _listOnly = listOnly;
     try {
-      _all = isTv ? await client.getSonarrServers() : await client.getRadarrServers();
+      final list = isTv ? client.getSonarrServers() : client.getRadarrServers();
+      // A requester's form does not wait out the transport timeout for a list
+      // it only reads: past this, the instances count as not known.
+      _all = await (listOnly ? list.timeout(listOnlyPatience) : list);
       serversFailed = false;
     } catch (e) {
       appLogger.d('seerr: could not load the target servers: $e');
       _all = const [];
-      serversFailed = true;
+      // Nobody chose a server on a list-only form, so there is no failed
+      // choice to report: the empty list answers [routesWithoutServer].
+      serversFailed = !listOnly;
     }
     if (_disposed) return;
+    if (listOnly) return _notify();
     final wanted = initial?.serverId;
     if (keepStored) {
       serverId = wanted;
@@ -122,6 +155,7 @@ class SeerrTargetController extends ChangeNotifier {
   void setIs4k(bool value) {
     if (_is4k == value) return;
     _is4k = value;
+    if (_listOnly) return _notify();
     bind(preferredSeerrServer(_all, is4k: value)?.id, force: true);
   }
 

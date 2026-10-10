@@ -9,6 +9,7 @@ import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/automation/automation_node.dart';
 import 'package:pleya/i18n/strings.g.dart';
 import 'package:pleya/models/seerr/seerr_media.dart';
+import 'package:pleya/models/seerr/seerr_request.dart';
 import 'package:pleya/providers/seerr_provider.dart';
 import 'package:pleya/services/seerr/seerr_constants.dart';
 import 'package:pleya/widgets/seerr_request_sheet.dart';
@@ -49,6 +50,9 @@ Future<void> _settle(WidgetTester tester) async {
   }
 }
 
+SeerrRequest request({int by = 7, bool is4k = false, SeerrRequestStatus status = SeerrRequestStatus.pending}) =>
+    SeerrRequest(id: 3, status: status, mediaType: 'movie', requestedById: by, is4k: is4k);
+
 void main() {
   late FakeSeerr fake;
   late SeerrProvider provider;
@@ -77,6 +81,7 @@ void main() {
     VoidCallback? onRequested,
     bool offerMine = false,
     bool initialIs4k = false,
+    List<SeerrRequest> requests = const [],
   }) async {
     // Tall enough that a five-season form is laid out whole: the list is lazy.
     tester.view.physicalSize = const Size(900, 2400);
@@ -94,6 +99,7 @@ void main() {
         onRequested: onRequested ?? () => requested++,
         onOpenMyRequests: offerMine ? () => openedMine++ : null,
         initialIs4k: initialIs4k,
+        requests: requests,
       ),
     );
     await _settle(tester);
@@ -107,6 +113,14 @@ void main() {
       })
       ..on('GET /tv/1399', tvDetail())
       ..on('POST /request', {'id': 1});
+    // A requester's 4K goes to the default 4K instance, so there is one here.
+    // `seerr_request_sheet_default_4k_test.dart` covers the server without.
+    for (final service in ['radarr', 'sonarr']) {
+      fake.on('GET /service/$service', [
+        {'id': 1, 'name': 'HD', 'is4k': false, 'isDefault': true},
+        {'id': 2, 'name': '4K', 'is4k': true, 'isDefault': true},
+      ]);
+    }
   });
 
   group('film', () {
@@ -190,6 +204,19 @@ void main() {
       expect(_button('submit'), findsNothing);
     });
 
+    testWidgets("a title that someone else requested ends on the message and Sluiten, without Mijn aanvragen", (
+      tester,
+    ) async {
+      const pending = SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.pending);
+      await open(tester, pending, offerMine: true, requests: [request(by: 9)]);
+      expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+      expect(_button('mine'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      await open(tester, pending, offerMine: true, requests: [request()]);
+      expect(_button('mine'), findsOneWidget, reason: 'the viewer does hold this one');
+    });
+
     testWidgets('a caller whose confirmation callback throws does not turn a confirmed request into an open one', (
       tester,
     ) async {
@@ -221,6 +248,7 @@ void main() {
           const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.pending),
           permissions: fourK,
           offerMine: true,
+          requests: [request()],
         );
 
         expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
@@ -237,6 +265,41 @@ void main() {
         await tester.tap(find.text(t.seerr.myRequests));
         await _settle(tester);
         expect(openedMine, 1);
+      });
+
+      testWidgets("pending in HD on someone else's request says so, and offers no way to a list it is not in", (
+        tester,
+      ) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.pending),
+          permissions: fourK,
+          offerMine: true,
+          requests: [request(by: 9)],
+        );
+
+        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(_button('mine'), findsNothing);
+        expect(_enabled(tester, 'submit'), isFalse);
+        expect(_hasFocus(tester, _button('close')), isTrue);
+      });
+
+      testWidgets("pending in HD on someone else's request is not mine because of an own request in 4K", (
+        tester,
+      ) async {
+        await open(
+          tester,
+          const SeerrMedia(tmdbId: 603, mediaType: 'movie', title: 'x', status: SeerrMediaStatus.pending),
+          permissions: fourK,
+          offerMine: true,
+          requests: [
+            request(by: 9),
+            request(is4k: true, status: SeerrRequestStatus.declined),
+          ],
+        );
+
+        expect(_button('mine'), findsNothing, reason: 'the HD request on screen is not the viewer\'s');
+        expect(_enabled(tester, 'submit'), isFalse);
       });
 
       testWidgets('can still be asked for in 4K by a profile that holds the 4K right', (tester) async {
@@ -715,7 +778,8 @@ void main() {
     testWidgets('a requester never sees the target section', (tester) async {
       await open(tester, _movie);
       expect(find.text(t.seerr.advancedOptions), findsNothing);
-      expect(fake.sent('GET', '/service/radarr'), isEmpty);
+      expect(fake.sent('GET', '/service/radarr'), hasLength(1), reason: 'read once, to know where HD would go');
+      expect(fake.sent('GET', '/service/radarr/1'), isEmpty, reason: 'and nothing is bound');
     });
   });
 

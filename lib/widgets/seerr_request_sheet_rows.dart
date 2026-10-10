@@ -70,10 +70,18 @@ extension _SeerrRequestSheetRows on _SeerrRequestSheetState {
     );
   }
 
-  bool _canOffer4k(SeerrProvider provider) => provider.canRequest4kFor(isMovie: !_isTv);
+  bool _holds4kRight(SeerrProvider provider) => provider.canRequest4kFor(isMovie: !_isTv);
+
+  /// An admin with a list picks the server, so any 4K instance will do and
+  /// the target section says when there is none. Everyone else, and an admin
+  /// with no instances to pick from, sends no server: the request server
+  /// routes that to the default 4K instance or nowhere.
+  bool _canOffer4k(SeerrProvider provider) =>
+      _holds4kRight(provider) &&
+      ((provider.isAdmin && _target.hasAnyServer) || _target.routesWithoutServer(is4k: true));
 
   Widget _fourKRow(SeerrProvider provider, {required bool enabled}) {
-    if (!_canOffer4k(provider)) {
+    if (!_holds4kRight(provider)) {
       // The right is per media type, so the line says which one is missing
       // instead of leaving a gap where the switch is on the other type.
       return AutomationNode(
@@ -88,6 +96,9 @@ extension _SeerrRequestSheetRows on _SeerrRequestSheetState {
         ),
       );
     }
+    // The right is there and the instance is not: nothing to say about the
+    // profile, and nothing to switch.
+    if (!_canOffer4k(provider)) return const SizedBox.shrink();
     return SeerrFocusNode(
       id: AutomationIds.requestsFormOption,
       instance: 'fourK',
@@ -112,13 +123,19 @@ extension _SeerrRequestSheetRows on _SeerrRequestSheetState {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
         child: Text(t.seerr.selectSeasons, style: theme.textTheme.titleSmall),
       ),
+      // One slot whether the row is there or not. Flipping 4K changes how many
+      // seasons can be asked for, and a row that comes and goes would renumber
+      // the rows below it: the 4K switch would be rebuilt without its focus,
+      // and the next Select would land on the submit button.
       if (requestable.length > 1)
         SeerrAllSeasonsTile(
           chosen: _selectedSeasons.length,
           total: requestable.length,
           onToggle: _toggleAll,
           enabled: enabled,
-        ),
+        )
+      else
+        const SizedBox.shrink(),
       for (final s in _seasons)
         SeerrSeasonTile(
           season: s,

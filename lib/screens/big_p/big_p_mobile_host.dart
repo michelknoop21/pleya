@@ -55,12 +55,25 @@ class BigPMobileHost extends StatefulWidget {
   State<BigPMobileHost> createState() => _BigPMobileHostState();
 }
 
-class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
+class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, WidgetsBindingObserver {
   bool _open = false;
   bool _shown = false;
   Timer? _leave;
   RouteObserver<PageRoute<dynamic>>? _observer;
   PageRoute<dynamic>? _route;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// The keyboard came or went. The root Scaffold takes it out of this
+  /// host's height and hands on no inset, so no `MediaQuery` says so.
+  @override
+  void didChangeMetrics() {
+    if (mounted) setState(() {});
+  }
 
   /// The host sits in MainScreen, the profile navigator's first route (a
   /// MaterialPageRoute that observer sees): a pop back onto it is the user
@@ -89,6 +102,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _observer?.unsubscribe(this);
     _leave?.cancel();
     super.dispose();
@@ -146,8 +160,12 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     final motion = _motion(context);
     final media = MediaQuery.of(context);
     // The higher of the keyboard and the tab bar: no one-frame drop while
-    // the keyboard comes up.
-    final bottom = max(media.viewInsets.bottom + 8, mobileBottomBarExtent(context));
+    // the keyboard comes up. What an ancestor already took out of this
+    // host's height for the keyboard comes off the tab bar's share: the bar
+    // rides up with the shell, and reserving it again cost the balloon 80 pt
+    // above the keyboard (BIGP-IOS1-KB).
+    final taken = bigPKeyboardInset(context) - media.viewInsets.bottom;
+    final bottom = max(media.viewInsets.bottom + 8, mobileBottomBarExtent(context) - taken);
     return ListenableBuilder(
       listenable: session.controller,
       builder: (context, _) {
@@ -241,8 +259,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware {
     // Typing on a small phone: the three 44 pt follow-ups would take over
     // the balloon's room and leave the answer little more than its own
     // question above the keyboard, so they give way until the keyboard goes.
-    final typing =
-        MediaQuery.viewInsetsOf(context).bottom > 0 && box.maxHeight < BigPMobileHost._keyboardRoomForFollowUps;
+    final typing = bigPKeyboardInset(context) > 0 && box.maxHeight < BigPMobileHost._keyboardRoomForFollowUps;
     final size = BigPMobileHost.avatarSize(
       box.maxHeight,
       withBar: asks,
