@@ -35,8 +35,15 @@
   --radius-sm: 8px; /* MonoTokens.radiusSm, dialogTheme */
   --radius-md: 12px; /* MonoTokens.radiusMd, inputs, nav-items, sheet-top */
   --radius-card: 14px; /* cardTheme */
-  --radius-button: 4px; /* buttonStyle shape */
+  --radius-hero: 18px; /* TV-billboard 18, iOS 16: zie de media query onderaan */
   --radius-pill: 999px;
+  /*
+   * De knop is een capsule (Unified 2026, DEC-090 hoofdstuk 2: StadiumBorder).
+   * monoTheme() draagt nog radius 4; dat verschil is bewust en geldt tot de
+   * app-kant dezelfde stap zet (DESIGN.md hoofdstuk 5).
+   */
+  --radius-button: 999px;
+  --radius-focus: 4px; /* de focusring van elementen zonder eigen vorm */
 
   /* --- Duur. MonoTokens fast/normal/slow. -------------------------------- */
   --dur-fast: 120ms;
@@ -45,8 +52,9 @@
   --ease: cubic-bezier(0.33, 0, 0.2, 1); /* Curves.easeOutCubic */
 
   /* --- Knoppen. buttonStyle: padding 18/14, radius 4. -------------------- */
-  --button-padding-x: 18px;
-  --button-padding-y: 14px;
+  --button-padding-x: 20px;
+  --button-padding-y: 0px;
+  --button-height: 44px;
 
   /* --- Verhoudingen. GridLayoutConstants. -------------------------------- */
   --aspect-poster: 2 / 3; /* fullCardPosterAspectRatio */
@@ -56,7 +64,17 @@
   /* --- Navigatie. SideNavigationRailState. ------------------------------- */
   --rail-collapsed: 80px;
   --rail-expanded: 220px;
-  --bottom-bar-height: 64px;
+  --nav-h: 64px; /* web: topnav vanaf 900 */
+  --tab-h: 56px; /* web: tabbalk onder 900, plus 14px veilige onderrand */
+  --bottom-bar-height: calc(var(--tab-h) + 14px);
+  --ring: 3px; /* web: focusring, dunner dan de 4px op TV */
+
+  /* --- Paginamaat. DESIGN.md hoofdstuk 2; verschuift op de vier ----------
+         breekpunten onderaan dit bestand. ------------------------------- */
+  --inset: 48px; /* pagina-inset */
+  --poster-w: 190px; /* railposter */
+  --rail-gap: 20px;
+  --page-inset: var(--inset); /* oude naam, tot elke route hem niet meer noemt */
 
   /* --- Raakvlak. Web-eigen: 44px is de ondergrens op aanraakschermen. ---- */
   --touch-target: 44px;
@@ -73,7 +91,7 @@
   --text-title-lg-line: 28px;
   --text-title-size: 16px;
   --text-title-line: 24px;
-  --text-body-size: 14px;
+  --text-body-size: 15px; /* web: basismaat 15 (iOS 15, TV 22), regelhoogte 1,35 */
   --text-body-line: 20px;
   --text-small-size: 12px;
   --text-small-line: 16px;
@@ -109,6 +127,19 @@
   --nav-selected-wash: rgba(255, 255, 255, 0.06);
   --bar-backdrop: rgba(15, 15, 15, 0.9);
   --skeleton: rgba(255, 255, 255, 0.07);
+
+  /* --- Northstar-namen, als afleiding van de tokens hierboven, zodat ----
+         ze met elk thema meedraaien. Contractnamen uit web.css. --------- */
+  --amber: var(--accent-alt);
+  --ok: var(--success);
+  --elevated: var(--surface-elevated);
+  --ink: var(--text);
+  --ink-2: var(--text-muted);
+  --ink-3: color-mix(in srgb, var(--text) 50%, transparent);
+  --ink-4: color-mix(in srgb, var(--text) 30%, transparent);
+  --fill: color-mix(in srgb, var(--text) 8%, transparent);
+  --fill-2: color-mix(in srgb, var(--text) 14%, transparent);
+  --danger-ink: #ff6a63; /* tekst en rand van een gevaarlijke actie op donker */
 }
 
 [data-theme='dark'] {
@@ -139,4 +170,29 @@
   --nav-selected-wash: rgba(17, 17, 17, 0.13);
   --bar-backdrop: rgba(247, 247, 248, 0.92);
   --skeleton: rgba(17, 17, 17, 0.07);
+}
+
+/*
+ * De vier breekpunten uit ScreenBreakpoints (600 / 900 / 1200 / 1600). Wat hier
+ * verschuift is alleen paginamaat; kleur en typografie doen dat niet.
+ */
+@media (max-width: 1599px) {
+  :root {
+    --poster-w: 170px;
+  }
+}
+@media (max-width: 1199px) {
+  :root {
+    --inset: 32px;
+    --poster-w: 150px;
+    --rail-gap: 16px;
+  }
+}
+@media (max-width: 899px) {
+  :root {
+    --inset: 16px;
+    --poster-w: 110px;
+    --rail-gap: 12px;
+    --radius-hero: 16px;
+  }
 }
