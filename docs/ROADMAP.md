@@ -23,6 +23,7 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 - Every implementation task must name one roadmap work-package ID before code starts.
 - PRs and handoffs use `Roadmap: <ID>`.
 - Work that does not fit an ID does not silently become a new side track. First record `Roadmap deviation: <approved decision/proposal>`.
+- All development is [unified-first](#unified-first), not provider-first with unification deferred. This applies beyond filters and UI.
 - Prioriteer inhoudelijk op (1) gebruikersimpact, (2) betrouwbaarheid, veiligheid en correctheid, (3) productwaarde en onderscheidend vermogen, (4) implementatiekosten en regressierisico en (5) afhankelijkheden, lopend werk en onderbrekingskosten. Big P heeft geen automatische uitzondering.
 - Bewezen P0-problemen gaan voor. Historische P0-labels zijn geen bewijs van ernstige uitval: herijk hun actuele inhoud voordat ze de volgorde bepalen. Een nieuw P1-item kan lopende ontwikkeling verdringen bij aantoonbaar grotere productwaarde of gebruikersimpact; leg reden, afhankelijkheden en verdrongen werk vast in het bestaande register en deze roadmap.
 - Voorkom voortdurend wisselen: rond een logisch pakket af tot de review-/bewijspoort en vergelijk daar de volgende kandidaten. Onderbreek tussentijds alleen bij aantoonbare urgentie; een nieuwe auditkandidaat op zichzelf is geen reden.
@@ -32,6 +33,18 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 - Changing priority, order, scope, or milestones is an authority change and requires an explicit roadmap diff plus independent substantive review before merge.
 - Code on `main`, simulator evidence, hardware evidence and publication are separate states.
 - UI changes are executed by Opus and get a separate visual review against the current northstar/DEC.
+
+## Unified-first
+
+**Productbesluit Michel, 10 oktober 2026: unified is de basis voor alle ontwikkelingen.** Dit betekent de gezamenlijke, backend-onafhankelijke Pleya-bibliotheek en het gedeelde gedrag, niet alleen een uniforme vormgeving of de desktop/iPad-werkstroom.
+
+- Ontwerp nieuwe functies en wijzigingen vanuit de bestaande unified modellen, identiteit, state, routes en gedragseigenaren. Dit geldt voor alle onderdelen binnen deze roadmap, waaronder apps, zoeken/filters, detail/acties, playback, lijsten, historie, Big P en toekomstige Server/Web- en contentdomeinen. Provider-specifieke API's blijven in de bestaande clients/adapters; geen tweede feature- of browserpad per leverancier en geen nieuwe generieke architectuur om deze regel af te vinken.
+- Beoordeel **Emby, Jellyfin, Plex, PleyaShare en Pleya Server** expliciet, zowel afzonderlijk als in een gemengde bibliotheek waar de functie dat raakt. Behoud bestaande lokale/offline-ondersteuning. Beoordeel Emby ook bij gedeelde Jellyfin-code afzonderlijk en behandel PleyaShare volgens het daadwerkelijke deel-/verbindingscontract. Een koppeling wordt niet overgeslagen omdat de eerste implementatie op Plex is gebouwd.
+- **Pleya Server: voorbereid op later, niet alles nu.** Verduidelijking Michel, 10 oktober 2026: Pleya Server is nog in ontwikkeling. Houd bij alle relevante ontwikkelingen de bestaande gedeelde modellen, capabilitycontroles en adaptergrenzen geschikt om serverfuncties later aan te sluiten zonder een apart UI-pad of herbouw van gedeelde featurelogica. Behoud en toets reeds beschikbare serverfuncties. Noteer ontbrekende mogelijkheden, hun aansluitpunten en nog te besluiten contracten bij de bestaande servertaken; verzin geen toekomstige endpoints of werkende placeholderimplementaties. Nog te bouwen serverfuncties zijn geen nieuwe releaseblokkade voor werk dat ze niet claimt of nodig heeft. Toets nu het gedeelde aansluitpunt en de eerlijke niet-ondersteunde toestand, en voer echte integratieacceptatie uit zodra de betreffende serverfunctie is vrijgegeven. 'Voorbereid', 'beschikbaar' en 'geaccepteerd' blijven afzonderlijke statussen. Dit is geen vrijstelling voor regressies of bestaande server-/protocol-/releasegates en geen aanleiding voor een nieuw framework.
+- Unified betekent geen gefingeerde featuregelijkheid. Ondersteuning en zichtbaarheid volgen de werkelijke capabilities, brondata en actuele gebruikers-/profielrechten. Leg per relevante koppeling ondersteuning, beperking, onbekende status of niet-toepasselijkheid met reden vast. Een ontbrekende mogelijkheid wordt zichtbaar begrensd, niet stil genegeerd of vervangen door een succesvolle no-op. Bestaande owner-/admin-/borrowed-regels en servicecontroles blijven bindend.
+- Bewaar titelidentiteit, server-/itemparen, bronherkomst en account-/profielscope. Deduplicatie voegt geen rechten samen. Leg per actie vast of het doel lokaal/Pleya, persoonlijk of een specifieke bronkopie is; nooit blind op alle servers schrijven of de artworkbron als beheertarget gebruiken. Filters, sortering, paging, tellingen en resultaatkaarten gebruiken dezelfde toegankelijke scope. Onvolledige data/uitval wordt niet gepresenteerd als een volledige lege of succesvolle uitkomst.
+- Elke relevante spec, mockup, implementatie-PR en acceptatie noemt kort de **Unified impact**: gedeelde eigenaar/route, koppelingen en beperkingen, bron-/rechtenscope en passend bewijs voor één bron en gemengde bronnen. Per-connector backend-/protocolwerk blijft mogelijk binnen dit contract. Werk zonder library-impact krijgt een gemotiveerd 'niet van toepassing'; productuitzonderingen volgen de bestaande besluit-/afwijkingsregel. Dit is geen verplichte combinatorische testexplosie of volledige backend-audit voor een mechanische wijziging.
+- Behoud bestaande platformcontracten en aparte platformacceptatie. Eén gedragsbasis betekent niet overal dezelfde mobiele sheet. Hergebruik correct bestaand werk; geen appherbouw, onbesloten cross-server-sync, prijswijziging, extra rechten of vrijgave van server-/protocolfasen. Deze regel herordent de huidige primaire stroom en WIP-limiet niet.
 
 ## Work packages
 
@@ -51,21 +64,21 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | BP-08 | P1 | Big P | Geheugen en sync; build 2 | Gepland |
 | BP-09 | P0 | Big P | Lopende fixes van de parallelle sessie: `catalog_changed`, draft bij bevestiging, stap-labels, tvOS-ruimte, meerdere opdrachten (BIGP-USP1, `docs/tvos-fysieke-correctieronde.md`) | Gelandeerd (5 okt); budgetfix voor meerdere opdrachten in PR #199 (6 okt); hardware- en tvOS-deviceronde open |
 | REG-01 | P0 | Regie | Eén actuele uitgangsstand, inclusief vensterdekking per platform | Herijking nodig; algemene Big P-pauze opgeheven (8 okt) |
-| REG-02 | P1 | Regie | Oude branches en PR's reconciliëren | Status herijken |
+| REG-02 | P1 | Regie | Oude branches en PRs reconciliëren | Status herijken |
 | REG-03 | P0 | Regie | Release-identiteit en distributiestatus | Status herijken; algemene Big P-pauze opgeheven (8 okt) |
 | A-01 | P0 | Bestaande app | Verify-runner: time-outs en simulatorselectie | Open PR; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
 | A-02 | P0 | Bestaande app | Rechten, geleende verbindingen en profielen | Bewijs afronden; rechtenrisico inhoudelijk vergelijken, parallel alleen indien onafhankelijk |
 | A-03 | P1 | Bestaande app | Bibliotheek-snelkiezer bewaart selectie | Open issue |
 | A-04 | P1 | Bestaande app | Verborgen Plex-bibliotheek op TV | Open issue |
 | A-05 | P1 | Bestaande app | iPhone-detail DEC-140 | Bewijs afronden |
-| A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Volgens register open |
+| A-06 | P1 | Bestaande app | Home, landingen, catalogus en filters | Volgens register open; unified filtervensters: inventaris en Opus-Northstars gepland (10 okt), zie [brief](unified-filters-and-sheets.md) |
 | A-07 | P1 | Bestaande app | Bronkeuze bij meerdere servers | Bewijs afronden |
-| A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Volgens register open |
+| A-08 | P1 | Bestaande app | Mijn Pleya, lijst/downloads/meldingen en contextmenu | Volgens register open; unified actie-/beheer-/keuzevensters: inventaris en Opus-Northstars gepland (10 okt), zie [brief](unified-filters-and-sheets.md) |
 | A-09 | P0 | Bestaande app | Login, profielkeuze en PIN | Volgens register open; algemene Big P-pauze opgeheven (8 okt); herijking nodig |
 | A-10 | P1 | Bestaande app | Live TV, Liquid Glass en mobiele speler | Bewijs afronden |
 | A-11 | P1 | Bestaande app | tvOS focus, Menu en shell-routes; playbackstart en herstel | Huidig playback-/hervatpakket voorlopig uitgesteld (Michel, 9 okt); bestaande fixes/bewijs behouden; status in tvOS-registers |
 | A-12 | P1 | Bestaande app | Top Shelf, 4K en tvOS scrubbing; resume en spelerbetrouwbaarheid | Huidig playback-/hervatpakket met A-11 voorlopig uitgesteld (Michel, 9 okt); fysieke resume-acceptatie open |
-| A-13 | P1 | Bestaande app | Zoeken en filtergedrag met echte servers | Bewijs afronden |
+| A-13 | P1 | Bestaande app | Zoeken en filtergedrag met echte servers | Bewijs afronden; aanvullende unified filter-/sheetacceptatie per beschikbare functie/koppeling en gemengde bibliotheek gepland na ontwerp en bouw; toekomstige Pleya Server-functies apart gepland |
 | A-14 | P1 | Bestaande app | iCloud-voorkeurensync | Bewijs afronden |
 | A-15 | P1 | Bestaande app | Aanbevelingen, historie en Tautulli | Bewijs afronden |
 | A-16 | P1 | Bestaande app | Activiteit: ACT1 | Besluit nodig |
@@ -91,6 +104,16 @@ Productbesluit Michel, **8 oktober 2026**: de totale Pleya-productkwaliteit bepa
 | E-04 | P1 | Commercieel/site | Website, screenshots en release-informatie | Status herijken |
 | F-01 | P3 | Optioneel | Apple Intelligence: kleine zoekfilter-MVP | Gepland |
 | F-02 | P3 | Optioneel | Nieuwe ideeën zonder bestaande release te blokkeren | Gepland |
+
+## Unified filters en vensters
+
+Michel, 10 oktober 2026: de aangeleverde Plex-screenshots bepalen de visuele richting voor rustige filter-, actie-, beheer- en keuzevensters. De werking moet vanaf het begin op de unified library aansluiten voor de beschikbare functies van Emby, Jellyfin, Plex en PleyaShare, met voorbereiding op het nog in ontwikkeling zijnde Pleya Server en behoud van zijn al werkende functies. Geen Plex-only flow die later nog unified moet worden gemaakt. Volledige ondersteuning van toekomstige Pleya Server-functies is geen voorwaarde voor de huidige oplevering; de projectbrede regel hierboven bepaalt de aansluit- en bewijsgrens.
+
+Dit werk valt binnen A-06 (filters), A-08 (acties/vensters) en A-13 (acceptatie), met REG-01 voor de venster-/brondekking en bestaande A-02/A-07-contracten voor rechten/bronkeuze. De [ontwerpbrief en screenshotmanifest](unified-filters-and-sheets.md) beschrijven de scope, niet de actuele detailstatus. Geen nieuwe concurrerende takenadministratie of herprioritering: A-21 blijft eerstvolgend; ontwerpwerk mag alleen binnen de bestaande WIP-regels vooruitlopen.
+
+Volgorde: actuele functie-/capabilityinventaris per koppeling → Opus-mockups en gerenderde screenshots voor alle relevante vensters/toestanden → expliciet akkoord van Michel op de Pleya-Northstar-set → implementatie via bestaande gedeelde eigenaren en bronadapters → onafhankelijke code-/visuele review en passende single-source, mixed-source en platformacceptatie. De referenties omvatten filters inclusief lange lijsten, itemacties, lijstkeuze, beheer, artwork, match, afspeelgeschiedenis en bestandsinfo. De originele referentiebestanden moeten voor de ontwerpsessie toegankelijk zijn; een manifest zonder beelden is geen complete Northstar.
+
+De screenshots zijn een vormreferentie, geen bewijs van backendondersteuning of goedgekeurde Pleya-mockups. Ontbrekende capabilities, beperkte rechten en gedeeltelijk onbereikbare bronnen krijgen een eerlijke toestand. Geen extra beheerrechten, nieuwe servercontracten, appherbouw of vrijgave van bestaande protocol-/releasegates. Een mobiele vormreferentie keurt geen TV-, desktop- of Web-redesign goed.
 
 ## Big P
 
@@ -256,7 +279,7 @@ Each applicable window must identify: platform and viewport/input mode; approved
 | macOS | A-17 plus applicable A-items | desktop shell, sidebar, windows/panels, keyboard/mouse and responsive sizes |
 | Windows | A-17 plus applicable A-items | explicit applicability and runtime evidence; a macOS pass is not Windows evidence |
 | Linux | A-17 plus applicable A-items | explicit applicability and runtime evidence; portable tests are not a complete visual acceptance |
-| Apple TV / tvOS | A-11/A-12 plus applicable A-items | approved TV sets and later corrections; focus, Menu, remote, player panels, safe areas and real hardware |
+| Apple TV / tvOS | A-11/A-12 plus applicable A-items | approved TV sets and later corrections, focus, Menu, remote, player panels, safe areas and real hardware |
 | Android mobile/tablet | applicable A-items, coordinated by REG-01 | identify the approved or intentionally retained design and affected shared components; no automatic extension of Apple-only Liquid Glass |
 | Android TV | A-11/A-12 where applicable, coordinated by REG-01 | shared TV surface plus Android-specific playback, downloads and remote behavior; tvOS evidence is insufficient |
 | E-book windows in existing clients | D-01/D-02 plus C-05/S14 | actual branch manifest, missing windows, backend availability and integration into the current shell |
