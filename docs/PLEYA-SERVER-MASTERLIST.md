@@ -18,10 +18,11 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-09-24 (S2.4 gereed). De reviewronde op de completionbasis is gesloten, de
-rescue-commits zijn geland en S2.4 (scans en jobs over HTTP, annuleren, retry, backoff) is klaar met
-bewijs in de tabel. S2.5 (`.env`-overname) en S2.6 (migratietest op de NAS-fixture, sluiting van
-protocolvenster 2) zijn open. De telling hieronder is op 2026-09-24 gemeten met `awk` over sectie 3.
+Laatst bijgewerkt: 2026-10-10 (S7.3 gereed, na de eindreview van de S7-branch). De reviewronde op
+de completionbasis is gesloten, de rescue-commits zijn geland en S2.4 (scans en jobs over HTTP,
+annuleren, retry, backoff) is klaar met bewijs in de tabel. S2.5 (`.env`-overname) en S2.6
+(migratietest op de NAS-fixture, sluiting van protocolvenster 2) zijn open. De telling per taak
+hieronder is op 2026-10-10 opnieuw geteld over de statuskolom van sectie 3.
 Twee zaken staan bewust buiten dit werk en zijn open: 3 Flutter-testfouten die al op `main` zaten en
 77 goldens die niet op macOS beoordeeld zijn, en de authority-gate die tot een driewegmerge in een
 latere main-sync rood blijft. Zie
@@ -43,9 +44,9 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **2** | **1** | **23** |
 
-Per taak, en dat is de maat die telt: **149 taken, 22 gereed, 1 bezig, 126 open.** S0 en S1 zijn
-allebei dicht, met acht van acht; de twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
-poort P3 al binnen waren (S12.1 en S13.1).
+Per taak, en dat is de maat die telt: **149 taken, 23 gereed, 6 bezig, 120 open.** S0 en S1 zijn
+allebei dicht, met acht van acht. Verder zijn S2.1 tot en met S2.4 en S7.3 gereed, en de twee
+andere gereed-vinkjes zijn mockupgoedkeuringen die met poort P3 al binnen waren (S12.1 en S13.1).
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
 Keuzefase na afronding: PS-12 (Plex-migratie). Buiten scope: PS-13, PS-16, app-reader (PS-15).
@@ -231,7 +232,7 @@ niet de bouw.
 | --- | --- | --- | --- | --- |
 | S7.1 | Tokens, capsuleknop, base.css | `[~]` | tokens.css en base.css op de northstar-waarden (capsuleknop, `--inset`/`--poster-w`/`--rail-gap` per breekpunt, ink- en fill-aliassen); `svelte-check` 0 fouten, 115 vitest groen, `bun run build` groen. Visuele controle op vijf breedtes volgt met de shell (S7.2), omdat tokens zonder shell geen beeld geven. | |
 | S7.2 | Layouts, topnav, mobiele kop, tabbalk met capability-slot | `[~]` | `TopNav` (≥900), `MobileHeader` en `TabBar` (<900) vervangen `NavRail` en `BottomBar`; vijf slots Home, Series, Films, Boeken (alleen met boekenbibliotheek), Mijn Pleya uit capabilities en bibliotheken (`navItems.ts`), zoeken als actie in de kop; themakeuze verhuisd naar Mijn Pleya. 124 vitest, `svelte-check` 0 fouten, 27 e2e groen op de lokale stack, geen horizontale overloop op 393, 768, 1024, 1280 en 1600. Beeldvergelijking in `docs/qa/s7-shell/`. **Open voor `[x]`**: Beheer-pil (wacht op `/admin`, S10), avatar (geen bron), wordmark als afbeelding (standaardthema is sinds S7.3 `dark`, dat punt is dicht), en de staten 12, 14 en 15 die nog de oude schermen zijn (zie S7.6). | |
-| S7.3 | Primitieven (chips, skelet, veld, paneel, tabel, tegel, alert, dialoog, stappen) | `[x]` | Vijftien primitieven in `pleya_web/src/lib/components/`: `Field`, `Select`, `Toggle`, `Choice`, `Panel`, `StatTile`, `StatusPill`, `Alert`, `Chips`, `DataTable`, `Steps`, `ConfirmDialog` (met overtypzin), `Skeleton`, `SkeletonPage` en `StorageMeter`, elk met een eigen test. Designsysteem v2 in `tokens.css`: dieptelagen `--panel`, `--panel-2`, `--inset-bg`, `--hairline`, `--ring-shadow`, tekst in ink-tokens en grafische vlakken in graphic-tokens (`--amber-graphic`, `--blue`). Standaardthema is nu `dark`; OLED en light blijven kiesbaar. `StateView` kent alleen nog leeg en fout, laden is `Skeleton` of `SkeletonPage`. Galerij op `/dev/primitives`, alleen onder `vite dev` (404 in de bundel, bewaakt door `guard.test.ts`). `svelte-check` 596 bestanden 0 fouten, 225 vitest in 33 bestanden groen, `bun run build` groen. Visueel bewijs in `docs/qa/s7-primitives/` (README erbij): in drie breedten en in dark, OLED en light; de visuele poort gaf PASS na vier hernemingen, zonder open Critical of Important. Bewuste afwijkingen van de northstar: het skeletheld loopt van rand tot rand tot de Hero/HubRail-herschrijving; de gestapelde tabel toont standaard geen kolomlabels onder 900; standaardthema `dark` in plaats van OLED. Open minors, niet blokkerend: `StorageMeter` heeft geen zichtbaar "bijna vol"-signaal, Inter 600 rendert als 700 (de app levert 400, 500 en 700), `StorageMeter` toont de vrije rest alleen met een expliciet vrij-segment, login en setup gebruiken nog de oude `.field`-stijl in plaats van `Field`, `SkeletonPage` volgt de huidige grid en detailpagina, en een thema-flits voor hydratie bij opgeslagen OLED of light. | |
+| S7.3 | Primitieven (chips, skelet, veld, paneel, tabel, tegel, alert, dialoog, stappen) | `[x]` | Vijftien primitieven in `pleya_web/src/lib/components/`: `Field`, `Select`, `Toggle`, `Choice`, `Panel`, `StatTile`, `StatusPill`, `Alert`, `Chips`, `DataTable`, `Steps`, `ConfirmDialog` (met overtypzin), `Skeleton`, `SkeletonPage` en `StorageMeter`, elk met een eigen test. Designsysteem v2 in `tokens.css`: dieptelagen `--panel`, `--panel-2`, `--inset-bg`, `--hairline`, `--ring-shadow`, tekst in ink-tokens en grafische vlakken in graphic-tokens (`--amber-graphic`, `--blue`). Standaardthema is nu `dark`; OLED en light blijven kiesbaar. Secundaire tekst (`--ink-3`) staat in light op `#6b6b70` en haalt gemeten 5,30 op wit, 4,95 op de pagina `#f7f7f8` en 4,70 op de inset `#f1f1f3`; in dark en OLED haalt hij 5,05 tot 5,34 op paneel, paneel-2 en inset. De globale focusring volgt DESIGN.md: `--ring` (3 px) in `--ink` op een gap van 3 px, tekstvakken houden hun rand van 1 px (eindreview 2026-10-10, `.superpowers/sdd/2026-10-10-pleya-web-s7-primitieven/final-fix-report.md`). `StateView` kent alleen nog leeg en fout, laden is `Skeleton` of `SkeletonPage`. Galerij op `/dev/primitives`, alleen onder `vite dev` (404 in de bundel, bewaakt door `guard.test.ts`). `svelte-check` 596 bestanden 0 fouten, 225 vitest in 33 bestanden groen, `bun run build` groen. Visueel bewijs in `docs/qa/s7-primitives/` (README erbij): in drie breedten en in dark, OLED en light; de visuele poort gaf PASS na vier hernemingen, zonder open Critical of Important. Bewuste afwijkingen van de northstar: het skeletheld loopt van rand tot rand tot de Hero/HubRail-herschrijving; de gestapelde tabel toont standaard geen kolomlabels onder 900; standaardthema `dark` in plaats van OLED. Open minors, niet blokkerend: `StorageMeter` heeft geen zichtbaar "bijna vol"-signaal, Inter 600 rendert als 700 (de app levert 400, 500 en 700), `StorageMeter` toont de vrije rest alleen met een expliciet vrij-segment, login en setup gebruiken nog de oude `.field`-stijl in plaats van `Field`, `SkeletonPage` volgt de huidige grid en detailpagina, en een thema-flits voor hydratie bij opgeslagen OLED of light. | 2026-10-10 |
 | S7.4 | `MediaCard` met alle staten uit scherm 16, hero, rail, `srcset` | `[~]` | | |
 | S7.5 | Nederlandse locale | `[~]` | | |
 | S7.6 | Bestaande zeven routes gemigreerd, axe groen op vijf breedtes | `[~]` | | |

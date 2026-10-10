@@ -46,22 +46,50 @@ async function shot(target: Page | ReturnType<Page['locator']>, name: string, fu
   console.log(path);
 }
 
-// PLEYA_SHOTS_THEME=light (of oled) maakt alleen de themaopnamen van dat
-// thema opnieuw, voor een gerichte herronde zonder alle dark-opnamen.
+// PLEYA_SHOTS_THEME=light (of oled, of dark) maakt alleen de opnamen van dat
+// thema opnieuw, voor een gerichte herronde. PLEYA_SHOTS_SECTIONS=velden,tabel
+// beperkt een ronde tot die secties plus de focusopname, en slaat de galerij,
+// de dialoog en de skeletpagina's over.
 const ONLY = process.env['PLEYA_SHOTS_THEME'];
-if (!ONLY) {
+const PICK = process.env['PLEYA_SHOTS_SECTIONS']?.split(',').filter(Boolean);
+const pick = (ids: readonly string[]) => (PICK ? ids.filter((id) => PICK.includes(id)) : [...ids]);
+
+/** De globale focusring (base.css) op een gewone knop, in een paneel. */
+async function focusButton(name: string): Promise<void> {
+  const button = page.locator('#panelen .btn').first();
+  await button.scrollIntoViewIfNeeded();
+  await page.keyboard.press('Shift'); // toetsenbordmodaliteit, zodat :focus-visible geldt
+  await button.focus();
+  await page.waitForTimeout(200);
+  const ring = await button.evaluate((el) => {
+    const c = getComputedStyle(el);
+    return {
+      matches: el.matches(':focus-visible'),
+      outline: `${c.outlineWidth} ${c.outlineStyle} ${c.outlineColor}`,
+      offset: c.outlineOffset
+    };
+  });
+  console.log(`${name}: ${JSON.stringify(ring)}`);
+  await shot(page.locator('#panelen .panel').first(), name);
+}
+
+if (!ONLY || ONLY === 'dark') {
 for (const width of WIDTHS) {
   await open(GALLERY, width);
-  await shot(page, `galerij@${width}`, true);
-  for (const id of SECTIONS) {
+  if (!PICK) await shot(page, `galerij@${width}`, true);
+  for (const id of pick(SECTIONS)) {
     if (id === 'velden') {
       await page.locator('#veld-hint').focus();
       await page.waitForTimeout(300); // randovergang van --dur-fast
     }
     await shot(page.locator(`#${id}`), `${id}@${width}`);
   }
-  await page.locator('#chips button').first().focus();
-  await shot(page.locator('#chips'), `chips-focus@${width}`);
+  if (pick(['chips']).length) {
+    await page.locator('#chips button').first().focus();
+    await shot(page.locator('#chips'), `chips-focus@${width}`);
+  }
+  await focusButton(`focus-knop@${width}`);
+  if (!pick(['velden']).length) continue;
   // Een veld kan maar één focus hebben: het foutveld met focus apart.
   await page.locator('#veld-fout-focus').focus();
   await page.waitForTimeout(300);
@@ -73,7 +101,7 @@ for (const width of WIDTHS) {
   console.log(`foutveld met focus @${width}: ${JSON.stringify(ring)}`);
 }
 
-for (const width of [393, 1600]) {
+for (const width of PICK ? [] : [393, 1600]) {
   for (const kind of ['plain', 'phrase']) {
     await open(GALLERY, width);
     const trigger = page.locator(`[data-open="${kind}"]`);
@@ -99,11 +127,24 @@ for (const width of [393, 1600]) {
 }
 // Dezelfde secties in OLED en light, om contrast en scheiding per thema te zien.
 // Dark staat hierboven al; die opnamen houden hun naam zonder themasuffix.
-const THEMED = ['overzicht', 'opslagmeter', 'velden', 'panelen', 'meldingen', 'pillen', 'chips', 'tabel'];
-for (const theme of ONLY ? [ONLY] : ['oled', 'light']) {
+const THEMED = [
+  'overzicht',
+  'opslagmeter',
+  'velden',
+  'panelen',
+  'meldingen',
+  'pillen',
+  'chips',
+  'tabel',
+  'stappen'
+];
+const THEMES = ONLY ? (ONLY === 'dark' ? [] : [ONLY]) : ['oled', 'light'];
+for (const theme of THEMES) {
   for (const width of [393, 1600]) {
     await open(GALLERY, width, theme);
-    for (const id of THEMED) await shot(page.locator(`#${id}`), `${id}-${theme}@${width}`);
+    for (const id of pick(THEMED)) await shot(page.locator(`#${id}`), `${id}-${theme}@${width}`);
+    await focusButton(`focus-knop-${theme}@${width}`);
+    if (PICK) continue;
     await page.locator('#veld-fout-focus').focus();
     await page.waitForTimeout(300);
     await shot(page.locator('#velden'), `velden-foutfocus-${theme}@${width}`);
@@ -132,7 +173,7 @@ for (const theme of ONLY ? [ONLY] : ['oled', 'light']) {
   }
 }
 
-if (!ONLY) {
+if (!ONLY && !PICK) {
 for (const width of SKELETON_WIDTHS) {
   for (const variant of ['home', 'grid', 'detail']) {
     await open(`${GALLERY}?skeleton=${variant}`, width);
