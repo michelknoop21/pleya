@@ -1,7 +1,8 @@
 <!--
-  Een statuslabel (`.pill` met `.dot` in web.css): capsule van 24 hoog met een
-  stip en een kort woord, getint naar de toon. In een tabelcel (mockup 21) is
-  hij 20 hoog; dat is `size="sm"`.
+  Een statuslabel (`.pill` in web.css): capsule van 24 hoog met een kort woord,
+  getint naar de toon. Geen enkele northstar-pill tekent een stip, dus die is
+  opt-in met `dot`. In een tabelcel (mockup 21) is hij 20 hoog; dat is
+  `size="sm"`.
 
   De toonkleuren zijn dezelfde als die van Alert en Chips: groen (--ok) voor
   klaar, amber (--amber) voor overgeslagen of bezig, --danger-ink voor een
@@ -23,7 +24,7 @@
     icon?: Snippet;
   }
 
-  let { label, tone = 'idle', dot = true, size = 'md', icon }: Props = $props();
+  let { label, tone = 'idle', dot = false, size = 'md', icon }: Props = $props();
 </script>
 
 <span class="pill pill--{tone}" class:pill--sm={size === 'sm'}>

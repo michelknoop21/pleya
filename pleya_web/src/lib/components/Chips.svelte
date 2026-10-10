@@ -72,6 +72,12 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
+    /*
+     * De scrollcontainer knipt alles buiten zijn padding af. De ring steekt
+     * 4 px buiten de chip uit (3 + 1 offset); horizontaal vangt deze padding
+     * dat op, verticaal doet de 44 px hoge button het al.
+     */
+    padding-inline: 4px;
     overflow-x: auto;
     scrollbar-width: none;
   }
