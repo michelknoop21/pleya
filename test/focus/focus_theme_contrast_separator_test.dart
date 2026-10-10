@@ -1,6 +1,8 @@
 /// J10: hoofdstuk 8's binding rule keeps white as the one TV focus identity
 /// everywhere — this covers the contrast fix that lets it stay that way on a
 /// light/white surface, rather than resolving J10 by repainting focus black.
+/// The ring stays white; on light a band of full ink, as wide as the ring,
+/// carries the contrast (pixel proof: focus_light_separator_contrast_test.dart).
 library;
 
 import 'package:flutter/material.dart';
@@ -71,11 +73,23 @@ void main() {
   group('FocusTheme.contrastSeparatorColor', () {
     testWidgets('is the theme\'s own ink color, not an invented brand color', (tester) async {
       final color = FocusTheme.contrastSeparatorColor(await pumpCtx(tester, dark: false));
-      // mono_theme.dart's light `text` is 0xFF111111, near-black ink.
+      // mono_theme.dart's light `text` is 0xFF111111, near-black ink, at full
+      // strength: on a white dialog this band is the whole focus indicator.
       expect(color.r, closeTo(0x11 / 255, 0.01));
       expect(color.g, closeTo(0x11 / 255, 0.01));
       expect(color.b, closeTo(0x11 / 255, 0.01));
-      expect(color.a, closeTo(0.55, 0.01));
+      expect(color.a, 1.0);
+    });
+
+    test('is as wide as the white ring it sits beside', () {
+      expect(FocusTheme.contrastSeparatorWidth, FocusTheme.focusBorderWidth);
+    });
+
+    testWidgets('the ring itself stays white on the light palette', (tester) async {
+      final ctx = await pumpCtx(tester, dark: false);
+      final ring = FocusTheme.focusDecoration(ctx, isFocused: true).shape as FocusRingBorder;
+      expect(ring.ring.color, Colors.white);
+      expect(ring.separator.color, FocusTheme.contrastSeparatorColor(ctx));
     });
   });
 
