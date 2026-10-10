@@ -146,16 +146,22 @@
     color: var(--ink-3);
   }
 
-  .fld__control :global(:is(input, select, textarea):focus) {
+  /*
+   * Een tekstvak toont focus als een rand van 1 px in inkt, zonder ring
+   * (mockup 23, 40 en 42). Browsers zetten :focus-visible bij een tekstvak ook
+   * na een muisklik, dus de ring van base.css zou hier elk formulier zwaar
+   * maken. Knoppen, chips, keuzes en schakelaars houden die ring wel.
+   */
+  .fld__control :global(:is(input:not([type='checkbox']):not([type='radio']), select, textarea):focus) {
     border-color: var(--ink);
+    outline: none;
   }
 
-  .fld__control :global(:is(input, select, textarea):focus-visible) {
-    outline: var(--ring) solid var(--ink);
-    outline-offset: 3px;
-  }
-
-  .fld--err .fld__control :global(:is(input, select, textarea)) {
+  /*
+   * Dezelfde :not-keten als de vakstijl, anders wint die op specificiteit en
+   * blijft de rand van een fout of focus doorzichtig.
+   */
+  .fld--err .fld__control :global(:is(input:not([type='checkbox']):not([type='radio']), select, textarea)) {
     border-color: var(--accent);
   }
 

@@ -7,7 +7,8 @@
   paneel (min. 640 breed), en dan is de scrollstrook een benoemde regio met
   een tabstop, zodat je hem ook met het toetsenbord kunt schuiven. Met `stack`
   wordt elke rij een kaart: eerste cel als titel, de overige eronder met hun
-  kolomnaam, en de acties rechts; er scrolt dan niets, dus de tabstop vervalt. Dat is de web-afwijking uit web.css: een
+  kolomnaam (zichtbaar alleen met `showLabel`, anders voor de schermlezer), en
+  de acties rechts; er scrolt dan niets, dus de tabstop vervalt. Dat is de web-afwijking uit web.css: een
   tabel met een actie per rij stapelt, anders staat de knop buiten beeld.
 
   De markup blijft een echte tabel met <th scope="col">, ook gestapeld; de
@@ -22,6 +23,12 @@
     align?: 'start' | 'end';
     /** Kop alleen voor een schermlezer, zoals de lege actiekop in de mockup. */
     hideLabel?: boolean;
+    /**
+     * Gestapeld de kolomnaam zichtbaar vóór de waarde. Standaard staat hij er
+     * alleen voor een schermlezer: `.table.stack` en mockup 35@393 tonen kale
+     * regels. Voor een waarde die zonder naam niets zegt, zoals een getal.
+     */
+    showLabel?: boolean;
   }
 </script>
 
@@ -96,7 +103,9 @@
               {#each columns as column, ci (column.key)}
                 <td class:tbl__end={column.align === 'end'}>
                   {#if ci > 0 && column.align !== 'end' && !column.hideLabel}
-                    <span class="tbl__label">{column.label}</span>
+                    <span class="tbl__label" class:visually-hidden={!column.showLabel}
+                      >{column.label}</span
+                    >
                   {/if}
                   {#if cell}{@render cell(row, column)}{:else}{plain(row, column)}{/if}
                 </td>

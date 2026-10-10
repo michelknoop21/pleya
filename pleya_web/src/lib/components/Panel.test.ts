@@ -52,4 +52,19 @@ describe('Panel', () => {
       'panel--flush'
     );
   });
+
+  it('kleurt rand en titel via tone; danger blijft de oude schrijfwijze', () => {
+    const { container, unmount } = render(Panel, {
+      props: { title: text('<span>Maintenance</span>'), tone: 'warn', children: text('<p>x</p>') }
+    });
+    const section = container.querySelector('section');
+    expect(section).toHaveClass('panel--warn');
+    expect(section).not.toHaveClass('panel--danger');
+    unmount();
+
+    render(Panel, {
+      props: { title: text('<span>Delete</span>'), tone: 'danger', children: text('<p>x</p>') }
+    });
+    expect(screen.getByRole('region', { name: 'Delete' })).toHaveClass('panel--danger');
+  });
 });

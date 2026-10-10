@@ -6,7 +6,8 @@
  *   PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts
  *
  * Naast de opnamen print hij twee metingen die een plaatje niet laat zien:
- * of de pagina achter de open dialoog meescrolt, en de berekende kleur van
+ * of de pagina achter de open dialoog meescrolt (scrollY voor en na een
+ * wielscroll van 600 px, moet gelijk blijven), en de berekende kleur van
  * het skelet naast die van een artworkvlak zonder beeld.
  */
 import { chromium, type Page } from '@playwright/test';
@@ -46,7 +47,10 @@ for (const width of WIDTHS) {
   await open(GALLERY, width);
   await shot(page, `galerij@${width}`, true);
   for (const id of SECTIONS) {
-    if (id === 'velden') await page.locator('#veld-hint').focus();
+    if (id === 'velden') {
+      await page.locator('#veld-hint').focus();
+      await page.waitForTimeout(300); // randovergang van --dur-fast
+    }
     await shot(page.locator(`#${id}`), `${id}@${width}`);
   }
   await page.locator('#chips button').first().focus();
@@ -68,7 +72,10 @@ for (const width of [393, 1600]) {
     await page.mouse.wheel(0, 600);
     await page.waitForTimeout(300);
     const after = await page.evaluate(() => scrollY);
-    console.log(`scroll achter dialoog-${kind}@${width}: ${before} -> ${after}`);
+    const locked = await page.evaluate(() =>
+      document.documentElement.classList.contains('scroll-locked')
+    );
+    console.log(`scroll achter dialoog-${kind}@${width}: ${before} -> ${after} (scroll-locked=${locked})`);
     if (kind === 'phrase' && width === 393) await shot(page, `dialoog-${kind}-gescrold@${width}`);
   }
 }

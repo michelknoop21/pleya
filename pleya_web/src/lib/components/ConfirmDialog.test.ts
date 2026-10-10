@@ -182,4 +182,34 @@ describe('ConfirmDialog', () => {
     await userEvent.keyboard('{Escape}');
     expect(oncancel).toHaveBeenCalledOnce();
   });
+
+  it('zet het scrollen van de pagina stil zolang hij open is', async () => {
+    const root = document.documentElement;
+    const { rerender, unmount } = render(ConfirmDialog, {
+      props: { ...base, open: true, onconfirm: vi.fn() }
+    });
+    await settle();
+    expect(root).toHaveClass('scroll-locked');
+
+    await rerender({ ...base, open: false, onconfirm: vi.fn() });
+    await settle();
+    expect(root).not.toHaveClass('scroll-locked');
+
+    await rerender({ ...base, open: true, onconfirm: vi.fn() });
+    await settle();
+    expect(root).toHaveClass('scroll-locked');
+    unmount();
+    expect(root).not.toHaveClass('scroll-locked');
+  });
+
+  it('geeft het scrollen pas terug als de laatste van twee dialogen sluit', async () => {
+    const root = document.documentElement;
+    const first = render(ConfirmDialog, { props: { ...base, open: true, onconfirm: vi.fn() } });
+    const second = render(ConfirmDialog, { props: { ...base, open: true, onconfirm: vi.fn() } });
+    await settle();
+    first.unmount();
+    expect(root).toHaveClass('scroll-locked');
+    second.unmount();
+    expect(root).not.toHaveClass('scroll-locked');
+  });
 });
