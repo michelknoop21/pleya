@@ -229,12 +229,12 @@ niet de bouw.
 
 | # | Taak | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
-| S7.1 | Tokens, capsuleknop, base.css | `[ ]` | | |
-| S7.2 | Layouts, topnav, mobiele kop, tabbalk met capability-slot | `[ ]` | | |
-| S7.3 | Primitieven (chips, skelet, veld, paneel, tabel, tegel, alert, dialoog, stappen) | `[ ]` | | |
-| S7.4 | `MediaCard` met alle staten uit scherm 16, hero, rail, `srcset` | `[ ]` | | |
-| S7.5 | Nederlandse locale | `[ ]` | | |
-| S7.6 | Bestaande zeven routes gemigreerd, axe groen op vijf breedtes | `[ ]` | | |
+| S7.1 | Tokens, capsuleknop, base.css | `[~]` | | |
+| S7.2 | Layouts, topnav, mobiele kop, tabbalk met capability-slot | `[~]` | | |
+| S7.3 | Primitieven (chips, skelet, veld, paneel, tabel, tegel, alert, dialoog, stappen) | `[~]` | | |
+| S7.4 | `MediaCard` met alle staten uit scherm 16, hero, rail, `srcset` | `[~]` | | |
+| S7.5 | Nederlandse locale | `[~]` | | |
+| S7.6 | Bestaande zeven routes gemigreerd, axe groen op vijf breedtes | `[~]` | | |
 
 ### S8 Web consumer (PS-4E)
 
