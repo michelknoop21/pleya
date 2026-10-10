@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "library.not_config_managed",
+    "message": "library is already managed through the API",
+    "retryable": false
+  }
+}

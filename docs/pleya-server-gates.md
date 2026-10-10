@@ -369,7 +369,8 @@ Op 6 september 2026 ging het venster een vierde keer open, met
 Anders dan bij S1 landt de implementatie hier over meerdere commits binnen dezelfde slice: S2.2 heeft
 er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library`-uitbreiding met
 `managed`, `scan_interval_seconds` en `scan_on_start`), S2.3 er twee bij (`GET /storage/roots` en
-`POST /storage/roots/recheck`), de rest volgt in S2.4 en S2.5.
+`POST /storage/roots/recheck`), S2.4 de zes van scans en jobs, en S2.5 de laatste
+(`POST /libraries/{id}/adopt` met `library.not_config_managed`).
 
 **Wat erin zit.** Precies de tien wijzigingen uit
 `docs/pleya-server-rebaseline/J-api-schema-migratie.md` J.3: de drie hierboven, `POST
@@ -381,8 +382,8 @@ er drie van de tien geland (`POST`/`PATCH`/`DELETE /libraries`, plus de `Library
 `job.not_cancellable` landt (S2.4); met S2.4 staat het patroon op acht domeinen, dezelfde
 discipline als bij `settings` en `server` in venster 1 (DEC-136). De overige nieuwe codes vallen in
 bestaande domeinen: `library.slug_taken`, `library.not_empty`, `library.confirm_mismatch` en
-`library.not_config_managed` (dat laatste komt met S2.5, adopt) in `library`,
+`library.not_config_managed` (sinds S2.5, adopt) in `library`,
 `storage.root_not_offered` in `storage`.
 
-**Sluiting.** Nog niet gesloten. Het sluit bij taak S2.6 van de masterlijst, zodra alle tien rijen
-geland zijn en `check_protocol.sh` groen is.
+**Sluiting.** Nog niet gesloten. Met S2.5 zijn alle tien rijen geland; het venster sluit bij taak
+S2.6 van de masterlijst, met de migratietest en een groene `check_protocol.sh`.

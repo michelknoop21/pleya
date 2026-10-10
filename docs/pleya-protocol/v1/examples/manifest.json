@@ -362,6 +362,11 @@
       "file": "watch_history.json",
       "schema": "WatchHistory",
       "note": "DEC-143: een film en een aflevering, de aflevering met haar serie"
+    },
+    {
+      "file": "error_library_not_config_managed.json",
+      "schema": "ErrorEnvelope",
+      "note": "S2.5: POST /libraries/{id}/adopt op een bibliotheek die al via de API beheerd wordt"
     }
   ]
 }

@@ -554,6 +554,7 @@ contract keurt ze af.
 | `library.slug_taken` | 409 | nee | `POST /libraries`: de titel vereenvoudigt tot een slug die al bestaat, van een andere aanvraag of van een bibliotheek uit `PLEYA_SERVER_LIBRARIES` (S2.2) |
 | `library.not_empty` | 409 | nee | `PATCH /libraries/{id}`: `kind` mag alleen wisselen als de bibliotheek geen enkel item draagt (S2.2) |
 | `library.config_managed` | 409 | nee | `PATCH` of `DELETE /libraries/{id}`: de bibliotheek komt uit `PLEYA_SERVER_LIBRARIES` en moet via die configuratie worden gewijzigd; de API mag haar catalogusdata niet losmaken of wissen |
+| `library.not_config_managed` | 409 | nee | `POST /libraries/{id}/adopt` op een bibliotheek die al `managed: db` is: er valt niets over te nemen (S2.5) |
 | `library.confirm_mismatch` | 409 | nee | `DELETE /libraries/{id}` zonder of met een foute `confirm`; `details.expected` draagt de titel die er had moeten staan. Een eigen code naast `server.confirm_mismatch` (die blijft voor `POST /server/rotate-signing-key`), zodat een client niet op het pad hoeft te kijken om te weten welk woord verwacht wordt (K rij 16, S2.2) |
 | `storage.root_not_offered` | 400 | nee | `POST` en `PATCH /libraries`: een `root_path` overlapt met een bestaande root of met een andere root in dezelfde aanvraag, valt niet onder een van de mounts uit `PLEYA_SERVER_MEDIA_DIRS` (S2.3, hoofdstuk 17e.4), of de aanvraagbody zelf is onleesbaar |
 | `job.not_cancellable` | 409 | nee | de job is al afgerond, of dezelfde dedupe-sleutel staat al in de wachtrij; `details.reason` zegt welke |
@@ -1132,7 +1133,7 @@ gewoon was.
 
 ### 16.4 De autorisatiematrix
 
-Dertig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
+Veertig regels, elk met minstens één test tegen een gebruiker zonder recht. De eerste vijftien
 zijn de bindende matrix van DEC-126; elke slice die daarna een endpoint toevoegt zet zijn eigen
 regel erbij en sluit niet zonder (K.3 van het securityplan).
 
@@ -1177,6 +1178,7 @@ regel erbij en sluit niet zonder (K.3 van het securityplan).
 | 37 | `POST /jobs/{id}/cancel` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 | 38 | `POST /jobs/{id}/retry` | direct id | klasse `admin`, `404` voor de rest (S2.4) |
 | 39 | `GET /watch-history` | wat huisgenoten de laatste dagen hebben afgekeken | klasse `admin`, `404` voor de rest; `GET /watch-state` blijft de eigen lijst van iedere gebruiker (DEC-143) |
+| 40 | `POST /libraries/{id}/adopt` | direct id, en het eigenaarschap over een bibliotheek uit de omgeving | klasse `admin`, `404` voor de rest, ook met `view` op die bibliotheek; de toestand (`library.not_config_managed`) wordt pas getoetst ná de rolcontrole, dus een lid krijgt nooit `409` (S2.5) |
 
 **Regel 27 is de eerste regel op een `public`-endpoint, en daarom heeft hij een andere vorm dan de
 zesentwintig ervoor.** Die gaan over een identiteit die te weinig recht heeft en om die reden een
@@ -1756,8 +1758,16 @@ Een bibliotheek uit `PLEYA_SERVER_LIBRARIES` draagt `managed: config`; een bibli
 `POST /libraries` aanmaakt draagt `managed: db`. Het onderscheid bestaat omdat de config-sync bij
 elke herstart de bibliotheken uit de omgeving opnieuw wegschrijft: zonder dit veld zou die sync een
 via de API bewerkte bibliotheek bij de volgende herstart overschrijven met wat er op dat moment in
-de omgeving staat. Vandaag raakt de sync uitsluitend `config`-rijen aan; hoe een `db`-rij bewust naar
-`config` terug kan (of andersom, via `POST /libraries/{id}/adopt`) is S2.5.
+de omgeving staat. De sync raakt uitsluitend `config`-rijen aan.
+
+`POST /libraries/{id}/adopt` (S2.5) zet een `config`-bibliotheek om naar `db`, met dezelfde id en
+slug. Er wordt niets gekopieerd of opnieuw aangemaakt, dus items, kijkstatus en scanrondes hangen er
+na afloop nog precies zo aan. Daarna laat de sync de bibliotheek met rust, ook als de oude regel nog in
+`PLEYA_SERVER_LIBRARIES` staat: titel, soort en roots zijn vanaf dat moment van de API, en een root
+die een beheerder heeft weggehaald hangt de omgeving er bij een herstart niet weer aan. Een tweede
+bibliotheek met dezelfde slug kan er niet bij komen, want de slug is uniek. Een bibliotheek die al
+`db` is geeft `409 library.not_config_managed`. Een weg terug, van `db` naar `config`, bestaat niet
+als endpoint: J.3 kent alleen de overname.
 
 `managed`, `scan_interval_seconds` en `scan_on_start` gaan alleen mee voor klasse `admin` (matrixregel
 1 blijft ongewijzigd: elke rol met recht op de bibliotheek ziet hem in de lijst, alleen deze drie
@@ -1839,6 +1849,7 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `POST /pleya/v1/libraries` | `admin` | nee |
 | `PATCH /pleya/v1/libraries/{id}` | `admin` | nee |
 | `DELETE /pleya/v1/libraries/{id}` | `admin` | nee |
+| `POST /pleya/v1/libraries/{id}/adopt` | `admin` | nee |
 | `GET /pleya/v1/storage/roots` | `admin` | nee |
 | `POST /pleya/v1/storage/roots/recheck` | `admin` | nee |
 | `POST /pleya/v1/libraries/{id}/scan` | `admin` | nee |
@@ -1877,15 +1888,16 @@ Een scan is een rij in `scan_runs` die op `queued` begint zodra `POST /libraries
 | `GET /pleya/v1/audit` | `admin` | ja |
 | `GET /pleya/v1/watch-history` | `admin` | nee |
 
-Negenenveertig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
+Vijftig operaties. De eerste achttien komen van PS-2 tot en met PS-4, de acht daarna zijn het
 PS-9-oppervlak uit hoofdstuk 16 en 17 (`POST /auth/logout` telt mee, en die stond er niet bij), de
 twee daarna zijn de serverinstellingen uit hoofdstuk 17a (S1.2), de vier daarna de serverdiagnostiek
 uit hoofdstuk 17b (S1.3), de twee daarna `GET /users/me` uit 16.3 en het stroomoverzicht uit
 17b.6 (S1.4), de drie daarna de API-tokens en het auditlog uit hoofdstuk 17c (S1.5), de drie daarna de
 bibliotheek-CRUD van S2.2, en de laatste twee `GET /storage/roots` en `POST /storage/roots/recheck`
 van S2.3 (samen J.3, venster 2, rijen 7 en 8), en de zes van S2.4: starten van een scan, de
-scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). De laatste
-is `GET /watch-history` (17b.7), buiten venster 2 toegevoegd door DEC-143.
+scanlijst en het scandetail, de joblijst, annuleren en opnieuw proberen (hoofdstuk 17f). Daarna
+`GET /watch-history` (17b.7), buiten venster 2 toegevoegd door DEC-143, en als laatste
+`POST /libraries/{id}/adopt` van S2.5 (17e.1).
 `GET /pleya/v1/server` en `GET /pleya/v1/libraries` staan er elk maar één keer in en groeien met de
 klasse van de aanvrager, niet met een tweede regel. De rest van venster 2 landt bij de commitgrens
 die hem bedient.
