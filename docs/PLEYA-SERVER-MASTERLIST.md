@@ -42,7 +42,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **149 taken, 24 gereed, 1 bezig, 124 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **153 taken, 24 gereed, 1 bezig, 128 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, zes van zes); de twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
@@ -80,11 +80,11 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | 2 | S3, S4, S5, S6 | 22 | de catalogus verbreedt: boeken, `.nfo`-sidecars, artworkladder, filters en facetten, leesvoortgang | S1 voor S2; poort P5 vóór S6 |
 | 3 | S14, S16 | 12 | de Flutter-clients en de MCP-beheerlaag komen op het verbrede contract | S1, S3, S5, S6 |
 | 4 | S7, S8, S9, S10, S11, S12, S13 | 32 | Pleya Web: shell en designsysteem, consumer, boeken, beheer, setup-wizard, reader, speler | S7 kan meteen; de rest hangt aan golf 2 en 3 |
-| 5 | S17, S18, S23 | 15 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
+| 5 | S17, S18, S23 | 16 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
 | 6 | S19, S20, S21 | 15 | verzamelingen en afspeellijsten, persoonlijke laag, realtime | S1, S6, S2 |
 | 7 | S22 | 9 | metadata-providers met automatisch matchen en artwork | S4 |
-| 8 | S24, S25 | 11 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
-| slot | S15 | 8 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
+| 8 | S24, S25 | 13 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
+| slot | S15 | 9 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
 | keuze | PS-12 | 0 | Plex-migratie, met een eigen vrijgave na S15 | Michel |
 
 **S22 staat laat en hoeft dat niet.** Hij kan starten zodra S4 staat, en hij is de zwaarste losse
@@ -93,18 +93,28 @@ wachten; wie ruimte heeft trekt hem naar voren.
 
 ### 2.2 De kritieke lijn
 
-`S1 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`. Vertraging daarop schuift de release op;
-vertraging op de rest niet, zolang alles vóór S15 klaar is. Deel I noemt dezelfde lijn, met S22 als
-zwaarste slice ernaast.
+`S7 → S10 → S11 → vrijgave PS-14 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15`.
+
+Dit is bijgesteld op 10 oktober 2026. De eerdere lijn begon bij `S1 → S3`, maar
+[DEC-129](DECISIONS.md) houdt PS-14 gesloten tot PS-11A geïntegreerd bewezen is, en PS-11A heeft zijn
+webkant (S10 beheer, S11 wizard, beide op S7) nodig. S3 kan dus niet beginnen voordat de webshell en
+het beheer staan en Michel de vrijgave heeft gegeven. S4 en S5 hebben die vrijgave niet nodig en
+kunnen er vóór of naast lopen; S6 hangt wel aan S3.
+
+Vertraging op deze lijn schuift de release op; vertraging op de rest niet, zolang alles vóór S15 klaar
+is. Deel I noemt een kortere lijn zonder de vrijgavepoort, met S22 als zwaarste slice ernaast; die
+lezing is hiermee achterhaald.
 
 De web-tak (S7 tot S13) hangt er in zijn geheel naast en is qua taken de grootste van allemaal: 32
-van de 130 resterende. Hij blokkeert alleen S15.
+van de 128 resterende. Hij blokkeert alleen S15.
 
 ### 2.3 Wat op een besluit wacht en niet op code
 
 | Wat | Blokkeert | Stand |
 | --- | --- | --- |
 | **P5, het locatorbesluit** (Readium Locator plus publicatie-digest, S6.1) | S6, en via S6 ook S9, S12, S14, S16, S20 en S21 | open; RB-12 is bijgesteld in deel E, het besluit zelf moet nog als DEC |
+| **Vrijgave van PS-14 (S3)** | S3, en via S3 S6, S9, S12, S14 | wacht op S7, S10 en S11 (PS-11A geïntegreerd, DEC-129); een eigen besluit van Michel |
+| **PS-12 voor of na Plex uit (S15.9)** | S15.5 | open; zonder migratie begint het huishouden met een lege kijkstatus |
 | **Pushen naar `origin`** | niets technisch, wel elk verlies bij een schijfstoring | de branch bestaat op `origin` maar loopt er dertien commits op voor; pushen vraagt Michels go |
 | **PS-12 vrijgeven** | niets; het is een keuzefase | pas ná S15, met een eigen besluit |
 | Mockups 50, 51 en 36 | S12.1, S13.1, deel van S22.6 | goedgekeurd met poort P3 op 4 september; S12.1 en S13.1 zijn daarmee gesloten, S22.6 houdt de bouw van scherm 29 en 36 over |
@@ -185,7 +195,7 @@ niet de bouw.
 
 Twee wijzigingen kwamen tussen 24 september en 3 oktober op `main` zonder regel in deze lijst. Ze zijn
 geen scope creep, want beide hebben een eigen besluit of voorstel, maar de lijst eist dat werk er
-staat. Ze tellen niet mee in de 149 taken.
+staat. Ze tellen niet mee in de 153 taken.
 
 | # | Wat | Status | Bewijs | Datum |
 | --- | --- | --- | --- | --- |
@@ -327,6 +337,7 @@ staat. Ze tellen niet mee in de 149 taken.
 | S15.6 | PS-5-hardwareronde afgerond | `[ ]` | | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
+| S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest een Plex-uit-gate de bestaande kijkstatus | `[ ]` | | |
 
 ### S16 MCP-beheerlaag
 
@@ -356,6 +367,7 @@ staat. Ze tellen niet mee in de 149 taken.
 | S18.2 | ffmpeg-supervisie met vaste argumenten en time-out | `[ ]` | | |
 | S18.3 | fMP4 en HLS, browserspeler met hls.js | `[ ]` | | |
 | S18.4 | Hardwareversnelling gedetecteerd en zichtbaar | `[ ]` | | |
+| S18.7 | Image met VAAPI/QSV-driver (nu alleen `ca-certificates` en ffmpeg 5.1), `/dev/dri` en `group_add 937` in compose, gemeten op de DS920+ (renderD128 bestaat); image op de Mac gebouwd en via het Gitea-register naar de NAS, niet op de Celeron | `[ ]` | | |
 | S18.5 | Beheer: sessies zien en stoppen, instellingen; scherm 37 gebouwd | `[ ]` | | |
 | S18.6 | Capability `transcode`, venster 5 deel 2, journey 9 | `[ ]` | | |
 
@@ -422,6 +434,7 @@ staat. Ze tellen niet mee in de 149 taken.
 | S24.3 | Prometheus-metrics op loopback | `[ ]` | | |
 | S24.4 | Range-testset door twee proxy-opstellingen | `[ ]` | | |
 | S24.5 | Deploymentrecepten in de operatordoc | `[ ]` | | |
+| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet (nu handmatig `docker network connect`) | `[ ]` | | |
 
 ### S25 Back-up, restore, upgrade, faalpaden (PS-11B)
 
@@ -433,6 +446,7 @@ staat. Ze tellen niet mee in de 149 taken.
 | S25.4 | Upgrade-guard: back-up vóór migratie, weigering op nieuwere database | `[ ]` | | |
 | S25.5 | Vier faalpaden met foutcodes en settest | `[ ]` | | |
 | S25.6 | Scherm 35 gebouwd, journey 13 | `[ ]` | | |
+| S25.7 | Off-site back-up: een kopie van de dump en `/config` buiten de NAS (Hyper Backup of externe bestemming), met een hersteltest vanaf die kopie | `[ ]` | | |
 
 ### PS-12 Plex-migratie (keuzefase)
 
