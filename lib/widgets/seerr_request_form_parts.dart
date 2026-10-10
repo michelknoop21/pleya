@@ -230,6 +230,7 @@ class SeerrFormButtons extends StatelessWidget {
     this.onPrimary,
     this.busy = false,
     this.hint,
+    this.hintRoom,
   });
 
   final String closeLabel;
@@ -244,38 +245,47 @@ class SeerrFormButtons extends StatelessWidget {
 
   /// A muted line above the buttons, two lines at most and cut off after
   /// that: what a save will do, who it is for, or why the form cannot send.
-  /// Not drawn when the screen is short for its text size, see
-  /// [hintLinesFor].
   final String? hint;
 
-  /// How many lines the hint gets, by the height left for the form (the
-  /// screen minus the keyboard) measured in text sizes: two, or none below
-  /// [_noLineHeight], and below [_enlargedNoLineHeight] once the text is
-  /// enlarged past 1.3. The buttons wrap and grow with the text size, and a
-  /// line there took the choices up to 72 px and overflowed the form from
-  /// 568x320 at 1.65 on; even one line was too much from 2.0. With none the
-  /// reasons stay in the messages at the top of the list, which a short list
-  /// has not scrolled away. Television, tablets and a phone upright at normal
-  /// size keep two.
-  static int hintLinesFor(double availableHeight, TextScaler scaler) {
+  /// The height the form is bounded to (the constraint its sheet gives it, so
+  /// the keyboard is already out of it). Set, the hint gives way on a short
+  /// sheet for its text size, see [hintLinesFor]; null always draws it.
+  final double? hintRoom;
+
+  /// How many lines the hint gets, by the height of the form measured in text
+  /// sizes: two, or none below [noLine], and below [enlargedNoLine] once the
+  /// text is enlarged past 1.25 (at 1.3 on 568x320 the choices were left with
+  /// 36 px in Dutch, where main kept 86). The buttons wrap and grow with the text size,
+  /// and a line there took the choices up to 72 px and overflowed the form
+  /// from 568x320 at 1.65 on; even one line was too much from 2.0. With none
+  /// the reasons stay in the messages at the top of the list. Television,
+  /// tablets and a phone upright at normal size keep two. The defaults are
+  /// for the request form, whose reasons are also messages in its list; the
+  /// edit form passes its own, lower bounds.
+  static int hintLinesFor(
+    double room,
+    TextScaler scaler, {
+    double noLine = requestNoLineRoom,
+    double enlargedNoLine = requestEnlargedNoLineRoom,
+  }) {
     final scale = math.max(1.0, scaler.scale(14) / 14);
-    final height = availableHeight / scale;
-    if (height < _noLineHeight || (scale > 1.3 && height < _enlargedNoLineHeight)) return 0;
+    final height = room / scale;
+    if (height < noLine || (scale > 1.25 && height < enlargedNoLine)) return 0;
     return 2;
   }
 
-  static const double _noLineHeight = 200;
-  static const double _enlargedNoLineHeight = 250;
+  /// The request form's bounds in form height per text size, tuned on its
+  /// measured combinations of screen, text size and language.
+  static const double requestNoLineRoom = 144;
+  static const double requestEnlargedNoLineRoom = 180;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = primaryLabel;
     final primaryEnabled = onPrimary != null;
-    final hintLines = hintLinesFor(
-      MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom,
-      MediaQuery.textScalerOf(context),
-    );
+    final room = hintRoom;
+    final hintLines = room == null ? 2 : hintLinesFor(room, MediaQuery.textScalerOf(context));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
