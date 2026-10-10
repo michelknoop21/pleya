@@ -122,6 +122,8 @@ Volgorde: BP-00 (Michel keurt het contract goed) → BP-01 → BP-02 → BP-03 �
 
 BP-09 is onderdeel van het Big P-programma en wordt uitgevoerd door de parallelle sessie; BP-05 wacht op haar `catalog_changed`-fix. Nieuwe tools uit BP-02 t/m BP-07 krijgen een stap-label via de volledigheidstest tegen `assistantTools` die BP-09 (fase 3 van de parallelle sessie) toevoegt.
 
+Roadmap deviation (voorstel, nog niet goedgekeurd; achteraf vastgelegd op 10 oktober 2026): de Big P-bevestigkaart op de iPhone valt onder geen werkpakket. PR #216 en PR #236 droegen `Roadmap: BP-06`, net als het Verify-scenario in PR #227, maar BP-06 gaat over het gesprek en niet over die kaart. Reden om buiten de volgorde te werken: een correctheidsfout op het bevestigpad van een schrijfactie (gebruiker aanmaken). Op een iPhone SE liepen Annuleren en Aanmaken met het toetsenbord omhoog onder de ballon uit, en de eerdere fix uit #216 werkte in de app niet. De status staat in registerrij BIGP-IOS1 (`docs/ios-unified-implementation-register.md`, bevinding BIGP-IOS1-KB). Prioriteit, volgorde en pakketindeling veranderen hiermee niet; onder welk pakket dit werk valt, beslist Michel.
+
 Connected Knowledge: geen gekoppelde, relevante bron blijft onbereikbaar voor Big P alleen omdat er geen losse tool voor bestaat. De grens zijn de rechten van de gebruiker (per bron en per gegevenstype), wat de bron aanbiedt en de privacy van die verbinding. De inventaris staat in het contract.
 
 Uitgesteld (geen werkpakket tot Michel er een opent, verwijzing: `docs/big-p-behaviour-contract.md`): fuzzy namen, collecties op Jellyfin/Emby/Pleya Server, Trakt-aanbevelingen en -trending, een algemene wijzigingsindex.
