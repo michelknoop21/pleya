@@ -19,13 +19,12 @@
   import Artwork from './Artwork.svelte';
   import MediaCardBadges from './MediaCardBadges.svelte';
   import type { Item } from '../api/types';
-  import { t } from '../i18n';
   import {
     artworkAspect,
-    formatDuration,
+    cardArtworkId,
+    cardSubtitle,
     isWatched,
-    itemProgress,
-    itemSubtitle
+    itemProgress
   } from '../util/format';
 
   interface Props {
@@ -62,21 +61,12 @@
   }: Props = $props();
 
   const shape = $derived(shapeOverride ?? artworkAspect(item.kind));
-  const derivedArtworkId = $derived(
-    shape === 'wide'
-      ? (item.artwork?.backdrop_id ?? item.artwork?.poster_id)
-      : item.artwork?.poster_id
+  const artworkId = $derived(
+    artworkOverride !== undefined ? artworkOverride : cardArtworkId(item, shape)
   );
-  const artworkId = $derived(artworkOverride !== undefined ? artworkOverride : derivedArtworkId);
   const watched = $derived(isWatched(item));
   const progress = $derived(itemProgress(item));
-  const subtitle = $derived.by(() => {
-    if (subtitleOverride !== undefined) return subtitleOverride;
-    // Wie halverwege is wil weten hoeveel er nog over is, niet het jaartal.
-    const left = progress ? formatDuration(progress.remainingMs) : null;
-    if (left) return t('card.remaining', { duration: left });
-    return itemSubtitle(item);
-  });
+  const subtitle = $derived(subtitleOverride ?? cardSubtitle(item));
 </script>
 
 <div class="card" data-kind={item.kind} data-shape={shape}>

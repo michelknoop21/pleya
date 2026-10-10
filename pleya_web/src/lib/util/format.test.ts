@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   artworkAspect,
+  cardArtworkId,
+  cardSubtitle,
   formatDate,
   formatDuration,
   isWatched,
@@ -117,5 +119,27 @@ describe('gezien', () => {
     expect(isWatched(item({ kind: 'show', episode_count: 8, watched_episode_count: 8 }))).toBe(true);
     expect(isWatched(item({ kind: 'show', episode_count: 8, watched_episode_count: 7 }))).toBe(false);
     expect(isWatched(item({ kind: 'show', episode_count: 0, watched_episode_count: 0 }))).toBe(false);
+  });
+});
+
+describe('cardSubtitle en cardArtworkId', () => {
+  it('zet bij voortgang de resterende tijd onder de kaart, anders de onderregel', () => {
+    const state = {
+      position_ms: 600_000,
+      watched: false,
+      play_count: 0,
+      updated_at: '2026-01-01T00:00:00Z'
+    };
+    expect(cardSubtitle(item({ year: 2021, duration_ms: 3_600_000, user_state: state }))).toBe(
+      '50m left'
+    );
+    expect(cardSubtitle(item({ year: 2021 }))).toBe('2021');
+  });
+
+  it('kiest de backdrop voor wide en alleen de poster voor poster', () => {
+    const art = item({ artwork: { poster_id: 'p', backdrop_id: 'b' } });
+    expect(cardArtworkId(art, 'wide')).toBe('b');
+    expect(cardArtworkId(art, 'poster')).toBe('p');
+    expect(cardArtworkId(item({ artwork: { poster_id: 'p' } }), 'wide')).toBe('p');
   });
 });
