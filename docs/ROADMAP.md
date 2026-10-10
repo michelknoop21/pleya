@@ -263,7 +263,7 @@ Each applicable window must identify: platform and viewport/input mode; approved
 | Requests / Aanvragen | A-19/A-20/A-21 | complete current capability + role/state inventory, approved multi-window redesign, implementation and visual/functional acceptance |
 | Audiobooks | D-04/D-05/D-06 | new domain: spec first, then approved cross-platform/Web designs, then Server/client/Web implementation and playback/progress evidence |
 
-An absent platform-specific design decision is a design gap to record, not permission to invent a new redesign. Valid already-built work is retained. The UI design round owns graphical implementation and a separate visual review. No whole-app redesign closes while an applicable window is unowned, unverified, or silently dropped; explicit deferrals remain visible and distinguish partial release from full completion.
+An absent platform-specific design decision is a design gap to record, not permission to invent a new redesign. Valid already-built work is retained. The UI design round owns graphical implementation; a separate visual review comes from another seat. No whole-app redesign closes while an applicable window is unowned, unverified, or silently dropped; explicit deferrals remain visible and distinguish partial release from full completion.
 
 ### C-05: Server/Web window-to-task coverage
 
