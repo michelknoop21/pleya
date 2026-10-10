@@ -26,7 +26,7 @@ northstars en mockups, en ook het bouwen, testen en herstellen van wat daaruit v
 layout, focusgedrag en visuele correcties. `docs/ROADMAP.md` en het register hierboven verwijzen
 naar deze term. Het is een rol, geen hulpmiddel: Michel wijst per opdracht aan wie de ronde
 uitvoert, en die toewijzing staat niet in deze repo. Wijst de opdracht je niet aan als uitvoerder
-en geeft de roadmap het werk aan de ronde, vraag het Michel voordat je begint. De ronde beoordeelt
+en geeft de roadmap het werk aan de ronde, vraag het Michel voordat je begint; een directe UI-opdracht van Michel geldt als aanwijzing. De ronde beoordeelt
 haar eigen werk niet: de visuele review tegen de geldende northstar of DEC (`docs/ROADMAP.md`,
 Roadmap rules) komt van een andere reviewerstoel, volgens de reviewregels in `AGENTS.md`.
 
