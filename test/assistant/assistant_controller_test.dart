@@ -185,15 +185,19 @@ class _AvailableServer extends find.FakeServer {
 
 /// A context whose administered servers are whatever [admins] holds right now.
 class _RightsContext extends AssistantToolContext {
-  _RightsContext(MultiServerManager servers, this.admins) : super(servers: servers);
+  _RightsContext(MultiServerManager servers, this.admins, {this.online = const {'a'}}) : super(servers: servers);
   final Set<String> admins;
+
+  /// Servers that answer right now; being offline is no change of rights.
+  final Set<String> online;
   static final _client = find.FakeServer('a');
 
   @override
   List<ServerId> get administeredServers => [for (final id in admins) ServerId(id)];
 
   @override
-  MediaServerClient? adminClient(ServerId serverId) => admins.contains(serverId.value) ? _client : null;
+  MediaServerClient? adminClient(ServerId serverId) =>
+      admins.contains(serverId.value) && online.contains(serverId.value) ? _client : null;
 }
 
 void main() {
@@ -789,7 +793,7 @@ void main() {
         changes.notifyListeners();
         admins.add('a');
         changes.notifyListeners();
-        return const AssistantToolResult({'viewers': 'Sam kijkt Bluey'});
+        return AssistantToolResult(const {'viewers': 'Sam kijkt Bluey'}, display: AssistantMediaGrid(const []));
       },
     );
     final models = [
@@ -809,6 +813,40 @@ void main() {
     final steps = c.tasks.single.steps;
     expect(steps.last.phase, AssistantStepPhase.failed);
     expect(c.tasks.single.displays, isEmpty);
+  });
+
+  test('a server dropping offline during a read is no change of rights', () async {
+    final admins = {'a'};
+    final online = {'a'};
+    final changes = ChangeNotifier();
+    addTearDown(changes.dispose);
+    final read = AssistantTool(
+      name: 'household',
+      description: 'household data',
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async {
+        online.clear();
+        changes.notifyListeners();
+        online.add('a');
+        changes.notifyListeners();
+        return const AssistantToolResult({'viewers': 'Sam'});
+      },
+    );
+    final c = AssistantController(
+      buildContext: (_) => _RightsContext(servers, admins, online: online),
+      rolloutEnabled: true,
+      serverChanges: changes,
+      entitlement: _Entitlement(),
+      loadConfig: () async => _config,
+      modelFor: (_) => _Model([_call('household'), _say('klaar')]),
+      tools: [read],
+    );
+    addTearDown(c.dispose);
+    await c.submit('Wat kijkt iedereen?');
+    expect(c.tasks.single.steps.last.phase, AssistantStepPhase.done);
   });
 
   test('a read with unchanged rights is published', () async {

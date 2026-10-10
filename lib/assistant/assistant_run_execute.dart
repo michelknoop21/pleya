@@ -65,6 +65,7 @@ extension _AssistantExecute on AssistantRun {
     // A read publishes household or library data: if the rights moved while it
     // ran, even if they are back, none of it is shown or handed to the model.
     if (stamp != null &&
+        output['error'] != 'cancelled' &&
         rightsEpoch!() != stamp &&
         (tools ?? assistantTools).any((t) => t.name == call.name && t.risk == AssistantToolRisk.read)) {
       if (_displays.length > shown) _displays.removeRange(shown, _displays.length);

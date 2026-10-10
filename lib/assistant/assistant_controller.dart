@@ -87,8 +87,10 @@ class AssistantController extends ChangeNotifier {
   int _rightsEpoch = 0;
   String? _rightsSeen;
   void _noteRights(AssistantToolContext ctx) {
+    // Administered servers and the connection behind each: not whether it is
+    // online right now, which is no right and flaps without one changing.
     final seen = ([
-      for (final id in ctx.administeredServers) '${id.value}:${identityHashCode(ctx.adminClient(id))}',
+      for (final id in ctx.administeredServers) '${id.value}:${identityHashCode(ctx.servers.getClient(id))}',
     ]..sort()).join('|');
     if (_rightsSeen != null && seen != _rightsSeen) _rightsEpoch++;
     _rightsSeen = seen;
