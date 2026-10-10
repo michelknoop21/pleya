@@ -141,6 +141,14 @@ Acceptatie: drie commando's groen, de woff2 kleiner dan het TTF-bestand (grootte
 
 Commit: `feat(pleya-web): ArchivoBlack, artworkladder en loader-context voor S7.4`.
 
+## Taak 1b: specimen, wacht op akkoord van Michel
+
+Kaart, hero en rail zijn zichtbare redesigns, dus eerst een statisch specimen met de northstar
+ernaast: `docs/qa/s7-primitives/v3-specimen/` (`v3.html`, opnamen op 393, 1024 en 1600, de
+vergelijkingen met beeld 16 en 01, en een README met de beslispunten). Taak 2 tot en met 4 starten
+pas na Michels ontwerpakkoord op dat specimen; zijn antwoord op de beslispunten uit de README gaat
+mee in de brief van taak 2.
+
 ## Task 2: `MediaCard` met de staten van scherm 16
 
 Beeld 16 is het doel, `web.css` regels 154 tot 180 de maatvoering. Staten:
