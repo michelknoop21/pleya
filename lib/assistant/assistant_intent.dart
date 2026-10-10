@@ -66,8 +66,13 @@ final _addedElsewhere = RegExp(
 );
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
+// Words that make the two halves one relational question, not two lists.
+final _relational = RegExp(
+  r'\b(samen|together|both|allebei|beiden|ook|also|niet|not|nog niet|never|nooit|geen|but|except|behalve|same|zelfde|'
+  r'die|dat|that|which|waar|where)\b',
+);
 // The word between two clauses of one sentence.
-final _clauseJoin = RegExp(r'\s*(?:,|;|\b(?:en|and|maar|but|plus)\b)\s*');
+final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?:en|and|maar|but|plus)\b)\s*');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -150,31 +155,49 @@ class AssistantIntent {
   }
 
   /// The two clauses of a question that asks about two audiences at once ("what
-  /// did I watch and what did the others"), or null. Only when exactly two
-  /// different audiences are named and a joiner (en, and, comma) sits between
-  /// them: anything less is left to the model, never cut by a guess.
+  /// did I watch and what did the others"), or null. Cut only when it is plainly
+  /// two separate questions: two different audiences, each clause with its own
+  /// watch verb, one joiner between them and none left inside a clause, no
+  /// relational or negating word ("together", "not yet seen"), and a stated kind
+  /// that both clauses carry. Anything less is left to the model, never cut by a
+  /// guess.
   static List<String>? splitMixedAudience(String prompt) {
     final p = prompt.toLowerCase();
+    // Offsets are used on [prompt]: a lowercase that changed the length is no cut.
+    if (p.length != prompt.length || _relational.hasMatch(p)) return null;
     final spans = <(int, int, AssistantAudience)>[];
-    void add(RegExp re, AssistantAudience a, {bool unless = false}) {
-      if (unless) return;
+    void add(RegExp re, AssistantAudience a) {
       final m = re.firstMatch(p);
       if (m != null) spans.add((m.start, m.end, a));
     }
 
-    add(_othersWatch, AssistantAudience.others, unless: _notOthers.hasMatch(p));
-    if (spans.isEmpty) add(_othersFixed, AssistantAudience.others, unless: _notOthers.hasMatch(p));
+    // A verbless "others" ("everyone else", "without me") is no clause of its own.
+    if (_notOthers.hasMatch(p) || _exceptName.hasMatch(p) || _othersFixed.hasMatch(p)) return null;
+    add(_othersWatch, AssistantAudience.others);
     add(_meWatch, AssistantAudience.me);
-    if (!_exceptName.hasMatch(p) && !_othersFixed.hasMatch(p)) add(_everyoneWatch, AssistantAudience.everyone);
+    add(_everyoneWatch, AssistantAudience.everyone);
     if (spans.length != 2 || spans[0].$3 == spans[1].$3) return null;
     spans.sort((a, b) => a.$1.compareTo(b.$1));
+    if (spans[1].$1 < spans[0].$2) return null;
     final gap = p.substring(spans[0].$2, spans[1].$1);
     final joins = _clauseJoin.allMatches(gap).toList();
-    if (joins.isEmpty) return null;
-    final cut = joins.last;
-    final first = prompt.substring(0, spans[0].$2 + cut.start).trim();
-    final second = prompt.substring(spans[0].$2 + cut.end).trim();
+    if (joins.length != 1) return null;
+    final cut = joins.single;
+    String tidy(String s) => s.replaceAll(RegExp(r'^[\s,;]+|[\s,;]+$'), '');
+    final first = tidy(prompt.substring(0, spans[0].$2 + cut.start));
+    final second = tidy(prompt.substring(spans[0].$2 + cut.end));
     if (first.isEmpty || second.isEmpty) return null;
+    // Both halves are one question each: a verb of their own, no joiner inside,
+    // and the same kind (a kind named in one half only would widen the other).
+    for (final clause in [first, second]) {
+      final lower = clause.toLowerCase();
+      if (!RegExp(_watch).hasMatch(lower) || _clauseJoin.hasMatch(lower)) return null;
+    }
+    final whole = AssistantIntent.fromPrompt(prompt).kind;
+    if (whole.explicit &&
+        !(AssistantIntent.fromPrompt(first).kind.explicit && AssistantIntent.fromPrompt(second).kind.explicit)) {
+      return null;
+    }
     return [first, second];
   }
 

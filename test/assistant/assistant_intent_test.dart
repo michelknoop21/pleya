@@ -266,7 +266,7 @@ void main() {
         'wat keken de anderen?',
       ]);
       expect(AssistantIntent.splitMixedAudience('What did the others watch, and what did I watch?'), [
-        'What did the others watch,',
+        'What did the others watch',
         'what did I watch?',
       ]);
     });
@@ -281,6 +281,38 @@ void main() {
       );
       expect(AssistantIntent.splitMixedAudience('Wat keek iedereen behalve Sam en wat heb ik gekeken?'), isNull);
       expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken, niet wat de anderen keken'), isNull);
+    });
+
+    test('review: an overlapping audience span is no cut and no crash', () {
+      expect(AssistantIntent.splitMixedAudience('What did I watch with the others?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('What did I watch with others'), isNull);
+    });
+
+    test('review: a kind named in one half only is not cut, a kind in both is', () {
+      expect(AssistantIntent.splitMixedAudience('Welke films heb ik gezien en wat keken de anderen?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Welke films heb ik gezien en welke films keken de anderen?'),
+        hasLength(2),
+      );
+    });
+
+    test('review: relational, comparative and verbless halves stay one question', () {
+      expect(
+        AssistantIntent.splitMixedAudience('Welke series heb ik gezien en hebben de anderen nog niet gezien'),
+        isNull,
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik en de anderen samen gezien'), isNull);
+      expect(AssistantIntent.splitMixedAudience('What did I watch and the others did not'), isNull);
+    });
+
+    test('review: a third clause or a title joiner is left to the model', () {
+      expect(
+        AssistantIntent.splitMixedAudience(
+          'Wat heb ik gekeken en wat keken de anderen, en verwijder Romeo en Julia uit mijn lijst',
+        ),
+        isNull,
+      );
+      expect(AssistantIntent.splitMixedAudience('Tip een film en wat heb ik gekeken en wat keken de anderen'), isNull);
     });
   });
 }
