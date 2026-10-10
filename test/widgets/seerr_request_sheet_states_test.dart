@@ -297,7 +297,7 @@ void main() {
 
         await tester.tap(find.byType(Switch));
         await _settle(tester);
-        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(find.text(t.seerr.alreadyRequested), findsNWidgets(2), reason: 'the notice, and beside the button');
         expect(_enabled(tester, 'submit'), isFalse);
       });
     });

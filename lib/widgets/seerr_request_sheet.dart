@@ -565,7 +565,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
         ),
     ];
     // What the server said about a request that was sent. Pinned above the
-    // buttons, and scrolling on its own when it outgrows its share.
+    // buttons at the height it needs, so the choices keep the rest.
     final outcome = [
       if (_uncertain)
         SeerrFormNotice(
@@ -606,12 +606,7 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
               ],
             ),
           ),
-          if (outcome.isNotEmpty)
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: outcome),
-              ),
-            ),
+          if (outcome.isNotEmpty) SeerrFormNoticeScroller(maxHeight: maxHeight * 0.4, children: outcome),
           _uncertain
               ? SeerrFormButtons(
                   closeLabel: t.common.close,
@@ -638,6 +633,11 @@ class _SeerrRequestSheetState extends State<SeerrRequestSheet> {
                   primaryIcon: Symbols.download_rounded,
                   onPrimary: _canSubmit || _submitting ? _submit : null,
                   busy: _submitting,
+                  // The messages open the scroll area, which a long season
+                  // list has scrolled away by the time the 4K switch at its
+                  // end turns the button off. Beside the button every reason
+                  // is named, so more than one is seen without scrolling.
+                  hint: standing.isEmpty ? null : standing.map((notice) => notice.title).join(' · '),
                 ),
         ],
       ),

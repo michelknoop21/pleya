@@ -317,7 +317,7 @@ void main() {
         await open(tester, media, permissions: seerrPermRequest);
 
         expect(notice('route'), findsOneWidget);
-        expect(find.text(t.seerr.noDefaultServerTitle), findsOneWidget);
+        expect(find.text(t.seerr.noDefaultServerTitle), findsNWidgets(2), reason: 'the notice, and beside the button');
         expect(_enabled(tester, 'submit'), isFalse);
         expect(fake.sent('GET', '/service/$service'), hasLength(1));
         expect(fake.sent('GET', '/service/$service/1'), isEmpty);

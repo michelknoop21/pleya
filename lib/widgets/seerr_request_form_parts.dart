@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../automation/automation_ids.dart';
 import '../automation/automation_node.dart';
+import '../focus/focus_theme.dart';
 import '../focus/focusable_button.dart';
 import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
@@ -120,6 +122,88 @@ class SeerrFormNotice extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Messages pinned above the buttons. They take the height they need, up to
+/// [maxHeight], and scroll past that.
+///
+/// Only when they scroll does the box take the focus: a remote then moves the
+/// text with UP and DOWN, and moves on once the end is reached. Messages that
+/// fit are never a stop on the way to the buttons.
+class SeerrFormNoticeScroller extends StatefulWidget {
+  const SeerrFormNoticeScroller({super.key, required this.maxHeight, required this.children});
+
+  final double maxHeight;
+  final List<Widget> children;
+
+  @override
+  State<SeerrFormNoticeScroller> createState() => _SeerrFormNoticeScrollerState();
+}
+
+class _SeerrFormNoticeScrollerState extends State<SeerrFormNoticeScroller> {
+  /// One press moves about two lines of body text.
+  static const _step = 48.0;
+
+  final _scroll = ScrollController();
+  final _node = FocusNode(debugLabel: 'requests.form.notices');
+  bool _scrolls = false;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _node.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent || !_scroll.hasClients) return KeyEventResult.ignored;
+    final position = _scroll.position;
+    final double room;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      room = position.extentAfter;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      room = -position.extentBefore;
+    } else {
+      return KeyEventResult.ignored;
+    }
+    // Nothing left this way: the press is a move to the next control.
+    if (room.abs() < 1) return KeyEventResult.ignored;
+    _scroll.jumpTo(position.pixels + room.clamp(-_step, _step));
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        final scrolls = notification.metrics.maxScrollExtent > 0;
+        if (scrolls != _scrolls) setState(() => _scrolls = scrolls);
+        return false;
+      },
+      child: Focus(
+        focusNode: _node,
+        canRequestFocus: _scrolls,
+        skipTraversal: !_scrolls,
+        onKeyEvent: _onKey,
+        child: ListenableBuilder(
+          listenable: _node,
+          builder: (context, child) => Container(
+            constraints: BoxConstraints(maxHeight: widget.maxHeight),
+            foregroundDecoration: FocusTheme.focusDecoration(
+              context,
+              isFocused: _node.hasPrimaryFocus,
+              borderRadius: tokens(context).radiusMd,
+            ),
+            child: child,
+          ),
+          child: SingleChildScrollView(
+            controller: _scroll,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: widget.children),
           ),
         ),
       ),
