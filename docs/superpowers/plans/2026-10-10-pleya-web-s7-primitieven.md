@@ -39,3 +39,14 @@ Masterlijst S7.3 met bewijs, `pleya_web/README.md` sectie designsysteem, i18n-sl
 
 ## Task 8: Scriptfix
 `pleya_web/scripts/e2e-stack.sh` roept `build-into-server.sh` aan vóór de media-stap (nu faalt een schone checkout). Eén script. Commit.
+
+## Task 9a: Designsysteem v2, oppervlakken en componenten
+Goedgekeurd door de eigenaar na de visuele gate: de uitvoering van de primitieven wordt herzien volgens het specimen in `docs/qa/s7-primitives/v2-specimen/` (`v2.html`, `v2@1600.png`, `v2@393.png`). De northstar blijft het kader; het specimen is de uitvoeringsrichting. Doel: de bestaande primitieven krijgen de dieptes, hiërarchie en staten van het specimen, zonder hun props te breken.
+- Diepte: pagina, paneel, verhoogd, invoer (invoer dieper dan het paneel, niet lichter), rand van 7 procent inkt, zachte ring en schaduw op panelen. Eén tint, alleen lichtheid verschuift. Nieuwe tokens in `tokens.css` voor alle drie de thema's (dark, OLED, light); bestaande contractnamen blijven werken.
+- Het standaardthema van de web-app wordt `dark` (northstar); OLED en light blijven kiesbaar via ThemePicker. Controleer dat de themakeuze en de opgeslagen voorkeur blijven werken.
+- Herstyle: Field, Select, Toggle, Choice, Panel, StatTile (optioneel sparkline-slot, geen verplichte prop), StatusPill, Alert, Chips, DataTable (hover-rij, mono-cellen, statuscel met stip), Steps, ConfirmDialog, Skeleton, SkeletonPage. Typografie: tegelwaarde 32/750 met eenheid in grijs en tabulaire cijfers, labels 11 px kapitalen, paden en slugs in mono.
+- Alles volgens de Global Constraints. Bestaande tests blijven groen; wijzig een test alleen waar het gedrag bewust verandert. Geen nieuwe componenten in 9a.
+- Bewijs: `bun run check`, `bun run test`, `bun run build`, en per herstijlde component een screenshot van de bestaande galerij op 393 en 1600 naast het specimen.
+
+## Task 9b: StorageMeter en galerij als pagina
+`StorageMeter` (gesegmenteerde balk per bibliotheek met legenda in tabulaire cijfers, props: segmenten met label, waarde, toon; een vrij-segment; toegankelijk als lijst of `meter`/`img` met tekstalternatief), met test. De galerij `/dev/primitives` krijgt een zijindex en sectiekoppen, plus één samengestelde "Overzicht"-demo zoals het specimen. Alle screenshots in `docs/qa/s7-primitives/` opnieuw, README bijgewerkt. Daarna een nieuwe visuele gate.
