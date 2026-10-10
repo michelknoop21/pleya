@@ -1,0 +1,23 @@
+# Pleya Server S2 afronding: S2.5 overname en S2.6 venster 2 dicht
+
+Baan B, naast de webbaan (S7) in een eigen worktree. Bron van waarheid: `docs/pleya-server-rebaseline/I-master-implementation-plan.md` (kopje S2), `J-api-schema-migratie.md` (deel J.3: de rij `POST /libraries/{id}/adopt`, migratie `0009`, de migratietest), `docs/DECISIONS.md` DEC-138 (venster 2) en `docs/PLEYA-SERVER-MASTERLIST.md` (S2-tabel). Werkplaats: `pleya_server/` (Go; de toolchain draait via `pleya_server/scripts/go-tool.sh`, niet rechtstreeks).
+
+## Global Constraints
+
+- Geen vermelding van AI, model of leverancier in code, comments, commits of documenten; geen `Co-Authored-By`. Auteur is Michel Knoop.
+- Commits met `SKIP_HOOKS=1`. Alleen `pleya_server/`, `docs/` en, waar het protocol raakt, `docs/pleya-protocol/v1/` worden aangeraakt.
+- Binnen de Phase ID: `docs/agents/server.md` en `pleya_server/CLAUDE.md` gelden onverkort. Niets uit S3 of later vooruitbouwen (geen e-books, geen filters). Protocolvenster 2 staat open voor precies de wijzigingen van J.3 (DEC-138); een extra wijziging buiten die lijst is een stop-en-meld, geen aanpassing in de YAML omdat het zo uitkomt.
+- Elke protocolwijziging draait door `scripts/check_protocol.sh` (contractpoort) en `pleya_server/scripts/verify-protocol.sh`; wijzig fixtures, specificatiehoofdstuk 17 en de autorisatiematrix mee waar de bestaande slices dat deden.
+- Tests: `scripts/go-tool.sh vet ./...` en `scripts/go-tool.sh test ./...` groen, met database waar de bestaande slices dat vragen (`pleya_server/scripts/test-db.sh`); een test die zichzelf overslaat telt niet als bewijs, meld het.
+- Afvinken: `docs/PLEYA-SERVER-MASTERLIST.md` bijwerken in dezelfde commit, met status en bewijs, in de stijl van S2.1 tot en met S2.4. Een taak op `[x]` zonder bewijs telt als open.
+- Nooit deployen naar de NAS, nooit `git push`, nooit een merge. Docker-containers lokaal opstarten voor tests mag; ruim ze weer op.
+- Eerst Context7 raadplegen voor elke Go-library-API die nog niet elders in de codebase voorkomt, met bronvermelding in het rapport.
+- Bestanden onder 400 regels waar je ze aanraakt; extractie zonder gedragswijziging als een bestand te groot wordt. Commentaar in dezelfde stijl en taal als de omgeving (Nederlands, het waarom).
+
+## Task 1: S2.5 `.env`-overname met dezelfde id en slug
+
+`POST /libraries/{id}/adopt` zet een bibliotheek met `managed = 'config'` om naar `managed = 'db'`, met dezelfde `id` en `slug`, klasse admin, capability `administration`; een bibliotheek die al `db` is geeft `409 library.not_config_managed`. Na het overnemen levert een herstart met nog dezelfde oude `.env`-regel (`PLEYA_SERVER_LIBRARIES` of de bestaande vorm; zoek de leesplek in `internal/config/libraries.go` en `cmd/pleya-server/bootstrap.go`) precies één bibliotheek op, niet een dubbele: de bootstrap mag een `managed = 'db'`-rij met dezelfde slug niet overschrijven of dupliceren. Kijkstatus (`watch_states`), items en scanresultaten blijven intact. Tests per het kopje "Tests" bij S2 in het I-plan: de overnametest (herstart met de oude `.env`-regel geeft één bibliotheek), de weigering op een al-`db`-bibliotheek, de drie-rollen-matrix (nieuwe route krijgt zijn rijen in de autorisatietests, het bestaande mechanisme `TestAuthorizationMatrixCoversEveryRowFromSixteen` dwingt dat af), en dat een lid/niet-beheerder de route niet kan gebruiken. Spec, YAML, schema, fixtures en `library.not_config_managed` in het foutenregister mee, zoals DEC-138 beschrijft. Commitgrens uit I-plan: "(5) overname". Eindig met masterlijstregel S2.5 `[x]` met bewijs.
+
+## Task 2: S2.6 migratietest op de NAS-fixture, venster 2 dicht
+
+Migratietest: dezelfde bibliotheken met dezelfde ids na `0009` (J.3 regel rond 234: `libraries.id` en `slug`, `managed = 'config'`, alle `watch_states` intact, `item_count` gelijk), gedraaid op de NAS-fixture die de bestaande tests gebruiken (zoek hem in `internal/testsupport` of de migratietests van S0/S2.1; bouw geen nieuwe fixture als er al een is). Daarna het venster dicht: een DEC (volgend vrij nummer, zie de bovenkant van `docs/DECISIONS.md`; let op dat de DEC-nummers tussen lijnen kunnen botsen, controleer op `main` en `origin`) die vastlegt welke wijzigingen venster 2 gebracht heeft en dat het weer dicht is, de vriezing in `check_protocol.sh` weer actief, en `CLAUDE.md`-verwijzing (hoofdstuk over het protocol) correct. Als `check_protocol.sh` na het dichten rood is door een openstaande venster-2-wijziging, stop en meld, repareer niet door te schuiven. Eindig met masterlijstregel S2.6 `[x]` met bewijs en de S2-sectie als afgerond gemarkeerd zoals S1 dat is.
