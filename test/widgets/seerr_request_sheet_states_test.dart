@@ -278,7 +278,11 @@ void main() {
           requests: [request(by: 9)],
         );
 
-        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(
+          find.descendant(of: _notice('duplicate'), matching: find.text(t.seerr.alreadyRequested)),
+          findsOneWidget,
+        );
+        expect(seerrFormHint(t.seerr.alreadyRequested), findsOneWidget, reason: 'the button that cannot send says why');
         expect(_button('mine'), findsNothing);
         expect(_enabled(tester, 'submit'), isFalse);
         expect(_hasFocus(tester, _button('close')), isTrue);

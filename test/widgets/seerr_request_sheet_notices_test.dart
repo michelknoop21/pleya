@@ -287,9 +287,17 @@ void main() {
       for (final scale in [1.0, 1.3]) {
         for (final size in [const Size(320, 568), const Size(375, 667), const Size(568, 320), const Size(667, 375)]) {
           final cutOff = secondCutOff.contains((locale, size, scale));
+          // 568x320 at 1.3 is too short for the line: the buttons wrap and
+          // the choices kept 36 px in Dutch where main kept 86. The reasons
+          // stand in the messages of the list there.
+          final noLine = size == const Size(568, 320) && scale == 1.3;
           testWidgets(
-            '${locale.languageCode} ${size.width.toInt()}x${size.height.toInt()} at $scale: the line beside '
-            'the button holds both reasons, and ${cutOff ? 'is cut before the second' : 'draws the start of the second'}',
+            noLine
+                ? '${locale.languageCode} ${size.width.toInt()}x${size.height.toInt()} at $scale: no line beside '
+                      'the button, both reasons stay messages in the list'
+                : '${locale.languageCode} ${size.width.toInt()}x${size.height.toInt()} at $scale: the line beside '
+                      'the button holds both reasons, and '
+                      "${cutOff ? 'is cut before the second' : 'draws the start of the second'}",
             (tester) async {
               await tester.runAsync(() => LocaleSettings.setLocale(locale));
               quota(reached: true);
@@ -297,6 +305,12 @@ void main() {
               await open(tester, _movie, size: size, textScale: scale);
 
               expect(tester.takeException(), isNull);
+              if (noLine) {
+                expect(seerrFormHint('${t.seerr.noDefaultServerTitle} · ${t.seerr.quotaReached}'), findsNothing);
+                expect(_notice('quota'), findsOneWidget);
+                expect(_notice('route'), findsOneWidget);
+                return;
+              }
               // The notice with the limit is under the fold on the smallest of these.
               final line = seerrFormHint('${t.seerr.noDefaultServerTitle} · ${t.seerr.quotaReached}');
               expect(line.hitTestable(), findsOneWidget);
