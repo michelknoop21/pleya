@@ -8,7 +8,8 @@
   De waas over het beeld draait mee met het thema, en dat is niet cosmetisch:
   artwork flipt niet met de modus, dus een zwarte veil onder bijna-zwarte
   lichte-modus-tekst is onleesbaar. De waas mengt daarom altijd met --scrim
-  (de achtergrondkleur) en de tekst staat in --ink, zodat beide samen omslaan.
+  (de achtergrondkleur), de titel staat in --ink en metaregel en synopsis in
+  de artworkinkt van het thema, zodat alles samen omslaat.
 
   "Meer info" staat er altijd en leidt naar de itempagina. Afspelen staat er
   alleen als de aanroeper een bestemming meegeeft (`playHref`): de
@@ -109,6 +110,12 @@
     overflow: hidden;
     background: var(--surface);
     color: var(--ink);
+    /* Tekst over artwork: per thema berekend, light donkerder dan --ink-2. */
+    --hero-ink: color-mix(
+      in srgb,
+      var(--on-artwork) calc(var(--on-artwork-ink) * 100%),
+      transparent
+    );
   }
 
   /* Geen artwork: het paneel met de haarlijn uit v2, zonder waas, zodat het
@@ -141,7 +148,9 @@
   /*
    * Twee verlopen, de dekkingen uit web.css .hero .scrim: van links voor de
    * tekstkolom en van onder voor de knoppen. Ze mengen met --scrim zodat het
-   * lichte thema wit wast onder zijn donkere tekst.
+   * lichte thema wit wast onder zijn donkere tekst, en de dekkingen volgen
+   * --scrim-strong en --scrim-mid: light wast harder (0,97 tegen 0,9). In
+   * dark komen de factoren uit op de vaste waarden van web.css (92, 55, 85).
    */
   .hero__scrim {
     position: absolute;
@@ -150,11 +159,15 @@
     background:
       linear-gradient(
         90deg,
-        color-mix(in srgb, var(--scrim) 92%, transparent) 0%,
-        color-mix(in srgb, var(--scrim) 55%, transparent) 45%,
+        color-mix(in srgb, var(--scrim) calc(var(--scrim-strong) * 102%), transparent) 0%,
+        color-mix(in srgb, var(--scrim) calc(var(--scrim-mid) * 89%), transparent) 45%,
         transparent 75%
       ),
-      linear-gradient(0deg, color-mix(in srgb, var(--scrim) 85%, transparent) 0%, transparent 45%);
+      linear-gradient(
+        0deg,
+        color-mix(in srgb, var(--scrim) calc(var(--scrim-strong) * 94%), transparent) 0%,
+        transparent 45%
+      );
   }
 
   .hero__body {
@@ -179,7 +192,7 @@
     gap: 8px;
     margin: 0;
     font-size: 15px;
-    color: var(--ink-2);
+    color: var(--hero-ink);
   }
 
   .hero__dot {
@@ -191,7 +204,7 @@
     max-width: 520px;
     font-size: 15px;
     line-height: 1.4;
-    color: var(--ink-2);
+    color: var(--hero-ink);
   }
 
   .hero__cta {
@@ -250,8 +263,8 @@
       background: linear-gradient(
         180deg,
         transparent 35%,
-        color-mix(in srgb, var(--scrim) 55%, transparent) 62%,
-        color-mix(in srgb, var(--scrim) 94%, transparent) 100%
+        color-mix(in srgb, var(--scrim) calc(var(--scrim-mid) * 89%), transparent) 62%,
+        color-mix(in srgb, var(--scrim) min(100%, var(--scrim-strong) * 104%), transparent) 100%
       );
     }
     .hero__body {
