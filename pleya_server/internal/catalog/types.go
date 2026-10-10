@@ -35,6 +35,11 @@ type Library struct {
 	Managed             LibraryManaged
 	ScanIntervalSeconds *int
 	ScanOnStart         bool
+
+	// SkippedRoots vult alleen SyncLibraries: roots uit de .env-regel die van
+	// een db-bibliotheek zijn en daarom niet naar deze bibliotheek verhuisd
+	// zijn (S2.7). Het opstarten logt ze.
+	SkippedRoots []string
 }
 
 // StorageLocation is één geconfigureerde root van een bibliotheek.
