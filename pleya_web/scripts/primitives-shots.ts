@@ -55,6 +55,15 @@ for (const width of WIDTHS) {
   }
   await page.locator('#chips button').first().focus();
   await shot(page.locator('#chips'), `chips-focus@${width}`);
+  // Een veld kan maar één focus hebben: het foutveld met focus apart.
+  await page.locator('#veld-fout-focus').focus();
+  await page.waitForTimeout(300);
+  await shot(page.locator('#velden'), `velden-foutfocus@${width}`);
+  const ring = await page.evaluate(() => {
+    const c = getComputedStyle(document.getElementById('veld-fout-focus')!);
+    return { border: c.borderTopColor, width: c.borderTopWidth, shadow: c.boxShadow, outline: c.outlineStyle };
+  });
+  console.log(`foutveld met focus @${width}: ${JSON.stringify(ring)}`);
 }
 
 for (const width of [393, 1600]) {

@@ -36,6 +36,7 @@
       hint="Het pad zoals de server het ziet, niet zoals jouw computer het ziet."
     />
     <Field label="Poort" value="80800" error="Een poort ligt tussen 1 en 65535." />
+    <Field id="veld-fout-focus" label="Poort (fout, focus)" value="0" error="Een poort ligt tussen 1 en 65535." />
     <Field label="Server-id" value="pleya-nas-01" disabled />
   </div>
 
