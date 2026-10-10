@@ -15,8 +15,8 @@ migratiereparatie `0012` staan in hoofdstuk 3a. De CSP-fix voor Kits route-annou
 september alleen op `feat/pleyaserver` en is als PR #219 naar `main` gegaan.
 
 Volgende stap: S7 (webshell en designsysteem) of S4 (sidecars en artworkladder), de twee slices die
-geen vrijgave vragen. S5 en S3 (boeken) hangen aan S3 en dus aan PS-11A geïntegreerd (S7, S10, S11)
-en een vrijgavebesluit (DEC-129).
+geen vrijgave vragen. S3 (boeken) wacht op PS-11A geïntegreerd (S7, S10, S11) en een vrijgavebesluit
+(DEC-129); S5 hangt aan S3 en wacht dus mee.
 
 ## Stand 24 september 2026
 
