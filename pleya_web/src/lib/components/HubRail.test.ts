@@ -161,6 +161,47 @@ describe('HubRail', () => {
     expect(container.querySelectorAll('.artwork--poster')).toHaveLength(0);
   });
 
+  it('laat een opgegeven vorm de afleiding overschrijven en geeft hem aan de snippet', () => {
+    // Afleveringen als serieposter: zonder override kreeg de posterkaart een
+    // cel van 1,78 keer de posterbreedte.
+    const card = createRawSnippet(
+      (item: () => Item, _index: () => number, shape: () => 'poster' | 'wide') => ({
+        render: () => `<span class="own" data-shape="${shape()}">${item().title}</span>`
+      })
+    );
+    const { container } = render(HubRail, {
+      props: {
+        title: 'Continue watching',
+        shape: 'poster',
+        card,
+        items: [
+          { id: 'a', kind: 'episode', title: 'E1', added_at: '2026-01-01T00:00:00Z' },
+          { id: 'b', kind: 'episode', title: 'E2', added_at: '2026-01-01T00:00:00Z' }
+        ] as Item[]
+      }
+    });
+    expect(container.querySelector('.rail--wide')).toBeNull();
+    const shapes = [...container.querySelectorAll('.own')].map((el) => el.getAttribute('data-shape'));
+    expect(shapes).toEqual(['poster', 'poster']);
+  });
+
+  it('geeft de afgeleide vorm aan de snippet als er geen override is', () => {
+    const card = createRawSnippet(
+      (_item: () => Item, _index: () => number, shape: () => 'poster' | 'wide') => ({
+        render: () => `<span class="own" data-shape="${shape()}"></span>`
+      })
+    );
+    const { container } = render(HubRail, {
+      props: {
+        title: 'Episodes',
+        card,
+        items: [{ id: 'a', kind: 'episode', title: 'E1', added_at: '2026-01-01T00:00:00Z' }] as Item[]
+      }
+    });
+    expect(container.querySelector('.rail--wide')).not.toBeNull();
+    expect(container.querySelector('.own')).toHaveAttribute('data-shape', 'wide');
+  });
+
   it('houdt een gemengde rij op één hoogte, met de poster als vorm', () => {
     const { container } = render(HubRail, {
       props: {
