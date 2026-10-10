@@ -120,11 +120,21 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
       </button>
 
+      <!--
+        Normaal loopt de tab door de kaartlinks en schuift de browser mee. Een
+        snippet zonder link of knop laat het toetsenbord anders zonder weg
+        om te schuiven; alleen dan krijgt het spoor zelf de tab (een
+        schuifvlak met focus schuift met de pijltoetsen). Met focusbare
+        kaarten zou dat een overbodige extra tabstop zijn. Zelfde patroon als
+        het schuifvlak van DataTable, vandaar de ignore.
+      -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <ul
         class="rail__track"
         id={trackId}
         bind:this={track}
         aria-labelledby={headingId}
+        tabindex={rail.hasFocusable ? undefined : 0}
         onscroll={rail.schedule}
       >
         {#each items as item, index (item.id)}
@@ -285,7 +295,8 @@
    */
   .rail__arrow {
     position: absolute;
-    top: calc(6px + var(--rail-art-h) / 2 - var(--touch-target) / 2);
+    /* Het beeld begint onder de 6 van het spoor plus de 3 van de kaart. */
+    top: calc(6px + var(--space-quarter) + var(--rail-art-h) / 2 - var(--touch-target) / 2);
     z-index: 2;
     display: none;
     place-items: center;
