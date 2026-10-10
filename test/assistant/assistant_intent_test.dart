@@ -258,4 +258,78 @@ void main() {
       expect(mixed.constrain('search_catalog', {}).error, isNull);
     });
   });
+
+  group('splitMixedAudience (BP-04b)', () {
+    test('me and the others in one sentence are two questions, each with its own audience', () {
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken en wat keken de anderen?'), [
+        'Wat heb ik gekeken',
+        'wat keken de anderen?',
+      ]);
+      expect(AssistantIntent.splitMixedAudience('What did the others watch, and what did I watch?'), [
+        'What did the others watch',
+        'what did I watch?',
+      ]);
+    });
+
+    test('anything not plainly two audiences is left to the model', () {
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('Wat keken de anderen?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Wat heb ik gekeken wat keken de anderen'),
+        isNull,
+        reason: 'no joiner',
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat keek iedereen behalve Sam en wat heb ik gekeken?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken, niet wat de anderen keken'), isNull);
+    });
+
+    test('review: an overlapping audience span is no cut and no crash', () {
+      expect(AssistantIntent.splitMixedAudience('What did I watch with the others?'), isNull);
+      expect(AssistantIntent.splitMixedAudience('What did I watch with others'), isNull);
+    });
+
+    test('review: a kind named in one half only is not cut, a kind in both is', () {
+      expect(AssistantIntent.splitMixedAudience('Welke films heb ik gezien en wat keken de anderen?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Welke films heb ik gezien en welke films keken de anderen?'),
+        hasLength(2),
+      );
+    });
+
+    test('review: relational, comparative and verbless halves stay one question', () {
+      expect(
+        AssistantIntent.splitMixedAudience('Welke series heb ik gezien en hebben de anderen nog niet gezien'),
+        isNull,
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik en de anderen samen gezien'), isNull);
+      expect(AssistantIntent.splitMixedAudience('What did I watch and the others did not'), isNull);
+    });
+
+    test('review: a third clause or a title joiner is left to the model', () {
+      expect(
+        AssistantIntent.splitMixedAudience(
+          'Wat heb ik gekeken en wat keken de anderen, en verwijder Romeo en Julia uit mijn lijst',
+        ),
+        isNull,
+      );
+      expect(AssistantIntent.splitMixedAudience('Tip een film en wat heb ik gekeken en wat keken de anderen'), isNull);
+    });
+
+    test('review: a verb-bearing "everyone else" is a clause, a second sentence is not folded in', () {
+      expect(
+        AssistantIntent.splitMixedAudience('What have I watched and what has everyone else watched?'),
+        hasLength(2),
+      );
+      expect(AssistantIntent.splitMixedAudience('Wat heb ik gekeken en wat keken de anderen. Wat is nieuw?'), isNull);
+      expect(
+        AssistantIntent.splitMixedAudience('Which movies did I watch and which movies did the others watch?'),
+        hasLength(2),
+      );
+    });
+
+    test('review: refersBack sees anaphors', () {
+      expect(AssistantIntent.refersBack('Wat heb ik daarvan gekeken?'), isTrue);
+      expect(AssistantIntent.refersBack('Wat heb ik gekeken en wat keken de anderen?'), isFalse);
+    });
+  });
 }

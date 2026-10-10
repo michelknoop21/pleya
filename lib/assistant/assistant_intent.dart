@@ -66,6 +66,23 @@ final _addedElsewhere = RegExp(
 );
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
+// "everyone else watched": a named group with its own verb, a clause of its own.
+final _othersElseWatch = RegExp(
+  r'\b(?:everyone else|everybody else|other users|andere gebruikers)\s+(?:\w+\s+){0,2}' + _watch,
+);
+// Words that make the two halves one relational question, not two lists.
+final _relational = RegExp(
+  r'\b(samen|together|both|allebei|beiden|ook|also|niet|not|nog niet|never|nooit|geen|but|except|behalve|same|zelfde|'
+  r'die|dat|that|waar|where)\b',
+);
+// A second sentence inside one half.
+final _sentenceBreak = RegExp(r'[.?!]\s*\S');
+// A pronoun or demonstrative that points back at an earlier turn.
+final _refersBack = RegExp(
+  r'\b(daarvan|daarvoor|daarbij|daarin|hiervan|ervan|die|dat|deze|dit|ze|zij|hij|hun|that|those|these|them|they|their|it|its|this)\b',
+);
+// The word between two clauses of one sentence.
+final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?:en|and|maar|but|plus)\b)\s*');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -145,6 +162,61 @@ class AssistantIntent {
           ? const IntentField.unknown()
           : IntentField(days, AssistantFieldSource.explicit),
     );
+  }
+
+  /// The two clauses of a question that asks about two audiences at once ("what
+  /// did I watch and what did the others"), or null. Cut only when it is plainly
+  /// two separate questions: two different audiences, each clause with its own
+  /// watch verb, one joiner between them and none left inside a clause, no
+  /// relational or negating word ("together", "not yet seen"), and a stated kind
+  /// that both clauses carry. Anything less is left to the model, never cut by a
+  /// guess.
+  /// True when [prompt] points back at an earlier answer ("daarvan", "those").
+  static bool refersBack(String prompt) => _refersBack.hasMatch(prompt.toLowerCase());
+
+  static List<String>? splitMixedAudience(String prompt) {
+    final p = prompt.toLowerCase();
+    // Offsets are used on [prompt]: a lowercase that changed the length is no cut.
+    if (p.length != prompt.length || _relational.hasMatch(p)) return null;
+    final spans = <(int, int, AssistantAudience)>[];
+    void add(RegExp re, AssistantAudience a) {
+      final m = re.firstMatch(p);
+      if (m != null) spans.add((m.start, m.end, a));
+    }
+
+    // A verbless "others" ("everyone else", "without me") is no clause of its own.
+    if (_notOthers.hasMatch(p) || _exceptName.hasMatch(p)) return null;
+    final elseWatch = _othersElseWatch.firstMatch(p);
+    if (_othersFixed.hasMatch(p) && elseWatch == null) return null;
+    add(_othersWatch, AssistantAudience.others);
+    if (elseWatch != null && spans.isEmpty) spans.add((elseWatch.start, elseWatch.end, AssistantAudience.others));
+    add(_meWatch, AssistantAudience.me);
+    if (elseWatch == null) add(_everyoneWatch, AssistantAudience.everyone);
+    if (spans.length != 2 || spans[0].$3 == spans[1].$3) return null;
+    spans.sort((a, b) => a.$1.compareTo(b.$1));
+    if (spans[1].$1 < spans[0].$2) return null;
+    final gap = p.substring(spans[0].$2, spans[1].$1);
+    final joins = _clauseJoin.allMatches(gap).toList();
+    if (joins.length != 1) return null;
+    final cut = joins.single;
+    String tidy(String s) => s.replaceAll(RegExp(r'^[\s,;]+|[\s,;]+$'), '');
+    final first = tidy(prompt.substring(0, spans[0].$2 + cut.start));
+    final second = tidy(prompt.substring(spans[0].$2 + cut.end));
+    if (first.isEmpty || second.isEmpty) return null;
+    // Both halves are one question each: a verb of their own, no joiner inside,
+    // and the same kind (a kind named in one half only would widen the other).
+    for (final clause in [first, second]) {
+      final lower = clause.toLowerCase();
+      if (!RegExp(_watch).hasMatch(lower) || _clauseJoin.hasMatch(lower) || _sentenceBreak.hasMatch(lower)) {
+        return null;
+      }
+    }
+    final whole = AssistantIntent.fromPrompt(prompt).kind;
+    if (whole.explicit &&
+        !(AssistantIntent.fromPrompt(first).kind.explicit && AssistantIntent.fromPrompt(second).kind.explicit)) {
+      return null;
+    }
+    return [first, second];
   }
 
   /// This intent, with the audience and period the question did not state itself

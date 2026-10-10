@@ -14,6 +14,47 @@ extension _AssistantTaskRunning on AssistantController {
     AssistantModelClient? model;
     try {
       if (!_alive(task)) return;
+      // A question about two audiences at once is cut in code, before the
+      // model can answer only one half of it.
+      // Not on a follow-up that points back ("daarvan" would lose its referent),
+      // a library-doctor question or a children's profile (whose ages card
+      // resubmits one clause). The cut is computed first so the profile read is
+      // only paid for a question that would be cut.
+      final parts =
+          allowSplit &&
+              task.originalSpoilerPrompt == null &&
+              !(_conversation.isNotEmpty && AssistantIntent.refersBack(task.prompt)) &&
+              !libraryDoctorScope &&
+              !assistantNeedsLibraryDoctorScope(task.prompt)
+          ? AssistantIntent.splitMixedAudience(task.prompt)
+          : null;
+      if (parts != null) {
+        final kids = await _buildContext(_screenContext).kidsProfile?.call() ?? false;
+        // The question may have been superseded or cancelled while the profile was read.
+        if (!_alive(task)) return;
+        if (!kids) {
+          final children = [
+            for (final part in parts)
+              _newTask(
+                title: clipText(part, 80),
+                intent: 'command',
+                prompt: part,
+                parentIntent: AssistantIntent.fromPrompt(task.prompt),
+                generation: task.generation,
+                budget: task.budget,
+              ),
+          ];
+          _tasks
+            ..remove(task)
+            ..addAll(children);
+          _update();
+          final doctorScope = libraryDoctorScope || assistantNeedsLibraryDoctorScope(task.prompt);
+          await Future.wait([
+            for (final child in children) _runTask(child, config, refreshHealth, libraryDoctorScope: doctorScope),
+          ]);
+          return;
+        }
+      }
       task.status = AssistantTaskStatus.running;
       _update();
       model = _modelFor(config);
