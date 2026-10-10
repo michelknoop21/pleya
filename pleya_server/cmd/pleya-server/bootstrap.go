@@ -99,6 +99,11 @@ func syncLibraries(ctx context.Context, store *catalog.Store, cfg *config.Config
 		return nil, err
 	}
 	for _, l := range libs {
+		for _, root := range l.SkippedRoots {
+			log.Info("root hoort bij een bibliotheek in de database; de .env-regel claimt hem niet",
+				slog.String("slug", l.Slug),
+				slog.String("root", root))
+		}
 		if l.Managed == catalog.ManagedDB {
 			log.Info("bibliotheek overgenomen in de database; de .env-regel wordt genegeerd",
 				slog.String("slug", l.Slug),

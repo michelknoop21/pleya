@@ -101,3 +101,48 @@ func TestAdoptLibraryErrors(t *testing.T) {
 		t.Fatalf("overname van een db-bibliotheek gaf %v, verwacht ErrNotConfigManaged", err)
 	}
 }
+
+// TestEnvSyncOnAdoptedSlugReturnsDatabaseValues: slaat de guard op de
+// bibliotheek-upsert toe, dan komen titel, soort en scaninstellingen uit de
+// database en niet uit de .env-regel die genegeerd wordt.
+func TestEnvSyncOnAdoptedSlugReturnsDatabaseValues(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+
+	spec := catalog.LibrarySpec{
+		Slug: "films", Title: "Films", Kind: "movies",
+		Roots: []catalog.RootSpec{{Path: "/media/films", FSType: "ext4", InodeTrusted: true, TrustSource: "fstype_default"}},
+	}
+	first, err := store.SyncLibraries(ctx, []catalog.LibrarySpec{spec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.AdoptLibrary(ctx, first[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	title, interval, onStart := "Mijn films", 3600, false
+	if _, err := pool.Exec(ctx,
+		`UPDATE libraries SET title = $1, scan_interval_seconds = $2, scan_on_start = $3 WHERE id = $4`,
+		title, interval, onStart, first[0].ID); err != nil {
+		t.Fatal(err)
+	}
+
+	stale := spec
+	stale.Kind = "shows"
+	again, err := store.SyncLibraries(ctx, []catalog.LibrarySpec{stale})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := again[0]
+	if got.ID != first[0].ID || got.Managed != catalog.ManagedDB {
+		t.Fatalf("sync gaf %+v", got)
+	}
+	if got.Title != title || got.Kind != "movies" || got.ScanOnStart != onStart ||
+		got.ScanIntervalSeconds == nil || *got.ScanIntervalSeconds != interval {
+		t.Fatalf("de guardtak gaf de .env-waarden terug in plaats van die uit de database: %+v", got)
+	}
+}
