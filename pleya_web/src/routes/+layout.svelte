@@ -6,10 +6,10 @@
   import '../styles/tokens.css';
   import '../styles/base.css';
 
-  import NavRail from '$lib/components/NavRail.svelte';
-  import BottomBar from '$lib/components/BottomBar.svelte';
+  import TopNav from '$lib/components/TopNav.svelte';
+  import MobileHeader from '$lib/components/MobileHeader.svelte';
+  import TabBar from '$lib/components/TabBar.svelte';
   import StateView from '$lib/components/StateView.svelte';
-  import ThemePicker from '$lib/components/ThemePicker.svelte';
   import { activeItemId, navItems } from '$lib/components/navItems';
   import { session } from '$lib/stores/session.svelte';
   import { theme } from '$lib/stores/theme.svelte';
@@ -18,8 +18,10 @@
 
   let { children }: { children: Snippet } = $props();
 
-  const items = $derived(navItems(session.capabilities, session.libraries.length));
-  const activeId = $derived(activeItemId(items, page.url.pathname));
+  const items = $derived(navItems(session.capabilities, session.libraries));
+  const activeId = $derived(activeItemId(items, page.url.pathname, session.libraries));
+  const showSearch = $derived(session.capabilities?.search === true);
+  const searchActive = $derived(page.url.pathname.startsWith('/search'));
   const isAuthRoute = $derived(
     page.url.pathname === '/login' || page.url.pathname === '/setup'
   );
@@ -103,68 +105,26 @@
 {:else}
   <div class="shell" class:shell--wide={viewport.wide}>
     {#if viewport.wide}
-      <NavRail {items} {activeId} />
+      <TopNav {items} {activeId} {showSearch} {searchActive} />
+    {:else}
+      <MobileHeader {showSearch} {searchActive} />
     {/if}
 
-    <div class="shell__body">
-      <header class="shell__top">
-        {#if !viewport.wide}
-          <a class="shell__brand" href="/">
-            <img src="/brand/pleya-mark-64.png" alt="" width="28" height="28" />
-            <span>{t('app.name')}</span>
-          </a>
-        {:else}
-          <span></span>
-        {/if}
-        <ThemePicker />
-      </header>
-
-      <main id="main" class="shell__main">
-        {@render children()}
-      </main>
-    </div>
+    <main id="main" class="shell__main">
+      {@render children()}
+    </main>
 
     {#if !viewport.wide}
-      <BottomBar {items} {activeId} />
+      <TabBar {items} {activeId} />
     {/if}
   </div>
 {/if}
 
 <style>
   .shell {
-    display: flex;
     min-height: 100dvh;
-    align-items: flex-start;
-  }
-
-  .shell__body {
-    flex: 1 1 auto;
-    min-width: 0;
     display: flex;
     flex-direction: column;
-  }
-
-  .shell__top {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space);
-    padding: var(--space-half) var(--page-inset, var(--space));
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    min-height: 56px;
-  }
-
-  .shell__brand {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-half);
-    font-weight: 700;
-    letter-spacing: -0.2px;
   }
 
   .shell__main {
@@ -173,9 +133,11 @@
     padding-bottom: var(--space-3);
   }
 
-  /* Ruimte voor de bottom bar, zodat de laatste rij niet onder de balk valt. */
+  /* Ruimte voor de tabbalk, zodat de laatste rij niet eronder valt. */
   .shell:not(.shell--wide) .shell__main {
-    padding-bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
+    padding-bottom: calc(
+      var(--bottom-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2)
+    );
   }
 
   .auth-shell {
@@ -183,21 +145,5 @@
     display: grid;
     place-items: center;
     padding: var(--space-2) var(--space);
-  }
-
-  :global(:root) {
-    --page-inset: 16px;
-  }
-
-  @media (min-width: 900px) {
-    :global(:root) {
-      --page-inset: 24px;
-    }
-  }
-
-  @media (min-width: 1200px) {
-    :global(:root) {
-      --page-inset: 32px;
-    }
   }
 </style>

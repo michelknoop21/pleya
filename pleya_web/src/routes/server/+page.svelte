@@ -8,6 +8,7 @@
    * staat daarom ook geen knop die niets doet: DEC-046 zegt dat wat hier
    * zichtbaar is via /pleya/v1 gaat, en wat er niet is wordt niet getekend.
    */
+  import ThemePicker from '$lib/components/ThemePicker.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { formatCount, formatDate } from '$lib/util/format';
   import { plural, t } from '$lib/i18n';
@@ -23,6 +24,12 @@
 
 <div class="page">
   <h1 class="t-headline">{t('server.title')}</h1>
+
+  <!-- Mijn Pleya is de plek voor thema: de kop heeft er geen ruimte voor. -->
+  <section class="card-surface panel">
+    <h2 class="t-title">{t('settings.theme')}</h2>
+    <ThemePicker />
+  </section>
 
   {#if session.server}
     <section class="card-surface panel">

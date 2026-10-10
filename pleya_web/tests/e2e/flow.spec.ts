@@ -150,30 +150,42 @@ test.describe('toetsenbord', () => {
     await page.keyboard.press('Tab');
     await expect(page.locator('a.skip-link')).toBeFocused();
 
-    // Doorlopen tot de eerste navigatielink de focus heeft.
-    // Merklink, dan elk navigatie-item, in DOM-volgorde.
-    const expected = ['/', '/', '/search', '/libraries', '/server'];
+    // Merklink, dan elk slot in DOM-volgorde (Home, Series, Films, Mijn
+    // Pleya), dan de zoekactie. Bibliotheek-ids zijn per stack anders, dus de
+    // slots voor Series en Films worden op hun pad-voorvoegsel getoetst.
+    const expected: (string | RegExp)[] = [
+      '/',
+      '/',
+      /^\/libraries\/[0-9a-f-]+$/,
+      /^\/libraries\/[0-9a-f-]+$/,
+      '/server',
+      '/search'
+    ];
     for (const href of expected) {
       await page.keyboard.press('Tab');
       const actual = await page.evaluate(() => document.activeElement?.getAttribute('href'));
-      expect(actual).toBe(href);
+      if (typeof href === 'string') expect(actual).toBe(href);
+      else expect(actual).toMatch(href);
     }
   });
 
-  test('op smal is de bottom bar met het toetsenbord te doorlopen', async ({ page }) => {
+  test('op smal is de tabbalk met het toetsenbord te doorlopen', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await expectShell(page);
 
-    const hrefs = await page
-      .locator('nav.bar a')
-      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
-    expect(hrefs).toEqual(['/', '/search', '/libraries', '/server']);
+    const links = page.locator('nav.tabbar a');
+    const hrefs = await links.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+    expect(hrefs).toHaveLength(4);
+    expect(hrefs[0]).toBe('/');
+    expect(hrefs[1]).toMatch(/^\/libraries\//);
+    expect(hrefs[2]).toMatch(/^\/libraries\//);
+    expect(hrefs[3]).toBe('/server');
 
     // Elke link in de balk is een echte tabstop.
-    for (const href of hrefs) {
-      await page.locator(`nav.bar a[href="${href}"]`).focus();
-      await expect(page.locator(`nav.bar a[href="${href}"]`)).toBeFocused();
+    for (let n = 0; n < hrefs.length; n++) {
+      await links.nth(n).focus();
+      await expect(links.nth(n)).toBeFocused();
     }
   });
 
@@ -211,38 +223,26 @@ test.describe('responsive', () => {
     });
   }
 
-  test('onder 900 staat de navigatie onderaan, daarboven aan de zijkant', async ({ page }) => {
+  test('onder 900 staat de navigatie onderaan, daarboven bovenin', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 900 });
     await page.goto('/');
-    await expect(page.locator('nav.bar')).toBeVisible();
-    await expect(page.locator('nav.rail')).toHaveCount(0);
+    await expect(page.locator('nav.tabbar')).toBeVisible();
+    await expect(page.locator('nav.topnav')).toHaveCount(0);
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(page.locator('nav.rail')).toBeVisible();
-    await expect(page.locator('nav.bar')).toHaveCount(0);
+    await expect(page.locator('nav.topnav')).toBeVisible();
+    await expect(page.locator('nav.tabbar')).toHaveCount(0);
   });
 
-  test('de zijbalk is 80 breed en klapt uit naar 220', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
+  test('de bovenbalk is 64 hoog en blijft bovenaan bij scrollen', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 });
     await page.goto('/');
 
-    const rail = page.locator('nav.rail');
-    expect((await rail.boundingBox())?.width).toBeCloseTo(80, 0);
+    const bar = page.locator('nav.topnav');
+    expect((await bar.boundingBox())?.height).toBeCloseTo(64, 0);
 
-    const hasHover = await page.evaluate(() => matchMedia('(hover: hover)').matches);
-    if (!hasHover) {
-      // Op een aanraakscherm bestaat er geen aanwijzer om mee uit te klappen,
-      // en dan hoort er ook niets te gebeuren: de regel staat achter
-      // @media (hover: hover). Focus is daar de weg naar de labels.
-      await rail.hover();
-      expect((await rail.boundingBox())?.width).toBeCloseTo(80, 0);
-      await page.locator('nav.rail a').first().focus();
-      await expect.poll(async () => (await rail.boundingBox())?.width).toBeCloseTo(220, 0);
-      return;
-    }
-
-    await rail.hover();
-    await expect.poll(async () => (await rail.boundingBox())?.width).toBeCloseTo(220, 0);
+    await page.evaluate(() => window.scrollTo(0, 400));
+    expect((await bar.boundingBox())?.y).toBeCloseTo(0, 0);
   });
 
   test('de rij op Home springt net zo ver in als zijn kop', async ({ page }) => {

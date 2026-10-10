@@ -12,7 +12,7 @@
 -->
 <script lang="ts">
   interface Props {
-    name: 'home' | 'search' | 'library' | 'settings' | 'movie' | 'show';
+    name: 'home' | 'search' | 'library' | 'settings' | 'movie' | 'show' | 'book' | 'person';
     size?: number;
   }
 
@@ -46,6 +46,12 @@
     <path fill="currentColor" d="M4 4h3l1.5 3h-3zm5 0h3l1.5 3h-3zm5 0h3l1.5 3h-3zM3 9h18v11H3z" />
   {:else if name === 'show'}
     <path fill="currentColor" d="M8.6 2.8 12 6.2l3.4-3.4 1.4 1.4L14.8 6H21v14H3V6h6.2L7.2 4.2zM5 8v10h14V8z" />
+  {:else if name === 'book'}
+    <!-- web: geen boekenglyph in assets/icons/nav; getekend op hetzelfde raster -->
+    <path fill="currentColor" d="M5 3h12a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2zm2 2v11.2A4 4 0 0 1 8 16h9V5z" />
+  {:else if name === 'person'}
+    <!-- web: idem voor Mijn Pleya -->
+    <path fill="currentColor" d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9m0 2c-4 0-8 2-8 5v2h16v-2c0-3-4-5-8-5" />
   {/if}
 </svg>
 
