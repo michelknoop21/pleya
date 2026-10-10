@@ -127,3 +127,32 @@ sectie-ids staan in `pleya_web/src/routes/dev/primitives/sections.ts`; het scrip
   panelen, chips, chips-focus, stappen en velden-foutfocus byte-gelijk terug; alleen `tabel@*`
   veranderde (het stapellabel). De overige opnamen, ook `velden-foutfocus-light` en alles in OLED,
   zijn van de vorige ronde.
+
+## Commitgrens 4: kaart, hero en rail naast de northstar
+
+Opnieuw gemaakt met `PLEYA_SHOTS_ROUND=c4 PLEYA_DEV_URL=http://localhost:5173 bun run scripts/primitives-shots.ts`
+(vite dev, dark tenzij de naam een thema noemt). Het script drukt voor hover en focus ook de
+gemeten staat af (`:hover`, `:focus-visible`), zodat een opname niet alleen "lijkt" op een staat.
+
+| Opname | Northstar | Wat je ziet |
+| --- | --- | --- |
+| `kaarten@{393,1024,1600}` | 16 | alle elf staten, hover op de tweede en focus op de derde tegelijk, zoals specimen v3 |
+| `kaarten-hover@*` | 16 | alleen de muis boven de tweede kaart: witte ring, lift, acties onderin; focus staat nergens |
+| `kaarten-focus@*` | 16 | alleen toetsenbordfocus op de derde kaart: ring op een gap, geen lift; de muis staat buiten de sectie |
+| `kaarten-{oled,light}@{393,1600}` | 16 | de elf staten in OLED en light, met hover en focus |
+| `hero@{393,1024,1600}` | 01 | vier heroes: met playHref en summary, zonder, lange titel, zonder artwork |
+| `hero-{oled,light}@{393,1600}` | 01 | dezelfde vier in OLED en light |
+| `rail@{393,1024,1600}` | 01 | drie rails; de muis boven de derde rij laat de pijlen zien (vanaf 900) |
+| `skeleton-home@{393,768,1024,1280,1600}` | 15 | hero plus rails met het nieuwe skeletheld; opname is venstergroot, dus de tweede rail valt eronder |
+| `{kaarten,hero,rail}-vs-northstar@{393,1024,1600}` | 16, 01 | links de galerij, rechts de northstar-JPG |
+| `skeleton-home-vs-northstar@{393,1600}` | 15 | idem; 15 bestaat alleen op 393 en 1600 |
+
+Bewuste afwijkingen van de northstar en het specimen:
+
+- Geen synopsis en geen leeftijdsbadge bij kaart of hero zonder data (`Item` draagt ze nog niet, PS-7N).
+- De onderregel van kaart en hero toont jaar en duur, geen genre (PS-7N).
+- Geen segmentindicator onder de rails.
+- Demo-artwork (gegenereerde vlakken) in plaats van posters; geen TMDb-beelden in git.
+- Northstar 16 bestaat alleen op 1600, dus `kaarten-vs-northstar@393` en `@1024` leggen de 1600-beeld ernaast; de breedte is dan niet gelijk.
+- Zes kaarten per rij in de galerij (index links), zeven in specimen en northstar.
+- Teksten van de galerij zijn Engels (Play, More info, View all, "left"); het specimen en de northstar zijn Nederlands.
