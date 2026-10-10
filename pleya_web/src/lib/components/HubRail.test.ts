@@ -113,6 +113,22 @@ describe('HubRail', () => {
     expect(fade).not.toHaveClass('rail__fade--on');
   });
 
+  it('meet opnieuw als de rij groeit, zonder dat er gescrold is', async () => {
+    const view = render(HubRail, { props: { title: 'Films', items: items(2) } });
+    const track = screen.getByRole('list', { name: 'Films' });
+    const right = screen.getByRole('button', { name: 'Scroll right' });
+    const fade = document.querySelector('.rail__fade')!;
+    expect(right).toHaveAttribute('aria-disabled', 'true');
+    expect(fade).not.toHaveClass('rail__fade--on');
+
+    // Er komen kaarten bij en de rij wordt breder dan zijn venster; er volgt
+    // geen scroll-event en het spoor zelf verandert niet van maat.
+    layOut(track, 2000, 800);
+    await view.rerender({ title: 'Films', items: items(12) });
+    await vi.waitFor(() => expect(right).toHaveAttribute('aria-disabled', 'false'));
+    expect(fade).toHaveClass('rail__fade--on');
+  });
+
   it('schuift niet met een uitgeschakelde pijl', async () => {
     render(HubRail, { props: { title: 'Films', items: items(3) } });
     const track = screen.getByRole('list', { name: 'Films' });

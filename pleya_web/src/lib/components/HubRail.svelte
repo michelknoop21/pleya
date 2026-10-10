@@ -65,6 +65,14 @@
     if (!track) return;
     return rail.attach(track);
   });
+
+  // De ResizeObserver ziet alleen het spoor zelf, en dat wordt niet breder
+  // als er kaarten bijkomen: alleen de schuifbreedte groeit. Daarom opnieuw
+  // meten zodra het aantal verandert, anders blijven fade en pijl uit.
+  $effect(() => {
+    void items.length;
+    rail.measure();
+  });
 </script>
 
 {#if items.length > 0}
