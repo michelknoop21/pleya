@@ -112,8 +112,6 @@ under `Notes`.
 - Search in Discover keeps loading further results after a profile switch or a new search term.
 - Losing the right to manage requests while the Scope panel is open closes that panel. Focus
   moves to the Status row.
-- Starting a title no longer opens the player twice when one start uses your saved version and
-  another names that same version.
 - Big P no longer leaves a film out of its suggestions because you watched something else with
   the same title. A watched Dune from 1984 used to hide Dune from 2021, and a watched series
   used to hide a film of the same name.
@@ -124,6 +122,8 @@ under `Notes`.
   request form has the same gap, for 4K and for HD: a request sent without choosing a server
   goes nowhere when the requests server has no default instance for that quality. A correction
   follows in a later build.
+- Known in this build: starting a title and then picking a version from the version menu right
+  away can still open the player twice. A correction follows in a later build.
 
 ### Worth checking
 - Passed in the Apple TV simulator: "Request in 4K" being there when it should and absent when
@@ -133,8 +133,8 @@ under `Notes`.
   the action is there, that you can reach it with the remote, and that the form opens on 4K.
 - Search: type a title and watch the requests row. It should fill after you submit or move down
   to the results, not while you type.
-- Playback: start a title that has more than one version and check that one player opens.
-- Big P is switched on in this build. Please confirm that you can open it on your Apple TV.
+- This build was made with Big P switched on. That has not been confirmed on a device, so
+  please check that you can open it on your Apple TV.
 
 ## 2.8.1 · build 348 · 10 October 2026 · iPhone and iPad
 
@@ -151,13 +151,9 @@ under `Notes`.
   cannot be requested the form says why, and when it was requested before you get "My requests"
   in place of a button that could not send anything.
 - Search in Discover keeps loading further results after a profile switch or a new search term.
-- Starting a title no longer opens the player twice when one start uses your saved version and
-  another names that same version.
 - Big P no longer leaves a film out of its suggestions because you watched something else with
   the same title. A watched Dune from 1984 used to hide Dune from 2021, and a watched series
   used to hide a film of the same name.
-- Big P's ordinary confirmation card no longer runs 19 points past the edge at iPhone SE size
-  with the keyboard up.
 
 ### Notes
 - Known in this build: "Request in 4K" also shows when the 4K instance is not the default one
@@ -165,14 +161,16 @@ under `Notes`.
   request form has the same gap, for 4K and for HD: a request sent without choosing a server
   goes nowhere when the requests server has no default instance for that quality. A correction
   follows in a later build.
-- Known in this build: Big P's confirmation card with a password field can still run below the
-  edge on a small iPhone with the keyboard up. In the iPhone SE simulator Cancel and Create
-  stick out about 4 points. Not fixed in this build.
+- Known in this build: starting a title and then picking a version from the version menu right
+  away can still open the player twice. A correction follows in a later build.
+- Known in this build: Big P's confirmation card can still run below the edge on a small
+  iPhone with the keyboard up. In the iPhone SE simulator Cancel and Create stick out about
+  4 points on the card with a password field. Not fixed in this build.
 
 ### Worth checking
 - Passed in the iPhone simulator: "Request in 4K" being there and the form opening on 4K. The
-  other items are covered by automated tests only. Nothing in this build has
-  been checked on an iPhone or iPad yet.
+  other items are covered by automated tests only. Nothing in this build has been checked on
+  an iPhone or iPad yet.
 - Request in 4K: open a film you have in HD with an account that may request 4K. Check that
   the action is there and that the form opens on 4K.
 - Big P on a small iPhone: ask for something Big P has to confirm, keep the keyboard up, and
@@ -193,7 +191,8 @@ under `Notes`.
   conversation could carry a spoiler into the answer.
 
 ### Worth checking
-- Big P is switched on in this build. Please confirm that you can open it on your Apple TV.
+- This build was made with Big P switched on. That has not been confirmed on a device, so
+  please check that you can open it on your Apple TV.
 - Still to be checked on an Apple TV: both fixes. They are covered by automated tests only.
 
 ## 2.8.1 · build 346 · 9 October 2026 · iPhone and iPad
