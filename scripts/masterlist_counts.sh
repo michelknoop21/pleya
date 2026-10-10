@@ -21,12 +21,19 @@
 #      "buiten venster" bevat (S2.7) zijn vervolgwerk en houden een slice niet open; de masterlijst
 #      zegt dat zelf bij de taakregel.
 #   3. De kolom "Taken" van de golftabel in 2.1: per golf het aantal taken in de genoemde slices dat
-#      nog niet `[x]` of `[-]` is, met dezelfde uitzondering voor "buiten venster".
+#      nog niet `[x]` of `[-]` is, met dezelfde uitzondering voor "buiten venster". De keuzefase
+#      PS-12 valt buiten deze controle: de golfcel "keuze, PS-12" staat bewust op 0, want PS-12 is
+#      een keuze van Michel en geen werk dat in de golven wordt weggewerkt. Een PS-12-token in een
+#      slicelijst telt dus niet mee en een rij die alleen PS-12 noemt wordt overgeslagen.
 #
 # Wat --check bewust niet vergelijkt: de kolommen Bezig en Open van de blokkentabel. Die zijn niet
 # afleidbaar uit de taakstatus, want S22.6 staat op `[~]` terwijl S22 in de tabel als open telt, en
 # S12.1 en S13.1 zijn goedgekeurde mockups in slices die verder niet begonnen zijn. De proza-zinnen
 # ("dicht (acht van acht, ...)") en de getallen in hoofdstuk 2.2 worden evenmin gelezen.
+#
+# Beperking: de uitzondering "buiten venster" is een tekstconventie in de taakcel (S2.7). Wie zo'n
+# taak anders noemt, laat de slice in de check als bezig tellen. Een expliciete kolomwaarde zou de
+# kolomindeling van de masterlijst veranderen en is daarom niet ingevoerd.
 #
 # Alleen awk, grep en sed; geen afhankelijkheden daarbuiten.
 
@@ -38,7 +45,7 @@ for arg in "$@"; do
   case "$arg" in
     --check) mode=check ;;
     --slices) mode=slices ;;
-    -h|--help) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "onbekende optie: $arg" >&2; exit 2 ;;
     *) file=$arg ;;
   esac
@@ -179,9 +186,10 @@ END {
 
   # golftabel
   for (gi = 1; gi <= ngl; gi++) {
+    if (gspec[gi] ~ /^PS-12$/) continue
     k = expand(gspec[gi], sl)
     r = 0
-    for (j = 1; j <= k; j++) r += rest[sl[j]]
+    for (j = 1; j <= k; j++) if (sl[j] !~ /^PS-12/) r += rest[sl[j]]
     if (gtaken[gi] != r) emit("golf \"" gname[gi] "\" (" gspec[gi] "): taken", gtaken[gi], r)
   }
 

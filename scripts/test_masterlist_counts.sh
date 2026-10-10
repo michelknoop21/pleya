@@ -116,6 +116,17 @@ mutate "afwijkende blokkentabel: gereed" 's/\| S1 tot S3 \| 1 \|/| S1 tot S3 | 2
 mutate "afwijkende golftabel: taken" 's/\| S2, S3 \| 3 \|/| S2, S3 | 4 |/' 'golf'
 mutate "taakstatus gewijzigd zonder tellers bij te werken" 's/\| S3.1 \| Eerste \| `\[ \]`/| S3.1 | Eerste | `[x]`/' 'taakregel'
 
+# PS-12 staat bewust op 0 in de golftabel: de fixture heeft 1 in de PS-12-cel, de echte lijst 0.
+sed -E 's/\| keuze \| PS-12 \| 1 \|/| keuze | PS-12 | 0 |/' "$work/ok.md" > "$work/ps12.md"
+if cmp -s "$work/ok.md" "$work/ps12.md"; then fail "PS-12 op 0 (mutatie veranderde niets)"; else
+  "$tool" --check "$work/ps12.md" > /dev/null; rc=$?
+  [ "$rc" -eq 0 ] && ok "PS-12 met 0 in de golftabel slaagt" || fail "PS-12 met 0 slaagt niet (rc=$rc)"
+  # en een afwijkende andere golf faalt nog steeds, ook met PS-12 op 0
+  sed -E 's/\| S2, S3 \| 3 \|/| S2, S3 | 4 |/' "$work/ps12.md" > "$work/ps12b.md"
+  "$tool" --check "$work/ps12b.md" > /dev/null; rc=$?
+  [ "$rc" -eq 1 ] && ok "afwijkende andere golf faalt naast PS-12 op 0" || fail "andere golf niet gevangen (rc=$rc)"
+fi
+
 if [ "$fails" -eq 0 ]; then echo "alle controles geslaagd"; exit 0; fi
 echo "$fails controle(s) gefaald"
 exit 1
