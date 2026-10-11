@@ -256,6 +256,17 @@ class AssistantToolContext {
     return match;
   }
 
+  /// Drops what earlier reads left behind (shown ids, user and job lists, the
+  /// library cache): called when the rights moved, so those do not serve a later
+  /// read or action of the same ask. Every write still re-checks authority live;
+  /// what the model already read stays in its conversation.
+  void forgetReads() {
+    _jobs.clear();
+    _items.clear();
+    _users.clear();
+    _libraries.clear();
+  }
+
   void showJob(ServerId serverId, String id, String title) => (_jobs[serverId.value] ??= {})[id] = title;
   void showItem(ServerId serverId, String id) => (_items[serverId.value] ??= {}).add(id);
   void showUser(ServerId serverId, String id, AssistantKnownUser user) => (_users[serverId.value] ??= {})[id] = user;

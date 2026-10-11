@@ -3,6 +3,7 @@ import '../media/ids.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../connection/connection.dart';
 import '../media/media_backend.dart';
@@ -878,6 +879,10 @@ class MultiServerManager {
     }
   }
 
+  /// Test seam: the HTTP client every Pleya Server connection added here uses.
+  @visibleForTesting
+  http.Client Function()? debugPleyaServerHttpClientFactory;
+
   /// Add a Pleya Server connection as a media source.
   ///
   /// One endpoint, one identity, so this is closer to the Jellyfin path than to
@@ -891,6 +896,7 @@ class MultiServerManager {
     try {
       final client = PleyaServerClient.create(
         connection,
+        httpClientFactory: debugPleyaServerHttpClientFactory,
         onConnectionUpdated: (updated) async {
           final persist = onPleyaServerConnectionUpdated;
           if (persist == null) return;

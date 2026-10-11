@@ -24,7 +24,7 @@ From `pubspec.yaml`:
 - `os_media_controls` via `https://github.com/edde746/media_controls`
 - `wakelock_plus` via `https://github.com/edde746/wakelock_plus`
 - `background_downloader` via `https://github.com/michelknoop21/background_downloader`, a mirror of
-  `edde746/background_downloader` holding the pinned commit under the tag `pleya-pin-b4d36f88` (DEC-118)
+  `edde746/background_downloader` holding the pinned commit under the tag `pleya-pin-b4d36f88` (DEC-147)
 - `auto_updater` via `https://github.com/edde746/auto_updater`
 - `auto_updater_platform_interface` via `https://github.com/edde746/auto_updater`
 - `auto_updater_macos` via `https://github.com/edde746/auto_updater`

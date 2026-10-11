@@ -51,7 +51,7 @@ Models use `freezed` + `json_serializable`; i18n uses `slang`. After editing any
 
 - Many deps are pinned `edde746/*` git forks (see `pubspec.yaml`); don't swap them for pub.dev versions.
   `background_downloader` is the one exception: it is pinned to a mirror under `michelknoop21/*` at the
-  same commit, because the upstream fork rebased the revision out of reach (DEC-118).
+  same commit, because the upstream fork rebased the revision out of reach (DEC-147).
   `MPVKit` is the second: it is pinned to `michelknoop21/MPVKit` because the avfoundation audio output
   needs a teardown fix upstream does not carry (DEC-XXX). Upstream releases are not picked up automatically.
 

@@ -103,7 +103,7 @@ void main() {
     expect(withRing('3').exitCode, 1);
   });
 
-  // DEC-118: de background_downloader-pin werd vier weken lang niet gesignaleerd
+  // DEC-147: de background_downloader-pin werd vier weken lang niet gesignaleerd
   // omdat niets hier ooit vroeg "bestaat de gepinde commit nog", alleen "lopen we
   // achter op wat we volgen" (dat is check_forks, een andere vraag). Deze twee
   // tests dekken het gat dat die stilte mogelijk maakte.

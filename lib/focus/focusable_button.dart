@@ -74,6 +74,12 @@ class _FocusableButtonState extends State<FocusableButton> {
     final duration = FocusTheme.getAnimationDuration(context);
     // In dpad mode: focused = full opacity, unfocused = dimmed
     final opacity = widget.dimWhenUnfocused && isKeyboard && !_isFocused ? 0.6 : 1.0;
+    // Always the same two wrappers, so the child keeps its place in the tree
+    // when the dim comes and goes; only their data changes.
+    final dimmed = opacity < 1;
+    final outlined = OutlinedButtonTheme.of(context);
+    final text = TextButtonTheme.of(context);
+    final ink = _RestingInk(Theme.of(context).colorScheme.onSurface);
 
     return FocusableWrapper(
       autofocus: widget.autofocus,
@@ -90,7 +96,50 @@ class _FocusableButtonState extends State<FocusableButton> {
       onNavigateLeft: widget.onNavigateLeft,
       onNavigateRight: widget.onNavigateRight,
       onBack: widget.onBack,
-      child: AnimatedOpacity(opacity: showFocus ? 1.0 : opacity, duration: duration, child: widget.child),
+      child: AnimatedOpacity(
+        opacity: showFocus ? 1.0 : opacity,
+        duration: duration,
+        child: OutlinedButtonTheme(
+          data: dimmed ? OutlinedButtonThemeData(style: _resting(outlined.style, ink)) : outlined,
+          child: TextButtonTheme(
+            data: dimmed ? TextButtonThemeData(style: _resting(text.style, ink)) : text,
+            child: widget.child,
+          ),
+        ),
+      ),
     );
   }
 }
+
+/// The label colour a dimmed, unfocused button paints with.
+///
+/// An outlined or text button without a colour of its own takes Material's
+/// default label colour, `colorScheme.primary`, which here is the brand red.
+/// That red reaches 4.4:1 on black at full strength and about 2:1 once the
+/// resting dim above multiplies it by 0.6. At rest the label therefore uses
+/// the text colour; the focused button keeps what it had. A button that sets
+/// its own `foregroundColor` (an error action) still wins over this.
+///
+/// Only the two button themes are replaced, never the whole [Theme]: a
+/// `Theme` widget also resets the inherited `IconTheme` and `CupertinoTheme`
+/// for everything below it, in every input mode.
+///
+/// It compares by value, so the button theme of one build equals that of the
+/// next and nothing below rebuilds for it.
+class _RestingInk extends WidgetStateProperty<Color?> {
+  _RestingInk(this.color);
+
+  final Color color;
+
+  @override
+  Color? resolve(Set<WidgetState> states) => states.contains(WidgetState.disabled) ? null : color;
+
+  @override
+  bool operator ==(Object other) => other is _RestingInk && other.color == color;
+
+  @override
+  int get hashCode => color.hashCode;
+}
+
+ButtonStyle _resting(ButtonStyle? style, _RestingInk ink) =>
+    (style ?? const ButtonStyle()).copyWith(foregroundColor: ink);

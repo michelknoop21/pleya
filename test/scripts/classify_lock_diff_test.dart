@@ -92,7 +92,7 @@ void main() {
     expect(result.stdout.toString(), isNot(contains('summary:')));
   });
 
-  // DEC-118: identity_of keek voor git alleen naar resolved-ref, nooit naar
+  // DEC-147: identity_of keek voor git alleen naar resolved-ref, nooit naar
   // url. Dat maakte de pin-fix zelf (dezelfde commit, andere host) onzichtbaar
   // voor dit script — from == to, dus "niets gewijzigd" over precies de regel
   // die de PR wijzigde.

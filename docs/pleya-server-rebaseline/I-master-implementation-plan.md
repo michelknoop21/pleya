@@ -51,6 +51,11 @@ vrijgave van Michel (de stippellijn in de graaf). Na S1: S2. Na S3 en S4: S5, S6
 backend-slices: S8, S9, S10. S16 kan starten zodra S1 en S2 staan en groeit mee met S3, S5 en
 S6.
 
+> **Bijgesteld op 10 oktober 2026:** PS-14 is vrijgegeven, zie
+> [DEC-149](../DECISIONS.md#dec-149-ps-14-is-vrijgegeven-voor-uitvoering-en-geeft-s3-vrij-en-s6-niet).
+> S3 is niet langer afhankelijk van S11 en de stippellijn in de graaf vervalt als poort; S6 blijft
+> wachten op het locatorbesluit P5. De tekst hierboven is de stand van 4 en 10 oktober en blijft staan.
+
 **De kritieke lijn** (bijgesteld op 10 oktober 2026) is
 S7 → S10 → S11 → vrijgave PS-14 → S3 → S5 en S6 → S14 → S17 → S18 → S23 → S15. De eerdere lijn
 S0 → S1 → S14 → … → S15 negeerde dat S14 aan S3, S5 en S6 hangt en dat S3 achter de vrijgave

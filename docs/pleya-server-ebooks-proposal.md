@@ -549,7 +549,7 @@ lopende fase en is e-bookservercode te vroeg.
 **Stand op 3 september 2026, later diezelfde dag.** Dat ontwerp ligt er, in
 [docs/pleya-server-ps14-proposal.md](pleya-server-ps14-proposal.md), en is goedgekeurd met zeven
 bindende beslissingen. Vrijgeven voor uitvoering is het niet: PS-14 is geblokkeerd op PS-9, en tot
-dat moment blijft de zin hierboven onverkort gelden. Eén stuk werk mag wél al, en het is
+dat moment blijft de zin hierboven onverkort gelden. *(Bijgesteld 10 oktober 2026 door [DEC-149](DECISIONS.md): PS-14 is vrijgegeven.)* Eén stuk werk mag wél al, en het is
 uitdrukkelijk geen e-bookservercode: de generieke defectfix op de onbekende `LibraryKind` in de
 client.
 

@@ -134,7 +134,7 @@ eindronde.
 | 18 | Hardware-eindronde | zie paragraaf 7 | |
 | 19 | TestFlight | exact de goedgekeurde archive | |
 
-**Afwijking sinds 24 september 2026 (DEC-119).** tvOS gaat vóór iOS-stap 8 tot en met 17 door
+**Afwijking sinds 24 september 2026 (DEC-148).** tvOS gaat vóór iOS-stap 8 tot en met 17 door
 stap 18 en 19, volgens `docs/superpowers/plans/2026-09-24-tv9-tvos-release.md`. Voor die release
 geldt de tvOS-kolom van §6 plus de gedeelde regels. iOS volgt daarna met een eigen hardwareronde.
 

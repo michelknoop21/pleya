@@ -70,7 +70,7 @@ tijd is, en wat dat voor het masterplan betekent.
 | PS-11 | niet gestart | S24: proxy-gedrag, rate limits, metrics op loopback, publieke-endpointlijst als test |
 | PS-11R | niet gestart | S21: websocket-hub met volgnummers; polling blijft de correcte weg |
 | PS-11B | niet gestart | S25: back-up met hersteltest, restore, upgrade over twee schemaversies, faalpaden als set (northstar 35) |
-| PS-14 | goedgekeurd, niet vrijgegeven | S3, vrijgave is een besluit bij S0 |
+| PS-14 | goedgekeurd, niet vrijgegeven | S3, vrijgave is een besluit bij S0 (bijgesteld 10 oktober 2026: vrijgegeven, DEC-149) |
 | PS-15 | begrensd | servergedeelte in S6, webreader in S12; de app-reader blijft op `feat/ebooks` |
 | PS-16 | gereserveerd | buiten scope |
 | PS-6 | niet gestart | S17: `POST /playback/plan` met de DeviceCapabilities uit PS-5 |
