@@ -6716,10 +6716,10 @@ extension on TranslationsNl {
 			'assistant.settings.tmdbKeyClear' => 'Sleutel wissen',
 			'assistant.settings.kidsAges' => 'Leeftijden kinderen (dit profiel)',
 			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
-			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
-			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
+			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
 			'assistant.settings.kidsProfile' => 'Kinderprofiel',
 			'assistant.settings.kidsProfileNote' => 'Big P toont alleen titels die bij de leeftijd van de kinderen passen. Alleen voor dit profiel, alleen op dit toestel.',
 			'assistant.settings.kidsProfileLocked' => 'Plex markeert dit account als beperkt, dus dit staat altijd aan.',

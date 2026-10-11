@@ -11972,10 +11972,10 @@ extension on Translations {
 			'assistant.settings.tmdbKeyClear' => 'Clear key',
 			'assistant.settings.kidsAges' => 'Children\'s ages (this profile)',
 			'assistant.settings.kidsAgesNone' => 'Not set',
-			'assistant.settings.kidsAgesClear' => 'Clear ages',
-			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
 			_ => null,
 		} ?? switch (path) {
+			'assistant.settings.kidsAgesClear' => 'Clear ages',
+			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} years',
 			'assistant.settings.kidsProfile' => 'Children\'s profile',
 			'assistant.settings.kidsProfileNote' => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.',
 			'assistant.settings.kidsProfileLocked' => 'Plex marks this account as restricted, so this is always on.',
