@@ -2745,6 +2745,22 @@
       "watchTitle": "Watch stats",
       "playsTotal": "plays"
     },
+    "clarify": {
+      "question": "Do you mean only what you watched, what the others watched, or everyone?",
+      "questionHousehold": "Do you mean what the others watched, or everyone?",
+      "me": "What did I watch${scope}?",
+      "meKind": "Which ${kind} did I watch${scope}?",
+      "others": "What did the others watch${scope}?",
+      "othersKind": "Which ${kind} did the others watch${scope}?",
+      "everyone": "What did everyone watch${scope}?",
+      "everyoneKind": "Which ${kind} did everyone watch${scope}?",
+      "today": " today",
+      "week": " this week",
+      "month": " this month",
+      "days": " in the last ${n} days",
+      "movies": "films",
+      "shows": "series"
+    },
     "followUp": {
       "watchNow": "Who is watching right now?",
       "watchMonth": "Who watched the most in the last 30 days?",

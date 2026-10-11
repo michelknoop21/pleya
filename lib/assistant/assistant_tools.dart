@@ -97,6 +97,16 @@ abstract class AssistantDisplay {
   const AssistantDisplay();
 }
 
+/// Pleya's own question back, when the words of a question leave open whose
+/// data it is about. [options] are standalone questions in the user's own
+/// words, sent as a new ask when one is chosen: each fixes the audience and
+/// keeps the period and kind the question named.
+class AssistantClarification extends AssistantDisplay {
+  const AssistantClarification({required this.question, required this.options});
+  final String question;
+  final List<String> options;
+}
+
 class AssistantToolResult extends AssistantToolOutcome {
   const AssistantToolResult(this.data, {this.record, this.display});
   final Map<String, Object?> data;

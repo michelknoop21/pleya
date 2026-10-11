@@ -2606,6 +2606,7 @@ class _TranslationsAssistantNl extends TranslationsAssistantEn {
 	@override String get youAsked => 'Je vroeg:';
 	@override late final _TranslationsAssistantOptionNl option = _TranslationsAssistantOptionNl._(_root);
 	@override late final _TranslationsAssistantDisplaysNl displays = _TranslationsAssistantDisplaysNl._(_root);
+	@override late final _TranslationsAssistantClarifyNl clarify = _TranslationsAssistantClarifyNl._(_root);
 	@override late final _TranslationsAssistantFollowUpNl followUp = _TranslationsAssistantFollowUpNl._(_root);
 	@override late final _TranslationsAssistantMatchNl match = _TranslationsAssistantMatchNl._(_root);
 }
@@ -3693,6 +3694,29 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 	@override String get partialData => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.';
 	@override String get watchTitle => 'Kijkcijfers';
 	@override String get playsTotal => 'keer gekeken';
+}
+
+// Path: assistant.clarify
+class _TranslationsAssistantClarifyNl extends TranslationsAssistantClarifyEn {
+	_TranslationsAssistantClarifyNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get question => 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?';
+	@override String get questionHousehold => 'Bedoel je wat de anderen keken, of wat iedereen keek?';
+	@override String me({required Object scope}) => 'Wat heb ik${scope} gekeken?';
+	@override String meKind({required Object kind, required Object scope}) => 'Welke ${kind} heb ik${scope} gekeken?';
+	@override String others({required Object scope}) => 'Wat keken de anderen${scope}?';
+	@override String othersKind({required Object kind, required Object scope}) => 'Welke ${kind} keken de anderen${scope}?';
+	@override String everyone({required Object scope}) => 'Wat keek iedereen${scope}?';
+	@override String everyoneKind({required Object kind, required Object scope}) => 'Welke ${kind} keek iedereen${scope}?';
+	@override String get today => ' vandaag';
+	@override String get week => ' deze week';
+	@override String get month => ' deze maand';
+	@override String days({required Object n}) => ' in de laatste ${n} dagen';
+	@override String get movies => 'films';
+	@override String get shows => 'series';
 }
 
 // Path: assistant.followUp
@@ -6286,6 +6310,20 @@ extension on TranslationsNl {
 			'assistant.displays.partialData' => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.',
 			'assistant.displays.watchTitle' => 'Kijkcijfers',
 			'assistant.displays.playsTotal' => 'keer gekeken',
+			'assistant.clarify.question' => 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?',
+			'assistant.clarify.questionHousehold' => 'Bedoel je wat de anderen keken, of wat iedereen keek?',
+			'assistant.clarify.me' => ({required Object scope}) => 'Wat heb ik${scope} gekeken?',
+			'assistant.clarify.meKind' => ({required Object kind, required Object scope}) => 'Welke ${kind} heb ik${scope} gekeken?',
+			'assistant.clarify.others' => ({required Object scope}) => 'Wat keken de anderen${scope}?',
+			'assistant.clarify.othersKind' => ({required Object kind, required Object scope}) => 'Welke ${kind} keken de anderen${scope}?',
+			'assistant.clarify.everyone' => ({required Object scope}) => 'Wat keek iedereen${scope}?',
+			'assistant.clarify.everyoneKind' => ({required Object kind, required Object scope}) => 'Welke ${kind} keek iedereen${scope}?',
+			'assistant.clarify.today' => ' vandaag',
+			'assistant.clarify.week' => ' deze week',
+			'assistant.clarify.month' => ' deze maand',
+			'assistant.clarify.days' => ({required Object n}) => ' in de laatste ${n} dagen',
+			'assistant.clarify.movies' => 'films',
+			'assistant.clarify.shows' => 'series',
 			'assistant.followUp.watchNow' => 'Wie kijkt er nu?',
 			'assistant.followUp.watchMonth' => 'Wie keek het meest de afgelopen 30 dagen?',
 			'assistant.followUp.watchWeek' => 'Wie heeft deze week het meest gekeken?',

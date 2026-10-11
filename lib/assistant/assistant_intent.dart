@@ -52,6 +52,22 @@ final _exceptName = RegExp(
 );
 // A bare "show" is the verb ("show me"); only the plural or "tv show" is a series.
 // Compounds count too ("kerstfilm", "docuserie"): a half-seen kind would narrow.
+// The one shape of "whose watching?" question Pleya asks back about: a plain
+// "what/which films was watched <period>" with nobody named. The options are
+// rebuilt from the kind and the period alone, so only a question made of
+// nothing else may be asked back; anything more (a name, a count, a ranking, a
+// negation, a title, a day Pleya has no word for) goes to the model as before.
+const _period =
+    r'(?:vandaag|deze week|deze maand|(?:in )?de laatste \d{1,2} dagen|today|this week|this month|(?:in )?the last \d{1,2} days)';
+final _plainWatchQuestion = RegExp(
+  r'^(?:wat|welke (?:films?|series?)|what|which (?:films?|movies?|series|shows?))'
+          r' (?:is|zijn|was|were|has been|have been)(?: er)?(?: ' +
+      _period +
+      r')?'
+          r' (?:gekeken|bekeken|gezien|watched|seen)(?: ' +
+      _period +
+      r')?\??$',
+);
 final _movieWord = RegExp(r'\b(?:\w*films?|movies?)\b');
 // A film franchise ("filmserie") is a series of films, not a series: not matched.
 final _seriesWord = RegExp(r'\b(?:(?!\w*film)\w*series?|tv-series|tv shows?|shows)\b');
@@ -258,6 +274,17 @@ class AssistantIntent {
       return null;
     }
     return [first, second];
+  }
+
+  /// A plain question about what was watched that names nobody: "Wat is er
+  /// deze week gekeken?". The words do not decide whose watching it is, and a
+  /// guess would widen or narrow it, so Pleya asks. Only that bare shape: the
+  /// options are rebuilt from kind and period, so nothing else may be in it.
+  static bool audienceChoiceNeeded(String prompt) {
+    final p = prompt.trim().toLowerCase();
+    if (!_plainWatchQuestion.hasMatch(p)) return false;
+    final intent = AssistantIntent.fromPrompt(prompt);
+    return !intent.audience.known && !intent.mixedAudience && !intent.previousWeek && !intent.longPeriodAsked;
   }
 
   /// This intent, with the audience and period the question did not state itself

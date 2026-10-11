@@ -370,5 +370,45 @@ void main() {
       );
       expect(_i('Wie kijkt er nu deze week?').constrain('watch_stats', {'scope': 'period'}).args['scope'], 'period');
     });
+
+    test('only the bare watch question is asked back; everything else goes to the model', () {
+      for (final q in [
+        'Wat is er deze week gekeken?',
+        'Welke films zijn er deze maand bekeken?',
+        'Wat is er vandaag gezien?',
+        'Welke series zijn er de laatste 14 dagen gekeken?',
+        'What was watched this week?',
+        'Which films were watched today?',
+      ]) {
+        expect(AssistantIntent.audienceChoiceNeeded(q), isTrue, reason: q);
+      }
+      for (final q in [
+        // an audience, a person or a group
+        'Wat heb ik gekeken?',
+        'Wat keken de anderen?',
+        'Wat keek iedereen vandaag?',
+        'Wat hebben de kinderen deze week gekeken?',
+        'Wat heeft Sam gisteren gekeken?',
+        'Wie heeft deze week het meest gekeken?',
+        'Who watched the most this week?',
+        'Wie heeft Dune gezien?',
+        // more than the bare shape: negation, title, ranking, count, other period, compound
+        'Welke films zijn nog niet gezien?',
+        'Which films have not been seen yet?',
+        'Is Dune al gezien?',
+        'Welke film is het meest bekeken op Netflix?',
+        'Gezien het weer, welke film is goed voor vanavond?',
+        'Hoeveel films zijn er deze week gekeken?',
+        'Wat is er gisteren gekeken?',
+        'Wat is er vorige week gekeken?',
+        'Wat is er de laatste 3 maanden gekeken?',
+        'Wat is er gekeken en tip een serie',
+        'Welke films zijn gekeken door iedereen behalve Sam?',
+        'Wat is er onlangs toegevoegd?',
+        'Geef me een tip voor vanavond',
+      ]) {
+        expect(AssistantIntent.audienceChoiceNeeded(q), isFalse, reason: q);
+      }
+    });
   });
 }

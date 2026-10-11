@@ -11,6 +11,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
 import 'package:pleya/assistant/assistant_run.dart';
+import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/media/media_backend.dart';
 import 'package:pleya/media/media_item.dart';
 import 'package:pleya/media/media_kind.dart';
@@ -340,6 +341,31 @@ void main() {
       );
     });
   }
+
+  // Pleya asks whose watching: its own line, the three options as the chips.
+  testWidgets('wedervraag', skip: _dir == null, (tester) async {
+    final c = shotController();
+    await shoot(
+      tester,
+      'wedervraag',
+      c,
+      before: (s) async => s.summon(),
+      answer: (c) => c
+        ..prompt = 'Welke films zijn er deze week gekeken?'
+        ..answer = 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?'
+        ..state = AssistantSurfaceState.result
+        ..displays = [
+          const AssistantClarification(
+            question: 'Bedoel je ...',
+            options: [
+              'Welke films heb ik deze week gekeken?',
+              'Welke films keken de anderen deze week?',
+              'Welke films keek iedereen deze week?',
+            ],
+          ),
+        ],
+    );
+  });
 
   testWidgets('39-f watch stats', skip: _dir == null, (tester) async {
     final c = shotController();

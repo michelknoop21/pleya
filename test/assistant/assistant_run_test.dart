@@ -292,6 +292,65 @@ void main() {
     expect(model.toolNamesOffered(0), contains('my_watching'));
   });
 
+  test('a watch question that names nobody is asked back in code, with period and kind kept', () async {
+    final m = await _Server().manager();
+    AssistantTool stub(String name) => AssistantTool(
+      name: name,
+      description: name,
+      risk: AssistantToolRisk.read,
+      needsServer: false,
+      properties: const {},
+      serves: (_, _) => true,
+      run: (_, _, _) async => const AssistantToolResult({'ok': true}),
+    );
+    final model = _Model(AssistantProviderKind.ollamaServer, [_say('should not be asked')]);
+    Future<AssistantRunResult> ask(String q, {bool root = true, bool kids = false}) => AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m, kidsProfile: () async => kids),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      tools: [stub('my_watching'), stub('watch_stats')],
+      allowSplit: root,
+    ).ask(q);
+
+    final result = await ask('Welke films zijn er deze week gekeken?');
+    expect(model.requests, isEmpty, reason: 'Pleya asks, the model is never called');
+    final c = result.displays.single as AssistantClarification;
+    expect(c.options, [
+      'Which films did I watch this week?',
+      'Which films did the others watch this week?',
+      'Which films did everyone watch this week?',
+    ]);
+    // Each option is a question that fixes exactly one audience.
+    expect(
+      [for (final o in c.options) AssistantIntent.fromPrompt(o).audience.value],
+      [AssistantAudience.me, AssistantAudience.others, AssistantAudience.everyone],
+    );
+    expect(result.text, c.question);
+
+    // Whose it was is settled earlier in the conversation: not asked again.
+    final settled = await AssistantRun(
+      model: model.client(),
+      context: AssistantToolContext(servers: m),
+      confirm: (_) async => null,
+      entitlement: const _Entitled(),
+      tools: [stub('my_watching'), stub('watch_stats')],
+      allowSplit: true,
+      conversation: const [AssistantTurn(question: 'Wat keek iedereen vandaag?', answer: 'Dune.')],
+    ).ask('Wat is er deze week gekeken?');
+    expect(settled.displays, isNot(contains(isA<AssistantClarification>())));
+    // A question that is more than the bare shape runs as before.
+    expect((await ask('Wat is er vorige week gekeken?')).displays, isNot(contains(isA<AssistantClarification>())));
+    expect(
+      (await ask('Welke films zijn er nog niet gezien?')).displays,
+      isNot(contains(isA<AssistantClarification>())),
+    );
+    // A child task, a children's profile and a named audience run as before.
+    expect((await ask('Wat is er gekeken?', root: false)).displays, isEmpty);
+    expect((await ask('Wat is er gekeken?', kids: true)).displays, isNot(contains(isA<AssistantClarification>())));
+    expect((await ask('Wat keken de anderen?')).displays, isNot(contains(isA<AssistantClarification>())));
+  });
+
   test('a question for films reaches recommend_together as films, whatever kind the model chose', () async {
     final m = await _Server().manager();
     Map<String, Object?>? seen;

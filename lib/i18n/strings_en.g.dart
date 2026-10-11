@@ -6336,6 +6336,7 @@ class TranslationsAssistantEn {
 
 	late final TranslationsAssistantOptionEn option = TranslationsAssistantOptionEn.internal(_root);
 	late final TranslationsAssistantDisplaysEn displays = TranslationsAssistantDisplaysEn.internal(_root);
+	late final TranslationsAssistantClarifyEn clarify = TranslationsAssistantClarifyEn.internal(_root);
 	late final TranslationsAssistantFollowUpEn followUp = TranslationsAssistantFollowUpEn.internal(_root);
 	late final TranslationsAssistantMatchEn match = TranslationsAssistantMatchEn.internal(_root);
 }
@@ -8541,6 +8542,57 @@ class TranslationsAssistantDisplaysEn {
 
 	/// en: 'plays'
 	String get playsTotal => 'plays';
+}
+
+// Path: assistant.clarify
+class TranslationsAssistantClarifyEn {
+	TranslationsAssistantClarifyEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Do you mean only what you watched, what the others watched, or everyone?'
+	String get question => 'Do you mean only what you watched, what the others watched, or everyone?';
+
+	/// en: 'Do you mean what the others watched, or everyone?'
+	String get questionHousehold => 'Do you mean what the others watched, or everyone?';
+
+	/// en: 'What did I watch${scope}?'
+	String me({required Object scope}) => 'What did I watch${scope}?';
+
+	/// en: 'Which ${kind} did I watch${scope}?'
+	String meKind({required Object kind, required Object scope}) => 'Which ${kind} did I watch${scope}?';
+
+	/// en: 'What did the others watch${scope}?'
+	String others({required Object scope}) => 'What did the others watch${scope}?';
+
+	/// en: 'Which ${kind} did the others watch${scope}?'
+	String othersKind({required Object kind, required Object scope}) => 'Which ${kind} did the others watch${scope}?';
+
+	/// en: 'What did everyone watch${scope}?'
+	String everyone({required Object scope}) => 'What did everyone watch${scope}?';
+
+	/// en: 'Which ${kind} did everyone watch${scope}?'
+	String everyoneKind({required Object kind, required Object scope}) => 'Which ${kind} did everyone watch${scope}?';
+
+	/// en: ' today'
+	String get today => ' today';
+
+	/// en: ' this week'
+	String get week => ' this week';
+
+	/// en: ' this month'
+	String get month => ' this month';
+
+	/// en: ' in the last ${n} days'
+	String days({required Object n}) => ' in the last ${n} days';
+
+	/// en: 'films'
+	String get movies => 'films';
+
+	/// en: 'series'
+	String get shows => 'series';
 }
 
 // Path: assistant.followUp
@@ -11227,6 +11279,20 @@ extension on Translations {
 			'assistant.displays.partialData' => 'Not every server could be read in time, so this may be incomplete.',
 			'assistant.displays.watchTitle' => 'Watch stats',
 			'assistant.displays.playsTotal' => 'plays',
+			'assistant.clarify.question' => 'Do you mean only what you watched, what the others watched, or everyone?',
+			'assistant.clarify.questionHousehold' => 'Do you mean what the others watched, or everyone?',
+			'assistant.clarify.me' => ({required Object scope}) => 'What did I watch${scope}?',
+			'assistant.clarify.meKind' => ({required Object kind, required Object scope}) => 'Which ${kind} did I watch${scope}?',
+			'assistant.clarify.others' => ({required Object scope}) => 'What did the others watch${scope}?',
+			'assistant.clarify.othersKind' => ({required Object kind, required Object scope}) => 'Which ${kind} did the others watch${scope}?',
+			'assistant.clarify.everyone' => ({required Object scope}) => 'What did everyone watch${scope}?',
+			'assistant.clarify.everyoneKind' => ({required Object kind, required Object scope}) => 'Which ${kind} did everyone watch${scope}?',
+			'assistant.clarify.today' => ' today',
+			'assistant.clarify.week' => ' this week',
+			'assistant.clarify.month' => ' this month',
+			'assistant.clarify.days' => ({required Object n}) => ' in the last ${n} days',
+			'assistant.clarify.movies' => 'films',
+			'assistant.clarify.shows' => 'series',
 			'assistant.followUp.watchNow' => 'Who is watching right now?',
 			'assistant.followUp.watchMonth' => 'Who watched the most in the last 30 days?',
 			'assistant.followUp.watchWeek' => 'Who watched the most this week?',

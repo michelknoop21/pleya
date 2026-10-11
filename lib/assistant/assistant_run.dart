@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../exceptions/media_server_exceptions.dart';
+import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../media/media_kind.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';

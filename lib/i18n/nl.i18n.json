@@ -2745,6 +2745,22 @@
       "watchTitle": "Kijkcijfers",
       "playsTotal": "keer gekeken"
     },
+    "clarify": {
+      "question": "Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?",
+      "questionHousehold": "Bedoel je wat de anderen keken, of wat iedereen keek?",
+      "me": "Wat heb ik${scope} gekeken?",
+      "meKind": "Welke ${kind} heb ik${scope} gekeken?",
+      "others": "Wat keken de anderen${scope}?",
+      "othersKind": "Welke ${kind} keken de anderen${scope}?",
+      "everyone": "Wat keek iedereen${scope}?",
+      "everyoneKind": "Welke ${kind} keek iedereen${scope}?",
+      "today": " vandaag",
+      "week": " deze week",
+      "month": " deze maand",
+      "days": " in de laatste ${n} dagen",
+      "movies": "films",
+      "shows": "series"
+    },
     "followUp": {
       "watchNow": "Wie kijkt er nu?",
       "watchMonth": "Wie keek het meest de afgelopen 30 dagen?",

@@ -253,6 +253,20 @@ final Map<String, _Stand> _stands = {
     ..state = AssistantSurfaceState.result
     ..answer = 'Daarvoor moet Pleya eerst weten hoe oud de kinderen zijn.'
     ..displays = [const AssistantKidsAgesPrompt('Is er een film voor de kinderen?')],
+  'clarify': (c) => c
+    ..prompt = 'Welke films zijn er deze week gekeken?'
+    ..state = AssistantSurfaceState.result
+    ..answer = 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?'
+    ..displays = [
+      const AssistantClarification(
+        question: 'Bedoel je ...',
+        options: [
+          'Welke films heb ik deze week gekeken?',
+          'Welke films keken de anderen deze week?',
+          'Welke films keek iedereen deze week?',
+        ],
+      ),
+    ],
   'result-watch': (c) => c
     ..prompt = 'Wat is er deze week het meest bekeken?'
     ..state = AssistantSurfaceState.result
@@ -456,6 +470,7 @@ void main() {
     'result-watch',
     'confirm',
     'kids-ages',
+    'clarify',
   ]) {
     testWidgets('surface $name', skip: _dir == null, (tester) async {
       final c = FakeAssistantController();

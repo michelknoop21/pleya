@@ -4,6 +4,45 @@ part of 'assistant_run.dart';
 // settling and the serial tool calls, at most [maxSteps] times.
 
 extension _AssistantLoop on AssistantRun {
+  /// The clarifying answer for a past-watch question with no audience, or null
+  /// to run normally. Only for a root question on an adult profile, and only
+  /// when at least two audiences can actually be answered right now.
+  AssistantRunResult? _audienceQuestion() {
+    if (!allowSplit || inheritedIntent != null || _ctx.kidsMode || !AssistantIntent.audienceChoiceNeeded(_prompt)) {
+      return null;
+    }
+    // Already answered "whose" earlier in this conversation: that stands.
+    if (conversation.any((turn) => AssistantIntent.fromPrompt(turn.question).audience.explicit)) return null;
+    final names = _available().keys.map((t) => t.name).toSet();
+    final canMe = names.contains('my_watching');
+    final canHousehold = names.contains('watch_stats');
+    final c = t.assistant.clarify;
+    final scope = switch (_intent.days.explicit ? _intent.days.value : null) {
+      1 => c.today,
+      7 => c.week,
+      30 => c.month,
+      final int n => c.days(n: n),
+      _ => '',
+    };
+    final kind = _intent.kind.explicit ? (_intent.kind.value == MediaKind.movie ? c.movies : c.shows) : null;
+    final options = [
+      if (canMe) kind == null ? c.me(scope: scope) : c.meKind(kind: kind, scope: scope),
+      if (canHousehold) ...[
+        kind == null ? c.others(scope: scope) : c.othersKind(kind: kind, scope: scope),
+        kind == null ? c.everyone(scope: scope) : c.everyoneKind(kind: kind, scope: scope),
+      ],
+    ];
+    if (options.length < 2) return null;
+    // The question names only the audiences that have a button.
+    final question = canMe ? c.question : c.questionHousehold;
+    return AssistantRunResult(
+      end: AssistantRunEnd.answered,
+      text: question,
+      displays: [AssistantClarification(question: question, options: options)],
+      intent: _intent,
+    );
+  }
+
   Future<AssistantRunResult> _ask(String prompt) async {
     _errors.clear();
     _actions.clear();
@@ -27,6 +66,9 @@ extension _AssistantLoop on AssistantRun {
     if (await entitlement.check() != AssistantEntitlementState.entitled) {
       return const AssistantRunResult(end: AssistantRunEnd.notEntitled);
     }
+    // A watch question that names nobody is not guessed: Pleya asks whose, with
+    // the period and kind the question named kept in the options.
+    if (_audienceQuestion() case final question?) return question;
     // Fresh roles before the first decision: the health probe re-reads the
     // Jellyfin admin flag and the Pleya Server role.
     try {

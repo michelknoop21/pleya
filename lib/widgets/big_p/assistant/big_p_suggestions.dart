@@ -18,6 +18,10 @@ import '../../../media/media_kind.dart';
 /// so one call never offers the same kind twice, and shuffles the general
 /// questions that fill what the result left open.
 List<String> assistantFollowUps(List<AssistantDisplay> displays, {bool jobs = false, String? prompt, Random? random}) {
+  // Pleya's own question back: its options are the follow-ups, nothing else.
+  for (final d in displays) {
+    if (d is AssistantClarification) return d.options;
+  }
   final f = t.assistant.followUp;
   final rng = random ?? Random();
   String key(String q) => q.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '');
