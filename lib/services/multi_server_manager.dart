@@ -349,6 +349,10 @@ class MultiServerManager {
     if (!_statusController.isClosed) _statusController.add(Map.from(_serverStatus));
   }
 
+  /// Whether [serverId] is on this profile through a connection that is not its
+  /// own (borrowed): whose account that connection is, is not this profile's.
+  bool hasServerRestriction(ServerId serverId) => _restrictedServerIds.contains(serverId);
+
   /// The owner rule: may the active profile change or delete canonical
   /// metadata on [serverId] (metadata and artwork, match, media and
   /// collection deletes, collection membership, library maintenance)?
@@ -365,10 +369,6 @@ class MultiServerManager {
   ///     through [canAdministerServer] instead.
   ///   - A borrowed connection (any backend): `false`.
   ///   - Unknown server: `false`.
-  /// Whether [serverId] is on this profile through a connection that is not its
-  /// own (borrowed): whose account that connection is, is not this profile's.
-  bool hasServerRestriction(ServerId serverId) => _restrictedServerIds.contains(serverId);
-
   bool canManageServerMetadata(ServerId serverId) {
     if (_restrictedServerIds.contains(serverId)) return false;
     final client = _clients[serverId];

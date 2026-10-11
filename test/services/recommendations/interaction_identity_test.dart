@@ -78,6 +78,18 @@ class _Client implements MediaServerClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _PleyaLike extends _Client {
+  _PleyaLike(super.items);
+  @override
+  MediaBackend get backend => MediaBackend.pleyaServer;
+}
+
+class _JellyLike extends _Client {
+  _JellyLike(super.items);
+  @override
+  MediaBackend get backend => MediaBackend.jellyfin;
+}
+
 class _DeletingClient extends _Client {
   _DeletingClient(this.db, this.profile, MediaItem item) : super({item.id: item});
   final AppDatabase db;
@@ -243,26 +255,52 @@ void main() {
         _row('s1:e1', profile: 'p2', kind: 'episode', seriesKey: 's1:show'),
         profileId: 'p2',
       );
-      await db.writeIdentity('p1', 's1:show', title: 'Severance', identityJson: '["show:tvdb:371980"]', triedAt: 5);
-      await db.writeIdentity('p1', 's1:m1', title: 'Overwritten', identityJson: '["movie:tmdb:2"]', triedAt: 5);
+      await db.writeIdentity('p1', 's1:show', title: 'Severance', tokens: {'show:tvdb:371980'}, triedAt: 5);
+      await db.writeIdentity('p1', 's1:m1', title: 'Overwritten', tokens: {'movie:tmdb:2'}, triedAt: 5);
       final p1 = {for (final r in await db.getMediaInteractions('p1')) r.globalKey: r};
       expect(p1['s1:e1']!.title, 'Severance');
       expect(p1['s1:e2']!.identityJson, '["show:tvdb:371980"]');
       expect(p1['s1:m1']!.title, 'Kept');
-      expect(p1['s1:m1']!.identityJson, '["movie:tmdb:1"]');
+      expect(p1['s1:m1']!.identityJson, '["movie:tmdb:1","movie:tmdb:2"]', reason: 'tokens are added, none replaced');
       expect((await db.getMediaInteractions('p2')).single.title, isNull);
       expect(await db.getMediaInteractions('p1'), hasLength(3), reason: 'no row is added');
     });
 
-    test('identityGaps: oldest and untried first, a recent attempt waits, complete titles are not offered', () async {
-      await add(_row('s1:old', at: 9000));
-      await add(_row('s1:new', at: 100));
-      await add(_row('s1:done', title: 'x', identityJson: '["movie:tmdb:1"]'));
-      await add(_row('s1:waiting', tried: 1000000, at: 5000));
-      await add(_row('s1:retry', tried: 10, at: 4000));
-      final gaps = await db.identityGaps('p1', minWeight: 0.4, retryBeforeMs: 500000, limit: 10);
-      expect(gaps.map((g) => g.key), ['s1:old', 's1:new', 's1:retry']);
-    });
+    test(
+      'identityGaps: untried first, then newest first; a recent attempt waits; a title with ids is complete',
+      () async {
+        await add(_row('s1:old', at: 9000));
+        await add(_row('s1:new', at: 100));
+        await add(_row('s1:done', title: 'x', identityJson: '["movie:tmdb:1"]'));
+        await add(_row('s1:waiting', tried: 1000000, at: 5000));
+        await add(_row('s1:retry', tried: 10, at: 4000));
+        // A Plex row written at watch time: a catalogue guid, still no external id.
+        await add(_row('s1:guidOnly', title: 'g', identityJson: '["movie:guid:plex://movie/a"]', at: 7000));
+        final gaps = await db.identityGaps('p1', minWeight: 0.4, retryBeforeMs: 500000, limit: 10);
+        expect(gaps.map((g) => g.key), ['s1:new', 's1:guidOnly', 's1:old', 's1:retry']);
+        expect(gaps.singleWhere((g) => g.key == 's1:guidOnly').hasTitle, isTrue);
+        expect(gaps.singleWhere((g) => g.key == 's1:old').hasTitle, isFalse);
+      },
+    );
+
+    test(
+      'everWatchedIdentities: the ids of an older row of a key survive a newer row that holds the title alone',
+      () async {
+        await add(
+          _row(
+            's1:show',
+            kind: 'episode',
+            seriesKey: 's1:show',
+            title: 'Sev',
+            identityJson: '["show:tvdb:1"]',
+            at: 9000,
+          ),
+        );
+        await add(_row('s1:e9', kind: 'episode', seriesKey: 's1:show', title: 'Sev', at: 100));
+        final seen = await db.everWatchedIdentities('p1', minWeight: 0.4);
+        expect(seen.single.tokens, {'show:tvdb:1'});
+      },
+    );
   });
 
   group('recorder', () {
@@ -410,17 +448,68 @@ void main() {
       expect(row.identityTriedAt, 10000000);
     });
 
-    test('a title the server no longer has waits a week, one that failed is tried again at once', () async {
+    test('a title the server answers nothing for is tried again after a day, one that threw after an hour', () async {
       await add(_row('s1:gone'));
       await add(_row('s1:flaky', at: 10));
       final client = _Client({'gone': null, 'flaky': _movie('flaky')}, failing: {'flaky'});
       await run((_) => client);
-      final rows = {for (final r in await db.getMediaInteractions('p1')) r.globalKey: r};
-      expect(rows['s1:gone']!.identityTriedAt, 10000000);
-      expect(rows['s1:flaky']!.identityTriedAt, isNull, reason: 'an error is not an answer');
       client.calls.clear();
-      await run((_) => client, now: 10000000 + 60000);
-      expect(client.calls, ['item:flaky'], reason: 'gone is not asked again within the retry window');
+      await run((_) => client, now: 10000000 + 30 * 60000);
+      expect(client.calls, isEmpty, reason: 'neither is due yet');
+      await run((_) => client, now: 10000000 + 2 * 3600000);
+      expect(client.calls, ['item:flaky'], reason: 'the thrown one is due after an hour, the empty one after a day');
+      client.calls.clear();
+      await run((_) => client, now: 10000000 + 26 * 3600000);
+      expect(client.calls, containsAll(['item:gone', 'item:flaky']));
+    });
+
+    test(
+      '25 titles that keep failing do not hold the queue: the title behind them is filled in on the next pass',
+      () async {
+        for (var i = 0; i < 25; i++) {
+          await add(_row('s1:bad$i', at: 100000 + i));
+        }
+        await add(_row('s1:ok', at: 500000));
+        final client = _Client({'ok': _movie('ok', title: 'Fine')}, failing: {for (var i = 0; i < 25; i++) 'bad$i'});
+        expect(await run((_) => client), 0);
+        expect(await run((_) => client, now: 10000000 + 1000), 1);
+        expect((await db.getMediaInteractions('p1')).where((r) => r.title != null).single.globalKey, 's1:ok');
+      },
+    );
+
+    test('a row written at watch time with only its guid gets the external ids later', () async {
+      await add(_row('s1:m1', title: 'Dune', identityJson: '["movie:guid:plex://movie/abc"]', year: 2021));
+      final client = _Client(
+        {'m1': _movie('m1', guid: 'plex://movie/abc', year: 2021)},
+        ids: {'m1': const ExternalIds(tmdb: 438631)},
+      );
+      expect(await run((_) => client), 1);
+      final row = (await db.getMediaInteractions('p1')).single;
+      expect(row.identityJson, contains('movie:tmdb:438631'));
+      expect(row.identityJson, contains('movie:guid:plex://movie/abc'), reason: 'filled, not overwritten');
+    });
+
+    test('Jellyfin and Emby ids are inline: no second request for them', () async {
+      await add(_row('jf:m1'));
+      final client = _JellyLike({
+        'm1': _movie(
+          'm1',
+          raw: {
+            'ProviderIds': {'Tmdb': '438631'},
+          },
+        ),
+      });
+      expect(await run((_) => client), 1);
+      expect(client.calls, ['item:m1']);
+      expect((await db.getMediaInteractions('p1')).single.identityJson, '["movie:tmdb:438631"]');
+    });
+
+    test('a backend that holds no external ids is marked without a request and without a slot', () async {
+      await add(_row('ps:m1', title: 'Known', identityJson: '["movie:guid:x://1"]'));
+      final psClient = _PleyaLike({'m1': _movie('m1')});
+      expect(await run((_) => psClient), 0);
+      expect(psClient.calls, isEmpty);
+      expect((await db.getMediaInteractions('p1')).single.identityTriedAt, isNotNull);
     });
 
     test(
@@ -429,7 +518,7 @@ void main() {
         for (var i = 0; i < 26; i++) {
           await add(_row('off:o$i', at: 100000 + i));
         }
-        await add(_row('s1:ok', at: 10));
+        await add(_row('s1:ok', at: 500000));
         final client = _Client({'ok': _movie('ok')});
         expect(await run((id) => id == ServerId('s1') ? client : null), 1);
         expect((await db.getMediaInteractions('p1')).where((r) => r.title != null).single.globalKey, 's1:ok');

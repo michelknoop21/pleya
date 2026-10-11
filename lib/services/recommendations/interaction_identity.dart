@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '../../database/app_database.dart';
 import '../../media/ids.dart';
+import '../../media/media_backend.dart';
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -117,6 +118,13 @@ const Duration kIdentityBackfillInterval = Duration(minutes: 15);
 /// A title that answered with nothing is asked again no sooner than this.
 const Duration kIdentityRetryAfter = Duration(days: 7);
 
+/// An answer that may only have been a failing server (an item that came back
+/// empty, or a lookup that threw) is asked again sooner, so one persistently
+/// failing title cannot hold the head of the queue and a restart does not cost
+/// a week.
+const Duration kIdentityRetryAfterEmpty = Duration(days: 1);
+const Duration kIdentityRetryAfterError = Duration(hours: 1);
+
 /// Concurrent lookups. Two keeps the burst next to Discover's own requests small.
 const int kIdentityBackfillConcurrency = 2;
 
@@ -149,12 +157,23 @@ Future<int> backfillInteractionIdentity({
     limit: kEverSeenRowCap,
     enabledImportServerIds: enabledImportServerIds(),
   );
+  // A mark that makes the title eligible again after [retryIn]: the selection
+  // reads "tried more than [kIdentityRetryAfter] ago".
+  Future<void> markTried(String key, Duration retryIn) =>
+      database.writeIdentity(profileId, key, triedAt: now - (kIdentityRetryAfter - retryIn).inMilliseconds);
   final work = <({IdentityGap gap, MediaServerClient client, String ratingKey})>[];
   for (final gap in gaps) {
     if (work.length >= kIdentityBackfillBatch) break;
     final parsed = parseGlobalKey(gap.key);
     final client = parsed == null ? null : clientOf(parsed.serverId);
     if (parsed == null || client == null) continue;
+    // Nothing more to learn: a backend that holds no external ids and a title
+    // already known. Marked without a request and without taking a slot.
+    final canHaveIds = client.backend == MediaBackend.plex || client.backend == MediaBackend.jellyfin;
+    if (!canHaveIds && gap.hasTitle) {
+      await markTried(gap.key, kIdentityRetryAfter);
+      continue;
+    }
     work.add((gap: gap, client: client, ratingKey: parsed.ratingKey));
   }
   var written = 0;
@@ -163,28 +182,29 @@ Future<int> backfillInteractionIdentity({
     ExternalIds? ids;
     try {
       item = await w.client.fetchItem(w.ratingKey).timeout(timeout);
-      if (item != null && (item.kind == MediaKind.movie || item.kind == MediaKind.show)) {
-        if (!interactionIdentityOf(item).tokens.any((t) => _idSchemes.any((s) => t.contains(':$s:')))) {
-          // The server gives ids only on a second call (Plex).
-          ids = await w.client.fetchExternalIds(w.ratingKey).timeout(timeout);
-        }
+      // Plex gives ids only on a second call; Jellyfin and Emby have them inline.
+      if (item != null &&
+          w.client.backend == MediaBackend.plex &&
+          (item.kind == MediaKind.movie || item.kind == MediaKind.show)) {
+        ids = await w.client.fetchExternalIds(w.ratingKey).timeout(timeout);
       }
     } catch (e) {
-      // A failed lookup is not an answer: left unmarked, it is tried again on
-      // the next pass.
+      // A failed lookup is not an answer, but it must not stay first in line
+      // either: tried again after an hour.
       appLogger.d('identity backfill: lookup failed for ${w.gap.key}', error: e);
+      if (stillOurs()) await markTried(w.gap.key, kIdentityRetryAfterError);
       return;
     }
     if (!stillOurs()) return;
-    final yearMoved = item != null && w.gap.year != null && item.year != null && item.year != w.gap.year;
-    final identity = item == null || yearMoved ? InteractionIdentity.none : interactionIdentityOf(item, ids: ids);
-    await database.writeIdentity(
-      profileId,
-      w.gap.key,
-      title: identity.title,
-      identityJson: identity.tokensJson,
-      triedAt: now,
-    );
+    if (item == null) {
+      // Gone, or a server that answered badly: not known which, so tried
+      // again after a day.
+      await markTried(w.gap.key, kIdentityRetryAfterEmpty);
+      return;
+    }
+    final yearMoved = w.gap.year != null && item.year != null && item.year != w.gap.year;
+    final identity = yearMoved ? InteractionIdentity.none : interactionIdentityOf(item, ids: ids);
+    await database.writeIdentity(profileId, w.gap.key, title: identity.title, tokens: identity.tokens, triedAt: now);
     if (!identity.isEmpty) written++;
   }
 

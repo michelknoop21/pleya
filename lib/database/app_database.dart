@@ -64,7 +64,7 @@ const int kInteractionRetentionDays = 365;
 const int kRecentPositiveRowCap = 500;
 
 /// A title whose identity is still to be looked up ([AppDatabase.identityGaps]).
-typedef IdentityGap = ({String key, int? year});
+typedef IdentityGap = ({String key, int? year, bool hasTitle});
 
 /// A watched title as [AppDatabase.everWatchedIdentities] returns it.
 typedef WatchedIdentity = ({String key, String? title, int? year, bool show, Set<String> tokens});
@@ -522,21 +522,31 @@ class AppDatabase extends _$AppDatabase {
               ..orderBy([OrderingTerm.desc(t.occurredAt)])
               ..limit(kEverSeenRowCap))
             .get();
-    final seen = <String>{};
-    final out = <WatchedIdentity>[];
+    // Newest row first; later rows of one key only add what it lacks, so an
+    // import's ids survive a newer row that holds the title alone.
+    final byKey = <String, ({String? title, int? year, bool show, Set<String> tokens})>{};
     for (final row in rows) {
       final globalKey = row.read(t.globalKey)!;
       final seriesKey = row.read(t.seriesKey);
       final key = seriesKey ?? globalKey;
       final title = row.read(t.title);
       final tokens = _identityTokens(row.read(t.identityJson));
-      if ((title == null && tokens.isEmpty) || !seen.add(key)) continue;
+      if (title == null && tokens.isEmpty) continue;
       final kind = row.read(t.mediaKind);
-      final showRelated = kind == 'episode' || kind == 'show';
       final ownYear = kind != 'episode' || seriesKey == null || seriesKey == globalKey;
-      out.add((key: key, title: title, year: ownYear ? row.read(t.year) : null, show: showRelated, tokens: tokens));
+      final year = ownYear ? row.read(t.year) : null;
+      final previous = byKey[key];
+      byKey[key] = (
+        title: previous?.title ?? title,
+        year: previous?.year ?? year,
+        show: kind == 'episode' || kind == 'show',
+        tokens: {...?previous?.tokens, ...tokens},
+      );
     }
-    return out;
+    return [
+      for (final e in byKey.entries)
+        (key: e.key, title: e.value.title, year: e.value.year, show: e.value.show, tokens: e.value.tokens),
+    ];
   }
 
   static Set<String> _identityTokens(String? json) {
@@ -555,7 +565,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Titles of this profile whose [MediaInteractions.title] or identity is
-  /// still unknown, oldest unattempted first, one per evidence key. A title a
+  /// still unknown, unattempted first and then newest first, one per evidence key. A title a
   /// lookup found nothing for is offered again only once its last attempt is
   /// older than [retryBeforeMs]. [year] is the title's own year when a row
   /// holds one (see [everWatchedIdentities]), so a re-used server key that now
@@ -570,18 +580,24 @@ class AppDatabase extends _$AppDatabase {
     final t = mediaInteractions;
     final rows =
         await (selectOnly(t)
-              ..addColumns([t.globalKey, t.seriesKey, t.mediaKind, t.year, t.identityTriedAt, t.occurredAt])
+              ..addColumns([t.globalKey, t.seriesKey, t.mediaKind, t.year, t.title, t.identityTriedAt, t.occurredAt])
               ..where(
                 t.profileId.equals(profileId) &
                     t.eventWeight.isBiggerOrEqualValue(minWeight) &
                     _scoringScope(enabledImportServerIds) &
-                    (t.title.isNull() | t.identityJson.isNull()) &
+                    // Unknown, or known without an external id: a Plex row
+                    // carries its catalogue guid at once and gets the ids here.
+                    (t.title.isNull() |
+                        t.identityJson.isNull() |
+                        (t.identityJson.like('%:tmdb:%').not() &
+                            t.identityJson.like('%:imdb:%').not() &
+                            t.identityJson.like('%:tvdb:%').not())) &
                     (t.identityTriedAt.isNull() | t.identityTriedAt.isSmallerThanValue(retryBeforeMs)),
               )
               ..orderBy([OrderingTerm.asc(t.occurredAt)])
               ..limit(kEverSeenRowCap))
             .get();
-    final byKey = <String, ({int? year, int tried, int at})>{};
+    final byKey = <String, ({int? year, int tried, int at, bool hasTitle})>{};
     for (final row in rows) {
       final globalKey = row.read(t.globalKey)!;
       final seriesKey = row.read(t.seriesKey);
@@ -592,41 +608,46 @@ class AppDatabase extends _$AppDatabase {
       byKey[key] = (
         year: previous?.year ?? (ownYear ? row.read(t.year) : null),
         tried: row.read(t.identityTriedAt) ?? 0,
-        at: previous?.at ?? row.read(t.occurredAt)!,
+        at: row.read(t.occurredAt)!,
+        hasTitle: (previous?.hasTitle ?? false) || row.read(t.title) != null,
       );
     }
     final keys = byKey.keys.toList()
       ..sort((a, b) {
         final x = byKey[a]!, y = byKey[b]!;
         final tried = x.tried.compareTo(y.tried);
-        return tried != 0 ? tried : x.at.compareTo(y.at);
+        // Newest first: the oldest titles are the first to leave the log.
+        return tried != 0 ? tried : y.at.compareTo(x.at);
       });
-    return [for (final key in keys.take(limit)) (key: key, year: byKey[key]!.year)];
+    return [for (final key in keys.take(limit)) (key: key, year: byKey[key]!.year, hasTitle: byKey[key]!.hasTitle)];
   }
 
   /// Writes what was learned about the title behind [key] on every row of this
-  /// profile that holds it: fills nulls only, never overwrites a value, never
-  /// adds a row. [triedAt] is always recorded.
+  /// profile that holds it: a missing title is filled in, never replaced, and
+  /// [tokens] are added to the ones a row already has. Never adds a row.
+  /// [triedAt] is always recorded.
   Future<void> writeIdentity(
     String profileId,
     String key, {
     String? title,
-    String? identityJson,
+    Set<String> tokens = const {},
     required int triedAt,
-  }) async {
-    await customUpdate(
-      'UPDATE media_interactions SET title = COALESCE(title, ?), identity_json = COALESCE(identity_json, ?), '
-      'identity_tried_at = ? WHERE profile_id = ? AND COALESCE(series_key, global_key) = ?',
-      variables: [
-        Variable<String>(title),
-        Variable<String>(identityJson),
-        Variable.withInt(triedAt),
-        Variable.withString(profileId),
-        Variable.withString(key),
-      ],
-      updates: {mediaInteractions},
-    );
-  }
+  }) => transaction(() async {
+    final t = mediaInteractions;
+    final rows = await (select(
+      t,
+    )..where((r) => r.profileId.equals(profileId) & coalesce([r.seriesKey, r.globalKey]).equals(key))).get();
+    for (final row in rows) {
+      final merged = {..._identityTokens(row.identityJson), ...tokens};
+      await (update(t)..where((r) => r.id.equals(row.id))).write(
+        MediaInteractionsCompanion(
+          title: Value(row.title ?? title),
+          identityJson: Value(merged.isEmpty ? null : jsonEncode((merged.toList()..sort()))),
+          identityTriedAt: Value(triedAt),
+        ),
+      );
+    }
+  });
 
   /// Newest first, the id breaking ties, as in [recentPositiveInteractions].
   static bool _isNewer(MediaInteractionRow a, MediaInteractionRow b) =>
