@@ -21,11 +21,13 @@ under `Notes`.
 ### New
 - Trakt-historie telt mee als gezien, tool trakt_watchlist met bibliotheekdekking
 - opslag voor het lokale geheugen per profiel (BP-08a stap 1) (#282)
+- videobestanden uit Bestanden en Finder openen in Pleya
 
 ### Fixed
 - dekking sluit strikter, download blijft bewaard, soortfilter voor de cap
 - wachttijd raakt na profielwissel de nieuwe slot niet, backoff ververst, vlaggen volgen de laatste lezing
 - één gevraagde titel geeft één kaart (#283)
+- reviewpunten geopend bestand: Inbox per levering, geen taalkeuze op pad, tests voor wachtrij en start
 <!-- END GENERATED -->
 
 ### New
