@@ -29,5 +29,8 @@ extension MemoryTestShortcuts on MemoryService {
   Future<MemoryResult> remember(String value, {MemoryCategory category = MemoryCategory.preference}) =>
       add(value: value, category: category, source: MemorySource.userExplicit);
 
+  /// The hash of a fresh [overviewInput], or empty when there is none.
+  Future<String> takenHash({String locale = 'nl'}) async => (await overviewInput(locale: locale))?.factsHash ?? '';
+
   Future<List<String>> values() async => [for (final fact in await list()) fact.value];
 }

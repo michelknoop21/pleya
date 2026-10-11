@@ -93,8 +93,9 @@ enum MemoryCode {
   /// Nothing is written for it any more.
   profileGone,
 
-  /// `saveOverview` with a hash this service did not hand out since the facts
-  /// were last wiped: the overview was written from facts that are gone.
+  /// `saveOverview` with a hash that is not the hash of an `overviewInput` of
+  /// this service whose facts are still the facts of the profile: the
+  /// overview was written from facts that changed or are gone.
   staleHash,
 
   /// `saveOverview` with a body that is not a JSON object or is larger than
@@ -186,4 +187,17 @@ class MemoryOverview {
   /// attempt.
   final String body;
   final DateTime generatedAt;
+}
+
+/// The facts an overview is written from and the hash that covers exactly
+/// those facts, from one read. See `MemoryService.overviewInput`.
+class MemoryOverviewInput {
+  const MemoryOverviewInput({required this.facts, required this.factsHash, required this.locale});
+
+  /// Newest change first. Can be empty.
+  final List<MemoryFact> facts;
+
+  /// What `MemoryService.saveOverview` takes for an overview of [facts].
+  final String factsHash;
+  final String locale;
 }

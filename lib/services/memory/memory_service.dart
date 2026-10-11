@@ -16,7 +16,9 @@ export 'memory_models.dart';
 /// What one profile asked the assistant to remember, and the written overview
 /// derived from it. Made once per profile session with the profile in the
 /// constructor: no method takes a profile id, and a fact of another profile
-/// does not exist for this instance. Chat and settings share the instance.
+/// does not exist for this instance. Chat and settings share the instance,
+/// and an overview is saved on the instance that gave the facts for it:
+/// [saveOverview] refuses the hash of another instance or an earlier run.
 ///
 /// Nothing here logs a fact, a key, a question, an overview or an id, and no
 /// database error leaves this class: its message quotes the statement
@@ -47,9 +49,9 @@ class MemoryService {
   final String Function() _newId;
   final DateTime Function() _now;
 
-  /// The hashes [factsHash] handed out since the facts were last wiped, and
-  /// the wipe count they belong to. Bounded; a hash that fell out is refused,
-  /// which only costs a rewrite.
+  /// The hashes [overviewInput] handed out since the facts were last wiped,
+  /// and the wipe count they belong to. Bounded; a hash that fell out is
+  /// refused, which only costs a rewrite.
   final Set<String> _issuedHashes = {};
   int _issuedAtWipe = 0;
   static const int _issuedHashLimit = 32;
@@ -58,7 +60,8 @@ class MemoryService {
   static const MemoryResult _failed = MemoryResult(MemoryCode.storageFailed);
 
   bool get _hasProfile => _profileId.isNotEmpty;
-  bool get _profileGone => AssistantMemoryEpochs.removals(_profileId) != _removals;
+  bool get _profileGone =>
+      AssistantMemoryEpochs.removing(_profileId) || AssistantMemoryEpochs.removals(_profileId) != _removals;
 
   /// Whether this profile's memory is on. Off means no tools, no context and
   /// no proposals; the stored facts and overview stay.
@@ -81,7 +84,9 @@ class MemoryService {
   }
 
   /// Stores a new fact. The same sentence twice is one row: the second call
-  /// returns the existing fact with [MemoryCode.exists].
+  /// returns the existing fact with [MemoryCode.exists]. "The same" ignores
+  /// case, punctuation and accents ([memoryValueKey]), so `Kijkt één film`
+  /// after `Kijkt een film` gives [MemoryCode.exists] too.
   Future<MemoryResult> add({
     required String value,
     required MemoryCategory category,
@@ -220,46 +225,49 @@ class MemoryService {
     });
   }
 
-  /// Hash of what an overview in [locale] is written from: the id, updatedAt
-  /// and text of every fact of this profile, the locale and
-  /// [kMemoryOverviewFormatVersion]. Take it when the facts are read for a
-  /// write and hand the same value to [saveOverview], so a fact that changes
-  /// while the overview is being written leaves it stale. [saveOverview] only
-  /// takes a hash that came from here. Empty when the lookup fails.
-  Future<String> factsHash({required String locale}) async {
+  /// What an overview in [locale] is written from, read in one go: every
+  /// fact of this profile and the hash that covers exactly those facts. The
+  /// only way to a hash [saveOverview] takes, so an overview cannot be stored
+  /// under a hash of other facts than the ones it was written from. Null when
+  /// there is no profile, when the lookup fails or when the facts were wiped
+  /// during it: then there is nothing to write from. Take it and save on the
+  /// same instance.
+  Future<MemoryOverviewInput?> overviewInput({required String locale}) async {
+    if (!_hasProfile) return null;
     final wipe = AssistantMemoryEpochs.wipes(_profileId);
-    return _guarded('', () async {
-      final rows = _hasProfile ? await _store.all() : const <AssistantMemoryRow>[];
-      final facts = [
-        for (final row in rows) [row.id, row.updatedAt, row.value],
-      ]..sort((a, b) => (a.first as String).compareTo(b.first as String));
-      final payload = jsonEncode({'v': kMemoryOverviewFormatVersion, 'locale': locale, 'facts': facts});
-      final hash = sha256.convert(utf8.encode(payload)).toString();
-      // Read across a wipe: the rows may be the wiped ones, so it is not kept.
-      if (AssistantMemoryEpochs.wipes(_profileId) == wipe) _issue(hash, wipe);
-      return hash;
+    return _guarded(null, () async {
+      final rows = await _store.all();
+      if (AssistantMemoryEpochs.wipes(_profileId) != wipe) return null;
+      final hash = _hashOf(rows, locale);
+      _issue(hash, wipe);
+      return MemoryOverviewInput(
+        facts: List.unmodifiable([for (final row in rows) MemoryFact.fromRow(row)]),
+        factsHash: hash,
+        locale: locale,
+      );
     });
   }
 
   /// Whether the stored overview no longer matches the facts, [locale] or the
   /// format version. True when there is none. A failed attempt with the same
   /// hash is not stale, so it is not retried until something changes. False
-  /// when the lookup fails: a broken database is no reason to write.
+  /// when the lookup fails: a broken database is no reason to write. Asking
+  /// this does not let [saveOverview] through; only [overviewInput] does.
   Future<bool> overviewIsStale({required String locale}) async {
     if (!_hasProfile) return false;
     return _guarded(false, () async {
       final row = await _store.overview();
-      final current = await factsHash(locale: locale);
-      return current.isNotEmpty && (row == null || row.factsHash != current);
+      return row == null || row.factsHash != _hashOf(await _store.all(), locale);
     });
   }
 
   /// Keeps one overview for this profile, replacing the previous one. A failed
   /// attempt is stored with an empty body. Stores nothing and says why when
   /// [body] is not a JSON object within [kMemoryOverviewMaxBytes]
-  /// ([MemoryCode.invalidOverview]), or when [factsHash] did not come from
-  /// [factsHash] of this service since the facts were last wiped
-  /// ([MemoryCode.staleHash]).
+  /// ([MemoryCode.invalidOverview]), or when [factsHash] is not the hash of an
+  /// [overviewInput] of this instance for the same [locale] whose facts are
+  /// still the facts of this profile ([MemoryCode.staleHash]): a fact was
+  /// added, changed, removed or wiped since.
   Future<MemoryResult> saveOverview({
     required String factsHash,
     required String locale,
@@ -273,9 +281,10 @@ class MemoryService {
     }
     return _guarded(_failed, () {
       return _store.transaction(() async {
+        final current = _hashOf(await _store.all(), locale);
         if (_profileGone) return const MemoryResult(MemoryCode.profileGone);
         final issued = _issuedAtWipe == AssistantMemoryEpochs.wipes(_profileId) && _issuedHashes.contains(factsHash);
-        if (!issued) return const MemoryResult(MemoryCode.staleHash);
+        if (!issued || factsHash != current) return const MemoryResult(MemoryCode.staleHash);
         await _store.putOverview(
           factsHash: factsHash,
           locale: locale,
@@ -286,6 +295,16 @@ class MemoryService {
         return const MemoryResult(MemoryCode.ok);
       });
     });
+  }
+
+  /// Covers the id, updatedAt and text of every fact, the locale and
+  /// [kMemoryOverviewFormatVersion].
+  static String _hashOf(List<AssistantMemoryRow> rows, String locale) {
+    final facts = [
+      for (final row in rows) [row.id, row.updatedAt, row.value],
+    ]..sort((a, b) => (a.first as String).compareTo(b.first as String));
+    final payload = jsonEncode({'v': kMemoryOverviewFormatVersion, 'locale': locale, 'facts': facts});
+    return sha256.convert(utf8.encode(payload)).toString();
   }
 
   void _issue(String hash, int wipe) {

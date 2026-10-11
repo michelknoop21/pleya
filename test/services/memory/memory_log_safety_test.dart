@@ -17,7 +17,11 @@ import 'memory_test_support.dart';
 /// `${e.runtimeType}`. Everything else is an offence: a variable, a
 /// concatenation, a second argument, `error:`. A `throw` may only carry a
 /// literal without interpolation, and `rethrow` is out, because a database
-/// error quotes its statement parameters.
+/// error quotes its statement parameters. An `assert` has a condition without
+/// a string in it and at most a literal message.
+///
+/// Known limit of a source scan: a helper outside the scanned files that takes
+/// the value, a tear-off of the logger, and a method that skips `_guarded`.
 const _scannedFiles = ['lib/database/assistant_memory_wipe.dart'];
 const _scannedDirectory = 'lib/services/memory';
 
@@ -25,7 +29,11 @@ final _logCall = RegExp(r'\.(t|d|i|w|e|f|v|wtf|log|trace|debug|info|warning|erro
 final _allowedArguments = RegExp(r"^\s*'(?:[^'\\$]|\$\{e\.runtimeType\})*'\s*,?\s*$");
 final _throw = RegExp(r'\bthrow\b([^;]*);');
 final _allowedThrow = RegExp(r"^\s*(?:const\s+)?[A-Z]\w*(?:\.\w+)?\(\s*(?:'[^'\\$]*')?\s*\)\s*$");
-final _otherSink = RegExp(r'\b(print|debugPrint|debugPrintStack)\(|\bdeveloper\.log\(|\bstd(out|err)\b|\brethrow\b');
+final _otherSink = RegExp(
+  r'\b(print|debugPrint\w*)\(|(?<![.\w])log\(|\bstd(out|err)\b|\brethrow\b|\bcompleteError\b|\bthrowWithStackTrace\b',
+);
+final _assert = RegExp(r'\bassert\(');
+final _allowedAssert = RegExp(r"""^[^'"$,]*(?:,\s*'[^'\\$]*'\s*,?\s*)?$""");
 
 /// The text between the parenthesis at [open] and the one that closes it. A
 /// string literal is skipped as a whole, so a `);` inside it ends nothing.
@@ -61,6 +69,10 @@ List<String> _offenders(String path, String source) {
   for (final thrown in _throw.allMatches(source)) {
     if (!_allowedThrow.hasMatch(thrown.group(1)!)) offenders.add('$path: throw${thrown.group(1)}');
   }
+  for (final asserted in _assert.allMatches(source)) {
+    final arguments = _argumentsAt(source, asserted.end - 1);
+    if (!_allowedAssert.hasMatch(arguments)) offenders.add('$path: assert with ($arguments)');
+  }
   if (_otherSink.hasMatch(source)) offenders.add('$path: rethrows or writes outside appLogger');
   return offenders;
 }
@@ -72,7 +84,24 @@ void main() {
       expect(_offenders('x', r"appLogger.w('Memory storage failed: ${e.runtimeType}');"), isEmpty);
       expect(_offenders('x', "appLogger.w(\n  'Memory storage failed',\n);"), isEmpty);
       expect(_offenders('x', "throw StateError('no profile');"), isEmpty);
+      expect(_offenders('x', 'assert(count >= 0);'), isEmpty);
+      expect(_offenders('x', "assert(count >= 0, 'never negative');"), isEmpty);
+      expect(_offenders('x', 'final catalog = lookup(id);'), isEmpty);
     });
+
+    // Let through by the second scanner, from the re-review.
+    const otherSinks = {
+      'log from dart:developer without a prefix': r"log('kept $value');",
+      'debugPrintSynchronously': r"debugPrintSynchronously('kept $value');",
+      'an assert with an interpolated message': r"assert(false, 'bad $value');",
+      'an assert with a message that is no literal': 'assert(ok, message);',
+      'an assert that builds its message': "assert(ok, 'bad ' + value);",
+      'completeError': 'completer.completeError(e);',
+      'Error.throwWithStackTrace': 'Error.throwWithStackTrace(e, stack);',
+    };
+    for (final MapEntry(key: name, value: source) in otherSinks.entries) {
+      test('refuses $name', () => expect(_offenders('x', source), isNotEmpty, reason: source));
+    }
 
     // The eight ways around the first scanner, from the review of this step.
     const bypasses = {
@@ -155,7 +184,7 @@ void main() {
       await memory.resolve(added.fact!.ref);
       await memory.relevantFor('Welke $marker films zijn er?');
       await memory.saveOverview(
-        factsHash: await memory.factsHash(locale: 'nl'),
+        factsHash: await memory.takenHash(),
         locale: 'nl',
         status: MemoryOverviewStatus.ok,
         body: '{"overview":"$marker"}',
@@ -179,7 +208,7 @@ void main() {
     test('a database error gives a fixed code, and neither the answer nor the log holds the fact', () async {
       final added = await memory.remember('Houdt van $marker films');
       final fact = added.fact!;
-      final hash = await memory.factsHash(locale: 'nl');
+      final hash = await memory.takenHash();
       const body = '{"overview":"samenvatting $marker"}';
 
       // Every write aborts, as on a full disk.
@@ -226,7 +255,7 @@ void main() {
       expect((await memory.resolve(fact.ref)).code, MemoryCode.storageFailed);
       expect((await memory.resolve(fact.id)).fact, isNull);
       expect(await memory.overview(), isNull);
-      expect(await memory.factsHash(locale: 'nl'), isEmpty);
+      expect(await memory.overviewInput(locale: 'nl'), isNull);
       expect(await memory.overviewIsStale(locale: 'nl'), isFalse);
       expect(await memory.relevantFor('Welke $marker films?'), isEmpty);
       expect((await memory.remember('Laatste $marker feit')).code, MemoryCode.storageFailed);

@@ -9,9 +9,11 @@ String _word(String alternatives) => '$_start(?:$alternatives)$_end';
 
 final String _child = _word(
   'kind|kinderen|kindje|kindjes|kids?|zoon|zoons|zonen|zoontje|dochter|dochters|dochtertje|kleinkind|'
-  'kleinkinderen|peuter|kleuter|baby|child|children|sons?|daughters?|toddler|grandchild|grandchildren|'
-  'jongste|oudste|youngest|oldest',
+  'kleinkinderen|peuter|kleuter|baby|child|children|sons?|daughters?|toddler|grandchild|grandchildren',
 );
+// On its own this is a child only right before the verb ("jongste is 4"):
+// "de oudste film is 10 jaar oud" is about a film.
+final String _eldest = _word('jongste|oudste|youngest|oldest');
 final String _children = _word('kinderen|kleinkinderen|kids|children|zoons|zonen|dochters|sons|daughters');
 
 const String _numberWords =
@@ -20,17 +22,23 @@ const String _numberWords =
     'seventeen|eighteen';
 
 // A number that counts something else than years of age: a duration, a
-// frequency, a clock time, an ordinal or an age rating ("16 en ouder").
+// frequency, a clock time, an ordinal, an age rating ("16 en ouder"), one of
+// a group ("1 van de grootste fans") or years spent on something ("2 jaar
+// bezig"). A range counts too: "2 of 3 dagen".
 const String _countsSomethingElse =
-    r'(?![:.,/]\d)(?! ?(?:%|\+|(?:x|keer|maal|dag|dagen|nacht|nachten|uur|uren|min|minuut|minuten|week|weken|'
-    r'weekend|weekenden|avond|avonden|seizoen|seizoenen|aflevering|afleveringen|films?|series?|times|days?|'
-    r'nights?|hours?|minutes?|mins?|weeks?|weekends?|evenings?|episodes?|seasons?|movies?|shows?|procent|percent|'
-    r'en ouder|of ouder|and older|or older|and up)'
+    r'(?![:.,/]\d)(?! ?(?:(?:of|or|tot|to|à) (?:\d{1,2}|(?:'
+    '$_numberWords'
+    r')) )?(?:%|\+|(?:x|keer|maal|dag|dagen|nacht|nachten|uur|uren|min|minuut|minuten|week|weken|'
+    r'weekend|weekenden|avond|avonden|maand|maanden|seizoen|seizoenen|aflevering|afleveringen|films?|series?|'
+    r'times|days?|nights?|hours?|minutes?|mins?|weeks?|weekends?|evenings?|months?|episodes?|seasons?|movies?|'
+    r'shows?|procent|percent|en ouder|of ouder|and older|or older|and up|van|of (?:the|those|these|a|an|my|our)|'
+    r'(?:jaar|jaren|years?) (?:bezig|lang|geleden|ago))'
     '$_end))';
 
-// What may follow a spelled-out number for it to read as an age.
+// What may follow a spelled-out number for it to read as an age. "of" and
+// "or" are left out: "twee of drie avonden", "two of a kind".
 const String _closesAnAge =
-    r'(?= ?(?:$|[.,;!?)]|(?:jaar|jr|years?|oud|old|geworden|en|of|and|or)'
+    r'(?= ?(?:$|[.,;!?)]|(?:jaar|jr|years?|oud|old|geworden|en|and)'
     '$_end))';
 
 final String _age = '(?:(?<!\\d)\\d{1,2}$_end$_countsSomethingElse|$_start(?:$_numberWords)$_end$_closesAnAge)';
@@ -40,6 +48,8 @@ const String _filler = '(?: (?:al|nu|bijna|net|pas|inmiddels|just|now|almost|nea
 final List<RegExp> _ageStatements = [
   // "onze dochter is 8", "de kinderen zijn 6 en 9 jaar", "our son just turned eight"
   _phrase('$_child(?: [^ ]+){0,2} $_is$_filler $_age'),
+  // "jongste is 4 jaar oud"
+  _phrase('$_eldest $_is$_filler $_age'),
   // "mijn zoon van 12", "a daughter aged nine"
   _phrase('$_child (?:van|of|aged?) $_age'),
   // "een 8-jarige zoon", "een achtjarige dochter", "an 8 year old son"
@@ -75,10 +85,10 @@ final List<RegExp> _languagePreferences = [
   // Subtitles in any wording. "Subs" is left out: it is also a band.
   _phrase(_word(r'ondertitel\p{L}*|subtitle[sd]?|subtitling|subbed|closed captions?')),
   _phrase(_word('gesproken taal|spoken language|audiotaal|audiospoor|audio ?track|audio language')),
-  _phrase(_word('nagesynchroniseerde?|nasynchronisatie|dubbed|dubbing|dubs')),
-  _phrase(
-    _word('originele (?:versie|taal|audio|geluid|spraak)|original (?:version|language|audio)|origineel gesproken'),
-  ),
+  // "dubbed the king of horror" is a nickname.
+  _phrase(_word('nagesynchroniseerde?|nasynchronisatie|dubbed(?! (?:the|a|an|as) )|dubbing|dubs')),
+  // "De originele versie" is left out: in a film app that is an edition.
+  _phrase(_word('originele (?:taal|audio|geluid|spraak)|original (?:language|audio)|origineel gesproken')),
   // "Engels geluid", "Japanese audio", "Zweeds gesproken"
   _phrase(_word('$_languageAnyForm (?:audio|geluid|spraak|gesproken|spoken|dub|nasynchronisatie)')),
   _phrase(_word('(?:audio|geluid|spraak|gesproken|spoken) (?:in )?(?:het |de |the )?$_languageAnyForm')),
@@ -92,9 +102,12 @@ final List<RegExp> _languagePreferences = [
   ),
 ];
 
-/// "OV" for the original version, read from the text as typed. Lowercase "ov"
-/// and "het OV" are public transport.
-final RegExp _originalVersion = RegExp(r'(?<![\p{L}\p{N}-])(?<!het )(?<!de )OV(?![\p{L}\p{N}])', unicode: true);
+/// "OV" for the original version, read from the text as typed. Lowercase "ov",
+/// "het OV" and "met OV" are public transport.
+final RegExp _originalVersion = RegExp(
+  r'(?<![\p{L}\p{N}-])(?<!het )(?<!de )(?<!met )(?<!per )OV(?![\p{L}\p{N}])',
+  unicode: true,
+);
 
 final RegExp _spaces = RegExp(r'\s+');
 
@@ -108,8 +121,18 @@ final RegExp _spaces = RegExp(r'\s+');
 /// spoken language or subtitles. A language beside a genre, a country or a
 /// place ("Franse films", "the English countryside") is not one.
 ///
-// Known limits, both let through: an age beside a bare name without a child
-// word ("Tim is 8"), and a language that is not in the lists above.
+// Known limits, let through: an age without a child word or without the verb
+// ("Tim is 8", "Mijn 8-jarige houdt van Bluey", "Dochter, 8 jaar, kijkt mee",
+// "Mijn zoon wordt volgende maand 9"), an age in months, a spelled-out age in
+// a choice ("zes of zeven"), a bare language ("Prefers English", "Altijd
+// Engels"), "subs" and "captions", "de originele versie", and a language that
+// is not in the lists above.
+//
+// Known limits, refused although it is no such fact: a number with a unit
+// that is not in the list above ("Mijn zoon is 2 meter lang"), "oudste" or
+// "jongste" right before the verb when it is no child ("De oudste is 10 jaar
+// oud" about a film), and any mention of subtitles or dubbing ("Werkt als
+// ondertitelaar").
 MemoryCode? ownedFactCode(String value) {
   final typed = value.replaceAll(_spaces, ' ').trim();
   final text = typed.toLowerCase();

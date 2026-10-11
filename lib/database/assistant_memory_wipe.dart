@@ -7,21 +7,21 @@ import 'app_database.dart';
 abstract final class AssistantMemoryEpochs {
   static final Map<String, int> _wipes = {};
   static final Map<String, int> _removals = {};
+  static final Map<String, int> _removing = {};
 
   /// Raised whenever the facts of [profileId] are wiped as a whole: by
   /// `MemoryService.clearAll` and by profile deletion.
   static int wipes(String profileId) => _wipes[profileId] ?? 0;
 
-  /// Raised only when [profileId] is deleted. A service made before the
+  /// Raised only when [profileId] was deleted. A service made before the
   /// deletion never writes again.
   static int removals(String profileId) => _removals[profileId] ?? 0;
 
-  static void noteWipe(String profileId) => _wipes[profileId] = wipes(profileId) + 1;
+  /// Whether a deletion of [profileId] is under way. No memory write lands
+  /// while it is.
+  static bool removing(String profileId) => (_removing[profileId] ?? 0) > 0;
 
-  static void _noteRemoval(String profileId) {
-    noteWipe(profileId);
-    _removals[profileId] = removals(profileId) + 1;
-  }
+  static void noteWipe(String profileId) => _wipes[profileId] = wipes(profileId) + 1;
 }
 
 extension AssistantMemoryWipe on AppDatabase {
@@ -29,13 +29,21 @@ extension AssistantMemoryWipe on AppDatabase {
   /// transaction. The only memory query that takes a profile id: profile
   /// deletion also has to reach a profile that is not the active one.
   /// Everything else goes through `MemoryService`, which is bound to its own
-  /// profile. The epochs move first, so a write that is still on its way
-  /// finds them changed and stores nothing.
-  Future<void> deleteAssistantMemoryForProfile(String profileId) {
-    AssistantMemoryEpochs._noteRemoval(profileId);
-    return transaction(() async {
-      await (delete(assistantMemories)..where((t) => t.profileId.equals(profileId))).go();
-      await (delete(assistantMemoryOverviews)..where((t) => t.profileId.equals(profileId))).go();
-    });
+  /// profile. Writes are held off from the first moment, so one that is still
+  /// on its way stores nothing. The removal only counts when the transaction
+  /// went through: when it fails the profile still exists with its facts, and
+  /// its service keeps working.
+  Future<void> deleteAssistantMemoryForProfile(String profileId) async {
+    AssistantMemoryEpochs.noteWipe(profileId);
+    AssistantMemoryEpochs._removing[profileId] = (AssistantMemoryEpochs._removing[profileId] ?? 0) + 1;
+    try {
+      await transaction(() async {
+        await (delete(assistantMemories)..where((t) => t.profileId.equals(profileId))).go();
+        await (delete(assistantMemoryOverviews)..where((t) => t.profileId.equals(profileId))).go();
+      });
+      AssistantMemoryEpochs._removals[profileId] = AssistantMemoryEpochs.removals(profileId) + 1;
+    } finally {
+      AssistantMemoryEpochs._removing[profileId] = AssistantMemoryEpochs._removing[profileId]! - 1;
+    }
   }
 }

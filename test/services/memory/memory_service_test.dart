@@ -65,8 +65,14 @@ void main() {
       expect(decomposed.fact!.id, first.fact!.id);
       expect(await a.values(), ['Kijkt graag in Caf\u00E9 Noir']);
 
+      // The stored text keeps what was typed; only the key drops it.
       final stored = await b.remember('Hor\u200Bror\u00AD film');
-      expect(stored.fact!.value, 'Horror film');
+      expect(stored.fact!.value, 'Hor\u200Bror\u00AD film');
+      expect((await b.remember('Horror film')).code, MemoryCode.exists);
+
+      // Accent-insensitive on purpose.
+      await b.remember('Kijkt een film per week');
+      expect((await b.remember('Kijkt \u00E9\u00E9n film per week')).code, MemoryCode.exists);
     });
 
     test('updating to a sentence another fact holds is refused as duplicate', () async {
@@ -166,7 +172,7 @@ void main() {
       expect(await nobody.list(), isEmpty);
       expect(await nobody.enabled, isFalse);
       final saved = await nobody.saveOverview(
-        factsHash: await nobody.factsHash(locale: 'nl'),
+        factsHash: await nobody.takenHash(),
         locale: 'nl',
         status: MemoryOverviewStatus.ok,
         body: '{}',
@@ -226,7 +232,7 @@ void main() {
 
     test('the overview of one profile is not read, replaced or cleared by another', () async {
       await a.saveOverview(
-        factsHash: await a.factsHash(locale: 'nl'),
+        factsHash: await a.takenHash(),
         locale: 'nl',
         status: MemoryOverviewStatus.ok,
         body: '{"overview":"van a"}',
@@ -236,7 +242,7 @@ void main() {
       expect(await b.overviewIsStale(locale: 'nl'), isTrue);
 
       await b.saveOverview(
-        factsHash: await b.factsHash(locale: 'nl'),
+        factsHash: await b.takenHash(),
         locale: 'nl',
         status: MemoryOverviewStatus.ok,
         body: '{"overview":"van b"}',
@@ -250,9 +256,9 @@ void main() {
     });
 
     test('the facts hash of a profile does not move when another profile writes', () async {
-      final before = await a.factsHash(locale: 'nl');
+      final before = await a.takenHash();
       await b.remember('Kijkt graag thrillers');
-      expect(await a.factsHash(locale: 'nl'), before);
+      expect(await a.takenHash(), before);
     });
   });
 
@@ -268,7 +274,7 @@ void main() {
       await fixed.remember('Houdt van westerns');
       await fixed.remember('Houdt van musicals');
       await fixed.remember('Houdt van thrillers');
-      final before = await fixed.factsHash(locale: 'nl');
+      final before = await fixed.takenHash();
 
       expect((await fixed.resolve('aaaaaaaa')).code, MemoryCode.ambiguous);
       expect((await fixed.resolve('aaaaaaaa')).fact, isNull);
@@ -282,7 +288,7 @@ void main() {
       expect(unique.fact!.value, 'Houdt van thrillers');
       expect((await fixed.resolve(ids[1])).fact!.value, 'Houdt van musicals');
 
-      expect(await fixed.factsHash(locale: 'nl'), before);
+      expect(await fixed.takenHash(), before);
       expect(await fixed.list(), hasLength(3));
     });
   });
@@ -296,7 +302,7 @@ void main() {
         final first = AppDatabase.forTesting(NativeDatabase(file));
         final before = MemoryService(database: first, profileId: 'profile-a', now: clock.call);
         final added = await before.remember('Kijkt op vrijdag met het gezin', category: MemoryCategory.habit);
-        final hash = await before.factsHash(locale: 'nl');
+        final hash = await before.takenHash();
         await before.saveOverview(
           factsHash: hash,
           locale: 'nl',
@@ -313,7 +319,7 @@ void main() {
         expect(fact.value, 'Kijkt op vrijdag met het gezin');
         expect(fact.category, MemoryCategory.habit);
         expect(fact.updatedAt, added.fact!.updatedAt);
-        expect(await after.factsHash(locale: 'nl'), hash);
+        expect(await after.takenHash(), hash);
         expect((await after.overview())!.body, '{"overview":"x"}');
         expect(await after.overviewIsStale(locale: 'nl'), isFalse);
         expect(await after.enabled, isFalse);
@@ -351,7 +357,7 @@ void main() {
       for (final memory in [a, b]) {
         await memory.remember('Houdt van westerns');
         await memory.saveOverview(
-          factsHash: await memory.factsHash(locale: 'nl'),
+          factsHash: await memory.takenHash(),
           locale: 'nl',
           status: MemoryOverviewStatus.ok,
           body: '{}',

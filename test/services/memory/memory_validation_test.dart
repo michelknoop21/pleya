@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/services/memory/memory_models.dart';
 import 'package:pleya/services/memory/memory_validation.dart';
@@ -57,13 +59,48 @@ void main() {
   });
 
   group('invisible characters and accents', () {
-    test('invisible format characters are dropped from the stored value and the key', () {
+    test('invisible format characters are dropped from the key and kept in the stored value', () {
       for (final code in [0x200B, 0x200C, 0x200D, 0x00AD, 0x2060, 0x061C, 0xFE0F, 0xFE00, 0xE0100]) {
-        final checked = checkMemoryValue('Hor${_char(code)}ror film${_char(code)}');
+        final typed = 'Hor${_char(code)}ror film${_char(code)}';
+        final checked = checkMemoryValue(typed);
         expect(checked.code, MemoryCode.ok, reason: 'U+${code.toRadixString(16)}');
-        expect(checked.value!.value, 'Horror film', reason: 'U+${code.toRadixString(16)}');
+        expect(checked.value!.value, typed, reason: 'U+${code.toRadixString(16)}');
         expect(checked.value!.key, 'horror film', reason: 'U+${code.toRadixString(16)}');
       }
+    });
+
+    test('a family emoji and a Persian word are stored byte for byte, with a stable key', () {
+      final family = [0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467].map(_char).join();
+      final heart = '${_char(0x2764)}${_char(0xFE0F)}';
+      // "mi-khaham", with a zero width non-joiner after the prefix.
+      final persian = [0x645, 0x6CC, 0x200C, 0x62E, 0x648, 0x627, 0x647, 0x645].map(_char).join();
+
+      for (final typed in ['Kijkt met $family films', '$heart horror', '$persian film']) {
+        final checked = checkMemoryValue('  $typed  ');
+        expect(checked.code, MemoryCode.ok, reason: typed);
+        expect(utf8.encode(checked.value!.value), utf8.encode(typed), reason: typed);
+      }
+
+      expect(checkMemoryValue('Kijkt met $family films').value!.key, 'kijkt met films');
+      expect(
+        checkMemoryValue('$persian film').value!.key,
+        checkMemoryValue('${persian.replaceAll(_char(0x200C), '')} film').value!.key,
+      );
+    });
+
+    test('an invisible character inside a word does not hide a fact that has an owner', () {
+      expect(checkMemoryValue('Onze doch${_char(0x200B)}ter is 8').code, MemoryCode.ownedKidsAges);
+      expect(checkMemoryValue('Wil altijd onder${_char(0xAD)}titels').code, MemoryCode.ownedLanguage);
+    });
+
+    test('line breaks and control characters stay out of the stored value', () {
+      final joiner = _char(0x200D);
+      expect(checkMemoryValue('een$joiner\ntwee').code, MemoryCode.notSingleLine);
+      expect(checkMemoryValue('een$joiner${_char(0x202E)}twee').code, MemoryCode.controlCharacters);
+    });
+
+    test('the key is accent-insensitive: one sentence with and without accents is one fact', () {
+      expect(memoryValueKey('Kijkt één film per week'), memoryValueKey('Kijkt een film per week'));
     });
 
     test('only invisible characters is empty', () {
@@ -164,7 +201,36 @@ void main() {
         'Vindt films uit de jaren 80 leuk': ok,
         'Likes films about the eighties': ok,
         'Kijkt elke zaterdag een film met Tim': ok,
+        // Refused by the second recogniser, from the re-review.
+        'De kinderen zijn 2 of 3 dagen per week bij ons': ok,
+        'De kinderen zijn twee of drie avonden per week hier': ok,
+        'Mijn zoon is 1 van de grootste Marvel-fans': ok,
+        'My son is 1 of those Star Wars fans': ok,
+        'De oudste film is 10 jaar oud': ok,
+        'Mijn oudste dvd is 20 jaar oud': ok,
+        'Mijn dochter is 3 maanden in Spanje': ok,
+        'The kids are two of a kind': ok,
+        'Mijn dochter is 2 jaar bezig met ballet': ok,
       });
+    });
+
+    test('known limit: an age without a child word next to the verb is let through', () {
+      check({
+        'Mijn 8-jarige houdt van Bluey': ok,
+        'My 8 year old loves Bluey': ok,
+        'Dochter, 8 jaar, kijkt mee': ok,
+        'My daughter, 8, loves Frozen': ok,
+        'Mijn zoon wordt volgende maand 9': ok,
+        'Mijn kinderen (8 en 5) kijken mee': ok,
+        'Kleindochter is 4': ok,
+        'Mijn jongens zijn 6 en 9': ok,
+        'Zoon: 8': ok,
+        'De kinderen zijn zes of zeven': ok,
+      });
+    });
+
+    test('known limit: a unit outside the list and a bare "oudste" are refused', () {
+      check({'Mijn zoon is 2 meter lang': age, 'De oudste is 10 jaar oud': age});
     });
 
     test('known limit: an age beside a bare name is let through', () {
@@ -210,7 +276,25 @@ void main() {
         'Leert Frans en kijkt daarom Franse films': ok,
         'Kijkt in het ov op de telefoon': ok,
         'Houdt niet van horror': ok,
+        // Refused by the second recogniser, from the re-review.
+        'Vindt de originele versie van Blade Runner beter dan de final cut': ok,
+        'Prefers the original version of Star Wars': ok,
+        'Reist met OV naar de bioscoop': ok,
+        'Stephen King, dubbed the king of horror, is favoriet': ok,
       });
+    });
+
+    test('known limit: a bare language, subs and captions are let through', () {
+      check({
+        'Prefers English': ok,
+        'Altijd Engels, nooit Nederlands': ok,
+        'Kijkt alles met NL subs': ok,
+        'Always watch with captions': ok,
+      });
+    });
+
+    test('known limit: any mention of subtitles is refused', () {
+      check({'Werkt als ondertitelaar': language});
     });
 
     test('known limit: a language outside the lists is let through', () {

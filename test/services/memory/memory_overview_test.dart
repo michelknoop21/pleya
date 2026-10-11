@@ -18,7 +18,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<String> hash([String locale = 'nl']) => memory.factsHash(locale: locale);
+  Future<String> hash([String locale = 'nl']) => memory.takenHash(locale: locale);
 
   Future<MemoryResult> save(
     MemoryOverviewStatus status, {
@@ -106,14 +106,21 @@ void main() {
       expect(await memory.overviewIsStale(locale: 'en'), isTrue);
     });
 
-    test('a hash taken before a fact changed leaves the saved overview stale', () async {
+    test('asking whether it is stale does not open the way to a save', () async {
       await memory.remember('Houdt van westerns');
       final taken = await hash();
-      await memory.remember('Kijkt op vrijdag');
+      final other = MemoryService(database: db, profileId: 'profile-a', now: clock.call);
 
-      await memory.saveOverview(factsHash: taken, locale: 'nl', status: MemoryOverviewStatus.ok, body: '{}');
+      expect(await other.overviewIsStale(locale: 'nl'), isTrue);
+      final saved = await other.saveOverview(
+        factsHash: taken,
+        locale: 'nl',
+        status: MemoryOverviewStatus.ok,
+        body: '{}',
+      );
 
-      expect(await memory.overviewIsStale(locale: 'nl'), isTrue);
+      expect(saved.code, MemoryCode.staleHash);
+      expect(await memory.overview(), isNull);
     });
 
     test('a failed attempt stays while the hash is the same and lapses on a changed fact', () async {

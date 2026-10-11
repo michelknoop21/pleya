@@ -11,8 +11,9 @@ final RegExp _controls = RegExp(r'[\u0000-\u001F\u007F-\u009F\u200E\u200F\u202A-
 
 /// Format characters that show nothing: soft hyphen, Arabic letter mark, zero
 /// width space, non-joiner and joiner, word joiner and the variation
-/// selectors. Dropped from a fact before it is checked, so two sentences that
-/// read the same are stored and compared the same.
+/// selectors. Dropped from the key only, so two sentences that read the same
+/// compare the same. The stored value keeps them: a joiner holds an emoji
+/// sequence together and a non-joiner is part of the spelling in Persian.
 final RegExp _invisible = RegExp(r'[\u00AD\u061C\u200B-\u200D\u2060\uFE00-\uFE0F\u{E0100}-\u{E01EF}]', unicode: true);
 
 final RegExp _combiningMarks = RegExp(r'[\u0300-\u036F]');
@@ -31,23 +32,24 @@ final RegExp _spaces = RegExp(r'\s+');
 /// A checked sentence: [value] as it will be stored, [key] as it is compared.
 typedef MemoryValue = ({String value, String key});
 
-/// Drops invisible format characters from [raw], trims it and checks the
-/// shape of a fact: one line, no control characters, 1 to
-/// [kMemoryValueMaxLength] code points, and at least one letter or digit.
-/// Returns the code that refuses it, or the checked value.
+/// Trims [raw] and checks the shape of a fact: one line, no control
+/// characters, 1 to [kMemoryValueMaxLength] code points, and at least one
+/// letter or digit. Returns the code that refuses it, or the checked value.
 ///
-/// The value is stored as typed apart from that: Dart has no Unicode
-/// normalisation and none is added here, so NFC and NFD spellings are stored
-/// as given. Only the key folds them, see [memoryValueKey].
+/// The value is stored as typed apart from the trim, invisible format
+/// characters included. Dart has no Unicode normalisation and none is added
+/// here, so NFC and NFD spellings are stored as given. Only the key folds
+/// them, see [memoryValueKey].
 ({MemoryCode code, MemoryValue? value}) checkMemoryValue(String raw) {
-  final value = raw.replaceAll(_invisible, '').trim();
+  final value = raw.trim();
   if (value.isEmpty) return (code: MemoryCode.empty, value: null);
   if (_lineBreaks.hasMatch(value)) return (code: MemoryCode.notSingleLine, value: null);
   if (_controls.hasMatch(value)) return (code: MemoryCode.controlCharacters, value: null);
   if (value.runes.length > kMemoryValueMaxLength) return (code: MemoryCode.tooLong, value: null);
   final key = memoryValueKey(value);
   if (key.isEmpty) return (code: MemoryCode.empty, value: null);
-  final owned = ownedFactCode(value);
+  // Read without the invisible characters, so one inside a word hides nothing.
+  final owned = ownedFactCode(value.replaceAll(_invisible, ''));
   if (owned != null) return (code: owned, value: null);
   return (code: MemoryCode.ok, value: (value: value, key: key));
 }
@@ -56,6 +58,8 @@ typedef MemoryValue = ({String value, String key});
 /// and with single spaces. Accents fold for the Latin letters of [_accented]
 /// and for the combining marks U+0300 to U+036F, so the composed and the
 /// decomposed spelling of `Café` share a key, and so do `Café` and `Cafe`.
+/// The key is accent-insensitive on purpose: `Kijkt één film per week` and
+/// `Kijkt een film per week` are one fact, and the second add gives `exists`.
 /// Known limit: accented letters outside that table (Vietnamese, Greek,
 /// Cyrillic) still differ between NFC and NFD.
 String memoryValueKey(String value) {
