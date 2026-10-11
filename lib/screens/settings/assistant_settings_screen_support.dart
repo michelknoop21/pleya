@@ -100,3 +100,27 @@ Future<bool> _confirmReplaceUnreadable(BuildContext context) async {
   );
   return replace == true;
 }
+
+/// The row "Geheugen": what Big P remembers about this profile (mockup 43).
+/// Nothing where no profile session provides a memory.
+List<Widget> _memoryEntry(BuildContext context, FocusNode focusNode, {bool below = false}) {
+  if (context.read<MemoryService?>() == null) return const [];
+  final s = t.assistant.memory.screen;
+  return [
+    if (below) const SizedBox(height: 16),
+    AutomationNode(
+      id: AutomationIds.settingsFormButton,
+      instance: 'assistant.memory',
+      role: 'button',
+      focusNode: focusNode,
+      child: SettingNavigationTile(
+        focusNode: focusNode,
+        icon: Symbols.psychology_rounded,
+        title: s.title,
+        subtitle: s.tileSubtitle,
+        onTap: () => openAssistantMemoryScreen(context),
+      ),
+    ),
+    if (!below) const SizedBox(height: 16),
+  ];
+}

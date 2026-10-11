@@ -123,12 +123,43 @@ Uitwerking in stap 2 die het ontwerp hierboven aanvult:
 - Wat naar het model gaat (contextregel, `recall_memory`, invoer van het overzicht) is ontdaan van stuurtekens, formaattekens (zero-width, tag-tekens vanaf U+E0000) en variatieselectoren. De opgeslagen zin blijft zoals getypt.
 - Het overzicht eist een sectie voor elke categorie die feiten heeft en weigert tekst met opmaaktekens of een link. Een lege geheugenlijst wordt niet samengevat. Deze lijst is gemeten op `main` van 11 oktober; het rapport van stap 2 noemt de werkelijk geraakte plekken en de review toetst op gedrag. Wie tegelijk een van de genoemde bestanden wijzigt, stemt dat vooraf af.
 
+Uitwerking in stap 3 die het ontwerp hierboven aanvult:
+
+- De code staat in `lib/screens/settings/memory/`. Eén model (`MemoryScreenModel`) per scherm houdt de feiten, de schakelaar, het overzicht en de host van het invoerveld bij; het hoofdscherm en het lijstscherm delen het, zodat een wijziging in de lijst het overzicht opnieuw laat schrijven terwijl het scherm openstaat.
+- `MemoryService.list` geeft bij een leesfout een lege lijst. Het scherm leest daarom met de nieuwe `tryList`, die bij een fout `null` geeft; het scherm toont dan een foutstaat met "Opnieuw proberen" en nooit "Nog geen herinneringen". `list` zelf is ongewijzigd in gedrag.
+- De ingang is een rij "Geheugen" in Instellingen, Big P, boven de samenvatting als er een model is ingesteld en onder de providerkeuze als dat niet zo is. Het geheugen is dus ook zonder model te bekijken en te beheren. De link "Bekijk geheugen" in het gesprek op iPhone en iPad opent hetzelfde scherm; het tv-gesprek heeft die link sinds stap 2 niet.
+- De regel onder de titel zegt "Zojuist bijgewerkt" tot tien minuten na het schrijven en daarna "Bijgewerkt op" met de datum, omdat een bewaard overzicht bij een later bezoek niet zojuist is geschreven. Zonder overzicht staat er "Lijst met herinneringen", op een kinderprofiel "Kinderprofiel", bij een leesfout "Niet beschikbaar" en tijdens een vraag "Big P denkt na".
+- Antwoord en kaart staan boven het invoerveld in een eigen blok. Zolang de kaart wacht is het veld gesloten en toont het de gestelde vraag; het antwoord boven de kaart kort in tot drie regels zodat de twee knoppen van de kaart op een iPhone SE in beeld blijven.
+- De kindstand toont boven de lijst een kaart "Dit is een kinderprofiel." In het lijstscherm ontbreekt daar "Herinnering toevoegen" en opent een herinnering alleen-lezen, met Verwijderen.
+- Handmatig bewerken en toevoegen blijft mogelijk als het geheugen uit staat; er gaat dan geen modelaanroep uit.
+- Bevestigingen (alles wissen, een herinnering verwijderen) openen met de focus op Annuleren. Op tv is de gefocuste knop de witte knop en hebben beide knoppen in rust dezelfde vulling.
+- Op tv is tekst invoeren overal een rij of tegel die het systeemtoetsenbord opent: "Vraag of werk bij", "Zoeken" in het lijstscherm en het tekstvak van een herinnering. Is het overzicht langer dan het scherm, dan is de tekstkolom een focusstop die met Omhoog en Omlaag scrolt; past de tekst, dan is hij dat niet.
+- Een schrijfactie in het lijstscherm (toevoegen, bewerken, verwijderen) wacht alleen op het opnieuw lezen van de feiten. De sheet sluit dan en de lijst toont de nieuwe stand; het overzicht wordt daarna op de achtergrond opnieuw geschreven. Een geweigerde schrijfactie met de code `notFound` of `duplicate` leest de feiten ook opnieuw, zodat de lijst geen herinnering toont die al weg is.
+- "Alle herinneringen wissen" haalt ook een wachtende kaart weg. De kaart verwijst naar een feit dat niet meer bestaat, en zonder die stap bleef het invoerveld gesloten.
+- De leeftijden van kinderen worden alleen gelezen als het profiel van het scherm nog het actieve profiel is, net als de feiten.
+- De knoppen van een sheet (Annuleren, Opslaan, Verwijderen) staan vast onder de scrollende inhoud. Op een iPhone SE staan ze daardoor boven het toetsenbord, en de sheet mag tot aan de statusbalk groeien in plaats van tot driekwart van het scherm op een telefoon of 400 pt op een tablet. Blijft er boven het toetsenbord minder dan 360 pt over (maal de tekstschaal), dan scrollen de knoppen weer mee.
+- Boven een tekstschaal van 1,3 staan twee knoppen naast elkaar onder elkaar, de veilige bovenaan: in de bevestigingsdialoog en in de sheets. Een label breekt dan niet meer midden in een woord.
+- Op een kinderprofiel ontbreekt de schakelaar "Geheugen gebruiken". Big P gebruikt daar geen geheugen, wat de schakelaar ook zegt.
+- Tv: het scherm staat onder de navigatiebalk van de shell (145 px van de 1080). De tests en de widgetbeelden zetten de pagina daarom onder een band van die hoogte, met het paneel dat de shell over het hele scherm legt.
+- Tv: een antwoord van Big P boven de tegels is hoogstens 300 pt hoog. Is het langer, dan is het een focusstop die met Omhoog en Omlaag scrolt; aan het eind gaat Omlaag door naar de tegels. De tegel onder de afstandsbediening blijft zo in beeld.
+- Tv: de focus opent op de eerste tegel die iets doet, en in de uit-stand op "Geheugen gebruiken: Uit". Na alles wissen gaat de focus van de uitgeschakelde wistegel naar "Vraag of werk bij".
+- Tv, het paneel van een herinnering: het tekstvak is één regel hoog (de tekst komt van het systeemtoetsenbord) en de drie herkomstregels staan dichter op elkaar, zodat Annuleren, Opslaan en Verwijderen zonder scrollen in beeld staan. Omlaag vanaf het tekstvak landt op de gekozen categorie, Links en Rechts lopen de vijf categorieën in volgorde af over beide rijen, Omhoog en Omlaag gaan één rij tegelijk. Onder de laatste rij komt Opslaan als er iets op te slaan is, anders Annuleren.
+- De kaart "Vervangen?" krijgt op het geheugenscherm zijn tinten uit de inktkleur van het thema (`BigPMemoryCard.themed`). In het donkere thema is dat dezelfde witte tint als in de ballon; in het lichte thema hebben de rustknop en het vak "Verdwijnt / Nieuw" nu een zichtbare vorm. De kaart in het gesprek is ongewijzigd.
+
 ## Mockup: wat bij de bouw afwijkt van het beeld
 
 - De tekst bij de schakelaar in 43 C noemt alleen relevante herinneringen bij een vraag. Erbij komt dat voor het overzicht de herinneringen van het profiel meegaan, tot het invoerplafond.
 - 43 M toont drie beheeracties; "Overzicht opnieuw schrijven" komt er op tv als vierde bij.
 - Het lijstscherm op tv is niet getekend. Het volgt 43 D in de tv-stijl van 43 M; zoeken gaat via een rij die het systeemtoetsenbord opent (besluit 4).
 - De cursieve toelichtingsregels in 43 K horen bij de mockup en komen niet in de app.
+- 43 M toont de toestand direct naast de titel en een kruimelpad eronder. De tv-pagina gebruikt de gedeelde paginakop (`TvPageSurface`): de toestand staat op de regel van de titel, rechts uitgelijnd boven de tegels, en het kruimelpad vervalt, zoals op de andere instellingenpagina's.
+- De voetregel zegt op iPhone "beheer je via het menu" en op iPad en tv "beheer je bij Herinneringen beheren", omdat daar geen menuknop is. 43 L toont nog de telefoontekst.
+- 43 A noemt bij Huishouden "Hun leeftijden staan bij Kinderprofiel." De app voegt de vaste zin "Leeftijden van kinderen staan bij Kinderprofiel." toe, die ook klopt als het overzicht geen kinderen noemt.
+- 43 D toont "Profiel Michel" rechts in de balk. De app zet de profielnaam als regel onder de titel en houdt rechts alleen de initiaal, omdat een lange profielnaam de titel anders afkapt (gezien in Pleya Verify met het profiel `verify-owner`).
+- De kaart boven het invoerveld volgt de tekstgrootte van het systeem tot 135 procent. Daarboven breken de labels van de twee knoppen midden in een woord; de rest van het scherm schaalt wel volledig mee.
+- De tegels op tv zijn lager dan in 43 M (84 en 68 pt): "Vraag of werk bij" is 72 pt, elke tegel met één regel tekst 60 pt. Met de navigatiebalk van de shell erboven staan de vier beheertegels zo onder drie vervolgvragen van één regel in beeld. Een vervolgvraag van twee regels of een antwoord erboven maakt de kolom langer dan het scherm; de kolom scrolt dan mee met de focus.
+- De tabbalk onderaan uit 43 A, D, I en J staat niet in de app. De schermen van Instellingen worden op iPhone als pagina bovenop het hoofdscherm geopend (`SettingNavigationTile` en `Navigator.push`), en de tabbalk hoort bij dat hoofdscherm (`mobile_main_scaffold.dart`). "Big P instellen", Afspelen, Taal en de andere subschermen tonen hem daarom geen van alle. Het geheugenscherm volgt dat patroon en heeft geen eigen navigatie (besluit Michel, 11 oktober 2026: volg het bestaande patroon).
+- De sheets tonen op tekstschaal boven 1,3 de knoppen onder elkaar; de mockup tekent ze naast elkaar.
 
 ## Buiten scope en bekende grenzen
 

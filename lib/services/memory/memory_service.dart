@@ -78,10 +78,16 @@ class MemoryService {
 
   /// This profile's facts, newest change first. [query] keeps the facts that
   /// hold every word of it. Empty when the lookup fails.
-  Future<List<MemoryFact>> list({MemoryCategory? category, String? query}) async {
+  Future<List<MemoryFact>> list({MemoryCategory? category, String? query}) async =>
+      await tryList(category: category, query: query) ?? const [];
+
+  /// [list] for a caller that has to tell "no facts" from "could not read":
+  /// null when the lookup fails, so a management screen shows an error and
+  /// not an empty memory.
+  Future<List<MemoryFact>?> tryList({MemoryCategory? category, String? query}) async {
     if (!_hasProfile) return const [];
     final words = query == null ? const <String>[] : memoryValueKey(query).split(' ').where((w) => w.isNotEmpty);
-    return _guarded(const [], () async {
+    return _guarded<List<MemoryFact>?>(null, () async {
       return [
         for (final row in await _store.all())
           if ((category == null || row.category == category.id) && words.every(row.valueKey.contains))

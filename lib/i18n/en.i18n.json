@@ -2438,6 +2438,129 @@
         "household": "Household",
         "habit": "Viewing habits",
         "other": "Other"
+      },
+      "screen": {
+        "title": "Memory",
+        "tileSubtitle": "What Big P remembers about this profile",
+        "status": {
+          "updated": "Just updated",
+          "updatedOn": "Updated on ${date}",
+          "writing": "Updating",
+          "off": "Off",
+          "empty": "Still empty",
+          "waiting": "Waiting for your choice",
+          "list": "List of memories",
+          "kids": "Children's profile",
+          "error": "Not available",
+          "asking": "Big P is thinking"
+        },
+        "sections": {
+          "overview": "Overview",
+          "preference": "Preferences",
+          "dislike": "Not for you",
+          "household": "Household",
+          "habit": "Viewing habits",
+          "other": "Other"
+        },
+        "deeper": "Dig deeper",
+        "footer": "Big P wrote this overview from ${n} memories.",
+        "footerOne": "Big P wrote this overview from 1 memory.",
+        "footerPartial": "Big P wrote this overview from ${n} of your ${m} memories.",
+        "footerManageMenu": "You manage the memories themselves from the menu.",
+        "footerManageList": "You manage the memories themselves under Manage memories.",
+        "kidsAgesLine": "Children's ages are kept under Children's profile.",
+        "fallbackNote": "Big P could not write the overview right now. These are your memories.",
+        "ask": "Ask or update",
+        "askTvHint": "Opens the keyboard or dictation",
+        "send": "Send",
+        "dismissAnswer": "Close answer",
+        "needsSetup": "Set up a model first under Settings, Big P.",
+        "askFailed": "Big P could not answer right now. Try again later.",
+        "menu": {
+          "open": "Menu",
+          "title": "Memory",
+          "management": "Manage",
+          "manage": "Manage memories",
+          "use": "Use memory",
+          "useOn": "Use memory: On",
+          "useOff": "Use memory: Off",
+          "useNote": "Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.",
+          "rewrite": "Write overview again",
+          "clear": "Clear all memories"
+        },
+        "clearDialog": {
+          "title": "Clear all memories?",
+          "body": "Big P forgets everything he remembered about this profile. This cannot be undone.",
+          "confirm": "Clear"
+        },
+        "off": {
+          "title": "Memory is off.",
+          "body": "Big P remembers nothing and uses nothing. Existing memories are kept until you clear them.",
+          "turnOn": "Turn memory on"
+        },
+        "empty": {
+          "title": "No memories yet.",
+          "body": "Tell Big P what he should know about you, for example: remember that I do not like horror."
+        },
+        "kids": {
+          "title": "This is a children's profile.",
+          "body": "Big P uses no memory here. You can view and clear the memories."
+        },
+        "error": {
+          "title": "The memories cannot be read.",
+          "body": "Nothing was changed. Try again."
+        },
+        "list": {
+          "title": "Memories",
+          "profile": "Profile ${name}",
+          "search": "Search memories",
+          "searchTv": "Search",
+          "searchClear": "Clear search",
+          "all": "All",
+          "header": "Memories",
+          "count": "${n} memories",
+          "countOne": "1 memory",
+          "countOf": "${n} of ${m} memories",
+          "none": "No memories found.",
+          "kidsHeader": "From your children's profile",
+          "kidsAges": "Children's ages",
+          "kidsAgesNote": "Managed under Children's profile",
+          "and": "and",
+          "add": "Add memory"
+        },
+        "sources": {
+          "userExplicit": "Asked by you",
+          "assistantConfirmed": "Proposed by Big P, confirmed by you",
+          "settingsManual": "Added by you"
+        },
+        "sheet": {
+          "title": "Memory",
+          "addTitle": "Add memory",
+          "text": "Text",
+          "hint": "For example: I do not like horror",
+          "category": "Category",
+          "source": "Origin",
+          "created": "Added on",
+          "updated": "Last changed",
+          "privacy": "Do not store passwords or medical details.",
+          "deleteTitle": "Delete memory?",
+          "deleteBody": "Big P forgets this. This cannot be undone.",
+          "readOnly": "On a children's profile you can view and clear memories, not change them."
+        },
+        "codes": {
+          "exists": "This memory is already there.",
+          "duplicate": "Another memory already says this.",
+          "empty": "Type a sentence first.",
+          "tooLong": "Too long. A memory is one sentence of at most ${max} characters.",
+          "notSingleLine": "A memory is one line.",
+          "controlCharacters": "This text holds characters that cannot be stored.",
+          "ownedKidsAges": "Children's ages belong under Children's profile, not in the memory.",
+          "ownedLanguage": "A language preference is set under Language & subtitles, not in the memory.",
+          "limitReached": "The memory is full. Remove a memory first.",
+          "notFound": "This memory no longer exists.",
+          "profileGone": "This profile was switched or removed. Nothing was changed.",
+          "storageFailed": "Saving did not work. Nothing was changed."
+        }
       }
     },
     "tileTitle": "Big P",

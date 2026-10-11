@@ -6,8 +6,9 @@ extension _AssistantSettingsViews on _AssistantSettingsScreenState {
   /// details form.
   List<Widget> _buildBody(ThemeData theme) {
     if (_loading) return const [Center(child: LoadingIndicatorBox())];
-    if (_showSummary) return _buildSummary(theme, _saved!);
-    if (_kind == null) return _buildProviderChoice(theme);
+    // The memory is managed with or without a model: the row stands on both.
+    if (_showSummary) return [..._memoryEntry(context, _memoryFocus), ..._buildSummary(theme, _saved!)];
+    if (_kind == null) return [..._buildProviderChoice(theme), ..._memoryEntry(context, _memoryFocus, below: true)];
     return [
       Form(
         key: _formKey,

@@ -24,6 +24,7 @@ import '../../widgets/big_p/big_p_balloon.dart';
 import '../../widgets/big_p/big_p_scale.dart';
 import '../main/mobile_main_scaffold.dart';
 import '../settings/assistant_settings_screen.dart';
+import '../settings/memory/memory_screen.dart';
 import 'big_p_input_bar.dart';
 import 'big_p_mobile_conversation.dart';
 import 'big_p_mobile_followups.dart';
@@ -33,7 +34,10 @@ import 'big_p_mobile_session.dart';
 /// [BigPMobileSession] (Android, desktop, TV, the iOS app on a Mac), and
 /// nothing mounted, so no ticker, while he is parked.
 class BigPMobileHost extends StatefulWidget {
-  const BigPMobileHost({super.key});
+  const BigPMobileHost({super.key, this.openMemory = openAssistantMemoryScreen});
+
+  /// Opens the memory screen from "Bekijk geheugen". Injected by tests.
+  final void Function(BuildContext context) openMemory;
 
   /// From here on the iPad layout (39 I): balloon beside Big P.
   static const regularWidth = 700.0;
@@ -360,6 +364,13 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, Widget
     }
   }
 
+  /// "Bekijk geheugen" under an answer that stored something: Big P steps
+  /// aside and the memory screen opens on the profile navigator.
+  void _openMemory(BigPMobileSession session) {
+    session.park();
+    widget.openMemory(context);
+  }
+
   void _ask(BigPMobileSession session, String question) {
     session.controller.beginListening(context: session.pendingContext);
     unawaited(session.controller.submit(question));
@@ -388,6 +399,7 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, Widget
         name: context.watch<ActiveProfileProvider?>()?.active?.displayName ?? '',
         onExample: (question) => _ask(session, question),
         onSetup: () => unawaited(_setup(session)),
+        onOpenMemory: () => _openMemory(session),
         onOpenTitle: (target) => _openTitle(session, target),
         resultTime: switch (session.resultAt) {
           final at? => MaterialLocalizations.of(context).formatTimeOfDay(

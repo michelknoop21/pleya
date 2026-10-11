@@ -21,6 +21,7 @@ import 'package:pleya/screens/settings/assistant_settings_screen.dart';
 import 'package:pleya/theme/mono_theme.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_assistant_widgets.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_labels.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_memory_card.dart';
 import 'package:pleya/widgets/big_p/assistant/big_p_suggestions.dart';
 import 'package:pleya/widgets/big_p/big_p_avatar.dart';
 import 'package:pleya/widgets/big_p/big_p_balloon.dart';
@@ -30,6 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../test_helpers/glass_phone.dart';
 import '../../test_helpers/prefs.dart';
 import '../../widgets/big_p/fake_assistant_controller.dart';
+import 'big_p_mobile_fixtures.dart';
 
 AssistantPendingAction _card() => AssistantPendingAction(
   kind: AssistantActionKind.createUser,
@@ -42,11 +44,13 @@ AssistantPendingAction _card() => AssistantPendingAction(
 void main() {
   late FakeAssistantController c;
   late BigPMobileSession session;
+  var memoryOpened = 0;
 
   setUpAll(() async => LocaleSettings.setLocale(AppLocale.nl));
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    memoryOpened = 0;
     c = FakeAssistantController();
     session = BigPMobileSession(c);
     addTearDown(() {
@@ -80,13 +84,13 @@ void main() {
                   padding: keyboard > 0 ? safe.copyWith(bottom: 0) : safe,
                   viewInsets: EdgeInsets.only(bottom: keyboard),
                 ),
-                child: const Stack(
+                child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Scaffold(
+                    const Scaffold(
                       body: Align(alignment: Alignment.topRight, child: BigPFaceButton()),
                     ),
-                    BigPMobileHost(),
+                    BigPMobileHost(openMemory: (_) => memoryOpened++),
                   ],
                 ),
               ),
@@ -424,5 +428,33 @@ void main() {
     final barBottom = tester.getBottomLeft(find.byType(BigPInputBar)).dy;
     expect(barBottom, lessThanOrEqualTo(stripTop));
     expect(stripTop - barBottom, lessThan(12));
+  });
+
+  testWidgets('"Bekijk geheugen" under an answer that stored a fact parks Big P and opens the memory screen', (
+    tester,
+  ) async {
+    answerMemoryStored(c);
+    await pump(tester);
+    session.summon();
+    await settle(tester);
+
+    final link = find.byType(BigPMemoryLink);
+    expect(link, findsOneWidget);
+    await tester.tap(find.text(t.assistant.memory.view));
+    await settle(tester);
+
+    expect(memoryOpened, 1);
+    expect(session.stage, BigPStage.parked);
+  });
+
+  testWidgets('no link to the memory under an answer that stored nothing', (tester) async {
+    answerMemoryStored(c);
+    c.memoryStored = false;
+    await pump(tester);
+    session.summon();
+    await settle(tester);
+
+    expect(find.byType(BigPMemoryLink), findsNothing);
+    expect(memoryOpened, 0);
   });
 }

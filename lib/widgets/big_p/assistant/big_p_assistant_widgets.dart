@@ -269,12 +269,17 @@ class BigPButton extends StatefulWidget {
     this.focusNode,
     this.automationId,
     this.automationInstance,
+    this.restFill,
   });
 
   final String label;
   final VoidCallback onPressed;
   final bool primary;
   final bool enabled;
+
+  /// The fill at rest where the button stands on a surface of the theme
+  /// instead of in Big P's dark balloon; null is the balloon's own.
+  final Color? restFill;
   final IconData? icon;
   final FocusNode? focusNode;
   final String? automationId;
@@ -319,7 +324,7 @@ class _BigPButtonState extends State<BigPButton> {
               duration: tokens(context).fast,
               padding: EdgeInsets.symmetric(horizontal: 30 * pt, vertical: 14 * pt),
               decoration: BoxDecoration(
-                color: white ? colors.inverseSurface : const Color(0x26FFFFFF),
+                color: white ? colors.inverseSurface : widget.restFill ?? const Color(0x26FFFFFF),
                 borderRadius: BorderRadius.circular(40 * pt),
               ),
               child: Row(

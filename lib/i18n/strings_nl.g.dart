@@ -3290,6 +3290,7 @@ class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
 	@override String get view => 'Bekijk geheugen';
 	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
 	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenNl screen = _TranslationsAssistantMemoryScreenNl._(_root);
 }
 
 // Path: assistant.mobile
@@ -3863,6 +3864,43 @@ class _TranslationsAssistantMemoryCategoriesNl extends TranslationsAssistantMemo
 	@override String get other => 'Overig';
 }
 
+// Path: assistant.memory.screen
+class _TranslationsAssistantMemoryScreenNl extends TranslationsAssistantMemoryScreenEn {
+	_TranslationsAssistantMemoryScreenNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Geheugen';
+	@override String get tileSubtitle => 'Wat Big P over dit profiel onthoudt';
+	@override late final _TranslationsAssistantMemoryScreenStatusNl status = _TranslationsAssistantMemoryScreenStatusNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenSectionsNl sections = _TranslationsAssistantMemoryScreenSectionsNl._(_root);
+	@override String get deeper => 'Duik dieper';
+	@override String footer({required Object n}) => 'Dit overzicht is geschreven door Big P op basis van ${n} herinneringen.';
+	@override String get footerOne => 'Dit overzicht is geschreven door Big P op basis van 1 herinnering.';
+	@override String footerPartial({required Object n, required Object m}) => 'Dit overzicht is geschreven door Big P op basis van ${n} van je ${m} herinneringen.';
+	@override String get footerManageMenu => 'De herinneringen zelf beheer je via het menu.';
+	@override String get footerManageList => 'De herinneringen zelf beheer je bij Herinneringen beheren.';
+	@override String get kidsAgesLine => 'Leeftijden van kinderen staan bij Kinderprofiel.';
+	@override String get fallbackNote => 'Big P kon het overzicht nu niet schrijven. Dit zijn je herinneringen.';
+	@override String get ask => 'Vraag of werk bij';
+	@override String get askTvHint => 'Opent het toetsenbord of dicteren';
+	@override String get send => 'Versturen';
+	@override String get dismissAnswer => 'Antwoord sluiten';
+	@override String get needsSetup => 'Stel eerst een model in bij Instellingen, Big P.';
+	@override String get askFailed => 'Big P kon nu niet antwoorden. Probeer het later opnieuw.';
+	@override late final _TranslationsAssistantMemoryScreenMenuNl menu = _TranslationsAssistantMemoryScreenMenuNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenClearDialogNl clearDialog = _TranslationsAssistantMemoryScreenClearDialogNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenOffNl off = _TranslationsAssistantMemoryScreenOffNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenEmptyNl empty = _TranslationsAssistantMemoryScreenEmptyNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenKidsNl kids = _TranslationsAssistantMemoryScreenKidsNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenErrorNl error = _TranslationsAssistantMemoryScreenErrorNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenListNl list = _TranslationsAssistantMemoryScreenListNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenSourcesNl sources = _TranslationsAssistantMemoryScreenSourcesNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenSheetNl sheet = _TranslationsAssistantMemoryScreenSheetNl._(_root);
+	@override late final _TranslationsAssistantMemoryScreenCodesNl codes = _TranslationsAssistantMemoryScreenCodesNl._(_root);
+}
+
 // Path: assistant.jobs.scanLibrary
 class _TranslationsAssistantJobsScanLibraryNl extends TranslationsAssistantJobsScanLibraryEn {
 	_TranslationsAssistantJobsScanLibraryNl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3911,6 +3949,195 @@ class _TranslationsAssistantConfirmTitlesNl extends TranslationsAssistantConfirm
 	@override String get downloadEpisodes => 'Afleveringen downloaden';
 	@override String get downloadSubtitle => 'Ondertitel downloaden';
 	@override String get changePlayback => 'Afspelen aanpassen';
+}
+
+// Path: assistant.memory.screen.status
+class _TranslationsAssistantMemoryScreenStatusNl extends TranslationsAssistantMemoryScreenStatusEn {
+	_TranslationsAssistantMemoryScreenStatusNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get updated => 'Zojuist bijgewerkt';
+	@override String updatedOn({required Object date}) => 'Bijgewerkt op ${date}';
+	@override String get writing => 'Bijwerken';
+	@override String get off => 'Uit';
+	@override String get empty => 'Nog leeg';
+	@override String get waiting => 'Wacht op je keuze';
+	@override String get list => 'Lijst met herinneringen';
+	@override String get kids => 'Kinderprofiel';
+	@override String get error => 'Niet beschikbaar';
+	@override String get asking => 'Big P denkt na';
+}
+
+// Path: assistant.memory.screen.sections
+class _TranslationsAssistantMemoryScreenSectionsNl extends TranslationsAssistantMemoryScreenSectionsEn {
+	_TranslationsAssistantMemoryScreenSectionsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get overview => 'Overzicht';
+	@override String get preference => 'Voorkeuren';
+	@override String get dislike => 'Niet voor jou';
+	@override String get household => 'Huishouden';
+	@override String get habit => 'Kijkgewoonten';
+	@override String get other => 'Overig';
+}
+
+// Path: assistant.memory.screen.menu
+class _TranslationsAssistantMemoryScreenMenuNl extends TranslationsAssistantMemoryScreenMenuEn {
+	_TranslationsAssistantMemoryScreenMenuNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get open => 'Menu';
+	@override String get title => 'Geheugen';
+	@override String get management => 'Beheer';
+	@override String get manage => 'Herinneringen beheren';
+	@override String get use => 'Geheugen gebruiken';
+	@override String get useOn => 'Geheugen gebruiken: Aan';
+	@override String get useOff => 'Geheugen gebruiken: Uit';
+	@override String get useNote => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.';
+	@override String get rewrite => 'Overzicht opnieuw schrijven';
+	@override String get clear => 'Alle herinneringen wissen';
+}
+
+// Path: assistant.memory.screen.clearDialog
+class _TranslationsAssistantMemoryScreenClearDialogNl extends TranslationsAssistantMemoryScreenClearDialogEn {
+	_TranslationsAssistantMemoryScreenClearDialogNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Alle herinneringen wissen?';
+	@override String get body => 'Big P vergeet alles wat hij over dit profiel heeft onthouden. Dit kan niet ongedaan worden gemaakt.';
+	@override String get confirm => 'Wissen';
+}
+
+// Path: assistant.memory.screen.off
+class _TranslationsAssistantMemoryScreenOffNl extends TranslationsAssistantMemoryScreenOffEn {
+	_TranslationsAssistantMemoryScreenOffNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Geheugen staat uit.';
+	@override String get body => 'Big P onthoudt niets en gebruikt niets. Bestaande herinneringen blijven bewaard tot je ze wist.';
+	@override String get turnOn => 'Geheugen aanzetten';
+}
+
+// Path: assistant.memory.screen.empty
+class _TranslationsAssistantMemoryScreenEmptyNl extends TranslationsAssistantMemoryScreenEmptyEn {
+	_TranslationsAssistantMemoryScreenEmptyNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Nog geen herinneringen.';
+	@override String get body => 'Vertel Big P wat hij over je moet weten, bijvoorbeeld: onthoud dat ik niet van horror houd.';
+}
+
+// Path: assistant.memory.screen.kids
+class _TranslationsAssistantMemoryScreenKidsNl extends TranslationsAssistantMemoryScreenKidsEn {
+	_TranslationsAssistantMemoryScreenKidsNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Dit is een kinderprofiel.';
+	@override String get body => 'Big P gebruikt hier geen geheugen. Je kunt de herinneringen bekijken en wissen.';
+}
+
+// Path: assistant.memory.screen.error
+class _TranslationsAssistantMemoryScreenErrorNl extends TranslationsAssistantMemoryScreenErrorEn {
+	_TranslationsAssistantMemoryScreenErrorNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'De herinneringen zijn niet te lezen.';
+	@override String get body => 'Er is niets gewijzigd. Probeer het opnieuw.';
+}
+
+// Path: assistant.memory.screen.list
+class _TranslationsAssistantMemoryScreenListNl extends TranslationsAssistantMemoryScreenListEn {
+	_TranslationsAssistantMemoryScreenListNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Herinneringen';
+	@override String profile({required Object name}) => 'Profiel ${name}';
+	@override String get search => 'Zoek in herinneringen';
+	@override String get searchTv => 'Zoeken';
+	@override String get searchClear => 'Zoekopdracht wissen';
+	@override String get all => 'Alles';
+	@override String get header => 'Herinneringen';
+	@override String count({required Object n}) => '${n} herinneringen';
+	@override String get countOne => '1 herinnering';
+	@override String countOf({required Object n, required Object m}) => '${n} van ${m} herinneringen';
+	@override String get none => 'Geen herinneringen gevonden.';
+	@override String get kidsHeader => 'Uit je kinderprofiel';
+	@override String get kidsAges => 'Leeftijden kinderen';
+	@override String get kidsAgesNote => 'Beheerd bij Kinderprofiel';
+	@override String get and => 'en';
+	@override String get add => 'Herinnering toevoegen';
+}
+
+// Path: assistant.memory.screen.sources
+class _TranslationsAssistantMemoryScreenSourcesNl extends TranslationsAssistantMemoryScreenSourcesEn {
+	_TranslationsAssistantMemoryScreenSourcesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get userExplicit => 'Door jou gevraagd';
+	@override String get assistantConfirmed => 'Voorgesteld door Big P, door jou bevestigd';
+	@override String get settingsManual => 'Zelf toegevoegd';
+}
+
+// Path: assistant.memory.screen.sheet
+class _TranslationsAssistantMemoryScreenSheetNl extends TranslationsAssistantMemoryScreenSheetEn {
+	_TranslationsAssistantMemoryScreenSheetNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Herinnering';
+	@override String get addTitle => 'Herinnering toevoegen';
+	@override String get text => 'Tekst';
+	@override String get hint => 'Bijvoorbeeld: ik houd niet van horror';
+	@override String get category => 'Categorie';
+	@override String get source => 'Herkomst';
+	@override String get created => 'Toegevoegd op';
+	@override String get updated => 'Laatst gewijzigd';
+	@override String get privacy => 'Sla geen wachtwoorden of medische gegevens op.';
+	@override String get deleteTitle => 'Herinnering verwijderen?';
+	@override String get deleteBody => 'Big P vergeet dit. Dit kan niet ongedaan worden gemaakt.';
+	@override String get readOnly => 'Op een kinderprofiel kun je herinneringen bekijken en wissen, niet wijzigen.';
+}
+
+// Path: assistant.memory.screen.codes
+class _TranslationsAssistantMemoryScreenCodesNl extends TranslationsAssistantMemoryScreenCodesEn {
+	_TranslationsAssistantMemoryScreenCodesNl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get exists => 'Deze herinnering staat er al.';
+	@override String get duplicate => 'Een andere herinnering zegt dit al.';
+	@override String get empty => 'Typ eerst een zin.';
+	@override String tooLong({required Object max}) => 'Te lang. Een herinnering is één zin van hoogstens ${max} tekens.';
+	@override String get notSingleLine => 'Een herinnering is één regel.';
+	@override String get controlCharacters => 'Deze tekst bevat tekens die niet kunnen worden opgeslagen.';
+	@override String get ownedKidsAges => 'Leeftijden van kinderen horen bij Kinderprofiel, niet in het geheugen.';
+	@override String get ownedLanguage => 'Een taalvoorkeur stel je in bij Taal en ondertitels, niet in het geheugen.';
+	@override String get limitReached => 'Het geheugen is vol. Verwijder eerst een herinnering.';
+	@override String get notFound => 'Deze herinnering bestaat niet meer.';
+	@override String get profileGone => 'Dit profiel is gewisseld of verwijderd. Er is niets gewijzigd.';
+	@override String get storageFailed => 'Opslaan is niet gelukt. Er is niets gewijzigd.';
 }
 
 /// The flat map containing all translations for locale <nl>.
@@ -6154,6 +6381,103 @@ extension on TranslationsNl {
 			'assistant.memory.categories.household' => 'Huishouden',
 			'assistant.memory.categories.habit' => 'Kijkgewoonten',
 			'assistant.memory.categories.other' => 'Overig',
+			'assistant.memory.screen.title' => 'Geheugen',
+			'assistant.memory.screen.tileSubtitle' => 'Wat Big P over dit profiel onthoudt',
+			'assistant.memory.screen.status.updated' => 'Zojuist bijgewerkt',
+			'assistant.memory.screen.status.updatedOn' => ({required Object date}) => 'Bijgewerkt op ${date}',
+			'assistant.memory.screen.status.writing' => 'Bijwerken',
+			'assistant.memory.screen.status.off' => 'Uit',
+			'assistant.memory.screen.status.empty' => 'Nog leeg',
+			'assistant.memory.screen.status.waiting' => 'Wacht op je keuze',
+			'assistant.memory.screen.status.list' => 'Lijst met herinneringen',
+			'assistant.memory.screen.status.kids' => 'Kinderprofiel',
+			'assistant.memory.screen.status.error' => 'Niet beschikbaar',
+			'assistant.memory.screen.status.asking' => 'Big P denkt na',
+			'assistant.memory.screen.sections.overview' => 'Overzicht',
+			'assistant.memory.screen.sections.preference' => 'Voorkeuren',
+			'assistant.memory.screen.sections.dislike' => 'Niet voor jou',
+			'assistant.memory.screen.sections.household' => 'Huishouden',
+			'assistant.memory.screen.sections.habit' => 'Kijkgewoonten',
+			'assistant.memory.screen.sections.other' => 'Overig',
+			'assistant.memory.screen.deeper' => 'Duik dieper',
+			'assistant.memory.screen.footer' => ({required Object n}) => 'Dit overzicht is geschreven door Big P op basis van ${n} herinneringen.',
+			'assistant.memory.screen.footerOne' => 'Dit overzicht is geschreven door Big P op basis van 1 herinnering.',
+			'assistant.memory.screen.footerPartial' => ({required Object n, required Object m}) => 'Dit overzicht is geschreven door Big P op basis van ${n} van je ${m} herinneringen.',
+			'assistant.memory.screen.footerManageMenu' => 'De herinneringen zelf beheer je via het menu.',
+			'assistant.memory.screen.footerManageList' => 'De herinneringen zelf beheer je bij Herinneringen beheren.',
+			'assistant.memory.screen.kidsAgesLine' => 'Leeftijden van kinderen staan bij Kinderprofiel.',
+			'assistant.memory.screen.fallbackNote' => 'Big P kon het overzicht nu niet schrijven. Dit zijn je herinneringen.',
+			'assistant.memory.screen.ask' => 'Vraag of werk bij',
+			'assistant.memory.screen.askTvHint' => 'Opent het toetsenbord of dicteren',
+			'assistant.memory.screen.send' => 'Versturen',
+			'assistant.memory.screen.dismissAnswer' => 'Antwoord sluiten',
+			'assistant.memory.screen.needsSetup' => 'Stel eerst een model in bij Instellingen, Big P.',
+			'assistant.memory.screen.askFailed' => 'Big P kon nu niet antwoorden. Probeer het later opnieuw.',
+			'assistant.memory.screen.menu.open' => 'Menu',
+			'assistant.memory.screen.menu.title' => 'Geheugen',
+			'assistant.memory.screen.menu.management' => 'Beheer',
+			'assistant.memory.screen.menu.manage' => 'Herinneringen beheren',
+			'assistant.memory.screen.menu.use' => 'Geheugen gebruiken',
+			'assistant.memory.screen.menu.useOn' => 'Geheugen gebruiken: Aan',
+			'assistant.memory.screen.menu.useOff' => 'Geheugen gebruiken: Uit',
+			'assistant.memory.screen.menu.useNote' => 'Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.',
+			'assistant.memory.screen.menu.rewrite' => 'Overzicht opnieuw schrijven',
+			'assistant.memory.screen.menu.clear' => 'Alle herinneringen wissen',
+			'assistant.memory.screen.clearDialog.title' => 'Alle herinneringen wissen?',
+			'assistant.memory.screen.clearDialog.body' => 'Big P vergeet alles wat hij over dit profiel heeft onthouden. Dit kan niet ongedaan worden gemaakt.',
+			'assistant.memory.screen.clearDialog.confirm' => 'Wissen',
+			'assistant.memory.screen.off.title' => 'Geheugen staat uit.',
+			'assistant.memory.screen.off.body' => 'Big P onthoudt niets en gebruikt niets. Bestaande herinneringen blijven bewaard tot je ze wist.',
+			'assistant.memory.screen.off.turnOn' => 'Geheugen aanzetten',
+			'assistant.memory.screen.empty.title' => 'Nog geen herinneringen.',
+			'assistant.memory.screen.empty.body' => 'Vertel Big P wat hij over je moet weten, bijvoorbeeld: onthoud dat ik niet van horror houd.',
+			'assistant.memory.screen.kids.title' => 'Dit is een kinderprofiel.',
+			'assistant.memory.screen.kids.body' => 'Big P gebruikt hier geen geheugen. Je kunt de herinneringen bekijken en wissen.',
+			'assistant.memory.screen.error.title' => 'De herinneringen zijn niet te lezen.',
+			'assistant.memory.screen.error.body' => 'Er is niets gewijzigd. Probeer het opnieuw.',
+			'assistant.memory.screen.list.title' => 'Herinneringen',
+			'assistant.memory.screen.list.profile' => ({required Object name}) => 'Profiel ${name}',
+			'assistant.memory.screen.list.search' => 'Zoek in herinneringen',
+			'assistant.memory.screen.list.searchTv' => 'Zoeken',
+			'assistant.memory.screen.list.searchClear' => 'Zoekopdracht wissen',
+			'assistant.memory.screen.list.all' => 'Alles',
+			'assistant.memory.screen.list.header' => 'Herinneringen',
+			'assistant.memory.screen.list.count' => ({required Object n}) => '${n} herinneringen',
+			'assistant.memory.screen.list.countOne' => '1 herinnering',
+			'assistant.memory.screen.list.countOf' => ({required Object n, required Object m}) => '${n} van ${m} herinneringen',
+			'assistant.memory.screen.list.none' => 'Geen herinneringen gevonden.',
+			'assistant.memory.screen.list.kidsHeader' => 'Uit je kinderprofiel',
+			'assistant.memory.screen.list.kidsAges' => 'Leeftijden kinderen',
+			'assistant.memory.screen.list.kidsAgesNote' => 'Beheerd bij Kinderprofiel',
+			'assistant.memory.screen.list.and' => 'en',
+			'assistant.memory.screen.list.add' => 'Herinnering toevoegen',
+			'assistant.memory.screen.sources.userExplicit' => 'Door jou gevraagd',
+			'assistant.memory.screen.sources.assistantConfirmed' => 'Voorgesteld door Big P, door jou bevestigd',
+			'assistant.memory.screen.sources.settingsManual' => 'Zelf toegevoegd',
+			'assistant.memory.screen.sheet.title' => 'Herinnering',
+			'assistant.memory.screen.sheet.addTitle' => 'Herinnering toevoegen',
+			'assistant.memory.screen.sheet.text' => 'Tekst',
+			'assistant.memory.screen.sheet.hint' => 'Bijvoorbeeld: ik houd niet van horror',
+			'assistant.memory.screen.sheet.category' => 'Categorie',
+			'assistant.memory.screen.sheet.source' => 'Herkomst',
+			'assistant.memory.screen.sheet.created' => 'Toegevoegd op',
+			'assistant.memory.screen.sheet.updated' => 'Laatst gewijzigd',
+			'assistant.memory.screen.sheet.privacy' => 'Sla geen wachtwoorden of medische gegevens op.',
+			'assistant.memory.screen.sheet.deleteTitle' => 'Herinnering verwijderen?',
+			'assistant.memory.screen.sheet.deleteBody' => 'Big P vergeet dit. Dit kan niet ongedaan worden gemaakt.',
+			'assistant.memory.screen.sheet.readOnly' => 'Op een kinderprofiel kun je herinneringen bekijken en wissen, niet wijzigen.',
+			'assistant.memory.screen.codes.exists' => 'Deze herinnering staat er al.',
+			'assistant.memory.screen.codes.duplicate' => 'Een andere herinnering zegt dit al.',
+			'assistant.memory.screen.codes.empty' => 'Typ eerst een zin.',
+			'assistant.memory.screen.codes.tooLong' => ({required Object max}) => 'Te lang. Een herinnering is één zin van hoogstens ${max} tekens.',
+			'assistant.memory.screen.codes.notSingleLine' => 'Een herinnering is één regel.',
+			'assistant.memory.screen.codes.controlCharacters' => 'Deze tekst bevat tekens die niet kunnen worden opgeslagen.',
+			'assistant.memory.screen.codes.ownedKidsAges' => 'Leeftijden van kinderen horen bij Kinderprofiel, niet in het geheugen.',
+			'assistant.memory.screen.codes.ownedLanguage' => 'Een taalvoorkeur stel je in bij Taal en ondertitels, niet in het geheugen.',
+			'assistant.memory.screen.codes.limitReached' => 'Het geheugen is vol. Verwijder eerst een herinnering.',
+			'assistant.memory.screen.codes.notFound' => 'Deze herinnering bestaat niet meer.',
+			'assistant.memory.screen.codes.profileGone' => 'Dit profiel is gewisseld of verwijderd. Er is niets gewijzigd.',
+			'assistant.memory.screen.codes.storageFailed' => 'Opslaan is niet gelukt. Er is niets gewijzigd.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI-provider',
@@ -6392,6 +6716,8 @@ extension on TranslationsNl {
 			'assistant.settings.tmdbKeyClear' => 'Sleutel wissen',
 			'assistant.settings.kidsAges' => 'Leeftijden kinderen (dit profiel)',
 			'assistant.settings.kidsAgesNone' => 'Niet ingesteld',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.settings.kidsAgesClear' => 'Leeftijden wissen',
 			'assistant.settings.kidsAgesValue' => ({required Object ages}) => '${ages} jaar',
 			'assistant.settings.kidsProfile' => 'Kinderprofiel',

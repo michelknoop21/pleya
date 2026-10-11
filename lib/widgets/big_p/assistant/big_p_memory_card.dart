@@ -43,6 +43,7 @@ class BigPMemoryCard extends StatelessWidget {
     this.declineNode,
     this.embedded = false,
     this.remote = false,
+    this.themed = false,
   });
 
   final AssistantMemoryProposal proposal;
@@ -58,6 +59,12 @@ class BigPMemoryCard extends StatelessWidget {
   /// Driven by a remote (TV): the focus itself is the white button, so
   /// neither button is drawn white of its own and only one ever is.
   final bool remote;
+
+  /// On a surface of the theme (the memory screen) instead of in the dark
+  /// balloon: the box and the resting button take their tint from the ink
+  /// of the theme, so they keep a shape in the light theme. In the dark
+  /// theme that is the same white tint the balloon uses.
+  final bool themed;
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +129,7 @@ class BigPMemoryCard extends StatelessWidget {
           Expanded(
             child: BigPButton(
               label: accept,
+              restFill: themed ? tk.text.withValues(alpha: 0.15) : null,
               automationId: AutomationIds.assistantMemoryButton,
               automationInstance: 'accept',
               onPressed: onAccept,
@@ -153,7 +161,10 @@ class BigPMemoryCard extends StatelessWidget {
         ),
         SizedBox(height: 18 * pt),
         DecoratedBox(
-          decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(18 * pt)),
+          decoration: BoxDecoration(
+            color: themed ? tk.text.withValues(alpha: 0.08) : const Color(0x14FFFFFF),
+            borderRadius: BorderRadius.circular(18 * pt),
+          ),
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 22 * pt),
             child: Column(
