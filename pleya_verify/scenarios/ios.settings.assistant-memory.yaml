@@ -9,8 +9,8 @@ target: ios-sim
 # What this proves on a real build that a widget test cannot: the row opens
 # the screen inside the profile session (its own MemoryService and database),
 # a memory typed on the system keyboard is stored and listed, a memory is
-# removed only after the confirmation, and "Alle herinneringen wissen" asks
-# first and wipes after the yes.
+# removed only after the confirmation, the switch turns the memory off and on
+# again, and "Alle herinneringen wissen" asks first and wipes after the yes.
 #
 # Needs PLEYA_ASSISTANT_ENABLED=true in the environment of `verify.dart run`.
 setup:
@@ -52,12 +52,41 @@ steps:
   - assert: {id: "settings.memory.action[use]", insideViewport: true, state: {selected: true}}
   - assert: {id: "settings.memory.action[clear]", insideViewport: true}
   - snapshot: 02-menu
+
+  # The switch (43 I): it flips in place, the menu stays open, and the screen
+  # behind it is in the off state.
+  - tap: {id: "settings.memory.action[use]"}
+  - wait_until: {id: screen.memory, state: {view: "off", enabled: false}, timeout: 8000}
+  - wait_until: {id: "settings.memory.action[use]", state: {selected: false}, timeout: 5000}
+  - settle: 800
+  - snapshot: 02b-menu-switch-off
   - tap: {id: "settings.memory.action[manage]"}
   - wait_until: {id: screen.memory_list, state: {total: 0, readable: true}, timeout: 10000}
   - settle: 800
   - assert: {id: "settings.memory.action[add]", insideViewport: true, minimumTapTarget: 44}
   - assert: {id: "settings.memory.fact[0]", present: false}
   - snapshot: 03-list-empty
+
+  # Back on the memory screen: the card of the off state with its one
+  # button, and a field that takes no question.
+  - tap: {id: "settings.memory.action[listBack]"}
+  - wait_until: {id: screen.memory, state: {view: "off", status: "off", enabled: false}, timeout: 10000}
+  - wait_until: {id: "settings.memory.action[turnOn]", timeout: 5000}
+  - settle: 800
+  - assert: {id: "settings.memory.action[turnOn]", insideViewport: true, minimumTapTarget: 44}
+  - assert: {id: settings.memory.input, insideViewport: true, state: {enabled: false}}
+  - snapshot: 03b-off
+  - tap: {id: "settings.memory.action[turnOn]"}
+  - wait_until: {id: screen.memory, state: {view: empty, enabled: true}, timeout: 8000}
+  - wait_until: {id: settings.memory.input, state: {enabled: true}, timeout: 5000}
+  - settle: 600
+  - assert: {id: "settings.memory.action[turnOn]", present: false}
+  - tap: {id: "settings.memory.action[menu]"}
+  - wait_until: {id: "settings.memory.action[use]", state: {selected: true}, timeout: 5000}
+  - settle: 800
+  - tap: {id: "settings.memory.action[manage]"}
+  - wait_until: {id: screen.memory_list, state: {total: 0, readable: true}, timeout: 10000}
+  - settle: 800
 
   # Add two memories through the sheet (43 F), typed on the system keyboard.
   - tap: {id: "settings.memory.action[add]"}

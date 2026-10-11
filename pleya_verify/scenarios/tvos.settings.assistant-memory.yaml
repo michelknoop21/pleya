@@ -11,7 +11,10 @@ target: tvos-sim
 #      route of the TV shell, and the remote lands on "Vraag of werk bij";
 #   2. "Herinneringen beheren" opens the list and Menu comes back to the
 #      memory screen, not out of the shell;
-#   3. a memory is typed through the system keyboard and stored;
+#   3. a memory is typed through the system keyboard and stored, with the
+#      remote walking both rows of categories on the way to Opslaan;
+#   3b. the panel of a memory shows Annuleren, Opslaan and Verwijderen inside
+#      the screen, and the switch tile turns the memory off and on;
 #   4. "Alle herinneringen wissen" opens its dialog with the remote on
 #      Annuleren: Select there wipes nothing, Right and Select wipes.
 #
@@ -60,8 +63,27 @@ steps:
   - settle: 800
   - snapshot: 01-memory-empty
 
-  # To the list and back with Menu.
+  # The switch: Select turns the memory off in place and on again, and the
+  # remote stays on the tile.
   - press: down
+  - wait_until: {focused: "settings.memory.action[manage]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "settings.memory.action[use]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.memory, state: {view: "off", status: "off", enabled: false}, timeout: 8000}
+  - wait_until: {id: "settings.memory.action[use]", state: {selected: false}, timeout: 5000}
+  - wait_until: {focused: "settings.memory.action[use]", timeout: 5000}
+  - assert: {id: "settings.memory.action[ask]", insideViewport: true, state: {enabled: false}}
+  - settle: 800
+  - snapshot: 01b-off
+  - press: select
+  - wait_until: {id: screen.memory, state: {view: empty, enabled: true}, timeout: 8000}
+  - wait_until: {id: "settings.memory.action[use]", state: {selected: true}, timeout: 5000}
+  - wait_until: {focused: "settings.memory.action[use]", timeout: 5000}
+  - assert: {id: "settings.memory.action[ask]", state: {enabled: true}}
+
+  # To the list and back with Menu.
+  - press: up
   - wait_until: {focused: "settings.memory.action[manage]", timeout: 5000}
   - press: select
   - wait_until: {id: screen.memory_list, state: {total: 0, readable: true}, timeout: 15000}
@@ -94,15 +116,35 @@ steps:
   - press: select
   - wait_until: {id: tvos.native_text_entry, state: {sessionActive: false}, timeout: 10000}
   - wait_until: {focused: settings.memory.sheet.field, timeout: 8000}
-  # Down past the category chips to Opslaan, the last stop of the sheet.
-  # Plain presses: a walk judges skipped focusables by geometry and counts
-  # the tiles of the page under the sheet.
+  # Both rows of categories, one stop per press. Down from the text lands on
+  # the chosen one; Right walks all five in order, across the rows; Up and
+  # Down go a row at a time. Plain presses: a walk judges skipped focusables
+  # by geometry and counts the tiles of the page under the panel.
   - press: down
+  - wait_until: {focused: "settings.memory.sheet.chip[preference]", timeout: 5000}
+  - assert: {id: "settings.memory.sheet.chip[preference]", state: {selected: true}}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[dislike]", timeout: 5000}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[household]", timeout: 5000}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[habit]", timeout: 5000}
+  - assert: {id: "settings.memory.sheet.chip[habit]", insideViewport: true, below: "settings.memory.sheet.chip[preference]"}
+  - press: right
+  - wait_until: {focused: "settings.memory.sheet.chip[other]", timeout: 5000}
+  - assert: {id: "settings.memory.sheet.chip[other]", insideViewport: true, sameRow: "settings.memory.sheet.chip[habit]"}
+  - press: up
+  - wait_until: {focused: "settings.memory.sheet.chip[dislike]", timeout: 5000}
+  - press: select
+  - wait_until: {id: "settings.memory.sheet.chip[dislike]", state: {selected: true}, timeout: 5000}
   - press: down
-  - press: down
+  - wait_until: {focused: "settings.memory.sheet.chip[other]", timeout: 5000}
+  - settle: 600
+  - snapshot: 04b-add-sheet-second-row
+  # Under the last row: Opslaan, now that there is a text to save.
   - press: down
   - wait_until: {focused: "settings.memory.sheet.button[save]", timeout: 8000}
-  - assert: {id: "settings.memory.sheet.button[save]", state: {enabled: true}}
+  - assert: {id: "settings.memory.sheet.button[save]", insideViewport: true, state: {enabled: true}}
   - press: select
   - wait_until: {id: screen.memory_list, state: {total: 1, count: 1}, timeout: 10000}
   - wait_until: {id: "settings.memory.fact[0]", timeout: 5000}
@@ -110,7 +152,41 @@ steps:
   - settle: 1500
   - assert: {id: settings.memory.sheet, present: false}
   - wait_until: {focused: "settings.memory.action[add]", timeout: 8000}
+  - assert: {id: "settings.memory.fact[0]", state: {category: dislike}}
   - snapshot: 05-list-one
+
+  # The panel of that memory (43 E): its three buttons fit the screen, and
+  # the remote reaches each of them. The memory is of the second category,
+  # in the first row; under it stands the second row.
+  - press: up
+  - wait_until: {focused: "settings.memory.fact[0]", timeout: 5000}
+  - press: select
+  - wait_until: {id: settings.memory.sheet, state: {mode: edit}, timeout: 10000}
+  - wait_until: {focused: settings.memory.sheet.field, timeout: 8000}
+  - settle: 800
+  - assert: {id: "settings.memory.sheet.button[cancel]", insideViewport: true}
+  - assert: {id: "settings.memory.sheet.button[save]", insideViewport: true, state: {enabled: false}, sameRow: "settings.memory.sheet.button[cancel]"}
+  - assert: {id: "settings.memory.sheet.button[delete]", insideViewport: true, below: "settings.memory.sheet.button[cancel]"}
+  - snapshot: 05b-edit-panel
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.chip[dislike]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.chip[other]", timeout: 5000}
+  # Nothing changed, so Opslaan is off and Down ends on Annuleren.
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.button[cancel]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "settings.memory.sheet.button[delete]", timeout: 5000}
+  - settle: 600
+  - snapshot: 05c-edit-panel-delete-focused
+  - press: up
+  - wait_until: {focused: "settings.memory.sheet.button[cancel]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "settings.memory.fact[0]", timeout: 8000}
+  # The panel needs its closing animation before it is out of the tree.
+  - settle: 1500
+  - assert: {id: screen.memory_list, state: {total: 1, count: 1}}
+  - assert: {id: settings.memory.sheet, present: false}
 
   # Back on the memory screen the fact stands as a list (no model).
   - press: menu
