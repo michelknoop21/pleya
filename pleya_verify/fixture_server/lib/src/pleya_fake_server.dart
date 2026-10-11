@@ -47,6 +47,16 @@ class PleyaFakeServer {
   /// The next `POST /watch-state` answers with this owner verdict.
   bool ownedByThisSession = true;
 
+  /// Whether `/info` advertises `users` and `administration` and `/users/me`
+  /// answers with the signed-in account as `owner`. Off by default: every
+  /// scenario that does not opt in keeps the role-less session it always had,
+  /// which is the non-owner state `tvos.authority.non-owner` proves.
+  ///
+  /// Only the identity is served. The administration routes themselves
+  /// (`/users`, `/jobs`, `/audit`) are not, so this carries a scenario as far
+  /// as the app offering an administrative action, not through sending one.
+  bool usersCapability = false;
+
   /// Whether `/info` advertises watch state. Controls whether the client asks
   /// for the two playback hubs at all.
   final bool watchState;
@@ -188,6 +198,7 @@ class PleyaFakeServer {
     watchEvents.clear();
     watchStates.clear();
     ownedByThisSession = true;
+    usersCapability = false;
     requests.clear();
     refreshCount = 0;
     rejectCurrentAccessTokens = false;
@@ -425,6 +436,10 @@ class PleyaFakeServer {
       return _json(const {'id': 'srv-1', 'name': 'Zolder', 'version': '0.2.0', 'started_at': '2026-08-18T19:25:33Z'});
     }
     if (path == '/libraries') return _json({'items': libraries});
+    if (usersCapability && path == '/users/me' && request.method == 'GET') {
+      // The one account this fixture knows is the one `/auth/setup` made.
+      return _json({'id': 'user-owner', 'username': _credentials.keys.firstOrNull ?? 'owner', 'role': 'owner'});
+    }
 
     if (path == '/auth/stream-token') {
       final body = jsonDecode(request.body) as Map<String, dynamic>;
@@ -575,7 +590,8 @@ class PleyaFakeServer {
       'downloads': false,
       'live_tv': false,
       'realtime': false,
-      'users': false,
+      'users': usersCapability,
+      'administration': usersCapability,
       'watch_state_ownership': watchStateOwnership,
       'stream_sessions': watchState,
     },

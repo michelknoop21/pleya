@@ -35,9 +35,17 @@ class FocusTheme {
   static bool needsContrastSeparator(BuildContext context) =>
       Theme.of(context).extension<MonoTokens>()?.isLight ?? false;
 
-  /// The dark separator line itself: [MonoTokens.text] (the theme's own ink,
-  /// near-black on the light palette; never a new brand color) at 55%, one
-  /// [contrastSeparatorWidth] wide, drawn directly outside the white ring.
+  /// The dark band itself: [MonoTokens.text] (the theme's own ink, #111111 on
+  /// the light palette; never a new brand color) at full strength, as wide as
+  /// the ring ([contrastSeparatorWidth]), drawn directly outside the white
+  /// ring. It reserves no layout.
+  ///
+  /// On a light surface this band is the focus indicator: the white ring has
+  /// 1.00:1 against a white dialog, so whatever surrounds it carries all the
+  /// contrast. A 1 px line at 55% ink was too faint for that; at full ink and
+  /// ring width the band holds about 18.9:1 against a white dialog and 17.6:1
+  /// against the light page (#F7F7F8). The ring stays white because the
+  /// player has no theme of its own: on dark video a dark ring would vanish.
   ///
   /// VIS-0925-A: this used to be a pair of [BoxShadow]s. A BoxShadow is not a
   /// line: `BoxDecoration` paints it as a filled box under the whole
@@ -45,11 +53,10 @@ class FocusTheme {
   /// fill and a focused tile in Light turned ~#555 with dark text on it
   /// (hardware photos of build 303). A stroke only covers its own band.
   static Color contrastSeparatorColor(BuildContext context) {
-    final ink = Theme.of(context).extension<MonoTokens>()?.text ?? Colors.black;
-    return ink.withValues(alpha: 0.55);
+    return Theme.of(context).extension<MonoTokens>()?.text ?? Colors.black;
   }
 
-  static const double contrastSeparatorWidth = 1;
+  static const double contrastSeparatorWidth = focusBorderWidth;
 
   /// [ring] on [shape] plus the separator line hugging its outer edge. The
   /// separator is always present, transparent when not needed, so a focus

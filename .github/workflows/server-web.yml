@@ -8,8 +8,11 @@ name: CI - Server en Web
 # draaiende server) blijven bewust lokaal en bij de release, want die vragen
 # een stack en niet een runner.
 #
-# Beide jobs houden een vaste checknaam en draaien altijd (`if: always()`,
-# ook als `changes` zelf faalt), het paths-filter zit binnenin. Dat is met
+# Beide jobs houden een vaste checknaam en draaien ook als `changes` zelf
+# faalt (`if: !cancelled()`), het paths-filter zit binnenin. Alleen een
+# geannuleerde run slaat ze over: met `always()` overleefden ze de annulering
+# door een nieuwe push en draaiden ze, omdat `changes` dan geen succes meldt,
+# het volle werk op een commit die al vervangen was. Dat is met
 # opzet: `on.pull_request.paths` op de job zelf zou de status bij een
 # ongeraakte map helemaal laten verdwijnen, en een required check die nooit
 # verschijnt laat GitHub eeuwig wachten. De stap-condities hieronder vallen
@@ -28,6 +31,15 @@ on:
 
 permissions:
   contents: read
+
+# Een nieuwe push op een PR maakt de runs op de vorige commit van diezelfde PR
+# overbodig; zonder deze groep bleven ze doorlopen en hielden ze de wachtrij vol.
+# De groep is per workflow en per PR. Elke andere trigger (push op main,
+# handmatig) krijgt een eigen groep per run en wordt
+# dus nooit geannuleerd en wacht nooit op een andere run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
@@ -87,7 +99,7 @@ jobs:
   server:
     name: Pleya Server
     needs: changes
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -142,7 +154,7 @@ jobs:
   web:
     name: Pleya Web
     needs: changes
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

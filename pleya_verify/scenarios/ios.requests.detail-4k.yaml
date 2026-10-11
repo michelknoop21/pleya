@@ -1,0 +1,34 @@
+name: ios.requests.detail-4k
+target: ios-sim
+# REQ-DETAIL-4K on the phone: the title page of a film that is there in HD
+# offers "In 4K aanvragen" beside its other actions, and a tap opens the
+# request form on 4K. Same fixture as tvos.requests.detail-4k.yaml: one film,
+# Glacier Run, HD available, 4K open, a Radarr 4K instance, an admin user.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.detail.4k.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+  - open: screen.requests
+steps:
+  - wait_until: {id: screen.requests, timeout: 15000}
+  - wait_until: {id: "catalog.grid.item[requests.0]", timeout: 15000}
+  - settle: 1500
+  - snapshot: 00-requests
+  - tap: {id: "catalog.grid.item[requests.0]"}
+
+  - wait_until: {id: "requests.detail.action[refresh]", timeout: 15000}
+  - wait_until: {id: "requests.detail.action[request4k]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "requests.detail.action[request4k]", insideViewport: true, minimumTapTarget: 44, state: {primary: false, busy: false}}
+  - assert: {id: "requests.detail.action[refresh]", insideViewport: true}
+  - assert: {id: "requests.detail.action[request]", present: false}
+  - snapshot: 01-title-page-actions
+
+  - tap: {id: "requests.detail.action[request4k]"}
+  - wait_until: {id: "requests.form[create]", state: {phase: form, is4k: true}, timeout: 15000}
+  - settle: 800
+  - assert: {id: "requests.form[create]", insideViewport: true, state: {is4k: true}}
+  - snapshot: 02-form-on-4k
