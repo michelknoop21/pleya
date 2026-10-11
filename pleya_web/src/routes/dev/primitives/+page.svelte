@@ -18,6 +18,7 @@
   import FormSection from './FormSection.svelte';
   import DisplaySection from './DisplaySection.svelte';
   import StructureSection from './StructureSection.svelte';
+  import PageSection from './PageSection.svelte';
   import SkeletonSection from './SkeletonSection.svelte';
   import CardSection from './CardSection.svelte';
   import HeroSection from './HeroSection.svelte';
@@ -58,6 +59,7 @@
       <DisplaySection />
       <StorageSection />
       <StructureSection />
+      <PageSection />
       <SkeletonSection />
       <CardSection />
       <HeroSection />
