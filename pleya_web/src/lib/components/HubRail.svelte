@@ -179,9 +179,12 @@
     padding-inline: var(--inset);
   }
 
+  /* min-width 0: een lange titel krimpt en breekt (base.css) in plaats van
+     "Alles bekijken" uit de kop te duwen of eronder te laten vallen. */
   .rail__title {
     display: flex;
     align-items: center;
+    min-width: 0;
     min-height: var(--touch-target);
     margin: 0;
     font-size: 20px;

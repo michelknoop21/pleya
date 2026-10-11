@@ -160,10 +160,22 @@
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
 
+  /*
+   * "niet beschikbaar" is twee keer zo lang als "available", en een sleutel als
+   * watch_state_ownership heeft geen enkel breekpunt. Op 1024 schoof de status
+   * daardoor over de sleutel in de kolom ernaast. Met wrap zakt de status naar
+   * een eigen regel, rechts uitgelijnd, in plaats van te overlappen.
+   */
   .caps__row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-half);
+    gap: 0 var(--space-half);
+  }
+
+  .caps__row .t-body {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .caps__row .t-small {

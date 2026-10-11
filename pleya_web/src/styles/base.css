@@ -83,6 +83,30 @@ figure {
   margin: 0;
 }
 
+/*
+ * Afbreken op taal (M-1). Nederlands plakt samen wat Engels met spaties
+ * schrijft: "Kinderboekenweekgeschenk" past op 393 niet in een herotitel en
+ * brak dan midden in het woord, zonder streepje. `hyphens: auto` breekt op
+ * de lettergrepen van de taal uit `<html lang>` (taak 1 zet die), dus dezelfde
+ * regel volgt vanzelf de Engelse of de Nederlandse woordenlijst. Zonder taal op
+ * een voorouder doet de browser niets, en dan is `overflow-wrap` de vangrail.
+ *
+ * `-webkit-hyphens` voor Safari onder 17, dat de eigenschap alleen met
+ * voorvoegsel kent (MDN browser-compat-data, css.properties.hyphens).
+ * `hyphenate-limit-chars` staat er bewust niet: Safari ondersteunt hem niet.
+ *
+ * Koppen en de klasse `.hyphenate` voor titels die geen kop zijn. Lopende
+ * tekst blijft heel: daar breekt de spatie al vaak genoeg.
+ */
+h1,
+h2,
+h3,
+.hyphenate {
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
 img {
   max-width: 100%;
   display: block;

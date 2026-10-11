@@ -9,14 +9,18 @@
  * of de pagina achter de open dialoog meescrolt (scrollY voor en na een
  * wielscroll van 600 px, moet gelijk blijven), en de berekende kleur van
  * het skelet naast die van een artworkvlak zonder beeld.
+ *
+ * `--locale nl|en` zet de browsertaal en wist de bewaarde keuze (shot-locale.ts).
  */
 import { chromium, type Page } from '@playwright/test';
 import { mkdirSync, readFileSync } from 'node:fs';
 
 import { SECTIONS as GALLERY_SECTIONS } from '../src/routes/dev/primitives/sections';
+import { forgetStoredLocale, localeContextOptions, parseLocaleFlag } from './shot-locale';
 
 const BASE = process.env['PLEYA_DEV_URL'] ?? 'http://localhost:5173';
-const OUT = process.argv[2] ?? '../docs/qa/s7-primitives';
+const { locale: LOCALE, rest: ARGS } = parseLocaleFlag(process.argv.slice(2));
+const OUT = ARGS[0] ?? '../docs/qa/s7-primitives';
 const GALLERY = `${BASE}/dev/primitives`;
 
 const WIDTHS = [393, 1024, 1600];
@@ -27,7 +31,11 @@ const SECTIONS = GALLERY_SECTIONS.map((s) => s.id).filter((id) => id !== 'dialoo
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const context = await browser.newContext({
+  viewport: { width: 1280, height: 900 },
+  ...localeContextOptions(LOCALE)
+});
+if (LOCALE) await forgetStoredLocale(context);
 const page = await context.newPage();
 
 async function open(url: string, width: number, theme = 'dark'): Promise<void> {
