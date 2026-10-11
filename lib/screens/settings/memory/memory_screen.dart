@@ -7,6 +7,7 @@ import '../../../assistant/assistant_kids_ages_store.dart';
 import '../../../assistant/assistant_kids_profile_store.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
+import '../../../automation/automation_screen.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
 import '../../../navigation/tv/tv_nested_surface.dart';
@@ -112,25 +113,29 @@ class _AssistantMemoryScreenState extends State<AssistantMemoryScreen> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _model,
-    builder: (context, _) => AutomationNode(
+    builder: (context, _) => AutomationScreen(
       id: AutomationIds.screenMemory,
-      role: 'screen',
-      state: () => {
-        'view': _model.view.name,
-        'status': _model.status.name,
-        'count': _model.count,
-        'enabled': _model.enabled,
-        'busy': _model.host.busy,
-      },
-      child: PlatformDetector.isTV()
-          ? MemoryTvLayout(model: _model, actions: _actions, speech: _speech, onBack: _back)
-          : MediaQuery.sizeOf(context).width >= AssistantMemoryScreen.tabletWidth
-          ? MemoryTabletLayout(model: _model, actions: _actions, onBack: _back)
-          : MemoryPhoneLayout(
-              model: _model,
-              onBack: _back,
-              onMenu: () => unawaited(showMemoryMenu(context, _model, _actions)),
-            ),
+      readiness: () => const AutomationReadiness.ready(),
+      child: AutomationNode(
+        id: AutomationIds.screenMemory,
+        role: 'screen',
+        state: () => {
+          'view': _model.view.name,
+          'status': _model.status.name,
+          'count': _model.count,
+          'enabled': _model.enabled,
+          'busy': _model.host.busy,
+        },
+        child: PlatformDetector.isTV()
+            ? MemoryTvLayout(model: _model, actions: _actions, speech: _speech, onBack: _back)
+            : MediaQuery.sizeOf(context).width >= AssistantMemoryScreen.tabletWidth
+            ? MemoryTabletLayout(model: _model, actions: _actions, onBack: _back)
+            : MemoryPhoneLayout(
+                model: _model,
+                onBack: _back,
+                onMenu: () => unawaited(showMemoryMenu(context, _model, _actions)),
+              ),
+      ),
     ),
   );
 }

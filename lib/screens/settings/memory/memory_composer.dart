@@ -179,7 +179,17 @@ class _MemoryAnswerPanelState extends State<MemoryAnswerPanel> {
     );
   }
 
-  Widget _scaled(Widget card) => widget.remote ? card : BigPScale(pt: 0.53, child: card);
+  /// The card at the size the balloon draws it. Its two buttons share one
+  /// row, so the text size stops growing where a label would break inside a
+  /// word.
+  Widget _scaled(Widget card) => widget.remote
+      ? card
+      : MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.35)),
+          child: BigPScale(pt: 0.53, child: card),
+        );
 }
 
 /// The field "Vraag of werk bij" (`.cfield`). What is typed here is the
@@ -242,7 +252,7 @@ class _MemoryInputBarState extends State<MemoryInputBar> {
       opacity: model.canAsk ? 1 : 0.38,
       child: Container(
         constraints: const BoxConstraints(minHeight: 52),
-        padding: const EdgeInsets.fromLTRB(18, 7, 7, 7),
+        padding: const EdgeInsets.fromLTRB(18, 1, 1, 1),
         decoration: BoxDecoration(
           color: tk.surface,
           borderRadius: BorderRadius.circular(26),
@@ -285,7 +295,7 @@ class _MemoryInputBarState extends State<MemoryInputBar> {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 2),
             MemoryPressable(
               shape: const CircleBorder(),
               semanticLabel: t.assistant.memory.screen.send,
@@ -293,16 +303,23 @@ class _MemoryInputBarState extends State<MemoryInputBar> {
               automationInstance: 'send',
               automationState: () => {'enabled': ready},
               onPressed: ready ? _send : null,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: ready ? tk.text : tk.surfaceElevated),
+              // A 44 pt touch area around the 36 pt button.
+              child: SizedBox(
+                width: 44,
+                height: 44,
                 child: Center(
-                  child: AppIcon(
-                    Symbols.arrow_upward_rounded,
-                    size: 19,
-                    weight: 600,
-                    color: ready ? tk.bg : tk.textMuted,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: ready ? tk.text : tk.surfaceElevated),
+                    child: Center(
+                      child: AppIcon(
+                        Symbols.arrow_upward_rounded,
+                        size: 19,
+                        weight: 600,
+                        color: ready ? tk.bg : tk.textMuted,
+                      ),
+                    ),
                   ),
                 ),
               ),

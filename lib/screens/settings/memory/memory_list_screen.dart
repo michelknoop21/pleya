@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../assistant/assistant_memory.dart';
 import '../../../automation/automation_ids.dart';
 import '../../../automation/automation_node.dart';
+import '../../../automation/automation_screen.dart';
 import '../../../focus/focusable_text_field.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../navigation/tv/tv_content_route_registry.dart';
@@ -97,11 +98,15 @@ class MemoryListScreenState extends State<MemoryListScreen> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: model,
-    builder: (context, _) => AutomationNode(
+    builder: (context, _) => AutomationScreen(
       id: AutomationIds.screenMemoryList,
-      role: 'screen',
-      state: () => {'count': shown.length, 'total': model.count, 'readable': model.facts != null},
-      child: PlatformDetector.isTV() ? MemoryListTv(list: this) : _buildList(context),
+      readiness: () => const AutomationReadiness.ready(),
+      child: AutomationNode(
+        id: AutomationIds.screenMemoryList,
+        role: 'screen',
+        state: () => {'count': shown.length, 'total': model.count, 'readable': model.facts != null},
+        child: PlatformDetector.isTV() ? MemoryListTv(list: this) : _buildList(context),
+      ),
     ),
   );
 
@@ -118,7 +123,11 @@ class MemoryListScreenState extends State<MemoryListScreen> {
         children: [
           MemoryHeader(
             title: l.title,
+            // Whose memories these are: under the title, so a long profile
+            // name never squeezes it.
+            subtitle: name == null || name.isEmpty ? '' : l.profile(name: name),
             onBack: back,
+            backInstance: 'listBack',
             trailing: name == null || name.isEmpty ? null : _ProfileMark(name: name),
           ),
           Expanded(
@@ -280,45 +289,24 @@ class MemoryListScreenState extends State<MemoryListScreen> {
   }
 }
 
-/// "Profiel Michel" with the profile's initial, at the right of the bar: the
-/// list is of this profile and of no other.
+/// The profile's initial at the right of the bar: the list is of this
+/// profile and of no other.
 class _ProfileMark extends StatelessWidget {
   const _ProfileMark({required this.name});
 
   final String name;
 
   @override
-  Widget build(BuildContext context) {
-    final tk = tokens(context);
-    // At a large text size the title needs the bar: the initial stays.
-    final roomy = MediaQuery.textScalerOf(context).scale(13) <= 18;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (roomy)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 130),
-            child: Text(
-              t.assistant.memory.screen.list.profile(name: name),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: memoryText(context, 13, color: tk.textMuted),
-            ),
-          ),
-        if (roomy) const SizedBox(width: 8),
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: tk.accent),
-          child: Center(
-            child: Text(
-              name.characters.first.toUpperCase(),
-              textScaler: TextScaler.noScaling,
-              style: memoryText(context, 12, weight: FontWeight.w700, color: Colors.white),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    width: 28,
+    height: 28,
+    decoration: BoxDecoration(shape: BoxShape.circle, color: tokens(context).accent),
+    child: Center(
+      child: Text(
+        name.characters.first.toUpperCase(),
+        textScaler: TextScaler.noScaling,
+        style: memoryText(context, 12, weight: FontWeight.w700, color: Colors.white),
+      ),
+    ),
+  );
 }

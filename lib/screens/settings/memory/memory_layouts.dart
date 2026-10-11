@@ -24,6 +24,7 @@ class MemoryHeader extends StatelessWidget {
     this.subtitle = '',
     this.trailing,
     this.titleSize = 22,
+    this.backInstance = 'back',
   });
 
   final String title;
@@ -31,6 +32,10 @@ class MemoryHeader extends StatelessWidget {
   final VoidCallback onBack;
   final Widget? trailing;
   final double titleSize;
+
+  /// The automation instance of the back button: the list lies over the
+  /// memory screen, and each needs a back button of its own name.
+  final String backInstance;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +48,7 @@ class MemoryHeader extends StatelessWidget {
             shape: const CircleBorder(),
             semanticLabel: t.common.back,
             automationId: AutomationIds.settingsMemoryAction,
-            automationInstance: 'back',
+            automationInstance: backInstance,
             onPressed: onBack,
             child: SizedBox(
               width: 44,
@@ -61,6 +66,9 @@ class MemoryHeader extends StatelessWidget {
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                  // A bar title is large already: it grows less than the text
+                  // under it, so one word stays on one line.
+                  textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.4),
                   style: memoryText(context, titleSize, weight: FontWeight.w700, height: 1.2),
                 ),
                 if (subtitle.isNotEmpty)

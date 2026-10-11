@@ -335,7 +335,8 @@ class AutomationIds {
 
   /// A control of the memory screens: `[menu]`, `[manage]`, `[use]` (reports
   /// `selected`), `[rewrite]`, `[clear]`, `[turnOn]`, `[retry]`, `[send]`,
-  /// `[ask]` (the TV tile), `[add]`, `[search]`, `[kidsAges]`, `[dismiss]`.
+  /// `[ask]` (the TV tile), `[add]`, `[search]`, `[kidsAges]`, `[dismiss]`,
+  /// `[back]` and, on the list, `[listBack]`.
   static const String settingsMemoryAction = 'settings.memory.action';
 
   /// The field "Vraag of werk bij" under the overview.

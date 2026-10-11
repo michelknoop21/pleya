@@ -111,7 +111,7 @@ void main() {
   }
 
   Future<void> openMenu(WidgetTester tester, MemoryScreenHarness h) async {
-    await tester.tap(memoryAction('menu'));
+    await tapOn(tester, memoryAction('menu'));
     await settle(tester);
   }
 
@@ -124,12 +124,12 @@ void main() {
     await _replaceScript(tester, h);
     await tester.enterText(find.byType(EditableText).first, 'We kijken tegenwoordig op zaterdag met het gezin');
     await tester.pump();
-    await tester.tap(memoryAction('send'));
+    await tapOn(tester, memoryAction('send'));
     await settle(tester, 10);
   }
 
   Future<void> filterDislike(WidgetTester tester, MemoryScreenHarness h) async {
-    await tester.tap(memoryId(AutomationIds.settingsMemoryChip, 'dislike'));
+    await tapOn(tester, memoryId(AutomationIds.settingsMemoryChip, 'dislike'));
     await settle(tester);
   }
 
@@ -145,7 +145,7 @@ void main() {
       list: true,
       act: (tester, h) async {
         await filterDislike(tester, h);
-        await tester.tap(memoryId(AutomationIds.settingsMemoryFact, '1'));
+        await tapOn(tester, memoryId(AutomationIds.settingsMemoryFact, '1'));
         await settle(tester);
       },
     );
@@ -156,7 +156,7 @@ void main() {
       list: true,
       act: (tester, h) async {
         await tester.dragUntilVisible(memoryAction('add'), find.byType(ListView).first, const Offset(0, -120));
-        await tester.tap(memoryAction('add'));
+        await tapOn(tester, memoryAction('add'));
         await settle(tester);
       },
     );
@@ -166,7 +166,7 @@ void main() {
       setup: _withOverview,
       act: (tester, h) async {
         await openMenu(tester, h);
-        await tester.tap(memoryAction('clear'));
+        await tapOn(tester, memoryAction('clear'));
         await settle(tester);
       },
     );

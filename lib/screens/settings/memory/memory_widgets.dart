@@ -59,7 +59,11 @@ class MemoryPillButton extends StatelessWidget {
           final tk = tokens(context);
           final focused = remote && Focus.of(context).hasFocus;
           final (fill, ink) = switch (kind) {
-            _ when !enabled => (tk.text.withValues(alpha: 0.14), memoryFaint(context)),
+            // A text action that is off stays text; a pill that is off stays a pill.
+            _ when !enabled => (
+              kind == MemoryPillKind.danger && !remote ? Colors.transparent : tk.text.withValues(alpha: 0.14),
+              memoryFaint(context),
+            ),
             _ when focused => (tk.text, tk.bg),
             _ when remote => (tk.text.withValues(alpha: 0.16), tk.text),
             MemoryPillKind.primary => (tk.text, tk.bg),
@@ -271,19 +275,22 @@ class MemoryGroupLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 20, bottom: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    // The count drops under the label when a large text size leaves no room
+    // for both on one line.
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.end,
+      spacing: 12,
+      runSpacing: 2,
       children: [
-        Expanded(
-          child: Text(
-            label.toUpperCase(),
-            style: memoryText(
-              context,
-              12.5,
-              weight: FontWeight.w700,
-              color: memoryFaint(context),
-            ).copyWith(letterSpacing: 1),
-          ),
+        Text(
+          label.toUpperCase(),
+          style: memoryText(
+            context,
+            12.5,
+            weight: FontWeight.w700,
+            color: memoryFaint(context),
+          ).copyWith(letterSpacing: 1),
         ),
         if (trailing != null) Text(trailing!, style: memoryText(context, 13, color: memoryFaint(context))),
       ],
