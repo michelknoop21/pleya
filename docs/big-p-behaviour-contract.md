@@ -20,8 +20,11 @@ Van hoog naar laag:
 
 Uitzondering op de bevestiging van schrijfacties, alleen voor het eigen geheugen van het actieve profiel (akkoord Michel, 11 oktober 2026, BP-08a):
 
-- Begint de getypte vraag zelf met een uitdrukkelijk "onthoud dat" (ook "onthoud:" en "remember that") en is ze geen vraagzin, dan geldt dat verzoek als de acceptatie van één schrijfactie: Pleya slaat één nieuw feit direct op en meldt letterlijk wat er is opgeslagen. Code herkent de opdrachtvorm, niet het model. Elke volgende schrijfactie in dezelfde beurt krijgt een kaart.
-- Vergeten en vervangen houden altijd een kaart, ook na "onthoud dat". De kaart toont wat verdwijnt.
+- Begint de vraag die de gebruiker zelf typte of dicteerde met een uitdrukkelijk "onthoud dat" (ook "onthoud:", "remember that" en "remember:") en staat er geen vraagteken in, dan geldt dat verzoek als de acceptatie van één schrijfactie: Pleya slaat één nieuw feit direct op en meldt letterlijk wat er is opgeslagen, ook als de rest van het antwoord vervalt of een nieuwe vraag het overneemt. Code herkent de opdrachtvorm, niet het model. Een chip, een overdracht uit Zoeken, een herhaalde vraag na de leeftijdenkaart en een vervolgvraag tellen niet als getypt.
+- Direct opslaan geldt alleen voor een zin die uit de getypte woorden komt. De code eist dat het deel na de opdrachtvorm minstens drie woorden telt, dat het opslaan de eerste toolaanroep van de beurt is (er stond dus nog geen toolresultaat in de context) en dat de inhoudswoorden van de zin in de getypte tekst voorkomen, met hoogstens één afwijkend woord. Haalt een zin dat niet, dan volgt een kaart. Elke volgende schrijfactie in dezelfde beurt krijgt ook een kaart.
+- Staat achter de opdrachtvorm een verhaal- of spoilervraag, dan blijft de spoilerstand gelden en wordt in die beurt niets onthouden.
+- Vergeten en vervangen houden altijd een kaart, ook na "onthoud dat". De kaart toont wat verdwijnt. Is dat feit tussen de kaart en het ja gewijzigd of verdwenen, dan gebeurt er niets en meldt Pleya dat.
+- Op een kinderprofiel gebruikt Big P geen geheugen: de tools worden niet aangeboden, een wachtende kaart verdwijnt en een ja schrijft niets.
 - Een vervolgvraag die het model heeft geschreven telt nooit als uitdrukkelijk verzoek, wat erin staat.
 
 Een lager niveau overschrijft nooit een hoger niveau. Onbekend betekent wedervraag of gedeeltelijk antwoord, nooit stil verbreden. Een onbekende identiteit of doelgroep wordt nooit opgelost met een gok. Pleya vraagt (maximaal drie wedervragen, een per keer, twee of drie knoppen plus vrije invoer) of antwoordt gedeeltelijk en zegt wat is weggelaten.
