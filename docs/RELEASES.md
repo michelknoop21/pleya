@@ -182,7 +182,8 @@ Nothing user-facing since the last published build.
 - Big P on a small iPhone: ask for something Big P has to confirm and keep the keyboard up.
   Cancel and Create should both be fully visible.
 - Big P: ask "What was watched this week?" and check that it asks whether you mean yourself,
-  the others or everyone.
+  the others or everyone. This needs an account that can see what the household watched, and
+  it does not happen on a kids profile.
 
 ## 2.8.1 · build 349 · 10 October 2026 · Apple TV
 
