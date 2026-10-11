@@ -20,6 +20,7 @@ import '../../profiles/active_profile_provider.dart';
 import '../../providers/trakt_account_provider.dart';
 import '../../theme/mono_tokens.dart';
 import '../../navigation/tv/tv_nested_surface.dart';
+import '../../services/memory/memory_service.dart';
 import '../../services/settings_service.dart';
 import '../../utils/app_logger.dart';
 import '../../utils/formatters.dart';
@@ -34,6 +35,7 @@ import '../../widgets/tv/tv_page_surface.dart';
 import '../../widgets/tv/tv_unified_layout.dart';
 import '../big_p/big_p_mobile_session.dart';
 import 'async_form_state_mixin.dart';
+import 'memory/memory_screen.dart';
 
 part 'assistant_settings_screen_support.dart';
 part 'assistant_settings_screen_views.dart';
@@ -86,6 +88,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   final _firstFieldFocus = FocusNode(debugLabel: 'Assistant:FirstField');
   final _summaryFocus = FocusNode(debugLabel: 'Assistant:Change');
   final _saveFocus = FocusNode(debugLabel: 'Assistant:Save');
+  final _memoryFocus = FocusNode(debugLabel: 'Assistant:Memory');
 
   AssistantProviderStore get _store => widget.store ?? AssistantProviderStore.instance;
 
@@ -170,7 +173,7 @@ class _AssistantSettingsScreenState extends State<AssistantSettingsScreen>
   @override
   void dispose() {
     _autoLoad?.cancel();
-    for (final node in [..._kindFocus.values, _firstFieldFocus, _summaryFocus, _saveFocus]) {
+    for (final node in [..._kindFocus.values, _firstFieldFocus, _summaryFocus, _saveFocus, _memoryFocus]) {
       node.dispose();
     }
     super.dispose();

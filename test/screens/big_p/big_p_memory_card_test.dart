@@ -249,11 +249,11 @@ void main() {
       expect(find.byType(BigPMemoryLink), findsNothing);
     });
 
-    testWidgets('the host wires no destination yet: the answer shows without the link', (tester) async {
+    testWidgets('the host wires the memory screen as destination: the link stands under the answer', (tester) async {
       answerMemoryStored(c);
       await pumpHost(tester);
       expect(find.textContaining('Onthouden: Kijkt op vrijdagavond met het gezin.'), findsOneWidget);
-      expect(find.byType(BigPMemoryLink), findsNothing);
+      expect(find.byType(BigPMemoryLink), findsOneWidget);
     });
   });
 }
