@@ -13,7 +13,6 @@ import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../media/media_playlist.dart';
 import '../media/media_server_client.dart';
-import '../exceptions/media_server_exceptions.dart';
 import '../metadata_edit/metadata_edit_adapters.dart';
 import '../media/media_version.dart';
 import '../mixins/controller_disposer_mixin.dart';
@@ -57,6 +56,7 @@ import '../utils/video_player_navigation.dart';
 import '../utils/deletion_notifier.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/file_info_bottom_sheet.dart';
+import 'media_deletion_failure_message.dart';
 import 'pill_input_decoration.dart';
 import '../widgets/focusable_list_tile.dart';
 import '../widgets/overlay_sheet.dart';
@@ -74,13 +74,6 @@ class _MenuAction {
   final String? subtitle;
 
   _MenuAction({required this.value, required this.icon, required this.label, this.destructive = false, this.subtitle});
-}
-
-String mediaDeletionFailureMessage(Object error, MediaBackend? backend) {
-  if (backend == MediaBackend.plex && error is MediaServerHttpException && error.statusCode == 400) {
-    return t.mediaMenu.plexDeletionDisabled;
-  }
-  return t.mediaMenu.mediaFailedToDelete;
 }
 
 /// A reusable wrapper widget that adds a context menu (long press / right click)
@@ -1563,8 +1556,9 @@ class MediaContextMenuState extends State<MediaContextMenu> {
 
     if (!confirmed || !context.mounted) return;
 
+    MediaServerClient? client;
     try {
-      final client = _getMediaClientForItem();
+      client = _getMediaClientForItem();
       final success = await client.deleteMediaItem(item);
 
       if (context.mounted) {
@@ -1580,8 +1574,9 @@ class MediaContextMenuState extends State<MediaContextMenu> {
       }
     } catch (e) {
       appLogger.e(t.mediaMenu.mediaFailedToDelete, error: e);
+      final message = await resolveMediaDeletionFailureMessage(e, item.backend, client);
       if (context.mounted) {
-        showErrorSnackBar(context, mediaDeletionFailureMessage(e, item.backend));
+        showErrorSnackBar(context, message);
       }
     }
   }

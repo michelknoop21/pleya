@@ -647,6 +647,8 @@ class _TranslationsMediaMenuNl extends TranslationsMediaMenuEn {
 	@override String get mediaDeletedSuccessfully => 'Media-item succesvol verwijderd';
 	@override String get mediaFailedToDelete => 'Verwijderen van media-item mislukt';
 	@override String get plexDeletionDisabled => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.';
+	@override String get plexDeletionFilesNotRemovable => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
+	@override String get plexDeletionRefusedUnknown => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).';
 	@override String get rate => 'Beoordelen';
 	@override String get playFromBeginning => 'Afspelen vanaf het begin';
 	@override String get playVersion => 'Versie afspelen...';
@@ -4614,6 +4616,8 @@ extension on TranslationsNl {
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media-item succesvol verwijderd',
 			'mediaMenu.mediaFailedToDelete' => 'Verwijderen van media-item mislukt',
 			'mediaMenu.plexDeletionDisabled' => 'Plex weigert de verwijdering. Zet ‘Media verwijderen toestaan’ aan in de Plex-serverinstellingen en probeer opnieuw.',
+			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex kon dit niet verwijderen. Controleer op de server of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
+			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex weigert de verwijdering. Controleer of ‘Media verwijderen toestaan’ aan staat in de Plex-serverinstellingen en of Plex de bestanden mag verwijderen (rechten op de map, schijf beschikbaar).',
 			'mediaMenu.rate' => 'Beoordelen',
 			'mediaMenu.playFromBeginning' => 'Afspelen vanaf het begin',
 			'mediaMenu.playVersion' => 'Versie afspelen...',
@@ -4656,10 +4660,10 @@ extension on TranslationsNl {
 			'videoControls.timerActive' => 'Timer actief',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Afspelen wordt gepauzeerd over ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'Einde van huidige video',
-			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
-			'videoControls.sleepTimerDurationHeader' => 'Timer',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.sleepTimerStopAtHeader' => 'Stoppen bij',
+			'videoControls.sleepTimerDurationHeader' => 'Timer',
 			'videoControls.playbackWillPauseAtEnd' => 'Afspelen wordt gepauzeerd aan het einde van deze video',
 			'videoControls.stillWatching' => 'Kijk je nog?',
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pauze over ${seconds}s',
@@ -5170,10 +5174,10 @@ extension on TranslationsNl {
 			'licenses.relatedPackages' => 'Gerelateerde pakketten',
 			'licenses.license' => 'Licentie',
 			'licenses.licenseNumber' => ({required Object number}) => 'Licentie ${number}',
-			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
-			'navigation.libraries' => 'Media',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.licensesCount' => ({required Object count}) => '${count} licenties',
+			'navigation.libraries' => 'Media',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Kijklijst',
@@ -5684,10 +5688,10 @@ extension on TranslationsNl {
 			'metadataEdit.deleteAfterPlaying' => 'Afleveringen verwijderen na afspelen',
 			'metadataEdit.never' => 'Nooit',
 			'metadataEdit.afterADay' => 'Na een dag',
-			'metadataEdit.afterAWeek' => 'Na een week',
-			'metadataEdit.afterAMonth' => 'Na een maand',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.afterAWeek' => 'Na een week',
+			'metadataEdit.afterAMonth' => 'Na een maand',
 			'metadataEdit.onNextRefresh' => 'Bij volgende verversing',
 			'metadataEdit.seasons' => 'Seizoenen',
 			'metadataEdit.show' => 'Tonen',
@@ -6198,10 +6202,10 @@ extension on TranslationsNl {
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Verplaats of verberg rijen, of maak er een van een filter',
 			'unifiedCatalog.homeRows.customizeIntro' => 'Verplaats, verberg of bewerk je rijen. Uitgelicht en Verder kijken blijven staan waar ze staan.',
 			'unifiedCatalog.homeRows.featured' => 'Uitgelicht',
-			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
-			'unifiedCatalog.homeRows.alwaysSecond' => 'Altijd tweede',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.alwaysFirst' => 'Altijd bovenaan',
+			'unifiedCatalog.homeRows.alwaysSecond' => 'Altijd tweede',
 			'unifiedCatalog.homeRows.fixed' => 'vast',
 			'unifiedCatalog.homeRows.done' => 'Klaar',
 			'unifiedCatalog.homeRows.moveUp' => 'Omhoog',
