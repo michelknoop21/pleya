@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'memory_models.dart';
+import 'memory_owned_facts.dart';
 
 final RegExp _lineBreaks = RegExp(r'[\n\r\u000B\u000C\u0085\u2028\u2029]');
 
@@ -6,17 +9,38 @@ final RegExp _lineBreaks = RegExp(r'[\n\r\u000B\u000C\u0085\u2028\u2029]');
 /// stored sentence read differently from what it holds.
 final RegExp _controls = RegExp(r'[\u0000-\u001F\u007F-\u009F\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]');
 
+/// Format characters that show nothing: soft hyphen, Arabic letter mark, zero
+/// width space, non-joiner and joiner, word joiner and the variation
+/// selectors. Dropped from a fact before it is checked, so two sentences that
+/// read the same are stored and compared the same.
+final RegExp _invisible = RegExp(r'[\u00AD\u061C\u200B-\u200D\u2060\uFE00-\uFE0F\u{E0100}-\u{E01EF}]', unicode: true);
+
+final RegExp _combiningMarks = RegExp(r'[\u0300-\u036F]');
+
+// Lowercase Latin-1 and Latin Extended-A letters that are a plain letter with
+// an accent, and the letter each one folds to in the comparison key.
+const String _accented = 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿāăąćĉċčďēĕėęěĝğġģĥĩīĭįĵķĺļľńņňōŏőŕŗřśŝşšţťũūŭůűųŵŷźżž';
+const String _unaccented = 'aaaaaaceeeeiiiinooooouuuuyyaaaccccdeeeeegggghiiiijklllnnnooorrrssssttuuuuuuwyzzz';
+final Map<int, int> _folds = {
+  for (var i = 0; i < _accented.length; i++) _accented.codeUnitAt(i): _unaccented.codeUnitAt(i),
+};
+
 final RegExp _notWordOrSpace = RegExp(r'[^\p{L}\p{M}\p{N}\s]', unicode: true);
 final RegExp _spaces = RegExp(r'\s+');
 
 /// A checked sentence: [value] as it will be stored, [key] as it is compared.
 typedef MemoryValue = ({String value, String key});
 
-/// Trims [raw] and checks the shape of a fact: one line, no control
-/// characters, 1 to [kMemoryValueMaxLength] code points, and at least one
-/// letter or digit. Returns the code that refuses it, or the checked value.
+/// Drops invisible format characters from [raw], trims it and checks the
+/// shape of a fact: one line, no control characters, 1 to
+/// [kMemoryValueMaxLength] code points, and at least one letter or digit.
+/// Returns the code that refuses it, or the checked value.
+///
+/// The value is stored as typed apart from that: Dart has no Unicode
+/// normalisation and none is added here, so NFC and NFD spellings are stored
+/// as given. Only the key folds them, see [memoryValueKey].
 ({MemoryCode code, MemoryValue? value}) checkMemoryValue(String raw) {
-  final value = raw.trim();
+  final value = raw.replaceAll(_invisible, '').trim();
   if (value.isEmpty) return (code: MemoryCode.empty, value: null);
   if (_lineBreaks.hasMatch(value)) return (code: MemoryCode.notSingleLine, value: null);
   if (_controls.hasMatch(value)) return (code: MemoryCode.controlCharacters, value: null);
@@ -28,9 +52,29 @@ typedef MemoryValue = ({String value, String key});
   return (code: MemoryCode.ok, value: (value: value, key: key));
 }
 
-/// [value] lowercased, without punctuation and with single spaces.
-String memoryValueKey(String value) =>
-    value.toLowerCase().replaceAll(_notWordOrSpace, '').replaceAll(_spaces, ' ').trim();
+/// [value] lowercased, without invisible characters, accents and punctuation,
+/// and with single spaces. Accents fold for the Latin letters of [_accented]
+/// and for the combining marks U+0300 to U+036F, so the composed and the
+/// decomposed spelling of `Café` share a key, and so do `Café` and `Cafe`.
+/// Known limit: accented letters outside that table (Vietnamese, Greek,
+/// Cyrillic) still differ between NFC and NFD.
+String memoryValueKey(String value) {
+  final lowered = value.replaceAll(_invisible, '').toLowerCase();
+  final folded = String.fromCharCodes([for (final unit in lowered.codeUnits) _folds[unit] ?? unit]);
+  return folded.replaceAll(_combiningMarks, '').replaceAll(_notWordOrSpace, '').replaceAll(_spaces, ' ').trim();
+}
+
+/// Whether [body] can be kept as the body of a written overview: a JSON object
+/// of at most [kMemoryOverviewMaxBytes] in UTF-8.
+bool isMemoryOverviewBody(String body) {
+  if (utf8.encode(body).length > kMemoryOverviewMaxBytes) return false;
+  try {
+    return jsonDecode(body) is Map<String, dynamic>;
+  } on FormatException {
+    // The message quotes the body, so it is dropped here and never logged.
+    return false;
+  }
+}
 
 /// [text] lowercased with punctuation turned into spaces, so `8-jarige` and
 /// `sci-fi` split into words.
@@ -55,45 +99,3 @@ Set<String> memoryMatchWords(String text) => {
   for (final word in memoryWordText(text).split(' '))
     if (word.length >= 3 && !_stopWords.contains(word)) word,
 };
-
-final RegExp _childWord = RegExp(
-  r'\b(kind|kinderen|kindje|kindjes|kids?|zoon|zoons|zonen|zoontje|dochter|dochters|dochtertje|kleinkind|'
-  r'kleinkinderen|peuter|kleuter|baby|child|children|sons?|daughters?|toddler|grandchild|grandchildren|'
-  r'jongste|oudste|youngest|oldest)\b',
-);
-
-final RegExp _ageExpression = RegExp(
-  r'\d{1,2} ?(jaar|jr|jarige?|years?|yrs?|yo|maand|maanden|months?)\b'
-  r'|\b(jaar|years?) (oud|old)\b'
-  r'|[a-z]jarige?\b'
-  r'|\b(is|zijn|are|wordt|turns|turned|van|aged?) \d{1,2}\b'
-  r'|\b(leeftijd|leeftijden|ages?)\b',
-);
-
-final RegExp _subtitleWord = RegExp(r'\b(ondertitel\w*|ondertiteling\w*|subtitles?|subs|captions?)\b');
-
-const String _languageNames =
-    'nederlands|nederlandse|engels|engelse|duits|duitse|frans|franse|spaans|spaanse|italiaans|italiaanse|'
-    'japans|japanse|koreaans|koreaanse|dutch|english|german|french|spanish|italian|japanese|korean';
-
-final RegExp _languageName = RegExp('\\b($_languageNames|originele|original)\\b');
-final RegExp _audioWord = RegExp(
-  r'\b(audio|audiospoor|audiotaal|taal|talen|language|languages|gesproken|spoken|dubbed|dub|'
-  r'nagesynchroniseerd|nasynchronisatie)\b',
-);
-final RegExp _inLanguage = RegExp('\\bin (het |the )?($_languageNames)\\b');
-
-// Conservative on purpose. Ages: a child word together with an age expression
-// ("onze dochter is 8"); an age beside a bare name is not caught. Language: any
-// subtitle word, a listed language (or "original") beside an audio or language
-// word, and "in (het) <language>"; unlisted languages and "Franse films" pass.
-MemoryCode? ownedFactCode(String value) {
-  final text = memoryWordText(value);
-  if (_childWord.hasMatch(text) && _ageExpression.hasMatch(text)) return MemoryCode.ownedKidsAges;
-  if (_subtitleWord.hasMatch(text) ||
-      _inLanguage.hasMatch(text) ||
-      (_audioWord.hasMatch(text) && _languageName.hasMatch(text))) {
-    return MemoryCode.ownedLanguage;
-  }
-  return null;
-}

@@ -9,7 +9,15 @@ const int kMemoryValueMaxLength = 200;
 /// Budgets of [MemoryService.relevantFor]: the facts that ride along with one
 /// question.
 const int kMemoryRelevantMaxFacts = 8;
+
+/// Counted in Unicode code points, not UTF-16 units: an emoji costs one. A
+/// fact costs its reference, a space, its text and a line break. Whoever
+/// builds the context line has to count the same way (`String.runes.length`,
+/// not `String.length`).
 const int kMemoryRelevantMaxChars = 600;
+
+/// Largest body of a written overview, in UTF-8 bytes.
+const int kMemoryOverviewMaxBytes = 16 * 1024;
 
 /// Length of [MemoryFact.ref], the short handle the assistant refers to a fact
 /// by.
@@ -80,6 +88,22 @@ enum MemoryCode {
 
   /// The service was made without an active profile.
   noProfile,
+
+  /// The profile of this service was deleted after the service was made.
+  /// Nothing is written for it any more.
+  profileGone,
+
+  /// `saveOverview` with a hash this service did not hand out since the facts
+  /// were last wiped: the overview was written from facts that are gone.
+  staleHash,
+
+  /// `saveOverview` with a body that is not a JSON object or is larger than
+  /// [kMemoryOverviewMaxBytes].
+  invalidOverview,
+
+  /// The database refused the call. Nothing about the fact is logged or
+  /// returned, only this code.
+  storageFailed,
 }
 
 class MemoryFact {

@@ -12,6 +12,8 @@ import '../models/download_models.dart';
 import '../utils/app_logger.dart';
 import '../utils/global_key_utils.dart';
 
+export 'assistant_memory_wipe.dart';
+
 part 'app_database.g.dart';
 
 /// Action queued in the offline watch-progress sync table. The serialized
@@ -824,15 +826,6 @@ class AppDatabase extends _$AppDatabase {
     await (delete(mediaInteractions)..where((t) => t.profileId.equals(profileId))).go();
     await (delete(affinitySnapshots)..where((t) => t.profileId.equals(profileId))).go();
     await (delete(historySyncCursors)..where((t) => t.profileId.equals(profileId))).go();
-  }
-
-  /// Wipes the remembered facts and the written overview of a profile. The
-  /// only memory query that takes a profile id: profile deletion also has to
-  /// reach a profile that is not the active one. Everything else goes through
-  /// `MemoryService`, which is bound to its own profile.
-  Future<void> deleteAssistantMemoryForProfile(String profileId) async {
-    await (delete(assistantMemories)..where((t) => t.profileId.equals(profileId))).go();
-    await (delete(assistantMemoryOverviews)..where((t) => t.profileId.equals(profileId))).go();
   }
 
   Future<void> _ignoreAlreadyExists(String label, Future<void> Function() operation) async {

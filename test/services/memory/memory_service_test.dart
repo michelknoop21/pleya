@@ -56,6 +56,19 @@ void main() {
       expect((await a.list()).single.category, MemoryCategory.preference);
     });
 
+    test('the same sentence with an invisible character or another accent form is the same fact', () async {
+      final first = await a.remember('Kijkt graag in Caf\u00E9 Noir');
+      final zeroWidth = await a.remember('Kijkt gr\u200Baag in Caf\u00E9 Noir');
+      final decomposed = await a.remember('Kijkt graag in Cafe\u0301 Noir');
+
+      expect([zeroWidth.code, decomposed.code], [MemoryCode.exists, MemoryCode.exists]);
+      expect(decomposed.fact!.id, first.fact!.id);
+      expect(await a.values(), ['Kijkt graag in Caf\u00E9 Noir']);
+
+      final stored = await b.remember('Hor\u200Bror\u00AD film');
+      expect(stored.fact!.value, 'Horror film');
+    });
+
     test('updating to a sentence another fact holds is refused as duplicate', () async {
       await a.remember('Houdt niet van horror');
       final other = await a.remember('Kijkt graag thrillers');
@@ -152,8 +165,14 @@ void main() {
       expect((await nobody.resolve('abcdef12')).code, MemoryCode.noProfile);
       expect(await nobody.list(), isEmpty);
       expect(await nobody.enabled, isFalse);
-      await nobody.saveOverview(factsHash: 'h', locale: 'nl', status: MemoryOverviewStatus.ok, body: '{}');
-      await nobody.clearAll();
+      final saved = await nobody.saveOverview(
+        factsHash: await nobody.factsHash(locale: 'nl'),
+        locale: 'nl',
+        status: MemoryOverviewStatus.ok,
+        body: '{}',
+      );
+      expect(saved.code, MemoryCode.noProfile);
+      expect((await nobody.clearAll()).code, MemoryCode.noProfile);
       expect(await db.select(db.assistantMemories).get(), isEmpty);
       expect(await db.select(db.assistantMemoryOverviews).get(), isEmpty);
     });
@@ -361,7 +380,10 @@ void main() {
         if (entity is! File || !entity.path.endsWith('.dart') || entity.path.endsWith('.g.dart')) continue;
         if (entity.readAsStringSync().contains('deleteAssistantMemoryForProfile')) callers.add(entity.path);
       }
-      expect(callers..sort(), ['lib/database/app_database.dart', 'lib/screens/profile/profile_delete_flow.dart']);
+      expect(callers..sort(), [
+        'lib/database/assistant_memory_wipe.dart',
+        'lib/screens/profile/profile_delete_flow.dart',
+      ]);
 
       // The service is bound to its profile: the constructor is the only
       // place a profile id goes in.

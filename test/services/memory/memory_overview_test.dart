@@ -20,8 +20,11 @@ void main() {
 
   Future<String> hash([String locale = 'nl']) => memory.factsHash(locale: locale);
 
-  Future<void> save(MemoryOverviewStatus status, {String body = '{"overview":"tekst"}', String locale = 'nl'}) async =>
-      memory.saveOverview(factsHash: await hash(locale), locale: locale, status: status, body: body);
+  Future<MemoryResult> save(
+    MemoryOverviewStatus status, {
+    String body = '{"overview":"tekst"}',
+    String locale = 'nl',
+  }) async => memory.saveOverview(factsHash: await hash(locale), locale: locale, status: status, body: body);
 
   group('facts hash', () {
     test('changes on add, update and delete', () async {
@@ -138,6 +141,18 @@ void main() {
 
       expect(await db.select(db.assistantMemoryOverviews).get(), hasLength(1));
       expect((await memory.overview())!.body, '{"overview":"tweede"}');
+    });
+
+    test('a body that is not a JSON object, or is too large, is refused and nothing is stored', () async {
+      await memory.remember('Houdt van westerns');
+      for (final body in ['', 'geen json', '{"open":', '[1,2]', '{"t":"${'a' * kMemoryOverviewMaxBytes}"}']) {
+        expect((await save(MemoryOverviewStatus.ok, body: body)).code, MemoryCode.invalidOverview);
+      }
+      expect(await memory.overview(), isNull);
+
+      expect((await save(MemoryOverviewStatus.ok)).code, MemoryCode.ok);
+      expect((await save(MemoryOverviewStatus.ok, body: 'kapot')).code, MemoryCode.invalidOverview);
+      expect((await memory.overview())!.body, '{"overview":"tekst"}', reason: 'the stored overview is left alone');
     });
 
     test('clearAll drops the facts and the overview', () async {
