@@ -169,6 +169,7 @@ void main() {
 
       expect(edits.single['action'], 'send');
       expect(c.submitted, ['scan films']);
+      expect(c.submittedTyped, [true], reason: 'the keyboard and dictation are the user\'s own words');
     });
 
     testWidgets('a follow-up under a result asks it at once', (tester) async {
@@ -187,6 +188,7 @@ void main() {
       await settle(tester);
 
       expect(c.submitted, [question]);
+      expect(c.submittedTyped, [false], reason: 'a follow-up never stores a fact at once');
       expect(c.conversationClears, 1, reason: 'asking keeps the conversation going');
     });
 
@@ -208,6 +210,7 @@ void main() {
       await press(tester, LogicalKeyboardKey.select);
 
       expect(c.submitted, [BigPSuggestions.of(c).examples(t.assistant.idle.examples).first]);
+      expect(c.submittedTyped, [false]);
       expect(edits, isEmpty, reason: 'an example needs no keyboard');
     });
   });

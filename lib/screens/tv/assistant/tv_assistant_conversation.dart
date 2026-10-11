@@ -13,6 +13,7 @@ import '../../../widgets/big_p/assistant/big_p_labels.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
+import 'tv_assistant_card_sheets.dart';
 import 'tv_assistant_tasks.dart';
 
 /// What the full surface's glass panel or the summoned balloon holds in each
@@ -37,6 +38,7 @@ class TvAssistantConversation extends StatelessWidget {
     required this.onPickOption,
     required this.onOpenTitle,
     this.tasksNode,
+    this.memoryNode,
     this.compact = false,
   });
 
@@ -64,6 +66,9 @@ class TvAssistantConversation extends StatelessWidget {
 
   /// Has the focus while the remote is on a task's capsule or result.
   final FocusNode? tasksNode;
+
+  /// Gets the safe button of the memory card, for the surface's focus.
+  final FocusNode? memoryNode;
 
   /// The summoned panel (760 pt) rather than the surface.
   final bool compact;
@@ -110,6 +115,16 @@ class TvAssistantConversation extends StatelessWidget {
 
     Widget column(List<Widget> items) =>
         Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: items);
+
+    if (c.memoryProposal case final proposal?) {
+      return TvAssistantMemoryStand(
+        controller: c,
+        proposal: proposal,
+        headlineStyle: headlineStyle,
+        declineNode: memoryNode,
+        compact: compact,
+      );
+    }
 
     // Several commands in one question: a card per task instead of one step
     // list and one result card. One command keeps the stands below.

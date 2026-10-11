@@ -2393,6 +2393,47 @@
       "age": "${age} years",
       "save": "Save and keep looking"
     },
+    "memory": {
+      "stored": "Remembered: ${value}.",
+      "replaced": "Replaced with: ${value}.",
+      "forgotten": "Forgotten: ${value}.",
+      "failed": "That did not work. Nothing was changed.",
+      "profileChanged": "This proposal belonged to another profile. Nothing was changed.",
+      "off": "The memory is off. Nothing was changed.",
+      "changed": "This memory was edited in the meantime. Nothing was changed.",
+      "kids": "This is now a children's profile. Big P uses no memory there; nothing was changed.",
+      "storyAsk": "Remembering and a story question do not go in one message. Do you want me to remember this?",
+      "storyOnly": "Remembering and a story question do not go in one message. Ask them one at a time.",
+      "refusedAges": "I do not keep children's ages here. Set them under Children's profile.",
+      "refusedLanguage": "I do not keep a language preference here. Set it in the language settings, under Language & subtitles.",
+      "refusedTooLong": "That is too long to remember. A memory is one sentence of at most ${max} characters.",
+      "refusedFull": "The memory is full. Remove a memory first, then I can remember this.",
+      "notStored": "I did not remember that. Nothing was stored.",
+      "alreadyStored": "That was already in your memory.",
+      "view": "View memory",
+      "card": {
+        "rememberTitle": "Shall I remember this?",
+        "replaceTitle": "Shall I replace this?",
+        "forgetTitle": "Shall I forget this?",
+        "memory": "Memory",
+        "category": "Category",
+        "disappears": "Goes away",
+        "fresh": "New",
+        "remember": "Remember",
+        "notRemember": "Don't remember",
+        "replace": "Replace",
+        "notReplace": "Don't replace",
+        "forget": "Forget",
+        "notForget": "Don't forget"
+      },
+      "categories": {
+        "preference": "Preferences",
+        "dislike": "Not for me",
+        "household": "Household",
+        "habit": "Viewing habits",
+        "other": "Other"
+      }
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI provider",
@@ -2521,6 +2562,9 @@
       "discoverRequestTitles": "Finding matching titles",
       "requestTitle": "Requesting title",
       "findTitle": "Finding the title",
+      "recallMemory": "Checking your memory",
+      "rememberFact": "Preparing a memory",
+      "forgetFact": "Preparing to forget",
       "fallback": "Working"
     },
     "jobs": {

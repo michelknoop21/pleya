@@ -6298,6 +6298,7 @@ class TranslationsAssistantEn {
 
 	// Translations
 	late final TranslationsAssistantKidsEn kids = TranslationsAssistantKidsEn.internal(_root);
+	late final TranslationsAssistantMemoryEn memory = TranslationsAssistantMemoryEn.internal(_root);
 
 	/// en: 'Big P'
 	String get tileTitle => 'Big P';
@@ -7648,6 +7649,69 @@ class TranslationsAssistantKidsEn {
 	String get save => 'Save and keep looking';
 }
 
+// Path: assistant.memory
+class TranslationsAssistantMemoryEn {
+	TranslationsAssistantMemoryEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Remembered: ${value}.'
+	String stored({required Object value}) => 'Remembered: ${value}.';
+
+	/// en: 'Replaced with: ${value}.'
+	String replaced({required Object value}) => 'Replaced with: ${value}.';
+
+	/// en: 'Forgotten: ${value}.'
+	String forgotten({required Object value}) => 'Forgotten: ${value}.';
+
+	/// en: 'That did not work. Nothing was changed.'
+	String get failed => 'That did not work. Nothing was changed.';
+
+	/// en: 'This proposal belonged to another profile. Nothing was changed.'
+	String get profileChanged => 'This proposal belonged to another profile. Nothing was changed.';
+
+	/// en: 'The memory is off. Nothing was changed.'
+	String get off => 'The memory is off. Nothing was changed.';
+
+	/// en: 'This memory was edited in the meantime. Nothing was changed.'
+	String get changed => 'This memory was edited in the meantime. Nothing was changed.';
+
+	/// en: 'This is now a children's profile. Big P uses no memory there; nothing was changed.'
+	String get kids => 'This is now a children\'s profile. Big P uses no memory there; nothing was changed.';
+
+	/// en: 'Remembering and a story question do not go in one message. Do you want me to remember this?'
+	String get storyAsk => 'Remembering and a story question do not go in one message. Do you want me to remember this?';
+
+	/// en: 'Remembering and a story question do not go in one message. Ask them one at a time.'
+	String get storyOnly => 'Remembering and a story question do not go in one message. Ask them one at a time.';
+
+	/// en: 'I do not keep children's ages here. Set them under Children's profile.'
+	String get refusedAges => 'I do not keep children\'s ages here. Set them under Children\'s profile.';
+
+	/// en: 'I do not keep a language preference here. Set it in the language settings, under Language & subtitles.'
+	String get refusedLanguage => 'I do not keep a language preference here. Set it in the language settings, under Language & subtitles.';
+
+	/// en: 'That is too long to remember. A memory is one sentence of at most ${max} characters.'
+	String refusedTooLong({required Object max}) => 'That is too long to remember. A memory is one sentence of at most ${max} characters.';
+
+	/// en: 'The memory is full. Remove a memory first, then I can remember this.'
+	String get refusedFull => 'The memory is full. Remove a memory first, then I can remember this.';
+
+	/// en: 'I did not remember that. Nothing was stored.'
+	String get notStored => 'I did not remember that. Nothing was stored.';
+
+	/// en: 'That was already in your memory.'
+	String get alreadyStored => 'That was already in your memory.';
+
+	/// en: 'View memory'
+	String get view => 'View memory';
+
+	late final TranslationsAssistantMemoryCardEn card = TranslationsAssistantMemoryCardEn.internal(_root);
+	late final TranslationsAssistantMemoryCategoriesEn categories = TranslationsAssistantMemoryCategoriesEn.internal(_root);
+}
+
 // Path: assistant.mobile
 class TranslationsAssistantMobileEn {
 	TranslationsAssistantMobileEn.internal(this._root);
@@ -7959,6 +8023,15 @@ class TranslationsAssistantStepsEn {
 
 	/// en: 'Finding the title'
 	String get findTitle => 'Finding the title';
+
+	/// en: 'Checking your memory'
+	String get recallMemory => 'Checking your memory';
+
+	/// en: 'Preparing a memory'
+	String get rememberFact => 'Preparing a memory';
+
+	/// en: 'Preparing to forget'
+	String get forgetFact => 'Preparing to forget';
 
 	/// en: 'Working'
 	String get fallback => 'Working';
@@ -8712,6 +8785,78 @@ class TranslationsUnifiedCatalogDiscoverySemanticsEn {
 
 	/// en: 'View all series, opens the complete catalog'
 	String get viewAllSeries => 'View all series, opens the complete catalog';
+}
+
+// Path: assistant.memory.card
+class TranslationsAssistantMemoryCardEn {
+	TranslationsAssistantMemoryCardEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Shall I remember this?'
+	String get rememberTitle => 'Shall I remember this?';
+
+	/// en: 'Shall I replace this?'
+	String get replaceTitle => 'Shall I replace this?';
+
+	/// en: 'Shall I forget this?'
+	String get forgetTitle => 'Shall I forget this?';
+
+	/// en: 'Memory'
+	String get memory => 'Memory';
+
+	/// en: 'Category'
+	String get category => 'Category';
+
+	/// en: 'Goes away'
+	String get disappears => 'Goes away';
+
+	/// en: 'New'
+	String get fresh => 'New';
+
+	/// en: 'Remember'
+	String get remember => 'Remember';
+
+	/// en: 'Don't remember'
+	String get notRemember => 'Don\'t remember';
+
+	/// en: 'Replace'
+	String get replace => 'Replace';
+
+	/// en: 'Don't replace'
+	String get notReplace => 'Don\'t replace';
+
+	/// en: 'Forget'
+	String get forget => 'Forget';
+
+	/// en: 'Don't forget'
+	String get notForget => 'Don\'t forget';
+}
+
+// Path: assistant.memory.categories
+class TranslationsAssistantMemoryCategoriesEn {
+	TranslationsAssistantMemoryCategoriesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Preferences'
+	String get preference => 'Preferences';
+
+	/// en: 'Not for me'
+	String get dislike => 'Not for me';
+
+	/// en: 'Household'
+	String get household => 'Household';
+
+	/// en: 'Viewing habits'
+	String get habit => 'Viewing habits';
+
+	/// en: 'Other'
+	String get other => 'Other';
 }
 
 // Path: assistant.jobs.scanLibrary
@@ -11010,6 +11155,41 @@ extension on Translations {
 			'assistant.kids.body' => 'So I can keep the titles suitable. This stays on this device and with this profile only.',
 			'assistant.kids.age' => ({required Object age}) => '${age} years',
 			'assistant.kids.save' => 'Save and keep looking',
+			'assistant.memory.stored' => ({required Object value}) => 'Remembered: ${value}.',
+			'assistant.memory.replaced' => ({required Object value}) => 'Replaced with: ${value}.',
+			'assistant.memory.forgotten' => ({required Object value}) => 'Forgotten: ${value}.',
+			'assistant.memory.failed' => 'That did not work. Nothing was changed.',
+			'assistant.memory.profileChanged' => 'This proposal belonged to another profile. Nothing was changed.',
+			'assistant.memory.off' => 'The memory is off. Nothing was changed.',
+			'assistant.memory.changed' => 'This memory was edited in the meantime. Nothing was changed.',
+			'assistant.memory.kids' => 'This is now a children\'s profile. Big P uses no memory there; nothing was changed.',
+			'assistant.memory.storyAsk' => 'Remembering and a story question do not go in one message. Do you want me to remember this?',
+			'assistant.memory.storyOnly' => 'Remembering and a story question do not go in one message. Ask them one at a time.',
+			'assistant.memory.refusedAges' => 'I do not keep children\'s ages here. Set them under Children\'s profile.',
+			'assistant.memory.refusedLanguage' => 'I do not keep a language preference here. Set it in the language settings, under Language & subtitles.',
+			'assistant.memory.refusedTooLong' => ({required Object max}) => 'That is too long to remember. A memory is one sentence of at most ${max} characters.',
+			'assistant.memory.refusedFull' => 'The memory is full. Remove a memory first, then I can remember this.',
+			'assistant.memory.notStored' => 'I did not remember that. Nothing was stored.',
+			'assistant.memory.alreadyStored' => 'That was already in your memory.',
+			'assistant.memory.view' => 'View memory',
+			'assistant.memory.card.rememberTitle' => 'Shall I remember this?',
+			'assistant.memory.card.replaceTitle' => 'Shall I replace this?',
+			'assistant.memory.card.forgetTitle' => 'Shall I forget this?',
+			'assistant.memory.card.memory' => 'Memory',
+			'assistant.memory.card.category' => 'Category',
+			'assistant.memory.card.disappears' => 'Goes away',
+			'assistant.memory.card.fresh' => 'New',
+			'assistant.memory.card.remember' => 'Remember',
+			'assistant.memory.card.notRemember' => 'Don\'t remember',
+			'assistant.memory.card.replace' => 'Replace',
+			'assistant.memory.card.notReplace' => 'Don\'t replace',
+			'assistant.memory.card.forget' => 'Forget',
+			'assistant.memory.card.notForget' => 'Don\'t forget',
+			'assistant.memory.categories.preference' => 'Preferences',
+			'assistant.memory.categories.dislike' => 'Not for me',
+			'assistant.memory.categories.household' => 'Household',
+			'assistant.memory.categories.habit' => 'Viewing habits',
+			'assistant.memory.categories.other' => 'Other',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -11097,6 +11277,9 @@ extension on Translations {
 			'assistant.steps.discoverRequestTitles' => 'Finding matching titles',
 			'assistant.steps.requestTitle' => 'Requesting title',
 			'assistant.steps.findTitle' => 'Finding the title',
+			'assistant.steps.recallMemory' => 'Checking your memory',
+			'assistant.steps.rememberFact' => 'Preparing a memory',
+			'assistant.steps.forgetFact' => 'Preparing to forget',
 			'assistant.steps.fallback' => 'Working',
 			'assistant.jobs.scanLibrary.running' => 'Scan running',
 			'assistant.jobs.scanLibrary.done' => 'Scan finished',

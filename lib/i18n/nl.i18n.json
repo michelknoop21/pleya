@@ -2393,6 +2393,47 @@
       "age": "${age} jaar",
       "save": "Bewaar en zoek verder"
     },
+    "memory": {
+      "stored": "Onthouden: ${value}.",
+      "replaced": "Vervangen door: ${value}.",
+      "forgotten": "Vergeten: ${value}.",
+      "failed": "Dat is niet gelukt. Er is niets gewijzigd.",
+      "profileChanged": "Dit voorstel hoorde bij een ander profiel. Er is niets gewijzigd.",
+      "off": "Het geheugen staat uit. Er is niets gewijzigd.",
+      "changed": "Deze herinnering is intussen gewijzigd. Er is niets aangepast.",
+      "kids": "Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.",
+      "storyAsk": "Onthouden en een verhaalvraag gaan niet in één keer. Wil je dit onthouden?",
+      "storyOnly": "Onthouden en een verhaalvraag gaan niet in één keer. Stel ze los van elkaar.",
+      "refusedAges": "Leeftijden van kinderen onthoud ik hier niet. Die stel je in bij Kinderprofiel.",
+      "refusedLanguage": "Een taalvoorkeur onthoud ik hier niet. Die stel je in bij de taalinstellingen, onder Taal en ondertitels.",
+      "refusedTooLong": "Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.",
+      "refusedFull": "Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.",
+      "notStored": "Dat heb ik niet onthouden. Er is niets opgeslagen.",
+      "alreadyStored": "Dat stond al in je geheugen.",
+      "view": "Bekijk geheugen",
+      "card": {
+        "rememberTitle": "Zal ik dit onthouden?",
+        "replaceTitle": "Zal ik dit vervangen?",
+        "forgetTitle": "Zal ik dit vergeten?",
+        "memory": "Herinnering",
+        "category": "Categorie",
+        "disappears": "Verdwijnt",
+        "fresh": "Nieuw",
+        "remember": "Onthouden",
+        "notRemember": "Niet onthouden",
+        "replace": "Vervangen",
+        "notReplace": "Niet vervangen",
+        "forget": "Vergeten",
+        "notForget": "Niet vergeten"
+      },
+      "categories": {
+        "preference": "Voorkeuren",
+        "dislike": "Niet voor mij",
+        "household": "Huishouden",
+        "habit": "Kijkgewoonten",
+        "other": "Overig"
+      }
+    },
     "tileTitle": "Big P",
     "tileSubtitle": "Pleya Assistant",
     "providerLabel": "AI-provider",
@@ -2521,6 +2562,9 @@
       "discoverRequestTitles": "Passende titels zoeken",
       "requestTitle": "Titel aanvragen",
       "findTitle": "Titel op beschrijving zoeken",
+      "recallMemory": "Geheugen raadplegen",
+      "rememberFact": "Herinnering klaarzetten",
+      "forgetFact": "Vergeten klaarzetten",
       "fallback": "Bezig"
     },
     "jobs": {

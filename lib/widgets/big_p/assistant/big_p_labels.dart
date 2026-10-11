@@ -46,6 +46,9 @@ String assistantToolLabel(String tool) {
     'discover_request_titles' => s.discoverRequestTitles,
     'request_title' => s.requestTitle,
     'find_title' => s.findTitle,
+    'recall_memory' => s.recallMemory,
+    'remember_fact' => s.rememberFact,
+    'forget_fact' => s.forgetFact,
     _ => s.fallback,
   };
 }
@@ -307,7 +310,7 @@ String assistantPlainAnswer(String answer) => answer
 /// Big P's mood for the controller's stand; a waiting card wins.
 BigPMood bigPMood(AssistantController c) {
   if (c.inputError) return BigPMood.error;
-  if (c.pending != null || c.kidsAgesPrompt != null) return BigPMood.attentive;
+  if (c.pending != null || c.kidsAgesPrompt != null || c.memoryProposal != null) return BigPMood.attentive;
   return switch (c.state) {
     AssistantSurfaceState.idle => BigPMood.idle,
     AssistantSurfaceState.listening => BigPMood.listening,

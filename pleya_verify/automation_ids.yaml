@@ -237,6 +237,18 @@ ids:
   - id: assistant.kidsAges.button
     role: button
     instanceable: true
+  - id: assistant.memory
+    role: sheet
+    instanceable: false
+  - id: assistant.memory.button
+    role: button
+    instanceable: true
+  - id: assistant.memory.answer
+    role: region
+    instanceable: false
+  - id: assistant.memory.link
+    role: button
+    instanceable: false
   - id: assistant.summon
     role: region
     instanceable: false

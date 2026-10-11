@@ -69,6 +69,7 @@ void main() {
     FakeAssistantController c, {
     _Phone phone = _iPhone17Pro,
     bool keyboard = false,
+    bool dark = true,
     Future<void> Function(BigPMobileSession session)? before,
     void Function(FakeAssistantController c)? answer,
   }) async {
@@ -86,7 +87,7 @@ void main() {
             value: session,
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: monoTheme(dark: true),
+              theme: monoTheme(dark: dark),
               home: Builder(
                 builder: (context) => MediaQuery(
                   data: MediaQuery.of(context).copyWith(
@@ -99,9 +100,11 @@ void main() {
                     fit: StackFit.expand,
                     children: [
                       // No iPad Home without its balloon: black under the dim.
-                      if (phone.size.width < 700)
+                      if (dark && phone.size.width < 700)
                         RawImage(image: home, fit: BoxFit.cover, alignment: Alignment.topCenter),
-                      if (phone.size.width >= 700) const ColoredBox(color: Colors.black),
+                      if (dark && phone.size.width >= 700) const ColoredBox(color: Colors.black),
+                      // The Home mockup is dark only: a light page under the light theme.
+                      if (!dark) ColoredBox(color: Theme.of(context).scaffoldBackgroundColor),
                       // The real header over the mockup's.
                       Positioned(
                         left: 0,
@@ -109,7 +112,7 @@ void main() {
                         top: phone.safe.top,
                         height: 64,
                         child: ColoredBox(
-                          color: Colors.black,
+                          color: dark ? Colors.black : Theme.of(context).scaffoldBackgroundColor,
                           child: OverflowBox(
                             alignment: Alignment.bottomCenter,
                             maxHeight: 200,
@@ -426,6 +429,56 @@ void main() {
         await shoot(tester, 't8-$tag-${phone.name}', c, phone: phone, before: (s) async => s.summon(), answer: answer);
       });
     }
+  }
+
+  // BP-08a: the memory card under the answer (43 K, 43 H) and the answer
+  // that stored a fact at once.
+  for (final phone in [_iPhone17Pro, _phones[1], _iPad]) {
+    for (final (tag, answer) in <(String, void Function(FakeAssistantController))>[
+      ('onthouden', (c) => answerMemoryCard(c, rememberProposal())),
+      ('vervangen', (c) => answerMemoryCard(c, replaceProposal())),
+      ('vergeten', (c) => answerMemoryCard(c, forgetProposal())),
+      ('opgeslagen', answerMemoryStored),
+    ]) {
+      testWidgets('43-k $tag ${phone.name}', skip: _dir == null, (tester) async {
+        final c = shotController();
+        await shoot(
+          tester,
+          '43-k-$tag-${phone.name}',
+          c,
+          phone: phone,
+          before: (s) async => s.summon(),
+          answer: answer,
+        );
+      });
+    }
+  }
+
+  // The sentence at its limit of 200 characters, and the card in the light theme.
+  for (final phone in [_iPhone17Pro, _phones[1]]) {
+    testWidgets('43-k onthouden 200 tekens ${phone.name}', skip: _dir == null, (tester) async {
+      final c = shotController();
+      await shoot(
+        tester,
+        '43-k-onthouden-200-${phone.name}',
+        c,
+        phone: phone,
+        before: (s) async => s.summon(),
+        answer: (c) => answerMemoryCard(c, longRememberProposal()),
+      );
+    });
+    testWidgets('43-k onthouden licht ${phone.name}', skip: _dir == null, (tester) async {
+      final c = shotController();
+      await shoot(
+        tester,
+        '43-k-onthouden-licht-${phone.name}',
+        c,
+        phone: phone,
+        dark: false,
+        before: (s) async => s.summon(),
+        answer: (c) => answerMemoryCard(c, rememberProposal()),
+      );
+    });
   }
 
   testWidgets('t8 leeftijden gekozen 402', skip: _dir == null, (tester) async {

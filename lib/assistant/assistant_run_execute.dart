@@ -13,6 +13,8 @@ extension _AssistantExecute on AssistantRun {
         if ((!_ctx.libraryDoctorMode || tool.name != 'my_watching') &&
             (!_ctx.libraryDoctorMode ||
                 tool.risk == AssistantToolRisk.read ||
+                // A memory write changes nothing on a server and never without the user.
+                _isMemoryTool(tool.name) ||
                 (const {'scan_library', 'refresh_metadata'}.contains(tool.name) &&
                     _ctx.libraryDoctorActions.contains(tool.name))))
           // A serverless tool still asks `serves`: a missing service (no Seerr)
@@ -213,7 +215,12 @@ extension _AssistantExecute on AssistantRun {
     } on ArgumentError {
       return {'error': 'invalid_arguments'};
     } catch (e, st) {
-      appLogger.w('Assistant tool ${tool.name} failed', error: e, stackTrace: st);
+      // A memory tool's error can quote a fact: only its type is logged.
+      appLogger.w(
+        'Assistant tool ${tool.name} failed',
+        error: _isMemoryTool(tool.name) ? e.runtimeType : e,
+        stackTrace: st,
+      );
       return {'error': 'failed'};
     }
   }

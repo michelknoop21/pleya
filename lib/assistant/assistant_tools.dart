@@ -56,6 +56,8 @@ import '../utils/global_key_utils.dart';
 import '../services/tmdb/tmdb_client.dart' show TmdbAuthException, TmdbClient, TmdbException, TmdbKind;
 import 'assistant_age_gate.dart';
 import 'assistant_find_match.dart';
+import 'assistant_memory.dart';
+import '../services/memory/memory_validation.dart';
 import 'assistant_named_titles.dart' show assistantTitleKey;
 import 'assistant_recommend_constraints.dart';
 import 'assistant_find_route.dart';
@@ -80,6 +82,7 @@ part 'assistant_tools_requests_options.dart';
 part 'assistant_tools_find.dart';
 part 'assistant_tools_discover.dart';
 part 'assistant_tools_kids.dart';
+part 'assistant_tools_memory.dart';
 part 'assistant_tools_spoiler.dart';
 part 'assistant_tools_media.dart';
 part 'assistant_tools_recommendations.dart';
@@ -361,6 +364,7 @@ final List<AssistantTool> assistantTools = [
   ..._findTools,
   ..._discoverTools,
   ..._mediaTools,
+  ...assistantMemoryTools,
   ..._playbackTools,
   ..._libraryDoctorTools,
   ..._personalTools,

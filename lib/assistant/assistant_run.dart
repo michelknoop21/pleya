@@ -6,12 +6,15 @@ import '../exceptions/media_server_exceptions.dart';
 import '../i18n/strings.g.dart';
 import '../media/ids.dart';
 import '../media/media_kind.dart';
+import '../services/memory/memory_validation.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../utils/app_logger.dart';
 import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_execution.dart';
 import 'assistant_intent.dart';
+import 'assistant_memory.dart';
+import 'assistant_memory_intent.dart';
 import 'assistant_named_titles.dart';
 import 'assistant_provider.dart';
 import 'assistant_recommend_constraints.dart';
@@ -22,6 +25,7 @@ import 'assistant_tools.dart';
 part 'assistant_run_answer.dart';
 part 'assistant_run_execute.dart';
 part 'assistant_run_loop.dart';
+part 'assistant_run_memory.dart';
 part 'assistant_run_prompt.dart';
 part 'assistant_run_result.dart';
 part 'assistant_run_single.dart';
@@ -80,6 +84,11 @@ class AssistantRunResult {
     this.ageFilterNotice = false,
     this.kidsAgesNeeded = false,
     this.intent = AssistantIntent.unknown,
+    this.memoryProposals = const [],
+    this.memoryStored = const [],
+    this.memoryRefused,
+    this.memoryNotStored = false,
+    this.memoryKnown = false,
   });
   final AssistantRunEnd end;
 
@@ -109,6 +118,28 @@ class AssistantRunResult {
 
   /// What this ask fixed from the user's words, for tasks split off it.
   final AssistantIntent intent;
+
+  /// Memory writes the model asked for that wait for the user's yes on a
+  /// Pleya card after the answer. Nothing of them is stored yet.
+  final List<AssistantMemoryProposal> memoryProposals;
+
+  /// What this ask stored in the memory at once, on the user's own typed
+  /// request: at most one fact. Pleya reports it in its own words.
+  final List<MemoryFact> memoryStored;
+
+  /// Why the user's typed words after "onthoud dat" were not stored, or null.
+  /// Pleya reports it in its own words, never the model.
+  final MemoryCode? memoryRefused;
+
+  /// The typed words asked to remember a fact the memory takes, and the ask
+  /// ended without a save, a refusal or a card: the model never asked for
+  /// it. Pleya says that nothing was stored instead of the model's words.
+  final bool memoryNotStored;
+
+  /// The typed words after "onthoud dat" were in the memory of this profile
+  /// already and the ask stored nothing. Pleya says so in its own line
+  /// instead of the model's words.
+  final bool memoryKnown;
 }
 
 /// Model-proposed independent command, validated before any execution.
@@ -183,7 +214,19 @@ class AssistantRun {
     this.inheritedIntent,
     this.conversation = const [],
     this.rightsEpoch,
+    this.userTyped = false,
+    this.memoryOnly = false,
   });
+
+  /// The prompt is the user's own typed question, not a task the model cut
+  /// off it or a follow-up the model wrote. Only then can "onthoud dat ..."
+  /// store a fact without a card.
+  final bool userTyped;
+
+  /// The run of the memory screen: only [tools] it was given (the memory
+  /// tools), without the spoiler fence and the library diagnosis, which would
+  /// swap that tool list for their own.
+  final bool memoryOnly;
 
   /// A counter that moves whenever what this profile may administer changes
   /// (rights granted, revoked, a connection replaced). A read that spans a
@@ -264,8 +307,10 @@ class AssistantRun {
     _busy = true;
     try {
       _ctx = context.fresh(cancel: cancel);
-      _ctx.libraryDoctorMode = originalLibraryDoctorScope || assistantNeedsLibraryDoctorScope(prompt);
-      _spoilerQuestion = originalSpoilerPrompt ?? (assistantNeedsSpoilerScope(prompt) ? prompt : null);
+      _ctx.libraryDoctorMode = !memoryOnly && (originalLibraryDoctorScope || assistantNeedsLibraryDoctorScope(prompt));
+      _spoilerQuestion = memoryOnly
+          ? null
+          : originalSpoilerPrompt ?? (assistantNeedsSpoilerScope(prompt) ? prompt : null);
       _ctx.spoilerQuestion = _spoilerQuestion;
       return await _ask(prompt);
     } finally {

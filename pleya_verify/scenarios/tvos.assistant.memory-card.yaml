@@ -1,0 +1,133 @@
+name: tvos.assistant.memory-card
+target: tvos-sim
+# Requires PLEYA_ASSISTANT_ENABLED=true with the pinned SDK.
+# BP-08a: the memory card on TV. The question holds no "onthoud dat", so Pleya
+# stores nothing and shows "Zal ik dit onthouden?" in the panel under Big P's
+# answer, never over it, with the remote on the safe button. Select there is a
+# no and stores nothing: the same question gets the card again, where a stored
+# fact would have answered "Dat wist ik al." Menu closes the card as a no and
+# leaves Big P with his answer. Left and Select is the yes: Pleya's own line
+# follows and the same question then gets no card.
+#
+# Real settings UI and native idb input; the model fixture answers "Iets
+# spannends, maar geen horror." with one remember_fact call and one sentence.
+# The Siri Remote's touch surface and the Select key-up after the card closes
+# are for the hardware round.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - settle: 600
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[libraries]", timeout: 5000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[assistant]", timeout: 5000}
+  - press: select
+  - wait_until: {focused: "assistant.button[setup]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.provider.ollamaServer]", timeout: 10000}
+  - press: select
+  - wait_until: {focused: "settings.form.field[assistant.url]", timeout: 10000}
+  - type: "{{fixture}}"
+  - settle: 1000
+  - wait_until: {id: "settings.form.button[assistant.model.pleya-verify]", timeout: 15000}
+  - walk: {direction: down, steps: 8, stopAt: "settings.form.button[assistant.model.pleya-verify]", timeout: 80000, settle: 400}
+  - press: select
+  - assert: {id: "settings.form.button[assistant.model.pleya-verify]", state: {selected: true}}
+  - walk: {direction: down, steps: 4, stopAt: "settings.form.button[assistant.test]", timeout: 40000, settle: 400}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.save]", timeout: 15000}
+  - press: select
+  - wait_until: {focused: "settings.form.button[assistant.change]", timeout: 10000}
+  - press: menu
+  - wait_until: {id: screen.assistant, state: {availability: ready}, timeout: 10000}
+
+  # Ask. Nothing in the question asks to remember.
+  - wait_until: {focused: "assistant.button[ask]", timeout: 5000}
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Iets spannends, maar geen horror."
+  - press: select
+  - wait_until: {id: assistant.memory, state: {kind: remember}, timeout: 30000}
+
+  # The card stands under the answer, both on screen, and the remote is on
+  # the safe button. Nothing else to land on: no Vraag Big P while it waits.
+  - wait_until: {focused: "assistant.memory.button[decline]", timeout: 5000}
+  - assert: {id: assistant.memory.answer, insideViewport: true}
+  - assert: {id: assistant.memory, insideViewport: true, below: assistant.memory.answer, notOverlapping: assistant.memory.answer}
+  - assert: {id: "assistant.memory.button[accept]", insideViewport: true}
+  - assert: {id: "assistant.memory.button[decline]", insideViewport: true, sameRow: "assistant.memory.button[accept]", rightOf: "assistant.memory.button[accept]"}
+  - assert: {id: "assistant.button[ask]", present: false}
+  - settle: 800
+  - snapshot: 01-card-under-answer
+
+  # Select on the opening focus is a no: the card goes, Big P stays with his
+  # answer and the remote is back on Vraag Big P.
+  - press: select
+  - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
+  - assert: {id: screen.assistant, state: {state: result, error: false}}
+  - assert: {id: assistant.memory, present: false}
+  - settle: 800
+  - snapshot: 02-declined
+
+  # Nothing was stored: the same question gets the card again. The Select
+  # that answered the card did not open the keyboard either: this press does.
+  - assert: {id: tvos.native_text_entry, state: {sessionActive: false}}
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Iets spannends, maar geen horror."
+  - press: select
+  - wait_until: {id: assistant.memory, state: {kind: remember}, timeout: 30000}
+  - wait_until: {focused: "assistant.memory.button[decline]", timeout: 5000}
+  - settle: 800
+  - snapshot: 03-card-again
+
+  # Menu closes the card as a no and leaves Big P where he is.
+  - press: menu
+  - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
+  - assert: {id: screen.assistant, state: {state: result, error: false}}
+  - assert: {id: assistant.memory, present: false}
+  - settle: 800
+  - snapshot: 04-menu-closed
+
+  # Still nothing stored: the card comes a third time. Left and Select is yes.
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Iets spannends, maar geen horror."
+  - press: select
+  - wait_until: {id: assistant.memory, state: {kind: remember}, timeout: 30000}
+  - wait_until: {focused: "assistant.memory.button[decline]", timeout: 5000}
+  - press: left
+  - wait_until: {focused: "assistant.memory.button[accept]", timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.assistant, state: {memory: ok}, timeout: 8000}
+  - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
+  - assert: {id: assistant.memory, present: false}
+  - settle: 800
+  - snapshot: 05-remembered
+
+  # Stored: the same question comes back as already known, without a card.
+  - press: select
+  - wait_until: {id: tvos.native_text_entry, state: {sessionActive: true}, timeout: 10000}
+  - settle: 1000
+  - type: "Iets spannends, maar geen horror."
+  - press: select
+  - settle: 2500
+  - wait_until: {id: screen.assistant, state: {state: result, error: false}, timeout: 30000}
+  - wait_until: {focused: "assistant.button[ask]", timeout: 8000}
+  - assert: {id: assistant.memory, present: false}
+  - settle: 800
+  - snapshot: 06-already-known

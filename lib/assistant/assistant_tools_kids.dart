@@ -63,6 +63,11 @@ const kidsToolPolicy = <String, KidsTool>{
   'find_subtitles': KidsTool.blocked,
   // Plex job titles name the items they work on.
   'list_jobs': KidsTool.blocked,
+  // The memory holds what an adult of the household told Pleya: a children's
+  // profile neither reads nor writes it.
+  'recall_memory': KidsTool.blocked,
+  'remember_fact': KidsTool.blocked,
+  'forget_fact': KidsTool.blocked,
 };
 
 /// What a refused tool returns in kids mode.

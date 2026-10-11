@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../profiles/profile.dart';
 import '../services/preferences/preference_sync_scope.dart';
 import '../services/settings_service.dart';
@@ -10,6 +12,9 @@ import '../services/settings_service.dart';
 class KidsProfileStore {
   static const _base = BoolPref('assistant_kids_profile');
 
+  /// Moves on every [save], so a card that waits for a yes can look again.
+  static final ValueNotifier<int> changes = ValueNotifier(0);
+
   Future<bool> read() async {
     final pref = await _scoped();
     return pref != null && (await SettingsService.getInstance()).read(pref);
@@ -17,7 +22,9 @@ class KidsProfileStore {
 
   Future<void> save(bool value) async {
     final pref = await _scoped();
-    if (pref != null) await (await SettingsService.getInstance()).write(pref, value);
+    if (pref == null) return;
+    await (await SettingsService.getInstance()).write(pref, value);
+    changes.value++;
   }
 
   /// Drops the switch of [profileScope], from the profile delete flow.

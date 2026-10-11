@@ -32,7 +32,7 @@ import '../../../widgets/overlay_sheet.dart';
 import '../../../widgets/big_p/assistant/big_p_voice_mouth.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
-import 'tv_assistant_kids_sheet.dart';
+import 'tv_assistant_card_sheets.dart';
 import 'tv_assistant_tasks.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_suggestions.dart';
@@ -90,7 +90,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
   final _tasksNode = FocusNode(debugLabel: 'assistant.tasks');
   final _taskOptionNodes = TvAssistantTaskOptionNodes();
   late final _confirm = TvAssistantConfirmPresenter(cancelNode: _confirmCancelNode);
-  final _kids = TvKidsAgesSheet();
+  final _kids = TvAssistantCardSheets();
 
   SpeechSearchService get _speech => widget.speech ?? SpeechSearchService.instance;
   AppleTvNativeTextEntry get _entry => widget.textEntry ?? AppleTvNativeTextEntry.instance;
@@ -195,7 +195,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     if (!mounted || !identical(c, _c) || _leaving) return;
     final question = text?.trim() ?? '';
     if (question.isNotEmpty) {
-      unawaited(c.submit(question));
+      // Typed or dictated by the user.
+      unawaited(c.submit(question, typed: true));
       return;
     }
     c.cancelListening();
@@ -225,7 +226,8 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
     _doneSteps = done;
 
     _confirm.sync(context, c, _entry, _onConfirmClosed);
-    _kids.sync(context, c);
+    // The memory card went: the remote is back on the answer's own buttons.
+    if (_kids.sync(context, c)) WidgetsBinding.instance.addPostFrameCallback((_) => _focusDefault());
     setState(() {});
   }
 
@@ -365,6 +367,7 @@ class _TvAssistantSummonHostState extends State<TvAssistantSummonHost> {
               firstOptionNode: _optionNode,
               taskOptionNodes: _taskOptionNodes,
               tasksNode: _tasksNode,
+              memoryNode: _kids.memory.declineNode,
               onAsk: () => unawaited(_ask(context: widget.screenContext?.call())),
               onDone: _dismiss,
               onNewConversation: () {

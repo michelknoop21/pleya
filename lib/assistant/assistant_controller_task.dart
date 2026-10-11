@@ -72,6 +72,9 @@ extension _AssistantTaskRunning on AssistantController {
         originalSpoilerPrompt: task.originalSpoilerPrompt,
         originalLibraryDoctorScope: libraryDoctorScope,
         inheritedIntent: task.parentIntent,
+        // The question as the user typed it; a task cut off it is not, and
+        // neither is a chip, a hand-over or a retry.
+        userTyped: allowSplit && task.typed,
         // Sampled at both ends of a read as well as on every server change:
         // a change nobody announced still moves it, and so does the way back.
         rightsEpoch: () {
@@ -99,7 +102,10 @@ extension _AssistantTaskRunning on AssistantController {
         },
       );
       final result = await run.ask(task.prompt);
-      if (!_alive(task)) return;
+      if (!_alive(task)) {
+        _carryMemory(task, result);
+        return;
+      }
       if (result.splitTasks.isNotEmpty) {
         final inheritedSpoilerPrompt = task.originalSpoilerPrompt ?? result.spoilerPrompt;
         final children = [
@@ -151,12 +157,15 @@ extension _AssistantTaskRunning on AssistantController {
               : 'playback_session_changed');
       // Pleya's own words, never the model's: the answer kept naming a
       // title the age filter did not pass.
-      final text = result.kidsAgesNeeded
+      final own = result.kidsAgesNeeded
           ? t.assistant.kids.agesFirst
           : result.ageFilterNotice
           ? t.assistant.kids.noFit
-          : result.text;
+          : null;
+      // A fact stored at once is reported before either line.
+      final text = assistantMemoryAnswer(result, own ?? result.text, own: own != null);
       task.answer = playbackCurrent && doctorError == null && displayCurrent ? text : '';
+      _settleMemory(task, result);
       task.ageFilterNotice = result.ageFilterNotice && !result.kidsAgesNeeded;
       task.actions.addAll(result.actions);
       if (playbackCurrent && doctorError == null && displayCurrent) {
@@ -212,7 +221,11 @@ class _AssistantTaskState {
     this.originalSpoilerPrompt,
     this.parentIntent,
     required this.memoryEpoch,
+    this.typed = false,
   });
+
+  /// The prompt is the user's own typed or dictated question.
+  final bool typed;
 
   /// The conversation this task started in; a clear since then keeps its
   /// answer out of the memory.
@@ -236,6 +249,12 @@ class _AssistantTaskState {
   final List<AssistantStep> steps = [];
   final List<AssistantActionRecord> actions = [];
   final List<AssistantDisplay> displays = [];
+
+  /// Memory cards that wait for this task's answer, and what the last
+  /// answered one came to.
+  final List<AssistantMemoryProposal> memoryProposals = [];
+  AssistantMemoryOutcome? memoryOutcome;
+  bool memoryStored = false;
   AssistantTask get view => AssistantTask(
     id: id,
     title: title,

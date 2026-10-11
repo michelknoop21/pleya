@@ -14,10 +14,16 @@ class MemoryStore {
   Future<T> transaction<T>(Future<T> Function() action) => _db.transaction(action);
 
   /// Newest change first.
+  // On an equal change time the newest made goes first, then the id: an
+  // arbitrary order between two facts of one millisecond, but a stable one.
   Future<List<AssistantMemoryRow>> all() =>
       (_db.select(_db.assistantMemories)
             ..where((t) => t.profileId.equals(_profileId))
-            ..orderBy([(t) => OrderingTerm.desc(t.updatedAt), (t) => OrderingTerm.asc(t.id)]))
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.updatedAt),
+              (t) => OrderingTerm.desc(t.createdAt),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
           .get();
 
   Future<int> count() async {
@@ -89,8 +95,14 @@ class MemoryStore {
   /// Drops this profile's facts and its written overview.
   Future<void> deleteAll() async {
     await (_db.delete(_db.assistantMemories)..where((t) => t.profileId.equals(_profileId))).go();
-    await (_db.delete(_db.assistantMemoryOverviews)..where((t) => t.profileId.equals(_profileId))).go();
+    await deleteOverview();
   }
+
+  /// Drops this profile's written overview. Called in the transaction of
+  /// every change to its facts: the text was written from facts that are no
+  /// longer the facts, and a removed fact must not stay on the device in it.
+  Future<void> deleteOverview() =>
+      (_db.delete(_db.assistantMemoryOverviews)..where((t) => t.profileId.equals(_profileId))).go();
 
   Future<AssistantMemoryOverviewRow?> overview() =>
       (_db.select(_db.assistantMemoryOverviews)..where((t) => t.profileId.equals(_profileId))).getSingleOrNull();

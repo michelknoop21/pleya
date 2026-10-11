@@ -101,6 +101,26 @@ class OllamaFakeServer {
         } else {
           return _json({'error': 'create_user tool not offered'}, status: 400);
         }
+      } else if (prompt == 'Iets spannends, maar geen horror.') {
+        // The memory proposal (BP-08a): the question holds no "onthoud dat",
+        // so Pleya stores nothing and shows its card under the answer. A
+        // fact that was stored after all would come back as already_known.
+        if (replies.isNotEmpty) {
+          final known = replies.any(
+            (reply) => (jsonDecode(reply['content'] as String) as Map)['status'] == 'already_known',
+          );
+          message = {
+            'role': 'assistant',
+            'content': known ? 'Dat wist ik al.' : 'Drie spannende titels zonder horror.',
+          };
+        } else if (names.contains('remember_fact')) {
+          message = _call('remember-horror', 'remember_fact', {
+            'value': 'Houdt niet van horror',
+            'category': 'dislike',
+          });
+        } else {
+          return _json({'error': 'memory tool not offered'}, status: 400);
+        }
       } else if (prompt == 'Zoek Aurora.' || prompt == 'Zoek Basalt.') {
         final title = prompt == 'Zoek Aurora.' ? 'Aurora' : 'Basalt';
         if (replies.isNotEmpty) {

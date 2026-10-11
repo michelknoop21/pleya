@@ -18,10 +18,14 @@ class BigPMobileFollowUps extends StatelessWidget {
   final ValueChanged<String> onAsk;
   final bool floating;
 
-  /// None while working, after an error or while a confirmation or the
-  /// ages card waits.
+  /// None while working, after an error or while a confirmation, the ages
+  /// card or a memory card waits.
   static List<String> questions(AssistantController c) {
-    if (c.state != AssistantSurfaceState.result || c.resultIsError || c.pending != null || c.kidsAgesPrompt != null) {
+    if (c.state != AssistantSurfaceState.result ||
+        c.resultIsError ||
+        c.pending != null ||
+        c.kidsAgesPrompt != null ||
+        c.memoryProposal != null) {
       return const [];
     }
     return BigPSuggestions.of(c).followUps(c);

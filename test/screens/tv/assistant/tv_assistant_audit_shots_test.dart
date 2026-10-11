@@ -35,6 +35,8 @@ import 'package:pleya/widgets/pleya_wordmark.dart';
 import 'package:provider/provider.dart';
 
 import '../../../test_helpers/golden.dart';
+import '../../big_p/big_p_mobile_fixtures.dart'
+    show answerMemoryCard, forgetProposal, rememberProposal, replaceProposal;
 import 'tv_assistant_test_support.dart';
 
 final _dir = Platform.environment['BIGP_SHOT_DIR'];
@@ -253,6 +255,10 @@ final Map<String, _Stand> _stands = {
     ..state = AssistantSurfaceState.result
     ..answer = 'Daarvoor moet Pleya eerst weten hoe oud de kinderen zijn.'
     ..displays = [const AssistantKidsAgesPrompt('Is er een film voor de kinderen?')],
+  // BP-08a: the memory card over the answer.
+  'memory-remember': (c) => answerMemoryCard(c, rememberProposal()),
+  'memory-replace': (c) => answerMemoryCard(c, replaceProposal()),
+  'memory-forget': (c) => answerMemoryCard(c, forgetProposal()),
   'clarify': (c) => c
     ..prompt = 'Welke films zijn er deze week gekeken?'
     ..state = AssistantSurfaceState.result
@@ -470,6 +476,8 @@ void main() {
     'result-watch',
     'confirm',
     'kids-ages',
+    'memory-remember',
+    'memory-replace',
     'clarify',
   ]) {
     testWidgets('surface $name', skip: _dir == null, (tester) async {

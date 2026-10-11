@@ -119,6 +119,7 @@ void main() {
     expect(edits.single['action'], 'send');
     expect(c.listenContexts.single, same(screen));
     expect(c.submitted, ['Scan deze bibliotheek opnieuw']);
+    expect(c.submittedTyped, [true]);
   });
 
   testWidgets('an example starts directly with screen context and no native input', (tester) async {
@@ -128,6 +129,7 @@ void main() {
     example.onSelect();
     await settle(tester);
     expect(c.submitted, [example.label]);
+    expect(c.submittedTyped, [false]);
     expect(c.listenContexts.single, same(screen));
     expect(edits, isEmpty);
   });

@@ -127,6 +127,7 @@ void main() {
     await tester.pump();
     expect(c.listenContexts, hasLength(1));
     expect(c.submitted, [label]);
+    expect(c.submittedTyped, [false], reason: 'a follow-up chip is not the user\'s own typed sentence');
   });
 
   testWidgets('Pleya asks whose watching: the three options are the chips, a tap asks that exact question', (
@@ -205,6 +206,7 @@ void main() {
     await tester.tap(find.byIcon(Symbols.arrow_upward_rounded));
     await settle(tester);
     expect(c.submitted, ['wat is nieuw']);
+    expect(c.submittedTyped, [true], reason: 'the question field is the user\'s own words');
     expect(session.draft, isEmpty, reason: 'sent: nothing left to restore');
   });
 

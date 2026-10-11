@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_memory.dart';
 import 'package:pleya/assistant/assistant_run.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
@@ -55,6 +56,10 @@ class FakeAssistantController extends AssistantController {
   };
 
   final submitted = <String>[];
+
+  /// Per [submitted] question: whether it came in as the user's own typed words.
+
+  final submittedTyped = <bool>[];
 
   /// The screen context each submit runs with, kept across a null one as
   /// the real controller keeps it.
@@ -117,8 +122,9 @@ class FakeAssistantController extends AssistantController {
   }
 
   @override
-  Future<void> submit(String prompt) async {
+  Future<void> submit(String prompt, {bool typed = false}) async {
     submitted.add(prompt);
+    submittedTyped.add(typed);
     submittedContexts.add(_held);
     runs++;
     this.prompt = prompt;
@@ -186,6 +192,20 @@ class FakeAssistantController extends AssistantController {
   var conversationClears = 0;
   @override
   void clearConversation() => conversationClears++;
+
+  /// The memory card under the answer, and each answer given on one.
+  @override
+  AssistantMemoryProposal? memoryProposal;
+  @override
+  bool memoryStored = false;
+  final memoryAnswers = <(AssistantMemoryProposal, bool)>[];
+
+  @override
+  Future<void> answerMemoryProposal(AssistantMemoryProposal proposal, {required bool accept}) async {
+    memoryAnswers.add((proposal, accept));
+    memoryProposal = null;
+    notifyListeners();
+  }
 
   /// The ages the ages card saved, per press of Bewaar.
   final savedAges = <List<int>>[];

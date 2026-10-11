@@ -11,6 +11,7 @@ import '../utils/media_server_http_client.dart' show AbortController;
 import 'assistant_entitlement.dart';
 import 'assistant_intent.dart';
 import 'assistant_kids_ages_store.dart';
+import 'assistant_memory.dart';
 import 'assistant_execution.dart';
 import 'assistant_task.dart';
 
@@ -24,6 +25,7 @@ import 'assistant_web_lookup.dart';
 part 'assistant_controller_jobs.dart';
 part 'assistant_controller_options.dart';
 part 'assistant_controller_language.dart';
+part 'assistant_controller_memory.dart';
 part 'assistant_controller_reads.dart';
 part 'assistant_controller_task.dart';
 
@@ -162,6 +164,9 @@ class AssistantController extends ChangeNotifier {
   final List<AssistantDisplay> _displays = [];
   AssistantPendingAction? _pending;
   final List<_AssistantTaskState> _tasks = [];
+
+  /// Facts a superseded run stored at once, still to be reported.
+  final List<String> _memoryCarry = [];
   final List<_QueuedConfirmation> _confirmations = [];
   final AssistantOperationPool _operations = AssistantOperationPool(3);
   final AssistantOperationPool _mutations = AssistantOperationPool(1);
@@ -318,7 +323,10 @@ class AssistantController extends ChangeNotifier {
   }
 
   /// A new question supersedes every task and card from the previous one.
-  Future<void> submit(String prompt) async {
+  /// [typed] is true only for the user's own words from the question field or
+  /// dictation: a chip, a hand-over or a retry is not, and never stores a fact
+  /// without a card.
+  Future<void> submit(String prompt, {bool typed = false}) async {
     final text = prompt.trim();
     if (_disposed || text.isEmpty) return;
     final screen = _screenContext;
@@ -335,6 +343,7 @@ class AssistantController extends ChangeNotifier {
       generation: generation,
       budget: budget,
       originalSpoilerPrompt: assistantNeedsSpoilerScope(text) ? text : null,
+      typed: typed,
     );
     _tasks.add(root);
     _update();
@@ -370,6 +379,7 @@ class AssistantController extends ChangeNotifier {
     required AssistantQuestionBudget budget,
     String? originalSpoilerPrompt,
     AssistantIntent? parentIntent,
+    bool typed = false,
   }) => _AssistantTaskState(
     id: 'task-${++_nextTask}',
     title: title,
@@ -380,6 +390,7 @@ class AssistantController extends ChangeNotifier {
     originalSpoilerPrompt: originalSpoilerPrompt,
     parentIntent: parentIntent,
     memoryEpoch: _memoryEpoch,
+    typed: typed,
   );
 
   bool _alive(_AssistantTaskState task) =>
@@ -444,6 +455,22 @@ class AssistantController extends ChangeNotifier {
     }
     _update();
   }
+
+  /// The memory card that waits under the last answer ("Zal ik dit
+  /// onthouden?"), or null. Nothing of it is stored before a yes.
+  AssistantMemoryProposal? get memoryProposal => _memoryProposal;
+
+  /// What became of the last answered memory card, for Pleya's own line.
+  AssistantMemoryOutcome? get memoryOutcome => _memoryOutcome;
+
+  /// The last answer stored or replaced a fact: the link to the memory shows.
+  bool get memoryStored => _memoryStored;
+
+  /// The answer on a memory card. Yes writes through the memory of the
+  /// profile the proposal was made for, when it is still the active one; no
+  /// stores nothing. See [applyMemoryProposal].
+  Future<void> answerMemoryProposal(AssistantMemoryProposal proposal, {required bool accept}) =>
+      _answerMemoryProposal(proposal, accept: accept);
 
   // Declining a confirmation declines that action; the model still receives
   // its tool response and can continue. Only the final task label changes.

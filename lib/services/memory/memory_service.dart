@@ -14,7 +14,10 @@ import 'memory_validation.dart';
 export 'memory_models.dart';
 
 /// What one profile asked the assistant to remember, and the written overview
-/// derived from it. Made once per profile session with the profile in the
+/// derived from it. Every change to the facts (add, update, delete, wipe)
+/// drops the stored overview in the same transaction: it is written again on
+/// the next visit to the screen, and nothing of a removed or changed fact
+/// stays behind in it. Made once per profile session with the profile in the
 /// constructor: no method takes a profile id, and a fact of another profile
 /// does not exist for this instance. Chat and settings share the instance,
 /// and an overview is saved on the instance that gave the facts for it:
@@ -58,6 +61,10 @@ class MemoryService {
 
   static final RegExp _refShape = RegExp(r'^[0-9a-f-]{8,36}$');
   static const MemoryResult _failed = MemoryResult(MemoryCode.storageFailed);
+
+  /// The profile this instance reads and writes; empty without one. A caller
+  /// that outlives a profile switch compares it with the active profile.
+  String get profileId => _profileId;
 
   bool get _hasProfile => _profileId.isNotEmpty;
   bool get _profileGone =>
@@ -113,6 +120,7 @@ class MemoryService {
           source: source.id,
           at: _now().toUtc().millisecondsSinceEpoch,
         );
+        await _store.deleteOverview();
         return _stored(id);
       });
     });
@@ -160,12 +168,14 @@ class MemoryService {
           source: source.id,
           at: now > current.updatedAt ? now : current.updatedAt + 1,
         );
+        await _store.deleteOverview();
         return _stored(id);
       });
     });
   }
 
-  /// Hard delete. The removed fact comes back so the caller can name it.
+  /// Hard delete, of the fact and of the overview written from it. The
+  /// removed fact comes back so the caller can name it.
   Future<MemoryResult> delete(String id) async {
     if (!_hasProfile) return const MemoryResult(MemoryCode.noProfile);
     return _guarded(_failed, () {
@@ -173,6 +183,7 @@ class MemoryService {
         final current = await _store.byId(id);
         if (current == null) return const MemoryResult(MemoryCode.notFound);
         await _store.deleteById(id);
+        await _store.deleteOverview();
         return MemoryResult(MemoryCode.ok, MemoryFact.fromRow(current));
       });
     });

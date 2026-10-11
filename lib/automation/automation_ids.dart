@@ -311,6 +311,19 @@ class AutomationIds {
   /// and `[skip]`.
   static const String assistantKidsAgesButton = 'assistant.kidsAges.button';
 
+  /// The card under an answer that asks whether to remember, replace or
+  /// forget a fact; state carries the `kind`.
+  static const String assistantMemory = 'assistant.memory';
+
+  /// A control on that card: `[accept]` and `[decline]`.
+  static const String assistantMemoryButton = 'assistant.memory.button';
+
+  /// Big P's answer above the memory card on TV: the card stands under it.
+  static const String assistantMemoryAnswer = 'assistant.memory.answer';
+
+  /// "Bekijk geheugen" under an answer that stored something.
+  static const String assistantMemoryLink = 'assistant.memory.link';
+
   /// Big P summoned with a long Play/Pause press, over any TV screen. State
   /// carries `shown`, `state`, `error` and `pending`. A result stays until
   /// Menu or Klaar: it always offers follow-ups.
@@ -666,6 +679,7 @@ class AutomationIds {
     assistantTaskCancel,
     assistantConfirmButton,
     assistantKidsAgesButton,
+    assistantMemoryButton,
     bigpFollowUp,
     bigpLibraryAsk,
     playerPanelTab,
@@ -788,6 +802,10 @@ class AutomationIds {
     {'id': assistantConfirmButton, 'role': 'button', 'instanceable': true},
     {'id': assistantKidsAges, 'role': 'sheet', 'instanceable': false},
     {'id': assistantKidsAgesButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantMemory, 'role': 'sheet', 'instanceable': false},
+    {'id': assistantMemoryButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantMemoryAnswer, 'role': 'region', 'instanceable': false},
+    {'id': assistantMemoryLink, 'role': 'button', 'instanceable': false},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},
     {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
     {'id': bigpBalloon, 'role': 'region', 'instanceable': false},
