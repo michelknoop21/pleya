@@ -18,6 +18,12 @@ Van hoog naar laag:
 5. Defaults.
 6. Het model, dat alleen open velden vult.
 
+Uitzondering op de bevestiging van schrijfacties, alleen voor het eigen geheugen van het actieve profiel (akkoord Michel, 11 oktober 2026, BP-08a):
+
+- Begint de getypte vraag zelf met een uitdrukkelijk "onthoud dat" (ook "onthoud:" en "remember that") en is ze geen vraagzin, dan geldt dat verzoek als de acceptatie van één schrijfactie: Pleya slaat één nieuw feit direct op en meldt letterlijk wat er is opgeslagen. Code herkent de opdrachtvorm, niet het model. Elke volgende schrijfactie in dezelfde beurt krijgt een kaart.
+- Vergeten en vervangen houden altijd een kaart, ook na "onthoud dat". De kaart toont wat verdwijnt.
+- Een vervolgvraag die het model heeft geschreven telt nooit als uitdrukkelijk verzoek, wat erin staat.
+
 Een lager niveau overschrijft nooit een hoger niveau. Onbekend betekent wedervraag of gedeeltelijk antwoord, nooit stil verbreden. Een onbekende identiteit of doelgroep wordt nooit opgelost met een gok. Pleya vraagt (maximaal drie wedervragen, een per keer, twee of drie knoppen plus vrije invoer) of antwoordt gedeeltelijk en zegt wat is weggelaten.
 
 ## Capaciteitsgaten en identiteit
