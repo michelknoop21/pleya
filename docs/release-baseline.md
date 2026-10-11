@@ -81,7 +81,7 @@ These are baseline tech debt, not regressions from this phase. They should be ad
 | `TRAKT_CLIENT_SECRET` | Trakt tracker login (device code token exchange) | empty | Trakt scrobble/sync; not passed by the release lanes |
 | `SIMKL_CLIENT_ID` | Simkl tracker | empty | Simkl tracking |
 | `MAL_CLIENT_ID` | MAL tracker | empty | MAL tracking |
-| `PLEYA_ICE_BASE` | ICE relay/relay base URL | `https://ice.pleya.app` | Watch Together, Discord RPC, log uploads, Pleya Share-relayfallback. Host draait nog niet, zie [DEC-014](DECISIONS.md#dec-014) |
+| `PLEYA_ICE_BASE` | ICE relay/relay base URL | `https://ice.pleya.app` | Watch Together, Discord RPC, log uploads. De Pleya Share-relayfallback leest dezelfde waarde maar staat uit, zie [PLEYA_SHARE](PLEYA_SHARE.md#internetrelay-staat-uit). Host draait sinds 2026-08-10, zie [DEC-014](DECISIONS.md#dec-014) |
 | `UPDATE_GITHUB_REPO` | Auto-update GitHub repo | empty | Desktop update check |
 | `UPDATE_FEED_URL` | Auto-update appcast URL | empty | Desktop update check |
 | `ENABLE_UPDATE_CHECK` | Enable update checking | `false` | Desktop update prompts |

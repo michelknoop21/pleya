@@ -154,6 +154,10 @@ Roadmap: REG-01/REG-02/REG-03, A-07/A-10/A-11/A-12 en A-19/A-20/A-21; overige op
 
 **Vergelijking bij aanvang.** De resume-melding raakt de kernhandeling kijken; impact potentieel hoog, oorzaak en hardwarefrequentie nog onbekend. Daarom eerst A-11/A-12-discovery, zonder P0-claim. Bestaande rechten-/correctheidsbugs behouden hun veiligheidsgewicht. Big P-fixes en resterende intent-/identiteitsgaten behouden hun contracten en interne afhankelijkheden; nieuwe assistantfunctionaliteit krijgt geen voorrang op betrouwbare playback. Requests heeft brede ontdek-/aanvraagwaarde maar vraagt eerst A-19 en volledige A-20; specwerk mag binnen de WIP-regel vooruitlopen. Visuele P2-voorstellen wachten op bewijs/approval. Deze keuze verdringt automatische Big P-voorrang, geen reeds bewezen securityhotfix of geaccepteerde releasegate.
 
+## Hotfixes buiten de volgorde
+
+Roadmap deviation: regressie-hotfix Pleya Share, akkoord van Michel op 11 oktober 2026. Pleya Share heeft geen werkpakket in deze roadmap. De internetrelay voor Pleya Share is uitgezet omdat een guest na een korte LAN-onderbreking op een relay uitkwam die geen video kan dragen. Geen werkpakket verschuift. Besluit en meting: [DEC-XXX](DECISIONS.md) en [PLEYA_SHARE](PLEYA_SHARE.md#internetrelay-staat-uit); de hardwareronde staat daar als open punt.
+
 ## Execution phases
 
 De uitvoeringsfasen hieronder zijn bewijs- en afhankelijkheidspoorten; pakketkeuze volgt het productbesluit van 8 oktober en de WIP-limiet. Big P en A-02 hebben geen exclusieve stroompositie.

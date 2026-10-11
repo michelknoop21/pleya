@@ -61,6 +61,10 @@ Nothing user-facing since the last published build.
 
 ### Fixed
 
+- **Pleya Share stays on your local network.** After a short Wi-Fi or hotspot hiccup a guest
+  could end up on the internet relay, where the share looked online but nothing played. Pleya
+  Share no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware.
+  Sharing between two different networks is gone with it.
 - **Season selector labels on Apple TV series pages no longer render with a shifted or doubled
   line of text** on the unselected seasons.
 - **The row of extras below an Apple TV series or movie page now sizes its text and spacing

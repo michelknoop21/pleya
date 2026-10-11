@@ -540,7 +540,8 @@ class PleyaShareConnection extends Connection {
   /// Host HTTP port.
   final int port;
 
-  /// Host's relay room identity for internet fallback (null for hosts that
+  /// Stable host id: Wi-Fi Aware matches the host by it. Also the relay room
+  /// id, unused while `PleyaShareRelay.enabled` is off (null for hosts that
   /// predate relay support).
   final String? relayHostId;
 
