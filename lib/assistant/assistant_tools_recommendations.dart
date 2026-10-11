@@ -49,8 +49,8 @@ Future<AssistantToolOutcome> _recommendTogether(
   final catalog = ctx.catalog ?? (throw const AssistantToolError('catalog_unavailable'));
   final filters = AssistantStrictFilters.parse(args);
   final limit = _int(args, 'limit', 1, 20) ?? 10;
-  final names = _strings(args, 'participants');
-  final explicitIds = _strings(args, 'user_ids');
+  final names = [..._strings(args, 'participants')];
+  var explicitIds = _strings(args, 'user_ids');
   if (names.length + explicitIds.length < 1 ||
       names.length + explicitIds.length > _cohortParticipantCap ||
       [...names, ...explicitIds].any((s) => s.trim().isEmpty || s.length > 64))
@@ -90,6 +90,19 @@ Future<AssistantToolOutcome> _recommendTogether(
   checkCurrent();
   final selected = <String, ServerUser>{requester.id: requester};
   final offeredBefore = {...?_offeredParticipants[ctx]};
+  // The user's group word ("gezin"), set from their question. The people are
+  // then the word itself, looked up as a Pleya profile or account, and never
+  // the model's own pick: nothing shrinks the group to me or to a guess.
+  final group = switch (args['group']) {
+    final String g when g.trim().isNotEmpty && g.length <= 64 => g.trim().toLowerCase(),
+    _ => null,
+  };
+  if (group != null) {
+    names
+      ..clear()
+      ..addAll(['me', group]);
+    explicitIds = const [];
+  }
   final people = resolvePeople(
     names: names,
     users: users,
@@ -102,7 +115,26 @@ Future<AssistantToolOutcome> _recommendTogether(
     ..clear()
     ..addAll(people.selected);
   final ambiguous = <Map<String, Object?>>[];
-  for (final entry in people.ambiguous) {
+  final missing = [...people.missing];
+  // A group nobody could be matched to: the asker chooses among the other
+  // accounts, never the model, and never the asker alone.
+  final otherAccounts = [
+    for (final u in users)
+      if (u.id != requester.id && !client.sameUserId(u.id, requester.id)) u,
+  ];
+  bool isGroup(String name) => name.trim().toLowerCase() == group;
+  // The group word matched nobody but the asker (or nobody): the asker chooses
+  // among the other accounts, never the model.
+  final groupChoices = <ServerUser>[
+    if (group != null && selected.length == 1 && people.ambiguous.isEmpty)
+      ...otherAccounts.where((u) => !u.disabled).take(_cohortParticipantCap * 2),
+  ];
+  if (groupChoices.isNotEmpty) {
+    missing.removeWhere(isGroup);
+  } else if (group != null && selected.length == 1 && people.ambiguous.isEmpty && !missing.any(isGroup)) {
+    missing.add(group);
+  }
+  for (final entry in [...people.ambiguous, if (groupChoices.isNotEmpty) (name: group!, choices: groupChoices)]) {
     (_offeredParticipants[ctx] ??= {}).addAll(entry.choices.map((u) => u.id));
     ambiguous.add({
       'name': clipText(entry.name, 64),
@@ -111,7 +143,7 @@ Future<AssistantToolOutcome> _recommendTogether(
       ],
     });
   }
-  final missing = [for (final name in people.missing) clipText(name, 64)];
+  missing.setAll(0, [for (final name in missing) clipText(name, 64)]);
   for (final userId in explicitIds) {
     final match = users.where((u) => client.sameUserId(u.id, userId)).firstOrNull;
     if (match == null) throw const AssistantToolError('unknown_user_id');

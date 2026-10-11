@@ -117,6 +117,15 @@ final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?
 // "so far" look back and are not it.
 final _live = RegExp(r'(?<!tot )\b(nu|op dit moment|momenteel|right now|at the moment|currently)\b(?! toe)');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
+// A group of people the question wants to watch with: "met mijn gezin", "for the
+// family". "familiefilm" and "family movie" name a genre, not the people.
+final _group = RegExp(
+  r'(?:\b(?:met|voor|als|with|for|as)\s+(?:(?:mijn|ons|onze|het|de|een|my|our|the|a)\s+)?(?:(?:hele|whole|entire)\s+)?'
+  r'|\b(?:mijn|ons|onze|my|our)\s+(?:(?:hele|whole|entire)\s+)?(?=(?:gezin|familie|family|huishouden|household)\s+(?:en ik|and i)\b))'
+  r'(gezin|familie|family|huishouden|household)\b(?![\s-]+(?:night|avond|friendly))',
+);
+// The group word followed by "and": more people than the ones named after it.
+final _groupAnd = RegExp(r'\b(?:gezin|familie|family|huishouden|household)\s+(?:en|and)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
 /// What a question is about, fixed by code from what the user wrote, with the
@@ -132,6 +141,8 @@ class AssistantIntent {
     this.addedToLibraries = false,
     this.longPeriodAsked = false,
     this.live = false,
+    this.group,
+    this.words = '',
   });
 
   final IntentField<AssistantAudience> audience;
@@ -158,6 +169,13 @@ class AssistantIntent {
 
   /// The question is about what is playing right now, not a period.
   final bool live;
+
+  /// The group word the user used ("gezin"): the people behind it are not known
+  /// to the question, so a cohort of only the asker is never the answer.
+  final String? group;
+
+  /// The question as written, lowercased: what [constrain] checks names against.
+  final String words;
 
   static const unknown = AssistantIntent();
 
@@ -203,6 +221,8 @@ class AssistantIntent {
     };
     final days = periods.length == 1 ? periods.single : null;
     return AssistantIntent(
+      group: _group.firstMatch(p)?.group(1),
+      words: p,
       previousWeek: _previousWeek.hasMatch(p),
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
@@ -301,6 +321,8 @@ class AssistantIntent {
     addedToLibraries: addedToLibraries,
     longPeriodAsked: longPeriodAsked,
     live: live,
+    group: group,
+    words: words,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -326,6 +348,26 @@ class AssistantIntent {
         // The cohort query has its own kind: a question for films gets films,
         // whatever the model passed.
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        // Set from the user's words only: the tool asks who the group is
+        // rather than answer for the asker, or a subset the model guessed.
+        // People the user wrote out themselves are no guess.
+        final listed = args['participants'];
+        final ids = args['user_ids'];
+        final named = [
+          if (listed is List)
+            for (final n in listed)
+              if (n is String && n.trim().toLowerCase() != 'me') n.trim().toLowerCase(),
+        ];
+        final userNamed =
+            named.isNotEmpty &&
+            (ids is! List || ids.isEmpty) &&
+            !_groupAnd.hasMatch(words) &&
+            named.every((n) => RegExp(r'\b' + RegExp.escape(n) + r'\b').hasMatch(words));
+        if (group != null && !userNamed) {
+          out['group'] = group;
+        } else {
+          out.remove('group');
+        }
       case 'watch_stats':
         if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.
@@ -370,6 +412,9 @@ class AssistantIntent {
       if (addedToLibraries)
         'The question is about what was added to the libraries: use search_catalog with added_within_days, '
             'never watch history or the server list.',
+      if (group != null)
+        'The question names a group ("$group"): never answer for the asker alone. '
+            'Use recommend_together and let it ask who is meant; do not guess the people.',
       if (previousWeek)
         'The question is about the calendar week before this one, which the tools cannot give: '
             'say so and offer the last 7 days instead; do not present another window as that week.',

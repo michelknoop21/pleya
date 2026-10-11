@@ -278,6 +278,80 @@ void main() {
       expect(_i('Een film of een serie voor ons?').constrain('recommend_together', {}).args, isNot(contains('kind')));
     });
 
+    test('BP-04b: a group word is enforced on recommend_together from the user\'s words only', () {
+      for (final (q, word) in [
+        ('Wat kan ik met mijn gezin kijken?', 'gezin'),
+        ('Een film voor de familie', 'familie'),
+        ('What can we watch with my family?', 'family'),
+        ('Iets voor ons huishouden', 'huishouden'),
+        ('Wat kunnen we met het hele gezin kijken?', 'gezin'),
+        ('Something for the whole family', 'family'),
+        ('Wat kunnen mijn gezin en ik kijken?', 'gezin'),
+        ('Kunnen we met mijn gezin films kijken?', 'gezin'),
+        ('Something to watch as a family', 'family'),
+      ]) {
+        final intent = _i(q);
+        expect(intent.group, word, reason: q);
+        expect(
+          intent.constrain('recommend_together', {
+            'participants': ['me'],
+          }).args['group'],
+          word,
+        );
+        expect(intent.describe(), contains('never answer for the asker alone'));
+      }
+      // A genre, a watch question about the group, or a model-sent flag is not it.
+      for (final q in [
+        'Zoek een familiefilm',
+        'Show me a family movie',
+        'Wat heb ik gekeken?',
+        'wat kijkt het gezin nu',
+        'what did the family watch this week',
+        'films over de familie Corleone',
+        'the family-friendly picks',
+      ]) {
+        expect(_i(q).group, isNull, reason: q);
+        expect(_i(q).constrain('recommend_together', {'group': 'gezin'}).args, isNot(contains('group')));
+      }
+      // People the user wrote out are not a guess; ids or names they did not write are.
+      final named = _i('Wat kan ik met mijn gezin, Alice en Bob, kijken?');
+      expect(
+        named.constrain('recommend_together', {
+          'participants': ['me', 'Alice', 'Bob'],
+        }).args,
+        isNot(contains('group')),
+      );
+      expect(
+        named.constrain('recommend_together', {
+          'participants': ['me', 'Carol'],
+        }).args['group'],
+        'gezin',
+      );
+      expect(
+        named.constrain('recommend_together', {
+          'participants': ['Alice'],
+          'user_ids': ['x'],
+        }).args['group'],
+        'gezin',
+      );
+      // A name inside another word is no name, and "gezin en Alice" is more than Alice.
+      final inside = _i('Wat kan ik met mijn gezin kijken, benieuwd waarmee');
+      expect(
+        inside.constrain('recommend_together', {
+          'participants': ['me', 'Ben'],
+        }).args['group'],
+        'gezin',
+      );
+      expect(
+        _i('Wat kan ik met mijn gezin en Alice kijken?').constrain('recommend_together', {
+          'participants': ['me', 'Alice'],
+        }).args['group'],
+        'gezin',
+      );
+      // A child task decides by its own words.
+      expect(_i('Wat heb ik gekeken').inheriting(_i('en wat kan ik met mijn gezin kijken')).group, isNull);
+    });
+
     test('review: requests, added value and a watch clause beside a long period are not additions-only', () {
       expect(_i('I added this movie to Radarr').addedToLibraries, isFalse);
       expect(_i('Dat is een toegevoegde waarde').addedToLibraries, isFalse);

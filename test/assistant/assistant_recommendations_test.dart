@@ -544,6 +544,133 @@ void main() {
     expect(((result.data['ambiguous'] as List).single as Map)['choices'], hasLength(2));
     expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
   });
+  test('BP-04b: a group word with nobody named is asked back, never answered for the asker alone', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    for (final participants in [
+      <String>['me'],
+      <String>['me', 'gezin'],
+    ]) {
+      final result = await _recommend(ctx.fresh(), {'participants': participants, 'group': 'gezin'});
+      expect(result.data['status'], 'participant_clarification');
+      final ask = (result.data['ambiguous'] as List).single as Map;
+      expect(ask['name'], 'gezin');
+      expect((ask['choices'] as List).map((c) => (c as Map)['user_id']), ['a', 'b'], reason: 'others, never the asker');
+      expect(result.data['results'], isEmpty);
+    }
+    expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+  });
+  test('BP-04b: a group nobody can be offered stays not_found, not the asker alone', () async {
+    final f = _Fixture()..users.removeWhere((u) => u['Id'] != 'admin');
+    final result = await _recommend(f.context(['1']), {
+      'participants': ['me'],
+      'group': 'familie',
+    });
+    expect(result.data['status'], 'participant_clarification');
+    expect(result.data['not_found'], ['familie']);
+    expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+  });
+  test('BP-04b: a Pleya profile labelled with the group word resolves through its verified accounts', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    f.aliases = [
+      const ProfileServerIdentity(profileId: 'fam', displayName: 'Gezin', userIds: {'a', 'b'}),
+    ];
+    final ambiguous = await _recommend(ctx, {
+      'participants': ['me'],
+      'group': 'gezin',
+    });
+    // Two accounts behind one label: the user picks, nothing is guessed.
+    expect(ambiguous.data['status'], 'participant_clarification');
+    expect(((ambiguous.data['ambiguous'] as List).single as Map)['choices'], hasLength(2));
+    f.aliases = [
+      const ProfileServerIdentity(profileId: 'fam', displayName: 'Gezin', userIds: {'b'}),
+    ];
+    final one = await _recommend(ctx.fresh(), {
+      'participants': ['me'],
+      'group': 'gezin',
+    });
+    expect((one.data['participants'] as List).map((e) => (e as Map)['user_id']), ['admin', 'b']);
+    expect(one.data['profile_aliases'], {'gezin': 'b'});
+  });
+  test('BP-04b: a backend without strict cohorts says so for a group too, nothing is asked or read', () async {
+    final f = _Fixture();
+    final result = await _recommend(f.context(['1'], emby: true), {
+      'participants': ['me'],
+      'group': 'gezin',
+    });
+    expect(result.data['status'], 'unsupported_strict_cohort');
+    expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+  });
+  test('BP-04b: a subset the model picked for a group word is asked back too', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    for (final pick in [
+      {
+        'participants': ['me', 'Alice'],
+      },
+      {
+        'participants': <String>[],
+        'user_ids': ['a'],
+      },
+    ]) {
+      final result = await _recommend(ctx.fresh(), {...pick, 'group': 'gezin'});
+      expect(result.data['status'], 'participant_clarification');
+      expect(((result.data['ambiguous'] as List).single as Map)['name'], 'gezin');
+    }
+    expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+  });
+  test(
+    'BP-04b: a group word that matches only the asker, or disabled accounts, is not answered for the asker',
+    () async {
+      final f = _Fixture();
+      final ctx = f.context(['1']);
+      f.aliases = [
+        const ProfileServerIdentity(profileId: 'fam', displayName: 'Gezin', userIds: {'admin'}),
+      ];
+      final result = await _recommend(ctx, {
+        'participants': ['me'],
+        'group': 'gezin',
+      });
+      expect(result.data['status'], 'participant_clarification');
+      final choices = ((result.data['ambiguous'] as List).single as Map)['choices'] as List;
+      expect(choices.map((c) => (c as Map)['user_id']), ['a', 'b']);
+      f.users[1]['Policy'] = {..._policy(), 'IsDisabled': true};
+      final again = await _recommend(ctx.fresh(), {
+        'participants': ['me'],
+        'group': 'gezin',
+      });
+      expect((((again.data['ambiguous'] as List).single as Map)['choices'] as List).map((c) => (c as Map)['user_id']), [
+        'b',
+      ]);
+    },
+  );
+  test('BP-04b: two profiles with the group label are one question, not also not_found', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    f.aliases = [
+      const ProfileServerIdentity(profileId: 'one', displayName: 'Gezin', userIds: {'a'}),
+      const ProfileServerIdentity(profileId: 'two', displayName: 'Gezin', userIds: {'b'}),
+    ];
+    final result = await _recommend(ctx, {
+      'participants': ['me'],
+      'group': 'gezin',
+    });
+    expect(result.data['status'], 'participant_clarification');
+    expect(result.data['not_found'], isEmpty);
+    expect(((result.data['ambiguous'] as List).single as Map)['choices'], hasLength(2));
+  });
+  test('BP-04b: no group word keeps the individual path as it was', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    final named = await _recommend(ctx);
+    expect((named.data['participants'] as List).map((e) => (e as Map)['user_id']), ['admin', 'a', 'b']);
+    final alone = await _recommend(ctx.fresh(), {
+      'participants': ['me'],
+    });
+    expect(alone.data['status'], 'strict_cohort_results');
+    expect((alone.data['participants'] as List).map((e) => (e as Map)['user_id']), ['admin']);
+  });
   test('forged user ID never becomes read authority and clarification verifies fresh users', () async {
     final f = _Fixture();
     final ctx = f.context(['1']);
