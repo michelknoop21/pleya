@@ -95,7 +95,9 @@
     <h2 class="t-title">{t('server.libraries')}</h2>
     <ul class="rows">
       {#each session.libraries as library (library.id)}
-        <li class="rows__row">
+        <!-- De data-attributen zijn voor de e2e-helper `openLibraryOfKind`: ze overleven
+             de restyle van deze rij, de klassen niet. -->
+        <li class="rows__row" data-library-kind={library.kind} data-library-id={library.id}>
           <span class="t-body">{library.title}</span>
           <span class="t-small">
             {library.kind} · {plural('libraries.itemCount', library.item_count, {
