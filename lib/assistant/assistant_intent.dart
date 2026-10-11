@@ -51,8 +51,22 @@ final _exceptName = RegExp(
   r'\b(?:iedereen|everyone|everybody)\s+(?:behalve|except|but)\s+(?!mij\b|ik\b|me\b|myself\b)',
 );
 // A bare "show" is the verb ("show me"); only the plural or "tv show" is a series.
-final _movieWord = RegExp(r'\b(films?|movies?)\b');
-final _seriesWord = RegExp(r'\b(series|serie|tv-series|tv shows?|shows)\b');
+// Compounds count too ("kerstfilm", "docuserie"): a half-seen kind would narrow.
+final _movieWord = RegExp(r'\b(?:\w*films?|movies?)\b');
+// A film franchise ("filmserie") is a series of films, not a series: not matched.
+final _seriesWord = RegExp(r'\b(?:(?!\w*film)\w*series?|tv-series|tv shows?|shows)\b');
+// A kind word that only names something else ("de acteur uit de serie Friends",
+// "bekend van de film Cast Away") is a reference, not the kind asked for.
+final _kindReference = RegExp(
+  r'\b(?:van|uit|als|zoals|from|like|in)\s+(?:de|het|een|the|a|die|dat)\s+(?:\w*films?|\w*series?|movies?)\b',
+);
+// The same, followed by a capitalised title ("uit de serie Friends"): there the
+// kind word is certainly a reference.
+final _titledReference = RegExp(
+  r'\b(?:van|uit|als|zoals|from|like|in)\s+(?:de|het|een|the|a|die|dat)\s+(?:\w*films?|\w*series?|movies?)\s+\p{Lu}',
+  unicode: true,
+  caseSensitive: true,
+);
 final _daysWord = RegExp(r'\b(\d{1,2})\s*(?:dagen|days)\b');
 final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 hours)\b');
 // "Last week" and "vorige week" are the week before, not the past seven days.
@@ -140,8 +154,22 @@ class AssistantIntent {
       if (everyone) AssistantAudience.everyone,
     ];
     final AssistantAudience? audience = readings.length == 1 ? readings.single : null;
-    final movie = _movieWord.hasMatch(p);
-    final show = _seriesWord.hasMatch(p);
+    // A kind word that is only a reference to something else does not set the
+    // kind: when one kind remains outside the references, that is the ask; when
+    // only a reference holds a kind word, it counts unless it names a title.
+    final outside = p.replaceAll(_kindReference, ' ');
+    final outsideMovie = _movieWord.hasMatch(outside);
+    final outsideShow = _seriesWord.hasMatch(outside);
+    final bool movie, show;
+    if (outsideMovie || outsideShow) {
+      movie = outsideMovie;
+      show = outsideShow;
+    } else if (_titledReference.hasMatch(prompt)) {
+      movie = show = false;
+    } else {
+      movie = _movieWord.hasMatch(p);
+      show = _seriesWord.hasMatch(p);
+    }
     final kind = movie == show ? null : (movie ? MediaKind.movie : MediaKind.show);
     // Two different periods in one question: none is fixed.
     final periods = {
@@ -252,7 +280,11 @@ class AssistantIntent {
           // question) could own it.
           if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
         }
-        if (addedToLibraries && kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+      case 'recommend_together':
+        // The cohort query has its own kind: a question for films gets films,
+        // whatever the model passed.
+        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
       case 'watch_stats':
         if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.

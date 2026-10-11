@@ -1152,7 +1152,14 @@ void main() {
       expect(result.data['results'], isEmpty);
       expect((result.data['coverage'] as Map)['excluded_unknown'], 1);
       expect((result.data['coverage'] as Map)['series_unseen_supported'], isFalse);
+      expect(result.data['series_unsupported'], isTrue, reason: 'an empty series list is the tool\'s limit, said so');
     }
+  });
+  test('a film question carries no series_unsupported', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    final result = await _recommend(ctx, {'kind': 'movie'});
+    expect(result.data.containsKey('series_unsupported'), isFalse);
   });
   test('fix I2 exact-only hidden top library blocks companion reads and shown authority', () async {
     final f = _Fixture();

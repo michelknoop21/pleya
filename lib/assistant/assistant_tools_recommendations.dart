@@ -17,7 +17,7 @@ final List<AssistantTool> _recommendationTools = [
         'Strict cohort evidence is supported only for the current authorized Jellyfin administrator. '
         'Names resolve local Pleya profile labels to verified server identities, otherwise uniquely match server users; ambiguity returns authorized choices for conversational clarification: ask the user, a choice offered in this turn stays unresolved until they answer. '
         'The current server user is always included; me names that same identity. Explicit user_ids must be verified against the fresh authorized user list. '
-        'Unknown access, watch state or requested metadata excludes a title. A title with several copies on the server counts once and needs that proof for every copy. Series completion aggregates cannot prove zero child progress, so strict unseen series are unavailable. Results are a bounded sample, ordered by rating then stable identity. '
+        'Unknown access, watch state or requested metadata excludes a title. A title with several copies on the server counts once and needs that proof for every copy. Series completion aggregates cannot prove zero child progress, so strict unseen series are unavailable: a series question returns series_unsupported true and an empty list, say that. Results are a bounded sample, ordered by rating then stable identity. '
         'Explain coverage and facts as returned; never invent tastes, history overlap or unwatched status from absent history.',
     risk: AssistantToolRisk.read,
     properties: const {
@@ -280,6 +280,9 @@ Future<AssistantToolOutcome> _recommendTogether(
     'participants': [
       for (final u in selected.values) {'user_id': u.id, 'name': clipText(u.name, 64)},
     ],
+    // Asked for series: the strict "nobody watched it" proof does not exist for
+    // them, so an empty list is the tool's limit and not a lack of titles.
+    if (filters.kind == MediaKind.show) 'series_unsupported': true,
     'coverage': {
       'candidates_checked': titleCount,
       'copies_read': candidates.length,
