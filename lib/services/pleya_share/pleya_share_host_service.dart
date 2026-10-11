@@ -106,9 +106,9 @@ class PleyaShareHostService extends ChangeNotifier {
   /// Base64 pairing salt for the QR deep link, or null when not sharing.
   String? get pairSaltB64 => _pairSalt == null ? null : base64Encode(_pairSalt!);
 
-  /// Stable relay room identity for this host, minted on first share and
-  /// persisted; guests store it so they can reach us over the internet when
-  /// no LAN path works.
+  /// Stable identity for this host, minted on first share and persisted.
+  /// Wi-Fi Aware publishes it and the QR carries it; it is also the relay
+  /// room id, unused while [PleyaShareRelay.enabled] is off.
   String? get relayHostId => _relayHostId;
 
   static const _relayHostIdPrefsKey = 'pleya_share_relay_host_id';

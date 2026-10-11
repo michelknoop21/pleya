@@ -111,6 +111,10 @@ class _SwitchableLan {
         _live
           ..add(client)
           ..add(upstream);
+        // A drop() mid-response destroys both ends; swallow the resulting
+        // socket errors so they don't fail the test zone.
+        unawaited(client.done.catchError((_) {}));
+        unawaited(upstream.done.catchError((_) {}));
         client.listen(upstream.add, onDone: upstream.destroy, onError: (_) => upstream.destroy());
         upstream.listen(client.add, onDone: client.destroy, onError: (_) => client.destroy());
       } catch (_) {
@@ -119,7 +123,10 @@ class _SwitchableLan {
     });
   }
 
-  Future<void> stop() async => _server?.close();
+  Future<void> stop() async {
+    drop();
+    await _server?.close();
+  }
 }
 
 void main() {
@@ -262,10 +269,14 @@ void main() {
 
   test('QR pairing with no reachable address fails instead of pairing over the relay', () async {
     await startHost();
+    // A closed loopback port: no LAN path, and it fails at once.
+    final dead = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final deadPort = dead.port;
+    await dead.close();
     await expectLater(
       PleyaShareChannel.pairAny(
-        ips: ['10.255.255.1'],
-        port: host.port,
+        ips: ['127.0.0.1'],
+        port: deadPort,
         code: host.pairCode!,
         deviceName: 'far-guest',
         relayHostId: host.relayHostId,

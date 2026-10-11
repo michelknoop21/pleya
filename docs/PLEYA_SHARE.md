@@ -91,7 +91,9 @@ Daar bleef hij, ook nadat het lokale pad terug was: `/ping` paste door de relay,
 Op een hotspot met mobiele data stond de share dan als online terwijl niets afspeelde.
 
 Wie de relay weer wil aanzetten heeft kleinere frames nodig en moet onder de 10 berichten per
-seconde blijven. Dat komt op ruwweg 400 KB per seconde, te weinig voor video.
+seconde blijven. Een bericht van 64 KiB draagt na twee keer base64 (frame en verzegeling,
+samen een factor 1,78) ongeveer 36 KB aan video. Tien per seconde is ruwweg 360 KB per
+seconde, te weinig voor video.
 
 ## Open: hardware
 
