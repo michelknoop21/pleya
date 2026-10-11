@@ -2409,6 +2409,7 @@
       "refusedTooLong": "Dat is te lang om te onthouden. Een herinnering is één zin van hoogstens ${max} tekens.",
       "refusedFull": "Het geheugen is vol. Verwijder eerst een herinnering, dan kan ik dit onthouden.",
       "notStored": "Dat heb ik niet onthouden. Er is niets opgeslagen.",
+      "alreadyStored": "Dat stond al in je geheugen.",
       "view": "Bekijk geheugen",
       "card": {
         "rememberTitle": "Zal ik dit onthouden?",

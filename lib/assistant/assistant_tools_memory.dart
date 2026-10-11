@@ -186,6 +186,7 @@ final List<AssistantTool> assistantMemoryTools = [
       );
       // The typed words were stored before: nothing new, and no failure either.
       if (result.code == MemoryCode.exists) {
+        turn.typedKnown = true;
         return AssistantToolResult({'status': 'already_known', 'ref': result.fact?.ref});
       }
       final fact = result.fact;

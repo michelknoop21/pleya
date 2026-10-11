@@ -31,10 +31,11 @@ const _memoryScreenNote =
     'about them, through the memory tools. For anything else, say briefly that it belongs in the conversation '
     'with Big P.';
 
-/// The answer of a run that stored a fact at once, refused the typed words
-/// or left them unstored: Pleya's own line with the exact sentence or the
-/// reason. After a stored fact the model's words follow only when the run
-/// showed or did more than that. After a refusal, or when nothing was stored,
+/// The answer of a run that stored a fact at once, refused the typed words,
+/// found them in the memory already or left them unstored: Pleya's own line
+/// with the exact sentence or the reason. After a stored fact the model's
+/// words follow only when the run showed or did more than that. After a
+/// refusal, a sentence that was there already, or when nothing was stored,
 /// the model's words are never shown: they could say it was remembered. The
 /// cards and actions of the run stay.
 ///
@@ -43,14 +44,18 @@ const _memoryScreenNote =
 String assistantMemoryAnswer(AssistantRunResult result, String text, {bool own = false}) {
   final stored = result.memoryStored.firstOrNull;
   final refused = result.memoryRefused;
-  if (stored == null && refused == null && !result.memoryNotStored) return text;
+  if (stored == null && refused == null && !result.memoryNotStored && !result.memoryKnown) return text;
   final String line;
   var more = own;
   if (stored != null) {
     line = t.assistant.memory.stored(value: assistantMemorySentence(stored.value));
     more = own || result.displays.isNotEmpty || result.actions.isNotEmpty;
   } else {
-    line = refused != null ? assistantMemoryRefusalLine(refused) : t.assistant.memory.notStored;
+    line = refused != null
+        ? assistantMemoryRefusalLine(refused)
+        : result.memoryKnown
+        ? t.assistant.memory.alreadyStored
+        : t.assistant.memory.notStored;
   }
   return more && text.isNotEmpty ? '$line\n$text' : line;
 }
@@ -99,11 +104,14 @@ extension _AssistantRunMemory on AssistantRun {
     final memory = _ctx.memory;
     // A children's profile uses no memory: the tools are not offered at all.
     final on = memory != null && !_ctx.kidsMode && memory.profileCurrent && await memory.service.enabled;
-    _ctx.memoryTurn = AssistantMemoryTurn(
-      enabled: on,
-      // A prompt the user did not type and a fenced question never store at once.
-      typedFact: on && userTyped && _spoilerQuestion == null ? assistantMemoryTypedFact(prompt) : null,
-    );
+    // A prompt the user did not type and a fenced question never store at once.
+    final typed = on && userTyped && _spoilerQuestion == null ? assistantMemoryTypedFact(prompt) : null;
+    // The same sentence is in the memory already: the model sees it in its
+    // context and may not ask for the save. A failed lookup reads as unknown.
+    final key = typed == null ? null : checkMemoryValue(typed).value?.key;
+    final known =
+        memory != null && key != null && (await memory.service.list()).any((f) => memoryValueKey(f.value) == key);
+    _ctx.memoryTurn = AssistantMemoryTurn(enabled: on, typedFact: typed, typedKnown: known);
   }
 
   /// Pleya's own answer to a typed "onthoud dat ..." (or its polite form,

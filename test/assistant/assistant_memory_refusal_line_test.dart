@@ -254,7 +254,7 @@ void main() {
       expect(await profile.values(), isEmpty);
     });
 
-    test('the model text stays when the request was not typed, was stored before or waits on a card', () async {
+    test('the model text stays when the request was not typed or waits on a card', () async {
       final chip = make([say(_modelWords)]);
       await chip.submit('Onthoud dat ik op zondag graag natuurfilms kijk');
       expect(chip.answer, _modelWords);
@@ -264,12 +264,54 @@ void main() {
       await card.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
       expect(card.memoryProposal, isNotNull);
       expect(card.answer, _modelWords);
+    });
 
+    test('the sentence is in the memory already and the model only answers: Pleya says it was there', () async {
       await profile.store('Ik op zondag graag natuurfilms kijk');
-      final known = make(remember('Kijkt op zondag graag natuurfilms'));
-      await known.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+      final c = make([say('Dat wist ik al.')]);
+      await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+
+      expect(c.answer, 'Dat stond al in je geheugen.');
+      expect(await profile.values(), ['Ik op zondag graag natuurfilms kijk']);
+      expect(c.memoryProposal, isNull);
+      expect(c.memoryStored, isFalse);
+      expect(c.resultIsError, isFalse);
+
+      await LocaleSettings.setLocale(AppLocale.en);
+      await profile.store('I like nature films on Sundays');
+      final en = make([say('I knew that.')]);
+      await en.submit('Remember that I like nature films on Sundays', typed: true);
+      expect(en.answer, 'That was already in your memory.');
+    });
+
+    test('the sentence is in the memory already and the model reads the memory first: the same line', () async {
+      await profile.store('Ik op zondag graag natuurfilms kijk');
+      final c = make([callTool('recall_memory'), say('Dat staat er al in.')]);
+      await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+
+      expect(c.answer, 'Dat stond al in je geheugen.');
+      expect(await profile.values(), ['Ik op zondag graag natuurfilms kijk']);
+      expect(c.resultIsError, isFalse);
+    });
+
+    test('the sentence is in the memory already and the model asks for the save: the same line', () async {
+      await profile.store('Ik op zondag graag natuurfilms kijk');
+      final c = make(remember('Kijkt op zondag graag natuurfilms'));
+      await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+
       expect(model.toolOutputs.single['status'], 'already_known');
-      expect(known.answer, _modelWords);
+      expect(c.answer, 'Dat stond al in je geheugen.');
+      expect(await profile.values(), ['Ik op zondag graag natuurfilms kijk']);
+      expect(c.memoryStored, isFalse);
+    });
+
+    test('another sentence in the memory is not this one: nothing stored says so', () async {
+      await profile.store('Houdt van westerns');
+      final c = make([say(_modelWords)]);
+      await c.submit('Onthoud dat ik op zondag graag natuurfilms kijk', typed: true);
+
+      expect(c.answer, 'Dat heb ik niet onthouden. Er is niets opgeslagen.');
+      expect(await profile.values(), ['Houdt van westerns']);
     });
 
     test('typed words that are stored say so as before', () async {
@@ -302,6 +344,21 @@ void main() {
       expect(h.failure, isNull);
       expect(h.proposal, isNull);
       expect(await profile.values(), isEmpty);
+    });
+
+    test('the sentence is in the memory already: the field says it was there', () async {
+      await profile.store('Ik op zondag graag natuurfilms kijk');
+      final h = host([say('Dat wist ik al.')]);
+      await h.ask('Onthoud dat ik op zondag graag natuurfilms kijk');
+      expect(h.answer, 'Dat stond al in je geheugen.');
+      expect(h.failure, isNull);
+      expect(h.proposal, isNull);
+
+      final read = host([callTool('recall_memory'), say('Dat staat er al in.')]);
+      await read.ask('Onthoud dat ik op zondag graag natuurfilms kijk');
+      expect(read.answer, 'Dat stond al in je geheugen.');
+      expect(read.failure, isNull);
+      expect(await profile.values(), ['Ik op zondag graag natuurfilms kijk']);
     });
   });
 }

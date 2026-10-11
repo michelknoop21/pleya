@@ -2409,6 +2409,7 @@
       "refusedTooLong": "That is too long to remember. A memory is one sentence of at most ${max} characters.",
       "refusedFull": "The memory is full. Remove a memory first, then I can remember this.",
       "notStored": "I did not remember that. Nothing was stored.",
+      "alreadyStored": "That was already in your memory.",
       "view": "View memory",
       "card": {
         "rememberTitle": "Shall I remember this?",

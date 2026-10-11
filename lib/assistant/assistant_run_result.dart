@@ -16,16 +16,18 @@ extension _AssistantResult on AssistantRun {
     final turn = _ctx.memoryTurn;
     var refused = turn.refused;
     var notStored = false;
-    // A typed "onthoud dat ..." the model answered without asking for the
-    // save: its words may say it was remembered. Pleya's own line replaces
+    var known = false;
+    // A typed "onthoud dat ..." that ended without a save, a refusal or a
+    // card. The sentence was in the memory already: Pleya says so, whether
+    // the model asked for the save or not. Otherwise, when the model never
+    // asked: its words may say it was remembered. Pleya's own line replaces
     // them, the reason when the memory would not take the typed words.
     final typed = turn.typedFact;
-    if (end == AssistantRunEnd.answered &&
-        typed != null &&
-        !turn.asked &&
-        stored.isEmpty &&
-        refused == null &&
-        turn.proposals.isEmpty) {
+    final open =
+        end == AssistantRunEnd.answered && typed != null && stored.isEmpty && refused == null && turn.proposals.isEmpty;
+    if (open && turn.typedKnown) {
+      known = true;
+    } else if (open && !turn.asked) {
       final checked = checkMemoryValue(typed);
       if (checked.value == null) {
         refused = checked.code;
@@ -101,6 +103,7 @@ extension _AssistantResult on AssistantRun {
       memoryStored: stored,
       memoryRefused: refused,
       memoryNotStored: notStored,
+      memoryKnown: known,
       error:
           failure ??
           _errors.values.where((code) => code != 'cancelled_by_user').firstOrNull ??

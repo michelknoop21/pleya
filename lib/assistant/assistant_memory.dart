@@ -64,7 +64,7 @@ class AssistantMemoryOutcome {
 /// The memory state of one ask. Made by the run before the first model call,
 /// never copied to another ask.
 class AssistantMemoryTurn {
-  AssistantMemoryTurn({this.enabled = false, this.typedFact});
+  AssistantMemoryTurn({this.enabled = false, this.typedFact, this.typedKnown = false});
 
   /// The memory is on for this profile and it is no children's profile: the
   /// tools are offered.
@@ -75,6 +75,10 @@ class AssistantMemoryTurn {
   /// request, was not typed, named no fact or runs fenced. Decided by code
   /// from the user's words.
   final String? typedFact;
+
+  /// [typedFact] was in the memory of this profile before this ask stored
+  /// anything: read when the ask began, or reported by the save itself.
+  bool typedKnown;
 
   /// Tool calls of this ask so far, the one in progress included. The run
   /// counts them.
