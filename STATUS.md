@@ -362,8 +362,8 @@ heeft en inmiddels op PS-9 (gebruikers, sessies, rollen) werkt, met
 [DEC-118](docs/DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet)
 als geldige, geaccepteerde toestemming daarvoor. Diezelfde DEC-118 vraagt wél de openstaande
 PS-5-hardwareronde vóór een merge naar `main` (dat is een van de drie triggers in de decision-tekst
-zelf). Die merge is later zonder de ronde gebeurd (25 september 2026, zie bovenaan); op dit moment was
-de ronde nog bezig: een release-build draait lokaal op macOS, en dezelfde bron staat
+zelf). Die merge is later zonder de ronde gebeurd (25 september 2026, zie bovenaan). Begin september
+was de ronde in voorbereiding: een release-build draait lokaal op macOS, en dezelfde bron staat
 gebouwd en gelanceerd op de echte Apple TV. De vier testtitels en de fysieke playbackbeoordeling
 (inclusief de TrueHD/Dolby-check via een echte AVR) wachten op Michel; zie de "Volgende stap" hieronder
 en het `feat/pleyaserver`-eigen `STATUS.md` voor de volledige stand.
@@ -561,7 +561,7 @@ endpoint waarmee een client zijn eigen account-id opvraagt: `GET /users` filtert
 halen. De client omzeilt dat nu door op gebruikersnaam te identificeren. Allebei horen in het
 eerstvolgende protocolvenster, met een compatibiliteitstoets langs de zes regels uit hoofdstuk 3.
 
-**DEC-118's hardwareronde afmaken, dan pas naar `main` mergen.** Twee builds staan al klaar: de
+**DEC-118's hardwareronde afmaken, dan pas naar `main` mergen.** *Stand 11 oktober 2026: de merge naar `main` is op 25 september 2026 al gebeurd zonder de ronde; deze alinea beschrijft de aanpak van begin september. De ronde is achterstallig en blokkeert de releases, zie het blok bovenaan.* Twee builds staan al klaar: de
 macOS-app draait (`pgrep -f "Pleya.app/Contents/MacOS/Pleya"` bevestigt), en de tvOS-app is
 geïnstalleerd op de echte Apple TV (`nl.michelknoop.pleya`, gelanceerd via `xcrun devicectl device
 process launch`). Per toestel dezelfde vier titels beoordelen (een Plex- en een Jellyfin-titel die
@@ -574,8 +574,9 @@ eerst repareren op deze branch.
 **PS-5 is code complete; PS-9 is gesloten en PS-11A is niet gestart**, volgens de doorloop in
 `docs/pleya-server-phase-order-deviation.md`. PS-5 blijft
 **opgeleverd, niet gesloten**: acceptatiecriterium 4, geen regressie op echte hardware voor minimaal
-tvOS plus één desktopplatform, staat expliciet open. Er is nu geen tijd voor die ronde, dus de test is
-bewust uitgesteld en niet gehaald of geschrapt. Build 242 draagt PS-5 en staat al op TestFlight; alleen
+tvOS plus één desktopplatform, staat expliciet open. Begin september was er geen tijd voor die ronde,
+dus de test was uitgesteld; hij is niet gehaald en niet geschrapt, en sinds 25 september 2026 is hij
+achterstallig. Build 242 draagt PS-5 en staat al op TestFlight; alleen
 de deviceronde zelf ontbreekt, met de bestaande testmatrix van vier titels per toestel (zie de
 PS-5-fasetabel in het architectuurdocument).
 
@@ -611,8 +612,8 @@ devicerun nodig met de console meelezend, zie `docs/tvos-remote-press-pipeline.m
 **Daarna, ongewijzigd sinds 2026-09-01: niet PS-5 vanaf `main` beginnen, die fase bestaat al,
 compleet en getest, op `feat/pleyaserver`.**
 Dat was de aanname tot 2026-09-01; de integratie-gereedheidsaudit die dag wees uit dat die branch al
-verder is dan `main` zelf weet. De echte volgende stap is de DEC-118-hardwareronde afmaken (zie "Waar
-was ik" hierboven): op de macOS-release-build en de tvOS-build op de echte Apple TV, per toestel vier
+verder is dan `main` zelf weet. De echte volgende stap was de DEC-118-hardwareronde afmaken (zie "Waar
+was ik" hierboven; de ronde is niet gedraaid en sinds 25 september 2026 achterstallig, zie het blok bovenaan): op de macOS-release-build en de tvOS-build op de echte Apple TV, per toestel vier
 titels beoordelen (Plex direct-play, Jellyfin direct-play, een transcoderende titel, en een
 TrueHD/Dolby-titel via een echte AVR). Alle acht controles slagen: AC4 sluiten, een Roadmap Drift
 Check vastleggen, en `feat/pleyaserver` (inclusief de vijf nog ongepushte lokale commits) met dezelfde

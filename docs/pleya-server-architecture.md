@@ -2379,7 +2379,7 @@ staat, en op de hero. End-to-end tegen de echte binary met een kijkstatus die vo
 | Veld | Inhoud |
 | --- | --- |
 | Phase ID | PS-5 |
-| Status | **opgeleverd 23 augustus 2026, nog niet gesloten**: acht commits, `lib/media/device_*.dart`, `lib/services/device_capabilities_service.dart` en de twee builders. Acceptatiecriterium 4 vraagt hardware en is open, bewust uitgesteld wegens gebrek aan tijd. Blokkeert het starten van PS-9 niet, zie [DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) |
+| Status | **opgeleverd 23 augustus 2026, nog niet gesloten**: acht commits, `lib/media/device_*.dart`, `lib/services/device_capabilities_service.dart` en de twee builders. Acceptatiecriterium 4 vraagt hardware en is open, achterstallig sinds 25 september 2026 en blokkeert de publieke releases (zie de criteriumtabel hieronder en `docs/qa/ps5-hardware-round.md`). Blokkeert het starten van PS-9 niet, zie [DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) |
 | Doel | de client stelt vast wat dit toestel aankan, en stuurt dat naar elke backend |
 | Bijdrage aan einddoel | dit is de ontbrekende abstractie uit de samenvatting; hij is zelfstandig waardevol, ook zonder Pleya Server |
 | Afhankelijkheden | PS-4 (voor de Pleya Server-kant), verder geen |
