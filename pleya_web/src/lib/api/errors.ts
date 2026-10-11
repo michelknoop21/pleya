@@ -7,6 +7,7 @@
  * object staan, zodat een nieuwe servercode een nette fout oplevert en geen
  * lege melding.
  */
+import { t } from '../i18n';
 import type { ErrorEnvelope } from './types';
 
 export class ApiError extends Error {
@@ -76,36 +77,45 @@ export function toApiError(status: number, body: unknown): ApiError {
   });
 }
 
-/** Codes die de UI met een eigen woord benoemt. */
-export const ERROR_MESSAGES: Record<string, string> = {
-  'auth.invalid_credentials': 'That username and password do not match.',
-  'auth.token_expired': 'Your session expired. Sign in again.',
-  'auth.token_invalid': 'Your session is no longer valid. Sign in again.',
-  'auth.refresh_token_reused': 'Your session was ended for safety. Sign in again.',
-  'auth.setup_required': 'This server has no owner yet. Finish setup first.',
-  'auth.setup_already_completed': 'This server already has an owner. Sign in instead.',
-  'auth.setup_code_invalid': 'That setup code is not valid or has expired.',
-  'auth.rate_limited': 'Too many attempts. Wait a moment and try again.',
-  'library.not_found': 'That item is not on this server.',
-  'library.scan_in_progress': 'A scan is running. Try again in a moment.',
-  'library.not_config_managed': 'This library is already managed in Pleya.',
-  'library.cursor_invalid': 'The list moved on. Reloading from the start.',
-  'library.search_query_empty': 'Type something to search for.',
-  'library.version_multifile': 'This version is split across several files.',
-  'playback.version_unavailable': 'That file cannot be read right now.',
-  'job.not_cancellable': 'This job is already finished.',
-  'storage.unavailable': 'The server cannot reach its storage right now.',
-  'storage.full': 'The server has no room left to write.',
-  'client.malformed_response': 'The server sent something this client cannot read.',
-  'client.transport': 'Cannot reach the server. Check the connection and try again.'
-};
+/**
+ * Codes die de UI met een eigen woord benoemt. Elke code heeft de sleutel
+ * `error.<code>` in beide catalogi; de tekst zelf staat dus in `web.ts` en
+ * `web.nl.ts`, niet hier.
+ */
+export const ERROR_CODES = [
+  'auth.invalid_credentials',
+  'auth.token_expired',
+  'auth.token_invalid',
+  'auth.refresh_token_reused',
+  'auth.setup_required',
+  'auth.setup_already_completed',
+  'auth.setup_code_invalid',
+  'auth.rate_limited',
+  'library.not_found',
+  'library.scan_in_progress',
+  'library.not_config_managed',
+  'library.cursor_invalid',
+  'library.search_query_empty',
+  'library.version_multifile',
+  'playback.version_unavailable',
+  'job.not_cancellable',
+  'storage.unavailable',
+  'storage.full',
+  'client.malformed_response',
+  'client.transport'
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+function isKnownCode(code: string): code is ErrorCode {
+  return (ERROR_CODES as readonly string[]).includes(code);
+}
 
 export function describeError(error: unknown): string {
   if (error instanceof ApiError) {
-    const known = ERROR_MESSAGES[error.code];
-    if (known) return known;
-    return `Something went wrong (${error.code}).`;
+    if (isKnownCode(error.code)) return t(`error.${error.code}`);
+    return t('error.genericCode', { code: error.code });
   }
-  if (error instanceof TransportError) return ERROR_MESSAGES['client.transport']!;
-  return 'Something went wrong.';
+  if (error instanceof TransportError) return t('error.client.transport');
+  return t('error.generic');
 }

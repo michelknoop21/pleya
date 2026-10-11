@@ -9,20 +9,20 @@
  * `lib/i18n/en.i18n.json` en is dus dezelfde bron als de app, `web` bevat wat
  * alleen de webclient kent.
  */
-import { shared } from './shared';
+import { shared, sharedNl } from './shared';
 import { web } from './web';
+import { webNl } from './web.nl';
 
 export const LOCALES = ['en', 'nl'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_STORAGE_KEY = 'pleya.locale';
 
-// De Nederlandse catalogus is nog leeg; tot hij er is valt elke sleutel terug
-// op Engels. De taal zelf staat wel al goed, zodat `<html lang>`, opslag en de
-// opstartvolgorde getest kunnen worden voordat er één woord vertaald is.
+// Ontbreekt een sleutel in een catalogus, dan valt `t()` per sleutel terug op
+// Engels. `web.nl.ts` dwingt volledigheid af met `satisfies Record<WebKey, string>`.
 const catalogues: Record<Locale, Record<string, string>> = {
   en: { ...shared, ...web },
-  nl: {}
+  nl: { ...sharedNl, ...webNl }
 };
 
 export type MessageKey = keyof typeof shared | keyof typeof web;

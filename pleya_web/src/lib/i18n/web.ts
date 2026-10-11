@@ -132,7 +132,30 @@ export const web = {
 
   'unreachable.title': 'Cannot reach the server',
   'signedOut.title': 'Signed out',
-  'loading': 'Loading…'
+  'loading': 'Loading…',
+
+  'error.generic': 'Something went wrong.',
+  'error.genericCode': 'Something went wrong ({code}).',
+  'error.auth.invalid_credentials': 'That username and password do not match.',
+  'error.auth.token_expired': 'Your session expired. Sign in again.',
+  'error.auth.token_invalid': 'Your session is no longer valid. Sign in again.',
+  'error.auth.refresh_token_reused': 'Your session was ended for safety. Sign in again.',
+  'error.auth.setup_required': 'This server has no owner yet. Finish setup first.',
+  'error.auth.setup_already_completed': 'This server already has an owner. Sign in instead.',
+  'error.auth.setup_code_invalid': 'That setup code is not valid or has expired.',
+  'error.auth.rate_limited': 'Too many attempts. Wait a moment and try again.',
+  'error.library.not_found': 'That item is not on this server.',
+  'error.library.scan_in_progress': 'A scan is running. Try again in a moment.',
+  'error.library.not_config_managed': 'This library is already managed in Pleya.',
+  'error.library.cursor_invalid': 'The list moved on. Reloading from the start.',
+  'error.library.search_query_empty': 'Type something to search for.',
+  'error.library.version_multifile': 'This version is split across several files.',
+  'error.playback.version_unavailable': 'That file cannot be read right now.',
+  'error.job.not_cancellable': 'This job is already finished.',
+  'error.storage.unavailable': 'The server cannot reach its storage right now.',
+  'error.storage.full': 'The server has no room left to write.',
+  'error.client.malformed_response': 'The server sent something this client cannot read.',
+  'error.client.transport': 'Cannot reach the server. Check the connection and try again.'
 } as const;
 
 export type WebKey = keyof typeof web;
