@@ -26,6 +26,9 @@ Nothing user-facing since the last published build.
 - **Pleya plays video files from Finder on the Mac.** Pleya shows up under Open With for video
   files such as mkv, mp4, mov and avi and starts the file in the player. On iPhone and iPad
   this is in build 355; it is not in a Mac build yet and has not been checked on a Mac.
+- **Big P can use your Trakt history and watchlist.** With Trakt connected, Big P counts what
+  you marked as watched there as seen and can tell you which watchlist titles are in your
+  libraries. The code is in build 355, but Trakt sign-in is not switched on in any build yet.
 - **A Pleya Server can now be shared by a household.** The owner adds an account per person and
   decides which libraries each of them sees. A library somebody has no access to does not show
   up in their list, in their search results, or when they open a link straight to it. Watch
