@@ -42,6 +42,7 @@ jobs:
       contents: read
     outputs:
       apple: ${{ steps.filter.outputs.apple }}
+      portable: ${{ steps.filter.outputs.portable }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -76,6 +77,17 @@ jobs:
           else
             echo "apple=false" >> "$GITHUB_OUTPUT"
           fi
+
+          # De portable job toetst alleen pleya_verify zelf: de pakketten
+          # fixture_server, runner en mcp lezen niets buiten pleya_verify/
+          # (geen path-dependency, geen bestand uit lib/ of docs/), en de
+          # Dart-versie komt uit .fvmrc. Het protocol en de antwoordvalidator
+          # tellen ruim mee, omdat de fake server het contract nabootst.
+          if grep -qE '^(pleya_verify/|docs/pleya-protocol/|scripts/check_server_responses\.py$|\.fvmrc$|scripts/ci_changed_files\.sh$|\.github/workflows/pleya-verify\.yml$)' <<< "$files"; then
+            echo "portable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "portable=false" >> "$GITHUB_OUTPUT"
+          fi
           cat "$GITHUB_OUTPUT"
 
   # Required-candidate gate. Pure Dart, no simulator, no Xcode, no secrets.
@@ -84,15 +96,24 @@ jobs:
   # of it deterministic and network-free.
   portable:
     name: Verify - portable (Linux)
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 15
+    env:
+      # Valt open: alleen een geslaagde `changes` met expliciet "false" zet dit
+      # op false. Elke stap hieronder leest het; de job zelf draait altijd,
+      # zodat de checknaam ook bij een overgeslagen run verschijnt.
+      RUN_PORTABLE: ${{ needs.changes.result != 'success' || needs.changes.outputs.portable != 'false' }}
     steps:
-      - name: Checkout code
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Flutter
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
@@ -100,32 +121,37 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache Pub dependencies
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: Cache Pub dependencies
         uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-pub-verify-v1-${{ hashFiles('pleya_verify/**/pubspec.yaml', 'pleya_verify/**/pubspec.lock') }}
 
-      - name: fixture_server tests
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: fixture_server tests
         working-directory: pleya_verify/fixture_server
         run: |
           dart pub get
           dart test
 
-      - name: runner tests
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: runner tests
         working-directory: pleya_verify/runner
         run: |
           dart pub get
           dart test
 
-      - name: mcp tests
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: mcp tests
         working-directory: pleya_verify/mcp
         run: |
           dart pub get
           dart test
 
-      - name: Scenario schema check (list + validate, no driver dispatch)
+      - if: ${{ env.RUN_PORTABLE != 'false' }}
+        name: Scenario schema check (list + validate, no driver dispatch)
         working-directory: pleya_verify/runner
         run: |
           set -euo pipefail
@@ -141,6 +167,10 @@ jobs:
             echo
           done
           exit "$status"
+
+      - if: ${{ env.RUN_PORTABLE == 'false' }}
+        name: Niets te draaien
+        run: echo "pleya_verify, het protocol en .fvmrc zijn niet geraakt."
 
   # Apple/simulator gate: macOS driver + iOS-simulator driver, neither of
   # which needs idb (macOS talks HTTP transport, the iOS-sim driver drives

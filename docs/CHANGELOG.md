@@ -4,6 +4,35 @@ Sessie-voor-sessie logboek. Nieuwste bovenaan. Ouder werk staat in
 [docs/archive/CHANGELOG-2026-08-07-tot-19.md](archive/CHANGELOG-2026-08-07-tot-19.md) en
 [docs/archive/CHANGELOG-tot-2026-08-06.md](archive/CHANGELOG-tot-2026-08-06.md).
 
+## [2026-10-11] CI: padscoping in ci.yml, antwoordvangst in één testrun
+
+Een docs-PR wachtte op de Flutter-testsuite (p50 16 minuten) en de Go-databasejob (11,5), die er
+allebei niets over zeggen. Op de piekdag van 10 oktober stond elke job daardoor 17 tot 30 minuten in
+de rij, want de limiet van 20 gelijktijdige Linux-jobs was bereikt.
+
+`ci.yml` heeft nu een eigen `Bereik bepalen`, volgens het patroon van `server-web.yml` en
+`pleya-verify.yml`: elke job blijft verschijnen en slaagt, en alleen een geslaagde `changes`-job met
+expliciet `false` slaat het werk over. Push op main en handmatige runs draaien alles, want
+`scripts/ci_changed_files.sh` geeft daar alle bestanden terug.
+
+- Unit Tests, Code Analysis en Native Formatting slaan over bij wijzigingen die alleen in `docs/`,
+  `pleya_server/`, `pleya_web/`, `website/`, `.githooks/`, `.claude/` of root-markdown vallen. Ze
+  draaien wel bij `docs/pleya-protocol/`, `docs/pleya-protocol-v1.md` en `docs/assets/`, en bij de
+  twee scripts die `test/scripts/pleya_server_verify_local_test.dart` leest
+  (`pleya_server/scripts/verify-local.sh`, `pleya_web/scripts/build-into-server.sh`).
+- De Go-databasejob en het server-filter in `server-web.yml` kijken ook naar
+  `pleya_verify/redact/` en `docs/pleya-protocol-v1.md` (beide door `go-tool.sh` in de testcontainer
+  gemount en door Go-tests gelezen) en naar `scripts/check_server_responses.py`.
+- `Verify - portable (Linux)` draait bij `pleya_verify/`, het protocol, de validator en `.fvmrc`.
+- De antwoorden voor de contractcontrole worden in de gewone testrun vastgelegd
+  (`PLEYA_RESPONSE_DIR` met `-count=1`); de tweede run van `internal/api` (4,7 minuten) is weg.
+- `Authority Files Merge` draait ook `scripts/masterlist_counts.sh --check`.
+
+`scripts/ci_scope_selftest.sh` voert de echte filterstappen uit tegen twintig voorbeeldwijzigingen
+en faalt als een uitkomst afwijkt of een gestuurde job niet open valt. Draai hem na elke wijziging
+aan een filter. Een nieuwe Fluttertest die een bestand buiten `lib/` en `test/` leest, hoort in de
+uitzonderingen van het flutter-filter.
+
 ## [2026-09-25] iCloud-voorkeurensync: tweede eindfixronde DEC-134
 
 Drie punten uit de herreview. Cloudsleutels passen nu binnen de 64 bytes die KVS per sleutel

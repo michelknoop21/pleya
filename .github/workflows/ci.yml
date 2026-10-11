@@ -23,16 +23,101 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  analyze:
-    name: Code Analysis
+  # Levert de antwoorden waar de Flutter-jobs en de Go-databasejob hieronder op
+  # sturen, op dezelfde manier als `Bereik bepalen` in server-web.yml en
+  # pleya-verify.yml: een eigen job en geen `on.pull_request.paths`, zodat elke
+  # checknaam altijd verschijnt en de inhoud bepaalt of er werk te doen is.
+  #
+  # Alleen bij een pull request valt er iets af te bakenen. Bij een push op main
+  # of een integratiebranch en bij een handmatige run geeft
+  # scripts/ci_changed_files.sh alle bestanden terug, en dan draait alles.
+  #
+  # De afhankelijke jobs draaien met `if: !cancelled()` en vallen open: alleen
+  # een geslaagde run van deze job met expliciet "false" slaat het werk over.
+  # Faalt deze job, of levert hij niets op, dan draait alles gewoon door.
+  #
+  # scripts/ci_scope_selftest.sh voert dit filter uit tegen een set
+  # voorbeeldwijzigingen en toont welke jobs er draaien. Draai hem na elke
+  # wijziging aan de patronen hieronder.
+  changes:
+    name: Bereik bepalen
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      flutter: ${{ steps.filter.outputs.flutter }}
+      server: ${{ steps.filter.outputs.server }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Setup Flutter
+      - name: Raakt deze verandering de app of de server?
+        id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          files="$(scripts/ci_changed_files.sh "$BASE" "${HEAD:-HEAD}")"
+          # Alleen om te tonen; een SIGPIPE van head mag de uitkomst niet raken.
+          printf '%s\n' "$files" | head -50 || true
+
+          # Here-strings en geen pijp, om dezelfde SIGPIPE-reden als in
+          # server-web.yml: `grep -q` sluit zijn leeskant zodra hij een antwoord
+          # heeft, en onder pipefail wordt een echte match dan stil "false".
+          match() { grep -qE "$1" <<< "$files"; }
+          other() { grep -qvE "$1" <<< "$files"; }
+
+          # Flutter (Unit Tests, Code Analysis, Native Formatting). Alleen
+          # deze paden kunnen de app, haar tests en haar analyse aantoonbaar
+          # niet raken. Alles daarbuiten, en elke twijfel, laat de jobs draaien.
+          # docs/ valt niet in zijn geheel weg: de wire-contracttests lezen
+          # docs/pleya-protocol/v1/examples en de schermtests vergelijken met
+          # mockups in docs/assets/. Twee scripts in pleya_server/ en pleya_web/
+          # worden gelezen door test/scripts/pleya_server_verify_local_test.dart.
+          # Een nieuwe test die een bestand buiten lib/ en test/ leest, hoort
+          # hier in de uitzonderingen.
+          flutter_skip='^(docs/|pleya_server/|pleya_web/|website/|\.githooks/|\.claude/|[^/]*\.md$)'
+          flutter_read='^(docs/pleya-protocol/|docs/pleya-protocol-v1\.md$|docs/assets/|pleya_server/scripts/verify-local\.sh$|pleya_web/scripts/build-into-server\.sh$)'
+          if other "$flutter_skip" || match "$flutter_read"; then
+            echo "flutter=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "flutter=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Go-databasejob. Naast de module zelf lezen de Go-tests twee
+          # bestanden die scripts/go-tool.sh alleen-lezen in de container zet
+          # (pleya_verify/redact/ en docs/pleya-protocol-v1.md), en de
+          # validator toetst de vastgelegde antwoorden tegen
+          # docs/pleya-protocol/v1/openapi.yaml. Zelfde lijst als het
+          # server-filter in server-web.yml, plus dit workflowbestand.
+          if match '^(pleya_server/|docs/pleya-protocol/|docs/pleya-protocol-v1\.md$|pleya_verify/redact/|scripts/check_server_responses\.py$|scripts/check_protocol|scripts/ci_changed_files\.sh$|\.github/workflows/ci\.yml$)'; then
+            echo "server=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "server=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+  analyze:
+    name: Code Analysis
+    needs: changes
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Valt open: alleen een geslaagde `changes` met expliciet "false" zet dit
+      # op false. Elke stap hieronder leest het; de job zelf draait altijd.
+      RUN_FLUTTER: ${{ needs.changes.result != 'success' || needs.changes.outputs.flutter != 'false' }}
+    steps:
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Checkout code
+        uses: actions/checkout@v7
+
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
@@ -40,17 +125,20 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache Pub dependencies
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Cache Pub dependencies
         uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
 
-      - name: Install dependencies
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Install dependencies
         run: flutter pub get --enforce-lockfile
 
-      - name: Verify generated files committed
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Verify generated files committed
         run: |
           scripts/codegen.sh
           if ! git diff --exit-code lib/; then
@@ -59,7 +147,8 @@ jobs:
             exit 1
           fi
 
-      - name: Verify formatting
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Verify formatting
         run: |
           # Find all Dart files excluding generated files
           search_roots=(lib)
@@ -70,7 +159,8 @@ jobs:
             exit 0
           fi
           find "${search_roots[@]}" -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -type f 2>/dev/null -print0 | xargs -0 dart format --output=none --set-exit-if-changed
-      - name: Analyze code
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Analyze code
         run: |
           # Run flutter analyze
           # Fails on errors or warnings only (info messages are allowed)
@@ -100,10 +190,12 @@ jobs:
             exit 0
           fi
 
-      - name: Check hard dart_code_linter rules
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Check hard dart_code_linter rules
         run: scripts/dcl_hard_rules.sh
 
-      - name: Check for unused code
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Check for unused code
         run: |
           echo "🔍 Checking for unused code..."
           dart run dart_code_linter:metrics check-unused-code lib 2>&1 | tee unused_code.txt
@@ -115,7 +207,8 @@ jobs:
             exit 1
           fi
 
-      - name: Check for unused files
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Check for unused files
         run: |
           echo "🔍 Checking for unused files..."
           dart run dart_code_linter:metrics check-unused-files lib 2>&1 | tee unused_files.txt
@@ -127,16 +220,28 @@ jobs:
             exit 1
           fi
 
+      - if: ${{ env.RUN_FLUTTER == 'false' }}
+        name: Niets te draaien
+        run: echo "Deze verandering raakt de app, haar tests en haar analyse niet."
+
   test:
     name: Unit Tests
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Valt open: alleen een geslaagde `changes` met expliciet "false" zet dit
+      # op false. Elke stap hieronder leest het; de job zelf draait altijd.
+      RUN_FLUTTER: ${{ needs.changes.result != 'success' || needs.changes.outputs.flutter != 'false' }}
     steps:
-      - name: Checkout code
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Flutter
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Setup Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: "stable"
@@ -144,17 +249,20 @@ jobs:
           cache: true
           pub-cache: false
 
-      - name: Cache Pub dependencies
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Cache Pub dependencies
         uses: actions/cache@v6
         with:
           path: |
             ~/.pub-cache
           key: ${{ runner.os }}-pub-v3-${{ hashFiles('**/pubspec.yaml', '**/pubspec.lock') }}
 
-      - name: Install dependencies
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Install dependencies
         run: flutter pub get --enforce-lockfile
 
-      - name: Run tests
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Run tests
         run: |
           if [ -d "test" ] && [ "$(find test -name '*_test.dart' | wc -l)" -gt 0 ]; then
             flutter test
@@ -162,8 +270,14 @@ jobs:
             echo "No tests found, skipping test execution"
           fi
 
+      - if: ${{ env.RUN_FLUTTER == 'false' }}
+        name: Niets te draaien
+        run: echo "Deze verandering raakt de app en haar tests niet."
+
   pleya-server:
     name: Pleya Server (Go, database)
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -182,14 +296,19 @@ jobs:
         ports:
           - 5432:5432
     env:
+      # Valt open: alleen een geslaagde `changes` met expliciet "false" zet dit
+      # op false. Elke stap hieronder leest het; de job zelf draait altijd.
+      RUN_SERVER: ${{ needs.changes.result != 'success' || needs.changes.outputs.server != 'false' }}
       # Zonder deze DSN slaan de pakketten die een echte database nodig hebben
       # zichzelf over, en dan zegt een groene run niets over de migraties.
       PLEYA_TEST_DATABASE_URL: postgres://pleya:pleya@localhost:5432/pleya_test?sslmode=disable
     steps:
-      - name: Checkout code
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Go
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version-file: pleya_server/go.mod
@@ -198,26 +317,29 @@ jobs:
       # De tests draaien tegen dezelfde gepinde ffmpeg als de server zelf
       # (scripts/test-image.sh). De ffmpeg van Ubuntu (6.1) meldt de voortgang
       # onder loudnorm anders, en dan meet de loudnesstest een verkeerde duur.
-      - name: Build test image with pinned ffmpeg
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Build test image with pinned ffmpeg
         working-directory: pleya_server
         run: scripts/test-image.sh
 
-      - name: Build
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Build
         working-directory: pleya_server
         run: go build ./...
 
-      - name: Vet
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Vet
         working-directory: pleya_server
         run: go vet ./...
 
-      - name: Test
-        working-directory: pleya_server
-        env:
-          GO_IMAGE: pleya-server-test:go-ffmpeg
-          PLEYA_TEST_DOCKER_NETWORK: host
-        run: scripts/go-tool.sh test -timeout 30m ./...
-
-      - name: Capture responses for the contract check
+      # De testrun legt ook de antwoorden voor de contractcontrole vast. Tot
+      # oktober 2026 was dat een tweede run van ./internal/api, en die kostte
+      # bijna vijf minuten voor tests die net al gedraaid hadden. Alleen
+      # internal/api leest PLEYA_RESPONSE_DIR (harness_test.go), dus de andere
+      # pakketten merken er niets van. -count=1 hoort erbij: een resultaat uit
+      # de testcache voert de tests niet uit en laat de map dan leeg.
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Test and capture responses for the contract check
         working-directory: pleya_server
         env:
           GO_IMAGE: pleya-server-test:go-ffmpeg
@@ -225,9 +347,10 @@ jobs:
           PLEYA_RESPONSE_DIR: /src/.responses
         run: |
           rm -rf .responses && mkdir -p .responses
-          scripts/go-tool.sh test -count=1 -timeout 30m ./internal/api/
+          scripts/go-tool.sh test -count=1 -timeout 30m ./...
 
-      - name: Validate responses against openapi.yaml
+      - if: ${{ env.RUN_SERVER != 'false' }}
+        name: Validate responses against openapi.yaml
         run: |
           # De runner heeft een oudere jsonschema voorgeïnstalleerd, en die kent het
           # `registry`-argument niet. Lokaal valt dat niet op, want daar draait de
@@ -235,6 +358,10 @@ jobs:
           python3 -m pip install --quiet --disable-pip-version-check --upgrade \
             "jsonschema>=4.18" pyyaml referencing
           python3 scripts/check_server_responses.py pleya_server/.responses
+
+      - if: ${{ env.RUN_SERVER == 'false' }}
+        name: Niets te draaien
+        run: echo "pleya_server, het protocol en de bestanden die de Go-tests lezen zijn niet geraakt."
 
   pleya-web:
     name: Pleya Web (contract)
@@ -298,6 +425,14 @@ jobs:
           fi
           scripts/check_authority_merge.sh "$base"
 
+      # De tellers in docs/PLEYA-SERVER-MASTERLIST.md (de taakregel, de
+      # blokkentabel en de golftabel) worden met de hand bijgewerkt. Dit script
+      # telt de taakrijen zelf na en faalt met een verschiltabel als een teller
+      # afwijkt. Een eigen job zou een runner vragen voor
+      # een controle van een fractie van een seconde, dus hij hangt hier aan.
+      - name: Masterlist counters match the task rows
+        run: scripts/masterlist_counts.sh --check
+
   protocol:
     name: Protocol Contract
     runs-on: ubuntu-latest
@@ -334,18 +469,31 @@ jobs:
 
   native-format:
     name: Native Formatting
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Valt open: alleen een geslaagde `changes` met expliciet "false" zet dit
+      # op false. Elke stap hieronder leest het; de job zelf draait altijd.
+      RUN_FLUTTER: ${{ needs.changes.result != 'success' || needs.changes.outputs.flutter != 'false' }}
     steps:
-      - name: Checkout code
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Setup Java
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Verify native formatting
+      - if: ${{ env.RUN_FLUTTER != 'false' }}
+        name: Verify native formatting
         run: scripts/format_native.sh --check
+
+      - if: ${{ env.RUN_FLUTTER == 'false' }}
+        name: Niets te draaien
+        run: echo "Deze verandering raakt geen native code en geen formatteerregels."
