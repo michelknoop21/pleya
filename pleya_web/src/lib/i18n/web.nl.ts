@@ -153,7 +153,7 @@ export const webNl = {
   'error.library.not_found': 'Dit item staat niet op deze server.',
   'error.library.scan_in_progress': 'Er loopt een scan. Probeer het zo opnieuw.',
   'error.library.not_config_managed': 'Deze bibliotheek wordt al in Pleya beheerd.',
-  'error.library.cursor_invalid': 'De lijst is verder gegaan. Opnieuw laden vanaf het begin.',
+  'error.library.cursor_invalid': 'De lijst is veranderd. Laad hem opnieuw vanaf het begin.',
   'error.library.search_query_empty': 'Typ iets om te zoeken.',
   'error.library.version_multifile': 'Deze versie is verdeeld over meerdere bestanden.',
   'error.playback.version_unavailable': 'Dat bestand kan nu niet worden gelezen.',

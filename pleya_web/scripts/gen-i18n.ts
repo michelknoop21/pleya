@@ -3,8 +3,10 @@
  *
  * De bron is `lib/i18n/en.i18n.json`, dezelfde die `slang` voor de Flutter-app
  * leest. Wat hier binnenkomt is een expliciete selectie: alleen sleutels die op
- * web dezelfde betekenis hebben. Dezelfde sleutels komen uit `nl.i18n.json`. Web-eigen teksten staan los in
+ * web dezelfde betekenis hebben. Web-eigen teksten staan los in
  * `src/lib/i18n/web.ts`, zodat een sleutel nooit stil van bron wisselt.
+ *
+ * Dezelfde sleutels komen uit `nl.i18n.json`.
  *
  * Draaien: bun run scripts/gen-i18n.ts
  */

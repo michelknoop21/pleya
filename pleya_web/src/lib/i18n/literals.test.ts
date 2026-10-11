@@ -20,6 +20,12 @@ function svelteFiles(dir: string): string[] {
  * Letterlijke waarden van tekstattributen. Een waarde telt als letterlijk
  * zodra er na het weghalen van `{...}`-expressies nog letters overblijven;
  * `alt=""` (decoratief) en pure expressies zijn toegestaan.
+ *
+ * Beperking van de regex: hij ziet alleen waarden tussen dubbele aanhalingstekens
+ * en haalt `{...}` zonder nesting weg. `title='Sluiten'`, een attribuut dat via
+ * `{...spread}` binnenkomt en tekst tussen tags (`<span>Sluiten</span>`) vallen
+ * erbuiten, net als een expressie met een `}` in een string. Dit is een vangnet
+ * voor de gewone vorm, geen parser.
  */
 export function findLiterals(source: string): string[] {
   const hits: string[] = [];
