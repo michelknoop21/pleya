@@ -173,4 +173,63 @@ void main() {
       expect(assistantAsksOneTitle(prompt), isFalse, reason: prompt);
     }
   });
+
+  // Fourth review, I1: a word for a sort between the pointer and the kind
+  // word asks for films of that sort, not for one title.
+  test('I1: "dat soort film", "that kind of movie" fall outside', () {
+    expectGate(const {
+      'that kind of movie about heists': false,
+      'that type of movie with tom hanks': false,
+      'this sort of show about detectives': false,
+      "i'm looking for that kind of movie about heists": false,
+      'do you know that kind of show about detectives': false,
+      'dat soort film over overvallen': false,
+      'dat type film met tom hanks': false,
+      'ik zoek dat soort film over overvallen': false,
+      'ken je dat soort serie over detectives': false,
+      'dat slag film over overvallen': false,
+      'dat typ film over overvallen': false,
+      // In the description the same words describe: the gate stays open.
+      'that movie about a kind giant on death row': true,
+      'die film over een type dat nooit opgeeft': true,
+    });
+  });
+
+  // Fourth review, M1: a second question behind the description without a
+  // comma, as dictation gives it.
+  test('M1: a question word or a word for the lot after the description falls outside', () {
+    expectGate(const {
+      'die film over speelgoed hoeveel zijn er daarvan': false,
+      'die film over speelgoed de complete collectie': false,
+      'that movie about toys the complete collection': false,
+      'die film over death row iets dergelijks': false,
+      'die film over death row wat raad je aan': false,
+      'die film over death row wat kijk ik hierna': false,
+      'that movie about death row what do you recommend': false,
+      'that movie about death row what should i see afterwards': false,
+      'die film met tom hanks wat heeft hij gemaakt': false,
+      'that movie with tom hanks what has he been in': false,
+      'die film met tom hanks etc': false,
+      'die film met tom hanks etc.': false,
+      'die film met tom hanks enzo': false,
+      'die film met tom hanks enzovoort': false,
+      'die film over de dodencel wie speelt daarin': false,
+      'die film met tom hanks hoe lang duurt die': false,
+      'die film met tom hanks waarom is die zo bekend': false,
+      'die film met tom hanks wanneer kwam die uit': false,
+      'that movie about death row who directed it': false,
+      'that movie about death row how long is it': false,
+      'that movie about death row why is it famous': false,
+      'that movie about death row when did it come out': false,
+      // A question word in the lead-in, before the pointer, stays inside.
+      'hoe heet die film met tom hanks over de dodencel': true,
+      'wat is die film met tom hanks': true,
+      "what's that movie with tom hanks about death row": true,
+      // "Waar" and "where" describe ("die film waar hij ...").
+      'die film waar hij bewaker is': true,
+      'die film met tom hanks waar hij bewaker is': true,
+      'that movie where he is a prison guard': true,
+      'that movie with tom hanks where he is a guard': true,
+    });
+  });
 }

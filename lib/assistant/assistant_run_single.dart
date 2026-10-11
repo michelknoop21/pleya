@@ -8,7 +8,7 @@ extension _AssistantSingleTitle on AssistantRun {
   /// points at nothing more, each list of titles, grid or set of request
   /// options that shows it keeps only that title. A result without it stays
   /// whole: it answers another part of the question. An answer that names
-  /// none or two, or speaks of more ("ook", "hieronder", a list), picks
+  /// none or two, or points at several ("andere", "hieronder", a list), picks
   /// nothing for the user. Only removes cards, so the age gate and the rights
   /// checks that admitted them still hold.
   void _keepTheOneNamed(String answer) {

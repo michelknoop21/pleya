@@ -50,21 +50,57 @@ void main() {
     test('a second question in the same sentence', () async {
       await keepsAll('Hoe heet die film met Tom Hanks over death row en wat is er nieuw deze week', 'Dat is «$mile».');
     });
+
+    test('I1: a question for films of that sort', () async {
+      await keepsAll('that kind of movie with tom hanks', 'Then «Cast Away» (2000) is one for you.');
+      await keepsAll("i'm looking for that kind of movie with tom hanks", 'Then «Cast Away» (2000) is one for you.');
+      await keepsAll('ik zoek dat soort film met tom hanks', 'Dan is «Cast Away» (2000) iets voor jou.');
+    });
+
+    test('M1: a second question behind the description, no comma', () async {
+      await keepsAll('die film met tom hanks over speelgoed hoeveel zijn er daarvan', 'Van «$toy» heb je er twee.');
+      await keepsAll('die film met tom hanks wat heeft hij gemaakt', 'Onder andere «Cast Away» (2000).');
+    });
   });
 
   group('lock two shut: the question fits, the answer points at more', () {
-    test('a word for more in the answer keeps every card', () async {
+    test('an answer that points at several titles keeps every card', () async {
       for (final answer in [
-        'Dat is «$mile» (1999). Ik heb ook zijn andere werk gevonden.',
-        'Dat is «$mile» (1999), kijk ook eens verder.',
+        'Dat is «$mile» (1999). Ik heb zijn andere werk erbij gezet.',
         'Hij speelt in meerdere; «Cast Away» (2000) springt eruit.',
-        'Dat is «$toy» (1995). Het tweede deel staat eronder.',
+        'Dat is «$toy» (1995). De vervolgen staan erbij.',
         'Bij «$mile» (1999) passen de films hieronder.',
+        'Hier zijn ze: «$mile» (1999) voorop.',
+        'Dit zijn de films, «$mile» (1999) voorop.',
+        'Kijk eens naar deze, te beginnen met «$mile» (1999).',
+        'Bijvoorbeeld «Cast Away».',
+        'Een film zoals «Cast Away» (2000).',
+        'Je hebt ze allebei, «$toy» (1995) voorop.',
         'That is «$mile» (1999). The others are below.',
-        'That is «$mile» (1999), there is also a sequel.',
+        'That is «$toy» (1995), the sequels are there too.',
+        'Here they are, starting with «$mile» (1999).',
+        'These are his films, «$mile» (1999) first.',
+        'For example «Cast Away» (2000).',
+        'You have both, «$toy» (1995) first.',
       ]) {
         final r = await singleAsk([findHanks, answer], one);
         expect(cardsOf(r), all, reason: answer);
+      }
+    });
+
+    // M3: words that an answer about one title simply uses ("ook", "nog",
+    // "meer", "deel", "also", "more", "part") do not shut the lock.
+    test('the owner\'s question with an ordinary answer about one title: one card', () async {
+      for (final answer in [
+        'Dat is «$mile» (1999).',
+        'Je bedoelt «$mile» (1999), met Tom Hanks als bewaker in een dodencel.',
+        'Dat is «$mile» (1999). Hij staat ook in je bibliotheek. Wil je nog iets weten?',
+        'Dat is «$mile» (1999). Wil je er meer over weten?',
+        'Dat is «$mile» (1999), met naast Tom Hanks ook Michael Clarke Duncan als deel van het verhaal.',
+        "That is «$mile» (1999). It's also in your library, he plays the part of a guard. Want to know more?",
+      ]) {
+        final r = await singleAsk([findHanks, answer], 'die film met tom hanks over deathrow');
+        expect(cardsOf(r), [mile], reason: answer);
       }
     });
 
@@ -83,6 +119,7 @@ void main() {
       expect(assistantAnswerPointsAtMore('Dat is «Deel van mij».\n- uit 2020'), isFalse);
       expect(assistantAnswerPointsAtMore('Dat is «Heat» (1995), met Al Pacino in een bankoverval.'), isFalse);
       expect(assistantAnswerPointsAtMore('Dat is «Heat» (1995). Meer staat hieronder.'), isTrue);
+      expect(assistantAnswerPointsAtMore('Dat is «Hier zijn ze» (2020).'), isFalse);
     });
   });
 }
