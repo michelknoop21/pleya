@@ -71,10 +71,7 @@ void main() {
         'movie',
       );
       expect(_i('Welke series heb ik gekeken?').constrain('my_watching', {'kind': 'movie'}).args['kind'], 'show');
-      expect(
-        _i('Welke films keken de anderen?').constrain('watch_stats', {'scope': 'now'}).args,
-        isNot(contains('media')),
-      );
+      expect(_i('Welke films keken de anderen?').constrain('watch_stats', {'scope': 'now'}).args['media'], 'movie');
     });
 
     test('the right tool for the right person', () {
@@ -94,9 +91,11 @@ void main() {
       expect(_i('Which shows did the others watch?').kind.value, MediaKind.show);
     });
 
-    test('a kind cannot be enforced on current streams: refused, not a mixed list', () {
+    test('a kind on current streams is passed on: the tool keeps live streams of that kind only', () {
       final fixed = _i('Welke films kijkt iedereen nu?').constrain('watch_stats', {'scope': 'now'});
-      expect(fixed.error, 'media_needs_period');
+      expect(fixed.error, isNull);
+      expect(fixed.args['media'], 'movie');
+      expect(fixed.args['scope'], 'now');
     });
 
     test('"everyone except <name>" is no audience; except me still is "others"', () {

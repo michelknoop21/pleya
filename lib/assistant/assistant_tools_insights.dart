@@ -332,7 +332,7 @@ final List<AssistantTool> _insightTools = [
         'merged_across_servers: titleOnly and merged_on_title_only counts them: say the ranking is not proven then), and "unavailable" names the servers that could not '
         'answer (with their backend). On Jellyfin, Emby and Pleya Server a period counts each finished title once '
         'per user, at its last play (those servers keep no play log). For a question about films only or series '
-        'only pass media "movie" or "show" (period only, rejected with scope "now"): the answer and the card then hold just those titles. '
+        'only pass media "movie" or "show": with scope "period" the answer and the card hold just those titles; with scope "now" only the streams playing right now that are known to be of that kind (live_streams_only, never history), and streams_kind_unknown counts the ones whose server does not say (Pleya Server): say so, and never present a period list as live. '
         'For "the others", "my friends" or "without me" pass audience "others" (period only): the asker is removed by account id, '
         'and accounts whose owner cannot be told apart from the asker are reported under left_out, never counted. '
         'To leave accounts out by name instead, pass up to 10 server account names in '
@@ -381,7 +381,6 @@ final List<AssistantTool> _insightTools = [
         },
         _ => throw const AssistantToolError('invalid_exclude_users'),
       };
-      if (scope == 'now' && media != null) throw const AssistantToolError('media_needs_period');
       final others = switch (args['audience']) {
         null || 'all' => false,
         'others' => true,
@@ -392,7 +391,7 @@ final List<AssistantTool> _insightTools = [
       if (scope == 'now' && others) throw const AssistantToolError('audience_needs_period');
       final before = _watchServers(ctx);
       final result = await (scope == 'now'
-          ? _watchedNow(ctx, excluded: excluded)
+          ? _watchedNow(ctx, excluded: excluded, media: media)
           : _watchedPeriod(ctx, days, media: media, excluded: excluded, others: others));
       // The reads take seconds. Administration revoked or a server gone
       // meanwhile: household viewing data must not be published.

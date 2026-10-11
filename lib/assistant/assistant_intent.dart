@@ -295,8 +295,6 @@ class AssistantIntent {
           out['audience'] = audience.value == AssistantAudience.others ? 'others' : 'all';
         }
         if (kind.explicit) {
-          // Current streams cannot be filtered by kind: no list that mixes films and series.
-          if (out['scope'] == 'now') return (args: out, error: 'media_needs_period');
           out['media'] = kind.value == MediaKind.movie ? 'movie' : 'show';
         }
         if (previousWeek) return (args: out, error: 'previous_week_not_supported');

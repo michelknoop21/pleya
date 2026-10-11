@@ -56,7 +56,15 @@ String _servedLabel(AssistantToolContext ctx, List<ServerId> answered, List<Serv
 
 // ---------------------------------------------------------------- now
 
-Future<List<JellyfinActiveSession>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
+/// A stream with what is known of its kind: true an episode, false a film,
+/// null the source does not say (Pleya Server's stream list carries no kind).
+typedef _Stream = ({JellyfinActiveSession s, bool? episode});
+
+final _episodeSubtitle = RegExp(r'^S\d+\s*·\s*E\d+');
+final _yearSubtitle = RegExp(r'^\d{4}$');
+
+Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
+  List<_Stream> tag(List<JellyfinActiveSession> list) => [for (final s in list) (s: s, episode: s.episode != null)];
   // Tautulli answers only for the Plex server it monitors.
   if (ctx.insights?.tautulliFor(id) case final tautulli?) {
     final now = await const NowWatchingService().resolve(tautulli);
@@ -64,23 +72,34 @@ Future<List<JellyfinActiveSession>?> _streamsOn(AssistantToolContext ctx, Server
       return [
         for (final s in now.sessions)
           (
-            userName: s.userName,
-            title: s.title,
-            episode: s.subtitle,
-            progressPercent: s.progressPercent,
-            paused: s.isPaused,
-            transcoding: s.isTranscoding,
-            device: s.playerLabel,
+            s: (
+              userName: s.userName,
+              title: s.title,
+              episode: s.subtitle,
+              progressPercent: s.progressPercent,
+              paused: s.isPaused,
+              transcoding: s.isTranscoding,
+              device: s.playerLabel,
+            ),
+            // Tautulli's subtitle is "S1 · E3 name" for an episode and the year
+            // for a film; anything else says nothing about the kind.
+            episode: s.subtitle == null
+                ? null
+                : _episodeSubtitle.hasMatch(s.subtitle!)
+                ? true
+                : _yearSubtitle.hasMatch(s.subtitle!)
+                ? false
+                : null,
           ),
       ];
     }
     // Tautulli down or behind a login page: Plex itself still knows.
   }
   return switch (ctx.adminClient(id)) {
-    final JellyfinClient jf => jf.listActiveSessions(),
-    final PleyaServerClient ps => ps.streamSessions(),
+    final JellyfinClient jf => tag((await jf.listActiveSessions())),
+    final PleyaServerClient ps => [for (final s in await ps.streamSessions()) (s: s, episode: null)],
     final PlexClient plex => switch (_plexOwnerToken(ctx, id)) {
-      final token? => plex.fetchActiveStreams(authToken: token),
+      final token? => tag(await plex.fetchActiveStreams(authToken: token)),
       null => null,
     },
     _ => null,
@@ -89,7 +108,11 @@ Future<List<JellyfinActiveSession>?> _streamsOn(AssistantToolContext ctx, Server
 
 /// Streams on every server. Ids are positional: no server session id is
 /// passed on. Paused and transcoding are left out where a server does not say.
-Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx, {Set<String> excluded = const {}}) async {
+Future<AssistantToolResult> _watchedNow(
+  AssistantToolContext ctx, {
+  Set<String> excluded = const {},
+  String? media,
+}) async {
   final read = await _perServer(ctx, (id) => _streamsOn(ctx, id));
   final answered = [
     for (final (id, s) in read)
@@ -99,13 +122,26 @@ Future<AssistantToolResult> _watchedNow(AssistantToolContext ctx, {Set<String> e
     for (final (id, s) in read)
       if (s == null) id,
   ];
-  final shown = [
-    for (final (id, streams) in read)
-      for (final s in streams ?? const <JellyfinActiveSession>[])
-        if (!excluded.contains(s.userName.trim().toLowerCase())) (server: ctx.serverName(id), s: s),
-  ].take(20).toList();
+  // Only what is playing right now, never history. A kind asks for the streams
+  // known to be of that kind; those whose source does not say are counted, not
+  // listed as if they were.
+  var kindUnknown = 0;
+  final all = <({String server, JellyfinActiveSession s})>[];
+  for (final (id, streams) in read) {
+    for (final st in streams ?? const <_Stream>[]) {
+      if (excluded.contains(st.s.userName.trim().toLowerCase())) continue;
+      if (media == null || st.episode == (media == 'show')) {
+        all.add((server: ctx.serverName(id), s: st.s));
+      } else if (st.episode == null) {
+        kindUnknown++;
+      }
+    }
+  }
+  final shown = all.take(20).toList();
   return AssistantToolResult(
     {
+      'live_streams_only': true,
+      if (media != null) ...{'kind_filter': media, 'streams_kind_unknown': kindUnknown},
       'servers': [for (final id in answered) clipText(ctx.serverName(id))],
       'sessions': [
         for (final (:server, :s) in shown)

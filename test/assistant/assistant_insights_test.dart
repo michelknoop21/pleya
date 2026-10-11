@@ -730,6 +730,71 @@ void main() {
       expect((result.display! as AssistantWatchStats).sessions.single.title, 'Severance');
     });
 
+    test('now with a kind: only streams known to be that kind, unknowns counted, never history', () async {
+      final jf = _Jf(
+        'woon',
+        'Woonkamer',
+        sessions: [
+          (
+            userName: 'Sam',
+            title: 'Dune',
+            episode: null,
+            progressPercent: 10,
+            paused: null,
+            transcoding: null,
+            device: 'TV',
+          ),
+          (
+            userName: 'Kim',
+            title: 'Severance',
+            episode: 'S1 · E2 Half Loop',
+            progressPercent: 30,
+            paused: null,
+            transcoding: null,
+            device: 'iPad',
+          ),
+        ],
+      );
+      final tool = _tool('watch_stats');
+      Future<AssistantToolResult> now(Object? media, {List<_Jf> jellyfin = const [], List<_Ps>? pleya}) =>
+          tool.run(_ctx(jellyfin, pleya: pleya ?? const []), ServerId('woon'), {'scope': 'now', 'media': ?media})
+              as Future<AssistantToolResult>;
+      List titles(AssistantToolResult r) => [for (final s in r.data['sessions']! as List) (s as Map)['title']];
+
+      final films = await now('movie', jellyfin: [jf]);
+      expect(titles(films), ['Dune']);
+      expect(films.data['live_streams_only'], isTrue);
+      expect(films.data['kind_filter'], 'movie');
+      expect(films.data['streams_kind_unknown'], 0);
+      expect((films.display! as AssistantWatchStats).sessions.map((s) => s.title), ['Dune'], reason: 'card = list');
+      expect(titles(await now('show', jellyfin: [jf])), ['Severance']);
+      expect(titles(await now(null, jellyfin: [jf])), ['Dune', 'Severance']);
+
+      // Pleya Server's stream list carries no kind: counted, never listed as films.
+      final ps = _Ps(
+        'zolder',
+        'Zolder',
+        streams: const [
+          (
+            userName: 'kim',
+            title: 'Dune',
+            episode: null,
+            progressPercent: 25,
+            paused: null,
+            transcoding: null,
+            device: 'iPad',
+          ),
+        ],
+        history: null,
+      );
+      final unknown =
+          await tool.run(_ctx(const [], pleya: [ps]), ServerId('zolder'), {'scope': 'now', 'media': 'movie'})
+              as AssistantToolResult;
+      expect(unknown.data['sessions'], isEmpty);
+      expect(unknown.data['streams_kind_unknown'], 1);
+      expect(unknown.data['live_streams_only'], isTrue);
+    });
+
     test('now: exclude_users drops that account, media and more than 10 names are refused', () async {
       final jf = _Jf(
         'woon',
@@ -763,10 +828,6 @@ void main() {
               })
               as AssistantToolResult;
       expect(((result.data['sessions']! as List).single as Map<String, Object?>)['user'], 'Sam');
-      await expectLater(
-        tool.run(_ctx([jf]), ServerId('woon'), {'scope': 'now', 'media': 'movie'}),
-        throwsA(isA<AssistantToolError>().having((e) => e.toString(), 'code', contains('media_needs_period'))),
-      );
       await expectLater(
         tool.run(_ctx([jf]), ServerId('woon'), {
           'scope': 'period',
@@ -1138,6 +1199,16 @@ void main() {
         },
       ]);
       expect((result.display! as AssistantWatchStats).sessions.single.title, 'Severance');
+      // Films now: this Plex stream is an episode, so nothing qualifies, and
+      // that is said as live streams only, nothing known-unknown.
+      final films =
+          await _tool('watch_stats').run(ctx, null, {'scope': 'now', 'media': 'movie'}) as AssistantToolResult;
+      expect(films.data['sessions'], isEmpty);
+      expect(films.data['live_streams_only'], isTrue);
+      expect(films.data['streams_kind_unknown'], 0);
+      final series =
+          await _tool('watch_stats').run(ctx, null, {'scope': 'now', 'media': 'show'}) as AssistantToolResult;
+      expect((series.data['sessions']! as List), hasLength(1));
     });
 
     test('a working Tautulli answers; Plex history is not read', () async {
