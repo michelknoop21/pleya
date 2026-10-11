@@ -278,6 +278,30 @@ void main() {
       expect(_i('Een film of een serie voor ons?').constrain('recommend_together', {}).args, isNot(contains('kind')));
     });
 
+    test('BP-04b: a group word is enforced on recommend_together from the user\'s words only', () {
+      for (final (q, word) in [
+        ('Wat kan ik met mijn gezin kijken?', 'gezin'),
+        ('Een film voor de familie', 'familie'),
+        ('What can we watch with my family?', 'family'),
+        ('Iets voor ons huishouden', 'huishouden'),
+      ]) {
+        final intent = _i(q);
+        expect(intent.group, word, reason: q);
+        expect(
+          intent.constrain('recommend_together', {
+            'participants': ['me'],
+          }).args['group'],
+          word,
+        );
+        expect(intent.describe(), contains('never answer for the asker alone'));
+      }
+      // A genre or a model-sent flag is not the user's group.
+      for (final q in ['Zoek een familiefilm', 'Show me a family movie', 'Wat heb ik gekeken?']) {
+        expect(_i(q).group, isNull, reason: q);
+        expect(_i(q).constrain('recommend_together', {'group': 'gezin'}).args, isNot(contains('group')));
+      }
+    });
+
     test('review: requests, added value and a watch clause beside a long period are not additions-only', () {
       expect(_i('I added this movie to Radarr').addedToLibraries, isFalse);
       expect(_i('Dat is een toegevoegde waarde').addedToLibraries, isFalse);

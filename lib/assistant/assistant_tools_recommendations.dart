@@ -49,7 +49,7 @@ Future<AssistantToolOutcome> _recommendTogether(
   final catalog = ctx.catalog ?? (throw const AssistantToolError('catalog_unavailable'));
   final filters = AssistantStrictFilters.parse(args);
   final limit = _int(args, 'limit', 1, 20) ?? 10;
-  final names = _strings(args, 'participants');
+  final names = [..._strings(args, 'participants')];
   final explicitIds = _strings(args, 'user_ids');
   if (names.length + explicitIds.length < 1 ||
       names.length + explicitIds.length > _cohortParticipantCap ||
@@ -90,6 +90,15 @@ Future<AssistantToolOutcome> _recommendTogether(
   checkCurrent();
   final selected = <String, ServerUser>{requester.id: requester};
   final offeredBefore = {...?_offeredParticipants[ctx]};
+  // The user's group word ("gezin"), set from their question: when the model
+  // named nobody but the asker, the word itself is looked up, so a profile or
+  // account with that name resolves and nothing else shrinks the group to me.
+  final group = switch (args['group']) {
+    final String g when g.trim().isNotEmpty && g.length <= 64 => g.trim(),
+    _ => null,
+  };
+  final onlyMe = explicitIds.isEmpty && names.every((n) => n.trim().toLowerCase() == 'me');
+  if (group != null && onlyMe) names.add(group);
   final people = resolvePeople(
     names: names,
     users: users,
@@ -102,7 +111,24 @@ Future<AssistantToolOutcome> _recommendTogether(
     ..clear()
     ..addAll(people.selected);
   final ambiguous = <Map<String, Object?>>[];
-  for (final entry in people.ambiguous) {
+  final missing = [...people.missing];
+  // A group nobody could be matched to: the asker chooses among the other
+  // accounts, never the model, and never the asker alone.
+  final otherAccounts = [
+    for (final u in users)
+      if (u.id != requester.id && !client.sameUserId(u.id, requester.id)) u,
+  ];
+  bool isGroup(String name) => name.trim().toLowerCase() == group;
+  final groupChoices = <ServerUser>[
+    if (group != null &&
+        selected.length == 1 &&
+        explicitIds.isEmpty &&
+        people.ambiguous.isEmpty &&
+        missing.any(isGroup))
+      ...otherAccounts.take(_cohortParticipantCap * 2),
+  ];
+  if (groupChoices.isNotEmpty) missing.removeWhere(isGroup);
+  for (final entry in [...people.ambiguous, if (groupChoices.isNotEmpty) (name: group!, choices: groupChoices)]) {
     (_offeredParticipants[ctx] ??= {}).addAll(entry.choices.map((u) => u.id));
     ambiguous.add({
       'name': clipText(entry.name, 64),
@@ -111,7 +137,7 @@ Future<AssistantToolOutcome> _recommendTogether(
       ],
     });
   }
-  final missing = [for (final name in people.missing) clipText(name, 64)];
+  missing.setAll(0, [for (final name in missing) clipText(name, 64)]);
   for (final userId in explicitIds) {
     final match = users.where((u) => client.sameUserId(u.id, userId)).firstOrNull;
     if (match == null) throw const AssistantToolError('unknown_user_id');
