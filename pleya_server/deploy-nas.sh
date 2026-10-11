@@ -51,12 +51,16 @@ echo "→ tunnelkoppeling controleren"
 # pleya-server_default als extern netwerk aanhangt. Hangt hij er niet aan, dan
 # geeft web.pleya.app 502 terwijl readyz hierboven groen is. Herstellen gaat in
 # de relay-stack (README.md, bij `docker compose down`), niet met `docker network connect`.
-ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; \
+# Niet fataal: de deploy is hierboven al groen, dus een haperende ssh mag het
+# script onder `set -e` niet alsnog laten falen.
+if ! ssh "$SSH_HOST" "export PATH=\$PATH:/usr/local/bin; \
   if docker network inspect -f '{{range .Containers}}{{println .Name}}{{end}}' pleya-server_default 2>/dev/null \
     | grep -qx pleya-tunnel; then \
     echo '  pleya-tunnel hangt aan pleya-server_default'; \
   else \
     echo '  ! pleya-tunnel hangt niet aan pleya-server_default; web.pleya.app geeft 502, zie README.md' >&2; \
-  fi"
+  fi"; then
+  echo "  ! tunnelkoppeling niet te controleren (ssh faalde); de deploy zelf is gelukt" >&2
+fi
 
 echo "→ klaar. Alleen bereikbaar op 127.0.0.1 van de NAS zelf, en dat is opzet."

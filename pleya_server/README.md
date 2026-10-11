@@ -472,7 +472,7 @@ docker compose exec postgres psql -U pleya -d pleya -c \
 Verwijderen zonder de mediabibliotheek te raken:
 
 ```sh
-docker compose down            # containers en netwerk weg, data blijft
+docker compose down            # containers weg, data blijft; het netwerk alleen als pleya-tunnel er niet aan hangt
 docker compose down -v         # ook het Postgres-volume weg
 ```
 

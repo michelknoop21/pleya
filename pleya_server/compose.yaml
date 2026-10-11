@@ -162,7 +162,8 @@ networks:
   # Compose de naam af van de projectnaam, en die komt op de NAS van de map
   # /volume1/docker/pleya-server. Een andere map of een `-p` gaf dan stil een
   # ander netwerk, de tunnel vond pleya-server niet meer en web.pleya.app gaf
-  # 502. De naam hier is dezelfde die Compose al afleidde, dus op de NAS
+  # 502. Met `name:` blijft alleen de netwerknaam gelijk; het volume volgt de
+  # projectnaam nog wel. De naam hier is dezelfde die Compose al afleidde, dus op de NAS
   # verandert er bij de eerstvolgende deploy niets.
   default:
     name: pleya-server_default
