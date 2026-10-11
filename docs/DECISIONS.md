@@ -55,7 +55,7 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 ## DEC-005: Trakt inbound en ambient trailer-previews uitstellen
 
 **Date:** 2026-07-03
-**Status:** accepted
+**Status:** accepted; het Trakt-deel is vervangen door DEC-XXX (5 oktober 2026), de ambient trailer-previews blijven uitgesteld
 **Context:** Het oorspronkelijke plan was A+B+Trakt-inbound plus trailer-autoplay op de billboard.
 **Decision:** Trakt read-endpoints (`recommendations/trending/popular`) zijn toegevoegd, maar de mapping-naar-bibliotheek en de rijen zijn uitgesteld: Trakt is dormant zonder Michels keys en de fuzzy matching heeft live data nodig om te tunen. Ambient trailer-previews (singleton mpv-player) zijn uitgesteld omdat de mpv-lifecycle + TV-perf + audio-focus op device getest moeten worden en niet veilig ongetest vlak vóór een review te shippen zijn.
 **Consequences:** Beide zijn post-build follow-ups. De read-endpoints staan klaar zodra keys geconfigureerd zijn.
@@ -4641,3 +4641,15 @@ De masterlijst, `docs/agents/server.md`, de fasetabel in de architectuurbaseline
 zijn in dezelfde commit bijgewerkt; de taakstatus en de tellers staan niet anders dan voorheen, want
 een vrijgave maakt geen taak af. De volgorde is vast: eerst het ontwerp van het contractvenster
 voor S3 tot en met S6, met een eigen DEC (voorwaarde), en pas daarna S3.1.
+
+## DEC-XXX: DEC-005 voor Trakt teruggedraaid, Trakt inlezen komt terug als BP-07 achter een poort
+
+**Date:** 2026-10-11 (besluit van Michel van 5 oktober 2026, gedocumenteerd in `docs/big-p-behaviour-contract.md`)
+**Status:** accepted
+**Context:** DEC-005 stelde de mapping van Trakt naar de bibliotheek uit omdat Trakt dormant was zonder sleutels en de matching live data nodig had. Big P heeft sindsdien titelidentiteit over servers heen (BP-03a tot en met BP-03c), zodat Trakt-titels op `ExternalIds` aan de bibliotheek te koppelen zijn. De Trakt-documentatie (`docs.trakt.tv`) noemt `client_secret` verplicht bij `/oauth/device/token` en `/oauth/token` (refresh), en noemt geen PKCE. Release-builds krijgen bewust alleen `TRAKT_CLIENT_ID` (`docs/release-baseline.md`); `TraktConstants.isConfigured` eist id en secret, dus de Trakt-login is daar verborgen. De app stuurt `client_secret` nu altijd mee (`trakt_auth_service.dart`, `trakt_client.dart`).
+**Decision:**
+1. DEC-005 geldt niet meer voor Trakt: inlezen van Trakt-historie en -watchlist komt terug via BP-07. De ambient trailer-previews uit DEC-005 blijven uitgesteld.
+2. BP-07 start pas na een geslaagde Trakt-poort: echte device activation met een Michel-account, tokenuitgifte, verversen zonder secret en correcte tokenrotatie (het oude refreshtoken is na gebruik ongeldig en het nieuwe paar wordt bewaard). Een probe met een nepcode of nep-refreshtoken telt niet als bewijs. Een secret in een `--dart-define` of binary is uitgesloten.
+3. Slaagt de poort zonder secret niet, dan kiest Michel tussen: (a) PKCE, alleen als de tokenwissel en het verversen zonder secret met een echte code slagen; (b) de OAuth-proxy op de Pleya-relay (`server/oauth.go`) uitbreiden met Trakt, met het secret aan serverzijde, ook voor refresh (nu alleen MAL en AniList en alleen de autorisatiecode-flow, en de relayhost draait nog niet, zie DEC-014); (c) Trakt inlezen niet bouwen en BP-07 sluiten als geblokkeerd door Trakt.
+4. Trakt-aanbevelingen en -trending blijven uitgesteld (`docs/ROADMAP.md`, "Uitgesteld"). BP-07 leest alleen het eigen account, nooit voor kindprofielen.
+**Consequences:** BP-07 staat op "wacht op Trakt-poort, Michel moet activeren"; er is geen code of branch voor gebouwd. De activatie kan alleen Michel doen. De bouw (leeskant via de bestaande provider-rebind, mapping op `ExternalIds`, Pleya Server als vastgelegd capaciteitsgat omdat die geen externe id's levert) krijgt een eigen adversariële review en volgt de poort.
