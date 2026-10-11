@@ -29,6 +29,7 @@ extension _AssistantAnswer on AssistantRun {
     final unvetted = _unvettedNamed(answer, rejected);
     final clean = rejected.isEmpty && unvetted.isEmpty;
     if (clean && step?.display != null) _displays.add(step!.display!);
+    if (clean) _keepTheOneNamed(answer);
     if (step != null) {
       onStep?.call(
         AssistantStep(
