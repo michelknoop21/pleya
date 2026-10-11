@@ -199,6 +199,7 @@ void main() {
       await tester.pump();
       expect(session.stage, BigPStage.out);
       expect(c.submitted, ['dune']);
+      expect(c.submittedTyped, [false], reason: 'a hand-over from Zoeken never stores at once');
       expect(session.takeQuestion(), isNull, reason: 'asked once');
     });
 

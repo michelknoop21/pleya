@@ -20,6 +20,7 @@ const _memoryRefusals = {
   'unknown_ref',
   'ambiguous_ref',
   'too_many_proposals',
+  'already_proposed',
   'invalid_category',
 };
 
@@ -32,11 +33,14 @@ const _memoryScreenNote =
 /// The answer of a run that stored a fact at once: Pleya's own line with the
 /// exact sentence, and the model's words after it only when the run showed or
 /// did more than that.
-String assistantMemoryAnswer(AssistantRunResult result, String text) {
+///
+/// [own] marks [text] as Pleya's own line (the children's ages, the age
+/// filter): it always stays, after the line about the stored fact.
+String assistantMemoryAnswer(AssistantRunResult result, String text, {bool own = false}) {
   final stored = result.memoryStored.firstOrNull;
   if (stored == null) return text;
   final line = t.assistant.memory.stored(value: assistantMemorySentence(stored.value));
-  final more = result.displays.isNotEmpty || result.actions.isNotEmpty;
+  final more = own || result.displays.isNotEmpty || result.actions.isNotEmpty;
   return more && text.isNotEmpty ? '$line\n$text' : line;
 }
 
@@ -55,6 +59,8 @@ String assistantMemoryOutcomeLine(AssistantMemoryOutcome outcome) {
   return switch (outcome.code) {
     'profile_changed' => m.profileChanged,
     'memory_off' => m.off,
+    'target_changed' => m.changed,
+    'kids_mode_unsupported' => m.kids,
     _ => m.failed,
   };
 }
@@ -67,11 +73,12 @@ extension _AssistantRunMemory on AssistantRun {
   /// The profile and the user's words decide, never the model.
   Future<void> _beginMemory(String prompt) async {
     final memory = _ctx.memory;
-    final on = memory != null && memory.profileCurrent && await memory.service.enabled;
+    // A children's profile uses no memory: the tools are not offered at all.
+    final on = memory != null && !_ctx.kidsMode && memory.profileCurrent && await memory.service.enabled;
     _ctx.memoryTurn = AssistantMemoryTurn(
       enabled: on,
-      // A children's profile and a prompt the user did not type never store at once.
-      direct: on && userTyped && !_ctx.kidsMode && assistantIsMemoryCommand(prompt),
+      // A prompt the user did not type and a fenced question never store at once.
+      command: on && userTyped && _spoilerQuestion == null ? assistantMemoryCommandTail(prompt) : null,
     );
   }
 

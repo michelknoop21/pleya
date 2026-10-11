@@ -126,7 +126,7 @@ void main() {
   group('"onthoud dat"', () {
     test('stores a new fact at once and exactly once, and Pleya says literally what', () async {
       final c = make([callTool('remember_fact', friday), say('Ik heb het genoteerd.')]);
-      await c.submit('Onthoud dat we op vrijdag met het gezin kijken');
+      await c.submit('Onthoud dat we op vrijdag met het gezin kijken', typed: true);
 
       final facts = await profile.service.list();
       expect([for (final f in facts) f.value], ['Kijkt op vrijdagavond met het gezin']);
@@ -143,7 +143,7 @@ void main() {
         callTool('remember_fact', {'value': 'Houdt van komedies', 'category': 'preference'}),
         say('Klaar.'),
       ]);
-      await c.submit('Onthoud dat we op vrijdag met het gezin kijken en dat ik geen horror wil.');
+      await c.submit('Onthoud dat we op vrijdag met het gezin kijken en dat ik geen horror wil.', typed: true);
 
       expect(await profile.values(), ['Kijkt op vrijdagavond met het gezin']);
       expect(c.memoryProposal!.value, 'Houdt niet van horror');
@@ -153,10 +153,17 @@ void main() {
     });
 
     test('"onthoud:" and "remember that" count too', () async {
-      for (final prompt in ['Onthoud: geen horror voor mij.', 'Remember that I do not like horror.']) {
-        final c = make([callTool('remember_fact', horror), say('Ok.')]);
-        await c.submit(prompt);
-        expect(await profile.values(), ['Houdt niet van horror'], reason: prompt);
+      for (final (prompt, value) in [
+        ('Onthoud: ik houd niet van horror.', 'Houdt niet van horror'),
+        ('Remember that I do not like horror.', 'Does not like horror'),
+        ('Remember: we watch on Fridays', 'Watches on Fridays'),
+      ]) {
+        final c = make([
+          callTool('remember_fact', {'value': value, 'category': 'dislike'}),
+          say('Ok.'),
+        ]);
+        await c.submit(prompt, typed: true);
+        expect(await profile.values(), [value], reason: prompt);
         await profile.service.clearAll();
       }
     });
@@ -171,7 +178,7 @@ void main() {
         }),
         say('Ik stel voor dit te vervangen.'),
       ]);
-      await c.submit('Onthoud dat we tegenwoordig op zaterdag met het gezin kijken');
+      await c.submit('Onthoud dat we tegenwoordig op zaterdag met het gezin kijken', typed: true);
 
       expect(await profile.values(), ['Kijkt op vrijdagavond met het gezin']);
       final card = c.memoryProposal!;
@@ -195,7 +202,7 @@ void main() {
         'Onthoud dat ik geen horror wil. Wat is er vanavond?',
       ]) {
         final c = make([callTool('remember_fact', horror), say('Ok.')]);
-        await c.submit(prompt);
+        await c.submit(prompt, typed: true);
         expect(await profile.values(), isEmpty, reason: prompt);
         expect(c.memoryProposal, isNotNull, reason: prompt);
       }
@@ -213,7 +220,7 @@ void main() {
         say('Ok.'),
         say('Ok.'),
       ]);
-      await c.submit('Doe twee dingen voor me vanavond');
+      await c.submit('Doe twee dingen voor me vanavond', typed: true);
 
       expect(await profile.values(), isEmpty);
     });
@@ -226,7 +233,7 @@ void main() {
         callTool('forget_fact', {'ref': fact.ref}),
         say('Ik stel voor dit te vergeten.'),
       ]);
-      await c.submit('Onthoud dat je de horrorherinnering mag vergeten');
+      await c.submit('Onthoud dat je mijn afkeer van horror mag vergeten', typed: true);
 
       expect(await profile.values(), ['Houdt niet van horror']);
       final card = c.memoryProposal!;
@@ -343,19 +350,20 @@ void main() {
 
     test('switched between the proposal and the yes: nothing is replaced or forgotten', () async {
       final fact = await profile.store('Houdt niet van horror');
+      final other = await profile.store('Kijkt op vrijdag');
       final c = make([
         callTools([
           ('forget_fact', {'ref': fact.ref}),
-          ('remember_fact', {'value': 'Houdt van horror', 'category': 'preference', 'replaces': fact.ref}),
+          ('remember_fact', {'value': 'Kijkt op zaterdag', 'category': 'habit', 'replaces': other.ref}),
         ]),
         say('Klaar.'),
       ]);
-      await c.submit('Wijzig mijn herinnering over horror.');
+      await c.submit('Wijzig mijn herinneringen over horror en vrijdag.');
       profile.active = 'profile-b';
       await c.answerMemoryProposal(c.memoryProposal!, accept: true);
       await c.answerMemoryProposal(c.memoryProposal!, accept: true);
 
-      expect(await profile.values(), ['Houdt niet van horror']);
+      expect(await profile.values(), unorderedEquals(['Houdt niet van horror', 'Kijkt op vrijdag']));
     });
 
     test('switched during the ask: the tools read and write nothing', () async {
@@ -365,7 +373,7 @@ void main() {
         say('Klaar.'),
       ]);
       profile.active = 'profile-b';
-      await c.submit('Onthoud dat we op vrijdag kijken');
+      await c.submit('Onthoud dat we op vrijdag kijken', typed: true);
 
       expect(model.offeredTo(0), ['ping'], reason: 'the memory of a profile that is not active is not offered');
       expect(await profile.values(), ['Houdt niet van horror']);

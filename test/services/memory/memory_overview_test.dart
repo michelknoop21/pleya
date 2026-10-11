@@ -81,7 +81,7 @@ void main() {
   });
 
   group('stored overview', () {
-    test('none stored is stale, a saved one is shown until the facts change', () async {
+    test('none stored is stale, a saved one is shown until the facts change and is dropped then', () async {
       await memory.remember('Houdt van westerns');
       expect(await memory.overview(), isNull);
       expect(await memory.overviewIsStale(locale: 'nl'), isTrue);
@@ -97,7 +97,63 @@ void main() {
 
       await memory.remember('Kijkt op vrijdag');
       expect(await memory.overviewIsStale(locale: 'nl'), isTrue);
-      expect((await memory.overview())!.body, '{"overview":"tekst"}', reason: 'stale, not dropped');
+      expect(await memory.overview(), isNull, reason: 'dropped with the change, not left behind');
+    });
+
+    test('every change to the facts drops the stored text in the database; a refused or empty one keeps it', () async {
+      Future<List<String>> bodies() async => [
+        for (final row in await db.select(db.assistantMemoryOverviews).get()) row.body,
+      ];
+      final first = (await memory.remember('Houdt niet van horror')).fact!;
+      final second = (await memory.remember('Kijkt op vrijdag')).fact!;
+
+      await save(MemoryOverviewStatus.ok, body: '{"overview":"Je slaat horror over."}');
+      await memory.remember('Houdt niet van horror');
+      await memory.update(first.id, value: 'Houdt niet van horror');
+      await memory.update('no-such-id', value: 'iets');
+      await memory.delete('no-such-id');
+      await memory.resolve(first.ref);
+      expect(await bodies(), ['{"overview":"Je slaat horror over."}'], reason: 'nothing changed');
+
+      await memory.remember('Houdt van westerns');
+      expect(await bodies(), isEmpty, reason: 'add');
+
+      await save(MemoryOverviewStatus.ok, body: '{"overview":"Je slaat horror over."}');
+      await memory.update(first.id, value: 'Houdt van horror');
+      expect(await bodies(), isEmpty, reason: 'update of the text');
+
+      await save(MemoryOverviewStatus.ok, body: '{"overview":"Je houdt van horror."}');
+      await memory.update(second.id, category: MemoryCategory.habit);
+      expect(await bodies(), isEmpty, reason: 'update of the category');
+
+      await save(MemoryOverviewStatus.ok, body: '{"overview":"Je houdt van horror."}');
+      await memory.delete(first.id);
+      expect(await bodies(), isEmpty, reason: 'delete');
+    });
+
+    test('the last fact deleted leaves no body in the database', () async {
+      final only = (await memory.remember('Houdt niet van horror')).fact!;
+      await save(MemoryOverviewStatus.ok, body: '{"overview":"Je slaat horror over."}');
+
+      await memory.delete(only.id);
+
+      expect(await db.select(db.assistantMemoryOverviews).get(), isEmpty);
+      expect(await memory.overview(), isNull);
+    });
+
+    test('a change in one profile keeps the overview of another', () async {
+      final other = MemoryService(database: db, profileId: 'profile-b', now: clock.call);
+      await other.remember('Houdt van musicals');
+      await other.saveOverview(
+        factsHash: await other.takenHash(),
+        locale: 'nl',
+        status: MemoryOverviewStatus.ok,
+        body: '{"overview":"b"}',
+      );
+
+      await memory.remember('Houdt van westerns');
+
+      expect((await other.overview())!.body, '{"overview":"b"}');
     });
 
     test('another app language makes it stale', () async {

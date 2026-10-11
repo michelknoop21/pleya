@@ -3271,6 +3271,8 @@ class _TranslationsAssistantMemoryNl extends TranslationsAssistantMemoryEn {
 	@override String get failed => 'Dat is niet gelukt. Er is niets gewijzigd.';
 	@override String get profileChanged => 'Dit voorstel hoorde bij een ander profiel. Er is niets gewijzigd.';
 	@override String get off => 'Het geheugen staat uit. Er is niets gewijzigd.';
+	@override String get changed => 'Deze herinnering is intussen gewijzigd. Er is niets aangepast.';
+	@override String get kids => 'Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.';
 	@override String get view => 'Bekijk geheugen';
 	@override late final _TranslationsAssistantMemoryCardNl card = _TranslationsAssistantMemoryCardNl._(_root);
 	@override late final _TranslationsAssistantMemoryCategoriesNl categories = _TranslationsAssistantMemoryCategoriesNl._(_root);
@@ -6103,6 +6105,8 @@ extension on TranslationsNl {
 			'assistant.memory.failed' => 'Dat is niet gelukt. Er is niets gewijzigd.',
 			'assistant.memory.profileChanged' => 'Dit voorstel hoorde bij een ander profiel. Er is niets gewijzigd.',
 			'assistant.memory.off' => 'Het geheugen staat uit. Er is niets gewijzigd.',
+			'assistant.memory.changed' => 'Deze herinnering is intussen gewijzigd. Er is niets aangepast.',
+			'assistant.memory.kids' => 'Dit is nu een kinderprofiel. Big P gebruikt daar geen geheugen; er is niets gewijzigd.',
 			'assistant.memory.view' => 'Bekijk geheugen',
 			'assistant.memory.card.rememberTitle' => 'Zal ik dit onthouden?',
 			'assistant.memory.card.replaceTitle' => 'Zal ik dit vervangen?',

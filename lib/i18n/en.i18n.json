@@ -2400,6 +2400,8 @@
       "failed": "That did not work. Nothing was changed.",
       "profileChanged": "This proposal belonged to another profile. Nothing was changed.",
       "off": "The memory is off. Nothing was changed.",
+      "changed": "This memory was edited in the meantime. Nothing was changed.",
+      "kids": "This is now a children's profile. Big P uses no memory there; nothing was changed.",
       "view": "View memory",
       "card": {
         "rememberTitle": "Shall I remember this?",

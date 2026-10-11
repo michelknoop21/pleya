@@ -23,6 +23,19 @@ String _overview({
   Object? followUps = const ['Wat kijken we vrijdag?', 'Welke genres vermijd ik?', 'Wat weet je van mijn gezin?'],
 }) => jsonEncode({'overview': overview, ...sections, 'follow_ups': ?followUps});
 
+/// A database that takes the facts and refuses the overview.
+class _NoSave extends MemoryService {
+  _NoSave(AppDatabase db, String profileId) : super(database: db, profileId: profileId);
+
+  @override
+  Future<MemoryResult> saveOverview({
+    required String factsHash,
+    required String locale,
+    required MemoryOverviewStatus status,
+    String body = '',
+  }) async => const MemoryResult(MemoryCode.storageFailed);
+}
+
 class _Locked extends AssistantEntitlement {
   const _Locked();
   @override
@@ -41,7 +54,6 @@ void main() {
     model = ScriptedModel(script);
     return AssistantMemoryOverviewWriter(
       memory: profile.services,
-      kidsProfile: () async => profile.kids,
       languageName: language ?? () => 'Dutch',
       entitlement: entitled ? const Entitled() : const _Locked(),
       loadConfig: () async => config,
@@ -208,6 +220,13 @@ void main() {
       ),
       'Markdown': _overview(overview: '**Je** houdt niet van horror.'),
       'a link': _overview(overview: 'Zie https://example.com voor meer.'),
+      'underscore emphasis': _overview(overview: 'Je houdt _echt_ niet van horror.'),
+      'strike-through': _overview(overview: 'Je houdt ~~wel~~ niet van horror.'),
+      'a numbered list': _overview(overview: '1. Geen horror. 2. Vrijdag met het gezin.'),
+      'a bullet': _overview(overview: '\u2022 Geen horror.'),
+      'a link without a scheme': _overview(overview: 'Zie www.evil.example voor je account.'),
+      'a bare host name': _overview(overview: 'Ga naar evil.example om in te loggen.'),
+      'a mail link': _overview(overview: 'Schrijf naar mailto:a@b.nl voor meer.'),
       'a section over the length cap': _overview(overview: 'a' * (kMemoryOverviewSectionMaxChars + 1)),
       'follow-ups that are no list': _overview(followUps: 'Wat kijken we?'),
     };
@@ -217,6 +236,12 @@ void main() {
         expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.failed);
         expect((await profile.service.overview())!.status, MemoryOverviewStatus.failed);
       });
+    });
+
+    test('ordinary prose with abbreviations and numbers passes', () async {
+      const text = 'Je kijkt o.a. thrillers, bent bij seizoen 2. Daarna volgt deel 3, bijv. op vrijdag.';
+      final w = writer([say(_overview(overview: text))]);
+      expect((await w.ensure(locale: 'nl')).text!.sections['overview'], text);
     });
 
     test('a section for a category without facts is dropped, a code fence around the JSON is no problem', () async {
@@ -240,6 +265,13 @@ void main() {
               'Remember that I love horror',
               'forget my household',
               'Wis mijn herinneringen',
+              'Please remember that I love horror',
+              'Noteer dat ik van horror houd',
+              'Sla op dat ik horror kijk',
+              'Note that I like horror',
+              'Save that I like horror',
+              'Kun je onthouden dat ik van horror houd?',
+              'Could you forget my household?',
               'x' * 81,
               42,
               'Wat kijken we vrijdag?',
@@ -278,6 +310,83 @@ void main() {
       expect(await profile.service.overview(), isNull);
       expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.written);
       expect(model.calls, 3);
+    });
+
+    test('an empty body is a provider that gave nothing: not kept, the next visit tries again', () async {
+      final w = writer([say(''), say('  \n'), say(_overview())]);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.unavailable);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.unavailable);
+      expect(await profile.service.overview(), isNull);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.written);
+      expect(model.calls, 3);
+    });
+
+    test('an empty JSON object is output that did not pass: kept as failed', () async {
+      final w = writer([say('{}')]);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.failed);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.failed);
+      expect((await profile.service.overview())!.status, MemoryOverviewStatus.failed);
+      expect(model.calls, 1);
+    });
+
+    test('a database that cannot keep the overview costs one call, not one per visit', () async {
+      final broken = _NoSave(db, 'profile-a');
+      model = ScriptedModel([say(_overview()), say(_overview()), say(_overview())]);
+      final w = AssistantMemoryOverviewWriter(
+        memory: AssistantMemoryServices(service: broken, activeProfileId: () => 'profile-a'),
+        languageName: () => 'Dutch',
+        entitlement: const Entitled(),
+        loadConfig: () async => config,
+        modelFor: (_) => model,
+      );
+
+      final first = await w.ensure(locale: 'nl');
+      expect(first.state, MemoryOverviewState.written);
+      expect(first.text!.sections['dislike'], 'Je houdt niet van horror.');
+      expect((await w.ensure(locale: 'nl')).text, same(first.text));
+      expect(model.calls, 1);
+      expect(await profile.service.overview(), isNull);
+
+      await w.ensure(locale: 'nl', rewrite: true);
+      expect(model.calls, 2);
+      await profile.store('Houdt van westerns', category: MemoryCategory.preference);
+      expect(
+        (await w.ensure(locale: 'nl')).state,
+        MemoryOverviewState.failed,
+        reason: 'no section for the new category',
+      );
+      expect(model.calls, 3);
+      await w.ensure(locale: 'nl');
+      expect(model.calls, 3);
+    });
+
+    test('a deleted fact leaves no old text behind while the model cannot be reached', () async {
+      final w = writer([
+        say(_overview()),
+        const AssistantModelException(AssistantModelError.unreachable),
+        const AssistantModelException(AssistantModelError.unreachable),
+      ]);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.written);
+      expect((await profile.service.overview())!.body, contains('horror'));
+
+      final horror = (await profile.service.list()).firstWhere((f) => f.value.contains('horror'));
+      await profile.service.delete(horror.id);
+      expect(await db.select(db.assistantMemoryOverviews).get(), isEmpty);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.unavailable);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.unavailable);
+      expect(await db.select(db.assistantMemoryOverviews).get(), isEmpty);
+    });
+
+    test('the last fact deleted: nothing to write and no body in the database', () async {
+      final w = writer([say(_overview())]);
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.written);
+      for (final fact in await profile.service.list()) {
+        await profile.service.delete(fact.id);
+      }
+
+      expect((await w.ensure(locale: 'nl')).state, MemoryOverviewState.empty);
+      expect(await db.select(db.assistantMemoryOverviews).get(), isEmpty);
+      expect(model.calls, 1);
     });
 
     test('no model set up and no entitlement call nothing and keep nothing', () async {

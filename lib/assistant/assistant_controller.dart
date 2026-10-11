@@ -164,6 +164,9 @@ class AssistantController extends ChangeNotifier {
   final List<AssistantDisplay> _displays = [];
   AssistantPendingAction? _pending;
   final List<_AssistantTaskState> _tasks = [];
+
+  /// Facts a superseded run stored at once, still to be reported.
+  final List<String> _memoryCarry = [];
   final List<_QueuedConfirmation> _confirmations = [];
   final AssistantOperationPool _operations = AssistantOperationPool(3);
   final AssistantOperationPool _mutations = AssistantOperationPool(1);
@@ -320,7 +323,10 @@ class AssistantController extends ChangeNotifier {
   }
 
   /// A new question supersedes every task and card from the previous one.
-  Future<void> submit(String prompt) async {
+  /// [typed] is true only for the user's own words from the question field or
+  /// dictation: a chip, a hand-over or a retry is not, and never stores a fact
+  /// without a card.
+  Future<void> submit(String prompt, {bool typed = false}) async {
     final text = prompt.trim();
     if (_disposed || text.isEmpty) return;
     final screen = _screenContext;
@@ -337,6 +343,7 @@ class AssistantController extends ChangeNotifier {
       generation: generation,
       budget: budget,
       originalSpoilerPrompt: assistantNeedsSpoilerScope(text) ? text : null,
+      typed: typed,
     );
     _tasks.add(root);
     _update();
@@ -372,6 +379,7 @@ class AssistantController extends ChangeNotifier {
     required AssistantQuestionBudget budget,
     String? originalSpoilerPrompt,
     AssistantIntent? parentIntent,
+    bool typed = false,
   }) => _AssistantTaskState(
     id: 'task-${++_nextTask}',
     title: title,
@@ -382,6 +390,7 @@ class AssistantController extends ChangeNotifier {
     originalSpoilerPrompt: originalSpoilerPrompt,
     parentIntent: parentIntent,
     memoryEpoch: _memoryEpoch,
+    typed: typed,
   );
 
   bool _alive(_AssistantTaskState task) =>

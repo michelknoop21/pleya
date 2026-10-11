@@ -48,7 +48,7 @@ class AssistantMemoryHost extends ChangeNotifier {
   AssistantMemoryOutcome? _outcome;
   bool _overviewStale = false;
 
-  /// A run of this field is going; a second question waits for it.
+  /// A run of this field is going; a second question is not started.
   bool get busy => _busy;
 
   /// The last question asked here, and Big P's answer to it.
@@ -96,6 +96,14 @@ class AssistantMemoryHost extends ChangeNotifier {
     _notify();
     AssistantModelClient? model;
     try {
+      final context = _buildContext();
+      // The gate before the run: with the memory off or on a children's
+      // profile no model call goes out, whatever servers the profile has.
+      final closed = await _closed(context.memory);
+      if (closed != null) {
+        _failure = closed;
+        return;
+      }
       final config = await _loadConfig();
       if (config == null || !config.isComplete) {
         _failure = 'needs_setup';
@@ -104,7 +112,7 @@ class AssistantMemoryHost extends ChangeNotifier {
       model = _modelFor(config);
       final result = await AssistantRun(
         model: model,
-        context: _buildContext(),
+        context: context,
         // No memory tool asks for a confirmation of this kind.
         confirm: (_) async => null,
         entitlement: _entitlement,
@@ -116,7 +124,16 @@ class AssistantMemoryHost extends ChangeNotifier {
         // The memory needs no server; no probe is spent on one.
         refreshHealth: () async {},
       ).ask(prompt);
-      if (_disposed || ask != _asks) return;
+      if (_disposed) return;
+      if (ask != _asks) {
+        // Cancelled after a fact was stored at once: that is still said.
+        if (result.memoryStored.isNotEmpty) {
+          _overviewStale = true;
+          if (!_busy) _answer = assistantMemoryAnswer(result, '');
+          _notify();
+        }
+        return;
+      }
       _answer = assistantMemoryAnswer(result, result.text);
       if (result.end == AssistantRunEnd.answered) {
         _proposals.addAll(result.memoryProposals);
@@ -162,6 +179,26 @@ class AssistantMemoryHost extends ChangeNotifier {
     _notify();
   }
 
+  /// Why this field asks nothing right now, as a fixed code, or null.
+  Future<String?> _closed(AssistantMemoryServices? memory) async {
+    if (memory == null || !memory.profileCurrent || !await memory.service.enabled) return 'memory_off';
+    return await memory.kidsNow ? 'kids_mode_unsupported' : null;
+  }
+
+  /// Takes the waiting cards away when the profile became a children's
+  /// profile. Called when the switch in Instellingen changes.
+  Future<void> recheckCards() async {
+    final waiting = _proposals.firstOrNull;
+    if (waiting == null || !await waiting.memory.kidsNow || _disposed) return;
+    _proposals.clear();
+    _notify();
+  }
+
+  final List<VoidCallback> _onDispose = [];
+
+  /// Runs [cleanup] when this host is disposed.
+  void onDispose(VoidCallback cleanup) => _onDispose.add(cleanup);
+
   /// Stops the run in progress; its answer is dropped.
   void cancel() {
     _cancel?.abort();
@@ -179,6 +216,9 @@ class AssistantMemoryHost extends ChangeNotifier {
   void dispose() {
     _cancel?.abort();
     _disposed = true;
+    for (final cleanup in _onDispose) {
+      cleanup();
+    }
     super.dispose();
   }
 }

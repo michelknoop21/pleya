@@ -33,7 +33,7 @@ const _scannedFiles = [
   'lib/assistant/assistant_run_memory.dart',
   'lib/assistant/assistant_controller_memory.dart',
   'lib/widgets/big_p/assistant/big_p_memory_card.dart',
-  'lib/screens/tv/assistant/tv_assistant_memory_sheet.dart',
+  'lib/screens/tv/assistant/tv_assistant_card_sheets.dart',
 ];
 const _scannedDirectory = 'lib/services/memory';
 

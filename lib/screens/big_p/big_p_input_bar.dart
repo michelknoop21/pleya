@@ -69,7 +69,8 @@ class _BigPInputBarState extends State<BigPInputBar> {
     // Still working on the last one: the text stays for when he is done.
     if (question.isEmpty || _c.state == AssistantSurfaceState.working) return;
     _text.clear();
-    unawaited(_c.submit(question));
+    // The user's own words: the only way in that can store a fact at once.
+    unawaited(_c.submit(question, typed: true));
     _focus.unfocus();
   }
 

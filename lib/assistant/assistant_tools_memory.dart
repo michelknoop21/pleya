@@ -2,7 +2,7 @@ part of 'assistant_tools.dart';
 
 // The memory of the active profile: what the user asked Pleya to remember.
 // Reading is free; a write is stored at once only when the user's own typed
-// words asked for it (`AssistantMemoryTurn.direct`), and otherwise becomes a
+// words asked for it and hold the fact (`AssistantMemoryTurn.mayStoreNow`), and otherwise becomes a
 // proposal the user answers on a Pleya card after the answer. No output and
 // no error here carries anything but fixed codes and the user's own facts,
 // and nothing about a fact is logged.
@@ -22,9 +22,11 @@ const _proposedNote =
 
 bool _memoryServes(AssistantToolContext ctx, ServerId _) => ctx.memory != null && ctx.memoryTurn.enabled;
 
-AssistantMemoryServices _memory(AssistantToolContext ctx) {
+Future<AssistantMemoryServices> _memory(AssistantToolContext ctx) async {
   final memory = ctx.memory;
   if (memory == null || !ctx.memoryTurn.enabled) throw const AssistantToolError('memory_off');
+  // Read live: the switch may have been flipped while this ask ran.
+  if (ctx.kidsMode || await memory.kidsNow) throw const AssistantToolError('kids_mode_unsupported');
   // The ask may outlive a profile switch: the other profile's memory is not read or written.
   if (!memory.profileCurrent) throw const AssistantToolError('profile_changed');
   return memory;
@@ -42,6 +44,12 @@ AssistantToolResult _memoryRefusal(MemoryCode code) => AssistantToolResult({'err
 
 AssistantToolResult _propose(AssistantToolContext ctx, AssistantMemoryProposal proposal) {
   final waiting = ctx.memoryTurn.proposals;
+  // One card per fact per ask: a second proposal on the same fact would show
+  // a sentence the first yes already changed or removed.
+  final target = proposal.target?.id;
+  if (target != null && waiting.any((p) => p.target?.id == target && !p.sameAs(proposal))) {
+    throw const AssistantToolError('already_proposed');
+  }
   if (!waiting.any(proposal.sameAs)) {
     if (waiting.length >= AssistantMemoryTurn.maxProposals) throw const AssistantToolError('too_many_proposals');
     waiting.add(proposal);
@@ -74,7 +82,7 @@ final List<AssistantTool> assistantMemoryTools = [
     },
     serves: _memoryServes,
     run: (ctx, _, args) async {
-      final memory = _memory(ctx);
+      final memory = await _memory(ctx);
       final query = args['query'];
       if (query != null && query is! String) throw const AssistantToolError('invalid_query');
       final all = await memory.service.list(
@@ -113,7 +121,7 @@ final List<AssistantTool> assistantMemoryTools = [
     required: const ['value', 'category'],
     serves: _memoryServes,
     run: (ctx, _, args) async {
-      final memory = _memory(ctx);
+      final memory = await _memory(ctx);
       final turn = ctx.memoryTurn;
       final category = _memoryCategory(args['category']);
       if (category == null) throw const AssistantToolError('missing_category');
@@ -144,7 +152,7 @@ final List<AssistantTool> assistantMemoryTools = [
         );
       }
       if (same != null) return AssistantToolResult({'status': 'already_known', 'ref': same.ref});
-      if (!turn.direct || turn.directUsed) {
+      if (!turn.mayStoreNow(value.value)) {
         return _propose(
           ctx,
           AssistantMemoryProposal(
@@ -185,7 +193,7 @@ final List<AssistantTool> assistantMemoryTools = [
     required: const ['ref'],
     serves: _memoryServes,
     run: (ctx, _, args) async {
-      final memory = _memory(ctx);
+      final memory = await _memory(ctx);
       final found = await memory.service.resolve(_string(args, 'ref'));
       final target = found.fact;
       if (!found.ok || target == null) return _memoryRefusal(found.code);

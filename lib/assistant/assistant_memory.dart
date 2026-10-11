@@ -1,17 +1,26 @@
 import '../services/memory/memory_service.dart';
+import 'assistant_memory_intent.dart';
 
 export '../services/memory/memory_models.dart';
 
 /// The memory of one profile as an ask sees it: the service of the profile
 /// session and a live look at which profile is active. A card that outlives a
-/// profile switch writes nothing ([profileCurrent]).
+/// profile switch writes nothing ([profileCurrent]), and neither does one that
+/// waited while the profile became a children's profile ([kidsNow]).
 class AssistantMemoryServices {
-  const AssistantMemoryServices({required this.service, required this.activeProfileId});
+  const AssistantMemoryServices({required this.service, required this.activeProfileId, this.kidsProfile});
 
   final MemoryService service;
 
   /// The profile that is active right now, read live.
   final String? Function() activeProfileId;
+
+  /// Whether the active profile is a children's profile, read live. Null is
+  /// an adult profile.
+  final Future<bool> Function()? kidsProfile;
+
+  /// A children's profile right now: Big P reads and writes no memory.
+  Future<bool> get kidsNow async => await kidsProfile?.call() ?? false;
 
   /// Whether the profile [service] belongs to is still the active one.
   bool get profileCurrent => service.profileId.isNotEmpty && activeProfileId() == service.profileId;
@@ -55,17 +64,38 @@ class AssistantMemoryOutcome {
 /// The memory state of one ask. Made by the run before the first model call,
 /// never copied to another ask.
 class AssistantMemoryTurn {
-  AssistantMemoryTurn({this.enabled = false, this.direct = false});
+  AssistantMemoryTurn({this.enabled = false, this.command});
 
-  /// The memory is on for this profile: the tools are offered.
+  /// The memory is on for this profile and it is no children's profile: the
+  /// tools are offered.
   final bool enabled;
 
-  /// The typed question itself asked to remember something, so one new fact
-  /// may be stored without a card. Decided by code from the user's words.
-  final bool direct;
+  /// The user's own typed words after "onthoud dat", or null when the
+  /// question was no such request, was not typed, or runs fenced. Decided by
+  /// code from the user's words.
+  final String? command;
+
+  /// Tool calls of this ask so far, the one in progress included. The run
+  /// counts them.
+  int calls = 0;
 
   /// The one direct save of this ask was spent, stored or not.
   bool directUsed = false;
+
+  /// Whether [value] may be stored at once, without a card. All of:
+  ///
+  /// * the typed question was an explicit request ([command]);
+  /// * this is the first tool call of the ask, so no tool result (a web
+  ///   page, a title description) was in the model's context when it wrote
+  ///   [value];
+  /// * no direct save was spent yet;
+  /// * [value] comes from the typed words ([assistantMemoryValueIsTyped]).
+  ///
+  /// Anything else becomes a proposal on a card.
+  bool mayStoreNow(String value) {
+    final typed = command;
+    return typed != null && calls == 1 && !directUsed && assistantMemoryValueIsTyped(value, typed);
+  }
 
   /// Writes waiting for a yes, in the order the model asked for them.
   final List<AssistantMemoryProposal> proposals = [];
@@ -96,15 +126,30 @@ String assistantMemoryCode(MemoryCode code) => switch (code) {
 };
 
 /// Carries out [proposal] after the user's yes. The profile the proposal was
-/// made for must still be the active one and its memory still on; otherwise
-/// nothing is written and the code says why.
+/// made for must still be the active one, its memory still on and it must be
+/// no children's profile; the fact that disappears must still be the one the
+/// card showed (same text, category and change time). Otherwise nothing is
+/// written and the code says why.
 Future<AssistantMemoryOutcome> applyMemoryProposal(AssistantMemoryProposal proposal) async {
   final memory = proposal.memory;
   final kind = proposal.kind;
   if (!await memory.service.enabled) return AssistantMemoryOutcome(kind, 'memory_off');
+  if (await memory.kidsNow) return AssistantMemoryOutcome(kind, 'kids_mode_unsupported');
+  final target = proposal.target;
+  if (target != null) {
+    // The card is a snapshot: read what is there now.
+    final now = await memory.service.resolve(target.id);
+    final fact = now.fact;
+    final same =
+        fact != null &&
+        fact.value == target.value &&
+        fact.category == target.category &&
+        fact.updatedAt == target.updatedAt;
+    if (now.code == MemoryCode.notFound || (now.ok && !same)) return AssistantMemoryOutcome(kind, 'target_changed');
+    if (!now.ok) return AssistantMemoryOutcome(kind, assistantMemoryCode(now.code));
+  }
   // After the last await before the write: a card can outlive a profile switch.
   if (!memory.profileCurrent) return AssistantMemoryOutcome(kind, 'profile_changed');
-  final target = proposal.target;
   final value = proposal.value;
   final category = proposal.category;
   final MemoryResult result;

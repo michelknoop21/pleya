@@ -124,6 +124,7 @@ class MemoryProfile {
   late final AssistantMemoryServices services = AssistantMemoryServices(
     service: service,
     activeProfileId: () => active,
+    kidsProfile: () async => kids,
   );
 
   AssistantToolContext context(MultiServerManager servers) => AssistantToolContext(

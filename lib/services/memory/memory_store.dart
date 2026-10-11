@@ -89,8 +89,14 @@ class MemoryStore {
   /// Drops this profile's facts and its written overview.
   Future<void> deleteAll() async {
     await (_db.delete(_db.assistantMemories)..where((t) => t.profileId.equals(_profileId))).go();
-    await (_db.delete(_db.assistantMemoryOverviews)..where((t) => t.profileId.equals(_profileId))).go();
+    await deleteOverview();
   }
+
+  /// Drops this profile's written overview. Called in the transaction of
+  /// every change to its facts: the text was written from facts that are no
+  /// longer the facts, and a removed fact must not stay on the device in it.
+  Future<void> deleteOverview() =>
+      (_db.delete(_db.assistantMemoryOverviews)..where((t) => t.profileId.equals(_profileId))).go();
 
   Future<AssistantMemoryOverviewRow?> overview() =>
       (_db.select(_db.assistantMemoryOverviews)..where((t) => t.profileId.equals(_profileId))).getSingleOrNull();

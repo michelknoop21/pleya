@@ -252,7 +252,7 @@ void main() {
   group('a children\'s profile', () {
     setUp(() => profile.kids = true);
 
-    test('reads and writes no memory: every tool is refused and there is no context line', () async {
+    test('reads and writes no memory: no tool is offered or carried out and there is no context line', () async {
       final fact = await profile.store('Houdt niet van horror');
       final model = ScriptedModel([
         callTools([
@@ -265,7 +265,8 @@ void main() {
       final result = await ask(model, 'Onthoud dat ik van komedies houd en niet van horror');
 
       expect(note(model), isNull);
-      expect(model.toolOutputs, everyElement(containsPair('error', 'kids_mode_unsupported')));
+      expect(model.offeredTo(0), ['ping'], reason: 'the memory tools cost a children\'s profile no tokens');
+      expect(model.toolOutputs, everyElement(containsPair('error', 'unknown_tool')));
       expect(result.memoryProposals, isEmpty);
       expect(result.memoryStored, isEmpty);
       expect(await profile.values(), ['Houdt niet van horror']);
@@ -333,8 +334,10 @@ void main() {
       'What is in your memory about me?',
       'Forget the memory about horror',
       'Delete my memories',
-      'Onthoud dat ik graag verhalen over de oorlog kijk',
-      'Remember that I like a good story',
+      'Onthoud dat ik graag oorlogsfilms kijk',
+      'Onthoud dat ik niet van horror houd',
+      'Onthoud: wij kijken op vrijdag met het gezin',
+      'Remember that I like a good heist film',
     ];
     for (final question in memoryQuestions) {
       test('"$question" stays out of the spoiler stand', () {
@@ -350,6 +353,16 @@ void main() {
       'Vergeet de herinnering over horror en vertel me het plot van Dune',
       'Forget the memory about who dies in the story',
       'Waar was ik gebleven?',
+      // The command form lifts nothing: the rest of the sentence is read as any other.
+      'Onthoud dat ik seizoen 2 heb gezien en geef een samenvatting van het plot van seizoen 3 van Dark',
+      'Onthoud dat ik van thrillers hou. Vertel wie de moordenaar is in het verhaal van Broadchurch',
+      'Remember that I like thrillers and remind me what happened to Walter in the story',
+      'Onthoud: niets. Recap seizoen 3 van Dark met spoilers',
+      'Onthoud dat ik Dark kijk. Wie is Jonas eigenlijk',
+      'Remember that we watch Dark and summarize the last episode',
+      'Remember: nothing. Who is the killer in Broadchurch',
+      // A story word in the fact itself fences too: the safe side.
+      'Remember that I like a good story',
     ];
     for (final question in storyQuestions) {
       test('"$question" keeps the fence', () => expect(assistantNeedsSpoilerScope(question), isTrue));

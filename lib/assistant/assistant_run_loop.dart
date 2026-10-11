@@ -250,6 +250,8 @@ extension _AssistantLoop on AssistantRun {
       // Serial on purpose: a write must see the state the previous one left.
       for (final (index, call) in reply.toolCalls.indexed) {
         // Every call gets an answer, so the history stays valid.
+        // Counted for the memory: only the first call of an ask can store at once.
+        _ctx.memoryTurn.calls++;
         final output = index >= AssistantRun.maxCallsPerReply || callsThisRun >= AssistantRun.maxCallsPerRun
             ? const <String, Object?>{'error': 'too_many_calls'}
             : budget != null && !budget!.reserveTool()

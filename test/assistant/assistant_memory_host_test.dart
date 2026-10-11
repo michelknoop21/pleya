@@ -8,11 +8,19 @@ import 'package:pleya/assistant/assistant_provider.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/database/app_database.dart';
 import 'package:pleya/i18n/strings.g.dart';
+import 'package:pleya/media/media_server_client.dart';
 import 'package:pleya/services/multi_server_manager.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
 import '../services/memory/memory_test_support.dart';
+import 'assistant_find_fakes.dart';
 import 'assistant_memory_support.dart';
+
+class _Server extends FakeServer {
+  _Server(super.id);
+  @override
+  Future<HealthStatus> checkHealth() async => HealthStatus.online;
+}
 
 /// Holds every reply back until [release] completes.
 class _SlowModel extends ScriptedModel {
@@ -202,9 +210,79 @@ void main() {
     ]);
     await h.ask('Onthoud dat ik van horror houd');
 
-    expect(model.toolOutputs, everyElement(containsPair('error', 'kids_mode_unsupported')));
+    expect(model.calls, 0, reason: 'no model call on a children\'s profile');
+    expect(h.failure, 'kids_mode_unsupported');
     expect(await profile.values(), ['Houdt niet van horror']);
     expect(h.proposal, isNull);
+  });
+
+  group('with a server in sight, so a run could reach the model', () {
+    setUp(() {
+      servers.debugRegisterClientForTesting(_Server('w'));
+      servers.setVisibleServerIds(null);
+    });
+
+    test('an adult profile with its memory on does call the model', () async {
+      final h = host([say('Niets.')]);
+      await h.ask('Wat weet je van mij?');
+      expect(model.calls, 1);
+      expect(h.failure, isNull);
+    });
+
+    test('memory off: no model call, a fixed code', () async {
+      await profile.service.setEnabled(false);
+      final h = host([say('Vrij antwoord.')]);
+      await h.ask('Wat weet je van mij?');
+
+      expect(model.calls, 0);
+      expect(h.failure, 'memory_off');
+      expect(h.answer, isEmpty);
+    });
+
+    test('a children\'s profile: no model call, a fixed code', () async {
+      profile.kids = true;
+      final h = host([say('Vrij antwoord.')]);
+      await h.ask('Wat weet je van mij?');
+
+      expect(model.calls, 0);
+      expect(h.failure, 'kids_mode_unsupported');
+    });
+
+    test('another active profile: no model call', () async {
+      profile.active = 'profile-b';
+      final h = host([say('Vrij antwoord.')]);
+      await h.ask('Wat weet je van mij?');
+
+      expect(model.calls, 0);
+      expect(h.failure, 'memory_off');
+    });
+  });
+
+  test('a children\'s profile between the card and the yes: the card goes and a yes writes nothing', () async {
+    final h = host([
+      callTool('remember_fact', {'value': 'Houdt van horror', 'category': 'preference'}),
+      say('Ok.'),
+    ]);
+    await h.ask('Ik houd van horror.');
+    final card = h.proposal!;
+    await h.recheckCards();
+    expect(h.proposal, same(card));
+
+    profile.kids = true;
+    await h.answerProposal(card, accept: true);
+    expect(await profile.values(), isEmpty);
+    expect(h.outcome!.code, 'kids_mode_unsupported');
+
+    final again = host([
+      callTool('remember_fact', {'value': 'Houdt van horror', 'category': 'preference'}),
+      say('Ok.'),
+    ]);
+    profile.kids = false;
+    await again.ask('Ik houd van horror.');
+    expect(again.proposal, isNotNull);
+    profile.kids = true;
+    await again.recheckCards();
+    expect(again.proposal, isNull);
   });
 
   group('next to the conversation', () {
@@ -315,7 +393,7 @@ void main() {
       await profile.service.setEnabled(false);
       final off = host([]);
       await off.ask('Wat weet je van mij?');
-      expect(off.failure, 'noTools');
+      expect(off.failure, 'memory_off');
       expect(model.calls, 0);
     });
   });

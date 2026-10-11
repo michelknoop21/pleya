@@ -122,12 +122,17 @@ class MemoryOverviewResult {
   final MemoryOverviewText? text;
 }
 
-const String _marks = r'[*#`<>\[\]{}|\\]|https?://';
-final RegExp _notPlain = RegExp(_marks);
+/// What plain text never holds: Markdown marks (emphasis, headings, code,
+/// strike-through, tables, a bullet), a numbered list, and anything that
+/// reads as a link: a scheme, `www.`, `mailto:` or a bare host name.
+final RegExp _notPlain = RegExp(
+  r'[*#`<>\[\]{}|\\_~\u2022]|https?:|mailto:|www\.|[\p{L}\p{N}-]+\.[a-z]{2,}\b|(^|\s)1[.)]\s.*\s2[.)]\s',
+  unicode: true,
+);
 final RegExp _unseen = RegExp(r'[\p{Cc}\p{Cf}]', unicode: true);
 
 /// [raw] as one line of plain text, or null when it is not a string, is
-/// empty, is longer than [max] code points or carries markup.
+/// empty, is longer than [max] code points or carries markup or a link.
 String? _plain(Object? raw, int max) {
   if (raw is! String) return null;
   final text = assistantPlainDashes(raw.replaceAll(RegExp(r'\s+'), ' ').replaceAll(_unseen, '')).trim();
@@ -218,7 +223,6 @@ String _instructions(String languageName) =>
 class AssistantMemoryOverviewWriter {
   AssistantMemoryOverviewWriter({
     required this.memory,
-    required this._kidsProfile,
     required this._languageName,
     this._entitlement = const AssistantEntitlement(),
     Future<AssistantProviderConfig?> Function()? loadConfig,
@@ -227,7 +231,6 @@ class AssistantMemoryOverviewWriter {
        _modelFor = modelFor ?? AssistantModelClient.new;
 
   final AssistantMemoryServices memory;
-  final Future<bool> Function() _kidsProfile;
 
   /// The app language as the model is told to write in.
   final String Function() _languageName;
@@ -236,6 +239,10 @@ class AssistantMemoryOverviewWriter {
   final AssistantModelClient Function(AssistantProviderConfig config) _modelFor;
 
   Future<MemoryOverviewResult>? _running;
+
+  /// The last answer the database could not keep, with the hash of the facts
+  /// it was written from. Working memory of this writer only.
+  ({String hash, MemoryOverviewResult result})? _unsaved;
 
   /// The overview for [locale] (the app language code). A stored overview
   /// with the hash of the current facts is returned without a model call,
@@ -252,7 +259,7 @@ class AssistantMemoryOverviewWriter {
   Future<MemoryOverviewResult> _ensure(String locale, bool rewrite) async {
     try {
       final service = memory.service;
-      if (!memory.profileCurrent || !await service.enabled || await _kidsProfile()) {
+      if (!memory.profileCurrent || !await service.enabled || await memory.kidsNow) {
         return const MemoryOverviewResult(MemoryOverviewState.off);
       }
       final input = await service.overviewInput(locale: locale);
@@ -269,6 +276,9 @@ class AssistantMemoryOverviewWriter {
             : MemoryOverviewResult(MemoryOverviewState.current, text);
       }
 
+      final unsaved = _unsaved;
+      if (!rewrite && unsaved != null && unsaved.hash == input.factsHash) return unsaved.result;
+
       if (await _entitlement.check() != AssistantEntitlementState.entitled) {
         return const MemoryOverviewResult(MemoryOverviewState.unavailable);
       }
@@ -284,6 +294,9 @@ class AssistantMemoryOverviewWriter {
           {'role': 'user', 'content': facts.text},
         ], const []);
         content = reply.content;
+        // An empty body is a provider that gave nothing (cut off, filtered),
+        // not output that failed the format: not stored either.
+        if (content.trim().isEmpty) return const MemoryOverviewResult(MemoryOverviewState.unavailable);
       } catch (e) {
         // No connection, a time-out, a provider error: not stored, so the
         // next visit tries again.
@@ -305,14 +318,28 @@ class AssistantMemoryOverviewWriter {
         status: text == null ? MemoryOverviewStatus.failed : MemoryOverviewStatus.ok,
         body: text?.toBody() ?? '',
       );
-      return switch (saved.code) {
-        MemoryCode.ok when text != null => MemoryOverviewResult(MemoryOverviewState.written, text),
-        MemoryCode.ok => const MemoryOverviewResult(MemoryOverviewState.failed),
-        MemoryCode.staleHash => const MemoryOverviewResult(MemoryOverviewState.stale),
-        // A body the store refuses is a failed attempt like any other.
-        MemoryCode.invalidOverview => await _storeFailed(input.factsHash, locale),
-        _ => const MemoryOverviewResult(MemoryOverviewState.unavailable),
-      };
+      switch (saved.code) {
+        case MemoryCode.ok:
+          return text == null
+              ? const MemoryOverviewResult(MemoryOverviewState.failed)
+              : MemoryOverviewResult(MemoryOverviewState.written, text);
+        case MemoryCode.staleHash:
+          return const MemoryOverviewResult(MemoryOverviewState.stale);
+        case MemoryCode.invalidOverview:
+          // A body the store refuses is a failed attempt like any other.
+          return _storeFailed(input.factsHash, locale);
+        case MemoryCode.storageFailed:
+          // The model answered and the database could not keep it. Kept here
+          // for this screen, so a broken database costs one call, not one per
+          // visit.
+          final result = text == null
+              ? const MemoryOverviewResult(MemoryOverviewState.failed)
+              : MemoryOverviewResult(MemoryOverviewState.written, text);
+          _unsaved = (hash: input.factsHash, result: result);
+          return result;
+        default:
+          return const MemoryOverviewResult(MemoryOverviewState.unavailable);
+      }
     } catch (e) {
       appLogger.w('Memory overview failed: ${e.runtimeType}');
       return const MemoryOverviewResult(MemoryOverviewState.unavailable);

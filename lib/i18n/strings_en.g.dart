@@ -7675,6 +7675,12 @@ class TranslationsAssistantMemoryEn {
 	/// en: 'The memory is off. Nothing was changed.'
 	String get off => 'The memory is off. Nothing was changed.';
 
+	/// en: 'This memory was changed in the meantime. Nothing was changed.'
+	String get changed => 'This memory was changed in the meantime. Nothing was changed.';
+
+	/// en: 'This is now a children's profile. Big P uses no memory there; nothing was changed.'
+	String get kids => 'This is now a children\'s profile. Big P uses no memory there; nothing was changed.';
+
 	/// en: 'View memory'
 	String get view => 'View memory';
 
@@ -11131,6 +11137,8 @@ extension on Translations {
 			'assistant.memory.failed' => 'That did not work. Nothing was changed.',
 			'assistant.memory.profileChanged' => 'This proposal belonged to another profile. Nothing was changed.',
 			'assistant.memory.off' => 'The memory is off. Nothing was changed.',
+			'assistant.memory.changed' => 'This memory was changed in the meantime. Nothing was changed.',
+			'assistant.memory.kids' => 'This is now a children\'s profile. Big P uses no memory there; nothing was changed.',
 			'assistant.memory.view' => 'View memory',
 			'assistant.memory.card.rememberTitle' => 'Shall I remember this?',
 			'assistant.memory.card.replaceTitle' => 'Shall I replace this?',

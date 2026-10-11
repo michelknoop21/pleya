@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -62,6 +64,10 @@ AssistantController assistantControllerForSession(BuildContext context) {
     serverChanges: context.read<MultiServerProvider>(),
   );
   BigPVoice(controller, playbackActive: () => VideoPlayerScreenState.activeId != null);
+  // The children's switch flipped while a memory card waits: the card goes.
+  void kidsChanged() => unawaited(controller.recheckMemoryCards());
+  KidsProfileStore.changes.addListener(kidsChanged);
+  controller.onDispose(() => KidsProfileStore.changes.removeListener(kidsChanged));
   return controller;
 }
 
@@ -70,10 +76,13 @@ AssistantController assistantControllerForSession(BuildContext context) {
 /// conversation. Register it lazily next to the controller.
 AssistantMemoryHost assistantMemoryHostForSession(BuildContext context) {
   final factsCache = TitleFactsCache(db: context.read<AppDatabase?>());
-  return AssistantMemoryHost(
+  final host = AssistantMemoryHost(
     buildContext: () => _sessionToolContext(context, null, factsCache),
     languageName: assistantLanguageName,
   );
+  KidsProfileStore.changes.addListener(host.recheckCards);
+  host.onDispose(() => KidsProfileStore.changes.removeListener(host.recheckCards));
+  return host;
 }
 
 /// The writer of the memory overview for one profile session; it calls the
@@ -84,8 +93,8 @@ AssistantMemoryOverviewWriter assistantMemoryOverviewWriterForSession(BuildConte
     memory: AssistantMemoryServices(
       service: context.read<MemoryService>(),
       activeProfileId: () => activeProfile.activeId,
+      kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
     ),
-    kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
     languageName: assistantLanguageName,
   );
 }
@@ -224,7 +233,11 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
     // call that its profile is still the active one.
     memory: memory == null
         ? null
-        : AssistantMemoryServices(service: memory, activeProfileId: () => activeProfile.activeId),
+        : AssistantMemoryServices(
+            service: memory,
+            activeProfileId: () => activeProfile.activeId,
+            kidsProfile: () => assistantIsKidsProfile(activeProfile.active),
+          ),
     personal: recommendations == null
         ? null
         : AssistantPersonalServices(
