@@ -39,6 +39,12 @@ draaien de gestuurde jobs alles. Een nieuwe Fluttertest die een bestand buiten `
 leest, hoort in de uitzonderingen van het flutter-filter; voor Fluttertests zoekt de selftest die
 paden niet zelf op.
 
+Eerste echte run (PR #264, die zelf `ci.yml` raakt en dus alle jobs liet draaien): `Bereik bepalen`
+14 tot 17 seconden per workflow, `Unit Tests` 17 min 17 s, `Pleya Server (Go, database)` 5 min
+27 s (de oude job rapporteerde 11,5 minuten p50), `Code Analysis` 6 min 42 s, `Verify - macOS +
+iOS simulator` 12 min 23 s. De winst voor een docs- of serverwijziging blijkt pas uit de run van
+een PR die geen `ci.yml` raakt; die meting staat in de PR-omschrijving van deze wijziging.
+
 ## [2026-09-25] iCloud-voorkeurensync: tweede eindfixronde DEC-134
 
 Drie punten uit de herreview. Cloudsleutels passen nu binnen de 64 bytes die KVS per sleutel
