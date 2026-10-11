@@ -14,14 +14,20 @@
 # workflow, zet een nep-scripts/ci_changed_files.sh neer die de voorbeeldlijst
 # teruggeeft, en draait het blok met bash. Daarnaast controleert het statisch
 # dat elke job die op `changes` wacht open valt: `if: !cancelled()` op de job,
-# een conditie op elke stap, en `needs.changes.result != 'success'` in de
-# conditie.
+# en op elke stap een conditie die exact een van de toegestane open-vallende
+# vormen heeft. Een extra clausule (`&& github.event_name == 'push'`) is dus
+# rood, ook al staat `!= 'false'` er nog in.
 #
-# Vraagt python3 met PyYAML. Draai hem na elke wijziging aan een filter.
+# Als derde zoekt het in de Dart-tests van pleya_verify naar relatieve paden
+# die buiten pleya_verify/ wijzen (`../../scripts/tvos_sim.sh`), en eist dat
+# een wijziging aan zo'n bestand de portable job laat draaien.
+#
+# Vraagt python3 met PyYAML. Draait in CI in `Bereik bepalen` van ci.yml; lokaal
+# na elke wijziging aan een filter.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-exec python3 -I - "$PWD" <<'PY'
+exec python3 - "$PWD" <<'PY'
 import os
 import re
 import subprocess
@@ -76,6 +82,11 @@ CASES = [
      {"flutter": "true", "ci.yml:server": "false", "server-web.yml:server": "true", "web": "true"}),
     ("pleya-verify.yml zelf", [".github/workflows/pleya-verify.yml"],
      dict(flutter="true", apple="true", portable="true")),
+    # Twee runnertests lezen of draaien bestanden buiten pleya_verify/.
+    ("scripts/tvos_sim.sh", ["scripts/tvos_sim.sh"],
+     dict(flutter="true", server="false", web="false", apple="true", portable="true")),
+    ("lib/automation/automation_input.dart", ["lib/automation/automation_input.dart"],
+     dict(flutter="true", server="false", web="false", apple="true", portable="true")),
     ("lege diff", [],
      dict(flutter="true", server="false", web="false")),
     # Push op main, handmatig of schema: ci_changed_files.sh geeft dan git ls-files.
@@ -141,6 +152,73 @@ def run_filter(script, files):
         return result
 
 
+# Toegestane stapcondities, na het weghalen van alle witruimte. Alles daarbuiten
+# is rood: ook een conditie die de open val nog bevat maar er iets aan toevoegt.
+_GATE = r"needs\.changes\.result!='success'\|\|needs\.changes\.outputs\.(\w+)!='false'"
+RUN_FORMS = [
+    re.compile(r"\$\{\{env\.(RUN_\w+)!='false'\}\}"),
+    re.compile(r"\$\{\{" + _GATE + r"\}\}"),
+    re.compile(r"\$\{\{always\(\)&&\(" + _GATE + r"\)\}\}"),
+]
+NOOP_FORMS = [
+    re.compile(r"\$\{\{env\.(RUN_\w+)=='false'\}\}"),
+    re.compile(r"\$\{\{needs\.changes\.result=='success'&&needs\.changes\.outputs\.(\w+)=='false'\}\}"),
+]
+ENV_FORM = re.compile(r"\$\{\{" + _GATE + r"\}\}")
+
+
+def check_job(job):
+    problems = []
+    env = {k: re.sub(r"\s+", "", str(v)) for k, v in (job.get("env") or {}).items()}
+    for k, v in env.items():
+        if k.startswith("RUN_") and not ENV_FORM.fullmatch(v):
+            problems.append(f"job-env {k} valt niet open: {v}")
+    for step in job.get("steps", []):
+        name = step.get("name")
+        cond = re.sub(r"\s+", "", str(step.get("if", "")))
+        if not cond:
+            problems.append(f"stap {name!r} heeft geen conditie")
+            continue
+        forms = NOOP_FORMS if name == "Niets te draaien" else RUN_FORMS
+        m = next((f.fullmatch(cond) for f in forms if f.fullmatch(cond)), None)
+        if m is None:
+            problems.append(f"stap {name!r} heeft een conditie buiten de toegestane vormen: {step.get('if')}")
+        elif m.group(1).startswith("RUN_") and m.group(1) not in env:
+            problems.append(f"stap {name!r} leest {m.group(1)}, dat niet in job-env staat")
+    return problems
+
+
+def outside_paths():
+    """Repo-paden buiten pleya_verify/ die de Dart-tests van pleya_verify lezen."""
+    tracked = subprocess.run(["git", "-C", root, "ls-files"], check=True,
+                             capture_output=True, text=True).stdout.split("\n")
+    found = {}
+    literal = re.compile(r"['\"](?:\$\{[^}]*\}/)?((?:\.\./){2,}[A-Za-z0-9_.\-/]+)['\"]")
+    for rel in tracked:
+        if not (rel.startswith("pleya_verify/") and rel.endswith(".dart")):
+            continue
+        if "/test/" not in rel and not rel.endswith("_test.dart"):
+            continue
+        # Een test draait met de pakketmap als werkmap: de map met pubspec.yaml.
+        pkg = os.path.dirname(rel)
+        while pkg and not os.path.exists(os.path.join(root, pkg, "pubspec.yaml")):
+            pkg = os.path.dirname(pkg)
+        with open(os.path.join(root, rel), encoding="utf-8") as fh:
+            for lineno, line in enumerate(fh, 1):
+                stripped = line.strip()
+                if stripped.startswith(("//", "import ", "export ", "part ")):
+                    continue
+                for m in literal.finditer(line):
+                    target = os.path.normpath(os.path.join(pkg, m.group(1)))
+                    if target.startswith("..") or target.startswith("pleya_verify/"):
+                        continue
+                    # Alleen wat in git staat kan een PR veranderen (.build/ niet).
+                    if not any(t == target or t.startswith(target + "/") for t in tracked):
+                        continue
+                    found.setdefault(target, []).append(f"{rel}:{lineno}")
+    return found
+
+
 failures = 0
 docs = {name: load(name) for name in WORKFLOWS}
 
@@ -157,20 +235,26 @@ for wf, doc in docs.items():
             problems.append(f"job-if is {job.get('if')!r}, verwacht !cancelled()")
         if "needs.changes.result != 'success'" not in text:
             problems.append("conditie leest needs.changes.result niet")
-        for step in job.get("steps", []):
-            cond = str(step.get("if", ""))
-            if not cond:
-                problems.append(f"stap {step.get('name')!r} heeft geen conditie")
-            elif "== 'false'" in cond and step.get("name") != "Niets te draaien":
-                problems.append(f"stap {step.get('name')!r} draait alleen bij false")
-            elif "!= 'false'" not in cond and "== 'false'" not in cond:
-                problems.append(f"stap {step.get('name')!r} heeft een conditie zonder open val")
+        problems += check_job(job)
         status = "ok" if not problems else "FOUT: " + "; ".join(problems)
         if problems:
             failures += 1
         print(f"  {wf:18} {name:40} stuurt op {','.join(outputs):17} {status}")
 
-# 2. Dynamisch: de voorbeelden door de echte filterstappen.
+# 2. Paden buiten pleya_verify/ die de portable tests lezen.
+print()
+print("== Paden buiten pleya_verify/ in de tests van pleya_verify")
+portable_script = filter_script(docs["pleya-verify.yml"])
+for target, where in sorted(outside_paths().items()):
+    # Bij een map moet een bestand erin het filter raken.
+    probe = target if os.path.isfile(os.path.join(root, target)) else target + "/x"
+    got = run_filter(portable_script, [probe]).get("portable")
+    status = "ok" if got == "true" else "FOUT: portable=" + str(got)
+    if got != "true":
+        failures += 1
+    print(f"  {target:45} {status}  ({', '.join(where)})")
+
+# 3. Dynamisch: de voorbeelden door de echte filterstappen.
 print()
 print("== Voorbeeldwijzigingen door de echte filterstappen")
 for label, files, expected in CASES:

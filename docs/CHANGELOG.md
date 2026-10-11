@@ -23,15 +23,21 @@ expliciet `false` slaat het werk over. Push op main en handmatige runs draaien a
 - De Go-databasejob en het server-filter in `server-web.yml` kijken ook naar
   `pleya_verify/redact/` en `docs/pleya-protocol-v1.md` (beide door `go-tool.sh` in de testcontainer
   gemount en door Go-tests gelezen) en naar `scripts/check_server_responses.py`.
-- `Verify - portable (Linux)` draait bij `pleya_verify/`, het protocol, de validator en `.fvmrc`.
+- `Verify - portable (Linux)` draait bij `pleya_verify/`, het protocol, de validator, `.fvmrc` en
+  de twee bestanden buiten `pleya_verify/` die runnertests lezen of uitvoeren
+  (`scripts/tvos_sim.sh`, `lib/automation/automation_input.dart`).
 - De antwoorden voor de contractcontrole worden in de gewone testrun vastgelegd
   (`PLEYA_RESPONSE_DIR` met `-count=1`); de tweede run van `internal/api` (4,7 minuten) is weg.
-- `Authority Files Merge` draait ook `scripts/masterlist_counts.sh --check`.
+- `Authority Files Merge` draait ook `scripts/masterlist_counts.sh --check`, ook als de
+  authority-controle ervoor faalt.
 
-`scripts/ci_scope_selftest.sh` voert de echte filterstappen uit tegen twintig voorbeeldwijzigingen
-en faalt als een uitkomst afwijkt of een gestuurde job niet open valt. Draai hem na elke wijziging
-aan een filter. Een nieuwe Fluttertest die een bestand buiten `lib/` en `test/` leest, hoort in de
-uitzonderingen van het flutter-filter.
+`scripts/ci_scope_selftest.sh` voert de echte filterstappen uit tegen 22 voorbeeldwijzigingen en
+faalt als een uitkomst afwijkt, als een stapconditie iets anders is dan een van de toegestane
+open-vallende vormen, of als een test in `pleya_verify/` een bestand buiten die map leest dat het
+portable-filter niet dekt. Hij draait als stap in `Bereik bepalen` van `ci.yml`; faalt hij, dan
+draaien de gestuurde jobs alles. Een nieuwe Fluttertest die een bestand buiten `lib/` en `test/`
+leest, hoort in de uitzonderingen van het flutter-filter; voor Fluttertests zoekt de selftest die
+paden niet zelf op.
 
 ## [2026-09-25] iCloud-voorkeurensync: tweede eindfixronde DEC-134
 

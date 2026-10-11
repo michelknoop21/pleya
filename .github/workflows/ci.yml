@@ -100,6 +100,18 @@ jobs:
           fi
           cat "$GITHUB_OUTPUT"
 
+      # Houdt de filters hierboven en in server-web.yml en pleya-verify.yml
+      # eerlijk: voorbeeldwijzigingen, de paden die tests buiten hun map lezen,
+      # en de open val van elke gestuurde job. Faalt hij, dan faalt deze job,
+      # en dan draaien de gestuurde jobs alles (zie hierboven).
+      # PyYAML staat op de Ubuntu-runner; alleen als hij ontbreekt komt hij
+      # gepind van PyPI.
+      - name: Self-test of the scope filters
+        run: |
+          python3 -c 'import yaml' 2>/dev/null \
+            || python3 -m pip install --quiet --disable-pip-version-check "pyyaml==6.0.2"
+          scripts/ci_scope_selftest.sh
+
   analyze:
     name: Code Analysis
     needs: changes
@@ -430,7 +442,10 @@ jobs:
       # telt de taakrijen zelf na en faalt met een verschiltabel als een teller
       # afwijkt. Een eigen job zou een runner vragen voor
       # een controle van een fractie van een seconde, dus hij hangt hier aan.
+      # Draait ook als de authority-controle hierboven faalt, zodat beide
+      # uitkomsten in één run zichtbaar zijn. De job blijft dan rood.
       - name: Masterlist counters match the task rows
+        if: ${{ !cancelled() }}
         run: scripts/masterlist_counts.sh --check
 
   protocol:

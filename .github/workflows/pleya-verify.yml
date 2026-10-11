@@ -78,12 +78,16 @@ jobs:
             echo "apple=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # De portable job toetst alleen pleya_verify zelf: de pakketten
-          # fixture_server, runner en mcp lezen niets buiten pleya_verify/
-          # (geen path-dependency, geen bestand uit lib/ of docs/), en de
-          # Dart-versie komt uit .fvmrc. Het protocol en de antwoordvalidator
-          # tellen ruim mee, omdat de fake server het contract nabootst.
-          if grep -qE '^(pleya_verify/|docs/pleya-protocol/|scripts/check_server_responses\.py$|\.fvmrc$|scripts/ci_changed_files\.sh$|\.github/workflows/pleya-verify\.yml$)' <<< "$files"; then
+          # De portable job toetst pleya_verify: de pakketten fixture_server,
+          # runner en mcp hebben geen path-dependency, en de Dart-versie komt
+          # uit .fvmrc. Twee runnertests lezen wel buiten pleya_verify/:
+          # remote_keys_test.dart leest scripts/tvos_sim.sh en
+          # lib/automation/automation_input.dart, tvos_idb_timeout_test.dart
+          # voert scripts/tvos_sim.sh uit. scripts/ci_scope_selftest.sh zoekt
+          # zulke paden in de tests op en faalt als ze hier ontbreken. Het
+          # protocol en de antwoordvalidator tellen ruim mee, omdat de fake
+          # server het contract nabootst.
+          if grep -qE '^(pleya_verify/|scripts/tvos_sim\.sh$|lib/automation/automation_input\.dart$|docs/pleya-protocol/|scripts/check_server_responses\.py$|\.fvmrc$|scripts/ci_changed_files\.sh$|\.github/workflows/pleya-verify\.yml$)' <<< "$files"; then
             echo "portable=true" >> "$GITHUB_OUTPUT"
           else
             echo "portable=false" >> "$GITHUB_OUTPUT"
