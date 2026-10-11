@@ -3,7 +3,7 @@
 Status: APPROVED (Michel, 11 oktober 2026), in de herziene vorm met het overzicht in lopende tekst als hoofdscherm. Het plan staat in `docs/plans/2026-10-11-big-p-geheugen.md`.
 Roadmap: BP-08a.
 
-Het hoofdscherm "Geheugen" is een overzicht dat Big P in de tweede persoon schrijft, in vijf secties: Overzicht, Voorkeuren, Niet voor jou, Huishouden en Kijkgewoonten. Onder de tekst staan drie vervolgvragen ("Duik dieper") en vast onderin het invoerveld "Vraag of werk bij". De schakelaar, het lijstbeheer en het wissen zitten achter de menuknop rechtsboven.
+Het hoofdscherm "Geheugen" is een overzicht dat Big P in de tweede persoon schrijft, in secties: Overzicht, Voorkeuren, Niet voor jou, Huishouden en Kijkgewoonten, plus Overig als er zulke herinneringen zijn. Onder de tekst staan drie vervolgvragen ("Duik dieper") en vast onderin het invoerveld "Vraag of werk bij". De schakelaar, het lijstbeheer en het wissen zitten achter de menuknop rechtsboven.
 
 Onder het overzicht ligt nog steeds een lijst korte feiten per Pleya-profiel, bewaard op het apparaat zelf. Elke herinnering heeft een tekst van hooguit 200 tekens, een van vijf categorieën (Voorkeuren, Niet voor mij, Huishouden, Kijkgewoonten, Overig), een herkomst en twee datums. Taalvoorkeuren staan er niet in: die hebben hun eigen instellingen. De leeftijden van de kinderen staan er ook niet in. Het overzicht verwijst ervoor naar Kinderprofiel en het lijstscherm toont ze als verwijsrij buiten de lijst, zodat "Alle herinneringen wissen" ze niet raakt.
 
@@ -52,7 +52,7 @@ De generator schrijft de HTML uit `bp43.js` en `bp43.css` en maakt de PNG's met 
 
 ## Vastgelegd bij het akkoord
 
-Het overzicht wordt door het model geschreven uit de opgeslagen feiten, en alleen opnieuw als de feiten zijn gewijzigd. Zonder ingesteld model of zonder verbinding toont het scherm de feiten per categorie als lijst. De feiten blijven de waarheid: het overzicht is afgeleid en wordt nooit zelf bewerkt. Wie iets wil veranderen, doet dat via het invoerveld of in "Herinneringen beheren". De uitwerking staat in het plan.
+Het overzicht wordt door het model geschreven uit de opgeslagen feiten, en alleen opnieuw als de feiten zijn gewijzigd (het plan noemt de drie andere aanleidingen: taalwissel, nieuw formaat, handmatig). Zonder ingesteld model of zonder verbinding toont het scherm de feiten per categorie als lijst. De feiten blijven de waarheid: het overzicht is afgeleid en wordt nooit zelf bewerkt. Wie iets wil veranderen, doet dat via het invoerveld of in "Herinneringen beheren". De uitwerking staat in het plan.
 
 ## Open ontwerpkeuzes
 
