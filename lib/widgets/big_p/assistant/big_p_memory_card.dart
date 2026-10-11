@@ -32,6 +32,9 @@ String assistantMemoryCategoryLabel(MemoryCategory category) {
 /// still in the viewer's thumb, and a second press must not store or remove
 /// anything.
 class BigPMemoryCard extends StatelessWidget {
+  /// The longest sentence that still stands beside its label (43 K).
+  static const int _besideMaxChars = 60;
+
   const BigPMemoryCard({
     super.key,
     required this.proposal,
@@ -39,6 +42,7 @@ class BigPMemoryCard extends StatelessWidget {
     required this.onDecline,
     this.declineNode,
     this.embedded = false,
+    this.remote = false,
   });
 
   final AssistantMemoryProposal proposal;
@@ -48,9 +52,12 @@ class BigPMemoryCard extends StatelessWidget {
   /// Gets the safe button, for the surface's initial focus.
   final FocusNode? declineNode;
 
-  /// Inside Big P's balloon: an outlined card under the answer. On TV the
-  /// card is a sheet of its own.
+  /// Inside Big P's balloon: an outlined card under the answer.
   final bool embedded;
+
+  /// Driven by a remote (TV): the focus itself is the white button, so
+  /// neither button is drawn white of its own and only one ever is.
+  final bool remote;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +98,9 @@ class BigPMemoryCard extends StatelessWidget {
     final target = proposal.target;
     final rows = switch (proposal.kind) {
       AssistantMemoryProposalKind.remember => [
-        beside(c.memory, value),
+        // A long sentence reads as running text under its label, not as a
+        // right-aligned column beside it.
+        value.runes.length > _besideMaxChars ? stacked(c.memory, value, strong) : beside(c.memory, value),
         if (proposal.category case final category?) beside(c.category, assistantMemoryCategoryLabel(category)),
       ],
       AssistantMemoryProposalKind.replace => [
@@ -104,30 +113,34 @@ class BigPMemoryCard extends StatelessWidget {
       ],
     };
 
-    final buttons = Row(
-      children: [
-        Expanded(
-          child: BigPButton(
-            label: accept,
-            automationId: AutomationIds.assistantMemoryButton,
-            automationInstance: 'accept',
-            onPressed: onAccept,
+    // Equally high: in a narrow balloon (iPhone SE) the longer label takes two
+    // lines, and the other button grows with it.
+    final buttons = IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: BigPButton(
+              label: accept,
+              automationId: AutomationIds.assistantMemoryButton,
+              automationInstance: 'accept',
+              onPressed: onAccept,
+            ),
           ),
-        ),
-        SizedBox(width: 12 * pt),
-        Expanded(
-          child: BigPButton(
-            label: decline,
-            // White in the balloon, as 43 K draws the safe choice. With a
-            // remote the focus itself is white, so only one button ever is.
-            primary: embedded,
-            focusNode: declineNode,
-            automationId: AutomationIds.assistantMemoryButton,
-            automationInstance: 'decline',
-            onPressed: onDecline,
+          SizedBox(width: 12 * pt),
+          Expanded(
+            child: BigPButton(
+              label: decline,
+              // White in the balloon, as 43 K draws the safe choice.
+              primary: embedded && !remote,
+              focusNode: declineNode,
+              automationId: AutomationIds.assistantMemoryButton,
+              automationInstance: 'decline',
+              onPressed: onDecline,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
 
     final body = Column(

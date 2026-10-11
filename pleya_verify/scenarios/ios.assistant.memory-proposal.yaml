@@ -5,6 +5,8 @@ target: ios-sim
 # nothing and shows "Zal ik dit onthouden?" under the answer. "Niet onthouden"
 # takes the card away and stores nothing: the same question then gets the
 # card again, where a stored fact would have answered "Dat wist ik al."
+# "Onthouden" stores the sentence: Pleya's own line "Onthouden: ..." comes
+# under the answer, and the same question then gets no card any more.
 #
 # Needs PLEYA_ASSISTANT_ENABLED=true in the environment of `verify.dart run`
 # and PLEYA_VERIFY_IOS_UDID pointing at an iPhone SE (3rd generation)
@@ -109,3 +111,25 @@ steps:
   - wait_until: {id: assistant.memory, state: {kind: remember}, timeout: 30000}
   - settle: 1000
   - snapshot: 03-card-again
+
+  # The yes: the card goes, the fact is stored and Pleya says so in its own
+  # line under the answer (the outcome the line is written from is `ok`).
+  - tap: {id: "assistant.memory.button[accept]"}
+  - wait_until: {id: bigp.balloon, state: {memory: ok}, timeout: 8000}
+  - wait_until: {id: bigp.input, timeout: 8000}
+  - settle: 1000
+  - assert: {id: assistant.memory, present: false}
+  - snapshot: 04-remembered
+
+  # Stored: the same question comes back as already known, without a card.
+  - tap: {id: bigp.input}
+  - settle: 800
+  - type: "Iets spannends, maar geen horror."
+  - settle: 800
+  - tap: {id: bigp.send}
+  - settle: 2500
+  - wait_until: {id: bigp.balloon, state: {state: result, error: false}, timeout: 30000}
+  - wait_until: {id: bigp.input, timeout: 8000}
+  - settle: 1000
+  - assert: {id: assistant.memory, present: false}
+  - snapshot: 05-already-known

@@ -476,6 +476,8 @@ void main() {
     'result-watch',
     'confirm',
     'kids-ages',
+    'memory-remember',
+    'memory-replace',
     'clarify',
   ]) {
     testWidgets('surface $name', skip: _dir == null, (tester) async {

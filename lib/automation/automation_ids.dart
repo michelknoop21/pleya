@@ -318,6 +318,9 @@ class AutomationIds {
   /// A control on that card: `[accept]` and `[decline]`.
   static const String assistantMemoryButton = 'assistant.memory.button';
 
+  /// Big P's answer above the memory card on TV: the card stands under it.
+  static const String assistantMemoryAnswer = 'assistant.memory.answer';
+
   /// "Bekijk geheugen" under an answer that stored something.
   static const String assistantMemoryLink = 'assistant.memory.link';
 
@@ -801,6 +804,7 @@ class AutomationIds {
     {'id': assistantKidsAgesButton, 'role': 'button', 'instanceable': true},
     {'id': assistantMemory, 'role': 'sheet', 'instanceable': false},
     {'id': assistantMemoryButton, 'role': 'button', 'instanceable': true},
+    {'id': assistantMemoryAnswer, 'role': 'region', 'instanceable': false},
     {'id': assistantMemoryLink, 'role': 'button', 'instanceable': false},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},
     {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},

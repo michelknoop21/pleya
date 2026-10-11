@@ -40,7 +40,7 @@ import '../../settings/assistant_settings_screen.dart';
 import 'tv_assistant_confirm_flow.dart';
 import 'tv_assistant_conversation.dart';
 import 'tv_assistant_gate.dart';
-import 'tv_assistant_memory_sheet.dart';
+import 'tv_assistant_card_sheets.dart';
 import 'tv_assistant_tasks.dart';
 import '../../../widgets/big_p/assistant/big_p_results.dart';
 import '../../../widgets/big_p/assistant/big_p_assistant_widgets.dart';
@@ -188,7 +188,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     _doneSteps = done;
 
     _confirm.sync(context, c, _entry, _onConfirmClosed);
-    _kids.sync(context, c);
+    // The memory card went: the remote is back on the answer's own buttons.
+    if (_kids.sync(context, c)) _focusDefaultSoon();
     setState(() {});
   }
 
@@ -265,7 +266,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
     if (question.isEmpty) {
       c.cancelListening();
     } else {
-      unawaited(c.submit(question));
+      // Typed or dictated by the user.
+      unawaited(c.submit(question, typed: true));
     }
   }
 
@@ -342,6 +344,8 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
           'error': c.resultIsError,
           'inputError': c.inputError,
           'pending': c.pending != null,
+          // What became of the last answered memory card, as its fixed code.
+          'memory': c.memoryOutcome?.code,
         },
         child: body,
       ),
@@ -398,6 +402,7 @@ class TvAssistantScreenState extends State<TvAssistantScreen> with FocusableTab 
                     firstOptionNode: _optionNode,
                     taskOptionNodes: _taskOptionNodes,
                     tasksNode: _tasksNode,
+                    memoryNode: _kids.memory.declineNode,
                     onAsk: () => unawaited(_ask()),
                     onDone: () {
                       c.reset();

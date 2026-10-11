@@ -243,6 +243,9 @@ ids:
   - id: assistant.memory.button
     role: button
     instanceable: true
+  - id: assistant.memory.answer
+    role: region
+    instanceable: false
   - id: assistant.memory.link
     role: button
     instanceable: false

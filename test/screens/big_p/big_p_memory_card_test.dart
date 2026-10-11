@@ -104,6 +104,28 @@ void main() {
     expect(tester.getCenter(accept).dx, lessThan(tester.getCenter(decline).dx));
     expect(tester.widget<BigPButton>(decline).primary, isTrue);
     expect(tester.widget<BigPButton>(accept).primary, isFalse);
+    // The longer label takes two lines on an iPhone SE: both buttons are as high.
+    expect(tester.getSize(accept).height, tester.getSize(decline).height);
+  });
+
+  testWidgets('a long sentence to remember reads under its label, a short one beside it', (tester) async {
+    answerMemoryCard(c, longRememberProposal());
+    await pumpHost(tester);
+    final label = tester.getRect(find.text(card.memory));
+    final value = tester.getRect(find.text(longRememberProposal().value!));
+    expect(value.top, greaterThanOrEqualTo(label.bottom));
+    expect(value.left, label.left);
+    expect(longRememberProposal().value!.runes.length, 200);
+    expect(tester.takeException(), isNull);
+
+    c
+      ..memoryProposal = rememberProposal()
+      ..emit();
+    await settle(tester);
+    expect(
+      tester.getCenter(find.text('Houdt niet van horror')).dx,
+      greaterThan(tester.getCenter(find.text(card.memory)).dx),
+    );
   });
 
   testWidgets('"Niet onthouden" answers no, "Onthouden" answers yes, and the card goes', (tester) async {

@@ -178,6 +178,16 @@ AssistantMemoryProposal rememberProposal() => AssistantMemoryProposal(
   category: MemoryCategory.dislike,
 );
 
+/// A sentence at the storage limit of 200 characters.
+AssistantMemoryProposal longRememberProposal() => AssistantMemoryProposal(
+  kind: AssistantMemoryProposalKind.remember,
+  memory: _noMemory,
+  value:
+      'Kijkt op vrijdagavond met het hele gezin een film op de grote televisie in de woonkamer, het liefst een '
+      'avonturenfilm of een komedie zonder enge scènes, en op zondagmiddag een natuurdocumentaire samen',
+  category: MemoryCategory.household,
+);
+
 AssistantMemoryProposal replaceProposal() => AssistantMemoryProposal(
   kind: AssistantMemoryProposalKind.replace,
   memory: _noMemory,

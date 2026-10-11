@@ -408,6 +408,8 @@ class _BigPMobileHostState extends State<BigPMobileHost> with RouteAware, Widget
         'error': c.resultIsError,
         'pending': c.pending != null,
         'regular': regular,
+        // What became of the last answered memory card, as its fixed code.
+        'memory': c.memoryOutcome?.code,
       },
       child: regular
           ? BigPBalloon(
