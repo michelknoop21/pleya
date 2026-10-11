@@ -15,10 +15,21 @@ import '../../widgets/settings_page.dart';
 import 'tracker_account_settings_body.dart';
 import 'tracker_connect_launcher.dart';
 
-Future<void> startTraktConnection(BuildContext context) {
+/// The answer to "send your watching to Trakt?" applies to both write-backs
+/// at once; the two toggles stay available under Trakt in Settings.
+Future<void> applyTraktSendConsent(bool allow) async {
+  final settings = await SettingsService.getInstance();
+  await settings.write(SettingsService.enableTraktScrobble, allow);
+  await settings.write(SettingsService.enableTraktWatchedSync, allow);
+  await TraktScrobbleService.instance.setEnabled(allow);
+  await TraktSyncService.instance.setEnabled(allow);
+}
+
+Future<void> startTraktConnection(BuildContext context) async {
   final account = context.read<TraktAccountProvider>();
+  final wasConnected = account.isConnected;
   final name = t.trakt.title;
-  return launchTrackerConnect<DeviceCode>(
+  await launchTrackerConnect<DeviceCode>(
     context,
     isBusyOrConnected: account.isConnecting || account.isConnected,
     serviceName: name,
@@ -27,6 +38,16 @@ Future<void> startTraktConnection(BuildContext context) {
     buildDialog: (code, cancel) => DeviceCodeDialog(code: code, serviceName: name, onCancel: cancel),
     urlFor: (code) => code.verificationUrlComplete ?? code.verificationUrl,
   );
+  // Linking Trakt never sends anything back by itself: it is asked once here.
+  if (!context.mounted || wasConnected || !account.isConnected) return;
+  final allow = await showConfirmDialog(
+    context,
+    title: t.trakt.sendTitle,
+    message: t.trakt.sendBody,
+    confirmText: t.trakt.sendAllow,
+    cancelText: t.trakt.sendDecline,
+  );
+  await applyTraktSendConsent(allow);
 }
 
 class TraktSettingsScreen extends StatelessWidget {

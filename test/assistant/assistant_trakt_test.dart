@@ -17,6 +17,7 @@ import 'package:pleya/services/recommendations/taste_profile.dart';
 import 'package:pleya/services/trakt/trakt_library_reader.dart';
 import 'package:pleya/services/unified_catalog/home_custom_row_loader.dart';
 import 'package:pleya/utils/external_ids.dart';
+import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 
 import 'assistant_find_fakes.dart';
 
@@ -33,6 +34,12 @@ AssistantTool _tool(String name) => assistantTools.singleWhere((t) => t.name == 
 AssistantTraktServices _trakt({List<TraktTitle>? titles, String? blocked}) =>
     AssistantTraktServices(blocked: () => blocked, watchlist: () async => titles);
 
+class _FailingSearch extends FakeServer {
+  _FailingSearch(super.id);
+  @override
+  Future<List<MediaItem>> searchItems(String query, {int limit = 100}) async => throw StateError('search failed');
+}
+
 class _PleyaServer extends FakeServer {
   _PleyaServer(super.id);
   @override
@@ -42,8 +49,9 @@ class _PleyaServer extends FakeServer {
 CatalogHomeCustomRowLoader _loader(MultiServerManager m, {Set<String> visibleLibraries = const {'films'}}) =>
     CatalogHomeCustomRowLoader(
       libraries: () => [
-        for (final id in visibleLibraries)
-          MediaLibrary(id: id, backend: MediaBackend.jellyfin, title: id, kind: MediaKind.movie, serverId: 'jf'),
+        for (final server in const ['jf', 'jf2'])
+          for (final id in visibleLibraries)
+            MediaLibrary(id: id, backend: MediaBackend.jellyfin, title: id, kind: MediaKind.movie, serverId: server),
       ],
       isServerVisible: m.isServerVisible,
       hiddenLibraryKeys: () => const {},
@@ -195,6 +203,56 @@ void main() {
       );
 
       expect(_row(await _run(ctx), 'Dune')['library_status'], 'in_library');
+    });
+
+    test('Trakt listing a title twice is one row; a title on two servers is one card', () async {
+      manager.debugRegisterClientForTesting(
+        FakeServer(
+          'jf2',
+          libraries: {
+            'films': [fakeItem('x1', 'Dune', year: 2021, lib: 'films')],
+          },
+          ids: {'x1': const ExternalIds(imdb: 'tt1160419')},
+        ),
+      );
+      final ctx = _ctx(
+        manager,
+        trakt: _trakt(
+          titles: [
+            _title('Dune', 2021, imdb: 'tt1160419'),
+            _title('Dune', 2021, imdb: 'tt1160419'),
+          ],
+        ),
+      );
+
+      final result = await _tool('trakt_watchlist').run(ctx, null, const {}) as AssistantToolResult;
+
+      expect((result.data['titles'] as List), hasLength(1));
+      expect(((result.data['titles'] as List).single as Map)['servers'], hasLength(2));
+      expect((result.display! as AssistantMediaGrid).entries, hasLength(1));
+    });
+
+    test('a failing title search is "not_checked", never "not found"', () async {
+      final flaky = _FailingSearch('flaky');
+      manager.debugRegisterClientForTesting(flaky);
+      final ctx = _ctx(
+        manager,
+        trakt: _trakt(titles: [_title('Obscure Film', 2001, imdb: 'tt0000042')]),
+      );
+
+      expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_checked');
+    });
+
+    test('a cancelled ask leaves every title "not_checked"', () async {
+      final cancel = AbortController()..abort();
+      final ctx = AssistantToolContext(
+        servers: manager,
+        trakt: _trakt(titles: [_title('Obscure Film', 2001, imdb: 'tt0000042')]),
+        cancel: cancel,
+        catalog: AssistantCatalogServices(rowLoader: _loader(manager), profileId: 'p', activeProfileId: () => 'p'),
+      );
+
+      expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_checked');
     });
 
     test('a server that cannot answer by identity makes a miss "not_checked"', () async {

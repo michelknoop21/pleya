@@ -3,6 +3,7 @@ import '../../media/ids.dart';
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:http/http.dart' as http;
 import '../../media/media_item.dart';
 import '../../media/media_kind.dart';
 import '../../media/media_server_client.dart';
@@ -92,11 +93,17 @@ class TraktSyncService {
     TrackerSession? session, {
     required void Function() onSessionInvalidated,
     void Function(TrackerSession session)? onSessionUpdated,
+    http.Client? httpClient,
   }) {
     _client?.dispose();
     library.reset();
     _client = session != null
-        ? TraktClient(session, onSessionInvalidated: onSessionInvalidated, onSessionUpdated: onSessionUpdated)
+        ? TraktClient(
+            session,
+            onSessionInvalidated: onSessionInvalidated,
+            onSessionUpdated: onSessionUpdated,
+            httpClient: httpClient,
+          )
         : null;
     _activeUserUuid = userUuid;
     _resolvers.clear();
@@ -334,7 +341,9 @@ class TraktSyncService {
       return;
     }
     final client = _client;
-    if (client == null) return;
+    // Same gate as a new watch event: without the user's consent nothing that
+    // was queued earlier goes out either, linking again included.
+    if (client == null || !_isEnabled) return;
     final userUuid = _activeUserUuid;
     _isFlushing = true;
     try {

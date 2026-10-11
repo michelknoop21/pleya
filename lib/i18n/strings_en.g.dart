@@ -5468,6 +5468,18 @@ class TranslationsTraktEn {
 
 	/// en: 'When you mark items watched in Pleya, mark them on Trakt.'
 	String get watchedSyncDescription => 'When you mark items watched in Pleya, mark them on Trakt.';
+
+	/// en: 'Send your watching to Trakt?'
+	String get sendTitle => 'Send your watching to Trakt?';
+
+	/// en: 'Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.'
+	String get sendBody => 'Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.';
+
+	/// en: 'Allow'
+	String get sendAllow => 'Allow';
+
+	/// en: 'Not now'
+	String get sendDecline => 'Not now';
 }
 
 // Path: trackers
@@ -10786,6 +10798,10 @@ extension on Translations {
 			'trakt.scrobbleDescription' => 'Send play, pause, and stop events to Trakt during playback.',
 			'trakt.watchedSync' => 'Sync watched status',
 			'trakt.watchedSyncDescription' => 'When you mark items watched in Pleya, mark them on Trakt.',
+			'trakt.sendTitle' => 'Send your watching to Trakt?',
+			'trakt.sendBody' => 'Pleya sends play events and watched marks to Trakt only if you allow it. You can change this later under Trakt in Settings.',
+			'trakt.sendAllow' => 'Allow',
+			'trakt.sendDecline' => 'Not now',
 			'trackers.title' => 'Trackers',
 			'trackers.hubSubtitle' => 'Sync watch progress with Trakt and other services.',
 			'trackers.notConnected' => 'Not connected',
@@ -11013,12 +11029,12 @@ extension on Translations {
 			'unifiedCatalog.homeRows.featured' => 'Featured',
 			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
 			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
+			_ => null,
+		} ?? switch (path) {
 			'unifiedCatalog.homeRows.fixed' => 'fixed',
 			'unifiedCatalog.homeRows.done' => 'Done',
 			'unifiedCatalog.homeRows.moveUp' => 'Move up',
 			'unifiedCatalog.homeRows.moveDown' => 'Move down',
-			_ => null,
-		} ?? switch (path) {
 			'unifiedCatalog.homeRows.hide' => 'Hide',
 			'unifiedCatalog.homeRows.show' => 'Show',
 			'unifiedCatalog.homeRows.edit' => 'Edit',
