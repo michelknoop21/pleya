@@ -72,6 +72,26 @@ void main() {
     expect(await qualities('radarr'), [false]);
   });
 
+  test('permissions and the forbidden instance list follow the fixture', () async {
+    final server = SeerrFakeServer(apiKey: 'verify-key');
+
+    Future<int> permissions() async =>
+        jsonDecode((await _get(server, '/seerr/api/v1/auth/me', apiKey: 'verify-key')).body)['permissions'] as int;
+
+    expect(await permissions(), 2);
+    expect((await _get(server, '/seerr/api/v1/service/radarr', apiKey: 'verify-key')).statusCode, 200);
+
+    server.userPermissions = 32 | 1024;
+    server.serviceListForbidden = true;
+    expect(await permissions(), 1056);
+    expect((await _get(server, '/seerr/api/v1/service/radarr', apiKey: 'verify-key')).statusCode, 403);
+    expect((await _get(server, '/seerr/api/v1/service/sonarr/1', apiKey: 'verify-key')).statusCode, 403);
+
+    server.reset();
+    expect(await permissions(), 2);
+    expect((await _get(server, '/seerr/api/v1/service/radarr', apiKey: 'verify-key')).statusCode, 200);
+  });
+
   test('a seeded title keeps its HD and 4K status apart', () async {
     final server = SeerrFakeServer(apiKey: 'verify-key');
     server.addTitle(mediaType: 'movie', tmdbId: 301, title: 'Glacier Run', status: 5, status4k: 1);

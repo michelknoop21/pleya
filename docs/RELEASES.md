@@ -18,22 +18,7 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-### New
-- route 'wat is er toegevoegd' met venster, toevoegdatum en één resultaatset voor tekst en kaarten (BP-05)
-- vraag over mij en de anderen in code splitsen in twee taken (BP-04b)
-
-### Fixed
-- CSP toestaan voor Kits eigen route-announcer (#219)
-- cap the desktop and iPad header height per size class (F-D1)
-- keep poster grid spacing fixed off TV (F-D2)
-- scale the shared option picker dialog on TV (F-TV1)
-- read the first-page fetch estimate and top padding from spacingFor
-- reviewbevindingen BP-05: lokale map zonder toevoegdatum, kinderprofiel zonder venstertotaal, kaarten gelijk aan de lijst van 12, venster alleen bij eigen zin (BP-05)
-- 4K op de titelpagina alleen bij een standaard-4K-instantie (#222)
-- scoped re-review BP-05: totaal bij gewone zoekopdracht, einde-van-pagina op de ruwe datum, kindvlag bij onbekende datum, regex en lange periode (BP-05)
-- splitsing van gemengde vragen strenger na adversariële review (BP-04b)
-- split na scoped re-review: herstart-race bij het lezen van het profiel, verwijzing terug in plaats van elke vervolgvraag, 'everyone else' met werkwoord, tweede zin buiten de helft (BP-04b)
-- aanvraag zonder server alleen met een standaardinstantie van die kwaliteit (#225)
+Nothing user-facing since the last published build.
 <!-- END GENERATED -->
 
 ### New
@@ -91,6 +76,114 @@ under `Notes`.
   device to sync after updating sets them for that profile on every device. If you arranged a
   profile differently on purpose on one device, such as a kids profile on the Apple TV, check it
   after updating.
+
+## 2.8.1 · build 351 · 11 October 2026 · Apple TV
+
+<!-- commit: 584f1e38302fbd944019a55f66b7521203f08ce7 -->
+
+### New
+- Ask Big P what was added to your libraries. It answers for the period you name, such as this
+  week, up to a month back, and shows the date each title was added. A local folder has no such
+  date. The cards under the answer are the same titles as the list in the text.
+- When you ask Big P what was watched without saying by whom, such as "What was watched this
+  week?", it asks whether you mean yourself, the others or everyone. The choices appear as
+  buttons under the question.
+- A question about you and the others in one sentence, such as what you watched and what the
+  rest watched, is answered as two separate questions.
+
+### Fixed
+- Menu on All requests and My requests takes you back to Requests. The remote could not leave
+  that page. With the filter panel open, the first press closes the panel and the next one
+  closes the page.
+- "Request in 4K" on a title page shows only when the requests server has a default 4K
+  instance. This corrects the gap noted in the previous build.
+- A request sent without choosing a server can only go out when the requests server has a
+  default instance for that quality. Without one the button is off and the form says "No default
+  server for this quality". When the list of servers cannot be read, HD stays open and 4K is
+  closed. This is stricter than the requests server itself.
+- Messages in the request form stay in view and take only the room they need.
+- "My requests" in the request form shows only when the earlier request is your own.
+- Picking "All seasons" in the request form no longer renumbers the list of seasons.
+- Search in Discover no longer shows a page of an earlier search twice when you search for the
+  same text again.
+- A start from the version menu together with an ordinary start of the same title, such as a
+  double press, no longer opens the player twice.
+- Big P keeps to the kind you ask for. Ask for films and you get films, ask for series and you
+  get series. Asked which films are playing right now, it lists active streams of that kind only
+  and says how many it left out because their kind is unknown.
+- "Family" or "household" in a request for something to watch together no longer quietly
+  means only you.
+- When your access to a library changes while Big P is looking something up, it does not show
+  that result.
+- The focus ring stays visible on a light background, and buttons that are not focused stay
+  readable while another one has the focus.
+- The dialog for picking an option, such as a version or a sort order, has the same proportions
+  as the other panels on Apple TV.
+
+### Worth checking
+- Passed in the Apple TV simulator: Menu on All requests, and the request form for an account
+  that may request but not manage. The other items are covered by automated tests only. Nothing
+  in this build has been checked on an Apple TV yet.
+- Requests: open All requests or My requests and press Menu on a card. You should be back on
+  Requests with the inbox button focused.
+- Request form: open a title with an account that may request but not manage. Check that the
+  4K switch is there only when the requests server has a default 4K instance, and that you can
+  reach the button with the remote.
+- This build was made with Big P switched on. That has not been confirmed on a device, so
+  please check that you can open it on your Apple TV.
+
+## 2.8.1 · build 350 · 11 October 2026 · iPhone and iPad
+
+<!-- commit: 584f1e38302fbd944019a55f66b7521203f08ce7 -->
+
+### New
+- Ask Big P what was added to your libraries. It answers for the period you name, such as this
+  week, up to a month back, and shows the date each title was added. A local folder has no such
+  date. The cards under the answer are the same titles as the list in the text.
+- When you ask Big P what was watched without saying by whom, such as "What was watched this
+  week?", it asks whether you mean yourself, the others or everyone. The choices appear as
+  buttons under the question.
+- A question about you and the others in one sentence, such as what you watched and what the
+  rest watched, is answered as two separate questions.
+
+### Fixed
+- "Request in 4K" on a title page shows only when the requests server has a default 4K
+  instance. This corrects the gap noted in the previous build.
+- A request sent without choosing a server can only go out when the requests server has a
+  default instance for that quality. Without one the button is off and the form says "No default
+  server for this quality". When the list of servers cannot be read, HD stays open and 4K is
+  closed. This is stricter than the requests server itself.
+- Messages in the request form stay in view and take only the room they need, also on a small
+  screen with large text.
+- "My requests" in the request form shows only when the earlier request is your own.
+- Picking "All seasons" in the request form no longer renumbers the list of seasons.
+- Search in Discover no longer shows a page of an earlier search twice when you search for the
+  same text again.
+- A start from the version menu together with an ordinary start of the same title, such as a
+  double press, no longer opens the player twice.
+- Big P keeps to the kind you ask for. Ask for films and you get films, ask for series and you
+  get series. Asked which films are playing right now, it lists active streams of that kind only
+  and says how many it left out because their kind is unknown.
+- "Family" or "household" in a request for something to watch together no longer quietly
+  means only you.
+- When your access to a library changes while Big P is looking something up, it does not show
+  that result.
+- Big P's confirmation card stays inside the conversation with the keyboard up on a small
+  iPhone.
+- On iPad the header of a film or series page no longer grows past a fixed height, and the
+  spacing between posters in a grid stays the same at every window size.
+
+### Worth checking
+- Nothing in this build has been checked on an iPhone or iPad yet. The request form was checked
+  in the Apple TV simulator only; everything else is covered by automated tests.
+- Request form: open a title with an account that may request but not manage. Check that the
+  4K switch is there only when the requests server has a default 4K instance, and that HD can
+  be sent.
+- Big P on a small iPhone: ask for something Big P has to confirm and keep the keyboard up.
+  Cancel and Create should both be fully visible.
+- Big P: ask "What was watched this week?" and check that it asks whether you mean yourself,
+  the others or everyone. This needs an account that can see what the household watched, and
+  it does not happen on a kids profile.
 
 ## 2.8.1 · build 349 · 10 October 2026 · Apple TV
 

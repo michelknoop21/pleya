@@ -55,6 +55,18 @@ bool applyNamedFixture(PleyaFakeServer server, String name, {SeerrFakeServer? se
       if (seerr == null) return false;
       _applySeerrDetailV1(seerr, fourK: false);
       return true;
+    case 'seerr.requester.4k-default.v1':
+      if (seerr == null) return false;
+      _applySeerrRequesterV1(seerr, fourK: true, listReadable: true);
+      return true;
+    case 'seerr.requester.no-4k-default.v1':
+      if (seerr == null) return false;
+      _applySeerrRequesterV1(seerr, fourK: false, listReadable: true);
+      return true;
+    case 'seerr.requester.list-unknown.v1':
+      if (seerr == null) return false;
+      _applySeerrRequesterV1(seerr, fourK: true, listReadable: false);
+      return true;
     case 'seerr.search.v1':
       if (seerr == null) return false;
       _applySeerrSearchV1(seerr);
@@ -464,6 +476,30 @@ void _applySeerrDetailV1(SeerrFakeServer seerr, {required bool fourK}) {
   );
   for (final bucket in const ['trending', 'movies']) {
     seerr.addDiscoverItem(bucket, tmdbId: 301, mediaType: 'movie', title: 'Glacier Run', year: 2024);
+  }
+}
+
+/// One film nobody has asked for, seen by a requester who holds REQUEST and
+/// REQUEST_4K and no manage right (REQ-FORM-4K-DEFAULT). A requester sends no
+/// server with the request, so whether the form may offer 4K, and whether HD
+/// may go out, hangs on what the instance list says: [fourK] decides if a
+/// default 4K instance exists, [listReadable] false makes the list answer
+/// 403, so the form cannot know. That 403 is a stand-in for an unreadable
+/// list, not something a stock Seerr sends a requester.
+void _applySeerrRequesterV1(SeerrFakeServer seerr, {required bool fourK, required bool listReadable}) {
+  seerr.reset();
+  seerr.userPermissions = 32 | 1024;
+  seerr.fourKServers = fourK;
+  seerr.serviceListForbidden = !listReadable;
+  seerr.addTitle(
+    mediaType: 'movie',
+    tmdbId: 311,
+    title: 'Frost Line',
+    year: 2025,
+    overview: 'A survey crew races the first freeze.',
+  );
+  for (final bucket in const ['trending', 'movies']) {
+    seerr.addDiscoverItem(bucket, tmdbId: 311, mediaType: 'movie', title: 'Frost Line', year: 2025);
   }
 }
 

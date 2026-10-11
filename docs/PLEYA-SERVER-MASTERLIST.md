@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 26 gereed, 2 bezig, 127 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 27 gereed, 1 bezig, 127 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -93,7 +93,7 @@ binnen een golf is de volgorde vrij. De kolom "taken" telt wat er open of bezig 
 | 5 | S17, S18, S23 | 16 | afspelen op eigen kracht: PlaybackPlan, transcode, downloads | S14 |
 | 6 | S19, S20, S21 | 15 | verzamelingen en afspeellijsten, persoonlijke laag, realtime | S1, S6, S2 |
 | 7 | S22 | 9 | metadata-providers met automatisch matchen en artwork | S4 |
-| 8 | S24, S25 | 13 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
+| 8 | S24, S25 | 12 | remote hardening en observability, back-up, restore, upgrade, faalpaden | S1, S2 |
 | slot | S15 | 9 | hardening, veertien golden journeys, documentatie, Plex-off gate, merge naar `main`, NAS | alles |
 | keuze | PS-12 | 0 | Plex-migratie, met een eigen vrijgave na S15 | Michel |
 
@@ -506,7 +506,7 @@ punt 3 en 4), en aan het venster-besluit.
 | S24.3 | Prometheus-metrics op loopback | `[ ]` | | |
 | S24.4 | Range-testset door twee proxy-opstellingen | `[ ]` | | |
 | S24.5 | Deploymentrecepten in de operatordoc | `[ ]` | | |
-| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet | `[~]` | Code gereed, NAS-deploy wacht op go van Michel. De relay-kant stond al sinds `9ef7233` (`server/docker-compose.yml` hangt `cloudflared` aan het externe `pleya-server_default`); de serverkant leunde nog op de projectnaam. `pleya_server/compose.yaml` zet nu `networks.default.name: pleya-server_default`; `docker compose config` exit 0 toont die naam, en ook met `-p andere-naam` blijft de netwerknaam gelijk (volume en `container_name` volgen de projectnaam wel). `deploy-nas.sh` meldt na `readyz` of `pleya-tunnel` aan het netwerk hangt (alleen lezen en niet fataal, ook niet als ssh faalt; `bash -n` en `shellcheck -S warning` schoon); README beschrijft het herstel in de relay-stack. Niet bewezen: de deploy op de NAS en een 200 op `web.pleya.app` daarna | 2026-10-11 |
+| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet | `[x]` | Code gereed en op 11 oktober 2026 op de NAS uitgerold (`deploy-nas.sh` vanuit main `329c0406`, exit 0, vooraf databasebackup `pleya-pre-s246-20261011-104208.sql`). De relay-kant stond al sinds `9ef7233` (`server/docker-compose.yml` hangt `cloudflared` aan het externe `pleya-server_default`); de serverkant leunde nog op de projectnaam. `pleya_server/compose.yaml` zet nu `networks.default.name: pleya-server_default`; `docker compose config` exit 0 toont die naam, en ook met `-p andere-naam` blijft de netwerknaam gelijk (volume en `container_name` volgen de projectnaam wel). `deploy-nas.sh` meldt na `readyz` of `pleya-tunnel` aan het netwerk hangt (alleen lezen en niet fataal, ook niet als ssh faalt; `bash -n` en `shellcheck -S warning` schoon); README beschrijft het herstel in de relay-stack. Bewezen na de deploy: `readyz` groen, `pleya-server` healthy, `pleya-tunnel` hangt aan `pleya-server_default`, `https://web.pleya.app/pleya/v1/info`, `/readyz` en `/` geven 200 en de serverlog toont dezelfde server-id. Relay-proef op 11 oktober 2026: `docker compose up -d --build --force-recreate` in `/volume1/docker/pleya-relay` met de bestanden die er stonden, dus `pleya-relay` en `pleya-tunnel` beide opnieuw aangemaakt. `https://web.pleya.app/pleya/v1/info` en `https://ice.pleya.app/health` gaven 530 op +10 s en 200 op +15 s, daarna 200 op `/pleya/v1/info`, `/readyz` en `/`. `pleya-tunnel` hing na afloop aan `pleya-relay_default` en `pleya-server_default` zonder `docker network connect`, en `pleya-server` bleef `healthy`. Kanttekening: de proef draaide met de relay-bronnen die al op de NAS stonden. `server/main.go` en `server/main_test.go` op main wijken daarvan af en zijn niet uitgerold | 2026-10-11 |
 
 ### S25 Back-up, restore, upgrade, faalpaden (PS-11B)
 
