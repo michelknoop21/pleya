@@ -1801,7 +1801,9 @@ class PlexClient
   /// answer, so callers never report a state the server did not state.
   Future<bool?> fetchAllowMediaDeletion() async {
     try {
-      final response = await _http.get('/:/prefs', timeout: const Duration(seconds: 5));
+      // Only read to word a failure message: a timeout here must not switch
+      // endpoints or mark the server offline, and must not hold the message up.
+      final response = await _http.get('/:/prefs', timeout: const Duration(seconds: 5), allowEndpointFailover: false);
       return _parsePlexTranscoderVideoCapability(_parseSettingsMap(response)['allowMediaDeletion']);
     } catch (e) {
       appLogger.d('Failed to read allowMediaDeletion: $e');
