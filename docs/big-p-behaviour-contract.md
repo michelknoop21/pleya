@@ -43,7 +43,7 @@ Elk van deze is een harde fout in de handmatige poort. Per fase komt er een test
 
 Regel: geen gekoppelde, relevante bron blijft onbereikbaar voor Big P alleen omdat er geen losse tool voor bestaat. De grens zijn de rechten van de gebruiker (per bron en per gegevenstype), wat de bron aanbiedt en de privacy van die verbinding.
 
-Gecontroleerd tegen de code op 5 oktober 2026. "Mist" is wat Big P nu niet kan lezen of koppelen.
+Gecontroleerd tegen de code op 5 oktober 2026 (de Trakt-rij is bijgewerkt op 11 oktober voor BP-07). "Mist" is wat Big P nu niet kan lezen of koppelen.
 
 | Bron | Levert | Adapter | Rechten | Mist (gecontroleerd) |
 |---|---|---|---|---|
@@ -67,6 +67,7 @@ Wat vastligt in code, wat het model mag kiezen, en de terugval. Tools naar huidi
 | Wat heb ik gekeken | ik | film/serie uit de vraag | kijkhistorie plus ooit-gezien | `my_watching` | alleen zachte filters | venster noemen; sleutel onbekend: wedervraag |
 | Kijkcijfers, wat kijken anderen | anderen op account-id, nooit iedereen | uit de vraag | historie per bron | `watch_stats` | periode binnen vaste lijst | publiek onbekend: wedervraag; geen bewijsde identiteit over servers: per server tonen |
 | Aanbevelen voor mij | ik | uit de vraag, anders vragen | bibliotheek eerst | `recommend_together` (bestaat al; werkt nu alleen als de aanvrager Jellyfin-administrator is, niet op Emby of andere backends; geblokkeerd op kinderprofielen; de rest van de BP-07-pijplijn is gepland) | alleen zachte argumenten | te weinig resultaat: apart gemarkeerd buiten de bibliotheek |
+| Trakt-watchlist | ik | uit de vraag | eigen Trakt-account naast de bibliotheken | `trakt_watchlist` (BP-07 deel 2; geblokkeerd op kinderprofielen; vraagt gekoppeld Trakt en personalisatie) | alleen soort | server niet bereikbaar of niet op identiteit te vragen: `not_checked`, nooit "ontbreekt"; Trakt onbereikbaar: `trakt_unreachable` |
 | Aanbevelen samen | ik plus genoemde personen | uit de vraag | bibliotheek | `recommend_together` (werkt nu alleen als de aanvrager Jellyfin-administrator is, niet op Emby of andere backends; geblokkeerd op kinderprofielen) | persoonskeuze alleen uit treffers | meerdere treffers: knoppen |
 | Recent toegevoegd | ik (zichtbare bibliotheken) | uit de vraag | `fetchRecentlyAdded`, `addedAt` | `search_catalog` met `sort: added` | geen | bron die het venster niet haalt: als gedeeltelijk melden |
 | Titel zoeken, vergelijkbaar, trending | ik | uit de vraag | catalogus, TMDB | `search_catalog`, `find_title`, `similar_titles`, `trending_titles` | zoektermen | geen treffer: zeggen, niet raden |
