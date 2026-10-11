@@ -22,6 +22,7 @@
   import CardSection from './CardSection.svelte';
   import HeroSection from './HeroSection.svelte';
   import RailSection from './RailSection.svelte';
+  import ButtonSection from './ButtonSection.svelte';
   import StorageSection from './StorageSection.svelte';
   import OverviewSection from './OverviewSection.svelte';
   import GalleryIndex from './GalleryIndex.svelte';
@@ -61,6 +62,7 @@
       <CardSection />
       <HeroSection />
       <RailSection />
+      <ButtonSection />
     </div>
   </div>
 {/if}

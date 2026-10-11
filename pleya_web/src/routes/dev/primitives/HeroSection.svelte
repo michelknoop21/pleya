@@ -2,7 +2,8 @@
   De hero in vier varianten, naast specimen v3 en beeld 01: met afspeelknop en
   synopsis (zoals hij na PS-4W en PS-7N wordt), zonder afspeelknop (zoals elke
   route hem in deze grens aanroept), een lange titel die over meer regels
-  breekt, en zonder artwork. Galerijlabels zijn gewone Nederlandse tekst: de
+  breekt, en zonder artwork. Hero B draagt drie Nederlandse samenstellingen
+  in plaats van een filmtitel: daarop wordt het afbreken op taal gemeten. Galerijlabels zijn gewone Nederlandse tekst: de
   route bestaat alleen in ontwikkeling.
 
   Hero springt zelf in op --inset, omdat Home hem zonder paginapadding
@@ -49,9 +50,11 @@
       playHref: '/dev/primitives#hero'
     },
     {
-      note: 'B · zoals de routes hem in deze grens aanroepen: geen playHref, geen summary',
+      note: 'B · zoals de routes hem aanroepen, met drie lange samenstellingen (M-1)',
       item: movie('opp', {
-        title: 'Oppenheimer',
+        // Woorden die op 393 niet op één regel passen: hier moet de taal van
+        // de pagina beslissen waar het streepje komt.
+        title: 'Kinderboekenweekgeschenk Arbeidsongeschiktheidsverzekering Zandkasteelwedstrijdkampioenschappen',
         year: 2023,
         duration_ms: 180 * MIN,
         artwork: { backdrop_id: 'opp@hero' }

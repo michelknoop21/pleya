@@ -162,7 +162,7 @@
     <div>
       <div class="rs__bleed">
         <HubRail
-          title="Recently added in Films"
+          title="{t('home.recentlyAdded')}: Kinderboekenweekgeschenken"
           items={recent}
           href="/dev/primitives#rail"
           card={recentCard}

@@ -240,6 +240,30 @@
     stroke: none;
   }
 
+  /*
+   * Vanaf 900 volgt de hero een vaste verhouding en staat de tekst onderaan
+   * vast, dus elke extra titelregel duwt de kop naar boven. Een Nederlandse
+   * titel met lange samenstellingen liep op 1280 over de bovenrand en werd
+   * afgeknipt zonder dat te zien was dat er iets ontbrak. Vier regels en dan
+   * een beletselteken (bij drie viel "The Return of the King" op 1600 al af); de volledige titel staat op de itempagina en blijft voor
+   * een schermlezer in de kop. Onder 900 is de hero 520 hoog en past hij wel.
+   */
+  @media (min-width: 900px) {
+    .hero__title {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 4;
+      line-clamp: 4;
+      overflow: hidden;
+      /* Regelhoogte 1 laat accenten boven en een komma onder buiten de
+         regel steken; zonder deze ruimte knipt overflow ze af. De marges
+         heffen de ruimte op, zodat de kop niet verschuift. Onder blijft het
+         0,06em: een vijfde regel komt daarin nog niet in beeld. */
+      padding-block: 0.1em 0.06em;
+      margin-block: -0.1em calc(12px - 0.06em);
+    }
+  }
+
   @media (max-width: 1199px) {
     .hero__title {
       font-size: 38px;

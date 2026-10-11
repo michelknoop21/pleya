@@ -90,8 +90,10 @@
             eronder, dus dit vlak is beeld en geen tweede kopie van de tekst
             (geen dubbele linknaam, geen dubbele treffer bij zoeken in de pagina).
           -->
+          <!-- `hyphenate` erft door naar ::before, waar de titel over meer
+               regels loopt; de bijschrifttitel eronder blijft één regel. -->
           <div
-            class="card__none"
+            class="card__none hyphenate"
             aria-hidden="true"
             data-title={item.title}
             data-year={item.year ?? ''}
