@@ -413,3 +413,59 @@ class AffinitySnapshots extends Table {
   @override
   Set<Column> get primaryKey => {profileId};
 }
+
+/// Facts a profile asked the assistant to remember. Plain text on this device,
+/// per profile, never synced and never exported. [id] is a UUID that does not
+/// derive from the text, so a later sync can refer to a row.
+@DataClassName('AssistantMemoryRow')
+@TableIndex(name: 'idx_assistant_memories_profile_value_key', columns: {#profileId, #valueKey}, unique: true)
+class AssistantMemories extends Table {
+  TextColumn get id => text()();
+
+  /// Full profile id, as in [MediaInteractions]. No foreign key: Plex Home
+  /// profiles are virtual.
+  TextColumn get profileId => text()();
+
+  /// `preference`, `dislike`, `household`, `habit` or `other`.
+  TextColumn get category => text()();
+
+  /// The sentence as shown: one line, no control characters, at most 200.
+  TextColumn get value => text()();
+
+  /// [value] lowercased, without punctuation and with single spaces. Unique
+  /// per profile, so the same sentence is one row whatever its category.
+  TextColumn get valueKey => text()();
+
+  /// `user_explicit`, `assistant_confirmed` or `settings_manual`.
+  TextColumn get source => text()();
+
+  /// Epoch milliseconds (UTC).
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// The written overview of a profile's [AssistantMemories]: derived, one row
+/// per profile, never edited and never a source for an answer.
+@DataClassName('AssistantMemoryOverviewRow')
+class AssistantMemoryOverviews extends Table {
+  TextColumn get profileId => text()();
+
+  /// Hash of the facts, the locale and the format version it was written for.
+  TextColumn get factsHash => text()();
+  TextColumn get locale => text()();
+
+  /// `ok` or `failed`.
+  TextColumn get status => text()();
+
+  /// JSON with the sections and follow-up questions; empty for `failed`.
+  TextColumn get body => text()();
+
+  /// Epoch milliseconds (UTC).
+  IntColumn get generatedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {profileId};
+}

@@ -48,6 +48,7 @@ import '../i18n/strings.g.dart';
 import '../screens/big_p/big_p_mobile_session.dart';
 import '../screens/main_screen.dart';
 import '../services/livetv/plex_favorite_channels_service.dart';
+import '../services/memory/memory_service.dart';
 import '../services/recommendations/interaction_recorder.dart';
 import '../services/recommendations/jellyfin_history_importer.dart';
 import '../services/recommendations/personalized_rows_builder.dart';
@@ -431,6 +432,11 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                     isCurrentProfile: () => activeProfile.activeId == profileId && !activeProfile.isBinding,
                   );
                 },
+              ),
+              // What this profile asked Big P to remember. One instance per
+              // profile session, shared by chat and settings.
+              Provider<MemoryService>(
+                create: (context) => MemoryService(database: context.read<AppDatabase>(), profileId: activeId ?? ''),
               ),
               Provider<InteractionRecorder>(
                 lazy: false,
