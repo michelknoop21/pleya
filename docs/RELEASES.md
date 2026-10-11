@@ -18,7 +18,13 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- geheugen in het gesprek, voorstelkaart en overzichtsschrijver (BP-08a stap 2) (#285)
+- terugschrijven alleen na toestemming, dubbelen en not_checked bewaakt, releasevoorwaarden
+
+### Fixed
+- wachtrij volgt de toestemming, privacypagina en releasegate benoemd
+- geopend videobestand loslaten zodra de speler sluit
 <!-- END GENERATED -->
 
 ### New
