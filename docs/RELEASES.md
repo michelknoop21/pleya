@@ -23,20 +23,6 @@ Nothing user-facing since the last published build.
 
 ### New
 
-- **Liquid Glass on Apple TV, behind a switch in Appearance.** The top bar, player panel and
-  search field can now be glass. The switch is off by default.
-- **The Apple TV context menu now shows a line under the title with genre, runtime, sources,
-  and remaining time**, the same summary you already see on other screens.
-- **The context menu's Resume row now shows how much time is left** on the episode or movie
-  you are resuming.
-- **Every row in the Apple TV context menu now has an icon**, matching the phone version.
-- **Live TV on Apple TV now sits inside the same one-bar navigation as the rest of the app**,
-  with Guide, What's On, Recordings and your channel actions gathered in a single row under the
-  page title. Opening a show's schedule now stays on that same screen instead of covering it.
-- **The Apple TV guide is denser and built for ten-foot viewing**: five channel rows sized to
-  read comfortably from the couch, with a progress line under whatever is airing now.
-- **A detail bar under the Apple TV guide always shows what's focused**: the title, channel,
-  time, and a short synopsis, without taking the remote's focus away from the guide itself.
 - **A Pleya Server can now be shared by a household.** The owner adds an account per person and
   decides which libraries each of them sees. A library somebody has no access to does not show
   up in their list, in their search results, or when they open a link straight to it. Watch
@@ -58,13 +44,78 @@ Nothing user-facing since the last published build.
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.
 
-### Fixed
+## 2.8.1 · build 354 · 11 October 2026 · Mac
 
-- **Season selector labels on Apple TV series pages no longer render with a shifted or doubled
-  line of text** on the unselected seasons.
-- **The row of extras below an Apple TV series or movie page now sizes its text and spacing
-  consistently with the rest of the screen**, instead of running slightly smaller when the page
-  is nested under the top bar.
+<!-- commit: 89455da4a55e0b43ddc80e66b1858dfbda5fdc16 -->
+
+### Improved
+- Big P and your recommendations recognise a title you watched on one server when the same
+  title sits on another server.
+
+### Fixed
+- Pleya Share stays on your local network. After a short Wi-Fi or hotspot hiccup a guest could
+  end up on the internet relay, where the share looked online but nothing played. Pleya Share
+  no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware. Sharing
+  between two different networks is gone with it.
+
+### Notes
+- Big P is not part of the Mac build.
+- Two things were already in earlier builds without a note. Home shows movies and shows added
+  while the app stays open, and refreshes quietly when you return to Home after two minutes and
+  every five minutes while it is on screen. Hidden libraries and library order sync over iCloud
+  for Plex Home profiles: the first device to sync sets them for that profile on every device,
+  so if you arranged a profile differently on purpose on one device, check it.
+
+### Worth checking
+- Nothing in this build has been checked on a Mac yet; the change is covered by automated tests.
+- Pleya Share as the host: start sharing, join from an iPad on the same Wi-Fi with the QR code
+  and play a film. This is the first sandboxed Mac build to be checked for it, so macOS may ask
+  once for permission to use the local network.
+
+## 2.8.1 · build 353 · 11 October 2026 · Apple TV
+
+<!-- commit: 89455da4a55e0b43ddc80e66b1858dfbda5fdc16 -->
+
+### New
+- Big P on Apple TV can list the films that have been sitting unwatched in your library. It
+  reads up to 100 films per kind, longest-waiting first, and shows the date each film was added.
+  When there are more than it read it says "at least 100" instead of giving a total, and the
+  cards under the answer are the films named in the text.
+- Big P is switched on in the Apple TV build, as it is on iPhone and iPad. Before it can answer
+  you pick a model provider in its settings.
+
+### Improved
+- Big P and your recommendations recognise a title you watched on one server when the same
+  title sits on another server.
+
+### Fixed
+- Pleya Share stays on your local network. After a short Wi-Fi or hotspot hiccup a guest could
+  end up on the internet relay, where the share looked online but nothing played. Pleya Share
+  no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware. Sharing
+  between two different networks is gone with it.
+
+### Notes
+- Several things were already in earlier builds without a note. The context menu shows a line
+  under the title with genre, runtime, sources and remaining time, the Resume row shows how
+  much time is left, and every row has an icon. Live TV sits inside the same one-bar navigation
+  as the rest of the app, the guide is denser with five channel rows, and a detail bar under it
+  shows what is focused. Season selector labels and the row of extras on a series or movie page
+  are laid out consistently. The top bar, player panel and search field can be glass, with a
+  switch in Appearance that is off by default.
+- Home shows movies and shows added while the app stays open, and refreshes quietly when you
+  return to Home after two minutes and every five minutes while it is on screen. Hidden
+  libraries and library order sync over iCloud for Plex Home profiles: the first device to sync
+  sets them for that profile on every device, so if you arranged a profile differently on
+  purpose on one device, check it.
+
+### Worth checking
+- Nothing in this build has been checked on an Apple TV yet; the changes are covered by
+  automated tests and, for Big P, by one run of two language models against a test library.
+- Big P: pick a model provider, then ask "Which films have been sitting unwatched in my library
+  for a long time?". Check that the oldest additions come first and that the dates match the
+  cards.
+- Pleya Share as a guest: join a host on the same Wi-Fi or on a phone hotspot, browse its
+  library and play a film. Nothing should ask for an internet connection.
 
 ## 2.8.1 · build 352 · 11 October 2026 · iPhone and iPad
 
