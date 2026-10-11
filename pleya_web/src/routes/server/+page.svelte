@@ -8,6 +8,7 @@
    * staat daarom ook geen knop die niets doet: DEC-046 zegt dat wat hier
    * zichtbaar is via /pleya/v1 gaat, en wat er niet is wordt niet getekend.
    */
+  import LanguagePicker from '$lib/components/LanguagePicker.svelte';
   import ThemePicker from '$lib/components/ThemePicker.svelte';
   import { session } from '$lib/stores/session.svelte';
   import { formatCount, formatDate } from '$lib/util/format';
@@ -29,6 +30,11 @@
   <section class="card-surface panel">
     <h2 class="t-title">{t('settings.theme')}</h2>
     <ThemePicker />
+  </section>
+
+  <section class="card-surface panel">
+    <h2 class="t-title">{t('settings.language')}</h2>
+    <LanguagePicker />
   </section>
 
   {#if session.server}
