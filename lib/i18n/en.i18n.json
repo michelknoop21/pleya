@@ -498,6 +498,8 @@
     "mediaDeletedSuccessfully": "Media item deleted successfully",
     "mediaFailedToDelete": "Failed to delete media item",
     "plexDeletionDisabled": "Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.",
+    "plexDeletionFilesNotRemovable": "Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).",
+    "plexDeletionRefusedUnknown": "Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).",
     "rate": "Rate",
     "playFromBeginning": "Play from Beginning",
     "playVersion": "Play Version..."

@@ -1514,6 +1514,12 @@ class TranslationsMediaMenuEn {
 	/// en: 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.'
 	String get plexDeletionDisabled => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.';
 
+	/// en: 'Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).'
+	String get plexDeletionFilesNotRemovable => 'Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).';
+
+	/// en: 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).'
+	String get plexDeletionRefusedUnknown => 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).';
+
 	/// en: 'Rate'
 	String get rate => 'Rate';
 
@@ -9443,6 +9449,8 @@ extension on Translations {
 			'mediaMenu.mediaDeletedSuccessfully' => 'Media item deleted successfully',
 			'mediaMenu.mediaFailedToDelete' => 'Failed to delete media item',
 			'mediaMenu.plexDeletionDisabled' => 'Plex refused the deletion. Enable ‘Allow media deletion’ in Plex server settings and try again.',
+			'mediaMenu.plexDeletionFilesNotRemovable' => 'Plex could not delete this. Check on the server that Plex is allowed to delete the files (folder permissions, drive available).',
+			'mediaMenu.plexDeletionRefusedUnknown' => 'Plex refused the deletion. Check that ‘Allow media deletion’ is enabled in Plex server settings and that Plex is allowed to delete the files (folder permissions, drive available).',
 			'mediaMenu.rate' => 'Rate',
 			'mediaMenu.playFromBeginning' => 'Play from Beginning',
 			'mediaMenu.playVersion' => 'Play Version...',
@@ -9485,10 +9493,10 @@ extension on Translations {
 			'videoControls.timerActive' => 'Timer Active',
 			'videoControls.playbackWillPauseIn' => ({required Object duration}) => 'Playback will pause in ${duration}',
 			'videoControls.sleepTimerEndOfVideo' => 'End of current video',
-			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
-			'videoControls.sleepTimerDurationHeader' => 'Timer',
 			_ => null,
 		} ?? switch (path) {
+			'videoControls.sleepTimerStopAtHeader' => 'Stop at',
+			'videoControls.sleepTimerDurationHeader' => 'Timer',
 			'videoControls.playbackWillPauseAtEnd' => 'Playback will pause at the end of this video',
 			'videoControls.stillWatching' => 'Still watching?',
 			'videoControls.pausingIn' => ({required Object seconds}) => 'Pausing in ${seconds}s',
@@ -9999,10 +10007,10 @@ extension on Translations {
 			'licenses.relatedPackages' => 'Related Packages',
 			'licenses.license' => 'License',
 			'licenses.licenseNumber' => ({required Object number}) => 'License ${number}',
-			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
-			'navigation.libraries' => 'Libraries',
 			_ => null,
 		} ?? switch (path) {
+			'licenses.licensesCount' => ({required Object count}) => '${count} licenses',
+			'navigation.libraries' => 'Libraries',
 			'navigation.downloads' => 'Downloads',
 			'navigation.liveTv' => 'Live TV',
 			'navigation.watchlist' => 'Watchlist',
@@ -10513,10 +10521,10 @@ extension on Translations {
 			'metadataEdit.deleteAfterPlaying' => 'Delete Episodes After Playing',
 			'metadataEdit.never' => 'Never',
 			'metadataEdit.afterADay' => 'After a day',
-			'metadataEdit.afterAWeek' => 'After a week',
-			'metadataEdit.afterAMonth' => 'After a month',
 			_ => null,
 		} ?? switch (path) {
+			'metadataEdit.afterAWeek' => 'After a week',
+			'metadataEdit.afterAMonth' => 'After a month',
 			'metadataEdit.onNextRefresh' => 'On next refresh',
 			'metadataEdit.seasons' => 'Seasons',
 			'metadataEdit.show' => 'Show',
@@ -11027,10 +11035,10 @@ extension on Translations {
 			'unifiedCatalog.homeRows.customizeSubtitle' => 'Move or hide rows, or build one from a filter',
 			'unifiedCatalog.homeRows.customizeIntro' => 'Move, hide or edit your rows. Featured and Continue Watching stay where they are.',
 			'unifiedCatalog.homeRows.featured' => 'Featured',
-			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
-			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
 			_ => null,
 		} ?? switch (path) {
+			'unifiedCatalog.homeRows.alwaysFirst' => 'Always at the top',
+			'unifiedCatalog.homeRows.alwaysSecond' => 'Always second',
 			'unifiedCatalog.homeRows.fixed' => 'fixed',
 			'unifiedCatalog.homeRows.done' => 'Done',
 			'unifiedCatalog.homeRows.moveUp' => 'Move up',
