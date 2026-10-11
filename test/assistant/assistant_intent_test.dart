@@ -16,6 +16,45 @@ void main() {
       expect(_i('Wat kijken de anderen?').audience.source, AssistantFieldSource.explicit);
     });
 
+    // 11 Oct 2026: this question got my_watching's 12 tips as "12 unseen films".
+    test('unseen titles of the library are a catalog question, oldest added first when it asks how long', () {
+      final long = _i('Welke films staan al lang ongezien in mijn bibliotheek?');
+      expect(long.unseenInLibrary, isTrue);
+      expect(long.longestWaiting, isTrue);
+      expect(long.kind.value, MediaKind.movie);
+      expect(long.constrain('my_watching', const {}).error, 'use_search_catalog');
+      expect(long.constrain('watch_stats', const {}).error, 'use_search_catalog');
+      expect(long.constrain('search_catalog', const {'sort': 'released', 'in_progress': true}).args, {
+        'sort': 'added_oldest',
+        'unwatched': true,
+        'kind': 'movie',
+      });
+      expect(long.describe(), contains('sort=added_oldest'));
+
+      final plain = _i('Which series in my library have I not watched yet?');
+      expect(plain.unseenInLibrary, isTrue);
+      expect(plain.longestWaiting, isFalse);
+      expect(plain.constrain('search_catalog', const {'sort': 'title'}).args, {
+        'sort': 'title',
+        'unwatched': true,
+        'kind': 'show',
+      });
+      expect(_i('Wat is de oudste ongeziene film?').longestWaiting, isTrue);
+    });
+
+    test('a tip the user has not seen stays a tip, and a plain watch question is untouched', () {
+      final tip = _i('Geef me een tip voor een film die ik nog niet gezien heb in mijn bibliotheek');
+      expect(tip.unseenInLibrary, isFalse);
+      expect(tip.constrain('my_watching', const {}).error, isNull);
+      expect(_i('Welke films heb ik gekeken?').unseenInLibrary, isFalse);
+      expect(_i('Wat staat er in mijn bibliotheek?').unseenInLibrary, isFalse);
+      // Not inherited: a child task decides by its own words.
+      expect(
+        _i('Een tip').inheriting(_i('Welke films staan al lang ongezien in mijn bibliotheek?')).unseenInLibrary,
+        isFalse,
+      );
+    });
+
     test('others beats a first-person word: "ik" alone is not "me"', () {
       expect(_i('Ik wil weten wat de anderen kijken').audience.value, AssistantAudience.others);
       expect(_i('Ik wil weten wat Sam kijkt').audience.known, isFalse);

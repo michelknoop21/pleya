@@ -50,7 +50,9 @@ final List<AssistantTool> _personalTools = [
         'lately (only the newest titles of the last weeks, see watched_recently_window_days; never say it is all they watched), what they like (genres, actors, directors) and Pleya\'s personal picks for them from their own '
         'libraries, each with the row it comes from ("Because you watched ..."). Use it for a tip for the user or '
         'a question about their history. watch_stats is everyone on the servers under server account names. '
-        'Empty lists mean no history yet or personal recommendations switched off; say so. Pass kind when the '
+        'Empty lists mean no history yet or personal recommendations switched off; say so. picks are a few tips, '
+        'not the unwatched titles of the library and not a count of them: for those use search_catalog with '
+        'unwatched. Pass kind when the '
         'user asks for films or for series only, and exclude_kids when they want kids titles left out (a shared '
         'account); the lists and the cards then hold only what fits.',
     risk: AssistantToolRisk.read,
@@ -127,12 +129,16 @@ final List<AssistantTool> _personalTools = [
       final picks = <MediaItem>[];
       final rows = <Map<String, Object?>>[];
       final seen = <String>{};
+      // The same title from two servers is one tip, not two cards.
+      final seenTitle = <(String, int?, bool)>{};
       for (final hub in hubs) {
         final titles = <Map<String, Object?>>[];
         for (final item in hub.items) {
           final serverId = item.serverId;
           if (serverId == null || picks.length >= limit || !c.admitsSuggestion(item) || seenBefore(item)) continue;
           if (!seen.add(item.globalKey)) continue;
+          final titleKey = assistantTitleKey(item.title ?? '');
+          if (titleKey.isNotEmpty && !seenTitle.add((titleKey, item.year, item.kind.isShowRelated))) continue;
           ctx.showItem(ServerId(serverId), item.id);
           picks.add(item);
           titles.add({
