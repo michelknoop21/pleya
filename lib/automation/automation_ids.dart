@@ -324,6 +324,50 @@ class AutomationIds {
   /// "Bekijk geheugen" under an answer that stored something.
   static const String assistantMemoryLink = 'assistant.memory.link';
 
+  /// Instellingen > Big P > Geheugen (mockup 43). State carries `view`
+  /// (loading, error, kids, off, empty, writing, overview, list), `status`
+  /// (the subtitle's code), `count` and `enabled`. Never a fact's text.
+  static const String screenMemory = 'screen.memory';
+
+  /// The list "Herinneringen" behind "Herinneringen beheren" (43 D). State
+  /// carries `count` (shown) and `total`.
+  static const String screenMemoryList = 'screen.memory_list';
+
+  /// A control of the memory screens: `[menu]`, `[manage]`, `[use]` (reports
+  /// `selected`), `[rewrite]`, `[clear]`, `[turnOn]`, `[retry]`, `[send]`,
+  /// `[ask]` (the TV tile), `[add]`, `[search]`, `[kidsAges]`, `[dismiss]`.
+  static const String settingsMemoryAction = 'settings.memory.action';
+
+  /// The field "Vraag of werk bij" under the overview.
+  static const String settingsMemoryInput = 'settings.memory.input';
+
+  /// The written overview, or the list of facts that stands in for it.
+  static const String settingsMemoryOverview = 'settings.memory.overview';
+
+  /// A follow-up question under "Duik dieper", by index.
+  static const String settingsMemoryFollowUp = 'settings.memory.followUp';
+
+  /// A row of the list "Herinneringen", by index. State carries `category`.
+  static const String settingsMemoryFact = 'settings.memory.fact';
+
+  /// A category chip of that list: `[all]` or the category id. Reports
+  /// `selected`.
+  static const String settingsMemoryChip = 'settings.memory.chip';
+
+  /// A button of a confirmation of the memory screens: `[cancel]` (the safe
+  /// one, focused on open) and `[confirm]`.
+  static const String settingsMemoryDialogButton = 'settings.memory.dialog.button';
+
+  /// The sheet of one memory (43 E, F); state carries `mode` (add, edit, view).
+  static const String settingsMemorySheet = 'settings.memory.sheet';
+  static const String settingsMemorySheetField = 'settings.memory.sheet.field';
+
+  /// `[save]` (reports `enabled`), `[cancel]` and `[delete]`.
+  static const String settingsMemorySheetButton = 'settings.memory.sheet.button';
+
+  /// A category chip in that sheet, by category id. Reports `selected`.
+  static const String settingsMemorySheetChip = 'settings.memory.sheet.chip';
+
   /// Big P summoned with a long Play/Pause press, over any TV screen. State
   /// carries `shown`, `state`, `error` and `pending`. A result stays until
   /// Menu or Klaar: it always offers follow-ups.
@@ -652,6 +696,13 @@ class AutomationIds {
   /// `pleya_verify/automation_ids.yaml`'s `instanceable` field and the Pleya
   /// Verify plan's instance-ID semantics (Fase 5).
   static const Set<String> instanceableIds = {
+    settingsMemoryAction,
+    settingsMemoryFollowUp,
+    settingsMemoryFact,
+    settingsMemoryChip,
+    settingsMemoryDialogButton,
+    settingsMemorySheetButton,
+    settingsMemorySheetChip,
     authChoice,
     sidebarLibraryRow,
     libraryGridItem,
@@ -806,6 +857,19 @@ class AutomationIds {
     {'id': assistantMemoryButton, 'role': 'button', 'instanceable': true},
     {'id': assistantMemoryAnswer, 'role': 'region', 'instanceable': false},
     {'id': assistantMemoryLink, 'role': 'button', 'instanceable': false},
+    {'id': screenMemory, 'role': 'screen', 'instanceable': false},
+    {'id': screenMemoryList, 'role': 'screen', 'instanceable': false},
+    {'id': settingsMemoryAction, 'role': 'button', 'instanceable': true},
+    {'id': settingsMemoryInput, 'role': 'field', 'instanceable': false},
+    {'id': settingsMemoryOverview, 'role': 'region', 'instanceable': false},
+    {'id': settingsMemoryFollowUp, 'role': 'button', 'instanceable': true},
+    {'id': settingsMemoryFact, 'role': 'list.item', 'instanceable': true},
+    {'id': settingsMemoryChip, 'role': 'button', 'instanceable': true},
+    {'id': settingsMemoryDialogButton, 'role': 'button', 'instanceable': true},
+    {'id': settingsMemorySheet, 'role': 'sheet', 'instanceable': false},
+    {'id': settingsMemorySheetField, 'role': 'field', 'instanceable': false},
+    {'id': settingsMemorySheetButton, 'role': 'button', 'instanceable': true},
+    {'id': settingsMemorySheetChip, 'role': 'button', 'instanceable': true},
     {'id': assistantSummon, 'role': 'region', 'instanceable': false},
     {'id': bigpFaceButton, 'role': 'button', 'instanceable': false},
     {'id': bigpBalloon, 'role': 'region', 'instanceable': false},

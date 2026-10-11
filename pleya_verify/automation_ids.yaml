@@ -249,6 +249,45 @@ ids:
   - id: assistant.memory.link
     role: button
     instanceable: false
+  - id: screen.memory
+    role: screen
+    instanceable: false
+  - id: screen.memory_list
+    role: screen
+    instanceable: false
+  - id: settings.memory.action
+    role: button
+    instanceable: true
+  - id: settings.memory.input
+    role: field
+    instanceable: false
+  - id: settings.memory.overview
+    role: region
+    instanceable: false
+  - id: settings.memory.followUp
+    role: button
+    instanceable: true
+  - id: settings.memory.fact
+    role: list.item
+    instanceable: true
+  - id: settings.memory.chip
+    role: button
+    instanceable: true
+  - id: settings.memory.dialog.button
+    role: button
+    instanceable: true
+  - id: settings.memory.sheet
+    role: sheet
+    instanceable: false
+  - id: settings.memory.sheet.field
+    role: field
+    instanceable: false
+  - id: settings.memory.sheet.button
+    role: button
+    instanceable: true
+  - id: settings.memory.sheet.chip
+    role: button
+    instanceable: true
   - id: assistant.summon
     role: region
     instanceable: false

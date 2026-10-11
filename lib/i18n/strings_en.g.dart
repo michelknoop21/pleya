@@ -7710,6 +7710,7 @@ class TranslationsAssistantMemoryEn {
 
 	late final TranslationsAssistantMemoryCardEn card = TranslationsAssistantMemoryCardEn.internal(_root);
 	late final TranslationsAssistantMemoryCategoriesEn categories = TranslationsAssistantMemoryCategoriesEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenEn screen = TranslationsAssistantMemoryScreenEn.internal(_root);
 }
 
 // Path: assistant.mobile
@@ -8859,6 +8860,77 @@ class TranslationsAssistantMemoryCategoriesEn {
 	String get other => 'Other';
 }
 
+// Path: assistant.memory.screen
+class TranslationsAssistantMemoryScreenEn {
+	TranslationsAssistantMemoryScreenEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Memory'
+	String get title => 'Memory';
+
+	/// en: 'What Big P remembers about this profile'
+	String get tileSubtitle => 'What Big P remembers about this profile';
+
+	late final TranslationsAssistantMemoryScreenStatusEn status = TranslationsAssistantMemoryScreenStatusEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenSectionsEn sections = TranslationsAssistantMemoryScreenSectionsEn.internal(_root);
+
+	/// en: 'Dig deeper'
+	String get deeper => 'Dig deeper';
+
+	/// en: 'Big P wrote this overview from ${n} memories.'
+	String footer({required Object n}) => 'Big P wrote this overview from ${n} memories.';
+
+	/// en: 'Big P wrote this overview from 1 memory.'
+	String get footerOne => 'Big P wrote this overview from 1 memory.';
+
+	/// en: 'Big P wrote this overview from ${n} of your ${m} memories.'
+	String footerPartial({required Object n, required Object m}) => 'Big P wrote this overview from ${n} of your ${m} memories.';
+
+	/// en: 'You manage the memories themselves from the menu.'
+	String get footerManageMenu => 'You manage the memories themselves from the menu.';
+
+	/// en: 'You manage the memories themselves under Manage memories.'
+	String get footerManageList => 'You manage the memories themselves under Manage memories.';
+
+	/// en: 'Children's ages are kept under Children's profile.'
+	String get kidsAgesLine => 'Children\'s ages are kept under Children\'s profile.';
+
+	/// en: 'Big P could not write the overview right now. These are your memories.'
+	String get fallbackNote => 'Big P could not write the overview right now. These are your memories.';
+
+	/// en: 'Ask or update'
+	String get ask => 'Ask or update';
+
+	/// en: 'Opens the keyboard or dictation'
+	String get askTvHint => 'Opens the keyboard or dictation';
+
+	/// en: 'Send'
+	String get send => 'Send';
+
+	/// en: 'Close answer'
+	String get dismissAnswer => 'Close answer';
+
+	/// en: 'Set up a model first under Settings, Big P.'
+	String get needsSetup => 'Set up a model first under Settings, Big P.';
+
+	/// en: 'Big P could not answer right now. Try again later.'
+	String get askFailed => 'Big P could not answer right now. Try again later.';
+
+	late final TranslationsAssistantMemoryScreenMenuEn menu = TranslationsAssistantMemoryScreenMenuEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenClearDialogEn clearDialog = TranslationsAssistantMemoryScreenClearDialogEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenOffEn off = TranslationsAssistantMemoryScreenOffEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenEmptyEn empty = TranslationsAssistantMemoryScreenEmptyEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenKidsEn kids = TranslationsAssistantMemoryScreenKidsEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenErrorEn error = TranslationsAssistantMemoryScreenErrorEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenListEn list = TranslationsAssistantMemoryScreenListEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenSourcesEn sources = TranslationsAssistantMemoryScreenSourcesEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenSheetEn sheet = TranslationsAssistantMemoryScreenSheetEn.internal(_root);
+	late final TranslationsAssistantMemoryScreenCodesEn codes = TranslationsAssistantMemoryScreenCodesEn.internal(_root);
+}
+
 // Path: assistant.jobs.scanLibrary
 class TranslationsAssistantJobsScanLibraryEn {
 	TranslationsAssistantJobsScanLibraryEn.internal(this._root);
@@ -8953,6 +9025,357 @@ class TranslationsAssistantConfirmTitlesEn {
 
 	/// en: 'Change playback'
 	String get changePlayback => 'Change playback';
+}
+
+// Path: assistant.memory.screen.status
+class TranslationsAssistantMemoryScreenStatusEn {
+	TranslationsAssistantMemoryScreenStatusEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Just updated'
+	String get updated => 'Just updated';
+
+	/// en: 'Updated on ${date}'
+	String updatedOn({required Object date}) => 'Updated on ${date}';
+
+	/// en: 'Updating'
+	String get writing => 'Updating';
+
+	/// en: 'Off'
+	String get off => 'Off';
+
+	/// en: 'Still empty'
+	String get empty => 'Still empty';
+
+	/// en: 'Waiting for your choice'
+	String get waiting => 'Waiting for your choice';
+
+	/// en: 'List of memories'
+	String get list => 'List of memories';
+
+	/// en: 'Children's profile'
+	String get kids => 'Children\'s profile';
+
+	/// en: 'Not available'
+	String get error => 'Not available';
+
+	/// en: 'Big P is thinking'
+	String get asking => 'Big P is thinking';
+}
+
+// Path: assistant.memory.screen.sections
+class TranslationsAssistantMemoryScreenSectionsEn {
+	TranslationsAssistantMemoryScreenSectionsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Overview'
+	String get overview => 'Overview';
+
+	/// en: 'Preferences'
+	String get preference => 'Preferences';
+
+	/// en: 'Not for you'
+	String get dislike => 'Not for you';
+
+	/// en: 'Household'
+	String get household => 'Household';
+
+	/// en: 'Viewing habits'
+	String get habit => 'Viewing habits';
+
+	/// en: 'Other'
+	String get other => 'Other';
+}
+
+// Path: assistant.memory.screen.menu
+class TranslationsAssistantMemoryScreenMenuEn {
+	TranslationsAssistantMemoryScreenMenuEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Menu'
+	String get open => 'Menu';
+
+	/// en: 'Memory'
+	String get title => 'Memory';
+
+	/// en: 'Manage'
+	String get management => 'Manage';
+
+	/// en: 'Manage memories'
+	String get manage => 'Manage memories';
+
+	/// en: 'Use memory'
+	String get use => 'Use memory';
+
+	/// en: 'Use memory: On'
+	String get useOn => 'Use memory: On';
+
+	/// en: 'Use memory: Off'
+	String get useOff => 'Use memory: Off';
+
+	/// en: 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile's memories for the overview.'
+	String get useNote => 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.';
+
+	/// en: 'Write overview again'
+	String get rewrite => 'Write overview again';
+
+	/// en: 'Clear all memories'
+	String get clear => 'Clear all memories';
+}
+
+// Path: assistant.memory.screen.clearDialog
+class TranslationsAssistantMemoryScreenClearDialogEn {
+	TranslationsAssistantMemoryScreenClearDialogEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Clear all memories?'
+	String get title => 'Clear all memories?';
+
+	/// en: 'Big P forgets everything he remembered about this profile. This cannot be undone.'
+	String get body => 'Big P forgets everything he remembered about this profile. This cannot be undone.';
+
+	/// en: 'Clear'
+	String get confirm => 'Clear';
+}
+
+// Path: assistant.memory.screen.off
+class TranslationsAssistantMemoryScreenOffEn {
+	TranslationsAssistantMemoryScreenOffEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Memory is off.'
+	String get title => 'Memory is off.';
+
+	/// en: 'Big P remembers nothing and uses nothing. Existing memories are kept until you clear them.'
+	String get body => 'Big P remembers nothing and uses nothing. Existing memories are kept until you clear them.';
+
+	/// en: 'Turn memory on'
+	String get turnOn => 'Turn memory on';
+}
+
+// Path: assistant.memory.screen.empty
+class TranslationsAssistantMemoryScreenEmptyEn {
+	TranslationsAssistantMemoryScreenEmptyEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No memories yet.'
+	String get title => 'No memories yet.';
+
+	/// en: 'Tell Big P what he should know about you, for example: remember that I do not like horror.'
+	String get body => 'Tell Big P what he should know about you, for example: remember that I do not like horror.';
+}
+
+// Path: assistant.memory.screen.kids
+class TranslationsAssistantMemoryScreenKidsEn {
+	TranslationsAssistantMemoryScreenKidsEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'This is a children's profile.'
+	String get title => 'This is a children\'s profile.';
+
+	/// en: 'Big P uses no memory here. You can view and clear the memories.'
+	String get body => 'Big P uses no memory here. You can view and clear the memories.';
+}
+
+// Path: assistant.memory.screen.error
+class TranslationsAssistantMemoryScreenErrorEn {
+	TranslationsAssistantMemoryScreenErrorEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'The memories cannot be read.'
+	String get title => 'The memories cannot be read.';
+
+	/// en: 'Nothing was changed. Try again.'
+	String get body => 'Nothing was changed. Try again.';
+}
+
+// Path: assistant.memory.screen.list
+class TranslationsAssistantMemoryScreenListEn {
+	TranslationsAssistantMemoryScreenListEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Memories'
+	String get title => 'Memories';
+
+	/// en: 'Profile ${name}'
+	String profile({required Object name}) => 'Profile ${name}';
+
+	/// en: 'Search memories'
+	String get search => 'Search memories';
+
+	/// en: 'Search'
+	String get searchTv => 'Search';
+
+	/// en: 'Clear search'
+	String get searchClear => 'Clear search';
+
+	/// en: 'All'
+	String get all => 'All';
+
+	/// en: 'Memories'
+	String get header => 'Memories';
+
+	/// en: '${n} memories'
+	String count({required Object n}) => '${n} memories';
+
+	/// en: '1 memory'
+	String get countOne => '1 memory';
+
+	/// en: '${n} of ${m} memories'
+	String countOf({required Object n, required Object m}) => '${n} of ${m} memories';
+
+	/// en: 'No memories found.'
+	String get none => 'No memories found.';
+
+	/// en: 'From your children's profile'
+	String get kidsHeader => 'From your children\'s profile';
+
+	/// en: 'Children's ages'
+	String get kidsAges => 'Children\'s ages';
+
+	/// en: 'Managed under Children's profile'
+	String get kidsAgesNote => 'Managed under Children\'s profile';
+
+	/// en: 'and'
+	String get and => 'and';
+
+	/// en: 'Add memory'
+	String get add => 'Add memory';
+}
+
+// Path: assistant.memory.screen.sources
+class TranslationsAssistantMemoryScreenSourcesEn {
+	TranslationsAssistantMemoryScreenSourcesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Asked by you'
+	String get userExplicit => 'Asked by you';
+
+	/// en: 'Proposed by Big P, confirmed by you'
+	String get assistantConfirmed => 'Proposed by Big P, confirmed by you';
+
+	/// en: 'Added by you'
+	String get settingsManual => 'Added by you';
+}
+
+// Path: assistant.memory.screen.sheet
+class TranslationsAssistantMemoryScreenSheetEn {
+	TranslationsAssistantMemoryScreenSheetEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Memory'
+	String get title => 'Memory';
+
+	/// en: 'Add memory'
+	String get addTitle => 'Add memory';
+
+	/// en: 'Text'
+	String get text => 'Text';
+
+	/// en: 'For example: I do not like horror'
+	String get hint => 'For example: I do not like horror';
+
+	/// en: 'Category'
+	String get category => 'Category';
+
+	/// en: 'Origin'
+	String get source => 'Origin';
+
+	/// en: 'Added on'
+	String get created => 'Added on';
+
+	/// en: 'Last changed'
+	String get updated => 'Last changed';
+
+	/// en: 'Do not store passwords or medical details.'
+	String get privacy => 'Do not store passwords or medical details.';
+
+	/// en: 'Delete memory?'
+	String get deleteTitle => 'Delete memory?';
+
+	/// en: 'Big P forgets this. This cannot be undone.'
+	String get deleteBody => 'Big P forgets this. This cannot be undone.';
+
+	/// en: 'On a children's profile you can view and clear memories, not change them.'
+	String get readOnly => 'On a children\'s profile you can view and clear memories, not change them.';
+}
+
+// Path: assistant.memory.screen.codes
+class TranslationsAssistantMemoryScreenCodesEn {
+	TranslationsAssistantMemoryScreenCodesEn.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'This memory is already there.'
+	String get exists => 'This memory is already there.';
+
+	/// en: 'Another memory already says this.'
+	String get duplicate => 'Another memory already says this.';
+
+	/// en: 'Type a sentence first.'
+	String get empty => 'Type a sentence first.';
+
+	/// en: 'Too long. A memory is one sentence of at most ${max} characters.'
+	String tooLong({required Object max}) => 'Too long. A memory is one sentence of at most ${max} characters.';
+
+	/// en: 'A memory is one line.'
+	String get notSingleLine => 'A memory is one line.';
+
+	/// en: 'This text holds characters that cannot be stored.'
+	String get controlCharacters => 'This text holds characters that cannot be stored.';
+
+	/// en: 'Children's ages belong under Children's profile, not in the memory.'
+	String get ownedKidsAges => 'Children\'s ages belong under Children\'s profile, not in the memory.';
+
+	/// en: 'A language preference is set under Language & subtitles, not in the memory.'
+	String get ownedLanguage => 'A language preference is set under Language & subtitles, not in the memory.';
+
+	/// en: 'The memory is full. Remove a memory first.'
+	String get limitReached => 'The memory is full. Remove a memory first.';
+
+	/// en: 'This memory no longer exists.'
+	String get notFound => 'This memory no longer exists.';
+
+	/// en: 'This profile was switched or removed. Nothing was changed.'
+	String get profileGone => 'This profile was switched or removed. Nothing was changed.';
+
+	/// en: 'Saving did not work. Nothing was changed.'
+	String get storageFailed => 'Saving did not work. Nothing was changed.';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -11190,6 +11613,103 @@ extension on Translations {
 			'assistant.memory.categories.household' => 'Household',
 			'assistant.memory.categories.habit' => 'Viewing habits',
 			'assistant.memory.categories.other' => 'Other',
+			'assistant.memory.screen.title' => 'Memory',
+			'assistant.memory.screen.tileSubtitle' => 'What Big P remembers about this profile',
+			'assistant.memory.screen.status.updated' => 'Just updated',
+			'assistant.memory.screen.status.updatedOn' => ({required Object date}) => 'Updated on ${date}',
+			'assistant.memory.screen.status.writing' => 'Updating',
+			'assistant.memory.screen.status.off' => 'Off',
+			'assistant.memory.screen.status.empty' => 'Still empty',
+			'assistant.memory.screen.status.waiting' => 'Waiting for your choice',
+			'assistant.memory.screen.status.list' => 'List of memories',
+			'assistant.memory.screen.status.kids' => 'Children\'s profile',
+			'assistant.memory.screen.status.error' => 'Not available',
+			'assistant.memory.screen.status.asking' => 'Big P is thinking',
+			'assistant.memory.screen.sections.overview' => 'Overview',
+			'assistant.memory.screen.sections.preference' => 'Preferences',
+			'assistant.memory.screen.sections.dislike' => 'Not for you',
+			'assistant.memory.screen.sections.household' => 'Household',
+			'assistant.memory.screen.sections.habit' => 'Viewing habits',
+			'assistant.memory.screen.sections.other' => 'Other',
+			'assistant.memory.screen.deeper' => 'Dig deeper',
+			'assistant.memory.screen.footer' => ({required Object n}) => 'Big P wrote this overview from ${n} memories.',
+			'assistant.memory.screen.footerOne' => 'Big P wrote this overview from 1 memory.',
+			'assistant.memory.screen.footerPartial' => ({required Object n, required Object m}) => 'Big P wrote this overview from ${n} of your ${m} memories.',
+			'assistant.memory.screen.footerManageMenu' => 'You manage the memories themselves from the menu.',
+			'assistant.memory.screen.footerManageList' => 'You manage the memories themselves under Manage memories.',
+			'assistant.memory.screen.kidsAgesLine' => 'Children\'s ages are kept under Children\'s profile.',
+			'assistant.memory.screen.fallbackNote' => 'Big P could not write the overview right now. These are your memories.',
+			'assistant.memory.screen.ask' => 'Ask or update',
+			'assistant.memory.screen.askTvHint' => 'Opens the keyboard or dictation',
+			'assistant.memory.screen.send' => 'Send',
+			'assistant.memory.screen.dismissAnswer' => 'Close answer',
+			'assistant.memory.screen.needsSetup' => 'Set up a model first under Settings, Big P.',
+			'assistant.memory.screen.askFailed' => 'Big P could not answer right now. Try again later.',
+			'assistant.memory.screen.menu.open' => 'Menu',
+			'assistant.memory.screen.menu.title' => 'Memory',
+			'assistant.memory.screen.menu.management' => 'Manage',
+			'assistant.memory.screen.menu.manage' => 'Manage memories',
+			'assistant.memory.screen.menu.use' => 'Use memory',
+			'assistant.memory.screen.menu.useOn' => 'Use memory: On',
+			'assistant.memory.screen.menu.useOff' => 'Use memory: Off',
+			'assistant.memory.screen.menu.useNote' => 'Big P remembers what you ask him to remember. Only for this profile, only on this device. With a cloud model, relevant memories go along with your question, and this profile\'s memories for the overview.',
+			'assistant.memory.screen.menu.rewrite' => 'Write overview again',
+			'assistant.memory.screen.menu.clear' => 'Clear all memories',
+			'assistant.memory.screen.clearDialog.title' => 'Clear all memories?',
+			'assistant.memory.screen.clearDialog.body' => 'Big P forgets everything he remembered about this profile. This cannot be undone.',
+			'assistant.memory.screen.clearDialog.confirm' => 'Clear',
+			'assistant.memory.screen.off.title' => 'Memory is off.',
+			'assistant.memory.screen.off.body' => 'Big P remembers nothing and uses nothing. Existing memories are kept until you clear them.',
+			'assistant.memory.screen.off.turnOn' => 'Turn memory on',
+			'assistant.memory.screen.empty.title' => 'No memories yet.',
+			'assistant.memory.screen.empty.body' => 'Tell Big P what he should know about you, for example: remember that I do not like horror.',
+			'assistant.memory.screen.kids.title' => 'This is a children\'s profile.',
+			'assistant.memory.screen.kids.body' => 'Big P uses no memory here. You can view and clear the memories.',
+			'assistant.memory.screen.error.title' => 'The memories cannot be read.',
+			'assistant.memory.screen.error.body' => 'Nothing was changed. Try again.',
+			'assistant.memory.screen.list.title' => 'Memories',
+			'assistant.memory.screen.list.profile' => ({required Object name}) => 'Profile ${name}',
+			'assistant.memory.screen.list.search' => 'Search memories',
+			'assistant.memory.screen.list.searchTv' => 'Search',
+			'assistant.memory.screen.list.searchClear' => 'Clear search',
+			'assistant.memory.screen.list.all' => 'All',
+			'assistant.memory.screen.list.header' => 'Memories',
+			'assistant.memory.screen.list.count' => ({required Object n}) => '${n} memories',
+			'assistant.memory.screen.list.countOne' => '1 memory',
+			'assistant.memory.screen.list.countOf' => ({required Object n, required Object m}) => '${n} of ${m} memories',
+			'assistant.memory.screen.list.none' => 'No memories found.',
+			'assistant.memory.screen.list.kidsHeader' => 'From your children\'s profile',
+			'assistant.memory.screen.list.kidsAges' => 'Children\'s ages',
+			'assistant.memory.screen.list.kidsAgesNote' => 'Managed under Children\'s profile',
+			'assistant.memory.screen.list.and' => 'and',
+			'assistant.memory.screen.list.add' => 'Add memory',
+			'assistant.memory.screen.sources.userExplicit' => 'Asked by you',
+			'assistant.memory.screen.sources.assistantConfirmed' => 'Proposed by Big P, confirmed by you',
+			'assistant.memory.screen.sources.settingsManual' => 'Added by you',
+			'assistant.memory.screen.sheet.title' => 'Memory',
+			'assistant.memory.screen.sheet.addTitle' => 'Add memory',
+			'assistant.memory.screen.sheet.text' => 'Text',
+			'assistant.memory.screen.sheet.hint' => 'For example: I do not like horror',
+			'assistant.memory.screen.sheet.category' => 'Category',
+			'assistant.memory.screen.sheet.source' => 'Origin',
+			'assistant.memory.screen.sheet.created' => 'Added on',
+			'assistant.memory.screen.sheet.updated' => 'Last changed',
+			'assistant.memory.screen.sheet.privacy' => 'Do not store passwords or medical details.',
+			'assistant.memory.screen.sheet.deleteTitle' => 'Delete memory?',
+			'assistant.memory.screen.sheet.deleteBody' => 'Big P forgets this. This cannot be undone.',
+			'assistant.memory.screen.sheet.readOnly' => 'On a children\'s profile you can view and clear memories, not change them.',
+			'assistant.memory.screen.codes.exists' => 'This memory is already there.',
+			'assistant.memory.screen.codes.duplicate' => 'Another memory already says this.',
+			'assistant.memory.screen.codes.empty' => 'Type a sentence first.',
+			'assistant.memory.screen.codes.tooLong' => ({required Object max}) => 'Too long. A memory is one sentence of at most ${max} characters.',
+			'assistant.memory.screen.codes.notSingleLine' => 'A memory is one line.',
+			'assistant.memory.screen.codes.controlCharacters' => 'This text holds characters that cannot be stored.',
+			'assistant.memory.screen.codes.ownedKidsAges' => 'Children\'s ages belong under Children\'s profile, not in the memory.',
+			'assistant.memory.screen.codes.ownedLanguage' => 'A language preference is set under Language & subtitles, not in the memory.',
+			'assistant.memory.screen.codes.limitReached' => 'The memory is full. Remove a memory first.',
+			'assistant.memory.screen.codes.notFound' => 'This memory no longer exists.',
+			'assistant.memory.screen.codes.profileGone' => 'This profile was switched or removed. Nothing was changed.',
+			'assistant.memory.screen.codes.storageFailed' => 'Saving did not work. Nothing was changed.',
 			'assistant.tileTitle' => 'Big P',
 			'assistant.tileSubtitle' => 'Pleya Assistant',
 			'assistant.providerLabel' => 'AI provider',
@@ -11434,6 +11954,8 @@ extension on Translations {
 			'assistant.settings.kidsProfileNote' => 'Big P only shows titles that suit the children\'s ages. Only for this profile, only on this device.',
 			'assistant.settings.kidsProfileLocked' => 'Plex marks this account as restricted, so this is always on.',
 			'assistant.tasks.working' => ({required Object count, required Object done}) => 'Working on ${count} tasks · ${done} done',
+			_ => null,
+		} ?? switch (path) {
 			'assistant.tasks.allDone' => ({required Object count}) => '${count} tasks are done.',
 			'assistant.tasks.someDone' => ({required Object done, required Object count}) => '${done} of ${count} tasks done.',
 			'assistant.tasks.queued' => 'Queued',

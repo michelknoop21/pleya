@@ -2432,6 +2432,129 @@
         "household": "Huishouden",
         "habit": "Kijkgewoonten",
         "other": "Overig"
+      },
+      "screen": {
+        "title": "Geheugen",
+        "tileSubtitle": "Wat Big P over dit profiel onthoudt",
+        "status": {
+          "updated": "Zojuist bijgewerkt",
+          "updatedOn": "Bijgewerkt op ${date}",
+          "writing": "Bijwerken",
+          "off": "Uit",
+          "empty": "Nog leeg",
+          "waiting": "Wacht op je keuze",
+          "list": "Lijst met herinneringen",
+          "kids": "Kinderprofiel",
+          "error": "Niet beschikbaar",
+          "asking": "Big P denkt na"
+        },
+        "sections": {
+          "overview": "Overzicht",
+          "preference": "Voorkeuren",
+          "dislike": "Niet voor jou",
+          "household": "Huishouden",
+          "habit": "Kijkgewoonten",
+          "other": "Overig"
+        },
+        "deeper": "Duik dieper",
+        "footer": "Dit overzicht is geschreven door Big P op basis van ${n} herinneringen.",
+        "footerOne": "Dit overzicht is geschreven door Big P op basis van 1 herinnering.",
+        "footerPartial": "Dit overzicht is geschreven door Big P op basis van ${n} van je ${m} herinneringen.",
+        "footerManageMenu": "De herinneringen zelf beheer je via het menu.",
+        "footerManageList": "De herinneringen zelf beheer je bij Herinneringen beheren.",
+        "kidsAgesLine": "Leeftijden van kinderen staan bij Kinderprofiel.",
+        "fallbackNote": "Big P kon het overzicht nu niet schrijven. Dit zijn je herinneringen.",
+        "ask": "Vraag of werk bij",
+        "askTvHint": "Opent het toetsenbord of dicteren",
+        "send": "Versturen",
+        "dismissAnswer": "Antwoord sluiten",
+        "needsSetup": "Stel eerst een model in bij Instellingen, Big P.",
+        "askFailed": "Big P kon nu niet antwoorden. Probeer het later opnieuw.",
+        "menu": {
+          "open": "Menu",
+          "title": "Geheugen",
+          "management": "Beheer",
+          "manage": "Herinneringen beheren",
+          "use": "Geheugen gebruiken",
+          "useOn": "Geheugen gebruiken: Aan",
+          "useOff": "Geheugen gebruiken: Uit",
+          "useNote": "Big P onthoudt wat je hem vraagt te onthouden. Alleen voor dit profiel, alleen op dit apparaat. Gebruik je een cloudmodel, dan gaan relevante herinneringen mee met je vraag, en voor het overzicht de herinneringen van dit profiel.",
+          "rewrite": "Overzicht opnieuw schrijven",
+          "clear": "Alle herinneringen wissen"
+        },
+        "clearDialog": {
+          "title": "Alle herinneringen wissen?",
+          "body": "Big P vergeet alles wat hij over dit profiel heeft onthouden. Dit kan niet ongedaan worden gemaakt.",
+          "confirm": "Wissen"
+        },
+        "off": {
+          "title": "Geheugen staat uit.",
+          "body": "Big P onthoudt niets en gebruikt niets. Bestaande herinneringen blijven bewaard tot je ze wist.",
+          "turnOn": "Geheugen aanzetten"
+        },
+        "empty": {
+          "title": "Nog geen herinneringen.",
+          "body": "Vertel Big P wat hij over je moet weten, bijvoorbeeld: onthoud dat ik niet van horror houd."
+        },
+        "kids": {
+          "title": "Dit is een kinderprofiel.",
+          "body": "Big P gebruikt hier geen geheugen. Je kunt de herinneringen bekijken en wissen."
+        },
+        "error": {
+          "title": "De herinneringen zijn niet te lezen.",
+          "body": "Er is niets gewijzigd. Probeer het opnieuw."
+        },
+        "list": {
+          "title": "Herinneringen",
+          "profile": "Profiel ${name}",
+          "search": "Zoek in herinneringen",
+          "searchTv": "Zoeken",
+          "searchClear": "Zoekopdracht wissen",
+          "all": "Alles",
+          "header": "Herinneringen",
+          "count": "${n} herinneringen",
+          "countOne": "1 herinnering",
+          "countOf": "${n} van ${m} herinneringen",
+          "none": "Geen herinneringen gevonden.",
+          "kidsHeader": "Uit je kinderprofiel",
+          "kidsAges": "Leeftijden kinderen",
+          "kidsAgesNote": "Beheerd bij Kinderprofiel",
+          "and": "en",
+          "add": "Herinnering toevoegen"
+        },
+        "sources": {
+          "userExplicit": "Door jou gevraagd",
+          "assistantConfirmed": "Voorgesteld door Big P, door jou bevestigd",
+          "settingsManual": "Zelf toegevoegd"
+        },
+        "sheet": {
+          "title": "Herinnering",
+          "addTitle": "Herinnering toevoegen",
+          "text": "Tekst",
+          "hint": "Bijvoorbeeld: ik houd niet van horror",
+          "category": "Categorie",
+          "source": "Herkomst",
+          "created": "Toegevoegd op",
+          "updated": "Laatst gewijzigd",
+          "privacy": "Sla geen wachtwoorden of medische gegevens op.",
+          "deleteTitle": "Herinnering verwijderen?",
+          "deleteBody": "Big P vergeet dit. Dit kan niet ongedaan worden gemaakt.",
+          "readOnly": "Op een kinderprofiel kun je herinneringen bekijken en wissen, niet wijzigen."
+        },
+        "codes": {
+          "exists": "Deze herinnering staat er al.",
+          "duplicate": "Een andere herinnering zegt dit al.",
+          "empty": "Typ eerst een zin.",
+          "tooLong": "Te lang. Een herinnering is één zin van hoogstens ${max} tekens.",
+          "notSingleLine": "Een herinnering is één regel.",
+          "controlCharacters": "Deze tekst bevat tekens die niet kunnen worden opgeslagen.",
+          "ownedKidsAges": "Leeftijden van kinderen horen bij Kinderprofiel, niet in het geheugen.",
+          "ownedLanguage": "Een taalvoorkeur stel je in bij Taal en ondertitels, niet in het geheugen.",
+          "limitReached": "Het geheugen is vol. Verwijder eerst een herinnering.",
+          "notFound": "Deze herinnering bestaat niet meer.",
+          "profileGone": "Dit profiel is gewisseld of verwijderd. Er is niets gewijzigd.",
+          "storageFailed": "Opslaan is niet gelukt. Er is niets gewijzigd."
+        }
       }
     },
     "tileTitle": "Big P",
