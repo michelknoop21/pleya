@@ -294,5 +294,39 @@ void main() {
       expect(TraktSyncService.instance.hasClient, isFalse);
       kid.dispose();
     });
+
+    test('a disconnect or invalidation during a rebind cancels the bind', () async {
+      await seed('adult');
+      final gate = Completer<bool>();
+      final p = TraktAccountProvider(kidsProfileCheck: () => gate.future);
+      final rebinding = p.onActiveProfileChanged('adult');
+
+      p.debugBumpGenerationForTesting();
+      gate.complete(false);
+      await rebinding;
+
+      expect(p.isConnected, isFalse);
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      p.dispose();
+    });
+
+    test('the kids shield wins over a bind that happened while the check ran', () async {
+      await seed('adult');
+      final gate = Completer<bool>();
+      final p = TraktAccountProvider(kidsProfileCheck: () async => false);
+      await p.onActiveProfileChanged('adult');
+      expect(TraktScrobbleService.instance.hasClient, isTrue);
+
+      p.debugSetKidsProfileCheckForTesting(() => gate.future);
+      final gating = p.reevaluateKidsGate();
+      p.debugBumpGenerationForTesting();
+      gate.complete(true);
+      await gating;
+
+      expect(p.isKidsProfile, isTrue);
+      expect(p.isConnected, isFalse);
+      expect(TraktScrobbleService.instance.hasClient, isFalse);
+      p.dispose();
+    });
   });
 }

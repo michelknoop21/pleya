@@ -82,6 +82,9 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
   Future<void> _rebind(String userUuid, {required bool bumpGeneration}) async {
     if (isDisposed) return;
     if (bumpGeneration) _bindingGeneration++;
+    // A disconnect, an invalidation or a finished connect bumps the generation
+    // and cancels the bind this run would do after its awaits.
+    final generation = _bindingGeneration;
     final run = ++_rebindRun;
     _activeUserUuid = userUuid;
     // Nothing of the previous profile may keep scrobbling while the next one
@@ -91,12 +94,18 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
     if (isDisposed || run != _rebindRun) return;
     _isKidsProfile = kids;
     if (kids) {
+      // The shield wins over any bind that happened while the check ran.
       _setSessionAndRebind(userUuid, _bindingGeneration, null);
       return;
     }
     final loaded = await _store.load(userUuid);
-    if (isDisposed || run != _rebindRun || _isKidsProfile) return;
-    _setSessionAndRebind(userUuid, _bindingGeneration, loaded);
+    if (isDisposed || run != _rebindRun || _isKidsProfile || generation != _bindingGeneration) return;
+    // A refreshed pair can be newer than what the store returned a moment ago.
+    final current = _session;
+    final latest = current != null && loaded != null && (current.expiresAt ?? 0) > (loaded.expiresAt ?? 0)
+        ? current
+        : loaded;
+    _setSessionAndRebind(userUuid, generation, latest);
   }
 
   /// Run the device-code OAuth flow.
@@ -171,7 +180,7 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
 
   void _bindCurrentSession(TrackerSession? session) {
     // The switch may have gone on while the device-code flow was saving.
-    if (session != null && _isKidsProfile) return;
+    if (session != null && _isKidsProfile) throw StateError('Trakt login refused: kids profile');
     _setSessionAndRebind(_activeUserUuid, ++_bindingGeneration, session);
   }
 
@@ -231,6 +240,9 @@ class TraktAccountProvider extends ChangeNotifier with DisposableChangeNotifierM
     unawaited(_store.clear(userUuid));
     _setSessionAndRebind(userUuid, nextGeneration, null);
   }
+
+  @visibleForTesting
+  void debugBumpGenerationForTesting() => _bindingGeneration++;
 
   @visibleForTesting
   int get debugBindingGenerationForTesting => _bindingGeneration;
