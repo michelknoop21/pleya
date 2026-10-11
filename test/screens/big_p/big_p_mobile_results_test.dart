@@ -129,6 +129,29 @@ void main() {
     expect(c.submitted, [label]);
   });
 
+  testWidgets('Pleya asks whose watching: the three options are the chips, a tap asks that exact question', (
+    tester,
+  ) async {
+    const options = [
+      'Wat heb ik deze week gekeken?',
+      'Wat keken de anderen deze week?',
+      'Wat keek iedereen deze week?',
+    ];
+    c
+      ..prompt = 'Wat is er deze week gekeken?'
+      ..answer = 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?'
+      ..displays = [const AssistantClarification(question: 'Bedoel je ...', options: options)]
+      ..state = AssistantSurfaceState.result;
+    await pumpHost(tester);
+    final chips = find.byWidgetPredicate((w) => w is BigPChip && w.dense);
+    expect(chips, findsNWidgets(3));
+    expect([for (final w in tester.widgetList<BigPChip>(chips)) w.label], options);
+    expect(find.textContaining('Bedoel je alleen'), findsOneWidget, reason: 'the answer is Pleya\'s own question');
+    await tester.tap(chips.at(1));
+    await tester.pump();
+    expect(c.submitted, ['Wat keken de anderen deze week?']);
+  });
+
   testWidgets('no follow-ups after an error', (tester) async {
     answerTitles(c);
     c.resultIsError = true;

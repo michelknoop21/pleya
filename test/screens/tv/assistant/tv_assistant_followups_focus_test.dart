@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pleya/assistant/assistant_controller.dart';
+import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/automation/automation_ids.dart';
 import 'package:pleya/screens/tv/assistant/tv_assistant_screen.dart';
 import 'package:pleya/services/apple_tv_native_text_entry.dart';
@@ -77,5 +78,40 @@ void main() {
       down.add(focusedFollowUp());
     }
     expect(down, ['1', '2']);
+  });
+
+  testWidgets('Pleya\'s own question: its options are the chips, reachable by the remote, and one sends its words', (
+    tester,
+  ) async {
+    final entry = AppleTvNativeTextEntry(channel: channel);
+    await pumpTvFrame(
+      tester,
+      c,
+      TvAssistantScreen(
+        speech: SpeechSearchService(textEntry: entry),
+        textEntry: entry,
+      ),
+    );
+    const options = [
+      'Wat heb ik deze week gekeken?',
+      'Wat keken de anderen deze week?',
+      'Wat keek iedereen deze week?',
+    ];
+    c
+      ..prompt = 'Wat is er deze week gekeken?'
+      ..answer = 'Bedoel je alleen wat jij hebt gekeken, wat de anderen keken, of wat iedereen keek?'
+      ..displays = [const AssistantClarification(question: 'Bedoel je ...', options: options)]
+      ..state = AssistantSurfaceState.result
+      ..emit();
+    await settle(tester);
+    for (final o in options) {
+      expect(find.text(o), findsOneWidget, reason: o);
+    }
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(focusedFollowUp(), '2');
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(focusedFollowUp(), '1');
+    await press(tester, LogicalKeyboardKey.select);
+    expect(c.submitted.last, 'Wat keken de anderen deze week?');
   });
 }

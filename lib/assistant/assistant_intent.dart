@@ -52,6 +52,14 @@ final _exceptName = RegExp(
 );
 // A bare "show" is the verb ("show me"); only the plural or "tv show" is a series.
 // Compounds count too ("kerstfilm", "docuserie"): a half-seen kind would narrow.
+// A finished watch ("gekeken", "watched") with nobody named in it: a passive
+// history question whose audience nothing in the words decides.
+final _pastWatch = RegExp(r'\b(gekeken|bekeken|gezien|watched|seen)\b');
+// Words that already name or exclude an audience, or make it a different question.
+final _audienceWord = RegExp(
+  r'\b(ik|mij|mijn|me|my|myself|i|we|wij|ons|onze|us|our|niemand|iemand|nobody|someone|anyone|anybody|'
+  r'zelf|samen|together|jij|je|u|you|hij|zij|ze|he|she|they|them|hun|their)\b',
+);
 final _movieWord = RegExp(r'\b(?:\w*films?|movies?)\b');
 // A film franchise ("filmserie") is a series of films, not a series: not matched.
 final _seriesWord = RegExp(r'\b(?:(?!\w*film)\w*series?|tv-series|tv shows?|shows)\b');
@@ -258,6 +266,17 @@ class AssistantIntent {
       return null;
     }
     return [first, second];
+  }
+
+  /// A question about what was watched that names nobody: "Wat is er deze week
+  /// gekeken?". The words do not decide whose watching it is, and a guess would
+  /// widen or narrow it, so Pleya asks. False for anything with an audience
+  /// reading or a person in it, and for a prompt that is a recommendation.
+  static bool audienceChoiceNeeded(String prompt) {
+    final p = prompt.toLowerCase();
+    if (!_pastWatch.hasMatch(p) || _audienceWord.hasMatch(p)) return false;
+    final intent = AssistantIntent.fromPrompt(prompt);
+    return !intent.audience.known && !intent.mixedAudience && !intent.addedToLibraries;
   }
 
   /// This intent, with the audience and period the question did not state itself

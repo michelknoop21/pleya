@@ -370,5 +370,27 @@ void main() {
       );
       expect(_i('Wie kijkt er nu deze week?').constrain('watch_stats', {'scope': 'period'}).args['scope'], 'period');
     });
+
+    test('a watch question that names nobody asks whose; anything with an audience or person does not', () {
+      for (final q in [
+        'Wat is er deze week gekeken?',
+        'Welke films zijn er gisteren bekeken?',
+        'What was watched this week?',
+      ]) {
+        expect(AssistantIntent.audienceChoiceNeeded(q), isTrue, reason: q);
+      }
+      for (final q in [
+        'Wat heb ik gekeken?',
+        'Wat keken de anderen?',
+        'Wat keek iedereen vandaag?',
+        'Wat is er door Sam gekeken, zonder mij?',
+        'Welke film heeft niemand gezien?',
+        'Wat is er onlangs toegevoegd?',
+        'Geef me een tip voor vanavond',
+        'Wat kijken we samen?',
+      ]) {
+        expect(AssistantIntent.audienceChoiceNeeded(q), isFalse, reason: q);
+      }
+    });
   });
 }
