@@ -117,6 +117,11 @@ export const web = {
   'dialog.cancel': 'Cancel',
   'dialog.typeToConfirm': 'Type {phrase} to confirm',
 
+  'duration.hm': '{h}h {m}m',
+  'duration.h': '{h}h',
+  'duration.m': '{m}m',
+  'duration.s': '{s}s',
+
   'artwork.none': 'No artwork',
   'card.remaining': '{duration} left',
   'card.watched': 'Watched',

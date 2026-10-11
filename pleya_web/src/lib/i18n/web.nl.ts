@@ -120,6 +120,11 @@ export const webNl = {
   'dialog.cancel': 'Annuleren',
   'dialog.typeToConfirm': 'Typ {phrase} om te bevestigen',
 
+  'duration.hm': '{h}u {m}m',
+  'duration.h': '{h}u',
+  'duration.m': '{m} min',
+  'duration.s': '{s} s',
+
   'artwork.none': 'Geen artwork',
   'card.remaining': 'nog {duration}',
   'card.watched': 'Gezien',

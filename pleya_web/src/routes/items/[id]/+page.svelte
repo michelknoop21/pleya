@@ -8,7 +8,7 @@
   import { session } from '$lib/stores/session.svelte';
   import { describeError } from '$lib/api/errors';
   import type { Item } from '$lib/api/types';
-  import { formatDate, formatDuration } from '$lib/util/format';
+  import { formatDate, formatDuration, formatLanguage } from '$lib/util/format';
   import { t } from '$lib/i18n';
 
   const itemId = $derived(page.params['id'] ?? '');
@@ -160,7 +160,7 @@
               {#each version.audio_streams as stream (stream.id)}
                 <li class="t-small">
                   {[
-                    stream.language,
+                    formatLanguage(stream.language),
                     stream.codec,
                     stream.channels ? `${stream.channels}ch` : null,
                     stream.title,
@@ -179,7 +179,7 @@
               {#each version.subtitle_streams as stream (stream.id)}
                 <li class="t-small">
                   {[
-                    stream.language,
+                    formatLanguage(stream.language),
                     stream.format,
                     stream.is_forced ? t('item.forced') : null,
                     stream.is_hearing_impaired ? t('item.sdh') : null,
