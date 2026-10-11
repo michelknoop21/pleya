@@ -136,6 +136,9 @@ class RecommendationService {
 
   bool get _enabled => SettingsService.instanceOrNull?.read(SettingsService.personalizedRecommendations) ?? true;
 
+  /// Whether personalization is on: what the log and anything read for "seen" may be used for.
+  bool get isPersonalizationEnabled => _enabled;
+
   /// Builds personalized rows for the current taste, or an empty list when the
   /// feature is off, there's no history, or the pool is too thin. Fully
   /// fault-tolerant — any failure yields no rows rather than breaking the feed.

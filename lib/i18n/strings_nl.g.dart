@@ -3434,6 +3434,7 @@ class _TranslationsAssistantStepsNl extends TranslationsAssistantStepsEn {
 	@override String get compareServers => 'Servers vergelijken';
 	@override String get watchStats => 'Kijkcijfers ophalen';
 	@override String get myWatching => 'Jouw kijkgeschiedenis bekijken';
+	@override String get traktWatchlist => 'Jouw Trakt-watchlist bekijken';
 	@override String get recommendTogether => 'Zoeken wat jullie allebei leuk vinden';
 	@override String get requestStatus => 'Status van aanvragen bekijken';
 	@override String get diagnosePlayback => 'Afspelen onderzoeken';
@@ -6193,6 +6194,7 @@ extension on TranslationsNl {
 			'assistant.steps.compareServers' => 'Servers vergelijken',
 			'assistant.steps.watchStats' => 'Kijkcijfers ophalen',
 			'assistant.steps.myWatching' => 'Jouw kijkgeschiedenis bekijken',
+			'assistant.steps.traktWatchlist' => 'Jouw Trakt-watchlist bekijken',
 			'assistant.steps.recommendTogether' => 'Zoeken wat jullie allebei leuk vinden',
 			'assistant.steps.requestStatus' => 'Status van aanvragen bekijken',
 			'assistant.steps.diagnosePlayback' => 'Afspelen onderzoeken',

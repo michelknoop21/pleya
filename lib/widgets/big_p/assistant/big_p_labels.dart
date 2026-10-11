@@ -31,6 +31,7 @@ String assistantToolLabel(String tool) {
     'compare_servers' => s.compareServers,
     'watch_stats' => s.watchStats,
     'my_watching' => s.myWatching,
+    'trakt_watchlist' => s.traktWatchlist,
     'recommend_together' => s.recommendTogether,
     'request_status' => s.requestStatus,
     'diagnose_playback' => s.diagnosePlayback,

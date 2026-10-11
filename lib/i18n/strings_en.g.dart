@@ -7949,6 +7949,9 @@ class TranslationsAssistantStepsEn {
 	/// en: 'Checking what you watched'
 	String get myWatching => 'Checking what you watched';
 
+	/// en: 'Checking your Trakt watchlist'
+	String get traktWatchlist => 'Checking your Trakt watchlist';
+
 	/// en: 'Matching what you both like'
 	String get recommendTogether => 'Matching what you both like';
 
@@ -11219,6 +11222,7 @@ extension on Translations {
 			'assistant.steps.compareServers' => 'Comparing servers',
 			'assistant.steps.watchStats' => 'Fetching watch statistics',
 			'assistant.steps.myWatching' => 'Checking what you watched',
+			'assistant.steps.traktWatchlist' => 'Checking your Trakt watchlist',
 			'assistant.steps.recommendTogether' => 'Matching what you both like',
 			'assistant.steps.requestStatus' => 'Checking request status',
 			'assistant.steps.diagnosePlayback' => 'Diagnosing playback',

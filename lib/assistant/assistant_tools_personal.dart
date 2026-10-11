@@ -15,6 +15,8 @@ class AssistantPersonalServices {
     this.everSeenIdentities = _noIdentities,
     this.everCompleted,
     this.everCompletedIdentities,
+    this.seenIncludesTrakt = _never,
+    this.seenTraktUnavailable = _never,
     required this.taste,
     required this.picks,
   });
@@ -37,6 +39,12 @@ class AssistantPersonalServices {
   /// (it is a taste signal) but is not "watched". Null falls back to [everSeen].
   final Future<Set<String>> Function()? everCompleted;
   final Future<List<WatchedIdentity>> Function()? everCompletedIdentities;
+
+  /// Whether "seen" counted titles the asker watched on Trakt in this ask.
+  final bool Function() seenIncludesTrakt;
+
+  /// Trakt is linked but could not be read, so "seen" did not count it.
+  final bool Function() seenTraktUnavailable;
   final Future<AffinityVector> Function() taste;
 
   /// Home's personal rows, built from [clients].
@@ -44,6 +52,8 @@ class AssistantPersonalServices {
 }
 
 Future<List<WatchedIdentity>> _noIdentities() async => const [];
+
+bool _never() => false;
 
 const _recentShown = 8;
 const _picksShown = 12;
@@ -175,6 +185,8 @@ final List<AssistantTool> _personalTools = [
         'watched_recently': watchedList,
         // The list is the newest few of the last weeks, not the whole history: say so.
         'watched_recently_window_days': kSeedWindow.inDays,
+        if (personal.seenIncludesTrakt()) 'seen_includes_trakt': true,
+        if (personal.seenTraktUnavailable()) 'seen_trakt_unavailable': true,
         'likes': {'genres': likes('genre', 4), 'actors': likes('actor', 3), 'directors': likes('director', 2)},
         'picks': rows,
       }, display: picks.isEmpty ? null : AssistantMediaGrid([for (final item in picks) (item: item, group: null)]));

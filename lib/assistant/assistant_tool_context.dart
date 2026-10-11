@@ -1,4 +1,5 @@
 import 'assistant_spoiler_context.dart';
+import 'assistant_trakt_services.dart';
 import 'current_user_context.dart';
 import '../media/ids.dart';
 import '../media/media_library.dart';
@@ -59,6 +60,7 @@ class AssistantToolContext {
     this.playback,
     this.spoilers,
     this.personal,
+    this.trakt,
     this.web,
     this.titleFacts,
     this.kidsAges,
@@ -114,6 +116,7 @@ class AssistantToolContext {
     playback: playback,
     spoilers: spoilers,
     personal: personal,
+    trakt: trakt,
     web: web ?? this.web,
     titleFacts: titleFacts,
     kidsAges: kidsAges,
@@ -155,6 +158,9 @@ class AssistantToolContext {
   /// Who is asking and what this profile watched; null keeps my_watching out
   /// and the system prompt without a name.
   final AssistantPersonalServices? personal;
+
+  /// The asker's own Trakt account; null keeps trakt_watchlist out.
+  final AssistantTraktServices? trakt;
 
   /// Web lookup for find_title; null when the user switched it off.
   final AssistantWebServices? web;
