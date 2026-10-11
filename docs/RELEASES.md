@@ -18,7 +18,13 @@ under `Notes`.
 ## Unreleased
 
 <!-- BEGIN GENERATED -->
-Nothing user-facing since the last published build.
+### New
+- geheugen in het gesprek, voorstelkaart en overzichtsschrijver (BP-08a stap 2) (#285)
+- terugschrijven alleen na toestemming, dubbelen en not_checked bewaakt, releasevoorwaarden
+
+### Fixed
+- wachtrij volgt de toestemming, privacypagina en releasegate benoemd
+- geopend videobestand loslaten zodra de speler sluit
 <!-- END GENERATED -->
 
 ### New
@@ -46,6 +52,11 @@ Nothing user-facing since the last published build.
 
 ### Improved
 
+- **A video file you opened no longer stays behind on your iPhone or iPad.** Some
+  ways of opening a film, AirDrop among them, copy it into Pleya; that copy is now removed
+  when the player closes, where it used to stay until the next file arrived. For a file
+  opened in place (Files, iCloud Drive) Pleya gives its access back at the same moment. Not
+  checked on a device yet.
 - **Ending a session takes effect while a film is playing.** A revoked session stops the stream
   it was feeding rather than letting it run to the end of the file. Measured at under half a
   second on the test rig, against a documented ceiling of two seconds.

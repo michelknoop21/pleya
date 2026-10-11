@@ -12,7 +12,8 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
   private static var pending: [String] = []
 
   /// Files opened in place stay readable only while their security scope is
-  /// open, so the URL is kept for the session. One entry per distinct file.
+  /// open, so the URL is kept until Dart releases the file. One entry per
+  /// distinct file.
   private static var scopedURLs: [String: URL] = [:]
 
   static func register(with registrar: FlutterPluginRegistrar) {
@@ -26,6 +27,11 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
     case "takePendingFiles":
       result(Self.pending)
       Self.pending = []
+    case "releaseFiles":
+      for path in call.arguments as? [String] ?? [] {
+        Self.release(path)
+      }
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -71,14 +77,32 @@ final class OpenFilePlugin: NSObject, FlutterPlugin {
     }
   }
 
-  /// Removes what the Inbox of [copies] holds besides them. Only inside the
-  /// app's own container: nothing the user keeps elsewhere is touched.
-  private static func clearInbox(keeping copies: [URL]) {
+  /// Lets go of the file at [path] once no player has it: closes the security
+  /// scope of a file opened in place and removes the copy the system made in
+  /// the Inbox, which nothing else would ever delete.
+  private static func release(_ path: String) {
+    // Delivered again in the meantime: that delivery still has to play.
+    guard !pending.contains(path) else { return }
+    scopedURLs.removeValue(forKey: path)?.stopAccessingSecurityScopedResource()
+    let url = URL(fileURLWithPath: path)
+    if isOwnInbox(url.deletingLastPathComponent().resolvingSymlinksInPath()) {
+      try? FileManager.default.removeItem(at: url)
+    }
+  }
+
+  /// Whether [directory] is an Inbox inside the app's own container: nothing
+  /// the user keeps elsewhere is ever removed.
+  private static func isOwnInbox(_ directory: URL) -> Bool {
     // Symlinks resolved on both sides: the system hands out /private/var
     // paths where NSHomeDirectory answers /var.
+    directory.lastPathComponent.hasSuffix("Inbox")
+      && directory.path.hasPrefix(URL(fileURLWithPath: NSHomeDirectory()).resolvingSymlinksInPath().path + "/")
+  }
+
+  /// Removes what the Inbox of [copies] holds besides them.
+  private static func clearInbox(keeping copies: [URL]) {
     guard let inbox = copies.first?.deletingLastPathComponent().resolvingSymlinksInPath(),
-      inbox.lastPathComponent.hasSuffix("Inbox"),
-      inbox.path.hasPrefix(URL(fileURLWithPath: NSHomeDirectory()).resolvingSymlinksInPath().path + "/"),
+      isOwnInbox(inbox),
       let entries = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil)
     else { return }
     let keep = Set(copies.map { $0.lastPathComponent })

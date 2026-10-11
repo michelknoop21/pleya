@@ -92,7 +92,7 @@ pleya_server/.responses/
 /.claude/settings.local.json
 
 # Local golden-diff artifacts from failed test runs (never commit these)
-test/goldens/failures/
+test/**/failures/
 docs/responsive-audit/
 
 # De vangst van de fake server, zoals pleya_server/.responses.
