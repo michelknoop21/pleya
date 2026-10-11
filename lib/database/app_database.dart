@@ -98,6 +98,8 @@ const String _sqlImportedInteractionUniqueIndex =
     MediaInteractions,
     AffinitySnapshots,
     HistorySyncCursors,
+    AssistantMemories,
+    AssistantMemoryOverviews,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -109,7 +111,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration {
@@ -329,6 +331,15 @@ class AppDatabase extends _$AppDatabase {
               () => m.addColumn(mediaInteractions, column),
             );
           }
+        }
+        if (from < 22) {
+          appLogger.i('Creating assistant memory tables (v22 migration)');
+          await _ignoreAlreadyExists('AssistantMemories table', () => m.createTable(assistantMemories));
+          await _ignoreAlreadyExists(
+            'AssistantMemories unique index',
+            () => m.createIndex(idxAssistantMemoriesProfileValueKey),
+          );
+          await _ignoreAlreadyExists('AssistantMemoryOverviews table', () => m.createTable(assistantMemoryOverviews));
         }
       },
     );
@@ -813,6 +824,15 @@ class AppDatabase extends _$AppDatabase {
     await (delete(mediaInteractions)..where((t) => t.profileId.equals(profileId))).go();
     await (delete(affinitySnapshots)..where((t) => t.profileId.equals(profileId))).go();
     await (delete(historySyncCursors)..where((t) => t.profileId.equals(profileId))).go();
+  }
+
+  /// Wipes the remembered facts and the written overview of a profile. The
+  /// only memory query that takes a profile id: profile deletion also has to
+  /// reach a profile that is not the active one. Everything else goes through
+  /// `MemoryService`, which is bound to its own profile.
+  Future<void> deleteAssistantMemoryForProfile(String profileId) async {
+    await (delete(assistantMemories)..where((t) => t.profileId.equals(profileId))).go();
+    await (delete(assistantMemoryOverviews)..where((t) => t.profileId.equals(profileId))).go();
   }
 
   Future<void> _ignoreAlreadyExists(String label, Future<void> Function() operation) async {

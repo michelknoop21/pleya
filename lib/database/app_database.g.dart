@@ -7839,6 +7839,958 @@ class HistorySyncCursorsCompanion
   }
 }
 
+class $AssistantMemoriesTable extends AssistantMemories
+    with TableInfo<$AssistantMemoriesTable, AssistantMemoryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AssistantMemoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueKeyMeta = const VerificationMeta(
+    'valueKey',
+  );
+  @override
+  late final GeneratedColumn<String> valueKey = GeneratedColumn<String>(
+    'value_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    profileId,
+    category,
+    value,
+    valueKey,
+    source,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'assistant_memories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AssistantMemoryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('value_key')) {
+      context.handle(
+        _valueKeyMeta,
+        valueKey.isAcceptableOrUnknown(data['value_key']!, _valueKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueKeyMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AssistantMemoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AssistantMemoryRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      valueKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value_key'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AssistantMemoriesTable createAlias(String alias) {
+    return $AssistantMemoriesTable(attachedDatabase, alias);
+  }
+}
+
+class AssistantMemoryRow extends DataClass
+    implements Insertable<AssistantMemoryRow> {
+  final String id;
+
+  /// Full profile id, as in [MediaInteractions]. No foreign key: Plex Home
+  /// profiles are virtual.
+  final String profileId;
+
+  /// `preference`, `dislike`, `household`, `habit` or `other`.
+  final String category;
+
+  /// The sentence as shown: one line, no control characters, at most 200.
+  final String value;
+
+  /// [value] lowercased, without punctuation and with single spaces. Unique
+  /// per profile, so the same sentence is one row whatever its category.
+  final String valueKey;
+
+  /// `user_explicit`, `assistant_confirmed` or `settings_manual`.
+  final String source;
+
+  /// Epoch milliseconds (UTC).
+  final int createdAt;
+  final int updatedAt;
+  const AssistantMemoryRow({
+    required this.id,
+    required this.profileId,
+    required this.category,
+    required this.value,
+    required this.valueKey,
+    required this.source,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['profile_id'] = Variable<String>(profileId);
+    map['category'] = Variable<String>(category);
+    map['value'] = Variable<String>(value);
+    map['value_key'] = Variable<String>(valueKey);
+    map['source'] = Variable<String>(source);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  AssistantMemoriesCompanion toCompanion(bool nullToAbsent) {
+    return AssistantMemoriesCompanion(
+      id: Value(id),
+      profileId: Value(profileId),
+      category: Value(category),
+      value: Value(value),
+      valueKey: Value(valueKey),
+      source: Value(source),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AssistantMemoryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AssistantMemoryRow(
+      id: serializer.fromJson<String>(json['id']),
+      profileId: serializer.fromJson<String>(json['profileId']),
+      category: serializer.fromJson<String>(json['category']),
+      value: serializer.fromJson<String>(json['value']),
+      valueKey: serializer.fromJson<String>(json['valueKey']),
+      source: serializer.fromJson<String>(json['source']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'profileId': serializer.toJson<String>(profileId),
+      'category': serializer.toJson<String>(category),
+      'value': serializer.toJson<String>(value),
+      'valueKey': serializer.toJson<String>(valueKey),
+      'source': serializer.toJson<String>(source),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  AssistantMemoryRow copyWith({
+    String? id,
+    String? profileId,
+    String? category,
+    String? value,
+    String? valueKey,
+    String? source,
+    int? createdAt,
+    int? updatedAt,
+  }) => AssistantMemoryRow(
+    id: id ?? this.id,
+    profileId: profileId ?? this.profileId,
+    category: category ?? this.category,
+    value: value ?? this.value,
+    valueKey: valueKey ?? this.valueKey,
+    source: source ?? this.source,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AssistantMemoryRow copyWithCompanion(AssistantMemoriesCompanion data) {
+    return AssistantMemoryRow(
+      id: data.id.present ? data.id.value : this.id,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      category: data.category.present ? data.category.value : this.category,
+      value: data.value.present ? data.value.value : this.value,
+      valueKey: data.valueKey.present ? data.valueKey.value : this.valueKey,
+      source: data.source.present ? data.source.value : this.source,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssistantMemoryRow(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('category: $category, ')
+          ..write('value: $value, ')
+          ..write('valueKey: $valueKey, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    profileId,
+    category,
+    value,
+    valueKey,
+    source,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssistantMemoryRow &&
+          other.id == this.id &&
+          other.profileId == this.profileId &&
+          other.category == this.category &&
+          other.value == this.value &&
+          other.valueKey == this.valueKey &&
+          other.source == this.source &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AssistantMemoriesCompanion extends UpdateCompanion<AssistantMemoryRow> {
+  final Value<String> id;
+  final Value<String> profileId;
+  final Value<String> category;
+  final Value<String> value;
+  final Value<String> valueKey;
+  final Value<String> source;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const AssistantMemoriesCompanion({
+    this.id = const Value.absent(),
+    this.profileId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.value = const Value.absent(),
+    this.valueKey = const Value.absent(),
+    this.source = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AssistantMemoriesCompanion.insert({
+    required String id,
+    required String profileId,
+    required String category,
+    required String value,
+    required String valueKey,
+    required String source,
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       profileId = Value(profileId),
+       category = Value(category),
+       value = Value(value),
+       valueKey = Value(valueKey),
+       source = Value(source),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AssistantMemoryRow> custom({
+    Expression<String>? id,
+    Expression<String>? profileId,
+    Expression<String>? category,
+    Expression<String>? value,
+    Expression<String>? valueKey,
+    Expression<String>? source,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (profileId != null) 'profile_id': profileId,
+      if (category != null) 'category': category,
+      if (value != null) 'value': value,
+      if (valueKey != null) 'value_key': valueKey,
+      if (source != null) 'source': source,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AssistantMemoriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? profileId,
+    Value<String>? category,
+    Value<String>? value,
+    Value<String>? valueKey,
+    Value<String>? source,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AssistantMemoriesCompanion(
+      id: id ?? this.id,
+      profileId: profileId ?? this.profileId,
+      category: category ?? this.category,
+      value: value ?? this.value,
+      valueKey: valueKey ?? this.valueKey,
+      source: source ?? this.source,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (valueKey.present) {
+      map['value_key'] = Variable<String>(valueKey.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssistantMemoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('category: $category, ')
+          ..write('value: $value, ')
+          ..write('valueKey: $valueKey, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AssistantMemoryOverviewsTable extends AssistantMemoryOverviews
+    with TableInfo<$AssistantMemoryOverviewsTable, AssistantMemoryOverviewRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AssistantMemoryOverviewsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _factsHashMeta = const VerificationMeta(
+    'factsHash',
+  );
+  @override
+  late final GeneratedColumn<String> factsHash = GeneratedColumn<String>(
+    'facts_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localeMeta = const VerificationMeta('locale');
+  @override
+  late final GeneratedColumn<String> locale = GeneratedColumn<String>(
+    'locale',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _generatedAtMeta = const VerificationMeta(
+    'generatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> generatedAt = GeneratedColumn<int>(
+    'generated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    profileId,
+    factsHash,
+    locale,
+    status,
+    body,
+    generatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'assistant_memory_overviews';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AssistantMemoryOverviewRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('facts_hash')) {
+      context.handle(
+        _factsHashMeta,
+        factsHash.isAcceptableOrUnknown(data['facts_hash']!, _factsHashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_factsHashMeta);
+    }
+    if (data.containsKey('locale')) {
+      context.handle(
+        _localeMeta,
+        locale.isAcceptableOrUnknown(data['locale']!, _localeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localeMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('generated_at')) {
+      context.handle(
+        _generatedAtMeta,
+        generatedAt.isAcceptableOrUnknown(
+          data['generated_at']!,
+          _generatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_generatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {profileId};
+  @override
+  AssistantMemoryOverviewRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AssistantMemoryOverviewRow(
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      factsHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}facts_hash'],
+      )!,
+      locale: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}locale'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      generatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}generated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AssistantMemoryOverviewsTable createAlias(String alias) {
+    return $AssistantMemoryOverviewsTable(attachedDatabase, alias);
+  }
+}
+
+class AssistantMemoryOverviewRow extends DataClass
+    implements Insertable<AssistantMemoryOverviewRow> {
+  final String profileId;
+
+  /// Hash of the facts, the locale and the format version it was written for.
+  final String factsHash;
+  final String locale;
+
+  /// `ok` or `failed`.
+  final String status;
+
+  /// JSON with the sections and follow-up questions; empty for `failed`.
+  final String body;
+
+  /// Epoch milliseconds (UTC).
+  final int generatedAt;
+  const AssistantMemoryOverviewRow({
+    required this.profileId,
+    required this.factsHash,
+    required this.locale,
+    required this.status,
+    required this.body,
+    required this.generatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['profile_id'] = Variable<String>(profileId);
+    map['facts_hash'] = Variable<String>(factsHash);
+    map['locale'] = Variable<String>(locale);
+    map['status'] = Variable<String>(status);
+    map['body'] = Variable<String>(body);
+    map['generated_at'] = Variable<int>(generatedAt);
+    return map;
+  }
+
+  AssistantMemoryOverviewsCompanion toCompanion(bool nullToAbsent) {
+    return AssistantMemoryOverviewsCompanion(
+      profileId: Value(profileId),
+      factsHash: Value(factsHash),
+      locale: Value(locale),
+      status: Value(status),
+      body: Value(body),
+      generatedAt: Value(generatedAt),
+    );
+  }
+
+  factory AssistantMemoryOverviewRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AssistantMemoryOverviewRow(
+      profileId: serializer.fromJson<String>(json['profileId']),
+      factsHash: serializer.fromJson<String>(json['factsHash']),
+      locale: serializer.fromJson<String>(json['locale']),
+      status: serializer.fromJson<String>(json['status']),
+      body: serializer.fromJson<String>(json['body']),
+      generatedAt: serializer.fromJson<int>(json['generatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'profileId': serializer.toJson<String>(profileId),
+      'factsHash': serializer.toJson<String>(factsHash),
+      'locale': serializer.toJson<String>(locale),
+      'status': serializer.toJson<String>(status),
+      'body': serializer.toJson<String>(body),
+      'generatedAt': serializer.toJson<int>(generatedAt),
+    };
+  }
+
+  AssistantMemoryOverviewRow copyWith({
+    String? profileId,
+    String? factsHash,
+    String? locale,
+    String? status,
+    String? body,
+    int? generatedAt,
+  }) => AssistantMemoryOverviewRow(
+    profileId: profileId ?? this.profileId,
+    factsHash: factsHash ?? this.factsHash,
+    locale: locale ?? this.locale,
+    status: status ?? this.status,
+    body: body ?? this.body,
+    generatedAt: generatedAt ?? this.generatedAt,
+  );
+  AssistantMemoryOverviewRow copyWithCompanion(
+    AssistantMemoryOverviewsCompanion data,
+  ) {
+    return AssistantMemoryOverviewRow(
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      factsHash: data.factsHash.present ? data.factsHash.value : this.factsHash,
+      locale: data.locale.present ? data.locale.value : this.locale,
+      status: data.status.present ? data.status.value : this.status,
+      body: data.body.present ? data.body.value : this.body,
+      generatedAt: data.generatedAt.present
+          ? data.generatedAt.value
+          : this.generatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssistantMemoryOverviewRow(')
+          ..write('profileId: $profileId, ')
+          ..write('factsHash: $factsHash, ')
+          ..write('locale: $locale, ')
+          ..write('status: $status, ')
+          ..write('body: $body, ')
+          ..write('generatedAt: $generatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(profileId, factsHash, locale, status, body, generatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssistantMemoryOverviewRow &&
+          other.profileId == this.profileId &&
+          other.factsHash == this.factsHash &&
+          other.locale == this.locale &&
+          other.status == this.status &&
+          other.body == this.body &&
+          other.generatedAt == this.generatedAt);
+}
+
+class AssistantMemoryOverviewsCompanion
+    extends UpdateCompanion<AssistantMemoryOverviewRow> {
+  final Value<String> profileId;
+  final Value<String> factsHash;
+  final Value<String> locale;
+  final Value<String> status;
+  final Value<String> body;
+  final Value<int> generatedAt;
+  final Value<int> rowid;
+  const AssistantMemoryOverviewsCompanion({
+    this.profileId = const Value.absent(),
+    this.factsHash = const Value.absent(),
+    this.locale = const Value.absent(),
+    this.status = const Value.absent(),
+    this.body = const Value.absent(),
+    this.generatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AssistantMemoryOverviewsCompanion.insert({
+    required String profileId,
+    required String factsHash,
+    required String locale,
+    required String status,
+    required String body,
+    required int generatedAt,
+    this.rowid = const Value.absent(),
+  }) : profileId = Value(profileId),
+       factsHash = Value(factsHash),
+       locale = Value(locale),
+       status = Value(status),
+       body = Value(body),
+       generatedAt = Value(generatedAt);
+  static Insertable<AssistantMemoryOverviewRow> custom({
+    Expression<String>? profileId,
+    Expression<String>? factsHash,
+    Expression<String>? locale,
+    Expression<String>? status,
+    Expression<String>? body,
+    Expression<int>? generatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (profileId != null) 'profile_id': profileId,
+      if (factsHash != null) 'facts_hash': factsHash,
+      if (locale != null) 'locale': locale,
+      if (status != null) 'status': status,
+      if (body != null) 'body': body,
+      if (generatedAt != null) 'generated_at': generatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AssistantMemoryOverviewsCompanion copyWith({
+    Value<String>? profileId,
+    Value<String>? factsHash,
+    Value<String>? locale,
+    Value<String>? status,
+    Value<String>? body,
+    Value<int>? generatedAt,
+    Value<int>? rowid,
+  }) {
+    return AssistantMemoryOverviewsCompanion(
+      profileId: profileId ?? this.profileId,
+      factsHash: factsHash ?? this.factsHash,
+      locale: locale ?? this.locale,
+      status: status ?? this.status,
+      body: body ?? this.body,
+      generatedAt: generatedAt ?? this.generatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (factsHash.present) {
+      map['facts_hash'] = Variable<String>(factsHash.value);
+    }
+    if (locale.present) {
+      map['locale'] = Variable<String>(locale.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (generatedAt.present) {
+      map['generated_at'] = Variable<int>(generatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssistantMemoryOverviewsCompanion(')
+          ..write('profileId: $profileId, ')
+          ..write('factsHash: $factsHash, ')
+          ..write('locale: $locale, ')
+          ..write('status: $status, ')
+          ..write('body: $body, ')
+          ..write('generatedAt: $generatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7861,6 +8813,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AffinitySnapshotsTable(this);
   late final $HistorySyncCursorsTable historySyncCursors =
       $HistorySyncCursorsTable(this);
+  late final $AssistantMemoriesTable assistantMemories =
+      $AssistantMemoriesTable(this);
+  late final $AssistantMemoryOverviewsTable assistantMemoryOverviews =
+      $AssistantMemoryOverviewsTable(this);
   late final Index idxDownloadedMediaStatus = Index(
     'idx_downloaded_media_status',
     'CREATE INDEX idx_downloaded_media_status ON downloaded_media (status)',
@@ -7921,6 +8877,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_interactions_profile_item',
     'CREATE INDEX idx_interactions_profile_item ON media_interactions (profile_id, global_key)',
   );
+  late final Index idxAssistantMemoriesProfileValueKey = Index(
+    'idx_assistant_memories_profile_value_key',
+    'CREATE UNIQUE INDEX idx_assistant_memories_profile_value_key ON assistant_memories (profile_id, value_key)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7938,6 +8898,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mediaInteractions,
     affinitySnapshots,
     historySyncCursors,
+    assistantMemories,
+    assistantMemoryOverviews,
     idxDownloadedMediaStatus,
     idxDownloadedMediaServer,
     idxDownloadedMediaParent,
@@ -7953,6 +8915,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxProfileConnectionsProfileId,
     idxInteractionsProfileTime,
     idxInteractionsProfileItem,
+    idxAssistantMemoriesProfileValueKey,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -11978,6 +12941,516 @@ typedef $$HistorySyncCursorsTableProcessedTableManager =
       HistorySyncCursorRow,
       PrefetchHooks Function()
     >;
+typedef $$AssistantMemoriesTableCreateCompanionBuilder =
+    AssistantMemoriesCompanion Function({
+      required String id,
+      required String profileId,
+      required String category,
+      required String value,
+      required String valueKey,
+      required String source,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AssistantMemoriesTableUpdateCompanionBuilder =
+    AssistantMemoriesCompanion Function({
+      Value<String> id,
+      Value<String> profileId,
+      Value<String> category,
+      Value<String> value,
+      Value<String> valueKey,
+      Value<String> source,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AssistantMemoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $AssistantMemoriesTable> {
+  $$AssistantMemoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get valueKey => $composableBuilder(
+    column: $table.valueKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AssistantMemoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AssistantMemoriesTable> {
+  $$AssistantMemoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get valueKey => $composableBuilder(
+    column: $table.valueKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AssistantMemoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AssistantMemoriesTable> {
+  $$AssistantMemoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<String> get valueKey =>
+      $composableBuilder(column: $table.valueKey, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AssistantMemoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AssistantMemoriesTable,
+          AssistantMemoryRow,
+          $$AssistantMemoriesTableFilterComposer,
+          $$AssistantMemoriesTableOrderingComposer,
+          $$AssistantMemoriesTableAnnotationComposer,
+          $$AssistantMemoriesTableCreateCompanionBuilder,
+          $$AssistantMemoriesTableUpdateCompanionBuilder,
+          (
+            AssistantMemoryRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AssistantMemoriesTable,
+              AssistantMemoryRow
+            >,
+          ),
+          AssistantMemoryRow,
+          PrefetchHooks Function()
+        > {
+  $$AssistantMemoriesTableTableManager(
+    _$AppDatabase db,
+    $AssistantMemoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AssistantMemoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AssistantMemoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AssistantMemoriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<String> valueKey = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AssistantMemoriesCompanion(
+                id: id,
+                profileId: profileId,
+                category: category,
+                value: value,
+                valueKey: valueKey,
+                source: source,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String profileId,
+                required String category,
+                required String value,
+                required String valueKey,
+                required String source,
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AssistantMemoriesCompanion.insert(
+                id: id,
+                profileId: profileId,
+                category: category,
+                value: value,
+                valueKey: valueKey,
+                source: source,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AssistantMemoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AssistantMemoriesTable,
+      AssistantMemoryRow,
+      $$AssistantMemoriesTableFilterComposer,
+      $$AssistantMemoriesTableOrderingComposer,
+      $$AssistantMemoriesTableAnnotationComposer,
+      $$AssistantMemoriesTableCreateCompanionBuilder,
+      $$AssistantMemoriesTableUpdateCompanionBuilder,
+      (
+        AssistantMemoryRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AssistantMemoriesTable,
+          AssistantMemoryRow
+        >,
+      ),
+      AssistantMemoryRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AssistantMemoryOverviewsTableCreateCompanionBuilder =
+    AssistantMemoryOverviewsCompanion Function({
+      required String profileId,
+      required String factsHash,
+      required String locale,
+      required String status,
+      required String body,
+      required int generatedAt,
+      Value<int> rowid,
+    });
+typedef $$AssistantMemoryOverviewsTableUpdateCompanionBuilder =
+    AssistantMemoryOverviewsCompanion Function({
+      Value<String> profileId,
+      Value<String> factsHash,
+      Value<String> locale,
+      Value<String> status,
+      Value<String> body,
+      Value<int> generatedAt,
+      Value<int> rowid,
+    });
+
+class $$AssistantMemoryOverviewsTableFilterComposer
+    extends Composer<_$AppDatabase, $AssistantMemoryOverviewsTable> {
+  $$AssistantMemoryOverviewsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get factsHash => $composableBuilder(
+    column: $table.factsHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get locale => $composableBuilder(
+    column: $table.locale,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AssistantMemoryOverviewsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AssistantMemoryOverviewsTable> {
+  $$AssistantMemoryOverviewsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get factsHash => $composableBuilder(
+    column: $table.factsHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get locale => $composableBuilder(
+    column: $table.locale,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AssistantMemoryOverviewsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AssistantMemoryOverviewsTable> {
+  $$AssistantMemoryOverviewsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get factsHash =>
+      $composableBuilder(column: $table.factsHash, builder: (column) => column);
+
+  GeneratedColumn<String> get locale =>
+      $composableBuilder(column: $table.locale, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<int> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AssistantMemoryOverviewsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AssistantMemoryOverviewsTable,
+          AssistantMemoryOverviewRow,
+          $$AssistantMemoryOverviewsTableFilterComposer,
+          $$AssistantMemoryOverviewsTableOrderingComposer,
+          $$AssistantMemoryOverviewsTableAnnotationComposer,
+          $$AssistantMemoryOverviewsTableCreateCompanionBuilder,
+          $$AssistantMemoryOverviewsTableUpdateCompanionBuilder,
+          (
+            AssistantMemoryOverviewRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AssistantMemoryOverviewsTable,
+              AssistantMemoryOverviewRow
+            >,
+          ),
+          AssistantMemoryOverviewRow,
+          PrefetchHooks Function()
+        > {
+  $$AssistantMemoryOverviewsTableTableManager(
+    _$AppDatabase db,
+    $AssistantMemoryOverviewsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AssistantMemoryOverviewsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AssistantMemoryOverviewsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AssistantMemoryOverviewsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> profileId = const Value.absent(),
+                Value<String> factsHash = const Value.absent(),
+                Value<String> locale = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<int> generatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AssistantMemoryOverviewsCompanion(
+                profileId: profileId,
+                factsHash: factsHash,
+                locale: locale,
+                status: status,
+                body: body,
+                generatedAt: generatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String profileId,
+                required String factsHash,
+                required String locale,
+                required String status,
+                required String body,
+                required int generatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AssistantMemoryOverviewsCompanion.insert(
+                profileId: profileId,
+                factsHash: factsHash,
+                locale: locale,
+                status: status,
+                body: body,
+                generatedAt: generatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AssistantMemoryOverviewsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AssistantMemoryOverviewsTable,
+      AssistantMemoryOverviewRow,
+      $$AssistantMemoryOverviewsTableFilterComposer,
+      $$AssistantMemoryOverviewsTableOrderingComposer,
+      $$AssistantMemoryOverviewsTableAnnotationComposer,
+      $$AssistantMemoryOverviewsTableCreateCompanionBuilder,
+      $$AssistantMemoryOverviewsTableUpdateCompanionBuilder,
+      (
+        AssistantMemoryOverviewRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AssistantMemoryOverviewsTable,
+          AssistantMemoryOverviewRow
+        >,
+      ),
+      AssistantMemoryOverviewRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12006,4 +13479,11 @@ class $AppDatabaseManager {
       $$AffinitySnapshotsTableTableManager(_db, _db.affinitySnapshots);
   $$HistorySyncCursorsTableTableManager get historySyncCursors =>
       $$HistorySyncCursorsTableTableManager(_db, _db.historySyncCursors);
+  $$AssistantMemoriesTableTableManager get assistantMemories =>
+      $$AssistantMemoriesTableTableManager(_db, _db.assistantMemories);
+  $$AssistantMemoryOverviewsTableTableManager get assistantMemoryOverviews =>
+      $$AssistantMemoryOverviewsTableTableManager(
+        _db,
+        _db.assistantMemoryOverviews,
+      );
 }
