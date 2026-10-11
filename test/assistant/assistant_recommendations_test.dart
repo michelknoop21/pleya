@@ -645,6 +645,21 @@ void main() {
       ]);
     },
   );
+  test('BP-04b: two profiles with the group label are one question, not also not_found', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    f.aliases = [
+      const ProfileServerIdentity(profileId: 'one', displayName: 'Gezin', userIds: {'a'}),
+      const ProfileServerIdentity(profileId: 'two', displayName: 'Gezin', userIds: {'b'}),
+    ];
+    final result = await _recommend(ctx, {
+      'participants': ['me'],
+      'group': 'gezin',
+    });
+    expect(result.data['status'], 'participant_clarification');
+    expect(result.data['not_found'], isEmpty);
+    expect(((result.data['ambiguous'] as List).single as Map)['choices'], hasLength(2));
+  });
   test('BP-04b: no group word keeps the individual path as it was', () async {
     final f = _Fixture();
     final ctx = f.context(['1']);

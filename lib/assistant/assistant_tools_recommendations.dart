@@ -131,7 +131,7 @@ Future<AssistantToolOutcome> _recommendTogether(
   ];
   if (groupChoices.isNotEmpty) {
     missing.removeWhere(isGroup);
-  } else if (group != null && selected.length == 1 && !missing.any(isGroup)) {
+  } else if (group != null && selected.length == 1 && people.ambiguous.isEmpty && !missing.any(isGroup)) {
     missing.add(group);
   }
   for (final entry in [...people.ambiguous, if (groupChoices.isNotEmpty) (name: group!, choices: groupChoices)]) {

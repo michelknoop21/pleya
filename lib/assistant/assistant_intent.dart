@@ -120,9 +120,12 @@ final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for
 // A group of people the question wants to watch with: "met mijn gezin", "for the
 // family". "familiefilm" and "family movie" name a genre, not the people.
 final _group = RegExp(
-  r'\b(?:met|voor|with|for)\s+(?:(?:mijn|ons|onze|het|de|my|our|the)\s+)?(?:(?:hele|whole|entire)\s+)?'
-  r'(gezin|familie|family|huishouden|household)\b(?![\s-]+(?:films?|movies?|shows?|series?|serie|night|avond|friendly))',
+  r'(?:\b(?:met|voor|als|with|for|as)\s+(?:(?:mijn|ons|onze|het|de|een|my|our|the|a)\s+)?(?:(?:hele|whole|entire)\s+)?'
+  r'|\b(?:mijn|ons|onze|my|our)\s+(?:(?:hele|whole|entire)\s+)?(?=(?:gezin|familie|family|huishouden|household)\s+(?:en ik|and i)\b))'
+  r'(gezin|familie|family|huishouden|household)\b(?![\s-]+(?:night|avond|friendly))',
 );
+// The group word followed by "and": more people than the ones named after it.
+final _groupAnd = RegExp(r'\b(?:gezin|familie|family|huishouden|household)\s+(?:en|and)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
 /// What a question is about, fixed by code from what the user wrote, with the
@@ -355,7 +358,11 @@ class AssistantIntent {
             for (final n in listed)
               if (n is String && n.trim().toLowerCase() != 'me') n.trim().toLowerCase(),
         ];
-        final userNamed = named.isNotEmpty && (ids is! List || ids.isEmpty) && named.every(words.contains);
+        final userNamed =
+            named.isNotEmpty &&
+            (ids is! List || ids.isEmpty) &&
+            !_groupAnd.hasMatch(words) &&
+            named.every((n) => RegExp(r'\b' + RegExp.escape(n) + r'\b').hasMatch(words));
         if (group != null && !userNamed) {
           out['group'] = group;
         } else {

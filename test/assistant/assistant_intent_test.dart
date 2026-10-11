@@ -286,6 +286,9 @@ void main() {
         ('Iets voor ons huishouden', 'huishouden'),
         ('Wat kunnen we met het hele gezin kijken?', 'gezin'),
         ('Something for the whole family', 'family'),
+        ('Wat kunnen mijn gezin en ik kijken?', 'gezin'),
+        ('Kunnen we met mijn gezin films kijken?', 'gezin'),
+        ('Something to watch as a family', 'family'),
       ]) {
         final intent = _i(q);
         expect(intent.group, word, reason: q);
@@ -328,6 +331,20 @@ void main() {
         named.constrain('recommend_together', {
           'participants': ['Alice'],
           'user_ids': ['x'],
+        }).args['group'],
+        'gezin',
+      );
+      // A name inside another word is no name, and "gezin en Alice" is more than Alice.
+      final inside = _i('Wat kan ik met mijn gezin kijken, benieuwd waarmee');
+      expect(
+        inside.constrain('recommend_together', {
+          'participants': ['me', 'Ben'],
+        }).args['group'],
+        'gezin',
+      );
+      expect(
+        _i('Wat kan ik met mijn gezin en Alice kijken?').constrain('recommend_together', {
+          'participants': ['me', 'Alice'],
         }).args['group'],
         'gezin',
       );
