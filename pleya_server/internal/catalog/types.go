@@ -37,8 +37,9 @@ type Library struct {
 	ScanOnStart         bool
 
 	// SkippedRoots vult alleen SyncLibraries: roots uit de .env-regel die van
-	// een db-bibliotheek zijn en daarom niet naar deze bibliotheek verhuisd
-	// zijn (S2.7). Het opstarten logt ze.
+	// een db-bibliotheek zijn (S2.7) of binnen of boven een root van een
+	// db-bibliotheek liggen (S2.8), en daarom niet aan deze bibliotheek
+	// gehangen zijn. Het opstarten logt ze.
 	SkippedRoots []string
 }
 

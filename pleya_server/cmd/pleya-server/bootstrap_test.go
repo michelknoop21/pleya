@@ -45,7 +45,7 @@ func TestSyncLibrariesLogsEverySkippedRoot(t *testing.T) {
 		if err := dec.Decode(&rec); err != nil {
 			t.Fatalf("logregel lezen: %v", err)
 		}
-		if rec["msg"] != "root hoort bij een bibliotheek in de database; de .env-regel claimt hem niet" {
+		if rec["msg"] != skippedRootMsg {
 			continue
 		}
 		if rec["root"] != "/media/archief" {
@@ -55,5 +55,44 @@ func TestSyncLibrariesLogsEverySkippedRoot(t *testing.T) {
 	}
 	if len(slugs) != 2 || slugs[0] != "eerste" || slugs[1] != "tweede" {
 		t.Fatalf("logregels voor overgeslagen roots: %v, verwacht [eerste tweede]", slugs)
+	}
+}
+
+// TestSyncLibrariesLogsNestedSkippedRoot (S2.8): een .env-root binnen een root
+// van een db-bibliotheek komt in dezelfde logregel, en het opstarten gaat door.
+func TestSyncLibrariesLogsNestedSkippedRoot(t *testing.T) {
+	pool := testsupport.Pool(t)
+	ctx := context.Background()
+	if _, err := migrate.Run(ctx, pool, nil); err != nil {
+		t.Fatalf("migreren: %v", err)
+	}
+	store := catalog.NewStore(pool)
+	if _, err := store.CreateLibrary(ctx, "Films", "movies", []string{"/media/films"}); err != nil {
+		t.Fatalf("CreateLibrary: %v", err)
+	}
+
+	cfg := &config.Config{Libraries: []config.LibrarySpec{
+		{Slug: "kids", Title: "Kids", Kind: "movies", Roots: []string{"/media/films/kids"}},
+	}}
+	var buf bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buf, nil))
+
+	if _, err := syncLibraries(ctx, store, cfg, log); err != nil {
+		t.Fatalf("syncLibraries: %v", err)
+	}
+
+	var logged []string
+	dec := json.NewDecoder(&buf)
+	for dec.More() {
+		var rec map[string]any
+		if err := dec.Decode(&rec); err != nil {
+			t.Fatalf("logregel lezen: %v", err)
+		}
+		if rec["msg"] == skippedRootMsg {
+			logged = append(logged, rec["slug"].(string)+" "+rec["root"].(string))
+		}
+	}
+	if len(logged) != 1 || logged[0] != "kids /media/films/kids" {
+		t.Fatalf("logregels voor overgeslagen roots: %v, verwacht [kids /media/films/kids]", logged)
 	}
 }
