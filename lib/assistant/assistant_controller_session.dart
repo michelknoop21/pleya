@@ -16,6 +16,7 @@ import '../providers/tautulli_provider.dart';
 import '../screens/video_player_screen.dart' show VideoPlayerScreenState;
 import '../services/download_manager_service.dart';
 import '../services/recommendations/recommendation_service.dart';
+import '../services/trakt/trakt_sync_service.dart';
 import '../services/unified_catalog/home_custom_row_loader.dart';
 import '../models/plex/plex_home_user.dart' show PlexHomeUser;
 import '../providers/trakt_account_provider.dart';
@@ -31,6 +32,7 @@ import 'assistant_playback.dart';
 import 'assistant_provider.dart';
 import 'assistant_title_facts.dart';
 import 'assistant_title_facts_cache.dart';
+import 'assistant_trakt_services.dart';
 import 'assistant_tools.dart';
 import 'assistant_web_lookup.dart';
 import 'big_p_voice.dart';
@@ -87,6 +89,25 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   final plexHome = context.read<PlexHomeService?>();
   final trakt = context.read<TraktAccountProvider?>();
   final playback = context.read<PlaybackStateProvider?>()?.assistantPlayback;
+  // The asker's own Trakt account, for the profile this context was built
+  // for: a turn that outlives a profile switch reads nothing of the next one.
+  // Evaluated live, and only with personalization on and off children's profiles.
+  final traktUser = trakt?.activeUserUuid;
+  bool traktAvailable() =>
+      trakt != null &&
+      traktUser != null &&
+      assistantTraktAvailable(
+        connected: trakt.isConnected,
+        kidsProfile: trakt.isKidsProfile,
+        sameProfile: trakt.activeUserUuid == traktUser,
+        personalization: recommendations?.isPersonalizationEnabled ?? false,
+      );
+  final traktSeen = trakt == null || traktUser == null
+      ? null
+      : AssistantTraktSeen(
+          available: traktAvailable,
+          read: () => TraktSyncService.instance.library.seen(expectUser: traktUser),
+        );
   return AssistantToolContext(
     servers: manager,
     screen: screen,
@@ -175,12 +196,25 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
             userName: activeProfile.active?.displayName ?? '',
             recent: () => recommendations.recentSeeds(limit: 12),
             everSeen: recommendations.everSeenKeys,
-            everSeenIdentities: recommendations.everSeenIdentities,
+            everSeenIdentities: () async => [
+              ...await recommendations.everSeenIdentities(),
+              ...?await traktSeen?.identities(),
+            ],
             // A completed view weighs 1.0; a stopped one only 0.4.
             everCompleted: () => recommendations.everSeenKeys(minWeight: 1.0),
-            everCompletedIdentities: () => recommendations.everSeenIdentities(minWeight: 1.0),
+            everCompletedIdentities: () async => [
+              ...await recommendations.everSeenIdentities(minWeight: 1.0),
+              ...?await traktSeen?.identities(completedOnly: true),
+            ],
+            seenIncludesTrakt: () => traktSeen?.included ?? false,
             taste: recommendations.taste,
             picks: recommendations.buildRows,
+          ),
+    trakt: trakt == null || traktUser == null
+        ? null
+        : AssistantTraktServices(
+            available: traktAvailable,
+            watchlist: () => TraktSyncService.instance.library.watchlist(expectUser: traktUser),
           ),
     media: downloads == null
         ? null

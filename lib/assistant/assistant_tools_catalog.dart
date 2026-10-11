@@ -151,6 +151,7 @@ final List<AssistantTool> _catalogTools = [
         if (age == null && query.totalMatches != null) 'total_matches': query.totalMatches,
         if (age == null && query.moreMatches) ...{'more_matches': true, 'matches_at_least': query.matchesRead},
         if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
+        if (query.seenElsewhere > 0 && ctx.personal?.seenIncludesTrakt() == true) 'seen_includes_trakt': true,
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
           if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,
