@@ -217,6 +217,38 @@ en tokens. Voor een waarde die per instantie verschilt, zoals de breedte van een
 `StorageMeter`, gebruik je een Svelte-`style:`-directive: die zet de eigenschap via de CSSOM en
 valt niet onder de regel.
 
+## Taal
+
+Er zijn twee catalogi, Engels en Nederlands, en elke zichtbare tekst gaat door `t()`. Elke
+catalogus heeft twee helften: `shared.ts` wordt gegenereerd uit `lib/i18n/en.i18n.json` en
+`nl.i18n.json` van de app (`bun run scripts/gen-i18n.ts`, alleen de expliciet gekozen sleutels),
+`web.ts` en `web.nl.ts` bevatten wat alleen de webclient kent. Ontbreekt een sleutel in het
+Nederlands, dan valt `t()` per sleutel terug op Engels, en ontbreekt hij ook daar dan komt de
+sleutel zelf terug.
+
+De taal volgt deze volgorde: de bewaarde keuze (`localStorage`, sleutel `pleya.locale`), dan de
+browsertalen, dan Engels. Een browser op Duits krijgt dus Engels. `initLocale()` bepaalt dit
+bovenaan de layout, vóór de eerste markup, en zet `<html lang>`.
+
+Een taalwissel herlaadt de pagina. `t()` leest een gewone variabele en geen `$state`, en labels die
+in een `<script>`-blok worden berekend (`ThemePicker`, `navItems`) zouden anders in de oude taal
+blijven staan. De sessie overleeft het herladen, want het refreshtoken staat in `localStorage`.
+Weigert de opslag, dan gaat de taal alleen in het geheugen om.
+
+`web.nl.ts` gebruikt `satisfies Record<WebKey, string>`: een ontbrekende of overtollige sleutel is
+een compileerfout in `bun run check`. Daarnaast bewaakt `src/lib/i18n/parity.test.ts` dat geen
+Nederlandse tekst stilzwijgend een kopie van de Engelse is (uitzonderingen staan in
+`SAME_ON_PURPOSE`) en dat plaatshouders in beide talen gelijk zijn; `literals.test.ts` weigert vaste
+`aria-label`-, `title`-, `placeholder`- en `alt`-teksten in de componenten (de dev-galerij is
+uitgezonderd).
+
+De northstar (`docs/assets/pleya-web-northstar`) bepaalt de terminologie. Gedeelde app-termen die
+daarvan afwijken, worden in web niet overgenomen maar als eigen webtekst gevoerd.
+
+De opnamescripts (`screenshots.ts`, `primitives-shots.ts`) nemen `--locale nl|en`: dat zet de
+browsertaal van de context en wist `pleya.locale` vóór elk script van de pagina draait, zodat een
+eerdere keuze de vlag niet overschrijft. De opnamen staan in `docs/qa/s7-locale/`.
+
 ## Het contract
 
 `src/lib/api/schema.d.ts` wordt gegenereerd uit `docs/pleya-protocol/v1/openapi.yaml` en wordt
