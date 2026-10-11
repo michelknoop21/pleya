@@ -97,6 +97,7 @@ void main() {
 
   setUp(() async {
     PleyaShareChannel.discoveryDisabledForTest = true;
+    PleyaShareRelay.enabled = true;
     savedOverrides = HttpOverrides.current;
     HttpOverrides.global = null;
     SharedPreferences.setMockInitialValues({});
@@ -136,6 +137,7 @@ void main() {
 
   tearDown(() async {
     await host.stop();
+    PleyaShareRelay.enabled = false;
     host.relayBaseUrlOverride = null;
     PleyaShareChannel.relayBaseUrlOverride = null;
     await relay.stop();

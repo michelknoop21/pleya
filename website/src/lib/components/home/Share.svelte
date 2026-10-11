@@ -7,7 +7,6 @@
     ['Wi-Fi Aware', 'A direct link with no router or hotspot, on iOS 26.'],
     ['Hotspot', 'The addresses in the QR code plus the hotspot gateway.'],
     ['Cable', 'Ethernet adapters or USB tethering, over link-local addressing.'],
-    ['Anywhere', 'An end-to-end encrypted relay when both devices are online on different networks.'],
   ];
 </script>
 

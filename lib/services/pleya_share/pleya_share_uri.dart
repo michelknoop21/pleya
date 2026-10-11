@@ -12,8 +12,9 @@ class PleyaSharePairUri {
   final String code;
   final String saltB64;
 
-  /// Host relay room id — lets the guest pair over the internet relay when
-  /// no advertised IP is reachable. Absent on pre-relay hosts.
+  /// Stable host id. Wi-Fi Aware matches the host by it; it is also the relay
+  /// room id, unused while `PleyaShareRelay.enabled` is off. Absent on
+  /// pre-relay hosts.
   final String? relayHostId;
 
   const PleyaSharePairUri({

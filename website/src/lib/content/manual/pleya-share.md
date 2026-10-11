@@ -5,7 +5,7 @@ order: 15
 group: More to watch
 icon: cast_connected
 summary: Turning one device into a small media server for your other Pleya devices.
-updated: 2026-08-17
+updated: 2026-10-11
 ---
 
 # Pleya Share
@@ -45,10 +45,13 @@ Pleya tries in this order and uses the first one that works:
 | iOS 26 | Wi-Fi Aware, a direct link with no router or hotspot |
 | Personal hotspot | The addresses in the QR code plus the gateway |
 | Cable, ethernet adapters or USB tethering | Link-local addressing |
-| Different networks, both online | An end-to-end encrypted relay |
 | Nothing reachable | The catalogue you already browsed, offline |
 
-One limit worth knowing before you try it: a direct iPhone to iPad link over USB-C does not
+Both devices have to be on the same network, or within Wi-Fi Aware range of each other. Pleya
+Share does not reach a host over the internet, so a tablet on mobile data cannot stream from a
+phone at home.
+
+Another limit worth knowing before you try it: a direct iPhone to iPad link over USB-C does not
 work, because iOS gives apps no IP network there. Use a hotspot, or put a computer on one
 end with tethering enabled.
 

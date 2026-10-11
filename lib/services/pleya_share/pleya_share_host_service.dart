@@ -17,6 +17,7 @@ import 'pleya_share_foreground.dart';
 import 'pleya_share_pairing.dart';
 import 'pleya_share_protocol.dart';
 import 'pleya_share_aware.dart';
+import 'pleya_share_relay.dart';
 import 'pleya_share_relay_listener.dart';
 
 /// A paired guest device, persisted across host restarts.
@@ -105,9 +106,9 @@ class PleyaShareHostService extends ChangeNotifier {
   /// Base64 pairing salt for the QR deep link, or null when not sharing.
   String? get pairSaltB64 => _pairSalt == null ? null : base64Encode(_pairSalt!);
 
-  /// Stable relay room identity for this host, minted on first share and
-  /// persisted; guests store it so they can reach us over the internet when
-  /// no LAN path works.
+  /// Stable identity for this host, minted on first share and persisted.
+  /// Wi-Fi Aware publishes it and the QR carries it; it is also the relay
+  /// room id, unused while [PleyaShareRelay.enabled] is off.
   String? get relayHostId => _relayHostId;
 
   static const _relayHostIdPrefsKey = 'pleya_share_relay_host_id';
@@ -176,20 +177,25 @@ class PleyaShareHostService extends ChangeNotifier {
 
     regeneratePairCode(notify: false);
     await _startBeacon();
-    // Internet fallback: guests that can't reach us on the LAN tunnel the
-    // same HTTP protocol through the relay. Best-effort — retries while
-    // hosting when there's no connectivity.
-    _relayListener = PleyaShareRelayListener(
-      relayHostId: await _ensureRelayHostId(),
-      hostPort: server.port,
-      resolveKey: _resolveRelayKey,
-      baseUrl: relayBaseUrlOverride,
-    );
-    unawaited(_relayListener!.start());
+    // The id also names this host for Wi-Fi Aware and the QR, relay or not.
+    final relayHostId = await _ensureRelayHostId();
+    // Internet fallback, off by default (see [PleyaShareRelay.enabled]):
+    // guests that can't reach us on the LAN tunnel the same HTTP protocol
+    // through the relay. Best-effort — retries while hosting when there's
+    // no connectivity.
+    if (PleyaShareRelay.enabled) {
+      _relayListener = PleyaShareRelayListener(
+        relayHostId: relayHostId,
+        hostPort: server.port,
+        resolveKey: _resolveRelayKey,
+        baseUrl: relayBaseUrlOverride,
+      );
+      unawaited(_relayListener!.start());
+    }
     // Additive Wi-Fi Aware path: routerless peer-to-peer Wi-Fi (Android 8+,
     // iOS 26+). No-op on unsupported devices; every existing path stays.
     _awareHost = PleyaShareAwareHost(hostPort: server.port);
-    unawaited(_awareHost!.start(_relayHostId!));
+    unawaited(_awareHost!.start(relayHostId));
     _startNetworkMonitoring();
     // Android: a native foreground service (notification + wifi/wake locks)
     // keeps the server alive in the background. Elsewhere the OS suspends

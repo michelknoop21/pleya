@@ -12,6 +12,7 @@ import 'pleya_share_protocol.dart';
 import 'package:pleya_aware/pleya_aware.dart';
 
 import 'pleya_share_aware.dart';
+import 'pleya_share_relay.dart';
 import 'pleya_share_relay_proxy.dart';
 
 /// A Pleya Share host seen via UDP discovery.
@@ -135,9 +136,9 @@ class PleyaShareChannel {
         appLogger.d('PleyaShare: aware fallback failed', error: e);
       }
     }
-    // Then the internet relay. The proxy serves loopback HTTP, so auth and
-    // streamUrl work unchanged.
-    if (relayHostId != null) {
+    // Then the internet relay, off by default (see [PleyaShareRelay.enabled]).
+    // The proxy serves loopback HTTP, so auth and streamUrl work unchanged.
+    if (relayHostId != null && PleyaShareRelay.enabled) {
       await _relayProxy?.stop();
       final proxy = PleyaShareRelayProxy(
         relayHostId: relayHostId,
@@ -366,7 +367,7 @@ class PleyaShareChannel {
     }
     // Different networks entirely (guest on 4G, host on Wi-Fi): pair through
     // the internet relay using the code+salt from the QR as key material.
-    if (relayHostId != null && saltB64 != null) {
+    if (relayHostId != null && saltB64 != null && PleyaShareRelay.enabled) {
       final pairingKey = await PleyaSharePairing.derivePairingKey(code, base64Decode(saltB64));
       final proxy = PleyaShareRelayProxy(
         relayHostId: relayHostId,

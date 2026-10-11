@@ -6,7 +6,7 @@ Eén Go-binary die vier dingen in de app bedient. Alle vier lezen dezelfde basis
 | Route | Gebruikt door |
 | --- | --- |
 | `POST /logs`, `GET /logs/<id>` | Log-upload in `lib/screens/settings/logs_screen.dart` |
-| `GET /relay` (WebSocket) | Watch Together en de Pleya Share-relay-fallback |
+| `GET /relay` (WebSocket) | Watch Together. De Pleya Share-relay-fallback staat uit, zie `docs/PLEYA_SHARE.md` |
 | `POST /posters`, `GET /posters/<id>` | Discord Rich Presence-artwork |
 | OAuth-proxy | MyAnimeList- en AniList-koppeling |
 | `GET /health` | `ok` |
