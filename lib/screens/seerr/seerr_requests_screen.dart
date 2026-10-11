@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../automation/automation_ids.dart';
 import '../../automation/automation_node.dart';
+import '../../focus/key_event_utils.dart';
 import '../../i18n/strings.g.dart';
 import '../../models/seerr/seerr_media.dart';
 import '../../models/seerr/seerr_request.dart';
@@ -713,6 +714,21 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen> {
   /// so a row that offers to go back there is a loop, and the rail is where a
   /// catalog-language page keeps its controls.
   Widget _buildTv(String title, bool ownOnly) {
+    // Menu on a card or a state action is left to the route (see
+    // `TvCatalogCard.onBack`), and this page is a pushed route above the
+    // shell, so the shell is not asked. `FocusedScrollScaffold` used to pop
+    // it; the TV branch no longer goes through that scaffold (DEC-108), which
+    // left a page the remote could not leave. The rail answers its own Menu
+    // first, so this only sees a press nothing below it took.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (_, event) => handleBackKeyNavigation(context, event),
+      child: _tvView(title, ownOnly),
+    );
+  }
+
+  Widget _tvView(String title, bool ownOnly) {
     return TvSeerrRequestsView(
       key: _tvKey,
       title: title,
