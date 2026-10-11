@@ -57,14 +57,18 @@ String _servedLabel(AssistantToolContext ctx, List<ServerId> answered, List<Serv
 // ---------------------------------------------------------------- now
 
 /// A stream with what is known of its kind: true an episode, false a film,
-/// null the source does not say (Pleya Server's stream list carries no kind).
+/// null not a film or episode, or the source does not say (a track, a clip, a
+/// recording; Pleya Server's stream list carries no kind).
 typedef _Stream = ({JellyfinActiveSession s, bool? episode});
 
-final _episodeSubtitle = RegExp(r'^S\d+\s*·\s*E\d+');
-final _yearSubtitle = RegExp(r'^\d{4}$');
+bool? _episodeOf(String? kind) => switch (kind) {
+  'episode' => true,
+  'movie' => false,
+  _ => null,
+};
 
 Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
-  List<_Stream> tag(List<JellyfinActiveSession> list) => [for (final s in list) (s: s, episode: s.episode != null)];
+  List<_Stream> tag(List<JellyfinActiveSession> list) => [for (final s in list) (s: s, episode: _episodeOf(s.kind))];
   // Tautulli answers only for the Plex server it monitors.
   if (ctx.insights?.tautulliFor(id) case final tautulli?) {
     final now = await const NowWatchingService().resolve(tautulli);
@@ -80,24 +84,18 @@ Future<List<_Stream>?> _streamsOn(AssistantToolContext ctx, ServerId id) async {
               paused: s.isPaused,
               transcoding: s.isTranscoding,
               device: s.playerLabel,
+              kind: s.mediaType,
             ),
-            // Tautulli's subtitle is "S1 · E3 name" for an episode and the year
-            // for a film; anything else says nothing about the kind.
-            episode: s.subtitle == null
-                ? null
-                : _episodeSubtitle.hasMatch(s.subtitle!)
-                ? true
-                : _yearSubtitle.hasMatch(s.subtitle!)
-                ? false
-                : null,
+            // Tautulli's own media_type, never the display subtitle.
+            episode: _episodeOf(s.mediaType),
           ),
       ];
     }
     // Tautulli down or behind a login page: Plex itself still knows.
   }
   return switch (ctx.adminClient(id)) {
-    final JellyfinClient jf => tag((await jf.listActiveSessions())),
-    final PleyaServerClient ps => [for (final s in await ps.streamSessions()) (s: s, episode: null)],
+    final JellyfinClient jf => tag(await jf.listActiveSessions()),
+    final PleyaServerClient ps => tag(await ps.streamSessions()),
     final PlexClient plex => switch (_plexOwnerToken(ctx, id)) {
       final token? => tag(await plex.fetchActiveStreams(authToken: token)),
       null => null,
@@ -126,14 +124,17 @@ Future<AssistantToolResult> _watchedNow(
   // known to be of that kind; those whose source does not say are counted, not
   // listed as if they were.
   var kindUnknown = 0;
+  var otherKind = 0;
   final all = <({String server, JellyfinActiveSession s})>[];
   for (final (id, streams) in read) {
     for (final st in streams ?? const <_Stream>[]) {
       if (excluded.contains(st.s.userName.trim().toLowerCase())) continue;
       if (media == null || st.episode == (media == 'show')) {
         all.add((server: ctx.serverName(id), s: st.s));
-      } else if (st.episode == null) {
+      } else if (st.s.kind == null) {
         kindUnknown++;
+      } else {
+        otherKind++;
       }
     }
   }
@@ -141,7 +142,11 @@ Future<AssistantToolResult> _watchedNow(
   return AssistantToolResult(
     {
       'live_streams_only': true,
-      if (media != null) ...{'kind_filter': media, 'streams_kind_unknown': kindUnknown},
+      if (media != null) ...{
+        'kind_filter': media,
+        'streams_kind_unknown': kindUnknown,
+        'streams_other_kind': otherKind,
+      },
       'servers': [for (final id in answered) clipText(ctx.serverName(id))],
       'sessions': [
         for (final (:server, :s) in shown)
@@ -163,6 +168,9 @@ Future<AssistantToolResult> _watchedNow(
       'now',
       AssistantWatchStats(
         serverName: _servedLabel(ctx, answered, unavailable),
+        kindFilter: media == null ? null : (media == 'show' ? MediaKind.show : MediaKind.movie),
+        kindUnknown: kindUnknown,
+        otherKind: otherKind,
         unavailable: [for (final id in unavailable) ctx.serverName(id)],
         sessions: [
           for (final (i, (:server, :s)) in shown.indexed)

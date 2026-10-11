@@ -8512,6 +8512,24 @@ class TranslationsAssistantDisplaysEn {
 	/// en: 'Nobody is watching right now.'
 	String get nobodyNow => 'Nobody is watching right now.';
 
+	/// en: 'No films are streaming right now.'
+	String get noMoviesNow => 'No films are streaming right now.';
+
+	/// en: 'No series are streaming right now.'
+	String get noShowsNow => 'No series are streaming right now.';
+
+	/// en: '${count} streams are playing whose type this server does not say.'
+	String kindUnknownNow({required Object count}) => '${count} streams are playing whose type this server does not say.';
+
+	/// en: '${count} other streams are playing right now.'
+	String otherKindNow({required Object count}) => '${count} other streams are playing right now.';
+
+	/// en: 'Films right now'
+	String get watchNowMovies => 'Films right now';
+
+	/// en: 'Series right now'
+	String get watchNowShows => 'Series right now';
+
 	/// en: 'Nothing was watched in this period.'
 	String get nothingWatched => 'Nothing was watched in this period.';
 
@@ -11199,6 +11217,12 @@ extension on Translations {
 			'assistant.displays.watchNow' => 'Right now',
 			'assistant.displays.watchDays' => ({required Object n}) => 'Last ${n} days',
 			'assistant.displays.nobodyNow' => 'Nobody is watching right now.',
+			'assistant.displays.noMoviesNow' => 'No films are streaming right now.',
+			'assistant.displays.noShowsNow' => 'No series are streaming right now.',
+			'assistant.displays.kindUnknownNow' => ({required Object count}) => '${count} streams are playing whose type this server does not say.',
+			'assistant.displays.otherKindNow' => ({required Object count}) => '${count} other streams are playing right now.',
+			'assistant.displays.watchNowMovies' => 'Films right now',
+			'assistant.displays.watchNowShows' => 'Series right now',
 			'assistant.displays.nothingWatched' => 'Nothing was watched in this period.',
 			'assistant.displays.partialData' => 'Not every server could be read in time, so this may be incomplete.',
 			'assistant.displays.watchTitle' => 'Watch stats',

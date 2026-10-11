@@ -291,6 +291,7 @@ void main() {
         paused: null,
         transcoding: null,
         device: 'iPad',
+        kind: null,
       ));
       expect(streams.last.device, isNull, reason: 'a row without an auth session has no device');
       expect(streams.last.progressPercent, 0);

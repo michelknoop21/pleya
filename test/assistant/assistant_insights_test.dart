@@ -715,6 +715,7 @@ void main() {
             paused: true,
             transcoding: null,
             device: 'Apple TV',
+            kind: null,
           ),
         ],
       );
@@ -743,6 +744,7 @@ void main() {
             paused: null,
             transcoding: null,
             device: 'TV',
+            kind: 'movie',
           ),
           (
             userName: 'Kim',
@@ -752,6 +754,18 @@ void main() {
             paused: null,
             transcoding: null,
             device: 'iPad',
+            kind: 'episode',
+          ),
+          // A music track is no film and no episode: never listed under either.
+          (
+            userName: 'Joe',
+            title: 'Opening Titles',
+            episode: null,
+            progressPercent: 50,
+            paused: null,
+            transcoding: null,
+            device: 'Phone',
+            kind: 'other',
           ),
         ],
       );
@@ -766,9 +780,12 @@ void main() {
       expect(films.data['live_streams_only'], isTrue);
       expect(films.data['kind_filter'], 'movie');
       expect(films.data['streams_kind_unknown'], 0);
-      expect((films.display! as AssistantWatchStats).sessions.map((s) => s.title), ['Dune'], reason: 'card = list');
+      expect(films.data['streams_other_kind'], 2, reason: 'the episode and the track are counted, not listed');
+      final card = films.display! as AssistantWatchStats;
+      expect(card.sessions.map((s) => s.title), ['Dune'], reason: 'card = list');
+      expect(card.kindFilter, MediaKind.movie);
       expect(titles(await now('show', jellyfin: [jf])), ['Severance']);
-      expect(titles(await now(null, jellyfin: [jf])), ['Dune', 'Severance']);
+      expect(titles(await now(null, jellyfin: [jf])), ['Dune', 'Severance', 'Opening Titles']);
 
       // Pleya Server's stream list carries no kind: counted, never listed as films.
       final ps = _Ps(
@@ -783,6 +800,7 @@ void main() {
             paused: null,
             transcoding: null,
             device: 'iPad',
+            kind: null,
           ),
         ],
         history: null,
@@ -793,6 +811,8 @@ void main() {
       expect(unknown.data['sessions'], isEmpty);
       expect(unknown.data['streams_kind_unknown'], 1);
       expect(unknown.data['live_streams_only'], isTrue);
+      final emptyCard = unknown.display! as AssistantWatchStats;
+      expect(emptyCard.kindUnknown, 1, reason: 'the card can say "1 stream of unknown type", not "nobody"');
     });
 
     test('now: exclude_users drops that account, media and more than 10 names are refused', () async {
@@ -808,6 +828,7 @@ void main() {
             paused: null,
             transcoding: null,
             device: null,
+            kind: null,
           ),
           (
             userName: 'Sam',
@@ -817,6 +838,7 @@ void main() {
             paused: null,
             transcoding: null,
             device: null,
+            kind: null,
           ),
         ],
       );
@@ -846,6 +868,7 @@ void main() {
         paused: false,
         transcoding: null,
         device: 'TV',
+        kind: null,
       );
       final control = _Jf('woon', 'Woonkamer', sessions: const [session]);
       final ok = await _tool('watch_stats').run(_ctx([control]), ServerId('woon'), {'scope': 'now'});
@@ -1051,6 +1074,7 @@ void main() {
             paused: null,
             transcoding: null,
             device: 'iPad',
+            kind: null,
           ),
         ],
         history: null,

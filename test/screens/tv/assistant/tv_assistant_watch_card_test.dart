@@ -48,6 +48,18 @@ void main() {
     expect(find.text('Geen kijkgegevens beschikbaar voor Zolder.'), findsOneWidget);
   });
 
+  testWidgets('films now with no film streaming: says so and names what was left out, never "nobody"', (tester) async {
+    await pump(
+      tester,
+      const AssistantWatchStats(serverName: 'Zolder', kindFilter: MediaKind.movie, kindUnknown: 2, otherKind: 1),
+    );
+    expect(find.text('Zolder · Films op dit moment'), findsOneWidget);
+    expect(find.text('Er wordt nu geen film gekeken.'), findsOneWidget);
+    expect(find.text('2 streams spelen af waarvan deze server het type niet zegt.'), findsOneWidget);
+    expect(find.text('1 andere streams spelen nu.'), findsOneWidget);
+    expect(find.text('Er kijkt nu niemand.'), findsNothing);
+  });
+
   testWidgets('watched titles are title cards: plays and viewers, a library copy opens', (tester) async {
     final item = MediaItem(id: 's1', backend: MediaBackend.jellyfin, kind: MediaKind.show, title: 'The Block');
     final opened = <AssistantTitleTarget>[];

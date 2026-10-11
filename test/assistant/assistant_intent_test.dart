@@ -358,5 +358,17 @@ void main() {
       expect(AssistantIntent.refersBack('Wat heb ik daarvan gekeken?'), isTrue);
       expect(AssistantIntent.refersBack('Wat heb ik gekeken en wat keken de anderen?'), isFalse);
     });
+
+    test('a question about right now is answered with live streams, never a period', () {
+      final q = _i('Welke films kijkt iedereen nu?');
+      final fixed = q.constrain('watch_stats', {'scope': 'period', 'days': 7, 'media': 'movie'});
+      expect(fixed.args['scope'], 'now');
+      expect(fixed.args, isNot(contains('days')));
+      expect(
+        _i('Wat is er tot nu toe gekeken door iedereen?').constrain('watch_stats', {'scope': 'period'}).args['scope'],
+        'period',
+      );
+      expect(_i('Wie kijkt er nu deze week?').constrain('watch_stats', {'scope': 'period'}).args['scope'], 'period');
+    });
   });
 }

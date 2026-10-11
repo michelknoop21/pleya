@@ -3683,6 +3683,12 @@ class _TranslationsAssistantDisplaysNl extends TranslationsAssistantDisplaysEn {
 	@override String get watchNow => 'Op dit moment';
 	@override String watchDays({required Object n}) => 'Afgelopen ${n} dagen';
 	@override String get nobodyNow => 'Er kijkt nu niemand.';
+	@override String get noMoviesNow => 'Er wordt nu geen film gekeken.';
+	@override String get noShowsNow => 'Er wordt nu geen serie gekeken.';
+	@override String kindUnknownNow({required Object count}) => '${count} streams spelen af waarvan deze server het type niet zegt.';
+	@override String otherKindNow({required Object count}) => '${count} andere streams spelen nu.';
+	@override String get watchNowMovies => 'Films op dit moment';
+	@override String get watchNowShows => 'Series op dit moment';
 	@override String get nothingWatched => 'In deze periode is niets bekeken.';
 	@override String get partialData => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.';
 	@override String get watchTitle => 'Kijkcijfers';
@@ -6270,6 +6276,12 @@ extension on TranslationsNl {
 			'assistant.displays.watchNow' => 'Op dit moment',
 			'assistant.displays.watchDays' => ({required Object n}) => 'Afgelopen ${n} dagen',
 			'assistant.displays.nobodyNow' => 'Er kijkt nu niemand.',
+			'assistant.displays.noMoviesNow' => 'Er wordt nu geen film gekeken.',
+			'assistant.displays.noShowsNow' => 'Er wordt nu geen serie gekeken.',
+			'assistant.displays.kindUnknownNow' => ({required Object count}) => '${count} streams spelen af waarvan deze server het type niet zegt.',
+			'assistant.displays.otherKindNow' => ({required Object count}) => '${count} andere streams spelen nu.',
+			'assistant.displays.watchNowMovies' => 'Films op dit moment',
+			'assistant.displays.watchNowShows' => 'Series op dit moment',
 			'assistant.displays.nothingWatched' => 'In deze periode is niets bekeken.',
 			'assistant.displays.partialData' => 'Niet elke server kon op tijd gelezen worden; dit kan onvolledig zijn.',
 			'assistant.displays.watchTitle' => 'Kijkcijfers',

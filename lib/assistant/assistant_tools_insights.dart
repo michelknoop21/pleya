@@ -60,7 +60,17 @@ class AssistantWatchStats extends AssistantDisplay {
     this.users = const [],
     this.unavailable = const [],
     this.partial = false,
+    this.kindFilter,
+    this.kindUnknown = 0,
+    this.otherKind = 0,
   });
+
+  /// "Now" narrowed to films or series: only streams known to be of that kind
+  /// are in [sessions]. [kindUnknown] streams whose source does not say, and
+  /// [otherKind] streams of the other kind, are counted, never listed.
+  final MediaKind? kindFilter;
+  final int kindUnknown;
+  final int otherKind;
 
   /// The servers that answered, joined; the asked ones when none did.
   final String serverName;
