@@ -6,31 +6,89 @@
  * lezer getoond.
  */
 import type { Item } from '../api/types';
-import { plural, t } from '../i18n';
+import { intlLocale, plural, t } from '../i18n';
 
+/**
+ * De eenheden komen uit de catalogus (`duration.*`), zodat een derde taal geen
+ * code raakt. "u 46m" in het Nederlands is hier dus geen uitzondering in de
+ * logica maar een andere tekst in dezelfde vorm.
+ */
 export function formatDuration(ms: number | null | undefined): string | null {
-  if (typeof ms !== 'number' || ms <= 0) return null;
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return null;
   // Onder de minuut in seconden, want naar minuten afronden maakt van een
   // fragment van twee seconden "0m", en dat leest als "duur onbekend".
-  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s`;
+  if (ms < 60_000) return t('duration.s', { s: Math.max(1, Math.round(ms / 1000)) });
   const totalMinutes = Math.round(ms / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes}m`;
+  if (hours === 0) return t('duration.m', { m: minutes });
   // "3h 0m" leest als een meting tot op de minuut; een rond uur is "3h".
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes}m`;
+  if (minutes === 0) return t('duration.h', { h: hours });
+  return t('duration.hm', { h: hours, m: minutes });
 }
 
-export function formatDate(iso: string | null | undefined, locale = 'en'): string | null {
+// De taal komt uit de actieve locale en wordt bij de aanroep gelezen, niet bij
+// het laden van de module: een vaste Engelse standaard liet de datum Engels
+// terwijl de rest van de pagina Nederlands was.
+export function formatDate(iso: string | null | undefined, locale = intlLocale()): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
+  // Nederlands in de lange vorm ("12 augustus 2026", de northstar); Engels
+  // houdt de korte ("Aug 12, 2026").
+  const dateStyle = locale.startsWith('nl') ? 'long' : 'medium';
+  return new Intl.DateTimeFormat(locale, { dateStyle }).format(date);
 }
 
-export function formatCount(count: number, locale = 'en'): string {
+export function formatCount(count: number, locale = intlLocale()): string {
   return new Intl.NumberFormat(locale).format(count);
+}
+
+const BYTE_UNITS = ['B', 'kB', 'MB', 'GB', 'TB', 'PB'] as const;
+
+/**
+ * Decimaal (1000), zoals de northstar "42,1 GB" voor een bestand toont en
+ * zoals schijfleveranciers en de server rekenen. Hele bytes zonder decimaal,
+ * vanaf kB hooguit één: "8,3 GB", "120 GB". Ongeldig of negatief telt als
+ * "0 B", omdat deze functie als `format` in een meter staat en een string moet
+ * teruggeven.
+ */
+export function formatBytes(bytes: number, locale = intlLocale()): string {
+  const value = Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+  let unit = 0;
+  let scaled = value;
+  while (scaled >= 1000 && unit < BYTE_UNITS.length - 1) {
+    scaled /= 1000;
+    unit += 1;
+  }
+  const number = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: unit === 0 ? 0 : 1
+  }).format(scaled);
+  return `${number} ${BYTE_UNITS[unit]}`;
+}
+
+// De server levert ISO 639-2-codes (`eng`); `Intl.DisplayNames` kent die niet
+// altijd. De codes die een mediabestand in de praktijk draagt, naar twee letters.
+const LANGUAGE_ALIASES: Record<string, string> = {
+  eng: 'en', nld: 'nl', dut: 'nl', deu: 'de', ger: 'de', fra: 'fr', fre: 'fr',
+  spa: 'es', ita: 'it', por: 'pt', rus: 'ru', jpn: 'ja', kor: 'ko', zho: 'zh',
+  chi: 'zh', ara: 'ar', hin: 'hi', swe: 'sv', nor: 'no', dan: 'da', fin: 'fi',
+  pol: 'pl', tur: 'tr', ces: 'cs', cze: 'cs', ell: 'el', gre: 'el', heb: 'he',
+  hun: 'hu', ukr: 'uk', tha: 'th', vie: 'vi', ind: 'id', ron: 'ro', rum: 'ro'
+};
+
+/** "eng" wordt "English" of "Engels"; een onbekende code komt ongewijzigd terug. */
+export function formatLanguage(code: string | null | undefined, locale = intlLocale()): string | null {
+  if (!code) return null;
+  const lower = code.trim().toLowerCase();
+  if (!lower) return null;
+  try {
+    const names = new Intl.DisplayNames(locale, { type: 'language', fallback: 'code' });
+    return names.of(LANGUAGE_ALIASES[lower] ?? lower) ?? code;
+  } catch {
+    // Structureel ongeldige code: de code zelf, geen kapotte pagina.
+    return code;
+  }
 }
 
 /**

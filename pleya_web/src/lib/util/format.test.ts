@@ -1,16 +1,28 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   artworkAspect,
   cardArtworkId,
   cardSubtitle,
+  formatBytes,
+  formatCount,
   formatDate,
   formatDuration,
+  formatLanguage,
   isWatched,
   itemProgress,
   itemSubtitle
 } from './format';
 import type { Item } from '../api/types';
+import { setLocale, type Locale } from '../i18n';
+
+// De actieve taal is moduletoestand; elke test begint weer in het Engels.
+afterEach(() => setLocale('en'));
+
+function inLocale<T>(locale: Locale, run: () => T): T {
+  setLocale(locale);
+  return run();
+}
 
 function item(patch: Partial<Item>): Item {
   return {
@@ -147,5 +159,73 @@ describe('cardSubtitle en cardArtworkId', () => {
     expect(cardArtworkId(art, 'wide')).toBe('b');
     expect(cardArtworkId(art, 'poster')).toBe('p');
     expect(cardArtworkId(item({ artwork: { poster_id: 'p' } }), 'wide')).toBe('p');
+  });
+});
+
+const MIN = 60_000;
+
+describe('per taal: duur', () => {
+  const cases: Array<[string, number, string, string]> = [
+    ['2u 46m', 166 * MIN, '2h 46m', '2u 46m'],
+    ['een rond uur', 180 * MIN, '3h', '3u'],
+    ['31 minuten', 31 * MIN, '31m', '31 min'],
+    ['12 seconden', 12_000, '12s', '12 s'],
+    ['59 minuten (net onder het uur)', 59 * MIN, '59m', '59 min'],
+    ['60 minuten (net een uur)', 60 * MIN, '1h', '1u'],
+    ['1 minuut', 1 * MIN, '1m', '1 min']
+  ];
+  for (const [name, ms, en, nl] of cases) {
+    it(`${name}: ${en} in het Engels, ${nl} in het Nederlands`, () => {
+      expect(inLocale('en', () => formatDuration(ms))).toBe(en);
+      expect(inLocale('nl', () => formatDuration(ms))).toBe(nl);
+    });
+  }
+
+  it('geeft in beide talen niets voor nul, NaN en null', () => {
+    for (const l of ['en', 'nl'] as const) {
+      expect(inLocale(l, () => formatDuration(0))).toBeNull();
+      expect(inLocale(l, () => formatDuration(Number.NaN))).toBeNull();
+      expect(inLocale(l, () => formatDuration(null))).toBeNull();
+      expect(inLocale(l, () => formatDuration(Number.POSITIVE_INFINITY))).toBeNull();
+    }
+  });
+});
+
+describe('per taal: datum, getal, grootte, taalnaam', () => {
+  it('schrijft de datum in de taal van de pagina', () => {
+    expect(inLocale('en', () => formatDate('2026-08-12T12:00:00Z'))).toBe('Aug 12, 2026');
+    expect(inLocale('nl', () => formatDate('2026-08-12T12:00:00Z'))).toBe('12 augustus 2026');
+  });
+
+  it('zet het duizendtal volgens de taal', () => {
+    expect(inLocale('en', () => formatCount(1200))).toBe('1,200');
+    expect(inLocale('nl', () => formatCount(1200))).toBe('1.200');
+  });
+
+  it('rekent bytes decimaal en zet de komma volgens de taal', () => {
+    expect(inLocale('en', () => formatBytes(8.3e9))).toBe('8.3 GB');
+    expect(inLocale('nl', () => formatBytes(8.3e9))).toBe('8,3 GB');
+    expect(inLocale('nl', () => formatBytes(42.1e9))).toBe('42,1 GB');
+    setLocale('en');
+    expect(formatBytes(0)).toBe('0 B');
+    expect(formatBytes(999)).toBe('999 B');
+    expect(formatBytes(1500)).toBe('1.5 kB');
+    expect(formatBytes(Number.NaN)).toBe('0 B');
+    expect(formatBytes(-5)).toBe('0 B');
+  });
+
+  it('vertaalt een taalcode, ook de driecijferige van de server', () => {
+    expect(inLocale('en', () => formatLanguage('eng'))).toBe('English');
+    expect(inLocale('nl', () => formatLanguage('eng'))).toBe('Engels');
+    expect(inLocale('nl', () => formatLanguage('fre'))).toBe('Frans');
+    expect(inLocale('nl', () => formatLanguage('nl'))).toBe('Nederlands');
+    expect(inLocale('nl', () => formatLanguage('xx'))).toBe('xx');
+  });
+
+  it('laat een onbekende of ongeldige code ongewijzigd en ontbrekend leeg', () => {
+    expect(formatLanguage('xx')).toBe('xx');
+    expect(formatLanguage('e n!')).toBe('e n!');
+    expect(formatLanguage(null)).toBeNull();
+    expect(formatLanguage('')).toBeNull();
   });
 });
