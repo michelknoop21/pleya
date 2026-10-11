@@ -122,13 +122,20 @@ class TraktLibraryReader {
 
   /// A caller waits at most [timeout]; on timeout it gets the last good list
   /// and is not sent to the same download again for [failureBackoff].
-  Future<T?> _waitFor<T>(_Slot<T> slot, Future<T?> job) => job.timeout(
-    timeout,
-    onTimeout: () {
-      slot.failedAt ??= _now();
-      return _stale(slot, _now());
-    },
-  );
+  Future<T?> _waitFor<T>(_Slot<T> slot, Future<T?> job) {
+    final epoch = _epoch;
+    return job.timeout(
+      timeout,
+      onTimeout: () {
+        // A profile switch while waiting must not mark, or read, the next
+        // profile's slot.
+        if (epoch != _epoch) return null;
+        // Refreshed each time: a success clears it anyway.
+        slot.failedAt = _now();
+        return _stale(slot, _now());
+      },
+    );
+  }
 
   T? _stale<T>(_Slot<T> slot, DateTime now) {
     final at = slot.at;

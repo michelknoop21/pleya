@@ -183,7 +183,8 @@ final List<AssistantTool> _traktTools = [
       return AssistantToolResult({
         'titles': rows,
         'count': rows.length,
-        'listed_on_trakt': ofKind.length,
+        // Entries read from Trakt (at most 50 per kind), not the account's total.
+        'trakt_entries_read': ofKind.length,
         'looked_up': lookups.where((l) => l.status != _TraktLibraryStatus.notChecked).length,
       }, display: shown.isEmpty ? null : AssistantMediaGrid([for (final item in shown) (item: item, group: null)]));
     },

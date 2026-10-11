@@ -170,19 +170,31 @@ void main() {
         },
       );
       manager.debugRegisterClientForTesting(busy);
-      final ctx = _ctx(
-        manager,
-        trakt: _trakt(titles: [_title('Obscure Film', 2001, imdb: 'tt0000042')]),
-      );
-      // Obscure Film is not on jf (small) and busy's search is full for "Obscure Film"? Use a title that is.
+      // "Dune" (2020, another id) is not on any server, but busy's title
+      // search for it is full: not confirmed. "Obscure Film" gets a short page.
       final data = await _run(
         _ctx(
           manager,
-          trakt: _trakt(titles: [_title('Dune', 2020, imdb: 'tt0000099')]),
+          trakt: _trakt(
+            titles: [
+              _title('Dune', 2020, imdb: 'tt0000099'),
+              _title('Obscure Film', 2001, imdb: 'tt0000042'),
+            ],
+          ),
         ),
       );
       expect(_row(data, 'Dune')['library_status'], 'not_checked');
-      expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_found_in_library');
+      expect(_row(data, 'Obscure Film')['library_status'], 'not_found_in_library');
+    });
+
+    test('a hit on a server that answered still wins next to a server that cannot answer by identity', () async {
+      manager.debugRegisterClientForTesting(_PleyaServer('ps'));
+      final ctx = _ctx(
+        manager,
+        trakt: _trakt(titles: [_title('Dune', 2021, imdb: 'tt1160419')]),
+      );
+
+      expect(_row(await _run(ctx), 'Dune')['library_status'], 'in_library');
     });
 
     test('a server that cannot answer by identity makes a miss "not_checked"', () async {
@@ -209,7 +221,7 @@ void main() {
       final shows = await _run(ctx, {'kind': 'show'});
 
       expect((shows['titles'] as List).map((r) => (r as Map)['title']), ['Severance']);
-      expect(shows['listed_on_trakt'], 1);
+      expect(shows['trakt_entries_read'], 1);
     });
 
     test('kind filter keeps films or series only', () async {
@@ -302,10 +314,22 @@ void main() {
     });
 
     test('allowed but unreadable Trakt is flagged, so "unseen" is not read as complete', () async {
+      var recovered = false;
       final seen = AssistantTraktSeen(available: () => true, read: () async => null);
       expect(await seen.identities(), isEmpty);
       expect(seen.unavailable, isTrue);
       expect(seen.included, isFalse);
+
+      // It recovers: the flag follows the last read, not the first failure.
+      final recovering = AssistantTraktSeen(
+        available: () => true,
+        read: () async => recovered ? TraktSeen(movies: [_title('Dune', 2021, imdb: 'tt1160419')]) : null,
+      );
+      expect(await recovering.identities(), isEmpty);
+      expect(recovering.unavailable, isTrue);
+      recovered = true;
+      expect(await recovering.identities(), isNotEmpty);
+      expect(recovering.unavailable, isFalse);
     });
 
     test('my_watching leaves out a pick the user watched on Trakt and says so', () async {

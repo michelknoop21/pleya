@@ -245,6 +245,56 @@ void main() {
       expect(list!.first.title, 'M2', reason: 'newest first');
     });
 
+    test('a reset during a wait leaves the next profile out of backoff', () async {
+      final gate = Completer<void>();
+      client = _client((r) async {
+        await gate.future;
+        return http.Response('[]', 200);
+      });
+      final slow = TraktLibraryReader(
+        clientOf: () => client,
+        userOf: () => user,
+        now: () => clock,
+        timeout: const Duration(milliseconds: 40),
+      );
+      final waiting = slow.seen(expectUser: 'u1');
+      slow.reset();
+      expect(await waiting, isNull);
+
+      client = _client((r) async => http.Response(json.encode([_movie('Dune', 2021, imdb: 'tt1160419')]), 200));
+      expect((await slow.seen(expectUser: 'u1'))!.movies.single.title, 'Dune');
+      gate.complete();
+    });
+
+    test('a second caller during a long download does not wait again', () async {
+      final gate = Completer<void>();
+      var requests = 0;
+      var failFirst = true;
+      client = _client((r) async {
+        requests++;
+        if (failFirst) return http.Response('boom', 500);
+        await gate.future;
+        return http.Response('[]', 200);
+      });
+      final slow = TraktLibraryReader(
+        clientOf: () => client,
+        userOf: () => user,
+        now: () => clock,
+        timeout: const Duration(milliseconds: 40),
+      );
+      // An old failure is on the slot; the new download then starts later.
+      expect(await slow.seen(expectUser: 'u1'), isNull);
+      failFirst = false;
+      clock = clock.add(TraktLibraryReader.failureBackoff + const Duration(seconds: 1));
+      expect(await slow.seen(expectUser: 'u1'), isNull);
+      final before = requests;
+      final sw = Stopwatch()..start();
+      expect(await slow.seen(expectUser: 'u1'), isNull);
+      expect(sw.elapsedMilliseconds, lessThan(30), reason: 'in backoff, not joined');
+      expect(requests, before);
+      gate.complete();
+    });
+
     test('a read that hangs is cut off', () async {
       client = _client((r) => Completer<http.Response>().future);
       final slow = TraktLibraryReader(

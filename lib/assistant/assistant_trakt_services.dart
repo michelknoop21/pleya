@@ -58,6 +58,7 @@ class AssistantTraktSeen {
       _failed = true;
       return const [];
     }
+    _failed = false;
     final identities = traktWatchedIdentities(seen, completedOnly: completedOnly);
     if (identities.isNotEmpty) _included = true;
     return identities;
