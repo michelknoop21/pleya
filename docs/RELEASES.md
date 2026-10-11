@@ -49,14 +49,14 @@ Nothing user-facing since the last published build.
 <!-- commit: 89455da4a55e0b43ddc80e66b1858dfbda5fdc16 -->
 
 ### Improved
-- Big P and your recommendations recognise a title you watched on one server when the same
+- Your recommendations recognise a title you watched on one server when the same
   title sits on another server.
 
 ### Fixed
 - Pleya Share stays on your local network. After a short Wi-Fi or hotspot hiccup a guest could
   end up on the internet relay, where the share looked online but nothing played. Pleya Share
-  no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware. Sharing
-  between two different networks is gone with it.
+  no longer uses that relay, so it reconnects over the local network. Sharing between two
+  different networks is gone with it.
 
 ### Notes
 - Big P is not part of the Mac build.
@@ -91,8 +91,8 @@ Nothing user-facing since the last published build.
 ### Fixed
 - Pleya Share stays on your local network. After a short Wi-Fi or hotspot hiccup a guest could
   end up on the internet relay, where the share looked online but nothing played. Pleya Share
-  no longer uses that relay, so it reconnects over the local network or Wi-Fi Aware. Sharing
-  between two different networks is gone with it.
+  no longer uses that relay, so it reconnects over the local network. Sharing between two
+  different networks is gone with it.
 
 ### Notes
 - Several things were already in earlier builds without a note. The context menu shows a line
