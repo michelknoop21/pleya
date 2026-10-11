@@ -13,6 +13,7 @@ import 'affinity_engine.dart';
 import 'taste_profile.dart';
 import 'candidate_pool.dart';
 import 'history_importer.dart';
+import 'interaction_identity.dart';
 import 'personalized_rows_builder.dart';
 import 'tautulli_history_importer.dart';
 
@@ -88,6 +89,16 @@ class RecommendationService {
   /// connection that another profile also uses (DEC-062, DEC-132).
   final Future<Set<String>> Function()? _sharedHistoryServerIds;
 
+  /// The client for a server key, for the identity backfill. Null disables it.
+  final MediaServerClient? Function(ServerId serverId)? _identityClientOf;
+
+  /// Whether this service's profile is still the active one; the backfill
+  /// re-checks it before every write.
+  final bool Function()? _isCurrentProfile;
+
+  DateTime? _lastIdentityBackfill;
+  bool _identityBackfillRunning = false;
+
   /// The enabled set the last [buildRows] actually scored with, so a sync can
   /// tell whether the rows on screen were built before the answer was known.
   Set<String>? _scoredWith;
@@ -114,6 +125,8 @@ class RecommendationService {
     this._importerFactory,
     this._historyImporters,
     this._sharedHistoryServerIds,
+    this._identityClientOf,
+    this._isCurrentProfile,
   }) : _db = database,
        _affinity = AffinityEngine(database),
        _candidates = candidatePool ?? CandidatePool(),
@@ -207,6 +220,52 @@ class RecommendationService {
     }
   }
 
+  /// Every title in this profile's log with the identity written next to it
+  /// (title, year, tokens), for recognising a copy on another server. Empty
+  /// when personalization is off or nothing qualifies.
+  Future<List<WatchedIdentity>> everSeenIdentities() async {
+    if (!_enabled) return const [];
+    try {
+      return await _db.everWatchedIdentities(
+        profileId,
+        minWeight: kSeedMinWeight,
+        enabledImportServerIds: _enabledImportServerIds(),
+      );
+    } catch (e, s) {
+      appLogger.w('RecommendationService: everSeenIdentities failed (none)', error: e, stackTrace: s);
+      return const [];
+    }
+  }
+
+  /// Fills in the identity of older rows, in the background and at most once
+  /// per [kIdentityBackfillInterval]. Never throws, never blocks a sync.
+  void _backfillIdentity() {
+    final clientOf = _identityClientOf;
+    if (clientOf == null || _identityBackfillRunning || !_enabled || profileId.isEmpty) return;
+    final last = _lastIdentityBackfill;
+    final now = DateTime.now();
+    if (last != null && now.difference(last) < kIdentityBackfillInterval) return;
+    _lastIdentityBackfill = now;
+    _identityBackfillRunning = true;
+    unawaited(
+      backfillInteractionIdentity(
+            database: _db,
+            profileId: profileId,
+            clientOf: clientOf,
+            enabledImportServerIds: _enabledImportServerIds,
+            isCurrentProfile: _isCurrentProfile ?? () => true,
+            minWeight: kSeedMinWeight,
+          )
+          .then<void>(
+            (_) {},
+            onError: (Object e, StackTrace s) {
+              appLogger.w('RecommendationService: identity backfill failed', error: e, stackTrace: s);
+            },
+          )
+          .whenComplete(() => _identityBackfillRunning = false),
+    );
+  }
+
   /// Servers the seed rows may not read the server-side history of. Throws
   /// when the answer is unknown; the caller then leaves that path out.
   Future<Set<String>> sharedHistoryServerIds() async => await _sharedHistoryServerIds?.call() ?? const {};
@@ -237,6 +296,7 @@ class RecommendationService {
   }
 
   Future<bool> _syncChain() async {
+    _backfillIdentity();
     var changed = await _syncImportedHistory();
     var extra = 0;
     while (_rerunRequested) {

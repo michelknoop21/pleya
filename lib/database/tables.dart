@@ -330,6 +330,21 @@ class MediaInteractions extends Table {
   /// Seconds actually played, from Tautulli `play_duration`. Not the media
   /// duration: `get_activity` uses the same key for something else entirely.
   IntColumn get playSeconds => integer().nullable()();
+
+  /// The title this row is about, at title level: the movie, or the series
+  /// for an episode. Null until it is known (rows from before v21 are filled
+  /// in bit by bit), so a title of a server that is gone is still recognised.
+  TextColumn get title => text().nullable()();
+
+  /// Strong identity tokens of that title, a JSON array of
+  /// `scope:namespace:value` (`movie:tmdb:603`, `show:guid:plex://show/...`).
+  /// Title level only: an episode row never holds an episode id here. Null
+  /// means unknown, not "has none".
+  TextColumn get identityJson => text().nullable()();
+
+  /// When a lookup for [title] / [identityJson] last found nothing, so a
+  /// server that cannot answer is not asked again on every pass.
+  IntColumn get identityTriedAt => integer().nullable()();
 }
 
 /// Where an external history import got to, per profile, server and source.

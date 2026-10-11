@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_account_key.dart';
 import 'package:pleya/assistant/current_user_binding.dart';
+import 'package:pleya/assistant/assistant_people.dart' show othersOf;
 import 'package:pleya/assistant/current_user_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
 import 'package:pleya/connection/connection.dart';
@@ -55,7 +56,9 @@ class _Jf implements JellyfinClient {
     this.played = const {},
     this.playedDelay = Duration.zero,
     this.searchable = const [],
+    this.emby = false,
   });
+  final bool emby;
   final List<MediaItem> searchable;
 
   @override
@@ -94,6 +97,7 @@ class _Jf implements JellyfinClient {
     accessToken: 't',
     deviceId: 'd',
     isAdministrator: admin,
+    isEmby: emby,
     createdAt: DateTime.utc(2026),
   );
 
@@ -178,7 +182,8 @@ class _Jf implements JellyfinClient {
 /// [history] finished. A null [history] is a server from before
 /// `GET /watch-history`, which answers the unknown-route 404.
 class _Ps implements PleyaServerClient {
-  _Ps(this.machine, this.name, {this.streams = const [], this.history = const []});
+  _Ps(this.machine, this.name, {this.streams = const [], this.history = const [], this.account});
+  final String? account;
   final String machine;
   final String name;
   final List<PleyaActiveStream> streams;
@@ -187,7 +192,7 @@ class _Ps implements PleyaServerClient {
 
   @override
   PleyaServerConnection get connection => PleyaServerConnection(
-    id: 'pleyaServer.$machine',
+    id: account == null ? 'pleyaServer.$machine' : 'pleyaServer.$machine.$account',
     baseUrl: 'http://$machine.lan',
     serverId: machine,
     serverName: name,
@@ -1415,6 +1420,102 @@ void main() {
       );
       expect(me.on('zolder', AssistantAccountProvider.pleyaServer).unknown, AssistantSelfUnknown.notStored);
       expect(me.trakt.key, const AssistantAccountKey(AssistantAccountProvider.trakt, 'michel'));
+    });
+
+    test('BP-03c: Pleya Server names me from the account in the connection id; legacy and borrowed stay unknown', () {
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      m.debugRegisterClientForTesting(_Ps('zolder', 'Zolder', account: 'acc-1'));
+      m.debugRegisterClientForTesting(_Ps('oud', 'Oud'));
+      m.debugRegisterClientForTesting(_Ps('geleend', 'Geleend', account: 'acc-9'));
+      m.setServerAuthorityRestrictions(serverIds: {'geleend'});
+      final me = currentUserContextFor(m, profileId: null, plexHome: const {});
+      expect(
+        me.on('zolder', AssistantAccountProvider.pleyaServer).key,
+        const AssistantAccountKey(AssistantAccountProvider.pleyaServer, 'acc-1', serverId: 'zolder'),
+      );
+      expect(me.on('oud', AssistantAccountProvider.pleyaServer).unknown, AssistantSelfUnknown.notStored);
+      expect(
+        me.on('geleend', AssistantAccountProvider.pleyaServer).unknown,
+        AssistantSelfUnknown.notStored,
+        reason: 'a borrowed connection is somebody else\'s account',
+      );
+    });
+
+    test('BP-03c: a borrowed Jellyfin connection is not "me" either', () {
+      final m = MultiServerManager();
+      addTearDown(m.dispose);
+      m.debugRegisterJellyfinClientForTesting(_Jf('woon', 'Woonkamer'));
+      m.setServerAuthorityRestrictions(serverIds: {'woon'});
+      final me = currentUserContextFor(m, profileId: null, plexHome: const {});
+      expect(me.on('woon', AssistantAccountProvider.jellyfin).unknown, AssistantSelfUnknown.notStored);
+    });
+
+    test('BP-03c: the same plex.tv account on two Plex servers is one person; the owner id 1 is per server', () {
+      final me = CurrentUserContext.build(const [
+        AssistantSelfSource(serverId: 'plex-a', backend: MediaBackend.plex, plexOwner: true, plexTvAccountId: 5),
+        AssistantSelfSource(serverId: 'plex-b', backend: MediaBackend.plex, plexTvAccountId: 5),
+      ]);
+      const tvA = AssistantAccountKey(AssistantAccountProvider.plexTv, '5');
+      expect(me.isSelf(tvA), isTrue);
+      expect(me.canTell(tvA), isTrue);
+      // Owner id 1 is me where I own the server, and unknown on the other one.
+      const ownerA = AssistantAccountKey(AssistantAccountProvider.plexServer, '1', serverId: 'plex-a');
+      const ownerB = AssistantAccountKey(AssistantAccountProvider.plexServer, '1', serverId: 'plex-b');
+      expect(me.isSelf(ownerA), isTrue);
+      expect(me.isSelf(ownerB), isFalse);
+      expect(me.canTell(ownerB), isFalse, reason: 'not "somebody else", unknown');
+      final split = othersOf<AssistantAccountKey>(
+        [tvA, const AssistantAccountKey(AssistantAccountProvider.plexTv, '6'), ownerB],
+        keyOf: (k) => k,
+        me: me,
+      );
+      expect(split.others.map((k) => k.accountId), ['6']);
+      expect(split.leftOut, [ownerB]);
+    });
+
+    test('BP-03c: on Emby the asker is removed through the Emby id space, not the Jellyfin one', () async {
+      final now = DateTime.now();
+      final emby = _Jf(
+        'emby',
+        'Emby',
+        emby: true,
+        users: const [
+          ServerUser(id: 'e1', name: 'michel', role: ServerUserRole.member, allLibraries: true),
+          ServerUser(id: 'e2', name: 'lee', role: ServerUserRole.member, allLibraries: true),
+        ],
+        played: {
+          'e1': [_played('x1', 'Dune', now)],
+          'e2': [_played('x1', 'Dune', now)],
+        },
+      );
+      Future<List<Object?>> others(CurrentUserContext me) async {
+        final ctx = _ctx([emby]);
+        final withMe = AssistantToolContext(servers: ctx.servers, currentUser: me, insights: ctx.insights);
+        final data =
+            (await _tool('watch_stats').run(withMe, null, {'scope': 'period', 'audience': 'others'})
+                    as AssistantToolResult)
+                .data;
+        return (data['top_users']! as List).map((u) => (u as Map)['user']).toList();
+      }
+
+      expect(
+        await others(
+          CurrentUserContext.build(const [
+            AssistantSelfSource(serverId: 'emby', backend: MediaBackend.jellyfin, userId: 'e1', emby: true),
+          ]),
+        ),
+        ['lee'],
+      );
+      // The same id spelled for a Jellyfin source is not Emby's "me": nobody is removed as me.
+      expect(
+        await others(
+          CurrentUserContext.build(const [
+            AssistantSelfSource(serverId: 'emby', backend: MediaBackend.jellyfin, userId: 'e1'),
+          ]),
+        ),
+        isNot(contains('michel')),
+      );
     });
 
     group('audience others', () {

@@ -41,6 +41,8 @@ import '../models/plex/plex_subtitle_search_result.dart';
 import '../services/plex_client.dart';
 import '../services/recommendations/recommendation_service.dart' show RecommendationSeed, kSeedWindow;
 import '../services/recommendations/taste_profile.dart' show AffinityVector;
+import '../services/recommendations/interaction_identity.dart';
+import '../database/app_database.dart' show WatchedIdentity;
 import '../media/media_hub.dart';
 import '../media/media_kind.dart';
 import '../media/media_identity.dart';

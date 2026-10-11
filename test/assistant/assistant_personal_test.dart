@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pleya/database/app_database.dart' show WatchedIdentity;
 import 'package:pleya/assistant/assistant_recommend_constraints.dart';
 import 'package:pleya/assistant/assistant_tool_context.dart';
 import 'package:pleya/assistant/assistant_tools.dart';
@@ -50,6 +51,7 @@ AssistantToolContext _ctx({
   List<MediaHub> hubs = const [],
   Map<String, MediaItem> items = const {},
   Set<String> everSeen = const {},
+  List<WatchedIdentity> identities = const [],
 }) {
   final m = MultiServerManager();
   addTearDown(m.dispose);
@@ -66,6 +68,7 @@ AssistantToolContext _ctx({
       userName: 'Michel',
       recent: () async => seeds,
       everSeen: () async => everSeen,
+      everSeenIdentities: () async => identities,
       taste: () async => taste,
       picks: (_) async => hubs,
     ),
@@ -250,5 +253,110 @@ void main() {
     );
     final result = await _tool().run(ctx, null, const {}) as AssistantToolResult;
     expect((result.data['picks']! as List), isNotEmpty);
+  });
+
+  group('BP-03c: a copy of a seen title is seen', () {
+    Future<List<Object?>> picksLeft(List<MediaItem> picks, List<WatchedIdentity> seen) async {
+      final ctx = _ctx(
+        identities: seen,
+        hubs: [MediaHub(id: 'rows', title: 'Voor jou', type: 'movie', items: picks)],
+      );
+      ctx.recommend = const AssistantRecommendConstraints(excludeWatched: true);
+      final result = await _tool().run(ctx, null, const {}) as AssistantToolResult;
+      return [
+        for (final row in result.data['picks']! as List)
+          for (final t in (row as Map)['titles'] as List) (t as Map)['title'],
+      ];
+    }
+
+    WatchedIdentity seen({
+      String? title,
+      int? year,
+      bool show = false,
+      Set<String> tokens = const {},
+      String key = 'plex-1:42',
+    }) => (key: key, title: title, year: year, show: show, tokens: tokens);
+
+    MediaItem jelly(
+      String id,
+      String title, {
+      int? year,
+      MediaKind kind = MediaKind.movie,
+      Map<String, Object?>? raw,
+    }) => MediaItem(
+      id: id,
+      backend: MediaBackend.jellyfin,
+      kind: kind,
+      title: title,
+      year: year,
+      serverId: 'nas',
+      raw: raw,
+    );
+
+    test('on another server it is recognised by a shared external id, whatever the title says', () async {
+      final copy = jelly(
+        'p1',
+        'Dune (Director\'s cut)',
+        year: 2021,
+        raw: {
+          'ProviderIds': {'Tmdb': '438631'},
+        },
+      );
+      expect(
+        await picksLeft(
+          [copy],
+          [
+            seen(tokens: {'movie:tmdb:438631'}),
+          ],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a different external id, another kind, or a year missing on either side is a different title', () async {
+      final other = jelly(
+        'p1',
+        'Dune',
+        year: 2021,
+        raw: {
+          'ProviderIds': {'Tmdb': '841'},
+        },
+      );
+      expect(
+        await picksLeft(
+          [other],
+          [
+            seen(title: 'Dune', year: 2021, tokens: {'movie:tmdb:438631'}),
+          ],
+        ),
+        ['Dune'],
+      );
+      // Neither side has a year: two titles that share a name are not one.
+      expect(
+        await picksLeft([jelly('p4', 'The Office', kind: MediaKind.show)], [seen(title: 'The Office', show: true)]),
+        ['The Office'],
+      );
+      final noYear = jelly('p2', 'The Office');
+      expect(await picksLeft([noYear], [seen(title: 'The Office', year: 2005, show: true)]), ['The Office']);
+      final film = jelly('p3', 'Severance', year: 2022);
+      expect(await picksLeft([film], [seen(title: 'Severance', year: 2022, show: true)]), ['Severance']);
+    });
+
+    test('with no id on either side the same kind, title and year still match, a series too', () async {
+      expect(await picksLeft([jelly('p1', 'Dune', year: 2021)], [seen(title: 'dune', year: 2021)]), isEmpty);
+      final series = jelly('p2', 'Severance', year: 2022, kind: MediaKind.show);
+      expect(await picksLeft([series], [seen(title: 'Severance', year: 2022, show: true)]), isEmpty);
+    });
+
+    test('without "nothing already seen" nothing is filtered by identity', () async {
+      final ctx = _ctx(
+        identities: [seen(title: 'Dune', year: 2021)],
+        hubs: [
+          MediaHub(id: 'rows', title: 'Voor jou', type: 'movie', items: [jelly('p1', 'Dune', year: 2021)]),
+        ],
+      );
+      final result = await _tool().run(ctx, null, const {}) as AssistantToolResult;
+      expect(result.data['picks']! as List, isNotEmpty);
+    });
   });
 }

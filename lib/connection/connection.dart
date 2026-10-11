@@ -710,6 +710,16 @@ class PleyaServerConnection extends Connection {
   /// Owner and admin administer the server; the server treats them alike.
   bool get isServerAdministrator => role == 'owner' || role == 'admin';
 
+  /// The server account this connection signed in as, taken from the id
+  /// ([pleyaServerConnectionId]); null for a legacy connection whose id has no
+  /// account part. Not the display [userName].
+  String? get accountUserId {
+    final prefix = 'pleyaServer.$serverId.';
+    if (!id.startsWith(prefix)) return null;
+    final account = id.substring(prefix.length).trim();
+    return account.isEmpty ? null : account;
+  }
+
   @override
   String get displayName => '$userName · $serverName';
 

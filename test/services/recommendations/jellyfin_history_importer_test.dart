@@ -131,6 +131,9 @@ void main() {
       serverId: _server,
       title: 'Show',
       genres: const ['Sci-Fi'],
+      raw: const {
+        'ProviderIds': {'Tvdb': '371980'},
+      },
     );
     final source = _FakeSource(
       played: [_episode('e1', showId: 'show', lastViewedDaysAgo: 1)],
@@ -140,6 +143,9 @@ void main() {
     final row = (await db.getMediaInteractions(_profile)).single;
     expect(row.seriesKey, '$_server:show');
     expect(row.genresJson, '["Sci-Fi"]');
+    // Identity is the series', from its inline ids, never the episode's.
+    expect(row.title, 'Show');
+    expect(row.identityJson, '["show:tvdb:371980"]');
   });
 
   test('a resumable item between 50 and 90 percent is one partial row, also after three syncs', () async {

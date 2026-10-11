@@ -4,6 +4,7 @@ import '../models/plex/plex_home_user.dart';
 import '../profiles/plex_self_account.dart';
 import '../services/jellyfin_client.dart';
 import '../services/multi_server_manager.dart';
+import '../services/pleya_server_client.dart';
 import 'current_user_context.dart';
 
 /// Names the signed-in person on every connected server, from what the app
@@ -30,11 +31,21 @@ CurrentUserContext currentUserContextFor(
           MediaBackend.jellyfin => AssistantSelfSource(
             serverId: id,
             backend: MediaBackend.jellyfin,
-            userId: client is JellyfinClient ? client.connection.userId : null,
+            // A borrowed connection is another person's account, not "me".
+            userId: client is JellyfinClient && !manager.hasServerRestriction(ServerId(id))
+                ? client.connection.userId
+                : null,
             emby: client is JellyfinClient && client.connection.isEmby,
           ),
-          // The id from /users/me is not stored yet, only the role.
-          MediaBackend.pleyaServer => AssistantSelfSource(serverId: id, backend: MediaBackend.pleyaServer),
+          // The account is part of the connection id; a legacy id has none and
+          // a borrowed connection is another person's account.
+          MediaBackend.pleyaServer => AssistantSelfSource(
+            serverId: id,
+            backend: MediaBackend.pleyaServer,
+            userId: client is PleyaServerClient && !manager.hasServerRestriction(ServerId(id))
+                ? client.connection.accountUserId
+                : null,
+          ),
           _ => AssistantSelfSource(serverId: id, backend: client.backend),
         },
   ], traktAccountId: traktAccountId);

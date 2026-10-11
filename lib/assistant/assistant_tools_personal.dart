@@ -12,6 +12,7 @@ class AssistantPersonalServices {
     required this.userName,
     required this.recent,
     required this.everSeen,
+    this.everSeenIdentities = _noIdentities,
     required this.taste,
     required this.picks,
   });
@@ -25,11 +26,17 @@ class AssistantPersonalServices {
   /// Global keys of every title in this profile's log, not just the newest few
   /// of [recent]: a title seen months ago is still seen. The log keeps a year.
   final Future<Set<String>> Function() everSeen;
+
+  /// The same titles with the identity written next to them, so a copy on
+  /// another server, or of a server that is gone, still counts as seen.
+  final Future<List<WatchedIdentity>> Function() everSeenIdentities;
   final Future<AffinityVector> Function() taste;
 
   /// Home's personal rows, built from [clients].
   final Future<List<MediaHub>> Function(List<MediaServerClient> clients) picks;
 }
+
+Future<List<WatchedIdentity>> _noIdentities() async => const [];
 
 const _recentShown = 8;
 const _picksShown = 12;
@@ -70,9 +77,10 @@ final List<AssistantTool> _personalTools = [
         ),
       );
       final clients = {for (final id in ctx.userServers) id: ?ctx.userClient(id)};
-      final (seeds, everSeen, taste, hubs) = await (
+      final (seeds, everSeen, identities, taste, hubs) = await (
         personal.recent(),
         personal.everSeen(),
+        personal.everSeenIdentities(),
         personal.taste(),
         personal.picks(clients.values.toList()),
       ).wait;
@@ -104,9 +112,11 @@ final List<AssistantTool> _personalTools = [
       final seenTitles = {
         for (final w in watchedList) (assistantTitleKey(w['title'] as String), w['year'] as int?, w['kind'] as String),
       };
+      final seenByIdentity = _SeenIdentities(identities);
       bool seenBefore(MediaItem item) =>
           c.excludeWatched &&
           (everSeen.contains(item.globalKey) ||
+              seenByIdentity.contains(item) ||
               seenTitles.any(
                 (s) =>
                     s.$1 == assistantTitleKey(item.title ?? '') &&
@@ -153,3 +163,36 @@ final List<AssistantTool> _personalTools = [
     },
   ),
 ];
+
+/// The titles of the profile's log by identity. A candidate is seen when it
+/// shares a token (guid or external id) with one, or, when neither side
+/// contradicts the other with a different external id, has the same kind,
+/// title and a year known on both sides: a year that is missing is no match,
+/// so "The Office" does not hide its namesake across a year-less log.
+class _SeenIdentities {
+  _SeenIdentities(List<WatchedIdentity> seen) {
+    for (final w in seen) {
+      tokens.addAll(w.tokens);
+      final title = w.title;
+      if (title != null && w.year != null) (byTitle[assistantTitleKey(title)] ??= []).add(w);
+    }
+  }
+
+  final Set<String> tokens = {};
+  final Map<String, List<WatchedIdentity>> byTitle = {};
+
+  bool contains(MediaItem item) {
+    final identity = interactionIdentityOf(item);
+    if (interactionIdentityProves(identity.tokens, tokens)) return true;
+    final title = identity.title;
+    // An episode's own year is not its series'.
+    final year = item.kind == MediaKind.episode ? null : item.year;
+    if (title == null || year == null) return false;
+    return (byTitle[assistantTitleKey(title)] ?? const []).any(
+      (w) =>
+          w.show == item.kind.isShowRelated &&
+          w.year == year &&
+          !interactionIdentityConflicts(identity.tokens, w.tokens),
+    );
+  }
+}

@@ -365,6 +365,10 @@ class MultiServerManager {
   ///     through [canAdministerServer] instead.
   ///   - A borrowed connection (any backend): `false`.
   ///   - Unknown server: `false`.
+  /// Whether [serverId] is on this profile through a connection that is not its
+  /// own (borrowed): whose account that connection is, is not this profile's.
+  bool hasServerRestriction(ServerId serverId) => _restrictedServerIds.contains(serverId);
+
   bool canManageServerMetadata(ServerId serverId) {
     if (_restrictedServerIds.contains(serverId)) return false;
     final client = _clients[serverId];

@@ -5635,6 +5635,37 @@ class $MediaInteractionsTable extends MediaInteractions
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _identityJsonMeta = const VerificationMeta(
+    'identityJson',
+  );
+  @override
+  late final GeneratedColumn<String> identityJson = GeneratedColumn<String>(
+    'identity_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _identityTriedAtMeta = const VerificationMeta(
+    'identityTriedAt',
+  );
+  @override
+  late final GeneratedColumn<int> identityTriedAt = GeneratedColumn<int>(
+    'identity_tried_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5657,6 +5688,9 @@ class $MediaInteractionsTable extends MediaInteractions
     sourceServerId,
     completionPercent,
     playSeconds,
+    title,
+    identityJson,
+    identityTriedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5820,6 +5854,30 @@ class $MediaInteractionsTable extends MediaInteractions
         ),
       );
     }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('identity_json')) {
+      context.handle(
+        _identityJsonMeta,
+        identityJson.isAcceptableOrUnknown(
+          data['identity_json']!,
+          _identityJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('identity_tried_at')) {
+      context.handle(
+        _identityTriedAtMeta,
+        identityTriedAt.isAcceptableOrUnknown(
+          data['identity_tried_at']!,
+          _identityTriedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5909,6 +5967,18 @@ class $MediaInteractionsTable extends MediaInteractions
         DriftSqlType.int,
         data['${effectivePrefix}play_seconds'],
       ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      identityJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}identity_json'],
+      ),
+      identityTriedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}identity_tried_at'],
+      ),
     );
   }
 
@@ -5972,6 +6042,21 @@ class MediaInteractionRow extends DataClass
   /// Seconds actually played, from Tautulli `play_duration`. Not the media
   /// duration: `get_activity` uses the same key for something else entirely.
   final int? playSeconds;
+
+  /// The title this row is about, at title level: the movie, or the series
+  /// for an episode. Null until it is known (rows from before v21 are filled
+  /// in bit by bit), so a title of a server that is gone is still recognised.
+  final String? title;
+
+  /// Strong identity tokens of that title, a JSON array of
+  /// `scope:namespace:value` (`movie:tmdb:603`, `show:guid:plex://show/...`).
+  /// Title level only: an episode row never holds an episode id here. Null
+  /// means unknown, not "has none".
+  final String? identityJson;
+
+  /// When a lookup for [title] / [identityJson] last found nothing, so a
+  /// server that cannot answer is not asked again on every pass.
+  final int? identityTriedAt;
   const MediaInteractionRow({
     required this.id,
     required this.profileId,
@@ -5993,6 +6078,9 @@ class MediaInteractionRow extends DataClass
     this.sourceServerId,
     this.completionPercent,
     this.playSeconds,
+    this.title,
+    this.identityJson,
+    this.identityTriedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6033,6 +6121,15 @@ class MediaInteractionRow extends DataClass
     if (!nullToAbsent || playSeconds != null) {
       map['play_seconds'] = Variable<int>(playSeconds);
     }
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    if (!nullToAbsent || identityJson != null) {
+      map['identity_json'] = Variable<String>(identityJson);
+    }
+    if (!nullToAbsent || identityTriedAt != null) {
+      map['identity_tried_at'] = Variable<int>(identityTriedAt);
+    }
     return map;
   }
 
@@ -6072,6 +6169,15 @@ class MediaInteractionRow extends DataClass
       playSeconds: playSeconds == null && nullToAbsent
           ? const Value.absent()
           : Value(playSeconds),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
+      identityJson: identityJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(identityJson),
+      identityTriedAt: identityTriedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(identityTriedAt),
     );
   }
 
@@ -6101,6 +6207,9 @@ class MediaInteractionRow extends DataClass
       sourceServerId: serializer.fromJson<String?>(json['sourceServerId']),
       completionPercent: serializer.fromJson<int?>(json['completionPercent']),
       playSeconds: serializer.fromJson<int?>(json['playSeconds']),
+      title: serializer.fromJson<String?>(json['title']),
+      identityJson: serializer.fromJson<String?>(json['identityJson']),
+      identityTriedAt: serializer.fromJson<int?>(json['identityTriedAt']),
     );
   }
   @override
@@ -6127,6 +6236,9 @@ class MediaInteractionRow extends DataClass
       'sourceServerId': serializer.toJson<String?>(sourceServerId),
       'completionPercent': serializer.toJson<int?>(completionPercent),
       'playSeconds': serializer.toJson<int?>(playSeconds),
+      'title': serializer.toJson<String?>(title),
+      'identityJson': serializer.toJson<String?>(identityJson),
+      'identityTriedAt': serializer.toJson<int?>(identityTriedAt),
     };
   }
 
@@ -6151,6 +6263,9 @@ class MediaInteractionRow extends DataClass
     Value<String?> sourceServerId = const Value.absent(),
     Value<int?> completionPercent = const Value.absent(),
     Value<int?> playSeconds = const Value.absent(),
+    Value<String?> title = const Value.absent(),
+    Value<String?> identityJson = const Value.absent(),
+    Value<int?> identityTriedAt = const Value.absent(),
   }) => MediaInteractionRow(
     id: id ?? this.id,
     profileId: profileId ?? this.profileId,
@@ -6180,6 +6295,11 @@ class MediaInteractionRow extends DataClass
         ? completionPercent.value
         : this.completionPercent,
     playSeconds: playSeconds.present ? playSeconds.value : this.playSeconds,
+    title: title.present ? title.value : this.title,
+    identityJson: identityJson.present ? identityJson.value : this.identityJson,
+    identityTriedAt: identityTriedAt.present
+        ? identityTriedAt.value
+        : this.identityTriedAt,
   );
   MediaInteractionRow copyWithCompanion(MediaInteractionsCompanion data) {
     return MediaInteractionRow(
@@ -6223,6 +6343,13 @@ class MediaInteractionRow extends DataClass
       playSeconds: data.playSeconds.present
           ? data.playSeconds.value
           : this.playSeconds,
+      title: data.title.present ? data.title.value : this.title,
+      identityJson: data.identityJson.present
+          ? data.identityJson.value
+          : this.identityJson,
+      identityTriedAt: data.identityTriedAt.present
+          ? data.identityTriedAt.value
+          : this.identityTriedAt,
     );
   }
 
@@ -6248,13 +6375,16 @@ class MediaInteractionRow extends DataClass
           ..write('sourceEventId: $sourceEventId, ')
           ..write('sourceServerId: $sourceServerId, ')
           ..write('completionPercent: $completionPercent, ')
-          ..write('playSeconds: $playSeconds')
+          ..write('playSeconds: $playSeconds, ')
+          ..write('title: $title, ')
+          ..write('identityJson: $identityJson, ')
+          ..write('identityTriedAt: $identityTriedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     profileId,
     globalKey,
@@ -6275,7 +6405,10 @@ class MediaInteractionRow extends DataClass
     sourceServerId,
     completionPercent,
     playSeconds,
-  );
+    title,
+    identityJson,
+    identityTriedAt,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6299,7 +6432,10 @@ class MediaInteractionRow extends DataClass
           other.sourceEventId == this.sourceEventId &&
           other.sourceServerId == this.sourceServerId &&
           other.completionPercent == this.completionPercent &&
-          other.playSeconds == this.playSeconds);
+          other.playSeconds == this.playSeconds &&
+          other.title == this.title &&
+          other.identityJson == this.identityJson &&
+          other.identityTriedAt == this.identityTriedAt);
 }
 
 class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
@@ -6323,6 +6459,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
   final Value<String?> sourceServerId;
   final Value<int?> completionPercent;
   final Value<int?> playSeconds;
+  final Value<String?> title;
+  final Value<String?> identityJson;
+  final Value<int?> identityTriedAt;
   const MediaInteractionsCompanion({
     this.id = const Value.absent(),
     this.profileId = const Value.absent(),
@@ -6344,6 +6483,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     this.sourceServerId = const Value.absent(),
     this.completionPercent = const Value.absent(),
     this.playSeconds = const Value.absent(),
+    this.title = const Value.absent(),
+    this.identityJson = const Value.absent(),
+    this.identityTriedAt = const Value.absent(),
   });
   MediaInteractionsCompanion.insert({
     this.id = const Value.absent(),
@@ -6366,6 +6508,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     this.sourceServerId = const Value.absent(),
     this.completionPercent = const Value.absent(),
     this.playSeconds = const Value.absent(),
+    this.title = const Value.absent(),
+    this.identityJson = const Value.absent(),
+    this.identityTriedAt = const Value.absent(),
   }) : profileId = Value(profileId),
        globalKey = Value(globalKey),
        mediaKind = Value(mediaKind),
@@ -6393,6 +6538,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     Expression<String>? sourceServerId,
     Expression<int>? completionPercent,
     Expression<int>? playSeconds,
+    Expression<String>? title,
+    Expression<String>? identityJson,
+    Expression<int>? identityTriedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6415,6 +6563,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
       if (sourceServerId != null) 'source_server_id': sourceServerId,
       if (completionPercent != null) 'completion_percent': completionPercent,
       if (playSeconds != null) 'play_seconds': playSeconds,
+      if (title != null) 'title': title,
+      if (identityJson != null) 'identity_json': identityJson,
+      if (identityTriedAt != null) 'identity_tried_at': identityTriedAt,
     });
   }
 
@@ -6439,6 +6590,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     Value<String?>? sourceServerId,
     Value<int?>? completionPercent,
     Value<int?>? playSeconds,
+    Value<String?>? title,
+    Value<String?>? identityJson,
+    Value<int?>? identityTriedAt,
   }) {
     return MediaInteractionsCompanion(
       id: id ?? this.id,
@@ -6461,6 +6615,9 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
       sourceServerId: sourceServerId ?? this.sourceServerId,
       completionPercent: completionPercent ?? this.completionPercent,
       playSeconds: playSeconds ?? this.playSeconds,
+      title: title ?? this.title,
+      identityJson: identityJson ?? this.identityJson,
+      identityTriedAt: identityTriedAt ?? this.identityTriedAt,
     );
   }
 
@@ -6527,6 +6684,15 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
     if (playSeconds.present) {
       map['play_seconds'] = Variable<int>(playSeconds.value);
     }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (identityJson.present) {
+      map['identity_json'] = Variable<String>(identityJson.value);
+    }
+    if (identityTriedAt.present) {
+      map['identity_tried_at'] = Variable<int>(identityTriedAt.value);
+    }
     return map;
   }
 
@@ -6552,7 +6718,10 @@ class MediaInteractionsCompanion extends UpdateCompanion<MediaInteractionRow> {
           ..write('sourceEventId: $sourceEventId, ')
           ..write('sourceServerId: $sourceServerId, ')
           ..write('completionPercent: $completionPercent, ')
-          ..write('playSeconds: $playSeconds')
+          ..write('playSeconds: $playSeconds, ')
+          ..write('title: $title, ')
+          ..write('identityJson: $identityJson, ')
+          ..write('identityTriedAt: $identityTriedAt')
           ..write(')'))
         .toString();
   }
@@ -10694,6 +10863,9 @@ typedef $$MediaInteractionsTableCreateCompanionBuilder =
       Value<String?> sourceServerId,
       Value<int?> completionPercent,
       Value<int?> playSeconds,
+      Value<String?> title,
+      Value<String?> identityJson,
+      Value<int?> identityTriedAt,
     });
 typedef $$MediaInteractionsTableUpdateCompanionBuilder =
     MediaInteractionsCompanion Function({
@@ -10717,6 +10889,9 @@ typedef $$MediaInteractionsTableUpdateCompanionBuilder =
       Value<String?> sourceServerId,
       Value<int?> completionPercent,
       Value<int?> playSeconds,
+      Value<String?> title,
+      Value<String?> identityJson,
+      Value<int?> identityTriedAt,
     });
 
 class $$MediaInteractionsTableFilterComposer
@@ -10825,6 +11000,21 @@ class $$MediaInteractionsTableFilterComposer
 
   ColumnFilters<int> get playSeconds => $composableBuilder(
     column: $table.playSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get identityJson => $composableBuilder(
+    column: $table.identityJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get identityTriedAt => $composableBuilder(
+    column: $table.identityTriedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10937,6 +11127,21 @@ class $$MediaInteractionsTableOrderingComposer
     column: $table.playSeconds,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get identityJson => $composableBuilder(
+    column: $table.identityJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get identityTriedAt => $composableBuilder(
+    column: $table.identityTriedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MediaInteractionsTableAnnotationComposer
@@ -11027,6 +11232,19 @@ class $$MediaInteractionsTableAnnotationComposer
     column: $table.playSeconds,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get identityJson => $composableBuilder(
+    column: $table.identityJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get identityTriedAt => $composableBuilder(
+    column: $table.identityTriedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$MediaInteractionsTableTableManager
@@ -11089,6 +11307,9 @@ class $$MediaInteractionsTableTableManager
                 Value<String?> sourceServerId = const Value.absent(),
                 Value<int?> completionPercent = const Value.absent(),
                 Value<int?> playSeconds = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String?> identityJson = const Value.absent(),
+                Value<int?> identityTriedAt = const Value.absent(),
               }) => MediaInteractionsCompanion(
                 id: id,
                 profileId: profileId,
@@ -11110,6 +11331,9 @@ class $$MediaInteractionsTableTableManager
                 sourceServerId: sourceServerId,
                 completionPercent: completionPercent,
                 playSeconds: playSeconds,
+                title: title,
+                identityJson: identityJson,
+                identityTriedAt: identityTriedAt,
               ),
           createCompanionCallback:
               ({
@@ -11133,6 +11357,9 @@ class $$MediaInteractionsTableTableManager
                 Value<String?> sourceServerId = const Value.absent(),
                 Value<int?> completionPercent = const Value.absent(),
                 Value<int?> playSeconds = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String?> identityJson = const Value.absent(),
+                Value<int?> identityTriedAt = const Value.absent(),
               }) => MediaInteractionsCompanion.insert(
                 id: id,
                 profileId: profileId,
@@ -11154,6 +11381,9 @@ class $$MediaInteractionsTableTableManager
                 sourceServerId: sourceServerId,
                 completionPercent: completionPercent,
                 playSeconds: playSeconds,
+                title: title,
+                identityJson: identityJson,
+                identityTriedAt: identityTriedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
