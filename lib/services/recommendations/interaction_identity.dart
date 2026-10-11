@@ -159,8 +159,12 @@ Future<int> backfillInteractionIdentity({
   );
   // A mark that makes the title eligible again after [retryIn]: the selection
   // reads "tried more than [kIdentityRetryAfter] ago".
-  Future<void> markTried(String key, Duration retryIn) =>
-      database.writeIdentity(profileId, key, triedAt: now - (kIdentityRetryAfter - retryIn).inMilliseconds);
+  Future<void> markTried(Iterable<String> keys, Duration retryIn) async {
+    if (keys.isEmpty || !stillOurs()) return;
+    await database.markIdentityTried(profileId, keys, triedAt: now - (kIdentityRetryAfter - retryIn).inMilliseconds);
+  }
+
+  final nothingToLearn = <String>[];
   final work = <({IdentityGap gap, MediaServerClient client, String ratingKey})>[];
   for (final gap in gaps) {
     if (work.length >= kIdentityBackfillBatch) break;
@@ -171,11 +175,12 @@ Future<int> backfillInteractionIdentity({
     // already known. Marked without a request and without taking a slot.
     final canHaveIds = client.backend == MediaBackend.plex || client.backend == MediaBackend.jellyfin;
     if (!canHaveIds && gap.hasTitle) {
-      await markTried(gap.key, kIdentityRetryAfter);
+      nothingToLearn.add(gap.key);
       continue;
     }
     work.add((gap: gap, client: client, ratingKey: parsed.ratingKey));
   }
+  await markTried(nothingToLearn, kIdentityRetryAfter);
   var written = 0;
   Future<void> one(({IdentityGap gap, MediaServerClient client, String ratingKey}) w) async {
     MediaItem? item;
@@ -192,14 +197,14 @@ Future<int> backfillInteractionIdentity({
       // A failed lookup is not an answer, but it must not stay first in line
       // either: tried again after an hour.
       appLogger.d('identity backfill: lookup failed for ${w.gap.key}', error: e);
-      if (stillOurs()) await markTried(w.gap.key, kIdentityRetryAfterError);
+      await markTried([w.gap.key], kIdentityRetryAfterError);
       return;
     }
     if (!stillOurs()) return;
     if (item == null) {
       // Gone, or a server that answered badly: not known which, so tried
       // again after a day.
-      await markTried(w.gap.key, kIdentityRetryAfterEmpty);
+      await markTried([w.gap.key], kIdentityRetryAfterEmpty);
       return;
     }
     final yearMoved = w.gap.year != null && item.year != null && item.year != w.gap.year;

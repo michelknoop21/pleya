@@ -284,6 +284,38 @@ void main() {
     );
 
     test(
+      'identityGaps: a guid that spells a scheme is no external id, and a new play does not reopen a title just asked',
+      () async {
+        await add(_row('s1:odd', title: 'x', identityJson: '["movie:guid:tmdb://123"]'));
+        // Asked a minute ago (marked on every row), then played again: the new row has no mark.
+        await add(_row('s1:again', title: 'y', identityJson: '["movie:guid:plex://movie/a"]', tried: 900000, at: 5000));
+        await add(_row('s1:again', title: 'y', identityJson: '["movie:guid:plex://movie/a"]', at: 10));
+        final gaps = await db.identityGaps('p1', minWeight: 0.4, retryBeforeMs: 500000, limit: 10);
+        expect(gaps.map((g) => g.key), ['s1:odd']);
+      },
+    );
+
+    test('markIdentityTried marks every row of every given title in one call, this profile only', () async {
+      for (var i = 0; i < 450; i++) {
+        await add(_row('s1:t$i', at: 1000 + i));
+      }
+      await db.insertMediaInteraction(_row('s1:t0', profile: 'p2'), profileId: 'p2');
+      await db.markIdentityTried('p1', [for (var i = 0; i < 450; i++) 's1:t$i'], triedAt: 77);
+      expect((await db.getMediaInteractions('p1')).every((r) => r.identityTriedAt == 77), isTrue);
+      expect((await db.getMediaInteractions('p2')).single.identityTriedAt, isNull);
+    });
+
+    test('everWatchedIdentities: kind and title come from the newest row of a key', () async {
+      await add(_row('s1:old', kind: 'movie', seriesKey: 's1:k', title: 'Old', year: 1984, at: 9000));
+      await add(
+        _row('s1:new', kind: 'episode', seriesKey: 's1:k', title: 'New', identityJson: '["show:tvdb:1"]', at: 100),
+      );
+      final seen = (await db.everWatchedIdentities('p1', minWeight: 0.4)).single;
+      expect(seen.title, 'New');
+      expect(seen.show, isTrue);
+    });
+
+    test(
       'everWatchedIdentities: the ids of an older row of a key survive a newer row that holds the title alone',
       () async {
         await add(
@@ -453,6 +485,10 @@ void main() {
       await add(_row('s1:flaky', at: 10));
       final client = _Client({'gone': null, 'flaky': _movie('flaky')}, failing: {'flaky'});
       await run((_) => client);
+      final marks = {for (final r in await db.getMediaInteractions('p1')) r.globalKey: r.identityTriedAt};
+      const week = 7 * 24 * 3600000;
+      expect(marks['s1:flaky'], 10000000 - week + 3600000, reason: 'due again after an hour');
+      expect(marks['s1:gone'], 10000000 - week + 24 * 3600000, reason: 'due again after a day');
       client.calls.clear();
       await run((_) => client, now: 10000000 + 30 * 60000);
       expect(client.calls, isEmpty, reason: 'neither is due yet');
@@ -489,6 +525,13 @@ void main() {
       expect(row.identityJson, contains('movie:guid:plex://movie/abc'), reason: 'filled, not overwritten');
     });
 
+    test('a profile that left before the marks were written gets none', () async {
+      await add(_row('ps:m1', title: 'Known', identityJson: '["movie:guid:x://1"]'));
+      final ps = _PleyaLike({'m1': _movie('m1')});
+      await run((_) => ps, current: () => false);
+      expect((await db.getMediaInteractions('p1')).single.identityTriedAt, isNull);
+    });
+
     test('Jellyfin and Emby ids are inline: no second request for them', () async {
       await add(_row('jf:m1'));
       final client = _JellyLike({
@@ -509,7 +552,7 @@ void main() {
       final psClient = _PleyaLike({'m1': _movie('m1')});
       expect(await run((_) => psClient), 0);
       expect(psClient.calls, isEmpty);
-      expect((await db.getMediaInteractions('p1')).single.identityTriedAt, isNotNull);
+      expect((await db.getMediaInteractions('p1')).single.identityTriedAt, 10000000, reason: 'a full week');
     });
 
     test(
