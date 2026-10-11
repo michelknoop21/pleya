@@ -93,15 +93,15 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
   // for: a turn that outlives a profile switch reads nothing of the next one.
   // Evaluated live, and only with personalization on and off children's profiles.
   final traktUser = trakt?.activeUserUuid;
-  bool traktAvailable() =>
-      trakt != null &&
-      traktUser != null &&
-      assistantTraktAvailable(
-        connected: trakt.isConnected,
-        kidsProfile: trakt.isKidsProfile,
-        sameProfile: trakt.activeUserUuid == traktUser,
-        personalization: recommendations?.isPersonalizationEnabled ?? false,
-      );
+  String? traktBlock() => trakt == null || traktUser == null
+      ? 'trakt_not_connected'
+      : assistantTraktBlock(
+          connected: trakt.isConnected,
+          kidsProfile: trakt.isKidsProfile,
+          sameProfile: trakt.activeUserUuid == traktUser,
+          personalization: recommendations?.isPersonalizationEnabled ?? false,
+        );
+  bool traktAvailable() => traktBlock() == null;
   final traktSeen = trakt == null || traktUser == null
       ? null
       : AssistantTraktSeen(
@@ -207,13 +207,14 @@ AssistantToolContext _sessionToolContext(BuildContext context, AssistantScreenCo
               ...?await traktSeen?.identities(completedOnly: true),
             ],
             seenIncludesTrakt: () => traktSeen?.included ?? false,
+            seenTraktUnavailable: () => traktSeen?.unavailable ?? false,
             taste: recommendations.taste,
             picks: recommendations.buildRows,
           ),
     trakt: trakt == null || traktUser == null
         ? null
         : AssistantTraktServices(
-            available: traktAvailable,
+            blocked: traktBlock,
             watchlist: () => TraktSyncService.instance.library.watchlist(expectUser: traktUser),
           ),
     media: downloads == null

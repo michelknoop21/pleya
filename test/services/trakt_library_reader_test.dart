@@ -193,6 +193,58 @@ void main() {
       expect((await reader.seen(expectUser: 'u1'))!.movies.single.title, 'New');
     });
 
+    test('a download that outlasts the wait is still kept when it arrives', () async {
+      final gate = Completer<void>();
+      client = _client((r) async {
+        await gate.future;
+        return http.Response(json.encode([_movie('Dune', 2021, imdb: 'tt1160419')]), 200);
+      });
+      final slow = TraktLibraryReader(
+        clientOf: () => client,
+        userOf: () => user,
+        now: () => clock,
+        timeout: const Duration(milliseconds: 30),
+      );
+      expect(await slow.seen(expectUser: 'u1'), isNull, reason: 'the wait is cut off');
+
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      // No clock advance and no new download: the answer comes from the cache.
+      expect((await slow.seen(expectUser: 'u1'))!.movies.single.title, 'Dune');
+    });
+
+    test('the watchlist keeps up to the limit of each kind', () async {
+      client = _client((r) async {
+        final shows = r.url.path.contains('/shows');
+        return http.Response(
+          json.encode([
+            for (var i = 0; i < 3; i++)
+              shows
+                  ? {
+                      'listed_at': '2026-01-0${i + 1}T00:00:00.000Z',
+                      'show': {
+                        'title': 'S$i',
+                        'year': 2020,
+                        'ids': {'tvdb': i + 1},
+                      },
+                    }
+                  : {
+                      'listed_at': '2026-02-0${i + 1}T00:00:00.000Z',
+                      'movie': {
+                        'title': 'M$i',
+                        'year': 2020,
+                        'ids': {'tmdb': i + 1},
+                      },
+                    },
+          ]),
+          200,
+        );
+      });
+      final list = await reader.watchlist(expectUser: 'u1', limit: 3);
+      expect(list, hasLength(6));
+      expect(list!.first.title, 'M2', reason: 'newest first');
+    });
+
     test('a read that hangs is cut off', () async {
       client = _client((r) => Completer<http.Response>().future);
       final slow = TraktLibraryReader(

@@ -14,7 +14,7 @@ class TraktTitle {
   final String? at;
 
   /// A list entry wrapped under `movie` or `show`; null when it has no usable
-  /// title or no external id to prove it with. Entries are skipped, never
+  /// title or no `ids` map. Entries are skipped, never
   /// failed on, so one odd row does not hide a whole list.
   static TraktTitle? fromEntry(Object? entry, {required bool isShow}) {
     if (entry is! Map) return null;

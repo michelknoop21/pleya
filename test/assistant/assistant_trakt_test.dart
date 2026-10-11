@@ -30,8 +30,14 @@ TraktTitle _title(String title, int year, {String? imdb, int? tmdb, bool show = 
 
 AssistantTool _tool(String name) => assistantTools.singleWhere((t) => t.name == name);
 
-AssistantTraktServices _trakt({List<TraktTitle>? titles, bool available = true}) =>
-    AssistantTraktServices(available: () => available, watchlist: () async => titles);
+AssistantTraktServices _trakt({List<TraktTitle>? titles, String? blocked}) =>
+    AssistantTraktServices(blocked: () => blocked, watchlist: () async => titles);
+
+class _PleyaServer extends FakeServer {
+  _PleyaServer(super.id);
+  @override
+  MediaBackend get backend => MediaBackend.pleyaServer;
+}
 
 CatalogHomeCustomRowLoader _loader(MultiServerManager m, {Set<String> visibleLibraries = const {'films'}}) =>
     CatalogHomeCustomRowLoader(
@@ -156,6 +162,56 @@ void main() {
       expect(jf.identities, hasLength(12));
     });
 
+    test('a full title search page is no proof of absence: not_checked', () async {
+      final busy = FakeServer(
+        'busy',
+        libraries: {
+          'films': [for (var i = 0; i < 25; i++) fakeItem('d$i', 'Dune Part $i', year: 1990 + i, lib: 'films')],
+        },
+      );
+      manager.debugRegisterClientForTesting(busy);
+      final ctx = _ctx(
+        manager,
+        trakt: _trakt(titles: [_title('Obscure Film', 2001, imdb: 'tt0000042')]),
+      );
+      // Obscure Film is not on jf (small) and busy's search is full for "Obscure Film"? Use a title that is.
+      final data = await _run(
+        _ctx(
+          manager,
+          trakt: _trakt(titles: [_title('Dune', 2020, imdb: 'tt0000099')]),
+        ),
+      );
+      expect(_row(data, 'Dune')['library_status'], 'not_checked');
+      expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_found_in_library');
+    });
+
+    test('a server that cannot answer by identity makes a miss "not_checked"', () async {
+      manager.debugRegisterClientForTesting(_PleyaServer('ps'));
+      final ctx = _ctx(
+        manager,
+        trakt: _trakt(titles: [_title('Obscure Film', 2001, imdb: 'tt0000042')]),
+      );
+
+      expect(_row(await _run(ctx), 'Obscure Film')['library_status'], 'not_checked');
+    });
+
+    test('Trakt linked but personalization off says so, not "not connected"', () async {
+      await expectLater(
+        _run(_ctx(manager, trakt: _trakt(blocked: 'trakt_personalization_off'))),
+        throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'trakt_personalization_off')),
+      );
+    });
+
+    test('series are not pushed out by newer films: the kind filter comes before the cap', () async {
+      final films = [for (var i = 0; i < 35; i++) _title('Film $i', 2000 + i, imdb: 'tt${2000000 + i}')];
+      final ctx = _ctx(manager, trakt: _trakt(titles: [...films, _title('Severance', 2022, show: true)]));
+
+      final shows = await _run(ctx, {'kind': 'show'});
+
+      expect((shows['titles'] as List).map((r) => (r as Map)['title']), ['Severance']);
+      expect(shows['listed_on_trakt'], 1);
+    });
+
     test('kind filter keeps films or series only', () async {
       final ctx = _ctx(
         manager,
@@ -173,17 +229,17 @@ void main() {
     });
 
     test('not linked, or switched off mid-ask, is trakt_not_connected', () async {
-      var available = true;
+      String? block;
       final trakt = AssistantTraktServices(
-        available: () => available,
+        blocked: () => block,
         watchlist: () async {
-          available = false;
+          block = 'trakt_not_connected';
           return [_title('Dune', 2021, imdb: 'tt1160419')];
         },
       );
 
       await expectLater(
-        _run(_ctx(manager, trakt: _trakt(available: false))),
+        _run(_ctx(manager, trakt: _trakt(blocked: 'trakt_not_connected'))),
         throwsA(isA<AssistantToolError>().having((e) => e.code, 'code', 'trakt_not_connected')),
       );
       await expectLater(
@@ -206,9 +262,19 @@ void main() {
   });
 
   group('Trakt in "seen"', () {
+    test('the block reason names the cause', () {
+      String? why({bool c = true, bool k = false, bool s = true, bool p = true}) =>
+          assistantTraktBlock(connected: c, kidsProfile: k, sameProfile: s, personalization: p);
+      expect(why(), isNull);
+      expect(why(c: false), 'trakt_not_connected');
+      expect(why(k: true), 'trakt_not_available');
+      expect(why(s: false), 'trakt_not_available');
+      expect(why(p: false), 'trakt_personalization_off');
+    });
+
     test('Trakt is read only for a linked, non-kids, same profile with personalization on', () {
       bool ok({bool c = true, bool k = false, bool s = true, bool p = true}) =>
-          assistantTraktAvailable(connected: c, kidsProfile: k, sameProfile: s, personalization: p);
+          assistantTraktBlock(connected: c, kidsProfile: k, sameProfile: s, personalization: p) == null;
       expect(ok(), isTrue);
       expect(ok(c: false), isFalse);
       expect(ok(k: true), isFalse);
@@ -227,11 +293,19 @@ void main() {
       );
       expect(await seen.identities(), isEmpty);
       expect(seen.included, isFalse);
+      expect(seen.unavailable, isFalse, reason: 'not allowed is not "could not be read"');
 
       available = true;
       expect((await seen.identities(completedOnly: true)).map((i) => i.show), [false]);
       expect((await seen.identities()).map((i) => i.show), [false, true]);
       expect(seen.included, isTrue);
+    });
+
+    test('allowed but unreadable Trakt is flagged, so "unseen" is not read as complete', () async {
+      final seen = AssistantTraktSeen(available: () => true, read: () async => null);
+      expect(await seen.identities(), isEmpty);
+      expect(seen.unavailable, isTrue);
+      expect(seen.included, isFalse);
     });
 
     test('my_watching leaves out a pick the user watched on Trakt and says so', () async {

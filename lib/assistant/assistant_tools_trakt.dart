@@ -29,43 +29,59 @@ Future<_TraktLookup> _lookUpTraktTitle(
     kind: title.isShow ? MediaKind.show : MediaKind.movie,
   );
   if (!identity.isSearchable) return unknown;
-  final eligible = [
-    for (final id in ctx.userServers)
-      if (ctx.servers.getClient(id) case final client? when isIdentityEligibleBackend(client.backend))
+  final servers = [for (final id in ctx.userServers) (id: id, client: ctx.servers.getClient(id))];
+  // A server that cannot answer a catalogue-identity lookup at all (Pleya
+  // Server, a local folder, one without a client) may hold the title: a miss
+  // is then never "not found".
+  final blind = servers.any((s) => s.client == null || !isIdentityEligibleBackend(s.client!.backend));
+  final asked = [
+    for (final s in servers)
+      if (s.client case final client? when isIdentityEligibleBackend(client.backend))
         // A server whose hidden libraries could not be read is not asked: a
         // hit there could be one the profile hides.
-        (serverId: id, client: client, online: hiddenByServer.containsKey(id.value)),
+        if (ctx.servers.isServerOnline(s.id) && hiddenByServer.containsKey(s.id.value)) (id: s.id, client: client),
   ];
-  if (eligible.isEmpty) return unknown;
   final found = <MediaItem>[];
   var answered = 0;
-  await fanOutFindAllByIdentity(
-    servers: [
-      for (final s in eligible)
-        if (s.online) s,
-    ],
-    identity: identity,
-    maxConcurrent: 3,
-    onBatch: (batch) {
-      for (final r in batch) {
-        if (!r.ok) continue;
-        answered++;
-        for (final item in visibleMatchesFromServer(
-          r.matches,
-          r.serverId,
-          hiddenByServer[r.serverId.value] ?? const {},
-        )) {
-          found.add(item.serverId == r.serverId.value ? item : item.copyWith(serverId: r.serverId.value));
-        }
+  for (var i = 0; i < asked.length; i += 3) {
+    if (ctx.cancelled) break;
+    final results = await Future.wait([
+      for (final s in asked.skip(i).take(3)) _askTraktServer(s.client, identity, title.title),
+    ]);
+    for (final (n, r) in results.indexed) {
+      final id = asked[i + n].id;
+      if (!r.answered) continue;
+      answered++;
+      for (final item in visibleMatchesFromServer(r.items, id, hiddenByServer[id.value] ?? const {})) {
+        found.add(item.serverId == id.value ? item : item.copyWith(serverId: id.value));
       }
-      return ctx.cancelled;
-    },
-  );
+    }
+  }
   if (found.isNotEmpty) return (status: _TraktLibraryStatus.inLibrary, items: found);
-  return (
-    status: answered == eligible.length ? _TraktLibraryStatus.notFound : _TraktLibraryStatus.notChecked,
-    items: const <MediaItem>[],
-  );
+  final complete = !blind && answered > 0 && answered == servers.length;
+  return (status: complete ? _TraktLibraryStatus.notFound : _TraktLibraryStatus.notChecked, items: const <MediaItem>[]);
+}
+
+/// How many search hits a server's title search holds back at most (Plex and
+/// Jellyfin cap it at 20): a miss that came from a full page proves nothing.
+const _traktSearchCap = 20;
+
+/// One server's answer for [identity]. An empty answer counts only when the
+/// plain title search was not full: a common title ("It", "Heat") can sit
+/// beyond the first page, and then the server has not really been asked.
+Future<({bool answered, List<MediaItem> items})> _askTraktServer(
+  MediaServerClient client,
+  MediaIdentity identity,
+  String title,
+) async {
+  try {
+    final matches = await client.findAllByIdentity(identity);
+    if (matches.isNotEmpty) return (answered: true, items: matches);
+    final probe = await client.searchItems(title, limit: _traktSearchCap);
+    return (answered: probe.length < _traktSearchCap, items: const <MediaItem>[]);
+  } on Object {
+    return (answered: false, items: const <MediaItem>[]);
+  }
 }
 
 final List<AssistantTool> _traktTools = [
@@ -74,11 +90,13 @@ final List<AssistantTool> _traktTools = [
     description:
         'The user\'s own Trakt watchlist, set against their libraries: "what is on my Trakt watchlist", "which of my '
         'watchlist titles can I watch here". Returns the newest entries, each with library_status: in_library '
-        '(item_id and server_id, open or play it), not_found_in_library (every server answered and none has it: '
-        'say so and offer a request) or not_checked (a server did not answer, or it was not looked up: say it is '
+        '(item_id and server_id, open or play it), not_found_in_library (every server of the profile answered, each could be asked '
+        'by identity, and none has it: say so and offer a request) or not_checked (a server did not answer, or it was not looked up: say it is '
         'not confirmed, never that it is missing). Titles are matched by external id first and by title and year '
         'only when the ids say nothing; a library with titles in another language can miss a match. Fails with '
-        'trakt_not_connected (say the user can link Trakt under Settings > Trackers) or trakt_unreachable. '
+        'trakt_not_connected (say the user can link Trakt under Settings > Trackers), '
+        'trakt_personalization_off (Trakt is linked but personal features are switched off in Settings), '
+        'trakt_not_available (not on this profile) or trakt_unreachable. '
         'Pass kind for films or series only.',
     risk: AssistantToolRisk.read,
     needsServer: false,
@@ -92,17 +110,21 @@ final List<AssistantTool> _traktTools = [
     serves: (ctx, _) => ctx.trakt != null,
     run: (ctx, _, args) async {
       final trakt = ctx.trakt;
-      if (trakt == null || !trakt.available()) throw const AssistantToolError('trakt_not_connected');
+      if (trakt?.blocked() case final reason?) throw AssistantToolError(reason);
+      if (trakt == null) throw const AssistantToolError('trakt_not_connected');
       final kind = args['kind'] ?? 'all';
       if (kind != 'movie' && kind != 'show' && kind != 'all') throw const AssistantToolError('invalid_kind');
       final listed = await trakt.watchlist();
       if (listed == null) throw const AssistantToolError('trakt_unreachable');
       // The profile or the switch can change while Trakt answers.
-      if (!trakt.available()) throw const AssistantToolError('trakt_not_connected');
-      final wanted = [
+      if (trakt.blocked() case final reason?) throw AssistantToolError(reason);
+      // The kind filter comes before the cap, so a few newer films do not push
+      // every series out of "my series".
+      final ofKind = [
         for (final t in listed)
           if (kind == 'all' || (kind == 'show') == t.isShow) t,
-      ].take(_traktWatchlistShown).toList();
+      ];
+      final wanted = ofKind.take(_traktWatchlistShown).toList();
       // Without the catalog wiring the hidden libraries are unknown, and a
       // hit there must not be shown: nothing is looked up.
       final catalogKnown = ctx.catalog != null;
@@ -161,9 +183,8 @@ final List<AssistantTool> _traktTools = [
       return AssistantToolResult({
         'titles': rows,
         'count': rows.length,
-        'listed_on_trakt': listed.length,
-        if (listed.length > rows.length || !catalogKnown)
-          'looked_up': lookups.where((l) => l.status != _TraktLibraryStatus.notChecked).length,
+        'listed_on_trakt': ofKind.length,
+        'looked_up': lookups.where((l) => l.status != _TraktLibraryStatus.notChecked).length,
       }, display: shown.isEmpty ? null : AssistantMediaGrid([for (final item in shown) (item: item, group: null)]));
     },
   ),

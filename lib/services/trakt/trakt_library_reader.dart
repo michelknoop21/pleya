@@ -71,7 +71,8 @@ class TraktLibraryReader {
     return TraktSeen(movies: movies, shows: shows);
   });
 
-  /// The newest watchlist entries (films and series, newest first), or null.
+  /// The newest watchlist entries, up to [limit] films and [limit] series,
+  /// newest first, or null.
   Future<List<TraktTitle>?> watchlist({required String expectUser, int limit = 50}) =>
       _read(_watchlist, expectUser, () async {
         final client = _clientOf()!;
@@ -79,8 +80,9 @@ class TraktLibraryReader {
           client.getWatchlist(shows: false, limit: limit),
           client.getWatchlist(shows: true, limit: limit),
         ).wait;
-        final all = [...movies, ...shows]..sort((a, b) => (b.at ?? '').compareTo(a.at ?? ''));
-        return all.take(limit).toList();
+        // Both kinds are kept (each up to [limit]) so a kind filter applied
+        // afterwards still has its own newest entries.
+        return [...movies, ...shows]..sort((a, b) => (b.at ?? '').compareTo(a.at ?? ''));
       });
 
   Future<T?> _read<T>(_Slot<T> slot, String expectUser, Future<T> Function() fetch) {
@@ -88,15 +90,17 @@ class TraktLibraryReader {
     final now = _now();
     final at = slot.at;
     if (slot.value != null && at != null && now.difference(at) < ttl) return Future.value(slot.value);
-    final inFlight = slot.inFlight;
-    if (inFlight != null) return inFlight;
     final failedAt = slot.failedAt;
     if (failedAt != null && now.difference(failedAt) < failureBackoff) return Future.value(_stale(slot, now));
+    final running = slot.inFlight;
+    if (running != null) return _waitFor(slot, running);
 
     final epoch = _epoch;
-    final run = () async {
+    // The download is not tied to the wait: a list too big for [timeout] is
+    // still kept when it arrives, so the next ask is served from the cache.
+    final job = () async {
       try {
-        final value = await fetch().timeout(timeout);
+        final value = await fetch();
         if (epoch != _epoch) return null;
         slot
           ..value = value
@@ -112,9 +116,19 @@ class TraktLibraryReader {
         if (epoch == _epoch) slot.inFlight = null;
       }
     }();
-    slot.inFlight = run;
-    return run;
+    slot.inFlight = job;
+    return _waitFor(slot, job);
   }
+
+  /// A caller waits at most [timeout]; on timeout it gets the last good list
+  /// and is not sent to the same download again for [failureBackoff].
+  Future<T?> _waitFor<T>(_Slot<T> slot, Future<T?> job) => job.timeout(
+    timeout,
+    onTimeout: () {
+      slot.failedAt ??= _now();
+      return _stale(slot, _now());
+    },
+  );
 
   T? _stale<T>(_Slot<T> slot, DateTime now) {
     final at = slot.at;
