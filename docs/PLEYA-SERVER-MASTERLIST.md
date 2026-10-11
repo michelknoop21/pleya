@@ -18,7 +18,9 @@ zet in dezelfde commit de status om en vult het bewijs in. Een taak die zonder b
 
 Bewijs is een commit-sha, een testnaam, een meting of een bestandspad. "Werkt" is geen bewijs.
 
-Laatst bijgewerkt: 2026-10-11 (S7.5 gereed; daarvoor S7.4 gereed; daarvoor 2026-10-10: S2 gesloten, masterlijst gereconcilieerd met `main`). S2.5 (overname van
+Laatst bijgewerkt: 2026-10-11 (S7.5 gereed; daarvoor S7.4 gereed, en S2.8 gerepareerd: de `.env`-sync claimt geen geneste root van een
+`db`-bibliotheek meer, waarmee S2 volledig op gereed staat). Daarvoor, op 2026-10-10: S2 gesloten,
+masterlijst gereconcilieerd met `main`. S2.5 (overname van
 `.env`-bibliotheken) en S2.6 (migratietest op de NAS-vangst, venster 2 dicht) zijn gereed, en daarmee
 S2 en golf 1. Drie stukken werk waren sinds 24 september op `main` geland zonder regel (loudness,
 migratie `0011`; `GET /watch-history`, DEC-143; de NAS-start na de bewerkte migraties `0006` en `0007`,
@@ -44,8 +46,9 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **1** | **22** |
 
-Per taak, en dat is de maat die telt: **155 taken, 28 gereed, 3 bezig, 124 open.** S0, S1 en S2 zijn
-dicht (acht van acht, acht van acht, zeven van acht). S2.8 telt als open taak mee, maar houdt S2 niet open: net als S2.7 is het vervolgwerk buiten venster 2 en geen sluitcriterium van de slice. S7 is bezig: S7.3, S7.4 en S7.5 zijn gereed, S7.1 en S7.2 staan op bezig en S7.6 is open. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
+Per taak, en dat is de maat die telt: **155 taken, 29 gereed, 4 bezig, 122 open.** S0, S1 en S2 zijn
+dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
+dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. S7 is bezig: S7.3, S7.4 en S7.5 zijn gereed, S7.1 en S7.2 staan op bezig en S7.6 is open. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
 
 Gesloten vóór dit traject en niet in deze lijst: PS-0, PS-1, PS-2, PS-3, PS-3W, PS-4, PS-9.
@@ -115,7 +118,7 @@ is. Deel I noemt een kortere lijn zonder de vrijgavepoort, met S22 als zwaarste 
 lezing is hiermee achterhaald.
 
 De web-tak (S7 tot S13) hangt er in zijn geheel naast en is qua taken de grootste van allemaal: 30
-van de 126 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee, en S2.8 is vervolgwerk buiten venster 2. Hij blokkeert alleen S15.
+van de 126 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee. Hij blokkeert alleen S15.
 
 ### 2.3 Wat op een besluit wacht en niet op code
 
@@ -130,7 +133,7 @@ van de 126 resterende in de golven; PS-12.0 is een keuze en telt daar niet mee, 
 
 ### 2.4 De poorten die nog dicht staan
 
-P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, uitgesteld),
+P5 (locator), P6 (acht protocolvensters geopend en gesloten), P7 (PS-5-hardwareronde, OVERDUE),
 P8 (Plex-off gate). Van de acht protocolvensters zijn er twee geopend én weer gesloten: venster 1, bij
 S1, met alle zeventien rijen erin ([DEC-135](DECISIONS.md), [DEC-136](DECISIONS.md),
 [DEC-137](DECISIONS.md)), en venster 2, bij S2, met alle tien ([DEC-138](DECISIONS.md),
@@ -148,10 +151,47 @@ losse foutcode in, en zonder die regel zou S1.4 een nieuwe code hebben moeten ui
 2, of de bestaande 404 hebben moeten laten staan die een beheerder liet zoeken naar een gebruiker die
 er gewoon was.
 
-**De hardwareronde.** P7 is uitgesteld en niet vervallen: `docs/qa/ps5-hardware-round.md` noemt drie
-startvoorwaarden. Hij moet uiterlijk vóór de eerstvolgende publieke release die PS-5- of PS-9-gedrag
-bevat, en hij staat als S15.6 in de laatste golf. Blijft hij daar liggen, dan schuift de release en
-niet de bouw.
+**De hardwareronde.** P7 staat op OVERDUE / HARDWARE VALIDATION OPEN.
+[DEC-118](DECISIONS.md#dec-118-het-openstaande-hardwarecriterium-van-ps-5-blokkeert-ps-9-niet) legde
+de ronde uiterlijk vóór het eerste van drie momenten: een publieke release met PS-5- of
+PS-9-gedrag, een TestFlight-indiening naar App Review, of een merge van `feat/pleyaserver` naar
+`main`. Het derde moment is op 25 september 2026 gepasseerd: merge-commit `638e7524` (PR #94,
+`integration/pleya-server-completion`) bracht de PS-5-commits `dc06bf3` en `f0b5bc7` op `main`, via
+de merge van `feat/pleyaserver` in `4e78b16` (S0.2), zonder dat de ronde gedraaid was. Daarmee is
+PS-5 sinds die datum achterstallig. DEC-118 blijft ongewijzigd, de gemiste deadline staat er voor de
+audittrail.
+
+De andere twee momenten zijn op 10 oktober 2026 nagelezen in App Store Connect, over de builds die
+sinds 20 augustus zijn geüpload. Het tweede moment geldt functioneel: het gaat om een indiening,
+bij App Review of bij Beta App Review, van een build met PS-5- of het daaraan gekoppelde
+PS-9-gedrag. Die afbakening is een verduidelijking van Michel van 10 oktober 2026 en staat niet
+letterlijk in DEC-118, dat ongewijzigd blijft. Ingediend zijn iOS-build 296 en tvOS-build 298 (naar
+App Review op 24 september 2026, nu in de App Store) en tvOS-build 259 (langs Beta App Review,
+geüpload op 5 september; App Store Connect geeft voor die indiening geen datum terug). De commits
+`5b937630` (296) en `53e2704a` (298), volgens de markers in `docs/RELEASES.md`, en `740c78b6` (de
+buildcommit van 259, die geen marker heeft) staan op `main` vóór `638e7524` en hebben `dc06bf3`, `f0b5bc7` en `5eebb83` niet als voorouder. Build 242, die PS-5 wel
+draagt, ging alleen naar interne testers en heeft geen review-indiening. Er is dus geen PS-5- of
+PS-9-gedrag publiek uitgebracht of ter review aangeboden, en sinds 25 september is er niets
+ingediend. Build 315 (1 oktober) is niet ingediend en hangt aan het macOS-versierecord 2.8.0; de
+herkomstcommit is hier niet vastgesteld, en komt hij van `main` na 25 september, dan draagt hij
+PS-5.
+
+De releasevoorwaarden (besluit Michel, 10 oktober 2026). De momenten uit DEC-118 die niet gepasseerd
+zijn blijven gelden: geen publieke release van de client met PS-5- of PS-9-gedrag en geen indiening
+naar App Review of Beta App Review van een build met dat gedrag, zonder geslaagde
+hardwareacceptatie. Een gedraaide ronde met een FAIL haalt die grens niet. Build 315 wordt dus niet
+ingediend voordat is vastgesteld of hij dat gedrag draagt; draagt hij het, dan pas na een geslaagde
+acceptatie. Bovenop DEC-118: PS-5 is volledig gevalideerd vóór de
+eerste publieke release van Pleya Server. P7 blokkeert alle drie. Een release van onderdelen die
+aantoonbaar onafhankelijk zijn van PS-5 valt er niet onder. Geïmplementeerd en gemerged, CI groen en
+hardwareacceptatie zijn drie verschillende statussen; PS-5 heeft alleen de eerste twee.
+
+`docs/qa/ps5-hardware-round.md` is een open rondeplan en geen bewezen acceptatie. Open staan: de
+Jellyfin-blokkade opnieuw meten (laatst gemeten op 4 september), T1 tot en met T4 (op macOS en op
+tvOS), R1, R2 en de opstartregel op tvOS én opnieuw op macOS. De macOS-opstartregel van build 246
+is een historische PASS van 4 september; het artefact is niet teruggevonden, dus die regel telt
+niet als actueel hardwarebewijs en moet op de rondebuild opnieuw. De ronde staat als S15.6 in de
+laatste golf.
 
 ---
 
@@ -200,7 +240,7 @@ niet de bouw.
 | S2.5 | `.env`-overname met dezelfde id en slug | `[x]` | `POST /libraries/{id}/adopt` (`AdoptLibrary`, `handleAdoptLibrary`), `library.not_config_managed`, matrixrij 40; `SyncLibraries` slaat een `db`-bibliotheek over (`WHERE managed = 'config'`) en het opstarten logt dat de `.env`-regel wordt genegeerd. Tests: `TestAdoptedLibrarySurvivesEnvSync` (één bibliotheek na overname en herstart, titel en roots ongemoeid), `TestAdoptLibraryTakesOverConfigLibraryKeepingIdentity`, `TestAdoptLibraryTwiceIsRejected`, `TestAdoptLibraryErrors`. **Nagekomen.** Een geweigerde overname (409) schrijft ook een auditregel, uitkomst `denied` met reden `not_config_managed`, zoals `DELETE` met de verkeerde bevestiging; `TestAdoptIsAuditedBothWays` dekt de `ok`- en de `denied`-regel via de tabel en via `GET /audit`, en is rood zonder de regel in `handleAdoptLibrary`. | 2026-10-10 |
 | S2.6 | Migratietest op de NAS-fixture, protocolvenster 2 dicht | `[x]` | `TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity` naast `TestNASFixtureSurvivesMigrationToHead`: na migratie 0008 tot en met 0012 (de fixture staat op schema 7) alle drie de bibliotheken nog `config`, een sync met de NAS-`.env` maakt er geen aan, en na overname en herstart zijn ids, slugs, kijkstatus en `storage_locations` gelijk. Venster dicht met [DEC-146](DECISIONS.md#dec-146-protocolvenster-2-gaat-dicht-met-de-overname-als-tiende-wijziging); `check_protocol.sh`, `verify-protocol.sh` (30 schema's gedekt) en de volledige Go-suite groen; webclient opnieuw gegenereerd (`check-api-types.sh` groen). | 2026-10-10 |
 | S2.7 | Vervolg, buiten venster 2: een root van een `db`-bibliotheek blijft bij een herstart van die bibliotheek | `[x]` | **Gerepareerd.** Het gat: noemde een regel in `PLEYA_SERVER_LIBRARIES` een root van een overgenomen (of een andere `db`-)bibliotheek, dan verplaatste `SyncLibraries` (`internal/catalog/store.go`) die root bij de volgende herstart naar de config-bibliotheek van die regel, omdat de root-upsert `ON CONFLICT (root_path) DO UPDATE SET library_id = EXCLUDED.library_id` niet naar `managed` keek; dat bestond sinds S2.2. **De fix** (`32a64dca`): een `WHERE` op de `DO UPDATE` met een subquery op `libraries.managed` van de huidige eigenaar, dezelfde vorm als de guard op de bibliotheek-upsert. Alleen een root van een `config`-bibliotheek wisselt nog van eigenaar; een root zonder eigenaar wordt ingevoegd zoals voorheen. Een overgeslagen root geeft via `RETURNING` geen rij, komt in `Library.SkippedRoots` en `syncLibraries` in `cmd/pleya-server/bootstrap.go` logt hem met slug en pad. **Tests.** `TestEnvSyncLeavesRootOfDBLibraryAlone` (db-bibliotheek bezit `/media/films`, een regel met een andere slug noemt hem, twee syncrondes: de root blijft van de db-bibliotheek, de andere root van de regel wordt wel geclaimd); negatieve controle zonder de guard: rood met `/media/films is van "oude-films", verwacht de db-bibliotheek "films"`. `TestEnvSyncStillMovesRootBetweenConfigLibraries` houdt het oude gedrag tussen twee config-bibliotheken vast, inclusief de nieuwe meting. **Meegenomen reviewpunt** (`9ce555a1`): de guardtak op de bibliotheek-upsert gaf titel, soort en scaninstellingen van de genegeerde `.env`-regel terug; hij leest ze nu uit de database (`TestEnvSyncOnAdoptedSlugReturnsDatabaseValues`, rood op de oude `SELECT`). Spec 17e.5 en `pleya_server/README.md` stap 3 beschrijven de guard in plaats van het gat. **Bewijs.** `go-tool.sh vet ./...` schoon; volledige Go-suite groen met de wegwerp-Postgres en het ffmpeg-image, nul `--- SKIP`; `check_protocol.sh` groen (43 paden, 103 componenten, 24 enums, 8 foutdomeinen); `verify-protocol.sh` groen (65 antwoorden, 30 schema's gedekt). Geen contractwijziging. | 2026-10-10 |
-| S2.8 | Vervolg, buiten venster 2: geneste roots via de `.env`-sync | `[ ]` | **Bekend gat, nog niet gerepareerd.** `SyncLibraries` (`internal/catalog/store.go`) mist de overlapcontrole die `CreateLibrary` en `UpdateLibrary` wel hebben (`existingRootConflicts` en `rootsOverlap` in `internal/catalog/store_write.go`): een `.env`-regel kan een root claimen die binnen of boven een root van een andere bibliotheek ligt. Dat gedrag bestond al vóór S2.5 en S2.7; gevonden in de review van S2.7. Geen contractwijziging, dus geen protocolvenster nodig. | |
+| S2.8 | Vervolg, buiten venster 2: geneste roots via de `.env`-sync | `[x]` | **Gerepareerd.** Het gat: `SyncLibraries` (`internal/catalog/store.go`) miste de overlapcontrole die `CreateLibrary` en `UpdateLibrary` wel hebben, dus een `.env`-regel kon een root claimen die binnen of boven een root van een andere bibliotheek lag; gevonden in de review van S2.7, en ouder dan S2.5. **De fix** (`9539e34c`): vóór de root-upsert leest de sync één keer de roots van alle `db`-bibliotheken (`dbLibraryRoots` in `internal/catalog/store_write.go`) en toetst elke root van de regel met de bestaande `rootsOverlap`, tekstueel zoals bij `CreateLibrary`. Ligt hij binnen of boven zo'n root, dan wordt hij niet toegevoegd of verplaatst maar komt hij in `Library.SkippedRoots`, en `syncLibraries` logt hem met slug en pad in dezelfde regel als S2.7 (tekst nu "valt samen met of overlapt"); het opstarten gaat door. Een exact gelijke root blijft de S2.7-guard op de upsert. Een root die al van de bibliotheek van de regel is, is geen nieuwe claim en wordt alleen opnieuw gemeten. Tussen twee `config`-bibliotheken verandert niets. **Tests.** `TestEnvSyncSkipsRootInsideDBRoot` (db bezit `/media/films`, regel noemt `/media/films/kids`), `TestEnvSyncSkipsRootAboveDBRoot` (db bezit `/media/films/kids`, regel noemt `/media/films`), `TestEnvSyncSkipsMoveOfConfigRootNestedInDBRoot` (een geneste config-root verhuist niet naar een derde regel, de eigen bibliotheek houdt hem), elk met twee syncrondes voor de idempotentie, en `TestSyncLibrariesLogsNestedSkippedRoot` voor de logregel; negatieve controle met de controle uitgeschakeld: rood met `/media/films/kids is geclaimd door "kids", ligt binnen de db-root van "films"`, `/media/films is geclaimd door "films", ligt boven de db-root van "kids"`, `/media/films/kids is van "jeugd", verwacht kids` en `logregels voor overgeslagen roots: [], verwacht [kids /media/films/kids]`. `TestEnvSyncKeepsNestedRootsBetweenConfigLibraries` legt het ongewijzigde gedrag tussen twee config-bibliotheken vast en was voor en na groen. De NAS-fixture (`TestNASFixtureStaysConfigManagedAndAdoptsWithSameIdentity`) en de S2.7-tests blijven groen. Spec 17e.5 en `pleya_server/README.md` stap 3 beschrijven de controle in plaats van het gat. **Bewijs.** `go-tool.sh vet ./...` schoon; volledige Go-suite groen met de wegwerp-Postgres en het ffmpeg-image, 19 pakketten, 665 `--- PASS`, nul `--- SKIP`, nul `--- FAIL`; `check_protocol.sh` groen (43 paden, 103 componenten, 24 enums, 8 foutdomeinen); `verify-protocol.sh` groen (65 antwoorden, 30 schema's gedekt). Geen contractwijziging. | 2026-10-11 |
 
 ### 3a Op `main` geland zonder taakregel
 
@@ -350,7 +390,7 @@ sluit het); S6 blijft wachten op P5.
 | S15.3 | Securitymatrix K.2 volledig groen, vastgelegd in `docs/qa/` | `[ ]` | | |
 | S15.4 | Documentatie uit deel M compleet | `[ ]` | | |
 | S15.5 | `PLEX_OFFLINE_REPLACEMENT_GATE` groen (migratie als keuze) | `[ ]` | | |
-| S15.6 | PS-5-hardwareronde afgerond | `[ ]` | | |
+| S15.6 | PS-5-hardwareronde afgerond | `[ ]` | nog geen bewijs; OVERDUE sinds 25 sep 2026 en blokkeert de publieke clientrelease en de indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag en de eerste publieke release van Pleya Server, zie P7 | |
 | S15.7 | Merge naar `main`, NAS uitgerold | `[ ]` | | |
 | S15.8 | Tweede TestFlight-gate tegen de releasecandidate (vraag 62) | `[ ]` | | |
 | S15.9 | Besluit van Michel over PS-12 vóór S15.5: de kijkgeschiedenis van het huishouden migreren, of met een lege staat beginnen. Zonder PS-12 verliest een Plex-uit-gate de bestaande kijkstatus | `[ ]` | | |
@@ -450,7 +490,7 @@ sluit het); S6 blijft wachten op P5.
 | S24.3 | Prometheus-metrics op loopback | `[ ]` | | |
 | S24.4 | Range-testset door twee proxy-opstellingen | `[ ]` | | |
 | S24.5 | Deploymentrecepten in de operatordoc | `[ ]` | | |
-| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet (nu handmatig `docker network connect`) | `[ ]` | | |
+| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet | `[~]` | Code gereed, NAS-deploy wacht op go van Michel. De relay-kant stond al sinds `9ef7233` (`server/docker-compose.yml` hangt `cloudflared` aan het externe `pleya-server_default`); de serverkant leunde nog op de projectnaam. `pleya_server/compose.yaml` zet nu `networks.default.name: pleya-server_default`; `docker compose config` exit 0 toont die naam, en ook met `-p andere-naam` blijft de netwerknaam gelijk (volume en `container_name` volgen de projectnaam wel). `deploy-nas.sh` meldt na `readyz` of `pleya-tunnel` aan het netwerk hangt (alleen lezen en niet fataal, ook niet als ssh faalt; `bash -n` en `shellcheck -S warning` schoon); README beschrijft het herstel in de relay-stack. Niet bewezen: de deploy op de NAS en een 200 op `web.pleya.app` daarna | 2026-10-11 |
 
 ### S25 Back-up, restore, upgrade, faalpaden (PS-11B)
 
@@ -487,7 +527,7 @@ Start niet automatisch. Zolang PS-12.0 open staat, is geen enkele PS-12-taak toe
 | P4 | Branch merget schoon met `main` | `[x]` 4 sep 2026 | merge-commit `4e78b16` op `integration/pleya-server-rebaseline` vanaf `a21b43c`; veertien conflicten opgelost, codegen sluitend, geen testregressie. De twee stille mergefouten (`app_database.g.dart`, `schema.d.ts`) en de `--ours`-fout op `CLAUDE.md` en `docs/RELEASES.md` zijn apart gerepareerd en worden nu bewaakt door `scripts/check_authority_merge.sh` in CI De dagelijkse merge van dezelfde avond staat als `a1734ead` (`main` op `9b181ff5`, vier conflicten, LANG1 hernummerd naar DEC-109); hoofdstuk 7 van `merge-log.md` |
 | P5 | Locatorbesluit voor leesvoortgang | `[ ]` | |
 | P6 | Protocolvensters 1 tot 8 geopend en gesloten | `[ ]` | twee van acht: venster 1 (S1.6, DEC-137) en venster 2 (S2.6, DEC-146) |
-| P7 | PS-5-hardwareronde | `[!]` uitgesteld | `docs/qa/ps5-hardware-round.md`, drie startvoorwaarden |
+| P7 | PS-5-hardwareronde | `[!]` OVERDUE / HARDWARE VALIDATION OPEN | DEC-118-grens (merge van `feat/pleyaserver` naar `main`) gepasseerd op 25 sep 2026 met `638e7524` (PR #94), ronde niet gedraaid; DEC-118 ongewijzigd, de grenzen voor een publieke clientrelease en voor een indiening bij App Review of Beta App Review met PS-5- of PS-9-gedrag blijven gelden. Blokkeert die clientrelease, die indiening en de eerste publieke release van Pleya Server, tot een geslaagde hardwareacceptatie (besluit Michel, 10 okt 2026). Open in `docs/qa/ps5-hardware-round.md`: Jellyfin-blokkade opnieuw meten, T1 tot en met T4, R1, R2, opstartregel op tvOS en opnieuw op macOS. macOS-opstartregel build 246: historische PASS, artefact niet teruggevonden, geen actueel hardwarebewijs |
 | P8 | Plex-off gate groen, migratie als keuze | `[ ]` | |
 | P9 | Contractdekking compleet: de dekkingslijst in `scripts/check_server_responses.py` dekt elk schema dat de server werkelijk teruggeeft, inclusief `UserList`, `LibraryPermissionList` en `SessionList` | `[x]` 4 sep 2026 | **De dekkingslijst.** `scripts/check_server_responses.py` leidt hem nu af uit `openapi.yaml`: elk schema dat het contract als JSON-antwoordlichaam noemt, met de `components/responses`-indirectie opgelost en niet-JSON-lichamen (artwork, ondertitels, stream) eruit. Dat brengt de eis van 8 naar 15 en dekt `UserList`, `SessionList` en `LibraryPermissionList`. Uit de vangst afleiden zou de poort tautologisch maken; uit het contract afleiden laat hem vanzelf meegroeien. Echte vangst van 32 antwoorden lokaal gedraaid met `GO_IMAGE=pleya-server-test:go-ffmpeg` en `PLEYA_RESPONSE_DIR=/src/.responses` (het containerpad binnen de mount, daar ging het eerder mis): alle 15 gedekt, alle 32 valide. Negatieve controle: met `UserList`, `SessionList` en `LibraryPermissionList` uit de vangst geeft de oude poort exit 0 met "de server houdt zich aan het contract" en de nieuwe exit 1 met de drie endpoints erbij. De afleiding heeft zes eigen controles op een verzonnen contract (`bijt de afleiding`). |
 

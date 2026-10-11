@@ -202,7 +202,16 @@ void main() {
         await tester.tap(find.byType(Switch));
         await seerrSettle(tester);
 
-        expect(find.text(t.seerr.alreadyRequested), findsOneWidget);
+        expect(
+          find.descendant(
+            of: seerrNode(AutomationIds.requestsFormNotice, 'duplicate'),
+            matching: find.text(t.seerr.alreadyRequested),
+          ),
+          findsOneWidget,
+        );
+        // The reason stands beside the button that cannot send, not beside the
+        // one that leads to the own request.
+        expect(seerrFormHint(t.seerr.alreadyRequested), by == 7 ? findsNothing : findsOneWidget);
         expect(seerrNode(AutomationIds.requestsFormButton, 'mine'), mine);
       });
     }

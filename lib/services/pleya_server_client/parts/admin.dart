@@ -12,6 +12,10 @@ typedef PleyaActiveStream = ({
   bool? paused,
   bool? transcoding,
   String? device,
+
+  /// 'movie', 'episode' or 'other' (a track, a clip, a recording); null when the
+  /// source does not say. A kind question needs this, not the absence of an episode.
+  String? kind,
 });
 
 /// One user's finished film or episode from `GET /watch-history`: the last
@@ -147,6 +151,8 @@ mixin _PleyaServerAdminMethods on _PleyaServerRequests
             paused: null,
             transcoding: null,
             device: s['device_name'] as String?,
+            // The stream list names no kind.
+            kind: null,
           ),
     ];
   }

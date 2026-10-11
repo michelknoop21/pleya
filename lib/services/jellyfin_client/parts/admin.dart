@@ -11,6 +11,10 @@ typedef JellyfinActiveSession = ({
   bool? paused,
   bool? transcoding,
   String? device,
+
+  /// 'movie', 'episode' or 'other' (a track, a clip, a recording); null when the
+  /// source does not say. A kind question needs this, not the absence of an episode.
+  String? kind,
 });
 
 /// One finished film or episode of one user, with the server's single
@@ -333,6 +337,12 @@ mixin _JellyfinAdminMethods {
       paused: state['IsPaused'] as bool?,
       transcoding: state['PlayMethod'] is String ? state['PlayMethod'] == 'Transcode' : null,
       device: device.isEmpty ? null : device,
+      kind: switch (item['Type']) {
+        'Movie' => 'movie',
+        'Episode' => 'episode',
+        String _ => 'other',
+        _ => null,
+      },
     );
   }
 

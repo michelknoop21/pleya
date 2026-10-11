@@ -3,6 +3,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../assistant/assistant_tools.dart';
 import '../../../i18n/strings.g.dart';
+import '../../../media/media_kind.dart';
 import '../../../theme/mono_tokens.dart';
 import '../../../utils/tv_hig.dart';
 import '../big_p_scale.dart';
@@ -34,6 +35,8 @@ class BigPWatchCard extends StatelessWidget {
     // No rows because no server could answer is not "nothing watched".
     final empty = s.days != null && viewers.isEmpty && s.titles.isEmpty && s.unavailable.isEmpty && !s.partial;
     final period = switch (s.days) {
+      null when s.kindFilter == MediaKind.movie => d.watchNowMovies,
+      null when s.kindFilter == MediaKind.show => d.watchNowShows,
       null => d.watchNow,
       final days => d.watchDays(n: days),
     };
@@ -69,7 +72,14 @@ class BigPWatchCard extends StatelessWidget {
           SizedBox(height: 24 * pt),
           if (s.days == null) ...[
             for (final session in s.sessions.take(8)) _Stream(user: session.userName, title: session.title),
-            if (s.sessions.isEmpty && s.unavailable.isEmpty) Text(d.nobodyNow, style: muted),
+            // Live streams of one kind: say what was left out, never "nobody".
+            if (s.sessions.isEmpty && s.unavailable.isEmpty)
+              if (s.kindFilter != null) ...[
+                Text(s.kindFilter == MediaKind.movie ? d.noMoviesNow : d.noShowsNow, style: muted),
+                if (s.kindUnknown > 0) Text(d.kindUnknownNow(count: s.kindUnknown), style: muted),
+                if (s.otherKind > 0) Text(d.otherKindNow(count: s.otherKind), style: muted),
+              ] else
+                Text(d.nobodyNow, style: muted),
           ] else if (empty)
             Text(d.nothingWatched, style: muted)
           else if (viewers.isNotEmpty)

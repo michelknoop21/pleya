@@ -51,8 +51,22 @@ final _exceptName = RegExp(
   r'\b(?:iedereen|everyone|everybody)\s+(?:behalve|except|but)\s+(?!mij\b|ik\b|me\b|myself\b)',
 );
 // A bare "show" is the verb ("show me"); only the plural or "tv show" is a series.
-final _movieWord = RegExp(r'\b(films?|movies?)\b');
-final _seriesWord = RegExp(r'\b(series|serie|tv-series|tv shows?|shows)\b');
+// Compounds count too ("kerstfilm", "docuserie"): a half-seen kind would narrow.
+final _movieWord = RegExp(r'\b(?:\w*films?|movies?)\b');
+// A film franchise ("filmserie") is a series of films, not a series: not matched.
+final _seriesWord = RegExp(r'\b(?:(?!\w*film)\w*series?|tv-series|tv shows?|shows)\b');
+// A kind word that only names something else ("de acteur uit de serie Friends",
+// "bekend van de film Cast Away") is a reference, not the kind asked for.
+final _kindReference = RegExp(
+  r'\b(?:van|uit|als|zoals|from|like|in)\s+(?:de|het|een|the|a|die|dat)\s+(?:\w*films?|\w*series?|movies?)\b',
+);
+// The same, followed by a capitalised title ("uit de serie Friends"): there the
+// kind word is certainly a reference.
+final _titledReference = RegExp(
+  r'\b(?:van|uit|als|zoals|from|like|in)\s+(?:de|het|een|the|a|die|dat)\s+(?:\w*films?|\w*series?|movies?)\s+\p{Lu}',
+  unicode: true,
+  caseSensitive: true,
+);
 final _daysWord = RegExp(r'\b(\d{1,2})\s*(?:dagen|days)\b');
 final _today = RegExp(r'\b(vandaag|today|afgelopen dag|laatste 24 uur|last 24 hours)\b');
 // "Last week" and "vorige week" are the week before, not the past seven days.
@@ -83,6 +97,9 @@ final _refersBack = RegExp(
 );
 // The word between two clauses of one sentence.
 final _clauseJoin = RegExp(r'\s*(?:[,;]\s*\b(?:en|and|maar|but|plus)\b|[,;]|\b(?:en|and|maar|but|plus)\b)\s*');
+// Asked about the present: "nu", "op dit moment", "right now". "tot nu toe" and
+// "so far" look back and are not it.
+final _live = RegExp(r'(?<!tot )\b(nu|op dit moment|momenteel|right now|at the moment|currently)\b(?! toe)');
 final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for|of)\s+the\s+)last week)\b');
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -98,6 +115,7 @@ class AssistantIntent {
     this.mixedAudience = false,
     this.addedToLibraries = false,
     this.longPeriodAsked = false,
+    this.live = false,
   });
 
   final IntentField<AssistantAudience> audience;
@@ -122,6 +140,9 @@ class AssistantIntent {
   /// A period in weeks or months that days cannot express.
   final bool longPeriodAsked;
 
+  /// The question is about what is playing right now, not a period.
+  final bool live;
+
   static const unknown = AssistantIntent();
 
   /// ponytail: keyword rules over Dutch and English; a classifier for what
@@ -140,8 +161,22 @@ class AssistantIntent {
       if (everyone) AssistantAudience.everyone,
     ];
     final AssistantAudience? audience = readings.length == 1 ? readings.single : null;
-    final movie = _movieWord.hasMatch(p);
-    final show = _seriesWord.hasMatch(p);
+    // A kind word that is only a reference to something else does not set the
+    // kind: when one kind remains outside the references, that is the ask; when
+    // only a reference holds a kind word, it counts unless it names a title.
+    final outside = p.replaceAll(_kindReference, ' ');
+    final outsideMovie = _movieWord.hasMatch(outside);
+    final outsideShow = _seriesWord.hasMatch(outside);
+    final bool movie, show;
+    if (outsideMovie || outsideShow) {
+      movie = outsideMovie;
+      show = outsideShow;
+    } else if (_titledReference.hasMatch(prompt)) {
+      movie = show = false;
+    } else {
+      movie = _movieWord.hasMatch(p);
+      show = _seriesWord.hasMatch(p);
+    }
     final kind = movie == show ? null : (movie ? MediaKind.movie : MediaKind.show);
     // Two different periods in one question: none is fixed.
     final periods = {
@@ -156,6 +191,12 @@ class AssistantIntent {
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
       longPeriodAsked: _longPeriod.hasMatch(p),
+      live:
+          _live.hasMatch(p) &&
+          !_today.hasMatch(p) &&
+          !_week.hasMatch(p) &&
+          !_month.hasMatch(p) &&
+          !_daysWord.hasMatch(p),
       audience: audience == null ? const IntentField.unknown() : IntentField(audience, AssistantFieldSource.explicit),
       kind: kind == null ? const IntentField.unknown() : IntentField(kind, AssistantFieldSource.explicit),
       days: days == null || days < 1 || days > 31
@@ -232,6 +273,7 @@ class AssistantIntent {
     mixedAudience: mixedAudience,
     addedToLibraries: addedToLibraries,
     longPeriodAsked: longPeriodAsked,
+    live: live,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -252,7 +294,11 @@ class AssistantIntent {
           // question) could own it.
           if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
         }
-        if (addedToLibraries && kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+      case 'recommend_together':
+        // The cohort query has its own kind: a question for films gets films,
+        // whatever the model passed.
+        if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
       case 'watch_stats':
         if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.
@@ -263,9 +309,12 @@ class AssistantIntent {
           out['audience'] = audience.value == AssistantAudience.others ? 'others' : 'all';
         }
         if (kind.explicit) {
-          // Current streams cannot be filtered by kind: no list that mixes films and series.
-          if (out['scope'] == 'now') return (args: out, error: 'media_needs_period');
           out['media'] = kind.value == MediaKind.movie ? 'movie' : 'show';
+        }
+        // A live question is answered with live streams: a period list is not.
+        if (live && !previousWeek) {
+          out['scope'] = 'now';
+          out.remove('days');
         }
         if (previousWeek) return (args: out, error: 'previous_week_not_supported');
         if (days.explicit && out['scope'] == 'period') out['days'] = days.value;

@@ -50,6 +50,11 @@ func ensureSetupCode(ctx context.Context, store *auth.Store, ttl time.Duration, 
 	return nil
 }
 
+// skippedRootMsg is de logregel voor een root die de .env-regel noemt maar die
+// gelijk is aan (S2.7) of binnen of boven (S2.8) een root van een
+// db-bibliotheek ligt. Het opstarten gaat gewoon door.
+const skippedRootMsg = "root valt samen met of overlapt een root van een bibliotheek in de database; de .env-regel claimt hem niet"
+
 // syncLibraries brengt de configuratie en de database bij elkaar, en meet
 // meteen het bestandssysteem onder elke root.
 func syncLibraries(ctx context.Context, store *catalog.Store, cfg *config.Config, log *slog.Logger) ([]catalog.Library, error) {
@@ -100,7 +105,7 @@ func syncLibraries(ctx context.Context, store *catalog.Store, cfg *config.Config
 	}
 	for _, l := range libs {
 		for _, root := range l.SkippedRoots {
-			log.Info("root hoort bij een bibliotheek in de database; de .env-regel claimt hem niet",
+			log.Info(skippedRootMsg,
 				slog.String("slug", l.Slug),
 				slog.String("root", root))
 		}

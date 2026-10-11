@@ -103,7 +103,12 @@ class WatchSession {
     this.bandwidthKbps = 0,
     this.isLan,
     this.playerLabel,
+    this.mediaType,
   });
+
+  /// The source's own type for what is playing ('movie', 'episode', 'track'),
+  /// when it names one. Not shown: a kind question reads it.
+  final String? mediaType;
 
   bool get isTranscoding => delivery == StreamDelivery.transcode;
 

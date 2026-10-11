@@ -1,8 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../automation/automation_ids.dart';
 import '../automation/automation_node.dart';
+import '../focus/focus_theme.dart';
 import '../focus/focusable_button.dart';
 import '../i18n/strings.g.dart';
 import '../models/seerr/seerr_media.dart';
@@ -127,6 +131,88 @@ class SeerrFormNotice extends StatelessWidget {
   }
 }
 
+/// Messages pinned above the buttons. They take the height they need, up to
+/// [maxHeight], and scroll past that.
+///
+/// Only when they scroll does the box take the focus: a remote then moves the
+/// text with UP and DOWN, and moves on once the end is reached. Messages that
+/// fit are never a stop on the way to the buttons.
+class SeerrFormNoticeScroller extends StatefulWidget {
+  const SeerrFormNoticeScroller({super.key, required this.maxHeight, required this.children});
+
+  final double maxHeight;
+  final List<Widget> children;
+
+  @override
+  State<SeerrFormNoticeScroller> createState() => _SeerrFormNoticeScrollerState();
+}
+
+class _SeerrFormNoticeScrollerState extends State<SeerrFormNoticeScroller> {
+  /// One press moves about two lines of body text.
+  static const _step = 48.0;
+
+  final _scroll = ScrollController();
+  final _node = FocusNode(debugLabel: 'requests.form.notices');
+  bool _scrolls = false;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _node.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent || !_scroll.hasClients) return KeyEventResult.ignored;
+    final position = _scroll.position;
+    final double room;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      room = position.extentAfter;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      room = -position.extentBefore;
+    } else {
+      return KeyEventResult.ignored;
+    }
+    // Nothing left this way: the press is a move to the next control.
+    if (room.abs() < 1) return KeyEventResult.ignored;
+    _scroll.jumpTo(position.pixels + room.clamp(-_step, _step));
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        final scrolls = notification.metrics.maxScrollExtent > 0;
+        if (scrolls != _scrolls) setState(() => _scrolls = scrolls);
+        return false;
+      },
+      child: Focus(
+        focusNode: _node,
+        canRequestFocus: _scrolls,
+        skipTraversal: !_scrolls,
+        onKeyEvent: _onKey,
+        child: ListenableBuilder(
+          listenable: _node,
+          builder: (context, child) => Container(
+            constraints: BoxConstraints(maxHeight: widget.maxHeight),
+            foregroundDecoration: FocusTheme.focusDecoration(
+              context,
+              isFocused: _node.hasPrimaryFocus,
+              borderRadius: tokens(context).radiusMd,
+            ),
+            child: child,
+          ),
+          child: SingleChildScrollView(
+            controller: _scroll,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: widget.children),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Close on the left, the action on the right.
 ///
 /// While [busy] the primary button keeps its focus and its place and ignores
@@ -144,6 +230,7 @@ class SeerrFormButtons extends StatelessWidget {
     this.onPrimary,
     this.busy = false,
     this.hint,
+    this.hintRoom,
   });
 
   final String closeLabel;
@@ -156,26 +243,61 @@ class SeerrFormButtons extends StatelessWidget {
   final VoidCallback? onPrimary;
   final bool busy;
 
-  /// One line left of the buttons: what a save will do, or who it is for.
+  /// A muted line above the buttons, two lines at most and cut off after
+  /// that: what a save will do, who it is for, or why the form cannot send.
   final String? hint;
+
+  /// The height the form is bounded to (the constraint its sheet gives it, so
+  /// the keyboard is already out of it). Set, the hint gives way on a short
+  /// sheet for its text size, see [hintLinesFor]; null always draws it.
+  final double? hintRoom;
+
+  /// How many lines the hint gets, by the height of the form measured in text
+  /// sizes: two, or none below [noLine], and below [enlargedNoLine] once the
+  /// text is enlarged past 1.25 (at 1.3 on 568x320 the choices were left with
+  /// 36 px in Dutch, where main kept 86). The buttons wrap and grow with the text size,
+  /// and a line there took the choices up to 72 px and overflowed the form
+  /// from 568x320 at 1.65 on; even one line was too much from 2.0. With none
+  /// the reasons stay in the messages at the top of the list. Television,
+  /// tablets and a phone upright at normal size keep two. The defaults are
+  /// for the request form, whose reasons are also messages in its list; the
+  /// edit form passes its own, lower bounds.
+  static int hintLinesFor(
+    double room,
+    TextScaler scaler, {
+    double noLine = requestNoLineRoom,
+    double enlargedNoLine = requestEnlargedNoLineRoom,
+  }) {
+    final scale = math.max(1.0, scaler.scale(14) / 14);
+    final height = room / scale;
+    if (height < noLine || (scale > 1.25 && height < enlargedNoLine)) return 0;
+    return 2;
+  }
+
+  /// The request form's bounds in form height per text size, tuned on its
+  /// measured combinations of screen, text size and language.
+  static const double requestNoLineRoom = 144;
+  static const double requestEnlargedNoLineRoom = 180;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = primaryLabel;
     final primaryEnabled = onPrimary != null;
+    final room = hintRoom;
+    final hintLines = room == null ? 2 : hintLinesFor(room, MediaQuery.textScalerOf(context));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (hint != null)
+          if (hint != null && hintLines > 0)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 hint!,
-                maxLines: 2,
+                maxLines: hintLines,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(color: tokens(context).textMuted),
               ),

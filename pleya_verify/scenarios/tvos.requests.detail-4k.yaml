@@ -1,0 +1,67 @@
+name: tvos.requests.detail-4k
+target: tvos-sim
+# REQ-DETAIL-4K (docs/tvos-fysieke-correctieronde.md): a film that is there in
+# HD never opened the request form from its title page, so 4K could not be
+# asked for. The page now offers "In 4K aanvragen" beside the other actions.
+#
+# `seerr.detail.4k.v1` seeds one film, Glacier Run, available in HD (status 5)
+# with an open 4K status, and a Radarr 4K instance beside the HD one. The
+# fixture user is an admin, which carries the 4K right.
+#
+# The walk: Mijn Pleya, Aanvragen, the only card, its title page. The remote
+# reaches the 4K action with RIGHT, and Select opens the form on 4K. Nothing
+# is sent: the scenario stops on the open form.
+#
+# tvos.requests.detail-4k-absent.yaml is the other half: the same title on a
+# server without a 4K instance.
+setup:
+  - reset_app
+  - seed: catalog.mixed.v1
+  - seed: seerr.detail.4k.v1
+  - launch
+  - sign_in: {base_url: "{{fixture}}", username: verify-owner, password: verify-password, setup_code: "{{fixture_setup_code}}"}
+  - seed_seerr: {base_url: "{{fixture_seerr}}", api_key: "verify-seerr-key"}
+steps:
+  - wait_until: {id: screen.discover, timeout: 30000}
+  - settle: 3500
+
+  - press: right
+  - press: right
+  - press: right
+  - wait_until: {focused: nav.myPleya, timeout: 5000}
+  - press: select
+  - wait_until: {id: screen.my_pleya, timeout: 15000}
+  - press: down
+  - wait_until: {focused: "my_pleya.tile[requests]", timeout: 5000}
+  - press: select
+  - wait_until: {id: seerr.search.field, timeout: 15000}
+  - settle: 2500
+
+  # DOWN from the field lands on the first card, and Glacier Run is the only one.
+  - press: down
+  - settle: 800
+  - assert: {id: seerr.search.field, focused: false}
+  - snapshot: 00-requests-card
+  - press: select
+
+  # The page first shows what the HD status offers. The 4K action follows once
+  # the instance list is read, so it is waited for, not assumed.
+  - wait_until: {id: "requests.detail.action[refresh]", timeout: 15000}
+  - wait_until: {id: "requests.detail.action[request4k]", timeout: 15000}
+  - settle: 800
+  - assert: {id: "requests.detail.action[request4k]", insideViewport: true, state: {primary: false, busy: false}}
+  - assert: {id: "requests.detail.action[refresh]", insideViewport: true, leftOf: "requests.detail.action[request4k]"}
+  - assert: {id: "requests.detail.action[request]", present: false}
+  - snapshot: 01-title-page-actions
+
+  # The D-pad reaches it.
+  - walk: {direction: right, steps: 3, stopAt: "requests.detail.action[request4k]", timeout: 30000, settle: 500}
+  - assert: {id: "requests.detail.action[request4k]", focused: true, insideViewport: true}
+  - snapshot: 02-4k-action-focused
+
+  # Select opens the form, and it stands on 4K.
+  - press: select
+  - wait_until: {id: "requests.form[create]", state: {phase: form, is4k: true}, timeout: 15000}
+  - settle: 800
+  - assert: {id: "requests.form[create]", insideViewport: true, state: {is4k: true}}
+  - snapshot: 03-form-on-4k
