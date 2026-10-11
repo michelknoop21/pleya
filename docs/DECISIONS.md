@@ -66,7 +66,7 @@ Append-only. Nummers zijn opeenvolgend; oude beslissingen worden niet verwijderd
 **Status:** accepted
 **Context:** Relay- en Wi-Fi Aware-verbindingen kunnen mpv/downloads geen gewone URL geven, en het share-protocol (pairing-crypto, Range/206, watch-state) opnieuw implementeren per transport zou dubbel werk en dubbele bugs betekenen.
 **Decision:** Elk nieuw transport bridged naar loopback-HTTP: de host vertaalt frames/streams naar `127.0.0.1:<hostPort>` (`pleya_share_relay_listener.dart`, `pleya_share_aware.dart`), de guest draait een loopback-proxy (`pleya_share_relay_proxy.dart`, `PleyaShareAwareProxy`). Relay-frames zijn AES-256-GCM-sealed (key uit pairSecret of code+salt); Aware is een pure byte-pipe (link-encryptie + HTTP-auth volstaan).
-**Consequences:** Protocol/auth/multi-client werken ongewijzigd op elk transport; nieuwe transports zijn ~200 regels bridge-code; in-process testbaar met stubs/fake streams. ice.pleya.app moet rooms >2 peers, ~90KB frames en object-payloads ondersteunen (nog te valideren).
+**Consequences:** Protocol/auth/multi-client werken ongewijzigd op elk transport; nieuwe transports zijn ~200 regels bridge-code; in-process testbaar met stubs/fake streams. ice.pleya.app moet rooms >2 peers, ~90KB frames en object-payloads ondersteunen (nog te valideren). Gevalideerd op 2026-10-11: de relay haalt de framegrootte niet en staat voor Pleya Share uit, zie de DEC "Pleya Share is alleen lokaal" onderaan dit bestand.
 
 ## DEC-007: Wi-Fi Aware als additioneel transport, nooit vervanging
 

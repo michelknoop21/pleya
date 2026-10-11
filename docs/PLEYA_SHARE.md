@@ -43,7 +43,7 @@ De onderste route, de internetrelay, staat uit (`PleyaShareRelay.enabled = false
 | Scenario | Pad |
 |---|---|
 | Zelfde Wi-Fi | beacons/direct IP |
-| Wi-Fi Aware (iOS 26+/Android 8+, additioneel) | routerloos P2P-Wi-Fi via plugins/pleya_aware; kandidaat tussen LAN en relay |
+| Wi-Fi Aware (iOS 26+/Android 8+, additioneel) | routerloos P2P-Wi-Fi via plugins/pleya_aware; geprobeerd na de LAN-kandidaten |
 | Personal hotspot | QR-IPs + gateway-probe (AP-isolation-proof) |
 | Kabel (ethernet-adapters, direct) | link-local 169.254.x.x in QR + beacons |
 | USB-C met USB-tethering op de host (Android, of iPhone→computer) | tether-interface; gateway-probes .1/.129/.254 |
