@@ -1,7 +1,7 @@
 <!-- Directieve documentatie: vereist een onafhankelijke review (AGENTS.md) voor de merge. -->
 # Big P: lokaal persoonlijk geheugen (BP-08a)
 
-Status: voorstel, 11 oktober 2026. Roadmap: BP-08a. Mockup: `docs/assets/ios-unified/big-p-geheugen-43/` (PROPOSED). Stap 1 kan starten zodra open keuze 1 beslist is; stap 2 wacht op keuze 3; stap 3 wacht op akkoord op de mockup. Synchronisatie valt buiten dit plan en staat als BP-08b in de roadmap.
+Status: voorstel, 11 oktober 2026. Roadmap: BP-08a. Mockup: `docs/assets/ios-unified/big-p-geheugen-43/`, goedgekeurd door Michel op 11 oktober 2026 in de herziene vorm: het hoofdscherm is een geheugenoverzicht in lopende tekst. Stap 1 kan starten zodra open keuze 1 beslist is; stap 2 wacht op keuze 3. Synchronisatie valt buiten dit plan en staat als BP-08b in de roadmap.
 
 ## Wat er al is
 
@@ -36,9 +36,9 @@ De unieke index op (`profileId`, `valueKey`) vangt letterlijk dezelfde zin, ook 
 
 `enabled` is een voorkeur per profiel, local-only geregistreerd in `PreferenceSyncPolicyRegistry` en opgenomen in `clearProfileScopedStores`. Standaard aan: er wordt alleen iets bewaard na een uitdrukkelijk verzoek of een ja, en uit betekent geen tools, geen context en geen voorstellen.
 
-**Geen dubbele waarheid.** Het geheugen weigert wat al een eigenaar heeft: leeftijden van kinderen, taal- en ondertitelvoorkeur. De weigering komt terug als een vaste code, waarna Big P naar de juiste instelling verwijst. Het leeftijdsfilter blijft ongewijzigd. Het geheugenscherm toont de leeftijden uit `KidsAgesStore` als verwijsrij naar Kinderprofiel, alleen als er leeftijden zijn ingesteld.
+**Geen dubbele waarheid.** Het geheugen weigert wat al een eigenaar heeft: leeftijden van kinderen, taal- en ondertitelvoorkeur. De weigering komt terug als een vaste code, waarna Big P naar de juiste instelling verwijst. Het leeftijdsfilter blijft ongewijzigd. Het lijstscherm "Herinneringen" toont de leeftijden uit `KidsAgesStore` als verwijsrij naar Kinderprofiel, alleen als er leeftijden zijn ingesteld.
 
-**Kindstand.** In de kindstand leest en schrijft Big P geen geheugen: de tools staan in `kidsToolPolicy` op geweigerd en er komt geen contextregel. Het scherm blijft bereikbaar om te bekijken en te wissen; de rij "Vraag Big P over je geheugen" is daar verborgen.
+**Kindstand.** In de kindstand leest en schrijft Big P geen geheugen: de tools staan in `kidsToolPolicy` op geweigerd en er komt geen contextregel. Het scherm blijft bereikbaar om te bekijken en te wissen: het toont dan de feiten als lijst, zonder geschreven overzicht, vervolgvragen of invoerveld.
 
 **Context zonder extra modelcall.** `relevantFor` kiest lokaal op woordoverlap tussen de vraag en `value`. Maximaal 8 feiten en 600 tekens, elk met een korte verwijzing (de eerste 8 tekens van de id). Ze gaan als één systeemregel mee, geciteerd als gegevens en niet als instructie, naar het patroon van `_memoryMessages`. Staat het geheugen uit of is er geen treffer, dan komt er geen regel bij. Een feit uit het geheugen krijgt in de intent de herkomst `memory` en overschrijft nooit wat de gebruiker in de vraag zelf zegt (contract, voorrangsregel 4). Een herinnering verruimt nooit rechten of het leeftijdsfilter; daar komt een test voor.
 
@@ -56,7 +56,16 @@ Direct opslaan zonder kaart gebeurt alleen als de code het verzoek herkent: de v
 
 Dit raakt het gedragscontract: `docs/big-p-behaviour-contract.md` zet bevestiging van schrijfacties op voorrang 1 en eist nul mutaties zonder acceptatie. Direct opslaan na "onthoud dat" behandelt het verzoek zelf als de acceptatie. Die uitzondering komt als uitdrukkelijke regel in het contract, in dezelfde PR als stap 2, en geldt alleen voor het eigen geheugen van het actieve profiel. Zie open keuze 3.
 
-**Vraag Big P over je geheugen.** De rij in het scherm opent Big P met een klaargezette vraag ("Wat weet je over mij?") in het invoerveld; de gebruiker verstuurt zelf. Op tv opent hij het assistentscherm op dezelfde manier.
+**Geheugenoverzicht.** Het hoofdscherm toont een overzicht dat Big P in de tweede persoon schrijft, in secties per categorie, met daaronder drie vervolgvragen ("Duik dieper"). De feiten in `AssistantMemories` blijven de waarheid; het overzicht is afgeleid, wordt nooit zelf bewerkt en nooit als bron voor een antwoord gebruikt.
+
+- Het overzicht staat in een tweede kleine tabel in dezelfde migratie, `AssistantMemoryOverviews`: `profileId` (sleutel), `factsHash`, `locale`, `body` (JSON met secties en vervolgvragen), `generatedAt`. De hash loopt over de id, `updatedAt` en de tekst van alle feiten van het profiel plus de taal.
+- Bij het openen van het scherm vergelijkt de service de hash. Gelijk: de bewaarde tekst wordt getoond en er gaat geen aanroep uit. Anders: één modelaanroep zonder tools, met alle feiten van het profiel als invoer en een vast JSON-formaat als uitvoer. "Overzicht opnieuw schrijven" in het menu doet hetzelfde op verzoek. Een schrijfactie op zichzelf start geen aanroep; pas het scherm doet dat.
+- De uitvoer wordt gevalideerd: alleen bekende categorieën, platte tekst, een lengteplafond per sectie, hoogstens drie vervolgvragen van maximaal 80 tekens. Ongeldige uitvoer, geen ingesteld model, geen verbinding of een fout: het scherm toont de feiten per categorie als lijst en bewaart niets.
+- Leeftijden gaan niet naar het model. Zijn er leeftijden ingesteld, dan voegt de app zelf onder Huishouden de vaste verwijzing naar Kinderprofiel toe.
+- `clearAll()`, profielverwijdering en uitzetten van het geheugen wissen ook het bewaarde overzicht. In de kindstand en met het geheugen uit wordt er niets geschreven.
+- Dit is de ene extra modelaanroep in dit ontwerp. Hij is nodig omdat lopende tekst niet zonder model te schrijven is, en hij gebeurt alleen bij gewijzigde feiten. Bij een cloudmodel gaan hiervoor alle feiten van het profiel mee, niet alleen de relevante; de tekst bij de schakelaar zegt dat.
+
+**Vraag of werk bij.** Het invoerveld onder het overzicht stuurt de tekst als gewone vraag naar Big P, via dezelfde controller en dezelfde tools als het gesprek. Het antwoord en een eventuele kaart verschijnen in het scherm boven het invoerveld. De regels voor schrijven zijn dezelfde: een nieuw feit na "onthoud dat" direct, vervangen en vergeten met een kaart die toont wat verdwijnt. Een vervolgvraag uit "Duik dieper" wordt bij aantikken op dezelfde manier verstuurd. Op tv opent de tegel "Vraag of werk bij" het toetsenbord of dicteren.
 
 **Privacy.** Voorstel: platte tekst, met dezelfde bescherming als de kijklog. Versleutelen met `CredentialVault` is afgewogen en afgeraden. De sleutel staat in SharedPreferences, dus de apparaatback-up bevat sleutel en database samen. Raakt alleen de sleutel weg (containerreset op macOS, hersteld toestel), dan is het hele geheugen onleesbaar zonder herstelpad. De winst zou alleen zijn dat de tekst in Bestanden niet leesbaar is, en dan zou ook `valueKey` versleuteld moeten zijn, wat de unieke index onbruikbaar maakt.
 
@@ -66,22 +75,21 @@ Wat wel gebeurt: geheugeninhoud komt in geen enkele logregel. De memory-bestande
 
 Stap 1 en 2 krijgen een adversariële review (roadmapregel voor BP-08a), stap 3 de volledige UI-review met Verify en beeld.
 
-1. **Opslag.** Tabel, migratie 21 naar 22, `MemoryService`, de voorkeur aan/uit, wissen bij profielverwijdering. Tests: migratie vanaf 21 en verse installatie; profielisolatie voor lezen, bijwerken en verwijderen op id (twee profielen, geen kruistoegang); dezelfde zin twee keer geeft één rij; bijwerken naar een bestaande zin geeft `duplicate`; herstart (bestands-database sluiten en openen); profiel verwijderen wist rijen en voorkeur; weigering van leeftijd en taal; plafond; logverbod. Geen UI, geen assistentcode.
-2. **Big P.** De drie tools, de contextregel, voorstelkaart, direct opslaan, kindbeleid, staplabels NL en EN, contractregel. Tests met het gescripte model: voorstel zonder ja bewaart niets; "onthoud dat" bewaart direct en precies één keer; een titel met remember en een vraagzin die met "remember that" begint bewaren niets direct; vergeten wist nooit zonder ja; een onbekende of dubbelzinnige verwijzing wijzigt niets; "onthoud dat" met `replaces` vervangt niet zonder ja; `replaces` vervangt; een ander profiel ziet niets; de budgetten van 600 en 2000 tekens; geheugen uit geeft geen tool en geen regel; kindstand; profielwissel tussen voorstel en ja; een herinnering verruimt het leeftijdsfilter niet.
-3. **Beheer-UI.** Het scherm volgens de goedgekeurde mockup, telefoon, tablet en tv, met Pleya Verify-scenario's en beeld.
+1. **Opslag.** Beide tabellen, migratie 21 naar 22, `MemoryService`, de voorkeur aan/uit, wissen bij profielverwijdering. Tests: migratie vanaf 21 en verse installatie; profielisolatie voor lezen, bijwerken en verwijderen op id (twee profielen, geen kruistoegang); dezelfde zin twee keer geeft één rij; bijwerken naar een bestaande zin geeft `duplicate`; herstart (bestands-database sluiten en openen); profiel verwijderen wist rijen en voorkeur; weigering van leeftijd en taal; plafond; de hash verandert bij toevoegen, bijwerken en verwijderen en niet bij alleen lezen; `clearAll` en profielverwijdering wissen het bewaarde overzicht; logverbod. Geen UI, geen assistentcode.
+2. **Big P.** De drie tools, de schrijver van het overzicht, de contextregel, voorstelkaart, direct opslaan, kindbeleid, staplabels NL en EN, contractregel. Tests met het gescripte model: voorstel zonder ja bewaart niets; "onthoud dat" bewaart direct en precies één keer; een titel met remember en een vraagzin die met "remember that" begint bewaren niets direct; vergeten wist nooit zonder ja; een onbekende of dubbelzinnige verwijzing wijzigt niets; "onthoud dat" met `replaces` vervangt niet zonder ja; `replaces` vervangt; een ander profiel ziet niets; de budgetten van 600 en 2000 tekens; geheugen uit geeft geen tool en geen regel; kindstand; profielwissel tussen voorstel en ja; een herinnering verruimt het leeftijdsfilter niet. Voor het overzicht: gelijke hash geeft geen modelaanroep, een gewijzigd feit precies één; ongeldige uitvoer en een fout geven de lijst en bewaren niets; leeftijden staan niet in de invoer; geheugen uit en kindstand geven geen aanroep; de feiten en het overzicht komen in geen logregel.
+3. **Beheer-UI.** Het overzicht, het menu, het lijstscherm met zoeken en categorieën, de sheets en de kaarten volgens de goedgekeurde mockup, telefoon, tablet en tv, met Pleya Verify-scenario's en beeld. De laadstaat, de lijst als terugval en de uit-stand horen bij het bewijs.
 
 Gedeelde bestanden met ander BP-werk raakt stap 2 alleen op vaste plekken: één regel in de toollijst van `assistant_tools.dart`, één systeemregel in `assistant_run_loop.dart`, de drie rijen in `kidsToolPolicy` en de staplabels. De rest staat in nieuwe bestanden.
 
-## Mockup: punten bij het akkoord
+## Mockup: wat bij de bouw afwijkt van het beeld
 
-- Tv heeft geen zoekveld in beeld; de opdracht vraagt zoeken. Voorstel: een rij "Zoeken" die het systeemtoetsenbord opent.
-- De schakelaartekst wordt "Big P onthoudt wat je hem vraagt te onthouden", omdat er niets automatisch wordt bewaard.
-- In beeld en nu in het plan: de link "Bekijk geheugen" na direct opslaan, verwijderen van één herinnering met bevestiging, wissen kan ook als het geheugen uit staat.
-- De voorstelkaart in 43 G staat in het echt onder het antwoord, niet in plaats ervan.
+- De tekst bij de schakelaar in 43 C noemt alleen relevante herinneringen bij een vraag. Erbij komt dat voor het overzicht alle herinneringen van het profiel meegaan.
+- Het lijstscherm op tv is niet getekend. Het volgt 43 D in de tv-stijl van 43 M; zoeken staat bij open keuze 4.
+- De genummerde toelichtingsregels in 43 K horen bij de mockup en komen niet in de app.
 
 ## Buiten scope en bekende grenzen
 
-- Geen sync, geen export, geen embeddings of vectorzoeken, geen extra modelcall.
+- Geen sync, geen export, geen embeddings of vectorzoeken. De enige extra modelaanroep is het schrijven van het overzicht bij gewijzigde feiten.
 - Twee verschillend geformuleerde zinnen met dezelfde betekenis kunnen naast elkaar staan tot de gebruiker of Big P er één vervangt.
 - Rijen van een Plex Home-gebruiker die uit de Home verdwijnt, blijven staan; daar bestaat nu voor geen enkele profieltabel een opruimpad.
 - Een lokaal profiel heeft per toestel een andere id. BP-08b moet dat oplossen voordat er iets gesynct wordt, en heeft dan ook tombstones nodig.
@@ -91,4 +99,4 @@ Gedeelde bestanden met ander BP-werk raakt stap 2 alleen op vaste plekken: één
 1. Platte tekst zoals de kijklog (voorstel) of toch versleutelen, met het risico op onleesbaar geheugen.
 2. Kindstand: Big P gebruikt geen geheugen, het scherm blijft bereikbaar (voorstel).
 3. "Onthoud dat ..." slaat direct op (vergeten en vervangen houden altijd een kaart), met een uitzondering in het gedragscontract (voorstel, volgt de opdracht), of altijd een kaart en geen contractwijziging.
-4. Zoeken op tv via een rij met het systeemtoetsenbord (voorstel) of geen zoeken op tv.
+4. Zoeken in het lijstscherm op tv via een rij met het systeemtoetsenbord (voorstel) of geen zoeken op tv.

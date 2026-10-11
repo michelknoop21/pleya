@@ -1,47 +1,59 @@
 # Mockupset 43: Instellingen, Big P, Geheugen
 
-Status: PROPOSED (11 oktober 2026). Nog niet bouwen tot akkoord van Michel.
+Status: APPROVED (Michel, 11 oktober 2026), in de herziene vorm met het overzicht in lopende tekst als hoofdscherm. Het plan staat in `docs/plans/2026-10-11-big-p-geheugen.md`.
 Roadmap: BP-08a.
 
-Het geheugen is een lijst korte feiten per Pleya-profiel, bewaard op het apparaat zelf. Elke herinnering heeft een tekst van hooguit 200 tekens, een van vijf categorieën (Voorkeuren, Niet voor mij, Huishouden, Kijkgewoonten, Overig), een herkomst en twee datums. Taalvoorkeuren staan er niet in: die hebben hun eigen instellingen. De leeftijden van de kinderen staan er ook niet in. Het scherm toont ze als verwijsrij naar Kinderprofiel, buiten de lijst, zodat "Alle herinneringen wissen" ze niet raakt.
+Het hoofdscherm "Geheugen" is een overzicht dat Big P in de tweede persoon schrijft, in vijf secties: Overzicht, Voorkeuren, Niet voor jou, Huishouden en Kijkgewoonten. Onder de tekst staan drie vervolgvragen ("Duik dieper") en vast onderin het invoerveld "Vraag of werk bij". De schakelaar, het lijstbeheer en het wissen zitten achter de menuknop rechtsboven.
 
-De instellingenschermen volgen northstar 14 (iPhone) en mockup 31 A (tvOS). Het gespreksbeeld 43 G gebruikt het paneel en de bevestigingskaart van 39 G.
+Onder het overzicht ligt nog steeds een lijst korte feiten per Pleya-profiel, bewaard op het apparaat zelf. Elke herinnering heeft een tekst van hooguit 200 tekens, een van vijf categorieën (Voorkeuren, Niet voor mij, Huishouden, Kijkgewoonten, Overig), een herkomst en twee datums. Taalvoorkeuren staan er niet in: die hebben hun eigen instellingen. De leeftijden van de kinderen staan er ook niet in. Het overzicht verwijst ervoor naar Kinderprofiel en het lijstscherm toont ze als verwijsrij buiten de lijst, zodat "Alle herinneringen wissen" ze niet raakt.
+
+De lijst en de sheets volgen northstar 14 (iPhone), het tv-beeld volgt mockup 31 A. Het gespreksbeeld 43 K gebruikt het paneel en de bevestigingskaart van 39 G.
 
 ## De beelden
 
-| Paneel | Bestand | Formaat | Wat het vastlegt |
-| --- | --- | --- | --- |
-| 43 A | `43-a-hoofdscherm.png` | iPhone 402x874 | Schakelaar met uitleg en het kader over cloudmodellen, zoekveld, filterchips, lijst met teller. |
-| 43 A, vervolg | `43-a-hoofdscherm-onder.png` | iPhone 402x874 | Hetzelfde scherm aan het einde van de scroll: verwijsrij Leeftijden kinderen, "Herinnering toevoegen", "Vraag Big P over je geheugen" en de tekstknop om alles te wissen. |
-| 43 B | `43-b-bewerken.png` | iPhone 402x874 | Sheet voor een bestaande herinnering: tekst, categorie, herkomst, datums, Opslaan, Annuleren, Verwijderen. |
-| 43 C | `43-c-toevoegen.png` | iPhone 402x874 | Sheet voor een nieuwe herinnering: leeg veld, teller 0/200, Opslaan uitgeschakeld, de hint over wachtwoorden en medische gegevens. |
-| 43 D | `43-d-wissen.png` | iPhone 402x874 | Bevestigdialoog. Annuleren is de standaardknop, Wissen staat ernaast als rode tekst. |
-| 43 E | `43-e-uit.png` | iPhone 402x874 | Schakelaar uit: melding dat niets wordt onthouden of gebruikt, de lijst gedimd maar bewaard. |
-| 43 F | `43-f-leeg.png` | iPhone 402x874 | Geheugen aan, nul herinneringen. |
-| 43 G | `43-g-gesprek.png` | iPhone 402x874 | Twee momenten in het gesprek: Big P stelt een herinnering voor (focus op "Niet onthouden"), en de gebruiker vraagt er zelf om, met de link "Bekijk geheugen". |
-| 43 H | `43-h-ipad.png` | iPad liggend 1180x820 | Links schakelaar, zoekveld en categorieën met aantallen, in het midden de lijst, rechts het detailpaneel. |
-| 43 I | `43-i-tvos.png` | tvOS 1920x1080 | Twee kolommen zoals mockup 31 A. Eén rij heeft focus: witte ring, geen schaal. Alle tekst is 23 px of groter. |
+| Paneel | Bestand | Formaat |
+| --- | --- | --- |
+| 43 A, overzicht | `43-a-overzicht.png` | iPhone 402x874 |
+| 43 A, einde van de scroll | `43-a-overzicht-onder.png` | iPhone 402x874 |
+| 43 B, laadstaat "Bijwerken" | `43-b-genereren.png` | iPhone 402x874 |
+| 43 C, menu achter de drie puntjes | `43-c-menu.png` | iPhone 402x874 |
+| 43 D, herinneringen beheren | `43-d-beheren.png` | iPhone 402x874 |
+| 43 E, herinnering bewerken | `43-e-bewerken.png` | iPhone 402x874 |
+| 43 F, herinnering toevoegen | `43-f-toevoegen.png` | iPhone 402x874 |
+| 43 G, alles wissen bevestigen | `43-g-wissen.png` | iPhone 402x874 |
+| 43 H, bijwerken via het invoerveld | `43-h-bijwerken.png` | iPhone 402x874 |
+| 43 I, geheugen uit | `43-i-uit.png` | iPhone 402x874 |
+| 43 J, nog geen herinneringen | `43-j-leeg.png` | iPhone 402x874 |
+| 43 K, onthouden in het gesprek | `43-k-gesprek.png` | iPhone 402x874 |
+| 43 L, iPad liggend | `43-l-ipad.png` | iPad 1180x820 |
+| 43 M, tvOS | `43-m-tvos.png` | tvOS 1920x1080 |
 
 Elk PNG heeft een HTML-bestand met dezelfde naam. De PNG's zijn 2x.
 
-43 A bestaat uit twee beelden omdat de inhoud niet op één telefoonscherm past. De regels "1. Big P stelt voor, jij beslist" en "2. Je vraagt er zelf om" in 43 G zijn toelichting bij de mockup en komen niet in de app: de twee ballonnen staan nooit tegelijk in beeld.
+Bij de beelden:
+
+- 43 A bestaat uit twee beelden omdat het overzicht niet op één telefoonscherm past. Het invoerveld ligt boven de tekst met een verloop naar de achtergrondkleur.
+- 43 D toont het filter "Niet voor mij" (2 van 6), zodat zoekveld, chips, lijst, teller, de verwijsrij Leeftijden kinderen en de knop samen in één beeld passen.
+- 43 G opent vanuit het menu en ligt daarom over het overzicht, niet meer over de lijst.
+- 43 H: wie in het invoerveld iets schrijft dat een bestaande herinnering tegenspreekt, krijgt een kaart met wat verdwijnt en wat ervoor terugkomt. De focus staat op "Niet vervangen".
+- 43 K: de cursieve regels boven de twee ballonnen zijn toelichting bij de mockup en komen niet in de app. De ballonnen staan nooit tegelijk in beeld. In de eerste staat het voorstel onder het antwoord op de vraag, niet in plaats ervan.
+- 43 L heeft geen menuknop: de rechterkolom toont dezelfde vier acties en de vervolgvragen.
+- 43 M: de leestekst is 29 px, de kleinste tekst op het scherm 23 px. De tegel "Vraag of werk bij" heeft focus: witte ring van 2,5 px, geen schaal.
 
 ## Opnieuw renderen
 
 ```
 python3 gen43.py                  # HTML en PNG's
 python3 gen43.py --html           # alleen HTML
-python3 gen43.py 43-b-bewerken    # een enkel beeld
+python3 gen43.py 43-e-bewerken    # een enkel beeld
 ```
 
 De generator schrijft de HTML uit `bp43.js` en `bp43.css` en maakt de PNG's met Playwright (Chromium, `device_scale_factor=2`) via het Python-pakket `playwright`. Het `pw screenshot`-commando heeft geen optie voor de schaalfactor en levert dus 1x. Lettertypen komen uit `assets/fonts/`, posters en Big P uit `docs/assets/ios-unified/detail-2026/` en `docs/assets/tvos-unified/src/assets/`.
 
 ## Open ontwerpkeuzes
 
-1. Kleur van "Alle herinneringen wissen" op tv. Op iPhone en iPad is het een tekstknop in accentrood. Op tv staat hij in 43 I in de gewone rustkleur met een prullenbak, omdat een rode foutkleur in rust daar nu niet leesbaar is. Dat hangt aan ACTION-ERROR-CONTRAST in `docs/tvos-fysieke-correctieronde.md`; de uitkomst daarvan bepaalt de kleur hier.
-2. Zoeken op tv. 43 I heeft geen zoekveld. Het voorstel is zoeken via het systeemtoetsenbord, zoals de zoekpagina dat doet, en bij zes herinneringen kan het ook zonder.
-3. Geselecteerde chip. Filter- en categoriechips zijn wit gevuld als ze gekozen zijn, net als op tv. Accentrood is de andere kandidaat.
-4. "Geheugen gebruiken" op tv is een rij met de waarde "Aan" en een chevron. Een schakelaar in de rij, zoals bij "Onthoud keuzes per serie" in 31 A, kan ook.
-5. Focusring op tv: 2,5 px met een tussenruimte van 6 px. Mockup 31 A tekende 4 px op 8.
-6. De herkomstregel "Voorgesteld door Big P, door jou bevestigd" loopt op iPhone over twee regels. Een kortere tekst houdt de rijen even hoog.
-7. De tabbalk blijft staan op het geheugenscherm, zoals in northstar 14.
+1. Het overzicht wordt door het model geschreven uit de opgeslagen feiten en opnieuw geschreven als de feiten wijzigen. Dat is één modelaanroep per wijziging. Zonder ingesteld model of zonder verbinding toont het scherm de feiten per categorie als lijst.
+2. De feiten blijven de waarheid. Het overzicht is afgeleid en wordt nooit zelf bewerkt: wie iets wil veranderen, doet dat via het invoerveld of in "Herinneringen beheren", waarna het overzicht opnieuw wordt geschreven.
+3. Kleur van de gevaaractie op tv. Op iPhone en iPad is "Alle herinneringen wissen" een tekstactie in accentrood. In 43 M staat de tegel in de gewone rustkleur met een prullenbak. De uitkomst van ACTION-ERROR-CONTRAST in `docs/tvos-fysieke-correctieronde.md` bepaalt de kleur hier.
+
+Uit de eerste ronde staan nog open: de geselecteerde chip is wit gevuld (accentrood is de andere kandidaat), de focusring op tv is 2,5 px met 6 px tussenruimte waar mockup 31 A 4 px op 8 tekende, en de tabbalk blijft staan op het geheugenscherm zoals in northstar 14.

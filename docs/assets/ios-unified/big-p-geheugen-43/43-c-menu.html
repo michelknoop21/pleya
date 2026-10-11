@@ -1,0 +1,10 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>43 C Menu</title>
+<link rel="stylesheet" href="bp43.css"><script src="bp43.js"></script></head><body class=""><script>
+document.body.innerHTML = overviewScreen() + `<div class="dim"></div>
+<div class="sheet"><div class="grab"></div><h2>Geheugen</h2>
+  <div class="card">${navRow('Herinneringen beheren', MEM.length)}</div>
+  <div class="card">${switchRow(true)}</div>
+  <div class="card">${navRow('Overzicht opnieuw schrijven')}</div>
+  <div class="tbtn danger" style="margin-top:8px">Alle herinneringen wissen</div>
+</div><div class="homeind"></div>`;
+</script></body></html>
