@@ -78,6 +78,12 @@
   --poster-w: 190px; /* railposter; HubRail en de skeletrail lezen hem allebei */
   --rail-gap: 20px;
   /*
+   * Ruimte boven een sectie, web.css .section: 26, onder 900 18. Home en het
+   * Home-skelet lezen hem allebei, zodat de eerste rij op dezelfde hoogte
+   * begint vóór en na het binnenkomen van de data.
+   */
+  --section-gap: 26px;
+  /*
    * Maten van de kaarten en de hero zoals ze vandaag getekend worden. Ze staan
    * hier en niet in de componenten zelf omdat het skelet (SkeletonPage) exact
    * dezelfde ruimte moet innemen als de inhoud die erna komt; twee kopieën van
@@ -335,6 +341,7 @@
 @media (max-width: 899px) {
   :root {
     --inset: 16px;
+    --section-gap: 18px;
     --poster-w: 110px;
     --rail-gap: 12px;
     --radius-hero: 16px;

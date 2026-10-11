@@ -14,6 +14,11 @@
   de spinner in StateView zei, zodat een schermlezer nog steeds hoort dat er
   geladen wordt. De statusregel staat bewust buiten de bezige container: een
   live region binnen een `aria-busy`-voorouder houdt zijn aankondiging in.
+
+  `heading` zet een verborgen h1 naast de statusregel. Een skelet dat een hele
+  pagina vervangt, laat de pagina anders zonder kop (axe:
+  `page-has-heading-one`), en wie met koppen navigeert, belandt dan nergens.
+  Hij staat om dezelfde reden buiten de bezige container.
 -->
 <script lang="ts">
   import Skeleton from './Skeleton.svelte';
@@ -23,9 +28,11 @@
     variant?: 'home' | 'grid' | 'detail' | 'compact';
     /** Wat de schermlezer hoort; standaard de gedeelde laadtekst. */
     label?: string;
+    /** Paginanaam als verborgen h1, voor een skelet dat een hele route vult. */
+    heading?: string | undefined;
   }
 
-  let { variant = 'home', label = t('loading') }: Props = $props();
+  let { variant = 'home', label = t('loading'), heading }: Props = $props();
 
   // Genoeg kaarten om een rij op 1600 en een raster op een groot scherm te
   // vullen; wat buiten beeld valt, kost niets.
@@ -35,6 +42,9 @@
 </script>
 
 <div class="skp skp--{variant}">
+  {#if heading}
+    <h1 class="visually-hidden">{heading}</h1>
+  {/if}
   <p class="visually-hidden" role="status">{label}</p>
 
   <div class="skp__body" aria-busy="true" aria-hidden="true">
@@ -79,12 +89,14 @@
 </div>
 
 <style>
-  /* Dezelfde ruimte als de startpagina: hero, dan de rails met 24 erboven. */
+  /* Dezelfde ruimte als de startpagina en beeld 15: hero, dan elke rij met
+     .section erboven (26, onder 900 18). Home leest hetzelfde token; wijkt
+     het hier af, dan springt de eerste rij zodra de data binnenkomt. */
   .skp__rails {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding-top: var(--space-2);
+    gap: var(--section-gap);
+    padding-top: var(--section-gap);
   }
 
   /* De rail volgt HubRail maat voor maat: kop van één raakvlak hoog met 4
@@ -130,7 +142,7 @@
     display: grid;
     gap: var(--space-1-5);
     grid-template-columns: 1fr;
-    padding: var(--space-1-5) var(--page-inset, var(--space));
+    padding: var(--space-1-5) var(--inset);
   }
 
   @media (min-width: 600px) {

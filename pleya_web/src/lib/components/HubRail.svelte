@@ -332,6 +332,27 @@
     cursor: default;
   }
 
+  /*
+   * Focus in de vorm van de kaartfocus: een ring in inkt op een gap van 3 in
+   * de paginakleur. De pijl hangt half over de eerste kaart, en met alleen een
+   * outline lag de ring daar in light tegen een donkere poster op 1,66:1. De
+   * gap geeft de ring een vlak waartegen hij in elk thema contrast heeft.
+   */
+  .rail__arrow:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px var(--bg),
+      0 0 0 calc(3px + var(--ring)) var(--ink);
+  }
+
+  /* Forced colors gooit box-shadow weg; zonder outline verdwijnt de ring. */
+  @media (forced-colors: active) {
+    .rail__arrow:focus-visible {
+      outline: var(--ring) solid CanvasText;
+      outline-offset: 3px;
+    }
+  }
+
   @media (hover: hover) and (min-width: 900px) {
     .rail__arrow {
       display: grid;

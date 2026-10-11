@@ -262,6 +262,48 @@ test.describe('responsive', () => {
     expect(measured.card).toBeGreaterThan(0);
   });
 
+  // Beeld 15: het skelet neemt de ruimte in van wat erna komt. Verschuift de
+  // eerste rij zodra de data binnenkomt, dan springt de pagina onder de muis of
+  // de vinger van iemand die al wilde klikken.
+  for (const width of [393, 1280]) {
+    test(`de eerste rij op Home verspringt niet als de data binnenkomt (${width}px)`, async ({
+      page
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+
+      // De hub-aanvraag blijft hangen tot het skelet gemeten is.
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await page.route('**/pleya/v1/hubs/**', async (route) => {
+        await held;
+        await route.continue().catch(() => undefined);
+      });
+
+      const firstRow = (rail: string, art: string) =>
+        page.evaluate(
+          ([railSelector, artSelector]) => ({
+            rail: document.querySelector(railSelector)?.getBoundingClientRect().top ?? -1,
+            art: document.querySelector(artSelector)?.getBoundingClientRect().top ?? -1
+          }),
+          [rail, art] as const
+        );
+
+      await page.goto('/');
+      await page.locator('.skp__rail').first().waitFor();
+      const skeleton = await firstRow('.skp__rail', '.skp__cell .skc__art');
+
+      release();
+      await page.locator('.rail__cell').first().waitFor();
+      const loaded = await firstRow('section.rail', '.rail__cell .card__art');
+      await page.unroute('**/pleya/v1/hubs/**');
+
+      const seen = JSON.stringify({ skeleton, loaded });
+      expect(skeleton.rail, 'het skelet heeft geen rij getekend').toBeGreaterThan(0);
+      expect(Math.abs(loaded.rail - skeleton.rail), `kop van de rij ${seen}`).toBeLessThanOrEqual(2);
+      expect(Math.abs(loaded.art - skeleton.art), `eerste poster ${seen}`).toBeLessThanOrEqual(2);
+    });
+  }
+
   test('posters worden niet reusachtig op een ultrabreed scherm', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto('/libraries');

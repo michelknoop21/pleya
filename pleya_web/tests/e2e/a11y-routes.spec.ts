@@ -255,14 +255,9 @@ for (const { locale, context } of LOCALES) {
 
       await page.goto('/');
       await page.locator('[aria-busy="true"]').first().waitFor();
-      // Nulmeting S7.6: het Home-skelet heeft geen h1, en axe meldt
-      // `page-has-heading-one` op alle vijf breedtes in beide talen. Taak 3 legt
-      // het skelet naast beeld 15; dan faalt deze meting op "regel is weg" en
-      // gaat de uitzondering eruit.
-      await measure(page, 'home laden (/)', locale, {
-        settle: false,
-        knownRed: ['page-has-heading-one']
-      });
+      // Het skelet draagt een verborgen h1 (SkeletonPage `heading`); tot S7.6
+      // taak 3 meldde axe hier `page-has-heading-one`.
+      await measure(page, 'home laden (/)', locale, { settle: false });
 
       // Zonder deze twee kan een route-matcher die niets raakt de geladen Home
       // meten en dat voor de laadstaat laten doorgaan.

@@ -51,6 +51,19 @@ describe('SkeletonPage', () => {
     expect(container.querySelector('.skel--hero')).toBeNull();
   });
 
+  it('zet een verborgen h1 buiten de bezige container als de route een naam geeft', () => {
+    render(SkeletonPage, { props: { variant: 'home', heading: 'Home' } });
+    const heading = screen.getByRole('heading', { level: 1, name: 'Home' });
+    expect(heading).toHaveClass('visually-hidden');
+    // Binnen aria-hidden zou hij voor een schermlezer niet bestaan.
+    expect(heading.closest('[aria-hidden="true"]')).toBeNull();
+  });
+
+  it('tekent zonder naam geen kop, want dan staat er een paginakop boven', () => {
+    render(SkeletonPage, { props: { variant: 'grid' } });
+    expect(screen.queryByRole('heading')).toBeNull();
+  });
+
   it('neemt een eigen label over', () => {
     render(SkeletonPage, { props: { label: 'Bibliotheek laden' } });
     expect(screen.getByRole('status')).toHaveTextContent('Bibliotheek laden');

@@ -36,6 +36,7 @@ export const web = {
   'home.recentlyAdded': 'Recently added',
   'home.emptyTitle': 'Nothing has been added yet',
   'home.emptyBody': 'Once the server has scanned your media, new titles show up here.',
+  'home.emptyAction': 'Go to My Pleya',
 
   'hero.play': 'Play',
   'hero.moreInfo': 'More info',

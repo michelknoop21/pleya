@@ -39,6 +39,7 @@ export const webNl = {
   'home.recentlyAdded': 'Recent toegevoegd',
   'home.emptyTitle': 'Er is nog niets toegevoegd',
   'home.emptyBody': 'Zodra de server je media heeft gescand, verschijnen nieuwe titels hier.',
+  'home.emptyAction': 'Naar Mijn Pleya',
 
   'hero.play': 'Afspelen',
   'hero.moreInfo': 'Meer info',
