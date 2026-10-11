@@ -50,10 +50,12 @@ python3 gen43.py 43-e-bewerken    # een enkel beeld
 
 De generator schrijft de HTML uit `bp43.js` en `bp43.css` en maakt de PNG's met Playwright (Chromium, `device_scale_factor=2`) via het Python-pakket `playwright`. Het `pw screenshot`-commando heeft geen optie voor de schaalfactor en levert dus 1x. Lettertypen komen uit `assets/fonts/`, posters en Big P uit `docs/assets/ios-unified/detail-2026/` en `docs/assets/tvos-unified/src/assets/`.
 
+## Vastgelegd bij het akkoord
+
+Het overzicht wordt door het model geschreven uit de opgeslagen feiten, en alleen opnieuw als de feiten zijn gewijzigd. Zonder ingesteld model of zonder verbinding toont het scherm de feiten per categorie als lijst. De feiten blijven de waarheid: het overzicht is afgeleid en wordt nooit zelf bewerkt. Wie iets wil veranderen, doet dat via het invoerveld of in "Herinneringen beheren". De uitwerking staat in het plan.
+
 ## Open ontwerpkeuzes
 
-1. Het overzicht wordt door het model geschreven uit de opgeslagen feiten en opnieuw geschreven als de feiten wijzigen. Dat is één modelaanroep per wijziging. Zonder ingesteld model of zonder verbinding toont het scherm de feiten per categorie als lijst.
-2. De feiten blijven de waarheid. Het overzicht is afgeleid en wordt nooit zelf bewerkt: wie iets wil veranderen, doet dat via het invoerveld of in "Herinneringen beheren", waarna het overzicht opnieuw wordt geschreven.
-3. Kleur van de gevaaractie op tv. Op iPhone en iPad is "Alle herinneringen wissen" een tekstactie in accentrood. In 43 M staat de tegel in de gewone rustkleur met een prullenbak. De uitkomst van ACTION-ERROR-CONTRAST in `docs/tvos-fysieke-correctieronde.md` bepaalt de kleur hier.
+Kleur van de gevaaractie op tv. Op iPhone en iPad is "Alle herinneringen wissen" een tekstactie in accentrood. In 43 M staat de tegel in de gewone rustkleur met een prullenbak. De uitkomst van ACTION-ERROR-CONTRAST in `docs/tvos-fysieke-correctieronde.md` bepaalt de kleur hier.
 
 Uit de eerste ronde staan nog open: de geselecteerde chip is wit gevuld (accentrood is de andere kandidaat), de focusring op tv is 2,5 px met 6 px tussenruimte waar mockup 31 A 4 px op 8 tekende, en de tabbalk blijft staan op het geheugenscherm zoals in northstar 14.
