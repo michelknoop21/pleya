@@ -34,11 +34,10 @@ Future<void> showMemoryFactSheet(
     context,
     backgroundColor: tokens(context).surface,
     isScrollControlled: true,
-    // A phone: up to the status bar instead of three quarters of the screen,
-    // so the text stays in view above the keyboard of a small phone.
-    constraints: !tv && media.size.width < 600
-        ? BoxConstraints(maxHeight: media.size.height - media.padding.top - 8)
-        : null,
+    // Up to the status bar instead of three quarters of a phone or 400 pt on
+    // a tablet: the text stays in view above the keyboard of a small phone,
+    // and a tablet shows the whole sheet.
+    constraints: tv ? null : BoxConstraints(maxWidth: 700, maxHeight: media.size.height - media.padding.top - 8),
     restoreLauncherFocus: true,
     presentation: tv ? OverlaySheetPresentation.panel : OverlaySheetPresentation.sheet,
     builder: (sheetContext) => MemoryScale.forPlatform(
