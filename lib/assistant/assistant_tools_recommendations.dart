@@ -50,7 +50,7 @@ Future<AssistantToolOutcome> _recommendTogether(
   final filters = AssistantStrictFilters.parse(args);
   final limit = _int(args, 'limit', 1, 20) ?? 10;
   final names = [..._strings(args, 'participants')];
-  final explicitIds = _strings(args, 'user_ids');
+  var explicitIds = _strings(args, 'user_ids');
   if (names.length + explicitIds.length < 1 ||
       names.length + explicitIds.length > _cohortParticipantCap ||
       [...names, ...explicitIds].any((s) => s.trim().isEmpty || s.length > 64))
@@ -90,15 +90,19 @@ Future<AssistantToolOutcome> _recommendTogether(
   checkCurrent();
   final selected = <String, ServerUser>{requester.id: requester};
   final offeredBefore = {...?_offeredParticipants[ctx]};
-  // The user's group word ("gezin"), set from their question: when the model
-  // named nobody but the asker, the word itself is looked up, so a profile or
-  // account with that name resolves and nothing else shrinks the group to me.
+  // The user's group word ("gezin"), set from their question. The people are
+  // then the word itself, looked up as a Pleya profile or account, and never
+  // the model's own pick: nothing shrinks the group to me or to a guess.
   final group = switch (args['group']) {
-    final String g when g.trim().isNotEmpty && g.length <= 64 => g.trim(),
+    final String g when g.trim().isNotEmpty && g.length <= 64 => g.trim().toLowerCase(),
     _ => null,
   };
-  final onlyMe = explicitIds.isEmpty && names.every((n) => n.trim().toLowerCase() == 'me');
-  if (group != null && onlyMe) names.add(group);
+  if (group != null) {
+    names
+      ..clear()
+      ..addAll(['me', group]);
+    explicitIds = const [];
+  }
   final people = resolvePeople(
     names: names,
     users: users,
@@ -119,15 +123,17 @@ Future<AssistantToolOutcome> _recommendTogether(
       if (u.id != requester.id && !client.sameUserId(u.id, requester.id)) u,
   ];
   bool isGroup(String name) => name.trim().toLowerCase() == group;
+  // The group word matched nobody but the asker (or nobody): the asker chooses
+  // among the other accounts, never the model.
   final groupChoices = <ServerUser>[
-    if (group != null &&
-        selected.length == 1 &&
-        explicitIds.isEmpty &&
-        people.ambiguous.isEmpty &&
-        missing.any(isGroup))
-      ...otherAccounts.take(_cohortParticipantCap * 2),
+    if (group != null && selected.length == 1 && people.ambiguous.isEmpty)
+      ...otherAccounts.where((u) => !u.disabled).take(_cohortParticipantCap * 2),
   ];
-  if (groupChoices.isNotEmpty) missing.removeWhere(isGroup);
+  if (groupChoices.isNotEmpty) {
+    missing.removeWhere(isGroup);
+  } else if (group != null && selected.length == 1 && !missing.any(isGroup)) {
+    missing.add(group);
+  }
   for (final entry in [...people.ambiguous, if (groupChoices.isNotEmpty) (name: group!, choices: groupChoices)]) {
     (_offeredParticipants[ctx] ??= {}).addAll(entry.choices.map((u) => u.id));
     ambiguous.add({

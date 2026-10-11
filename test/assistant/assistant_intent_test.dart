@@ -284,6 +284,8 @@ void main() {
         ('Een film voor de familie', 'familie'),
         ('What can we watch with my family?', 'family'),
         ('Iets voor ons huishouden', 'huishouden'),
+        ('Wat kunnen we met het hele gezin kijken?', 'gezin'),
+        ('Something for the whole family', 'family'),
       ]) {
         final intent = _i(q);
         expect(intent.group, word, reason: q);
@@ -295,11 +297,42 @@ void main() {
         );
         expect(intent.describe(), contains('never answer for the asker alone'));
       }
-      // A genre or a model-sent flag is not the user's group.
-      for (final q in ['Zoek een familiefilm', 'Show me a family movie', 'Wat heb ik gekeken?']) {
+      // A genre, a watch question about the group, or a model-sent flag is not it.
+      for (final q in [
+        'Zoek een familiefilm',
+        'Show me a family movie',
+        'Wat heb ik gekeken?',
+        'wat kijkt het gezin nu',
+        'what did the family watch this week',
+        'films over de familie Corleone',
+        'the family-friendly picks',
+      ]) {
         expect(_i(q).group, isNull, reason: q);
         expect(_i(q).constrain('recommend_together', {'group': 'gezin'}).args, isNot(contains('group')));
       }
+      // People the user wrote out are not a guess; ids or names they did not write are.
+      final named = _i('Wat kan ik met mijn gezin, Alice en Bob, kijken?');
+      expect(
+        named.constrain('recommend_together', {
+          'participants': ['me', 'Alice', 'Bob'],
+        }).args,
+        isNot(contains('group')),
+      );
+      expect(
+        named.constrain('recommend_together', {
+          'participants': ['me', 'Carol'],
+        }).args['group'],
+        'gezin',
+      );
+      expect(
+        named.constrain('recommend_together', {
+          'participants': ['Alice'],
+          'user_ids': ['x'],
+        }).args['group'],
+        'gezin',
+      );
+      // A child task decides by its own words.
+      expect(_i('Wat heb ik gekeken').inheriting(_i('en wat kan ik met mijn gezin kijken')).group, isNull);
     });
 
     test('review: requests, added value and a watch clause beside a long period are not additions-only', () {

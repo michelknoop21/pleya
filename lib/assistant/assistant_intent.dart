@@ -120,8 +120,8 @@ final _previousWeek = RegExp(r'\b(vorige week|(?<!\b(?:in|within|over|during|for
 // A group of people the question wants to watch with: "met mijn gezin", "for the
 // family". "familiefilm" and "family movie" name a genre, not the people.
 final _group = RegExp(
-  r'\b(?:mijn|ons|onze|het|de|met|voor|my|our|the|with|for)\s+(gezin|familie|family|huishouden|household)\b'
-  r'(?!\s+(?:films?|movies?|shows?|series?|serie|night|avond))',
+  r'\b(?:met|voor|with|for)\s+(?:(?:mijn|ons|onze|het|de|my|our|the)\s+)?(?:(?:hele|whole|entire)\s+)?'
+  r'(gezin|familie|family|huishouden|household)\b(?![\s-]+(?:films?|movies?|shows?|series?|serie|night|avond|friendly))',
 );
 final _month = RegExp(r'\b(deze maand|afgelopen maand|laatste maand|this month|past month)\b');
 
@@ -139,6 +139,7 @@ class AssistantIntent {
     this.longPeriodAsked = false,
     this.live = false,
     this.group,
+    this.words = '',
   });
 
   final IntentField<AssistantAudience> audience;
@@ -169,6 +170,9 @@ class AssistantIntent {
   /// The group word the user used ("gezin"): the people behind it are not known
   /// to the question, so a cohort of only the asker is never the answer.
   final String? group;
+
+  /// The question as written, lowercased: what [constrain] checks names against.
+  final String words;
 
   static const unknown = AssistantIntent();
 
@@ -215,6 +219,7 @@ class AssistantIntent {
     final days = periods.length == 1 ? periods.single : null;
     return AssistantIntent(
       group: _group.firstMatch(p)?.group(1),
+      words: p,
       previousWeek: _previousWeek.hasMatch(p),
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
@@ -313,7 +318,8 @@ class AssistantIntent {
     addedToLibraries: addedToLibraries,
     longPeriodAsked: longPeriodAsked,
     live: live,
-    group: group ?? parent.group,
+    group: group,
+    words: words,
   );
 
   bool get any => audience.known || kind.known || days.known;
@@ -340,8 +346,17 @@ class AssistantIntent {
         // whatever the model passed.
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
         // Set from the user's words only: the tool asks who the group is
-        // rather than answer for the asker alone.
-        if (group != null) {
+        // rather than answer for the asker, or a subset the model guessed.
+        // People the user wrote out themselves are no guess.
+        final listed = args['participants'];
+        final ids = args['user_ids'];
+        final named = [
+          if (listed is List)
+            for (final n in listed)
+              if (n is String && n.trim().toLowerCase() != 'me') n.trim().toLowerCase(),
+        ];
+        final userNamed = named.isNotEmpty && (ids is! List || ids.isEmpty) && named.every(words.contains);
+        if (group != null && !userNamed) {
           out['group'] = group;
         } else {
           out.remove('group');

@@ -602,10 +602,53 @@ void main() {
     expect(result.data['status'], 'unsupported_strict_cohort');
     expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
   });
-  test('BP-04b: named people, or no group word, keep the individual path as it was', () async {
+  test('BP-04b: a subset the model picked for a group word is asked back too', () async {
     final f = _Fixture();
     final ctx = f.context(['1']);
-    final named = await _recommend(ctx, {'group': 'gezin'});
+    for (final pick in [
+      {
+        'participants': ['me', 'Alice'],
+      },
+      {
+        'participants': <String>[],
+        'user_ids': ['a'],
+      },
+    ]) {
+      final result = await _recommend(ctx.fresh(), {...pick, 'group': 'gezin'});
+      expect(result.data['status'], 'participant_clarification');
+      expect(((result.data['ambiguous'] as List).single as Map)['name'], 'gezin');
+    }
+    expect(f.calls.where((r) => r.url.path.startsWith('/Items/')), isEmpty);
+  });
+  test(
+    'BP-04b: a group word that matches only the asker, or disabled accounts, is not answered for the asker',
+    () async {
+      final f = _Fixture();
+      final ctx = f.context(['1']);
+      f.aliases = [
+        const ProfileServerIdentity(profileId: 'fam', displayName: 'Gezin', userIds: {'admin'}),
+      ];
+      final result = await _recommend(ctx, {
+        'participants': ['me'],
+        'group': 'gezin',
+      });
+      expect(result.data['status'], 'participant_clarification');
+      final choices = ((result.data['ambiguous'] as List).single as Map)['choices'] as List;
+      expect(choices.map((c) => (c as Map)['user_id']), ['a', 'b']);
+      f.users[1]['Policy'] = {..._policy(), 'IsDisabled': true};
+      final again = await _recommend(ctx.fresh(), {
+        'participants': ['me'],
+        'group': 'gezin',
+      });
+      expect((((again.data['ambiguous'] as List).single as Map)['choices'] as List).map((c) => (c as Map)['user_id']), [
+        'b',
+      ]);
+    },
+  );
+  test('BP-04b: no group word keeps the individual path as it was', () async {
+    final f = _Fixture();
+    final ctx = f.context(['1']);
+    final named = await _recommend(ctx);
     expect((named.data['participants'] as List).map((e) => (e as Map)['user_id']), ['admin', 'a', 'b']);
     final alone = await _recommend(ctx.fresh(), {
       'participants': ['me'],
