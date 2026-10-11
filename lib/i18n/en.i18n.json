@@ -2506,6 +2506,7 @@
       "compareServers": "Comparing servers",
       "watchStats": "Fetching watch statistics",
       "myWatching": "Checking what you watched",
+      "traktWatchlist": "Checking your Trakt watchlist",
       "recommendTogether": "Matching what you both like",
       "requestStatus": "Checking request status",
       "diagnosePlayback": "Diagnosing playback",

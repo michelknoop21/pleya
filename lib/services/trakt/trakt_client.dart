@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../models/trakt/trakt_scrobble_request.dart';
+import '../../models/trakt/trakt_title.dart';
 import '../../models/trakt/trakt_user.dart';
 import '../../utils/app_logger.dart';
 import '../trackers/tracker_constants.dart';
@@ -83,6 +84,30 @@ class TraktClient {
   Future<List<dynamic>> getRatings(String type) async {
     final res = await _request('GET', '/sync/ratings/$type');
     return res is List ? res : const [];
+  }
+
+  /// Every film or series the user has watched. Series come without their
+  /// season and episode tree (`extended=noseasons`): the tree can be megabytes.
+  /// Throws when Trakt answers 200 with anything but a list, so a block page
+  /// is never read as "nothing watched".
+  Future<List<TraktTitle>> getWatched({required bool shows}) async {
+    final type = shows ? 'shows' : 'movies';
+    final res = await _request('GET', '/sync/watched/$type${shows ? '?extended=noseasons' : ''}');
+    return _titles(res, shows: shows);
+  }
+
+  /// The newest [limit] entries of the user's watchlist for one kind.
+  Future<List<TraktTitle>> getWatchlist({required bool shows, int limit = 50}) async {
+    final type = shows ? 'shows' : 'movies';
+    final res = await _request('GET', '/sync/watchlist/$type/added/desc?page=1&limit=$limit');
+    return _titles(res, shows: shows);
+  }
+
+  List<TraktTitle> _titles(dynamic res, {required bool shows}) {
+    if (res is! List) {
+      throw TrackerApiException(service: TrackerService.trakt, statusCode: 200, body: 'unexpected response shape');
+    }
+    return [for (final e in res) ?TraktTitle.fromEntry(e, isShow: shows)];
   }
 
   /// Personalized recommendations for the authenticated user.

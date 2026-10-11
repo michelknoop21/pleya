@@ -17,6 +17,7 @@ import '../trackers/tracker_constants.dart';
 import '../trackers/tracker_id_resolver.dart';
 import '../trackers/tracker_session.dart';
 import 'trakt_client.dart';
+import 'trakt_library_reader.dart';
 import 'trakt_constants.dart';
 import 'trakt_sync_queue.dart';
 
@@ -41,6 +42,11 @@ class TraktSyncService {
   String _activeUserUuid = '';
 
   TraktClient? _client;
+
+  /// Reads the user's Trakt history and watchlist through [_client], and only
+  /// for the profile it is bound to.
+  late final TraktLibraryReader library = TraktLibraryReader(clientOf: () => _client, userOf: () => _activeUserUuid);
+
   MultiServerManager? _serverManager;
   StreamSubscription<WatchStateEvent>? _subscription;
   final TraktSyncQueue _queue = TraktSyncQueue();
@@ -88,6 +94,7 @@ class TraktSyncService {
     void Function(TrackerSession session)? onSessionUpdated,
   }) {
     _client?.dispose();
+    library.reset();
     _client = session != null
         ? TraktClient(session, onSessionInvalidated: onSessionInvalidated, onSessionUpdated: onSessionUpdated)
         : null;
@@ -108,6 +115,7 @@ class TraktSyncService {
     _subscription = null;
     _client?.dispose();
     _client = null;
+    library.reset();
     _resolvers.clear();
   }
 
