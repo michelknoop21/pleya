@@ -18,6 +18,10 @@ class _CatalogQuery {
     this.addedWithinDays,
     this.totalMatches,
     this.addedUnknown = 0,
+    this.moreMatches = false,
+    this.matchesRead = 0,
+    this.addedOrder,
+    this.seenElsewhere = 0,
   });
   final List<UnifiedMediaGroup> groups;
 
@@ -33,8 +37,22 @@ class _CatalogQuery {
   /// matched it before [groups] was cut to the limit. [addedUnknown] titles
   /// carry no added date and are in neither count.
   final int? addedWithinDays;
-  final int? totalMatches;
   final int addedUnknown;
+
+  /// How many titles the query matches in all, before [groups] was cut to the
+  /// limit. Null when that is not known: the lists were not read to their end
+  /// ([moreMatches], with [matchesRead] as the floor) or a part did not answer.
+  final int? totalMatches;
+  final bool moreMatches;
+  final int matchesRead;
+
+  /// 'added' or 'added_oldest' when the listing is in added order: each result
+  /// then carries its date.
+  final String? addedOrder;
+
+  /// Unwatched titles dropped because this profile's own history has them,
+  /// watched as a copy on another source.
+  final int seenElsewhere;
 
   /// A server or library did not answer, or could not run this search.
   final bool partial;
@@ -96,6 +114,7 @@ MediaServerClient? _collectionClient(AssistantToolContext ctx, ServerId id) {
 
 const _rowSorts = {
   'added': UnifiedCatalogSort.recentlyAdded,
+  'added_oldest': UnifiedCatalogSort.oldestAdded,
   'released': UnifiedCatalogSort.newestRelease,
   'title': UnifiedCatalogSort.titleAsc,
 };
@@ -108,6 +127,18 @@ int? _groupAddedAt(UnifiedMediaGroup g) => g.sources
     .map((s) => s.item.addedAt)
     .whereType<int>()
     .fold<int?>(null, (a, b) => a == null || b > a ? b : a);
+
+/// When a title first came into the libraries: its oldest source's date, for
+/// "waiting the longest". A local folder has none to give, as above.
+int? _groupFirstAddedAt(UnifiedMediaGroup g) => g.sources
+    .where((s) => s.item.backend != MediaBackend.local)
+    .map((s) => s.item.addedAt)
+    .whereType<int>()
+    .fold<int?>(null, (a, b) => a == null || b < a ? b : a);
+
+/// Titles a search reads per kind. More than it lists, so the total it reports
+/// is the query's own and not the size of the listing.
+const _catalogReadWindow = 100;
 
 /// The loader's own newest-first key: every source, local scan stamps included.
 /// Order and the end-of-page test follow the loader, the window follows
@@ -246,6 +277,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     final groups = <UnifiedMediaGroup>[];
     var partial = false;
     var sampled = false;
+    // Every kind's list was read to its end: only then is a count a total.
+    var complete = true;
     HomeCustomRow? row;
     for (final k in kind == null ? const [MediaKind.movie, MediaKind.show] : [kind]) {
       row = HomeCustomRow(
@@ -279,9 +312,10 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       // ponytail: rating/random order and a minimum rating only see the first
       // 100 titles (flagged as sampled); a rating sort in the catalog contract
       // lifts that ceiling.
-      final content = await ctx.catalog!.rowLoader.load(row, limit: rowShaped ? limit : 100);
+      final content = await ctx.catalog!.rowLoader.load(row, limit: _catalogReadWindow);
       checkCurrent();
       partial |= content.isPartial;
+      complete &= content.isExact;
       // In a window the question is whether the newest-first page reached its
       // end (below); otherwise an inexact page is a sample.
       if (cutoff == null) sampled |= !rowShaped && !content.isExact;
@@ -304,20 +338,34 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     }
     checkCurrent();
     if (minRating != null) groups.removeWhere((g) => (g.representativeSource.item.rating ?? -1) < minRating);
+    // Each server answers "unwatched" for its own copy only. A title this
+    // profile watched as a copy elsewhere is not unseen.
     applyWindow(groups);
+    final seenElsewhere = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+    checkCurrent();
+    // The window's total was counted before the history dropped titles.
+    if (cutoff != null) total = groups.length;
     // A single kind keeps the catalog's order; two kinds need one order.
     if (!rowShaped || kind == null) _order(groups, sort);
+    final countable = complete && !partial && !sampled && !windowCapped;
     return _CatalogQuery(
       groups.take(limit).toList(),
-      rowShaped && kind != null ? row : null,
+      // A Home row cannot repeat the profile's own history filter.
+      rowShaped && kind != null && seenElsewhere == 0 ? row : null,
       partial: partial,
       sampled: sampled || windowCapped,
       serversLeftOut: leftOut,
-      rowUnavailableReason: unavailableReason,
+      rowUnavailableReason: seenElsewhere > 0
+          ? 'Titles already in this profile\'s watch history are left out, which a Home row cannot repeat.'
+          : unavailableReason,
       coverage: coverage,
       checkCurrent: checkCurrent,
       addedWithinDays: addedWithin,
-      totalMatches: total,
+      totalMatches: total ?? (countable ? groups.length : null),
+      moreMatches: cutoff == null && !complete,
+      matchesRead: groups.length,
+      addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
+      seenElsewhere: seenElsewhere,
       addedUnknown: addedUnknown,
     );
   }
@@ -328,6 +376,8 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   final found = <MediaItem>[];
   final genreChecked = <String>{};
   var partial = false;
+  // A server's search stops at its own limit: its hits are then a sample.
+  var searchCapped = false;
   for (final id in ctx.userServers) {
     final client = ctx.userClient(id);
     if (client == null || (person != null && client is! PersonSearchClient)) {
@@ -343,6 +393,7 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
       } else {
         hits = await client.searchItems(text!, limit: 50);
       }
+      searchCapped |= hits.length >= 50;
       checkCurrent();
       for (final hit in hits) {
         if (hit.kind != MediaKind.movie && hit.kind != MediaKind.show) continue;
@@ -391,6 +442,9 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     partial |= filtered.failed;
   }
   applyWindow(groups);
+  final seenBefore = unwatched ? await _dropSeenByProfile(ctx, groups) : 0;
+  checkCurrent();
+  if (cutoff != null) total = groups.length;
   // No sort asked: the servers' relevance order stands.
   if (askedSort != null || addedWithin != null) _order(groups, sort);
   final kept = groups.take(limit).toList();
@@ -403,7 +457,13 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
     coverage: coverage,
     checkCurrent: checkCurrent,
     addedWithinDays: addedWithin,
-    totalMatches: total,
+    // Everything the servers' search returned, not the listing's length; no
+    // total when a server did not answer or its search hit its limit.
+    totalMatches: partial || searchCapped ? null : (total ?? groups.length),
+    moreMatches: searchCapped,
+    matchesRead: groups.length,
+    seenElsewhere: seenBefore,
+    addedOrder: sort == 'added' || sort == 'added_oldest' ? sort : null,
     addedUnknown: addedUnknown,
     genreUnverified: genres.isEmpty || coverage != null
         ? const {}
@@ -414,101 +474,28 @@ Future<_CatalogQuery> _search(AssistantToolContext ctx, Map<String, Object?> arg
   );
 }
 
-bool _setSame(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
-
-Future<({List<UnifiedMediaGroup> groups, Map<String, Object?> coverage, bool failed, bool sampled})>
-_strictCatalogMatches(
-  AssistantToolContext ctx,
-  List<UnifiedMediaGroup> groups,
-  AssistantStrictFilters filters,
-  bool unwatched,
-  bool inProgress,
-  void Function() checkCurrent, {
-  Set<String> genreAlternatives = const {},
-}) async {
-  final matched = <MediaItem>[];
-  var checked = 0;
-  var unavailable = 0;
-  var excluded = 0;
-  final sources = groups.expand((g) => g.sources).toList();
-  // The metadata reads have their own cap: merged titles may contain many
-  // copies, and mixed-kind searches may have loaded 100 of each kind.
-  for (final source in sources.take(100)) {
-    checkCurrent();
-    if (ctx.catalog!.rowLoader case final CatalogHomeCustomRowLoader loader) {
-      if (!loader
-          .librariesFor(source.item.kind)
-          .any((library) => library.serverId == source.serverId && library.libraryId == source.libraryId)) {
-        unavailable++;
-        continue;
-      }
-    }
-    final client = ctx.userClient(source.serverId);
-    if (client == null) {
-      unavailable++;
-      continue;
-    }
-    checked++;
-    MediaItem? item;
-    try {
-      item = await client.fetchItem(source.item.id);
-    } catch (_) {
-      // The unavailable count is incremented once below, for null or failure.
-    }
-    checkCurrent();
-    if (!identical(ctx.userClient(source.serverId), client)) throw const AssistantToolError('catalog_changed');
-    if (item == null) {
-      unavailable++;
-      continue;
-    }
-    // Jellyfin's ParentId can be a nested folder; the catalog already proved
-    // the root via its recursive ParentId query. Only an explicit root on the
-    // detail DTO may contradict that proof.
-    final detailLibrary = item.backend == MediaBackend.jellyfin ? (item.raw?['ParentLibraryId']) : item.libraryId;
-    final malformedLibrary =
-        item.backend == MediaBackend.jellyfin &&
-        (item.raw?.containsKey('ParentLibraryId') ?? false) &&
-        (detailLibrary is! String || detailLibrary.isEmpty);
-    if (item.id != source.item.id ||
-        item.kind != source.item.kind ||
-        item.backend != source.backend ||
-        (item.serverId != null && item.serverId != source.serverId.value) ||
-        malformedLibrary ||
-        (detailLibrary != null && detailLibrary != source.libraryId)) {
-      unavailable++;
-      continue;
-    }
-    item = item.copyWith(serverId: source.serverId.value, libraryId: source.libraryId);
-    final watchKnown =
-        item.backend != MediaBackend.jellyfin ||
-        item.raw?['UserData'] is Map && (item.raw!['UserData'] as Map)['Played'] is bool;
-    final genreMatches =
-        genreAlternatives.isEmpty ||
-        (item.genres?.any((genre) => genreAlternatives.contains(genre.trim().toLowerCase())) ?? false);
-    if (!genreMatches ||
-        (unwatched && !watchKnown) ||
-        !filters.matches(item) ||
-        (unwatched && item.isWatched) ||
-        (inProgress && !item.hasActiveProgress)) {
-      excluded++;
-      continue;
-    }
-    matched.add(item);
-  }
-  final merged = await _merge(ctx, matched);
-  checkCurrent();
-  return (
-    groups: merged,
-    failed: unavailable > 0,
-    sampled: sources.length > 100,
-    coverage: {
-      'candidates_checked': checked,
-      'excluded_metadata_or_watch': excluded,
-      'unavailable_metadata': unavailable,
-      'candidate_limit': 100,
-    },
+/// Removes from [groups] the films the active profile's own log holds as
+/// finished, by key or by identity, and returns how many went. Films only: a
+/// series is keyed by one watched episode, which does not make it unseen, and
+/// a play stopped half-way is not a finished one. Nothing without a log.
+Future<int> _dropSeenByProfile(AssistantToolContext ctx, List<UnifiedMediaGroup> groups) async {
+  final personal = ctx.personal;
+  if (personal == null || groups.isEmpty) return 0;
+  final completed = personal.everCompleted ?? personal.everSeen;
+  final completedIdentities = personal.everCompletedIdentities ?? personal.everSeenIdentities;
+  final (keys, identities) = await (completed(), completedIdentities()).wait;
+  if (keys.isEmpty && identities.isEmpty) return 0;
+  final seen = _SeenIdentities(identities);
+  final before = groups.length;
+  groups.removeWhere(
+    (g) =>
+        g.representativeSource.item.kind == MediaKind.movie &&
+        g.sources.any((s) => keys.contains(s.sourceKey) || seen.contains(s.item)),
   );
+  return before - groups.length;
 }
+
+bool _setSame(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
 
 /// The same title on several servers becomes one entry: the unified
 /// catalog's identity pipeline, which keeps the first hit's position.
@@ -563,6 +550,10 @@ void _order(List<UnifiedMediaGroup> groups, String sort) {
       groups.sort((a, b) => (rep(b).rating ?? -1).compareTo(rep(a).rating ?? -1));
     case 'added':
       groups.sort((a, b) => (_groupRawAddedAt(b) ?? -1).compareTo(_groupRawAddedAt(a) ?? -1));
+    case 'added_oldest':
+      // A title without a date has not provably waited: it goes last.
+      const unknown = 1 << 62;
+      groups.sort((a, b) => (_groupFirstAddedAt(a) ?? unknown).compareTo(_groupFirstAddedAt(b) ?? unknown));
     case 'released':
       groups.sort((a, b) => releaseKey(rep(b)).compareTo(releaseKey(rep(a))));
     default:

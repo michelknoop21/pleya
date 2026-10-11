@@ -55,6 +55,13 @@ class AssistantMediaGrid extends AssistantDisplay {
 /// the same set, so the UI's grid cap is this number.
 const kAssistantListedTitles = 12;
 
+/// The date a listed title shows: in a window or newest-first its newest
+/// copy's, oldest-first the day it first came in. Null when the listing is
+/// not about added dates, or the title has none.
+int? _listedAddedAt(_CatalogQuery query, UnifiedMediaGroup g) => query.addedOrder == 'added_oldest'
+    ? _groupFirstAddedAt(g)
+    : (query.addedWithinDays != null || query.addedOrder == 'added' ? _groupAddedAt(g) : null);
+
 final List<AssistantTool> _catalogTools = [
   AssistantTool(
     name: 'search_catalog',
@@ -65,7 +72,13 @@ final List<AssistantTool> _catalogTools = [
         'text matches titles, not themes or plots: use find_title for those. '
         'Genres are OR for native rows, ALL when combined with temporary strict filters; multiple audio languages require ALL. '
         'For what was added to the libraries in a period ("this week", "last 14 days") pass added_within_days (1-31): '
-        'results then carry added_at; total_matches is the whole window (or everything the search found), count what is listed, added_unknown the titles without a date. '
+        'results then carry added_at; added_unknown counts the titles without a date. '
+        'What the user has not watched yet in their library, also "my library", is unwatched=true here, not my_watching; '
+        'for what has been waiting the longest ("al lang ongezien", "oldest unwatched") add sort=added_oldest: '
+        'time since the title was added, never its release year; results carry added_at. '
+        'count is what is listed and drawn as cards: name only those titles. total_matches is the whole query and is '
+        'absent when unknown; with more_matches say "at least matches_at_least", never a total. '
+        'seen_before counts films left out because this profile\'s own watch history has them as finished. '
         'Joint unseen uses recommend_together. Returns a task-local query_id; save only if can_become_home_row. '
         'Explain home_row_unavailable_reason, partial, sampled, servers_left_out and coverage as returned.',
     risk: AssistantToolRisk.read,
@@ -78,7 +91,7 @@ final List<AssistantTool> _catalogTools = [
       'in_progress': {'type': 'boolean'},
       'sort': {
         'type': 'string',
-        'enum': ['added', 'released', 'rating', 'title', 'random'],
+        'enum': ['added', 'added_oldest', 'released', 'rating', 'title', 'random'],
       },
       'limit': {'type': 'integer'},
     },
@@ -113,9 +126,9 @@ final List<AssistantTool> _catalogTools = [
           'kind': item.kind.name,
           'server_id': serverId.value,
           if (query.genreUnverified.contains(g.groupId)) 'genre_unverified': true,
-          if (query.addedWithinDays != null && _groupAddedAt(g) != null)
+          if (_listedAddedAt(query, g) case final added?)
             'added_at': DateTime.fromMillisecondsSinceEpoch(
-              _groupAddedAt(g)! * 1000,
+              added * 1000,
               isUtc: true,
             ).toIso8601String().substring(0, 10),
           ..._factsField(f, gated.region),
@@ -135,7 +148,9 @@ final List<AssistantTool> _catalogTools = [
         'count': entries.length,
         // The kids gate only sees the listed titles: no whole-set figure then,
         // and no count of titles that were never checked.
-        if (age == null) 'total_matches': query.totalMatches ?? query.groups.length,
+        if (age == null && query.totalMatches != null) 'total_matches': query.totalMatches,
+        if (age == null && query.moreMatches) ...{'more_matches': true, 'matches_at_least': query.matchesRead},
+        if (age == null && query.seenElsewhere > 0) 'seen_before': query.seenElsewhere,
         if (query.addedWithinDays != null) ...{
           'window_days': query.addedWithinDays,
           if (age == null && query.addedUnknown > 0) 'added_unknown': query.addedUnknown,

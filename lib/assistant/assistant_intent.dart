@@ -94,6 +94,29 @@ final _added = RegExp(
 final _addedElsewhere = RegExp(
   r'\b(radarr|sonarr|requests?|aanvragen?|verzoeken|toegevoegde waarde|added value|kijklijst|watchlist|lijstje|mijn lijst|my list|favorieten|favourites?|afspeellijst|playlist|collectie|collection|wachtrij|queue|downloads?)\b',
 );
+// "Not watched yet", as a list from the libraries. A tip the user has not seen
+// stays with my_watching, so the question must also name the library or how
+// long the titles have been waiting, and must not ask for a tip.
+final _unseen = RegExp(
+  r"\b(ongezien(?:e)?|ongekeken|onbekeken|(?:nog )?niet (?:heb )?(?:gezien|gekeken|bekeken)|nooit (?:eerder )?(?:gezien|gekeken|bekeken)|nog moet (?:zien|kijken)|unwatched|unseen|not (?:yet )?(?:been )?(?:watched|seen)|(?:haven't|havent|have not|didn't|never) (?:yet )?(?:watched|seen))\b",
+);
+final _libraryWord = RegExp(r'\b(bibliothe(?:ek|ken)|librar(?:y|ies)|servers?)\b');
+// How long a title has waited, not how long it runs or when it came out:
+// "oudste" and "longest" alone are runtime or release year.
+final _longWaiting = RegExp(
+  r'\b(al (?:zo |heel |erg )?(?:lang|tijden|eeuwen|jaren)|het langst|already (?:for )?(?:a )?(?:long|ages)|for (?:a long time|ages|years)|gathering dust)\b',
+);
+final _tipAsked = RegExp(r'\b(tips?|aanraders?|aanraden|raad|suggesties?|recommend(?:ation)?s?|suggest(?:ion)?s?)\b');
+// The list needs a title word: "wat heb ik al lang niet gekeken" is a question
+// about the asker's own history, not about the library.
+final _titleWord = RegExp(r'\b(films?|movies?|series?|serie|shows?|titels?|titles?)\b');
+// A subject other than the asker ("Sam en ik", "samen"): the filter is the
+// asker's own, so those stay with recommend_together.
+final _otherSubject = RegExp(r'\b(?:en ik|and i|and me|en mij|samen|together)\b');
+// A named subject after the verb ("heeft Sam", "has Dune"): matched on the
+// original text, where a name is capitalised. "have not", "heeft de
+// bibliotheek" and "have I" are not names.
+final _namedSubject = RegExp(r'\b(?:heeft|hebben|has|have)\s+(?!I\b)[A-Z]');
 // A period the parser cannot turn into days ("3 maanden", "2 weken"): the window is not guessed.
 final _longPeriod = RegExp(r'\b\d{1,3}\s*(maanden|maand|weken|week|months?|weeks?)\b');
 // "everyone else watched": a named group with its own verb, a clause of its own.
@@ -139,6 +162,8 @@ class AssistantIntent {
     this.previousWeek = false,
     this.mixedAudience = false,
     this.addedToLibraries = false,
+    this.unseenInLibrary = false,
+    this.longestWaiting = false,
     this.longPeriodAsked = false,
     this.live = false,
     this.group,
@@ -163,6 +188,14 @@ class AssistantIntent {
   /// and server lists are the wrong tools and the period belongs to the catalog.
   /// Not inherited: a child task decides by its own words.
   final bool addedToLibraries;
+
+  /// The question lists what the asker has not watched yet in the libraries:
+  /// the catalog's unwatched filter, not my_watching's handful of tips. Not
+  /// inherited, as [addedToLibraries].
+  final bool unseenInLibrary;
+
+  /// ... and wants what has waited the longest: oldest added first.
+  final bool longestWaiting;
 
   /// A period in weeks or months that days cannot express.
   final bool longPeriodAsked;
@@ -220,12 +253,24 @@ class AssistantIntent {
       if (_month.hasMatch(p)) 30,
     };
     final days = periods.length == 1 ? periods.single : null;
+    final unseenInLibrary =
+        _unseen.hasMatch(p) &&
+        _titleWord.hasMatch(p) &&
+        (_libraryWord.hasMatch(p) || _longWaiting.hasMatch(p)) &&
+        !_tipAsked.hasMatch(p) &&
+        !_otherSubject.hasMatch(p) &&
+        !_namedSubject.hasMatch(prompt) &&
+        !others &&
+        !everyone &&
+        _group.firstMatch(p) == null;
     return AssistantIntent(
       group: _group.firstMatch(p)?.group(1),
       words: p,
       previousWeek: _previousWeek.hasMatch(p),
       mixedAudience: readings.length > 1,
       addedToLibraries: _added.hasMatch(p) && !_addedElsewhere.hasMatch(p),
+      unseenInLibrary: unseenInLibrary,
+      longestWaiting: unseenInLibrary && _longWaiting.hasMatch(p),
       longPeriodAsked: _longPeriod.hasMatch(p),
       live:
           _live.hasMatch(p) &&
@@ -319,6 +364,8 @@ class AssistantIntent {
     previousWeek: previousWeek || parent.previousWeek,
     mixedAudience: mixedAudience,
     addedToLibraries: addedToLibraries,
+    unseenInLibrary: unseenInLibrary,
+    longestWaiting: longestWaiting,
     longPeriodAsked: longPeriodAsked,
     live: live,
     group: group,
@@ -342,6 +389,12 @@ class AssistantIntent {
           // The period is the additions' only when no other clause (a watch
           // question) could own it.
           if (days.explicit && !mixedAudience && !audience.known) out['added_within_days'] = days.value;
+        }
+        if (unseenInLibrary) {
+          out['unwatched'] = true;
+          out.remove('in_progress');
+          // Time since added, whatever order the model picked.
+          if (longestWaiting) out['sort'] = 'added_oldest';
         }
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
       case 'recommend_together':
@@ -370,6 +423,7 @@ class AssistantIntent {
         }
       case 'watch_stats':
         if (addedToLibraries && !audience.known) return (args: out, error: 'use_search_catalog');
+        if (unseenInLibrary) return (args: out, error: 'use_search_catalog');
         // "What did I watch" is the asker's own log, never the server's account list.
         if (audience.explicit && audience.value == AssistantAudience.me) {
           return (args: out, error: 'use_my_watching');
@@ -391,6 +445,8 @@ class AssistantIntent {
         // Also the tip tool, so no refusal here: the describe() note stops its
         // unwindowed history from passing as "last week".
         if (audience.explicit && audience.value != AssistantAudience.me) return (args: out, error: 'use_watch_stats');
+        // Its picks are a few tips, never the library's unwatched list or its size.
+        if (unseenInLibrary) return (args: out, error: 'use_search_catalog');
         if (kind.explicit) out['kind'] = kind.value == MediaKind.movie ? 'movie' : 'show';
     }
     return (args: out, error: null);
@@ -412,6 +468,10 @@ class AssistantIntent {
       if (addedToLibraries)
         'The question is about what was added to the libraries: use search_catalog with added_within_days, '
             'never watch history or the server list.',
+      if (unseenInLibrary)
+        'The question is about titles in the libraries the user has not watched yet: use search_catalog with '
+            'unwatched=true${longestWaiting ? ' and sort=added_oldest (longest since added first)' : ''}, never '
+            'my_watching. Name only the listed titles and give a total only when total_matches is returned.',
       if (group != null)
         'The question names a group ("$group"): never answer for the asker alone. '
             'Use recommend_together and let it ask who is meant; do not guess the people.',

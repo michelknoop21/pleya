@@ -359,4 +359,39 @@ void main() {
       expect(result.data['picks']! as List, isNotEmpty);
     });
   });
+  test('the same title from two servers is one pick and one card', () async {
+    MediaItem onServer(MediaItem item, String server) => item.copyWith(serverId: server);
+    final ctx = _ctx(
+      hubs: [
+        MediaHub(
+          id: 'rows',
+          title: 'Voor jou',
+          type: 'movie',
+          items: [
+            _item('p1', 'Heat', MediaKind.movie, year: 1995),
+            onServer(_item('x9', 'Heat', MediaKind.movie, year: 1995), 'plex-1'),
+            // A film and a series of one name are two titles.
+            _item('p2', 'Fargo', MediaKind.movie, year: 1996),
+            _item('p3', 'Fargo', MediaKind.show, year: 1996),
+            // Two year-less films of one name are not proven to be one.
+            _item('p4', 'Solaris', MediaKind.movie),
+            _item('p5', 'Solaris', MediaKind.movie),
+          ],
+        ),
+      ],
+    );
+    final result = await _tool().run(ctx, null, const {}) as AssistantToolResult;
+    final titles = [
+      for (final row in result.data['picks']! as List)
+        for (final t in (row as Map)['titles'] as List) ((t as Map)['title'], t['kind']),
+    ];
+    expect(titles, [
+      ('Heat', 'movie'),
+      ('Fargo', 'movie'),
+      ('Fargo', 'show'),
+      ('Solaris', 'movie'),
+      ('Solaris', 'movie'),
+    ]);
+    expect((result.display! as AssistantMediaGrid).entries, hasLength(5));
+  });
 }
