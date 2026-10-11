@@ -46,7 +46,7 @@ Bron voor de scope:
 | Afronding | S15 | 0 | 0 | 1 |
 | **Totaal** | **26** | **3** | **0** | **23** |
 
-Per taak, en dat is de maat die telt: **155 taken, 26 gereed, 1 bezig, 128 open.** S0, S1 en S2 zijn
+Per taak, en dat is de maat die telt: **155 taken, 26 gereed, 2 bezig, 127 open.** S0, S1 en S2 zijn
 dicht (acht van acht, acht van acht, acht van acht). S2.7 en S2.8 waren vervolgwerk buiten venster 2;
 dat ze nu gereed zijn heropent S2 niet als venster en raakt het contract niet. De twee andere gereed-vinkjes zijn mockupgoedkeuringen die met
 poort P3 al binnen waren (S12.1 en S13.1).
@@ -490,7 +490,7 @@ sluit het); S6 blijft wachten op P5.
 | S24.3 | Prometheus-metrics op loopback | `[ ]` | | |
 | S24.4 | Range-testset door twee proxy-opstellingen | `[ ]` | | |
 | S24.5 | Deploymentrecepten in de operatordoc | `[ ]` | | |
-| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet (nu handmatig `docker network connect`) | `[ ]` | | |
+| S24.6 | Tunnelnetwerk in `compose.yaml` als vast netwerk, zodat een relay-deploy `web.pleya.app` niet meer op 502 zet (nu handmatig `docker network connect`) | `[~]` | Code gereed, NAS-deploy wacht op go van Michel. De relay-kant stond al sinds `9ef7233` (`server/docker-compose.yml` hangt `cloudflared` aan het externe `pleya-server_default`); de serverkant leunde nog op de projectnaam. `pleya_server/compose.yaml` zet nu `networks.default.name: pleya-server_default`; `docker compose config` exit 0 toont die naam, ook met `-p andere-naam`. `deploy-nas.sh` meldt na `readyz` of `pleya-tunnel` aan het netwerk hangt (alleen lezen, `sh -n` en `shellcheck -S warning` schoon); README beschrijft het herstel in de relay-stack. Niet bewezen: de deploy op de NAS en een 200 op `web.pleya.app` daarna | 2026-10-11 |
 
 ### S25 Back-up, restore, upgrade, faalpaden (PS-11B)
 

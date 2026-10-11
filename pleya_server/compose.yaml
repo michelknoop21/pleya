@@ -1,8 +1,8 @@
 # Pleya Server.
 #
-# Twee services in een eigen privaat netwerk. Compose noemt dat
-# pleya-server_default, wat niet botst met de bestaande pleya_default en
-# pleya-relay_default op de NAS.
+# Twee services in een eigen privaat netwerk, pleya-server_default. Die naam
+# botst niet met de bestaande pleya_default en pleya-relay_default op de NAS,
+# en staat onderaan vast met `name:` omdat er een tweede stack van afhangt.
 
 services:
   pleya-server:
@@ -154,6 +154,18 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  # De tunnel van de relay-stack (server/docker-compose.yml, container
+  # pleya-tunnel) hangt dit netwerk als extern netwerk aan, want de ingress van
+  # web.pleya.app wijst naar http://pleya-server:8080. Zonder `name:` leidt
+  # Compose de naam af van de projectnaam, en die komt op de NAS van de map
+  # /volume1/docker/pleya-server. Een andere map of een `-p` gaf dan stil een
+  # ander netwerk, de tunnel vond pleya-server niet meer en web.pleya.app gaf
+  # 502. De naam hier is dezelfde die Compose al afleidde, dus op de NAS
+  # verandert er bij de eerstvolgende deploy niets.
+  default:
+    name: pleya-server_default
 
 volumes:
   pleya_pgdata:
