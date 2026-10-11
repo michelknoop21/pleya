@@ -13,7 +13,7 @@ Gemeten op `04e5fbeb` (`main`, 11 oktober).
 - Leeftijden van kinderen staan in `KidsAgesStore` (SharedPreferences, per profiel, nooit gesynct) en tellen alleen in de kindstand. Taalvoorkeuren, smaak (`AffinitySnapshots`), kijklog en kijklijst hebben elk al één eigenaar.
 - Big P bouwt per vraag losse systeemregels (`assistant_run_loop.dart`); het gespreksgeheugen leeft alleen in het werkgeheugen (`_memoryMessages` in `assistant_run_prompt.dart:24`, 6000 tekens in `assistant_controller.dart:187`). `AssistantFieldSource.memory` bestaat en is ongebruikt.
 - Er zijn twee bevestigpatronen. `AssistantPendingAction` blokkeert de run, eist een server en hertoetst `tool.serves`. De leeftijdenkaart is een eigen weergave met een controller-methode (`saveKidsAgesAndRetry`), zonder dat het model iets schrijft.
-- De database is een onversleuteld SQLite-bestand in de documentenmap. Op iOS staat `UIFileSharingEnabled` aan (`ios/Runner/Info.plist:58`), dus het bestand is zichtbaar in Bestanden en gaat mee in de apparaatback-up. De logredactie herkent tokens en adressen, geen vrije tekst. De toolfout op `assistant_run_execute.dart:221` logt het volledige foutobject.
+- De database is een onversleuteld SQLite-bestand in de documentenmap. Op iOS staat `UIFileSharingEnabled` aan (`ios/Runner/Info.plist:58`), dus het bestand is zichtbaar in Bestanden en gaat mee in de apparaatback-up. De logredactie herkent tokens en adressen, geen vrije tekst. De toolfout op `assistant_run_execute.dart:216` logt het volledige foutobject.
 - `CredentialVault` bewaart zijn sleutel in SharedPreferences en maakt stil een nieuwe als die ontbreekt (`lib/services/credential_vault.dart:131-133`).
 
 ## Ontwerp
@@ -38,7 +38,7 @@ De unieke index op (`profileId`, `valueKey`) vangt letterlijk dezelfde zin, ook 
 
 **Geen dubbele waarheid.** Het geheugen weigert wat al een eigenaar heeft: leeftijden van kinderen, taal- en ondertitelvoorkeur. De weigering komt terug als een vaste code, waarna Big P naar de juiste instelling verwijst. Het leeftijdsfilter blijft ongewijzigd. Het geheugenscherm toont de leeftijden uit `KidsAgesStore` als verwijsrij naar Kinderprofiel, alleen als er leeftijden zijn ingesteld.
 
-**Kindstand.** In de kindstand leest en schrijft Big P geen geheugen: de tools staan in `kidsToolPolicy` op geweigerd en er komt geen contextregel. Het scherm blijft bereikbaar om te bekijken en te wissen.
+**Kindstand.** In de kindstand leest en schrijft Big P geen geheugen: de tools staan in `kidsToolPolicy` op geweigerd en er komt geen contextregel. Het scherm blijft bereikbaar om te bekijken en te wissen; de rij "Vraag Big P over je geheugen" is daar verborgen.
 
 **Context zonder extra modelcall.** `relevantFor` kiest lokaal op woordoverlap tussen de vraag en `value`. Maximaal 8 feiten en 600 tekens, elk met een korte verwijzing (de eerste 8 tekens van de id). Ze gaan als één systeemregel mee, geciteerd als gegevens en niet als instructie, naar het patroon van `_memoryMessages`. Staat het geheugen uit of is er geen treffer, dan komt er geen regel bij. Een feit uit het geheugen krijgt in de intent de herkomst `memory` en overschrijft nooit wat de gebruiker in de vraag zelf zegt (contract, voorrangsregel 4). Een herinnering verruimt nooit rechten of het leeftijdsfilter; daar komt een test voor.
 
@@ -46,11 +46,13 @@ De unieke index op (`profileId`, `valueKey`) vangt letterlijk dezelfde zin, ook 
 
 - `recall_memory(category?, query?)` leest, met een plafond van 30 feiten en 2000 tekens, en geeft de korte verwijzing per feit mee.
 - `remember_fact(value, category, replaces?)` bewaart een nieuw feit of vervangt het feit waar `replaces` naar verwijst. Zo wordt "we kijken nu op zaterdag" een update van het vrijdagfeit en geen tweede rij.
-- `forget_fact(ref)` verwijdert.
+- `forget_fact(ref)` stelt verwijderen voor.
+
+Een onbekende of dubbelzinnige verwijzing geeft een vaste code terug en wijzigt niets. Botst een bijgewerkte tekst met een bestaand feit van hetzelfde profiel, dan weigert de service met `duplicate`.
 
 Geen van de drie gebruikt `AssistantPendingAction`. Een schrijfactie die niet direct mag, wordt een voorstel op de run. Big P geeft eerst het gevraagde antwoord; daarna toont de app de kaart "Zal ik dit onthouden?" of "Zal ik dit vergeten?" met de voorgestelde tekst en categorie. Ja roept `MemoryService` aan via een controller-methode, naar het patroon van de leeftijdenkaart, na een controle dat het profiel nog hetzelfde is. Zonder ja wordt er niets bewaard. De tekst op de kaart is de tekst die wordt opgeslagen; hij is door het model geformuleerd en door de service gevalideerd op lengte en vorm, en de gebruiker kan hem daarna in het scherm aanpassen.
 
-Direct opslaan zonder kaart gebeurt alleen als de code het verzoek herkent: de vraag begint met een opdrachtvorm ("onthoud dat", "onthoud:", "vergeet dat", "remember that", "forget that"). Een titel als "Remember the Titans" of "Forget Paris" verderop in de zin telt niet. Per beurt mag hoogstens één schrijfactie direct; elke volgende wordt een voorstel. Big P meldt letterlijk wat er is opgeslagen, met een link naar het geheugen.
+Direct opslaan zonder kaart gebeurt alleen als de code het verzoek herkent: de vraag begint met een opdrachtvorm ("onthoud dat", "onthoud:", "remember that") en is geen vraagzin. Een titel als "Remember the Titans" verderop in de zin telt niet, en "Remember that film with the heist?" evenmin. Vergeten gaat altijd via de kaart, omdat verwijderen niet terug te draaien is. Per beurt mag hoogstens één schrijfactie direct; elke volgende wordt een voorstel. Big P meldt letterlijk wat er is opgeslagen, met een link naar het geheugen.
 
 Dit raakt het gedragscontract: `docs/big-p-behaviour-contract.md` zet bevestiging van schrijfacties op voorrang 1 en eist nul mutaties zonder acceptatie. Direct opslaan na "onthoud dat" behandelt het verzoek zelf als de acceptatie. Die uitzondering komt als uitdrukkelijke regel in het contract, in dezelfde PR als stap 2, en geldt alleen voor het eigen geheugen van het actieve profiel. Zie open keuze 3.
 
@@ -58,14 +60,14 @@ Dit raakt het gedragscontract: `docs/big-p-behaviour-contract.md` zet bevestigin
 
 **Privacy.** Voorstel: platte tekst, met dezelfde bescherming als de kijklog. Versleutelen met `CredentialVault` is afgewogen en afgeraden. De sleutel staat in SharedPreferences, dus de apparaatback-up bevat sleutel en database samen. Raakt alleen de sleutel weg (containerreset op macOS, hersteld toestel), dan is het hele geheugen onleesbaar zonder herstelpad. De winst zou alleen zijn dat de tekst in Bestanden niet leesbaar is, en dan zou ook `valueKey` versleuteld moeten zijn, wat de unieke index onbruikbaar maakt.
 
-Wat wel gebeurt: geheugeninhoud komt in geen enkele logregel. De memory-bestanden krijgen een bron-scannende test naar het voorbeeld van `log_safety_test.dart`, en de toolfout op `assistant_run_execute.dart:221` logt voor deze tools alleen het type. De tabel wordt niet gesynct en niet geëxporteerd. De toolbeschrijving en het invoerveld vragen geen wachtwoorden, medische of financiële gegevens op te slaan. Bij een cloudmodel verlaten de gekozen feiten het toestel samen met de vraag; het scherm zegt dat.
+Wat wel gebeurt: geheugeninhoud komt in geen enkele logregel. De memory-bestanden krijgen een bron-scannende test naar het voorbeeld van `log_safety_test.dart`, en de toolfout op `assistant_run_execute.dart:216` logt voor deze tools alleen het type. De tabel wordt niet gesynct en niet geëxporteerd. De toolbeschrijving en het invoerveld vragen geen wachtwoorden, medische of financiële gegevens op te slaan. Bij een cloudmodel verlaten de gekozen feiten het toestel samen met de vraag; het scherm zegt dat.
 
 ## Drie stappen, elk een eigen PR
 
 Stap 1 en 2 krijgen een adversariële review (roadmapregel voor BP-08a), stap 3 de volledige UI-review met Verify en beeld.
 
 1. **Opslag.** Tabel, migratie 21 naar 22, `MemoryService`, de voorkeur aan/uit, wissen bij profielverwijdering. Tests: migratie vanaf 21 en verse installatie; profielisolatie voor lezen, bijwerken en verwijderen op id (twee profielen, geen kruistoegang); dezelfde zin twee keer geeft één rij; herstart (bestands-database sluiten en openen); profiel verwijderen wist rijen en voorkeur; weigering van leeftijd en taal; plafond; logverbod. Geen UI, geen assistentcode.
-2. **Big P.** De drie tools, de contextregel, voorstelkaart, direct opslaan, kindbeleid, staplabels NL en EN, contractregel. Tests met het gescripte model: voorstel zonder ja bewaart niets; "onthoud dat" bewaart direct en precies één keer; een titel met remember of forget bewaart niets direct; `replaces` vervangt; een ander profiel ziet niets; de budgetten van 600 en 2000 tekens; geheugen uit geeft geen tool en geen regel; kindstand; profielwissel tussen voorstel en ja; een herinnering verruimt het leeftijdsfilter niet.
+2. **Big P.** De drie tools, de contextregel, voorstelkaart, direct opslaan, kindbeleid, staplabels NL en EN, contractregel. Tests met het gescripte model: voorstel zonder ja bewaart niets; "onthoud dat" bewaart direct en precies één keer; een titel met remember en een vraagzin die met "remember that" begint bewaren niets direct; vergeten wist nooit zonder ja; een onbekende verwijzing wijzigt niets; `replaces` vervangt; een ander profiel ziet niets; de budgetten van 600 en 2000 tekens; geheugen uit geeft geen tool en geen regel; kindstand; profielwissel tussen voorstel en ja; een herinnering verruimt het leeftijdsfilter niet.
 3. **Beheer-UI.** Het scherm volgens de goedgekeurde mockup, telefoon, tablet en tv, met Pleya Verify-scenario's en beeld.
 
 Gedeelde bestanden met ander BP-werk raakt stap 2 alleen op vaste plekken: één regel in de toollijst van `assistant_tools.dart`, één systeemregel in `assistant_run_loop.dart`, de drie rijen in `kidsToolPolicy` en de staplabels. De rest staat in nieuwe bestanden.
@@ -88,5 +90,5 @@ Gedeelde bestanden met ander BP-werk raakt stap 2 alleen op vaste plekken: één
 
 1. Platte tekst zoals de kijklog (voorstel) of toch versleutelen, met het risico op onleesbaar geheugen.
 2. Kindstand: Big P gebruikt geen geheugen, het scherm blijft bereikbaar (voorstel).
-3. "Onthoud dat ..." slaat direct op, met een uitzondering in het gedragscontract (voorstel, volgt de opdracht), of altijd een kaart en geen contractwijziging.
+3. "Onthoud dat ..." slaat direct op (vergeten houdt altijd een kaart), met een uitzondering in het gedragscontract (voorstel, volgt de opdracht), of altijd een kaart en geen contractwijziging.
 4. Zoeken op tv via een rij met het systeemtoetsenbord (voorstel) of geen zoeken op tv.
