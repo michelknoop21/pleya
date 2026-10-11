@@ -256,6 +256,29 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('text at 2.0: the card "Vervangen?" shows the whole new value, with both buttons on screen', (
+    tester,
+  ) async {
+    await open(tester, textScale: 2);
+    await askReplace(tester);
+
+    final card = find.byType(BigPMemoryCard);
+    final fresh = tester.getRect(
+      find.descendant(of: card, matching: find.text('Kijkt op zaterdagavond met het gezin')),
+    );
+    final rows = tester.getRect(find.descendant(of: card, matching: find.byType(Scrollable)).first);
+    expect(fresh.top, greaterThanOrEqualTo(rows.top), reason: 'the new value is not cut off above');
+    expect(fresh.bottom, lessThanOrEqualTo(rows.bottom), reason: 'the new value is not cut off below');
+    for (final id in ['accept', 'decline']) {
+      final button = tester.getRect(memoryId(AutomationIds.assistantMemoryButton, id));
+      expect(button.top, greaterThan(0), reason: id);
+      expect(button.bottom, lessThanOrEqualTo(tester.getRect(input()).top), reason: '$id above the field');
+    }
+    expect(tester.getRect(input()).bottom, lessThanOrEqualTo(phoneSize.height));
+    expect(tester.takeException(), isNull);
+    await close(tester);
+  });
+
   testWidgets('light theme: the button "Vervangen" and the box of the card stand out from the card', (tester) async {
     await open(tester, light: true);
     await askReplace(tester);

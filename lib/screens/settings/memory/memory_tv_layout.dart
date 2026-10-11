@@ -130,6 +130,9 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
       _cardShown = false;
     }
     final answer = proposal == null && _model.answerShown;
+    // The stop belongs to the answer on screen: a card or a wipe takes the
+    // answer away without a word from it, and the next one starts short.
+    if (!answer) _answerStop = false;
     void toRead() {
       if (_readNode.canRequestFocus) _readNode.requestFocus();
     }
@@ -184,7 +187,7 @@ class _MemoryTvLayoutState extends State<MemoryTvLayout> {
                         SizedBox(height: 14 * pt),
                       ],
                       for (final (i, tile) in tiles.indexed) ...[
-                        if (tile.label case final label?) MemoryTvLabel(label, first: i == 0, top: 6),
+                        if (tile.label case final label?) MemoryTvLabel(label, first: i == 0, top: 2),
                         if (tile.label == null && i > 0) SizedBox(height: 2 * pt),
                         MemoryTvTile(
                           title: tile.title,

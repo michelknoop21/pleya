@@ -11,6 +11,8 @@ import 'package:pleya/screens/settings/memory/memory_fact_sheet.dart';
 import 'package:pleya/screens/settings/memory/memory_list_screen.dart';
 import 'package:pleya/screens/settings/memory/memory_screen.dart';
 import 'package:pleya/screens/settings/memory/memory_screen_model.dart';
+import 'package:pleya/screens/settings/memory/memory_tv_widgets.dart';
+import 'package:pleya/widgets/big_p/assistant/big_p_memory_card.dart';
 
 import '../../../test_helpers/golden.dart';
 import 'memory_finders.dart';
@@ -143,6 +145,66 @@ void main() {
       expect(focusedLabel(), isNot('memory.tv.answer'));
       await close(tester);
     });
+
+    // The stop of a long answer must not outlive it: with a short answer on
+    // screen Up from the first tile belongs to the navigation again.
+    for (final between in ['a card', 'a wipe']) {
+      testWidgets('a long answer, then $between, then a short answer: Up from the first tile is free', (tester) async {
+        await open(tester);
+        MemoryTvTile ask() => tester.widget<MemoryTvTile>(
+          find.ancestor(of: find.text(t.assistant.memory.screen.ask), matching: find.byType(MemoryTvTile)).first,
+        );
+        final long = List.filled(
+          30,
+          'Je kijkt graag naar Scandinavische misdaadseries en documentaires in het weekend.',
+        ).join(' ');
+        h.hostModel = ScriptedModel([say(long)]);
+        speech.next = 'Vat samen';
+        await press(tester, select);
+        await settle(tester, 10);
+        expect(ask().onNavigateUp, isNotNull, reason: 'the long answer is a stop');
+
+        if (between == 'a card') {
+          final friday = (await tester.runAsync(h.service.list))!.firstWhere((f) => f.value.contains('vrijdagavond'));
+          h.hostModel = ScriptedModel([
+            callTool('remember_fact', {
+              'value': 'Kijkt op zaterdagavond met het gezin',
+              'category': 'household',
+              'replaces': friday.ref,
+            }),
+            say('Dat pas ik aan als je het goed vindt.'),
+          ]);
+          speech.next = 'We kijken tegenwoordig op zaterdag met het gezin';
+          await press(tester, select);
+          await settle(tester, 10);
+          expect(find.byType(BigPMemoryCard), findsOneWidget);
+          // The safe button: no. The short answer of that turn stays.
+          await press(tester, select);
+          await settle(tester, 10);
+          expect(find.byType(BigPMemoryCard), findsNothing);
+        } else {
+          await press(tester, down, 7);
+          expect(focusedLabel(), 'memory.tv.clear');
+          await press(tester, select);
+          await settle(tester);
+          await press(tester, right);
+          await press(tester, select);
+          await settle(tester, 10);
+          expect(h.model.view, MemoryScreenView.empty);
+          h.hostModel = ScriptedModel([say('Ik weet nog niets over je.')]);
+          speech.next = 'Wat weet je over mij';
+          await press(tester, select);
+          await settle(tester, 10);
+          expect(find.text('Ik weet nog niets over je.'), findsOneWidget);
+        }
+
+        expect(h.model.answerShown, isTrue);
+        expect(focusedLabel(), 'memory.tv.ask');
+        expect(ask().onNavigateUp, isNull, reason: 'Up is not held back for an answer that does not scroll');
+        expect(tester.takeException(), isNull);
+        await close(tester);
+      });
+    }
 
     testWidgets('every tile is reached with Down and stands in view when the remote is on it', (tester) async {
       await open(tester);

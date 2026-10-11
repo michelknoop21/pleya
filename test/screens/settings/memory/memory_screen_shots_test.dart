@@ -280,6 +280,8 @@ void main() {
     },
   );
   shot('43-e-bewerken', _seBig, setup: _withOverview, list: true, act: openEdit);
+  // The card "Vervangen?" where room is shortest.
+  shot('43-h-bijwerken', _seBig, setup: _withOverview, act: askReplace);
   shot(
     '43-g-wissen',
     _seBig,

@@ -222,7 +222,10 @@ class MemoryPhoneLayout extends StatelessWidget {
                   Expanded(
                     child: _FadeOut(child: MemoryBody(model: model, viaMenu: true)),
                   ),
-                  if (_ComposerDock.shownFor(model)) _ComposerDock(model: model, maxHeight: box.maxHeight * 0.72),
+                  // A waiting card may take all of it: what it puts in place
+                  // has to be readable before the choice (a large text).
+                  if (_ComposerDock.shownFor(model))
+                    _ComposerDock(model: model, maxHeight: box.maxHeight * (model.host.proposal == null ? 0.72 : 1)),
                 ],
               ),
             ),

@@ -28,7 +28,6 @@ import 'package:pleya/utils/layout_constants.dart';
 import 'package:pleya/utils/media_server_http_client.dart' show AbortController;
 import 'package:pleya/utils/platform_detector.dart';
 import 'package:pleya/widgets/overlay_sheet.dart';
-import 'package:pleya/widgets/tv/tv_unified_layout.dart';
 import 'package:provider/provider.dart';
 
 import '../../../assistant/assistant_memory_support.dart';
@@ -274,11 +273,11 @@ const tabletSize = Size(1180, 820);
 const tvSize = Size(1038, 584);
 const tvRatio = 1.85;
 
-/// The band the top navigation of the TV shell takes from a nested page: its
-/// two insets and its row, as `TvTopNavigation` lays them out.
-double tvNavBand(Size display) =>
-    (TvTopNavLayout.topInset + TvTopNavLayout.barHeight + TvTopNavLayout.contentGap) *
-    TvLayoutConstants.scaleForSize(display);
+/// The band the top navigation of the TV shell takes from a nested page. The
+/// shell has no constant for it: `TvTopNavLayout.barHeight` is a minimum and
+/// the row stands higher in the app. Pleya Verify measures the page under it
+/// at y 144.76 of the 1080 canvas (`screen.memory` on an Apple TV 4K).
+double tvNavBand(Size display) => display.height * 144.76 / 1080;
 
 /// [child] as the TV shell mounts a nested page: under the navigation band,
 /// in the box that is left, with the whole display published for the scale.
