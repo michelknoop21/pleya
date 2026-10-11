@@ -120,9 +120,14 @@ final List<AssistantTool> _traktTools = [
       if (trakt.blocked() case final reason?) throw AssistantToolError(reason);
       // The kind filter comes before the cap, so a few newer films do not push
       // every series out of "my series".
+      // One entry per title: Trakt id when it has one, else the title key the
+      // rest of Big P compares by (the same title from two sources is one).
+      final distinct = <String>{};
       final ofKind = [
         for (final t in listed)
-          if (kind == 'all' || (kind == 'show') == t.isShow) t,
+          if ((kind == 'all' || (kind == 'show') == t.isShow) &&
+              distinct.add('${t.isShow}:${t.ids.trakt ?? '${assistantTitleKey(t.title)}:${t.year}'}'))
+            t,
       ];
       final wanted = ofKind.take(_traktWatchlistShown).toList();
       // Without the catalog wiring the hidden libraries are unknown, and a
@@ -155,10 +160,12 @@ final List<AssistantTool> _traktTools = [
       }
       final rows = <Map<String, Object?>>[];
       final shown = <MediaItem>[];
+      // The same library item is one card, however many Trakt rows point at it.
+      final cards = <String>{};
       for (final (i, t) in wanted.indexed) {
         final lookup = i < lookups.length ? lookups[i] : (status: _TraktLibraryStatus.notChecked, items: <MediaItem>[]);
         final first = lookup.items.firstOrNull;
-        if (first != null && first.serverId != null) {
+        if (first != null && first.serverId != null && cards.add('${first.serverId}:${first.id}')) {
           ctx.showItem(ServerId(first.serverId!), first.id);
           shown.add(first);
         }
