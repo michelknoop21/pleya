@@ -43,6 +43,7 @@ import '../providers/watch_state_store.dart';
 import '../database/app_database.dart';
 import '../assistant/assistant_controller.dart';
 import '../assistant/assistant_controller_session.dart';
+import '../assistant/assistant_kids_profile_store.dart';
 import '../i18n/strings.g.dart';
 import '../screens/big_p/big_p_mobile_session.dart';
 import '../screens/main_screen.dart';
@@ -157,9 +158,14 @@ class _ProfileSessionScreenState extends State<ProfileSessionScreen> {
                   return provider;
                 },
               ),
+              // Not lazy: the shield and the unbinding of the previous profile
+              // must run when the session starts, not when a screen reads it.
               ChangeNotifierProvider(
+                lazy: false,
                 create: (context) {
-                  final provider = TraktAccountProvider();
+                  final provider = TraktAccountProvider(
+                    kidsProfileCheck: () => assistantIsKidsProfile(context.read<ActiveProfileProvider>().active),
+                  );
                   unawaited(
                     provider.onActiveProfileChanged(activeId).catchError((Object e, StackTrace s) {
                       appLogger.w('Trakt profile hydrate failed', error: e, stackTrace: s);

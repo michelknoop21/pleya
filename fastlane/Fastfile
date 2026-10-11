@@ -567,8 +567,8 @@ end
 
 # Publieke API-sleutels uit .env, nu alleen de Trakt-client-ID. Alleen gezette,
 # niet-lege waarden worden een define; zonder sleutel blijft de functie uit.
-# TRAKT_CLIENT_SECRET hoort hier bewust niet bij: een define is uit de binary
-# te lezen, en een secret in de app is geen secret meer. Een TMDB-sleutel ook
+# Een Trakt-secret hoort hier bewust niet bij (de app heeft er geen nodig): een
+# define is uit de binary te lezen, en een secret in de app is geen secret meer. Een TMDB-sleutel ook
 # niet: die vult de gebruiker zelf in.
 # tvos_beta heeft dit niet nodig: xcode_appletv.sh leest dezelfde naam uit
 # de omgeving die xcodebuild van fastlane erft.

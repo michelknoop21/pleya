@@ -223,4 +223,86 @@ void main() {
       waiter.dispose();
     });
   });
+
+  group('TraktClient without a client secret', () {
+    test('refresh sends the measured shape and no client_secret key', () async {
+      late Map<String, dynamic> sent;
+      final client = TraktClient(
+        _session(),
+        onSessionInvalidated: () {},
+        onSessionUpdated: (_) {},
+        httpClient: MockClient((request) async {
+          if (request.url.path == '/oauth/token') {
+            sent = json.decode(request.body) as Map<String, dynamic>;
+            return http.Response(_tokenBody(), 200);
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+
+      await client.refresh();
+
+      expect(sent.containsKey('client_secret'), isFalse);
+      expect(sent['grant_type'], 'refresh_token');
+      expect(sent['refresh_token'], 'refresh-old');
+      expect(sent['redirect_uri'], 'urn:ietf:wg:oauth:2.0:oob');
+      expect(sent['client_id'], isA<String>());
+      client.dispose();
+    });
+
+    test('revoke sends no client_secret key', () async {
+      late Map<String, dynamic> sent;
+      final client = TraktClient(
+        _session(),
+        onSessionInvalidated: () {},
+        httpClient: MockClient((request) async {
+          sent = json.decode(request.body) as Map<String, dynamic>;
+          return http.Response('{}', 200);
+        }),
+      );
+
+      await client.revoke();
+
+      expect(sent.containsKey('client_secret'), isFalse);
+      expect(sent['token'], 'access-old');
+      client.dispose();
+    });
+
+    for (final refusal in [
+      (400, json.encode({'error': 'invalid_client'})),
+      (401, 'Unauthorized'),
+      (403, '<html>blocked</html>'),
+    ]) {
+      test('a ${refusal.$1} without invalid_grant keeps the session', () async {
+        var invalidated = 0;
+        final client = TraktClient(
+          _session(),
+          onSessionInvalidated: () => invalidated++,
+          onSessionUpdated: (_) {},
+          httpClient: MockClient((request) async => http.Response(refusal.$2, refusal.$1)),
+        );
+
+        await expectLater(client.refresh(), throwsA(isA<TrackerAuthException>()));
+
+        expect(invalidated, 0);
+        expect(client.session.refreshToken, 'refresh-old');
+        client.dispose();
+      });
+    }
+
+    test('a 401 with invalid_grant still ends the session', () async {
+      var invalidated = 0;
+      final client = TraktClient(
+        _session(),
+        onSessionInvalidated: () => invalidated++,
+        onSessionUpdated: (_) {},
+        httpClient: MockClient((request) async => http.Response(json.encode({'error': 'invalid_grant'}), 401)),
+      );
+
+      await expectLater(client.refresh(), throwsA(isA<TrackerAuthException>()));
+
+      expect(invalidated, 1);
+      client.dispose();
+    });
+  });
 }

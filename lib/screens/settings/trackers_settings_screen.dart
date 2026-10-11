@@ -38,7 +38,7 @@ class TrackersSettingsScreen extends StatelessWidget {
             // Only surface trackers whose API credentials are configured for
             // this build (see *_constants.dart). AniList authenticates via the
             // relay proxy and needs no bundled client ID.
-            if (TraktConstants.isConfigured) _trakt(),
+            if (TraktConstants.isConfigured && !context.watch<TraktAccountProvider>().isKidsProfile) _trakt(),
             if (MalConstants.isConfigured) _mal(),
             _anilist(),
             if (SimklConstants.isConfigured) _simkl(),
