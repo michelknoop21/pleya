@@ -57,6 +57,13 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// De sync schrijft nooit een root van een db-bibliotheek, dus deze lijst
+	// blijft de hele transactie geldig.
+	dbRoots, err := dbLibraryRoots(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]Library, 0, len(specs))
 	for _, spec := range specs {
 		var lib Library
@@ -102,7 +109,24 @@ func (s *Store) SyncLibraries(ctx context.Context, specs []LibrarySpec) ([]Libra
 		// de WHERE-guard de update over, geeft RETURNING geen rij, en blijft de
 		// root waar hij was, inclusief zijn laatste meting. Een root zonder
 		// eigenaar heeft geen conflict en wordt gewoon ingevoegd.
+		//
+		// Een root die binnen of boven een root van een db-bibliotheek ligt,
+		// wordt evenmin toegevoegd of verplaatst (S2.8): CreateLibrary en
+		// UpdateLibrary weigeren die overlap, en de .env mag hem niet langs een
+		// omweg maken. Een exact gelijke root laat deze controle aan de
+		// WHERE-guard hieronder over. Een root die al van deze bibliotheek is,
+		// is geen nieuwe claim en wordt alleen opnieuw gemeten.
 		for _, root := range spec.Roots {
+			if nestsInto(root.Path, dbRoots) {
+				owned, err := rootOwnedBy(ctx, tx, root.Path, lib.ID)
+				if err != nil {
+					return nil, err
+				}
+				if !owned {
+					lib.SkippedRoots = append(lib.SkippedRoots, root.Path)
+					continue
+				}
+			}
 			var rootID id.ID
 			err := tx.QueryRow(ctx, `
 				INSERT INTO storage_locations (id, library_id, root_path, fs_type, inode_trusted, inode_trust_source, last_seen_at)

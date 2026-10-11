@@ -504,6 +504,53 @@ func rootsOverlap(a, b string) bool {
 		strings.HasPrefix(b, strings.TrimSuffix(a, "/")+"/")
 }
 
+// dbLibraryRoots leest de roots van alle db-bibliotheken, voor de
+// overlapcontrole van SyncLibraries (S2.8). Net als existingRootConflicts
+// vergelijkt dat tekstueel, zonder het bestandssysteem te raadplegen.
+func dbLibraryRoots(ctx context.Context, tx pgx.Tx) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT s.root_path FROM storage_locations s
+		JOIN libraries l ON l.id = s.library_id
+		WHERE l.managed = 'db'`)
+	if err != nil {
+		return nil, fmt.Errorf("roots van db-bibliotheken lezen: %w", err)
+	}
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var root string
+		if err := rows.Scan(&root); err != nil {
+			return nil, err
+		}
+		out = append(out, root)
+	}
+	return out, rows.Err()
+}
+
+// nestsInto zegt of root binnen of boven één van others ligt. Een exact gelijk
+// pad telt niet mee: dat is de S2.7-regel, en die guard zit op de upsert zelf.
+func nestsInto(root string, others []string) bool {
+	for _, other := range others {
+		if root != other && rootsOverlap(root, other) {
+			return true
+		}
+	}
+	return false
+}
+
+// rootOwnedBy zegt of de root al aan libraryID hangt.
+func rootOwnedBy(ctx context.Context, tx pgx.Tx, root string, libraryID id.ID) (bool, error) {
+	var owned bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM storage_locations WHERE root_path = $1 AND library_id = $2)`,
+		root, libraryID).Scan(&owned)
+	if err != nil {
+		return false, fmt.Errorf("eigenaar van root %s lezen: %w", root, err)
+	}
+	return owned, nil
+}
+
 // existingRootConflicts zegt of één van roots overlapt met een storage_location
 // die al aan een ándere bibliotheek dan excludeLibraryID hangt. Bij een aanmaak
 // bestaat de bibliotheek zelf nog niet, dus id.Nil (excludeLibraryID) sluit
